@@ -1,0 +1,7 @@
+{
+  "hooks": {
+    "PostToolUse": [{ "command": "bash /workspace/group/.claude/notify-dashboard.sh PostToolUse" }],
+    "Notification": [{ "command": "bash /workspace/group/.claude/notify-dashboard.sh Notification" }],
+    "Stop": [{ "command": "bash /workspace/group/.claude/notify-dashboard.sh Stop" }]
+  }
+}

@@ -124,28 +124,33 @@ function buildVolumeMounts(
   );
   fs.mkdirSync(groupSessionsDir, { recursive: true });
   const settingsFile = path.join(groupSessionsDir, 'settings.json');
-  if (!fs.existsSync(settingsFile)) {
-    fs.writeFileSync(
-      settingsFile,
-      JSON.stringify(
-        {
-          env: {
-            // Enable agent swarms (subagent orchestration)
-            // https://code.claude.com/docs/en/agent-teams#orchestrate-teams-of-claude-code-sessions
-            CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
-            // Load CLAUDE.md from additional mounted directories
-            // https://code.claude.com/docs/en/memory#load-memory-from-additional-directories
-            CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
-            // Enable Claude's memory feature (persists user preferences between sessions)
-            // https://code.claude.com/docs/en/memory#manage-auto-memory
-            CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
-          },
-        },
-        null,
-        2,
-      ) + '\n',
-    );
+  // Copy dashboard hook script into the .claude dir so it's accessible inside the container
+  const hookSrc = path.join(projectRoot, 'dashboard', 'hooks', 'notify-dashboard.sh');
+  const hookDst = path.join(groupSessionsDir, 'notify-dashboard.sh');
+  if (fs.existsSync(hookSrc)) {
+    fs.copyFileSync(hookSrc, hookDst);
   }
+  const hookCmd = fs.existsSync(hookSrc)
+    ? 'bash /home/node/.claude/notify-dashboard.sh'
+    : '';
+  const settings: Record<string, unknown> = {
+    env: {
+      CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
+      CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
+      CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
+    },
+  };
+  if (hookCmd) {
+    settings.hooks = {
+      PostToolUse: [{ command: `${hookCmd} PostToolUse` }],
+      Notification: [{ command: `${hookCmd} Notification` }],
+      Stop: [{ command: `${hookCmd} Stop` }],
+    };
+  }
+  fs.writeFileSync(
+    settingsFile,
+    JSON.stringify(settings, null, 2) + '\n',
+  );
 
   // Sync skills from container/skills/ into each group's .claude/skills/
   const skillsSrc = path.join(process.cwd(), 'container', 'skills');

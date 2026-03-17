@@ -11,6 +11,7 @@
 
 import { createServer } from 'http';
 import { createHash } from 'crypto';
+import { execSync } from 'child_process';
 import { readFileSync, readdirSync, existsSync, statSync } from 'fs';
 import { join, resolve, extname } from 'path';
 import Database from 'better-sqlite3';
@@ -202,6 +203,18 @@ function getState(): DashboardState {
             status = 'thinking'; // has pending input
           }
         } catch { /* ignore */ }
+      }
+
+      // Check for running Docker container matching this group folder
+      if (status === 'idle') {
+        try {
+          const containerName = folder.replace(/_/g, '-');
+          const out = execSync(
+            `docker ps --filter "name=nanoclaw-${containerName}" --format "{{.Names}}" 2>/dev/null`,
+            { timeout: 2000, encoding: 'utf-8' },
+          ).trim();
+          if (out) status = 'working';
+        } catch { /* ignore — docker not available or no match */ }
       }
 
       // Overlay live hook state

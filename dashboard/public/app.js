@@ -617,6 +617,11 @@ function esc(s) {
 
 // --- Init ---
 window.addEventListener('resize', () => { needsResize = true; });
+// Ensure canvas is sized after layout settles (fixes race in some browsers)
+function scheduleResize() { needsResize = true; }
+window.addEventListener('load', scheduleResize);
+setTimeout(scheduleResize, 100);
+setTimeout(scheduleResize, 500);
 resizeCanvas();
 connectWs();
 animate();
