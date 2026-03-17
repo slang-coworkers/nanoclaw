@@ -1498,10 +1498,17 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
 // ===================================================================
 
 async function loadAdminChat() {
-  // Populate group dropdown
+  // Populate group dropdown — use WS state or fetch from API
+  let groups = state.registeredGroups;
+  if (!groups || groups.length === 0) {
+    try {
+      const res = await fetch('/api/groups/detail');
+      if (res.ok) groups = await res.json();
+    } catch { /* ignore */ }
+  }
   const select = document.getElementById('chat-group-select');
   select.innerHTML = '<option value="">Select group...</option>';
-  for (const g of state.registeredGroups) {
+  for (const g of (groups || [])) {
     const opt = document.createElement('option');
     opt.value = g.folder;
     opt.textContent = g.name || g.folder;
@@ -1510,6 +1517,7 @@ async function loadAdminChat() {
   }
   adminState.loaded.add('chat');
   if (adminState.chatGroup) fetchChatMessages();
+  else document.getElementById('chat-messages').innerHTML = '<div class="admin-empty">Select a group above to start chatting</div>';
 }
 
 async function fetchChatMessages() {
@@ -1552,7 +1560,11 @@ function renderChatMessages() {
 async function sendChatMessage() {
   const input = document.getElementById('chat-input');
   const content = input.value.trim();
-  if (!content || !adminState.chatGroup) return;
+  if (!adminState.chatGroup) {
+    document.getElementById('chat-messages').innerHTML = '<div class="admin-empty">Select a group first</div>';
+    return;
+  }
+  if (!content) return;
   input.value = '';
   // Optimistic UI
   adminState.chatMessages.push({
