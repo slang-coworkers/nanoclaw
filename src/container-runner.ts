@@ -125,7 +125,12 @@ function buildVolumeMounts(
   fs.mkdirSync(groupSessionsDir, { recursive: true });
   const settingsFile = path.join(groupSessionsDir, 'settings.json');
   // Copy dashboard hook script into the .claude dir so it's accessible inside the container
-  const hookSrc = path.join(projectRoot, 'dashboard', 'hooks', 'notify-dashboard.sh');
+  const hookSrc = path.join(
+    projectRoot,
+    'dashboard',
+    'hooks',
+    'notify-dashboard.sh',
+  );
   const hookDst = path.join(groupSessionsDir, 'notify-dashboard.sh');
   if (fs.existsSync(hookSrc)) {
     fs.copyFileSync(hookSrc, hookDst);
@@ -147,10 +152,7 @@ function buildVolumeMounts(
       Stop: [{ command: `${hookCmd} Stop` }],
     };
   }
-  fs.writeFileSync(
-    settingsFile,
-    JSON.stringify(settings, null, 2) + '\n',
-  );
+  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
 
   // Sync skills from container/skills/ into each group's .claude/skills/
   const skillsSrc = path.join(process.cwd(), 'container', 'skills');
