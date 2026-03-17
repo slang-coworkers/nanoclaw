@@ -175,16 +175,18 @@ function deskPos(index) {
 // --- Drawing ---
 
 function drawFloor() {
+  // Solid dark floor for readability
+  ctx.fillStyle = '#1a1f2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Subtle grid lines
+  ctx.strokeStyle = '#252b3a';
+  ctx.lineWidth = 1;
   const tw = OFFICE_TILE * Z;
-  const cols = Math.ceil(canvas.width / tw) + 1;
-  const rows = Math.ceil(canvas.height / tw) + 1;
-  ctx.imageSmoothingEnabled = false;
-  for (let ry = 0; ry < rows; ry++) {
-    for (let rx = 0; rx < cols; rx++) {
-      const tile = PixelSprites.getFloorSprite((rx * 7 + ry * 3) % 9);
-      if (!isDrawable(tile)) continue;
-      ctx.drawImage(tile, rx * tw, ry * tw, tw, tw);
-    }
+  for (let x = 0; x < canvas.width; x += tw) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+  for (let y = 0; y < canvas.height; y += tw) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
   }
 }
 
