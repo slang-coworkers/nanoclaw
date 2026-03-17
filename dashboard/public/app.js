@@ -9,16 +9,54 @@ let state = { coworkers: [], tasks: [], taskRunLogs: [], registeredGroups: [], h
 let selectedCoworker = null;
 let frame = 0;
 let ws = null;
+let pollTimer = null;
 let hoveredDesk = -1;
 
 const Z = PixelSprites.ZOOM;
-const TILE = PixelSprites.TILE;
+const OFFICE_TILE = PixelSprites.TILE;
 
 // --- WebSocket ---
+function applyState(nextState) {
+  state = nextState;
+  updateTimeline();
+}
+
+async function pollState() {
+  try {
+    const res = await fetch('/api/state', { cache: 'no-store' });
+    if (!res.ok) return false;
+    applyState(await res.json());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function startPolling() {
+  if (pollTimer) return;
+  document.getElementById('ws-status').textContent = 'Polling...';
+  document.querySelector('.status-dot').style.background = 'var(--yellow)';
+  pollState();
+  pollTimer = setInterval(async () => {
+    const ok = await pollState();
+    if (!ok) {
+      document.getElementById('ws-status').textContent = 'Reconnecting...';
+      document.querySelector('.status-dot').style.background = 'var(--yellow)';
+    }
+  }, 1000);
+}
+
+function stopPolling() {
+  if (!pollTimer) return;
+  clearInterval(pollTimer);
+  pollTimer = null;
+}
+
 function connectWs() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${protocol}//${location.host}`);
   ws.onopen = () => {
+    stopPolling();
     document.getElementById('ws-status').textContent = 'Connected';
     document.querySelector('.status-dot').style.background = 'var(--green)';
   };
@@ -26,17 +64,18 @@ function connectWs() {
     try {
       const msg = JSON.parse(e.data);
       if (msg.type === 'state') {
-        state = msg.data;
-        updateTimeline();
+        applyState(msg.data);
       }
     } catch {}
   };
   ws.onclose = () => {
-    document.getElementById('ws-status').textContent = 'Reconnecting...';
-    document.querySelector('.status-dot').style.background = 'var(--yellow)';
+    startPolling();
     setTimeout(connectWs, 2000);
   };
-  ws.onerror = () => ws.close();
+  ws.onerror = () => {
+    startPolling();
+    ws.close();
+  };
 }
 
 // --- Tab switching ---
@@ -56,13 +95,42 @@ document.querySelectorAll('.tab').forEach((tab) => {
 const canvas = document.getElementById('office-canvas');
 const ctx = canvas.getContext('2d');
 
+function isDrawable(sprite) {
+  if (!sprite) return false;
+  if (typeof sprite.naturalWidth === 'number') {
+    return sprite.naturalWidth > 0 && sprite.naturalHeight > 0;
+  }
+  if (typeof sprite.width === 'number') {
+    return sprite.width > 0 && sprite.height > 0;
+  }
+  return false;
+}
+
+function roundedRectPath(context, x, y, width, height, radius) {
+  if (typeof context.roundRect === 'function') {
+    context.roundRect(x, y, width, height, radius);
+    return;
+  }
+
+  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+  context.moveTo(x + r, y);
+  context.lineTo(x + width - r, y);
+  context.arcTo(x + width, y, x + width, y + r, r);
+  context.lineTo(x + width, y + height - r);
+  context.arcTo(x + width, y + height, x + width - r, y + height, r);
+  context.lineTo(x + r, y + height);
+  context.arcTo(x, y + height, x, y + height - r, r);
+  context.lineTo(x, y + r);
+  context.arcTo(x, y, x + r, y, r);
+}
+
 // Layout constants
 const OFFICE_COLS = 4;
-const CELL_W = 5 * TILE * Z;   // 5 tiles wide per desk cell
-const CELL_H = 4 * TILE * Z;   // 4 tiles tall per desk cell
+const CELL_W = 5 * OFFICE_TILE * Z;   // 5 tiles wide per desk cell
+const CELL_H = 4 * OFFICE_TILE * Z;   // 4 tiles tall per desk cell
 const WALL_ROWS = 2;            // wall is 2 tiles tall
-const PADDING_X = TILE * Z;
-const PADDING_Y = (WALL_ROWS * TILE + TILE) * Z; // below wall + gap
+const PADDING_X = OFFICE_TILE * Z;
+const PADDING_Y = (WALL_ROWS * OFFICE_TILE + OFFICE_TILE) * Z; // below wall + gap
 
 // Animation state per coworker
 const charAnims = new Map();
@@ -74,8 +142,25 @@ function getCharAnim(folder) {
 }
 
 function resizeCanvas() {
-  canvas.width = canvas.parentElement.clientWidth;
-  canvas.height = canvas.parentElement.clientHeight - 28;
+  const parent = canvas.parentElement;
+  if (!parent) return false;
+
+  const parentRect = parent.getBoundingClientRect();
+  const officeBar = parent.querySelector('.office-bar');
+  const barHeight = officeBar?.getBoundingClientRect().height || 28;
+  const nextWidth = Math.floor(parentRect.width || parent.clientWidth || 0);
+  const nextHeight = Math.floor((parentRect.height || parent.clientHeight || 0) - barHeight);
+
+  // Flex layout can report zero during initial script execution in headless browsers.
+  if (nextWidth < 64 || nextHeight < 64) {
+    return false;
+  }
+
+  if (canvas.width !== nextWidth) canvas.width = nextWidth;
+  if (canvas.height !== nextHeight) canvas.height = nextHeight;
+  canvas.style.width = `${nextWidth}px`;
+  canvas.style.height = `${nextHeight}px`;
+  return true;
 }
 
 function deskPos(index) {
@@ -90,23 +175,24 @@ function deskPos(index) {
 // --- Drawing ---
 
 function drawFloor() {
-  const tw = TILE * Z;
+  const tw = OFFICE_TILE * Z;
   const cols = Math.ceil(canvas.width / tw) + 1;
   const rows = Math.ceil(canvas.height / tw) + 1;
   ctx.imageSmoothingEnabled = false;
   for (let ry = 0; ry < rows; ry++) {
     for (let rx = 0; rx < cols; rx++) {
       const tile = PixelSprites.getFloorSprite((rx * 7 + ry * 3) % 9);
+      if (!isDrawable(tile)) continue;
       ctx.drawImage(tile, rx * tw, ry * tw, tw, tw);
     }
   }
 }
 
 function drawWalls() {
-  const tw = TILE * Z;
+  const tw = OFFICE_TILE * Z;
   const wallImg = PixelSprites.getWallImage();
 
-  if (wallImg) {
+  if (isDrawable(wallImg)) {
     // Wall PNG is 64x128 (4x4 grid of 16x32 tiles). Use a simple tile from it.
     // Each piece is 16x32. We'll use the center piece (row 1, col 1) as a repeating wall.
     const srcW = 16, srcH = 32;
@@ -120,43 +206,43 @@ function drawWalls() {
   } else {
     // Fallback: solid wall
     ctx.fillStyle = '#6B7B8D';
-    ctx.fillRect(0, 0, canvas.width, WALL_ROWS * TILE * Z);
+    ctx.fillRect(0, 0, canvas.width, WALL_ROWS * OFFICE_TILE * Z);
     ctx.fillStyle = '#4A5A6A';
-    ctx.fillRect(0, WALL_ROWS * TILE * Z - 4, canvas.width, 4);
+    ctx.fillRect(0, WALL_ROWS * OFFICE_TILE * Z - 4, canvas.width, 4);
   }
 
   // Shadow under wall
   ctx.fillStyle = '#00000018';
-  ctx.fillRect(0, WALL_ROWS * TILE * Z, canvas.width, 6 * Z);
+  ctx.fillRect(0, WALL_ROWS * OFFICE_TILE * Z, canvas.width, 6 * Z);
 }
 
 function drawWallDecorations() {
-  const tw = TILE * Z;
-  const wallH = WALL_ROWS * TILE * Z;
+  const tw = OFFICE_TILE * Z;
+  const wallH = WALL_ROWS * OFFICE_TILE * Z;
 
   // Wall paintings
   const painting = PixelSprites.getFurniture('largePainting');
-  if (painting) {
+  if (isDrawable(painting)) {
     ctx.drawImage(painting, PADDING_X + 2 * tw, 2, 32 * Z, 32 * Z);
   }
   const sp1 = PixelSprites.getFurniture('smallPainting');
-  if (sp1) {
+  if (isDrawable(sp1)) {
     ctx.drawImage(sp1, PADDING_X + 8 * tw, tw * 0.5, tw, tw);
   }
   const sp2 = PixelSprites.getFurniture('smallPainting2');
-  if (sp2) {
+  if (isDrawable(sp2)) {
     ctx.drawImage(sp2, PADDING_X + 14 * tw, tw * 0.5, tw, tw);
   }
 
   // Clock
   const clock = PixelSprites.getFurniture('clock');
-  if (clock) {
+  if (isDrawable(clock)) {
     ctx.drawImage(clock, canvas.width - PADDING_X - 2 * tw, tw * 0.3, tw, tw);
   }
 
   // Whiteboard
   const wb = PixelSprites.getFurniture('whiteboard');
-  if (wb) {
+  if (isDrawable(wb)) {
     ctx.drawImage(wb, PADDING_X + 5 * tw, 0, 48 * Z, 48 * Z);
   }
 
@@ -167,12 +253,12 @@ function drawWallDecorations() {
 }
 
 function drawFloorDecorations() {
-  const tw = TILE * Z;
-  const wallH = WALL_ROWS * TILE * Z;
+  const tw = OFFICE_TILE * Z;
+  const wallH = WALL_ROWS * OFFICE_TILE * Z;
 
   // Plants along edges
   const plant = PixelSprites.getFurniture('largePlant') || PixelSprites.getFurniture('plant');
-  if (plant) {
+  if (isDrawable(plant)) {
     const ph = PixelSprites.getFurnitureInfo('largePlant')?.h || 32;
     ctx.drawImage(plant, PADDING_X - tw * 0.5, wallH + tw * 0.5, tw, ph * Z);
     ctx.drawImage(plant, canvas.width - PADDING_X - tw * 0.5, wallH + tw * 0.5, tw, ph * Z);
@@ -180,30 +266,30 @@ function drawFloorDecorations() {
 
   // Bookshelf against wall
   const bookshelf = PixelSprites.getFurniture('bookshelf');
-  if (bookshelf) {
+  if (isDrawable(bookshelf)) {
     ctx.drawImage(bookshelf, canvas.width - PADDING_X - 3 * tw, wallH - 16 * Z, tw, 48 * Z);
   }
 
   // Cactus
   const cactus = PixelSprites.getFurniture('cactus');
-  if (cactus) {
+  if (isDrawable(cactus)) {
     ctx.drawImage(cactus, PADDING_X + 18 * tw, wallH + tw * 0.5, tw, 32 * Z);
   }
 
   // Bin near entrance
   const bin = PixelSprites.getFurniture('bin');
-  if (bin) {
+  if (isDrawable(bin)) {
     ctx.drawImage(bin, PADDING_X + tw * 0.2, canvas.height - 50, tw, tw);
   }
 }
 
 function drawDeskSetup(x, y, cw, index) {
   ctx.imageSmoothingEnabled = false;
-  const tw = TILE * Z;
+  const tw = OFFICE_TILE * Z;
 
   // Chair (behind desk — drawn first for z-order)
   const chair = PixelSprites.getFurniture('chair');
-  if (chair) {
+  if (isDrawable(chair)) {
     ctx.drawImage(chair, x + 1 * tw, y + 2 * tw, tw, tw);
   } else {
     ctx.fillStyle = '#5B6B7B';
@@ -217,8 +303,8 @@ function drawDeskSetup(x, y, cw, index) {
   // PC/Monitor on desk
   const isActive = cw.status === 'working' || cw.status === 'thinking';
   if (isActive) {
-    const pc = PixelSprites.getPcFrame(frame);
-    if (pc) {
+  const pc = PixelSprites.getPcFrame(frame);
+    if (isDrawable(pc)) {
       ctx.drawImage(pc, x + tw, y - 4, tw, 32 * Z);
     } else {
       // Fallback monitor
@@ -230,7 +316,7 @@ function drawDeskSetup(x, y, cw, index) {
     }
   } else {
     const pcOff = PixelSprites.getFurniture('pcOff');
-    if (pcOff) {
+    if (isDrawable(pcOff)) {
       ctx.drawImage(pcOff, x + tw, y - 4, tw, 32 * Z);
     } else {
       ctx.fillStyle = '#2D3748';
@@ -242,20 +328,20 @@ function drawDeskSetup(x, y, cw, index) {
 
   // Coffee on desk
   const coffee = PixelSprites.getFurniture('coffee');
-  if (coffee && index % 2 === 0) {
+  if (isDrawable(coffee) && index % 2 === 0) {
     ctx.drawImage(coffee, x + 2.5 * tw, y + tw + 2, tw * 0.7, tw * 0.7);
   }
 
   // Pot/plant on some desks
   const pot = PixelSprites.getFurniture('pot');
-  if (pot && index % 3 === 1) {
+  if (isDrawable(pot) && index % 3 === 1) {
     ctx.drawImage(pot, x + 2.4 * tw, y + tw - 4, tw * 0.7, tw * 0.7);
   }
 }
 
 function drawCharacter(cw, deskX, deskY) {
   const anim = getCharAnim(cw.folder);
-  const tw = TILE * Z;
+  const tw = OFFICE_TILE * Z;
 
   // Seated position at desk
   anim.targetX = deskX + 0.5 * tw;
@@ -280,7 +366,7 @@ function drawCharacter(cw, deskX, deskY) {
 }
 
 function drawNameplate(x, y, cw, isHovered) {
-  const tw = TILE * Z;
+  const tw = OFFICE_TILE * Z;
   const plateY = y + 3.6 * tw;
   const name = cw.name.length > 13 ? cw.name.slice(0, 11) + '..' : cw.name;
 
@@ -326,7 +412,7 @@ function drawSpeechBubble(x, y, text, color) {
   ctx.strokeStyle = color || '#475569';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(bx, by, w, h, 3);
+  roundedRectPath(ctx, bx, by, w, h, 3);
   ctx.fill();
   ctx.stroke();
 
@@ -467,8 +553,7 @@ let needsResize = true;
 function tick() {
   frame++;
   if (needsResize) {
-    resizeCanvas();
-    needsResize = false;
+    needsResize = !resizeCanvas();
   }
   drawOffice();
   updateStatusBar();
@@ -479,10 +564,14 @@ function tick() {
 }
 // Use both rAF (smooth in real browsers) and setInterval (works in headless)
 function animate() {
+  needsResize = true;
   tick();
   requestAnimationFrame(animate);
 }
-setInterval(tick, 500);
+setInterval(() => {
+  needsResize = true;
+  tick();
+}, 500);
 
 // ===================================================================
 // TAB 2: TIMELINE / AUDIT LOG (debug mode, event history)
@@ -627,6 +716,6 @@ function scheduleResize() { needsResize = true; }
 window.addEventListener('load', scheduleResize);
 setTimeout(scheduleResize, 100);
 setTimeout(scheduleResize, 500);
-resizeCanvas();
+needsResize = !resizeCanvas();
 connectWs();
 animate();

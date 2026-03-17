@@ -36,6 +36,17 @@ MESSAGE=""
 if command -v jq &>/dev/null; then
   TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // .toolName // empty' 2>/dev/null)
   MESSAGE=$(echo "$INPUT" | jq -r '.message // .notification // empty' 2>/dev/null)
+else
+  # Bash-only fallback: extract values from flat JSON without jq
+  # Handles {"tool_name":"Read"} style (no nested objects/escaped quotes)
+  _extract_json_val() {
+    local json="$1" key="$2"
+    echo "$json" | sed -n "s/.*\"${key}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p"
+  }
+  TOOL_NAME=$(_extract_json_val "$INPUT" "tool_name")
+  [ -z "$TOOL_NAME" ] && TOOL_NAME=$(_extract_json_val "$INPUT" "toolName")
+  MESSAGE=$(_extract_json_val "$INPUT" "message")
+  [ -z "$MESSAGE" ] && MESSAGE=$(_extract_json_val "$INPUT" "notification")
 fi
 
 # Build event payload (use jq if available for safe JSON, fallback to escaped string)

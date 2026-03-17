@@ -138,11 +138,14 @@ function buildVolumeMounts(
   const hookCmd = fs.existsSync(hookSrc)
     ? 'bash /home/node/.claude/notify-dashboard.sh'
     : '';
+  const dashboardPort = process.env.DASHBOARD_PORT || '3737';
   const settings: Record<string, unknown> = {
     env: {
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
       CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
       CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
+      NANOCLAW_GROUP_FOLDER: group.folder,
+      DASHBOARD_URL: `http://${CONTAINER_HOST_GATEWAY}:${dashboardPort}`,
     },
   };
   if (hookCmd) {
@@ -223,11 +226,18 @@ function buildVolumeMounts(
 function buildContainerArgs(
   mounts: VolumeMount[],
   containerName: string,
+  groupFolder: string,
 ): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
+  const dashboardPort = process.env.DASHBOARD_PORT || '3737';
 
   // Pass host timezone so container's local time matches the user's
   args.push('-e', `TZ=${TIMEZONE}`);
+  args.push('-e', `NANOCLAW_GROUP_FOLDER=${groupFolder}`);
+  args.push(
+    '-e',
+    `DASHBOARD_URL=http://${CONTAINER_HOST_GATEWAY}:${dashboardPort}`,
+  );
 
   // Route API traffic through the credential proxy (containers never see real secrets)
   args.push(
@@ -307,7 +317,7 @@ export async function runContainerAgent(
   const mounts = buildVolumeMounts(group, input.isMain);
   const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
   const containerName = `nanoclaw-${safeName}-${Date.now()}`;
-  const containerArgs = buildContainerArgs(mounts, containerName);
+  const containerArgs = buildContainerArgs(mounts, containerName, group.folder);
 
   logger.debug(
     {

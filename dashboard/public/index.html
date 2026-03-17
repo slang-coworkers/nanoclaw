@@ -66,7 +66,14 @@
 
     /* --- Tab 1: Pixel Office --- */
     #pixel-office { flex-direction: column; position: relative; }
-    #office-canvas { flex: 1; image-rendering: pixelated; cursor: default; }
+    #office-canvas {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      display: block;
+      image-rendering: pixelated;
+      cursor: default;
+    }
     .office-bar {
       display: flex; align-items: center; gap: 12px;
       padding: 5px 12px; background: var(--bg-card);
