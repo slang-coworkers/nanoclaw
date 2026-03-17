@@ -1,63 +1,224 @@
 /**
- * Pixel Art Sprite Engine — RPG-style warm office aesthetic
+ * NanoClaw Dashboard — Sprite Engine
  *
- * Inspired by Pixel Agents (pablodelucca/pixel-agents).
- * Procedural generation — no external sprite sheets needed.
+ * Uses Pixel Agents open-source assets (MIT, Pablo De Lucca 2026) as primary
+ * sprites, with procedural Canvas 2D fallback when PNGs aren't loaded yet.
  *
- * Characters: 16x24 (16 wide, 24 tall for body+head proportion)
- * Tiles: 16x16 floor/wall tiles
- * Furniture: multi-tile pieces
+ * Character sprites: 112x96 PNG (7 frames x 16px, 3 rows x 32px)
+ *   Frame order: walk1, walk2, walk3, type1, type2, read1, read2
+ *   Row order: front (0), back (1), side (2) — left is side flipped
  *
- * All rendered at integer zoom for pixel-perfect display.
+ * Floor tiles: 16x16 PNG (9 variants)
+ * Wall tiles: 64x128 PNG (4x4 auto-tile grid, 16x32 each)
+ * Furniture: Per-item PNGs with manifest.json
  */
 
 const TILE = 16;
-const CHAR_W = 16;
-const CHAR_H = 24; // taller characters for RPG proportions
-const ZOOM = 3;    // 3x zoom → 48x72 rendered characters
+const CHAR_FRAME_W = 16;
+const CHAR_FRAME_H = 32;
+const CHAR_FRAMES = 7;
+const CHAR_ROWS = 3;
+const ZOOM = 3;
 
-// --- Color palette (warm RPG office) ---
+// --- Palette for procedural fallback & color tinting ---
 const PALETTE = {
-  // Floor
-  woodLight:  '#C4956A',
-  woodMid:    '#A67B52',
-  woodDark:   '#8B6239',
-  woodLine:   '#755030',
-  // Walls
-  wallTop:    '#8899AA',
-  wallFace:   '#6B7B8D',
-  wallDark:   '#556677',
-  wallTrim:   '#4A5A6A',
-  // Skin
-  skin:       '#FFDBB4',
-  skinShade:  '#E8C49B',
-  // Furniture
-  deskTop:    '#D4A574',
-  deskFront:  '#A67B52',
-  deskLeg:    '#8B6239',
-  chairBack:  '#5B6B7B',
-  chairSeat:  '#6B7B8B',
-  monitorBez: '#2D3748',
-  monitorScr: '#1A2332',
-  screenGlow: '#4ADE80',
-  // Misc
-  plantGreen: '#22C55E',
-  plantDark:  '#15803D',
-  potBrown:   '#92400E',
-  mugWhite:   '#E2E8F0',
-  mugCoffee:  '#78350F',
-  bookRed:    '#DC2626',
-  bookBlue:   '#2563EB',
-  paperWhite: '#F1F5F9',
+  woodLight: '#C4956A', woodMid: '#A67B52', woodDark: '#8B6239', woodLine: '#755030',
+  wallTop: '#8899AA', wallFace: '#6B7B8D', wallDark: '#556677', wallTrim: '#4A5A6A',
+  skin: '#FFDBB4', skinShade: '#E8C49B',
+  deskTop: '#D4A574', deskFront: '#A67B52', deskLeg: '#8B6239',
+  monitorBez: '#2D3748', monitorScr: '#1A2332',
+  plantGreen: '#22C55E', plantDark: '#15803D', potBrown: '#92400E',
 };
 
-// --- Offscreen canvas helper ---
-function makeCanvas(w, h) {
+// ===================================================================
+// IMAGE ASSET LOADER
+// ===================================================================
+
+const imageCache = new Map();
+const loadPromises = new Map();
+
+/**
+ * Load an image from URL. Returns cached Image or kicks off async load.
+ * Returns null if not yet loaded (caller should use fallback).
+ */
+function getImage(url) {
+  if (imageCache.has(url)) return imageCache.get(url);
+  if (loadPromises.has(url)) return null; // loading in progress
+
+  const img = new Image();
+  const promise = new Promise((resolve) => {
+    img.onload = () => {
+      imageCache.set(url, img);
+      resolve(img);
+    };
+    img.onerror = () => {
+      imageCache.set(url, false); // mark as failed
+      resolve(false);
+    };
+  });
+  loadPromises.set(url, promise);
+  img.src = url;
+  return null;
+}
+
+/**
+ * Get a loaded image, or false if load failed, or null if still loading.
+ */
+function getCachedImage(url) {
+  if (imageCache.has(url)) {
+    const v = imageCache.get(url);
+    return v === false ? null : v;
+  }
+  getImage(url); // trigger load
+  return null;
+}
+
+// Pre-load all character sprites
+const CHAR_SPRITES = [];
+for (let i = 0; i < 6; i++) {
+  getImage(`assets/characters/char_${i}.png`);
+}
+
+// Pre-load floor tiles
+for (let i = 0; i < 9; i++) {
+  getImage(`assets/floors/floor_${i}.png`);
+}
+
+// Pre-load wall
+getImage('assets/walls/wall_0.png');
+
+// Pre-load key furniture
+const FURNITURE_ITEMS = {
+  desk: { dir: 'DESK', file: 'DESK_FRONT.png', w: 48, h: 32 },
+  chair: { dir: 'CUSHIONED_CHAIR', file: 'CUSHIONED_CHAIR_BACK.png', w: 16, h: 16 },
+  pcOn1: { dir: 'PC', file: 'PC_FRONT_ON_1.png', w: 16, h: 32 },
+  pcOn2: { dir: 'PC', file: 'PC_FRONT_ON_2.png', w: 16, h: 32 },
+  pcOn3: { dir: 'PC', file: 'PC_FRONT_ON_3.png', w: 16, h: 32 },
+  pcOff: { dir: 'PC', file: 'PC_FRONT_OFF.png', w: 16, h: 32 },
+  plant: { dir: 'PLANT', file: 'PLANT.png', w: 16, h: 32 },
+  plant2: { dir: 'PLANT_2', file: 'PLANT_2.png', w: 16, h: 32 },
+  largePlant: { dir: 'LARGE_PLANT', file: 'LARGE_PLANT.png', w: 16, h: 48 },
+  coffee: { dir: 'COFFEE', file: 'COFFEE.png', w: 16, h: 16 },
+  bookshelf: { dir: 'BOOKSHELF', file: 'BOOKSHELF.png', w: 16, h: 48 },
+  clock: { dir: 'CLOCK', file: 'CLOCK.png', w: 16, h: 16 },
+  cactus: { dir: 'CACTUS', file: 'CACTUS.png', w: 16, h: 32 },
+  whiteboard: { dir: 'WHITEBOARD', file: 'WHITEBOARD.png', w: 48, h: 48 },
+  smallPainting: { dir: 'SMALL_PAINTING', file: 'SMALL_PAINTING.png', w: 16, h: 16 },
+  smallPainting2: { dir: 'SMALL_PAINTING_2', file: 'SMALL_PAINTING_2.png', w: 16, h: 16 },
+  largePainting: { dir: 'LARGE_PAINTING', file: 'LARGE_PAINTING.png', w: 32, h: 32 },
+  pot: { dir: 'POT', file: 'POT.png', w: 16, h: 16 },
+  bin: { dir: 'BIN', file: 'BIN.png', w: 16, h: 16 },
+};
+
+// Pre-load all furniture
+for (const [key, info] of Object.entries(FURNITURE_ITEMS)) {
+  getImage(`assets/furniture/${info.dir}/${info.file}`);
+}
+
+// ===================================================================
+// CHARACTER SPRITE EXTRACTION
+// ===================================================================
+
+// Coworker type → character palette index (0-5)
+const TYPE_CHAR_INDEX = {
+  'slang-base': 0,
+  'slang-ir': 1,
+  'slang-frontend': 2,
+  'slang-cuda': 3,
+  'slang-optix': 4,
+  'slang-langfeat': 5,
+  'slang-docs': 0,     // reuse with hue shift
+  'slang-coverage': 1,
+  'slang-test': 2,
+  'main': 3,
+  'unknown': 0,
+};
+
+// Frame indices: walk1=0, walk2=1, walk3=2, type1=3, type2=4, read1=5, read2=6
+const ANIM_FRAMES = {
+  idle: [1],                    // walk2 (standing)
+  walking: [0, 1, 2, 1],       // walk cycle
+  working: [3, 4],              // typing
+  thinking: [5, 6],             // reading
+  reading: [5, 6],
+  error: [1],                   // standing
+};
+
+// Row indices: front=0, back=1, side=2
+const DIRECTION_ROW = { front: 0, back: 1, side: 2 };
+
+/**
+ * Extract a single frame from a character sprite sheet.
+ * Returns an offscreen canvas of size CHAR_FRAME_W x CHAR_FRAME_H.
+ */
+function extractCharFrame(spriteSheet, frameIdx, rowIdx) {
   const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
+  c.width = CHAR_FRAME_W;
+  c.height = CHAR_FRAME_H;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(
+    spriteSheet,
+    frameIdx * CHAR_FRAME_W, rowIdx * CHAR_FRAME_H,
+    CHAR_FRAME_W, CHAR_FRAME_H,
+    0, 0,
+    CHAR_FRAME_W, CHAR_FRAME_H
+  );
   return c;
 }
+
+/**
+ * Get character frame for the given state.
+ * Returns a canvas/image to draw, or null for procedural fallback.
+ */
+function getCharacterFrame(type, frame, status) {
+  const charIdx = TYPE_CHAR_INDEX[type] ?? 0;
+  const sheet = getCachedImage(`assets/characters/char_${charIdx}.png`);
+  if (!sheet) return null;
+
+  const animFrames = ANIM_FRAMES[status] || ANIM_FRAMES.idle;
+  const animIdx = Math.floor(frame / 8) % animFrames.length;
+  const frameIdx = animFrames[animIdx];
+  const rowIdx = DIRECTION_ROW.front; // default front-facing
+
+  return extractCharFrame(sheet, frameIdx, rowIdx);
+}
+
+// ===================================================================
+// TILE GETTERS (PNG with procedural fallback)
+// ===================================================================
+
+function getFloorTile(variant) {
+  const img = getCachedImage(`assets/floors/floor_${variant % 9}.png`);
+  if (img) return img;
+  return generateFloorTileFallback(variant);
+}
+
+function getWallImage() {
+  return getCachedImage('assets/walls/wall_0.png');
+}
+
+function getFurniture(key) {
+  const info = FURNITURE_ITEMS[key];
+  if (!info) return null;
+  return getCachedImage(`assets/furniture/${info.dir}/${info.file}`);
+}
+
+function getFurnitureInfo(key) {
+  return FURNITURE_ITEMS[key] || null;
+}
+
+// PC animation (3 frames when on)
+function getPcFrame(frame) {
+  const frameIdx = Math.floor(frame / 12) % 3;
+  const key = `pcOn${frameIdx + 1}`;
+  return getCachedImage(`assets/furniture/PC/PC_FRONT_ON_${frameIdx + 1}.png`);
+}
+
+// ===================================================================
+// PROCEDURAL FALLBACKS
+// ===================================================================
+
+const fallbackCache = new Map();
 
 function px(ctx, x, y, color) {
   ctx.fillStyle = color;
@@ -69,287 +230,74 @@ function rect(ctx, x, y, w, h, color) {
   ctx.fillRect(x, y, w, h);
 }
 
-// --- Color manipulation ---
-function hexToRgb(hex) {
-  hex = hex.replace('#', '');
-  return [parseInt(hex.substr(0, 2), 16), parseInt(hex.substr(2, 2), 16), parseInt(hex.substr(4, 2), 16)];
-}
+function generateFloorTileFallback(variant) {
+  const key = `floor-fb-${variant}`;
+  if (fallbackCache.has(key)) return fallbackCache.get(key);
 
-function rgbToHex(r, g, b) {
-  return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
-}
-
-function shadeColor(hex, amt) {
-  const [r, g, b] = hexToRgb(hex);
-  return rgbToHex(r + amt, g + amt, b + amt);
-}
-
-function hueShift(hex, degrees) {
-  let [r, g, b] = hexToRgb(hex);
-  // Simple hue rotation via HSL
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h, s, l = (max + min) / 2;
-  if (max === min) { h = s = 0; }
-  else {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-    else if (max === g) h = ((b - r) / d + 2) / 6;
-    else h = ((r - g) / d + 4) / 6;
-  }
-  h = (h + degrees / 360) % 1;
-  if (h < 0) h += 1;
-  // HSL to RGB
-  function hue2rgb(p, q, t) {
-    if (t < 0) t += 1; if (t > 1) t -= 1;
-    if (t < 1/6) return p + (q - p) * 6 * t;
-    if (t < 1/2) return q;
-    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-    return p;
-  }
-  if (s === 0) { r = g = b = l; }
-  else {
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1/3);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1/3);
-  }
-  return rgbToHex(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255));
-}
-
-// ===================================================================
-// TILE GENERATION
-// ===================================================================
-
-const tileCache = new Map();
-
-function generateFloorTile(variant = 0) {
-  const key = `floor-${variant}`;
-  if (tileCache.has(key)) return tileCache.get(key);
-
-  const c = makeCanvas(TILE, TILE);
+  const c = document.createElement('canvas');
+  c.width = TILE; c.height = TILE;
   const ctx = c.getContext('2d');
 
-  // Wooden planks
   rect(ctx, 0, 0, TILE, TILE, PALETTE.woodMid);
-
-  // Plank lines (horizontal)
   for (let y = 0; y < TILE; y += 4) {
     rect(ctx, 0, y, TILE, 1, PALETTE.woodLine + '40');
   }
-
-  // Plank variation
-  if (variant % 3 === 0) {
-    rect(ctx, 7, 0, 1, TILE, PALETTE.woodLine + '30');
-  } else if (variant % 3 === 1) {
+  if (variant % 3 === 0) rect(ctx, 7, 0, 1, TILE, PALETTE.woodLine + '30');
+  else if (variant % 3 === 1) {
     rect(ctx, 4, 0, 1, TILE, PALETTE.woodLine + '30');
     rect(ctx, 11, 0, 1, TILE, PALETTE.woodLine + '30');
   }
 
-  // Subtle grain
-  for (let i = 0; i < 6; i++) {
-    const gx = (variant * 7 + i * 3) % TILE;
-    const gy = (variant * 5 + i * 4) % TILE;
-    px(ctx, gx, gy, PALETTE.woodLight + '30');
-  }
-
-  tileCache.set(key, c);
+  fallbackCache.set(key, c);
   return c;
 }
 
-function generateWallTile(hasTop = true) {
-  const key = `wall-${hasTop}`;
-  if (tileCache.has(key)) return tileCache.get(key);
+function generateDeskFallback() {
+  const key = 'desk-fb';
+  if (fallbackCache.has(key)) return fallbackCache.get(key);
 
-  const c = makeCanvas(TILE, TILE + 8); // wall extends 8px above
+  const c = document.createElement('canvas');
+  c.width = 48; c.height = 32;
   const ctx = c.getContext('2d');
+  rect(ctx, 0, 6, 48, 4, PALETTE.deskTop);
+  rect(ctx, 0, 4, 48, 2, shadeColor(PALETTE.deskTop, 20));
+  rect(ctx, 0, 10, 48, 16, PALETTE.deskFront);
+  rect(ctx, 2, 26, 3, 6, PALETTE.deskLeg);
+  rect(ctx, 43, 26, 3, 6, PALETTE.deskLeg);
 
-  // Wall face (3D depth)
-  rect(ctx, 0, 0, TILE, 8, PALETTE.wallTop);
-  rect(ctx, 0, 8, TILE, TILE, PALETTE.wallFace);
-
-  // Trim line
-  rect(ctx, 0, 7, TILE, 2, PALETTE.wallTrim);
-
-  // Brick-like pattern
-  for (let y = 10; y < TILE + 8; y += 4) {
-    const offset = ((y / 4) % 2) * 5;
-    for (let x = offset; x < TILE; x += 10) {
-      rect(ctx, x, y, 8, 3, PALETTE.wallDark + '30');
-    }
-  }
-
-  // Baseboard
-  rect(ctx, 0, TILE + 6, TILE, 2, PALETTE.wallDark);
-
-  tileCache.set(key, c);
+  fallbackCache.set(key, c);
   return c;
 }
 
-// ===================================================================
-// FURNITURE GENERATION
-// ===================================================================
-
-function generateDesk() {
-  const key = 'desk';
-  if (tileCache.has(key)) return tileCache.get(key);
-
-  // 2 tiles wide, 1 tile tall
-  const c = makeCanvas(32, 20);
+function generateCharacterFallback(type, color, frame, status) {
+  const c = document.createElement('canvas');
+  c.width = CHAR_FRAME_W; c.height = CHAR_FRAME_H;
   const ctx = c.getContext('2d');
 
-  // Desktop surface (top-down perspective with slight 3D)
-  rect(ctx, 0, 4, 32, 3, PALETTE.deskTop);
-  rect(ctx, 0, 2, 32, 2, shadeColor(PALETTE.deskTop, 20));
+  const pal = TYPE_PALETTES[type] || TYPE_PALETTES['unknown'];
+  const y0 = (status === 'working' || status === 'thinking') ? 4 : 2;
 
-  // Front face
-  rect(ctx, 0, 7, 32, 10, PALETTE.deskFront);
-  rect(ctx, 1, 8, 30, 8, shadeColor(PALETTE.deskFront, -10));
-
-  // Drawer
-  rect(ctx, 20, 9, 9, 6, shadeColor(PALETTE.deskFront, 10));
-  px(ctx, 24, 12, PALETTE.deskLeg);
-
+  // Head
+  rect(ctx, 5, y0, 6, 7, PALETTE.skin);
+  rect(ctx, 5, y0 - 2, 6, 3, pal.hair);
+  // Eyes
+  if (frame % 40 >= 2) { px(ctx, 6, y0 + 3, '#1a1a2e'); px(ctx, 9, y0 + 3, '#1a1a2e'); }
+  // Body
+  rect(ctx, 4, y0 + 7, 8, 6, pal.shirt);
+  // Arms
+  rect(ctx, 3, y0 + 8, 1, 4, pal.shirt);
+  rect(ctx, 12, y0 + 8, 1, 4, pal.shirt);
   // Legs
-  rect(ctx, 1, 17, 2, 3, PALETTE.deskLeg);
-  rect(ctx, 29, 17, 2, 3, PALETTE.deskLeg);
+  rect(ctx, 5, y0 + 13, 2, 5, pal.pants);
+  rect(ctx, 9, y0 + 13, 2, 5, pal.pants);
+  // Shoes
+  rect(ctx, 5, y0 + 18, 2, 1, '#4A3728');
+  rect(ctx, 9, y0 + 18, 2, 1, '#4A3728');
 
-  tileCache.set(key, c);
   return c;
 }
 
-function generateChair(color) {
-  const key = `chair-${color}`;
-  if (tileCache.has(key)) return tileCache.get(key);
-
-  const c = makeCanvas(12, 18);
-  const ctx = c.getContext('2d');
-
-  // Chair back
-  rect(ctx, 1, 0, 10, 8, color);
-  rect(ctx, 2, 1, 8, 6, shadeColor(color, 20));
-
-  // Seat
-  rect(ctx, 0, 8, 12, 4, shadeColor(color, -10));
-
-  // Legs
-  rect(ctx, 1, 12, 2, 6, '#4A5568');
-  rect(ctx, 9, 12, 2, 6, '#4A5568');
-
-  // Wheels
-  px(ctx, 0, 17, '#374151');
-  px(ctx, 11, 17, '#374151');
-
-  tileCache.set(key, c);
-  return c;
-}
-
-function generateMonitor(glowColor) {
-  const key = `monitor-${glowColor}`;
-  if (tileCache.has(key)) return tileCache.get(key);
-
-  const c = makeCanvas(14, 14);
-  const ctx = c.getContext('2d');
-
-  // Bezel
-  rect(ctx, 0, 0, 14, 10, PALETTE.monitorBez);
-  // Screen
-  rect(ctx, 1, 1, 12, 8, PALETTE.monitorScr);
-  // Stand
-  rect(ctx, 5, 10, 4, 2, '#4A5568');
-  rect(ctx, 3, 12, 8, 2, '#4A5568');
-
-  // Screen glow
-  rect(ctx, 2, 2, 10, 6, glowColor + '20');
-
-  tileCache.set(key, c);
-  return c;
-}
-
-function generatePlant() {
-  const key = 'plant';
-  if (tileCache.has(key)) return tileCache.get(key);
-
-  const c = makeCanvas(12, 18);
-  const ctx = c.getContext('2d');
-
-  // Pot
-  rect(ctx, 2, 11, 8, 7, PALETTE.potBrown);
-  rect(ctx, 3, 10, 6, 1, shadeColor(PALETTE.potBrown, 20));
-
-  // Leaves
-  rect(ctx, 3, 6, 6, 5, PALETTE.plantGreen);
-  rect(ctx, 1, 4, 10, 3, PALETTE.plantGreen);
-  rect(ctx, 4, 2, 4, 3, PALETTE.plantDark);
-  px(ctx, 5, 1, PALETTE.plantGreen);
-  px(ctx, 7, 0, PALETTE.plantGreen);
-  // Leaf highlights
-  px(ctx, 4, 4, shadeColor(PALETTE.plantGreen, 30));
-  px(ctx, 8, 5, shadeColor(PALETTE.plantGreen, 30));
-
-  tileCache.set(key, c);
-  return c;
-}
-
-function generateCoffeeMug() {
-  const key = 'mug';
-  if (tileCache.has(key)) return tileCache.get(key);
-
-  const c = makeCanvas(6, 6);
-  const ctx = c.getContext('2d');
-
-  rect(ctx, 0, 1, 4, 5, PALETTE.mugWhite);
-  rect(ctx, 1, 2, 2, 2, PALETTE.mugCoffee);
-  // Handle
-  px(ctx, 4, 2, PALETTE.mugWhite);
-  px(ctx, 5, 3, PALETTE.mugWhite);
-  px(ctx, 4, 4, PALETTE.mugWhite);
-  // Steam
-  px(ctx, 1, 0, '#ffffff40');
-
-  tileCache.set(key, c);
-  return c;
-}
-
-function generateBookStack() {
-  const key = 'books';
-  if (tileCache.has(key)) return tileCache.get(key);
-
-  const c = makeCanvas(8, 8);
-  const ctx = c.getContext('2d');
-
-  rect(ctx, 0, 5, 7, 3, PALETTE.bookRed);
-  rect(ctx, 1, 2, 6, 3, PALETTE.bookBlue);
-  rect(ctx, 0, 0, 7, 2, '#F59E0B');
-
-  tileCache.set(key, c);
-  return c;
-}
-
-function generatePapers() {
-  const key = 'papers';
-  if (tileCache.has(key)) return tileCache.get(key);
-
-  const c = makeCanvas(8, 6);
-  const ctx = c.getContext('2d');
-
-  rect(ctx, 1, 1, 6, 5, PALETTE.paperWhite);
-  rect(ctx, 0, 0, 6, 5, PALETTE.paperWhite);
-  // Text lines
-  rect(ctx, 1, 1, 4, 1, '#CBD5E1');
-  rect(ctx, 1, 3, 3, 1, '#CBD5E1');
-
-  tileCache.set(key, c);
-  return c;
-}
-
-// ===================================================================
-// CHARACTER GENERATION
-// ===================================================================
-
-// Type-to-color mapping with warm, distinct palettes
+// Type palettes for procedural fallback
 const TYPE_PALETTES = {
   'slang-base':     { shirt: '#5B8DEF', pants: '#3B5998', hair: '#4A3728' },
   'slang-ir':       { shirt: '#3B82F6', pants: '#1E40AF', hair: '#1a1a2e' },
@@ -364,262 +312,93 @@ const TYPE_PALETTES = {
   'unknown':        { shirt: '#6B7280', pants: '#374151', hair: '#4A3728' },
 };
 
-const ACCESSORY_MAP = {
-  'slang-ir': 'glasses',
-  'slang-frontend': 'headphones',
-  'slang-cuda': 'lightning',
-  'slang-optix': 'goggles',
-  'slang-langfeat': 'pencil',
-  'slang-docs': 'book',
-  'slang-coverage': 'chart',
-  'slang-test': 'flask',
-  'main': 'crown',
-};
+// ===================================================================
+// PUBLIC API
+// ===================================================================
+
+function shadeColor(hex, amt) {
+  hex = hex.replace('#', '');
+  let [r, g, b] = [parseInt(hex.substr(0, 2), 16), parseInt(hex.substr(2, 2), 16), parseInt(hex.substr(4, 2), 16)];
+  r = Math.max(0, Math.min(255, r + amt));
+  g = Math.max(0, Math.min(255, g + amt));
+  b = Math.max(0, Math.min(255, b + amt));
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
 
 /**
- * Generate character frame.
- * States: idle, walk (frame 0-3), typing (frame 0-1), reading
+ * Get the best available character sprite for a coworker.
+ * Returns a drawable (Image or Canvas).
  */
-function generateCharacter(type, color, frame, status) {
-  const c = makeCanvas(CHAR_W, CHAR_H);
-  const ctx = c.getContext('2d');
-
-  const pal = TYPE_PALETTES[type] || TYPE_PALETTES['unknown'];
-  const isWalking = status === 'walking';
-  const isWorking = status === 'working';
-  const isThinking = status === 'thinking';
-  const isSitting = isWorking || isThinking || status === 'reading';
-
-  // Animation offsets
-  const walkBob = isWalking ? Math.sin(frame * 0.4) * 1 : 0;
-  const typeBob = isWorking ? Math.sin(frame * 0.6) * 0.5 : 0;
-  const armFrame = isWorking ? Math.floor(frame / 4) % 2 : 0;
-  const legFrame = isWalking ? Math.floor(frame / 3) % 4 : 0;
-  const breathe = Math.sin(frame * 0.08) * 0.3;
-
-  const baseY = isSitting ? 2 : 0; // shift down when sitting
-  const y0 = Math.round(baseY + walkBob);
-
-  // --- Hair / Head top ---
-  rect(ctx, 5, y0 + 0, 6, 3, pal.hair);
-  px(ctx, 4, y0 + 1, pal.hair);
-  px(ctx, 11, y0 + 1, pal.hair);
-
-  // --- Face ---
-  rect(ctx, 5, y0 + 3, 6, 5, PALETTE.skin);
-  rect(ctx, 4, y0 + 3, 1, 4, PALETTE.skin);
-  rect(ctx, 11, y0 + 3, 1, 4, PALETTE.skin);
-
-  // Eyes
-  const blink = frame % 40 < 2;
-  if (!blink) {
-    px(ctx, 6, y0 + 5, '#1a1a2e');
-    px(ctx, 9, y0 + 5, '#1a1a2e');
-    // Eye whites
-    px(ctx, 6, y0 + 4, '#ffffff80');
-    px(ctx, 9, y0 + 4, '#ffffff80');
-  }
-
-  // Mouth
-  if (status === 'error') {
-    px(ctx, 7, y0 + 7, '#DC2626');
-    px(ctx, 8, y0 + 7, '#DC2626');
-  } else if (isWorking) {
-    px(ctx, 7, y0 + 7, PALETTE.skinShade);
-  } else {
-    px(ctx, 7, y0 + 7, '#C0846A');
-    px(ctx, 8, y0 + 7, '#C0846A');
-  }
-
-  // --- Torso ---
-  const torsoY = y0 + 8;
-  rect(ctx, 4, torsoY, 8, 5, pal.shirt);
-  // Collar
-  px(ctx, 6, torsoY, shadeColor(pal.shirt, 30));
-  px(ctx, 7, torsoY, PALETTE.skin);
-  px(ctx, 8, torsoY, PALETTE.skin);
-  px(ctx, 9, torsoY, shadeColor(pal.shirt, 30));
-  // Shirt shading
-  rect(ctx, 4, torsoY + 3, 2, 2, shadeColor(pal.shirt, -20));
-  rect(ctx, 10, torsoY + 3, 2, 2, shadeColor(pal.shirt, -20));
-
-  // --- Arms ---
-  if (isWorking && armFrame === 0) {
-    // Typing pose — arms forward
-    rect(ctx, 2, torsoY + 1, 2, 4, pal.shirt);
-    rect(ctx, 12, torsoY + 1, 2, 4, pal.shirt);
-    // Hands forward
-    px(ctx, 2, torsoY + 5, PALETTE.skin);
-    px(ctx, 13, torsoY + 5, PALETTE.skin);
-  } else if (isWorking && armFrame === 1) {
-    // Typing pose — arms slightly moved
-    rect(ctx, 2, torsoY + 2, 2, 3, pal.shirt);
-    rect(ctx, 12, torsoY + 2, 2, 3, pal.shirt);
-    px(ctx, 2, torsoY + 5, PALETTE.skin);
-    px(ctx, 13, torsoY + 5, PALETTE.skin);
-  } else {
-    // Normal arms
-    rect(ctx, 3, torsoY + 1, 1, 4, pal.shirt);
-    rect(ctx, 12, torsoY + 1, 1, 4, pal.shirt);
-    // Hands
-    px(ctx, 3, torsoY + 5, PALETTE.skin);
-    px(ctx, 12, torsoY + 5, PALETTE.skin);
-  }
-
-  // --- Legs ---
-  const legY = torsoY + 5;
-  if (isSitting) {
-    // Sitting legs (bent forward)
-    rect(ctx, 5, legY, 2, 3, pal.pants);
-    rect(ctx, 9, legY, 2, 3, pal.pants);
-    // Feet forward
-    rect(ctx, 5, legY + 3, 2, 1, '#4A3728');
-    rect(ctx, 9, legY + 3, 2, 1, '#4A3728');
-  } else if (isWalking) {
-    // Walk animation (4 frames)
-    const offsets = [[0, 0], [1, -1], [0, 0], [-1, 1]];
-    const [oL, oR] = offsets[legFrame];
-    rect(ctx, 5 + oL, legY, 2, 5, pal.pants);
-    rect(ctx, 9 + oR, legY, 2, 5, pal.pants);
-    // Shoes
-    rect(ctx, 5 + oL, legY + 5, 2, 1, '#4A3728');
-    rect(ctx, 9 + oR, legY + 5, 2, 1, '#4A3728');
-  } else {
-    // Standing
-    rect(ctx, 5, legY, 2, 5, pal.pants);
-    rect(ctx, 9, legY, 2, 5, pal.pants);
-    rect(ctx, 5, legY + 5, 2, 1, '#4A3728');
-    rect(ctx, 9, legY + 5, 2, 1, '#4A3728');
-  }
-
-  // --- Accessory ---
-  const acc = ACCESSORY_MAP[type];
-  if (acc) drawCharAccessory(ctx, acc, y0, pal, frame);
-
-  // --- Status effects ---
-  if (status === 'error' && frame % 10 < 5) {
-    // Red exclamation
-    px(ctx, 14, y0, '#EF4444');
-    px(ctx, 14, y0 + 1, '#EF4444');
-    px(ctx, 14, y0 + 3, '#EF4444');
-  }
-
-  if (isThinking) {
-    // Thinking dots
-    const phase = Math.floor(frame / 10) % 4;
-    for (let i = 0; i < phase && i < 3; i++) {
-      px(ctx, 13 + i, y0 + 1, '#F59E0B');
-    }
-  }
-
-  if (isWorking) {
-    // Sparkle particles near hands
-    if (frame % 6 < 3) {
-      const sx = 1 + (frame % 4);
-      px(ctx, sx, torsoY + 4, color + '80');
-    }
-  }
-
-  return c;
+function getCharacterSprite(type, color, frame, status) {
+  const pngFrame = getCharacterFrame(type, frame, status);
+  if (pngFrame) return pngFrame;
+  return generateCharacterFallback(type, color, frame, status);
 }
 
-function drawCharAccessory(ctx, acc, y0, pal, frame) {
-  switch (acc) {
-    case 'glasses':
-      rect(ctx, 5, y0 + 4, 3, 2, '#333333');
-      rect(ctx, 8, y0 + 4, 3, 2, '#333333');
-      px(ctx, 7, y0 + 4, '#333333');
-      break;
-    case 'headphones':
-      px(ctx, 3, y0 + 3, '#333333');
-      px(ctx, 3, y0 + 4, '#EF4444');
-      px(ctx, 12, y0 + 3, '#333333');
-      px(ctx, 12, y0 + 4, '#EF4444');
-      rect(ctx, 4, y0, 8, 1, '#333333');
-      break;
-    case 'lightning':
-      px(ctx, 14, y0 + 5, '#FCD34D');
-      px(ctx, 13, y0 + 6, '#FCD34D');
-      px(ctx, 14, y0 + 6, '#FCD34D');
-      px(ctx, 14, y0 + 7, '#FCD34D');
-      px(ctx, 15, y0 + 7, '#FCD34D');
-      break;
-    case 'goggles':
-      rect(ctx, 4, y0 + 4, 4, 2, '#DC2626');
-      rect(ctx, 8, y0 + 4, 4, 2, '#DC2626');
-      px(ctx, 5, y0 + 4, '#FCA5A5');
-      px(ctx, 9, y0 + 4, '#FCA5A5');
-      break;
-    case 'pencil':
-      px(ctx, 13, y0 + 3, '#FCD34D');
-      px(ctx, 14, y0 + 4, '#FCD34D');
-      px(ctx, 15, y0 + 5, '#1a1a2e');
-      break;
-    case 'book':
-      rect(ctx, 0, y0 + 9, 3, 4, '#8B5CF6');
-      break;
-    case 'chart':
-      px(ctx, 14, y0 + 8, '#10B981');
-      px(ctx, 14, y0 + 7, '#10B981');
-      px(ctx, 15, y0 + 7, '#F59E0B');
-      px(ctx, 15, y0 + 6, '#F59E0B');
-      break;
-    case 'flask':
-      px(ctx, 14, y0 + 7, '#E2E8F0');
-      px(ctx, 13, y0 + 8, '#10B981');
-      px(ctx, 14, y0 + 8, '#10B981');
-      px(ctx, 15, y0 + 8, '#10B981');
-      break;
-    case 'crown':
-      px(ctx, 5, y0 - 1, '#FCD34D');
-      px(ctx, 7, y0 - 1, '#FCD34D');
-      px(ctx, 9, y0 - 1, '#FCD34D');
-      rect(ctx, 5, y0, 5, 1, '#FCD34D');
-      break;
-  }
+/**
+ * Get a floor tile (PNG or fallback).
+ */
+function getFloorSprite(variant) {
+  return getFloorTile(variant);
 }
 
-// ===================================================================
-// SCREEN CONTENT ANIMATION (for monitors)
-// ===================================================================
+/**
+ * Get desk sprite (PNG or fallback).
+ */
+function getDeskSprite() {
+  return getFurniture('desk') || generateDeskFallback();
+}
 
-function generateScreenContent(ctx, x, y, w, h, frame, type) {
-  // Code-like lines scrolling
-  ctx.fillStyle = '#22C55E30';
+/**
+ * Draw animated screen content on monitor.
+ */
+function generateScreenContent(ctx, x, y, w, h, frame) {
   const lineH = 2;
   const numLines = Math.floor(h / (lineH + 1));
   for (let i = 0; i < numLines; i++) {
     const lineW = (3 + ((frame * 0.5 + i * 7) % (w - 4))) | 0;
     const lineY = y + i * (lineH + 1);
-    const color = i % 3 === 0 ? '#22C55E40' : i % 3 === 1 ? '#3B82F640' : '#F59E0B30';
-    ctx.fillStyle = color;
+    const colors = ['#22C55E40', '#3B82F640', '#F59E0B30'];
+    ctx.fillStyle = colors[i % 3];
     ctx.fillRect(x + 1, lineY, lineW, lineH);
   }
 }
 
-// ===================================================================
-// EXPORT
-// ===================================================================
+/**
+ * Check if all critical assets have loaded.
+ */
+function assetsReady() {
+  return getCachedImage('assets/characters/char_0.png') !== null &&
+         getCachedImage('assets/floors/floor_0.png') !== null;
+}
 
 window.PixelSprites = {
   TILE,
-  CHAR_W,
-  CHAR_H,
+  CHAR_FRAME_W,
+  CHAR_FRAME_H,
   ZOOM,
   PALETTE,
   TYPE_PALETTES,
-  ACCESSORY_MAP,
-  generateFloorTile,
-  generateWallTile,
-  generateDesk,
-  generateChair,
-  generateMonitor,
-  generatePlant,
-  generateCoffeeMug,
-  generateBookStack,
-  generatePapers,
-  generateCharacter,
+  TYPE_CHAR_INDEX,
+  FURNITURE_ITEMS,
+
+  // Core getters
+  getCharacterSprite,
+  getCharacterFrame,
+  getFloorSprite,
+  getDeskSprite,
+  getFurniture,
+  getFurnitureInfo,
+  getPcFrame,
+  getWallImage,
+
+  // Utilities
   generateScreenContent,
   shadeColor,
-  hueShift,
+  assetsReady,
+
+  // Procedural fallbacks (still available)
+  generateCharacterFallback,
+  generateFloorTileFallback,
+  generateDeskFallback,
 };
