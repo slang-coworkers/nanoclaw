@@ -12,7 +12,7 @@
 import { createServer } from 'http';
 import { createHash } from 'crypto';
 import { execSync } from 'child_process';
-import { readFileSync, readdirSync, existsSync, statSync, writeFileSync, unlinkSync } from 'fs';
+import { readFileSync, readdirSync, existsSync, statSync, writeFileSync, unlinkSync, mkdirSync, rmSync } from 'fs';
 import { join, resolve, extname } from 'path';
 import Database from 'better-sqlite3';
 
@@ -22,6 +22,8 @@ const DB_PATH = join(PROJECT_ROOT, 'store', 'messages.db');
 const GROUPS_DIR = join(PROJECT_ROOT, 'groups');
 const DATA_DIR = join(PROJECT_ROOT, 'data');
 const SKILLS_DIR = join(PROJECT_ROOT, 'container', 'skills');
+const CHANNELS_DIR = join(PROJECT_ROOT, 'src', 'channels');
+const LOGS_DIR = join(PROJECT_ROOT, 'logs');
 const COWORKER_TYPES_PATH = join(GROUPS_DIR, 'coworker-types.json');
 const PORT = parseInt(process.env.DASHBOARD_PORT || '3737', 10);
 
@@ -746,6 +748,312 @@ const server = createServer((req, res) => {
         writeFileSync(mdPath, body, 'utf-8');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end('{"ok":true}');
+      } catch (e: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // API: delete a task
+  if (req.method === 'DELETE' && /^\/api\/tasks\/(\d+)$/.test(url.pathname)) {
+    const id = url.pathname.match(/\/api\/tasks\/(\d+)/)![1];
+    const wdb = openWriteDb();
+    if (wdb) {
+      try {
+        wdb.prepare('DELETE FROM task_run_logs WHERE task_id=?').run(id);
+        wdb.prepare('DELETE FROM scheduled_tasks WHERE id=?').run(id);
+        wdb.close();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end('{"ok":true}');
+      } catch (e: any) {
+        wdb.close();
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    } else {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end('{"error":"db unavailable"}');
+    }
+    return;
+  }
+
+  // API: get config values
+  if (req.method === 'GET' && url.pathname === '/api/config') {
+    const configKeys = [
+      { key: 'ASSISTANT_NAME', env: 'ASSISTANT_NAME', description: 'Name of the assistant' },
+      { key: 'CONTAINER_IMAGE', env: 'CONTAINER_IMAGE', description: 'Docker image for agent containers' },
+      { key: 'CONTAINER_TIMEOUT', env: 'CONTAINER_TIMEOUT', description: 'Max container run time (ms)' },
+      { key: 'MAX_CONCURRENT_CONTAINERS', env: 'MAX_CONCURRENT_CONTAINERS', description: 'Max parallel containers' },
+      { key: 'IDLE_TIMEOUT', env: 'IDLE_TIMEOUT', description: 'Idle shutdown timeout (ms)' },
+      { key: 'TIMEZONE', env: 'TZ', description: 'System timezone' },
+      { key: 'DASHBOARD_PORT', env: 'DASHBOARD_PORT', description: 'Dashboard server port' },
+      { key: 'ANTHROPIC_MODEL', env: 'ANTHROPIC_MODEL', description: 'Claude model identifier' },
+      { key: 'LOG_LEVEL', env: 'LOG_LEVEL', description: 'Logging verbosity' },
+    ];
+    const result = configKeys.map((c) => ({
+      ...c,
+      value: process.env[c.env] || '',
+    }));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  // API: read/write root CLAUDE.md
+  if (url.pathname === '/api/config/claude-md') {
+    const mdPath = join(PROJECT_ROOT, 'CLAUDE.md');
+    if (req.method === 'GET') {
+      try {
+        const content = readFileSync(mdPath, 'utf-8');
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end(content);
+      } catch {
+        res.writeHead(404);
+        res.end('not found');
+      }
+      return;
+    }
+    if (req.method === 'PUT') {
+      let body = '';
+      req.on('data', (chunk: string) => (body += chunk));
+      req.on('end', () => {
+        try {
+          writeFileSync(mdPath, body, 'utf-8');
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end('{"ok":true}');
+        } catch (e: any) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: e.message }));
+        }
+      });
+      return;
+    }
+  }
+
+  // API: list channels
+  if (req.method === 'GET' && url.pathname === '/api/channels') {
+    const channels: any[] = [];
+    try {
+      if (existsSync(CHANNELS_DIR)) {
+        const exclude = new Set(['index.ts', 'registry.ts', 'registry.test.ts']);
+        for (const file of readdirSync(CHANNELS_DIR)) {
+          if (!file.endsWith('.ts') || exclude.has(file) || file.includes('.test.')) continue;
+          const name = file.replace('.ts', '');
+          // Determine prefix for JID matching
+          const prefixMap: Record<string, string> = { telegram: 'tg:', whatsapp: 'wa:', discord: 'disc:', slack: 'slack:' };
+          const prefix = prefixMap[name] || `${name}:`;
+          const groups: any[] = [];
+          if (db) {
+            try {
+              const rows = db.prepare('SELECT name, folder, jid FROM registered_groups WHERE jid LIKE ?').all(`${prefix}%`) as any[];
+              for (const r of rows) groups.push({ name: r.name, folder: r.folder });
+            } catch { /* ignore */ }
+          }
+          channels.push({ name, type: name, configured: groups.length > 0, groups });
+        }
+      }
+    } catch { /* ignore */ }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(channels));
+    return;
+  }
+
+  // API: get logs
+  if (req.method === 'GET' && url.pathname === '/api/logs') {
+    const source = url.searchParams.get('source') || 'app';
+    const group = url.searchParams.get('group') || '';
+    const search = url.searchParams.get('search') || '';
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '500', 10), 2000);
+
+    let logFile = '';
+    if (source === 'app') {
+      logFile = join(LOGS_DIR, 'nanoclaw.log');
+    } else if (source === 'error') {
+      logFile = join(LOGS_DIR, 'nanoclaw.error.log');
+    } else if (source === 'container' && group) {
+      // Find most recent container log for this group
+      const groupLogDir = join(GROUPS_DIR, group, 'logs');
+      if (existsSync(groupLogDir)) {
+        const logFiles = readdirSync(groupLogDir)
+          .filter((f) => f.startsWith('container-') && f.endsWith('.log'))
+          .sort()
+          .reverse();
+        if (logFiles.length > 0) logFile = join(groupLogDir, logFiles[0]);
+      }
+    }
+
+    if (!logFile || !existsSync(logFile)) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ lines: [], file: logFile || 'none' }));
+      return;
+    }
+
+    try {
+      let content = readFileSync(logFile, 'utf-8');
+      // Strip ANSI codes
+      content = content.replace(/\x1b\[[0-9;]*m/g, '');
+      let lines = content.split('\n').filter((l) => l.trim());
+      if (search) {
+        const lowerSearch = search.toLowerCase();
+        lines = lines.filter((l) => l.toLowerCase().includes(lowerSearch));
+      }
+      // Return last N lines
+      lines = lines.slice(-limit);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ lines, file: logFile }));
+    } catch {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ lines: [], file: logFile }));
+    }
+    return;
+  }
+
+  // API: get single skill content
+  if (req.method === 'GET' && /^\/api\/skills\/[^/]+$/.test(url.pathname) && url.pathname !== '/api/skills') {
+    const name = decodeURIComponent(url.pathname.replace('/api/skills/', ''));
+    const skillDir = resolve(SKILLS_DIR, name);
+    if (!skillDir.startsWith(SKILLS_DIR)) {
+      res.writeHead(403);
+      res.end('{"error":"forbidden"}');
+      return;
+    }
+    const skillMd = join(skillDir, 'SKILL.md');
+    try {
+      const content = readFileSync(skillMd, 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end(content);
+    } catch {
+      res.writeHead(404);
+      res.end('not found');
+    }
+    return;
+  }
+
+  // API: create skill
+  if (req.method === 'POST' && url.pathname === '/api/skills' && req.headers['content-type']?.includes('application/json')) {
+    let body = '';
+    req.on('data', (chunk: string) => (body += chunk));
+    req.on('end', () => {
+      try {
+        const { name, content } = JSON.parse(body);
+        if (!name || !/^[a-z0-9-]+$/.test(name)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end('{"error":"Invalid skill name (use lowercase alphanumeric and hyphens)"}');
+          return;
+        }
+        const skillDir = resolve(SKILLS_DIR, name);
+        if (!skillDir.startsWith(SKILLS_DIR)) {
+          res.writeHead(403);
+          res.end('{"error":"forbidden"}');
+          return;
+        }
+        if (existsSync(skillDir)) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end('{"error":"Skill already exists"}');
+          return;
+        }
+        mkdirSync(skillDir, { recursive: true });
+        writeFileSync(join(skillDir, 'SKILL.md'), content || `# ${name}\n\nNew skill.\n`, 'utf-8');
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, name }));
+      } catch (e: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // API: update skill
+  if (req.method === 'PUT' && /^\/api\/skills\/[^/]+$/.test(url.pathname)) {
+    const name = decodeURIComponent(url.pathname.replace('/api/skills/', ''));
+    const skillDir = resolve(SKILLS_DIR, name);
+    if (!skillDir.startsWith(SKILLS_DIR)) {
+      res.writeHead(403);
+      res.end('{"error":"forbidden"}');
+      return;
+    }
+    let body = '';
+    req.on('data', (chunk: string) => (body += chunk));
+    req.on('end', () => {
+      try {
+        writeFileSync(join(skillDir, 'SKILL.md'), body, 'utf-8');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end('{"ok":true}');
+      } catch (e: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // API: delete skill
+  if (req.method === 'DELETE' && /^\/api\/skills\/[^/]+$/.test(url.pathname)) {
+    const name = decodeURIComponent(url.pathname.replace('/api/skills/', ''));
+    if (url.searchParams.get('confirm') !== 'true') {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end('{"error":"Add ?confirm=true to delete"}');
+      return;
+    }
+    const skillDir = resolve(SKILLS_DIR, name);
+    if (!skillDir.startsWith(SKILLS_DIR)) {
+      res.writeHead(403);
+      res.end('{"error":"forbidden"}');
+      return;
+    }
+    try {
+      rmSync(skillDir, { recursive: true });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('{"ok":true}');
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  // API: send chat message
+  if (req.method === 'POST' && url.pathname === '/api/chat/send') {
+    let body = '';
+    req.on('data', (chunk: string) => (body += chunk));
+    req.on('end', () => {
+      try {
+        const { group, content } = JSON.parse(body);
+        if (!group || !content) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end('{"error":"group and content required"}');
+          return;
+        }
+        // Look up JID from registered_groups
+        const rdb = openDb();
+        if (!rdb) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end('{"error":"db unavailable"}');
+          return;
+        }
+        const row = rdb.prepare('SELECT jid FROM registered_groups WHERE folder = ?').get(group) as any;
+        rdb.close();
+        if (!row) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end('{"error":"group not found"}');
+          return;
+        }
+        const wdb = openWriteDb();
+        if (!wdb) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end('{"error":"db unavailable for write"}');
+          return;
+        }
+        const timestamp = new Date().toISOString();
+        wdb.prepare(
+          'INSERT INTO messages (chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message) VALUES (?, ?, ?, ?, ?, 0, 0)',
+        ).run(row.jid, 'web@dashboard', 'Dashboard', content, timestamp);
+        wdb.close();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, timestamp }));
       } catch (e: any) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));

@@ -933,11 +933,19 @@ const adminState = {
   debug: null,
   overview: null,
   loaded: new Set(),
+  chatMessages: [],
+  chatGroup: null,
+  chatPolling: null,
+  logs: [],
+  channels: [],
+  config: null,
 };
 
 // --- Admin pill navigation ---
 document.querySelectorAll('.admin-pill').forEach((pill) => {
   pill.addEventListener('click', () => {
+    // Stop chat polling when leaving chat panel
+    if (adminState.chatPolling) { clearInterval(adminState.chatPolling); adminState.chatPolling = null; }
     document.querySelectorAll('.admin-pill').forEach((p) => p.classList.remove('active'));
     document.querySelectorAll('.admin-panel').forEach((p) => p.classList.remove('active'));
     pill.classList.add('active');
@@ -958,6 +966,10 @@ function loadAdminPanel(name) {
     skills: loadAdminSkills,
     groups: loadAdminGroups,
     debug: loadAdminDebug,
+    chat: loadAdminChat,
+    logs: loadAdminLogs,
+    channels: loadAdminChannels,
+    config: loadAdminConfig,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -1063,9 +1075,10 @@ function renderAdminTasks() {
     <tr><th>ID</th><th>Group</th><th>Prompt</th><th>Schedule</th><th>Status</th><th>Last Run</th><th>Actions</th></tr>`;
   for (const t of adminState.tasks) {
     const statusClass = t.status === 'active' ? 'active' : 'paused';
-    const actionBtn = t.status === 'active'
+    const pauseResumeBtn = t.status === 'active'
       ? `<button class="admin-action-btn" data-action="pause-task" data-id="${t.id}">Pause</button>`
       : `<button class="admin-action-btn success" data-action="resume-task" data-id="${t.id}">Resume</button>`;
+    const actionBtn = pauseResumeBtn + `<button class="admin-action-btn danger" data-action="delete-task" data-id="${t.id}">Delete</button>`;
     html += `<tr>
       <td>${t.id}</td>
       <td>${esc(t.group_folder)}</td>
@@ -1141,11 +1154,13 @@ async function loadAdminSkills() {
 
 function renderAdminSkills() {
   const el = document.getElementById('admin-skills-content');
+  let html = `<div style="margin-bottom:10px"><button class="admin-action-btn success" data-action="new-skill">+ New Skill</button></div>`;
   if (adminState.skills.length === 0) {
-    el.innerHTML = '<div class="admin-empty">No skills found in container/skills/</div>';
+    html += '<div class="admin-empty">No skills found in container/skills/</div>';
+    el.innerHTML = html;
     return;
   }
-  let html = `<table class="admin-table">
+  html += `<table class="admin-table">
     <tr><th>Skill</th><th>Description</th><th>Files</th><th>Status</th><th>Actions</th></tr>`;
   for (const s of adminState.skills) {
     const chipClass = s.enabled ? 'enabled' : 'disabled';
@@ -1157,10 +1172,24 @@ function renderAdminSkills() {
       <td style="max-width:250px">${esc(s.description || '-')}</td>
       <td style="font-size:9px;color:var(--text-muted)">${(s.files || []).join(', ')}</td>
       <td><span class="admin-chip ${chipClass}">${chipText}</span></td>
-      <td><button class="admin-action-btn ${btnClass}" data-action="toggle-skill" data-name="${esc(s.name)}">${btnText}</button></td>
+      <td>
+        <button class="admin-action-btn ${btnClass}" data-action="toggle-skill" data-name="${esc(s.name)}">${btnText}</button>
+        <button class="admin-action-btn" data-action="edit-skill" data-name="${esc(s.name)}">Edit</button>
+        <button class="admin-action-btn danger" data-action="delete-skill" data-name="${esc(s.name)}">Delete</button>
+      </td>
     </tr>`;
   }
   html += '</table>';
+  // Skill editor (hidden by default, shown on edit/new)
+  html += `<div id="skill-editor" style="display:none;margin-top:12px">
+    <h4 id="skill-editor-title" style="font-size:11px;margin-bottom:6px">Edit Skill</h4>
+    <input id="skill-editor-name" type="text" placeholder="skill-name" style="display:none;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:4px 8px;font-family:var(--font);font-size:10px;width:200px;margin-bottom:6px">
+    <textarea id="skill-editor-content" class="admin-editor" style="min-height:200px" placeholder="# Skill Name\n\nSkill description and instructions..."></textarea>
+    <div style="display:flex;gap:6px;margin-top:4px">
+      <button class="admin-save-btn" data-action="save-skill">Save</button>
+      <button class="admin-action-btn" data-action="cancel-skill-edit">Cancel</button>
+    </div>
+  </div>`;
   el.innerHTML = html;
 }
 
@@ -1331,7 +1360,404 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
     }
     return;
   }
+
+  // Task delete
+  if (action === 'delete-task') {
+    const id = btn.dataset.id;
+    if (!confirm(`Delete task #${id} and all its run logs?`)) return;
+    btn.disabled = true;
+    try {
+      await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      adminState.loaded.delete('tasks');
+      loadAdminTasks();
+    } catch { btn.disabled = false; }
+    return;
+  }
+
+  // Skill CRUD actions
+  if (action === 'new-skill') {
+    const editor = document.getElementById('skill-editor');
+    const nameInput = document.getElementById('skill-editor-name');
+    const contentInput = document.getElementById('skill-editor-content');
+    const title = document.getElementById('skill-editor-title');
+    editor.style.display = 'block';
+    nameInput.style.display = 'block';
+    nameInput.value = '';
+    contentInput.value = '# New Skill\n\nSkill description and instructions.\n';
+    title.textContent = 'Create New Skill';
+    editor.dataset.mode = 'create';
+    editor.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  if (action === 'edit-skill') {
+    const name = btn.dataset.name;
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/skills/${encodeURIComponent(name)}`);
+      const content = res.ok ? await res.text() : '';
+      const editor = document.getElementById('skill-editor');
+      const nameInput = document.getElementById('skill-editor-name');
+      const contentInput = document.getElementById('skill-editor-content');
+      const title = document.getElementById('skill-editor-title');
+      editor.style.display = 'block';
+      nameInput.style.display = 'none';
+      contentInput.value = content;
+      title.textContent = `Edit: ${name}`;
+      editor.dataset.mode = 'edit';
+      editor.dataset.skillName = name;
+      editor.scrollIntoView({ behavior: 'smooth' });
+    } catch { /* ignore */ }
+    btn.disabled = false;
+    return;
+  }
+
+  if (action === 'delete-skill') {
+    const name = btn.dataset.name;
+    if (!confirm(`Delete skill "${name}" permanently?`)) return;
+    btn.disabled = true;
+    try {
+      await fetch(`/api/skills/${encodeURIComponent(name)}?confirm=true`, { method: 'DELETE' });
+      adminState.loaded.delete('skills');
+      loadAdminSkills();
+    } catch { btn.disabled = false; }
+    return;
+  }
+
+  if (action === 'save-skill') {
+    const editor = document.getElementById('skill-editor');
+    const mode = editor.dataset.mode;
+    const contentInput = document.getElementById('skill-editor-content');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+      if (mode === 'create') {
+        const nameInput = document.getElementById('skill-editor-name');
+        const name = nameInput.value.trim();
+        if (!name || !/^[a-z0-9-]+$/.test(name)) {
+          alert('Invalid name: use lowercase letters, numbers, and hyphens only');
+          btn.disabled = false;
+          btn.textContent = 'Save';
+          return;
+        }
+        await fetch('/api/skills', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, content: contentInput.value }),
+        });
+      } else {
+        const name = editor.dataset.skillName;
+        await fetch(`/api/skills/${encodeURIComponent(name)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'text/plain' },
+          body: contentInput.value,
+        });
+      }
+      editor.style.display = 'none';
+      btn.textContent = 'Save';
+      btn.disabled = false;
+      adminState.loaded.delete('skills');
+      loadAdminSkills();
+    } catch {
+      btn.textContent = 'Error';
+      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
+    }
+    return;
+  }
+
+  if (action === 'cancel-skill-edit') {
+    document.getElementById('skill-editor').style.display = 'none';
+    return;
+  }
+
+  // Config CLAUDE.md save
+  if (action === 'save-config-md') {
+    const scope = document.getElementById('config-md-scope')?.value || 'root';
+    const content = document.getElementById('config-md-editor')?.value || '';
+    const url = scope === 'root' ? '/api/config/claude-md' : `/api/memory/global`;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+      await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'text/plain' },
+        body: content,
+      });
+      btn.textContent = 'Saved!';
+      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
+    } catch {
+      btn.textContent = 'Error';
+      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
+    }
+    return;
+  }
 });
+
+// ===================================================================
+// CHAT PANEL
+// ===================================================================
+
+async function loadAdminChat() {
+  // Populate group dropdown
+  const select = document.getElementById('chat-group-select');
+  select.innerHTML = '<option value="">Select group...</option>';
+  for (const g of state.registeredGroups) {
+    const opt = document.createElement('option');
+    opt.value = g.folder;
+    opt.textContent = g.name || g.folder;
+    if (adminState.chatGroup === g.folder) opt.selected = true;
+    select.appendChild(opt);
+  }
+  adminState.loaded.add('chat');
+  if (adminState.chatGroup) fetchChatMessages();
+}
+
+async function fetchChatMessages() {
+  if (!adminState.chatGroup) return;
+  try {
+    const res = await fetch(`/api/messages?group=${encodeURIComponent(adminState.chatGroup)}&limit=100`);
+    if (!res.ok) return;
+    const data = await res.json();
+    adminState.chatMessages = (data.messages || []).reverse();
+    renderChatMessages();
+  } catch { /* ignore */ }
+}
+
+function renderChatMessages() {
+  const el = document.getElementById('chat-messages');
+  if (!el) return;
+  if (adminState.chatMessages.length === 0) {
+    el.innerHTML = '<div class="admin-empty">No messages yet. Send a message to start.</div>';
+    return;
+  }
+  el.innerHTML = adminState.chatMessages.map((m) => {
+    const isUser = m.is_from_me === 0 && !m.is_bot_message;
+    const isAssistant = m.is_from_me === 1 || m.is_bot_message === 1;
+    const cls = isAssistant ? 'assistant' : 'user';
+    const sender = m.sender_name || m.sender || (isAssistant ? 'Assistant' : 'User');
+    const time = m.timestamp ? formatTime(m.timestamp) : '';
+    return `<div class="chat-bubble ${cls}">
+      <div>${esc(m.content || m.body || '')}</div>
+      <div class="chat-meta">${esc(sender)} ${time}</div>
+    </div>`;
+  }).join('');
+  // Check for typing indicator
+  const recentHooks = state.hookEvents.filter((e) => e.group === adminState.chatGroup && Date.now() - e.timestamp < 10000);
+  if (recentHooks.length > 0) {
+    el.innerHTML += '<div class="chat-typing"><span></span><span></span><span></span></div>';
+  }
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const content = input.value.trim();
+  if (!content || !adminState.chatGroup) return;
+  input.value = '';
+  // Optimistic UI
+  adminState.chatMessages.push({
+    content, sender: 'web@dashboard', sender_name: 'Dashboard',
+    is_from_me: 0, is_bot_message: 0, timestamp: new Date().toISOString(),
+  });
+  renderChatMessages();
+  try {
+    await fetch('/api/chat/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ group: adminState.chatGroup, content }),
+    });
+  } catch { /* message still shows optimistically */ }
+}
+
+// Chat events
+document.getElementById('chat-group-select')?.addEventListener('change', (e) => {
+  adminState.chatGroup = e.target.value || null;
+  adminState.chatMessages = [];
+  if (adminState.chatPolling) { clearInterval(adminState.chatPolling); adminState.chatPolling = null; }
+  if (adminState.chatGroup) {
+    fetchChatMessages();
+    adminState.chatPolling = setInterval(fetchChatMessages, 3000);
+  } else {
+    document.getElementById('chat-messages').innerHTML = '';
+  }
+});
+
+document.getElementById('chat-send-btn')?.addEventListener('click', sendChatMessage);
+
+document.getElementById('chat-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+});
+
+// ===================================================================
+// LOGS PANEL
+// ===================================================================
+
+let logSearchTimer = null;
+
+async function loadAdminLogs() {
+  const source = document.getElementById('log-source-select')?.value || 'app';
+  const group = document.getElementById('log-group-select')?.value || '';
+  const search = document.getElementById('log-search-input')?.value || '';
+
+  let url = `/api/logs?source=${source}&limit=500`;
+  if (source === 'container' && group) url += `&group=${encodeURIComponent(group)}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('fetch failed');
+    const data = await res.json();
+    adminState.logs = data.lines || [];
+    adminState.loaded.add('logs');
+    renderLogs();
+  } catch {
+    document.getElementById('log-viewer').textContent = 'Failed to load logs';
+  }
+}
+
+function renderLogs() {
+  const viewer = document.getElementById('log-viewer');
+  if (!viewer) return;
+  if (adminState.logs.length === 0) {
+    viewer.innerHTML = '<span style="color:var(--text-muted)">No log lines found</span>';
+    return;
+  }
+  viewer.innerHTML = adminState.logs.map((line) => {
+    let cls = 'log-info';
+    const lower = line.toLowerCase();
+    if (lower.includes('error') || lower.includes('err]')) cls = 'log-error';
+    else if (lower.includes('warn')) cls = 'log-warn';
+    else if (lower.includes('debug')) cls = 'log-debug';
+    return `<div class="log-line ${cls}">${esc(line)}</div>`;
+  }).join('');
+  viewer.scrollTop = viewer.scrollHeight;
+}
+
+// Logs events
+document.getElementById('log-source-select')?.addEventListener('change', (e) => {
+  const groupSelect = document.getElementById('log-group-select');
+  if (e.target.value === 'container') {
+    groupSelect.style.display = '';
+    // Populate with groups
+    groupSelect.innerHTML = '<option value="">Select group...</option>';
+    for (const g of state.registeredGroups) {
+      const opt = document.createElement('option');
+      opt.value = g.folder;
+      opt.textContent = g.name || g.folder;
+      groupSelect.appendChild(opt);
+    }
+  } else {
+    groupSelect.style.display = 'none';
+  }
+  loadAdminLogs();
+});
+
+document.getElementById('log-group-select')?.addEventListener('change', () => loadAdminLogs());
+
+document.getElementById('log-search-input')?.addEventListener('input', () => {
+  clearTimeout(logSearchTimer);
+  logSearchTimer = setTimeout(loadAdminLogs, 300);
+});
+
+// ===================================================================
+// CHANNELS PANEL
+// ===================================================================
+
+async function loadAdminChannels() {
+  const el = document.getElementById('admin-channels-content');
+  el.innerHTML = '<div class="admin-loading">Loading...</div>';
+  try {
+    const res = await fetch('/api/channels');
+    if (!res.ok) throw new Error('fetch failed');
+    adminState.channels = await res.json();
+    adminState.loaded.add('channels');
+    renderChannels();
+  } catch { el.innerHTML = '<div class="admin-empty">Failed to load channels</div>'; }
+}
+
+function renderChannels() {
+  const el = document.getElementById('admin-channels-content');
+  if (adminState.channels.length === 0) {
+    el.innerHTML = '<div class="admin-empty">No channels found in src/channels/</div>';
+    return;
+  }
+  el.innerHTML = adminState.channels.map((ch) => {
+    const dotColor = ch.configured ? 'var(--green)' : 'var(--text-muted)';
+    const statusText = ch.configured ? 'Connected' : 'Not configured';
+    const groupsList = ch.groups.length > 0
+      ? ch.groups.map((g) => esc(g.name || g.folder)).join(', ')
+      : 'No groups';
+    return `<div class="channel-card">
+      <div class="channel-status-dot" style="background:${dotColor}"></div>
+      <div class="channel-info">
+        <h4>${esc(ch.name)}</h4>
+        <div style="font-size:9px;color:${ch.configured ? 'var(--green)' : 'var(--text-muted)'};margin-bottom:4px">${statusText}</div>
+        <div class="channel-groups">${groupsList}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===================================================================
+// CONFIG PANEL
+// ===================================================================
+
+async function loadAdminConfig() {
+  const el = document.getElementById('admin-config-content');
+  el.innerHTML = '<div class="admin-loading">Loading...</div>';
+  try {
+    const [configRes, claudeMdRes] = await Promise.all([
+      fetch('/api/config'),
+      fetch('/api/config/claude-md').then((r) => r.ok ? r.text() : '(not found)').catch(() => '(not found)'),
+    ]);
+    if (!configRes.ok) throw new Error('fetch failed');
+    adminState.config = await configRes.json();
+    adminState.loaded.add('config');
+    renderConfig(claudeMdRes);
+  } catch { el.innerHTML = '<div class="admin-empty">Failed to load config</div>'; }
+}
+
+function renderConfig(claudeMdContent) {
+  const el = document.getElementById('admin-config-content');
+  let html = `<h4 style="font-size:11px;margin-bottom:8px">Environment Configuration</h4>
+    <table class="admin-table">
+    <tr><th>Key</th><th>Value</th><th>Env Var</th><th>Description</th></tr>`;
+  for (const c of adminState.config) {
+    html += `<tr>
+      <td style="font-weight:600">${esc(c.key)}</td>
+      <td style="color:${c.value ? 'var(--text)' : 'var(--text-muted)'}">${esc(c.value || '(not set)')}</td>
+      <td style="font-size:9px;color:var(--text-muted)">${esc(c.env)}</td>
+      <td style="color:var(--text-dim)">${esc(c.description)}</td>
+    </tr>`;
+  }
+  html += '</table>';
+
+  // CLAUDE.md editor
+  html += `<h4 style="font-size:11px;margin:16px 0 8px">CLAUDE.md Editor</h4>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <select id="config-md-scope" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 8px;font-family:var(--font);font-size:10px">
+        <option value="root">Root CLAUDE.md</option>
+        <option value="global">Global Memory (groups/global)</option>
+      </select>
+    </div>
+    <textarea id="config-md-editor" class="admin-editor" style="min-height:200px">${esc(claudeMdContent)}</textarea>
+    <button class="admin-save-btn" data-action="save-config-md">Save</button>`;
+  el.innerHTML = html;
+
+  // Scope change handler
+  document.getElementById('config-md-scope')?.addEventListener('change', async (e) => {
+    const editor = document.getElementById('config-md-editor');
+    const scope = e.target.value;
+    try {
+      const url = scope === 'root' ? '/api/config/claude-md' : '/api/memory/global';
+      const res = await fetch(url);
+      editor.value = res.ok ? await res.text() : '(not found)';
+    } catch { editor.value = '(error loading)'; }
+  });
+}
 
 // Auto-load overview when admin tab is first shown
 document.querySelector('[data-tab="admin"]')?.addEventListener('click', () => {
