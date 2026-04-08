@@ -33,6 +33,10 @@ interface ContainerInput {
   isScheduledTask?: boolean;
   assistantName?: string;
   script?: string;
+  allowedMcpTools?: string[];
+  mcpToolInventory?: Record<string, string[]>;
+  /** Skip initial query, go straight to IPC polling. Used for interactive resume. */
+  interactive?: boolean;
 }
 
 interface ContainerOutput {
@@ -366,6 +370,73 @@ function waitForIpcMessage(): Promise<string | null> {
 }
 
 /**
+ * Build disallowedTools list from the host-passed tool inventory.
+ * For each connected MCP server, block tools NOT in the allowed list.
+ */
+function buildDisallowedTools(allowedMcpTools: string[], toolInventory: Record<string, string[]>): string[] {
+  const allowed = new Set(allowedMcpTools);
+  const blocked: string[] = [];
+  for (const tools of Object.values(toolInventory)) {
+    for (const tool of tools) {
+      if (!allowed.has(tool)) {
+        blocked.push(tool);
+      }
+    }
+  }
+  return blocked;
+}
+
+function buildMcpServers(
+  containerInput: ContainerInput,
+  mcpServerPath: string,
+): Record<string, any> {
+  const allowed = containerInput.allowedMcpTools || [];
+  const servers: Record<string, any> = {
+    nanoclaw: {
+      command: 'node',
+      args: [mcpServerPath],
+      env: {
+        NANOCLAW_CHAT_JID: containerInput.chatJid,
+        NANOCLAW_GROUP_FOLDER: containerInput.groupFolder,
+        NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
+      },
+    },
+  };
+
+  // Derive which MCP servers to connect from allowed tool prefixes.
+  // Tool format: mcp__<server>__<tool_name>
+  const neededServers = new Set<string>();
+  for (const tool of allowed) {
+    const match = tool.match(/^mcp__([^_]+(?:-[^_]+)*)__/);
+    if (match && match[1] !== 'nanoclaw') {
+      neededServers.add(match[1]);
+    }
+  }
+
+  for (const serverName of neededServers) {
+    if (process.env.MCP_PROXY_URL) {
+      // All other MCP servers go through the auth proxy.
+      // URL includes server name for path-based routing: /mcp/slang-mcp
+      const baseUrl = process.env.MCP_PROXY_URL.replace(/\/$/, '');
+      const serverUrl = `${baseUrl}/${serverName}`;
+      const serverConfig: Record<string, unknown> = {
+        type: 'http' as const,
+        url: serverUrl,
+      };
+      // Pass the bearer token so the SDK authenticates with the auth proxy
+      if (process.env.MCP_PROXY_TOKEN) {
+        serverConfig.headers = {
+          Authorization: `Bearer ${process.env.MCP_PROXY_TOKEN}`,
+        };
+      }
+      servers[serverName] = serverConfig;
+    }
+  }
+
+  return servers;
+}
+
+/**
  * Run a single query and stream results via writeOutput.
  * Uses MessageStream (AsyncIterable) to keep isSingleUserTurn=false,
  * allowing agent teams subagents to run to completion.
@@ -435,6 +506,11 @@ async function runQuery(
     log(`Additional directories: ${extraDirs.join(', ')}`);
   }
 
+  const mcpAllowed = containerInput.allowedMcpTools || [];
+  const mcpDisallowed = buildDisallowedTools(mcpAllowed, containerInput.mcpToolInventory || {});
+  log(`MCP allowed: ${JSON.stringify(mcpAllowed)}`);
+  log(`MCP disallowed (${mcpDisallowed.length}): ${JSON.stringify(mcpDisallowed)}`);
+
   for await (const message of query({
     prompt: stream,
     options: {
@@ -469,22 +545,17 @@ async function runQuery(
         'Skill',
         'NotebookEdit',
         'mcp__nanoclaw__*',
+        ...mcpAllowed,
       ],
+      disallowedTools: mcpDisallowed,
       env: sdkEnv,
       permissionMode: 'bypassPermissions',
       allowDangerouslySkipPermissions: true,
       settingSources: ['project', 'user'],
-      mcpServers: {
-        nanoclaw: {
-          command: 'node',
-          args: [mcpServerPath],
-          env: {
-            NANOCLAW_CHAT_JID: containerInput.chatJid,
-            NANOCLAW_GROUP_FOLDER: containerInput.groupFolder,
-            NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
-          },
-        },
-      },
+      mcpServers: buildMcpServers(containerInput, mcpServerPath),
+      // Dashboard hook events are delivered via native HTTP hooks in settings.json
+      // (configured by container-runner.ts). Only PreCompact needs an SDK callback
+      // for transcript archival.
       hooks: {
         PreCompact: [
           { hooks: [createPreCompactHook(containerInput.assistantName)] },
@@ -677,6 +748,21 @@ async function main(): Promise<void> {
   // Query loop: run query → wait for IPC message → run new query → repeat
   let resumeAt: string | undefined;
   try {
+    // Interactive mode: skip initial query, go straight to IPC polling
+    if (containerInput.interactive) {
+      log('Interactive mode — skipping initial query, entering IPC polling');
+      writeOutput({ status: 'success', result: null, newSessionId: sessionId });
+
+      const firstMessage = await waitForIpcMessage();
+      if (firstMessage === null) {
+        log('Close sentinel received before first message, exiting');
+        return;
+      }
+
+      log(`Interactive: got first message (${firstMessage.length} chars)`);
+      prompt = firstMessage;
+    }
+
     while (true) {
       log(
         `Starting query (session: ${sessionId || 'new'}, resumeAt: ${resumeAt || 'latest'})...`,

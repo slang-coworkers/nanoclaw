@@ -17,6 +17,8 @@ groups/main/*
 groups/global/*
 !groups/main/CLAUDE.md
 !groups/global/CLAUDE.md
+!groups/coworker-types.json
+!groups/templates/
 
 # Secrets
 *.keys.json

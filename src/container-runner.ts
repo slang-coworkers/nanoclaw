@@ -4,7 +4,9 @@
  */
 import { ChildProcess, spawn } from 'child_process';
 import fs from 'fs';
+import http from 'http';
 import path from 'path';
+import yaml from 'js-yaml';
 
 import {
   CONTAINER_IMAGE,
@@ -13,22 +15,130 @@ import {
   DATA_DIR,
   GROUPS_DIR,
   IDLE_TIMEOUT,
+  MCP_PROXY_PORT,
   ONECLI_URL,
   TIMEZONE,
 } from './config.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
 import { logger } from './logger.js';
 import {
+  CONTAINER_HOST_GATEWAY,
   CONTAINER_RUNTIME_BIN,
+  gpuArgs,
   hostGatewayArgs,
   readonlyMountArgs,
   stopContainer,
 } from './container-runtime.js';
 import { OneCLI } from '@onecli-sh/sdk';
+import { readEnvFile } from './env.js';
 import { validateAdditionalMounts } from './mount-security.js';
+import {
+  getDiscoveredToolInventory,
+  registerContainerToken,
+  revokeContainerToken,
+} from './mcp-auth-proxy.js';
 import { RegisteredGroup } from './types.js';
 
 const onecli = new OneCLI({ url: ONECLI_URL });
+
+interface ManifestConfig {
+  base: string;
+  sections: string[];
+  project_overlays: boolean;
+}
+
+/**
+ * Compose a CLAUDE.md from a YAML manifest.
+ * Layers: upstream base -> platform sections -> project overlays -> role templates
+ */
+function composeClaudeMd(
+  templatesDir: string,
+  manifestName: string,
+  group: RegisteredGroup,
+  projectRoot: string,
+): string {
+  const manifestPath = path.join(
+    templatesDir,
+    'manifests',
+    `${manifestName}.yaml`,
+  );
+  const manifest = yaml.load(
+    fs.readFileSync(manifestPath, 'utf-8'),
+  ) as ManifestConfig;
+
+  // Layer 0: upstream base
+  const basePath =
+    manifest.base === 'upstream-main'
+      ? path.join(projectRoot, 'groups', 'main', 'CLAUDE.md')
+      : path.join(projectRoot, 'groups', 'global', 'CLAUDE.md');
+  let composed = fs.readFileSync(basePath, 'utf-8');
+
+  // Layer 1: platform sections
+  for (const section of manifest.sections || []) {
+    const sectionPath = path.join(templatesDir, 'sections', `${section}.md`);
+    if (fs.existsSync(sectionPath)) {
+      composed += `\n\n---\n\n${fs.readFileSync(sectionPath, 'utf-8')}`;
+    }
+  }
+
+  // Layer 2: project overlays
+  if (manifest.project_overlays) {
+    const projectsDir = path.join(templatesDir, 'projects');
+    if (fs.existsSync(projectsDir)) {
+      for (const proj of fs.readdirSync(projectsDir).sort()) {
+        const projDir = path.join(projectsDir, proj);
+        if (!fs.statSync(projDir).isDirectory()) continue;
+        if (manifestName === 'coworker') {
+          const f = path.join(projDir, 'coworker-base.md');
+          if (fs.existsSync(f)) {
+            composed += `\n\n---\n\n${fs.readFileSync(f, 'utf-8')}`;
+          }
+        } else {
+          const f = path.join(projDir, `${manifestName}-overlay.md`);
+          if (fs.existsSync(f)) {
+            composed += `\n\n---\n\n${fs.readFileSync(f, 'utf-8')}`;
+          }
+        }
+      }
+    }
+  }
+
+  // Layer 3: role templates (typed coworkers only)
+  if (group.coworkerType) {
+    try {
+      const types = JSON.parse(
+        fs.readFileSync(
+          path.join(projectRoot, 'groups', 'coworker-types.json'),
+          'utf-8',
+        ),
+      );
+      for (const role of group.coworkerType.split('+')) {
+        const entry = types[role.trim()];
+        const templates = Array.isArray(entry?.template)
+          ? entry.template
+          : entry?.template
+            ? [entry.template]
+            : [];
+        for (const tpl of templates) {
+          try {
+            composed += `\n\n---\n\n${fs.readFileSync(path.resolve(projectRoot, tpl), 'utf-8')}`;
+          } catch {
+            /* template missing */
+          }
+        }
+        const focusFiles: string[] | undefined = entry?.focusFiles;
+        if (focusFiles && focusFiles.length > 0) {
+          composed += `\n\n## Priority Files\n\nFocus your work on these paths first:\n`;
+          for (const f of focusFiles) composed += `- \`${f}\`\n`;
+        }
+      }
+    } catch {
+      /* coworker-types.json missing */
+    }
+  }
+
+  return composed;
+}
 
 // Sentinel markers for robust output parsing (must match agent-runner)
 const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
@@ -43,6 +153,11 @@ export interface ContainerInput {
   isScheduledTask?: boolean;
   assistantName?: string;
   script?: string;
+  allowedMcpTools?: string[];
+  /** Full MCP tool inventory (auto-discovered). Agent-runner uses this to build disallowedTools. */
+  mcpToolInventory?: Record<string, string[]>;
+  /** Skip initial query, go straight to IPC polling. Used for interactive resume. */
+  interactive?: boolean;
 }
 
 export interface ContainerOutput {
@@ -144,38 +259,193 @@ function buildVolumeMounts(
   );
   fs.mkdirSync(groupSessionsDir, { recursive: true });
   const settingsFile = path.join(groupSessionsDir, 'settings.json');
-  if (!fs.existsSync(settingsFile)) {
-    fs.writeFileSync(
-      settingsFile,
-      JSON.stringify(
-        {
-          env: {
-            // Enable agent swarms (subagent orchestration)
-            // https://code.claude.com/docs/en/agent-teams#orchestrate-teams-of-claude-code-sessions
-            CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
-            // Load CLAUDE.md from additional mounted directories
-            // https://code.claude.com/docs/en/memory#load-memory-from-additional-directories
-            CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
-            // Enable Claude's memory feature (persists user preferences between sessions)
-            // https://code.claude.com/docs/en/memory#manage-auto-memory
-            CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
-          },
-        },
-        null,
-        2,
-      ) + '\n',
-    );
+  const managedEnv: Record<string, string> = {
+    CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
+    CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
+    CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
+    NANOCLAW_GROUP_FOLDER: group.folder,
+  };
+
+  // Dashboard integration: only if the dashboard skill is installed
+  const dashboardInstalled = fs.existsSync(
+    path.join(process.cwd(), 'dashboard', 'server.ts'),
+  );
+  if (dashboardInstalled) {
+    const dashboardPort = process.env.DASHBOARD_PORT || '3737';
+    managedEnv.DASHBOARD_URL = `http://${CONTAINER_HOST_GATEWAY}:${dashboardPort}`;
   }
 
+  // Read existing settings to preserve user-added keys
+  let existing: Record<string, any> = {};
+  try {
+    existing = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+  } catch {
+    /* file missing or invalid — start fresh */
+  }
+
+  // Merge env: NanoClaw-managed keys override, user keys preserved
+  const mergedEnv = { ...(existing.env || {}), ...managedEnv };
+
+  // Merge hooks: if dashboard is installed, set up HTTP hooks to POST events.
+  // Claude Code sends the full event JSON as the POST body. The group folder is
+  // passed via X-Group-Folder header (interpolated from env var at hook runtime).
+  let mergedHooks = existing.hooks || {};
+  // Always clean stale NanoClaw hooks (even if dashboard was uninstalled)
+  for (const event of Object.keys(mergedHooks)) {
+    const existingList: { hooks?: any[]; command?: string }[] =
+      mergedHooks[event] || [];
+    mergedHooks[event] = existingList.filter((h) => {
+      if (h.command && h.command.includes('notify-dashboard.sh')) return false;
+      if (
+        h.hooks &&
+        h.hooks.some(
+          (inner: any) =>
+            (inner.type === 'http' &&
+              inner.url &&
+              inner.url.includes('/api/hook-event')) ||
+            (inner.type === 'command' &&
+              inner.command &&
+              inner.command.includes('/api/hook-event')),
+        )
+      )
+        return false;
+      return true;
+    });
+  }
+  if (dashboardInstalled) {
+    const dashboardPort = process.env.DASHBOARD_PORT || '3737';
+    const hookEvents = [
+      'PreToolUse',
+      'PostToolUse',
+      'PostToolUseFailure',
+      'SessionStart',
+      'SessionEnd',
+      'Stop',
+      'Notification',
+      'UserPromptSubmit',
+      'PermissionRequest',
+      'SubagentStart',
+      'SubagentStop',
+      'TaskCompleted',
+      'TeammateIdle',
+      'PreCompact',
+      'PostCompact',
+      'InstructionsLoaded',
+    ];
+    for (const event of hookEvents) {
+      const userHooks = mergedHooks[event] || [];
+      mergedHooks[event] = [
+        {
+          hooks: [
+            {
+              type: 'command',
+              // Use curl instead of type:"http" because OneCLI injects
+              // HTTP_PROXY+NODE_USE_ENV_PROXY=1 which Claude Code's hook client
+              // routes through, ignoring NO_PROXY → "Protocol http: not supported".
+              // --proxy '' bypasses proxy; $(cat) reads hook JSON from stdin.
+              // socat inside the container forwards 127.0.0.1:PORT → host gateway.
+              command: `curl -sf --proxy '' -X POST http://127.0.0.1:${dashboardPort}/api/hook-event -H 'Content-Type: application/json' -H "X-Group-Folder: $NANOCLAW_GROUP_FOLDER" -d "$(cat)" > /dev/null 2>&1 || true`,
+              timeout: 5,
+            },
+          ],
+        },
+        ...userHooks,
+      ];
+    }
+  }
+
+  const settings: Record<string, unknown> = {
+    ...existing,
+    env: mergedEnv,
+    hooks: mergedHooks,
+    // Auto-approve all tools so subagents (agent teams) don't hang waiting for TTY approval
+    permissions: existing.permissions || {
+      allow: [
+        'Bash(*)',
+        'Read(*)',
+        'Write(*)',
+        'Edit(*)',
+        'Glob(*)',
+        'Grep(*)',
+        'WebFetch(*)',
+        'mcp__*',
+      ],
+      deny: [],
+    },
+  };
+  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+
   // Sync skills from container/skills/ into each group's .claude/skills/
+  // Clean stale dirs first (e.g., after skill renames) then copy fresh
   const skillsSrc = path.join(process.cwd(), 'container', 'skills');
   const skillsDst = path.join(groupSessionsDir, 'skills');
   if (fs.existsSync(skillsSrc)) {
-    for (const skillDir of fs.readdirSync(skillsSrc)) {
-      const srcDir = path.join(skillsSrc, skillDir);
-      if (!fs.statSync(srcDir).isDirectory()) continue;
-      const dstDir = path.join(skillsDst, skillDir);
-      fs.cpSync(srcDir, dstDir, { recursive: true });
+    const srcDirs = new Set(
+      fs
+        .readdirSync(skillsSrc)
+        .filter((d) => fs.statSync(path.join(skillsSrc, d)).isDirectory()),
+    );
+    if (fs.existsSync(skillsDst)) {
+      for (const existing of fs.readdirSync(skillsDst)) {
+        if (!srcDirs.has(existing)) {
+          fs.rmSync(path.join(skillsDst, existing), {
+            recursive: true,
+            force: true,
+          });
+        }
+      }
+    }
+    for (const skillDir of srcDirs) {
+      fs.cpSync(
+        path.join(skillsSrc, skillDir),
+        path.join(skillsDst, skillDir),
+        { recursive: true },
+      );
+    }
+  }
+
+  // Compose CLAUDE.md from manifest at every startup (keeps templates fresh).
+  // Uses groups/templates/ system: upstream base -> platform sections -> project overlays -> role templates
+  {
+    const projectRoot = process.cwd();
+    const templatesDir = path.join(projectRoot, 'groups', 'templates');
+    const claudeMd = path.join(groupDir, 'CLAUDE.md');
+
+    // Determine which manifest to use
+    const manifestName = isMain
+      ? 'main'
+      : group.coworkerType
+        ? 'coworker'
+        : null; // static coworkers keep their hand-edited CLAUDE.md
+
+    if (
+      manifestName &&
+      fs.existsSync(
+        path.join(templatesDir, 'manifests', `${manifestName}.yaml`),
+      )
+    ) {
+      try {
+        const composed = composeClaudeMd(
+          templatesDir,
+          manifestName,
+          group,
+          projectRoot,
+        );
+        fs.writeFileSync(claudeMd, composed);
+        logger.debug(
+          {
+            folder: group.folder,
+            manifest: manifestName,
+            coworkerType: group.coworkerType,
+          },
+          'Composed CLAUDE.md from manifest',
+        );
+      } catch (err) {
+        logger.warn(
+          { folder: group.folder, err },
+          'Failed to compose CLAUDE.md from manifest',
+        );
+      }
     }
   }
   mounts.push({
@@ -196,9 +466,9 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-  // Copy agent-runner source into a per-group writable location so agents
-  // can customize it (add tools, change behavior) without affecting other
-  // groups. Recompiled on container startup via entrypoint.sh.
+  // Sync agent-runner source into a per-group writable location.
+  // Copied fresh on every startup to pick up code changes (e.g. MCP tool enforcement).
+  // Recompiled on container startup via entrypoint.sh.
   const agentRunnerSrc = path.join(
     projectRoot,
     'container',
@@ -212,22 +482,30 @@ function buildVolumeMounts(
     'agent-runner-src',
   );
   if (fs.existsSync(agentRunnerSrc)) {
-    const srcIndex = path.join(agentRunnerSrc, 'index.ts');
-    const cachedIndex = path.join(groupAgentRunnerDir, 'index.ts');
-    const needsCopy =
-      !fs.existsSync(groupAgentRunnerDir) ||
-      !fs.existsSync(cachedIndex) ||
-      (fs.existsSync(srcIndex) &&
-        fs.statSync(srcIndex).mtimeMs > fs.statSync(cachedIndex).mtimeMs);
-    if (needsCopy) {
-      fs.cpSync(agentRunnerSrc, groupAgentRunnerDir, { recursive: true });
-    }
+    // Copy fresh on every startup to pick up code changes (e.g. MCP tool enforcement).
+    // Recompiled on container startup via entrypoint.sh.
+    fs.cpSync(agentRunnerSrc, groupAgentRunnerDir, { recursive: true });
   }
   mounts.push({
     hostPath: groupAgentRunnerDir,
     containerPath: '/app/src',
     readonly: false,
   });
+
+  // Mount subagent definitions if provided by the active skill
+  const subagentsConfig = path.join(
+    projectRoot,
+    'container',
+    'config',
+    'subagents.json',
+  );
+  if (fs.existsSync(subagentsConfig)) {
+    mounts.push({
+      hostPath: subagentsConfig,
+      containerPath: '/workspace/config/subagents.json',
+      readonly: true,
+    });
+  }
 
   // Additional mounts validated against external allowlist (tamper-proof from containers)
   if (group.containerConfig?.additionalMounts) {
@@ -245,12 +523,30 @@ function buildVolumeMounts(
 async function buildContainerArgs(
   mounts: VolumeMount[],
   containerName: string,
+  groupFolder: string,
+  allowedMcpTools: string[],
   agentIdentifier?: string,
-): Promise<string[]> {
+): Promise<{ args: string[]; mcpToken: string | null }> {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
 
   // Pass host timezone so container's local time matches the user's
   args.push('-e', `TZ=${TIMEZONE}`);
+  args.push('-e', `NANOCLAW_GROUP_FOLDER=${groupFolder}`);
+  args.push('-e', `NANOCLAW_HOST_GATEWAY=${CONTAINER_HOST_GATEWAY}`);
+
+  // Dashboard env vars — only if the dashboard skill is installed
+  const dashboardInstalled = fs.existsSync(
+    path.join(process.cwd(), 'dashboard', 'server.ts'),
+  );
+  if (dashboardInstalled) {
+    const dashboardPort = process.env.DASHBOARD_PORT || '3737';
+    args.push(
+      '-e',
+      `DASHBOARD_URL=http://${CONTAINER_HOST_GATEWAY}:${dashboardPort}`,
+    );
+    // socat proxy needs these to forward 127.0.0.1:PORT → host gateway:PORT
+    args.push('-e', `NANOCLAW_DASHBOARD_PORT=${dashboardPort}`);
+  }
 
   // OneCLI gateway handles credential injection — containers never see real secrets.
   // The gateway intercepts HTTPS traffic and injects API keys or OAuth tokens.
@@ -267,8 +563,56 @@ async function buildContainerArgs(
     );
   }
 
+  // GH_TOKEN placeholder — gh CLI refuses to run without it, but the real token
+  // is injected by OneCLI's MITM proxy for api.github.com requests.
+  args.push('-e', 'GH_TOKEN=placeholder');
+
+  // Pass MCP proxy URL so containers connect via authenticated SSE proxy
+  const mcpProxyPort = String(MCP_PROXY_PORT);
+  args.push(
+    '-e',
+    `MCP_PROXY_URL=http://${CONTAINER_HOST_GATEWAY}:${mcpProxyPort}/mcp`,
+  );
+
+  // Generate a per-container token for MCP auth proxy (tool-level ACL)
+  let mcpToken: string | null = null;
+  if (allowedMcpTools.length > 0) {
+    mcpToken = registerContainerToken(groupFolder, allowedMcpTools);
+    args.push('-e', `MCP_PROXY_TOKEN=${mcpToken}`);
+  }
+
+  // Exclude internal hosts from OneCLI's HTTP proxy so MCP and dashboard
+  // connections go direct instead of through the MITM gateway.
+  args.push(
+    '-e',
+    `NO_PROXY=${CONTAINER_HOST_GATEWAY},host.docker.internal,127.0.0.1,localhost`,
+  );
+  args.push(
+    '-e',
+    `no_proxy=${CONTAINER_HOST_GATEWAY},host.docker.internal,127.0.0.1,localhost`,
+  );
+
+  // Pass model overrides and SDK config so the container uses the same settings as the host
+  const passthroughEnvVars = [
+    'ANTHROPIC_BASE_URL',
+    'ANTHROPIC_DEFAULT_OPUS_MODEL',
+    'ANTHROPIC_DEFAULT_SONNET_MODEL',
+    'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+    'ANTHROPIC_MODEL',
+    'ANTHROPIC_SMALL_FAST_MODEL',
+    'CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS',
+  ];
+  const passthroughFromFile = readEnvFile(passthroughEnvVars);
+  for (const key of passthroughEnvVars) {
+    const val = process.env[key] || passthroughFromFile[key];
+    if (val) args.push('-e', `${key}=${val}`);
+  }
+
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
+
+  // Pass GPU access to containers when NVIDIA runtime is available
+  args.push(...gpuArgs());
 
   // Run as host user so bind-mounted files are accessible.
   // Skip when running as root (uid 0), as the container's node user (uid 1000),
@@ -290,7 +634,47 @@ async function buildContainerArgs(
 
   args.push(CONTAINER_IMAGE);
 
-  return args;
+  return { args, mcpToken };
+}
+
+/**
+ * Resolve which MCP tools a coworker is allowed to use.
+ * Priority: group.allowedMcpTools (DB) > coworker-types.json > base tier defaults.
+ * mcp__nanoclaw__* is always added by the agent-runner, not here.
+ */
+function resolveAllowedMcpTools(
+  group: RegisteredGroup,
+  isMain: boolean,
+): string[] | undefined {
+  // If explicitly set on the group (custom coworker or DB override), use it
+  if (group.allowedMcpTools && group.allowedMcpTools.length > 0) {
+    return group.allowedMcpTools;
+  }
+
+  // If typed coworker, look up from coworker-types.json
+  if (group.coworkerType) {
+    try {
+      const typesPath = path.join(
+        process.cwd(),
+        'groups',
+        'coworker-types.json',
+      );
+      const types = JSON.parse(fs.readFileSync(typesPath, 'utf-8'));
+      const entry = types[group.coworkerType];
+      if (entry?.allowedMcpTools) {
+        return entry.allowedMcpTools;
+      }
+    } catch {
+      /* coworker-types.json missing or invalid */
+    }
+  }
+
+  // Default MCP tools — configurable via env, empty by default (skill-neutral)
+  const raw = process.env.DEFAULT_MCP_TOOLS || '';
+  return raw
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
 }
 
 export async function runContainerAgent(
@@ -300,6 +684,15 @@ export async function runContainerAgent(
   onOutput?: (output: ContainerOutput) => Promise<void>,
 ): Promise<ContainerOutput> {
   const startTime = Date.now();
+
+  // Resolve MCP tool permissions and inject into input
+  if (!input.allowedMcpTools) {
+    input.allowedMcpTools = resolveAllowedMcpTools(group, input.isMain);
+  }
+
+  // Inject auto-discovered tool inventory so agent-runner can build disallowedTools
+  // without maintaining a hardcoded list.
+  input.mcpToolInventory = getDiscoveredToolInventory();
 
   const groupDir = resolveGroupFolderPath(group.folder);
   fs.mkdirSync(groupDir, { recursive: true });
@@ -311,9 +704,11 @@ export async function runContainerAgent(
   const agentIdentifier = input.isMain
     ? undefined
     : group.folder.toLowerCase().replace(/_/g, '-');
-  const containerArgs = await buildContainerArgs(
+  const { args: containerArgs, mcpToken } = await buildContainerArgs(
     mounts,
     containerName,
+    group.folder,
+    input.allowedMcpTools || [],
     agentIdentifier,
   );
 
@@ -325,7 +720,9 @@ export async function runContainerAgent(
         (m) =>
           `${m.hostPath} -> ${m.containerPath}${m.readonly ? ' (ro)' : ''}`,
       ),
-      containerArgs: containerArgs.join(' '),
+      containerArgs: containerArgs
+        .join(' ')
+        .replace(/MCP_PROXY_TOKEN=[^\s]+/, 'MCP_PROXY_TOKEN=<redacted>'),
     },
     'Container mount configuration',
   );
@@ -404,7 +801,14 @@ export async function runContainerAgent(
             resetTimeout();
             // Call onOutput for all markers (including null results)
             // so idle timers start even for "silent" query completions.
-            outputChain = outputChain.then(() => onOutput(parsed));
+            outputChain = outputChain
+              .then(() => onOutput(parsed))
+              .catch((err) => {
+                logger.error(
+                  { group: group.name, error: err },
+                  'onOutput callback failed — continuing chain',
+                );
+              });
           } catch (err) {
             logger.warn(
               { group: group.name, error: err },
@@ -463,7 +867,18 @@ export async function runContainerAgent(
 
     let timeout = setTimeout(killOnTimeout, timeoutMs);
 
-    // Reset the timeout whenever there's activity (streaming output)
+    // Absolute lifetime cap — container cannot live longer than this regardless of activity.
+    // 3x the configured timeout, minimum 1 hour.
+    const absoluteMaxMs = Math.max(configTimeout * 3, 3_600_000);
+    const absoluteTimeout = setTimeout(() => {
+      logger.warn(
+        { group: group.name, containerName, absoluteMaxMs },
+        'Container hit absolute lifetime cap, killing',
+      );
+      killOnTimeout();
+    }, absoluteMaxMs);
+
+    // Reset the idle timeout whenever there's activity (streaming output)
     const resetTimeout = () => {
       clearTimeout(timeout);
       timeout = setTimeout(killOnTimeout, timeoutMs);
@@ -471,7 +886,37 @@ export async function runContainerAgent(
 
     container.on('close', (code) => {
       clearTimeout(timeout);
+      clearTimeout(absoluteTimeout);
+      if (mcpToken) revokeContainerToken(mcpToken);
       const duration = Date.now() - startTime;
+
+      // Notify dashboard that this container has stopped so status flips to idle.
+      // Only if dashboard is installed. The SDK may not fire SessionEnd/Stop
+      // on kill/timeout, so we send it from the host.
+      if (fs.existsSync(path.join(process.cwd(), 'dashboard', 'server.ts'))) {
+        const dashPort = process.env.DASHBOARD_PORT || '3737';
+        const body = JSON.stringify({
+          event: 'SessionEnd',
+          session_id: input.sessionId || '',
+          timestamp: new Date().toISOString(),
+        });
+        const req = http.request(
+          {
+            hostname: '127.0.0.1',
+            port: parseInt(dashPort, 10),
+            path: '/api/hook-event',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Group-Folder': group.folder,
+              'Content-Length': Buffer.byteLength(body),
+            },
+          },
+          () => {},
+        );
+        req.on('error', () => {});
+        req.end(body);
+      }
 
       if (timedOut) {
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
@@ -497,13 +942,17 @@ export async function runContainerAgent(
             { group: group.name, containerName, duration, code },
             'Container timed out after output (idle cleanup)',
           );
-          outputChain.then(() => {
-            resolve({
-              status: 'success',
-              result: null,
-              newSessionId,
+          outputChain
+            .then(() => {
+              resolve({
+                status: 'success',
+                result: null,
+                newSessionId,
+              });
+            })
+            .catch(() => {
+              resolve({ status: 'success', result: null, newSessionId });
             });
-          });
           return;
         }
 
@@ -555,7 +1004,9 @@ export async function runContainerAgent(
         }
         logLines.push(
           `=== Container Args ===`,
-          containerArgs.join(' '),
+          containerArgs
+            .join(' ')
+            .replace(/MCP_PROXY_TOKEN=[^\s]+/, 'MCP_PROXY_TOKEN=<redacted>'),
           ``,
           `=== Mounts ===`,
           mounts
@@ -611,17 +1062,21 @@ export async function runContainerAgent(
 
       // Streaming mode: wait for output chain to settle, return completion marker
       if (onOutput) {
-        outputChain.then(() => {
-          logger.info(
-            { group: group.name, duration, newSessionId },
-            'Container completed (streaming mode)',
-          );
-          resolve({
-            status: 'success',
-            result: null,
-            newSessionId,
+        outputChain
+          .then(() => {
+            logger.info(
+              { group: group.name, duration, newSessionId },
+              'Container completed (streaming mode)',
+            );
+            resolve({
+              status: 'success',
+              result: null,
+              newSessionId,
+            });
+          })
+          .catch(() => {
+            resolve({ status: 'success', result: null, newSessionId });
           });
-        });
         return;
       }
 

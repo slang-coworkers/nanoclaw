@@ -157,6 +157,24 @@ function createSchema(database: Database.Database): void {
   } catch {
     /* columns already exist */
   }
+
+  // Add coworker_type column for re-composing CLAUDE.md at container startup
+  try {
+    database.exec(
+      `ALTER TABLE registered_groups ADD COLUMN coworker_type TEXT`,
+    );
+  } catch {
+    /* column already exists */
+  }
+
+  // Add allowed_mcp_tools column for per-coworker MCP tool restrictions
+  try {
+    database.exec(
+      `ALTER TABLE registered_groups ADD COLUMN allowed_mcp_tools TEXT`,
+    );
+  } catch {
+    /* column already exists */
+  }
 }
 
 export function initDatabase(): void {
@@ -284,6 +302,11 @@ export function setLastGroupSync(): void {
  * Only call this for registered groups where message history is needed.
  */
 export function storeMessage(msg: NewMessage): void {
+  // Ensure the chat exists so the FK constraint is satisfied.
+  // This handles races where a group is deleted while messages are in-flight.
+  db.prepare(
+    `INSERT OR IGNORE INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)`,
+  ).run(msg.chat_jid, msg.chat_jid, msg.timestamp);
   db.prepare(
     `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, reply_to_message_id, reply_to_message_content, reply_to_sender_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
@@ -532,6 +555,17 @@ export function updateTaskAfterRun(
 }
 
 export function logTaskRun(log: TaskRunLog): void {
+  // Guard: skip if the referenced task no longer exists (deleted while in-flight)
+  const exists = db
+    .prepare('SELECT 1 FROM scheduled_tasks WHERE id = ?')
+    .get(log.task_id);
+  if (!exists) {
+    logger.warn(
+      { taskId: log.task_id },
+      'Skipping task run log — task no longer exists',
+    );
+    return;
+  }
   db.prepare(
     `
     INSERT INTO task_run_logs (task_id, run_at, duration_ms, status, result, error)
@@ -609,6 +643,8 @@ export function getRegisteredGroup(
         container_config: string | null;
         requires_trigger: number | null;
         is_main: number | null;
+        coworker_type: string | null;
+        allowed_mcp_tools: string | null;
       }
     | undefined;
   if (!row) return undefined;
@@ -628,9 +664,13 @@ export function getRegisteredGroup(
     containerConfig: row.container_config
       ? JSON.parse(row.container_config)
       : undefined,
+    coworkerType: row.coworker_type || undefined,
     requiresTrigger:
       row.requires_trigger === null ? undefined : row.requires_trigger === 1,
     isMain: row.is_main === 1 ? true : undefined,
+    allowedMcpTools: row.allowed_mcp_tools
+      ? JSON.parse(row.allowed_mcp_tools)
+      : undefined,
   };
 }
 
@@ -639,8 +679,8 @@ export function setRegisteredGroup(jid: string, group: RegisteredGroup): void {
     throw new Error(`Invalid group folder "${group.folder}" for JID ${jid}`);
   }
   db.prepare(
-    `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main, coworker_type, allowed_mcp_tools)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     jid,
     group.name,
@@ -648,9 +688,16 @@ export function setRegisteredGroup(jid: string, group: RegisteredGroup): void {
     group.trigger,
     group.added_at,
     group.containerConfig ? JSON.stringify(group.containerConfig) : null,
-    group.requiresTrigger === undefined ? 1 : group.requiresTrigger ? 1 : 0,
+    group.requiresTrigger === true ? 1 : 0,
     group.isMain ? 1 : 0,
+    group.coworkerType || null,
+    group.allowedMcpTools ? JSON.stringify(group.allowedMcpTools) : null,
   );
+  // Ensure a chats row exists so messages can reference this JID
+  // (messages table has FK constraint on chats.jid)
+  db.prepare(
+    'INSERT OR IGNORE INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)',
+  ).run(jid, group.name, new Date().toISOString());
 }
 
 export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
@@ -663,6 +710,8 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
     container_config: string | null;
     requires_trigger: number | null;
     is_main: number | null;
+    coworker_type: string | null;
+    allowed_mcp_tools: string | null;
   }>;
   const result: Record<string, RegisteredGroup> = {};
   for (const row of rows) {
@@ -684,6 +733,10 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
       requiresTrigger:
         row.requires_trigger === null ? undefined : row.requires_trigger === 1,
       isMain: row.is_main === 1 ? true : undefined,
+      coworkerType: row.coworker_type || undefined,
+      allowedMcpTools: row.allowed_mcp_tools
+        ? JSON.parse(row.allowed_mcp_tools)
+        : undefined,
     };
   }
   return result;

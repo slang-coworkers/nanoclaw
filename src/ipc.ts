@@ -2,10 +2,17 @@ import fs from 'fs';
 import path from 'path';
 
 import { CronExpressionParser } from 'cron-parser';
+import yaml from 'js-yaml';
 
 import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
 import { AvailableGroup } from './container-runner.js';
-import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
+import {
+  createTask,
+  deleteTask,
+  getTaskById,
+  storeMessage,
+  updateTask,
+} from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
@@ -23,6 +30,7 @@ export interface IpcDeps {
     registeredJids: Set<string>,
   ) => void;
   onTasksChanged: () => void;
+  spawnInteractive?: (jid: string) => Promise<boolean>;
 }
 
 let ipcWatcherRunning = false;
@@ -82,8 +90,19 @@ export function startIpcWatcher(deps: IpcDeps): void {
                   (targetGroup && targetGroup.folder === sourceGroup)
                 ) {
                   await deps.sendMessage(data.chatJid, data.text);
+                  // Store IPC reply in DB so dashboard can display it
+                  storeMessage({
+                    id: `ipc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    chat_jid: data.chatJid,
+                    sender: data.sender || 'assistant',
+                    sender_name: data.sender || sourceGroup,
+                    content: data.text,
+                    timestamp: new Date().toISOString(),
+                    is_from_me: true,
+                    is_bot_message: true,
+                  });
                   logger.info(
-                    { chatJid: data.chatJid, sourceGroup },
+                    { chatJid: data.chatJid, sourceGroup, sender: data.sender },
                     'IPC message sent',
                   );
                 } else {
@@ -145,6 +164,55 @@ export function startIpcWatcher(deps: IpcDeps): void {
       } catch (err) {
         logger.error({ err, sourceGroup }, 'Error reading IPC tasks directory');
       }
+
+      // Process control files (e.g. spawn-interactive requests from dashboard)
+      const controlDir = path.join(ipcBaseDir, sourceGroup, 'control');
+      try {
+        if (fs.existsSync(controlDir)) {
+          const controlFiles = fs
+            .readdirSync(controlDir)
+            .filter((f) => f.endsWith('.json'));
+          for (const file of controlFiles) {
+            const filePath = path.join(controlDir, file);
+            try {
+              const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              fs.unlinkSync(filePath);
+              if (data.type === 'spawn_interactive' && deps.spawnInteractive) {
+                const entry = Object.entries(registeredGroups).find(
+                  ([, g]) => g.folder === sourceGroup,
+                );
+                if (entry) {
+                  const [jid] = entry;
+                  logger.info(
+                    { sourceGroup, jid },
+                    'Interactive spawn requested via IPC control',
+                  );
+                  deps
+                    .spawnInteractive(jid)
+                    .catch((err) =>
+                      logger.error(
+                        { sourceGroup, err },
+                        'Failed to spawn interactive container',
+                      ),
+                    );
+                }
+              }
+            } catch (err) {
+              logger.error(
+                { file, sourceGroup, err },
+                'Error processing IPC control file',
+              );
+              try {
+                fs.unlinkSync(filePath);
+              } catch {
+                /* ignore */
+              }
+            }
+          }
+        }
+      } catch {
+        /* control dir doesn't exist yet — that's fine */
+      }
     }
 
     setTimeout(processIpcFiles, IPC_POLL_INTERVAL);
@@ -173,6 +241,11 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    coworkerType?: string;
+    claudeMdAppend?: string;
+    allowedMcpTools?: string[];
+    // For append_learning
+    content?: string;
   },
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
@@ -424,7 +497,7 @@ export async function processTaskIpc(
       }
       break;
 
-    case 'register_group':
+    case 'register_group': {
       // Only main group can register new groups
       if (!isMain) {
         logger.warn(
@@ -441,6 +514,42 @@ export async function processTaskIpc(
           );
           break;
         }
+
+        // Extract coworkerType from data or nested containerConfig.
+        // If claudeMdAppend is also set, force coworkerType to null —
+        // they conflict (coworkerType rebuilds CLAUDE.md on every startup,
+        // destroying the appended content).
+        let containerConfig = data.containerConfig;
+        const coworkerType = data.claudeMdAppend
+          ? undefined
+          : data.coworkerType || (containerConfig as any)?.coworkerType;
+        // Remove coworkerType from containerConfig if it was nested there
+        if (containerConfig && (containerConfig as any).coworkerType) {
+          const { coworkerType: _, ...rest } = containerConfig as any;
+          containerConfig = Object.keys(rest).length ? rest : undefined;
+        }
+
+        // Coworkers manage their own project repos inside the container
+        // via skill-provided build instructions. No host mounts needed.
+
+        // Auto-resolve allowedMcpTools from coworker-types.json if not explicitly provided
+        let resolvedMcpTools = data.allowedMcpTools;
+        if (!resolvedMcpTools && coworkerType) {
+          try {
+            const typesPath = path.join(
+              process.cwd(),
+              'groups',
+              'coworker-types.json',
+            );
+            const types = JSON.parse(fs.readFileSync(typesPath, 'utf-8'));
+            if (types[coworkerType]?.allowedMcpTools) {
+              resolvedMcpTools = types[coworkerType].allowedMcpTools;
+            }
+          } catch {
+            /* coworker-types.json missing */
+          }
+        }
+
         // Defense in depth: agent cannot set isMain via IPC.
         // Preserve isMain from the existing registration so IPC config
         // updates (e.g. adding additionalMounts) don't strip the flag.
@@ -450,10 +559,102 @@ export async function processTaskIpc(
           folder: data.folder,
           trigger: data.trigger,
           added_at: new Date().toISOString(),
-          containerConfig: data.containerConfig,
-          requiresTrigger: data.requiresTrigger,
+          containerConfig,
+          requiresTrigger: data.requiresTrigger ?? false,
           isMain: existingGroup?.isMain,
+          coworkerType: coworkerType || undefined,
+          allowedMcpTools: resolvedMcpTools || undefined,
         });
+
+        // Create group folder and compose CLAUDE.md from manifest
+        const projectRoot = process.cwd();
+        const groupDir = path.join(projectRoot, 'groups', data.folder);
+        fs.mkdirSync(groupDir, { recursive: true });
+        const claudeMd = path.join(groupDir, 'CLAUDE.md');
+        if (!fs.existsSync(claudeMd)) {
+          const templatesDir = path.join(projectRoot, 'groups', 'templates');
+          const manifestPath = path.join(
+            templatesDir,
+            'manifests',
+            'coworker.yaml',
+          );
+          if (fs.existsSync(manifestPath)) {
+            try {
+              const manifest = yaml.load(
+                fs.readFileSync(manifestPath, 'utf-8'),
+              ) as any;
+              const basePath = path.join(
+                projectRoot,
+                'groups',
+                'global',
+                'CLAUDE.md',
+              );
+              let composed = fs.existsSync(basePath)
+                ? fs.readFileSync(basePath, 'utf-8')
+                : '';
+              for (const section of manifest.sections || []) {
+                const sPath = path.join(
+                  templatesDir,
+                  'sections',
+                  `${section}.md`,
+                );
+                if (fs.existsSync(sPath)) {
+                  composed += `\n\n---\n\n${fs.readFileSync(sPath, 'utf-8')}`;
+                }
+              }
+              if (manifest.project_overlays) {
+                const projDir = path.join(templatesDir, 'projects');
+                if (fs.existsSync(projDir)) {
+                  for (const proj of fs.readdirSync(projDir).sort()) {
+                    const f = path.join(projDir, proj, 'coworker-base.md');
+                    if (fs.existsSync(f))
+                      composed += `\n\n---\n\n${fs.readFileSync(f, 'utf-8')}`;
+                  }
+                }
+              }
+              if (data.claudeMdAppend)
+                composed += `\n\n---\n\n${data.claudeMdAppend}`;
+              fs.writeFileSync(claudeMd, composed);
+              logger.info(
+                { folder: data.folder },
+                'Composed CLAUDE.md from coworker manifest',
+              );
+            } catch (err) {
+              logger.warn(
+                { folder: data.folder, err },
+                'Manifest composition failed, falling back',
+              );
+              const globalMd = path.join(
+                projectRoot,
+                'groups',
+                'global',
+                'CLAUDE.md',
+              );
+              if (fs.existsSync(globalMd)) fs.copyFileSync(globalMd, claudeMd);
+              if (data.claudeMdAppend)
+                fs.appendFileSync(
+                  claudeMd,
+                  `\n\n---\n\n${data.claudeMdAppend}`,
+                );
+            }
+          } else {
+            const globalMd = path.join(
+              projectRoot,
+              'groups',
+              'global',
+              'CLAUDE.md',
+            );
+            if (fs.existsSync(globalMd)) fs.copyFileSync(globalMd, claudeMd);
+            if (data.claudeMdAppend)
+              fs.appendFileSync(claudeMd, `\n\n---\n\n${data.claudeMdAppend}`);
+          }
+        } else if (data.claudeMdAppend) {
+          fs.appendFileSync(claudeMd, `\n\n---\n\n${data.claudeMdAppend}`);
+          logger.info(
+            { folder: data.folder },
+            'Appended custom content to existing CLAUDE.md',
+          );
+        }
       } else {
         logger.warn(
           { data },
@@ -461,6 +662,35 @@ export async function processTaskIpc(
         );
       }
       break;
+    }
+
+    case 'append_learning': {
+      if (!data.content) {
+        logger.warn({ sourceGroup }, 'Missing content in append_learning IPC');
+        break;
+      }
+      const learningsDir = path.join(
+        process.cwd(),
+        'groups',
+        'global',
+        'learnings',
+      );
+      fs.mkdirSync(learningsDir, { recursive: true });
+      const filename = `${sourceGroup}-${Date.now()}.md`;
+      fs.writeFileSync(path.join(learningsDir, filename), data.content);
+
+      // Maintain INDEX.md so agents can scan learnings without reading every file
+      const title =
+        data.content.match(/^#\s+(.+)$/m)?.[1] || 'Untitled learning';
+      const indexLine = `- [${title}](${filename}) — from ${sourceGroup} (${new Date().toISOString().split('T')[0]})\n`;
+      fs.appendFileSync(path.join(learningsDir, 'INDEX.md'), indexLine);
+
+      logger.info(
+        { sourceGroup, filename },
+        'Learning appended to global via IPC',
+      );
+      break;
+    }
 
     default:
       logger.warn({ type: data.type }, 'Unknown IPC task type');

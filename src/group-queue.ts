@@ -55,6 +55,10 @@ export class GroupQueue {
     return state;
   }
 
+  getActiveCount(): number {
+    return this.activeCount;
+  }
+
   setProcessMessagesFn(fn: (groupJid: string) => Promise<boolean>): void {
     this.processMessagesFn = fn;
   }
@@ -127,6 +131,55 @@ export class GroupQueue {
     this.runTask(groupJid, { id: taskId, groupJid, fn }).catch((err) =>
       logger.error({ groupJid, taskId, err }, 'Unhandled error in runTask'),
     );
+  }
+
+  /**
+   * Spawn a container in interactive mode (no initial query).
+   * Returns false if a container is already active or at concurrency limit.
+   */
+  async spawnInteractive(
+    groupJid: string,
+    runFn: (groupJid: string) => Promise<boolean>,
+  ): Promise<boolean> {
+    if (this.shuttingDown) return false;
+
+    const state = this.getGroup(groupJid);
+    if (state.active) {
+      logger.debug(
+        { groupJid },
+        'Container already active, skipping interactive spawn',
+      );
+      return false;
+    }
+
+    if (this.activeCount >= MAX_CONCURRENT_CONTAINERS) {
+      logger.debug(
+        { groupJid },
+        'At concurrency limit, cannot spawn interactive',
+      );
+      return false;
+    }
+
+    state.active = true;
+    state.idleWaiting = false;
+    state.isTaskContainer = false;
+    this.activeCount++;
+
+    try {
+      const success = await runFn(groupJid);
+      if (success) state.retryCount = 0;
+      return success;
+    } catch (err) {
+      logger.error({ groupJid, err }, 'Error in interactive spawn');
+      return false;
+    } finally {
+      state.active = false;
+      state.process = null;
+      state.containerName = null;
+      state.groupFolder = null;
+      this.activeCount--;
+      this.drainGroup(groupJid);
+    }
   }
 
   registerProcess(

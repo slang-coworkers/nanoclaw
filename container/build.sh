@@ -13,7 +13,14 @@ CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-docker}"
 echo "Building NanoClaw agent container image..."
 echo "Image: ${IMAGE_NAME}:${TAG}"
 
-${CONTAINER_RUNTIME} build -t "${IMAGE_NAME}:${TAG}" .
+# Auto-detect GPU: enable GPU packages if nvidia-smi is available
+BUILD_ARGS=""
+if command -v nvidia-smi &>/dev/null; then
+  echo "NVIDIA GPU detected — building with GPU support (CUDA, Vulkan, X11)"
+  BUILD_ARGS="--build-arg ENABLE_GPU=1"
+fi
+
+${CONTAINER_RUNTIME} build ${BUILD_ARGS} -t "${IMAGE_NAME}:${TAG}" .
 
 echo ""
 echo "Build complete!"

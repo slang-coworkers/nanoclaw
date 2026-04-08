@@ -23,11 +23,14 @@
   "dependencies": {
     "@onecli-sh/sdk": "^0.2.0",
     "better-sqlite3": "11.10.0",
-    "cron-parser": "5.5.0"
+    "cron-parser": "5.5.0",
+    "js-yaml": "^4.1.1",
+    "supergateway": "^3.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@types/better-sqlite3": "^7.6.12",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.0",
     "eslint": "^9.35.0",
     "eslint-plugin-no-catch-all": "^1.1.0",

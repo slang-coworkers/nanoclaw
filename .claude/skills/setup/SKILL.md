@@ -50,6 +50,15 @@ Already configured. Continue.
 
 **Verify:** `git remote -v` should show `origin` → user's repo, `upstream` → `qwibitai/nanoclaw.git`.
 
+### Git identity
+
+Ensure git identity is configured (required for merging skill branches):
+
+```bash
+git config user.name || git config user.name "NanoClaw Setup"
+git config user.email || git config user.email "setup@nanoclaw.local"
+```
+
 ## 1. Bootstrap (Node.js + Dependencies)
 
 Run `bash setup.sh` and parse the status block.
@@ -241,27 +250,30 @@ Verify the proxy starts: `npm run dev` should show "Credential proxy listening" 
 
 ## 5. Set Up Channels
 
-AskUserQuestion (multiSelect): Which messaging channels do you want to enable?
+AskUserQuestion (multiSelect): Which channels do you want to enable?
+- Dashboard — real-time pixel office UI for agent observability (no credentials needed, recommended)
 - WhatsApp (authenticates via QR code or pairing code)
 - Telegram (authenticates via bot token from @BotFather)
 - Slack (authenticates via Slack app with Socket Mode)
 - Discord (authenticates via Discord bot token)
 
-**Delegate to each selected channel's own skill.** Each channel skill handles its own code installation, authentication, registration, and JID resolution. This avoids duplicating channel-specific logic and ensures JIDs are always correct.
+**Dashboard is recommended as a default** — it provides a web UI for chatting with agents, observing their work, and managing coworkers. No credentials or external services needed. It works standalone or alongside any messaging channel.
 
-For each selected channel, invoke its skill:
+**Delegate to each selection's own skill.** Each skill handles its own code installation (via `git merge` of the skill branch), authentication, registration, and configuration.
 
+For each selection, invoke its skill:
+
+- **Dashboard:** Invoke `/add-dashboard`
 - **WhatsApp:** Invoke `/add-whatsapp`
 - **Telegram:** Invoke `/add-telegram`
 - **Slack:** Invoke `/add-slack`
 - **Discord:** Invoke `/add-discord`
 
-Each skill will:
+Each channel skill will:
 1. Install the channel code (via `git merge` of the skill branch)
-2. Collect credentials/tokens and write to `.env`
-3. Authenticate (WhatsApp QR/pairing, or verify token-based connection)
-4. Register the chat with the correct JID format
-5. Build and verify
+2. Collect credentials/tokens and write to `.env` (if needed)
+3. Authenticate and register the chat
+4. Build and verify
 
 **After all channel skills complete**, install dependencies and rebuild — channel merges may introduce new packages:
 
@@ -269,7 +281,17 @@ Each skill will:
 npm install && npm run build
 ```
 
-If the build fails, read the error output and fix it (usually a missing dependency). Then continue to step 6.
+If the build fails, read the error output and fix it (usually a missing dependency). Then continue to step 5b.
+
+## 5b. Project Integrations
+
+**IMPORTANT: You MUST ask this question. Do NOT skip to step 6.**
+
+AskUserQuestion: Would you like to add Slang compiler support? This adds a multi-agent coworker system with specialist roles for building, exploring, and maintaining the Slang shading language compiler.
+
+If yes, invoke `/add-slang`. Wait for it to complete fully (merge, container rebuild, configuration) before proceeding.
+
+Then continue to step 6.
 
 ## 6. Mount Allowlist
 

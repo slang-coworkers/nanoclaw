@@ -1,0 +1,15 @@
+# Composition manifest for coworker CLAUDE.md files
+# Base: upstream global (the generic assistant template)
+# Sections appended, then project overlays, then role templates
+
+base: upstream-global
+
+sections:
+  - dashboard-formatting
+  - coworker-extensions
+
+# Project overlays auto-appended from projects/*/coworker-base.md
+project_overlays: true
+
+# Role templates appended from container/skills/slang-templates/templates/{role}.md
+# based on the coworkerType field (e.g. "slang-ir+slang-backend")

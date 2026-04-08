@@ -1,0 +1,11 @@
+# Composition manifest for groups/main/CLAUDE.md (Orchestrator)
+# Base: upstream main (kept in sync, never modified)
+# Sections appended after the base content
+
+base: upstream-main
+
+sections:
+  - dashboard-formatting
+
+# Project overlays auto-appended from projects/*/main-overlay.md
+project_overlays: true

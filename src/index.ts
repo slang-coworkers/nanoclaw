@@ -1,3 +1,4 @@
+import { execFileSync, execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -10,10 +11,21 @@ import {
   GROUPS_DIR,
   IDLE_TIMEOUT,
   MAX_MESSAGES_PER_PROMPT,
+  MCP_PROXY_PORT,
   ONECLI_URL,
   POLL_INTERVAL,
   TIMEZONE,
 } from './config.js';
+import {
+  discoverTools,
+  setUpstreamPortResolver,
+  startMcpAuthProxy,
+} from './mcp-auth-proxy.js';
+import {
+  getRunningServerNames,
+  getServerUpstreamPort,
+  startMcpServers,
+} from './mcp-registry.js';
 import './channels/index.js';
 import {
   getChannelFactory,
@@ -27,7 +39,9 @@ import {
 } from './container-runner.js';
 import {
   cleanupOrphans,
+  ensureAgentNetwork,
   ensureContainerRuntimeRunning,
+  PROXY_BIND_HOST,
 } from './container-runtime.js';
 import {
   getAllChats,
@@ -73,6 +87,9 @@ let lastTimestamp = '';
 let sessions: Record<string, string> = {};
 let registeredGroups: Record<string, RegisteredGroup> = {};
 let lastAgentTimestamp: Record<string, string> = {};
+// Tracks optimistic cursor for piped messages — only committed to
+// lastAgentTimestamp when the container actually responds.
+const pipedCursor: Record<string, string> = {};
 let messageLoopRunning = false;
 
 const channels: Channel[] = [];
@@ -84,11 +101,46 @@ function ensureOneCLIAgent(jid: string, group: RegisteredGroup): void {
   if (group.isMain) return;
   const identifier = group.folder.toLowerCase().replace(/_/g, '-');
   onecli.ensureAgent({ name: group.name, identifier }).then(
-    (res) => {
+    async (res) => {
       logger.info(
         { jid, identifier, created: res.created },
         'OneCLI agent ensured',
       );
+      // Auto-assign all secrets to new agents so they have API access.
+      // Agents default to secretMode=selective with no secrets — without this,
+      // new coworkers spawned by the main agent would get 401 errors.
+      if (res.created) {
+        try {
+          // Fetch all secrets and the new agent's ID
+          const [secretsRes, agentsRes] = await Promise.all([
+            fetch(`${ONECLI_URL}/api/secrets`),
+            fetch(`${ONECLI_URL}/api/agents`),
+          ]);
+          const secrets = (await secretsRes.json()) as { id: string }[];
+          const agents = (await agentsRes.json()) as {
+            id: string;
+            identifier: string;
+          }[];
+          const agent = agents.find((a) => a.identifier === identifier);
+          if (agent && secrets.length > 0) {
+            const secretIds = secrets.map((s) => s.id);
+            await fetch(`${ONECLI_URL}/api/agents/${agent.id}/secrets`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ secretIds }),
+            });
+            logger.info(
+              { identifier, secretCount: secretIds.length },
+              'OneCLI secrets assigned to new agent',
+            );
+          }
+        } catch (err) {
+          logger.debug(
+            { identifier, err: String(err) },
+            'OneCLI secret assignment skipped',
+          );
+        }
+      }
     },
     (err) => {
       logger.debug(
@@ -97,6 +149,39 @@ function ensureOneCLIAgent(jid: string, group: RegisteredGroup): void {
       );
     },
   );
+}
+
+// Cached trigger patterns for multi-trigger routing (coworker @mentions)
+let coworkerTriggers: {
+  jid: string;
+  pattern: RegExp;
+  group: RegisteredGroup;
+}[] = [];
+
+// Maps coworker JID → original source JID for echo-back (e.g. dashboard:slang-cuda → tg:12345)
+const routeEchoMap = new Map<string, string>();
+const ROUTE_ECHO_MAP_MAX = 200;
+function setRouteEcho(cwJid: string, sourceJid: string): void {
+  if (routeEchoMap.size >= ROUTE_ECHO_MAP_MAX) {
+    // Evict oldest entry (first key in insertion order)
+    const oldest = routeEchoMap.keys().next().value;
+    if (oldest) routeEchoMap.delete(oldest);
+  }
+  routeEchoMap.set(cwJid, sourceJid);
+}
+
+function rebuildCoworkerTriggers(): void {
+  coworkerTriggers = [];
+  for (const [jid, group] of Object.entries(registeredGroups)) {
+    if (group.isMain) continue; // don't match main against itself
+    if (!group.trigger) continue;
+    try {
+      const escaped = group.trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      coworkerTriggers.push({ jid, pattern: new RegExp(escaped, 'i'), group });
+    } catch {
+      // Invalid pattern — skip
+    }
+  }
 }
 
 function loadState(): void {
@@ -110,6 +195,7 @@ function loadState(): void {
   }
   sessions = getAllSessions();
   registeredGroups = getAllRegisteredGroups();
+  rebuildCoworkerTriggers();
   logger.info(
     { groupCount: Object.keys(registeredGroups).length },
     'State loaded',
@@ -156,29 +242,14 @@ function registerGroup(jid: string, group: RegisteredGroup): void {
 
   registeredGroups[jid] = group;
   setRegisteredGroup(jid, group);
+  rebuildCoworkerTriggers();
 
   // Create group folder
   fs.mkdirSync(path.join(groupDir, 'logs'), { recursive: true });
 
-  // Copy CLAUDE.md template into the new group folder so agents have
-  // identity and instructions from the first run.  (Fixes #1391)
-  const groupMdFile = path.join(groupDir, 'CLAUDE.md');
-  if (!fs.existsSync(groupMdFile)) {
-    const templateFile = path.join(
-      GROUPS_DIR,
-      group.isMain ? 'main' : 'global',
-      'CLAUDE.md',
-    );
-    if (fs.existsSync(templateFile)) {
-      let content = fs.readFileSync(templateFile, 'utf-8');
-      if (ASSISTANT_NAME !== 'Andy') {
-        content = content.replace(/^# Andy$/m, `# ${ASSISTANT_NAME}`);
-        content = content.replace(/You are Andy/g, `You are ${ASSISTANT_NAME}`);
-      }
-      fs.writeFileSync(groupMdFile, content);
-      logger.info({ folder: group.folder }, 'Created CLAUDE.md from template');
-    }
-  }
+  // CLAUDE.md is composed by the IPC register_group handler (for new groups)
+  // or by container-runner.ts at container startup (for typed coworkers).
+  // We don't create it here to avoid racing with manifest-based composition.
 
   // Ensure a corresponding OneCLI agent exists (best-effort, non-blocking)
   ensureOneCLIAgent(jid, group);
@@ -212,6 +283,7 @@ export function _setRegisteredGroups(
   groups: Record<string, RegisteredGroup>,
 ): void {
   registeredGroups = groups;
+  rebuildCoworkerTriggers();
 }
 
 /**
@@ -295,7 +367,41 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
       logger.info({ group: group.name }, `Agent output: ${raw.length} chars`);
       if (text) {
         await channel.sendMessage(chatJid, text);
+        // Echo-back: if this coworker was triggered from another channel (e.g. Telegram),
+        // forward the reply there too so the user sees it in the original chat.
+        const echoJid = routeEchoMap.get(chatJid);
+        if (echoJid) {
+          const echoChannel = findChannel(channels, echoJid);
+          if (echoChannel) {
+            const prefix = `[${group.name}] `;
+            await echoChannel
+              .sendMessage(echoJid, prefix + text)
+              .catch((err) =>
+                logger.warn(
+                  { echoJid, err },
+                  'Failed to echo-back to source channel',
+                ),
+              );
+          }
+        }
         outputSentToUser = true;
+        // Store agent reply in DB so dashboard can display it
+        storeMessage({
+          id: `reply-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          chat_jid: chatJid,
+          sender: 'assistant',
+          sender_name: ASSISTANT_NAME,
+          content: text,
+          timestamp: new Date().toISOString(),
+          is_from_me: true,
+          is_bot_message: true,
+        });
+      }
+      // Commit piped cursor — the container actually processed piped messages
+      if (pipedCursor[chatJid]) {
+        lastAgentTimestamp[chatJid] = pipedCursor[chatJid];
+        delete pipedCursor[chatJid];
+        saveState();
       }
       // Only reset idle timer on actual results, not session-update markers (result: null)
       resetIdleTimer();
@@ -312,6 +418,11 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
 
   await channel.setTyping?.(chatJid, false);
   if (idleTimer) clearTimeout(idleTimer);
+
+  // Clear uncommitted piped cursor — if the container exited without
+  // responding to piped messages, lastAgentTimestamp still points before
+  // them so they'll be retried on the next container run.
+  delete pipedCursor[chatJid];
 
   if (output === 'error' || hadError) {
     // If we already sent output to the user, don't roll back the cursor —
@@ -438,6 +549,123 @@ async function runAgent(
   }
 }
 
+/**
+ * Spawn a container in interactive mode — session loaded, no initial query.
+ * The container enters IPC polling immediately, ready for follow-up messages.
+ */
+async function spawnInteractiveContainer(
+  group: RegisteredGroup,
+  chatJid: string,
+): Promise<'success' | 'error'> {
+  const isMain = group.isMain === true;
+  const sessionId = sessions[group.folder];
+
+  const tasks = getAllTasks();
+  writeTasksSnapshot(
+    group.folder,
+    isMain,
+    tasks.map((t) => ({
+      id: t.id,
+      groupFolder: t.group_folder,
+      prompt: t.prompt,
+      script: t.script || undefined,
+      schedule_type: t.schedule_type,
+      schedule_value: t.schedule_value,
+      status: t.status,
+      next_run: t.next_run,
+    })),
+  );
+
+  const availableGroups = getAvailableGroups();
+  writeGroupsSnapshot(
+    group.folder,
+    isMain,
+    availableGroups,
+    new Set(Object.keys(registeredGroups)),
+  );
+
+  try {
+    const output = await runContainerAgent(
+      group,
+      {
+        prompt: '',
+        sessionId,
+        groupFolder: group.folder,
+        chatJid,
+        isMain,
+        assistantName: ASSISTANT_NAME,
+        interactive: true,
+      },
+      (proc, containerName) =>
+        queue.registerProcess(chatJid, proc, containerName, group.folder),
+      async (output: ContainerOutput) => {
+        if (output.newSessionId) {
+          sessions[group.folder] = output.newSessionId;
+          setSession(group.folder, output.newSessionId);
+        }
+        if (output.result) {
+          const raw =
+            typeof output.result === 'string'
+              ? output.result
+              : JSON.stringify(output.result);
+          const text = raw
+            .replace(/<internal>[\s\S]*?<\/internal>/g, '')
+            .trim();
+          logger.info(
+            { group: group.name },
+            `Agent output: ${raw.length} chars`,
+          );
+          if (text) {
+            const channel = findChannel(channels, chatJid);
+            if (channel) await channel.sendMessage(chatJid, text);
+            storeMessage({
+              id: `reply-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              chat_jid: chatJid,
+              sender: 'assistant',
+              sender_name: ASSISTANT_NAME,
+              content: text,
+              timestamp: new Date().toISOString(),
+              is_from_me: true,
+              is_bot_message: true,
+            });
+          }
+        }
+        if (output.status === 'success') {
+          queue.notifyIdle(chatJid);
+        }
+      },
+    );
+
+    if (output.newSessionId) {
+      sessions[group.folder] = output.newSessionId;
+      setSession(group.folder, output.newSessionId);
+    }
+
+    if (output.status === 'error') {
+      const isStaleSession =
+        sessionId &&
+        output.error &&
+        /no conversation found|ENOENT.*\.jsonl|session.*not found/i.test(
+          output.error,
+        );
+      if (isStaleSession) {
+        delete sessions[group.folder];
+        deleteSession(group.folder);
+      }
+      logger.error(
+        { group: group.name, error: output.error },
+        'Interactive container error',
+      );
+      return 'error';
+    }
+
+    return 'success';
+  } catch (err) {
+    logger.error({ group: group.name, err }, 'Interactive container error');
+    return 'error';
+  }
+}
+
 async function startMessageLoop(): Promise<void> {
   if (messageLoopRunning) {
     logger.debug('Message loop already running, skipping duplicate start');
@@ -447,8 +675,40 @@ async function startMessageLoop(): Promise<void> {
 
   logger.info(`NanoClaw running (default trigger: ${DEFAULT_TRIGGER})`);
 
+  let lastHeartbeat = Date.now();
+  const HEARTBEAT_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
   while (true) {
+    // Periodic heartbeat so "alive but blind" states are visible in logs
+    if (Date.now() - lastHeartbeat >= HEARTBEAT_INTERVAL) {
+      const groupCount = Object.keys(registeredGroups).length;
+      logger.info(
+        { groupCount, activeContainers: queue.getActiveCount() },
+        'Heartbeat: message loop alive',
+      );
+      lastHeartbeat = Date.now();
+    }
     try {
+      // Reload registered groups from DB so externally-added groups
+      // (e.g. from the dashboard process) are picked up without restart.
+      const freshGroups = getAllRegisteredGroups();
+      const freshJids = Object.keys(freshGroups);
+      const staleJids = Object.keys(registeredGroups);
+      if (
+        freshJids.length !== staleJids.length ||
+        freshJids.some((j) => !registeredGroups[j])
+      ) {
+        registeredGroups = freshGroups;
+        rebuildCoworkerTriggers();
+        const added = freshJids.filter((j) => !staleJids.includes(j));
+        if (added.length > 0) {
+          logger.info({ added }, 'Picked up new groups from DB');
+          for (const jid of added) {
+            ensureOneCLIAgent(jid, freshGroups[jid]);
+          }
+        }
+      }
+
       const jids = Object.keys(registeredGroups);
       const { messages, newTimestamp } = getNewMessages(
         jids,
@@ -458,10 +718,6 @@ async function startMessageLoop(): Promise<void> {
 
       if (messages.length > 0) {
         logger.info({ count: messages.length }, 'New messages');
-
-        // Advance the "seen" cursor for all messages immediately
-        lastTimestamp = newTimestamp;
-        saveState();
 
         // Deduplicate by group
         const messagesByGroup = new Map<string, NewMessage[]>();
@@ -485,6 +741,66 @@ async function startMessageLoop(): Promise<void> {
           }
 
           const isMainGroup = group.isMain === true;
+
+          // Multi-trigger routing: when a message in the main chat contains
+          // @CoworkerName, re-route it to that coworker's group instead.
+          if (isMainGroup && coworkerTriggers.length > 0) {
+            const routedMessages: Set<string> = new Set();
+            for (const msg of groupMessages) {
+              if (msg.is_bot_message || msg.is_from_me) continue;
+              for (const {
+                jid: cwJid,
+                pattern,
+                group: cwGroup,
+              } of coworkerTriggers) {
+                if (pattern.test(msg.content)) {
+                  // Re-store message under coworker's JID
+                  storeMessage({
+                    ...msg,
+                    id: `route-${msg.id}`,
+                    chat_jid: cwJid,
+                  });
+                  // Enqueue the coworker or pipe to its active container
+                  const cwChannel = findChannel(channels, cwJid);
+                  if (cwChannel) {
+                    const cwPending = getMessagesSince(
+                      cwJid,
+                      lastAgentTimestamp[cwJid] || '',
+                      ASSISTANT_NAME,
+                    );
+                    const cwFormatted = formatMessages(
+                      cwPending.length > 0
+                        ? cwPending
+                        : [{ ...msg, chat_jid: cwJid }],
+                      TIMEZONE,
+                    );
+                    if (!queue.sendMessage(cwJid, cwFormatted)) {
+                      queue.enqueueMessageCheck(cwJid);
+                    }
+                  }
+                  routedMessages.add(msg.id);
+                  // Track source JID for echo-back (so coworker replies go back to Telegram)
+                  setRouteEcho(cwJid, chatJid);
+                  logger.info(
+                    { from: chatJid, to: cwJid, trigger: cwGroup.trigger },
+                    'Multi-trigger: routed message to coworker',
+                  );
+                  break; // first match wins
+                }
+              }
+            }
+            // If all messages were routed to coworkers, skip main processing
+            if (
+              routedMessages.size > 0 &&
+              groupMessages.every(
+                (m) =>
+                  routedMessages.has(m.id) || m.is_bot_message || m.is_from_me,
+              )
+            ) {
+              continue;
+            }
+          }
+
           const needsTrigger = !isMainGroup && group.requiresTrigger !== false;
 
           // For non-main groups, only act on trigger messages.
@@ -502,11 +818,13 @@ async function startMessageLoop(): Promise<void> {
             if (!hasTrigger) continue;
           }
 
-          // Pull all messages since lastAgentTimestamp so non-trigger
-          // context that accumulated between triggers is included.
+          // Pull all messages since the latest cursor (piped or committed)
+          // so non-trigger context that accumulated between triggers is included.
+          const effectiveCursor =
+            pipedCursor[chatJid] || lastAgentTimestamp[chatJid] || '';
           const allPending = getMessagesSince(
             chatJid,
-            getOrRecoverCursor(chatJid),
+            effectiveCursor,
             ASSISTANT_NAME,
             MAX_MESSAGES_PER_PROMPT,
           );
@@ -519,9 +837,11 @@ async function startMessageLoop(): Promise<void> {
               { chatJid, count: messagesToSend.length },
               'Piped messages to active container',
             );
-            lastAgentTimestamp[chatJid] =
+            // Only advance the optimistic piped cursor — lastAgentTimestamp
+            // stays put until the container actually responds, so if the
+            // container dies the messages are retried on the next run.
+            pipedCursor[chatJid] =
               messagesToSend[messagesToSend.length - 1].timestamp;
-            saveState();
             // Show typing indicator while the container processes the piped message
             channel
               .setTyping?.(chatJid, true)
@@ -533,6 +853,10 @@ async function startMessageLoop(): Promise<void> {
             queue.enqueueMessageCheck(chatJid);
           }
         }
+
+        // Advance cursor only after all messages have been dispatched
+        lastTimestamp = newTimestamp;
+        saveState();
       }
     } catch (err) {
       logger.error({ err }, 'Error in message loop');
@@ -565,6 +889,7 @@ function recoverPendingMessages(): void {
 
 function ensureContainerSystemRunning(): void {
   ensureContainerRuntimeRunning();
+  ensureAgentNetwork();
   cleanupOrphans();
 }
 
@@ -582,9 +907,50 @@ async function main(): Promise<void> {
 
   restoreRemoteControl();
 
+  // Start MCP server stack:
+  // 1. Registry auto-detects servers from container/mcp-servers/
+  // 2. Each server gets a supergateway on loopback (unreachable from containers)
+  // 3. Auth proxy binds to bridge IP with path-based routing (/mcp/<server>)
+  const MCP_INTERNAL_BASE_PORT = MCP_PROXY_PORT + 100;
+  const mcpServers = await startMcpServers(MCP_INTERNAL_BASE_PORT);
+  const mcpAuthProxy = startMcpAuthProxy(PROXY_BIND_HOST, MCP_PROXY_PORT);
+
+  // Connect auth proxy to registry for path-based routing
+  setUpstreamPortResolver((serverName) => {
+    if (serverName) return getServerUpstreamPort(serverName);
+    // Backwards compat: no server name → use first registered server
+    const names = getRunningServerNames();
+    return names.length > 0 ? getServerUpstreamPort(names[0]) : null;
+  });
+
+  // Discover tools from each running MCP server
+  for (const name of getRunningServerNames()) {
+    const port = getServerUpstreamPort(name);
+    if (port) await discoverTools(name, port);
+  }
+
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
+    mcpServers.stop();
+    mcpAuthProxy.stop();
+    // Stop all running nanoclaw containers so systemd doesn't have to SIGKILL them
+    try {
+      const names = execSync(
+        `docker ps --filter name=nanoclaw- --format '{{.Names}}'`,
+        { encoding: 'utf-8', timeout: 5000 },
+      ).trim();
+      if (names) {
+        const containers = names.split('\n').filter(Boolean);
+        logger.info(
+          { count: containers.length },
+          'Stopping containers on shutdown',
+        );
+        execFileSync('docker', ['stop', ...containers], { timeout: 30000 });
+      }
+    } catch {
+      // Best effort — containers will be cleaned up by --rm on exit
+    }
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);
@@ -730,6 +1096,14 @@ async function main(): Promise<void> {
     getAvailableGroups,
     writeGroupsSnapshot: (gf, im, ag, rj) =>
       writeGroupsSnapshot(gf, im, ag, rj),
+    spawnInteractive: async (jid: string) => {
+      const group = registeredGroups[jid];
+      if (!group) return false;
+      return queue.spawnInteractive(jid, async () => {
+        const result = await spawnInteractiveContainer(group, jid);
+        return result === 'success';
+      });
+    },
     onTasksChanged: () => {
       const tasks = getAllTasks();
       const taskRows = tasks.map((t) => ({

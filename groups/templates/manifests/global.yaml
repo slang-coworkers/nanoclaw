@@ -1,0 +1,12 @@
+# Composition manifest for groups/global/CLAUDE.md
+# Base: upstream global (kept in sync, never modified)
+# Sections appended after the base content
+
+base: upstream-global
+
+sections:
+  - dashboard-formatting
+  - coworker-extensions
+
+# Project overlays auto-appended from projects/*/global-overlay.md
+project_overlays: true

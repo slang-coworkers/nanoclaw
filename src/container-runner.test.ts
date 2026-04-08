@@ -11,6 +11,7 @@ vi.mock('./config.js', () => ({
   CONTAINER_IMAGE: 'nanoclaw-agent:latest',
   CONTAINER_MAX_OUTPUT_SIZE: 10485760,
   CONTAINER_TIMEOUT: 1800000, // 30min
+  MCP_PROXY_PORT: 8808,
   DATA_DIR: '/tmp/nanoclaw-test-data',
   GROUPS_DIR: '/tmp/nanoclaw-test-groups',
   IDLE_TIMEOUT: 1800000, // 30min
@@ -54,9 +55,11 @@ vi.mock('./mount-security.js', () => ({
 // Mock container-runtime
 vi.mock('./container-runtime.js', () => ({
   CONTAINER_RUNTIME_BIN: 'docker',
+  CONTAINER_HOST_GATEWAY: 'host.docker.internal',
   hostGatewayArgs: () => [],
   readonlyMountArgs: (h: string, c: string) => ['-v', `${h}:${c}:ro`],
   stopContainer: vi.fn(),
+  gpuArgs: () => [],
 }));
 
 // Mock OneCLI SDK
@@ -225,5 +228,53 @@ describe('container-runner timeout behavior', () => {
     const result = await resultPromise;
     expect(result.status).toBe('success');
     expect(result.newSessionId).toBe('session-456');
+  });
+});
+
+describe('skill-neutral composition', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    fakeProc = createFakeProcess();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('resolveAllowedMcpTools fallback is generic (no slang refs)', async () => {
+    const fs = await import('fs');
+    const existsSync = vi.mocked(fs.default.existsSync);
+    const readFileSync = vi.mocked(fs.default.readFileSync);
+
+    // Simulate no coworker-types.json and no dashboard (fallback path)
+    existsSync.mockReturnValue(false);
+    readFileSync.mockImplementation(() => {
+      throw new Error('file not found');
+    });
+
+    const { spawn } = await import('child_process');
+    const spawnMock = vi.mocked(spawn);
+
+    const resultPromise = runContainerAgent(
+      { ...testGroup, coworkerType: 'nonexistent-type' },
+      testInput,
+      () => {},
+    );
+
+    // Emit output and close
+    emitOutputMarker(fakeProc, {
+      status: 'success',
+      result: 'ok',
+    });
+    await vi.advanceTimersByTimeAsync(10);
+    fakeProc.emit('close', 0);
+    await vi.advanceTimersByTimeAsync(10);
+    await resultPromise;
+
+    // Spawn args must not contain slang-mcp tool references
+    const callArgs = spawnMock.mock.calls[0];
+    const argsStr = JSON.stringify(callArgs);
+    expect(argsStr).not.toContain('mcp__slang-mcp__');
   });
 });

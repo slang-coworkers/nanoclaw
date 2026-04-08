@@ -40,6 +40,8 @@ export interface RegisteredGroup {
   containerConfig?: ContainerConfig;
   requiresTrigger?: boolean; // Default: true for groups, false for solo chats
   isMain?: boolean; // True for the main control group (no trigger, elevated privileges)
+  coworkerType?: string; // e.g., "slang-testing" — used to re-compose CLAUDE.md at startup
+  allowedMcpTools?: string[]; // Exact MCP tool names beyond mcp__nanoclaw__* (e.g., "mcp__deepwiki__ask_question")
 }
 
 export interface NewMessage {
