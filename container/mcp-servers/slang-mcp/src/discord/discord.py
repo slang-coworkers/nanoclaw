@@ -349,7 +349,11 @@ def filter_message_data(message) -> dict:
     3. Removes rarely used fields and identifiers
     """
     # Core message data that's always included
+    guild_id = message.guild.id if message.guild else None
+    channel_id = message.channel.id if message.channel else None
     filtered = {
+        "id": str(message.id),
+        "url": f"https://discord.com/channels/{guild_id}/{channel_id}/{message.id}" if guild_id and channel_id else None,
         "content": message.content,
         "timestamp": message.created_at.isoformat(),
         "author": {
