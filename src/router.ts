@@ -208,10 +208,7 @@ function extractAndUpsertUser(event: InboundEvent): string | null {
   return userId;
 }
 
-function enforceAccess(
-  userId: string | null,
-  agentGroupId: string,
-): { allowed: boolean; reason: string } {
+function enforceAccess(userId: string | null, agentGroupId: string): { allowed: boolean; reason: string } {
   if (!userId) return { allowed: false, reason: 'unknown_user' };
   const decision = canAccessAgentGroup(userId, agentGroupId);
   if (decision.allowed) return { allowed: true, reason: decision.reason };

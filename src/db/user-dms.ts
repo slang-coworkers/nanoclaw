@@ -14,9 +14,9 @@ export function upsertUserDm(row: UserDm): void {
 }
 
 export function getUserDm(userId: string, channelType: string): UserDm | undefined {
-  return getDb()
-    .prepare('SELECT * FROM user_dms WHERE user_id = ? AND channel_type = ?')
-    .get(userId, channelType) as UserDm | undefined;
+  return getDb().prepare('SELECT * FROM user_dms WHERE user_id = ? AND channel_type = ?').get(userId, channelType) as
+    | UserDm
+    | undefined;
 }
 
 export function getUserDmsForUser(userId: string): UserDm[] {

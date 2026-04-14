@@ -269,7 +269,9 @@ describe('messaging group agents', () => {
     });
     createMessagingGroupAgent({ ...mga(), id: 'mga-2', messaging_group_id: 'mg-2' });
 
-    const dests = getDestinations('ag-1').map((d) => d.local_name).sort();
+    const dests = getDestinations('ag-1')
+      .map((d) => d.local_name)
+      .sort();
     expect(dests).toEqual(['gen', 'gen-2']);
   });
 });

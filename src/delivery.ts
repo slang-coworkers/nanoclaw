@@ -19,12 +19,7 @@ import {
   getSession,
   createPendingApproval,
 } from './db/sessions.js';
-import {
-  getAgentGroup,
-  createAgentGroup,
-  updateAgentGroup,
-  getAgentGroupByFolder,
-} from './db/agent-groups.js';
+import { getAgentGroup, createAgentGroup, updateAgentGroup, getAgentGroupByFolder } from './db/agent-groups.js';
 import { createDestination, getDestinationByName, hasDestination, normalizeName } from './db/agent-destinations.js';
 import { getMessagingGroup, getMessagingGroupByPlatform } from './db/messaging-groups.js';
 import { pickApprovalDelivery, pickApprover } from './access.js';
@@ -382,9 +377,7 @@ async function deliverMessage(
   if (msg.channel_type && msg.platform_id) {
     const mg = getMessagingGroupByPlatform(msg.channel_type, msg.platform_id);
     if (!mg) {
-      throw new Error(
-        `unknown messaging group for ${msg.channel_type}/${msg.platform_id} (message ${msg.id})`,
-      );
+      throw new Error(`unknown messaging group for ${msg.channel_type}/${msg.platform_id} (message ${msg.id})`);
     }
     const isOriginChat = session.messaging_group_id === mg.id;
     if (!isOriginChat && !hasDestination(session.agent_group_id, 'channel', mg.id)) {

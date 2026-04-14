@@ -12,9 +12,7 @@ export function addMember(row: AgentGroupMember): void {
 }
 
 export function removeMember(userId: string, agentGroupId: string): void {
-  getDb()
-    .prepare('DELETE FROM agent_group_members WHERE user_id = ? AND agent_group_id = ?')
-    .run(userId, agentGroupId);
+  getDb().prepare('DELETE FROM agent_group_members WHERE user_id = ? AND agent_group_id = ?').run(userId, agentGroupId);
 }
 
 export function getMembers(agentGroupId: string): AgentGroupMember[] {
