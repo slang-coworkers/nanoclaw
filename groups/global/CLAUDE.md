@@ -36,7 +36,9 @@ When working as a sub-agent or teammate, only use `send_message` if instructed t
 
 ## Your Workspace
 
-Files you create are saved in `/workspace/group/`. Use this for notes, research, or anything that should persist.
+Your working directory (cwd) is your workspace. If you were assigned a code repo, the full source code is already here — just use relative paths.
+
+There are NO `/workspace/extra/` or `/workspace/project/` paths. Do NOT look for them. Work in your current directory.
 
 ## Memory
 

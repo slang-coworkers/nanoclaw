@@ -241,6 +241,7 @@ msgTsTimer.unref?.();
 // Live status from hooks (group_folder -> latest state)
 const liveHookState = new Map<string, {
   tool?: string;
+  toolDescription?: string;
   notification?: string;
   status: CoworkerState['status'];
   ts: number;
@@ -598,10 +599,12 @@ function getState(): DashboardState {
         taskCount,
         color: getTypeColors()[type] || '#6B7280',
         lastToolUse: hookState?.tool || null,
+        lastToolDescription: hookState?.toolDescription || null,
         lastNotification: hookState?.notification || null,
         hookTimestamp: hookState?.ts || null,
         subagents,
         isAutoUpdate,
+        containerRunning,
         allowedMcpTools: resolveAllowedMcpTools(dbAllowedMcp, type !== 'unknown' && type !== 'coordinator' ? type : null, isMainGroup, types),
         disallowedMcpTools: [],
         lastMessageTs: lastMessageTsCache.get(folder) || null,
@@ -930,8 +933,17 @@ export async function handleRequest(req: import('http').IncomingMessage, res: im
         const isStopEvent = event.event === 'Stop' || event.event === 'SessionEnd';
         const isActiveEvent = !isStopEvent && event.event !== 'Notification';
         const nextStatus = classifyEventStatus(event, prev?.status || 'working');
+        // Extract tool description from tool_input for display
+        let toolDesc = prev?.toolDescription;
+        if (event.tool && event.tool_input && !isStopEvent) {
+          try {
+            const inp = typeof event.tool_input === 'string' ? JSON.parse(event.tool_input) : event.tool_input;
+            toolDesc = inp.description || inp.command?.slice(0, 80) || undefined;
+          } catch { /* ignore */ }
+        }
         liveHookState.set(event.group, {
           tool: isStopEvent ? undefined : (event.tool || prev?.tool),
+          toolDescription: isStopEvent ? undefined : toolDesc,
           notification: event.message || prev?.notification,
           status: nextStatus,
           ts: Date.now(),
@@ -2580,7 +2592,8 @@ export function startServer(port = PORT, host = DASHBOARD_HOST): import('http').
   const expireTimer = setInterval(() => {
     const now = Date.now();
     for (const [key, val] of liveHookState) {
-      if (now - val.ts > 30000) liveHookState.delete(key);
+      // Don't expire while agent is actively running (long builds can take minutes)
+      if (now - val.ts > 30000 && !val.agentActive) liveHookState.delete(key);
     }
     for (const [group, subagents] of liveSubagentState) {
       for (const [agentId, subagent] of subagents) {

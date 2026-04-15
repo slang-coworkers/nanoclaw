@@ -1,0 +1,21 @@
+{
+  "repos": {
+    "corvk": "D:/corvk"
+  },
+  "groups": [
+    {
+      "jid": "dashboard:main",
+      "name": "Main Orchestrator",
+      "folder": "main",
+      "trigger": "@Andy",
+      "isMain": true
+    },
+    {
+      "jid": "dashboard:corvk-qa",
+      "name": "corvk qa",
+      "folder": "corvk-qa",
+      "trigger": "@corvkqa",
+      "repo": "corvk"
+    }
+  ]
+}

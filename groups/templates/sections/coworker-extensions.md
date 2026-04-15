@@ -1,25 +1,20 @@
 ## Shared Learnings
 
-When you produce a result other agents might need (reports, findings, issue lists), save it to `/workspace/group/memory/` so they can read it directly from your group folder without querying the database.
-
-**At session start**, read `/workspace/global/learnings/INDEX.md` for a summary of discoveries shared by other coworkers. Read individual files only when relevant to your current task.
+When you produce a result other agents might need (reports, findings, issue lists), save it to `memory/` in your group folder so they can read it directly.
 
 **IMPORTANT: Always save learnings.** Whenever you solve a problem, find a workaround, discover undocumented behavior, or learn something non-obvious about the codebase — share it immediately via `append_learning`. This is how the team builds collective knowledge. Don't skip this even if the finding seems small.
 
-```bash
-cat > /workspace/ipc/tasks/learn_$(date +%s).json << 'EOF'
-{
-  "type": "append_learning",
-  "content": "# Discovery Title\n\nWhat you learned and why it matters."
-}
-EOF
-```
+Use the `mcp__nanoclaw__send_message` tool or write an IPC task file to share learnings with the team.
 
-This writes to the shared learnings directory on the host. Other coworkers will see it on their next session.
+## Your Working Directory
 
-Learnings paths:
-- **Read from**: `/workspace/global/learnings/` (non-main) or `/workspace/project/groups/global/learnings/` (main)
-- **Write via**: IPC `append_learning` task (as shown above)
+Your current working directory (cwd) IS your workspace. If you were assigned a code repo, the full source code is already here.
+
+**IMPORTANT:**
+- There are NO `/workspace/extra/`, `/workspace/project/`, or `/workspace/group/` paths. Those were Docker-era paths and do NOT exist.
+- Do NOT look for or reference `/workspace/` paths. They will not be found.
+- Use relative paths from your cwd for source code (e.g., `src/`, `external/`, `build/`)
+- Use `pwd` if you need to confirm where you are
 
 ## Available Subagents
 
@@ -44,18 +39,17 @@ If the task is vague, ask the user for clarification before proceeding.
 
 Subagents start with **zero context**. Every subagent prompt must include:
 
-1. **Workspace path** — `/workspace/group/` (or specific project dir)
-2. **Specific target** — file + function + line if known
-3. **What you already know** — findings from this session
-4. **Expected output** — exactly what to return (concise)
+1. **What to look at** — specific file + function + line if known
+2. **What you already know** — findings from this session
+3. **Expected output** — exactly what to return (concise)
 
 ```
 # Bad brief
 "explore the bug"
 
 # Good brief
-"In /workspace/group/<project>, trace why <function>() at
-<file.cpp> fails when <condition>. Issue #<N>. Return: the exact
+"In src/icd/rasterizer.cpp, trace why rasterize_tile() at
+line 420 fails when tile count > 256. Return: the exact
 condition that fails and the line number."
 ```
 
@@ -70,19 +64,19 @@ Run **sequentially** when one depends on the other:
 ## Progress Updates
 
 When working on long tasks (builds, scans, multi-step investigations), send brief progress updates via `mcp__nanoclaw__send_message` so the dashboard shows you're alive:
-- After completing each major step: `"Step 2/5 done — profiling results saved to memory/"`
+- After completing each major step: `"Step 2/5 done — profiling results saved"`
 - When hitting a blocker: `"Blocked: cmake needs libx11-dev. Installing and retrying."`
-- When finishing: `"Done — full report in memory/latest-report.md"`
+- When finishing: `"Done — full report saved"`
 
 Keep updates to one line. Don't send updates more often than every few minutes.
 
 ## Report Persistence
 
-After every report, save it so other coworkers can read it:
+After every report, save it to your working directory so other coworkers can read it:
 
 ```bash
-cp /workspace/group/memory/latest-report.md /workspace/group/memory/report-$(date +%Y-%m-%d).md 2>/dev/null
-cat > /workspace/group/memory/latest-report.md << 'EOF'
+mkdir -p memory
+cat > memory/latest-report.md << 'EOF'
 <your full report here>
 EOF
 ```

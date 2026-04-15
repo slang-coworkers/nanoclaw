@@ -79,22 +79,60 @@ This is the **main channel**, which has elevated privileges.
 
 ## Authentication
 
-Anthropic credentials must be either an API key from console.anthropic.com (`ANTHROPIC_API_KEY`) or a long-lived OAuth token from `claude setup-token` (`CLAUDE_CODE_OAUTH_TOKEN`). Short-lived tokens from the system keychain or `~/.claude/.credentials.json` expire within hours and can cause recurring container 401s. The `/setup` skill walks through this. OneCLI manages credentials (including Anthropic auth) — run `onecli --help`.
+Claude Code must be installed and logged in on this machine. Agents inherit the host's Claude Code authentication — no API keys or .env files needed.
 
-## Container Mounts
+## Workspace Layout
 
-Main has read-only access to the project, read-write access to the store (SQLite DB), and read-write access to its group folder:
+Agents run as local Node.js processes. Each agent gets its own **git worktree** — an isolated copy of the target repo. There are NO Docker containers or `/workspace/` paths.
 
-| Container Path | Host Path | Access |
-|----------------|-----------|--------|
-| `/workspace/project` | Project root | read-only |
-| `/workspace/project/store` | `store/` | read-write |
-| `/workspace/group` | `groups/main/` | read-write |
+**Main agent paths:**
+- Working directory: `groups/main/` (this group's files and memory)
+- SQLite database: `store/messages.db` (read-write)
+- All group folders: `groups/` directory
+- Agent worktrees: `data/worktrees/{folder}/` (each agent's isolated repo copy)
 
-Key paths inside the container:
-- `/workspace/project/store/messages.db` - SQLite database (read-write)
-- `/workspace/project/store/messages.db` (registered_groups table) - Group config
-- `/workspace/project/groups/` - All group folders
+**Sub-agent paths:**
+- Each agent's working directory (cwd) IS its git worktree — the full source code is there
+- Agents should work in their cwd, NOT reference absolute paths on the host
+- There are NO `/workspace/extra/` or `/workspace/project/` paths — those were Docker-era
+
+**When creating tasks for sub-agents:**
+- Do NOT use `/workspace/extra/` or `/workspace/project/` paths
+- Do NOT hardcode absolute host paths like `C:\Users\...\corvk`
+- Simply tell the agent what to do — the source code is already in its working directory
+- For paths outside the repo (like screenshot destinations), use absolute paths the user provided
+
+### corvk-specific task instructions
+
+corvk is a **Vulkan ICD** (Installable Client Driver) — a software rasterizer on CUDA. When creating tasks for corvk agents, ALWAYS include these instructions in the task prompt:
+
+**Building corvk:**
+```
+cmake --build build --config Release -j
+```
+This produces `libvulkan_corvk.dll` (or `.so`) and `build/corvk_icd.json`.
+
+**Running Vulkan apps WITH corvk (critical!):**
+Apps must be launched with `VK_ICD_FILENAMES` pointing to corvk's ICD manifest, otherwise they use the native GPU driver instead of corvk:
+```
+# Windows:
+$env:VK_ICD_FILENAMES = "<cwd>/build/corvk_icd.json"
+<app>.exe
+
+# Linux:
+VK_ICD_FILENAMES=./build/corvk_icd.json <app>
+```
+
+**Running Sascha Willems demos with corvk:**
+```
+$env:VK_ICD_FILENAMES = "<cwd>/build/corvk_icd.json"
+$env:CORVK_LOG_LEVEL = "info"
+D:\Vulkan\build\bin\bloom.exe
+```
+
+**IMPORTANT: If VK_ICD_FILENAMES is not set, the app runs on the native GPU driver, NOT corvk. Always set it.**
+
+Always include these instructions verbatim when composing task prompts for corvk agents. The agent's cwd contains the corvk source and build — use relative paths for corvk files (e.g., `build/corvk_icd.json`).
 
 ---
 
@@ -172,12 +210,15 @@ Fields:
 
 ### Adding a Group
 
-1. Query the database to find the group's JID
+1. Query the database to find the group's JID (for dashboard agents, use `dashboard:{folder}`)
 2. Ask the user whether the group should require a trigger word before registering
 3. Use the `register_group` MCP tool with the JID, name, folder, trigger, and the chosen `requiresTrigger` setting
-4. Optionally include `containerConfig` for additional mounts
-5. The group folder is created automatically: `/workspace/project/groups/{folder-name}/`
-6. Optionally create an initial `CLAUDE.md` for the group
+4. **To point the agent at a code repo**, include the `repo` field with a repo name from `repos.json` (in this group folder). This creates an isolated git worktree from that repo for the agent to work in. Example: `"repo": "corvk"`
+5. Alternatively, use `containerConfig: { workDir: "/absolute/path" }` for a custom path
+6. The group folder is created automatically: `/workspace/project/groups/{folder-name}/`
+7. Optionally create an initial `CLAUDE.md` for the group
+
+**Available repos**: Check `repos.json` in this group folder for named repos and their paths. When creating an agent that needs to work on code, always use the `repo` field so it gets its own isolated git worktree.
 
 Folder naming convention — channel prefix with underscore separator:
 - WhatsApp "Family Chat" → `whatsapp_family-chat`
@@ -186,31 +227,21 @@ Folder naming convention — channel prefix with underscore separator:
 - Slack "Engineering" → `slack_engineering`
 - Use lowercase, hyphens for the group name part
 
-#### Adding Additional Directories for a Group
+#### Pointing an Agent at a Repo
 
-Groups can have extra directories mounted. Add `containerConfig` to their entry:
+Use the `repo` field when registering a group. The repo name is resolved from `repos.json` in this group folder:
 
 ```json
 {
-  "1234567890@g.us": {
-    "name": "Dev Team",
-    "folder": "dev-team",
-    "trigger": "@Andy",
-    "added_at": "2026-01-31T12:00:00Z",
-    "containerConfig": {
-      "additionalMounts": [
-        {
-          "hostPath": "~/projects/webapp",
-          "containerPath": "webapp",
-          "readonly": false
-        }
-      ]
-    }
-  }
+  "jid": "dashboard:corvk-dev",
+  "name": "corvk dev",
+  "folder": "corvk-dev",
+  "trigger": "@corvkdev",
+  "repo": "corvk"
 }
 ```
 
-The directory will appear at `/workspace/extra/webapp` in that group's container.
+The agent automatically gets a git worktree from that repo as its working directory. The source code is in the agent's cwd — no extra paths needed.
 
 #### Sender Allowlist
 
@@ -307,3 +338,84 @@ If a user wants tasks running more than ~2x daily and a script can't reduce agen
 - Suggest restructuring with a script that checks the condition first
 - If the user needs an LLM to evaluate data, suggest using an API key with direct Anthropic API calls inside the script
 - Help the user find the minimum viable frequency
+
+
+---
+
+### Dashboard / web UI
+
+Markdown is fine (headings, links, bold, code blocks).
+
+When unsure which channel you're on, prefer plain text with minimal formatting.
+
+
+---
+
+### Dashboard / web UI
+
+Markdown is fine (headings, links, bold, code blocks).
+
+When unsure which channel you're on, prefer plain text with minimal formatting.
+
+
+---
+
+### Dashboard / web UI
+
+Markdown is fine (headings, links, bold, code blocks).
+
+When unsure which channel you're on, prefer plain text with minimal formatting.
+
+
+---
+
+### Dashboard / web UI
+
+Markdown is fine (headings, links, bold, code blocks).
+
+When unsure which channel you're on, prefer plain text with minimal formatting.
+
+
+---
+
+### Dashboard / web UI
+
+Markdown is fine (headings, links, bold, code blocks).
+
+When unsure which channel you're on, prefer plain text with minimal formatting.
+
+
+---
+
+### Dashboard / web UI
+
+Markdown is fine (headings, links, bold, code blocks).
+
+When unsure which channel you're on, prefer plain text with minimal formatting.
+
+
+---
+
+### Dashboard / web UI
+
+Markdown is fine (headings, links, bold, code blocks).
+
+When unsure which channel you're on, prefer plain text with minimal formatting.
+
+
+---
+
+### Dashboard / web UI
+
+Markdown is fine (headings, links, bold, code blocks).
+
+When unsure which channel you're on, prefer plain text with minimal formatting.
+
+
+---
+
+### Dashboard / web UI
+
+Markdown is fine (headings, links, bold, code blocks).
+
+When unsure which channel you're on, prefer plain text with minimal formatting.

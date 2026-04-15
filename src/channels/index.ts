@@ -6,10 +6,15 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SKIP = new Set(['index.js', 'registry.js']);
+const SKIP = new Set(['index.js', 'registry.js', 'index.ts', 'registry.ts']);
 
 for (const file of readdirSync(__dirname).sort()) {
-  if (file.endsWith('.js') && !file.endsWith('.test.js') && !SKIP.has(file)) {
+  const isJs = file.endsWith('.js') && !file.endsWith('.test.js');
+  const isTs =
+    file.endsWith('.ts') &&
+    !file.endsWith('.test.ts') &&
+    !file.endsWith('.d.ts');
+  if ((isJs || isTs) && !SKIP.has(file)) {
     await import(pathToFileURL(join(__dirname, file)).href);
   }
 }

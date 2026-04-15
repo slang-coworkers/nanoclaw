@@ -1,363 +1,185 @@
 ---
 name: setup
-description: Run initial NanoClaw setup. Use when user wants to install dependencies, authenticate messaging channels, register their main channel, or start the background services. Triggers on "setup", "install", "configure nanoclaw", or first-time setup requests.
+description: Run initial NanoClaw local setup. Use when user wants to install dependencies, configure repos, compile the agent runner, or start the dashboard. Triggers on "setup", "install", "configure nanoclaw", or first-time setup requests.
 ---
 
-# NanoClaw Setup
+# NanoClaw Local Setup
 
-Run setup steps automatically. Only pause when user action is required (channel authentication, configuration choices). Setup uses `bash setup.sh` for bootstrap, then `npx tsx setup/index.ts --step <name>` for all other steps. Steps emit structured status blocks to stdout. Verbose logs go to `logs/setup.log`.
+Run setup steps automatically. Only pause when user action is required (choosing repos, providing paths). This branch runs agents as local Node.js processes in git worktrees — no Docker required.
 
-**Principle:** When something is broken or missing, fix it. Don't tell the user to go fix it themselves unless it genuinely requires their manual action (e.g. authenticating a channel, pasting a secret token). If a dependency is missing, install it. If a service won't start, diagnose and repair. Ask the user for permission when needed, then do the work.
+**Principle:** When something is broken or missing, fix it. Don't tell the user to go fix it themselves unless it genuinely requires their manual action. If a dependency is missing, install it. Ask the user for permission when needed, then do the work.
 
-**UX Note:** Use `AskUserQuestion` for multiple-choice questions only (e.g. "Docker or Apple Container?", "which channels?"). Do NOT use it when free-text input is needed (e.g. phone numbers, tokens, paths) — just ask the question in plain text and wait for the user's reply.
+## 0. Prerequisites
 
-## 0. Git & Fork Setup
-
-Check the git remote configuration to ensure the user has a fork and upstream is configured.
-
-Run:
-- `git remote -v`
-
-**Case A — `origin` points to `qwibitai/nanoclaw` (user cloned directly):**
-
-The user cloned instead of forking. AskUserQuestion: "You cloned NanoClaw directly. We recommend forking so you can push your customizations. Would you like to set up a fork?"
-- Fork now (recommended) — walk them through it
-- Continue without fork — they'll only have local changes
-
-If fork: instruct the user to fork `qwibitai/nanoclaw` on GitHub (they need to do this in their browser), then ask them for their GitHub username. Run:
-```bash
-git remote rename origin upstream
-git remote add origin https://github.com/<their-username>/nanoclaw.git
-git push --force origin main
-```
-Verify with `git remote -v`.
-
-If continue without fork: add upstream so they can still pull updates:
-```bash
-git remote add upstream https://github.com/qwibitai/nanoclaw.git
-```
-
-**Case B — `origin` points to user's fork, no `upstream` remote:**
-
-Add upstream:
-```bash
-git remote add upstream https://github.com/qwibitai/nanoclaw.git
-```
-
-**Case C — both `origin` (user's fork) and `upstream` (qwibitai) exist:**
-
-Already configured. Continue.
-
-**Verify:** `git remote -v` should show `origin` → user's repo, `upstream` → `qwibitai/nanoclaw.git`.
-
-### Git identity
-
-Ensure git identity is configured (required for merging skill branches):
+Check Node.js, Git, and Claude Code are available:
 
 ```bash
-git config user.name || git config user.name "NanoClaw Setup"
-git config user.email || git config user.email "setup@nanoclaw.local"
+node --version
+git --version
+claude --version 2>/dev/null || echo "CLAUDE_CODE_EXECPATH=$CLAUDE_CODE_EXECPATH"
 ```
 
-## 1. Bootstrap (Node.js + Dependencies)
+**Node.js missing or < v20:**
+- Windows: `winget install OpenJS.NodeJS.LTS --source winget`
+- macOS: `brew install node@22` or `nvm install 22`
+- Linux: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt-get install -y nodejs`
 
-Run `bash setup.sh` and parse the status block.
+After installing, verify with `node --version`.
 
-- If NODE_OK=false → Node.js is missing or too old. Use `AskUserQuestion: Would you like me to install Node.js 22?` If confirmed:
-  - macOS: `brew install node@22` (if brew available) or install nvm then `nvm install 22`
-  - Linux: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt-get install -y nodejs`, or nvm
-  - After installing Node, re-run `bash setup.sh`
-- If DEPS_OK=false → Read `logs/setup.log`. Try: delete `node_modules`, re-run `bash setup.sh`. If native module build fails, install build tools (`xcode-select --install` on macOS, `build-essential` on Linux), then retry.
-- If NATIVE_OK=false → better-sqlite3 failed to load. Install build tools and re-run.
-- Record PLATFORM and IS_WSL for later steps.
+**Git missing:** Install git for the platform. Windows: `winget install Git.Git --source winget`.
 
-## 2. Check Environment
+**Claude Code missing:** The user must have Claude Code installed and logged in. Check `claude --version`. If not found, check `$CLAUDE_CODE_EXECPATH`. If neither works, tell the user to install Claude Code first: https://docs.anthropic.com/en/docs/claude-code
 
-Run `npx tsx setup/index.ts --step environment` and parse the status block.
-
-- If HAS_AUTH=true → WhatsApp is already configured, note for step 5
-- If HAS_REGISTERED_GROUPS=true → note existing config, offer to skip or reconfigure
-- Record APPLE_CONTAINER and DOCKER values for step 3
-
-### OpenClaw Migration Detection
-
-Check for an existing OpenClaw installation:
+## 1. Install Dependencies
 
 ```bash
-ls -d ~/.openclaw 2>/dev/null || ls -d ~/.clawdbot 2>/dev/null
+npm install
 ```
 
-If a directory is found, AskUserQuestion:
+If `better-sqlite3` fails to build (no prebuilt binary for this Node version):
+- Windows: install Visual Studio Build Tools (`npm install -g windows-build-tools`) or update `better-sqlite3` version
+- macOS: `xcode-select --install`
+- Linux: `sudo apt-get install -y build-essential python3`
 
-1. **Migrate now** — "Import identity, credentials, and settings from OpenClaw before continuing setup."
-2. **Fresh start** — "Skip migration and set up NanoClaw from scratch."
-3. **Migrate later** — "Continue setup now, run `/migrate-from-openclaw` anytime later."
+Then retry `npm install`.
 
-If "Migrate now": invoke `/migrate-from-openclaw`, then return here and continue at step 2a (Timezone).
-
-## 2a. Timezone
-
-Run `npx tsx setup/index.ts --step timezone` and parse the status block.
-
-- If NEEDS_USER_INPUT=true → The system timezone could not be autodetected (e.g. POSIX-style TZ like `IST-2`). AskUserQuestion: "What is your timezone?" with common options (America/New_York, Europe/London, Asia/Jerusalem, Asia/Tokyo) and an "Other" escape. Then re-run: `npx tsx setup/index.ts --step timezone -- --tz <their-answer>`.
-- If STATUS=success → Timezone is configured. Note RESOLVED_TZ for reference.
-
-## 3. Container Runtime
-
-### 3a. Choose runtime
-
-Check the preflight results for `APPLE_CONTAINER` and `DOCKER`, and the PLATFORM from step 1.
-
-- PLATFORM=linux → Docker (only option)
-- PLATFORM=macos + APPLE_CONTAINER=installed → AskUserQuestion with two options:
-  1. **Docker (recommended)** — description: "Cross-platform, better credential management, well-tested."
-  2. **Apple Container (experimental)** — description: "Native macOS runtime. Requires advanced setup."
-  If Apple Container, run `/convert-to-apple-container` now, then skip to 3c.
-- PLATFORM=macos + APPLE_CONTAINER=not_found → Docker
-
-### 3a-docker. Install Docker
-
-- DOCKER=running → continue to 4b
-- DOCKER=installed_not_running → start Docker: `open -a Docker` (macOS) or `sudo systemctl start docker` (Linux). Wait 15s, re-check with `docker info`.
-- DOCKER=not_found → Use `AskUserQuestion: Docker is required for running agents. Would you like me to install it?` If confirmed:
-  - macOS: install via `brew install --cask docker`, then `open -a Docker` and wait for it to start. If brew not available, direct to Docker Desktop download at https://docker.com/products/docker-desktop
-  - Linux: install with `curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER`. Note: user may need to log out/in for group membership.
-
-### 3b. Apple Container conversion gate (if needed)
-
-**If the chosen runtime is Apple Container**, you MUST check whether the source code has already been converted from Docker to Apple Container. Do NOT skip this step. Run:
+## 2. Compile Agent Runner
 
 ```bash
-grep -q "CONTAINER_RUNTIME_BIN = 'container'" src/container-runtime.ts && echo "ALREADY_CONVERTED" || echo "NEEDS_CONVERSION"
+cd container/agent-runner && npm install && npm run build && cd ../..
 ```
 
-**If NEEDS_CONVERSION**, the source code still uses Docker as the runtime. You MUST run the `/convert-to-apple-container` skill NOW, before proceeding to the build step.
+If this fails, read the error. Common issues:
+- Missing `@anthropic-ai/claude-agent-sdk` — run `npm install` in `container/agent-runner/`
+- TypeScript errors — run `npx tsc --noEmit` to see details
 
-**If ALREADY_CONVERTED**, the code already uses Apple Container. Continue to 3c.
+## 3. Configure Repos
 
-**If the chosen runtime is Docker**, no conversion is needed. Continue to 3c.
-
-### 3c. Build and test
-
-Run `npx tsx setup/index.ts --step container -- --runtime <chosen>` and parse the status block.
-
-**If BUILD_OK=false:** Read `logs/setup.log` tail for the build error.
-- Cache issue (stale layers): `docker builder prune -f` (Docker) or `container builder stop && container builder rm && container builder start` (Apple Container). Retry.
-- Dockerfile syntax or missing files: diagnose from the log and fix, then retry.
-
-**If TEST_OK=false but BUILD_OK=true:** The image built but won't run. Check logs — common cause is runtime not fully started. Wait a moment and retry the test.
-
-## 4. Credential System
-
-The credential system depends on the container runtime chosen in step 3.
-
-### 4a. Docker → OneCLI
-
-Install OneCLI and its CLI tool:
+Read the current seed config:
 
 ```bash
-curl -fsSL onecli.sh/install | sh
-curl -fsSL onecli.sh/cli/install | sh
+cat groups/seed.json
 ```
 
-Verify both installed: `onecli version`. If the command is not found, the CLI was likely installed to `~/.local/bin/`. Add it to PATH for the current session and persist it:
+The `repos` map defines named repo paths. Each agent references a repo by name.
+
+Ask the user: **What repos do you want agents to work on?**
+
+For each repo they mention:
+1. Ask for the local path (e.g. `D:/corvk`, `~/projects/myrepo`)
+2. Verify the path exists and is a git repo: `git -C <path> rev-parse --git-dir`
+3. Add it to `groups/seed.json` under `repos`
+
+Example result:
+```json
+{
+  "repos": {
+    "corvk": "D:/corvk",
+    "myproject": "C:/Users/me/projects/myproject"
+  },
+  "groups": [
+    {
+      "jid": "dashboard:main",
+      "name": "Main Orchestrator",
+      "folder": "main",
+      "trigger": "@Andy",
+      "isMain": true
+    }
+  ]
+}
+```
+
+**If the user wants to pre-create agent groups for a repo**, add them to the `groups` array with a `repo` field:
+
+```json
+{
+  "jid": "dashboard:corvk-qa",
+  "name": "corvk qa",
+  "folder": "corvk-qa",
+  "trigger": "@corvkqa",
+  "repo": "corvk"
+}
+```
+
+Each agent with a `repo` field gets its own isolated git worktree from that repo automatically.
+
+**If the user doesn't want to pre-create agents**, that's fine — the Main Orchestrator can create them dynamically via the dashboard.
+
+## 4. Run Verification
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
-# Persist for future sessions (append to shell profile if not already present)
-grep -q '.local/bin' ~/.bashrc 2>/dev/null || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-grep -q '.local/bin' ~/.zshrc 2>/dev/null || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+npm run setup
 ```
 
-Then re-verify with `onecli version`.
+This runs the automated local setup check (`setup/local.ts`). Parse the output:
 
-Point the CLI at the local OneCLI instance, the ONECLI_URL was output from the install script above:
-```bash
-onecli config set api-host ${ONECLI_URL}
-```
+- **NODE:** Must show a version >= 20
+- **GIT:** Must show git version
+- **CLAUDE_CODE:** Must show Claude Code version
+- **AGENT_RUNNER:** Must say "compiled"
+- **SEED_REPOS:** Each repo must say "OK". If any say "MISSING", the path in `groups/seed.json` is wrong — help the user fix it
 
-Ensure `.env` has the OneCLI URL (create the file if it doesn't exist):
-```bash
-grep -q 'ONECLI_URL' .env 2>/dev/null || echo 'ONECLI_URL=${ONECLI_URL}' >> .env
-```
+If STATUS=failed, fix each failing item and re-run.
 
-Check if a secret already exists:
-```bash
-onecli secrets list
-```
+## 5. Start the Dashboard
 
-If an Anthropic secret is listed, confirm with user: keep or reconfigure? If keeping, skip to step 5.
-
-AskUserQuestion: Do you want to use your **Claude subscription** (Pro/Max) or an **Anthropic API key**?
-
-1. **Claude subscription (Pro/Max)** — description: "Uses your existing Claude Pro or Max subscription. You'll run `claude setup-token` in another terminal to get your token."
-2. **Anthropic API key** — description: "Pay-per-use API key from console.anthropic.com."
-
-#### Subscription path
-
-Tell the user:
-
-> Run `claude setup-token` in another terminal. It will output a token — copy it but don't paste it here.
-
-Then stop and wait for the user to confirm they have the token. Do NOT proceed until they respond.
-
-Once they confirm, they register it with OneCLI. AskUserQuestion with two options:
-
-1. **Dashboard** — description: "Best if you have a browser on this machine. Open ${ONECLI_URL} and add the secret in the UI. Use type 'anthropic' and paste your token as the value."
-2. **CLI** — description: "Best for remote/headless servers. Run: `onecli secrets create --name Anthropic --type anthropic --value YOUR_TOKEN --host-pattern api.anthropic.com`"
-
-#### API key path
-
-Tell the user to get an API key from https://console.anthropic.com/settings/keys if they don't have one.
-
-Then AskUserQuestion with two options:
-
-1. **Dashboard** — description: "Best if you have a browser on this machine. Open ${ONECLI_URL} and add the secret in the UI."
-2. **CLI** — description: "Best for remote/headless servers. Run: `onecli secrets create --name Anthropic --type anthropic --value YOUR_KEY --host-pattern api.anthropic.com`"
-
-#### After either path
-
-Ask them to let you know when done.
-
-**If the user's response happens to contain a token or key** (starts with `sk-ant-`): handle it gracefully — run the `onecli secrets create` command with that value on their behalf.
-
-**After user confirms:** verify with `onecli secrets list` that an Anthropic secret exists. If not, ask again.
-
-### 4b. Apple Container → Native Credential Proxy
-
-Apple Container is not compatible with OneCLI. The credential proxy code is already included in the apple-container branch — do NOT invoke `/use-native-credential-proxy` (it would conflict with already-applied code).
-
-Instead, just configure the credentials in `.env`:
-
-AskUserQuestion: Do you want to use your **Claude subscription** (Pro/Max) or an **Anthropic API key**?
-
-1. **Claude subscription (Pro/Max)** — description: "Uses your existing Claude Pro or Max subscription. Run `claude setup-token` in another terminal to get your token."
-2. **Anthropic API key** — description: "Pay-per-use API key from console.anthropic.com."
-
-For subscription: tell the user to run `claude setup-token` in another terminal. Stop and wait for the user to confirm they have completed this step successfully before proceeding.
-
-Once confirmed, add the token to `.env`:
-```bash
-echo 'CLAUDE_CODE_OAUTH_TOKEN=<their-token>' >> .env
-```
-
-For API key: add to `.env`:
-```bash
-echo 'ANTHROPIC_API_KEY=<their-key>' >> .env
-```
-
-Verify the proxy starts: `npm run dev` should show "Credential proxy listening" in the logs.
-
-## 5. Set Up Channels
-
-AskUserQuestion (multiSelect): Which channels do you want to enable?
-- Dashboard — real-time pixel office UI for agent observability (no credentials needed, recommended)
-- WhatsApp (authenticates via QR code or pairing code)
-- Telegram (authenticates via bot token from @BotFather)
-- Slack (authenticates via Slack app with Socket Mode)
-- Discord (authenticates via Discord bot token)
-
-**Dashboard is recommended as a default** — it provides a web UI for chatting with agents, observing their work, and managing coworkers. No credentials or external services needed. It works standalone or alongside any messaging channel.
-
-**Delegate to each selection's own skill.** Each skill handles its own code installation (via `git merge` of the skill branch), authentication, registration, and configuration.
-
-For each selection, invoke its skill:
-
-- **Dashboard:** Invoke `/add-dashboard`
-- **WhatsApp:** Invoke `/add-whatsapp`
-- **Telegram:** Invoke `/add-telegram`
-- **Slack:** Invoke `/add-slack`
-- **Discord:** Invoke `/add-discord`
-
-Each channel skill will:
-1. Install the channel code (via `git merge` of the skill branch)
-2. Collect credentials/tokens and write to `.env` (if needed)
-3. Authenticate and register the chat
-4. Build and verify
-
-**After all channel skills complete**, install dependencies and rebuild — channel merges may introduce new packages:
+Start both the dashboard UI and the main server:
 
 ```bash
-npm install && npm run build
+npx tsx dashboard/server.ts &
+npx tsx src/index.ts &
 ```
 
-If the build fails, read the error output and fix it (usually a missing dependency). Then continue to step 5b.
+Or in two separate terminals:
+- Terminal 1: `npx tsx dashboard/server.ts`
+- Terminal 2: `npx tsx src/index.ts`
 
-## 5b. Project Integrations
+Verify the dashboard is running:
 
-**IMPORTANT: You MUST ask this question. Do NOT skip to step 6.**
-
-AskUserQuestion: Would you like to add Slang compiler support? This adds a multi-agent coworker system with specialist roles for building, exploring, and maintaining the Slang shading language compiler.
-
-If yes, invoke `/add-slang`. Wait for it to complete fully (merge, container rebuild, configuration) before proceeding.
-
-Then continue to step 6.
-
-## 6. Mount Allowlist
-
-AskUserQuestion: Agent access to external directories?
-
-**No:** `npx tsx setup/index.ts --step mounts -- --empty`
-**Yes:** Collect paths/permissions. `npx tsx setup/index.ts --step mounts -- --json '{"allowedRoots":[...],"blockedPatterns":[],"nonMainReadOnly":true}'`
-
-## 7. Start Service
-
-If service already running: unload first.
-- macOS: `launchctl unload ~/Library/LaunchAgents/com.nanoclaw.plist`
-- Linux: `systemctl --user stop nanoclaw` (or `systemctl stop nanoclaw` if root)
-
-Run `npx tsx setup/index.ts --step service` and parse the status block.
-
-**If FALLBACK=wsl_no_systemd:** WSL without systemd detected. Tell user they can either enable systemd in WSL (`echo -e "[boot]\nsystemd=true" | sudo tee /etc/wsl.conf` then restart WSL) or use the generated `start-nanoclaw.sh` wrapper.
-
-**If DOCKER_GROUP_STALE=true:** The user was added to the docker group after their session started — the systemd service can't reach the Docker socket. Ask user to run these two commands:
-
-1. Immediate fix: `sudo setfacl -m u:$(whoami):rw /var/run/docker.sock`
-2. Persistent fix (re-applies after every Docker restart):
 ```bash
-sudo mkdir -p /etc/systemd/system/docker.service.d
-sudo tee /etc/systemd/system/docker.service.d/socket-acl.conf << 'EOF'
-[Service]
-ExecStartPost=/usr/bin/setfacl -m u:USERNAME:rw /var/run/docker.sock
-EOF
-sudo systemctl daemon-reload
+curl -s http://127.0.0.1:3737/ | head -3
 ```
-Replace `USERNAME` with the actual username (from `whoami`). Run the two `sudo` commands separately — the `tee` heredoc first, then `daemon-reload`. After user confirms setfacl ran, re-run the service step.
 
-**If SERVICE_LOADED=false:**
-- Read `logs/setup.log` for the error.
-- macOS: check `launchctl list | grep nanoclaw`. If PID=`-` and status non-zero, read `logs/nanoclaw.error.log`.
-- Linux: check `systemctl --user status nanoclaw`.
-- Re-run the service step after fixing.
+Tell the user: **Open http://127.0.0.1:3737 in your browser.** They should see the Pixel Office dashboard.
 
-## 8. Verify
+## 6. Test It
 
-Run `npx tsx setup/index.ts --step verify` and parse the status block.
+Tell the user to:
+1. Open the dashboard at http://127.0.0.1:3737
+2. Select the **Main Orchestrator** group
+3. Send a test message like "hello"
+4. The orchestrator should respond
 
-**If STATUS=failed, fix each:**
-- SERVICE=stopped → `npm run build`, then restart: `launchctl kickstart -k gui/$(id -u)/com.nanoclaw` (macOS) or `systemctl --user restart nanoclaw` (Linux) or `bash start-nanoclaw.sh` (WSL nohup)
-- SERVICE=not_found → re-run step 7
-- CREDENTIALS=missing → re-run step 4 (Docker: check `onecli secrets list`; Apple Container: check `.env` for credentials)
-- CHANNEL_AUTH shows `not_found` for any channel → re-invoke that channel's skill (e.g. `/add-telegram`)
-- REGISTERED_GROUPS=0 → re-invoke the channel skills from step 5
-- MOUNT_ALLOWLIST=missing → `npx tsx setup/index.ts --step mounts -- --empty`
+If the agent shows "idle" but is actually working, the dashboard hooks may not be firing. Check:
+- The agent's project-level settings at `{workDir}/.claude/settings.json` should have hook entries
+- The hooks use `node -e "..."` commands to POST events to the dashboard
 
-Tell user to test: send a message in their registered chat. Show: `tail -f logs/nanoclaw.log`
+If no response at all, check the server log:
+```bash
+cat groups/main/logs/agent-*.log
+```
+
+Common issues:
+- "Not logged in" — Claude Code auth issue. The user needs to run `claude` in a terminal and log in first
+- "Claude Code executable not found" — set `CLAUDE_CODE_EXECPATH` env var to the path of `claude` or `claude.exe`
+- "No conversation found with session ID" — stale session. The server auto-clears these on retry
+
+## Quick Reference
+
+| Command | What it does |
+|---------|-------------|
+| `npm run setup` | Run automated setup verification |
+| `npx tsx dashboard/server.ts` | Start dashboard UI on port 3737 |
+| `npx tsx src/index.ts` | Start the main agent server |
+| `groups/seed.json` | Configure repos and pre-register agents |
+| `groups/main/repos.json` | Auto-generated — repos available to orchestrator |
 
 ## Troubleshooting
 
-**Service not starting:** Check `logs/nanoclaw.error.log`. Common: wrong Node path (re-run step 7), credential system not running (Docker: check `curl ${ONECLI_URL}/api/health`; Apple Container: check `.env` credentials), missing channel credentials (re-invoke channel skill).
+**"tsx is not recognized":** Node.js isn't on PATH. Restart your terminal after installing Node, or run with full path: `npx tsx ...`
 
-**Container agent fails ("Claude Code process exited with code 1"):** Ensure the container runtime is running — `open -a Docker` (macOS Docker), `container system start` (Apple Container), or `sudo systemctl start docker` (Linux). Check container logs in `groups/main/logs/container-*.log`.
+**Agent creates worktree from wrong repo:** Check the group's `container_config` in the database. It should have `workDir` pointing to the repo. If created via the orchestrator, make sure it used the `repo` field (which resolves from `seed.json`).
 
-**No response to messages:** Check trigger pattern. Main channel doesn't need prefix. Check DB: `npx tsx setup/index.ts --step verify`. Check `logs/nanoclaw.log`.
+**Dashboard shows agent as idle:** The hook commands may be failing. Check that `node` is on PATH inside the agent's environment. The hooks use `node -e "..."` to POST events.
 
-**Channel not connecting:** Verify the channel's credentials are set in `.env`. Channels auto-enable when their credentials are present. For WhatsApp: check `store/auth/creds.json` exists. For token-based channels: check token values in `.env`. Restart the service after any `.env` change.
-
-**Unload service:** macOS: `launchctl unload ~/Library/LaunchAgents/com.nanoclaw.plist` | Linux: `systemctl --user stop nanoclaw`
-
-
-## 9. Diagnostics
-
-1. Use the Read tool to read `.claude/skills/setup/diagnostics.md`.
-2. Follow every step in that file before completing setup.
+**Windows path issues:** Use forward slashes in `seed.json` paths (`D:/corvk` not `D:\corvk`). Node.js handles both, but JSON needs escaped backslashes.

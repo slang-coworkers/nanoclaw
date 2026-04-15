@@ -2747,12 +2747,34 @@ function renderCwMessages() {
       <div class="cw-msg-time">${time}</div>
     </div>`;
   }).join('');
-  // Typing indicator from hook events
+  // Activity indicator — show when agent is running (from state, not just hooks)
+  const cw = getCwCoworkers().find((c) => c.folder === cwState.selected);
+  const isActive = cw && (cw.status === 'working' || cw.status === 'thinking' || cw.containerRunning || (cw.hookTimestamp && Date.now() - cw.hookTimestamp < 120000));
   const recentHooks = (state.hookEvents || []).filter(
     (e) => e.group === cwState.selected && Date.now() - e.timestamp < 10000
   );
-  if (recentHooks.length > 0) {
-    el.innerHTML += '<div class="cw-msg assistant"><div class="cw-msg-bubble" style="opacity:0.5"><span class="chat-typing"><span></span><span></span><span></span></span></div></div>';
+  if (isActive || recentHooks.length > 0) {
+    // Build step description from server-provided tool info
+    let stepText = 'Working';
+    if (cw?.lastToolDescription) {
+      stepText = cw.lastToolDescription;
+    } else if (cw?.lastToolUse === 'Bash') {
+      stepText = 'Running command';
+    } else if (cw?.lastToolUse === 'Read' || cw?.lastToolUse === 'Grep' || cw?.lastToolUse === 'Glob') {
+      stepText = `Reading files (${cw.lastToolUse})`;
+    } else if (cw?.lastToolUse === 'Edit' || cw?.lastToolUse === 'Write') {
+      stepText = `Editing code (${cw.lastToolUse})`;
+    } else if (cw?.lastToolUse) {
+      stepText = `Using ${cw.lastToolUse}`;
+    } else if (cw?.status === 'thinking') {
+      stepText = 'Thinking';
+    } else if (cw?.currentTask) {
+      stepText = 'Processing task';
+    }
+    const lastMsg = cwState.messages[cwState.messages.length - 1];
+    const elapsed = lastMsg?.timestamp ? Math.floor((Date.now() - new Date(lastMsg.timestamp).getTime()) / 1000) : 0;
+    const elapsedText = elapsed > 5 ? ` · ${elapsed >= 60 ? Math.floor(elapsed/60) + 'm ' + (elapsed%60) + 's' : elapsed + 's'}` : '';
+    el.innerHTML += `<div class="cw-msg assistant"><div class="cw-msg-bubble" style="opacity:0.7;display:flex;flex-direction:column;gap:4px"><div style="display:flex;align-items:center;gap:8px"><span class="chat-typing"><span></span><span></span><span></span></span><span style="font-size:13px;font-weight:500;color:var(--text)">${esc(stepText)}</span></div><span style="font-size:11px;color:var(--text-muted)">${cw?.status || 'active'}${elapsedText}</span></div></div>`;
   }
   if (wasAtBottom) el.scrollTop = el.scrollHeight;
 }
