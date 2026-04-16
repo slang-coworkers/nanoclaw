@@ -136,6 +136,8 @@ describe('channel + router integration', () => {
       is_admin: 0,
       agent_provider: null,
       container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
       created_at: now(),
     });
     createMessagingGroup({

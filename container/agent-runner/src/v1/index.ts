@@ -17,11 +17,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execFile } from 'child_process';
-import {
-  query,
-  HookCallback,
-  PreCompactHookInput,
-} from '@anthropic-ai/claude-agent-sdk';
+import { query, HookCallback, PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 import { fileURLToPath } from 'url';
 
 interface ContainerInput {
@@ -127,10 +123,7 @@ function log(message: string): void {
   console.error(`[agent-runner] ${message}`);
 }
 
-function getSessionSummary(
-  sessionId: string,
-  transcriptPath: string,
-): string | null {
+function getSessionSummary(sessionId: string, transcriptPath: string): string | null {
   const projectDir = path.dirname(transcriptPath);
   const indexPath = path.join(projectDir, 'sessions-index.json');
 
@@ -140,17 +133,13 @@ function getSessionSummary(
   }
 
   try {
-    const index: SessionsIndex = JSON.parse(
-      fs.readFileSync(indexPath, 'utf-8'),
-    );
+    const index: SessionsIndex = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
     const entry = index.entries.find((e) => e.sessionId === sessionId);
     if (entry?.summary) {
       return entry.summary;
     }
   } catch (err) {
-    log(
-      `Failed to read sessions index: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    log(`Failed to read sessions index: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   return null;
@@ -189,18 +178,12 @@ function createPreCompactHook(assistantName?: string): HookCallback {
       const filename = `${date}-${name}.md`;
       const filePath = path.join(conversationsDir, filename);
 
-      const markdown = formatTranscriptMarkdown(
-        messages,
-        summary,
-        assistantName,
-      );
+      const markdown = formatTranscriptMarkdown(messages, summary, assistantName);
       fs.writeFileSync(filePath, markdown);
 
       log(`Archived conversation to ${filePath}`);
     } catch (err) {
-      log(
-        `Failed to archive transcript: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      log(`Failed to archive transcript: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     return {};
@@ -236,9 +219,7 @@ function parseTranscript(content: string): ParsedMessage[] {
         const text =
           typeof entry.message.content === 'string'
             ? entry.message.content
-            : entry.message.content
-                .map((c: { text?: string }) => c.text || '')
-                .join('');
+            : entry.message.content.map((c: { text?: string }) => c.text || '').join('');
         if (text) messages.push({ role: 'user', content: text });
       } else if (entry.type === 'assistant' && entry.message?.content) {
         const textParts = entry.message.content
@@ -253,11 +234,7 @@ function parseTranscript(content: string): ParsedMessage[] {
   return messages;
 }
 
-function formatTranscriptMarkdown(
-  messages: ParsedMessage[],
-  title?: string | null,
-  assistantName?: string,
-): string {
+function formatTranscriptMarkdown(messages: ParsedMessage[], title?: string | null, assistantName?: string): string {
   const now = new Date();
   const formatDateTime = (d: Date) =>
     d.toLocaleString('en-US', {
@@ -278,10 +255,7 @@ function formatTranscriptMarkdown(
 
   for (const msg of messages) {
     const sender = msg.role === 'user' ? 'User' : assistantName || 'Assistant';
-    const content =
-      msg.content.length > 2000
-        ? msg.content.slice(0, 2000) + '...'
-        : msg.content;
+    const content = msg.content.length > 2000 ? msg.content.slice(0, 2000) + '...' : msg.content;
     lines.push(`**${sender}**: ${content}`);
     lines.push('');
   }
@@ -326,9 +300,7 @@ function drainIpcInput(): string[] {
           messages.push(data.text);
         }
       } catch (err) {
-        log(
-          `Failed to process input file ${file}: ${err instanceof Error ? err.message : String(err)}`,
-        );
+        log(`Failed to process input file ${file}: ${err instanceof Error ? err.message : String(err)}`);
         try {
           fs.unlinkSync(filePath);
         } catch {
@@ -461,9 +433,6 @@ async function runQuery(
         'Task',
         'TaskOutput',
         'TaskStop',
-        'TeamCreate',
-        'TeamDelete',
-        'SendMessage',
         'TodoWrite',
         'ToolSearch',
         'Skill',
@@ -486,17 +455,12 @@ async function runQuery(
         },
       },
       hooks: {
-        PreCompact: [
-          { hooks: [createPreCompactHook(containerInput.assistantName)] },
-        ],
+        PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName)] }],
       },
     },
   })) {
     messageCount++;
-    const msgType =
-      message.type === 'system'
-        ? `system/${(message as { subtype?: string }).subtype}`
-        : message.type;
+    const msgType = message.type === 'system' ? `system/${(message as { subtype?: string }).subtype}` : message.type;
     log(`[msg #${messageCount}] type=${msgType}`);
 
     if (message.type === 'assistant' && 'uuid' in message) {
@@ -508,27 +472,19 @@ async function runQuery(
       log(`Session initialized: ${newSessionId}`);
     }
 
-    if (
-      message.type === 'system' &&
-      (message as { subtype?: string }).subtype === 'task_notification'
-    ) {
+    if (message.type === 'system' && (message as { subtype?: string }).subtype === 'task_notification') {
       const tn = message as {
         task_id: string;
         status: string;
         summary: string;
       };
-      log(
-        `Task notification: task=${tn.task_id} status=${tn.status} summary=${tn.summary}`,
-      );
+      log(`Task notification: task=${tn.task_id} status=${tn.status} summary=${tn.summary}`);
     }
 
     if (message.type === 'result') {
       resultCount++;
-      const textResult =
-        'result' in message ? (message as { result?: string }).result : null;
-      log(
-        `Result #${resultCount}: subtype=${message.subtype}${textResult ? ` text=${textResult.slice(0, 200)}` : ''}`,
-      );
+      const textResult = 'result' in message ? (message as { result?: string }).result : null;
+      log(`Result #${resultCount}: subtype=${message.subtype}${textResult ? ` text=${textResult.slice(0, 200)}` : ''}`);
       writeOutput({
         status: 'success',
         result: textResult || null,
@@ -585,9 +541,7 @@ async function runScript(script: string): Promise<ScriptResult | null> {
         try {
           const result = JSON.parse(lastLine);
           if (typeof result.wakeAgent !== 'boolean') {
-            log(
-              `Script output missing wakeAgent boolean: ${lastLine.slice(0, 200)}`,
-            );
+            log(`Script output missing wakeAgent boolean: ${lastLine.slice(0, 200)}`);
             return resolve(null);
           }
           resolve(result as ScriptResult);
@@ -658,9 +612,7 @@ async function main(): Promise<void> {
     const scriptResult = await runScript(containerInput.script);
 
     if (!scriptResult || !scriptResult.wakeAgent) {
-      const reason = scriptResult
-        ? 'wakeAgent=false'
-        : 'script error/no output';
+      const reason = scriptResult ? 'wakeAgent=false' : 'script error/no output';
       log(`Script decided not to wake agent: ${reason}`);
       writeOutput({
         status: 'success',
@@ -678,18 +630,9 @@ async function main(): Promise<void> {
   let resumeAt: string | undefined;
   try {
     while (true) {
-      log(
-        `Starting query (session: ${sessionId || 'new'}, resumeAt: ${resumeAt || 'latest'})...`,
-      );
+      log(`Starting query (session: ${sessionId || 'new'}, resumeAt: ${resumeAt || 'latest'})...`);
 
-      const queryResult = await runQuery(
-        prompt,
-        sessionId,
-        mcpServerPath,
-        containerInput,
-        sdkEnv,
-        resumeAt,
-      );
+      const queryResult = await runQuery(prompt, sessionId, mcpServerPath, containerInput, sdkEnv, resumeAt);
       if (queryResult.newSessionId) {
         sessionId = queryResult.newSessionId;
       }

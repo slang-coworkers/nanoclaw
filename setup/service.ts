@@ -10,14 +10,7 @@ import os from 'os';
 import path from 'path';
 
 import { log } from '../src/log.js';
-import {
-  getPlatform,
-  getNodePath,
-  getServiceManager,
-  hasSystemd,
-  isRoot,
-  isWSL,
-} from './platform.js';
+import { getPlatform, getNodePath, getServiceManager, hasSystemd, isRoot, isWSL } from './platform.js';
 import { emitStatus } from './status.js';
 
 export async function run(_args: string[]): Promise<void> {
@@ -68,17 +61,8 @@ export async function run(_args: string[]): Promise<void> {
   }
 }
 
-function setupLaunchd(
-  projectRoot: string,
-  nodePath: string,
-  homeDir: string,
-): void {
-  const plistPath = path.join(
-    homeDir,
-    'Library',
-    'LaunchAgents',
-    'com.nanoclaw.plist',
-  );
+function setupLaunchd(projectRoot: string, nodePath: string, homeDir: string): void {
+  const plistPath = path.join(homeDir, 'Library', 'LaunchAgents', 'com.nanoclaw.plist');
   fs.mkdirSync(path.dirname(plistPath), { recursive: true });
 
   const plist = `<?xml version="1.0" encoding="UTF-8"?>
@@ -144,11 +128,7 @@ function setupLaunchd(
   });
 }
 
-function setupLinux(
-  projectRoot: string,
-  nodePath: string,
-  homeDir: string,
-): void {
+function setupLinux(projectRoot: string, nodePath: string, homeDir: string): void {
   const serviceManager = getServiceManager();
 
   if (serviceManager === 'systemd') {
@@ -201,11 +181,7 @@ function checkDockerGroupStale(): boolean {
   }
 }
 
-function setupSystemd(
-  projectRoot: string,
-  nodePath: string,
-  homeDir: string,
-): void {
+function setupSystemd(projectRoot: string, nodePath: string, homeDir: string): void {
   const runningAsRoot = isRoot();
 
   // Root uses system-level service, non-root uses user-level
@@ -221,9 +197,7 @@ function setupSystemd(
     try {
       execSync('systemctl --user daemon-reload', { stdio: 'pipe' });
     } catch {
-      log.warn(
-        'systemd user session not available — falling back to nohup wrapper',
-      );
+      log.warn('systemd user session not available — falling back to nohup wrapper');
       setupNohupFallback(projectRoot, nodePath, homeDir);
       return;
     }
@@ -243,7 +217,7 @@ ExecStart=${nodePath} ${projectRoot}/dist/index.js
 WorkingDirectory=${projectRoot}
 Restart=always
 RestartSec=5
-KillMode=process
+KillMode=mixed
 Environment=HOME=${homeDir}
 Environment=PATH=/usr/local/bin:/usr/bin:/bin:${homeDir}/.local/bin
 StandardOutput=append:${projectRoot}/logs/nanoclaw.log
@@ -258,9 +232,7 @@ WantedBy=${runningAsRoot ? 'multi-user.target' : 'default.target'}`;
   // Detect stale docker group before starting (user systemd only)
   const dockerGroupStale = !runningAsRoot && checkDockerGroupStale();
   if (dockerGroupStale) {
-    log.warn(
-      'Docker group not active in systemd session — user was likely added to docker group mid-session',
-    );
+    log.warn('Docker group not active in systemd session — user was likely added to docker group mid-session');
   }
 
   // Kill orphaned nanoclaw processes to avoid channel connection conflicts
@@ -273,10 +245,7 @@ WantedBy=${runningAsRoot ? 'multi-user.target' : 'default.target'}`;
       execSync('loginctl enable-linger', { stdio: 'ignore' });
       log.info('Enabled loginctl linger for current user');
     } catch (err) {
-      log.warn(
-        'loginctl enable-linger failed — service may stop on SSH logout',
-        { err },
-      );
+      log.warn('loginctl enable-linger failed — service may stop on SSH logout', { err });
     }
   }
 
@@ -321,11 +290,7 @@ WantedBy=${runningAsRoot ? 'multi-user.target' : 'default.target'}`;
   });
 }
 
-function setupNohupFallback(
-  projectRoot: string,
-  nodePath: string,
-  homeDir: string,
-): void {
+function setupNohupFallback(projectRoot: string, nodePath: string, homeDir: string): void {
   log.warn('No systemd detected — generating nohup wrapper script');
 
   const wrapperPath = path.join(projectRoot, 'start-nanoclaw.sh');

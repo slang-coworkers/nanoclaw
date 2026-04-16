@@ -34,6 +34,7 @@ import {
   getPendingQuestion,
   deletePendingQuestion,
 } from './index.js';
+import { allocateDestinationName, createDestination } from './agent-destinations.js';
 
 function now() {
   return new Date().toISOString();
@@ -69,6 +70,8 @@ describe('agent groups', () => {
     is_admin: 0,
     agent_provider: null,
     container_config: null,
+    coworker_type: null,
+    allowed_mcp_tools: null,
     created_at: now(),
   });
 
@@ -164,6 +167,40 @@ describe('messaging groups', () => {
   });
 });
 
+// ── Destinations ──
+
+describe('agent destinations', () => {
+  beforeEach(() => {
+    createAgentGroup({
+      id: 'ag-1',
+      name: 'Agent',
+      folder: 'agent',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+  });
+
+  it('should normalize preferred destination names', () => {
+    expect(allocateDestinationName('ag-1', 'General Chat / Discord')).toBe('general-chat-discord');
+  });
+
+  it('should suffix on collision within one agent namespace', () => {
+    createDestination({
+      agent_group_id: 'ag-1',
+      local_name: 'general-chat-discord',
+      target_type: 'channel',
+      target_id: 'mg-1',
+      created_at: now(),
+    });
+
+    expect(allocateDestinationName('ag-1', 'General Chat / Discord')).toBe('general-chat-discord-2');
+  });
+});
+
 // ── Messaging Group Agents ──
 
 describe('messaging group agents', () => {
@@ -175,6 +212,8 @@ describe('messaging group agents', () => {
       is_admin: 0,
       agent_provider: null,
       container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
       created_at: now(),
     });
     createMessagingGroup({
@@ -215,6 +254,8 @@ describe('messaging group agents', () => {
       is_admin: 0,
       agent_provider: null,
       container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
       created_at: now(),
     });
     createMessagingGroupAgent({ ...mga(), id: 'mga-2', agent_group_id: 'ag-2', priority: 10 });
@@ -256,6 +297,8 @@ describe('sessions', () => {
       is_admin: 0,
       agent_provider: null,
       container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
       created_at: now(),
     });
     createMessagingGroup({
@@ -352,6 +395,8 @@ describe('pending questions', () => {
       is_admin: 0,
       agent_provider: null,
       container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
       created_at: now(),
     });
     createSession({

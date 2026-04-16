@@ -20,8 +20,10 @@ export const GLOBAL_CLAUDE_IMPORT = `@./${GLOBAL_MEMORY_LINK_NAME}`;
 const DEFAULT_SETTINGS_JSON =
   JSON.stringify(
     {
+      preferences: {
+        reasoningEffort: 'max',
+      },
       env: {
-        CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
         CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
         CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
       },
@@ -68,12 +70,12 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
     initialized.push('.claude-global.md');
   }
 
-  // groups/<folder>/CLAUDE.md — written once, then owned by the group
-  const claudeMdFile = path.join(groupDir, 'CLAUDE.md');
-  if (!fs.existsSync(claudeMdFile)) {
-    const body = [GLOBAL_CLAUDE_IMPORT, '', opts?.instructions ?? `# ${group.name}`].join('\n') + '\n';
-    fs.writeFileSync(claudeMdFile, body);
-    initialized.push('CLAUDE.md');
+  // groups/<folder>/.instructions.md — user-owned instructions.
+  // CLAUDE.md is system-composed from templates + .instructions.md on every wake.
+  const instructionsFile = path.join(groupDir, '.instructions.md');
+  if (!fs.existsSync(instructionsFile) && opts?.instructions) {
+    fs.writeFileSync(instructionsFile, opts.instructions + '\n');
+    initialized.push('.instructions.md');
   }
 
   // 2. data/v2-sessions/<id>/.claude-shared/ — Claude state + per-group skills
@@ -90,11 +92,15 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
   }
 
   const skillsDst = path.join(claudeDir, 'skills');
-  if (!fs.existsSync(skillsDst)) {
-    const skillsSrc = path.join(projectRoot, 'container', 'skills');
-    if (fs.existsSync(skillsSrc)) {
-      fs.cpSync(skillsSrc, skillsDst, { recursive: true });
-      initialized.push('skills/');
+  const skillsSrc = path.join(projectRoot, 'container', 'skills');
+  if (fs.existsSync(skillsSrc)) {
+    fs.mkdirSync(skillsDst, { recursive: true });
+    for (const skill of fs.readdirSync(skillsSrc)) {
+      const dst = path.join(skillsDst, skill);
+      if (!fs.existsSync(dst)) {
+        fs.cpSync(path.join(skillsSrc, skill), dst, { recursive: true });
+        initialized.push(`skills/${skill}`);
+      }
     }
   }
 

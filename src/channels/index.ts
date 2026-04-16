@@ -2,13 +2,13 @@
 // Each import triggers the channel module's registerChannelAdapter() call.
 
 // discord
-import './discord.js';
+// import './discord.js';
 
 // slack
 // import './slack.js';
 
 // telegram
-import './telegram.js';
+// import './telegram.js';
 
 // github
 // import './github.js';
@@ -40,4 +40,7 @@ import './telegram.js';
 // gmail (native, no Chat SDK)
 
 // whatsapp (native, no Chat SDK)
-import './whatsapp.js';
+// import './whatsapp.js';
+
+// dashboard
+import './dashboard.js';

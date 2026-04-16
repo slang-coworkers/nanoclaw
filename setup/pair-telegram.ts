@@ -12,11 +12,7 @@ import { runMigrations } from '../src/db/migrations/index.js';
 import { DATA_DIR } from '../src/config.js';
 import path from 'path';
 
-import {
-  createPairing,
-  waitForPairing,
-  type PairingIntent,
-} from '../src/channels/telegram-pairing.js';
+import { createPairing, waitForPairing, type PairingIntent } from '../src/channels/telegram-pairing.js';
 import { emitStatus } from './status.js';
 
 interface Args {

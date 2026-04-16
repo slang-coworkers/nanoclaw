@@ -66,3 +66,18 @@ export function normalizeName(name: string): string {
       .replace(/^-+|-+$/g, '') || 'unnamed'
   );
 }
+
+/**
+ * Allocate a local destination name inside one agent namespace.
+ * Uses the canonical v2 rule: normalize first, then suffix on collision.
+ */
+export function allocateDestinationName(agentGroupId: string, preferredName: string): string {
+  const baseLocalName = normalizeName(preferredName);
+  let localName = baseLocalName;
+  let suffix = 2;
+  while (getDestinationByName(agentGroupId, localName)) {
+    localName = `${baseLocalName}-${suffix}`;
+    suffix++;
+  }
+  return localName;
+}

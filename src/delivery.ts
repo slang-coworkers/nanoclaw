@@ -11,6 +11,7 @@ import type Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
+import { readCoworkerTypes } from './claude-composer.js';
 import { GROUPS_DIR } from './config.js';
 import {
   getRunningSessions,
@@ -18,6 +19,7 @@ import {
   createPendingQuestion,
   getSession,
   createPendingApproval,
+  updatePendingApprovalDelivery,
 } from './db/sessions.js';
 import {
   getAgentGroup,
@@ -26,8 +28,21 @@ import {
   updateAgentGroup,
   getAgentGroupByFolder,
 } from './db/agent-groups.js';
-import { createDestination, getDestinationByName, hasDestination, normalizeName } from './db/agent-destinations.js';
-import { getMessagingGroupByPlatform, getMessagingGroupsByAgentGroup } from './db/messaging-groups.js';
+import {
+  allocateDestinationName,
+  createDestination,
+  getDestinationByName,
+  getDestinationByTarget,
+  hasDestination,
+  normalizeName,
+} from './db/agent-destinations.js';
+import {
+  getMessagingGroup,
+  getMessagingGroupByPlatform,
+  getMessagingGroupsByAgentGroup,
+  createMessagingGroupAgent,
+  getMessagingGroupAgents,
+} from './db/messaging-groups.js';
 import {
   getDueOutboundMessages,
   getDeliveredIds,
@@ -61,6 +76,10 @@ const MAX_DELIVERY_ATTEMPTS = 3;
 
 /** Track delivery attempt counts. Resets on process restart (gives failed messages a fresh chance). */
 const deliveryAttempts = new Map<string, number>();
+
+export function shouldRetainOutboxFiles(channelType: string | null, files?: OutboundFile[]): boolean {
+  return channelType === 'dashboard' && Boolean(files?.length);
+}
 
 export interface ChannelDeliveryAdapter {
   deliver(
@@ -129,15 +148,20 @@ async function requestApproval(
   createPendingApproval({
     approval_id: approvalId,
     session_id: session.id,
-    request_id: approvalId, // fire-and-forget: no separate request id to correlate
+    request_id: approvalId,
     action,
     payload: JSON.stringify(payload),
     created_at: new Date().toISOString(),
+    agent_group_id: session.agent_group_id,
+    channel_type: adminChannel.channel_type,
+    platform_id: adminChannel.platform_id,
+    platform_message_id: null,
+    status: 'pending',
   });
 
   if (deliveryAdapter) {
     try {
-      await deliveryAdapter.deliver(
+      const platformMessageId = await deliveryAdapter.deliver(
         adminChannel.channel_type,
         adminChannel.platform_id,
         null,
@@ -149,6 +173,11 @@ async function requestApproval(
           options: ['Approve', 'Reject'],
         }),
       );
+      updatePendingApprovalDelivery(approvalId, {
+        channel_type: adminChannel.channel_type,
+        platform_id: adminChannel.platform_id,
+        platform_message_id: platformMessageId ?? null,
+      });
     } catch (err) {
       log.error('Failed to deliver approval card', { action, approvalId, err });
       notifyAgent(session, `${action} failed: could not deliver approval request to admin.`);
@@ -156,7 +185,13 @@ async function requestApproval(
     }
   }
 
-  log.info('Approval requested', { action, approvalId, agentName });
+  log.info('Approval requested', {
+    action,
+    approvalId,
+    agentName,
+    channelType: adminChannel.channel_type,
+    platformId: adminChannel.platform_id,
+  });
 }
 
 /** Show typing indicator on a channel. Called when a message is routed to the agent. */
@@ -406,8 +441,9 @@ async function deliverMessage(
     fileCount: files?.length,
   });
 
-  // Clean up outbox directory after successful delivery
-  if (fs.existsSync(outboxDir)) {
+  // Dashboard reads attachment files directly from the session outbox, so those
+  // files must persist after delivery instead of being treated as transport-only.
+  if (fs.existsSync(outboxDir) && !shouldRetainOutboxFiles(msg.channel_type, files)) {
     fs.rmSync(outboxDir, { recursive: true, force: true });
   }
 
@@ -509,18 +545,74 @@ async function handleSystemAction(
 
       const agentGroupId = `ag-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const now = new Date().toISOString();
+      const requestedCoworkerType =
+        typeof content.coworkerType === 'string' && content.coworkerType.trim() ? content.coworkerType.trim() : null;
+      let coworkerType = requestedCoworkerType;
+      let creationNote: string | null = null;
+      if (requestedCoworkerType) {
+        const knownTypes = readCoworkerTypes();
+        const roles = requestedCoworkerType
+          .split('+')
+          .map((role) => role.trim())
+          .filter(Boolean);
+        const unknownRoles = roles.filter((role) => !knownTypes[role]);
+        const looksLikePlaceholder =
+          requestedCoworkerType.includes('coworker-types.json') ||
+          requestedCoworkerType.includes('<') ||
+          requestedCoworkerType.includes('>');
+        if (looksLikePlaceholder || unknownRoles.length > 0) {
+          coworkerType = null;
+          creationNote = looksLikePlaceholder
+            ? `Requested coworkerType "${requestedCoworkerType}" looked like a placeholder, so the agent was created as untyped.`
+            : `Requested coworkerType "${requestedCoworkerType}" is not in groups/coworker-types.json, so the agent was created as untyped.`;
+          log.warn('create_agent falling back to untyped coworker', {
+            requestedCoworkerType,
+            unknownRoles,
+            looksLikePlaceholder,
+          });
+        }
+      }
 
       const newGroup: AgentGroup = {
         id: agentGroupId,
         name,
         folder,
         is_admin: 0,
-        agent_provider: null,
+        agent_provider: (content.agentProvider as string) || null,
         container_config: null,
+        coworker_type: coworkerType,
+        allowed_mcp_tools: content.allowedMcpTools
+          ? JSON.stringify((content.allowedMcpTools as string[]).filter((t) => t.startsWith('mcp__')))
+          : null,
         created_at: now,
       };
       createAgentGroup(newGroup);
-      initGroupFilesystem(newGroup, { instructions: instructions ?? undefined });
+
+      initGroupFilesystem(newGroup, {});
+
+      // Resolve instruction overlay — prepended to .instructions.md
+      const overlayName = (content.instructionOverlay as string) || 'thorough-analyst';
+      const overlayDir = path.join(GROUPS_DIR, 'templates', 'instructions');
+      const overlayPath = path.join(overlayDir, `${overlayName}.md`);
+      let overlayContent = '';
+      if (fs.existsSync(overlayPath)) {
+        overlayContent = fs.readFileSync(overlayPath, 'utf-8').trimEnd();
+      } else if (overlayName !== 'thorough-analyst') {
+        log.warn('Unknown instruction overlay, falling back to thorough-analyst', { overlayName });
+        const fallback = path.join(overlayDir, 'thorough-analyst.md');
+        if (fs.existsSync(fallback)) {
+          overlayContent = fs.readFileSync(fallback, 'utf-8').trimEnd();
+        }
+      }
+
+      // Always write to .instructions.md — CLAUDE.md is system-composed from
+      // templates + .instructions.md on every container wake
+      const parts: string[] = [];
+      if (overlayContent) parts.push(overlayContent);
+      if (instructions) parts.push(instructions);
+      if (parts.length > 0) {
+        fs.writeFileSync(path.join(groupPath, '.instructions.md'), parts.join('\n\n'));
+      }
 
       // Insert bidirectional destination rows (= ACL grants).
       // Creator refers to child by the name it chose; child refers to creator as "parent".
@@ -547,18 +639,137 @@ async function handleSystemAction(
         created_at: now,
       });
 
+      // Wire the new coworker into the conversation that created it (not all
+      // admin channels). This scopes coworkers to the channel where they were
+      // requested — they don't leak into unrelated channels.
+      const mg = session.messaging_group_id ? getMessagingGroup(session.messaging_group_id) : null;
+      if (mg) {
+        const existing = getMessagingGroupAgents(mg.id);
+        const alreadyWired = existing.some((a) => a.agent_group_id === agentGroupId);
+        if (!alreadyWired) {
+          createMessagingGroupAgent({
+            id: `mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            messaging_group_id: mg.id,
+            agent_group_id: agentGroupId,
+            trigger_rules: JSON.stringify({ pattern: `@${localName}\\b`, requiresTrigger: true }),
+            response_scope: 'triggered',
+            session_mode: 'shared',
+            priority: 0,
+            created_at: now,
+          });
+        }
+
+        // Grant the coworker a channel destination so it can reply back.
+        const destPreferredName = mg.name
+          ? `${mg.name}-${mg.channel_type}`
+          : `${mg.channel_type}-${mg.platform_id.slice(-8)}`;
+        const destName = allocateDestinationName(agentGroupId, destPreferredName);
+        createDestination({
+          agent_group_id: agentGroupId,
+          local_name: destName,
+          target_type: 'channel',
+          target_id: mg.id,
+          created_at: now,
+        });
+      }
+
       // Refresh the creator's destination map so the new child appears
       // immediately on the next query — no restart needed.
       writeDestinations(session.agent_group_id, session.id);
 
+      // Refresh channel adapters so they learn about the new coworker's
+      // trigger rules without requiring a restart.
+      try {
+        const { refreshAdapterConversations } = await import('./index.js');
+        refreshAdapterConversations();
+      } catch (refreshErr) {
+        log.warn('Failed to refresh adapter conversations after create_agent', { err: refreshErr });
+      }
+
       // Fire-and-forget notification back to the creator
       notifyAgent(
         session,
-        `Agent "${localName}" created. You can now message it with <message to="${localName}">...</message>.`,
+        `Agent "${localName}" created. You can now message it with <message to="${localName}">...</message>.${creationNote ? `\n${creationNote}` : ''}`,
       );
       log.info('Agent group created', { agentGroupId, name, localName, folder, parent: sourceGroup.id });
       // Note: requestId is unused — this is fire-and-forget, not request/response.
       void requestId;
+      break;
+    }
+
+    case 'wire_agents': {
+      const sourceGroup = getAgentGroup(session.agent_group_id);
+      if (!sourceGroup?.is_admin) {
+        notifyAgent(session, 'wire_agents denied: admin permission required.');
+        break;
+      }
+
+      const agentAName = content.agentA as string;
+      const agentBName = content.agentB as string;
+
+      // Resolve both names in the admin's destination map
+      const destA = getDestinationByName(sourceGroup.id, agentAName);
+      const destB = getDestinationByName(sourceGroup.id, agentBName);
+      if (!destA || destA.target_type !== 'agent') {
+        notifyAgent(session, `wire_agents failed: "${agentAName}" is not an agent destination.`);
+        break;
+      }
+      if (!destB || destB.target_type !== 'agent') {
+        notifyAgent(session, `wire_agents failed: "${agentBName}" is not an agent destination.`);
+        break;
+      }
+      if (destA.target_id === destB.target_id) {
+        notifyAgent(session, `wire_agents failed: both names resolve to the same agent.`);
+        break;
+      }
+
+      const agGroupA = destA.target_id;
+      const agGroupB = destB.target_id;
+      const now = new Date().toISOString();
+      const results: string[] = [];
+
+      // A → B (idempotent: check if link already exists)
+      const existingAtoB = getDestinationByTarget(agGroupA, 'agent', agGroupB);
+      if (existingAtoB) {
+        results.push(`"${agentAName}" already reaches "${agentBName}" as "${existingAtoB.local_name}" (reused).`);
+      } else {
+        const nameForB = allocateDestinationName(agGroupA, agentBName);
+        createDestination({
+          agent_group_id: agGroupA,
+          local_name: nameForB,
+          target_type: 'agent',
+          target_id: agGroupB,
+          created_at: now,
+        });
+        results.push(`"${agentAName}" can now reach "${agentBName}" as "${nameForB}".`);
+      }
+
+      // B → A (idempotent)
+      const existingBtoA = getDestinationByTarget(agGroupB, 'agent', agGroupA);
+      if (existingBtoA) {
+        results.push(`"${agentBName}" already reaches "${agentAName}" as "${existingBtoA.local_name}" (reused).`);
+      } else {
+        const nameForA = allocateDestinationName(agGroupB, agentAName);
+        createDestination({
+          agent_group_id: agGroupB,
+          local_name: nameForA,
+          target_type: 'agent',
+          target_id: agGroupA,
+          created_at: now,
+        });
+        results.push(`"${agentBName}" can now reach "${agentAName}" as "${nameForA}".`);
+      }
+
+      // Refresh destination maps for all active sessions of both agents
+      const allSessions = getActiveSessions();
+      for (const s of allSessions) {
+        if (s.agent_group_id === agGroupA || s.agent_group_id === agGroupB) {
+          writeDestinations(s.agent_group_id, s.id);
+        }
+      }
+
+      notifyAgent(session, `Peer wiring complete:\n${results.join('\n')}`);
+      log.info('Peer agents wired', { agentA: agentAName, agentB: agentBName, groupA: agGroupA, groupB: agGroupB });
       break;
     }
 
@@ -661,6 +872,41 @@ async function handleSystemAction(
       break;
     }
 
+    case 'append_learning': {
+      const title = content.title as string;
+      const body = content.content as string;
+      if (!title || !body) {
+        notifyAgent(session, 'append_learning failed: title and content are required.');
+        break;
+      }
+      const globalDir = path.join(GROUPS_DIR, 'global', 'learnings');
+      fs.mkdirSync(globalDir, { recursive: true });
+
+      const slug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 50);
+      const filename = `${Date.now()}-${slug}.md`;
+      fs.writeFileSync(path.join(globalDir, filename), `# ${title}\n\n${body}\n`);
+
+      // Rebuild INDEX.md
+      const files = fs
+        .readdirSync(globalDir)
+        .filter((f) => f.endsWith('.md') && f !== 'INDEX.md')
+        .sort();
+      const indexLines = ['# Shared Learnings Index\n'];
+      for (const f of files) {
+        const displayName = f.replace(/^\d+-/, '').replace(/\.md$/, '').replace(/-/g, ' ');
+        indexLines.push(`- [${displayName}](${f})`);
+      }
+      fs.writeFileSync(path.join(globalDir, 'INDEX.md'), indexLines.join('\n') + '\n');
+
+      notifyAgent(session, `Learning saved: ${title}`);
+      log.info('Shared learning appended', { title, filename });
+      break;
+    }
+
     default:
       log.warn('Unknown system action', { action });
   }
@@ -670,3 +916,7 @@ export function stopDeliveryPolls(): void {
   activePolling = false;
   sweepPolling = false;
 }
+
+export const __testHooks = {
+  handleSystemAction,
+};

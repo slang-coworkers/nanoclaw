@@ -47,14 +47,10 @@ import type {
 import { createRequire } from 'module';
 const _require = createRequire(import.meta.url);
 try {
-  const _generics = _require(
-    '@whiskeysockets/baileys/lib/Utils/generics',
-  ) as Record<string, unknown>;
+  const _generics = _require('@whiskeysockets/baileys/lib/Utils/generics') as Record<string, unknown>;
   _generics.getPlatformId = (browser: string): string => {
     const platformType =
-      proto.DeviceProps.PlatformType[
-        browser.toUpperCase() as keyof typeof proto.DeviceProps.PlatformType
-      ];
+      proto.DeviceProps.PlatformType[browser.toUpperCase() as keyof typeof proto.DeviceProps.PlatformType];
     return platformType ? platformType.toString() : '1';
   };
 } catch {
@@ -296,8 +292,7 @@ registerChannelAdapter('whatsapp', {
 
         if (connection === 'close') {
           connected = false;
-          const reason = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output
-            ?.statusCode;
+          const reason = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output?.statusCode;
           const shouldReconnect = reason !== DisconnectReason.loggedOut;
 
           log.info('WhatsApp connection closed', { reason, shouldReconnect });
@@ -327,7 +322,9 @@ registerChannelAdapter('whatsapp', {
           // Clean up pairing code file after successful connection
           try {
             if (fs.existsSync(pairingCodeFile)) fs.unlinkSync(pairingCodeFile);
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
 
           // Announce availability for presence updates
           sock.sendPresenceUpdate('available').catch((err) => {
@@ -421,9 +418,7 @@ registerChannelAdapter('whatsapp', {
             const sender = msg.key.participant || msg.key.remoteJid || '';
             const senderName = msg.pushName || sender.split('@')[0];
             const fromMe = msg.key.fromMe || false;
-            const isBotMessage = ASSISTANT_HAS_OWN_NUMBER
-              ? fromMe
-              : content.startsWith(`${ASSISTANT_NAME}:`);
+            const isBotMessage = ASSISTANT_HAS_OWN_NUMBER ? fromMe : content.startsWith(`${ASSISTANT_NAME}:`);
 
             const inbound: InboundMessage = {
               id: msg.key.id || `wa-${Date.now()}`,
@@ -473,7 +468,11 @@ registerChannelAdapter('whatsapp', {
         log.info('WhatsApp adapter initialized');
       },
 
-      async deliver(platformId: string, _threadId: string | null, message: OutboundMessage): Promise<string | undefined> {
+      async deliver(
+        platformId: string,
+        _threadId: string | null,
+        message: OutboundMessage,
+      ): Promise<string | undefined> {
         const content = message.content as Record<string, unknown>;
 
         // Typing indicator (composing → paused is handled by the host)

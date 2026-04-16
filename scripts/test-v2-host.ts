@@ -40,6 +40,8 @@ createAgentGroup({
   is_admin: 0,
   agent_provider: 'claude',
   container_config: null,
+  coworker_type: null,
+  allowed_mcp_tools: null,
   created_at: new Date().toISOString(),
 });
 

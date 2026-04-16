@@ -39,18 +39,9 @@ describe('parameterized SQL registration', () => {
       `INSERT OR REPLACE INTO registered_groups
        (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger)
        VALUES (?, ?, ?, ?, ?, NULL, ?)`,
-    ).run(
-      '123@g.us',
-      'Test Group',
-      'test-group',
-      '@Andy',
-      '2024-01-01T00:00:00.000Z',
-      1,
-    );
+    ).run('123@g.us', 'Test Group', 'test-group', '@Andy', '2024-01-01T00:00:00.000Z', 1);
 
-    const row = db
-      .prepare('SELECT * FROM registered_groups WHERE jid = ?')
-      .get('123@g.us') as {
+    const row = db.prepare('SELECT * FROM registered_groups WHERE jid = ?').get('123@g.us') as {
       jid: string;
       name: string;
       folder: string;
@@ -72,18 +63,9 @@ describe('parameterized SQL registration', () => {
       `INSERT OR REPLACE INTO registered_groups
        (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger)
        VALUES (?, ?, ?, ?, ?, NULL, ?)`,
-    ).run(
-      '456@g.us',
-      name,
-      'obriens-group',
-      '@Andy',
-      '2024-01-01T00:00:00.000Z',
-      0,
-    );
+    ).run('456@g.us', name, 'obriens-group', '@Andy', '2024-01-01T00:00:00.000Z', 0);
 
-    const row = db
-      .prepare('SELECT name FROM registered_groups WHERE jid = ?')
-      .get('456@g.us') as {
+    const row = db.prepare('SELECT name FROM registered_groups WHERE jid = ?').get('456@g.us') as {
       name: string;
     };
 
@@ -100,9 +82,7 @@ describe('parameterized SQL registration', () => {
     ).run(maliciousJid, 'Evil', 'evil', '@Andy', '2024-01-01T00:00:00.000Z', 1);
 
     // Table should still exist and have the row
-    const count = db
-      .prepare('SELECT COUNT(*) as count FROM registered_groups')
-      .get() as {
+    const count = db.prepare('SELECT COUNT(*) as count FROM registered_groups').get() as {
       count: number;
     };
     expect(count.count).toBe(1);
@@ -118,14 +98,7 @@ describe('parameterized SQL registration', () => {
       `INSERT OR REPLACE INTO registered_groups
        (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger)
        VALUES (?, ?, ?, ?, ?, NULL, ?)`,
-    ).run(
-      '789@s.whatsapp.net',
-      'Personal',
-      'main',
-      '@Andy',
-      '2024-01-01T00:00:00.000Z',
-      0,
-    );
+    ).run('789@s.whatsapp.net', 'Personal', 'main', '@Andy', '2024-01-01T00:00:00.000Z', 0);
 
     const row = db
       .prepare('SELECT requires_trigger FROM registered_groups WHERE jid = ?')
@@ -139,19 +112,11 @@ describe('parameterized SQL registration', () => {
       `INSERT OR REPLACE INTO registered_groups
        (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main)
        VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,
-    ).run(
-      '789@s.whatsapp.net',
-      'Personal',
-      'whatsapp_main',
-      '@Andy',
-      '2024-01-01T00:00:00.000Z',
-      0,
-      1,
-    );
+    ).run('789@s.whatsapp.net', 'Personal', 'whatsapp_main', '@Andy', '2024-01-01T00:00:00.000Z', 0, 1);
 
-    const row = db
-      .prepare('SELECT is_main FROM registered_groups WHERE jid = ?')
-      .get('789@s.whatsapp.net') as { is_main: number };
+    const row = db.prepare('SELECT is_main FROM registered_groups WHERE jid = ?').get('789@s.whatsapp.net') as {
+      is_main: number;
+    };
 
     expect(row.is_main).toBe(1);
   });
@@ -161,18 +126,11 @@ describe('parameterized SQL registration', () => {
       `INSERT OR REPLACE INTO registered_groups
        (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger)
        VALUES (?, ?, ?, ?, ?, NULL, ?)`,
-    ).run(
-      '123@g.us',
-      'Some Group',
-      'whatsapp_some-group',
-      '@Andy',
-      '2024-01-01T00:00:00.000Z',
-      1,
-    );
+    ).run('123@g.us', 'Some Group', 'whatsapp_some-group', '@Andy', '2024-01-01T00:00:00.000Z', 1);
 
-    const row = db
-      .prepare('SELECT is_main FROM registered_groups WHERE jid = ?')
-      .get('123@g.us') as { is_main: number };
+    const row = db.prepare('SELECT is_main FROM registered_groups WHERE jid = ?').get('123@g.us') as {
+      is_main: number;
+    };
 
     expect(row.is_main).toBe(0);
   });
@@ -184,22 +142,8 @@ describe('parameterized SQL registration', () => {
        VALUES (?, ?, ?, ?, ?, NULL, ?)`,
     );
 
-    stmt.run(
-      '123@g.us',
-      'Original',
-      'main',
-      '@Andy',
-      '2024-01-01T00:00:00.000Z',
-      1,
-    );
-    stmt.run(
-      '123@g.us',
-      'Updated',
-      'main',
-      '@Bot',
-      '2024-02-01T00:00:00.000Z',
-      0,
-    );
+    stmt.run('123@g.us', 'Original', 'main', '@Andy', '2024-01-01T00:00:00.000Z', 1);
+    stmt.run('123@g.us', 'Updated', 'main', '@Bot', '2024-02-01T00:00:00.000Z', 0);
 
     const rows = db.prepare('SELECT * FROM registered_groups').all();
     expect(rows).toHaveLength(1);
@@ -239,10 +183,7 @@ describe('file templating', () => {
   it('updates .env ASSISTANT_NAME line', () => {
     let envContent = 'SOME_KEY=value\nASSISTANT_NAME="Andy"\nOTHER=test';
 
-    envContent = envContent.replace(
-      /^ASSISTANT_NAME=.*$/m,
-      'ASSISTANT_NAME="Nova"',
-    );
+    envContent = envContent.replace(/^ASSISTANT_NAME=.*$/m, 'ASSISTANT_NAME="Nova"');
 
     expect(envContent).toContain('ASSISTANT_NAME="Nova"');
     expect(envContent).toContain('SOME_KEY=value');
@@ -264,11 +205,7 @@ describe('CLAUDE.md template copy', () => {
   let groupsDir: string;
 
   // Replicates register.ts template copy + name update logic
-  function simulateRegister(
-    folder: string,
-    isMain: boolean,
-    assistantName = 'Andy',
-  ): void {
+  function simulateRegister(folder: string, isMain: boolean, assistantName = 'Andy'): void {
     const folderDir = path.join(groupsDir, folder);
     fs.mkdirSync(path.join(folderDir, 'logs'), { recursive: true });
 
@@ -293,20 +230,14 @@ describe('CLAUDE.md template copy', () => {
       for (const mdFile of mdFiles) {
         let content = fs.readFileSync(mdFile, 'utf-8');
         content = content.replace(/^# Andy$/m, `# ${assistantName}`);
-        content = content.replace(
-          /You are Andy/g,
-          `You are ${assistantName}`,
-        );
+        content = content.replace(/You are Andy/g, `You are ${assistantName}`);
         fs.writeFileSync(mdFile, content);
       }
     }
   }
 
   function readGroupMd(folder: string): string {
-    return fs.readFileSync(
-      path.join(groupsDir, folder, 'CLAUDE.md'),
-      'utf-8',
-    );
+    return fs.readFileSync(path.join(groupsDir, folder, 'CLAUDE.md'), 'utf-8');
   }
 
   beforeEach(() => {
@@ -318,10 +249,7 @@ describe('CLAUDE.md template copy', () => {
       path.join(groupsDir, 'main', 'CLAUDE.md'),
       '# Andy\n\nYou are Andy, a personal assistant.\n\n## Admin Context\n\nThis is the **main channel**.',
     );
-    fs.writeFileSync(
-      path.join(groupsDir, 'global', 'CLAUDE.md'),
-      '# Andy\n\nYou are Andy, a personal assistant.',
-    );
+    fs.writeFileSync(path.join(groupsDir, 'global', 'CLAUDE.md'), '# Andy\n\nYou are Andy, a personal assistant.');
   });
 
   afterEach(() => {
@@ -348,12 +276,7 @@ describe('CLAUDE.md template copy', () => {
     simulateRegister('slack_main', true);
     simulateRegister('discord_main', true);
 
-    for (const folder of [
-      'whatsapp_main',
-      'telegram_main',
-      'slack_main',
-      'discord_main',
-    ]) {
+    for (const folder of ['whatsapp_main', 'telegram_main', 'slack_main', 'discord_main']) {
       const content = readGroupMd(folder);
       expect(content).toContain('Admin Context');
       expect(content).toContain('You are Andy');
@@ -367,11 +290,7 @@ describe('CLAUDE.md template copy', () => {
     simulateRegister('discord_general', false);
 
     expect(readGroupMd('whatsapp_main')).toContain('Admin Context');
-    for (const folder of [
-      'telegram_friends',
-      'slack_engineering',
-      'discord_general',
-    ]) {
+    for (const folder of ['telegram_friends', 'slack_engineering', 'discord_general']) {
       const content = readGroupMd(folder);
       expect(content).toContain('You are Andy');
       expect(content).not.toContain('Admin Context');
@@ -386,14 +305,7 @@ describe('CLAUDE.md template copy', () => {
     // Final registration triggers name update across all
     simulateRegister('discord_main', true, 'Luna');
 
-    for (const folder of [
-      'main',
-      'global',
-      'whatsapp_main',
-      'telegram_main',
-      'slack_devs',
-      'discord_main',
-    ]) {
+    for (const folder of ['main', 'global', 'whatsapp_main', 'telegram_main', 'slack_devs', 'discord_main']) {
       const content = readGroupMd(folder);
       expect(content).toContain('# Luna');
       expect(content).toContain('You are Luna');
@@ -405,10 +317,7 @@ describe('CLAUDE.md template copy', () => {
     simulateRegister('slack_main', true);
     // User customizes the file extensively (persona, workspace, rules)
     const mdPath = path.join(groupsDir, 'slack_main', 'CLAUDE.md');
-    fs.writeFileSync(
-      mdPath,
-      '# Gambi\n\nCustom persona with workspace rules and family context.',
-    );
+    fs.writeFileSync(mdPath, '# Gambi\n\nCustom persona with workspace rules and family context.');
     // Re-registering same folder (e.g. re-running /add-slack)
     simulateRegister('slack_main', true);
 
@@ -422,10 +331,7 @@ describe('CLAUDE.md template copy', () => {
     simulateRegister('whatsapp_casa', false);
     // User extensively customizes it (PARA system, task management, etc.)
     const mdPath = path.join(groupsDir, 'whatsapp_casa', 'CLAUDE.md');
-    fs.writeFileSync(
-      mdPath,
-      '# Casa\n\nFamily group with PARA system, task management, shopping lists.',
-    );
+    fs.writeFileSync(mdPath, '# Casa\n\nFamily group with PARA system, task management, shopping lists.');
     // Later, user promotes to main (no trigger required) — CLAUDE.md must be preserved
     simulateRegister('whatsapp_casa', true);
 
@@ -439,10 +345,7 @@ describe('CLAUDE.md template copy', () => {
     simulateRegister('whatsapp_main', true);
     simulateRegister('discord_main', false);
     const discordPath = path.join(groupsDir, 'discord_main', 'CLAUDE.md');
-    fs.writeFileSync(
-      discordPath,
-      '# Gambi HQ — Research Assistant\n\nResearch workflows for Laura and Ethan.',
-    );
+    fs.writeFileSync(discordPath, '# Gambi HQ — Research Assistant\n\nResearch workflows for Laura and Ethan.');
 
     // Discord becomes main too — custom content must survive
     simulateRegister('discord_main', true);
@@ -457,8 +360,6 @@ describe('CLAUDE.md template copy', () => {
 
     simulateRegister('discord_general', false);
 
-    expect(
-      fs.existsSync(path.join(groupsDir, 'discord_general', 'CLAUDE.md')),
-    ).toBe(false);
+    expect(fs.existsSync(path.join(groupsDir, 'discord_general', 'CLAUDE.md'))).toBe(false);
   });
 });

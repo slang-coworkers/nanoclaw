@@ -10,17 +10,15 @@ import { getOutboundDb } from './connection.js';
 const SDK_SESSION_KEY = 'sdk_session_id';
 
 function getValue(key: string): string | undefined {
-  const row = getOutboundDb()
-    .prepare('SELECT value FROM session_state WHERE key = ?')
-    .get(key) as { value: string } | undefined;
+  const row = getOutboundDb().prepare('SELECT value FROM session_state WHERE key = ?').get(key) as
+    | { value: string }
+    | undefined;
   return row?.value;
 }
 
 function setValue(key: string, value: string): void {
   getOutboundDb()
-    .prepare(
-      'INSERT OR REPLACE INTO session_state (key, value, updated_at) VALUES (?, ?, ?)',
-    )
+    .prepare('INSERT OR REPLACE INTO session_state (key, value, updated_at) VALUES (?, ?, ?)')
     .run(key, value, new Date().toISOString());
 }
 

@@ -3,14 +3,21 @@ import path from 'path';
 
 import { query as sdkQuery, type HookCallback, type PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 
-import type { AgentProvider, AgentQuery, McpServerConfig, ProviderEvent, ProviderOptions, QueryInput } from './types.js';
+import type {
+  AgentProvider,
+  AgentQuery,
+  McpServerConfig,
+  ProviderEvent,
+  ProviderOptions,
+  QueryInput,
+} from './types.js';
 
 function log(msg: string): void {
   console.error(`[claude-provider] ${msg}`);
 }
 
-// Tool allowlist for NanoClaw agent containers
-const TOOL_ALLOWLIST = [
+// Base tool allowlist for NanoClaw agent containers (always included)
+const BASE_TOOL_ALLOWLIST = [
   'Bash',
   'Read',
   'Write',
@@ -22,15 +29,64 @@ const TOOL_ALLOWLIST = [
   'Task',
   'TaskOutput',
   'TaskStop',
-  'TeamCreate',
-  'TeamDelete',
-  'SendMessage',
+  'Agent',
+  'TaskCreate',
+  'TaskUpdate',
+  'TaskList',
+  'TaskGet',
   'TodoWrite',
   'ToolSearch',
   'Skill',
   'NotebookEdit',
   'mcp__nanoclaw__*',
 ];
+
+/**
+ * Claude Code auto-compacts context at this window (tokens). Kept here so
+ * the generic bootstrap doesn't need to know about Claude-specific env vars.
+ */
+const CLAUDE_CODE_AUTO_COMPACT_WINDOW = '165000';
+
+/**
+ * Stale-session detection. Matches Claude Code's error text when a
+ * resumed session can't be found — missing transcript .jsonl, unknown
+ * session ID, etc.
+ */
+const STALE_SESSION_RE = /no conversation found|ENOENT.*\.jsonl|session.*not found/i;
+
+function parseAllowedMcpTools(env?: Record<string, string | undefined>): string[] {
+  if (!env?.NANOCLAW_ALLOWED_MCP_TOOLS) return [];
+  try {
+    return (JSON.parse(env.NANOCLAW_ALLOWED_MCP_TOOLS) as string[]).filter((tool) => tool.startsWith('mcp__'));
+  } catch {
+    log('Failed to parse NANOCLAW_ALLOWED_MCP_TOOLS');
+    return [];
+  }
+}
+
+function computeBlockedTools(
+  env: Record<string, string | undefined> | undefined,
+  allowed: string[],
+): string[] | undefined {
+  if (allowed.length === 0 || !env?.NANOCLAW_MCP_TOOL_INVENTORY) return undefined;
+  try {
+    const inventory = JSON.parse(env.NANOCLAW_MCP_TOOL_INVENTORY) as Record<string, string[]>;
+    const allowSet = new Set(allowed);
+    const blocked: string[] = [];
+    for (const tools of Object.values(inventory)) {
+      for (const tool of tools) {
+        if (!allowSet.has(tool)) blocked.push(tool);
+      }
+    }
+    if (blocked.length > 0) {
+      log(`Blocking ${blocked.length} MCP tools not in allowed list`);
+      return blocked;
+    }
+  } catch {
+    log('Failed to parse NANOCLAW_MCP_TOOL_INVENTORY');
+  }
+  return undefined;
+}
 
 interface SDKUserMessage {
   type: 'user';
@@ -90,10 +146,15 @@ function parseTranscript(content: string): ParsedMessage[] {
     try {
       const entry = JSON.parse(line);
       if (entry.type === 'user' && entry.message?.content) {
-        const text = typeof entry.message.content === 'string' ? entry.message.content : entry.message.content.map((c: { text?: string }) => c.text || '').join('');
+        const text =
+          typeof entry.message.content === 'string'
+            ? entry.message.content
+            : entry.message.content.map((c: { text?: string }) => c.text || '').join('');
         if (text) messages.push({ role: 'user', content: text });
       } else if (entry.type === 'assistant' && entry.message?.content) {
-        const textParts = entry.message.content.filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text);
+        const textParts = entry.message.content
+          .filter((c: { type: string }) => c.type === 'text')
+          .map((c: { text: string }) => c.text);
         const text = textParts.join('');
         if (text) messages.push({ role: 'assistant', content: text });
       }
@@ -106,7 +167,13 @@ function parseTranscript(content: string): ParsedMessage[] {
 
 function formatTranscriptMarkdown(messages: ParsedMessage[], title?: string | null, assistantName?: string): string {
   const now = new Date();
-  const dateStr = now.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  const dateStr = now.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
   const lines = [`# ${title || 'Conversation'}`, '', `Archived: ${dateStr}`, '', '---', ''];
   for (const msg of messages) {
     const sender = msg.role === 'user' ? 'User' : assistantName || 'Assistant';
@@ -137,20 +204,29 @@ function createPreCompactHook(assistantName?: string): HookCallback {
       if (fs.existsSync(indexPath)) {
         try {
           const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
-          summary = index.entries?.find((e: { sessionId: string; summary?: string }) => e.sessionId === sessionId)?.summary;
+          summary = index.entries?.find(
+            (e: { sessionId: string; summary?: string }) => e.sessionId === sessionId,
+          )?.summary;
         } catch {
           /* ignore */
         }
       }
 
       const name = summary
-        ? summary.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50)
+        ? summary
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 50)
         : `conversation-${new Date().getHours().toString().padStart(2, '0')}${new Date().getMinutes().toString().padStart(2, '0')}`;
 
       const conversationsDir = '/workspace/agent/conversations';
       fs.mkdirSync(conversationsDir, { recursive: true });
       const filename = `${new Date().toISOString().split('T')[0]}-${name}.md`;
-      fs.writeFileSync(path.join(conversationsDir, filename), formatTranscriptMarkdown(messages, summary, assistantName));
+      fs.writeFileSync(
+        path.join(conversationsDir, filename),
+        formatTranscriptMarkdown(messages, summary, assistantName),
+      );
       log(`Archived conversation to ${filename}`);
     } catch (err) {
       log(`Failed to archive transcript: ${err instanceof Error ? err.message : String(err)}`);
@@ -161,19 +237,6 @@ function createPreCompactHook(assistantName?: string): HookCallback {
 
 // ── Provider ──
 
-/**
- * Claude Code auto-compacts context at this window (tokens). Kept here so
- * the generic bootstrap doesn't need to know about Claude-specific env vars.
- */
-const CLAUDE_CODE_AUTO_COMPACT_WINDOW = '165000';
-
-/**
- * Stale-session detection. Matches Claude Code's error text when a
- * resumed session can't be found — missing transcript .jsonl, unknown
- * session ID, etc.
- */
-const STALE_SESSION_RE = /no conversation found|ENOENT.*\.jsonl|session.*not found/i;
-
 export class ClaudeProvider implements AgentProvider {
   readonly supportsNativeSlashCommands = true;
 
@@ -181,6 +244,8 @@ export class ClaudeProvider implements AgentProvider {
   private mcpServers: Record<string, McpServerConfig>;
   private env: Record<string, string | undefined>;
   private additionalDirectories?: string[];
+  private extraAllowedTools: string[];
+  private blockedTools?: string[];
 
   constructor(options: ProviderOptions = {}) {
     this.assistantName = options.assistantName;
@@ -190,6 +255,8 @@ export class ClaudeProvider implements AgentProvider {
       ...(options.env ?? {}),
       CLAUDE_CODE_AUTO_COMPACT_WINDOW,
     };
+    this.extraAllowedTools = parseAllowedMcpTools(this.env);
+    this.blockedTools = computeBlockedTools(this.env, this.extraAllowedTools);
   }
 
   isSessionInvalid(err: unknown): boolean {
@@ -209,8 +276,11 @@ export class ClaudeProvider implements AgentProvider {
         cwd: input.cwd,
         additionalDirectories: this.additionalDirectories,
         resume: input.continuation,
-        systemPrompt: instructions ? { type: 'preset' as const, preset: 'claude_code' as const, append: instructions } : undefined,
-        allowedTools: TOOL_ALLOWLIST,
+        systemPrompt: instructions
+          ? { type: 'preset' as const, preset: 'claude_code' as const, append: instructions }
+          : undefined,
+        allowedTools: [...BASE_TOOL_ALLOWLIST, ...this.extraAllowedTools],
+        disallowedTools: this.blockedTools,
         env: this.env,
         permissionMode: 'bypassPermissions',
         allowDangerouslySkipPermissions: true,
@@ -236,7 +306,7 @@ export class ClaudeProvider implements AgentProvider {
         if (message.type === 'system' && message.subtype === 'init') {
           yield { type: 'init', continuation: message.session_id };
         } else if (message.type === 'result') {
-          const text = 'result' in message ? (message as { result?: string }).result ?? null : null;
+          const text = 'result' in message ? ((message as { result?: string }).result ?? null) : null;
           yield { type: 'result', text };
         } else if (message.type === 'system' && (message as { subtype?: string }).subtype === 'api_retry') {
           yield { type: 'error', message: 'API retry', retryable: true };

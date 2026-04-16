@@ -11,11 +11,7 @@ import { DATA_DIR } from '../src/config.js';
 import { initDb } from '../src/db/connection.js';
 import { runMigrations } from '../src/db/migrations/index.js';
 import { createAgentGroup, getAgentGroupByFolder } from '../src/db/agent-groups.js';
-import {
-  createDestination,
-  getDestinationByName,
-  normalizeName,
-} from '../src/db/agent-destinations.js';
+import { createDestination, allocateDestinationName } from '../src/db/agent-destinations.js';
 import {
   createMessagingGroup,
   createMessagingGroupAgent,
@@ -156,6 +152,8 @@ export async function run(args: string[]): Promise<void> {
       is_admin: parsed.isMain ? 1 : 0,
       agent_provider: null,
       container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
       created_at: new Date().toISOString(),
     });
     agentGroup = getAgentGroupByFolder(parsed.folder)!;
@@ -204,13 +202,7 @@ export async function run(args: string[]): Promise<void> {
 
     // Create destination row so the agent can address this channel by name.
     // Auto-suffix on collision within this agent's namespace.
-    const baseLocalName = normalizeName(parsed.localName || parsed.name);
-    let localName = baseLocalName;
-    let suffix = 2;
-    while (getDestinationByName(agentGroup.id, localName)) {
-      localName = `${baseLocalName}-${suffix}`;
-      suffix++;
-    }
+    const localName = allocateDestinationName(agentGroup.id, parsed.localName || parsed.name);
     createDestination({
       agent_group_id: agentGroup.id,
       local_name: localName,
@@ -228,7 +220,12 @@ export async function run(args: string[]): Promise<void> {
 
   // 4. Send onboarding message — only on first wiring, not re-registration
   if (newlyWired) {
-    const { session } = resolveSession(agentGroup.id, messagingGroup.id, null, parsed.sessionMode as 'shared' | 'per-thread' | 'agent-shared');
+    const { session } = resolveSession(
+      agentGroup.id,
+      messagingGroup.id,
+      null,
+      parsed.sessionMode as 'shared' | 'per-thread' | 'agent-shared',
+    );
     writeSessionMessage(agentGroup.id, session.id, {
       id: generateId('onboard'),
       kind: 'task',

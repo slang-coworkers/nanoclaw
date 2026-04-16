@@ -93,14 +93,10 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
   {
     prompt: z
       .string()
-      .describe(
-        'What the agent should do when the task runs. For isolated mode, include all necessary context here.',
-      ),
+      .describe('What the agent should do when the task runs. For isolated mode, include all necessary context here.'),
     schedule_type: z
       .enum(['cron', 'interval', 'once'])
-      .describe(
-        'cron=recurring at specific times, interval=recurring every N ms, once=run once at specific time',
-      ),
+      .describe('cron=recurring at specific times, interval=recurring every N ms, once=run once at specific time'),
     schedule_value: z
       .string()
       .describe(
@@ -109,15 +105,11 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
     context_mode: z
       .enum(['group', 'isolated'])
       .default('group')
-      .describe(
-        'group=runs with chat history and memory, isolated=fresh session (include context in prompt)',
-      ),
+      .describe('group=runs with chat history and memory, isolated=fresh session (include context in prompt)'),
     target_group_jid: z
       .string()
       .optional()
-      .describe(
-        '(Main group only) JID of the group to schedule the task for. Defaults to the current group.',
-      ),
+      .describe('(Main group only) JID of the group to schedule the task for. Defaults to the current group.'),
     script: z
       .string()
       .optional()
@@ -155,10 +147,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
         };
       }
     } else if (args.schedule_type === 'once') {
-      if (
-        /[Zz]$/.test(args.schedule_value) ||
-        /[+-]\d{2}:\d{2}$/.test(args.schedule_value)
-      ) {
+      if (/[Zz]$/.test(args.schedule_value) || /[+-]\d{2}:\d{2}$/.test(args.schedule_value)) {
         return {
           content: [
             {
@@ -184,8 +173,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
     }
 
     // Non-main groups can only schedule for themselves
-    const targetJid =
-      isMain && args.target_group_jid ? args.target_group_jid : chatJid;
+    const targetJid = isMain && args.target_group_jid ? args.target_group_jid : chatJid;
 
     const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -225,25 +213,17 @@ server.tool(
     try {
       if (!fs.existsSync(tasksFile)) {
         return {
-          content: [
-            { type: 'text' as const, text: 'No scheduled tasks found.' },
-          ],
+          content: [{ type: 'text' as const, text: 'No scheduled tasks found.' }],
         };
       }
 
       const allTasks = JSON.parse(fs.readFileSync(tasksFile, 'utf-8'));
 
-      const tasks = isMain
-        ? allTasks
-        : allTasks.filter(
-            (t: { groupFolder: string }) => t.groupFolder === groupFolder,
-          );
+      const tasks = isMain ? allTasks : allTasks.filter((t: { groupFolder: string }) => t.groupFolder === groupFolder);
 
       if (tasks.length === 0) {
         return {
-          content: [
-            { type: 'text' as const, text: 'No scheduled tasks found.' },
-          ],
+          content: [{ type: 'text' as const, text: 'No scheduled tasks found.' }],
         };
       }
 
@@ -262,9 +242,7 @@ server.tool(
         .join('\n');
 
       return {
-        content: [
-          { type: 'text' as const, text: `Scheduled tasks:\n${formatted}` },
-        ],
+        content: [{ type: 'text' as const, text: `Scheduled tasks:\n${formatted}` }],
       };
     } catch (err) {
       return {
@@ -363,27 +341,13 @@ server.tool(
   {
     task_id: z.string().describe('The task ID to update'),
     prompt: z.string().optional().describe('New prompt for the task'),
-    schedule_type: z
-      .enum(['cron', 'interval', 'once'])
-      .optional()
-      .describe('New schedule type'),
-    schedule_value: z
-      .string()
-      .optional()
-      .describe('New schedule value (see schedule_task for format)'),
-    script: z
-      .string()
-      .optional()
-      .describe(
-        'New script for the task. Set to empty string to remove the script.',
-      ),
+    schedule_type: z.enum(['cron', 'interval', 'once']).optional().describe('New schedule type'),
+    schedule_value: z.string().optional().describe('New schedule value (see schedule_task for format)'),
+    script: z.string().optional().describe('New script for the task. Set to empty string to remove the script.'),
   },
   async (args) => {
     // Validate schedule_value if provided
-    if (
-      args.schedule_type === 'cron' ||
-      (!args.schedule_type && args.schedule_value)
-    ) {
+    if (args.schedule_type === 'cron' || (!args.schedule_type && args.schedule_value)) {
       if (args.schedule_value) {
         try {
           CronExpressionParser.parse(args.schedule_value);
@@ -424,10 +388,8 @@ server.tool(
     };
     if (args.prompt !== undefined) data.prompt = args.prompt;
     if (args.script !== undefined) data.script = args.script;
-    if (args.schedule_type !== undefined)
-      data.schedule_type = args.schedule_type;
-    if (args.schedule_value !== undefined)
-      data.schedule_value = args.schedule_value;
+    if (args.schedule_type !== undefined) data.schedule_type = args.schedule_type;
+    if (args.schedule_value !== undefined) data.schedule_value = args.schedule_value;
 
     writeIpcFile(TASKS_DIR, data);
 
@@ -450,15 +412,9 @@ Use available_groups.json to find the JID for a group. The folder name must be c
   {
     jid: z
       .string()
-      .describe(
-        'The chat JID (e.g., "120363336345536173@g.us", "tg:-1001234567890", "dc:1234567890123456")',
-      ),
+      .describe('The chat JID (e.g., "120363336345536173@g.us", "tg:-1001234567890", "dc:1234567890123456")'),
     name: z.string().describe('Display name for the group'),
-    folder: z
-      .string()
-      .describe(
-        'Channel-prefixed folder name (e.g., "whatsapp_family-chat", "telegram_dev-team")',
-      ),
+    folder: z.string().describe('Channel-prefixed folder name (e.g., "whatsapp_family-chat", "telegram_dev-team")'),
     trigger: z.string().describe('Trigger word (e.g., "@Andy")'),
     requiresTrigger: z
       .boolean()

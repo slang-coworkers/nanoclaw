@@ -11,7 +11,7 @@ import { log } from './log.js';
 import { resolveSession, writeSessionMessage } from './session-manager.js';
 import { wakeContainer } from './container-runner.js';
 import { getSession } from './db/sessions.js';
-import type { MessagingGroupAgent } from './types.js';
+import type { MessagingGroupAgent, Session } from './types.js';
 
 function generateId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -79,9 +79,9 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
     return;
   }
 
-  // Pick the best matching agent (highest priority, trigger matching in future)
-  const match = pickAgent(agents, event);
-  if (!match) {
+  // Pick matching agents (supports fan-out for @CoworkerName mentions)
+  const matches = pickAgents(agents, event);
+  if (matches.length === 0) {
     log.warn('MESSAGE DROPPED — no agent matched trigger rules', {
       messagingGroupId: mg.id,
       channelType: event.channelType,
@@ -89,53 +89,97 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
     return;
   }
 
-  // 3. Resolve or create session.
-  //
-  // Adapter thread policy overrides the wiring's session_mode: if the adapter
-  // is threaded, each thread gets its own session regardless of what the
-  // wiring says, because "thread = session" is the first-class model for
-  // threaded platforms. Agent-shared is preserved because it expresses a
-  // cross-channel intent the adapter can't know about.
-  let effectiveSessionMode = match.session_mode;
-  if (adapter && adapter.supportsThreads && effectiveSessionMode !== 'agent-shared') {
-    effectiveSessionMode = 'per-thread';
+  // Route to each matched agent — write messages synchronously (DB ops),
+  // then wake all containers in parallel.
+  const wakeTargets: Session[] = [];
+  for (const match of matches) {
+    let effectiveSessionMode = match.session_mode;
+    if (adapter && adapter.supportsThreads && effectiveSessionMode !== 'agent-shared') {
+      effectiveSessionMode = 'per-thread';
+    }
+    const { session, created } = resolveSession(match.agent_group_id, mg.id, event.threadId, effectiveSessionMode);
+
+    writeSessionMessage(session.agent_group_id, session.id, {
+      id: event.message.id || generateId(),
+      kind: event.message.kind,
+      timestamp: event.message.timestamp,
+      platformId: event.platformId,
+      channelType: event.channelType,
+      threadId: event.threadId,
+      content: event.message.content,
+    });
+
+    log.info('Message routed', {
+      sessionId: session.id,
+      agentGroup: match.agent_group_id,
+      kind: event.message.kind,
+      created,
+    });
+
+    const freshSession = getSession(session.id);
+    if (freshSession) wakeTargets.push(freshSession);
   }
-  const { session, created } = resolveSession(match.agent_group_id, mg.id, event.threadId, effectiveSessionMode);
 
-  // 4. Write message to session DB
-  writeSessionMessage(session.agent_group_id, session.id, {
-    id: event.message.id || generateId(),
-    kind: event.message.kind,
-    timestamp: event.message.timestamp,
-    platformId: event.platformId,
-    channelType: event.channelType,
-    threadId: event.threadId,
-    content: event.message.content,
-  });
-
-  log.info('Message routed', {
-    sessionId: session.id,
-    agentGroup: match.agent_group_id,
-    kind: event.message.kind,
-    created,
-  });
-
-  // 5. Show typing indicator while agent processes
+  // Typing + parallel container wakes
   triggerTyping(event.channelType, event.platformId, event.threadId);
+  await Promise.all(wakeTargets.map((s) => wakeContainer(s)));
+}
 
-  // 6. Wake container
-  const freshSession = getSession(session.id);
-  if (freshSession) {
-    await wakeContainer(freshSession);
+/** Cache compiled trigger regexes by pattern string to avoid re-creation on every message. */
+const triggerRegexCache = new Map<string, RegExp | null>();
+
+function getOrCompileRegex(pattern: string): RegExp | null {
+  let re = triggerRegexCache.get(pattern);
+  if (re !== undefined) return re;
+  try {
+    re = new RegExp(pattern, 'i');
+  } catch {
+    re = null;
   }
+  triggerRegexCache.set(pattern, re);
+  return re;
 }
 
 /**
- * Pick the matching agent for an inbound event.
- * Currently: highest priority agent. Future: trigger rule matching.
+ * Pick matching agents for an inbound event.
+ * Supports fan-out: @CoworkerName mentions can route to multiple agents.
+ * Falls back to highest-priority agent without trigger requirement.
  */
-function pickAgent(agents: MessagingGroupAgent[], _event: InboundEvent): MessagingGroupAgent | null {
-  // Agents are already ordered by priority DESC from the DB query
-  // TODO: apply trigger_rules matching (pattern, mentionOnly, etc.)
-  return agents[0] ?? null;
+function pickAgents(agents: MessagingGroupAgent[], event: InboundEvent): MessagingGroupAgent[] {
+  let text = '';
+  try {
+    const content = JSON.parse(event.message.content);
+    text = content.text || content.markdown || content.body || '';
+    if (typeof text !== 'string') text = '';
+  } catch {
+    text = '';
+  }
+
+  const triggered: MessagingGroupAgent[] = [];
+  let defaultAgent: MessagingGroupAgent | null = null;
+
+  for (const agent of agents) {
+    if (!agent.trigger_rules) {
+      if (!defaultAgent) defaultAgent = agent;
+      continue;
+    }
+
+    let rules: { pattern?: string; requiresTrigger?: boolean };
+    try {
+      rules = JSON.parse(agent.trigger_rules);
+    } catch {
+      if (!defaultAgent) defaultAgent = agent;
+      continue;
+    }
+
+    if (rules.requiresTrigger && rules.pattern) {
+      const re = getOrCompileRegex(rules.pattern);
+      if (re?.test(text)) triggered.push(agent);
+    } else if (!rules.requiresTrigger) {
+      if (!defaultAgent) defaultAgent = agent;
+    }
+  }
+
+  if (triggered.length > 0) return triggered;
+  return defaultAgent ? [defaultAgent] : [];
 }

@@ -95,8 +95,7 @@ export async function run(args: string[]): Promise<void> {
     process.exit(4);
   }
 
-  const buildCmd =
-    runtime === 'apple-container' ? 'container build' : 'docker build';
+  const buildCmd = runtime === 'apple-container' ? 'container build' : 'docker build';
   const runCmd = runtime === 'apple-container' ? 'container' : 'docker';
 
   // Build
@@ -118,10 +117,10 @@ export async function run(args: string[]): Promise<void> {
   if (buildOk) {
     log.info('Testing container');
     try {
-      const output = execSync(
-        `echo '{}' | ${runCmd} run -i --rm --entrypoint /bin/echo ${image} "Container OK"`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
-      );
+      const output = execSync(`echo '{}' | ${runCmd} run -i --rm --entrypoint /bin/echo ${image} "Container OK"`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
       testOk = output.includes('Container OK');
       log.info('Container test result', { testOk });
     } catch {

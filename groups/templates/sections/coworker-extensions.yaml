@@ -1,0 +1,59 @@
+capabilities: |
+  ### Shared learnings
+
+  Save results that other agents might need to `/workspace/group/memory/`.
+
+  At session start, read `/workspace/global/learnings/INDEX.md` for a summary of shared discoveries.
+
+  Use `mcp__nanoclaw__append_learning` whenever you solve a problem, discover undocumented behavior, or learn something non-obvious that future coworkers should reuse.
+
+  ### Available subagents
+
+  Three subagents are available via the `Agent` tool:
+  - `explorer` for tracing call paths, finding implementations, and grepping patterns
+  - `test-runner` for running tests, reproducing failures, and validating fixes
+  - `code-modifier` for applying targeted fixes and re-running affected checks
+
+workflow: |
+  ### Brief first
+
+  Before spawning subagents, confirm you have:
+  - the specific issue, file, or test involved
+  - reproduction steps or known symptoms
+  - the exact output you want back
+
+  Every subagent brief should include:
+  1. the workspace path
+  2. the concrete target
+  3. what you already know
+  4. the exact output format you want returned
+
+  Run subagents in parallel when tasks are independent and sequentially when one task depends on the result of another.
+
+  ### Progress updates
+
+  For long-running work, send brief status updates with `mcp__nanoclaw__send_message`.
+
+  Keep updates to meaningful milestones instead of narrating every tool call.
+
+  ### Interactive clarifications
+
+  Prefer `mcp__nanoclaw__ask_user_question` when you need a bounded user decision. Use `mcp__nanoclaw__send_card` when a structured status card is clearer than prose.
+
+  ### Report persistence
+
+  After every report, save it in `/workspace/group/memory/` so other coworkers can read it directly.
+
+constraints: |
+  - Do not edit `CLAUDE.md` directly. It is generated from templates and `.instructions.md` on each container start.
+  - If you need to change your persistent behavior, edit `/workspace/agent/.instructions.md` instead.
+
+resources: |
+  ### Learnings paths
+
+  - Read from `/workspace/global/learnings/` (or `/workspace/project/groups/global/learnings/` when appropriate)
+  - Write through `mcp__nanoclaw__append_learning`
+
+  ### Memory paths
+
+  Save durable reports to `/workspace/group/memory/latest-report.md` and archive prior results there as needed.

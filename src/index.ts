@@ -6,8 +6,8 @@
  */
 import path from 'path';
 
-import { DATA_DIR } from './config.js';
-import { initDb } from './db/connection.js';
+import { DASHBOARD_INGRESS_HOST, DASHBOARD_INGRESS_PORT, DATA_DIR, MCP_PROXY_PORT, PROXY_BIND_HOST } from './config.js';
+import { initDb, getDb } from './db/connection.js';
 import { runMigrations } from './db/migrations/index.js';
 import { getMessagingGroupsByChannel, getMessagingGroupAgents } from './db/messaging-groups.js';
 import { ensureContainerRuntimeRunning, cleanupOrphans } from './container-runtime.js';
@@ -38,13 +38,26 @@ import { getAgentGroup, updateAgentGroup } from './db/agent-groups.js';
 import { writeSessionMessage } from './session-manager.js';
 import { wakeContainer, buildAgentGroupImage, killContainer } from './container-runner.js';
 import { log } from './log.js';
+import { startMcpServers, getRunningServerNames, getServerUpstreamPort } from './mcp-registry.js';
+import { startMcpAuthProxy, setUpstreamPortResolver, discoverTools } from './mcp-auth-proxy.js';
+import { startDashboardIngress } from './dashboard-ingress.js';
 
 // Channel barrel — each enabled channel self-registers on import.
 // Channel skills uncomment lines in channels/index.ts to enable them.
 import './channels/index.js';
 
 import type { ChannelAdapter, ChannelSetup, ConversationConfig } from './channels/adapter.js';
-import { initChannelAdapters, teardownChannelAdapters, getChannelAdapter } from './channels/channel-registry.js';
+import {
+  initChannelAdapters,
+  teardownChannelAdapters,
+  getChannelAdapter,
+  getActiveAdapters,
+} from './channels/channel-registry.js';
+
+// Module-level so shutdown() can access
+let mcpStackHandle: { stop: () => void } | null = null;
+let mcpProxyHandle: { stop: () => void } | null = null;
+let dashboardIngressHandle: { stop: () => Promise<void> } | null = null;
 
 async function main(): Promise<void> {
   log.info('NanoClaw v2 starting');
@@ -58,6 +71,28 @@ async function main(): Promise<void> {
   // 2. Container runtime
   ensureContainerRuntimeRunning();
   cleanupOrphans();
+  // Reset stale container_status from previous host runs
+  getDb().prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'").run();
+
+  // 2b. MCP server stack (registry + auth proxy)
+  const mcpStack = await startMcpServers(MCP_PROXY_PORT + 100);
+  mcpStackHandle = mcpStack;
+  setUpstreamPortResolver((serverName) => {
+    if (serverName) return mcpStack.getUpstreamPort(serverName);
+    const names = getRunningServerNames();
+    return names.length > 0 ? getServerUpstreamPort(names[0]) : null;
+  });
+  mcpProxyHandle = startMcpAuthProxy(PROXY_BIND_HOST, MCP_PROXY_PORT);
+
+  // Discover tools from all running MCP servers
+  for (const name of getRunningServerNames()) {
+    const port = mcpStack.getUpstreamPort(name);
+    if (port) {
+      await discoverTools(name, port).catch((err) => {
+        log.warn('MCP tool discovery failed', { server: name, err });
+      });
+    }
+  }
 
   // 3. Channel adapters
   await initChannelAdapters((adapter: ChannelAdapter): ChannelSetup => {
@@ -111,6 +146,25 @@ async function main(): Promise<void> {
     };
   });
 
+  // 3b. Dashboard inbound bridge — standalone dashboard server sends browser
+  // chat here so routing still happens inside the host process.
+  dashboardIngressHandle = startDashboardIngress({
+    host: DASHBOARD_INGRESS_HOST,
+    port: DASHBOARD_INGRESS_PORT,
+    onActionFn: async (questionId, selectedOption, userId) => {
+      await handleQuestionResponse(questionId, selectedOption, userId);
+    },
+    onQuestionFn: async (questionId, selectedOption, userId) => {
+      await handleQuestionResponse(questionId, selectedOption, userId);
+    },
+    onCredentialSubmitFn: async (credentialId, value) => {
+      await handleCredentialSubmit(credentialId, value);
+    },
+    onCredentialRejectFn: async (credentialId) => {
+      await handleCredentialReject(credentialId);
+    },
+  });
+
   // 4. Delivery adapter bridge — dispatches to channel adapters
   const deliveryAdapter = {
     async deliver(
@@ -151,6 +205,20 @@ async function main(): Promise<void> {
   log.info('NanoClaw v2 running');
 }
 
+/**
+ * Refresh all active adapters with updated conversation configs from the DB.
+ * Called when messaging_group_agents wiring changes (e.g., create_agent).
+ */
+export function refreshAdapterConversations(): void {
+  for (const adapter of getActiveAdapters()) {
+    if (adapter.updateConversations) {
+      const configs = buildConversationConfigs(adapter.channelType);
+      adapter.updateConversations(configs);
+      log.debug('Adapter conversations refreshed', { channel: adapter.channelType, count: configs.length });
+    }
+  }
+}
+
 /** Build ConversationConfig[] for a channel type from the central DB. */
 function buildConversationConfigs(channelType: string): ConversationConfig[] {
   const groups = getMessagingGroupsByChannel(channelType);
@@ -159,7 +227,14 @@ function buildConversationConfigs(channelType: string): ConversationConfig[] {
   for (const mg of groups) {
     const agents = getMessagingGroupAgents(mg.id);
     for (const agent of agents) {
-      const triggerRules = agent.trigger_rules ? JSON.parse(agent.trigger_rules) : null;
+      let triggerRules: { pattern?: string; requiresTrigger?: boolean } | null = null;
+      if (agent.trigger_rules) {
+        try {
+          triggerRules = JSON.parse(agent.trigger_rules);
+        } catch {
+          log.warn('Invalid trigger_rules JSON, skipping', { agentGroupId: agent.agent_group_id });
+        }
+      }
       configs.push({
         platformId: mg.platform_id,
         agentGroupId: agent.agent_group_id,
@@ -321,6 +396,9 @@ async function shutdown(signal: string): Promise<void> {
   stopOneCLIApprovalHandler();
   stopDeliveryPolls();
   stopHostSweep();
+  mcpProxyHandle?.stop();
+  mcpStackHandle?.stop();
+  await dashboardIngressHandle?.stop();
   await teardownChannelAdapters();
   process.exit(0);
 }

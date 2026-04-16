@@ -19,9 +19,9 @@ export interface SessionRouting {
 export function getSessionRouting(): SessionRouting {
   const db = getInboundDb();
   try {
-    const row = db
-      .prepare('SELECT channel_type, platform_id, thread_id FROM session_routing WHERE id = 1')
-      .get() as SessionRouting | undefined;
+    const row = db.prepare('SELECT channel_type, platform_id, thread_id FROM session_routing WHERE id = 1').get() as
+      | SessionRouting
+      | undefined;
     if (row) return row;
   } catch {
     // Table may not exist on an older session DB — fall through to defaults

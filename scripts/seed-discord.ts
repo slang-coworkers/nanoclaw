@@ -9,11 +9,7 @@ import { DATA_DIR } from '../src/config.js';
 import { initDb } from '../src/db/connection.js';
 import { runMigrations } from '../src/db/migrations/index.js';
 import { createAgentGroup, getAgentGroup } from '../src/db/agent-groups.js';
-import {
-  createMessagingGroup,
-  createMessagingGroupAgent,
-  getMessagingGroup,
-} from '../src/db/messaging-groups.js';
+import { createMessagingGroup, createMessagingGroupAgent, getMessagingGroup } from '../src/db/messaging-groups.js';
 
 const db = initDb(path.join(DATA_DIR, 'v2.db'));
 runMigrations(db);
@@ -31,6 +27,8 @@ if (!getAgentGroup(AGENT_GROUP_ID)) {
     is_admin: 1,
     agent_provider: 'claude',
     container_config: null,
+    coworker_type: null,
+    allowed_mcp_tools: null,
     created_at: new Date().toISOString(),
   });
   console.log('Created agent group:', AGENT_GROUP_ID);

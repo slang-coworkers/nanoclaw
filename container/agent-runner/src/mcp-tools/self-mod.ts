@@ -39,8 +39,16 @@ export const installPackages: McpToolDefinition = {
     inputSchema: {
       type: 'object' as const,
       properties: {
-        apt: { type: 'array', items: { type: 'string' }, description: 'apt packages to install (names only, no version specs or flags)' },
-        npm: { type: 'array', items: { type: 'string' }, description: 'npm packages to install globally (names only, no version specs)' },
+        apt: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'apt packages to install (names only, no version specs or flags)',
+        },
+        npm: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'npm packages to install globally (names only, no version specs)',
+        },
         reason: { type: 'string', description: 'Why these packages are needed' },
       },
     },
@@ -52,7 +60,8 @@ export const installPackages: McpToolDefinition = {
     if (apt.length + npm.length > MAX_PACKAGES) return err(`Maximum ${MAX_PACKAGES} packages per request`);
 
     const invalidApt = apt.find((p) => !APT_RE.test(p));
-    if (invalidApt) return err(`Invalid apt package name: "${invalidApt}". Only lowercase letters, digits, and ._+- allowed.`);
+    if (invalidApt)
+      return err(`Invalid apt package name: "${invalidApt}". Only lowercase letters, digits, and ._+- allowed.`);
     const invalidNpm = npm.find((p) => !NPM_RE.test(p));
     if (invalidNpm) return err(`Invalid npm package name: "${invalidNpm}". No version specs or shell characters.`);
 

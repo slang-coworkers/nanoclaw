@@ -46,11 +46,13 @@ export const triggerCredentialCollection: McpToolDefinition = {
         type: {
           type: 'string',
           enum: ['generic', 'anthropic'],
-          description: "Secret type. Use 'generic' for most third-party APIs; 'anthropic' is reserved for Anthropic API keys.",
+          description:
+            "Secret type. Use 'generic' for most third-party APIs; 'anthropic' is reserved for Anthropic API keys.",
         },
         hostPattern: {
           type: 'string',
-          description: 'Host pattern to match (e.g. "api.resend.com"). Used by OneCLI to know when to inject this credential.',
+          description:
+            'Host pattern to match (e.g. "api.resend.com"). Used by OneCLI to know when to inject this credential.',
         },
         pathPattern: {
           type: 'string',
@@ -62,7 +64,8 @@ export const triggerCredentialCollection: McpToolDefinition = {
         },
         valueFormat: {
           type: 'string',
-          description: 'Value format template. Use {value} as the placeholder. Example: "Bearer {value}". Defaults to "{value}".',
+          description:
+            'Value format template. Use {value} as the placeholder. Example: "Bearer {value}". Defaults to "{value}".',
         },
         description: {
           type: 'string',

@@ -38,6 +38,8 @@ createAgentGroup({
   is_admin: 1, // admin so OneCLI uses default agent for auth
   agent_provider: 'claude',
   container_config: null,
+  coworker_type: null,
+  allowed_mcp_tools: null,
   created_at: new Date().toISOString(),
 });
 
@@ -99,7 +101,9 @@ const mockAdapter: ChannelAdapter = {
 
   async setTyping() {},
   async teardown() {},
-  isConnected() { return true; },
+  isConnected() {
+    return true;
+  },
 };
 
 // Register mock adapter
@@ -107,7 +111,9 @@ registerChannelAdapter('mock', { factory: () => mockAdapter });
 
 // Init channel adapters — this calls setup() with conversation configs from central DB
 await initChannelAdapters((adapter) => ({
-  conversations: [{ platformId: 'mock-channel-1', agentGroupId: 'ag-chan', requiresTrigger: false, sessionMode: 'shared' }],
+  conversations: [
+    { platformId: 'mock-channel-1', agentGroupId: 'ag-chan', requiresTrigger: false, sessionMode: 'shared' },
+  ],
   onInbound(platformId, threadId, message) {
     routeInbound({
       channelType: adapter.channelType,
@@ -171,12 +177,16 @@ console.log(`✓ Container status: ${session.container_status}`);
 import { execSync } from 'child_process';
 const checkContainerLogs = () => {
   try {
-    const containers = execSync('docker ps -a --filter name=nanoclaw-v2-test-channel --format "{{.Names}}"').toString().trim();
+    const containers = execSync('docker ps -a --filter name=nanoclaw-v2-test-channel --format "{{.Names}}"')
+      .toString()
+      .trim();
     for (const name of containers.split('\n').filter(Boolean)) {
       console.log(`\nContainer logs (${name}):`);
       console.log(execSync(`docker logs ${name} 2>&1`).toString());
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 };
 
 const sessDbPath = sessionDbPath('ag-chan', session.id);
@@ -202,7 +212,9 @@ await new Promise<void>((resolve) => {
         console.log(`  messages_out rows: ${out.length}`);
         if (out.length > 0) console.log('  (messages exist but delivery failed)');
         db.close();
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       checkContainerLogs();
       cleanup();
       process.exit(1);

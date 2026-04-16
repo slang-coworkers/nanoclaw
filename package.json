@@ -15,9 +15,12 @@
     "prepare": "husky",
     "setup": "tsx setup/index.ts",
     "auth": "tsx src/whatsapp-auth.ts",
+    "rebuild:claude": "tsx scripts/rebuild-claude-md.ts",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "test": "vitest run",
+    "dashboard": "echo 'Dashboard runs inside the host process. Use: DASHBOARD_PORT=3737 npm run dev' && exit 1",
+    "dashboard:preview": "npx tsx dashboard/server.ts",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -41,16 +44,19 @@
     "chat-adapter-imessage": "^0.1.1",
     "cron-parser": "5.5.0",
     "pino": "^9.6.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "supergateway": "^3.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@types/better-sqlite3": "^7.6.12",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.0",
     "eslint": "^9.35.0",
     "eslint-plugin-no-catch-all": "^1.1.0",
     "globals": "^15.12.0",
     "husky": "^9.1.7",
+    "js-yaml": "^4.1.1",
     "prettier": "^3.8.1",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",

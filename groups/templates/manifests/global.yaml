@@ -1,0 +1,10 @@
+# Composition manifest for groups/global/CLAUDE.md
+# Base: upstream global (kept in sync, never modified)
+# Sections appended after the base content
+
+base: upstream-global
+
+sections: []
+
+# Project section files and global overlays auto-appended from projects/*
+project_overlays: true

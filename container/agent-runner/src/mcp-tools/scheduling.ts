@@ -40,7 +40,10 @@ export const scheduleTask: McpToolDefinition = {
       properties: {
         prompt: { type: 'string', description: 'Task instructions/prompt' },
         processAfter: { type: 'string', description: 'ISO timestamp for first run (e.g., 2024-01-15T09:00:00Z)' },
-        recurrence: { type: 'string', description: 'Cron expression for recurring tasks (e.g., "0 9 * * 1-5" for weekdays at 9am)' },
+        recurrence: {
+          type: 'string',
+          description: 'Cron expression for recurring tasks (e.g., "0 9 * * 1-5" for weekdays at 9am)',
+        },
         script: { type: 'string', description: 'Optional pre-agent script to run before processing' },
       },
       required: ['prompt', 'processAfter'],
@@ -85,7 +88,10 @@ export const listTasks: McpToolDefinition = {
     inputSchema: {
       type: 'object' as const,
       properties: {
-        status: { type: 'string', description: 'Filter by status: pending, processing, completed, paused (default: all non-completed)' },
+        status: {
+          type: 'string',
+          description: 'Filter by status: pending, processing, completed, paused (default: all non-completed)',
+        },
       },
     },
   },
@@ -95,19 +101,31 @@ export const listTasks: McpToolDefinition = {
     let rows;
     if (status) {
       rows = db
-        .prepare("SELECT id, status, process_after, recurrence, content FROM messages_in WHERE kind = 'task' AND status = ? ORDER BY process_after ASC")
+        .prepare(
+          "SELECT id, status, process_after, recurrence, content FROM messages_in WHERE kind = 'task' AND status = ? ORDER BY process_after ASC",
+        )
         .all(status);
     } else {
       rows = db
-        .prepare("SELECT id, status, process_after, recurrence, content FROM messages_in WHERE kind = 'task' AND status NOT IN ('completed') ORDER BY process_after ASC")
+        .prepare(
+          "SELECT id, status, process_after, recurrence, content FROM messages_in WHERE kind = 'task' AND status NOT IN ('completed') ORDER BY process_after ASC",
+        )
         .all();
     }
 
     if ((rows as unknown[]).length === 0) return ok('No tasks found.');
 
-    const lines = (rows as Array<{ id: string; status: string; process_after: string | null; recurrence: string | null; content: string }>).map((r) => {
+    const lines = (
+      rows as Array<{
+        id: string;
+        status: string;
+        process_after: string | null;
+        recurrence: string | null;
+        content: string;
+      }>
+    ).map((r) => {
       const content = JSON.parse(r.content);
-      const prompt = (content.prompt as string || '').slice(0, 80);
+      const prompt = ((content.prompt as string) || '').slice(0, 80);
       return `- ${r.id} [${r.status}] at=${r.process_after || 'now'} ${r.recurrence ? `recur=${r.recurrence} ` : ''}→ ${prompt}`;
     });
 

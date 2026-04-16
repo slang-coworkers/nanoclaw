@@ -7,6 +7,8 @@ export interface AgentGroup {
   is_admin: number; // 0 | 1
   agent_provider: string | null;
   container_config: string | null; // JSON: { additionalMounts, timeout }
+  coworker_type: string | null; // e.g. "slang-compiler" or "slang-build+slang-quality"
+  allowed_mcp_tools: string | null; // JSON: string[] of allowed MCP tool names
   created_at: string;
 }
 

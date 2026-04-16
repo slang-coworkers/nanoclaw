@@ -35,8 +35,35 @@ export const createAgent: McpToolDefinition = {
     inputSchema: {
       type: 'object' as const,
       properties: {
-        name: { type: 'string', description: 'Human-readable name (also becomes your destination name for this agent)' },
-        instructions: { type: 'string', description: 'CLAUDE.md content for the new agent (personality, role, instructions)' },
+        name: {
+          type: 'string',
+          description: 'Human-readable name (also becomes your destination name for this agent)',
+        },
+        instructions: {
+          type: 'string',
+          description: 'CLAUDE.md content for the new agent (personality, role, instructions)',
+        },
+        coworkerType: {
+          type: 'string',
+          description:
+            'Coworker type from coworker-types.json (e.g., "slang-testing"). Determines role templates and allowed MCP tools.',
+        },
+        allowedMcpTools: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Explicit list of allowed MCP tools (e.g., ["mcp__slang-mcp__github_get_issue"]). Overrides type defaults.',
+        },
+        instructionOverlay: {
+          type: 'string',
+          description:
+            'Name of an instruction overlay template (e.g., "code-reviewer", "terse-reporter"). Sets the communication style. See groups/templates/instructions/ for available overlays.',
+        },
+        agentProvider: {
+          type: 'string',
+          description:
+            'Agent provider for this coworker ("claude" or "codex"). Defaults to "claude" if not specified.',
+        },
       },
       required: ['name'],
     },
@@ -54,6 +81,10 @@ export const createAgent: McpToolDefinition = {
         requestId,
         name,
         instructions: (args.instructions as string) || null,
+        coworkerType: (args.coworkerType as string) || null,
+        allowedMcpTools: (args.allowedMcpTools as string[]) || null,
+        instructionOverlay: (args.instructionOverlay as string) || null,
+        agentProvider: (args.agentProvider as string) || null,
       }),
     });
 
@@ -62,4 +93,49 @@ export const createAgent: McpToolDefinition = {
   },
 };
 
-export const agentTools: McpToolDefinition[] = [createAgent];
+export const wireAgents: McpToolDefinition = {
+  tool: {
+    name: 'wire_agents',
+    description:
+      'Create a bidirectional communication link between two agents in your destination list. After wiring, both agents can send messages to each other directly without going through you. Admin-only.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_a: {
+          type: 'string',
+          description: 'Destination name of first agent (from your destination list)',
+        },
+        agent_b: {
+          type: 'string',
+          description: 'Destination name of second agent (from your destination list)',
+        },
+      },
+      required: ['agent_a', 'agent_b'],
+    },
+  },
+  async handler(args) {
+    const agentA = args.agent_a as string;
+    const agentB = args.agent_b as string;
+    if (!agentA || !agentB) return err('agent_a and agent_b are required');
+    if (agentA === agentB) return err('Cannot wire an agent to itself');
+
+    const requestId = generateId();
+    writeMessageOut({
+      id: requestId,
+      kind: 'system',
+      content: JSON.stringify({
+        action: 'wire_agents',
+        requestId,
+        agentA,
+        agentB,
+      }),
+    });
+
+    log(`wire_agents: ${requestId} → "${agentA}" ↔ "${agentB}"`);
+    return ok(
+      `Wiring "${agentA}" ↔ "${agentB}". You will be notified when the link is ready.`,
+    );
+  },
+};
+
+export const agentTools: McpToolDefinition[] = [createAgent, wireAgents];

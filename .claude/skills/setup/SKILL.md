@@ -50,6 +50,15 @@ Already configured. Continue.
 
 **Verify:** `git remote -v` should show `origin` → user's repo, `upstream` → `qwibitai/nanoclaw.git`.
 
+### Git identity
+
+Ensure git identity is configured before invoking any skill that merges a branch:
+
+```bash
+git config user.name || git config user.name "NanoClaw Setup"
+git config user.email || git config user.email "setup@nanoclaw.local"
+```
+
 ## 1. Bootstrap (Node.js + Dependencies)
 
 Run `bash setup.sh` and parse the status block.
@@ -242,6 +251,7 @@ Verify the proxy starts: `npm run dev` should show "Credential proxy listening" 
 ## 5. Set Up Channels
 
 AskUserQuestion (multiSelect): Which messaging channels do you want to enable?
+- Dashboard — real-time pixel office UI for agent observability (no credentials needed, recommended)
 - Discord (bot token + public key)
 - Slack (bot token + signing secret)
 - Telegram (bot token from @BotFather)
@@ -256,10 +266,13 @@ AskUserQuestion (multiSelect): Which messaging channels do you want to enable?
 - Webex (bot token)
 - iMessage (macOS local or Photon API)
 
+**Dashboard is recommended as a default** — it provides a web UI for chatting with agents, observing their work, and managing coworkers. No credentials or external services needed. It works standalone or alongside any messaging channel.
+
 **Delegate to each selected channel's own skill.** Each channel skill handles its own package installation, authentication, registration, and configuration. This avoids duplicating channel-specific logic.
 
 For each selected channel, invoke its skill:
 
+- **Dashboard:** Invoke `/add-dashboard`
 - **Discord:** Invoke `/add-discord-v2`
 - **Slack:** Invoke `/add-slack-v2`
 - **Telegram:** Invoke `/add-telegram-v2`
@@ -280,6 +293,8 @@ Each skill will:
 3. Collect credentials/tokens and write to `.env`
 4. Build and verify
 
+For Dashboard, the skill merges `skill/v2_dashboard` and configures the Pixel Office UI plus dashboard-specific formatting overlays.
+
 **After all channel skills complete**, install dependencies and rebuild — channel merges may introduce new packages:
 
 ```bash
@@ -287,6 +302,14 @@ npm install && npm run build
 ```
 
 If the build fails, read the error output and fix it (usually a missing dependency). Then continue to step 5a.
+
+## 5a. Project Integrations
+
+**IMPORTANT: You MUST ask this question. Do NOT skip to step 6.**
+
+AskUserQuestion: Would you like to add Slang compiler support? This adds Slang-specific coworker skills, workflow templates, overlays, and MCP-backed maintainer tooling.
+
+If yes, invoke `/add-slang`. Wait for it to complete fully (merge, rebuild, configuration) before proceeding.
 
 ## 6. Mount Allowlist
 
@@ -365,7 +388,19 @@ Tell user to test: send a message in their registered chat. Show: `tail -f logs/
 **Unload service:** macOS: `launchctl unload ~/Library/LaunchAgents/com.nanoclaw.plist` | Linux: `systemctl --user stop nanoclaw`
 
 
-## 9. Diagnostics
+## 9. Onboard Coworkers (optional)
+
+If `coworkers/` directory exists and contains `.yaml` files, offer to create pre-packaged coworkers:
+
+1. Scan `coworkers/*.yaml` for available agent definitions
+2. List them with descriptions (from the YAML's `agent.name` and `instructions` fields)
+3. AskUserQuestion: "Would you like to create any of these coworkers?"
+   - Yes — run `/onboard-coworker` to let the user select which to create
+   - No / Skip — continue to diagnostics
+
+This step is only relevant after a skill branch (e.g., `/add-slang`) has been merged, which brings `coworkers/*.yaml` files.
+
+## 10. Diagnostics
 
 1. Use the Read tool to read `.claude/skills/setup/diagnostics.md`.
 2. Follow every step in that file before completing setup.

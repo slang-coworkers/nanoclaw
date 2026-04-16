@@ -13,6 +13,8 @@ logs/
 groups/*
 !groups/main/
 !groups/global/
+!groups/templates/
+!groups/coworker-types.json
 groups/main/*
 groups/global/*
 !groups/main/CLAUDE.md
@@ -34,5 +36,9 @@ groups/global/*
 
 # Skills system (local per-installation state)
 .nanoclaw/
+
+# Local dev artifacts
+.codex
+.claude/projects/*/memory/
 
 agents-sdk-docs

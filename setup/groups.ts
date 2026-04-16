@@ -67,8 +67,7 @@ async function syncGroups(projectRoot: string): Promise<void> {
   // Only WhatsApp needs an upfront group sync; other channels resolve names at runtime.
   // Detect WhatsApp by checking for auth credentials on disk.
   const authDir = path.join(projectRoot, 'store', 'auth');
-  const hasWhatsAppAuth =
-    fs.existsSync(authDir) && fs.readdirSync(authDir).length > 0;
+  const hasWhatsAppAuth = fs.existsSync(authDir) && fs.readdirSync(authDir).length > 0;
 
   if (!hasWhatsAppAuth) {
     log.info('WhatsApp auth not found — skipping group sync');
@@ -191,7 +190,11 @@ sock.ev.on('connection.update', async (update) => {
       syncOk = output.includes('SYNCED:');
       log.info('Sync output', { output: output.trim() });
     } finally {
-      try { fs.unlinkSync(tmpScript); } catch { /* ignore cleanup errors */ }
+      try {
+        fs.unlinkSync(tmpScript);
+      } catch {
+        /* ignore cleanup errors */
+      }
     }
   } catch (err) {
     log.error('Sync failed', { err });
@@ -204,9 +207,7 @@ sock.ev.on('connection.update', async (update) => {
     try {
       const db = new Database(dbPath, { readonly: true });
       const row = db
-        .prepare(
-          "SELECT COUNT(*) as count FROM chats WHERE jid LIKE '%@g.us' AND jid <> '__group_sync__'",
-        )
+        .prepare("SELECT COUNT(*) as count FROM chats WHERE jid LIKE '%@g.us' AND jid <> '__group_sync__'")
         .get() as { count: number };
       groupsInDb = row.count;
       db.close();

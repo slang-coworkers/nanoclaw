@@ -55,9 +55,7 @@ export async function run(_args: string[]): Promise<void> {
     if (fs.existsSync(dbPath)) {
       try {
         const db = new Database(dbPath, { readonly: true });
-        const row = db
-          .prepare('SELECT COUNT(*) as count FROM registered_groups')
-          .get() as { count: number };
+        const row = db.prepare('SELECT COUNT(*) as count FROM registered_groups').get() as { count: number };
         if (row.count > 0) hasRegisteredGroups = true;
         db.close();
       } catch {
@@ -66,18 +64,15 @@ export async function run(_args: string[]): Promise<void> {
     }
   }
 
-  log.info(
-    'Environment check complete',
-    {
-      platform,
-      wsl,
-      appleContainer,
-      docker,
-      hasEnv,
-      hasAuth,
-      hasRegisteredGroups,
-    },
-  );
+  log.info('Environment check complete', {
+    platform,
+    wsl,
+    appleContainer,
+    docker,
+    hasEnv,
+    hasAuth,
+    hasRegisteredGroups,
+  });
 
   emitStatus('CHECK_ENVIRONMENT', {
     PLATFORM: platform,

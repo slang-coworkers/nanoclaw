@@ -8,7 +8,7 @@ import type { AgentProvider, AgentQuery, ProviderEvent } from './providers/types
 
 const POLL_INTERVAL_MS = 1000;
 const ACTIVE_POLL_INTERVAL_MS = 500;
-const IDLE_END_MS = 20_000; // End stream after 20s with no SDK events
+const IDLE_END_MS = 600_000; // End stream after 600s with no SDK events (background subagents need longer)
 
 function log(msg: string): void {
   console.error(`[poll-loop] ${msg}`);
@@ -152,7 +152,9 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // provider natively handles slash commands), others get XML.
     const prompt = formatMessagesWithCommands(normalMessages, config.provider.supportsNativeSlashCommands);
 
-    log(`Processing ${normalMessages.length} message(s), kinds: ${[...new Set(normalMessages.map((m) => m.kind))].join(',')}`);
+    log(
+      `Processing ${normalMessages.length} message(s), kinds: ${[...new Set(normalMessages.map((m) => m.kind))].join(',')}`,
+    );
 
     const query = config.provider.query({
       prompt,
@@ -236,7 +238,12 @@ interface QueryResult {
   continuation?: string;
 }
 
-async function processQuery(query: AgentQuery, routing: RoutingContext, config: PollLoopConfig, processingIds: string[]): Promise<QueryResult> {
+async function processQuery(
+  query: AgentQuery,
+  routing: RoutingContext,
+  config: PollLoopConfig,
+  processingIds: string[],
+): Promise<QueryResult> {
   let queryContinuation: string | undefined;
   let done = false;
   let lastEventTime = Date.now();
@@ -302,7 +309,9 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
       log(`Result: ${event.text ? event.text.slice(0, 200) : '(empty)'}`);
       break;
     case 'error':
-      log(`Error: ${event.message} (retryable: ${event.retryable}${event.classification ? `, ${event.classification}` : ''})`);
+      log(
+        `Error: ${event.message} (retryable: ${event.retryable}${event.classification ? `, ${event.classification}` : ''})`,
+      );
       break;
     case 'progress':
       log(`Progress: ${event.message}`);
