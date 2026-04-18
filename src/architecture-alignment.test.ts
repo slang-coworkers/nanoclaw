@@ -78,7 +78,9 @@ describe('v2_main architecture alignment', () => {
     expect(dashboardSkill).toContain('git fetch slang skill/v2_dashboard');
     expect(dashboardSkill).toContain('git merge slang/skill/v2_dashboard');
     expect(dashboardSkill).toContain('groups/templates/projects/dashboard/formatting.yaml');
-    expect(dashboardSkill).toContain('No direct edits to `groups/main/CLAUDE.md` or `groups/global/CLAUDE.md` are needed.');
+    expect(dashboardSkill).toContain(
+      'No direct edits to `groups/main/CLAUDE.md` or `groups/global/CLAUDE.md` are needed.',
+    );
     expect(dashboardSkill).toContain('npm run rebuild:claude');
     expect(dashboardSkill).not.toContain('via IPC');
     expect(slangSkill).toContain('git fetch slang skill/v2_slang');

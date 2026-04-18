@@ -62,6 +62,9 @@ export function extractLegacyCustomInstructions(actual: string, template: string
     return null;
   }
 
-  const custom = actualLines.slice(anchorIdx + 1).join('\n').trim();
+  const custom = actualLines
+    .slice(anchorIdx + 1)
+    .join('\n')
+    .trim();
   return custom.replace(/^---\s*\n?/, '').trim() || null;
 }
