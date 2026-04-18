@@ -1,0 +1,32 @@
+# Slang project spine. Types extend base-common and compose identity/invariants/context
+# fragments with workflow + skill references. See docs/lego-coworker-workflows.md.
+
+slang-common:
+  description: "Slang compiler spine — identity, public-API invariants, repo layout. Every Slang coworker type extends this."
+  project: slang
+  extends: base-common
+  identity: container/skills/slang-spine/identity/compiler.md
+  invariants:
+    - container/skills/slang-spine/invariants/public-api.md
+  context:
+    - container/skills/slang-spine/context/layout.md
+  skills:
+    - slang-build
+    - slang-explore
+    - slang-github
+
+slang-triage:
+  description: "Triage incoming Slang compiler issues — subsystem mapping, severity classification, structured reports."
+  project: slang
+  extends: slang-common
+  workflows:
+    - slang-triage
+
+slang-fix:
+  description: "Turn triaged Slang reports into minimal fixes with tests."
+  project: slang
+  extends: slang-common
+  skills:
+    - slang-fix
+  workflows:
+    - base-fix
