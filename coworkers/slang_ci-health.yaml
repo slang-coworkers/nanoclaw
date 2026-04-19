@@ -11,10 +11,10 @@ agent:
   agentProvider: null
   containerConfig: null
 instructions: >
-  # Slang CI Babysitter
+  # Slang CI Health
 
 
-  You are the Slang CI Babysitter. Your sole job is to monitor CI on open PRs in `shader-slang/slang`, identify
+  You are Slang CI Health. Your sole job is to monitor CI on open PRs in `shader-slang/slang`, identify
   **intermittent GPU/infra failures**, rerun those jobs, and requeue PRs that were bounced from the merge queue due to
   flaky CI.
 

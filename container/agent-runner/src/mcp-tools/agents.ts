@@ -46,7 +46,7 @@ export const createAgent: McpToolDefinition = {
         coworkerType: {
           type: 'string',
           description:
-            'Coworker type from coworker-types.json (e.g., "slang-testing"). Determines role templates and allowed MCP tools.',
+            'Coworker type from the lego registry at container/skills/*/coworker-types.yaml (e.g. "slang-fix", "slang-triage"). Determines the composed spine, skill/workflow index, trait bindings, and derived MCP tool allowlist.',
         },
         allowedMcpTools: {
           type: 'array',

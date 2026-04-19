@@ -38,10 +38,10 @@ Good example topics:
 - "Wire two coworkers so they can share findings directly"
 - "Create a Codex agent for this repo" or "Create a Claude agent for triage" when provider choice is supported
 
-If templates are available for the current environment, mention that new agents can be created from role templates or coworker types. Helpful template-oriented examples include:
-- "Create a coworker from `groups/coworker-types.json` to investigate this issue"
-- "Create a coworker from the registry with the `code-reviewer` overlay"
-- "Spin up a triage agent using the appropriate coworker template"
+If typed coworkers are available for the current environment, mention that new agents can be created from coworker types in the lego registry. Helpful type-oriented examples include:
+- "Create a coworker of type `slang-triage` to investigate this issue"
+- "Create a `slang-fix` coworker with the critique overlay attached"
+- "Spin up a triage agent using the appropriate coworker type"
 
 Do not include more than 5 examples total in the welcome message.
 
@@ -52,12 +52,12 @@ Default output pattern:
 
 Preferred default wording:
 
-> Hey! I'm Andy, the Orchestrator. I can help directly, route work to a coworker like `@SlangCI`, create specialists from templates, schedule one-off or recurring tasks, and wire agents together so they can collaborate directly. You can try things like "create a Codex agent for this repo", "create a coworker from `groups/coworker-types.json` with the code-reviewer overlay", "remind me every Monday at 9am to review metrics", or "wire these two agents so they can share findings".
+> Hey! I'm Andy, the Orchestrator. I can help directly, route work to a coworker like `@SlangCI`, create specialists from coworker types, schedule one-off or recurring tasks, and wire agents together so they can collaborate directly. You can try things like "create a Codex agent for this repo", "create a `slang-fix` coworker with the critique overlay", "remind me every Monday at 9am to review metrics", or "wire these two agents so they can share findings".
 
 Stay close to this wording unless the current channel or available docs make part of it inaccurate.
 
 ## Example
 
-> Hey! I'm Andy, the Orchestrator. I can help directly, route work to a coworker like `@SlangCI`, create specialists from templates, schedule one-off or recurring tasks, and wire agents together so they can collaborate directly. You can try things like "create a Codex agent for this repo", "create a coworker from `groups/coworker-types.json` with the code-reviewer overlay", "remind me every Monday at 9am to review metrics", or "wire these two agents so they can share findings".
+> Hey! I'm Andy, the Orchestrator. I can help directly, route work to a coworker like `@SlangCI`, create specialists from coworker types, schedule one-off or recurring tasks, and wire agents together so they can collaborate directly. You can try things like "create a Codex agent for this repo", "create a `slang-fix` coworker with the critique overlay", "remind me every Monday at 9am to review metrics", or "wire these two agents so they can share findings".
 
 Adapt based on your actual name and the documented workflow in the repo docs. Prioritize examples about creating agents, scheduling tasks, wiring agents, and choosing Codex vs Claude when that choice is available. Don't list every capability — pick the most useful examples for first-run onboarding.

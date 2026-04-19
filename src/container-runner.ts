@@ -105,13 +105,13 @@ export function resetCoworkerTypesCacheForTests(): void {
 }
 
 /**
- * Compose CLAUDE.md from a YAML manifest template system.
- * 4 layers: base → sections → project overlays → role templates.
+ * Compose CLAUDE.md from the lego coworker model: spine fragments + skills +
+ * workflows + overlays + trait bindings, all discovered under
+ * `container/skills/*`. See docs/lego-coworker-workflows.md.
  *
- * Runs for ALL non-admin coworkers on every container wake.
- * CLAUDE.md is system-owned (regenerated from templates + .instructions.md).
- * User edits go in .instructions.md, which is appended after templates.
- * Template updates propagate to all coworkers on next wake.
+ * Runs for ALL non-admin coworkers on every container wake. CLAUDE.md is
+ * system-owned (regenerated from the manifest + .instructions.md on every
+ * wake). User edits go in .instructions.md and are appended after the spine.
  */
 function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
   // Admin CLAUDE.md is user-managed, never recomposed
