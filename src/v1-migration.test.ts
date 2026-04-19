@@ -40,12 +40,7 @@ describe('v1 migration helpers', () => {
     );
     fs.writeFileSync(
       path.join(legoDir, 'coworker-types.yaml'),
-      [
-        'leaf:',
-        '  identity: container/skills/leaf-spine/identity.md',
-        '  skills: [leaf-cap]',
-        '',
-      ].join('\n'),
+      ['leaf:', '  identity: container/skills/leaf-spine/identity.md', '  skills: [leaf-cap]', ''].join('\n'),
     );
     const capDir = path.join(projectRoot, 'container', 'skills', 'leaf-cap');
     fs.mkdirSync(capDir, { recursive: true });

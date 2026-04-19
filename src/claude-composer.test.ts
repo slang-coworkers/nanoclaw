@@ -26,12 +26,7 @@ function writeFile(filePath: string, contents: string): void {
   fs.writeFileSync(filePath, contents);
 }
 
-function writeSkill(
-  projectRoot: string,
-  dir: string,
-  frontmatter: Record<string, unknown>,
-  body = '',
-): void {
+function writeSkill(projectRoot: string, dir: string, frontmatter: Record<string, unknown>, body = ''): void {
   const lines = ['---'];
   for (const [k, v] of Object.entries(frontmatter)) {
     if (typeof v === 'string') {
@@ -117,15 +112,11 @@ slang-common:
         },
         '# body',
       );
-      writeSkill(
-        root,
-        'beta',
-        {
-          name: 'beta',
-          description: 'Beta skill.',
-          'allowed-tools': 'Read, mcp__foo__qux',
-        },
-      );
+      writeSkill(root, 'beta', {
+        name: 'beta',
+        description: 'Beta skill.',
+        'allowed-tools': 'Read, mcp__foo__qux',
+      });
 
       const catalog = readSkillCatalog(root);
       expect(Object.keys(catalog).sort()).toEqual(['alpha', 'beta']);
@@ -159,17 +150,13 @@ slang-common:
         description: 'Build Slang.',
         'allowed-tools': 'Bash, mcp__deepwiki__ask_question',
       });
-      writeSkill(
-        root,
-        'slang-triage-workflow',
-        {
-          name: 'slang-triage',
-          type: 'workflow',
-          description: 'Triage.',
-          uses: { skills: ['slang-build'], workflows: [] },
-          'allowed-tools': 'Read',
-        },
-      );
+      writeSkill(root, 'slang-triage-workflow', {
+        name: 'slang-triage',
+        type: 'workflow',
+        description: 'Triage.',
+        uses: { skills: ['slang-build'], workflows: [] },
+        'allowed-tools': 'Read',
+      });
       writeTypes(
         root,
         'base-spine',
@@ -294,9 +281,7 @@ beta:
       );
       const types = readCoworkerTypes(root);
       const catalog = readSkillCatalog(root);
-      expect(() => resolveCoworkerManifest(types, 'beta', catalog, root)).toThrow(
-        /Cross-project extends/,
-      );
+      expect(() => resolveCoworkerManifest(types, 'beta', catalog, root)).toThrow(/Cross-project extends/);
     });
   });
 
@@ -317,16 +302,12 @@ beta:
         description: 'Fetch Slang issues.',
         'allowed-tools': 'Bash, mcp__slang-mcp__github_get_issue',
       });
-      writeSkill(
-        root,
-        'slang-triage-workflow',
-        {
-          name: 'slang-triage',
-          type: 'workflow',
-          description: 'Triage a Slang issue.',
-          uses: { skills: ['slang-github'], workflows: [] },
-        },
-      );
+      writeSkill(root, 'slang-triage-workflow', {
+        name: 'slang-triage',
+        type: 'workflow',
+        description: 'Triage a Slang issue.',
+        uses: { skills: ['slang-github'], workflows: [] },
+      });
 
       writeTypes(
         root,
@@ -423,9 +404,7 @@ slang-triage:
       const generatedGlobal = composeClaudeMd({ projectRoot: process.cwd(), manifestName: 'global' });
       const generatedMain = composeClaudeMd({ projectRoot: process.cwd(), manifestName: 'main' });
 
-      expect(generatedGlobal).toBe(
-        fs.readFileSync(path.join(process.cwd(), 'groups', 'global', 'CLAUDE.md'), 'utf-8'),
-      );
+      expect(generatedGlobal).toBe(fs.readFileSync(path.join(process.cwd(), 'groups', 'global', 'CLAUDE.md'), 'utf-8'));
       expect(generatedMain).toBe(fs.readFileSync(path.join(process.cwd(), 'groups', 'main', 'CLAUDE.md'), 'utf-8'));
     });
   });
