@@ -157,3 +157,155 @@ Messages flow directly — no routing through the Orchestrator.
 - **Shell + file browser** — `cd` in the shell navigates the file browser too
 - **Reports saved** — each coworker saves to `memory/`. Other coworkers can read them.
 - **Containers auto-spawn** — clicking a coworker starts its container if not running
+
+---
+
+## v2 Architecture (Lego Coworker Model)
+
+v2 replaces the monolithic role-template system with a composable "lego" model. CLAUDE.md is composed at container wake time from five artifacts: spine fragments, skills, workflows, overlays, and trait bindings. See `docs/lego-coworker-workflows.md` for the full specification.
+
+### Branch Topology
+
+Feature content is split across independent skill branches that fork from the neutral infrastructure base:
+
+```
+upstream/v2
+  └── v2_main (neutral infrastructure + lego composer + register fixes)
+        ├── skill/v2_dashboard (Pixel Office dashboard + ingress + hook events)
+        └── skill/v2_slang (Slang compiler support + MCP + coworker types)
+```
+
+Each branch carries only its own files. Merging both into v2_main produces the full install. Neither branch inherits the other's content.
+
+### Coworker Types (Lego Registry)
+
+Types are defined in `container/skills/*/coworker-types.yaml`. The extends chain composes identity, invariants, context, workflows, skills, overlays, and bindings.
+
+| Type | Role | Extends |
+|------|------|---------|
+| `base-common` | Universal spine (safety, truth, scope) | — |
+| `slang-common` | Slang compiler spine (identity, invariants) | `base-common` |
+| `slang-triage` | Triage incoming compiler issues | `slang-common` |
+| `slang-fix` | Turn triaged reports into fixes | `slang-common` |
+| `slang-maintainer` | Periodic maintainer sweep | `slang-common` |
+| `slang-ci-health` | CI health classifier | `slang-common` |
+| `main` / `global` | Flat admin + shared assistants | — (verbatim body, no spine) |
+
+Validate types: `npm run validate:templates`. Rebuild checked-in prompts: `npm run rebuild:claude`.
+
+### Registration Flags
+
+`setup/register.ts` creates agent groups, messaging groups, and wiring. Key flags added in v2:
+
+| Flag | Purpose |
+|------|---------|
+| `--coworker-type <type>` | Lego registry type name (e.g. `slang-fix`). Stored in `agent_groups.coworker_type`. |
+| `--agent-provider <name>` | `claude` (default) or `codex`. Determines container runtime behavior. |
+| `--is-admin` | Marks the group as admin/orchestrator (`is_admin=1`). |
+| `--session-mode <mode>` | `shared` (one session per channel), `per-thread`, or `agent-shared`. |
+| `--no-trigger-required` | Messages don't need to match a trigger pattern to activate this agent. |
+
+Engage mode fields (`engage_mode`, `engage_pattern`, `sender_scope`) are set automatically based on trigger configuration.
+
+### Dashboard Ports
+
+| Port | Service | Environment Variable |
+|------|---------|---------------------|
+| 3737 | Dashboard rendering server (Pixel Office UI) | `DASHBOARD_PORT` |
+| 3738 | Dashboard ingress (browser chat → NanoClaw host) | `DASHBOARD_INGRESS_PORT` |
+
+The ingress forwards browser chat messages to the NanoClaw host's message processing loop. It also handles credential submission for OneCLI approval flows.
+
+### Container Environment Forwarding
+
+The host forwards these `.env` variables into agent containers via Docker `-e` flags:
+
+| Variable | Purpose |
+|----------|---------|
+| `ANTHROPIC_MODEL` | Which Claude model the SDK uses |
+| `ANTHROPIC_BASE_URL` | API endpoint routing |
+| `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` | Model overrides |
+| `ENABLE_PROMPT_CACHING_1H` | 1-hour prompt caching |
+| `CLAUDE_CODE_EFFORT_LEVEL` | Reasoning effort |
+| `CODEX_MODEL`, `CODEX_MODEL_PROVIDER` | Codex model config |
+| `CODEX_REASONING_EFFORT` | Codex reasoning level |
+
+### OneCLI Credential Proxy
+
+API keys are managed by OneCLI Agent Vault. Containers reach the gateway at `172.17.0.1:10254` (Docker bridge IP). The host injects `HTTPS_PROXY` into each container so API requests are routed through the vault. No keys or tokens are passed to containers directly.
+
+### Flat vs. Typed Coworker Initialization
+
+| Aspect | Flat (`main`, `global`) | Typed (e.g. `slang-fix`) |
+|--------|------------------------|--------------------------|
+| CLAUDE.md | `@./.claude-global.md` import directive | Composed from lego spine on every wake |
+| Symlink | `.claude-global.md` → `/workspace/global/CLAUDE.md` | No symlink |
+| Spine | No spine — verbatim upstream body | Full spine: identity + invariants + context + index |
+| Runtime | `composeCoworkerClaudeMd` skips (`is_admin`) | `composeCoworkerClaudeMd` renders spine |
+
+### Coworker YAML Bundle Format (v3)
+
+Pre-packaged coworker bundles in `coworkers/*.yaml`:
+
+```yaml
+version: 3
+agent:
+  name: "Display Name"
+  folder: "folder-slug"
+  coworkerType: "type-from-registry"
+  agentProvider: null          # "claude" (default) or "codex"
+requires:
+  coworkerTypes:
+    - "type-name"              # must resolve in the lego registry
+instructions: |
+  Domain-specific instructions.
+trigger: "@folder-slug\\b"
+scheduledTasks:                # optional
+  - cron: "0 9 * * 1-5"
+    prompt: "Run daily triage"
+memory:                        # optional (export snapshot)
+  files:
+    - path: "memory/report.md"
+      content: "..."
+```
+
+### Session Modes
+
+| Mode | Behavior |
+|------|----------|
+| `shared` | One session per messaging group (default). All messages in the channel share context. |
+| `per-thread` | One session per thread. Each thread has independent context. |
+| `agent-shared` | One session per agent group, shared across all messaging groups wired to it. |
+
+Sessions are created lazily on first message. The dashboard API eagerly creates sessions after coworker creation to support immediate memory/task imports.
+
+---
+
+## v2 Changelog
+
+### Infrastructure (v2_main)
+
+- **Lego coworker template system** — composable spine from types, fragments, skills, workflows, overlays, and trait bindings. Replaces monolithic role templates.
+- **Register.ts v2 flags** — `--coworker-type`, `--agent-provider`, `--is-admin`, engage modes, sender scope. Dashboard channel gets `unknown_sender_policy: 'public'`.
+- **Build script cleanup** — `rm -rf dist && tsc` prevents stale `.js` files when `.ts` files are renamed/deleted.
+- **Flat type detection** — `FLAT_COWORKER_TYPES` set ensures `main`/`global` agents get their CLAUDE.md + symlink even when `coworker_type` is set.
+- **Container env forwarding** — `ANTHROPIC_MODEL`, `CODEX_*`, caching, and effort-level vars passed into containers.
+- **Drift detection tests** — `claude-composer-scenarios.test.ts` compares `groups/*/CLAUDE.md` against `composeCoworkerSpine()` output.
+- **Onboard-coworker skill** — scans YAML bundles + lego registry, creates agents via dashboard API or `create_agent` MCP tool.
+- **Split-commit skill** — interactive skill for splitting mixed-concern commits into per-bucket branches with independent topology support.
+
+### Dashboard (skill/v2_dashboard)
+
+- **Pixel Office** — isometric pixel-art office visualization with real-time agent status, SSE event streaming, tool use indicators.
+- **Dashboard ingress** — localhost HTTP bridge (port 3738) for browser chat → NanoClaw host routing.
+- **Eager session creation** — `POST /api/coworkers` now bootstraps a session immediately so memory/task imports don't hit ENOENT.
+- **Hook event timeline** — real-time visualization of container tool use, message delivery, and errors.
+- **Coworker management** — create, delete, update coworkers via the dashboard API with proper `coworker_type` and sender policy handling.
+
+### Slang Support (skill/v2_slang)
+
+- **Slang MCP server** — Python-based MCP server with 14 tools for GitHub, Discord, Slack, and GitLab integration.
+- **Coworker types** — `slang-triage`, `slang-fix`, `slang-maintainer`, `slang-ci-health` with full lego spine composition.
+- **Container skills** — explore, build, fix, maintain, and CI health workflows for the Slang compiler repo.
+- **Pre-packaged bundles** — 4 YAML bundles in `coworkers/` for one-click coworker creation via `/onboard-coworker`.
+- **Scheduled tasks** — triage (weekday 9am), maintainer sweep (every 10 min) imported from bundles.

@@ -613,3 +613,28 @@ Every validation path throws with a message naming the exact offender. Examples:
 4. **Validator errors.** Unbound trait, wrong provider, unknown skill/workflow/overlay, cross-project extends — each raises an actionable error naming the offender.
 5. **Progressive disclosure.** Workflow bodies stay in `container/skills/<name>/SKILL.md`; the spine carries a step outline (auto-extracted from `{#step-id}` anchors), bindings table, and customizations — enough for routing decisions without loading the full body.
 6. **Cross-project reuse.** A new project extending `base-common` + binding traits to its own skills composes cleanly with zero TS edits.
+
+## Flat vs. typed initialization
+
+The runtime distinguishes two initialization paths based on `FLAT_COWORKER_TYPES` (`main`, `global`):
+
+| Step | Flat types | Typed coworkers |
+|------|-----------|-----------------|
+| `initGroupFilesystem` | Creates `.claude-global.md` symlink + `CLAUDE.md` with `@./.claude-global.md` import | Creates group dir + `.claude-shared/` only |
+| `composeCoworkerClaudeMd` | Skipped (`is_admin` early-return) | Renders full lego spine on every container wake |
+| CLAUDE.md lifecycle | Written once at registration, updated by `rebuild:claude` | Regenerated from manifest + `.instructions.md` on every wake |
+
+Flat types use `flat: true` in `coworker-types.yaml`. The composer emits their body verbatim with no structural headings. Additive skills (ones that re-declare `main`/`global` with `context:` fragments only) are merged via duplicate-type merging.
+
+`initGroupFilesystem` runs on every container wake (called from `buildMounts` in `container-runner.ts`). It is idempotent — each step checks `existsSync` before writing. For existing installs that registered flat agents before the `FLAT_COWORKER_TYPES` fix, the function will create the missing CLAUDE.md and symlink on the next container wake.
+
+## Session lifecycle
+
+Sessions are created lazily by `resolveSession` on first message delivery. The dashboard API (`POST /api/coworkers`) eagerly bootstraps a session after coworker creation so that subsequent memory and scheduled-task imports can write to `data/v2-sessions/<agId>/<sessId>/inbound.db` without hitting ENOENT.
+
+Session modes:
+- **shared** — one session per (agent group, messaging group). Default for dashboard channels.
+- **per-thread** — one session per (agent group, messaging group, thread). Used by threaded channels (Slack, Discord).
+- **agent-shared** — one session per agent group, shared across all wired messaging groups. Used when multiple channels should share context (e.g. GitHub + Slack wired to the same agent).
+
+Two-DB split: each session has `inbound.db` (host writes, container reads) and `outbound.db` (container writes, host reads). Journal mode is DELETE (not WAL) because WAL's mmapped `-shm` doesn't refresh across Docker bind-mount boundaries.
