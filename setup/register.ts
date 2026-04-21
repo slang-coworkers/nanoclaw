@@ -163,6 +163,20 @@ export async function run(args: string[]): Promise<void> {
   }
   initGroupFilesystem(agentGroup);
 
+  // 1b. Grant the channel's default user the owner role so approval flows work
+  if (parsed.isAdmin && parsed.channel === 'dashboard') {
+    try {
+      const now = new Date().toISOString();
+      const dashUserId = 'dashboard:dashboard-admin';
+      db.prepare("INSERT OR IGNORE INTO users (id, kind, display_name, created_at) VALUES ('system', 'system', 'System', ?)").run(now);
+      db.prepare("INSERT OR IGNORE INTO users (id, kind, display_name, created_at) VALUES (?, 'dashboard', 'Dashboard Admin', ?)").run(dashUserId, now);
+      db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role, agent_group_id, granted_by, granted_at) VALUES (?, 'owner', NULL, 'system', ?)").run(dashUserId, now);
+      log.info('Granted dashboard-admin owner role');
+    } catch {
+      // permissions module tables may not exist
+    }
+  }
+
   // 2. Create or find messaging group
   let messagingGroup = getMessagingGroupByPlatform(parsed.channel, parsed.platformId);
   if (!messagingGroup) {
