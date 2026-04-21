@@ -82,6 +82,119 @@ function runStep(name: string, extra: string[] = []): Promise<StepResult> {
 }
 
 /**
+ * Variant of runStep for `pair-telegram`. The step emits machine-readable
+ * status blocks (PAIR_TELEGRAM_ISSUED, PAIR_TELEGRAM_ATTEMPT, etc.) meant
+ * for the /setup skill to parse and relay. Running it directly leaves the
+ * operator staring at noisy blocks — this filters them and renders a
+ * focused banner around the 4-digit code instead.
+ */
+function runPairTelegram(intent: string): Promise<StepResult> {
+  return new Promise((resolve) => {
+    console.log('\n── pair-telegram ───────────────────────────────');
+    const args = [
+      'exec', 'tsx', 'setup/index.ts',
+      '--step', 'pair-telegram',
+      '--', '--intent', intent,
+    ];
+    const child = spawn('pnpm', args, { stdio: ['inherit', 'pipe', 'inherit'] });
+
+    let buf = '';
+    let partial = '';
+    let inBlock = false;
+    let blockType = '';
+    let blockFields: Record<string, string> = {};
+
+    function handleLine(line: string): void {
+      if (line.startsWith('=== NANOCLAW SETUP:')) {
+        inBlock = true;
+        blockType = line.replace('=== NANOCLAW SETUP:', '').replace('===', '').trim();
+        blockFields = {};
+        return;
+      }
+      if (line.startsWith('=== END ===')) {
+        inBlock = false;
+        renderBlock(blockType, blockFields);
+        return;
+      }
+      if (inBlock) {
+        const idx = line.indexOf(':');
+        if (idx > -1) {
+          blockFields[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+        }
+        return;
+      }
+      process.stdout.write(line + '\n');
+    }
+
+    function renderBlock(type: string, fields: Record<string, string>): void {
+      switch (type) {
+        case 'PAIR_TELEGRAM_ISSUED':
+          printCodeBanner(fields.CODE ?? '????');
+          break;
+        case 'PAIR_TELEGRAM_NEW_CODE':
+          console.log('\n   Previous code invalidated. New code:');
+          printCodeBanner(fields.CODE ?? '????');
+          break;
+        case 'PAIR_TELEGRAM_ATTEMPT':
+          console.log(
+            `   Got "${fields.RECEIVED_CODE ?? '?'}" — doesn't match. A new code is on its way.`,
+          );
+          break;
+        case 'PAIR_TELEGRAM':
+          if (fields.STATUS === 'success') {
+            console.log('\n   ✓ Telegram paired.');
+          } else if (fields.STATUS === 'failed') {
+            console.log(`\n   ✗ Pairing failed: ${fields.ERROR ?? 'unknown'}`);
+          }
+          break;
+        default: {
+          // Forward unknown blocks verbatim (forward-compat).
+          const lines = [`=== NANOCLAW SETUP: ${type} ===`];
+          for (const [k, v] of Object.entries(fields)) lines.push(`${k}: ${v}`);
+          lines.push('=== END ===');
+          process.stdout.write(lines.join('\n') + '\n');
+        }
+      }
+    }
+
+    child.stdout.on('data', (chunk: Buffer) => {
+      const s = chunk.toString('utf-8');
+      buf += s;
+      partial += s;
+      const lines = partial.split('\n');
+      partial = lines.pop() ?? '';
+      for (const line of lines) handleLine(line);
+    });
+    child.on('close', (code) => {
+      if (partial) handleLine(partial);
+      const fields = parseStatus(buf);
+      resolve({
+        ok: code === 0 && fields.STATUS === 'success',
+        fields,
+        exitCode: code ?? 1,
+      });
+    });
+  });
+}
+
+function printCodeBanner(code: string): void {
+  // Double-space between digits for readability in a 4-digit code.
+  const digits = code.trim().split('').join('  ');
+  const content = [
+    '',
+    `     PAIRING CODE:   ${digits}`,
+    '',
+    '     Send these digits from Telegram to your bot.',
+    '',
+  ];
+  const width = Math.max(...content.map((l) => l.length));
+  const top = '  ╔' + '═'.repeat(width + 2) + '╗';
+  const bot = '  ╚' + '═'.repeat(width + 2) + '╝';
+  const mid = content.map((l) => '  ║ ' + l.padEnd(width) + ' ║');
+  console.log(['', top, ...mid, bot, ''].join('\n'));
+}
+
+/**
  * After installing Docker, this process's supplementary groups are still
  * frozen from login — subsequent steps that talk to /var/run/docker.sock
  * (onecli install, service start, …) fail with EACCES even though the
@@ -310,14 +423,7 @@ async function main(): Promise<void> {
         );
       }
 
-      console.log(
-        '\n[setup:auto] Pairing Telegram. A 4-digit code will appear below.\n' +
-          '             From Telegram, send just those 4 digits to your bot\n' +
-          '             (DM the bot for a personal chat, or prefix with your\n' +
-          '             bot handle in a group with privacy on).\n',
-      );
-
-      const pair = await runStep('pair-telegram', ['--intent', 'main']);
+      const pair = await runPairTelegram('main');
       if (!pair.ok) {
         fail(
           'Telegram pairing failed.',
