@@ -195,24 +195,28 @@ Show the full list of available channels in plain text (do NOT use AskUserQuesti
 
 Channels where the agent gets its own identity (name and avatar) are marked as recommended.
 
-1. Discord *(recommended — agent gets own identity)*
-2. Slack *(recommended — agent gets own identity)*
-3. Telegram *(recommended — agent gets own identity)*
-4. Microsoft Teams *(recommended — agent gets own identity)*
-5. Webex *(recommended — agent gets own identity)*
-6. WhatsApp
-7. WhatsApp Cloud API
-8. iMessage
-9. GitHub
-10. Linear
-11. Google Chat
-12. Resend (email)
-13. Matrix
+1. Dashboard *(recommended — no credentials needed, real-time pixel office UI)*
+2. Discord *(recommended — agent gets own identity)*
+3. Slack *(recommended — agent gets own identity)*
+4. Telegram *(recommended — agent gets own identity)*
+5. Microsoft Teams *(recommended — agent gets own identity)*
+6. Webex *(recommended — agent gets own identity)*
+7. WhatsApp
+8. WhatsApp Cloud API
+9. iMessage
+10. GitHub
+11. Linear
+12. Google Chat
+13. Resend (email)
+14. Matrix
+
+**Dashboard is recommended as a default** — it provides a web UI for chatting with agents, observing their work, and managing coworkers. No credentials or external services needed. It works standalone or alongside any messaging channel.
 
 **Delegate to the selected channel's skill.** Each channel skill handles its own package installation, authentication, registration, and configuration.
 
 Invoke the matching skill:
 
+- **Dashboard:** Invoke `/add-dashboard`
 - **Discord:** Invoke `/add-discord`
 - **Slack:** Invoke `/add-slack`
 - **Telegram:** Invoke `/add-telegram`
@@ -233,6 +237,8 @@ The skill will:
 3. Collect credentials/tokens and write to `.env`
 4. Build and verify
 
+For Dashboard, the skill configures the Pixel Office UI plus dashboard-specific formatting overlays.
+
 **After the channel skill completes**, install dependencies and rebuild — channel merges may introduce new packages:
 
 ```bash
@@ -240,6 +246,14 @@ pnpm install && pnpm run build
 ```
 
 If the build fails, read the error output and fix it (usually a missing dependency). Then continue to step 5a.
+
+## 5a. Project Integrations
+
+**IMPORTANT: You MUST ask this question. Do NOT skip to step 6.**
+
+AskUserQuestion: Would you like to add Slang compiler support? This adds Slang-specific coworker skills, workflow templates, overlays, and MCP-backed maintainer tooling.
+
+If yes, invoke `/add-slang`. Wait for it to complete fully (merge, rebuild, configuration) before proceeding.
 
 ## 6. Mount Allowlist
 
@@ -326,7 +340,19 @@ Tell user to test: send a message in their registered chat. Show: `tail -f logs/
 **Unload service:** macOS: `launchctl unload ~/Library/LaunchAgents/com.nanoclaw.plist` | Linux: `systemctl --user stop nanoclaw`
 
 
-## 9. Diagnostics
+## 9. Onboard Coworkers (optional)
+
+If `coworkers/` directory exists and contains `.yaml` files, offer to create pre-packaged coworkers:
+
+1. Scan `coworkers/*.yaml` for available agent definitions
+2. List them with descriptions (from the YAML's `agent.name` and `instructions` fields)
+3. AskUserQuestion: "Would you like to create any of these coworkers?"
+   - Yes — run `/onboard-coworker` to let the user select which to create
+   - No / Skip — continue to diagnostics
+
+This step is only relevant after a project skill branch has been merged that brings `coworkers/*.yaml` files.
+
+## 10. Diagnostics
 
 1. Use the Read tool to read `.claude/skills/setup/diagnostics.md`.
 2. Follow every step in that file before completing setup.

@@ -148,7 +148,7 @@ grep 'QR\|authentication required\|qr' logs/nanoclaw.log | tail -5
 ls -la store/auth/
 
 # Re-authenticate if needed
-pnpm run auth
+npm run auth
 ```
 
 ## Service Management
@@ -167,5 +167,33 @@ launchctl bootout gui/$(id -u)/com.nanoclaw
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nanoclaw.plist
 
 # Rebuild after code changes
-pnpm run build && launchctl kickstart -k gui/$(id -u)/com.nanoclaw
+npm run build && launchctl kickstart -k gui/$(id -u)/com.nanoclaw
+```
+
+## Known Issues (2026-04-20, lego-main)
+
+### 5. [FIXED] Migration loader picks up .d.ts files
+Running from `dist/` loads `.d.ts` alongside `.js` — the regex `/^\d+-.*\.(js|ts)$/` matches both. Fix: added `&& !f.endsWith('.d.ts')` filter in `src/db/migrations/index.ts`.
+
+### 6. [FIXED] Scheduled tasks never fire (ISO 8601 vs SQLite datetime)
+`process_after` stored as `2026-04-20T11:44:12Z` but SQLite's `datetime('now')` returns `2026-04-20 11:44:12`. The `T` and `Z` make string comparison fail silently. Fix: `REPLACE(REPLACE(process_after, 'T', ' '), 'Z', '')` in both `container/agent-runner/src/db/messages-in.ts` and `src/db/session-db.ts`. **Also fix per-group copies** at `data/v2-sessions/<agent-id>/agent-runner-src/db/messages-in.ts` — these are mounted into containers and aren't updated by `docker build`.
+
+### 7. [FIXED] Container build fails with GPU on lego
+`build.sh` auto-detects `nvidia-smi` and adds `--build-arg ENABLE_GPU=1`. The Dockerfile's CUDA packages fail if apt repos aren't configured. Workaround: `docker build -t nanoclaw-agent:TAG container/` (skip `build.sh` to avoid GPU arg).
+
+### 8. Codex provider needs env vars
+Codex agent containers fail with `401 Unauthorized` unless `.env` has `CODEX_MODEL`, `CODEX_MODEL_PROVIDER`, `CODEX_BASE_URL`, and `CODEX_REASONING_EFFORT` pointing at the correct inference endpoint. Copy these from the prod `.env`.
+
+### 9. Per-group agent-runner-src is a persistent copy
+`data/v2-sessions/<agent-id>/agent-runner-src/` is copied from `container/agent-runner/src/` at group creation and mounted into containers. `docker build` and `npm run build` do NOT update these copies. After fixing agent-runner source files, either:
+- Delete the per-group copy (recreated on next container wake)
+- Or patch it directly with `sed -i`
+
+### 10. tsx cache serves stale dashboard code
+`/tmp/tsx-1000/` caches compiled dashboard modules. After editing `dashboard/server.ts`, restart may still run old code. Fix: `rm -rf /tmp/tsx-1000/ && systemctl --user restart <dashboard-service>`
+
+### 11. V1 import: folder-to-type matching is fragile
+V1 DB has `coworker_type: null`. Auto-detection uses folder name prefix matching against lego types (e.g. `slang_maintainer` → `slang-maintainer`). This fails when names differ (e.g. `slang-fixer` ≠ `slang-fix`). Fix: pass `coworkerType` explicitly in the import API:
+```bash
+curl -X POST /api/coworkers/import-v1 -d '{"v1Path":"...","folder":"...","coworkerType":"slang-fix"}'
 ```

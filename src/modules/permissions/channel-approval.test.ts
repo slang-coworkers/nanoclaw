@@ -90,6 +90,7 @@ beforeEach(async () => {
     platform_id: 'dm-owner',
     name: 'Owner DM',
     is_group: 0,
+    admin_user_id: null,
     unknown_sender_policy: 'public',
     created_at: now(),
   });
@@ -197,9 +198,9 @@ describe('unknown-channel registration flow', () => {
     await new Promise((r) => setTimeout(r, 10));
 
     const { getDb } = await import('../../db/connection.js');
-    const pending = getDb()
-      .prepare('SELECT messaging_group_id FROM pending_channel_approvals')
-      .get() as { messaging_group_id: string };
+    const pending = getDb().prepare('SELECT messaging_group_id FROM pending_channel_approvals').get() as {
+      messaging_group_id: string;
+    };
     expect(pending).toBeDefined();
 
     // Owner clicks approve.
@@ -240,9 +241,8 @@ describe('unknown-channel registration flow', () => {
     expect(member).toBeDefined();
 
     // Pending row cleared and container woken via replay.
-    const stillPending = (
-      getDb().prepare('SELECT COUNT(*) AS c FROM pending_channel_approvals').get() as { c: number }
-    ).c;
+    const stillPending = (getDb().prepare('SELECT COUNT(*) AS c FROM pending_channel_approvals').get() as { c: number })
+      .c;
     expect(stillPending).toBe(0);
     expect(wakeContainer).toHaveBeenCalled();
   });
@@ -255,9 +255,9 @@ describe('unknown-channel registration flow', () => {
     await new Promise((r) => setTimeout(r, 10));
 
     const { getDb } = await import('../../db/connection.js');
-    const pending = getDb()
-      .prepare('SELECT messaging_group_id FROM pending_channel_approvals')
-      .get() as { messaging_group_id: string };
+    const pending = getDb().prepare('SELECT messaging_group_id FROM pending_channel_approvals').get() as {
+      messaging_group_id: string;
+    };
 
     for (const handler of getResponseHandlers()) {
       const claimed = await handler({
@@ -285,9 +285,9 @@ describe('unknown-channel registration flow', () => {
     await routeInbound(groupMention('chat-deny'));
     await new Promise((r) => setTimeout(r, 10));
     const { getDb } = await import('../../db/connection.js');
-    const pending = getDb()
-      .prepare('SELECT messaging_group_id FROM pending_channel_approvals')
-      .get() as { messaging_group_id: string };
+    const pending = getDb().prepare('SELECT messaging_group_id FROM pending_channel_approvals').get() as {
+      messaging_group_id: string;
+    };
 
     for (const handler of getResponseHandlers()) {
       const claimed = await handler({
@@ -317,9 +317,8 @@ describe('unknown-channel registration flow', () => {
     await routeInbound(groupMention('chat-deny', '@bot please'));
     await new Promise((r) => setTimeout(r, 10));
     expect(deliverMock).not.toHaveBeenCalled();
-    const stillPending = (
-      getDb().prepare('SELECT COUNT(*) AS c FROM pending_channel_approvals').get() as { c: number }
-    ).c;
+    const stillPending = (getDb().prepare('SELECT COUNT(*) AS c FROM pending_channel_approvals').get() as { c: number })
+      .c;
     expect(stillPending).toBe(0);
   });
 
@@ -330,9 +329,9 @@ describe('unknown-channel registration flow', () => {
     await routeInbound(groupMention('chat-unauth'));
     await new Promise((r) => setTimeout(r, 10));
     const { getDb } = await import('../../db/connection.js');
-    const pending = getDb()
-      .prepare('SELECT messaging_group_id FROM pending_channel_approvals')
-      .get() as { messaging_group_id: string };
+    const pending = getDb().prepare('SELECT messaging_group_id FROM pending_channel_approvals').get() as {
+      messaging_group_id: string;
+    };
 
     for (const handler of getResponseHandlers()) {
       const claimed = await handler({
@@ -353,9 +352,8 @@ describe('unknown-channel registration flow', () => {
         .get(pending.messaging_group_id) as { c: number }
     ).c;
     expect(mgaCount).toBe(0);
-    const stillPending = (
-      getDb().prepare('SELECT COUNT(*) AS c FROM pending_channel_approvals').get() as { c: number }
-    ).c;
+    const stillPending = (getDb().prepare('SELECT COUNT(*) AS c FROM pending_channel_approvals').get() as { c: number })
+      .c;
     expect(stillPending).toBe(1);
   });
 });

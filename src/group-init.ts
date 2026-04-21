@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 
 import { DATA_DIR, GROUPS_DIR } from './config.js';
-import { initContainerConfig } from './container-config.js';
 import { log } from './log.js';
 import type { AgentGroup } from './types.js';
 
@@ -21,8 +20,10 @@ export const GLOBAL_CLAUDE_IMPORT = `@./${GLOBAL_MEMORY_LINK_NAME}`;
 const DEFAULT_SETTINGS_JSON =
   JSON.stringify(
     {
+      preferences: {
+        reasoningEffort: 'max',
+      },
       env: {
-        CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
         CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
         CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
       },
@@ -52,36 +53,42 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
     initialized.push('groupDir');
   }
 
-  // groups/<folder>/.claude-global.md — symlink into the group dir so
-  // Claude Code's @-import can follow it. Uses lstat to avoid tripping
-  // existsSync on a dangling symlink (target only resolves inside the
-  // container).
-  const globalLinkPath = path.join(groupDir, GLOBAL_MEMORY_LINK_NAME);
-  let linkExists = false;
-  try {
-    fs.lstatSync(globalLinkPath);
-    linkExists = true;
-  } catch {
-    /* missing — recreate */
-  }
-  if (!linkExists) {
-    fs.symlinkSync(GLOBAL_MEMORY_CONTAINER_PATH, globalLinkPath);
-    initialized.push('.claude-global.md');
-  }
-
-  // groups/<folder>/CLAUDE.md — written once, then owned by the group
-  const claudeMdFile = path.join(groupDir, 'CLAUDE.md');
-  if (!fs.existsSync(claudeMdFile)) {
-    const body = [GLOBAL_CLAUDE_IMPORT, '', opts?.instructions ?? `# ${group.name}`].join('\n') + '\n';
-    fs.writeFileSync(claudeMdFile, body);
-    initialized.push('CLAUDE.md');
+  // groups/<folder>/.claude-global.md — symlink so Claude Code's @-import
+  // can follow it. Only flat types (main/global) use the @import line in
+  // their CLAUDE.md. Typed coworkers get operational content through
+  // base-common context fragments instead, so skip the symlink for them.
+  if (!group.coworker_type) {
+    const globalLinkPath = path.join(groupDir, GLOBAL_MEMORY_LINK_NAME);
+    let linkExists = false;
+    try {
+      fs.lstatSync(globalLinkPath);
+      linkExists = true;
+    } catch {
+      /* missing — recreate */
+    }
+    if (!linkExists) {
+      fs.symlinkSync(GLOBAL_MEMORY_CONTAINER_PATH, globalLinkPath);
+      initialized.push('.claude-global.md');
+    }
   }
 
-  // groups/<folder>/container.json — empty container config, replaces the
-  // former agent_groups.container_config DB column. Self-modification flows
-  // read and write this file directly.
-  if (initContainerConfig(group.folder)) {
-    initialized.push('container.json');
+  // groups/<folder>/CLAUDE.md — for flat (untyped) groups, write the @import
+  // directive that pulls in the global body. Typed coworkers get their CLAUDE.md
+  // composed by composeCoworkerClaudeMd in container-runner.ts on every wake.
+  if (!group.coworker_type) {
+    const claudeMdPath = path.join(groupDir, 'CLAUDE.md');
+    if (!fs.existsSync(claudeMdPath)) {
+      fs.writeFileSync(claudeMdPath, '@./.claude-global.md\n');
+      initialized.push('CLAUDE.md');
+    }
+  }
+
+  // groups/<folder>/.instructions.md — user-owned instructions.
+  // CLAUDE.md is system-composed from templates + .instructions.md on every wake.
+  const instructionsFile = path.join(groupDir, '.instructions.md');
+  if (!fs.existsSync(instructionsFile) && opts?.instructions) {
+    fs.writeFileSync(instructionsFile, opts.instructions + '\n');
+    initialized.push('.instructions.md');
   }
 
   // 2. data/v2-sessions/<id>/.claude-shared/ — Claude state + per-group skills
@@ -98,11 +105,15 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
   }
 
   const skillsDst = path.join(claudeDir, 'skills');
-  if (!fs.existsSync(skillsDst)) {
-    const skillsSrc = path.join(projectRoot, 'container', 'skills');
-    if (fs.existsSync(skillsSrc)) {
-      fs.cpSync(skillsSrc, skillsDst, { recursive: true });
-      initialized.push('skills/');
+  const skillsSrc = path.join(projectRoot, 'container', 'skills');
+  if (fs.existsSync(skillsSrc)) {
+    fs.mkdirSync(skillsDst, { recursive: true });
+    for (const skill of fs.readdirSync(skillsSrc)) {
+      const dst = path.join(skillsDst, skill);
+      if (!fs.existsSync(dst)) {
+        fs.cpSync(path.join(skillsSrc, skill), dst, { recursive: true });
+        initialized.push(`skills/${skill}`);
+      }
     }
   }
 

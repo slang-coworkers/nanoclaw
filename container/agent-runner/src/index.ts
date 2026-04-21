@@ -32,6 +32,7 @@ import { buildSystemPromptAddendum } from './destinations.js';
 // Provider skills append imports to providers/index.ts.
 import './providers/index.js';
 import { createProvider, type ProviderName } from './providers/factory.js';
+import { parseAllowedMcpTools } from './providers/claude.js';
 import { runPollLoop } from './poll-loop.js';
 
 function log(msg: string): void {
@@ -52,25 +53,43 @@ async function main(): Promise<void> {
 
   log(`Starting v2 agent-runner (provider: ${providerName})`);
 
-  // Destinations addendum is the only runtime-generated context we inject.
-  // Global CLAUDE.md is loaded by Claude Code from /workspace/agent/CLAUDE.md
-  // (which imports /workspace/global/CLAUDE.md via @-syntax) — no need to
-  // read it manually anymore.
-  const instructions = buildSystemPromptAddendum();
+  // Build the system context instructions.
+  // Claude Code loads CLAUDE.md natively from the filesystem, so for the
+  // claude provider we only need the routing addendum. Codex doesn't read
+  // CLAUDE.md — it reads AGENTS.md (which doesn't exist in our containers).
+  // For codex, we read CLAUDE.md ourselves and inject it via
+  // developer_instructions in config.toml.
+  const routingAddendum = buildSystemPromptAddendum();
+  let instructions: string;
+  if (providerName === 'codex') {
+    const claudeMdPath = path.join(CWD, 'CLAUDE.md');
+    const claudeMd = fs.existsSync(claudeMdPath) ? fs.readFileSync(claudeMdPath, 'utf-8') : '';
+    instructions = claudeMd ? `${claudeMd}\n\n${routingAddendum}` : routingAddendum;
+    log(`Codex provider: loaded ${claudeMd.length} bytes from CLAUDE.md into developer_instructions`);
+  } else {
+    instructions = routingAddendum;
+  }
 
-  // Discover additional directories mounted at /workspace/extra/*
+  // Discover additional directories: /workspace/extra/* (host-mounted)
+  // and /workspace/agent/* subdirs that have their own .claude/ config
+  // (e.g. cloned repos with skills/commands/CLAUDE.md).
   const additionalDirectories: string[] = [];
-  const extraBase = '/workspace/extra';
-  if (fs.existsSync(extraBase)) {
-    for (const entry of fs.readdirSync(extraBase)) {
-      const fullPath = path.join(extraBase, entry);
-      if (fs.statSync(fullPath).isDirectory()) {
-        additionalDirectories.push(fullPath);
+  for (const base of ['/workspace/extra', CWD]) {
+    if (!fs.existsSync(base)) continue;
+    for (const entry of fs.readdirSync(base)) {
+      const fullPath = path.join(base, entry);
+      try {
+        if (!fs.statSync(fullPath).isDirectory()) continue;
+      } catch { continue; }
+      // For CWD subdirs, only include if they have .claude/ (skills, commands, CLAUDE.md)
+      if (base === CWD) {
+        if (!fs.existsSync(path.join(fullPath, '.claude'))) continue;
       }
+      additionalDirectories.push(fullPath);
     }
-    if (additionalDirectories.length > 0) {
-      log(`Additional directories: ${additionalDirectories.join(', ')}`);
-    }
+  }
+  if (additionalDirectories.length > 0) {
+    log(`Additional directories: ${additionalDirectories.join(', ')}`);
   }
 
   // MCP server path — bun runs TS directly; no tsc build step in-image.
@@ -100,6 +119,35 @@ async function main(): Promise<void> {
       }
     } catch (e) {
       log(`Failed to parse NANOCLAW_MCP_SERVERS: ${e}`);
+    }
+  }
+
+  // MCP proxy integration: add proxy-connected servers for allowed MCP tools
+  const allowedMcpTools = parseAllowedMcpTools(process.env as Record<string, string | undefined>);
+  if (allowedMcpTools.length > 0 && process.env.MCP_PROXY_URL) {
+    // Derive which MCP servers to connect based on allowed tool prefixes
+    const neededServers = new Set<string>();
+    for (const tool of allowedMcpTools) {
+      // Split on __ delimiter: mcp__<server>__<tool>
+      const parts = tool.split('__');
+      if (parts.length >= 3 && parts[0] === 'mcp' && parts[1] !== 'nanoclaw') {
+        neededServers.add(parts[1]);
+      }
+    }
+
+    for (const serverName of neededServers) {
+      const baseUrl = process.env.MCP_PROXY_URL!.replace(/\/$/, '');
+      const serverConfig: Record<string, unknown> = {
+        type: 'http',
+        url: `${baseUrl}/${serverName}`,
+      };
+      if (process.env.MCP_PROXY_TOKEN) {
+        serverConfig.headers = {
+          Authorization: `Bearer ${process.env.MCP_PROXY_TOKEN}`,
+        };
+      }
+      mcpServers[serverName] = serverConfig as any;
+      log(`MCP proxy server: ${serverName} via ${baseUrl}/${serverName}`);
     }
   }
 
