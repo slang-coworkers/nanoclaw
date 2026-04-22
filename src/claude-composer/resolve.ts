@@ -85,6 +85,7 @@ export function resolveCoworkerManifest(
   const skillNames: string[] = [];
   const overlayNames: string[] = [];
   const bindings: Record<string, string> = {};
+  const mcpServers: Record<string, import('./types.js').McpServerTypeConfig> = {};
   let flat = false;
 
   for (const role of roles) {
@@ -102,10 +103,13 @@ export function resolveCoworkerManifest(
       if (entry.overlays) overlayNames.push(...entry.overlays);
       if (entry.flat === true) flat = true;
       if (entry.bindings) {
-        // Leaf wins: later entries in the chain override earlier bindings for
-        // the same trait. Chain order goes ancestors → descendants.
         for (const [trait, skillName] of Object.entries(entry.bindings)) {
           bindings[trait] = skillName;
+        }
+      }
+      if (entry.mcpServers) {
+        for (const [name, config] of Object.entries(entry.mcpServers)) {
+          mcpServers[name] = config;
         }
       }
     }
@@ -130,6 +134,7 @@ export function resolveCoworkerManifest(
       tools: [],
       bindings: {},
       customizations: [],
+      mcpServers,
       flat: true,
     };
   }
@@ -320,6 +325,7 @@ export function resolveCoworkerManifest(
     tools: [...tools].sort(),
     bindings: resolvedBindings,
     customizations,
+    mcpServers,
     flat: false,
   };
 }

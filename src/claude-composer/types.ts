@@ -85,6 +85,20 @@ export interface CoworkerTypeEntry {
   // Overlays (SKILL.md `type: overlay` entries) to apply to this coworker's
   // workflows at compose time. Union-merged across the type chain.
   overlays?: string[];
+
+  // MCP servers to inject into containers for this coworker type.
+  // Shallow merge across the extends chain (leaf wins per server name).
+  // Per-instance container.json overrides type-level config.
+  mcpServers?: Record<string, McpServerTypeConfig>;
+}
+
+export interface McpServerTypeConfig {
+  type?: 'stdio' | 'http';
+  command?: string;
+  args?: string[];
+  url?: string;
+  env?: Record<string, string>;
+  headers?: Record<string, string>;
 }
 
 export interface OverlayMeta {
@@ -142,6 +156,9 @@ export interface CoworkerManifest {
   // Trait layer.
   bindings: Record<string, string>;
   customizations: WorkflowCustomization[];
+
+  // MCP servers from the type registry (merged across extends chain).
+  mcpServers: Record<string, McpServerTypeConfig>;
 
   // See CoworkerTypeEntry.flat.
   flat: boolean;

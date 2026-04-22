@@ -59,6 +59,7 @@ function mergeTypeEntries(base: CoworkerTypeEntry, addon: CoworkerTypeEntry): Co
     skills: [...(base.skills || []), ...(addon.skills || [])],
     overlays: [...(base.overlays || []), ...(addon.overlays || [])],
     bindings: { ...(base.bindings || {}), ...(addon.bindings || {}) },
+    mcpServers: { ...(base.mcpServers || {}), ...(addon.mcpServers || {}) },
   };
 }
 

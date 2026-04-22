@@ -159,6 +159,22 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
   }
 }
 
+/** Resolve the coworker manifest once; returns tools + mcpServers. */
+function resolveTypeManifest(agentGroup: AgentGroup): { tools: string[]; mcpServers: Record<string, unknown> } {
+  if (!agentGroup.coworker_type) return { tools: [], mcpServers: {} };
+  try {
+    const { types, catalog } = loadRegistry();
+    const manifest = resolveCoworkerManifest(types, agentGroup.coworker_type, catalog, process.cwd());
+    return {
+      tools: manifest.tools.filter((t) => t.startsWith('mcp__')),
+      mcpServers: manifest.mcpServers ?? {},
+    };
+  } catch (err) {
+    log.warn('Failed to resolve coworker manifest', { coworkerType: agentGroup.coworker_type, err });
+    return { tools: [], mcpServers: {} };
+  }
+}
+
 export function resolveAllowedMcpTools(agentGroup: AgentGroup): string[] {
   if (agentGroup.is_admin) {
     const adminOverride = process.env.ADMIN_MCP_TOOLS || '';
@@ -180,19 +196,7 @@ export function resolveAllowedMcpTools(agentGroup: AgentGroup): string[] {
       .filter(Boolean);
   }
 
-  if (!agentGroup.coworker_type) return [];
-
-  try {
-    const { types, catalog } = loadRegistry();
-    const manifest = resolveCoworkerManifest(types, agentGroup.coworker_type, catalog, process.cwd());
-    return manifest.tools.filter((t) => t.startsWith('mcp__'));
-  } catch (err) {
-    log.warn('Failed to resolve MCP tools for coworker type', {
-      coworkerType: agentGroup.coworker_type,
-      err,
-    });
-    return [];
-  }
+  return resolveTypeManifest(agentGroup).tools;
 }
 
 export function getActiveContainerCount(): number {
@@ -608,10 +612,13 @@ async function buildContainerArgs(
     }
   }
 
-  // Pass additional MCP servers from container config (groups/<folder>/container.json)
+  // MCP servers: type-level (from coworker registry) + per-instance (from container.json).
+  // Per-instance overrides type-level per server name.
+  const typeMcpServers = resolveTypeManifest(agentGroup).mcpServers;
   const containerConfig = readContainerConfig(agentGroup.folder);
-  if (containerConfig.mcpServers && Object.keys(containerConfig.mcpServers).length > 0) {
-    args.push('-e', `NANOCLAW_MCP_SERVERS=${JSON.stringify(containerConfig.mcpServers)}`);
+  const mergedMcpServers = { ...typeMcpServers, ...containerConfig.mcpServers };
+  if (Object.keys(mergedMcpServers).length > 0) {
+    args.push('-e', `NANOCLAW_MCP_SERVERS=${JSON.stringify(mergedMcpServers)}`);
   }
 
   // Dashboard URL
