@@ -306,6 +306,7 @@ export class ClaudeProvider implements AgentProvider {
     const sdkResult = sdkQuery({
       prompt: stream,
       options: {
+        pathToClaudeCodeExecutable: '/pnpm/claude',
         cwd: input.cwd,
         additionalDirectories: this.additionalDirectories,
         resume: input.continuation,

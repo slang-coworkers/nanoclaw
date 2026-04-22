@@ -101,6 +101,11 @@ function parseArgs(args: string[]): RegisterArgs {
     }
   }
 
+  // Default coworker_type for admin groups to 'main' if not explicitly set
+  if (result.isAdmin && !result.coworkerType) {
+    result.coworkerType = 'main';
+  }
+
   return result;
 }
 

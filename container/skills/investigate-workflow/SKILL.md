@@ -2,7 +2,7 @@
 name: investigate
 type: workflow
 description: Understand a problem before acting — triage an issue, research a topic, diagnose CI, or sweep across sources. Use when asked "what's going on?", "triage this", "why is CI red?", or "catch me up."
-requires: [issues.read, code.read, doc.read]
+requires: [issues.read, code.read, doc.read, plan.research]
 uses:
   skills: []
   workflows: []

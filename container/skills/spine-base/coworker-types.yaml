@@ -17,6 +17,7 @@ base-common:
     - container/skills/spine-base/context/operations.md
   skills:
     - base-nanoclaw
+    - plan
   # deep-research + codex-critique are opt-in per project type.
   # Workflows are NOT listed here — base-common is abstract (no bindings).
   # Project types add: workflows, bindings, and optional skills.

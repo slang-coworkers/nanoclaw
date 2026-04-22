@@ -185,10 +185,10 @@ Types are defined in `container/skills/*/coworker-types.yaml`. The extends chain
 |------|------|---------|
 | `base-common` | Universal spine (safety, truth, scope) | — |
 | `slang-common` | Slang compiler spine (identity, invariants) | `base-common` |
-| `slang-triage` | Investigate incoming compiler issues | `slang-common` |
-| `slang-fix` | Implement fixes from investigation reports | `slang-common` |
-| `slang-maintainer` | Periodic maintainer sweep | `slang-common` |
-| `slang-ci-health` | CI health investigation | `slang-common` |
+| `slang-reader` | Read-only: investigate issues, review PRs, research | `slang-common` |
+| `slang-writer` | Write-capable: investigate, implement, review | `slang-common` |
+| 
+| 
 | `main` / `global` | Flat admin + shared assistants | — (verbatim body, no spine) |
 
 Validate types: `npm run validate:templates`. Rebuild checked-in prompts: `npm run rebuild:claude`.
@@ -199,7 +199,7 @@ Validate types: `npm run validate:templates`. Rebuild checked-in prompts: `npm r
 
 | Flag | Purpose |
 |------|---------|
-| `--coworker-type <type>` | Lego registry type name (e.g. `slang-fix`). Stored in `agent_groups.coworker_type`. |
+| `--coworker-type <type>` | Lego registry type name (e.g. `slang-writer`). Stored in `agent_groups.coworker_type`. |
 | `--agent-provider <name>` | `claude` (default) or `codex`. Determines container runtime behavior. |
 | `--is-admin` | Marks the group as admin/orchestrator (`is_admin=1`). |
 | `--session-mode <mode>` | `shared` (one session per channel), `per-thread`, or `agent-shared`. |
@@ -236,7 +236,7 @@ API keys are managed by OneCLI Agent Vault. Containers reach the gateway at `172
 
 ### Flat vs. Typed Coworker Initialization
 
-| Aspect | Flat (`main`, `global`) | Typed (e.g. `slang-fix`) |
+| Aspect | Flat (`main`, `global`) | Typed (e.g. `slang-writer`) |
 |--------|------------------------|--------------------------|
 | CLAUDE.md | `@./.claude-global.md` import directive | Composed from lego spine on every wake |
 | Symlink | `.claude-global.md` → `/workspace/global/CLAUDE.md` | No symlink |
@@ -305,7 +305,7 @@ Sessions are created lazily on first message. The dashboard API eagerly creates 
 ### Slang Support (skill/v2_slang)
 
 - **Slang MCP server** — Python-based MCP server with 14 tools for GitHub, Discord, Slack, and GitLab integration.
-- **Coworker types** — `slang-triage`, `slang-fix`, `slang-maintainer`, `slang-ci-health` with full lego spine composition.
+- **Coworker types — `slang-reader` (investigate + review, read-only) and `slang-writer` (implement + document, full write) with lego spine composition.
 - **Container skills** — explore, build, fix, maintain, and CI health workflows for the Slang compiler repo.
 - **Pre-packaged bundles** — 4 YAML bundles in `coworkers/` for one-click coworker creation via `/onboard-coworker`.
 - **Scheduled tasks** — triage (weekday 9am), maintainer sweep (every 10 min) imported from bundles.

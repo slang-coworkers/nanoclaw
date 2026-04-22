@@ -19,7 +19,7 @@ const CATEGORY_ORDER = ['repo', 'code', 'test', 'ci', 'doc', 'plan', 'critique',
 type Category = (typeof CATEGORY_ORDER)[number];
 
 const CATEGORY_HEADINGS: Record<Category, string> = {
-  repo: 'VCS',
+  repo: 'Repo',
   code: 'Code',
   test: 'Test',
   ci: 'CI',
@@ -45,7 +45,7 @@ const DOMAIN_TO_CATEGORY: Record<string, Category> = {
 // Pick the dominant category for an entry by counting how many of its traits
 // fall into each bucket. Ties resolve via CATEGORY_ORDER (earlier wins), so
 // a workflow that pulls from [repo.read, ci.inspect] is classified CI only if
-// CI trait count strictly exceeds VCS — otherwise VCS wins by order.
+// CI trait count strictly exceeds Repo — otherwise Repo wins by order.
 function categorize(traits: readonly string[]): Category {
   if (traits.length === 0) return 'other';
   const counts = new Map<Category, number>();

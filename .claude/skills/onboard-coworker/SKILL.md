@@ -134,12 +134,12 @@ A minimal entry:
   project: <project>
   extends: <project>-common
   workflows:
-    - base-sweep
+    - investigate
   skills:
     - <project>-benchmark-harness   # add the SKILL.md alongside if new
   bindings:
-    code-build: <project>-build
-    test-run: <project>-build
+    code: <project>-explore
+    test: <project>-build
 ```
 
 Key rules (full schema in `docs/lego-coworker-workflows.md`):
@@ -147,7 +147,7 @@ Key rules (full schema in `docs/lego-coworker-workflows.md`):
 - `extends` — parent type name. Invariants, context, workflows, skills, overlays append + dedup; identity and bindings leaf-wins.
 - `identity` / `invariants` / `context` — paths to markdown files under `container/skills/`. These render into the always-in-context spine.
 - `workflows` / `skills` / `overlays` — names matching `SKILL.md` `name:` frontmatter under `container/skills/*/`. Bodies load on-demand when the agent invokes the slash command.
-- `bindings` — map abstract trait names (`vcs-pr`, `code-edit`, `test-run`, …) to concrete skill names. The composer uses these to derive the agent's MCP tool allowlist from each bound skill's `allowed-tools`.
+- `bindings` — map abstract trait names (`repo.pr`, `code.edit`, `test.run`, …) to concrete skill names. The composer uses these to derive the agent's MCP tool allowlist from each bound skill's `allowed-tools`.
 - `flat: true` — special mode for base agents like `main` / `global` that render verbatim without structural headings. Leave unset for typed coworkers.
 
 After editing the YAML, regenerate the checked-in base prompts so any additive `context:` contributions get picked up:
