@@ -54,31 +54,7 @@ When you learn something important:
 
 ### Message Formatting
 
-Format messages based on the channel you're responding to. Check your group folder name:
-
-#### Slack channels (folder starts with `slack_`)
-
-Use Slack mrkdwn syntax. Run `/slack-formatting` for the full reference. Key rules:
-- `*bold*` (single asterisks)
-- `_italic_` (underscores)
-- `<https://url|link text>` for links (NOT `[text](url)`)
-- `•` bullets (no numbered lists)
-- `:emoji:` shortcodes
-- `>` for block quotes
-- No `##` headings — use `*Bold text*` instead
-
-#### WhatsApp/Telegram channels (folder starts with `whatsapp_` or `telegram_`)
-
-- `*bold*` (single asterisks, NEVER **double**)
-- `_italic_` (underscores)
-- `•` bullet points
-- ` ``` ` code blocks
-
-No `##` headings. No `[links](url)`. No `**double stars**`.
-
-#### Discord channels (folder starts with `discord_`)
-
-Standard Markdown works: `**bold**`, `*italic*`, `[links](url)`, `# headings`.
+Use standard Markdown by default. Channel-specific formatting rules (if any) are provided by the channel skill installed on this instance — check the formatting section below if one is present.
 
 ### Installing Packages & Tools
 
