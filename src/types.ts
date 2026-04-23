@@ -9,6 +9,7 @@ export interface AgentGroup {
   container_config: string | null; // JSON: { additionalMounts, timeout }
   coworker_type: string | null; // coworker-types.yaml key, e.g. "slang-reader" or "slang-writer"
   allowed_mcp_tools: string | null; // JSON: string[] of allowed MCP tool names
+  routing: string; // 'direct' | 'internal'
   created_at: string;
 }
 

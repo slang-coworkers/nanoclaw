@@ -10,7 +10,7 @@ import path from 'path';
 import { DATA_DIR } from '../src/config.js';
 import { initDb } from '../src/db/connection.js';
 import { runMigrations } from '../src/db/migrations/index.js';
-import { createAgentGroup, getAgentGroupByFolder } from '../src/db/agent-groups.js';
+import { createAgentGroup, getAdminAgentGroup, getAgentGroupByFolder } from '../src/db/agent-groups.js';
 import {
   createMessagingGroup,
   createMessagingGroupAgent,
@@ -21,6 +21,12 @@ import { isValidGroupFolder } from '../src/group-folder.js';
 import { initGroupFilesystem } from '../src/group-init.js';
 import { log } from '../src/log.js';
 import { resolveSession, writeSessionMessage } from '../src/session-manager.js';
+import {
+  allocateDestinationName,
+  createDestination,
+  getDestinationByName,
+  normalizeName,
+} from '../src/modules/agent-to-agent/db/agent-destinations.js';
 import { emitStatus } from './status.js';
 
 interface RegisterArgs {
@@ -46,6 +52,8 @@ interface RegisterArgs {
   coworkerType: string | null;
   /** Agent provider: 'claude' (default) or 'codex' */
   agentProvider: string | null;
+  /** Routing mode: 'direct' (own channel) or 'internal' (via orchestrator only) */
+  routing: 'direct' | 'internal';
 }
 
 function parseArgs(args: string[]): RegisterArgs {
@@ -61,6 +69,7 @@ function parseArgs(args: string[]): RegisterArgs {
     isAdmin: false,
     coworkerType: null,
     agentProvider: null,
+    routing: 'direct',
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -97,6 +106,9 @@ function parseArgs(args: string[]): RegisterArgs {
         break;
       case '--agent-provider':
         result.agentProvider = args[++i] || null;
+        break;
+      case '--routing':
+        result.routing = args[++i] === 'internal' ? 'internal' : 'direct';
         break;
     }
   }
@@ -160,6 +172,7 @@ export async function run(args: string[]): Promise<void> {
       folder: parsed.folder,
       is_admin: parsed.isAdmin ? 1 : 0,
       coworker_type: parsed.coworkerType,
+      routing: parsed.routing,
       agent_provider: parsed.agentProvider,
       created_at: new Date().toISOString(),
     });
@@ -231,6 +244,24 @@ export async function run(args: string[]): Promise<void> {
       agentGroup: agentGroup.id,
       messagingGroup: messagingGroup.id,
     });
+  }
+
+  // 3b. Bidirectional destinations: admin ↔ new agent
+  if (!parsed.isAdmin) {
+    const admin = getAdminAgentGroup();
+    if (admin && admin.id !== agentGroup.id) {
+      const now = new Date().toISOString();
+      const childName = allocateDestinationName(admin.id, agentGroup.name);
+      if (!getDestinationByName(admin.id, childName)) {
+        createDestination({ agent_group_id: admin.id, local_name: childName, target_type: 'agent', target_id: agentGroup.id, created_at: now });
+        log.info('Added admin → agent destination', { admin: admin.id, localName: childName, agent: agentGroup.id });
+      }
+      const adminName = allocateDestinationName(agentGroup.id, admin.name);
+      if (!getDestinationByName(agentGroup.id, adminName)) {
+        createDestination({ agent_group_id: agentGroup.id, local_name: adminName, target_type: 'agent', target_id: admin.id, created_at: now });
+        log.info('Added agent → admin destination', { agent: agentGroup.id, localName: adminName, admin: admin.id });
+      }
+    }
   }
 
   // 4. Send onboarding message — only on first wiring, not re-registration

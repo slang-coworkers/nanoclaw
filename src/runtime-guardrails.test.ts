@@ -85,6 +85,7 @@ function makeAgentGroup(coworkerType: string | null): AgentGroup {
     container_config: null,
     coworker_type: coworkerType,
     allowed_mcp_tools: null,
+    routing: 'direct',
     created_at: new Date().toISOString(),
   };
 }
@@ -147,7 +148,7 @@ describe('runtime guardrails', () => {
           extends: ['slang-build', 'slang-quality'],
           skills: ['cap-send-message'],
         },
-        'slang-maintainer': {
+        'slang-reader': {
           extends: ['slang-build', 'slang-quality'],
           workflows: ['wf-maintain'],
         },
@@ -171,7 +172,7 @@ describe('runtime guardrails', () => {
       'mcp__deepwiki__ask_question',
       'mcp__nanoclaw__send_message',
     ]);
-    expect(resolveAllowedMcpTools(makeAgentGroup('slang-maintainer'))).toEqual([
+    expect(resolveAllowedMcpTools(makeAgentGroup('slang-reader'))).toEqual([
       'mcp__deepwiki__ask_question',
       'mcp__nanoclaw__schedule_task',
       'mcp__nanoclaw__send_message',
