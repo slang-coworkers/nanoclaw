@@ -7,7 +7,6 @@
 import fs from 'fs';
 import path from 'path';
 
-import { DATA_DIR } from '../src/config.js';
 import { initDb } from '../src/db/connection.js';
 import { runMigrations } from '../src/db/migrations/index.js';
 import { createAgentGroup, getAdminAgentGroup, getAgentGroupByFolder } from '../src/db/agent-groups.js';
@@ -157,8 +156,9 @@ export async function run(args: string[]): Promise<void> {
   log.info('Registering channel', parsed);
 
   // Init v2 central DB
-  fs.mkdirSync(path.join(projectRoot, 'data'), { recursive: true });
-  const dbPath = path.join(DATA_DIR, 'v2.db');
+  const dataDir = path.join(projectRoot, 'data');
+  fs.mkdirSync(dataDir, { recursive: true });
+  const dbPath = path.join(dataDir, 'v2.db');
   const db = initDb(dbPath);
   runMigrations(db);
 
@@ -195,9 +195,13 @@ export async function run(args: string[]): Promise<void> {
     }
   }
 
-  // 2. Create or find messaging group
-  let messagingGroup = getMessagingGroupByPlatform(parsed.channel, parsed.platformId);
-  if (!messagingGroup) {
+  const shouldCreateDirectChannel = parsed.routing === 'direct';
+
+  // 2. Create or find messaging group (direct-routing only)
+  let messagingGroup = null;
+  if (shouldCreateDirectChannel) {
+    messagingGroup = getMessagingGroupByPlatform(parsed.channel, parsed.platformId);
+    if (!messagingGroup) {
     const mgId = generateId('mg');
     createMessagingGroup({
       id: mgId,
@@ -210,13 +214,15 @@ export async function run(args: string[]): Promise<void> {
     });
     messagingGroup = getMessagingGroupByPlatform(parsed.channel, parsed.platformId)!;
     log.info('Created messaging group', { id: mgId, channel: parsed.channel, platformId: parsed.platformId });
+    }
   }
 
   // 3. Wire agent to messaging group — createMessagingGroupAgent auto-creates
   // the companion agent_destinations row so delivery's ACL admits this target.
   let newlyWired = false;
-  const existing = getMessagingGroupAgentByPair(messagingGroup.id, agentGroup.id);
-  if (!existing) {
+  if (shouldCreateDirectChannel && messagingGroup) {
+    const existing = getMessagingGroupAgentByPair(messagingGroup.id, agentGroup.id);
+    if (!existing) {
     newlyWired = true;
     const mgaId = generateId('mga');
     const triggerRules = parsed.trigger
@@ -244,6 +250,7 @@ export async function run(args: string[]): Promise<void> {
       agentGroup: agentGroup.id,
       messagingGroup: messagingGroup.id,
     });
+    }
   }
 
   // 3b. Bidirectional destinations: admin ↔ new agent
@@ -265,7 +272,7 @@ export async function run(args: string[]): Promise<void> {
   }
 
   // 4. Send onboarding message — only on first wiring, not re-registration
-  if (newlyWired) {
+  if (shouldCreateDirectChannel && newlyWired && messagingGroup) {
     const { session } = resolveSession(agentGroup.id, messagingGroup.id, null, parsed.sessionMode as 'shared' | 'per-thread' | 'agent-shared');
     writeSessionMessage(agentGroup.id, session.id, {
       id: generateId('onboard'),
