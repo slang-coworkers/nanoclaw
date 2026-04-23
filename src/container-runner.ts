@@ -19,6 +19,8 @@ import {
 } from './claude-composer.js';
 import {
   CONTAINER_IMAGE,
+  CONTAINER_IMAGE_BASE,
+  CONTAINER_INSTALL_LABEL,
   CONTAINER_PREFIX,
   DASHBOARD_PORT,
   DATA_DIR,
@@ -512,7 +514,7 @@ async function buildContainerArgs(
   agentIdentifier?: string,
   mcpProxy?: { proxyToken: string; allowedTools: string[] },
 ): Promise<string[]> {
-  const args: string[] = ['run', '--rm', '--name', containerName];
+  const args: string[] = ['run', '--rm', '--name', containerName, '--label', CONTAINER_INSTALL_LABEL];
 
   // Environment
   args.push('-e', `TZ=${TIMEZONE}`);
