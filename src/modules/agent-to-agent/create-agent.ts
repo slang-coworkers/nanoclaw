@@ -127,6 +127,7 @@ export async function handleCreateAgent(content: Record<string, unknown>, sessio
     allowed_mcp_tools: content.allowedMcpTools
       ? JSON.stringify((content.allowedMcpTools as string[]).filter((t) => t.startsWith('mcp__')))
       : null,
+    routing: (content.routing as string) || (content.directChannel === true ? 'direct' : 'internal'),
     created_at: now,
   };
   createAgentGroup(newGroup);

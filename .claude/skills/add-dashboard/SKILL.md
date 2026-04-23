@@ -76,9 +76,9 @@ The dashboard needs at least one registered group to route messages to. Register
 
 ```bash
 npx tsx setup/index.ts --step register -- \
-  --platform-id "dashboard:main" \
+  --platform-id "dashboard:orchestrator" \
   --name "Orchestrator" \
-  --folder "dashboard_main" \
+  --folder "orchestrator" \
   --trigger "@Orchestrator" \
   --channel dashboard \
   --no-trigger-required \
@@ -88,7 +88,7 @@ npx tsx setup/index.ts --step register -- \
 
 This creates:
 - An admin group that responds to all messages (no trigger prefix needed)
-- The group folder `groups/dashboard_main/` with the agent's memory and workspace
+- The group folder `groups/orchestrator/` with the agent's memory and workspace
 - The agent gets the project mounted read-only and uses the host's v2 management tools for orchestration
 
 ## Phase 4: Configure
