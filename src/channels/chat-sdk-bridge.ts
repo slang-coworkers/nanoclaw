@@ -81,6 +81,26 @@ export interface ChatSdkBridgeConfig {
  * chunk boundary will render as two independent blocks on the receiving
  * platform, which is the same behavior as manually re-opening a fence.
  */
+/**
+ * Decode the actual option value from a button callback. Buttons are encoded
+ * with an integer index (to keep under Telegram's 64-byte callback_data cap),
+ * and the real value is looked up via `getAskQuestionRender(questionId)`.
+ * Falls back to treating the tail as a literal value so old in-flight cards
+ * (encoded before this shortening landed) still resolve.
+ */
+function resolveSelectedOption(
+  render: { options: NormalizedOption[] } | undefined,
+  eventValue: string | undefined,
+  tail: string | undefined,
+): string {
+  const candidate = eventValue ?? tail ?? '';
+  if (render && /^\d+$/.test(candidate)) {
+    const idx = Number(candidate);
+    if (render.options[idx]) return render.options[idx].value;
+  }
+  return candidate;
+}
+
 export function splitForLimit(text: string, limit: number): string[] {
   if (text.length <= limit) return [text];
   const chunks: string[] = [];
@@ -240,11 +260,15 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
         const parts = event.actionId.split(':');
         if (parts.length < 3) return;
         const questionId = parts[1];
-        const selectedOption = event.value || '';
+        const tail = parts.slice(2).join(':');
         const userId = event.user?.userId || '';
 
         // Resolve render metadata BEFORE dispatching onAction (which deletes the row).
         const render = getAskQuestionRender(questionId);
+        // New format: button id/value is an integer index into options (kept
+        // short to fit Telegram's 64-byte callback_data cap). Old format:
+        // the full value is embedded in actionId/value directly.
+        const selectedOption = resolveSelectedOption(render, event.value, tail);
         const title = render?.title ?? '❓ Question';
         const matched = render?.options.find((o) => o.value === selectedOption);
         const selectedLabel = matched?.selectedLabel ?? selectedOption ?? '(clicked)';
@@ -348,8 +372,13 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
           children: [
             CardText(question),
             Actions(
-              options.map((opt) =>
-                Button({ id: `ncq:${questionId}:${opt.value}`, label: opt.label, value: opt.value }),
+              // Encode button id/value with the option index rather than the
+              // full value. Telegram caps callback_data at 64 bytes, and
+              // long values (e.g. ISO datetimes, URLs) push the JSON payload
+              // well past that. The onAction handlers resolve the index back
+              // to the real value via getAskQuestionRender(questionId).
+              options.map((opt, idx) =>
+                Button({ id: `ncq:${questionId}:${idx}`, label: opt.label, value: String(idx) }),
               ),
             ),
           ],
@@ -507,12 +536,12 @@ async function handleForwardedEvent(
 
       // Parse the selected option from custom_id
       let questionId: string | undefined;
-      let selectedOption: string | undefined;
+      let tail: string | undefined;
       if (customId?.startsWith('ncq:')) {
         const colonIdx = customId.indexOf(':', 4); // after "ncq:"
         if (colonIdx !== -1) {
           questionId = customId.slice(4, colonIdx);
-          selectedOption = customId.slice(colonIdx + 1);
+          tail = customId.slice(colonIdx + 1);
         }
       }
 
@@ -521,6 +550,9 @@ async function handleForwardedEvent(
         ((interaction.message as Record<string, unknown>)?.embeds as Array<Record<string, unknown>>) || [];
       const originalDescription = (originalEmbeds[0]?.description as string) || '';
       const render = questionId ? getAskQuestionRender(questionId) : undefined;
+      // Discord custom_id mirrors the new index-based encoding (see Button
+      // construction). Decode back to the real option value for downstream.
+      const selectedOption = resolveSelectedOption(render, tail, tail);
       const cardTitle = render?.title ?? ((originalEmbeds[0]?.title as string) || '❓ Question');
       const matchedOpt = render?.options.find((o) => o.value === selectedOption);
       const selectedLabel = matchedOpt?.selectedLabel ?? selectedOption ?? customId;
