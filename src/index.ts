@@ -177,7 +177,7 @@ async function main(): Promise<void> {
   dashboardIngressHandle = startDashboardIngress({
     host: DASHBOARD_INGRESS_HOST,
     port: DASHBOARD_INGRESS_PORT,
-    onActionFn: async (questionId, selectedOption, userId) => {
+    onActionFn: async (questionId: string, selectedOption: string, userId: string) => {
       const { getResponseHandlers } = await import('./response-registry.js');
       for (const handler of getResponseHandlers()) {
         if (
@@ -193,7 +193,7 @@ async function main(): Promise<void> {
           break;
       }
     },
-    onQuestionFn: async (questionId, selectedOption, userId) => {
+    onQuestionFn: async (questionId: string, selectedOption: string, userId: string) => {
       const { getResponseHandlers } = await import('./response-registry.js');
       for (const handler of getResponseHandlers()) {
         if (
@@ -209,10 +209,10 @@ async function main(): Promise<void> {
           break;
       }
     },
-    onCredentialSubmitFn: async (_credentialId, _value) => {
+    onCredentialSubmitFn: async (_credentialId: string, _value: string) => {
       log.warn('Dashboard credential submit not yet wired to response registry');
     },
-    onCredentialRejectFn: async (_credentialId) => {
+    onCredentialRejectFn: async (_credentialId: string) => {
       log.warn('Dashboard credential reject not yet wired to response registry');
     },
   });

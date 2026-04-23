@@ -80,6 +80,7 @@ function setupFixtures(): { parentGroup: ReturnType<typeof getAgentGroupByFolder
     name: 'Dashboard Main',
     is_group: 1,
     unknown_sender_policy: 'public',
+    admin_user_id: null,
     created_at: now,
   });
 
