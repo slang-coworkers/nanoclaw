@@ -209,12 +209,10 @@ export function resolveCoworkerManifest(
     for (const trait of wf.requires) requiredTraits.add(trait);
   }
 
-  // Build project-scoped fallback maps. Same-project/base skills are preferred;
-  // cross-project skills are a last resort with a warning.
-  // A skill is "compatible" if it's universal (no project affinity or multi-
-  // project), or if its sole project matches the manifest's project.
+  // Build project-scoped provider map. Only same-project or universal skills
+  // can auto-bind. Cross-project skills are never considered — if a trait is
+  // only satisfiable by a foreign skill, it's an unresolved-trait error.
   const directlyProvided = new Map<string, string>();
-  const crossProjectProvided = new Map<string, string>();
   const traitProviders = new Map<string, string[]>();
   for (const s of skillEntries) {
     const projs = skillProjectSets.get(s.name);
@@ -224,8 +222,9 @@ export function resolveCoworkerManifest(
       const providers = traitProviders.get(trait) || [];
       providers.push(s.name);
       traitProviders.set(trait, providers);
-      const target = compatible ? directlyProvided : crossProjectProvided;
-      if (!target.has(trait)) target.set(trait, s.name);
+      if (compatible && !directlyProvided.has(trait)) {
+        directlyProvided.set(trait, s.name);
+      }
     }
   }
 
@@ -269,22 +268,11 @@ export function resolveCoworkerManifest(
       }
     }
 
-    // 3. Fallback: project-scoped skill scan. Prefer same-project or base skills.
+    // 3. Fallback: project-scoped skill scan. Only same-project or universal skills.
     if (directlyProvided.has(qualifiedTrait)) {
       if (!resolvedBindings[domain]) {
         resolvedBindings[domain] = directlyProvided.get(qualifiedTrait)!;
       }
-      continue;
-    }
-
-    // 4. Cross-project skills are blocked — never silently auto-bind across projects.
-    if (crossProjectProvided.has(qualifiedTrait)) {
-      const crossSkill = crossProjectProvided.get(qualifiedTrait)!;
-      const projs = skillProjectSets.get(crossSkill);
-      const crossProject = projs ? [...projs].join(', ') : 'unknown';
-      unresolvedTraits.push(
-        `${qualifiedTrait} (only provided by cross-project skill "${crossSkill}" from project "${crossProject}")`,
-      );
       continue;
     }
 

@@ -964,7 +964,7 @@ py-type:
       );
       const types = readCoworkerTypes(root);
       const catalog = readSkillCatalog(root);
-      expect(() => resolveCoworkerManifest(types, 'py-type', catalog, root)).toThrow(/cross-project.*slang/);
+      expect(() => resolveCoworkerManifest(types, 'py-type', catalog, root)).toThrow(/no binding.*code\.read/);
     });
 
     it('warns when multiple skills provide same trait without explicit binding', () => {
@@ -976,7 +976,8 @@ py-type:
         const catalog = readSkillCatalog(root);
         resolveCoworkerManifest(types, 'slangpy-common', catalog, root);
         const ambiguityWarning = warnSpy.mock.calls.find(
-          (call) => typeof call[0] === 'string' && call[0].includes('code.read') && call[0].includes('no explicit binding'),
+          (call) =>
+            typeof call[0] === 'string' && call[0].includes('code.read') && call[0].includes('no explicit binding'),
         );
         expect(ambiguityWarning).toBeDefined();
       } finally {
@@ -1028,7 +1029,8 @@ test-type:
         const catalog = readSkillCatalog(root);
         resolveCoworkerManifest(types, 'test-type', catalog, root);
         const partialWarning = warnSpy.mock.calls.find(
-          (call) => typeof call[0] === 'string' && call[0].includes('does not provide') && call[0].includes('code.edit'),
+          (call) =>
+            typeof call[0] === 'string' && call[0].includes('does not provide') && call[0].includes('code.edit'),
         );
         expect(partialWarning).toBeDefined();
       } finally {
