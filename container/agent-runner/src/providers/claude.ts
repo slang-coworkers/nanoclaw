@@ -55,7 +55,6 @@ const BASE_TOOL_ALLOWLIST = [
   'Skill',
   'NotebookEdit',
   'mcp__nanoclaw__*',
-  'mcp__atomic_chat__*',
 ];
 
 export function parseAllowedMcpTools(env?: Record<string, string | undefined>): string[] {

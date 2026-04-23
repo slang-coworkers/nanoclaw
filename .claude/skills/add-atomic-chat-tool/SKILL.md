@@ -13,6 +13,8 @@ Tools exposed:
 
 Model management (download, delete) is done through the **Atomic Chat desktop UI** — the app is a fork of Jan and manages its own model library.
 
+The skill ships the MCP server source in this folder and copies it into the agent-runner tree at install time, then wires it up with small edits to `index.ts`, `providers/claude.ts`, and `container-runner.ts`. No branch merge — all edits are additive and idempotent.
+
 ## Phase 1: Pre-flight
 
 ### Check if already applied
@@ -37,42 +39,128 @@ If the request fails:
 
 ## Phase 2: Apply Code Changes
 
-### Ensure upstream remote
+### Copy the MCP server source
 
 ```bash
-git remote -v
+cp .claude/skills/add-atomic-chat-tool/atomic-chat-mcp-stdio.ts container/agent-runner/src/atomic-chat-mcp-stdio.ts
 ```
 
-If `upstream` is missing, add it:
+### Register the MCP server in the agent-runner
+
+Edit `container/agent-runner/src/index.ts`. Find the `mcpServers` object that currently looks like this:
+
+```ts
+  const mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string> }> = {
+    nanoclaw: {
+      command: 'bun',
+      args: ['run', mcpServerPath],
+      env: {},
+    },
+  };
+```
+
+Add an `atomic_chat` entry alongside `nanoclaw`:
+
+```ts
+  const mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string> }> = {
+    nanoclaw: {
+      command: 'bun',
+      args: ['run', mcpServerPath],
+      env: {},
+    },
+    atomic_chat: {
+      command: 'bun',
+      args: ['run', path.join(__dirname, 'atomic-chat-mcp-stdio.ts')],
+      env: {
+        ...(process.env.ATOMIC_CHAT_HOST ? { ATOMIC_CHAT_HOST: process.env.ATOMIC_CHAT_HOST } : {}),
+        ...(process.env.ATOMIC_CHAT_API_KEY ? { ATOMIC_CHAT_API_KEY: process.env.ATOMIC_CHAT_API_KEY } : {}),
+      },
+    },
+  };
+```
+
+### Add the tool glob to the allowlist
+
+Edit `container/agent-runner/src/providers/claude.ts`. Find `'mcp__nanoclaw__*',` in the `TOOL_ALLOWLIST` array and add `'mcp__atomic_chat__*',` on the following line:
+
+```ts
+  'mcp__nanoclaw__*',
+  'mcp__atomic_chat__*',
+];
+```
+
+### Forward host env vars into the container
+
+Edit `src/container-runner.ts` in `buildContainerArgs`. Find the `TZ` env line:
+
+```ts
+  args.push('-e', `TZ=${TIMEZONE}`);
+```
+
+Add ATOMIC_CHAT forwarding right after it:
+
+```ts
+  args.push('-e', `TZ=${TIMEZONE}`);
+
+  // Atomic Chat MCP tool: forward host overrides if set (default is host.docker.internal:1337).
+  if (process.env.ATOMIC_CHAT_HOST) {
+    args.push('-e', `ATOMIC_CHAT_HOST=${process.env.ATOMIC_CHAT_HOST}`);
+  }
+  if (process.env.ATOMIC_CHAT_API_KEY) {
+    args.push('-e', `ATOMIC_CHAT_API_KEY=${process.env.ATOMIC_CHAT_API_KEY}`);
+  }
+```
+
+### Surface `[ATOMIC]` log lines at info level
+
+In the same file, find the stderr logger:
+
+```ts
+  container.stderr?.on('data', (data) => {
+    for (const line of data.toString().trim().split('\n')) {
+      if (line) log.debug(line, { container: agentGroup.folder });
+    }
+  });
+```
+
+Replace it with:
+
+```ts
+  container.stderr?.on('data', (data) => {
+    for (const line of data.toString().trim().split('\n')) {
+      if (!line) continue;
+      if (line.includes('[ATOMIC]')) {
+        log.info(line, { container: agentGroup.folder });
+      } else {
+        log.debug(line, { container: agentGroup.folder });
+      }
+    }
+  });
+```
+
+### Add env-var stubs to `.env.example`
+
+Append to `.env.example`:
 
 ```bash
-git remote add upstream https://github.com/qwibitai/nanoclaw.git
+# Atomic Chat MCP tool (.claude/skills/add-atomic-chat-tool)
+# Override the host where Atomic Chat exposes its OpenAI-compatible API.
+# Default: http://host.docker.internal:1337 (with fallback to localhost)
+# ATOMIC_CHAT_HOST=http://host.docker.internal:1337
+
+# Optional API key. Leave unset for a local Atomic Chat install — it does not require auth.
+# ATOMIC_CHAT_API_KEY=
 ```
-
-### Merge the skill branch
-
-```bash
-git fetch upstream skill/atomic-chat-tool
-git merge upstream/skill/atomic-chat-tool
-```
-
-This merges in:
-- `container/agent-runner/src/atomic-chat-mcp-stdio.ts` (Atomic Chat MCP server, run directly via `bun`)
-- Atomic Chat MCP registration in `container/agent-runner/src/index.ts` (`mcpServers.atomic_chat`)
-- `mcp__atomic_chat__*` added to `TOOL_ALLOWLIST` in `container/agent-runner/src/providers/claude.ts`
-- `[ATOMIC]` log surfacing and `ATOMIC_CHAT_HOST` / `ATOMIC_CHAT_API_KEY` forwarding in `src/container-runner.ts`
-- `ATOMIC_CHAT_HOST` / `ATOMIC_CHAT_API_KEY` stubs in `.env.example`
-
-If the merge reports conflicts, resolve them by reading the conflicted files and understanding the intent of both sides.
 
 ### Validate code changes
 
 ```bash
 pnpm run build
+pnpm exec tsc -p container/agent-runner/tsconfig.json --noEmit
 ./container/build.sh
 ```
 
-Build must be clean before proceeding.
+All three must be clean before proceeding.
 
 ## Phase 3: Configure
 
@@ -126,9 +214,10 @@ Look for:
 ### Agent says "Atomic Chat is not installed" or tries to run a CLI
 
 The agent is looking for a CLI that doesn't exist instead of using the MCP tools. This means:
-1. The MCP server wasn't registered — check `container/agent-runner/src/index.ts` has the `atomic_chat` entry in `mcpServers`
-2. The allowlist wasn't updated — check `container/agent-runner/src/providers/claude.ts` includes `mcp__atomic_chat__*` in `TOOL_ALLOWLIST`
-3. The container wasn't rebuilt — run `./container/build.sh`
+1. The MCP server wasn't copied — check `container/agent-runner/src/atomic-chat-mcp-stdio.ts` exists
+2. The MCP server wasn't registered — check `container/agent-runner/src/index.ts` has the `atomic_chat` entry in `mcpServers`
+3. The allowlist wasn't updated — check `container/agent-runner/src/providers/claude.ts` includes `mcp__atomic_chat__*` in `TOOL_ALLOWLIST`
+4. The container wasn't rebuilt — run `./container/build.sh`
 
 ### "Failed to connect to Atomic Chat"
 
