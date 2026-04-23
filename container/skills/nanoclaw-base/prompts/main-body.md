@@ -49,8 +49,7 @@ After `install_packages`, call `mcp__nanoclaw__request_rebuild` to bake packages
 ```
 ask_user_question("Which coworker type for <name>?", options: [
   "slang-reader (Recommended) — read-only: investigate, review, research",
-  "slang-writer — read+write: investigate, implement, review, create PRs",
-  "slangpy-common — SlangPy project spine"
+  "slang-writer — read+write: investigate, implement, review, create PRs"
 ])
 ```
 
