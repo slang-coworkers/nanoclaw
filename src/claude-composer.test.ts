@@ -371,9 +371,9 @@ slang-triage:
       expect(out).toContain('Do not silence failing tests.');
       expect(out).toContain('## Context');
       expect(out).toContain('Slang lives under source/slang/.');
-      expect(out).toContain('## Workflows Available');
-      expect(out).toContain('- `/slang-triage` — Triage a Slang issue.');
-      expect(out).toContain('Uses: slang-github.');
+      expect(out).toContain('## Workflows');
+      expect(out).toContain('### /slang-triage');
+      expect(out).toContain('Triage a Slang issue.');
       expect(out).toContain('## Skills Available');
       expect(out).toContain('- `/base-nanoclaw` — Host tools.');
       expect(out).toContain('- `/slang-github` — Fetch Slang issues.');
@@ -476,7 +476,7 @@ global:
       const out = composeCoworkerSpine({ projectRoot: root, coworkerType: 'main' });
       expect(out).not.toContain('## Identity');
       expect(out).not.toContain('## Invariants');
-      expect(out).not.toContain('## Workflows Available');
+      expect(out).not.toContain('## Workflows');
       expect(out).not.toContain('Bodies load on demand.');
     });
   });
@@ -676,7 +676,7 @@ with-overlay:
       expect(manifest.tools).toContain('mcp__codex__review');
     });
 
-    it('renders Trait Bindings and Workflow Customizations into the spine markdown', () => {
+    it('renders Trait Bindings and Gate Protocols into the spine markdown', () => {
       const root = setupTraitProject();
       writeTypes(
         root,
@@ -704,8 +704,8 @@ render-check:
       expect(out).toContain('## Trait Bindings');
       expect(out).toContain('`repo` → `/repo-skill` (pr)');
       expect(out).toContain('`code` → `/edit-skill` (edit)');
-      expect(out).toContain('## Workflow Customizations');
-      expect(out).toContain('`/implement` is augmented by `crit-overlay` after step `patch`.');
+      expect(out).toContain('## Gate Protocols');
+      expect(out).toContain('CRIT OVERLAY GATE (mandatory)');
     });
 
     it('extends + overrides are surfaced as customizations on the derived workflow', () => {

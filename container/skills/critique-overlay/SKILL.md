@@ -5,7 +5,7 @@ description: "Insert a critique gate after planning and after code changes. Spaw
 applies-to:
   workflows: [investigate, implement, document]
   traits: [plan.research, code.edit, test.gen, doc.write]
-insert-after: [investigate, patch, draft]
+insert-after: [root-cause, patch, draft]
 uses:
   skills: [codex-critique]
 ---

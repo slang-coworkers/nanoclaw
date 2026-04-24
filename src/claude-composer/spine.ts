@@ -126,22 +126,123 @@ export function renderCoworkerSpine(
     parts.push(manifest.context.join('\n\n'));
   }
 
+  // --- Task routing guide ---
   if (manifest.workflows.length > 0) {
-    parts.push('## Workflows Available');
+    const TRIGGER_MAP: Record<Category, string> = {
+      repo: 'Investigation / triage / "what\'s going on?"',
+      code: 'Code change / fix / feature',
+      test: 'Test authoring / CI fix',
+      ci: 'CI investigation',
+      doc: 'Documentation update',
+      plan: 'Research / planning',
+      critique: 'Review / critique',
+      other: 'General task',
+    };
+    const routeLines: string[] = [];
+    const seen = new Set<string>();
+    for (const w of manifest.workflows) {
+      const cat = categorize(w.requires);
+      if (seen.has(cat)) continue;
+      seen.add(cat);
+      routeLines.push(`- ${TRIGGER_MAP[cat]} → \`/${w.name}\``);
+    }
+    parts.push('## How to Work');
     parts.push(
-      renderCategorizedList(
-        manifest.workflows,
-        (w) => w.requires,
-        (w) => {
-          const uses = w.uses.length > 0 ? ` Uses: ${w.uses.join(', ')}.` : '';
-          const requires = w.requires.length > 0 ? ` Requires traits: ${w.requires.join(', ')}.` : '';
-          const steps = w.steps.length > 0 ? `\n  Steps: ${w.steps.join(' → ')}` : '';
-          return `- \`/${w.name}\` — ${w.description}${uses}${requires}${steps}`;
-        },
-      ),
+      routeLines.join('\n') +
+        '\n\nAlways start with a workflow. Never jump straight to code.\nRead `.instructions.md` in your workspace for per-assignment standing orders.',
     );
   }
 
+  // --- Workflows: loop-unrolled with inline gates ---
+  if (manifest.workflows.length > 0) {
+    parts.push('## Workflows');
+    const wfBlocks: string[] = [];
+
+    // Collect overlay protocol bodies (render once at the end).
+    const overlayBodies = new Map<string, string>();
+
+    for (const w of manifest.workflows) {
+      const wfCustomizations = manifest.customizations.filter((c) => c.workflow === w.name);
+      const extendsC = wfCustomizations.find((c) => c.kind === 'extends');
+      const overrides = wfCustomizations.filter((c) => c.kind === 'override');
+      const overlays = wfCustomizations.filter((c) => c.kind === 'overlay');
+
+      const uses = w.uses.length > 0 ? ` Uses: ${w.uses.join(', ')}.` : '';
+      const extendsNote = extendsC?.extendsWorkflow ? ` (extends \`/${extendsC.extendsWorkflow}\`)` : '';
+      let block = `### /${w.name}\n\n${w.description}${uses}${extendsNote}`;
+
+      if (w.steps.length > 0) {
+        // Build unrolled step list with inline gates.
+        const overrideMap = new Map<string, string>();
+        for (const o of overrides) {
+          const stepMatch = o.summary.match(/step `([^`]+)`/);
+          if (stepMatch) overrideMap.set(stepMatch[1], o.detail?.trim() || '');
+        }
+
+        // Map overlay anchors: stepId → gates to insert after/before.
+        const stepSet = new Set(w.steps);
+        const gatesAfter = new Map<string, string[]>();
+        const gatesBefore = new Map<string, string[]>();
+        for (const ov of overlays) {
+          if (ov.anchorSteps) {
+            for (const anchor of ov.anchorSteps) {
+              if (!stepSet.has(anchor.step)) continue; // skip anchors that don't match any step
+              const gateName = (ov.overlayName || 'overlay').toUpperCase().replaceAll('-', ' ');
+              const label = `── ${gateName} GATE (mandatory) ── see ## Gate Protocols below`;
+              if (anchor.position === 'after') {
+                const arr = gatesAfter.get(anchor.step) || [];
+                arr.push(label);
+                gatesAfter.set(anchor.step, arr);
+              } else {
+                const arr = gatesBefore.get(anchor.step) || [];
+                arr.push(label);
+                gatesBefore.set(anchor.step, arr);
+              }
+            }
+          }
+          if (ov.overlayName && ov.detail) overlayBodies.set(ov.overlayName, ov.detail.trim());
+        }
+
+        const stepLines: string[] = [];
+        let n = 1;
+        for (const step of w.steps) {
+          // Insert gates BEFORE this step.
+          for (const gate of gatesBefore.get(step) || []) {
+            stepLines.push(`  ${n}. ${gate}`);
+            n++;
+          }
+
+          // The step itself, with override if present.
+          const override = overrideMap.get(step);
+          const suffix = override ? ` — ${override}` : '';
+          stepLines.push(`  ${n}. ${step}${suffix}`);
+          n++;
+
+          // Insert gates AFTER this step.
+          for (const gate of gatesAfter.get(step) || []) {
+            stepLines.push(`  ${n}. ${gate}`);
+            n++;
+          }
+        }
+
+        block += '\n\n' + stepLines.join('\n');
+      }
+
+      wfBlocks.push(block);
+    }
+
+    parts.push(wfBlocks.join('\n\n'));
+
+    // Render overlay protocol bodies ONCE at the end.
+    if (overlayBodies.size > 0) {
+      parts.push('## Gate Protocols');
+      for (const name of [...overlayBodies.keys()].sort()) {
+        parts.push(`### ${name}\n\n${overlayBodies.get(name)}`);
+      }
+    }
+  }
+
+  // --- Skills ---
   if (manifest.skills.length > 0) {
     parts.push('## Skills Available');
     parts.push(
@@ -156,6 +257,7 @@ export function renderCoworkerSpine(
     );
   }
 
+  // --- Trait Bindings ---
   const bindingKeys = Object.keys(manifest.bindings).sort();
   if (bindingKeys.length > 0) {
     parts.push('## Trait Bindings');
@@ -172,39 +274,6 @@ export function renderCoworkerSpine(
         })
         .join('\n'),
     );
-  }
-
-  if (manifest.customizations.length > 0) {
-    parts.push('## Workflow Customizations');
-    const blocks: string[] = [];
-
-    // Split into non-overlay (extends/override) and overlay customizations.
-    const nonOverlay = manifest.customizations.filter((c) => c.kind !== 'overlay');
-    const overlayMap = new Map<string, { summaries: string[]; detail: string }>();
-    for (const c of manifest.customizations) {
-      if (c.kind === 'overlay' && c.overlayName) {
-        const group = overlayMap.get(c.overlayName) || { summaries: [], detail: c.detail || '' };
-        group.summaries.push(c.summary);
-        overlayMap.set(c.overlayName, group);
-      }
-    }
-
-    // Render non-overlay customizations (extends, overrides) normally.
-    for (const c of nonOverlay) {
-      if (c.detail && c.detail.trim()) {
-        blocks.push(`- ${c.summary}\n\n${indentBlock(c.detail.trim(), 2)}`);
-      } else {
-        blocks.push(`- ${c.summary}`);
-      }
-    }
-
-    // Render each overlay ONCE: bold gate list + body.
-    for (const [, group] of overlayMap) {
-      const gateList = group.summaries.map((s) => `- **${s}**`).join('\n');
-      blocks.push(`${gateList}\n\n${indentBlock(group.detail.trim(), 2)}`);
-    }
-
-    parts.push(blocks.join('\n\n'));
   }
 
   if (manifest.workflows.length > 0 || manifest.skills.length > 0) {

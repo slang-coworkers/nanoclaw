@@ -185,12 +185,17 @@ export function resolveCoworkerManifest(
     const meta = catalog[name];
     if (meta.type === 'workflow') {
       const uses = [...meta.uses.skills, ...meta.uses.workflows];
+      // Inherit steps from parent workflow if this child has none.
+      let steps = meta.steps;
+      if (steps.length === 0 && meta.extendsWorkflow && catalog[meta.extendsWorkflow]) {
+        steps = catalog[meta.extendsWorkflow].steps;
+      }
       workflowEntries.push({
         name: meta.name,
         description: meta.description,
         uses,
         requires: meta.requires,
-        steps: meta.steps,
+        steps,
       });
       workflowSet.add(meta.name);
     } else if (meta.type === 'capability') {
@@ -293,6 +298,7 @@ export function resolveCoworkerManifest(
       customizations.push({
         workflow: wf.name,
         kind: 'extends',
+        extendsWorkflow: meta.extendsWorkflow,
         summary: `\`/${wf.name}\` extends \`/${meta.extendsWorkflow}\` — run base steps, then the specialized steps.`,
       });
     }
@@ -334,13 +340,21 @@ export function resolveCoworkerManifest(
     }
     for (const target of targets) {
       const anchors: string[] = [];
-      for (const step of overlay.insertAfter) anchors.push(`after step \`${step}\``);
-      for (const step of overlay.insertBefore) anchors.push(`before step \`${step}\``);
+      const anchorSteps: { position: 'before' | 'after'; step: string }[] = [];
+      for (const step of overlay.insertAfter) {
+        anchors.push(`after step \`${step}\``);
+        anchorSteps.push({ position: 'after', step });
+      }
+      for (const step of overlay.insertBefore) {
+        anchors.push(`before step \`${step}\``);
+        anchorSteps.push({ position: 'before', step });
+      }
       const where = anchors.length > 0 ? anchors.join(' and ') : 'at the end';
       customizations.push({
         workflow: target,
         kind: 'overlay',
         overlayName,
+        anchorSteps,
         summary: `\`/${target}\` is augmented by \`${overlayName}\` ${where}.`,
         detail: overlay.step,
       });

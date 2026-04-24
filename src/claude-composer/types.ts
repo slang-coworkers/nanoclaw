@@ -142,6 +142,8 @@ export interface WorkflowCustomization {
   summary: string; // One-line description rendered into the spine.
   detail?: string; // Optional longer form (step body / override body).
   overlayName?: string; // For kind=overlay: the overlay skill name (used to group rendering).
+  anchorSteps?: { position: 'before' | 'after'; step: string }[]; // For kind=overlay: which steps this gate attaches to.
+  extendsWorkflow?: string; // For kind=extends: the parent workflow name.
 }
 
 export interface CoworkerManifest {

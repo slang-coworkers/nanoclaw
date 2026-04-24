@@ -7,6 +7,10 @@
 - `/workspace/global/` — shared across coworkers (learnings, read-only references).
 - `/workspace/project/` — project source tree. **Read-only.** Do not write here.
 
+### Standing Orders
+
+Your per-assignment instructions are in `.instructions.md` in your workspace root. Read it at session start — it tells you which workflows to run and any special constraints for your role.
+
 ### Resumability
 
 When a session ends mid-task, leave a note under `/workspace/agent/` describing what is done, what is pending, and any blockers. The next session starts by reading it.
