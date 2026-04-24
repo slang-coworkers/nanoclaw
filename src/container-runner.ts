@@ -12,7 +12,6 @@ import yaml from 'js-yaml';
 
 import {
   CONTAINER_MAX_OUTPUT_SIZE,
-  CONTAINER_PREFIX,
   CONTAINER_TIMEOUT,
   DATA_DIR,
   GROUPS_DIR,

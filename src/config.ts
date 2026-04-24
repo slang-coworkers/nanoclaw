@@ -9,7 +9,6 @@ const envConfig = readEnvFile([
   'ASSISTANT_NAME',
   'ASSISTANT_HAS_OWN_NUMBER',
   'ONECLI_URL',
-  'CONTAINER_PREFIX',
   'TZ',
 ]);
 

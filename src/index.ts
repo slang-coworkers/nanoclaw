@@ -1,4 +1,3 @@
-import { execFileSync, execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -6,7 +5,6 @@ import { OneCLI } from '@onecli-sh/sdk';
 
 import {
   ASSISTANT_NAME,
-  CONTAINER_PREFIX,
   DEFAULT_TRIGGER,
   getTriggerPattern,
   GROUPS_DIR,
@@ -1021,23 +1019,7 @@ async function main(): Promise<void> {
     logger.info({ signal }, 'Shutdown signal received');
     mcpServers.stop();
     mcpAuthProxy.stop();
-    // Stop all running nanoclaw containers so systemd doesn't have to SIGKILL them
-    try {
-      const names = execSync(
-        `docker ps --filter name=${CONTAINER_PREFIX}- --format '{{.Names}}'`,
-        { encoding: 'utf-8', timeout: 5000 },
-      ).trim();
-      if (names) {
-        const containers = names.split('\n').filter(Boolean);
-        logger.info(
-          { count: containers.length },
-          'Stopping containers on shutdown',
-        );
-        execFileSync('docker', ['stop', ...containers], { timeout: 30000 });
-      }
-    } catch {
-      // Best effort — containers will be cleaned up by --rm on exit
-    }
+    // Agent processes are child processes — they receive the same signal and exit.
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);
