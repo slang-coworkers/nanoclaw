@@ -149,7 +149,7 @@ export function renderCoworkerSpine(
     parts.push('## How to Work');
     parts.push(
       routeLines.join('\n') +
-        '\n\nAlways start with a workflow. Never jump straight to code.\nRead `.instructions.md` in your workspace for per-assignment standing orders.',
+        '\n\nAlways start with a workflow. Never jump straight to code.\nYour role-specific standing orders: [Additional Instructions](#additional-instructions)',
     );
   }
 
@@ -183,12 +183,22 @@ export function renderCoworkerSpine(
         const stepSet = new Set(w.steps);
         const gatesAfter = new Map<string, string[]>();
         const gatesBefore = new Map<string, string[]>();
+        const GATE_DIRECTIVES: Record<string, string> = {
+          'critique-overlay': 'STOP and spawn codex-critique agent for review',
+          'plan-overlay': 'STOP and write a plan before coding',
+        };
         for (const ov of overlays) {
           if (ov.anchorSteps) {
             for (const anchor of ov.anchorSteps) {
-              if (!stepSet.has(anchor.step)) continue; // skip anchors that don't match any step
+              if (!stepSet.has(anchor.step)) {
+                // Warn: overlay references a step that doesn't exist in this workflow.
+                // eslint-disable-next-line no-console
+                console.warn(`[composer] overlay "${ov.overlayName}" anchors to step "${anchor.step}" which does not exist in workflow "${w.name}" (steps: ${w.steps.join(', ')})`);
+                continue;
+              }
               const gateName = (ov.overlayName || 'overlay').toUpperCase().replaceAll('-', ' ');
-              const label = `── ${gateName} GATE (mandatory) ── see ## Gate Protocols below`;
+              const directive = GATE_DIRECTIVES[ov.overlayName || ''] || 'see ## Gate Protocols below';
+              const label = `── ${gateName} GATE (mandatory) ── ${directive}`;
               if (anchor.position === 'after') {
                 const arr = gatesAfter.get(anchor.step) || [];
                 arr.push(label);
