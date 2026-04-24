@@ -271,6 +271,24 @@ export async function run(args: string[]): Promise<void> {
     }
   }
 
+  // 3b. Bidirectional destinations: admin ↔ new agent
+  if (!parsed.isAdmin) {
+    const admin = getAdminAgentGroup();
+    if (admin && admin.id !== agentGroup.id) {
+      const now = new Date().toISOString();
+      const childName = allocateDestinationName(admin.id, agentGroup.name);
+      if (!getDestinationByName(admin.id, childName)) {
+        createDestination({ agent_group_id: admin.id, local_name: childName, target_type: 'agent', target_id: agentGroup.id, created_at: now });
+        log.info('Added admin → agent destination', { admin: admin.id, localName: childName, agent: agentGroup.id });
+      }
+      const adminName = allocateDestinationName(agentGroup.id, admin.name);
+      if (!getDestinationByName(agentGroup.id, adminName)) {
+        createDestination({ agent_group_id: agentGroup.id, local_name: adminName, target_type: 'agent', target_id: admin.id, created_at: now });
+        log.info('Added agent → admin destination', { agent: agentGroup.id, localName: adminName, admin: admin.id });
+      }
+    }
+  }
+
   // 4. Send onboarding message — only on first wiring, not re-registration
   if (shouldCreateDirectChannel && newlyWired && messagingGroup) {
     const { session } = resolveSession(agentGroup.id, messagingGroup.id, null, parsed.sessionMode as 'shared' | 'per-thread' | 'agent-shared');

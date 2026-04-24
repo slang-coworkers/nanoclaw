@@ -106,11 +106,11 @@ describe('agent groups', () => {
     expect(() => createAgentGroup({ ...ag(), id: 'ag-dup' })).toThrow();
   });
 
-  it('defaults admin coworker_type to main when omitted', () => {
+  it('stores null coworker_type for admin when not set by caller', () => {
     createAgentGroup({ ...ag(), id: 'ag-admin', folder: 'admin-agent', is_admin: 1, coworker_type: null });
     const result = getAgentGroup('ag-admin');
     expect(result?.is_admin).toBe(1);
-    expect(result?.coworker_type).toBe('main');
+    expect(result?.coworker_type).toBeNull();
   });
 
   it('preserves explicit coworker_type for admin groups', () => {

@@ -2866,7 +2866,7 @@ function getCwCoworkers() {
       routing: g.routing || 'direct',
       taskCount: live?.taskCount || 0,
       isAutoUpdate: live?.isAutoUpdate || false,
-      allowedMcpTools: live?.allowedMcpTools || [],
+      allowedMcpTools: live?.allowedMcpTools || (g.allowed_mcp_tools ? JSON.parse(g.allowed_mcp_tools) : []),
       disallowedMcpTools: live?.disallowedMcpTools || [],
     });
   }
