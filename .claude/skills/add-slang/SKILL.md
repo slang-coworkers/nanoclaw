@@ -28,14 +28,14 @@ git remote -v
 If `slang` remote is missing, add it:
 
 ```bash
-git remote add slang https://github.com/szihs/nanoclaw.git
+# slang remote not needed — using origin/lego-slang
 ```
 
 ### Merge the skill branch
 
 ```bash
-git fetch slang skill/v2_slang
-git merge slang/skill/v2_slang || {
+git fetch origin lego-slang
+git merge origin/lego-slang --no-edit || {
   # Resolve package-lock.json conflicts if any
   git checkout --theirs package-lock.json 2>/dev/null && git add package-lock.json
   git merge --continue

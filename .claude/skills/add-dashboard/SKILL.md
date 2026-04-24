@@ -19,25 +19,13 @@ If `ALREADY_APPLIED`, skip to Phase 3 (Configure). The code changes are already 
 
 ## Phase 2: Apply Code Changes
 
-### Ensure slang remote
+### Merge the dashboard branch
 
 ```bash
-git remote -v
-```
-
-If `slang` remote is missing, add it:
-
-```bash
-git remote add slang https://github.com/slang-coworkers/nanoclaw.git
-```
-
-### Merge the skill branch
-
-```bash
-git fetch slang skill/v2_dashboard
-git merge slang/skill/v2_dashboard || {
-  # Resolve package-lock.json conflicts if any
-  git checkout --theirs package-lock.json 2>/dev/null && git add package-lock.json
+git fetch origin lego-dashboard
+git merge origin/lego-dashboard --no-edit || {
+  git checkout --theirs package-lock.json pnpm-lock.yaml 2>/dev/null
+  git add package-lock.json pnpm-lock.yaml 2>/dev/null
   git merge --continue
 }
 ```
