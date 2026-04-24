@@ -241,6 +241,7 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    repo?: string; // Named repo from groups/seed.json "repos" map → resolves to workDir
     coworkerType?: string;
     claudeMdAppend?: string;
     allowedMcpTools?: string[];
@@ -515,11 +516,68 @@ export async function processTaskIpc(
           break;
         }
 
+        // Resolve workDir from seed.json repos.
+        // Priority: explicit repo field → additionalMounts match → nothing.
+        let containerConfig = data.containerConfig;
+        if (!containerConfig?.workDir) {
+          let resolvedWorkDir: string | undefined;
+          try {
+            const seedPath = path.join(process.cwd(), 'groups', 'seed.json');
+            const seed = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
+            const repos: Record<string, string> = seed.repos || {};
+
+            if (data.repo) {
+              // Explicit repo name
+              resolvedWorkDir = repos[data.repo];
+              if (!resolvedWorkDir) {
+                logger.warn(
+                  { repo: data.repo },
+                  'Unknown repo name in register_group',
+                );
+              }
+            }
+
+            // Fallback: if orchestrator used additionalMounts with made-up paths,
+            // try to match them against known repos by checking if any repo name
+            // appears in the mount paths (e.g. "D:\corvk-bloom5" matches "corvk").
+            if (!resolvedWorkDir && containerConfig?.additionalMounts?.length) {
+              for (const [repoName, repoPath] of Object.entries(repos)) {
+                const mountsMatchRepo =
+                  containerConfig.additionalMounts.some(
+                    (m: any) =>
+                      m.hostPath &&
+                      (path.basename(m.hostPath)
+                        .toLowerCase()
+                        .includes(repoName.toLowerCase()) ||
+                        m.containerPath === repoName),
+                  );
+                if (mountsMatchRepo) {
+                  resolvedWorkDir = repoPath;
+                  logger.info(
+                    { repoName, workDir: repoPath },
+                    'Auto-resolved workDir from additionalMounts matching repo name',
+                  );
+                  break;
+                }
+              }
+            }
+          } catch {
+            logger.warn('Failed to read groups/seed.json for repo resolution');
+          }
+
+          if (resolvedWorkDir) {
+            containerConfig = { ...containerConfig, workDir: resolvedWorkDir };
+            logger.info(
+              { workDir: resolvedWorkDir },
+              'Resolved workDir for new group',
+            );
+          }
+        }
+
         // Extract coworkerType from data or nested containerConfig.
         // If claudeMdAppend is also set, force coworkerType to null —
         // they conflict (coworkerType rebuilds CLAUDE.md on every startup,
         // destroying the appended content).
-        let containerConfig = data.containerConfig;
         const coworkerType = data.claudeMdAppend
           ? undefined
           : data.coworkerType || (containerConfig as any)?.coworkerType;

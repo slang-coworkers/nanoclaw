@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import path from 'path';
 
 // Mock logger
 vi.mock('./logger.js', () => ({
@@ -10,153 +11,118 @@ vi.mock('./logger.js', () => ({
   },
 }));
 
-// Mock child_process — store the mock fn so tests can configure it
+// Mock config
+vi.mock('./config.js', () => ({
+  DATA_DIR: '/tmp/nanoclaw-test-data',
+}));
+
+// Mock fs
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actual,
+    default: {
+      ...actual,
+      existsSync: vi.fn(() => false),
+      mkdirSync: vi.fn(),
+      readdirSync: vi.fn(() => []),
+      readFileSync: vi.fn(() => ''),
+      writeFileSync: vi.fn(),
+      unlinkSync: vi.fn(),
+      rmSync: vi.fn(),
+    },
+  };
+});
+
+// Mock child_process
 const mockExecSync = vi.fn();
 vi.mock('child_process', () => ({
   execSync: (...args: unknown[]) => mockExecSync(...args),
 }));
 
 import {
-  CONTAINER_RUNTIME_BIN,
-  readonlyMountArgs,
-  stopContainer,
-  ensureContainerRuntimeRunning,
-  cleanupOrphans,
-} from './container-runtime.js';
+  PROXY_BIND_HOST,
+  AGENT_HOST_GATEWAY,
+  ensureGitRepo,
+  pruneWorktrees,
+} from './worktree-runtime.js';
 import { logger } from './logger.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-// --- Pure functions ---
-
-describe('readonlyMountArgs', () => {
-  it('returns -v flag with :ro suffix', () => {
-    const args = readonlyMountArgs('/host/path', '/container/path');
-    expect(args).toEqual(['-v', '/host/path:/container/path:ro']);
+describe('PROXY_BIND_HOST', () => {
+  it('defaults to 127.0.0.1', () => {
+    expect(PROXY_BIND_HOST).toBe('127.0.0.1');
   });
 });
 
-describe('stopContainer', () => {
-  it('calls docker stop for valid container names', () => {
-    stopContainer('nanoclaw-test-123');
-    expect(mockExecSync).toHaveBeenCalledWith(
-      `${CONTAINER_RUNTIME_BIN} stop -t 1 nanoclaw-test-123`,
-      { stdio: 'pipe', timeout: 15000 },
-    );
+describe('AGENT_HOST_GATEWAY', () => {
+  it('is localhost', () => {
+    expect(AGENT_HOST_GATEWAY).toBe('localhost');
   });
+});
 
-  it('rejects names with shell metacharacters', () => {
-    expect(() => stopContainer('foo; rm -rf /')).toThrow(
-      'Invalid container name',
-    );
-    expect(() => stopContainer('foo$(whoami)')).toThrow(
-      'Invalid container name',
-    );
-    expect(() => stopContainer('foo`id`')).toThrow('Invalid container name');
+describe('ensureGitRepo', () => {
+  it('skips init when .git already exists', async () => {
+    const fs = await import('fs');
+    vi.mocked(fs.default.existsSync).mockReturnValue(true);
+
+    ensureGitRepo('/some/project');
+
     expect(mockExecSync).not.toHaveBeenCalled();
-  });
-});
-
-// --- ensureContainerRuntimeRunning ---
-
-describe('ensureContainerRuntimeRunning', () => {
-  it('does nothing when runtime is already running', () => {
-    mockExecSync.mockReturnValueOnce('');
-
-    ensureContainerRuntimeRunning();
-
-    expect(mockExecSync).toHaveBeenCalledTimes(1);
-    expect(mockExecSync).toHaveBeenCalledWith(`${CONTAINER_RUNTIME_BIN} info`, {
-      stdio: 'pipe',
-      timeout: 10000,
-    });
     expect(logger.debug).toHaveBeenCalledWith(
-      'Container runtime already running',
+      'Git repo already exists — worktree support ready',
     );
   });
 
-  it('throws when docker info fails', () => {
-    mockExecSync.mockImplementationOnce(() => {
-      throw new Error('Cannot connect to the Docker daemon');
-    });
-
-    expect(() => ensureContainerRuntimeRunning()).toThrow(
-      'Container runtime is required but failed to start',
-    );
-    expect(logger.error).toHaveBeenCalled();
-  });
-});
-
-// --- cleanupOrphans ---
-
-describe('cleanupOrphans', () => {
-  it('stops orphaned nanoclaw containers', () => {
-    // docker ps returns container names, one per line
-    mockExecSync.mockReturnValueOnce(
-      'nanoclaw-group1-111\nnanoclaw-group2-222\n',
-    );
-    // stop calls succeed
+  it('runs git init when no .git directory', async () => {
+    const fs = await import('fs');
+    vi.mocked(fs.default.existsSync).mockReturnValue(false);
     mockExecSync.mockReturnValue('');
 
-    cleanupOrphans();
+    ensureGitRepo('/some/project');
 
-    // ps + 2 stop calls
-    expect(mockExecSync).toHaveBeenCalledTimes(3);
-    expect(mockExecSync).toHaveBeenNthCalledWith(
-      2,
-      `${CONTAINER_RUNTIME_BIN} stop -t 1 nanoclaw-group1-111`,
-      { stdio: 'pipe', timeout: 15000 },
-    );
-    expect(mockExecSync).toHaveBeenNthCalledWith(
-      3,
-      `${CONTAINER_RUNTIME_BIN} stop -t 1 nanoclaw-group2-222`,
-      { stdio: 'pipe', timeout: 15000 },
-    );
-    expect(logger.info).toHaveBeenCalledWith(
-      { count: 2, names: ['nanoclaw-group1-111', 'nanoclaw-group2-222'] },
-      'Stopped orphaned containers',
+    expect(mockExecSync).toHaveBeenCalledWith(
+      'git init',
+      expect.objectContaining({ cwd: '/some/project' }),
     );
   });
 
-  it('does nothing when no orphans exist', () => {
-    mockExecSync.mockReturnValueOnce('');
-
-    cleanupOrphans();
-
-    expect(mockExecSync).toHaveBeenCalledTimes(1);
-    expect(logger.info).not.toHaveBeenCalled();
-  });
-
-  it('warns and continues when ps fails', () => {
+  it('warns and continues if git init fails', async () => {
+    const fs = await import('fs');
+    vi.mocked(fs.default.existsSync).mockReturnValue(false);
     mockExecSync.mockImplementationOnce(() => {
-      throw new Error('docker not available');
+      throw new Error('not a git repo');
     });
 
-    cleanupOrphans(); // should not throw
+    // Should not throw
+    ensureGitRepo('/some/project');
 
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ err: expect.any(Error) }),
-      'Failed to clean up orphaned containers',
+    expect(logger.warn).toHaveBeenCalled();
+  });
+});
+
+describe('pruneWorktrees', () => {
+  it('calls git worktree prune', () => {
+    mockExecSync.mockReturnValue('');
+
+    pruneWorktrees('/some/project');
+
+    expect(mockExecSync).toHaveBeenCalledWith(
+      'git worktree prune',
+      expect.objectContaining({ cwd: '/some/project' }),
     );
   });
 
-  it('continues stopping remaining containers when one stop fails', () => {
-    mockExecSync.mockReturnValueOnce('nanoclaw-a-1\nnanoclaw-b-2\n');
-    // First stop fails
+  it('logs debug and continues if prune fails', () => {
     mockExecSync.mockImplementationOnce(() => {
-      throw new Error('already stopped');
+      throw new Error('not a git repo');
     });
-    // Second stop succeeds
-    mockExecSync.mockReturnValueOnce('');
 
-    cleanupOrphans(); // should not throw
+    pruneWorktrees('/some/project'); // should not throw
 
-    expect(mockExecSync).toHaveBeenCalledTimes(3);
-    expect(logger.info).toHaveBeenCalledWith(
-      { count: 2, names: ['nanoclaw-a-1', 'nanoclaw-b-2'] },
-      'Stopped orphaned containers',
-    );
+    expect(logger.debug).toHaveBeenCalled();
   });
 });

@@ -30,6 +30,7 @@ export interface AllowedRoot {
 export interface ContainerConfig {
   additionalMounts?: AdditionalMount[];
   timeout?: number; // Default: 300000 (5 minutes)
+  workDir?: string; // Override the agent's working directory (absolute path to a repo)
 }
 
 export interface RegisteredGroup {

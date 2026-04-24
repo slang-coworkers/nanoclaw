@@ -34,16 +34,16 @@ import {
 } from './channels/registry.js';
 import {
   ContainerOutput,
+  ensureAgentRunnerBuilt,
   runContainerAgent,
   writeGroupsSnapshot,
   writeTasksSnapshot,
 } from './container-runner.js';
 import {
   cleanupOrphans,
-  ensureAgentNetwork,
-  ensureContainerRuntimeRunning,
+  ensureGitRepo,
   PROXY_BIND_HOST,
-} from './container-runtime.js';
+} from './worktree-runtime.js';
 import {
   getAllChats,
   getAllRegisteredGroups,
@@ -201,6 +201,90 @@ function loadState(): void {
     { groupCount: Object.keys(registeredGroups).length },
     'State loaded',
   );
+}
+
+/**
+ * Load seed groups from groups/seed.json.
+ * Registers any groups not already in the database.
+ *
+ * The "repos" map defines named repo paths once (e.g. "corvk": "D:/corvk").
+ * Groups reference a repo by name via "repo" field, which resolves to a workDir.
+ */
+function loadSeedGroups(): void {
+  const seedPath = path.join(process.cwd(), 'groups', 'seed.json');
+  if (!fs.existsSync(seedPath)) return;
+
+  let seed: {
+    repos?: Record<string, string>;
+    groups: Array<Record<string, any>>;
+  };
+  try {
+    seed = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
+  } catch (err) {
+    logger.warn({ err }, 'Failed to parse groups/seed.json');
+    return;
+  }
+
+  if (!Array.isArray(seed.groups)) return;
+
+  const repos = seed.repos || {};
+
+  let added = 0;
+  for (const g of seed.groups) {
+    if (!g.jid || !g.folder) continue;
+    // Skip if already registered
+    if (registeredGroups[g.jid]) continue;
+
+    // Resolve workDir: explicit workDir takes priority, then repo name lookup
+    let workDir: string | undefined = g.workDir;
+    if (!workDir && g.repo) {
+      workDir = repos[g.repo];
+      if (!workDir) {
+        logger.warn(
+          { folder: g.folder, repo: g.repo },
+          'Seed group references unknown repo — skipping workDir',
+        );
+      }
+    }
+
+    const group = {
+      name: g.name || g.folder,
+      folder: g.folder,
+      trigger: g.trigger || `@${g.folder}`,
+      added_at: new Date().toISOString(),
+      requiresTrigger: g.requiresTrigger ?? false,
+      isMain: g.isMain ?? false,
+      containerConfig: workDir ? { workDir } : undefined,
+      coworkerType: g.coworkerType,
+      allowedMcpTools: g.allowedMcpTools,
+    };
+
+    setRegisteredGroup(g.jid, group);
+    storeChatMetadata(g.jid, group.added_at, group.name, 'dashboard', true);
+    registeredGroups[g.jid] = group;
+    added++;
+    logger.info(
+      { jid: g.jid, folder: g.folder, workDir: workDir || '(none)' },
+      'Seeded group from seed.json',
+    );
+  }
+
+  if (added > 0) {
+    rebuildCoworkerTriggers();
+    logger.info({ added }, 'Seed groups loaded');
+  }
+
+  // Write repos map to groups/main/ so the orchestrator knows what repos
+  // are available when creating new agents (use "repo" field in register_group).
+  if (Object.keys(repos).length > 0) {
+    const mainGroupDir = path.join(process.cwd(), 'groups', 'main');
+    if (fs.existsSync(mainGroupDir)) {
+      fs.writeFileSync(
+        path.join(mainGroupDir, 'repos.json'),
+        JSON.stringify(repos, null, 2) + '\n',
+      );
+    }
+  }
 }
 
 /**
@@ -888,17 +972,19 @@ function recoverPendingMessages(): void {
   }
 }
 
-function ensureContainerSystemRunning(): void {
-  ensureContainerRuntimeRunning();
-  ensureAgentNetwork();
-  cleanupOrphans();
+function ensureWorktreeSystemReady(): void {
+  const projectRoot = process.cwd();
+  ensureGitRepo(projectRoot);
+  cleanupOrphans(projectRoot);
+  ensureAgentRunnerBuilt();
 }
 
 async function main(): Promise<void> {
-  ensureContainerSystemRunning();
+  ensureWorktreeSystemReady();
   initDatabase();
   logger.info('Database initialized');
   loadState();
+  loadSeedGroups();
 
   // Ensure OneCLI agents exist for all registered groups.
   // Recovers from missed creates (e.g. OneCLI was down at registration time).

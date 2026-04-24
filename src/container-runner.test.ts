@@ -8,7 +8,6 @@ const OUTPUT_END_MARKER = '---NANOCLAW_OUTPUT_END---';
 
 // Mock config
 vi.mock('./config.js', () => ({
-  CONTAINER_IMAGE: 'nanoclaw-agent:latest',
   CONTAINER_MAX_OUTPUT_SIZE: 10485760,
   CONTAINER_PREFIX: 'nanoclaw',
   CONTAINER_TIMEOUT: 1800000, // 30min
@@ -53,25 +52,42 @@ vi.mock('./mount-security.js', () => ({
   validateAdditionalMounts: vi.fn(() => []),
 }));
 
-// Mock container-runtime
-vi.mock('./container-runtime.js', () => ({
-  CONTAINER_RUNTIME_BIN: 'docker',
-  CONTAINER_HOST_GATEWAY: 'host.docker.internal',
-  hostGatewayArgs: () => [],
-  readonlyMountArgs: (h: string, c: string) => ['-v', `${h}:${c}:ro`],
-  stopContainer: vi.fn(),
-  gpuArgs: () => [],
+// Mock mcp-auth-proxy
+vi.mock('./mcp-auth-proxy.js', () => ({
+  getDiscoveredToolInventory: vi.fn(() => ({})),
+  registerContainerToken: vi.fn(() => 'test-token'),
+  revokeContainerToken: vi.fn(),
 }));
 
-// Mock OneCLI SDK
-vi.mock('@onecli-sh/sdk', () => ({
-  OneCLI: class {
-    applyContainerConfig = vi.fn().mockResolvedValue(true);
-    createAgent = vi.fn().mockResolvedValue({ id: 'test' });
-    ensureAgent = vi
-      .fn()
-      .mockResolvedValue({ name: 'test', identifier: 'test', created: true });
+// Mock env.js
+vi.mock('./env.js', () => ({
+  readEnvFile: vi.fn(() => ({})),
+}));
+
+// Mock js-yaml
+vi.mock('js-yaml', () => ({
+  default: {
+    load: vi.fn(() => ({
+      base: 'upstream-main',
+      sections: [],
+      project_overlays: false,
+    })),
   },
+  load: vi.fn(() => ({
+    base: 'upstream-main',
+    sections: [],
+    project_overlays: false,
+  })),
+}));
+
+// Mock worktree-runtime
+vi.mock('./worktree-runtime.js', () => ({
+  AGENT_HOST_GATEWAY: 'localhost',
+  PROXY_BIND_HOST: '127.0.0.1',
+  getOrCreateWorktree: vi.fn(() => '/tmp/nanoclaw-test-worktree'),
+  ensureGitRepo: vi.fn(),
+  cleanupOrphans: vi.fn(),
+  pruneWorktrees: vi.fn(),
 }));
 
 // Create a controllable fake ChildProcess

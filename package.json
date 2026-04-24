@@ -13,7 +13,8 @@
     "format:fix": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "prepare": "husky",
-    "setup": "tsx setup/index.ts",
+    "setup": "npx tsx setup/index.ts --step local",
+    "setup:step": "npx tsx setup/index.ts",
     "auth": "tsx src/whatsapp-auth.ts",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
@@ -22,7 +23,7 @@
   },
   "dependencies": {
     "@onecli-sh/sdk": "^0.2.0",
-    "better-sqlite3": "11.10.0",
+    "better-sqlite3": "^12.0.0",
     "cron-parser": "5.5.0",
     "js-yaml": "^4.1.1",
     "supergateway": "^3.4.3"

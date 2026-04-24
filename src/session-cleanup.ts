@@ -6,8 +6,29 @@ import { logger } from './logger.js';
 const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 const SCRIPT_PATH = path.resolve(process.cwd(), 'scripts/cleanup-sessions.sh');
 
+function resolveShell(): string {
+  if (process.platform === 'win32') {
+    // Prefer Git Bash on Windows; fall back to sh from PATH
+    const gitBash = path.join(
+      process.env.PROGRAMFILES || 'C:\\Program Files',
+      'Git',
+      'bin',
+      'bash.exe',
+    );
+    try {
+      const fs = require('fs');
+      if (fs.existsSync(gitBash)) return gitBash;
+    } catch {
+      /* ignore */
+    }
+    return 'bash'; // hope it's on PATH
+  }
+  return '/bin/bash';
+}
+
 function runCleanup(): void {
-  execFile('/bin/bash', [SCRIPT_PATH], { timeout: 60_000 }, (err, stdout) => {
+  const shell = resolveShell();
+  execFile(shell, [SCRIPT_PATH], { timeout: 60_000 }, (err, stdout) => {
     if (err) {
       logger.error({ err }, 'Session cleanup failed');
       return;

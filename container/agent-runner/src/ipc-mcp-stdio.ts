@@ -11,7 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { CronExpressionParser } from 'cron-parser';
 
-const IPC_DIR = '/workspace/ipc';
+const IPC_DIR = process.env.WORKSPACE_IPC || '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
 const TASKS_DIR = path.join(IPC_DIR, 'tasks');
 
@@ -488,11 +488,17 @@ For coworkers without a pre-existing template, use claudeMdAppend to pass custom
       .describe(
         'Exact MCP tool names this coworker can use (e.g., ["mcp__deepwiki__ask_question"]). mcp__nanoclaw__* is always included. Typed coworkers inherit defaults from coworker-types.json. Custom coworkers default to none if omitted.',
       ),
+    repo: z
+      .string()
+      .optional()
+      .describe(
+        'Named repo from repos.json (e.g., "corvk"). The agent gets its own git worktree from this repo as its working directory with full source code. Always use this for code-working agents.',
+      ),
     containerConfig: z
       .string()
       .optional()
       .describe(
-        'JSON string of container config (e.g., {"additionalMounts":[{"hostPath":"/path","containerPath":"name","readonly":false}]}). Not needed if coworkerType is set — mounts are auto-configured.',
+        'JSON string of container config. Usually not needed — use "repo" instead to point agents at code repos.',
       ),
   },
   async (args) => {
@@ -530,6 +536,7 @@ For coworkers without a pre-existing template, use claudeMdAppend to pass custom
       timestamp: new Date().toISOString(),
     };
     if (containerConfig) data.containerConfig = containerConfig;
+    if (args.repo) data.repo = args.repo;
     if (args.coworkerType) data.coworkerType = args.coworkerType;
     if (args.claudeMdAppend) data.claudeMdAppend = args.claudeMdAppend;
     if (args.allowedMcpTools) data.allowedMcpTools = args.allowedMcpTools;

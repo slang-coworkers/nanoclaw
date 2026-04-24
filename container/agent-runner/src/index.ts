@@ -64,7 +64,14 @@ interface SDKUserMessage {
   session_id: string;
 }
 
-const IPC_INPUT_DIR = '/workspace/ipc/input';
+const WORKSPACE_GROUP = process.env.WORKSPACE_GROUP || '/workspace/group';
+const WORKSPACE_IPC = process.env.WORKSPACE_IPC || '/workspace/ipc';
+const WORKSPACE_GLOBAL = process.env.WORKSPACE_GLOBAL || '/workspace/global';
+const WORKSPACE_EXTRA = process.env.WORKSPACE_EXTRA || '/workspace/extra';
+// WORKSPACE_CWD overrides the agent's working directory (e.g., an external repo path)
+const WORKSPACE_CWD = process.env.WORKSPACE_CWD || WORKSPACE_GROUP;
+
+const IPC_INPUT_DIR = path.join(WORKSPACE_IPC, 'input');
 const IPC_INPUT_CLOSE_SENTINEL = path.join(IPC_INPUT_DIR, '_close');
 const IPC_POLL_MS = 500;
 
@@ -186,7 +193,7 @@ function createPreCompactHook(assistantName?: string): HookCallback {
       const summary = getSessionSummary(sessionId, transcriptPath);
       const name = summary ? sanitizeFilename(summary) : generateFallbackName();
 
-      const conversationsDir = '/workspace/group/conversations';
+      const conversationsDir = path.join(WORKSPACE_GROUP, 'conversations');
       fs.mkdirSync(conversationsDir, { recursive: true });
 
       const date = new Date().toISOString().split('T')[0];
@@ -484,19 +491,29 @@ async function runQuery(
   let resultCount = 0;
 
   // Load global CLAUDE.md as additional system context (shared across all groups)
-  const globalClaudeMdPath = '/workspace/global/CLAUDE.md';
+  const globalClaudeMdPath = path.join(WORKSPACE_GLOBAL, 'CLAUDE.md');
   let globalClaudeMd: string | undefined;
   if (!containerInput.isMain && fs.existsSync(globalClaudeMdPath)) {
     globalClaudeMd = fs.readFileSync(globalClaudeMdPath, 'utf-8');
   }
 
-  // Discover additional directories mounted at /workspace/extra/*
+  // Discover additional directories from WORKSPACE_EXTRA or WORKSPACE_EXTRA_DIRS
   // These are passed to the SDK so their CLAUDE.md files are loaded automatically
   const extraDirs: string[] = [];
-  const extraBase = '/workspace/extra';
-  if (fs.existsSync(extraBase)) {
-    for (const entry of fs.readdirSync(extraBase)) {
-      const fullPath = path.join(extraBase, entry);
+  // Check WORKSPACE_EXTRA_DIRS first (JSON array from worktree runner)
+  if (process.env.WORKSPACE_EXTRA_DIRS) {
+    try {
+      const parsed: { name: string; path: string }[] = JSON.parse(process.env.WORKSPACE_EXTRA_DIRS);
+      for (const entry of parsed) {
+        if (fs.existsSync(entry.path) && fs.statSync(entry.path).isDirectory()) {
+          extraDirs.push(entry.path);
+        }
+      }
+    } catch { /* ignore invalid JSON */ }
+  } else if (fs.existsSync(WORKSPACE_EXTRA)) {
+    // Fallback: scan the extra directory (Docker-compatible)
+    for (const entry of fs.readdirSync(WORKSPACE_EXTRA)) {
+      const fullPath = path.join(WORKSPACE_EXTRA, entry);
       if (fs.statSync(fullPath).isDirectory()) {
         extraDirs.push(fullPath);
       }
@@ -511,10 +528,18 @@ async function runQuery(
   log(`MCP allowed: ${JSON.stringify(mcpAllowed)}`);
   log(`MCP disallowed (${mcpDisallowed.length}): ${JSON.stringify(mcpDisallowed)}`);
 
+  // Resolve Claude Code executable path — the SDK needs this when Claude Code
+  // is installed as a standalone CLI rather than bundled inside the SDK package.
+  const claudeExecPath = process.env.CLAUDE_CODE_EXECPATH || undefined;
+  if (claudeExecPath) {
+    log(`Using Claude Code executable: ${claudeExecPath}`);
+  }
+
   for await (const message of query({
     prompt: stream,
     options: {
-      cwd: '/workspace/group',
+      pathToClaudeCodeExecutable: claudeExecPath,
+      cwd: WORKSPACE_CWD,
       additionalDirectories: extraDirs.length > 0 ? extraDirs : undefined,
       resume: sessionId,
       resumeSessionAt: resumeAt,
