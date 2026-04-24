@@ -385,12 +385,13 @@ overrides:
 ---
 ```
 
-## Phase 3: Validate
+## Phase 3: Validate and activate
 
 Run these commands and fix any issues:
 
 ```bash
-npm run build
+pnpm run build
+npm run rebuild:claude
 npm run validate:templates
 npx vitest run
 ```
@@ -399,6 +400,19 @@ All types must compose cleanly with zero warnings. If `validate:templates` fails
 - Missing skill reference → check SKILL.md `name:` matches the reference in coworker-types.yaml
 - Unresolved trait → check `provides:` in the relevant capability skill
 - Cross-project binding → check that all skills are listed under the correct project's types
+
+**Activate the new types** — restart the service so the dashboard and coworker creation see them:
+
+```bash
+systemctl --user restart nanoclaw-haaggarwal-lego 2>/dev/null || systemctl --user restart nanoclaw 2>/dev/null || true
+systemctl --user restart nanoclaw-haaggarwal-lego-dashboard 2>/dev/null || true
+```
+
+Rebuild the container image if needed (new skills may add allowed-tools that need to be baked in):
+
+```bash
+./container/build.sh 2>&1 | tail -5
+```
 
 ## Phase 4: Summary
 
