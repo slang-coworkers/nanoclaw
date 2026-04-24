@@ -105,15 +105,9 @@ grep -q '^INSTALL_CJK_FONTS=' .env && sed -i.bak 's/^INSTALL_CJK_FONTS=.*/INSTAL
 
 The next step's build picks it up automatically.
 
-### 3c. Build and test
+### 3c. Skip container build for now
 
-Run `pnpm exec tsx setup/index.ts --step container -- --runtime docker` and parse the status block.
-
-**If BUILD_OK=false:** Read `logs/setup.log` tail for the build error.
-- Cache issue (stale layers): `docker builder prune -f`. Retry.
-- Dockerfile syntax or missing files: diagnose from the log and fix, then retry.
-
-**If TEST_OK=false but BUILD_OK=true:** The image built but won't run. Check logs — common cause is runtime not fully started. Wait a moment and retry the test.
+Do NOT build the container yet — lego-main and project merges (steps 4a, 5, 5a) will change the codebase. The container build moves to step 5b after all merges are complete.
 
 ## 4. Credential System
 
@@ -189,6 +183,28 @@ Ask them to let you know when done.
 
 **After user confirms:** verify with `onecli secrets list` that an Anthropic secret exists. If not, ask again.
 
+## 4a. Coworker Infrastructure
+
+Check if lego-main is already merged:
+```bash
+ls container/skills/spine-base/coworker-types.yaml 2>/dev/null
+```
+
+If NOT found, merge the coworker infrastructure:
+```bash
+git fetch origin
+git merge origin/lego-main --no-edit || {
+  git checkout --theirs package-lock.json pnpm-lock.yaml 2>/dev/null
+  git add package-lock.json pnpm-lock.yaml 2>/dev/null
+  git merge --continue
+}
+pnpm install
+pnpm run build
+npm run rebuild:claude
+```
+
+This adds the lego coworker system: typed agents, trait bindings, project-scoped resolution, workflows, and the skill catalog.
+
 ## 5. Set Up Channels
 
 Show the full list of available channels in plain text (do NOT use AskUserQuestion — it limits to 4 options). Ask which one they want to start with. They can add more later with `/customize`.
@@ -251,9 +267,33 @@ If the build fails, read the error output and fix it (usually a missing dependen
 
 **IMPORTANT: You MUST ask this question. Do NOT skip to step 6.**
 
-AskUserQuestion: Would you like to add Slang compiler support? This adds Slang-specific coworker skills, workflow templates, overlays, and MCP-backed maintainer tooling.
+Ask the user which project integrations to add. Show in plain text:
 
-If yes, invoke `/add-slang`. Wait for it to complete fully (merge, rebuild, configuration) before proceeding.
+1. **Slang compiler** — multi-agent support for shader-slang/slang. Run `/add-slang`.
+2. **Custom project** — onboard any code repo (GitHub URL or local path). Run `/onboard-project <path-or-url>`.
+3. **Skip** — add projects later with `/add-slang` or `/onboard-project`.
+
+For each selected, invoke the skill. Wait for it to complete fully (merge, rebuild, configuration) before proceeding.
+
+## 5b. Build and Container
+
+All code merges are done. Now build everything:
+
+```bash
+pnpm install
+pnpm run build
+npm run rebuild:claude
+```
+
+Build the agent container:
+
+Run `pnpm exec tsx setup/index.ts --step container -- --runtime docker` and parse the status block.
+
+**If BUILD_OK=false:** Read `logs/setup.log` tail for the build error.
+- Cache issue (stale layers): `docker builder prune -f`. Retry.
+- Dockerfile syntax or missing files: diagnose from the log and fix, then retry.
+
+**If TEST_OK=false but BUILD_OK=true:** The image built but won't run. Check logs — common cause is runtime not fully started. Wait a moment and retry the test.
 
 ## 6. Mount Allowlist
 
