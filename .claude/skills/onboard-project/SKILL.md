@@ -83,22 +83,59 @@ done
 - `codex-critique` → `critique`
 - `deep-research` → `plan.research`
 
-**Must be generated per project (project-specific):**
-- `{project}-build` → `code.build, test.run, test.gen, ci.inspect`
-- `{project}-code-reader` → `code.read, doc.read`
-- `{project}-code-writer` → `code.read, code.edit, test.gen`
-- `{project}-docs` → `doc.read, doc.write`
-- `{project}-github` → `repo.read, repo.write, repo.pr, issues.read, issues.write, ci.rerun`
+### 1d. Wrap project's existing skills with trait declarations
 
-When generating `coworker-types.yaml`, the `common` type lists both base skills (by reference) and project skills. The `reader` type inherits common. The `writer` type overrides bindings for write-capable traits (`code → {project}-code-writer`, `doc → {project}-docs`).
+If the project has its own skills (in `.claude/skills/`, `.claude/commands/`, or similar), **do not recreate or rename them**. Instead, generate thin **wrapper SKILL.md** files that teach our trait system what each skill provides.
 
-**Auto-detect additional workflows from codebase signals:**
-- Benchmarks directory (`benchmarks/`, `perf/`, `bench/`) or benchmark config → generate `{project}-performance` workflow
-- Release/changelog files → generate `{project}-release` workflow  
-- Security policy or fuzzing config → generate `{project}-security` workflow
-- Migration files (`migrations/`, `alembic/`) → generate `{project}-migrate` workflow
+For each project skill found:
 
-Only generate workflows for signals found in the actual codebase. Each additional workflow extends a base workflow or is standalone.
+1. Read the skill's name and description
+2. Infer which trait(s) it covers based on its name, description, and allowed-tools
+3. Generate a wrapper at `container/skills/{project}-{skillname}/SKILL.md`:
+
+```yaml
+---
+name: {project}-{skillname}
+description: "Wrapper: {original description}. Delegates to the project's /{skillname} skill."
+provides: [{inferred traits}]
+allowed-tools: {copy from original, or infer}
+---
+
+Delegates to the project's native `/{skillname}` skill. This wrapper provides
+trait declarations for the NanoClaw coworker type system.
+
+Run `/{skillname}` to invoke the project's skill directly.
+```
+
+**Trait inference heuristic** (map skill name/description to traits):
+
+| Signal in name/description | Traits |
+|---------------------------|--------|
+| build, compile, cmake, make, cargo build | `code.build, test.run` |
+| test, pytest, jest, vitest | `test.run, test.gen` |
+| read, explore, trace, navigate, search | `code.read` |
+| edit, write, implement, fix, patch | `code.read, code.edit` |
+| doc, documentation, sphinx, rustdoc | `doc.read, doc.write` |
+| github, git, pr, issue, ci | `repo.read, repo.write, repo.pr` |
+| perf, benchmark, profile, trace | `perf.profile, perf.bench` |
+| debug, inspect, diagnose | `code.read, test.run` |
+| format, lint, style | `code.edit` |
+| deploy, release | `repo.write` |
+
+If a trait can't be inferred, ask the user. Always confirm the mapping with the user before writing.
+
+**If the project has NO existing skills**, generate the standard set from scratch:
+- `{project}-build`, `{project}-code-reader`, `{project}-code-writer`, `{project}-docs`, `{project}-github`
+
+### 1e. Generate specialized types from skill clusters
+
+Beyond the default common/reader/writer, look for skill clusters that warrant their own type:
+
+- Skills with `perf.*` traits → `{project}-perf` type (extends writer, adds perf skills + performance workflow)
+- Skills with `debug.*` or `inspect.*` traits → `{project}-debugger` type
+- Skills with domain-specific traits not covered by reader/writer → new specialized type
+
+Only create specialized types when the skill set is distinct enough that a separate coworker role makes sense. Don't create a type for every skill — most fit into reader or writer.
 
 ### 1d. Derive project profile
 
