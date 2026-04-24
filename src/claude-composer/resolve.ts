@@ -324,6 +324,14 @@ export function resolveCoworkerManifest(
         if (overlay.appliesToTraits.includes(trait) || overlay.appliesToTraits.includes(domain)) targets.add(wf.name);
       }
     }
+    // Deduplicate: if a child workflow extends a parent that's also a target,
+    // drop the parent — the child's customization subsumes it.
+    for (const target of [...targets]) {
+      const meta = catalog[target];
+      if (meta?.extendsWorkflow && targets.has(meta.extendsWorkflow)) {
+        targets.delete(meta.extendsWorkflow);
+      }
+    }
     for (const target of targets) {
       const anchors: string[] = [];
       for (const step of overlay.insertAfter) anchors.push(`after step \`${step}\``);
@@ -332,6 +340,7 @@ export function resolveCoworkerManifest(
       customizations.push({
         workflow: target,
         kind: 'overlay',
+        overlayName,
         summary: `\`/${target}\` is augmented by \`${overlayName}\` ${where}.`,
         detail: overlay.step,
       });

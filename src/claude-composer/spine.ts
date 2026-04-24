@@ -177,13 +177,33 @@ export function renderCoworkerSpine(
   if (manifest.customizations.length > 0) {
     parts.push('## Workflow Customizations');
     const blocks: string[] = [];
+
+    // Split into non-overlay (extends/override) and overlay customizations.
+    const nonOverlay = manifest.customizations.filter((c) => c.kind !== 'overlay');
+    const overlayMap = new Map<string, { summaries: string[]; detail: string }>();
     for (const c of manifest.customizations) {
+      if (c.kind === 'overlay' && c.overlayName) {
+        const group = overlayMap.get(c.overlayName) || { summaries: [], detail: c.detail || '' };
+        group.summaries.push(c.summary);
+        overlayMap.set(c.overlayName, group);
+      }
+    }
+
+    // Render non-overlay customizations (extends, overrides) normally.
+    for (const c of nonOverlay) {
       if (c.detail && c.detail.trim()) {
         blocks.push(`- ${c.summary}\n\n${indentBlock(c.detail.trim(), 2)}`);
       } else {
         blocks.push(`- ${c.summary}`);
       }
     }
+
+    // Render each overlay ONCE: bold gate list + body.
+    for (const [, group] of overlayMap) {
+      const gateList = group.summaries.map((s) => `- **${s}**`).join('\n');
+      blocks.push(`${gateList}\n\n${indentBlock(group.detail.trim(), 2)}`);
+    }
+
     parts.push(blocks.join('\n\n'));
   }
 
