@@ -170,7 +170,7 @@ RUN chmod +x /app/entrypoint.sh
 # ---- Workspace + permissions -------------------------------------------------
 RUN mkdir -p /workspace/group /workspace/global /workspace/extra && \
     chown -R node:node /workspace && \
-    chmod 755 /home/node
+    chmod 777 /home/node
 
 
 USER node
