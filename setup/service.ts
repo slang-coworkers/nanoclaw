@@ -278,11 +278,12 @@ After=network.target
 
 [Service]
 Type=simple
+EnvironmentFile=-${projectRoot}/.env
 ExecStart=${nodePath} ${projectRoot}/dist/index.js
 WorkingDirectory=${projectRoot}
 Restart=always
 RestartSec=5
-KillMode=process
+KillMode=mixed
 Environment=HOME=${homeDir}
 Environment=PATH=/usr/local/bin:/usr/bin:/bin:${homeDir}/.local/bin
 StandardOutput=append:${projectRoot}/logs/nanoclaw.log
