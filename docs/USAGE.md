@@ -77,6 +77,31 @@ Reports lead with **action items** (what needs human attention), then activity s
 - `Ctrl +` / `Ctrl -` — Zoom in/out (persists)
 - `Ctrl 0` — Reset zoom
 
+## Onboarding a New Project
+
+Use `/onboard-project` to scaffold a full lego project skeleton for any codebase. This generates everything needed to create typed coworkers for a new project — the same structure that `spine-slang` provides for the Slang compiler.
+
+```
+/onboard-project https://github.com/owner/repo short-name
+/onboard-project /local/path/to/project
+```
+
+What it generates:
+
+| Artifact | Count | What |
+|----------|-------|------|
+| Spine fragments | 3 | `identity/`, `invariants/`, `context/` |
+| Capability skills | 5 | `{project}-build`, `{project}-code-reader`, `{project}-code-writer`, `{project}-docs`, `{project}-github` |
+| Workflow extensions | 4 | `{project}-investigate`, `{project}-implement`, `{project}-review`, `{project}-document` |
+| Coworker types | 3+ | `{project}-common`, `{project}-reader`, `{project}-writer` (plus specialized types if skill clusters warrant it) |
+
+### Two-step flow
+
+1. **`/onboard-project <repo>`** — analyzes the codebase (clones it, reads existing AI config files, CI workflows, build scripts) and generates the full skeleton in `container/skills/spine-{project}/`. Reuses existing base skills (`deep-research`, `codex-critique`, `investigate`, `implement`, `review`, `document`) — no duplication.
+2. **`/onboard-coworker`** — selects a bundle or type from the registry and creates a running coworker instance.
+
+After running `/onboard-project`, the new types (`{project}-reader`, `{project}-writer`) are immediately available in the lego registry for coworker creation.
+
 ## Creating New Coworkers
 
 Via Orchestrator chat or `create_agent` MCP tool:
@@ -291,6 +316,7 @@ Sessions are created lazily on first message. The dashboard API eagerly creates 
 - **Flat type detection** — `FLAT_COWORKER_TYPES` set ensures `main`/`global` agents get their CLAUDE.md + symlink even when `coworker_type` is set.
 - **Container env forwarding** — `ANTHROPIC_MODEL`, `CODEX_*`, caching, and effort-level vars passed into containers.
 - **Drift detection tests** — `claude-composer-scenarios.test.ts` compares `groups/*/CLAUDE.md` against `composeCoworkerSpine()` output.
+- **Onboard-project skill** — generates a complete lego project skeleton (spine, 5 capability skills, 4 workflow extensions, 3+ coworker types) for any GitHub repo or local path. Analyzes existing AI config, CI, and build files; reuses base skills where possible.
 - **Onboard-coworker skill** — scans YAML bundles + lego registry, creates agents via dashboard API or `create_agent` MCP tool.
 - **Split-commit skill** — interactive skill for splitting mixed-concern commits into per-bucket branches with independent topology support.
 
