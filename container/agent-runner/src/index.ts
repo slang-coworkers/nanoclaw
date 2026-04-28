@@ -109,7 +109,7 @@ async function main(): Promise<void> {
     },
     codex: {
       command: 'codex',
-      args: ['-m', process.env.CODEX_MODEL || 'gpt-5.4-codex-max', '-c', `model_reasoning_effort=${process.env.CODEX_REASONING_EFFORT || 'xhigh'}`, 'mcp-server'],
+      args: ['-m', process.env.CODEX_MODEL || 'openai/openai/gpt-5.5', '-c', `model_reasoning_effort=${process.env.CODEX_REASONING_EFFORT || 'xhigh'}`, 'mcp-server'],
       env: {},
     },
   };
