@@ -189,19 +189,29 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
   }
 }
 
-/** Resolve the coworker manifest once; returns tools + mcpServers. */
-function resolveTypeManifest(agentGroup: AgentGroup): { tools: string[]; mcpServers: Record<string, unknown> } {
-  if (!agentGroup.coworker_type) return { tools: [], mcpServers: {} };
+/** Resolve the coworker manifest once; returns tools, mcpServers, and overlay names. */
+function resolveTypeManifest(agentGroup: AgentGroup): {
+  tools: string[];
+  mcpServers: Record<string, unknown>;
+  overlayNames: string[];
+} {
+  if (!agentGroup.coworker_type) return { tools: [], mcpServers: {}, overlayNames: [] };
   try {
     const { types, catalog } = loadRegistry();
     const manifest = resolveCoworkerManifest(types, agentGroup.coworker_type, catalog, process.cwd());
+    const overlayNames = [
+      ...new Set(
+        manifest.customizations.filter((c) => c.kind === 'overlay' && c.overlayName).map((c) => c.overlayName!),
+      ),
+    ];
     return {
       tools: manifest.tools.filter((t) => t.startsWith('mcp__')),
       mcpServers: manifest.mcpServers ?? {},
+      overlayNames,
     };
   } catch (err) {
     log.warn('Failed to resolve coworker manifest', { coworkerType: agentGroup.coworker_type, err });
-    return { tools: [], mcpServers: {} };
+    return { tools: [], mcpServers: {}, overlayNames: [] };
   }
 }
 
@@ -542,9 +552,51 @@ function buildMounts(
       settings.hooks.PreToolUse.push(guardHookConfig);
     }
 
+    // Overlay hook injection: enforce plan/critique gates via runtime hooks.
+    // Reads the resolved manifest to see which overlays apply to this type.
+    const hooksDir = path.join(process.cwd(), 'container', 'hooks');
+    if (fs.existsSync(hooksDir)) {
+      const { overlayNames } = resolveTypeManifest(agentGroup);
+      const hasPlan = overlayNames.includes('plan-overlay');
+      const hasCritique = overlayNames.includes('critique-overlay');
+
+      if (hasPlan || hasCritique) {
+        if (!settings.hooks.UserPromptSubmit) settings.hooks.UserPromptSubmit = [];
+        settings.hooks.UserPromptSubmit.push({
+          hooks: [{ type: 'command', command: 'bash /app/hooks/workflow-state-reset.sh', timeout: 5 }],
+        });
+      }
+      if (hasPlan) {
+        settings.hooks.PreToolUse.push({
+          matcher: 'Edit|Write',
+          hooks: [{ type: 'command', command: 'bash /app/hooks/plan-gate.sh', timeout: 5 }],
+        });
+        if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
+        settings.hooks.PostToolUse.push({
+          matcher: 'Write',
+          hooks: [{ type: 'command', command: 'bash /app/hooks/plan-tracker.sh', timeout: 5 }],
+        });
+      }
+      if (hasCritique) {
+        if (!settings.hooks.SubagentStart) settings.hooks.SubagentStart = [];
+        settings.hooks.SubagentStart.push({
+          hooks: [{ type: 'command', command: 'bash /app/hooks/critique-tracker.sh', timeout: 5 }],
+        });
+      }
+      if (hasPlan || hasCritique) {
+        log.debug('Overlay hooks injected', { folder: agentGroup.folder, plan: hasPlan, critique: hasCritique });
+      }
+    }
+
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
   }
   mounts.push({ hostPath: claudeDir, containerPath: '/home/node/.claude', readonly: false });
+
+  // Overlay hook scripts at /app/hooks (read-only — host-managed)
+  const hooksMount = path.join(process.cwd(), 'container', 'hooks');
+  if (fs.existsSync(hooksMount)) {
+    mounts.push({ hostPath: hooksMount, containerPath: '/app/hooks', readonly: true });
+  }
 
   // Per-group agent-runner source at /app/src (initialized once at group
   // creation, persistent thereafter — agents can modify their runner)
@@ -609,6 +661,7 @@ async function buildContainerArgs(
     'CLAUDE_CODE_EFFORT_LEVEL',
     'CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING',
     'CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS',
+    'CLAUDE_CODE_FORK_SUBAGENT',
     'CODEX_PROFILE',
     'CODEX_HOME',
     'CODEX_BASE_URL',
