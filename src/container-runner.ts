@@ -284,7 +284,9 @@ async function spawnContainer(session: Session): Promise<void> {
   // staleness if skills/overlays/workflows change while the container is running.
   try {
     const claudeContent = fs.readFileSync(path.join(GROUPS_DIR, agentGroup.folder, 'CLAUDE.md'));
-    spawnedClaudeMdHash.set(session.id, crypto.createHash('sha256').update(claudeContent).digest('hex'));
+    const hash = crypto.createHash('sha256').update(claudeContent).digest('hex');
+    spawnedClaudeMdHash.set(session.id, hash);
+    log.debug('CLAUDE.md hash stored at spawn', { sessionId: session.id, hash: hash.slice(0, 12) });
   } catch {
     /* composition failed — no hash to track */
   }
@@ -379,6 +381,25 @@ export function killContainer(sessionId: string, reason: string): void {
     stopContainer(entry.containerName);
   } catch {
     entry.process.kill('SIGKILL');
+  }
+}
+
+/**
+ * Recompose CLAUDE.md for a running container and update the stored hash.
+ * Call after sending /clear so the next SDK turn picks up the fresh file
+ * and the sweep doesn't re-detect as stale.
+ */
+export function recomposeAndUpdateHash(sessionId: string): void {
+  const session = getSession(sessionId);
+  if (!session) return;
+  const ag = getAgentGroup(session.agent_group_id);
+  if (!ag) return;
+  composeCoworkerClaudeMd(ag);
+  try {
+    const content = fs.readFileSync(path.join(GROUPS_DIR, ag.folder, 'CLAUDE.md'));
+    spawnedClaudeMdHash.set(sessionId, crypto.createHash('sha256').update(content).digest('hex'));
+  } catch {
+    /* best-effort */
   }
 }
 
@@ -727,18 +748,6 @@ async function buildContainerArgs(
   try {
     if (agentIdentifier) {
       await onecli.ensureAgent({ name: agentGroup.name, identifier: agentIdentifier });
-      // Default to selective secret mode — agents start with no secrets until
-      // the operator explicitly grants access via onecli agents set-secrets.
-      try {
-        const agentList = JSON.parse(execSync('onecli agents list --json', { encoding: 'utf8', timeout: 5000 }));
-        const agent = (agentList.data ?? agentList).find((a: { identifier: string }) => a.identifier === agentIdentifier);
-        if (agent && agent.secretMode === 'all') {
-          execSync(`onecli agents set-secret-mode --id ${agent.id} --mode selective`, { timeout: 5000 });
-          log.info('Set agent to selective secret mode (no secrets until approved)', { containerName, agentId: agent.id });
-        }
-      } catch {
-        // Non-fatal — agent stays with whatever mode OneCLI defaulted to
-      }
     }
     const onecliApplied = await onecli.applyContainerConfig(args, { addHostMapping: false, agent: agentIdentifier });
     if (onecliApplied) {
