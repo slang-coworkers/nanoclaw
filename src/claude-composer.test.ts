@@ -676,7 +676,7 @@ with-overlay:
       expect(manifest.tools).toContain('mcp__codex__review');
     });
 
-    it('renders Trait Bindings and Gate Protocols into the spine markdown', () => {
+    it('renders Gates (compact) and inline gate markers into the spine markdown', () => {
       const root = setupTraitProject();
       writeTypes(
         root,
@@ -701,10 +701,8 @@ render-check:
       );
       const out = composeCoworkerSpine({ projectRoot: root, coworkerType: 'render-check' });
 
-      expect(out).toContain('## Trait Bindings');
-      expect(out).toContain('`repo` → `/repo-skill` (pr)');
-      expect(out).toContain('`code` → `/edit-skill` (edit)');
-      expect(out).toContain('## Gate Protocols');
+      expect(out).not.toContain('## Trait Bindings');
+      expect(out).toContain('## Gates');
       expect(out).toContain('CRIT OVERLAY GATE (mandatory)');
     });
 

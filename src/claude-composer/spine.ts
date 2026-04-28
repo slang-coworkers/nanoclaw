@@ -247,12 +247,22 @@ export function renderCoworkerSpine(
 
     parts.push(wfBlocks.join('\n\n'));
 
-    // Render overlay protocol bodies ONCE at the end.
+    // Render overlay gate reference (compact — hooks enforce the gates,
+    // this just tells the agent what to do at each gate).
     if (overlayBodies.size > 0) {
-      parts.push('## Gate Protocols');
-      for (const name of [...overlayBodies.keys()].sort()) {
-        parts.push(`### ${name}\n\n${overlayBodies.get(name)}`);
-      }
+      const GATE_SUMMARIES: Record<string, string> = {
+        'critique-overlay':
+          '**Critique gate:** Spawn `codex-critique` agent with: Problem, Changes, Thoughts. ' +
+          'If `must-fix` items returned, fix and re-spawn (up to 3 rounds). Escalate after 3 rounds.',
+        'plan-overlay':
+          '**Plan gate:** Write plan to `/workspace/agent/plans/{{target_slug}}.md` before coding. ' +
+          'Spawn `codex-critique` to review the plan (up to 3 rounds). ' +
+          'Implementation must follow the approved plan.',
+      };
+      const lines = [...overlayBodies.keys()]
+        .sort()
+        .map((name) => GATE_SUMMARIES[name] || `**${name}:** see \`/${name}\` skill for details.`);
+      parts.push('## Gates\n\n' + lines.join('\n\n'));
     }
   }
 
@@ -263,30 +273,8 @@ export function renderCoworkerSpine(
       renderCategorizedList(
         manifest.skills,
         (s) => s.provides,
-        (s) => {
-          const provides = s.provides.length > 0 ? ` Provides: ${s.provides.join(', ')}.` : '';
-          return `- \`/${s.name}\` — ${s.description}${provides}`;
-        },
+        (s) => `- \`/${s.name}\` — ${s.description}`,
       ),
-    );
-  }
-
-  // --- Trait Bindings ---
-  const bindingKeys = Object.keys(manifest.bindings).sort();
-  if (bindingKeys.length > 0) {
-    parts.push('## Trait Bindings');
-    parts.push(
-      bindingKeys
-        .map((domain) => {
-          const skillName = manifest.bindings[domain];
-          const skill = catalog[skillName];
-          const qualifiers = skill
-            ? skill.provides.filter((t: string) => t.startsWith(domain + '.')).map((t: string) => t.split('.')[1])
-            : [];
-          const suffix = qualifiers.length > 0 ? ` (${qualifiers.join(', ')})` : '';
-          return `- \`${domain}\` → \`/${skillName}\`${suffix}`;
-        })
-        .join('\n'),
     );
   }
 
