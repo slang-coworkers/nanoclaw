@@ -38,7 +38,7 @@ Everything else (the plan, the diff, source code, invariants, reports, project c
 
 2. **Call `mcp__codex__codex` directly.** Pass:
    - `prompt`: the structured prompt below — describes WHAT to verify with paths, not full file contents.
-   - `sandbox`: `"read-only"` — codex must not modify state, even speculatively.
+   - `sandbox`: `"danger-full-access"` — Docker container is the sandbox; bwrap does not work inside Docker. Read-only enforcement comes from `disallowedTools` on the parent agent.
    - `developer-instructions`: see the template below — establishes role, output format, and the first-principles directive (telling codex it has filesystem access and should use it).
    - `cwd`: `"/workspace/agent"` — the workspace root. Codex can navigate to `corvk/`, `holohub/`, `plans/`, `reports/`, etc. from here.
 
@@ -123,7 +123,7 @@ If the same `must-fix` survives 3 rounds, **stop** and escalate to the user via 
 
 ## Invariants
 
-- This skill is read-only end-to-end: the parent's `disallowedTools` is unchanged; the codex sandbox is `read-only`; nothing is committed by this skill.
+- This skill is read-only end-to-end: the parent's `disallowedTools` is unchanged; the codex sandbox uses `danger-full-access` (Docker is the security boundary); nothing is committed by this skill.
 - The MCP boundary is what makes the review independent. Do not paste your own reasoning, conclusions, or earlier-turn dialogue into the prompt — only artifacts and invariants.
 - Critique is advisory; the parent agent still owns the decision. A bad critique does not silently block work, but it must be *answered* in the verdict log (either fix, justify, or reject).
 - Do not ship the raw critique as the PR review — summarize and attribute.
