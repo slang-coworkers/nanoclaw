@@ -112,6 +112,23 @@ export function resetCoworkerTypesCacheForTests(): void {
   registryCache = null;
 }
 
+type GpuMode = 'runtime-nvidia' | 'gpus-all' | 'none';
+let gpuModeCache: GpuMode | null = null;
+
+function detectGpuMode(): GpuMode {
+  if (gpuModeCache) return gpuModeCache;
+  if (process.env.ENABLE_GPU !== '1' && !fs.existsSync('/usr/bin/nvidia-smi')) {
+    return (gpuModeCache = 'none');
+  }
+  const forced = process.env.GPU_RUNTIME_MODE as GpuMode | undefined;
+  if (forced === 'runtime-nvidia' || forced === 'gpus-all') return (gpuModeCache = forced);
+  try {
+    const runtimes = execSync('docker info --format "{{json .Runtimes}}"', { timeout: 3000 }).toString();
+    if (/\bnvidia\b/.test(runtimes)) return (gpuModeCache = 'runtime-nvidia');
+  } catch {}
+  return (gpuModeCache = 'gpus-all');
+}
+
 /** Active containers tracked by session ID. */
 const activeContainers = new Map<string, { process: ChildProcess; containerName: string }>();
 
@@ -768,16 +785,17 @@ async function buildContainerArgs(
 ): Promise<string[]> {
   const args: string[] = ['run', '--rm', '--name', containerName, '--label', CONTAINER_INSTALL_LABEL];
 
-  // GPU passthrough: expose host GPU if available and Docker nvidia runtime is configured.
-  // Check /etc/docker/daemon.json for nvidia runtime to avoid container startup failures.
-  // GPU passthrough — modern Docker handles both nvidia-runtime AND CDI under
-  // the same `--gpus all` flag, so we don't need to peek at /etc/docker/daemon.json
-  // (which is often permission-denied to non-root users and silently fails).
-  // Detect via host nvidia-smi presence or explicit ENABLE_GPU=1.
-  if (process.env.ENABLE_GPU === '1' || fs.existsSync('/usr/bin/nvidia-smi')) {
-    args.push('--gpus', 'all');
-    args.push('-e', 'NVIDIA_VISIBLE_DEVICES=all');
-    args.push('-e', 'NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics');
+  {
+    const mode = detectGpuMode();
+    if (mode === 'runtime-nvidia') {
+      args.push('--runtime=nvidia');
+    } else if (mode === 'gpus-all') {
+      args.push('--gpus', 'all');
+    }
+    if (mode !== 'none') {
+      args.push('-e', 'NVIDIA_VISIBLE_DEVICES=all');
+      args.push('-e', 'NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics');
+    }
   }
 
   // Environment
