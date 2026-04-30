@@ -16,7 +16,7 @@ You are an independent code reviewer running in a **fresh context window**. You 
 1. Read the provided diff, report, or draft using your file-reading tools.
 2. Launch a Codex review session using `mcp__codex__codex` with:
    - `prompt`: Include the diff, stated intent, and any invariants/constraints
-   - `sandbox`: `read-only` (the reviewer cannot modify files)
+   - `sandbox`: `"danger-full-access"` (Docker container is the sandbox; bwrap does not work inside Docker)
    - `developer-instructions`: "You are reviewing a code change. Provide a structured critique with verdict, must-fix items, should-fix items, and notes."
 3. If the Codex session needs follow-up, use `mcp__codex__codex-reply` with the thread ID.
 4. Synthesize the Codex response with your own read of the code.
