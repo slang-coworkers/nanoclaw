@@ -7,8 +7,16 @@
 import fs from 'fs';
 import path from 'path';
 
-import { DASHBOARD_INGRESS_HOST, DASHBOARD_INGRESS_PORT, DATA_DIR, MCP_PROXY_PORT, PROXY_BIND_HOST } from './config.js';
+import {
+  AGENT_RUNTIME,
+  DASHBOARD_INGRESS_HOST,
+  DASHBOARD_INGRESS_PORT,
+  DATA_DIR,
+  MCP_PROXY_PORT,
+  PROXY_BIND_HOST,
+} from './config.js';
 import { enforceStartupBackoff, resetCircuitBreaker } from './circuit-breaker.js';
+import { ensureGitRepo, pruneOrphanWorktrees } from './worktree.js';
 import { initDb, getDb } from './db/connection.js';
 import { runMigrations } from './db/migrations/index.js';
 import { getMessagingGroupsByChannel, getMessagingGroupAgents } from './db/messaging-groups.js';
@@ -124,6 +132,18 @@ async function main(): Promise<void> {
   // 2. Container runtime
   ensureContainerRuntimeRunning();
   cleanupOrphans();
+
+  // 2a. Worktree runtime (AGENT_RUNTIME=local only — both calls are no-ops
+  // otherwise). Keeps the docker-path startup sequence bit-for-bit unchanged.
+  if (AGENT_RUNTIME === 'local') {
+    try {
+      ensureGitRepo(process.cwd());
+      pruneOrphanWorktrees(process.cwd());
+    } catch (err) {
+      log.error('Worktree runtime initialization failed', { err });
+      throw err;
+    }
+  }
   // Reset stale container_status from previous host runs
   getDb().prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'").run();
 
