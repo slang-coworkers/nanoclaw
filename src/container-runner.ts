@@ -843,6 +843,9 @@ async function buildContainerArgs(
   }
   args.push('-e', 'NVIDIA_API_KEY=onecli-placeholder');
   args.push('-e', 'GH_TOKEN=placeholder');
+  // git doesn't honor SSL_CERT_FILE — needs GIT_SSL_CAINFO to trust
+  // the OneCLI MITM CA so `git clone/push` work through the proxy.
+  args.push('-e', 'GIT_SSL_CAINFO=/tmp/onecli-combined-ca.pem');
 
   if (agentGroup.name) {
     args.push('-e', `NANOCLAW_ASSISTANT_NAME=${agentGroup.name}`);
