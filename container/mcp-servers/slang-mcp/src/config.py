@@ -39,9 +39,16 @@ def IsDebug():
 
 def get_ssl_verify_config():
     """Get SSL verification configuration for the current platform."""
-    cert_file = os.environ.get("SSL_CERT_FILE")
-    if cert_file and os.path.exists(cert_file):
-        return cert_file
+    import ssl
+
+    onecli_cert = os.environ.get("SSL_CERT_FILE")
+    if onecli_cert and os.path.exists(onecli_cert):
+        # OneCLI sets SSL_CERT_FILE to its own CA cert only. Merge with the
+        # system bundle so both direct connections (GitHub's real cert) and
+        # MITM-proxied connections (OneCLI-signed cert) are trusted.
+        ctx = ssl.create_default_context()
+        ctx.load_verify_locations(onecli_cert)
+        return ctx
     if platform.system() == "Linux":
         cert_path = "/etc/ssl/certs/ca-certificates.crt"
         if os.path.exists(cert_path):
