@@ -75,7 +75,7 @@ function readAgentAndGlobalClaudeMd(): string | undefined {
   // global content for any non-main group, wasting context tokens and
   // risking contradictory instructions. Groups that don't import global
   // intentionally don't get it — same as Claude-backed agents.
-  const groupDir = '/workspace/agent';
+  const groupDir = process.env.WORKSPACE_AGENT || '/workspace/agent';
   const groupPath = `${groupDir}/CLAUDE.md`;
   const localPath = `${groupDir}/CLAUDE.local.md`;
   const parts: string[] = [];
