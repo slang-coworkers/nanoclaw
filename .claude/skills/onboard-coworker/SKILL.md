@@ -81,13 +81,21 @@ mcp__nanoclaw__create_agent(
 )
 ```
 
+5. **Apply destinations from the bundle**: If the bundle has a `destinations:` array, iterate every entry with `type: "agent"` and call `wire_agents` for each. This wires peer coworkers that `create_agent` does not auto-connect.
+
+```
+# For each destinations entry where type == "agent":
+mcp__nanoclaw__wire_agents(
+  agent_a: "<folder of the newly created agent>",
+  agent_b: "<entry's targetFolder>"
+)
+```
+
+`wire_agents` is idempotent — safe to call even if `create_agent` already created the parent↔child link. Skip entries with `type: "channel"` (those are channel routing, not agent-to-agent wiring).
+
 ### Batch creation
 
-If the user selects multiple bundles, create them in sequence. After all are created, optionally wire peers for direct coworker-to-coworker messaging:
-
-```
-mcp__nanoclaw__wire_agents(agent_a: "worker-a", agent_b: "worker-b")
-```
+If the user selects multiple bundles, create and wire them in sequence (steps 1–5 above per bundle). After all bundles are processed, verify each coworker's destination list reflects its bundle's `destinations:` field.
 
 ## Phase 2: Create Custom Coworker
 
