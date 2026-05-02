@@ -63,8 +63,10 @@ function spawnOpencodeServer(config: Record<string, unknown>, timeoutMs = 10_000
 }
 
 function readClaudeMdForPrompt(): string | undefined {
-  const groupPath = '/workspace/agent/CLAUDE.md';
-  const globalPath = '/workspace/global/CLAUDE.md';
+  const workspaceAgent = process.env.WORKSPACE_AGENT || '/workspace/agent';
+  const workspaceGlobal = process.env.WORKSPACE_GLOBAL || '/workspace/global';
+  const groupPath = `${workspaceAgent}/CLAUDE.md`;
+  const globalPath = `${workspaceGlobal}/CLAUDE.md`;
   let content = '';
   if (fs.existsSync(groupPath)) {
     content += fs.readFileSync(groupPath, 'utf-8');

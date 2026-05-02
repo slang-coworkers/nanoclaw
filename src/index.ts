@@ -7,7 +7,14 @@
 import fs from 'fs';
 import path from 'path';
 
-import { DASHBOARD_INGRESS_HOST, DASHBOARD_INGRESS_PORT, DATA_DIR, MCP_PROXY_PORT, PROXY_BIND_HOST } from './config.js';
+import {
+  AGENT_RUNTIME,
+  DASHBOARD_INGRESS_HOST,
+  DASHBOARD_INGRESS_PORT,
+  DATA_DIR,
+  MCP_PROXY_PORT,
+  PROXY_BIND_HOST,
+} from './config.js';
 import { enforceStartupBackoff, resetCircuitBreaker } from './circuit-breaker.js';
 import { initDb, getDb } from './db/connection.js';
 import { runMigrations } from './db/migrations/index.js';
@@ -124,6 +131,7 @@ async function main(): Promise<void> {
   // 2. Container runtime
   ensureContainerRuntimeRunning();
   cleanupOrphans();
+
   // Reset stale container_status from previous host runs
   getDb().prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'").run();
 
