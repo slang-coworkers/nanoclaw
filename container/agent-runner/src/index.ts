@@ -51,12 +51,6 @@ async function main(): Promise<void> {
 
   const providerName = (process.env.AGENT_PROVIDER || 'claude').toLowerCase() as ProviderName;
   const assistantName = process.env.NANOCLAW_ASSISTANT_NAME;
-  const adminUserIds = new Set(
-    (process.env.NANOCLAW_ADMIN_USER_IDS || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
-  );
 
   log(`Starting v2 agent-runner (provider: ${providerName})`);
 
@@ -233,7 +227,6 @@ async function main(): Promise<void> {
     providerName,
     cwd: CWD,
     systemContext: { instructions },
-    adminUserIds,
   });
 }
 

@@ -8,6 +8,7 @@ export default defineConfig({
       // agent-runner tests use bun:test — run via 'bun test' in container/agent-runner/
       'dashboard/**/*.test.ts',
     ],
+    setupFiles: ['./vitest.setup.ts'],
     testTimeout: 15000,
   },
 });

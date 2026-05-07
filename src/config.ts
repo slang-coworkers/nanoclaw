@@ -53,14 +53,37 @@ export const ONECLI_URL = process.env.ONECLI_URL || envConfig.ONECLI_URL;
 export const ONECLI_API_KEY = process.env.ONECLI_API_KEY || envConfig.ONECLI_API_KEY;
 export const MAX_MESSAGES_PER_PROMPT = Math.max(1, parseInt(process.env.MAX_MESSAGES_PER_PROMPT || '10', 10) || 10);
 export const IPC_POLL_INTERVAL = 1000;
-export const IDLE_TIMEOUT = parseInt(process.env.IDLE_TIMEOUT || '1800000', 10); // 30min default — how long to keep container alive after last result
+// Idle grace period. Default is 25% below CONTAINER_TIMEOUT so the idle
+// sweeper always has a window before the hard kill, even when operators
+// tune CONTAINER_TIMEOUT without also thinking about IDLE_TIMEOUT. If an
+// explicit env var is set and violates the invariant, resolveIdleTimeout()
+// clamps it with a loud warning.
+const IDLE_HEADROOM_MS = 300_000; // 5 min cushion before hard ceiling
+function resolveIdleTimeout(): number {
+  const raw = process.env.IDLE_TIMEOUT;
+  const fallback = Math.max(60_000, CONTAINER_TIMEOUT - IDLE_HEADROOM_MS);
+  if (!raw) return Math.min(fallback, CONTAINER_TIMEOUT - 1);
+  const parsed = parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return Math.min(fallback, CONTAINER_TIMEOUT - 1);
+  if (parsed >= CONTAINER_TIMEOUT) {
+    const clamped = Math.max(60_000, CONTAINER_TIMEOUT - IDLE_HEADROOM_MS);
+    console.warn(
+      `[config] IDLE_TIMEOUT (${parsed}ms) >= CONTAINER_TIMEOUT (${CONTAINER_TIMEOUT}ms); clamping to ${clamped}ms. ` +
+        `Set IDLE_TIMEOUT strictly less than CONTAINER_TIMEOUT to silence this.`,
+    );
+    return clamped;
+  }
+  return parsed;
+}
+export const IDLE_TIMEOUT = resolveIdleTimeout();
 
 // Lifecycle invariant (regression guard for issue #2): IDLE_TIMEOUT is the
 // grace period after the last agent reply; CONTAINER_TIMEOUT is the hard
 // ceiling on total container lifetime. If idle >= ceiling, the idle sweeper
 // will never cull before the hard kill — producing orphaned containers and
-// misleading watchdog logs. Warn at startup rather than hard-fail to avoid
-// breaking unusual CI configs, but make the misconfiguration loud.
+// misleading watchdog logs. resolveIdleTimeout() clamps bad operator config
+// so the runtime is always safe; this validator is kept for tests that
+// exercise the raw contract.
 export function validateContainerTimeouts(
   idle = IDLE_TIMEOUT,
   ceiling = CONTAINER_TIMEOUT,

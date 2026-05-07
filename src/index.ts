@@ -149,6 +149,20 @@ async function main(): Promise<void> {
     log.warn('global-to-shared migration threw', { err: String(err) });
   }
 
+  // 1c. Orphan-dir reconciler (task #40). `groups/<folder>/` directories
+  // can be left behind when a coworker is deleted via the dashboard API
+  // with `deleteData=false` (the default — the delete path preserves WIP
+  // reports/critiques). This is by design, but without visibility the
+  // orphans accumulate silently. We log them at startup so an operator
+  // can decide what to keep; we do NOT auto-delete, since user work may
+  // be in there.
+  try {
+    const { logOrphanGroupDirs } = await import('./orphan-groups.js');
+    logOrphanGroupDirs(db);
+  } catch (err) {
+    log.warn('orphan-groups scan threw', { err: String(err) });
+  }
+
   // 2. Container runtime
   ensureContainerRuntimeRunning();
   cleanupOrphans();

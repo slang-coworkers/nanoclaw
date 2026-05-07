@@ -3,6 +3,10 @@ import type { Migration } from './index.js';
 export const migration015: Migration = {
   version: 15,
   name: 'agent-routing',
+  // Backfill references `is_admin`, added by 006-coworker-fields. Declare
+  // the edge so the loader's topo-sort guarantees 006 runs first, even if
+  // a future registry picks overlapping version numbers.
+  dependsOn: ['coworker-fields'],
   up(db) {
     const hasCol = (
       db.prepare("SELECT count(*) as c FROM pragma_table_info('agent_groups') WHERE name = 'routing'").get() as {
