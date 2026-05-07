@@ -270,6 +270,10 @@ function sessionDisplayTitle(nanoSess) {
   return nanoSess?.display_title || '';
 }
 
+function sessionKeyLabel(nanoSess) {
+  return nanoSess?.session_key || '';
+}
+
 /**
  * Render session chip as the single-line format the operator asked for:
  *     Session- tender-fell-rests: Fix PR#124
@@ -282,9 +286,8 @@ function sessionDisplayTitle(nanoSess) {
 function sessionTitleHtml(nanoSess, { compact = false } = {}) {
   if (!nanoSess?.nanoclaw_session_id) return '';
   const slug = sessionSlugOnly(nanoSess);
-  const kind = sessionKindPrefix(nanoSess);
   const title = sessionDisplayTitle(nanoSess);
-  const label = title ? `${kind}- ${slug}: ${title}` : `${kind}- ${slug}`;
+  const label = title ? `${slug}: ${title}` : slug;
   const color = compact ? 'var(--text-dim)' : 'var(--text)';
   const size = compact ? '' : 'font-size:10px;';
   return `<span style="${size}color:${color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0${compact ? ';flex:1' : ''}" title="${escAttr(nanoSess.nanoclaw_session_id)}">${esc(label)}</span>`;
@@ -295,6 +298,13 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
   const nanoSessions = activeNanoSessionsForCoworker(cw)
     .slice()
     .sort((a, b) => {
+      // Pinned sessions go first (pinned_at desc — newest pin on top within the group),
+      // then unpinned sorted by last-active desc. Hidden state does NOT change sort —
+      // hidden rows are filtered out downstream, not reordered here.
+      const aPin = a.pinned_at ? 1 : 0;
+      const bPin = b.pinned_at ? 1 : 0;
+      if (aPin !== bPin) return bPin - aPin;
+      if (aPin && bPin) return new Date(b.pinned_at).getTime() - new Date(a.pinned_at).getTime();
       const aMs = a.last_active ? new Date(a.last_active).getTime() : (a.sdk_subsessions?.[0]?.last_ts ?? 0);
       const bMs = b.last_active ? new Date(b.last_active).getTime() : (b.sdk_subsessions?.[0]?.last_ts ?? 0);
       return bMs - aMs;
@@ -316,40 +326,117 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
         subCount: (nanoSess.sdk_subsessions || []).length,
       };
     };
-    const metas = nanoSessions.map((nanoSess) => ({ nanoSess, ...sessionMeta(nanoSess) }));
+    const allMetas = nanoSessions.map((nanoSess) => ({ nanoSess, ...sessionMeta(nanoSess) }));
+    // Visible = not hidden. Hidden sessions go to the "Show hidden (N)" expander below.
+    // The Current Target never picks a hidden session — it's always drawn from visible.
+    const metas = allMetas.filter((m) => !m.nanoSess.hidden_at);
+    const hiddenMetas = allMetas.filter((m) => m.nanoSess.hidden_at);
+    if (metas.length === 0) {
+      // All sessions hidden — fall through with the target pointing at the first hidden row
+      // so the UI still renders something rather than erroring.
+      metas.push(...hiddenMetas);
+    }
     const target = metas.find((m) => m.cs === 'running') || metas[0];
-    const runningCount = metas.filter((m) => m.cs === 'running').length;
-    const latestMs = Math.max(...metas.map((m) => m.lastMs || 0), 0);
+    const runningCount = allMetas.filter((m) => m.cs === 'running').length;
+    const latestMs = Math.max(...allMetas.map((m) => m.lastMs || 0), 0);
     const summaryStatus = runningCount > 0 ? `${runningCount} running` : 'all stopped';
     const otherSessions = metas.filter((m) => m.nanoSess.nanoclaw_session_id !== target.nanoSess.nanoclaw_session_id);
     const summary = `<div style="font-size:9px;color:var(--text-muted);margin-bottom:5px">
       ${metas.length} session${metas.length === 1 ? '' : 's'} · ${esc(summaryStatus)}${latestMs ? ' · last ' + esc(timeAgo(latestMs)) : ''}
     </div>`;
-    const targetHtml = `<div style="padding:5px 6px;border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,0.03);margin-bottom:5px">
-      <div style="font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Current Target</div>
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDotColor(target.status)}" title="${escAttr(target.status)}"></span>
-        ${sessionTitleHtml(target.nanoSess)}
-        <span style="font-size:9px;color:var(--text-muted)">${esc(target.cs)}${target.ago ? ' · last ' + esc(target.ago) : ''}</span>
+    const tagid = escAttr(target.nanoSess.agent_group_id || '');
+    const tsid = escAttr(target.nanoSess.nanoclaw_session_id);
+    const ttid = escAttr(target.nanoSess.thread_id || '');
+    const tgrp = escAttr(cw.folder);
+    const actionBtns = (sid, agid, tid, currentTitle, sess) => {
+      const isPinned = !!(sess && sess.pinned_at);
+      const isHidden = !!(sess && sess.hidden_at);
+      return `<button class="session-icon-btn${isPinned ? ' active' : ''}" title="${isPinned ? 'Unpin session' : 'Pin session to top'}"
+        data-pin-session="${sid}" data-pin-on="${isPinned ? '0' : '1'}">📌</button><button class="session-icon-btn" title="Rename this session"
+        data-rename-session="${sid}" data-rename-current="${escAttr(currentTitle || '')}">✎</button><button class="session-icon-btn" title="Open in Timeline"
+        data-view-nanoclaw-session="${sid}" data-view-nanoclaw-agid="${agid}" data-view-session-group="${tgrp}">≡</button>${tid ? `<button class="session-icon-btn" title="Open chat view"
+        data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${tgrp}">💬</button>` : `<button class="session-icon-btn" title="Main session — already shown in chat" disabled style="opacity:0.35;cursor:not-allowed">💬</button>`}<button class="session-icon-btn${isHidden ? ' active' : ''}" title="${isHidden ? 'Unhide session' : 'Hide session'}"
+        data-hide-session="${sid}" data-hide-on="${isHidden ? '0' : '1'}">${isHidden ? '↺' : '−'}</button>`;
+    };
+    const lookupLastMessage = (threadId) => {
+      // cwState.messages is loaded for the currently selected coworker. Find the
+      // most recent message (any direction) whose thread_id matches. Main-session
+      // rows use thread_id = null.
+      const msgs = cwState?.messages || [];
+      const wantThread = threadId || null;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i];
+        const mt = m.thread_id || null;
+        if (mt === wantThread) {
+          const raw = (m.displayContent || m.content || '').toString();
+          const cleaned = raw.replace(/\s+/g, ' ').trim();
+          return cleaned.length > 100 ? cleaned.slice(0, 100) + '…' : cleaned;
+        }
+      }
+      return '';
+    };
+    const sessionRow = (sess, status, cs, ago, agid, sid, tid, outer) => {
+      const slug = sessionSlugOnly(sess);
+      const currentTitle = sessionDisplayTitle(sess);
+      const isManual = sess.title_source === 'manual';
+      // Primary name: manual renames override the slug; otherwise fall back to slug.
+      // The auto display_title moves down as a preview (it's often just first-message
+      // text that's better as secondary context than as the session identifier).
+      const primaryName = isManual && currentTitle ? currentTitle : slug;
+      const lastMsg = lookupLastMessage(sess.thread_id);
+      // When the primary name is the manual title, the auto heuristic title (if any)
+      // goes into the preview spot below along with the last message.
+      const previewBits = [
+        !isManual && currentTitle ? currentTitle : null,
+        lastMsg ? `last: ${lastMsg}` : null,
+      ].filter(Boolean);
+      const dotSize = outer ? '6px' : '5px';
+      const dotColor = outer ? statusDotColor(status) : statusDotCanvasColor(status);
+      const titleStyle = outer ? 'font-size:10px;color:var(--text);font-weight:600' : 'font-size:9px;color:var(--text-dim)';
+      const metaStyle = 'font-size:9px;color:var(--text-muted);margin-top:2px';
+      const previewStyle = 'font-size:9px;color:var(--text-dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      const evCount = sess.event_count_total || 0;
+      const subCount = (sess.sdk_subsessions || []).length;
+      const metaParts = [cs, ago ? 'last ' + ago : '', evCount ? `${evCount} ev` : '', subCount ? `${subCount} sub` : ''].filter(Boolean);
+      return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
+        <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
+        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}">${esc(primaryName)}</span>
+        <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, currentTitle || slug, sess)}</span>
       </div>
-      <button class="admin-action-btn" style="font-size:8px;padding:1px 6px;margin-top:4px"
-        data-view-nanoclaw-session="${escAttr(target.nanoSess.nanoclaw_session_id)}"
-        data-view-nanoclaw-agid="${escAttr(target.nanoSess.agent_group_id || '')}"
-        data-view-session-group="${escAttr(cw.folder)}">Open Timeline</button>
+      ${previewBits.length ? `<div style="${previewStyle}" title="${escAttr(previewBits.join(' · '))}">${esc(previewBits.join(' · '))}</div>` : ''}
+      <div style="${metaStyle}">${esc(metaParts.join(' · '))}</div>`;
+    };
+    const targetHtml = `<div style="padding:5px 6px;border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,0.03);margin-bottom:5px">
+      ${sessionRow(target.nanoSess, target.status, target.cs, target.ago, tagid, tsid, ttid, true)}
     </div>`;
-    const othersHtml = otherSessions.length === 0 ? '' : `<div style="font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin:5px 0 3px">Other Sessions</div>
-      <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:5px">
-        ${otherSessions.slice(0, 5).map((m) => `<button class="hook-entry" title="Open this session in Timeline" style="display:flex;align-items:center;gap:6px;text-align:left;font-size:9px;padding:3px 5px;border-color:transparent;background:rgba(255,255,255,0.02)"
-          data-view-nanoclaw-session="${escAttr(m.nanoSess.nanoclaw_session_id)}"
-          data-view-nanoclaw-agid="${escAttr(m.nanoSess.agent_group_id || '')}"
-          data-view-session-group="${escAttr(cw.folder)}">
-          <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDotCanvasColor(m.status)};opacity:.75"></span>
-          ${sessionTitleHtml(m.nanoSess, { compact: true })}
-          <span style="color:var(--text-muted)">${esc(m.cs)}${m.ago ? ' · ' + esc(m.ago) : ''}</span>
-        </button>`).join('')}
-        ${otherSessions.length > 5 ? `<div style="font-size:9px;color:var(--text-dim);margin-left:4px">+${otherSessions.length - 5} more sessions in Timeline</div>` : ''}
+    const renderRow = (m, dim = false) => {
+      const mAgid = escAttr(m.nanoSess.agent_group_id || '');
+      const mSid = escAttr(m.nanoSess.nanoclaw_session_id);
+      const mTid = escAttr(m.nanoSess.thread_id || '');
+      const haystack = escAttr(`${sessionSlugOnly(m.nanoSess)} ${sessionDisplayTitle(m.nanoSess)}`.toLowerCase());
+      const bg = dim ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.02)';
+      const opacity = dim ? ';opacity:0.7' : '';
+      return `<div class="other-session-row" data-haystack="${haystack}" style="padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:${bg}${opacity}">
+        ${sessionRow(m.nanoSess, m.status, m.cs, m.ago, mAgid, mSid, mTid, false)}
       </div>`;
-    inner = `<div class="value" style="display:flex;flex-direction:column;gap:0">${summary}${targetHtml}${othersHtml}</div>`;
+    };
+    const needsSearch = otherSessions.length > 8;
+    const othersHtml = otherSessions.length === 0 ? '' : `<div style="display:flex;align-items:center;gap:6px;margin:5px 0 3px">
+        <div style="font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;flex:1">Other Sessions (${otherSessions.length})</div>
+        ${needsSearch ? `<input type="text" id="cw-other-session-search" placeholder="filter…" style="font-size:9px;padding:1px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;width:80px">` : ''}
+      </div>
+      <div id="cw-other-session-list" style="display:flex;flex-direction:column;gap:3px;margin-bottom:5px;max-height:280px;overflow-y:auto">
+        ${otherSessions.map((m) => renderRow(m)).join('')}
+      </div>`;
+    const hiddenHtml = hiddenMetas.length === 0 ? '' : `<details style="margin-top:4px">
+        <summary style="font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;padding:2px 0">
+          ⌄ Hidden Sessions (${hiddenMetas.length})
+        </summary>
+        <div style="display:flex;flex-direction:column;gap:3px;margin-top:3px;max-height:240px;overflow-y:auto">
+          ${hiddenMetas.map((m) => renderRow(m, true)).join('')}
+        </div>
+      </details>`;
+    inner = `<div class="value" style="display:flex;flex-direction:column;gap:0">${summary}${targetHtml}${othersHtml}${hiddenHtml}</div>`;
   } else {
     // Fallback: fall back to the last-seen SDK session if cachedSessions hasn't loaded yet.
     const sessionEvent = groupEvents.filter((e) => e.session_id).slice(-1)[0];
@@ -426,16 +513,11 @@ function renderCurrentSessionEvents(folder) {
   const title = sessionDisplayTitle(nanoSess);
   const label = title ? `${kind}- ${slug}: ${title}` : `${kind}- ${slug}`;
   const events = nanoSess.recent_events || [];
-  const eventHtml = events.length === 0
-    ? '<div style="color:var(--text-dim);font-size:0.6875rem;margin-top:4px">No recent events for this session.</div>'
-    : events.slice(0, 5).map((e) => `<button class="hook-entry hook-entry-link" data-event-group="${escAttr(folder)}" data-event-time="${String(e.timestamp)}">
+  if (events.length === 0) return '';
+  const eventHtml = events.slice(0, 5).map((e) => `<button class="hook-entry hook-entry-link" data-event-group="${escAttr(folder)}" data-event-time="${String(e.timestamp)}">
         <span class="ts">${formatTime(e.timestamp)}</span> <span class="tool-name">${formatSessionEventLine(e)}</span>
       </button>`).join('');
-  return `<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
-    <div style="font-size:0.625rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">This Session</div>
-    <div style="font-size:0.6875rem;color:var(--text);margin-top:2px" title="${escAttr(nanoSess.nanoclaw_session_id)}">${esc(label)}</div>
-    <div style="margin-top:4px">${eventHtml}</div>
-  </div>`;
+  return `<div style="margin-top:6px">${eventHtml}</div>`;
 }
 
 function hasMultipleActiveSessions(cw) {
@@ -1575,6 +1657,11 @@ function setTimelineFilter(group) {
 
 function clearTimelineFilter() {
   setTimelineFilter(null);
+  const coworkerSel = document.getElementById('coworker-select');
+  if (coworkerSel && coworkerSel.value) {
+    coworkerSel.value = '';
+    updateSessionSelector();
+  }
 }
 
 // --- Status bar ---
@@ -2210,14 +2297,16 @@ function updateSessionSelector() {
   }
 }
 
-// Coworker picker change → refilter the session dropdown. Doesn't itself enter a flow view;
-// only the session dropdown's change handler does that.
+// Coworker picker change → refilter the session dropdown AND the Timeline events list.
+// Without the setTimelineFilter call, the session dropdown narrows but the main Timeline
+// still shows events from every coworker — which is what the user sees as the bug.
 document.getElementById('coworker-select')?.addEventListener('change', () => {
   updateSessionSelector();
-  // If the user had been viewing a specific session that no longer matches the coworker,
-  // they're back to "Timeline view" — bail out of any active flow view to match.
+  const coworker = document.getElementById('coworker-select')?.value || '';
   const sessionSel = document.getElementById('session-select');
   if (sessionSel && !sessionSel.value) exitSessionFlow();
+  if (coworker) setTimelineFilter(coworker);
+  else clearTimelineFilter();
 });
 
 // Fetch sessions periodically
@@ -2472,7 +2561,14 @@ document.addEventListener('click', (e) => {
     const grp = viewNanoBtn.dataset.viewSessionGroup;
     if (sid && agid) {
       switchToTab('observability');
-      // Reflect the selection in the dropdown so the Back button / URL feel consistent.
+      // Reflect the selection in both dropdowns. The session option only exists in
+      // session-select once coworker-select narrows to that coworker, so set coworker
+      // first and repopulate before setting session.
+      const coworkerSel = document.getElementById('coworker-select');
+      if (coworkerSel && grp) {
+        coworkerSel.value = grp;
+        updateSessionSelector();
+      }
       const sel = document.getElementById('session-select');
       if (sel) {
         const parentVal = `nano:${agid}:${sid}`;
@@ -2481,6 +2577,112 @@ document.addEventListener('click', (e) => {
         }
       }
       enterNanoclawSessionFlow(grp, agid, sid);
+    }
+    return;
+  }
+
+  // Click rename (✎) button — prompt for a new title and POST it. title_source is set
+  // to 'manual' server-side so the heuristic titler won't overwrite it.
+  // Helper: optimistic toggle + server round-trip. Flips the .active class
+  // immediately so the user sees feedback (accent border). On failure reverts.
+  const toggleSessionState = (btn, sid, on, endpoint) => {
+    btn.classList.toggle('active', on);
+    btn.dataset[endpoint === 'pinned' ? 'pinOn' : 'hideOn'] = on ? '0' : '1';
+    // Brief flash to ACK the click even when active state doesn't change visually.
+    const prevBg = btn.style.background;
+    btn.style.background = on ? 'var(--green)' : 'var(--bg-hover)';
+    btn.style.color = '#fff';
+    setTimeout(() => { btn.style.background = prevBg; btn.style.color = ''; }, 300);
+    fetch(`/api/sessions/${encodeURIComponent(sid)}/${endpoint}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ on }),
+    }).then((r) => {
+      if (!r.ok) {
+        // Revert on failure
+        btn.classList.toggle('active', !on);
+        btn.style.borderColor = 'var(--red)';
+        setTimeout(() => { btn.style.borderColor = ''; }, 600);
+        return;
+      }
+      if (typeof fetchSessions === 'function') fetchSessions();
+      const tools = document.getElementById('cw-detail-tools');
+      if (tools) tools._lastHtml = null;
+    }).catch(() => {
+      btn.classList.toggle('active', !on);
+      btn.style.borderColor = 'var(--red)';
+      setTimeout(() => { btn.style.borderColor = ''; }, 600);
+    });
+  };
+
+  // Click pin/unpin (📌) button — POST {on: true|false} to /api/sessions/<sid>/pinned.
+  const pinBtn = e.target.closest('[data-pin-session]');
+  if (pinBtn) {
+    e.stopPropagation();
+    const sid = pinBtn.dataset.pinSession;
+    const on = pinBtn.dataset.pinOn === '1';
+    if (sid) toggleSessionState(pinBtn, sid, on, 'pinned');
+    return;
+  }
+
+  // Click hide/unhide (− / ↺) button — POST {on: true|false} to /api/sessions/<sid>/hidden.
+  const hideBtn = e.target.closest('[data-hide-session]');
+  if (hideBtn) {
+    e.stopPropagation();
+    const sid = hideBtn.dataset.hideSession;
+    const on = hideBtn.dataset.hideOn === '1';
+    if (sid) toggleSessionState(hideBtn, sid, on, 'hidden');
+    return;
+  }
+
+  const renameBtn = e.target.closest('[data-rename-session]');
+  if (renameBtn) {
+    const sid = renameBtn.dataset.renameSession;
+    if (!sid) return;
+    const current = renameBtn.dataset.renameCurrent || '';
+    const next = prompt('Rename session:', current);
+    if (next && next.trim()) {
+      fetch(`/api/sessions/${encodeURIComponent(sid)}/title`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: next.trim() }),
+      }).then((r) => {
+        if (!r.ok) return r.json().then((j) => alert('Rename failed: ' + (j.error || r.statusText)));
+        // Force a refresh of the sessions cache on next tick
+        if (typeof fetchSessions === 'function') fetchSessions();
+        const tools = document.getElementById('cw-detail-tools');
+        if (tools) tools._lastHtml = null;
+      }).catch((e) => alert('Rename failed: ' + e.message));
+    }
+    return;
+  }
+
+  // Click "Chat" button in Other Sessions — opens the Coworkers chat for that coworker,
+  // and if the session has a thread_id, opens its thread panel (Slack-style). Main-session
+  // clicks fall through to the root chat view and scroll it into view.
+  const viewChatBtn = e.target.closest('[data-view-chat-session]');
+  if (viewChatBtn) {
+    const grp = viewChatBtn.dataset.viewChatGroup;
+    const tid = viewChatBtn.dataset.viewChatThread || '';
+    if (grp) {
+      switchToTab('coworkers');
+      if (cwState.selected !== grp) selectCoworker(grp);
+      if (tid) {
+        setTimeout(() => openThread(tid), 400);
+      } else {
+        closeThread({ silent: true });
+        // Visual feedback so the click registers as "I did something" even when the
+        // target is already the active view — briefly flash the chat container and
+        // scroll to bottom.
+        setTimeout(() => {
+          const chatEl = document.getElementById('cw-chat-messages');
+          if (chatEl) {
+            chatEl.scrollTop = chatEl.scrollHeight;
+            chatEl.style.transition = 'background 0.3s';
+            chatEl.style.background = 'rgba(59,130,246,0.08)';
+            setTimeout(() => { chatEl.style.background = ''; }, 400);
+          }
+        }, 200);
+      }
     }
     return;
   }
@@ -4330,24 +4532,25 @@ function renderOtherSessionLinks(cw, currentSession) {
   );
   if (sessions.length === 0) return '';
   return `<div style="font-size:0.625rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin:7px 0 3px">Other Sessions</div>
-    <div style="display:flex;flex-direction:column;gap:2px">
+    <div style="display:flex;flex-direction:column;gap:3px">
       ${sessions.slice(0, 3).map((sess) => {
-        // One-line format per operator request:
-        //   Session- tender-fell-rests: Fix PR#124
-        //   Thread- silver-river-drifts: Review nv-main merge
-        const slug = sessionSlugOnly(sess);
-        const kind = sessionKindPrefix(sess);
-        const title = sessionDisplayTitle(sess);
-        const label = title ? `${kind}- ${slug}: ${title}` : `${kind}- ${slug}`;
         const lastMs = sess.last_active ? new Date(sess.last_active).getTime() : (sess.sdk_subsessions?.[0]?.last_ts ?? 0);
         const ago = lastMs ? timeAgo(lastMs) : '';
-        return `<button class="hook-entry" title="Open this session in Timeline" style="display:flex;align-items:center;gap:6px;text-align:left;font-size:9px;padding:3px 5px;border-color:transparent;background:rgba(255,255,255,0.02)"
-          data-view-nanoclaw-session="${escAttr(sess.nanoclaw_session_id)}"
-          data-view-nanoclaw-agid="${escAttr(sess.agent_group_id || '')}"
-          data-view-session-group="${escAttr(cw.folder)}">
-          <span style="color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</span>
-          <span style="color:var(--text-muted)">${esc(ago)}</span>
-        </button>`;
+        const cs = sess.container_status || '';
+        const status = sess.activity_status || 'idle';
+        const agid = escAttr(sess.agent_group_id || '');
+        const sid = escAttr(sess.nanoclaw_session_id);
+        const grp = escAttr(cw.folder);
+        const tid = escAttr(sess.thread_id || '');
+        return `<div class="other-session-row" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,0.02);font-size:9px">
+          <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDotCanvasColor(status)};opacity:.8;flex-shrink:0"></span>
+          ${sessionTitleHtml(sess, { compact: true })}
+          <span style="color:var(--text-muted);flex-shrink:0">${esc(cs)}${ago ? ' · ' + esc(ago) : ''}</span>
+          <button class="other-session-open-btn" title="Open in Timeline"
+            data-view-nanoclaw-session="${sid}" data-view-nanoclaw-agid="${agid}" data-view-session-group="${grp}">Timeline</button>
+          <button class="other-session-open-btn" title="Open chat view"
+            data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${grp}">Chat</button>
+        </div>`;
       }).join('')}
       ${sessions.length > 3 ? `<div style="font-size:9px;color:var(--text-dim);margin-left:4px">+${sessions.length - 3} more in Timeline</div>` : ''}
     </div>`;
@@ -4365,7 +4568,8 @@ async function updateCwDetail() {
   document.getElementById('cw-detail-status').textContent = cw.status;
   document.getElementById('cw-detail-tasks').textContent = String(cw.taskCount);
 
-  // MCP tools — show allowed (green) then blocked (struck-through)
+  // MCP tools — show allowed (green) then blocked (struck-through). Hidden by default;
+  // expand button toggles visibility so the panel isn't dominated by a long list.
   const mcpEl = document.getElementById('cw-detail-mcp');
   if (mcpEl) {
     const shortName = (t) => t.replace(/^mcp__\w+__/, '');
@@ -4376,6 +4580,15 @@ async function updateCwDetail() {
       `<span class="mcp-tag blocked">${esc(shortName(t))}</span>`
     ).join('');
     mcpEl.innerHTML = allowed + blocked || '<span style="color:var(--text-dim)">none</span>';
+    const mcpToggle = document.getElementById('cw-mcp-toggle');
+    if (mcpToggle) {
+      mcpToggle.textContent = mcpEl.style.display === 'none' ? 'Expand' : 'Collapse';
+      mcpToggle.onclick = () => {
+        const hidden = mcpEl.style.display === 'none';
+        mcpEl.style.display = hidden ? 'block' : 'none';
+        mcpToggle.textContent = hidden ? 'Collapse' : 'Expand';
+      };
+    }
   }
 
   // Last Activity: use hook timestamp, message timestamp, or task run — whichever is newest
@@ -4403,8 +4616,24 @@ async function updateCwDetail() {
   const liveCwForHooks = (state.coworkers || []).find(c => c.folder === folder);
   const toolsEl = document.getElementById('cw-detail-tools');
   if (liveCwForHooks) {
-    const currentSession = currentViewedNanoSession(folder);
-    toolsEl.innerHTML = `${renderCurrentSessionEvents(folder) || '<span style="color:var(--text-dim)">None</span>'}${renderOtherSessionLinks(liveCwForHooks, currentSession)}`;
+    const sessionsBlock = renderActiveSessionBlock(liveCwForHooks, { wrapField: false });
+    const recentEvents = renderCurrentSessionEvents(folder);
+    const newHtml = `${sessionsBlock || ''}${recentEvents || '<span style="color:var(--text-dim)">None</span>'}`;
+    // Only rewrite the DOM when content actually changed — repeated identical writes
+    // caused the panel to flash on every 3s poll.
+    if (toolsEl._lastHtml !== newHtml) {
+      toolsEl.innerHTML = newHtml;
+      toolsEl._lastHtml = newHtml;
+      const searchEl = document.getElementById('cw-other-session-search');
+      if (searchEl) {
+        searchEl.addEventListener('input', () => {
+          const q = searchEl.value.trim().toLowerCase();
+          document.querySelectorAll('#cw-other-session-list .other-session-row').forEach((row) => {
+            row.style.display = !q || row.dataset.haystack.includes(q) ? '' : 'none';
+          });
+        });
+      }
+    }
     // Wire up hook-entry-link click handlers (same as Pixel Office detail panel)
     toolsEl.querySelectorAll('.hook-entry-link').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -4652,6 +4881,20 @@ setTimeout(() => applyCwUrl(), 500);
 // Memory editor is read-only (CLAUDE.md re-composed at container startup from coworkerType)
 
 // Chat/Artifacts toggle in Coworkers tab
+document.getElementById('cw-fullscreen-btn')?.addEventListener('click', () => {
+  const panel = document.getElementById('coworkers');
+  if (!panel) return;
+  panel.classList.remove('cw-thread-fullscreen');
+  panel.classList.toggle('cw-fullscreen');
+});
+
+document.getElementById('cw-thread-fullscreen-btn')?.addEventListener('click', () => {
+  const panel = document.getElementById('coworkers');
+  if (!panel) return;
+  panel.classList.remove('cw-fullscreen');
+  panel.classList.toggle('cw-thread-fullscreen');
+});
+
 document.querySelectorAll('.cw-toggle-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const view = btn.dataset.view;
