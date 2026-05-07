@@ -8059,12 +8059,34 @@ export async function handleRequest(
       const secret = getDashboardSecret();
       if (secret) headers.Authorization = `Bearer ${secret}`;
 
-      const upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/action`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ approvalId, decision: canonical }),
-        signal: AbortSignal.timeout(5000),
-      });
+      // AP03: upstream handler does the approval state transition + may call
+      // a registered action handler. With wakeContainer now fire-and-forget
+      // on the ingress side, this should return in ms; the 30s ceiling is
+      // defense-in-depth for legitimately-slow handlers (image pulls, long
+      // install_packages, etc.) so the browser doesn't see a 500 while the
+      // approval has in fact been applied. If you ever see this timeout
+      // actually fire, the fix is in the handler — not here.
+      let upstream: Response;
+      try {
+        upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/action`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ approvalId, decision: canonical }),
+          signal: AbortSignal.timeout(30000),
+        });
+      } catch (fetchErr: any) {
+        // Timeout / network. The ingress may or may not have applied the
+        // approval — surface that ambiguity to the client instead of a bare
+        // 500 so the UI can refetch /api/approvals to reconcile state.
+        res.writeHead(504, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            error: `Upstream timed out or was unreachable: ${fetchErr?.message ?? String(fetchErr)}`,
+            hint: 'Refetch /api/approvals to confirm whether the action was applied before retrying.',
+          }),
+        );
+        return;
+      }
       if (!upstream.ok) {
         const errText = await upstream.text();
         res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
