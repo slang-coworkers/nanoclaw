@@ -226,81 +226,94 @@ function statusDotColor(status) {
   }
 }
 
+function statusDotCanvasColor(status) {
+  switch (status) {
+    case 'working': return '#10B981';
+    case 'thinking': return '#F59E0B';
+    case 'error': return '#EF4444';
+    case 'active': return '#3B82F6';
+    case 'idle':
+    default: return '#6B7280';
+  }
+}
+
 /** Short one-line event summary for the per-session Recent Events block. */
 function formatSessionEventLine(e) {
   const t = e.tool ? ` · ${esc(e.tool)}` : '';
   return `${esc(e.event || '')}${t}`;
 }
 
+function activeNanoSessionsForCoworker(cw) {
+  const agentGroupId = cw.agentGroupId || cw.agent_group_id || agentGroupIdForFolder(cw.folder);
+  return (cachedSessions || []).filter((s) => {
+    if (!s.nanoclaw_session_id) return false;
+    if (agentGroupId && s.agent_group_id) return s.agent_group_id === agentGroupId;
+    return s.group_folder === cw.folder;
+  });
+}
+
 function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
-  const groupEvents = (state.hookEvents || []).filter((e) => e.group === cw.folder);
-  // Cached sessions now carries ONE parent per active NanoClaw session
-  // (root + each thread). Render them all, not just the first, so
-  // operators can see per-session status + recent activity.
-  const nanoSessions = (cachedSessions || []).filter(
-    (s) => s.group_folder === cw.folder && s.nanoclaw_session_id,
-  );
+  const groupEvents = (state.hookEvents || []).filter((e) => hookEventBelongsToCoworker(e, cw));
+  const nanoSessions = activeNanoSessionsForCoworker(cw)
+    .slice()
+    .sort((a, b) => {
+      const aMs = a.last_active ? new Date(a.last_active).getTime() : (a.sdk_subsessions?.[0]?.last_ts ?? 0);
+      const bMs = b.last_active ? new Date(b.last_active).getTime() : (b.sdk_subsessions?.[0]?.last_ts ?? 0);
+      return bMs - aMs;
+    });
   let inner = '';
   if (nanoSessions.length > 0) {
-    const sessionHtml = nanoSessions.map((nanoSess) => {
+    const sessionMeta = (nanoSess) => {
       const lastMs = nanoSess.last_active
         ? new Date(nanoSess.last_active).getTime()
-        : (nanoSess.sdk_subsessions[0]?.last_ts ?? 0);
-      const ago = lastMs ? timeAgo(lastMs) : '';
-      const cs = nanoSess.container_status || 'unknown';
-      const subCount = (nanoSess.sdk_subsessions || []).length;
+        : (nanoSess.sdk_subsessions?.[0]?.last_ts ?? 0);
       const humanSess = typeof window.sessionLabel === 'function'
         ? window.sessionLabel(nanoSess.nanoclaw_session_id, nanoSess.thread_id)
         : nanoSess.nanoclaw_session_id;
-      const status = nanoSess.activity_status || (cs === 'running' ? 'active' : 'idle');
-      const dot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDotColor(status)}" title="${esc(status)}"></span>`;
-      const recent = (nanoSess.recent_events || []).slice(0, 3);
-      const recentHtml = recent.length === 0 ? '' : `
-        <div style="font-size:9px;color:var(--text-dim);margin-left:10px;margin-top:2px">Recent:</div>
-        <div style="display:flex;flex-direction:column;gap:1px;margin-left:16px">
-          ${recent.map((e) => `
-            <div style="font-size:9px;color:var(--text-muted);display:flex;gap:6px">
-              <span style="font-family:monospace">${esc(formatTimeFull(e.timestamp))}</span>
-              <span>${formatSessionEventLine(e)}</span>
-            </div>
-          `).join('')}
-        </div>`;
-      return `<div style="display:flex;flex-direction:column;gap:3px;padding:3px 0;border-top:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          ${dot}
-          <span style="font-size:10px;color:var(--text)" title="${escAttr(nanoSess.nanoclaw_session_id)}">${esc(humanSess)}</span>
-          <span style="font-size:9px;color:var(--text-muted)">[container: ${esc(cs)}${ago ? ' · last ' + esc(ago) : ''}]</span>
-          <button class="admin-action-btn" style="font-size:8px;padding:1px 6px"
-            data-view-nanoclaw-session="${escAttr(nanoSess.nanoclaw_session_id)}"
-            data-view-nanoclaw-agid="${escAttr(nanoSess.agent_group_id || '')}"
-            data-view-session-group="${escAttr(cw.folder)}">View</button>
-        </div>
-        ${recentHtml}
-        ${(() => {
-          if (subCount === 0) return '';
-          const subs = nanoSess.sdk_subsessions || [];
-          const nonGhost = subs.filter((s) => s.shape !== 'ghost');
-          const visible = (nonGhost.length > 0 ? nonGhost : subs).slice(0, 5);
-          const hiddenGhosts = subs.length - nonGhost.length;
-          const header = nonGhost.length > 0
-            ? `▸ ${subCount} SDK sub-session${subCount === 1 ? '' : 's'} (showing ${visible.length} recent${hiddenGhosts > 0 ? `, ${hiddenGhosts} ghost hidden` : ''})`
-            : `▸ ${subCount} SDK sub-session${subCount === 1 ? '' : 's'} (all ghost)`;
-          return `<div style="font-size:9px;color:var(--text-dim);margin-left:10px;margin-top:2px">${esc(header)}</div>
-            <div style="display:flex;flex-direction:column;gap:2px;margin-left:16px">
-              ${visible.map((s) => `
-                <button class="hook-entry hook-entry-link" style="display:flex;gap:8px;align-items:center;font-size:9px;padding:1px 4px;text-align:left"
-                  data-view-session="${escAttr(s.session_id)}" data-view-session-group="${escAttr(cw.folder)}">
-                  <span style="font-family:monospace;color:var(--text-dim)">${esc(s.session_id.slice(0, 11))}</span>
-                  <span style="min-width:58px;color:var(--text-muted)">${esc(s.shape || 'session')}</span>
-                  <span style="color:var(--text-muted)">${formatTimeFull(s.last_ts)}</span>
-                  <span style="color:var(--text-muted)">${Number(s.event_count).toLocaleString()} ev</span>
-                </button>
-              `).join('')}
-            </div>`;
-        })()}
+      const status = nanoSess.activity_status || (nanoSess.container_status === 'running' ? 'active' : 'idle');
+      return {
+        lastMs,
+        ago: lastMs ? timeAgo(lastMs) : '',
+        cs: nanoSess.container_status || 'unknown',
+        humanSess,
+        status,
+        subCount: (nanoSess.sdk_subsessions || []).length,
+      };
+    };
+    const metas = nanoSessions.map((nanoSess) => ({ nanoSess, ...sessionMeta(nanoSess) }));
+    const target = metas.find((m) => m.cs === 'running') || metas[0];
+    const runningCount = metas.filter((m) => m.cs === 'running').length;
+    const latestMs = Math.max(...metas.map((m) => m.lastMs || 0), 0);
+    const summaryStatus = runningCount > 0 ? `${runningCount} running` : 'all stopped';
+    const otherSessions = metas.filter((m) => m.nanoSess.nanoclaw_session_id !== target.nanoSess.nanoclaw_session_id);
+    const summary = `<div style="font-size:9px;color:var(--text-muted);margin-bottom:5px">
+      ${metas.length} session${metas.length === 1 ? '' : 's'} · ${esc(summaryStatus)}${latestMs ? ' · last ' + esc(timeAgo(latestMs)) : ''}
+    </div>`;
+    const targetHtml = `<div style="padding:5px 6px;border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,0.03);margin-bottom:5px">
+      <div style="font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Current Target</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDotColor(target.status)}" title="${escAttr(target.status)}"></span>
+        <span style="font-size:10px;color:var(--text)" title="${escAttr(target.nanoSess.nanoclaw_session_id)}">${esc(target.humanSess)}</span>
+        <span style="font-size:9px;color:var(--text-muted)">${esc(target.cs)}${target.ago ? ' · last ' + esc(target.ago) : ''}</span>
+      </div>
+      <button class="admin-action-btn" style="font-size:8px;padding:1px 6px;margin-top:4px"
+        data-view-nanoclaw-session="${escAttr(target.nanoSess.nanoclaw_session_id)}"
+        data-view-nanoclaw-agid="${escAttr(target.nanoSess.agent_group_id || '')}"
+        data-view-session-group="${escAttr(cw.folder)}">Open Timeline</button>
+    </div>`;
+    const othersHtml = otherSessions.length === 0 ? '' : `<div style="font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin:5px 0 3px">Other Sessions</div>
+      <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:5px">
+        ${otherSessions.slice(0, 5).map((m) => `<button class="hook-entry" title="Open this session in Timeline" style="display:flex;align-items:center;gap:6px;text-align:left;font-size:9px;padding:3px 5px;border-color:transparent;background:rgba(255,255,255,0.02)"
+          data-view-nanoclaw-session="${escAttr(m.nanoSess.nanoclaw_session_id)}"
+          data-view-nanoclaw-agid="${escAttr(m.nanoSess.agent_group_id || '')}"
+          data-view-session-group="${escAttr(cw.folder)}">
+          <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDotCanvasColor(m.status)};opacity:.75"></span>
+          <span style="color:var(--text-dim);flex:1" title="${escAttr(m.nanoSess.nanoclaw_session_id)}">${esc(m.humanSess)}</span>
+          <span style="color:var(--text-muted)">${esc(m.cs)}${m.ago ? ' · ' + esc(m.ago) : ''}</span>
+        </button>`).join('')}
+        ${otherSessions.length > 5 ? `<div style="font-size:9px;color:var(--text-dim);margin-left:4px">+${otherSessions.length - 5} more sessions in Timeline</div>` : ''}
       </div>`;
-    }).join('');
-    inner = `<div class="value" style="display:flex;flex-direction:column;gap:0">${sessionHtml}</div>`;
+    inner = `<div class="value" style="display:flex;flex-direction:column;gap:0">${summary}${targetHtml}${othersHtml}</div>`;
   } else {
     // Fallback: fall back to the last-seen SDK session if cachedSessions hasn't loaded yet.
     const sessionEvent = groupEvents.filter((e) => e.session_id).slice(-1)[0];
@@ -312,12 +325,23 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       </div>`;
   }
   return wrapField
-    ? `<div class="field"><label>Active Session</label>${inner}</div>`
+    ? `<div class="field"><label>Sessions</label>${inner}</div>`
     : inner;
 }
 
+function agentGroupIdForFolder(folder) {
+  const group = (state.registeredGroups || []).find((g) => g.folder === folder);
+  return group?.id || null;
+}
+
+function hookEventBelongsToCoworker(event, cw) {
+  const agentGroupId = cw.agentGroupId || cw.agent_group_id || agentGroupIdForFolder(cw.folder);
+  if (agentGroupId && event.agent_group_id) return event.agent_group_id === agentGroupId;
+  return event.group === cw.folder;
+}
+
 function renderDetailHooks(cw) {
-  const groupEvents = state.hookEvents.filter((e) => e.group === cw.folder);
+  const groupEvents = state.hookEvents.filter((e) => hookEventBelongsToCoworker(e, cw));
 
   // Build pre-tool map for durations
   const preTimes = new Map();
@@ -327,17 +351,15 @@ function renderDetailHooks(cw) {
 
   // Show last 5 tool calls with durations.
   //
-  // Container already labelled "Recent Events" (index.html:1032), and
-  // the session block below renders its own per-session "Recent:"
-  // events — so don't inject a second "Recent Events" label here, and
-  // drop the "Active Session" wrap since the outer "Recent Events"
-  // label is visually serving that role for this panel.
+  // Recent Events is a folder-level rollup only. The per-session breakdown
+  // (sess-… / "thread · <slug>" / container status / sub-sessions) lives in
+  // its own "Session" panel (#detail-session, populated at :1410 + :458),
+  // so don't inline the session block here — previously that produced a
+  // visible duplicate of each thread/main entry in the detail panel.
   const recentTools = groupEvents.filter((e) => e.event === 'PostToolUse' || e.event === 'PostToolUseFailure').slice(-5);
-  let html = renderActiveSessionBlock(cw, { wrapField: false });
+  let html = '';
 
   if (recentTools.length === 0 && groupEvents.length === 0) return html;
-
-  html += '<div style="height:4px"></div>';  // spacer between session block and folder-level tool calls
   // Newest-first: take the last 5 chronologically, then reverse so the top entry is most recent.
   const display = groupEvents.filter((e) => e.event !== 'PreToolUse').slice(-5).reverse();
   html += display.map((e) => {
@@ -350,7 +372,44 @@ function renderDetailHooks(cw) {
   return html;
 }
 
+function currentViewedNanoSession(folder) {
+  const threadId = cwState.thread?.parentId || null;
+  const sessions = (cachedSessions || []).filter((s) => s.group_folder === folder && s.nanoclaw_session_id);
+  if (threadId) return sessions.find((s) => s.thread_id === threadId) || null;
+  return sessions.find((s) => s.thread_id == null) || null;
+}
+
+function renderCurrentSessionEvents(folder) {
+  const nanoSess = currentViewedNanoSession(folder);
+  if (!nanoSess) return '<span style="color:var(--text-dim)">No active session resolved for this view.</span>';
+  const label = typeof window.sessionLabel === 'function'
+    ? window.sessionLabel(nanoSess.nanoclaw_session_id, nanoSess.thread_id)
+    : nanoSess.nanoclaw_session_id;
+  const events = nanoSess.recent_events || [];
+  const eventHtml = events.length === 0
+    ? '<div style="color:var(--text-dim);font-size:0.6875rem;margin-top:4px">No recent events for this session.</div>'
+    : events.slice(0, 5).map((e) => `<button class="hook-entry hook-entry-link" data-event-group="${escAttr(folder)}" data-event-time="${String(e.timestamp)}">
+        <span class="ts">${formatTime(e.timestamp)}</span> <span class="tool-name">${formatSessionEventLine(e)}</span>
+      </button>`).join('');
+  return `<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+    <div style="font-size:0.625rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">This Session</div>
+    <div style="font-size:0.6875rem;color:var(--text);margin-top:2px" title="${escAttr(nanoSess.nanoclaw_session_id)}">${esc(label)}</div>
+    <div style="margin-top:4px">${eventHtml}</div>
+  </div>`;
+}
+
+function hasMultipleActiveSessions(cw) {
+  return activeNanoSessionsForCoworker(cw).length > 1;
+}
+
+function updateDetailContextLabel() {
+  const label = document.querySelector('#detail-context-field > label');
+  if (!label) return;
+  label.textContent = 'Context';
+}
+
 function renderContextIndicator(cw) {
+  if (hasMultipleActiveSessions(cw)) return '';
   if (cw.contextUsagePercent == null && cw.spineSkillCount == null) return '';
   let html = '';
   if (cw.contextUsagePercent != null) {
@@ -416,7 +475,7 @@ function openTimelineForEvent(group, timestamp) {
 function updateDetailHooks(cw) {
   const hooksEl = document.getElementById('detail-hooks');
   if (!hooksEl) return;
-  hooksEl.innerHTML = renderDetailHooks(cw);
+  hooksEl.innerHTML = `<div style="font-size:0.625rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Coworker Activity</div>${renderDetailHooks(cw) || '<span style="color:var(--text-dim)">None</span>'}`;
 }
 
 function applyState(nextState) {
@@ -458,16 +517,13 @@ function applyState(nextState) {
         const blk = renderActiveSessionBlock(updated, { wrapField: false });
         if (blk) detailSessEl.innerHTML = blk;
       }
+      updateDetailContextLabel();
+      const ctxField = document.getElementById('detail-context-field');
       const ctxEl = document.getElementById('detail-context');
-      if (ctxEl) {
-        const fill = ctxEl.querySelector('.context-gauge-fill');
-        const label = ctxEl.querySelector('.context-gauge-label');
-        if (fill && label && updated.contextUsagePercent != null) {
-          const pct = updated.contextUsagePercent;
-          fill.style.width = pct + '%';
-          fill.style.background = pct > 85 ? 'var(--red)' : pct > 60 ? 'var(--yellow)' : 'var(--green)';
-          label.textContent = pct + '%';
-        }
+      if (ctxField && ctxEl) {
+        const ctxHtml = renderContextIndicator(updated);
+        if (ctxHtml) { ctxField.style.display = ''; ctxEl.innerHTML = ctxHtml; }
+        else { ctxField.style.display = 'none'; }
       }
     }
   }
@@ -1156,9 +1212,14 @@ function drawNameplate(assignment, ox, oy, isHovered) {
   const dotColors = { idle: '#6B7280', active: '#3B82F6', working: '#10B981', thinking: '#F59E0B', error: '#EF4444' };
   const dotColor = dotColors[cw.status] || '#6B7280';
 
-  // Status-colored background for at-a-glance visibility
-  const hasCtxBar = cw.contextUsagePercent != null;
-  const plateH = hasCtxBar ? 22 : 18;
+  // Status-colored background for at-a-glance visibility. One actor represents
+  // one agent-group; multiple NanoClaw sessions are summarized as chips instead
+  // of pretending a single context bar describes every thread/task container.
+  const nanoSessions = activeNanoSessionsForCoworker(cw);
+  const sessionCount = nanoSessions.length;
+  const showSessionSummary = sessionCount > 1;
+  const hasCtxBar = cw.contextUsagePercent != null && !showSessionSummary;
+  const plateH = showSessionSummary || hasCtxBar ? 24 : 18;
   const bgColors = { active: '#3B82F630', working: '#10B98130', thinking: '#F59E0B30', error: '#EF444430' };
   const baseBg = bgColors[cw.status] || '#0f172aCC';
   ctx.fillStyle = isHovered ? '#0f172aEE' : baseBg;
@@ -1187,8 +1248,24 @@ function drawNameplate(assignment, ox, oy, isHovered) {
     ctx.fill();
   }
 
-  // Mini context gauge bar below name
-  if (hasCtxBar) {
+  if (showSessionSummary) {
+    const y = plateY + 17;
+    const visible = nanoSessions.slice(0, 3);
+    for (let i = 0; i < visible.length; i++) {
+      const sess = visible[i];
+      const status = sess.activity_status || (sess.container_status === 'running' ? 'active' : 'idle');
+      ctx.fillStyle = statusDotCanvasColor(status);
+      ctx.beginPath();
+      ctx.arc(pos.x + 4 + i * 8, y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '8px "Courier New", monospace';
+    ctx.fillText(`${sessionCount} sessions`, pos.x + 4 + visible.length * 8 + 3, y + 3);
+  } else if (hasCtxBar) {
+    // Mini context gauge bar below name only when there is exactly one active
+    // session (or no resolved session yet). With multiple sessions this was
+    // misleading because context is currently derived from the latest shared JSONL.
     const barY = plateY + 14;
     const barW = plateW;
     const pct = Math.min(cw.contextUsagePercent, 100);
@@ -1398,6 +1475,7 @@ async function showDetailPanel(cw) {
   // Context indicator
   const ctxField = document.getElementById('detail-context-field');
   const ctxEl = document.getElementById('detail-context');
+  updateDetailContextLabel();
   const ctxHtml = renderContextIndicator(cw);
   if (ctxHtml) { ctxField.style.display = ''; ctxEl.innerHTML = ctxHtml; }
   else { ctxField.style.display = 'none'; }
@@ -4209,11 +4287,17 @@ function syncCwUrl() {
   } catch { /* ignore */ }
 }
 
-function applyCwUrl() {
+function applyCwUrl(retries = 8) {
   const m = /^#\/cw\/([^/]+)(?:\/t\/(.+))?$/.exec(location.hash || '');
   if (!m) return;
+  switchToTab('coworkers');
   const folder = decodeURIComponent(m[1]);
   const parentId = m[2] ? decodeURIComponent(m[2]) : null;
+  const known = getCwCoworkers().some((c) => c.folder === folder);
+  if (!known && retries > 0) {
+    setTimeout(() => applyCwUrl(retries - 1), 250);
+    return;
+  }
   if (cwState.selected !== folder) selectCoworker(folder);
   if (parentId && (!cwState.thread || cwState.thread.parentId !== parentId)) {
     // Defer briefly so the main fetch has a chance to resolve first — gives
@@ -4265,12 +4349,18 @@ async function updateCwDetail() {
     ? subagents.map((s) => `${s.agentType || 'agent'} (${s.status || 'unknown'})`).join(', ')
     : 'None';
 
-  // Recent tool calls: reuse the Pixel Office detail panel renderer for consistency
+  // Recent events: lead with the currently viewed session (main or open
+  // thread), then show the folder-wide rollup below. This avoids the old
+  // ambiguity where a thread view displayed events from every session under
+  // the coworker without saying so.
   const liveCwForHooks = (state.coworkers || []).find(c => c.folder === folder);
   const toolsEl = document.getElementById('cw-detail-tools');
   if (liveCwForHooks) {
-    const hooksHtml = renderDetailHooks(liveCwForHooks);
-    toolsEl.innerHTML = hooksHtml || 'None';
+    const sessionCount = activeNanoSessionsForCoworker(liveCwForHooks).length;
+    const otherNote = sessionCount > 1
+      ? `<div style="font-size:0.625rem;color:var(--text-dim);margin-top:5px">${sessionCount - 1} other session${sessionCount === 2 ? '' : 's'} for this coworker. Use the Sessions list to open one.</div>`
+      : '';
+    toolsEl.innerHTML = `${renderCurrentSessionEvents(folder) || '<span style="color:var(--text-dim)">None</span>'}${otherNote}`;
     // Wire up hook-entry-link click handlers (same as Pixel Office detail panel)
     toolsEl.querySelectorAll('.hook-entry-link').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -4496,7 +4586,19 @@ document.getElementById('cw-thread-input-text')?.addEventListener('keydown', (e)
 document.getElementById('cw-thread-close')?.addEventListener('click', () => closeThread());
 document.getElementById('cw-a2a-inspector-close')?.addEventListener('click', () => closeA2aInspector());
 
+
+function normalizePathRouteToHash() {
+  const m = /^\/(?:cw|coworkers)\/([^/]+)(?:\/t\/(.+))?\/?$/.exec(location.pathname || '');
+  if (!m) return;
+  const folder = decodeURIComponent(m[1]);
+  const parentId = m[2] ? decodeURIComponent(m[2]) : null;
+  let hash = `#/cw/${encodeURIComponent(folder)}`;
+  if (parentId) hash += `/t/${encodeURIComponent(parentId)}`;
+  history.replaceState(null, '', `${location.origin}${hash}`);
+}
+
 // Hash-routing: restore state on load, reconcile on history navigation.
+normalizePathRouteToHash();
 window.addEventListener('hashchange', () => applyCwUrl());
 // Apply initial URL after the coworker list has been populated. The first
 // applyState() call fills state.registeredGroups; this listener fires after
@@ -4603,7 +4705,10 @@ async function renderCwWork(subpath, isDir) {
       content.innerHTML = '<span style="color:var(--text-muted)">Empty folder</span>';
       return;
     }
-    content.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:10px">
+    content.innerHTML = `<div style="font-size:0.6875rem;color:var(--text-dim);padding:4px 8px;margin-bottom:4px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card)">
+        Shared artifacts for <strong style="color:var(--text)">${esc(folder)}</strong>. Files are common to main + all thread sessions; shell below follows the currently open chat/thread.
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
       <tr style="border-bottom:1px solid var(--border);color:var(--text-muted)">
         <th style="text-align:left;padding:4px 8px">Name</th>
         <th style="text-align:right;padding:4px 8px">Size</th>
@@ -4631,9 +4736,12 @@ async function renderCwWork(subpath, isDir) {
   const shellStatus = document.getElementById('cw-work-shell-status');
   const shellOutput = document.getElementById('cw-work-shell-output');
   const shellInput = document.getElementById('cw-work-shell-input');
-  if (shellStatus && shellOutput.dataset.folder !== folder) {
-    shellOutput.dataset.folder = folder;
-    shellOutput.textContent = '';
+  if (shellStatus && shellOutput && shellInput) {
+    const shellKey = `${folder}:${cwState.thread?.parentId || '__root__'}`;
+    if (shellOutput.dataset.shellKey !== shellKey) {
+      shellOutput.dataset.shellKey = shellKey;
+      shellOutput.textContent = '';
+    }
     try {
       const res = await fetch(`/api/coworkers/${encodeURIComponent(folder)}/container${currentShellThreadQuery()}`);
       const data = await res.json();
@@ -4641,10 +4749,14 @@ async function renderCwWork(subpath, isDir) {
         shellStatus.innerHTML = `<span style="color:#34d399">Live</span> <span style="color:var(--text-dim)">${esc(data.container)}</span>`;
         shellInput.disabled = false;
       } else {
-        shellStatus.innerHTML = '<span style="color:var(--text-muted)">No container</span>';
+        const scoped = cwState.thread ? 'this thread' : 'the main session';
+        shellStatus.innerHTML = `<span style="color:var(--text-muted)">No running container for ${scoped}</span>`;
         shellInput.disabled = true;
       }
-    } catch { shellStatus.innerHTML = '<span style="color:var(--text-muted)">No container</span>'; shellInput.disabled = true; }
+    } catch {
+      shellStatus.innerHTML = '<span style="color:var(--text-muted)">Container status unavailable</span>';
+      shellInput.disabled = true;
+    }
   }
 }
 

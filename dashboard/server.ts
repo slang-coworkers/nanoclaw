@@ -843,6 +843,7 @@ function isDashboardAuthenticated(req: import('http').IncomingMessage, secret = 
 
 interface CoworkerState {
   folder: string;
+  agentGroupId: string | null;
   name: string;
   type: string;
   description: string;
@@ -905,6 +906,7 @@ interface DashboardState {
 
 interface HookEvent {
   group: string;
+  agent_group_id?: string;
   event: string;
   tool?: string;
   message?: string;
@@ -946,7 +948,12 @@ function bootstrapHookEvents(): void {
   try {
     const rows = db
       .prepare(
-        'SELECT group_folder, event, tool, tool_use_id, message, tool_input, tool_response, session_id, agent_id, agent_type, transcript_path, cwd, extra, timestamp FROM hook_events ORDER BY timestamp DESC LIMIT ?',
+        `SELECT he.group_folder, ag.id AS agent_group_id, he.event, he.tool, he.tool_use_id, he.message,
+                he.tool_input, he.tool_response, he.session_id, he.agent_id, he.agent_type,
+                he.transcript_path, he.cwd, he.extra, he.timestamp
+           FROM hook_events he
+           LEFT JOIN agent_groups ag ON ag.folder = he.group_folder
+          ORDER BY he.timestamp DESC LIMIT ?`,
       )
       .all(MAX_HOOK_EVENTS) as any[];
     for (const row of rows.reverse()) {
@@ -961,6 +968,7 @@ function bootstrapHookEvents(): void {
         : undefined;
       hookEvents.push({
         group: row.group_folder,
+        agent_group_id: row.agent_group_id || undefined,
         event: row.event,
         tool: row.tool || undefined,
         tool_use_id: row.tool_use_id || undefined,
@@ -1844,18 +1852,20 @@ function resolveLegoMcpTools(coworkerType: string): string[] {
  */
 function findRunningContainer(folder: string, sessionId?: string | null): string | null {
   const prefix = process.env.CONTAINER_PREFIX || 'nanoclaw';
-  const containerFolder = folder.replace(/_/g, '-');
-  const folderPrefix = `${prefix}-${containerFolder}`;
+  const folderCandidates = Array.from(new Set([folder, folder.replace(/_/g, '-')]));
   if (sessionId) {
     const tail = sessionId.startsWith('sess-') ? sessionId.slice(5) : sessionId;
-    const exactPrefix = `${folderPrefix}-${tail}-`;
-    for (const name of runningContainers) {
-      if (name.startsWith(exactPrefix)) return name;
+    for (const containerFolder of folderCandidates) {
+      const exactPrefix = `${prefix}-${containerFolder}-${tail}-`;
+      for (const name of runningContainers) {
+        if (name.startsWith(exactPrefix)) return name;
+      }
     }
     return null;
   }
+  const folderPrefixes = folderCandidates.map((containerFolder) => `${prefix}-${containerFolder}-`);
   for (const name of runningContainers) {
-    if (name.startsWith(folderPrefix)) return name;
+    if (folderPrefixes.some((folderPrefix) => name.startsWith(folderPrefix))) return name;
   }
   return null;
 }
@@ -2117,15 +2127,17 @@ function getState(): DashboardState {
 
       // Resolve type, name, and MCP tools from DB
       let dbAllowedMcp: string[] | null = null;
+      let dbAgentGroupId: string | null = null;
       let isMainGroup = false;
-      if (type === 'unknown' && db) {
+      if (db) {
         try {
           const row = db
             .prepare(
-              'SELECT name, folder, coworker_type, allowed_mcp_tools, is_admin FROM agent_groups WHERE folder = ?',
+              'SELECT id, name, folder, coworker_type, allowed_mcp_tools, is_admin FROM agent_groups WHERE folder = ?',
             )
             .get(folder) as any;
           if (row) {
+            dbAgentGroupId = row.id || null;
             name = row.name || folder;
             isMainGroup = !!row.is_admin;
             dbAllowedMcp = row.allowed_mcp_tools ? JSON.parse(row.allowed_mcp_tools) : null;
@@ -2210,6 +2222,7 @@ function getState(): DashboardState {
       const mfInfo = manifestSummaryCache.get(folder);
       coworkers.push({
         folder,
+        agentGroupId: dbAgentGroupId,
         name,
         type,
         description,
@@ -3235,6 +3248,7 @@ export async function handleRequest(
       // bash-script format. We accept both for backwards compatibility.
       const event: HookEvent = {
         group: raw.group || (req.headers['x-group-folder'] as string) || '',
+        agent_group_id: undefined,
         event: raw.event || raw.hook_event_name || '',
         tool: raw.tool || raw.tool_name || undefined,
         message: raw.message || raw.notification || raw.prompt || undefined,
@@ -3262,7 +3276,6 @@ export async function handleRequest(
         cwd: raw.cwd || undefined,
         timestamp: Date.now(),
       } as HookEvent;
-
       // Pack additional fields into extra
       const extra: Record<string, any> = {};
       if (typeof raw.extra === 'object' && raw.extra !== null) {
@@ -3313,6 +3326,12 @@ export async function handleRequest(
       // Persist to database
       const heDb = getHookEventsDb();
       if (heDb) {
+        if (event.group) {
+          try {
+            const ag = heDb.prepare('SELECT id FROM agent_groups WHERE folder = ? LIMIT 1').get(event.group) as any;
+            event.agent_group_id = ag?.id || undefined;
+          } catch { /* agent_groups table absent in degraded fixtures */ }
+        }
         try {
           heDb
             .prepare(
@@ -5245,9 +5264,10 @@ export async function handleRequest(
   // Accepts optional `?thread_id=<id>` to scope to a specific session when
   // the coworker has multiple concurrent sessions (root + Slack-style
   // threads). Empty / missing `thread_id` resolves to the coworker's root
-  // session. Falls back to folder-only match if no matching session row
-  // exists (pre-threading installs or a newly-spawned session that hasn't
-  // yet appeared in the central DB).
+  // session. Missing / empty thread_id keeps the legacy folder-only fallback
+  // for pre-threading installs. A non-empty thread_id fails closed when it
+  // cannot resolve an exact session/container, so Shell never lands in the
+  // root or another thread by accident.
   if (req.method === 'GET' && /^\/api\/coworkers\/[^/]+\/container$/.test(url.pathname)) {
     if (!requireAuth(req, res)) return;
     const folder = safeDecode(url.pathname.replace('/api/coworkers/', '').replace('/container', ''));
@@ -5258,9 +5278,10 @@ export async function handleRequest(
     }
     const threadIdRaw = url.searchParams.get('thread_id');
     const threadId = threadIdRaw && threadIdRaw.trim() !== '' ? threadIdRaw.trim() : null;
+    const hasExplicitThread = threadId !== null;
     const sessDb = getHookEventsDb();
     const sessionId = sessDb ? sessionIdForThread(sessDb, folder, threadId) : null;
-    const found = findRunningContainer(folder, sessionId) ?? (sessionId ? null : findRunningContainer(folder));
+    const found = findRunningContainer(folder, sessionId) ?? (sessionId || hasExplicitThread ? null : findRunningContainer(folder));
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({
@@ -5290,7 +5311,8 @@ export async function handleRequest(
     const body = await readBody(req, res);
     if (body === null) return;
     try {
-      const { command, thread_id: threadIdRaw } = JSON.parse(body) as { command?: unknown; thread_id?: unknown };
+      const parsedBody = JSON.parse(body) as { command?: unknown; thread_id?: unknown };
+      const { command, thread_id: threadIdRaw } = parsedBody;
       if (!command || typeof command !== 'string') {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end('{"error":"command required"}');
@@ -5298,15 +5320,22 @@ export async function handleRequest(
       }
       // Session-aware exec: optional `thread_id` in the POST body picks the
       // session whose container to exec into. Default (null / missing) =
-      // root session. Fall back to folder-only match for pre-threading
-      // installs or new sessions not yet in the central DB.
+      // root session. A non-empty thread_id fails closed if it cannot resolve
+      // an exact running container; do not fall back to the folder-level match
+      // because that can exec into root or a different thread.
       const threadId = typeof threadIdRaw === 'string' && threadIdRaw.trim() !== '' ? threadIdRaw.trim() : null;
+      const hasExplicitThread = threadId !== null;
       const sessDb = getHookEventsDb();
       const sessionId = sessDb ? sessionIdForThread(sessDb, folder, threadId) : null;
-      const found = findRunningContainer(folder, sessionId) ?? (sessionId ? null : findRunningContainer(folder));
+      const found = findRunningContainer(folder, sessionId) ?? (sessionId || hasExplicitThread ? null : findRunningContainer(folder));
       if (!found) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end('{"error":"no running container"}');
+        res.end(JSON.stringify({
+          error: sessionId || hasExplicitThread ? 'session has no running container' : 'no running container',
+          action: sessionId || hasExplicitThread ? 'send_message_to_wake' : undefined,
+          session_id: sessionId,
+          thread_id: threadId,
+        }));
         return;
       }
       // Execute command (timeout 10s, max 64KB output)
@@ -7882,7 +7911,11 @@ export async function handleRequest(
   const forceDesktop = url.searchParams.get('desktop') === '1';
   const forceMobile = url.searchParams.get('mobile') === '1';
   const serveMobile = !forceDesktop && (forceMobile || isMobileUA);
-  let filePath = decodedPath === '/' ? (serveMobile ? '/mobile.html' : '/index.html') : decodedPath;
+  const isCoworkerSpaRoute = decodedPath === '/coworkers'
+    || decodedPath.startsWith('/coworkers/')
+    || decodedPath === '/cw'
+    || decodedPath.startsWith('/cw/');
+  let filePath = decodedPath === '/' || isCoworkerSpaRoute ? (serveMobile ? '/mobile.html' : '/index.html') : decodedPath;
   filePath = resolve(getPublicDir(), '.' + filePath);
   if (!isInsideDir(getPublicDir(), filePath)) {
     res.writeHead(403);
