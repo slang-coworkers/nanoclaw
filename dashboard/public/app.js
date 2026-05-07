@@ -428,49 +428,9 @@ function hasMultipleActiveSessions(cw) {
   return activeNanoSessionsForCoworker(cw).length > 1;
 }
 
-function updateDetailContextLabel() {
-  const label = document.querySelector('#detail-context-field > label');
-  if (!label) return;
-  label.textContent = 'Context';
-}
-
-function renderContextIndicator(cw) {
-  if (hasMultipleActiveSessions(cw)) return '';
-  if (cw.contextUsagePercent == null && cw.spineSkillCount == null) return '';
-  let html = '';
-  if (cw.contextUsagePercent != null) {
-    const pct = cw.contextUsagePercent;
-    const color = pct > 85 ? 'var(--red)' : pct > 60 ? 'var(--yellow)' : 'var(--green)';
-    const tokensK = cw.contextTokens ? Math.round(cw.contextTokens / 1000) + 'K' : '?';
-    const maxK = cw.maxContextTokens ? Math.round(cw.maxContextTokens / 1000) + 'K' : '200K';
-    const cacheHit = cw.cacheHitPercent != null ? ` (${cw.cacheHitPercent}% cache)` : '';
-    html += `<div class="context-gauge">
-      <div class="context-gauge-bar"><div class="context-gauge-fill" style="width:${pct}%;background:${color}"></div></div>
-      <span class="context-gauge-label">${pct}%</span>
-    </div>
-    <div style="font-size:8px;color:var(--text-muted);margin-top:1px">${tokensK} / ${maxK} tokens${cacheHit}</div>`;
-  }
-  if (cw.spineSkillCount != null) {
-    const chipData = [
-      { count: cw.spineWorkflowCount, label: 'workflows', items: cw.spineWorkflows },
-      { count: cw.spineSkillCount, label: 'skills', items: cw.spineSkills },
-      { count: cw.spineOverlayCount, label: 'overlays', items: cw.spineOverlays },
-      { count: cw.spineContextCount, label: 'context', items: cw.spineContextFragments },
-      { count: cw.spineInvariantCount, label: 'invariants', items: cw.spineInvariants },
-      { count: cw.spineToolCount, label: 'tools', items: cw.spineTools },
-    ].filter(d => d.count);
-    if (chipData.length > 0) {
-      html += `<div class="context-breakdown">${chipData.map(d => {
-        if (d.items && d.items.length > 0) {
-          const id = 'ctx-expand-' + d.label;
-          const list = d.items.map(i => `<div class="ctx-expand-item">${esc(i)}</div>`).join('');
-          return `<span class="ctx-chip ctx-chip-clickable" data-expand="${id}" onclick="event.stopPropagation();this.parentElement.querySelector('#${id}').classList.toggle('ctx-expanded')">${d.count} ${d.label}</span><div class="ctx-expand-list" id="${id}">${list}</div>`;
-        }
-        return `<span class="ctx-chip">${d.count} ${d.label}</span>`;
-      }).join('')}</div>`;
-    }
-  }
-  return html;
+function hidePixelOfficeContext() {
+  const ctxField = document.getElementById('detail-context-field');
+  if (ctxField) ctxField.style.display = 'none';
 }
 
 function focusTimelineEntry(group, timestamp) {
@@ -543,14 +503,7 @@ function applyState(nextState) {
         const blk = renderActiveSessionBlock(updated, { wrapField: false });
         if (blk) detailSessEl.innerHTML = blk;
       }
-      updateDetailContextLabel();
-      const ctxField = document.getElementById('detail-context-field');
-      const ctxEl = document.getElementById('detail-context');
-      if (ctxField && ctxEl) {
-        const ctxHtml = renderContextIndicator(updated);
-        if (ctxHtml) { ctxField.style.display = ''; ctxEl.innerHTML = ctxHtml; }
-        else { ctxField.style.display = 'none'; }
-      }
+      hidePixelOfficeContext();
     }
   }
 }
@@ -1498,13 +1451,7 @@ async function showDetailPanel(cw) {
     };
   }
 
-  // Context indicator
-  const ctxField = document.getElementById('detail-context-field');
-  const ctxEl = document.getElementById('detail-context');
-  updateDetailContextLabel();
-  const ctxHtml = renderContextIndicator(cw);
-  if (ctxHtml) { ctxField.style.display = ''; ctxEl.innerHTML = ctxHtml; }
-  else { ctxField.style.display = 'none'; }
+  hidePixelOfficeContext();
 
   // Active Session block — uses the same helper as the Coworkers detail panel so the
   // two surfaces can't diverge. Leads with the nanoclaw `sess-…` id + container_status +
