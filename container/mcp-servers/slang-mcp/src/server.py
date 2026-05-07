@@ -1,6 +1,7 @@
 """Slang MCP server for GitHub, Discord, and Slack API tools."""
 
 import json
+import os
 import sys
 
 import anyio
@@ -1099,8 +1100,12 @@ def main(port: int, transport: str) -> int:
                 # Return empty response to avoid NoneType error when client disconnects
                 return Response()
 
+            # Starlette debug=True enables hot-reload + stack-trace leakage.
+            # Fine for local dev, a leak in prod — so gate on an explicit env
+            # var (RC-M7). "1"/"true"/"yes" opt in; anything else keeps it off.
+            debug_flag = os.getenv("SLANG_MCP_DEBUG", "").strip().lower() in ("1", "true", "yes")
             starlette_app = Starlette(
-                debug=True,
+                debug=debug_flag,
                 routes=[
                     Route("/sse", endpoint=handle_sse),
                     Mount("/messages/", app=sse.handle_post_message),

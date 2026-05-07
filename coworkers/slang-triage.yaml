@@ -1125,7 +1125,7 @@ memory:
        - Reporter says "this used to work", "regression", or names a version where it last worked
        - Issue title or labels include "regression"
        - Any other indication from the reporter or other commenters suggesting it is a regression
-       
+
        If regression is indicated, proceed to Regression Bisection. Otherwise, continue to Code Investigation.
 
     5. **Not reproduced on top-of-tree**: If repro steps are clear and the issue does not reproduce on top-of-tree,
