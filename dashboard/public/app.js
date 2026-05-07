@@ -4276,6 +4276,31 @@ function applyCwUrl(retries = 8) {
   }
 }
 
+
+function renderOtherSessionLinks(cw, currentSession) {
+  const sessions = activeNanoSessionsForCoworker(cw).filter(
+    (s) => s.nanoclaw_session_id && s.nanoclaw_session_id !== currentSession?.nanoclaw_session_id,
+  );
+  if (sessions.length === 0) return '';
+  return `<div style="font-size:0.625rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin:7px 0 3px">Other Sessions</div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      ${sessions.slice(0, 3).map((sess) => {
+        const label = sessionDisplayTitle(sess);
+        const key = sessionKeyLabel(sess);
+        const lastMs = sess.last_active ? new Date(sess.last_active).getTime() : (sess.sdk_subsessions?.[0]?.last_ts ?? 0);
+        const ago = lastMs ? timeAgo(lastMs) : '';
+        return `<button class="hook-entry" title="Open this session in Timeline" style="display:flex;align-items:center;gap:6px;text-align:left;font-size:9px;padding:3px 5px;border-color:transparent;background:rgba(255,255,255,0.02)"
+          data-view-nanoclaw-session="${escAttr(sess.nanoclaw_session_id)}"
+          data-view-nanoclaw-agid="${escAttr(sess.agent_group_id || '')}"
+          data-view-session-group="${escAttr(cw.folder)}">
+          <span style="color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</span>
+          <span style="color:var(--text-muted)">${ago ? esc(ago) : esc(key)}</span>
+        </button>`;
+      }).join('')}
+      ${sessions.length > 3 ? `<div style="font-size:9px;color:var(--text-dim);margin-left:4px">+${sessions.length - 3} more in Timeline</div>` : ''}
+    </div>`;
+}
+
 async function updateCwDetail() {
   const folder = cwState.selected;
   if (!folder) return;
@@ -4326,11 +4351,8 @@ async function updateCwDetail() {
   const liveCwForHooks = (state.coworkers || []).find(c => c.folder === folder);
   const toolsEl = document.getElementById('cw-detail-tools');
   if (liveCwForHooks) {
-    const sessionCount = activeNanoSessionsForCoworker(liveCwForHooks).length;
-    const otherNote = sessionCount > 1
-      ? `<div style="font-size:0.625rem;color:var(--text-dim);margin-top:5px">${sessionCount - 1} other session${sessionCount === 2 ? '' : 's'} for this coworker. Use the Sessions list to open one.</div>`
-      : '';
-    toolsEl.innerHTML = `${renderCurrentSessionEvents(folder) || '<span style="color:var(--text-dim)">None</span>'}${otherNote}`;
+    const currentSession = currentViewedNanoSession(folder);
+    toolsEl.innerHTML = `${renderCurrentSessionEvents(folder) || '<span style="color:var(--text-dim)">None</span>'}${renderOtherSessionLinks(liveCwForHooks, currentSession)}`;
     // Wire up hook-entry-link click handlers (same as Pixel Office detail panel)
     toolsEl.querySelectorAll('.hook-entry-link').forEach(btn => {
       btn.addEventListener('click', () => {
