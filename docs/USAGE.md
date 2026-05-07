@@ -191,16 +191,19 @@ v2 replaces the monolithic role-template system with a composable "lego" model. 
 
 ### Branch Topology
 
-Feature content is split across independent skill branches that fork from the neutral infrastructure base:
+Feature content is split across independent `nv-*` branches that fork from the upstream base. All downstream installs consume `nv-coworkers`, which is the aggregator that merges the per-bucket branches on every push:
 
 ```
-upstream/v2
-  └── v2_main (neutral infrastructure + lego composer + register fixes)
-        ├── nv-dashboard (Pixel Office dashboard + ingress + hook events)
-        └── nv-slang (Slang compiler support + MCP + coworker types)
+upstream/main
+  └── nv-main (neutral infrastructure + lego composer + register fixes)
+        ├── nv-dashboard  (Pixel Office dashboard + ingress + hook events)
+        ├── nv-slang      (Slang compiler support + MCP + coworker types)
+        ├── nv-slangpy    (SlangPy Python bindings project)
+        └── nv-nanoclaw   (NanoClaw-as-project trait set)
+               → nv-coworkers (aggregator — consumed by prod + dev installs)
 ```
 
-Each branch carries only its own files. Merging both into v2_main produces the full install. Neither branch inherits the other's content.
+Each `nv-*` branch carries only its own files. Merging them into `nv-coworkers` produces the full install; neither branch inherits the other's content. Changes land on the owning `nv-*` branch first, then propagate via `nv-coworkers`.
 
 ### Coworker Types (Lego Registry)
 
@@ -314,7 +317,7 @@ Sessions are created lazily on first message. The dashboard API eagerly creates 
 
 ## v2 Changelog
 
-### Infrastructure (v2_main)
+### Infrastructure (nv-main)
 
 - **Lego coworker template system** — composable spine from types, fragments, skills, workflows, overlays, and trait bindings. Replaces monolithic role templates.
 - **Register.ts v2 flags** — `--coworker-type`, `--agent-provider`, `--is-admin`, engage modes, sender scope. Dashboard channel gets `unknown_sender_policy: 'public'`.

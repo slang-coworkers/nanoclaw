@@ -39,7 +39,7 @@ This merges in:
 
 ### Prompt layering
 
-The base `groups/main/CLAUDE.md` stays on `v2_main` — it is regenerated from the lego spine via `npm run rebuild:claude`, not hand-edited. (`groups/global/CLAUDE.md` is retired; there is no separate global body to keep in sync.)
+The base `groups/main/CLAUDE.md` is regenerated from the lego spine via `npm run rebuild:claude`, not hand-edited. (`groups/global/CLAUDE.md` is retired; there is no separate global body to keep in sync.)
 
 This skill appends the dashboard formatting guidance to the `main` flat type's context via `container/spines/base/coworker-types.yaml`. The composer scans every `container/{spines,skills}/*/coworker-types.yaml` and merges duplicate type entries, so a dashboard-specific fragment added under `base` rolls into the `main` type without replacing the existing nanoclaw/slang fragments. To reflect it in the checked-in prompts:
 
