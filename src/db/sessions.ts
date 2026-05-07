@@ -36,9 +36,7 @@ export function updateSessionTitle(
       ? 'WHERE id = ?'
       : "WHERE id = ? AND (display_title IS NULL OR COALESCE(title_source, '') != 'manual')";
   const res = getDb()
-    .prepare(
-      `UPDATE sessions SET display_title = ?, title_source = ?, title_updated_at = ? ${clause}`,
-    )
+    .prepare(`UPDATE sessions SET display_title = ?, title_source = ?, title_updated_at = ? ${clause}`)
     .run(displayTitle, source, now, sessionId);
   return res.changes > 0;
 }

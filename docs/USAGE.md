@@ -212,9 +212,9 @@ Types are defined in `container/{spines,skills}/*/coworker-types.yaml`. The exte
 | `slang-common` | Slang compiler spine (identity, invariants) | `base-common` |
 | `slang-reader` | Read-only: plan / investigate / review / research via `/plan` | `slang-common` |
 | `slang-writer` | Write-capable: `/plan` + `/slang-implement` | `slang-common` |
-| 
-| 
-| `main` / `global` | Flat admin + shared assistants | — (verbatim body, no spine) |
+|
+|
+| `main` | Flat admin orchestrator body composed from the base spine's `main` entry (there is no separate `global` type — `groups/global/CLAUDE.md` was retired; the base spine is merged directly into `groups/main/CLAUDE.md`). | — (flat — no `extends`) |
 
 Validate types: `npm run validate:templates`. Rebuild checked-in prompts: `npm run rebuild:claude`.
 

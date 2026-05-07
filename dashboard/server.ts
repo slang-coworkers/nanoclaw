@@ -39,6 +39,7 @@ import { createRequire } from 'node:module';
 
 import { initDb as initSrcDb } from '../src/db/connection.js';
 import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/write-destinations.js';
+import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 
 /**
  * Check if `target` is inside (or equal to) `baseDir`.
@@ -8048,10 +8049,10 @@ export async function handleRequest(
         res.end('{"error":"approvalId and decision required"}');
         return;
       }
-      const VALID_DECISIONS = ['Approve', 'Reject'];
-      if (!VALID_DECISIONS.includes(actionDecision)) {
+      const canonical = canonicalizeDecision(actionDecision);
+      if (!canonical) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: `Invalid decision "${actionDecision}". Must be one of: ${VALID_DECISIONS.join(', ')}` }));
+        res.end(JSON.stringify({ error: `Invalid decision "${actionDecision}". Must be one of: ${[...CANONICAL_DECISIONS].join(', ')}` }));
         return;
       }
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -8061,7 +8062,7 @@ export async function handleRequest(
       const upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/action`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ approvalId, decision: actionDecision }),
+        body: JSON.stringify({ approvalId, decision: canonical }),
         signal: AbortSignal.timeout(5000),
       });
       if (!upstream.ok) {

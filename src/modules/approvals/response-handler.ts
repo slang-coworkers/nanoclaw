@@ -19,7 +19,19 @@ import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import type { PendingApproval } from '../../types.js';
 import { ONECLI_ACTION, resolveOneCLIApproval } from './onecli-approvals.js';
-import { getApprovalHandler } from './primitive.js';
+import { getApprovalHandler, pickApprover } from './primitive.js';
+
+// Sentinels used when the response originates from the local dashboard or CLI
+// rather than a messaging-platform user. They bypass approver validation
+// because they're already gated by dashboard auth / host-local access.
+const LOCAL_APPROVER_SENDERS = new Set(['dashboard-admin', 'cli-admin', 'system']);
+
+function isAuthorizedApprover(approval: PendingApproval, userId: string): boolean {
+  if (!userId) return false;
+  if (LOCAL_APPROVER_SENDERS.has(userId)) return true;
+  const eligible = pickApprover(approval.session_id ? approval.agent_group_id ?? null : null);
+  return eligible.includes(userId);
+}
 
 export async function handleApprovalsResponse(payload: ResponsePayload): Promise<boolean> {
   // OneCLI credential approvals — resolved via in-memory Promise first.
@@ -38,7 +50,18 @@ export async function handleApprovalsResponse(payload: ResponsePayload): Promise
     return true;
   }
 
-  await handleRegisteredApproval(approval, payload.value, payload.userId ?? '');
+  const userId = payload.userId ?? '';
+  if (!isAuthorizedApprover(approval, userId)) {
+    log.warn('Approval response rejected — responder not an eligible approver', {
+      approvalId: approval.approval_id,
+      action: approval.action,
+      userId,
+    });
+    // Do not consume the approval; let it remain pending for a valid approver.
+    return true;
+  }
+
+  await handleRegisteredApproval(approval, payload.value, userId);
   return true;
 }
 

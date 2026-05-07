@@ -5470,11 +5470,16 @@ function renderAdminInfra() {
   const serverEntries = Array.isArray(serverMap)
     ? serverMap.map((name) => [name, d.mcpAuthProxy?.toolCount || 0])
     : Object.entries(serverMap || {});
+  // Buttons use data-mcp-action + data-mcp-server so a single delegated
+  // click handler (wired in setupMcpActionDelegation) invokes the right
+  // window.* function. Avoids interpolating untrusted server names into JS
+  // string literals inside onclick="" (RC-H1: MCP names containing an
+  // apostrophe would have broken out of the JS-string context).
   const localServers = serverEntries.map(([s, count]) => `
     <tr><td>${esc(s)}</td><td>Local (stdio)</td><td>${count} tools</td>
     <td><span class="admin-chip active">Running</span>
-    <button class="admin-action-btn" style="font-size:9px;padding:1px 6px;margin-left:4px" onclick="restartMcp('${esc(s)}')">Restart</button>
-    <button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" onclick="stopMcp('${esc(s)}')">Stop</button></td></tr>`).join('');
+    <button class="admin-action-btn" style="font-size:9px;padding:1px 6px;margin-left:4px" data-mcp-action="restartMcp" data-mcp-server="${esc(s)}">Restart</button>
+    <button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" data-mcp-action="stopMcp" data-mcp-server="${esc(s)}">Stop</button></td></tr>`).join('');
 
   // Remote MCP servers (registered via dashboard) — check token status per server
   const tokenStatus = d.oauth?.tokenStatus || {};
@@ -5484,10 +5489,10 @@ function renderAdminInfra() {
       ? `<span class="admin-chip active" style="font-size:8px">Authorized</span>`
       : `<span class="admin-chip stopped" style="font-size:8px">No token</span>`;
     const authBtn = hasToken
-      ? `<button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" onclick="revokeOAuth('${esc(s.name)}')">Revoke</button>`
-      : `<button class="admin-action-btn success" style="font-size:9px;padding:1px 6px" onclick="pasteToken('${esc(s.name)}')">Add Token</button>`;
+      ? `<button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" data-mcp-action="revokeOAuth" data-mcp-server="${esc(s.name)}">Revoke</button>`
+      : `<button class="admin-action-btn success" style="font-size:9px;padding:1px 6px" data-mcp-action="pasteToken" data-mcp-server="${esc(s.name)}">Add Token</button>`;
     return `<tr><td>${esc(s.name)}</td><td>${authBadge}</td><td style="font-size:8px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(s.url)}</td>
-    <td>${authBtn} <button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" onclick="removeRemoteMcp('${esc(s.name)}')">Remove</button></td></tr>`;
+    <td>${authBtn} <button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" data-mcp-action="removeRemoteMcp" data-mcp-server="${esc(s.name)}">Remove</button></td></tr>`;
   }).join('');
 
   // OAuth servers
@@ -5496,9 +5501,9 @@ function renderAdminInfra() {
     <tr><td>${esc(s.name)}</td>
     <td><span class="admin-chip ${s.authorized ? 'active' : 'stopped'}">${s.authorized ? 'Authorized' : 'Not authorized'}</span></td>
     <td>${s.authorized
-      ? `<button class="admin-action-btn danger" onclick="revokeOAuth('${esc(s.name)}')">Revoke</button>`
-      : `<button class="admin-action-btn success" onclick="authorizeOAuth('${esc(s.name)}')">Browser Auth</button>
-         <button class="admin-action-btn" onclick="pasteToken('${esc(s.name)}')">Paste Token</button>`
+      ? `<button class="admin-action-btn danger" data-mcp-action="revokeOAuth" data-mcp-server="${esc(s.name)}">Revoke</button>`
+      : `<button class="admin-action-btn success" data-mcp-action="authorizeOAuth" data-mcp-server="${esc(s.name)}">Browser Auth</button>
+         <button class="admin-action-btn" data-mcp-action="pasteToken" data-mcp-server="${esc(s.name)}">Paste Token</button>`
     }</td></tr>`).join('')
     || '<tr><td colspan="3" style="color:var(--text-muted)">No OAuth servers. Import MCP servers below to auto-create.</td></tr>';
 
@@ -5606,6 +5611,22 @@ window.restartMcp = function(name) {
     .then(r => r.json()).then(j => { if (j.ok) { adminState.loaded.delete('infra'); loadAdminInfra(); } else alert(j.error); })
     .catch(e => alert('Failed: ' + e.message));
 };
+
+// Delegated click handler for MCP action buttons. Buttons opt in with
+// `data-mcp-action="<fn>"` + `data-mcp-server="<name>"` so server names
+// containing quotes / backslashes don't need to be safely interpolated
+// into an inline onclick="" JS-string context (RC-H1).
+if (!window.__mcpActionDelegated) {
+  window.__mcpActionDelegated = true;
+  document.addEventListener('click', function (ev) {
+    const btn = ev.target && ev.target.closest && ev.target.closest('[data-mcp-action]');
+    if (!btn) return;
+    const action = btn.getAttribute('data-mcp-action');
+    const name = btn.getAttribute('data-mcp-server') || '';
+    const fn = window[action];
+    if (typeof fn === 'function') fn(name);
+  });
+}
 
 window.importMcpServers = function() {
   const textarea = document.getElementById('infra-import-json');

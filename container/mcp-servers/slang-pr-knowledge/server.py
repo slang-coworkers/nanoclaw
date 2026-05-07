@@ -64,11 +64,21 @@ def search_prs(query: str, repo: Optional[str] = None, limit: int = 10) -> str:
     Args:
         query: Search terms (e.g. "constraint ordering", "Optional DifferentialPair crash")
         repo: Filter by repo - "slang" or "slangpy". Omit for both.
-        limit: Max results to return (default 10)
+        limit: Max results to return (default 10, capped at 100)
     """
     db = get_db()
     if not db:
         return "Error: Database not found. Run ingest.py first."
+
+    # Coerce + clamp `limit`. The LIMIT clause is interpolated (SQLite
+    # doesn't bind LIMIT portably across all drivers), so we make sure it's
+    # always an int in a bounded range — this closes the string-injection
+    # path the raw f-string opened (RC-M6).
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = 10
+    limit = max(1, min(100, limit))
 
     results = []
     sql = """
