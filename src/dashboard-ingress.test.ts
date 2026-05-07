@@ -76,9 +76,7 @@ describe('dashboard ingress', () => {
     });
 
     expect(res.status).toBe(200);
-    expect(routeInboundFn).toHaveBeenCalledWith(
-      expect.objectContaining({ threadId: 'msg-abc-123' }),
-    );
+    expect(routeInboundFn).toHaveBeenCalledWith(expect.objectContaining({ threadId: 'msg-abc-123' }));
   });
 
   it('trims whitespace and treats empty-after-trim thread_id as null', async () => {
@@ -101,9 +99,7 @@ describe('dashboard ingress', () => {
     });
 
     expect(res.status).toBe(200);
-    expect(routeInboundFn).toHaveBeenCalledWith(
-      expect.objectContaining({ threadId: null }),
-    );
+    expect(routeInboundFn).toHaveBeenCalledWith(expect.objectContaining({ threadId: null }));
   });
 
   it('rejects non-string thread_id with 400', async () => {

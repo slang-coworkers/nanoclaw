@@ -5,22 +5,10 @@ import { getChannelAdapter } from './channels/channel-registry.js';
 import { log } from './log.js';
 import { routeInbound } from './router.js';
 import type { InboundEvent } from './channels/adapter.js';
+import { CANONICAL_DECISIONS, canonicalizeDecision } from './modules/approvals/decision.js';
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
-// Canonical values are `Approve` / `Reject` (capitalized), but we accept
-// any case on the wire and canonicalize in `canonicalizeDecision`. This
-// matches what approval-button handlers expect downstream while letting
-// clients (and tests) post lowercase without a 400.
-const CANONICAL_DECISIONS = ['Approve', 'Reject'] as const;
 const VALID_DECISIONS = new Set<string>(CANONICAL_DECISIONS);
-
-function canonicalizeDecision(raw: string): string | null {
-  const normalized = raw.trim().toLowerCase();
-  for (const canonical of CANONICAL_DECISIONS) {
-    if (canonical.toLowerCase() === normalized) return canonical;
-  }
-  return null;
-}
 
 export interface DashboardIngressHandle {
   server: Server;
