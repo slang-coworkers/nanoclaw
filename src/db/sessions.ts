@@ -1,9 +1,28 @@
 import type { PendingApproval, PendingQuestion, Session } from '../types.js';
 import { getDb, hasTable } from './connection.js';
 
+let sessionTitleColumnsSupported: boolean | null = null;
+function hasSessionTitleColumns(): boolean {
+  if (sessionTitleColumnsSupported !== null) return sessionTitleColumnsSupported;
+  const cols = getDb().prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
+  const names = new Set(cols.map((c) => c.name));
+  sessionTitleColumnsSupported =
+    names.has('display_title') && names.has('title_source') && names.has('title_updated_at');
+  return sessionTitleColumnsSupported;
+}
+
 // ── Sessions ──
 
 export function createSession(session: Session): void {
+  if (hasSessionTitleColumns()) {
+    getDb()
+      .prepare(
+        `INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, display_title, title_source, title_updated_at, agent_provider, status, container_status, last_active, created_at)
+         VALUES (@id, @agent_group_id, @messaging_group_id, @thread_id, @display_title, @title_source, @title_updated_at, @agent_provider, @status, @container_status, @last_active, @created_at)`,
+      )
+      .run({ display_title: null, title_source: null, title_updated_at: null, ...session });
+    return;
+  }
   getDb()
     .prepare(
       `INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, agent_provider, status, container_status, last_active, created_at)

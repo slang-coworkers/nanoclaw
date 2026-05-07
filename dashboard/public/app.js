@@ -252,6 +252,34 @@ function activeNanoSessionsForCoworker(cw) {
   });
 }
 
+
+function sessionKeyLabel(nanoSess) {
+  if (!nanoSess?.nanoclaw_session_id) return '';
+  return typeof window.sessionLabel === 'function'
+    ? window.sessionLabel(nanoSess.nanoclaw_session_id, nanoSess.thread_id)
+    : `${nanoSess.thread_id ? 'thread' : 'main'} · ${nanoSess.nanoclaw_session_id}`;
+}
+
+function sessionDisplayTitle(nanoSess) {
+  return nanoSess?.display_title || sessionKeyLabel(nanoSess);
+}
+
+function sessionTitleHtml(nanoSess, { compact = false } = {}) {
+  const title = sessionDisplayTitle(nanoSess);
+  const key = sessionKeyLabel(nanoSess);
+  const showKey = key && key !== title;
+  if (compact) {
+    return `<span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1" title="${escAttr(nanoSess.nanoclaw_session_id)}">
+      <span style="color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(title)}</span>
+      ${showKey ? `<span style="font-size:8px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">key: ${esc(key)}</span>` : ''}
+    </span>`;
+  }
+  return `<span style="display:flex;flex-direction:column;gap:1px;min-width:0" title="${escAttr(nanoSess.nanoclaw_session_id)}">
+    <span style="font-size:10px;color:var(--text)">${esc(title)}</span>
+    ${showKey ? `<span style="font-size:8px;color:var(--text-muted)">key: ${esc(key)}</span>` : ''}
+  </span>`;
+}
+
 function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
   const groupEvents = (state.hookEvents || []).filter((e) => hookEventBelongsToCoworker(e, cw));
   const nanoSessions = activeNanoSessionsForCoworker(cw)
@@ -267,9 +295,7 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       const lastMs = nanoSess.last_active
         ? new Date(nanoSess.last_active).getTime()
         : (nanoSess.sdk_subsessions?.[0]?.last_ts ?? 0);
-      const humanSess = typeof window.sessionLabel === 'function'
-        ? window.sessionLabel(nanoSess.nanoclaw_session_id, nanoSess.thread_id)
-        : nanoSess.nanoclaw_session_id;
+      const humanSess = sessionDisplayTitle(nanoSess);
       const status = nanoSess.activity_status || (nanoSess.container_status === 'running' ? 'active' : 'idle');
       return {
         lastMs,
@@ -293,7 +319,7 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       <div style="font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Current Target</div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDotColor(target.status)}" title="${escAttr(target.status)}"></span>
-        <span style="font-size:10px;color:var(--text)" title="${escAttr(target.nanoSess.nanoclaw_session_id)}">${esc(target.humanSess)}</span>
+        ${sessionTitleHtml(target.nanoSess)}
         <span style="font-size:9px;color:var(--text-muted)">${esc(target.cs)}${target.ago ? ' · last ' + esc(target.ago) : ''}</span>
       </div>
       <button class="admin-action-btn" style="font-size:8px;padding:1px 6px;margin-top:4px"
@@ -308,7 +334,7 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
           data-view-nanoclaw-agid="${escAttr(m.nanoSess.agent_group_id || '')}"
           data-view-session-group="${escAttr(cw.folder)}">
           <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDotCanvasColor(m.status)};opacity:.75"></span>
-          <span style="color:var(--text-dim);flex:1" title="${escAttr(m.nanoSess.nanoclaw_session_id)}">${esc(m.humanSess)}</span>
+          ${sessionTitleHtml(m.nanoSess, { compact: true })}
           <span style="color:var(--text-muted)">${esc(m.cs)}${m.ago ? ' · ' + esc(m.ago) : ''}</span>
         </button>`).join('')}
         ${otherSessions.length > 5 ? `<div style="font-size:9px;color:var(--text-dim);margin-left:4px">+${otherSessions.length - 5} more sessions in Timeline</div>` : ''}
@@ -382,9 +408,8 @@ function currentViewedNanoSession(folder) {
 function renderCurrentSessionEvents(folder) {
   const nanoSess = currentViewedNanoSession(folder);
   if (!nanoSess) return '<span style="color:var(--text-dim)">No active session resolved for this view.</span>';
-  const label = typeof window.sessionLabel === 'function'
-    ? window.sessionLabel(nanoSess.nanoclaw_session_id, nanoSess.thread_id)
-    : nanoSess.nanoclaw_session_id;
+  const label = sessionDisplayTitle(nanoSess);
+  const key = sessionKeyLabel(nanoSess);
   const events = nanoSess.recent_events || [];
   const eventHtml = events.length === 0
     ? '<div style="color:var(--text-dim);font-size:0.6875rem;margin-top:4px">No recent events for this session.</div>'
@@ -394,6 +419,7 @@ function renderCurrentSessionEvents(folder) {
   return `<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
     <div style="font-size:0.625rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">This Session</div>
     <div style="font-size:0.6875rem;color:var(--text);margin-top:2px" title="${escAttr(nanoSess.nanoclaw_session_id)}">${esc(label)}</div>
+    ${key && key !== label ? `<div style="font-size:0.5625rem;color:var(--text-muted);margin-top:1px">key: ${esc(key)}</div>` : ''}
     <div style="margin-top:4px">${eventHtml}</div>
   </div>`;
 }
@@ -2163,13 +2189,10 @@ function updateSessionSelector() {
     // Session label — "main · <slug>" / "thread · <slug>" via the shared
     // sessionLabel() helper. Raw sess-xxx id surfaces as the option's
     // title= attribute so operators can still copy it for log grepping.
-    const humanLabel = p.nanoclaw_session_id
-      ? (typeof window.sessionLabel === 'function'
-          ? window.sessionLabel(p.nanoclaw_session_id, p.thread_id)
-          : `${p.thread_id ? 'thread' : 'main'} · ${p.nanoclaw_session_id}`)
-      : '';
+    const humanLabel = p.nanoclaw_session_id ? sessionDisplayTitle(p) : '';
+    const keyLabel = p.nanoclaw_session_id ? sessionKeyLabel(p) : '';
     const parentLabel = p.nanoclaw_session_id
-      ? `${prefix}${humanLabel} · ${parentTs} (${parentAgo}) · ${p.event_count_total} ev`
+      ? `${prefix}${humanLabel}${keyLabel && keyLabel !== humanLabel ? ` · key: ${keyLabel}` : ''} · ${parentTs} (${parentAgo}) · ${p.event_count_total} ev`
       : `${prefix}(no active nanoclaw session)`;
     const parentTitle = p.nanoclaw_session_id ? p.nanoclaw_session_id : '';
     const parentVal = p.nanoclaw_session_id ? `nano:${p.agent_group_id}:${p.nanoclaw_session_id}` : '';

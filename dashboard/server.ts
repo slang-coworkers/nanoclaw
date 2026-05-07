@@ -3576,7 +3576,33 @@ export async function handleRequest(
     return;
   }
 
-  // API: paginated hook event history from DB
+  
+function sanitizeSessionTitle(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const cleaned = raw
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/["'`*_#>\[\]{}]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return null;
+  const words = cleaned.split(' ').filter(Boolean).slice(0, 8);
+  if (words.length === 0) return null;
+  const title = words.join(' ');
+  return title.length > 72 ? title.slice(0, 69).trimEnd() + '...' : title;
+}
+
+function titleFromPrompt(prompt: string | null | undefined): string | null {
+  const title = sanitizeSessionTitle(prompt);
+  if (!title) return null;
+  return title
+    .replace(/^(please|can you|could you|would you|help me|i need you to)\s+/i, '')
+    .replace(/[?.!,;:]+$/g, '')
+    .trim() || title;
+}
+
+// API: paginated hook event history from DB
   if (url.pathname === '/api/hook-events/history') {
     if (!requireAuth(req, res)) return;
     const heDb = getHookEventsDb();
@@ -3700,17 +3726,22 @@ export async function handleRequest(
       // per folder ordered ascending by created_at so the query-time
       // fallback can bracket unrouted SDK UUIDs correctly.
       const folderSet = new Set<string>(flatRows.map((r) => r.group_folder).filter(Boolean));
-      type NanoSess = { id: string; agent_group_id: string; folder: string; thread_id: string | null; status: string; container_status: string; last_active: string | null; created_at: string };
+      type NanoSess = { id: string; agent_group_id: string; folder: string; thread_id: string | null; display_title: string | null; title_source: string | null; status: string; container_status: string; last_active: string | null; created_at: string };
       const nanoSessionsByFolder = new Map<string, NanoSess[]>();
       if (folderSet.size > 0) {
         const folders = Array.from(folderSet);
         const placeholders = folders.map(() => '?').join(',');
         let nanoRows: any[] = [];
         try {
+          const sessionCols = new Set((heDb.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>).map((c) => c.name));
+          const titleSelect = sessionCols.has('display_title')
+            ? 's.display_title AS display_title, s.title_source AS title_source,'
+            : 'NULL AS display_title, NULL AS title_source,';
           nanoRows = heDb
             .prepare(
               `SELECT s.id AS id, s.agent_group_id AS agent_group_id, ag.folder AS folder,
                       s.thread_id AS thread_id,
+                      ${titleSelect}
                       s.status AS status, s.container_status AS container_status,
                       s.last_active AS last_active, s.created_at AS created_at
                  FROM sessions s
@@ -3791,6 +3822,9 @@ export async function handleRequest(
       type Parent = {
         nanoclaw_session_id: string | null;
         thread_id: string | null;
+        display_title: string | null;
+        title_source: string | null;
+        session_key: string | null;
         group_folder: string;
         agent_group_id: string | null;
         container_status: string | null;
@@ -3813,6 +3847,9 @@ export async function handleRequest(
       const makeParent = (nano: NanoSess | null, folder: string): Parent => ({
         nanoclaw_session_id: nano ? nano.id : null,
         thread_id: nano ? nano.thread_id : null,
+        display_title: nano ? nano.display_title : null,
+        title_source: nano ? nano.title_source : null,
+        session_key: nano ? nano.id : null,
         group_folder: folder,
         agent_group_id: nano ? nano.agent_group_id : null,
         container_status: nano ? nano.container_status : null,
@@ -3951,6 +3988,31 @@ export async function handleRequest(
             p.activity_status = 'active';
           }
         } catch { /* hook_events may be unavailable in degraded fixtures */ }
+
+        if (!p.display_title) {
+          const promptEvent = p.recent_events.find((e) => e.event === 'UserPromptSubmit');
+          let promptTitle: string | null = null;
+          if (promptEvent) {
+            try {
+              const promptRow = heDb
+                .prepare('SELECT message FROM hook_events WHERE session_id = ? AND event = ? ORDER BY timestamp ASC LIMIT 1')
+                .get(promptEvent.session_id, 'UserPromptSubmit') as { message: string | null } | undefined;
+              promptTitle = titleFromPrompt(promptRow?.message);
+            } catch { /* ignore */ }
+          }
+          p.display_title = promptTitle || (p.thread_id ? 'Thread session' : 'Main session');
+          p.title_source = promptTitle ? 'heuristic' : 'auto';
+          if (p.session_key) {
+            try {
+              heDb.prepare(
+                `UPDATE sessions
+                    SET display_title = ?, title_source = ?, title_updated_at = ?
+                  WHERE id = ?
+                    AND (display_title IS NULL OR COALESCE(title_source, '') != 'manual')`,
+              ).run(p.display_title, p.title_source, new Date().toISOString(), p.session_key);
+            } catch { /* older test schemas may not have title columns */ }
+          }
+        }
       }
 
       parents.sort((a, b) => {
