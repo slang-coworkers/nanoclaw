@@ -4020,7 +4020,7 @@ export async function handleRequest(
       // per folder ordered ascending by created_at so the query-time
       // fallback can bracket unrouted SDK UUIDs correctly.
       const folderSet = new Set<string>(flatRows.map((r) => r.group_folder).filter(Boolean));
-      type NanoSess = { id: string; agent_group_id: string; folder: string; thread_id: string | null; display_title: string | null; title_source: string | null; status: string; container_status: string; last_active: string | null; created_at: string };
+      type NanoSess = { id: string; agent_group_id: string; folder: string; thread_id: string | null; display_title: string | null; title_source: string | null; hidden_at: string | null; pinned_at: string | null; status: string; container_status: string; last_active: string | null; created_at: string };
       const nanoSessionsByFolder = new Map<string, NanoSess[]>();
       if (folderSet.size > 0) {
         const folders = Array.from(folderSet);
@@ -4031,11 +4031,14 @@ export async function handleRequest(
           const titleSelect = sessionCols.has('display_title')
             ? 's.display_title AS display_title, s.title_source AS title_source,'
             : 'NULL AS display_title, NULL AS title_source,';
+          const stateSelect = `${sessionCols.has('hidden_at') ? 's.hidden_at' : 'NULL'} AS hidden_at,
+                      ${sessionCols.has('pinned_at') ? 's.pinned_at' : 'NULL'} AS pinned_at,`;
           nanoRows = heDb
             .prepare(
               `SELECT s.id AS id, s.agent_group_id AS agent_group_id, ag.folder AS folder,
                       s.thread_id AS thread_id,
                       ${titleSelect}
+                      ${stateSelect}
                       s.status AS status, s.container_status AS container_status,
                       s.last_active AS last_active, s.created_at AS created_at
                  FROM sessions s
@@ -4118,6 +4121,8 @@ export async function handleRequest(
         thread_id: string | null;
         display_title: string | null;
         title_source: string | null;
+        hidden_at: string | null;
+        pinned_at: string | null;
         session_key: string | null;
         group_folder: string;
         agent_group_id: string | null;
@@ -4143,6 +4148,8 @@ export async function handleRequest(
         thread_id: nano ? nano.thread_id : null,
         display_title: nano ? nano.display_title : null,
         title_source: nano ? nano.title_source : null,
+        hidden_at: nano ? nano.hidden_at : null,
+        pinned_at: nano ? nano.pinned_at : null,
         session_key: nano ? nano.id : null,
         group_folder: folder,
         agent_group_id: nano ? nano.agent_group_id : null,
@@ -5198,6 +5205,107 @@ export async function handleRequest(
     }
     res.writeHead(found ? 200 : 404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(found ? { ok: true } : { error: 'task not found' }));
+    return;
+  }
+
+  // API: toggle hidden/pinned state on a session. Non-destructive — flips a
+  // timestamp column on the sessions row. Dashboard uses these to filter and
+  // sort the Other Sessions list without touching on-disk session data.
+  // Path: /api/sessions/<nanoclaw_session_id>/<hidden|pinned>  Body: {on: boolean}
+  if (req.method === 'POST' && /^\/api\/sessions\/[^/]+\/(hidden|pinned)$/.test(url.pathname)) {
+    if (!requireAuth(req, res)) return;
+    const parts = url.pathname.split('/');
+    const sid = safeDecode(parts[3] || '');
+    const field = parts[4] === 'hidden' ? 'hidden_at' : 'pinned_at';
+    if (!sid) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end('{"error":"bad session id"}');
+      return;
+    }
+    const body = await readBody(req, res);
+    if (body === null) return;
+    let parsed: { on?: unknown };
+    try { parsed = JSON.parse(body); } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end('{"error":"invalid json"}');
+      return;
+    }
+    const on = parsed.on === true;
+    const wdb = getWriteDb();
+    if (!wdb) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end('{"error":"db unavailable"}');
+      return;
+    }
+    try {
+      const value = on ? new Date().toISOString() : null;
+      const r = wdb.prepare(`UPDATE sessions SET ${field} = ? WHERE id = ?`).run(value, sid);
+      if (r.changes === 0) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end('{"error":"session not found"}');
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, [field]: value }));
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  // API: set a manual display title on a session (operator rename from the UI).
+  // Path: /api/sessions/<nanoclaw_session_id>/title  Body: {title: string}
+  // Uses title_source='manual' so background heuristics won't overwrite it.
+  if (req.method === 'POST' && /^\/api\/sessions\/[^/]+\/title$/.test(url.pathname)) {
+    if (!requireAuth(req, res)) return;
+    const sid = safeDecode(url.pathname.replace('/api/sessions/', '').replace('/title', ''));
+    if (!sid) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end('{"error":"bad session id"}');
+      return;
+    }
+    const body = await readBody(req, res);
+    if (body === null) return;
+    let parsed: { title?: unknown };
+    try { parsed = JSON.parse(body); } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end('{"error":"invalid json"}');
+      return;
+    }
+    const title = typeof parsed.title === 'string' ? parsed.title.trim() : '';
+    if (!title) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end('{"error":"title required"}');
+      return;
+    }
+    if (title.length > 200) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end('{"error":"title too long (max 200 chars)"}');
+      return;
+    }
+    const wdb = getWriteDb();
+    if (!wdb) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end('{"error":"db unavailable"}');
+      return;
+    }
+    try {
+      const now = new Date().toISOString();
+      const r = wdb
+        .prepare(`UPDATE sessions SET display_title = ?, title_source = 'manual', title_updated_at = ? WHERE id = ?`)
+        .run(title, now, sid);
+      if (r.changes === 0) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end('{"error":"session not found"}');
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, title }));
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
     return;
   }
 
