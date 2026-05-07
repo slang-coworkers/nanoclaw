@@ -57,7 +57,7 @@ export function recordSource(params: {
 }
 
 export function getSourceFor(recipientSessionId: string): A2aSessionSource | undefined {
-  return getDb()
-    .prepare('SELECT * FROM a2a_session_sources WHERE recipient_session_id = ?')
-    .get(recipientSessionId) as A2aSessionSource | undefined;
+  return getDb().prepare('SELECT * FROM a2a_session_sources WHERE recipient_session_id = ?').get(recipientSessionId) as
+    | A2aSessionSource
+    | undefined;
 }

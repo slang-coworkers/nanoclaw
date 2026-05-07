@@ -29,7 +29,7 @@ const LOCAL_APPROVER_SENDERS = new Set(['dashboard-admin', 'cli-admin', 'system'
 function isAuthorizedApprover(approval: PendingApproval, userId: string): boolean {
   if (!userId) return false;
   if (LOCAL_APPROVER_SENDERS.has(userId)) return true;
-  const eligible = pickApprover(approval.session_id ? approval.agent_group_id ?? null : null);
+  const eligible = pickApprover(approval.session_id ? (approval.agent_group_id ?? null) : null);
   return eligible.includes(userId);
 }
 
