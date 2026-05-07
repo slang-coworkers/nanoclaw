@@ -404,6 +404,60 @@ Save screenshot to `/tmp/nanoclaw-test-$(date +%Y%m%d_%H%M%S).png`.
 
 ---
 
+## Phase 21b — disable_overlays end-to-end (DO01)
+
+Unit coverage for the compose path is in `src/claude-composer-refactor.test.ts::R19`. The gap this phase closes is the RUNTIME path: `agent_groups.disable_overlays` toggled in the DB must reshape `groups/<folder>/CLAUDE.md` on the **next container respawn**. The rebuild script at `scripts/rebuild-claude-md.ts` only touches `groups/main/CLAUDE.md`; per-coworker CLAUDE.md is (re)composed at container spawn time via `composeCoworkerSpine` in `src/container-runner.ts`. So this phase forces a respawn between snapshots.
+
+Capture both renderings and diff them — empty diff is a fail even if markers moved byte-wise. Reviewer should see the exact block that came out.
+
+```bash
+FOLDER="slang-reader"   # any non-admin coworker with overlays
+AG=$(python3 -c "import sqlite3; print(sqlite3.connect('data/v2.db').execute(\"SELECT id FROM agent_groups WHERE folder='$FOLDER'\").fetchone()[0])")
+
+force_respawn_and_capture() {
+  local flag=$1 out=$2
+  python3 -c "import sqlite3; c=sqlite3.connect('data/v2.db'); c.execute(\"UPDATE agent_groups SET disable_overlays=$flag WHERE id='$AG'\"); c.commit()"
+  # Kill running containers so the next send triggers a fresh compose.
+  for C in $(docker ps --format '{{.Names}}' | grep "^$CONTAINER_PREFIX-$FOLDER-"); do
+    docker kill "$C" >/dev/null 2>&1
+  done
+  sleep 3
+  # A no-op message forces the host to respawn + recompose CLAUDE.md.
+  curl -sS --noproxy '*' -X POST -H 'content-type: application/json' \
+    -d "{\"group\":\"$FOLDER\",\"content\":\"DO01 ping flag=$flag\"}" \
+    http://localhost:$DASHBOARD_PORT/api/chat/send > /dev/null
+  sleep 12
+  cp "groups/$FOLDER/CLAUDE.md" "$out"
+}
+
+force_respawn_and_capture 0 /tmp/claude-overlays-on.md
+force_respawn_and_capture 1 /tmp/claude-overlays-off.md
+
+echo "=== diff (overlays-on → overlays-off) ==="
+diff -u /tmp/claude-overlays-on.md /tmp/claude-overlays-off.md | sed -n '1,80p'
+NET=$(diff /tmp/claude-overlays-on.md /tmp/claude-overlays-off.md | grep -c '^[<>]')
+[ "$NET" -gt 0 ] || { echo "DO01 FAIL: toggling disable_overlays produced no diff"; exit 1; }
+
+diff /tmp/claude-overlays-on.md /tmp/claude-overlays-off.md \
+  | grep -qE "⟐|CRITIQUE OVERLAY|Gate Protocol|critique-record-gate" \
+  && echo "DO01 gate-presence ✓" \
+  || { echo "DO01 FAIL: diff exists but no critique-gate markers moved"; exit 1; }
+
+# Round-trip: flip back, confirm byte-identical recovery.
+force_respawn_and_capture 0 /tmp/claude-overlays-on-2.md
+diff -q /tmp/claude-overlays-on.md /tmp/claude-overlays-on-2.md \
+  && echo "DO01 round-trip ✓" \
+  || { echo "DO01 FAIL: 0→1→0 did not restore byte-identical CLAUDE.md"; exit 1; }
+```
+
+| ID | Check |
+|---|---|
+| DO01 | After toggling `disable_overlays` + forcing a container respawn, `groups/<folder>/CLAUDE.md` differs, the diff contains the CRITIQUE OVERLAY GATE / Gate Protocol blocks, and a 0→1→0 round-trip restores the original rendering byte-for-byte. |
+
+Empty diff usually means the flag isn't being read in `container-runner.ts` composeCoworkerSpine call or the DB row wasn't written before the respawn fired; check `disableOverlays: agentGroup.disable_overlays === 1` is still threaded through.
+
+---
+
 ## Phase 22 — DB schema invariants (S23, S26, S28)
 
 ```bash
