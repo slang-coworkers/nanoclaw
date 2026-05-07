@@ -9,6 +9,20 @@ import { log } from '../../log.js';
 export interface Migration {
   version: number;
   name: string;
+  /**
+   * Names of migrations that MUST run before this one — e.g. a migration
+   * that references a column added by another migration should list that
+   * other migration's `name` here. The loader topologically sorts so
+   * declared dependencies always run first, even when `version` numbers
+   * would otherwise interleave (numeric migrations vs `module-*` files
+   * hand-picking version-number gaps).
+   *
+   * If a migration assumes an older migration's schema and doesn't
+   * declare it here, the assumption is a latent bug: it works today only
+   * because someone happened to pick the right version number. Declare
+   * the edge.
+   */
+  dependsOn?: string[];
   up: (db: Database.Database) => void;
 }
 
@@ -48,15 +62,46 @@ async function loadMigrations(): Promise<Migration[]> {
     out.push(found);
   }
 
-  out.sort((a, b) => a.version - b.version);
+  const names = new Set(out.map((m) => m.name));
+  for (const m of out) {
+    for (const dep of m.dependsOn ?? []) {
+      if (!names.has(dep)) {
+        throw new Error(
+          `Migration '${m.name}' declares dependsOn '${dep}' but no migration with that name is registered`,
+        );
+      }
+    }
+  }
 
-  const versions = out.map((m) => m.version);
+  // Topological sort: primary key is dependsOn, tiebreaker is version.
+  // This is what actually makes the registry safe when numeric migrations
+  // and module-* migrations pick version numbers from overlapping ranges
+  // (numeric uses 1..n; module-* has historically picked 3/4/7 at random).
+  // With dependsOn, a migration's prerequisites are declared, not assumed.
+  const byName = new Map(out.map((m) => [m.name, m]));
+  const remaining = new Set(out.map((m) => m.name));
+  const sorted: Migration[] = [];
+  while (remaining.size > 0) {
+    const ready = [...remaining]
+      .map((n) => byName.get(n) as Migration)
+      .filter((m) => (m.dependsOn ?? []).every((d) => !remaining.has(d)))
+      .sort((a, b) => a.version - b.version);
+    if (ready.length === 0) {
+      throw new Error(`Migration dependency cycle among: ${[...remaining].join(', ')}`);
+    }
+    for (const m of ready) {
+      sorted.push(m);
+      remaining.delete(m.name);
+    }
+  }
+
+  const versions = sorted.map((m) => m.version);
   const dupes = versions.filter((v, i) => versions.indexOf(v) !== i);
   if (dupes.length > 0) {
     throw new Error(`Duplicate migration versions: ${dupes.join(', ')}`);
   }
 
-  return out;
+  return sorted;
 }
 
 const migrations: Migration[] = await loadMigrations();

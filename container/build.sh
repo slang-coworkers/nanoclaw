@@ -32,9 +32,11 @@ if [ "${INSTALL_CJK_FONTS:-false}" = "true" ]; then
     BUILD_ARGS+=(--build-arg INSTALL_CJK_FONTS=true)
 fi
 
-# Auto-detect GPU: enable GPU packages if nvidia-smi is available
-if command -v nvidia-smi &>/dev/null; then
-    echo "NVIDIA GPU detected — building with GPU support (CUDA, Vulkan, X11)"
+# GPU build path: enabled via explicit env var. Previously this auto-flipped on
+# any host that had `nvidia-smi` in PATH (RC-L1), which silently opted hosts
+# into a ~multi-GB CUDA/Vulkan/X11 rebuild they didn't ask for. Opt-in only.
+if [ "${ENABLE_GPU:-}" = "1" ] || [ "${ENABLE_GPU:-}" = "true" ]; then
+    echo "GPU build requested via ENABLE_GPU — building with CUDA, Vulkan, X11"
     BUILD_ARGS+=(--build-arg ENABLE_GPU=1)
 fi
 

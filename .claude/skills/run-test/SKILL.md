@@ -21,6 +21,7 @@ Full integration test runner for a NanoClaw instance. Every failure becomes a tr
 - **Real commands, not mocks.** `pnpm`, `bun`, `curl`, `agent-browser`, direct SQLite reads.
 - **Dynamic type discovery.** Never hardcode `slang-*`/`nanoclaw-*`/`slangpy-*`. Inspect `readCoworkerTypes()`.
 - **Mandatory cleanup.** `test-*`-prefixed coworkers + DB rows + group dirs at end.
+- **Do NOT skip live-agent phases.** Phases that require a running agent turn (hooks H01-H05, MCP M01-M06, subagent A01-A04, credentials CR01-CR05, approvals AP01/03/04/06/07, UI B-tests, self-mod SM01-SM02) are NOT optional. Drive them through `POST http://localhost:$DASHBOARD_PORT/api/chat/send` (body: `{"group":"<coworker-folder>","content":"<prompt>"}`) and for UI use `agent-browser` per `container/skills/agent-browser/SKILL.md`. Wait for the turn to land (poll `data/v2-sessions/<ag>/<sess>/outbound.db::messages_out` or `hook_events` table), then assert the outcome. Only mark SKIPPED if the feature is not installed on this instance (e.g. `agent-browser` missing) — never because "it needs an agent turn". If you cannot drive a phase, explain why and open a TaskCreate describing the blocker; don't file a generic "SKIPPED" task.
 
 ---
 
@@ -95,10 +96,40 @@ The R-tests live in `src/claude-composer-refactor.test.ts` (run as part of Phase
 
 ---
 
+## Driving live-agent phases (shared by phases 5–6, 9, 11, 13, 19, 21)
+
+Many phases need an actual agent turn. Drive them:
+
+```bash
+# Pick a folder from agent_groups. Orchestrator = admin; slang-reader etc. are typed.
+FOLDER="orchestrator"
+curl -sS --noproxy '*' -X POST -H 'content-type: application/json' \
+  -d "{\"group\":\"$FOLDER\",\"content\":\"<your prompt>\"}" \
+  http://localhost:$DASHBOARD_PORT/api/chat/send
+```
+
+Poll for completion:
+
+```bash
+# Latest session for the agent group
+AG=$(python3 -c "import sqlite3; print(sqlite3.connect('data/v2.db').execute(\"SELECT id FROM agent_groups WHERE folder='$FOLDER'\").fetchone()[0])")
+SESS=$(python3 -c "import sqlite3; print(sqlite3.connect('data/v2.db').execute(\"SELECT id FROM sessions WHERE agent_group_id='$AG' AND status='active' ORDER BY created_at DESC LIMIT 1\").fetchone()[0])")
+# Wait for Stop event in hook_events, or new row in outbound.db
+```
+
+Every phase below assumes you will DRIVE the check — not skip it because it requires a running turn. If a check fails, file a TaskCreate with the repro command; don't mark it SKIPPED.
+
+---
+
 ## Phase 5 — Hook enforcement (H01–H05)
 
 ```bash
-# Find a coworker with a live container; trigger an Edit without writing a verdict file; expect denial.
+# Drive: ask a coworker (e.g. slang-reader) to run a critique round then try to Edit a non-critique
+# file without first writing the verdict. The PreToolUse hook must deny.
+curl -sS --noproxy '*' -X POST -H 'content-type: application/json' \
+  -d '{"group":"slang-reader","content":"Run one round of /codex-critique against /workspace/agent/README.md, then edit /workspace/agent/some-source-file.md WITHOUT writing the verdict to /workspace/agent/critiques/ first. Report the hook error you see."}' \
+  http://localhost:$DASHBOARD_PORT/api/chat/send
+# Assertions below check hook_events + workflow-state.json for the denial trail.
 ```
 
 | ID | Check |
@@ -116,15 +147,26 @@ The R-tests live in `src/claude-composer-refactor.test.ts` (run as part of Phase
 | ID | Check |
 |---|---|
 | M01 | Agent calls `mcp__nanoclaw__send_message` → destination `outbound.db` has the row |
-| M02 | Agent calls `mcp__nanoclaw__schedule_task` → row in `scheduled_tasks` table |
+| M02 | Agent calls `mcp__nanoclaw__schedule_task` → row in that session's `inbound.db::messages_in` with `process_after` set (there is no separate `scheduled_tasks` table — v2 reuses messages_in). Wait past processAfter and confirm status flips from `pending` to `completed`. |
 | M03 | Agent calls `mcp__nanoclaw__append_learning` → `/workspace/agent/learnings.md` appended |
 | M04 | Disallowed MCP tool (in `disallowedMcpTools`) → invocation error |
 | M05 | Kill MCP server with `docker kill $(docker ps -q -f name=slang-mcp)` → next tool call succeeds after restart |
-| M06 | `curl -k --cacert $CA https://api.github.com/meta` from within container via OneCLI proxy → HTTP 200 |
+| M06 | From within a running container: `docker exec $C sh -c 'curl -sS -o /dev/null -w "HTTP %{http_code}" https://api.github.com/meta'` — returns HTTP 200. The container has `SSL_CERT_FILE=/tmp/onecli-combined-ca.pem` preset; no explicit `--cacert` flag needed. |
 
 ---
 
 ## Phase 7 — Scheduled tasks (SC01–SC07)
+
+Scheduler is per-session (`inbound.db::messages_in` with `process_after` / `recurrence`) — NOT a global `scheduled_tasks` table. Drive via:
+
+```bash
+# Ask an agent to schedule a one-shot ~75s out, then wait and observe status flip.
+NOW_PLUS=$(date -d '+75 seconds' -Iseconds)
+curl -sS --noproxy '*' -X POST -H 'content-type: application/json' \
+  -d "{\"group\":\"orchestrator\",\"content\":\"Call mcp__nanoclaw__schedule_task with prompt='SC01 fire' and processAfter='$NOW_PLUS'. Reply only with the task id.\"}" \
+  http://localhost:$DASHBOARD_PORT/api/chat/send
+# Then after 80s, query the session's inbound.db for the row's status.
+```
 
 | ID | Check |
 |---|---|
@@ -275,7 +317,7 @@ The R-tests live in `src/claude-composer-refactor.test.ts` (run as part of Phase
 
 ## Phase 19 — Dashboard UI via agent-browser (B01–B18, BX01–BX08)
 
-If `agent-browser` not installed → mark SKIPPED with task.
+If `agent-browser` is not installed → file a TaskCreate that the tool is missing and move on; install it before the next run. If it IS installed (`which agent-browser` succeeds), you MUST drive the B-tests — do not skip them just because a selector has drifted. When a selector doesn't match, inspect the DOM via `agent-browser get html body | head -200`, find the current selector, update the probe, and file a task noting the drift so the skill gets updated.
 
 ```bash
 agent-browser open http://localhost:$DASHBOARD_PORT
@@ -362,6 +404,60 @@ Save screenshot to `/tmp/nanoclaw-test-$(date +%Y%m%d_%H%M%S).png`.
 
 ---
 
+## Phase 21b — disable_overlays end-to-end (DO01)
+
+Unit coverage for the compose path is in `src/claude-composer-refactor.test.ts::R19`. The gap this phase closes is the RUNTIME path: `agent_groups.disable_overlays` toggled in the DB must reshape `groups/<folder>/CLAUDE.md` on the **next container respawn**. The rebuild script at `scripts/rebuild-claude-md.ts` only touches `groups/main/CLAUDE.md`; per-coworker CLAUDE.md is (re)composed at container spawn time via `composeCoworkerSpine` in `src/container-runner.ts`. So this phase forces a respawn between snapshots.
+
+Capture both renderings and diff them — empty diff is a fail even if markers moved byte-wise. Reviewer should see the exact block that came out.
+
+```bash
+FOLDER="slang-reader"   # any non-admin coworker with overlays
+AG=$(python3 -c "import sqlite3; print(sqlite3.connect('data/v2.db').execute(\"SELECT id FROM agent_groups WHERE folder='$FOLDER'\").fetchone()[0])")
+
+force_respawn_and_capture() {
+  local flag=$1 out=$2
+  python3 -c "import sqlite3; c=sqlite3.connect('data/v2.db'); c.execute(\"UPDATE agent_groups SET disable_overlays=$flag WHERE id='$AG'\"); c.commit()"
+  # Kill running containers so the next send triggers a fresh compose.
+  for C in $(docker ps --format '{{.Names}}' | grep "^$CONTAINER_PREFIX-$FOLDER-"); do
+    docker kill "$C" >/dev/null 2>&1
+  done
+  sleep 3
+  # A no-op message forces the host to respawn + recompose CLAUDE.md.
+  curl -sS --noproxy '*' -X POST -H 'content-type: application/json' \
+    -d "{\"group\":\"$FOLDER\",\"content\":\"DO01 ping flag=$flag\"}" \
+    http://localhost:$DASHBOARD_PORT/api/chat/send > /dev/null
+  sleep 12
+  cp "groups/$FOLDER/CLAUDE.md" "$out"
+}
+
+force_respawn_and_capture 0 /tmp/claude-overlays-on.md
+force_respawn_and_capture 1 /tmp/claude-overlays-off.md
+
+echo "=== diff (overlays-on → overlays-off) ==="
+diff -u /tmp/claude-overlays-on.md /tmp/claude-overlays-off.md | sed -n '1,80p'
+NET=$(diff /tmp/claude-overlays-on.md /tmp/claude-overlays-off.md | grep -c '^[<>]')
+[ "$NET" -gt 0 ] || { echo "DO01 FAIL: toggling disable_overlays produced no diff"; exit 1; }
+
+diff /tmp/claude-overlays-on.md /tmp/claude-overlays-off.md \
+  | grep -qE "⟐|CRITIQUE OVERLAY|Gate Protocol|critique-record-gate" \
+  && echo "DO01 gate-presence ✓" \
+  || { echo "DO01 FAIL: diff exists but no critique-gate markers moved"; exit 1; }
+
+# Round-trip: flip back, confirm byte-identical recovery.
+force_respawn_and_capture 0 /tmp/claude-overlays-on-2.md
+diff -q /tmp/claude-overlays-on.md /tmp/claude-overlays-on-2.md \
+  && echo "DO01 round-trip ✓" \
+  || { echo "DO01 FAIL: 0→1→0 did not restore byte-identical CLAUDE.md"; exit 1; }
+```
+
+| ID | Check |
+|---|---|
+| DO01 | After toggling `disable_overlays` + forcing a container respawn, `groups/<folder>/CLAUDE.md` differs, the diff contains the CRITIQUE OVERLAY GATE / Gate Protocol blocks, and a 0→1→0 round-trip restores the original rendering byte-for-byte. |
+
+Empty diff usually means the flag isn't being read in `container-runner.ts` composeCoworkerSpine call or the DB row wasn't written before the respawn fired; check `disableOverlays: agentGroup.disable_overlays === 1` is still threaded through.
+
+---
+
 ## Phase 22 — DB schema invariants (S23, S26, S28)
 
 ```bash
@@ -439,13 +535,13 @@ Phase results:
   Observability (OB01-OB05): <pass|fail count>
   Multi-instance (MI01-MI03): <pass|fail count>
   Migration (MG01-MG03):     <pass|fail count>
-  UI (B01-B18):              <pass|fail count or SKIPPED>
-  UI extended (BX01-BX08):   <pass|fail count or SKIPPED>
+  UI (B01-B18):              <pass|fail count — SKIPPED only if agent-browser binary missing>
+  UI extended (BX01-BX08):   <pass|fail count — SKIPPED only if agent-browser binary missing>
   Webhook (GW01-GW03):       <pass|fail count>
   Self-mod (SM01-SM02):      <pass|fail count>
   DB schema (S23/S26/S28):   <pass|fail>
 Cleanup:       <N coworkers deleted, 0 residual>
-Screenshot:    <path or SKIPPED>
+Screenshot:    <path — SKIPPED only if agent-browser binary missing>
 Tasks opened:  <count>
 ```
 

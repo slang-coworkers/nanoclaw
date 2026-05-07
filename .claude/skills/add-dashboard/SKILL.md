@@ -33,15 +33,15 @@ git merge origin/nv-dashboard --no-edit || {
 This merges in:
 - `dashboard/` — Full dashboard server and client (server.ts, public/app.js, public/index.html, sprites.js, 60+ pixel art assets, tests)
 - `.claude/skills/dashboard/` — Setup instructions, integration guide, gotchas
-- `container/skills/dashboard-base/` — lego-spine addon (`coworker-types.yaml` + `prompts/formatting.md`) that appends the dashboard formatting block to the `main` and `global` flat types
+- `container/spines/base/` — dashboard formatting fragment gets appended to the `main` flat type's context list (the universal spine's tool-instructions bucket). There is no separate `dashboard-base` spine; the composer merges dashboard's formatting guidance into `base`'s `main` entry during rebuild.
 - Runtime wiring: `src/channels/dashboard.ts`, `src/dashboard-ingress.ts`, `src/db/migrations/012-hook-events.ts`, and `src/index.ts` integration
 - `package.json` — `dashboard` script added
 
 ### Prompt layering
 
-The base `groups/main/CLAUDE.md` and `groups/global/CLAUDE.md` stay on `v2_main` — they are regenerated from the lego spine, not hand-edited. No direct edits to `groups/main/CLAUDE.md` or `groups/global/CLAUDE.md` are needed.
+The base `groups/main/CLAUDE.md` is regenerated from the lego spine via `npm run rebuild:claude`, not hand-edited. (`groups/global/CLAUDE.md` is retired; there is no separate global body to keep in sync.)
 
-This skill installs `container/skills/dashboard-base/`. The composer scans every `container/{spines,skills}/*/coworker-types.yaml` and merges duplicate type entries, so `dashboard-base` appends its formatting block to the `main` and `global` flat types without touching `nanoclaw-base`. To reflect it in the checked-in prompts:
+This skill appends the dashboard formatting guidance to the `main` flat type's context via `container/spines/base/coworker-types.yaml`. The composer scans every `container/{spines,skills}/*/coworker-types.yaml` and merges duplicate type entries, so a dashboard-specific fragment added under `base` rolls into the `main` type without replacing the existing nanoclaw/slang fragments. To reflect it in the checked-in prompts:
 
 ```bash
 npm run rebuild:claude

@@ -230,15 +230,22 @@ const STATE_PATH = '/workspace/.claude/workflow-state.json';
 const PLAN_EDIT_LIMIT = 15;
 const CRITIQUE_EDIT_LIMIT = 3;
 
-const BOOKKEEPING_PATTERNS = [
+// Bookkeeping-path classifier for edit-counter / plan-gate / critique-gate
+// tracking. Keep in lockstep with container/hooks/edit-counter.sh — the shell
+// hook is the authoritative allowlist for the Claude path; diverging here
+// would cause stale-plan/critique counters to fire on bookkeeping writes
+// that the shell hook would have let through (RC-M3).
+const BOOKKEEPING_DIRS = [
   '/workspace/agent/plans/',
   '/workspace/agent/reports/',
   '/workspace/agent/critiques/',
   '/workspace/agent/memory/',
   '/workspace/agent/conversations/',
-  'CLAUDE.local.md',
-  '.claude/',
+  '/workspace/agent/fixes/',
+  '/workspace/agent/reviews/',
+  '/workspace/.claude/',
 ];
+const BOOKKEEPING_FILES = ['/workspace/agent/CLAUDE.local.md'];
 
 interface WorkflowState {
   task_id: string;
@@ -281,7 +288,16 @@ function writeState(state: WorkflowState): void {
 }
 
 function isBookkeeping(filePath: string): boolean {
-  return BOOKKEEPING_PATTERNS.some((p) => filePath.includes(p));
+  if (BOOKKEEPING_DIRS.some((d) => filePath.startsWith(d))) return true;
+  if (BOOKKEEPING_FILES.includes(filePath)) return true;
+  // Root-level .md / .json in /workspace/agent/ are notes, not source — the
+  // shell hook matches this with `DIR=$(dirname "$FILE")` + extension check.
+  const m = filePath.match(/^\/workspace\/agent\/([^/]+)$/);
+  if (m) {
+    const ext = m[1].split('.').pop() || '';
+    if (ext === 'md' || ext === 'json') return true;
+  }
+  return false;
 }
 
 export interface HookConfig {
@@ -348,8 +364,22 @@ export function attachCodexAutoApproval(server: AppServer, hookConfig?: HookConf
         sendCodexResponse(server, req.id, { decision: 'accept' });
         break;
       case 'item/permissions/requestApproval':
+        // Grant only the paths the agent actually needs to write. Blanket
+        // read/write on `/` (the previous setting) effectively bypasses
+        // the in-container sandbox — the container's host-side isolation
+        // is supposed to bound damage, but inside the container itself a
+        // misbehaving agent could stomp on /etc, /usr, the runner source,
+        // etc. Scope write to the agent's workspace + /tmp; keep read
+        // broader so the agent can inspect system state it needs. Network
+        // stays enabled (it's already proxy-gated by OneCLI).
         sendCodexResponse(server, req.id, {
-          permissions: { fileSystem: { read: ['/'], write: ['/'] }, network: { enabled: true } },
+          permissions: {
+            fileSystem: {
+              read: ['/workspace', '/app', '/tmp', '/etc/ssl', '/usr'],
+              write: ['/workspace/agent', '/workspace', '/tmp'],
+            },
+            network: { enabled: true },
+          },
           scope: 'session',
         });
         break;

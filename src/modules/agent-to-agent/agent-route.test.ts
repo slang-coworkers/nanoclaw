@@ -330,9 +330,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     const recipientSession = getSession(recipientRow.id)!;
 
     // Sanity: before reply, A has exactly one session (the seeded sender).
-    const aBefore = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const aBefore = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender') as Array<{
+      id: string;
+    }>;
     expect(aBefore).toHaveLength(1);
     expect(aBefore[0].id).toBe('sess-sender');
 
@@ -351,9 +351,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
 
     // Assertion: A still has exactly one session (no brand-new one created
     // by re-resolving via routeAgentMessage).
-    const aAfter = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-sender') as Array<{ id: string }>;
+    const aAfter = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender') as Array<{
+      id: string;
+    }>;
     expect(aAfter).toHaveLength(1);
     expect(aAfter[0].id).toBe('sess-sender');
   });
@@ -396,11 +396,21 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // coincidentally reference 'review-PR-A'. Pre-fix, these collapsed
     // into one recipient session.
     await routeAgentMessage(
-      { id: 'out-1', platform_id: 'ag-recipient', thread_id: 'review-PR-A', content: JSON.stringify({ text: 'from A' }) },
+      {
+        id: 'out-1',
+        platform_id: 'ag-recipient',
+        thread_id: 'review-PR-A',
+        content: JSON.stringify({ text: 'from A' }),
+      },
       senderSession,
     );
     await routeAgentMessage(
-      { id: 'out-2', platform_id: 'ag-recipient', thread_id: 'review-PR-A', content: JSON.stringify({ text: 'from Other' }) },
+      {
+        id: 'out-2',
+        platform_id: 'ag-recipient',
+        thread_id: 'review-PR-A',
+        content: JSON.stringify({ text: 'from Other' }),
+      },
       otherSession,
     );
 
@@ -532,9 +542,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     );
 
     // C has a new session; A's sessions are unchanged (sess-sender only).
-    const cSessions = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-c') as Array<{ id: string }>;
+    const cSessions = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-c') as Array<{
+      id: string;
+    }>;
     expect(cSessions).toHaveLength(1);
     // The synthetic mg for B→C is agent:ag-recipient:ag-c (composite).
     expect(getMessagingGroupByPlatform('agent', 'agent:ag-recipient:ag-c')).toBeDefined();

@@ -24,8 +24,8 @@
     "dashboard:preview": "npx tsx dashboard/server.ts",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "HTTP_PROXY= HTTPS_PROXY= http_proxy= https_proxy= NODE_USE_ENV_PROXY= NO_PROXY='*' vitest run",
+    "test:watch": "HTTP_PROXY= HTTPS_PROXY= http_proxy= https_proxy= NODE_USE_ENV_PROXY= NO_PROXY='*' vitest"
   },
   "dependencies": {
     "@clack/core": "^1.2.0",

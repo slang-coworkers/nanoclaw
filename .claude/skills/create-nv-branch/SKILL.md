@@ -195,8 +195,8 @@ grep -n "<<<<<<\|======\|>>>>>>" <file>
 **Pattern A — Lego big rewrite, upstream small addition (e.g. `src/container-runner.ts`, `src/index.ts`)**
 Take lego's version; cherry-pick upstream's addition manually.
 ```
-<<<<<<< HEAD (upstream small change)
-=======
+<<<\<<<< HEAD (upstream small change)
+==\=====
 (lego's larger rewrite)
 ```
 → Keep lego's version + add upstream's lines in the right place.
@@ -207,13 +207,13 @@ Keep BOTH functions — they're independent.
 **Pattern C — Schema field renamed (e.g. `setup/register.ts`: `trigger_rules` → `engage_mode`)**
 Upstream wins on schema. Remove lego's old field names, use upstream's. Also remove any duplicate fields lego added below the conflict block.
 ```
-<<<<<<< HEAD
+<<<\<<<< HEAD
   engage_mode: engageMode,        ← upstream's new schema
   engage_pattern: engagePattern,
-=======
+==\=====
   trigger_rules: triggerRules,    ← lego's old schema
   response_scope: 'all',
->>>>>>>
+>>\>>>>>
 ```
 → Take HEAD (upstream's schema).
 

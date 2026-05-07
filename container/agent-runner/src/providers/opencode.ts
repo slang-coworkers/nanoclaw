@@ -1,7 +1,6 @@
 import * as fs from 'fs';
-import { spawn, type ChildProcess } from 'child_process';
 
-import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk';
+import { createOpencodeClient, createOpencodeServer, type OpencodeClient } from '@opencode-ai/sdk';
 
 import { registerProvider } from './provider-registry.js';
 import type { AgentProvider, AgentQuery, ProviderEvent, ProviderOptions, QueryInput } from './types.js';
@@ -17,49 +16,34 @@ const SESSION_STATUS_RETRY_ERROR_AFTER = 3;
 const STALE_SESSION_RE =
   /no conversation found|ENOENT.*\.jsonl|session.*not found|NotFoundError|connection reset|ECONNRESET|404|event timeout/i;
 
-function spawnOpencodeServer(config: Record<string, unknown>, timeoutMs = 10_000): Promise<{ url: string; proc: ChildProcess }> {
-  return new Promise((resolve, reject) => {
-    const hostname = '127.0.0.1';
-    const port = 4096;
-    const proc = spawn('opencode', ['serve', `--hostname=${hostname}`, `--port=${port}`], {
-      env: {
-        ...process.env,
-        OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
-      },
-    });
+type OpencodeServerHandle = { url: string; close: () => void };
 
-    const id = setTimeout(() => {
-      proc.kill('SIGKILL');
-      reject(new Error(`Timeout waiting for OpenCode server to start after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    let output = '';
-    proc.stdout?.on('data', (chunk: Buffer) => {
-      output += chunk.toString();
-      for (const line of output.split('\n')) {
-        if (line.startsWith('opencode server listening')) {
-          const match = line.match(/on\s+(https?:\/\/[^\s]+)/);
-          if (match) {
-            clearTimeout(id);
-            resolve({ url: match[1], proc });
-          }
-        }
-      }
+/**
+ * Start OpenCode in-process via the SDK, not the `opencode` CLI. The
+ * container ships `@opencode-ai/sdk` but not the standalone CLI binary, so
+ * spawning `opencode serve` ENOENTs (RC-H2). `createOpencodeServer` gives
+ * us the same HTTP surface with none of the PATH dependency.
+ */
+async function startOpencodeServer(
+  config: Record<string, unknown>,
+  timeoutMs = 10_000,
+): Promise<OpencodeServerHandle> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const server = await createOpencodeServer({
+      hostname: '127.0.0.1',
+      port: 4096,
+      signal: controller.signal,
+      timeout: timeoutMs,
+      // The SDK accepts a typed Config but permits a loose object when the
+      // caller owns schema tracking — we do, via mcpServersToOpenCodeConfig.
+      config: config as never,
     });
-    proc.stderr?.on('data', (chunk: Buffer) => {
-      output += chunk.toString();
-    });
-    proc.on('exit', (code) => {
-      clearTimeout(id);
-      let msg = `OpenCode server exited with code ${code}`;
-      if (output.trim()) msg += `\nServer output: ${output}`;
-      reject(new Error(msg));
-    });
-    proc.on('error', (err) => {
-      clearTimeout(id);
-      reject(err);
-    });
-  });
+    return { url: server.url, close: () => server.close() };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function readClaudeMdForPrompt(): string | undefined {
@@ -131,7 +115,7 @@ function buildOpenCodeConfig(options: ProviderOptions): Record<string, unknown> 
 }
 
 type SharedRuntime = {
-  proc: ChildProcess;
+  server: OpencodeServerHandle;
   client: OpencodeClient;
   stream: AsyncGenerator<{ type: string; properties: Record<string, unknown> }, void, void>;
   streamRelease: () => void;
@@ -161,12 +145,12 @@ async function ensureSharedRuntime(options: ProviderOptions): Promise<SharedRunt
       destroySharedRuntime();
     }
     const config = buildOpenCodeConfig(options);
-    const { url, proc } = await spawnOpencodeServer(config);
-    const client = createOpencodeClient({ baseUrl: url });
+    const server = await startOpencodeServer(config);
+    const client = createOpencodeClient({ baseUrl: server.url });
     const sub = await client.event.subscribe();
     const stream = sub.stream as AsyncGenerator<{ type: string; properties: Record<string, unknown> }, void, void>;
     sharedRuntime = {
-      proc,
+      server,
       client,
       stream,
       streamRelease: () => {
@@ -189,7 +173,7 @@ export function destroySharedRuntime(): void {
       /* ignore */
     }
     try {
-      sharedRuntime.proc.kill('SIGKILL');
+      sharedRuntime.server.close();
     } catch {
       /* ignore */
     }

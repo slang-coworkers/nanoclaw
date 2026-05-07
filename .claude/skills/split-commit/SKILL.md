@@ -238,14 +238,14 @@ Agent(subagent_type="general-purpose", prompt="
   Audit the rebased <bucket> branch.
   Run: git diff <base>..<bucket>-rebased --stat
   Then: git diff <base>..<bucket>-rebased
-  
+
   This bucket should ONLY contain: <bucket-description>
-  
+
   It should NOT contain:
   - Files belonging to <other-bucket-1>: <description>
   - Files belonging to <other-bucket-2>: <description>
   ...
-  
+
   Report:
   1. Files that clearly belong to <bucket>
   2. Files that look suspicious / may belong to other buckets

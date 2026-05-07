@@ -412,3 +412,186 @@ describe('auth proxy HTTP endpoints', () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ── AP/RC-42: end-to-end container token path ──────────────────────────────
+//
+// These tests exercise the scenarios that produce "MCP token agent issue"
+// failures in prod: the container gets a token, the proxy is restarted,
+// or another registration overwrites the ACL. The rest of the file covers
+// only token issuance in isolation. These tests assert the lifecycle.
+
+describe('end-to-end container token path (RC-42)', () => {
+  let proxyUrl: string;
+  let stopProxy: () => void;
+  let tokenPath: string;
+
+  beforeEach(async () => {
+    setUpstreamPortResolver(() => 45001);
+    const port = await pickFreePort();
+    proxyUrl = `http://127.0.0.1:${port}`;
+    const { stop } = startMcpAuthProxy('127.0.0.1', port);
+    stopProxy = stop;
+    await waitForProxy(proxyUrl);
+    // Match the file location the proxy writes — see mcp-auth-proxy.ts's
+    // startMcpAuthProxy: it writes `data/.mcp-management-token` under the
+    // process cwd. Tests run from repo root.
+    const path = await import('path');
+    tokenPath = path.join(process.cwd(), 'data', '.mcp-management-token');
+  });
+
+  afterEach(() => {
+    stopProxy();
+  });
+
+  it('tools/call with a registered container token + allowed tool succeeds with JSON-RPC response', async () => {
+    const http = await import('http');
+    // Upstream MCP server: respond to initialize + tools/call. The proxy is
+    // a pass-through once the token ACL passes.
+    const srv = http.createServer((req, res) => {
+      let body = '';
+      req.on('data', (c: Buffer) => (body += c.toString()));
+      req.on('end', () => {
+        const parsed = JSON.parse(body || '{}');
+        if (parsed.method === 'initialize') {
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Mcp-Session-Id': 'sid' });
+          res.end(JSON.stringify({ jsonrpc: '2.0', id: parsed.id, result: {} }));
+          return;
+        }
+        if (parsed.method === 'tools/call') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id: parsed.id,
+              result: { content: [{ type: 'text', text: 'ok' }] },
+            }),
+          );
+          return;
+        }
+        res.writeHead(400);
+        res.end();
+      });
+    });
+    await new Promise<void>((resolve) => srv.listen(0, '127.0.0.1', resolve));
+    const upstreamPort = (srv.address() as { port: number }).port;
+    setUpstreamPortResolver((name) => (name === 'deepwiki' ? upstreamPort : null));
+
+    try {
+      const token = registerContainerToken('group-e2e', ['mcp__deepwiki__ask_question']);
+      const res = await fetch(`${proxyUrl}/mcp/deepwiki`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'ask_question', arguments: { q: 'x' } },
+        }),
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { result: { content: Array<{ text: string }> } };
+      expect(body.result.content[0].text).toBe('ok');
+    } finally {
+      await new Promise<void>((resolve) => srv.close(() => resolve()));
+    }
+  });
+
+  it('proxy restart invalidates previously-issued container tokens (401 on old token)', async () => {
+    const token = registerContainerToken('group-restart', ['mcp__deepwiki__ask_question']);
+    // Stop the running proxy, start a fresh one on a new port.
+    stopProxy();
+    const newPort = await pickFreePort();
+    const newUrl = `http://127.0.0.1:${newPort}`;
+    const { stop } = startMcpAuthProxy('127.0.0.1', newPort);
+    stopProxy = stop;
+    await waitForProxy(newUrl);
+
+    const res = await fetch(`${newUrl}/mcp/deepwiki`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'ask_question' } }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('revokeContainerToken invalidates the token — next tools/call returns 401', async () => {
+    const token = registerContainerToken('group-revoke', ['mcp__deepwiki__ask_question']);
+    revokeContainerToken(token);
+
+    const res = await fetch(`${proxyUrl}/mcp/deepwiki`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'ask_question' } }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('re-registering the same group issues a distinct token — the previous token keeps working until explicitly revoked', async () => {
+    // registerContainerToken is additive: the old token remains valid so
+    // an in-flight container isn't disconnected mid-request. Callers that
+    // want the old one dead must call revokeContainerToken explicitly
+    // (container-runner does this on container exit). Pinning that
+    // contract here so the semantic can't silently flip.
+    const oldToken = registerContainerToken('group-re', ['mcp__deepwiki__ask_question']);
+    const newToken = registerContainerToken('group-re', ['mcp__deepwiki__ask_question']);
+    expect(newToken).not.toBe(oldToken);
+
+    for (const token of [oldToken, newToken]) {
+      const res = await fetch(`${proxyUrl}/mcp/deepwiki`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+      // tools/list passes the ACL gate (no name check) so we can use it as a
+      // simple "token is authenticated at the proxy" signal without needing
+      // a live upstream — the upstream call will still fail with something
+      // non-401, which is what distinguishes "token OK, upstream down" from
+      // "token bad".
+      expect(res.status).not.toBe(401);
+    }
+  });
+
+  it('container with no allowed tools still gets a valid bearer but every tools/call is denied -32600', async () => {
+    // Covers the hasProxyToken=true + empty-ACL edge case: a coworker with
+    // allowedMcpTools: [] shouldn't get a 401 (it's authenticated) but
+    // should get the structured -32600 error for every tools/call, so the
+    // container-side error is clear rather than confusing.
+    const token = registerContainerToken('group-empty-acl', []);
+    expect(token).toMatch(/^[a-f0-9]{64}$/);
+
+    const res = await fetch(`${proxyUrl}/mcp/deepwiki`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'anything' },
+      }),
+    });
+    // The proxy returns HTTP 403 + a JSON-RPC error body for ACL denials
+    // (see mcp-auth-proxy.ts:384). 403 distinguishes auth failures
+    // (missing/invalid bearer → 401) from authz failures (valid bearer,
+    // tool not in ACL → 403) at the HTTP layer, so load balancers and
+    // upstream monitoring can separate the two.
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error?: { code: number } };
+    expect(body.error?.code).toBe(-32600);
+  });
+
+  it('management-token file is written with 0o600 perms at start and removed on stop', async () => {
+    const fs = await import('fs');
+    expect(fs.existsSync(tokenPath)).toBe(true);
+    const stat = fs.statSync(tokenPath);
+    // Mask off file-type bits; compare only the lower 9 mode bits.
+    expect(stat.mode & 0o777).toBe(0o600);
+    const written = fs.readFileSync(tokenPath, 'utf-8');
+    expect(written).toBe(getMcpManagementToken());
+
+    stopProxy();
+    // Re-open stopProxy to avoid double-stop in afterEach — replace with
+    // a noop since we've already stopped.
+    stopProxy = () => {};
+    expect(fs.existsSync(tokenPath)).toBe(false);
+  });
+});
