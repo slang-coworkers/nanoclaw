@@ -59,6 +59,228 @@ function isInsideDir(baseDir: string, target: string): boolean {
   return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// Session display-title heuristic.
+//
+// The slug (`main · dusky-meadow-drifts`) is only a stable identifier.
+// What an operator actually scans is: "what is this session about?"
+// These helpers produce a short task-shaped string from the first user
+// prompt, with light extraction of the signals operators care about:
+// PR/issue references, file paths, and imperative verbs.
+// ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Strip code fences, URLs, envelope wrappers, control chars, decorative
+ * punctuation; collapse ws.
+ *
+ * UserPromptSubmit messages are pre-wrapped by the host/router in
+ * XML-like envelopes like:
+ *   <context timezone=Asia/Kolkata>
+ *   <message id=6 from=orchestrator send=...>
+ *   <actual-body>
+ *   </message>
+ *   </context>
+ *
+ * Without stripping those, the titler's first-8-words rule surfaces
+ * `context timezone Asia/Kolkata message id 6 from ...` as the session
+ * title — operator-hostile. We remove the whole envelope first, then
+ * operate on the surviving body.
+ */
+export function sanitizeSessionTitle(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let cleaned = raw
+    // Drop fenced code and URLs — rarely useful in a 3–8 word title.
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    // Drop HTML/XML-ish tags entirely, whether self-closing, open, or
+    // close. Covers `<context ...>`, `<message id=N from=X>`, `</message>`,
+    // etc. Multi-line safe because we allow '.' to match across \n via
+    // the [\s\S] alternative.
+    .replace(/<[\w/][^>]*>/g, ' ')
+    // Drop any leftover attr-shaped tokens like `timezone=Asia/Kolkata`
+    // or `from=orchestrator`. A bare `word=value` at word boundaries is
+    // almost never the thing an operator wants in a title.
+    .replace(/\b[a-zA-Z_][\w-]*=[^\s<>]+/g, ' ');
+
+  cleaned = cleaned
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/["'`*_#>\[\]{}]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return null;
+  return cleaned;
+}
+
+/**
+ * Extract task-detail signals from a prompt:
+ *  - PR references: "PR #123", "pull request 45", "PR-A"
+ *  - Issue references: "issue #45", "bug #12"
+ *  - File paths / extensions: `src/foo.ts`, `migrations/*.sql`
+ *  - Leading imperative verb: Review | Fix | Investigate | Implement | Update | Debug | Refactor | Add | Remove
+ *
+ * Returns an ordered list of tokens that are good candidates to surface
+ * in a 3–8 word title, in descending priority.
+ */
+function extractTitleSignals(raw: string): { verb: string | null; refs: string[]; files: string[] } {
+  const refs: string[] = [];
+  const files: string[] = [];
+
+  // Preserve original casing of the first word — used for verb extraction.
+  const firstWordMatch = raw.match(/^\s*(please|can you|could you|would you|help me|i need you to)\s+(\w+)/i);
+  let verb: string | null = null;
+  if (firstWordMatch) {
+    verb = firstWordMatch[2];
+  } else {
+    const leadWord = raw.match(/^\s*(\w+)/);
+    if (leadWord) verb = leadWord[1];
+  }
+  // Only keep a verb if it looks imperative. Don't hijack the title with
+  // a filler word ("i", "the", "this", etc.).
+  if (verb) {
+    const v = verb.toLowerCase();
+    const imperatives = new Set([
+      'review', 'fix', 'investigate', 'implement', 'update', 'debug', 'refactor',
+      'add', 'remove', 'delete', 'rename', 'migrate', 'merge', 'split', 'rebase',
+      'check', 'verify', 'build', 'test', 'document', 'write', 'rewrite', 'port',
+      'extract', 'inline', 'optimize', 'profile', 'trace', 'audit', 'explore',
+      'land', 'ship', 'wire', 'replace', 'restore', 'revert', 'tidy', 'clean',
+    ]);
+    verb = imperatives.has(v) ? verb.charAt(0).toUpperCase() + verb.slice(1).toLowerCase() : null;
+  }
+
+  // PR / issue references. Accept `PR #123`, `PR-123`, `#PR-A`, `issue #45`, `pull request 99`.
+  const prRefRe = /(?:\bPR\s?#?\s?([A-Za-z]?\d+[A-Za-z0-9-]*)|\bpull\s+request\s+#?\s?(\d+[A-Za-z0-9-]*)|#PR-([A-Za-z0-9-]+)|\bPR-([A-Za-z0-9-]+))/gi;
+  let m: RegExpExecArray | null;
+  while ((m = prRefRe.exec(raw)) !== null) {
+    const id = m[1] ?? m[2] ?? m[3] ?? m[4];
+    if (id) refs.push(`PR #${id}`);
+  }
+  const issueRe = /\b(?:issue|bug)\s+#?\s?(\d+[A-Za-z0-9-]*)/gi;
+  while ((m = issueRe.exec(raw)) !== null) refs.push(`issue #${m[1]}`);
+
+  // File paths. Accept `src/foo.ts`, `dashboard/server.ts`, `a/b.md`, etc.
+  // Must contain a `/` and a known extension OR must be a clear relative path.
+  const fileRe = /\b([\w.-]+\/[\w./-]+\.[a-zA-Z]{1,5})\b/g;
+  while ((m = fileRe.exec(raw)) !== null) files.push(m[1]);
+
+  return { verb, refs: Array.from(new Set(refs)), files: Array.from(new Set(files)) };
+}
+
+/**
+ * Build a short, task-describing title from the first user prompt.
+ *
+ * Strategy:
+ *   1. Sanitize the raw prompt.
+ *   2. Extract (verb, refs, files).
+ *   3. If we have a verb + refs/files → "<Verb> <ref/file>" (preferred
+ *      "task-detail" shape, e.g. "Review PR #178" or "Fix src/a2a.ts").
+ *   4. If we only have refs or files → join one or two of them.
+ *   5. Otherwise → first ~8 words of the sanitized prompt.
+ *   6. Cap at 72 chars with an ellipsis.
+ *
+ * Callers can upgrade via `titleFromPromptWithAgent()` which wraps this
+ * and kicks off an async LLM refinement — returns immediately with the
+ * heuristic title while the LLM pass UPSERTs a better one in the
+ * background.
+ */
+export function titleFromPrompt(prompt: string | null | undefined): string | null {
+  const cleaned = sanitizeSessionTitle(prompt);
+  if (!cleaned) return null;
+
+  const { verb, refs, files } = extractTitleSignals(cleaned);
+  const signals = [...refs, ...files.slice(0, 2)];
+
+  let title: string;
+  if (verb && signals.length > 0) {
+    title = `${verb} ${signals.slice(0, 2).join(' + ')}`;
+  } else if (signals.length > 0) {
+    title = signals.slice(0, 2).join(' + ');
+  } else {
+    // Strip common pleasantries from the front, then first ~8 words.
+    const stripped = cleaned
+      .replace(/^(please|can you|could you|would you|help me|i need you to)\s+/i, '')
+      .replace(/[?.!,;:]+$/g, '')
+      .trim();
+    const words = stripped.split(/\s+/).filter(Boolean).slice(0, 8);
+    title = words.join(' ');
+  }
+
+  if (!title) return null;
+  return title.length > 72 ? title.slice(0, 69).trimEnd() + '...' : title;
+}
+
+/**
+ * Fire-and-forget LLM-backed title upgrade. Only runs when
+ * DASHBOARD_TITLE_AGENT=anthropic and ANTHROPIC_API_KEY is set — otherwise
+ * the heuristic title stays in place. Uses claude-haiku-4-5, 30 tokens,
+ * single turn. Failures are swallowed (log only) — the heuristic title
+ * the host already wrote is the fallback.
+ *
+ * Runs AFTER the heuristic UPDATE completes, so the user sees a title
+ * immediately and it optionally refines within ~1s.
+ */
+async function refineTitleWithAgent(
+  heDb: Database.Database,
+  sessionId: string,
+  rawPrompt: string,
+): Promise<void> {
+  if (process.env.DASHBOARD_TITLE_AGENT !== 'anthropic') return;
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return;
+
+  const cleaned = sanitizeSessionTitle(rawPrompt);
+  if (!cleaned) return;
+  // Keep the prompt we feed the model bounded — operators can paste long
+  // logs into a session prompt and we don't want to pay for that.
+  const snippet = cleaned.length > 800 ? cleaned.slice(0, 800) + '...' : cleaned;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 30,
+        messages: [
+          {
+            role: 'user',
+            content:
+              'Write a 3-6 word imperative task title that describes what this session is about. ' +
+              'Examples: "Review PR #178", "Fix A2A routing bug", "Investigate dashboard timeout". ' +
+              'Respond with just the title, no quotes, no trailing punctuation.\n\n' +
+              'Session prompt:\n' +
+              snippet,
+          },
+        ],
+      }),
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as { content?: Array<{ type: string; text?: string }> };
+    const text = data.content?.find((c) => c.type === 'text')?.text;
+    if (!text) return;
+    const trimmed = text.trim().replace(/^["'`]|["'`]$/g, '').replace(/[?.!;:]+$/g, '');
+    if (!trimmed || trimmed.length > 72) return;
+
+    heDb
+      .prepare(
+        `UPDATE sessions
+            SET display_title = ?, title_source = 'heuristic', title_updated_at = ?
+          WHERE id = ?
+            AND COALESCE(title_source, '') != 'manual'`,
+      )
+      .run(trimmed, new Date().toISOString(), sessionId);
+  } catch {
+    // Network/API/DB error — silent. The heuristic title already in place
+    // is the acceptable fallback.
+  }
+}
+
+
+
 function getProjectRoot(): string {
   return resolve(process.env.NANOCLAW_DASHBOARD_PROJECT_ROOT || resolve(import.meta.dirname, '..'));
 }
@@ -1850,24 +2072,98 @@ function resolveLegoMcpTools(coworkerType: string): string[] {
  * unthreaded callers keep working — this is a compatibility shim while
  * UI callers migrate to passing `sessionId` / `threadId`.
  */
-function findRunningContainer(folder: string, sessionId?: string | null): string | null {
-  const prefix = process.env.CONTAINER_PREFIX || 'nanoclaw';
-  const folderCandidates = Array.from(new Set([folder, folder.replace(/_/g, '-')]));
+/**
+ * Pure matcher for container names — exported so unit tests can hit the
+ * folder/session matching rules without booting the whole dashboard
+ * server. `names` is injected as an iterable so the test can just hand in
+ * a list of candidates.
+ *
+ * Name format (from src/container-runner.ts:433):
+ *     <prefix>-<folder>-<session-tail>-<ts>
+ *  where ts is `Date.now()` (13 digits) and session-tail is
+ *  `<sessionId-without-sess-prefix>`, which itself contains a `-`.
+ *
+ * Rules this enforces that the old prefix-only check did not:
+ *  1. Suffix after `<prefix>-<folder>-` MUST end with `-<13-digit-ts>`.
+ *     Rejects stray names that happen to share the folder prefix but
+ *     aren't NanoClaw containers (old ad-hoc containers, exec helpers).
+ *  2. When `sessionId` is supplied, match exactly on
+ *     `<prefix>-<folder>-<tail>-...-<ts>`. The tail-delimiter rules
+ *     out `foo-bar`'s containers masquerading as folder `foo` session
+ *     `bar-...`.
+ *  3. When `knownFolders` is supplied, prefer the LONGEST known folder
+ *     that prefixes the name — so a lookup for `foo` against
+ *     `<prefix>-foo-bar-...` returns null when `foo-bar` is also a
+ *     registered folder. Callers that don't have the known-folders set
+ *     skip this step (permissive behaviour, used by non-shell code paths
+ *     that just need "is anything running for this folder").
+ */
+export function matchContainerName(
+  names: Iterable<string>,
+  folder: string,
+  sessionId: string | null,
+  prefix: string,
+  knownFolders?: Iterable<string>,
+): string | null {
+  const containerFolder = folder.replace(/_/g, '-');
+  const folderPrefix = `${prefix}-${containerFolder}-`;
+
+  const rivalFolderPrefixes: string[] = [];
+  if (knownFolders) {
+    for (const kf of knownFolders) {
+      const kfNorm = kf.replace(/_/g, '-');
+      if (kfNorm === containerFolder) continue;
+      if (kfNorm.length > containerFolder.length && kfNorm.startsWith(`${containerFolder}-`)) {
+        rivalFolderPrefixes.push(`${prefix}-${kfNorm}-`);
+      }
+    }
+  }
+
+  const ownedByRival = (name: string): boolean =>
+    rivalFolderPrefixes.some((rp) => name.startsWith(rp));
+
   if (sessionId) {
     const tail = sessionId.startsWith('sess-') ? sessionId.slice(5) : sessionId;
-    for (const containerFolder of folderCandidates) {
-      const exactPrefix = `${prefix}-${containerFolder}-${tail}-`;
-      for (const name of runningContainers) {
-        if (name.startsWith(exactPrefix)) return name;
-      }
+    const exactPrefix = `${folderPrefix}${tail}-`;
+    for (const name of names) {
+      if (ownedByRival(name)) continue;
+      if (name.startsWith(exactPrefix) && /-\d{13}$/.test(name)) return name;
     }
     return null;
   }
-  const folderPrefixes = folderCandidates.map((containerFolder) => `${prefix}-${containerFolder}-`);
-  for (const name of runningContainers) {
-    if (folderPrefixes.some((folderPrefix) => name.startsWith(folderPrefix))) return name;
+  for (const name of names) {
+    if (!name.startsWith(folderPrefix)) continue;
+    if (ownedByRival(name)) continue;
+    if (!/-\d{13}$/.test(name)) continue;
+    return name;
   }
   return null;
+}
+
+function findRunningContainer(
+  folder: string,
+  sessionId?: string | null,
+  knownFolders?: Iterable<string>,
+): string | null {
+  const prefix = process.env.CONTAINER_PREFIX || 'nanoclaw';
+  return matchContainerName(runningContainers, folder, sessionId ?? null, prefix, knownFolders);
+}
+
+/**
+ * Registered folders from agent_groups. Handed to matchContainerName so
+ * it can use longest-prefix-wins to reject false matches where folder
+ * `foo` would otherwise hit a container for `foo-bar`. Returns an empty
+ * set when the DB isn't available — callers degrade to permissive
+ * matching, which is acceptable (collisions are rare).
+ */
+function listKnownFolders(db: import('better-sqlite3').Database | null): Set<string> {
+  if (!db) return new Set<string>();
+  try {
+    const rows = db.prepare('SELECT folder FROM agent_groups').all() as { folder: string }[];
+    return new Set(rows.map((r) => r.folder));
+  } catch {
+    return new Set<string>();
+  }
 }
 
 /**
@@ -3386,6 +3682,30 @@ export async function handleRequest(
                 heDb
                   .prepare('UPDATE sdk_session_routes SET last_seen_at = ? WHERE sdk_session_id = ?')
                   .run(event.timestamp, event.session_id);
+
+                // Derive a display title on the first UserPromptSubmit for
+                // this nano session. Runs once per session: the WHERE clause
+                // requires display_title IS NULL and title_source != 'manual'
+                // so subsequent prompts don't churn the title, and an
+                // operator-set title is always safe.
+                if (event.event === 'UserPromptSubmit' && event.message) {
+                  const newTitle = titleFromPrompt(event.message);
+                  if (newTitle) {
+                    try {
+                      heDb
+                        .prepare(
+                          `UPDATE sessions
+                              SET display_title = ?, title_source = 'heuristic', title_updated_at = ?
+                            WHERE id = ?
+                              AND (display_title IS NULL OR display_title = '')
+                              AND COALESCE(title_source, '') != 'manual'`,
+                        )
+                        .run(newTitle, new Date().toISOString(), row.session_id);
+                    } catch {
+                      /* pre-migration-021 installs won't have the columns yet */
+                    }
+                  }
+                }
               }
               // Silent skip when unknown_session or folder_mismatch —
               // log if we add structured audit later. The query-time
@@ -3576,33 +3896,7 @@ export async function handleRequest(
     return;
   }
 
-  
-function sanitizeSessionTitle(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const cleaned = raw
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/https?:\/\/\S+/g, ' ')
-    .replace(/[\r\n\t]+/g, ' ')
-    .replace(/["'`*_#>\[\]{}]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!cleaned) return null;
-  const words = cleaned.split(' ').filter(Boolean).slice(0, 8);
-  if (words.length === 0) return null;
-  const title = words.join(' ');
-  return title.length > 72 ? title.slice(0, 69).trimEnd() + '...' : title;
-}
-
-function titleFromPrompt(prompt: string | null | undefined): string | null {
-  const title = sanitizeSessionTitle(prompt);
-  if (!title) return null;
-  return title
-    .replace(/^(please|can you|could you|would you|help me|i need you to)\s+/i, '')
-    .replace(/[?.!,;:]+$/g, '')
-    .trim() || title;
-}
-
-// API: paginated hook event history from DB
+  // API: paginated hook event history from DB
   if (url.pathname === '/api/hook-events/history') {
     if (!requireAuth(req, res)) return;
     const heDb = getHookEventsDb();
@@ -3989,6 +4283,14 @@ function titleFromPrompt(prompt: string | null | undefined): string | null {
           }
         } catch { /* hook_events may be unavailable in degraded fixtures */ }
 
+        // Read-only fallback for UI display. The authoritative title is
+        // derived + written once in the hook-event intake path (see
+        // `POST /api/hook-event` — on first UserPromptSubmit for a nano
+        // session, the handler UPDATEs sessions.display_title). If an
+        // old session exists without a title yet, surface a one-line
+        // heuristic derived from its first prompt — without writing, so
+        // this GET handler stays read-only and won't race with the
+        // intake writer.
         if (!p.display_title) {
           const promptEvent = p.recent_events.find((e) => e.event === 'UserPromptSubmit');
           let promptTitle: string | null = null;
@@ -4002,16 +4304,9 @@ function titleFromPrompt(prompt: string | null | undefined): string | null {
           }
           p.display_title = promptTitle || (p.thread_id ? 'Thread session' : 'Main session');
           p.title_source = promptTitle ? 'heuristic' : 'auto';
-          if (p.session_key) {
-            try {
-              heDb.prepare(
-                `UPDATE sessions
-                    SET display_title = ?, title_source = ?, title_updated_at = ?
-                  WHERE id = ?
-                    AND (display_title IS NULL OR COALESCE(title_source, '') != 'manual')`,
-              ).run(p.display_title, p.title_source, new Date().toISOString(), p.session_key);
-            } catch { /* older test schemas may not have title columns */ }
-          }
+          // Deliberately no UPDATE here — title writes live in the hook
+          // intake path so this GET stays side-effect-free. The heuristic
+          // value above is only for this response payload.
         }
       }
 
@@ -4337,6 +4632,12 @@ function titleFromPrompt(prompt: string | null | undefined): string | null {
     // clutters the channel view. Hidden by default for the single-coworker
     // view; pass ?includeSystem=1 to opt in (timeline/debug still shows all).
     const includeSystem = url.searchParams.get('includeSystem') === '1';
+    // `before` is an ISO timestamp used by Admin → Messages for infinite
+    // scroll. The per-session SQLite reads fetch newest-first; we
+    // oversample and post-filter so the honest hasMore flag reflects
+    // whether earlier rows exist beyond the returned page.
+    const beforeParam = url.searchParams.get('before');
+    const OVERSAMPLE = 3;
     const SYSTEM_ID_PREFIXES = ['claudemd-refresh-', 'a2a-'];
     const isSystemId = (id: unknown) =>
       typeof id === 'string' && SYSTEM_ID_PREFIXES.some((p) => id.startsWith(p));
@@ -4347,7 +4648,7 @@ function titleFromPrompt(prompt: string | null | undefined): string | null {
     // and surface in the channel view with a distinct bubble style.
     const coworkerNameById = new Map<string, string>();
     let messages: any[] = [];
-    const hasMore = false;
+    let hasMore = false;
     // Per-agent-group thread summaries: { [parentMessageId]: { replyCount, lastReplyTs } }.
     // Only populated in main view; the client uses it to render
     // "↳ N replies" stubs under parent messages.
@@ -4364,7 +4665,11 @@ function titleFromPrompt(prompt: string | null | undefined): string | null {
         const agRows = group
           ? [db.prepare('SELECT id, folder FROM agent_groups WHERE folder = ?').get(group) as any].filter(Boolean)
           : (db.prepare('SELECT id, folder FROM agent_groups').all() as any[]);
-        const perGroupLimit = group ? limit : Math.ceil(limit / Math.max(agRows.length, 1));
+        // Oversample when the caller paginates via `before`. Admin →
+        // Messages in particular depends on getting non-trivial coverage
+        // below the cutoff so hasMore accurately reflects the DB state.
+        const baseLimit = group ? limit : Math.ceil(limit / Math.max(agRows.length, 1));
+        const perGroupLimit = beforeParam ? baseLimit * OVERSAMPLE : baseLimit;
         for (const agRow of agRows) {
           // Scope all dashboard /api/messages queries to this coworker's
           // dashboard messaging_group. Without this, messages from other
@@ -4595,8 +4900,20 @@ function titleFromPrompt(prompt: string | null | undefined): string | null {
           }
         }
         messages = applyMessageOperations(messages);
-        // Sort descending (newest first)
+        // Apply the `before` cutoff (ISO timestamp) for pagination. Post-
+        // filter after the per-session oversample above — a few per-DB
+        // queries don't expose a cheap "older than X" pagination hook, so
+        // we do it in memory.
+        if (beforeParam) {
+          messages = messages.filter((m) => typeof m.timestamp === 'string' && m.timestamp < beforeParam);
+        }
+        // Sort descending (newest first).
         messages.sort(compareMessagesDescending);
+        // Honest hasMore: true when the filter left more rows than the
+        // requested page. Without a `before` cutoff we can't distinguish
+        // "more exist before this page" from "no pagination requested",
+        // so default to false in the non-paginated case.
+        hasMore = beforeParam ? messages.length > limit : false;
         messages = messages.slice(0, limit);
       } catch {
         /* ignore */

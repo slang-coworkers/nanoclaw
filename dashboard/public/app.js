@@ -253,31 +253,41 @@ function activeNanoSessionsForCoworker(cw) {
 }
 
 
-function sessionKeyLabel(nanoSess) {
+function sessionSlugOnly(nanoSess) {
+  // Bare 3-word slug (e.g. "tender-fell-rests"), no "main · " / "thread · "
+  // kind prefix. Used in the one-line display format per user feedback.
   if (!nanoSess?.nanoclaw_session_id) return '';
-  return typeof window.sessionLabel === 'function'
-    ? window.sessionLabel(nanoSess.nanoclaw_session_id, nanoSess.thread_id)
-    : `${nanoSess.thread_id ? 'thread' : 'main'} · ${nanoSess.nanoclaw_session_id}`;
+  return typeof window.sessionSlug === 'function'
+    ? window.sessionSlug(nanoSess.nanoclaw_session_id)
+    : nanoSess.nanoclaw_session_id;
+}
+
+function sessionKindPrefix(nanoSess) {
+  return nanoSess?.thread_id ? 'Thread' : 'Session';
 }
 
 function sessionDisplayTitle(nanoSess) {
-  return nanoSess?.display_title || sessionKeyLabel(nanoSess);
+  return nanoSess?.display_title || '';
 }
 
+/**
+ * Render session chip as the single-line format the operator asked for:
+ *     Session- tender-fell-rests: Fix PR#124
+ *     Thread- silver-river-drifts: Review nv-main merge
+ *
+ * Falls back to just the slug when no display_title is set yet (newly
+ * created sessions, sessions from pre-titler installs). The raw
+ * sess-xxx id stays in the `title=` attribute for log-grep.
+ */
 function sessionTitleHtml(nanoSess, { compact = false } = {}) {
+  if (!nanoSess?.nanoclaw_session_id) return '';
+  const slug = sessionSlugOnly(nanoSess);
+  const kind = sessionKindPrefix(nanoSess);
   const title = sessionDisplayTitle(nanoSess);
-  const key = sessionKeyLabel(nanoSess);
-  const showKey = key && key !== title;
-  if (compact) {
-    return `<span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1" title="${escAttr(nanoSess.nanoclaw_session_id)}">
-      <span style="color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(title)}</span>
-      ${showKey ? `<span style="font-size:8px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">key: ${esc(key)}</span>` : ''}
-    </span>`;
-  }
-  return `<span style="display:flex;flex-direction:column;gap:1px;min-width:0" title="${escAttr(nanoSess.nanoclaw_session_id)}">
-    <span style="font-size:10px;color:var(--text)">${esc(title)}</span>
-    ${showKey ? `<span style="font-size:8px;color:var(--text-muted)">key: ${esc(key)}</span>` : ''}
-  </span>`;
+  const label = title ? `${kind}- ${slug}: ${title}` : `${kind}- ${slug}`;
+  const color = compact ? 'var(--text-dim)' : 'var(--text)';
+  const size = compact ? '' : 'font-size:10px;';
+  return `<span style="${size}color:${color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0${compact ? ';flex:1' : ''}" title="${escAttr(nanoSess.nanoclaw_session_id)}">${esc(label)}</span>`;
 }
 
 function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
@@ -408,8 +418,13 @@ function currentViewedNanoSession(folder) {
 function renderCurrentSessionEvents(folder) {
   const nanoSess = currentViewedNanoSession(folder);
   if (!nanoSess) return '<span style="color:var(--text-dim)">No active session resolved for this view.</span>';
-  const label = sessionDisplayTitle(nanoSess);
-  const key = sessionKeyLabel(nanoSess);
+  // One-line format: `Session- tender-fell-rests: Fix PR#124` (or
+  // `Thread- …: …` for a thread session). Falls back to just the slug
+  // when no display_title has landed yet.
+  const slug = sessionSlugOnly(nanoSess);
+  const kind = sessionKindPrefix(nanoSess);
+  const title = sessionDisplayTitle(nanoSess);
+  const label = title ? `${kind}- ${slug}: ${title}` : `${kind}- ${slug}`;
   const events = nanoSess.recent_events || [];
   const eventHtml = events.length === 0
     ? '<div style="color:var(--text-dim);font-size:0.6875rem;margin-top:4px">No recent events for this session.</div>'
@@ -419,7 +434,6 @@ function renderCurrentSessionEvents(folder) {
   return `<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
     <div style="font-size:0.625rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">This Session</div>
     <div style="font-size:0.6875rem;color:var(--text);margin-top:2px" title="${escAttr(nanoSess.nanoclaw_session_id)}">${esc(label)}</div>
-    ${key && key !== label ? `<div style="font-size:0.5625rem;color:var(--text-muted);margin-top:1px">key: ${esc(key)}</div>` : ''}
     <div style="margin-top:4px">${eventHtml}</div>
   </div>`;
 }
@@ -1366,10 +1380,20 @@ document.getElementById('legend-toggle')?.addEventListener('click', () => {
 });
 
 // --- Mouse ---
+//
+// drawOffice() applies `ctx.scale(scale, scale)` and then draws with
+// `ox, oy` as the in-world translation, so `getDeskHitRect()` returns
+// rects in **world coordinates** (unscaled space centered by ox/oy).
+// Mouse events arrive in CSS pixel space. Convert before comparing —
+// otherwise actors are clickable at ghost positions that drift farther
+// from the visible desks as the canvas scales down.
 canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  const cssMx = e.clientX - rect.left;
+  const cssMy = e.clientY - rect.top;
+  const scale = _lastScale || 1;
+  const mx = cssMx / scale;
+  const my = cssMy / scale;
   hoveredDesk = -1;
   for (let i = 0; i < _lastAssignments.length; i++) {
     const hr = getDeskHitRect(_lastAssignments[i], _lastOx, _lastOy);
@@ -1380,7 +1404,7 @@ canvas.addEventListener('mousemove', (e) => {
   }
   canvas.style.cursor = hoveredDesk >= 0 ? 'pointer' : 'default';
 
-  // Update tooltip
+  // Update tooltip (positioned in CSS pixel space, not world space).
   if (hoveredDesk >= 0) {
     const cw = state.coworkers[hoveredDesk];
     const [statusColor, statusLabel] = getStatusConfig(cw.status);
@@ -1390,13 +1414,13 @@ canvas.addEventListener('mousemove', (e) => {
     const subsLine = subs > 0 ? `\nSubagents: ${subs}` : '';
     canvasTooltip.innerHTML = `<strong>${esc(cw.name)}</strong> <span style="color:${statusColor}">${statusLabel}</span>\n${activity}${tool ? '\n' + tool : ''}${subsLine}`.replace(/\n/g, '<br>');
     canvasTooltip.style.display = 'block';
-    canvasTooltip.style.left = (mx + 16) + 'px';
-    canvasTooltip.style.top = (my + 16) + 'px';
+    canvasTooltip.style.left = (cssMx + 16) + 'px';
+    canvasTooltip.style.top = (cssMy + 16) + 'px';
     // Keep tooltip inside canvas bounds
     const ttRect = canvasTooltip.getBoundingClientRect();
     const parentRect = canvas.parentElement.getBoundingClientRect();
-    if (ttRect.right > parentRect.right) canvasTooltip.style.left = (mx - ttRect.width - 8) + 'px';
-    if (ttRect.bottom > parentRect.bottom) canvasTooltip.style.top = (my - ttRect.height - 8) + 'px';
+    if (ttRect.right > parentRect.right) canvasTooltip.style.left = (cssMx - ttRect.width - 8) + 'px';
+    if (ttRect.bottom > parentRect.bottom) canvasTooltip.style.top = (cssMy - ttRect.height - 8) + 'px';
   } else {
     canvasTooltip.style.display = 'none';
   }
@@ -4285,8 +4309,13 @@ function renderOtherSessionLinks(cw, currentSession) {
   return `<div style="font-size:0.625rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin:7px 0 3px">Other Sessions</div>
     <div style="display:flex;flex-direction:column;gap:2px">
       ${sessions.slice(0, 3).map((sess) => {
-        const label = sessionDisplayTitle(sess);
-        const key = sessionKeyLabel(sess);
+        // One-line format per operator request:
+        //   Session- tender-fell-rests: Fix PR#124
+        //   Thread- silver-river-drifts: Review nv-main merge
+        const slug = sessionSlugOnly(sess);
+        const kind = sessionKindPrefix(sess);
+        const title = sessionDisplayTitle(sess);
+        const label = title ? `${kind}- ${slug}: ${title}` : `${kind}- ${slug}`;
         const lastMs = sess.last_active ? new Date(sess.last_active).getTime() : (sess.sdk_subsessions?.[0]?.last_ts ?? 0);
         const ago = lastMs ? timeAgo(lastMs) : '';
         return `<button class="hook-entry" title="Open this session in Timeline" style="display:flex;align-items:center;gap:6px;text-align:left;font-size:9px;padding:3px 5px;border-color:transparent;background:rgba(255,255,255,0.02)"
@@ -4294,7 +4323,7 @@ function renderOtherSessionLinks(cw, currentSession) {
           data-view-nanoclaw-agid="${escAttr(sess.agent_group_id || '')}"
           data-view-session-group="${escAttr(cw.folder)}">
           <span style="color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</span>
-          <span style="color:var(--text-muted)">${ago ? esc(ago) : esc(key)}</span>
+          <span style="color:var(--text-muted)">${esc(ago)}</span>
         </button>`;
       }).join('')}
       ${sessions.length > 3 ? `<div style="font-size:9px;color:var(--text-dim);margin-left:4px">+${sessions.length - 3} more in Timeline</div>` : ''}
@@ -4724,25 +4753,35 @@ async function renderCwWork(subpath, isDir) {
     });
   } catch { content.innerHTML = '<span style="color:#f87171">Failed to load</span>'; }
 
-  // Init work-shell panel
+  // Init work-shell panel.
+  //
+  // Shared Artifacts is explicitly NOT thread-scoped (see index.html:961
+  // tooltip). Always query the folder-level container endpoint here,
+  // regardless of which thread is open on the chat side — otherwise when
+  // a thread is active the shell 404s on the strict-thread fallback rule
+  // and artifact-browsing falls back to a read-only state.
   const shellStatus = document.getElementById('cw-work-shell-status');
   const shellOutput = document.getElementById('cw-work-shell-output');
   const shellInput = document.getElementById('cw-work-shell-input');
   if (shellStatus && shellOutput && shellInput) {
-    const shellKey = `${folder}:${cwState.thread?.parentId || '__root__'}`;
+    // Keep the output buffer per-folder only; thread toggles on the chat
+    // side don't reset the artifact shell.
+    const shellKey = `${folder}:__artifacts__`;
     if (shellOutput.dataset.shellKey !== shellKey) {
       shellOutput.dataset.shellKey = shellKey;
       shellOutput.textContent = '';
     }
     try {
-      const res = await fetch(`/api/coworkers/${encodeURIComponent(folder)}/container${currentShellThreadQuery()}`);
+      // No thread_id query — artifact view is folder-scoped, so a live
+      // root container is an acceptable match even when the active chat
+      // view is a thread.
+      const res = await fetch(`/api/coworkers/${encodeURIComponent(folder)}/container`);
       const data = await res.json();
       if (data.running) {
         shellStatus.innerHTML = `<span style="color:#34d399">Live</span> <span style="color:var(--text-dim)">${esc(data.container)}</span>`;
         shellInput.disabled = false;
       } else {
-        const scoped = cwState.thread ? 'this thread' : 'the main session';
-        shellStatus.innerHTML = `<span style="color:var(--text-muted)">No running container for ${scoped}</span>`;
+        shellStatus.innerHTML = `<span style="color:var(--text-muted)">No running container for this coworker</span>`;
         shellInput.disabled = true;
       }
     } catch {
@@ -4788,19 +4827,22 @@ async function renderCwShell() {
   } catch (e) { statusEl.textContent = 'Error: ' + e.message; }
 }
 
-async function execShellCommand(cmd, outputId, inputId) {
+async function execShellCommand(cmd, outputId, inputId, { forceFolderShell = false } = {}) {
   const outputEl = document.getElementById(outputId || 'cw-shell-output');
   const inputEl = document.getElementById(inputId || 'cw-shell-input');
   if (!cwState.selected || !cmd.trim()) return;
   outputEl.textContent += `$ ${cmd}\n`;
   inputEl.disabled = true;
   try {
+    // thread_id picks the per-thread container when a thread panel is
+    // open; null / omitted → folder-level (root) session. The Shared
+    // Artifacts shell always uses folder-level so it works even when
+    // the chat side is currently in a thread with no running container.
+    const threadId = forceFolderShell ? null : (cwState.thread?.parentId || null);
     const res = await fetch(`/api/coworkers/${encodeURIComponent(cwState.selected)}/exec`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // thread_id picks the per-thread container when a thread panel is
-      // open; null / omitted → root session.
-      body: JSON.stringify({ command: cmd, thread_id: cwState.thread?.parentId || null }),
+      body: JSON.stringify({ command: cmd, thread_id: threadId }),
     });
     const data = await res.json();
     if (data.error) {
@@ -4885,7 +4927,9 @@ function execWorkShellCommand(cmd) {
   // If browsing a file (not a directory), use its parent directory
   const cwd = cwState.workPath && !cwState.workIsDir ? dir.replace(/\/[^/]+$/, '') : dir;
   const wrappedCmd = `cd '${cwd.replace(/'/g, "'\\''")}' && ${cmd}`;
-  execShellCommand(wrappedCmd, 'cw-work-shell-output', 'cw-work-shell-input');
+  // Shared Artifacts shell runs folder-scoped, never thread-scoped —
+  // see renderCwWork note at the /container fetch above.
+  execShellCommand(wrappedCmd, 'cw-work-shell-output', 'cw-work-shell-input', { forceFolderShell: true });
 }
 document.getElementById('cw-work-shell-input')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
