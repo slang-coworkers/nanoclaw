@@ -2056,11 +2056,14 @@ describe('/api/messages system-id filter', () => {
     expect(res.status).toBe(200);
     const data = (await res.json()) as { messages: any[] };
     const ids = data.messages.map((m) => m.id).sort();
-    // Real coworker a2a shows up; plumbing noise stays filtered.
-    expect(ids).toEqual(['a2a-from-real-coworker', 'dash-real-1']);
+    // Real coworker a2a shows up; unresolvable ag-* IDs surface as (deleted).
+    expect(ids).toEqual(['a2a-from-real-coworker', 'a2a-plumbing-noise', 'dash-real-1']);
     const coworkerMsg = data.messages.find((m) => m.id === 'a2a-from-real-coworker');
     expect(coworkerMsg.senderKind).toBe('coworker');
     expect(coworkerMsg.senderCoworkerName).toBe('SenderBot');
+    const deletedMsg = data.messages.find((m) => m.id === 'a2a-plumbing-noise');
+    expect(deletedMsg.senderKind).toBe('coworker');
+    expect(deletedMsg.senderCoworkerName).toBe('(deleted)');
     const human = data.messages.find((m) => m.id === 'dash-real-1');
     expect(human.senderKind).toBeUndefined();
   });
