@@ -323,3 +323,25 @@ describe('writeCodexMcpConfigToml', () => {
     });
   });
 });
+
+// Regression guard: bwrap fails inside Docker, so sandbox must never be 'read-only'.
+// This test catches merge conflicts that accidentally reintroduce the wrong value.
+describe('bwrap sandbox regression', () => {
+  const projectRoot = path.resolve(import.meta.dir, '../../../..');
+
+  it('codex provider hardcodes danger-full-access, not read-only', () => {
+    const src = fs.readFileSync(
+      path.join(projectRoot, 'container/agent-runner/src/providers/codex.ts'),
+      'utf-8',
+    );
+    expect(src).not.toMatch(/sandbox\s*:\s*['"]read-only['"]/);
+    expect(src).toContain("'danger-full-access'");
+  });
+
+  it('codex-critique SKILL.md does not instruct read-only sandbox', () => {
+    const skillPath = path.join(projectRoot, 'container/skills/codex-critique/SKILL.md');
+    if (!fs.existsSync(skillPath)) return; // not mounted in this env — skip
+    const skill = fs.readFileSync(skillPath, 'utf-8');
+    expect(skill).not.toMatch(/sandbox\s*:\s*["']read-only["']/);
+  });
+});
