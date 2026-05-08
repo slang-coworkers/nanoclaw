@@ -84,6 +84,14 @@ _March 21, 2026_
 :white_check_mark: All tests passing | <https://ci.example.com/builds/123|View Build>
 ```
 
+## Sending formatted messages
+
+Use `mcp__nanoclaw__send_message` to deliver the formatted text. The `text` field accepts mrkdwn directly — no conversion needed.
+
+For structured panels, use `mcp__nanoclaw__send_card` instead: it renders as a Slack Block Kit attachment and supports `title`, `fields`, and `color` properties.
+
+`mcp__nanoclaw__send_file({ path, text?, filename? })` — deliver a file artifact. Do not paste large outputs inline; send as a file instead.
+
 ## Quick rules
 
 1. Use `*bold*` not `**bold**`
