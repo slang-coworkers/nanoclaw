@@ -10,6 +10,13 @@
 # 4. Otherwise — follow-up message within same task → no reset
 set -euo pipefail
 
+# Subagents (CLAUDE_CODE_FORK_SUBAGENT=1) must not reset the parent's state.
+# They share /workspace/.claude/workflow-state.json with the parent and run
+# within the scope of the parent's already-approved plan.
+if [ "${CLAUDE_CODE_FORK_SUBAGENT:-0}" = "1" ]; then
+  exit 0
+fi
+
 STATE="/workspace/.claude/workflow-state.json"
 INPUT=$(cat)
 
