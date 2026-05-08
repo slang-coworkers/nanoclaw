@@ -462,6 +462,12 @@ async function deliverToAgent(
         text: pm.content,
         sender: pm.sender ?? 'unknown',
         senderId: pm.sender ?? 'unknown',
+        // Original direction from the parent's perspective. The row physically
+        // lives in inbound.db (so the agent can read it as context), but the
+        // dashboard's thread renderer reads this field to restore the correct
+        // author attribution — "outgoing" → show the coworker's own name,
+        // "incoming" → show "You" or @sender.
+        direction: pm.direction ?? 'outgoing',
       }),
       trigger: 0,
     });
