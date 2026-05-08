@@ -154,6 +154,10 @@ function buildDestinationsSection(): string {
     lines.push(`- \`${d.name}\`${label}`);
   }
   lines.push('');
+  lines.push(
+    'This list is regenerated at the top of every message you process — if the admin tells you they just created a new coworker, trust the list above rather than asking for a container restart. No restart is needed for the agent to see newly-wired coworkers.',
+  );
+  lines.push('');
   lines.push('To send a message, wrap it in a `<message to="name">...</message>` block.');
   lines.push('You can include multiple `<message>` blocks in one response to send to multiple destinations.');
   lines.push('Text outside of `<message>` blocks is scratchpad — logged but not sent anywhere.');
