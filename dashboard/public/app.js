@@ -314,6 +314,30 @@ function sessionKeyLabel(nanoSess) {
   return nanoSess?.session_key || '';
 }
 
+// Look up a nanoSess record from cachedSessions by NanoClaw session id.
+// Returns null when cachedSessions hasn't loaded yet or no match is found —
+// callers fall back to the bare slug label in that case.
+function lookupNanoSessById(sessionId) {
+  if (!sessionId) return null;
+  for (const p of (cachedSessions || [])) {
+    if (p.nanoclaw_session_id === sessionId) return p;
+  }
+  return null;
+}
+
+// Shared label used by the thread panel header, a2a inspector, and anywhere
+// else that only has a (sessionId, threadId) pair. Renders as
+// `kind · slug` when no display_title is set, or `kind · slug: title` when
+// the session has either a manual rename or an auto heuristic title.
+function sessionLabelWithTitle(sessionId, threadId) {
+  const base = typeof window.sessionLabel === 'function'
+    ? window.sessionLabel(sessionId, threadId)
+    : String(sessionId || '').slice(0, 12);
+  const nanoSess = lookupNanoSessById(sessionId);
+  const title = sessionDisplayTitle(nanoSess);
+  return title ? `${base}: ${title}` : base;
+}
+
 /**
  * Render session chip as the single-line format the operator asked for:
  *     Session- tender-fell-rests: Fix PR#124
@@ -418,16 +442,13 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
     const sessionRow = (sess, status, cs, ago, agid, sid, tid, outer) => {
       const slug = sessionSlugOnly(sess);
       const currentTitle = sessionDisplayTitle(sess);
-      const isManual = sess.title_source === 'manual';
-      // Primary name: manual renames override the slug; otherwise fall back to slug.
-      // The auto display_title moves down as a preview (it's often just first-message
-      // text that's better as secondary context than as the session identifier).
-      const primaryName = isManual && currentTitle ? currentTitle : slug;
+      // Primary name format is consistent with every other dashboard view:
+      // "slug: title" when a title exists, bare slug otherwise. The slug stays
+      // visible so operators can cross-reference with Timeline, thread header,
+      // a2a inspector, and logs.
+      const primaryName = currentTitle ? `${slug}: ${currentTitle}` : slug;
       const lastMsg = lookupLastMessage(sess.thread_id);
-      // When the primary name is the manual title, the auto heuristic title (if any)
-      // goes into the preview spot below along with the last message.
       const previewBits = [
-        !isManual && currentTitle ? currentTitle : null,
         lastMsg ? `last: ${lastMsg}` : null,
       ].filter(Boolean);
       const dotSize = outer ? '6px' : '5px';
@@ -4414,10 +4435,7 @@ function renderA2aInspector() {
   if (!msgsEl) return;
   const label = document.getElementById('cw-a2a-inspector-label');
   if (label && st.session) {
-    const slug = typeof window.sessionLabel === 'function'
-      ? window.sessionLabel(st.session.id, st.session.thread_id)
-      : String(st.session.id).slice(0, 12);
-    label.textContent = slug;
+    label.textContent = sessionLabelWithTitle(st.session.id, st.session.thread_id);
     label.title = `session=${st.session.id}\nthread_id=${st.session.thread_id ?? '(root)'}`;
   }
   // Oldest-first in the read-only pane (more natural to read top-down).
@@ -4504,9 +4522,7 @@ function renderCwThread() {
   // newly opened with no persisted messages yet.
   if (parentLabel) {
     const sessionIdForSlug = (t.messages || []).find((m) => m.session_id)?.session_id || t.parentId;
-    parentLabel.textContent = typeof window.sessionLabel === 'function'
-      ? window.sessionLabel(sessionIdForSlug, t.parentId)  // second arg non-null → "thread · <slug>"
-      : String(t.parentId).slice(0, 12);
+    parentLabel.textContent = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
     parentLabel.title = `session=${sessionIdForSlug}\nthread_id=${t.parentId}`;
   }
   if (parentEl) {
