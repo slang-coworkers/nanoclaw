@@ -75,32 +75,50 @@ function generateId(): string {
  * Build a per-loop refresher for the destinations section of the system
  * prompt. The host re-projects `inbound.db::destinations` whenever a new
  * coworker is wired up (dashboard/server.ts → refreshRunningSessions),
- * but the system prompt is built once at startup and frozen inside
- * `config.systemContext.instructions`. Without this refresh the agent
- * never learns about coworkers added after its container wakes —
- * "list coworkers" reads the stale system prompt and answers from the
- * startup snapshot.
+ * but Claude SDK pins the system prompt at the initial query and never
+ * re-reads it for `query.push()` follow-ups. Two-part fix:
  *
- * The check is a single SELECT + string-join; the prompt is only rebuilt
- * when the fingerprint actually changes. State is captured in a closure
- * so each call to `runPollLoop` gets its own cache (tests that reset the
- * in-memory DB between cases also get fresh state).
+ *   1. Always update `systemContext.instructions` so the NEXT fresh query
+ *      starts with the current destinations list.
+ *   2. Return an inline `[System: destinations updated …]` block that the
+ *      caller prepends to the pushed prompt so the agent sees the live
+ *      list even while the frozen system prompt is stale.
+ *
+ * Returns null (no inline note needed) when destinations haven't changed
+ * since the last call, or on the very first call (seed observation —
+ * otherwise every container's first push carries a redundant note).
  */
 function makeDestinationsRefresher(
   systemContext: PollLoopConfig['systemContext'],
-): () => void {
-  if (!systemContext) return () => {};
-  let lastFingerprint: string | null = null;
+): () => string | null {
+  let last: string | null = null;
   return () => {
     const fp = getDestinationsFingerprint();
-    if (fp === lastFingerprint) return;
-    const fresh = buildSystemPromptAddendum();
-    if (fresh !== systemContext.instructions) {
-      systemContext.instructions = fresh;
-      log('Destinations changed — refreshed system prompt addendum');
-    }
-    lastFingerprint = fp;
+    if (fp === last) return null;
+    const firstCall = last === null;
+    last = fp;
+    if (systemContext) systemContext.instructions = buildSystemPromptAddendum();
+    if (firstCall) return null;
+    log('Destinations changed — refreshed system prompt + push-block');
+    return buildDestinationsPushNote();
   };
+}
+
+/** Inline system note listing current destinations; prepended to pushed prompts. */
+function buildDestinationsPushNote(): string {
+  const all = getAllDestinations();
+  if (all.length === 0) {
+    return '\n[System: destinations updated — you currently have no configured destinations.]\n\n';
+  }
+  const names = all
+    .map((d) => (d.displayName && d.displayName !== d.name ? `${d.name} (${d.displayName})` : d.name))
+    .map((s) => `  - ${s}`)
+    .join('\n');
+  return (
+    '\n[System: destinations list updated since your previous turn. Current list:\n' +
+    names +
+    '\nUse THIS list, not any earlier mention. No restart is needed.]\n\n'
+  );
 }
 
 export interface PollLoopConfig {
@@ -485,7 +503,13 @@ async function processQuery(
       // the initial query prompt. Mid-query pushes bypass the hook, so run
       // the router ourselves here so workflow classification is applied to
       // every user message — not just the first.
-      const routedPrompt = await classifyAndPrepend(prompt);
+      let routedPrompt = await classifyAndPrepend(prompt);
+      // Claude SDK pins the system prompt to the initial query — pushed
+      // follow-ups don't re-read it. If destinations changed since the
+      // last push, inline the current list so the agent sees it alongside
+      // this user message even though its frozen system prompt is stale.
+      const destNote = refreshDestinations();
+      if (destNote) routedPrompt = destNote + routedPrompt;
       log(`Pushing ${newMessages.length} follow-up message(s) into active query`);
       query.push(routedPrompt);
 
