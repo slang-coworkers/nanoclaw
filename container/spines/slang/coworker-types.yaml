@@ -32,7 +32,7 @@ slang-reader:
   project: slang
   extends: slang-common
   workflows:
-    - plan
+    - slang-plan
 
 slang-writer:
   description: "Write-capable Slang coworker — plan + implement. Can edit code, write tests, create PRs."
@@ -42,7 +42,7 @@ slang-writer:
     - slang-code-writer
     - slang-docs
   workflows:
-    - plan
+    - slang-plan
     - slang-implement
   bindings:
     code: slang-code-writer

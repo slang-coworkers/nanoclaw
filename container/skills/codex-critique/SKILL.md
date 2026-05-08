@@ -31,6 +31,23 @@ Capture `threadId` from the response — required for round 2/3 via `mcp__codex_
 
 Triage: `must-fix` → fix → re-invoke (up to 3 rounds); `should-fix` → address or justify declining; `nits` → ack and skip. Record per `critique-overlay`: write `/workspace/agent/critiques/<slug>-round-N.md` AND broadcast a `send_message` summary — both are mandatory.
 
+**Autonomy:** Proceed through all triage steps without waiting for confirmation. Only pause and notify the user if `must-fix` items survive 3 rounds (see Round 3 section below). All other triage decisions are yours to make.
+
+## Severity scale
+
+| Level | Label | Action required |
+|-------|-------|-----------------|
+| P0 | `must-fix` / `blocked` | Blocks merge. Fix and re-invoke Codex (up to 3 rounds). |
+| P1 | `request-changes` (advisory) | Address or write justification for declining. |
+| P2 | `should-fix` (advisory) | Address or write justification for declining. |
+| P3 | `nits` / `approve-with-nits` | Acknowledge in verdict log; skip fixing unless trivial. |
+
+## Artifact location
+
+Write the review artifact to: `/workspace/agent/critiques/<slug>-round-N.md`
+
+Where `<slug>` is a short kebab-case identifier derived from the task name (e.g., `auth-refactor`, `ir-pass-fix`) and `N` is the round number (1, 2, 3).
+
 ## Prompt template
 
 ```

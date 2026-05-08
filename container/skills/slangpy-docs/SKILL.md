@@ -71,6 +71,15 @@ The functional API is the primary user-facing feature. Key concepts to document:
 4. **Vectorization** -- `.map()` for explicit dimension/type mappings
 5. **Differentiability** -- `[Differentiable]` Slang functions with PyTorch integration
 
+## Output format
+
+- Docs go in the location matching their type (see locations above)
+- Python API docs: Sphinx/RST docstrings with `:param:`, `:return:` tags; build with `sphinx-build -b html . _build/html`
+- C++ API docs: Doxygen `/// @param @return` triple-slash style
+- After modifying `docs/src/`, run `python generate_api.py` to refresh generated API reference
+- Do not add conversational filler or TODOs to committed docs — write finished text
+- Proceed with edits and commit; do not wait for confirmation unless the scope is ambiguous
+
 ## Documenting new types
 
 When a new type is added to the functional API:

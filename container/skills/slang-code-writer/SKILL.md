@@ -94,3 +94,5 @@ All files under `include/` are public API. See `/slang-code-reader` for ABI rule
 6. Format: `./extras/formatting.sh`
 7. Commit -- do not mention Claude in commit messages
 8. Push and create PR with `pr: non-breaking` or `pr: breaking` label
+
+**Autonomy:** Proceed through format, test, and commit without asking for confirmation. Only stop and notify the user if tests fail and the failure is not self-fixable.

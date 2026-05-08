@@ -41,6 +41,6 @@ Generate release notes from merged PRs between two tags/commits.
 
 ## Gotchas
 
-- PRs without labels need manual categorization — ask the user when uncertain
+- PRs without labels need manual categorization — use title prefix heuristics to decide; only escalate to the user if the PR is ambiguous AND significant (e.g., potential breaking change)
 - Squash-merged PRs lose individual commit messages — use PR description instead
 - Draft PRs should be excluded
