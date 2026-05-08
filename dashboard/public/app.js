@@ -117,9 +117,8 @@ function hasUnread(folder) {
 }
 
 // Per-session unread tracking. Cursor is the ms timestamp of the last time the
-// user opened this session (via chat 💬 or timeline ≡, or by having it as the
-// currently-active session). A session is unread if its last_active is newer
-// than the cursor.
+// user opened this session (via chat 💬 or timeline ≡). A session is unread if
+// its last_active is newer than the cursor, OR it has events and no cursor.
 const sessionReadCursors = {
   KEY: 'nanoclaw-session-read-cursors',
   _cache: null,
@@ -465,11 +464,11 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
         : '';
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
         <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
-        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}">${esc(primaryName)}</span>
+        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}">${esc(primaryName)}${unreadBadge}</span>
         <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, currentTitle || slug, sess)}</span>
       </div>
       ${previewBits.length ? `<div style="${previewStyle}" title="${escAttr(previewBits.join(' · '))}">${esc(previewBits.join(' · '))}</div>` : ''}
-      <div style="${metaStyle}">${esc(metaParts.join(' · '))}${unreadBadge}</div>`;
+      <div style="${metaStyle}">${esc(metaParts.join(' · '))}</div>`;
     };
     // Viewing the coworker's detail implicitly reads the currently-active session.
     if (target.nanoSess.nanoclaw_session_id) {
@@ -2350,7 +2349,6 @@ function updateSessionSelector() {
       html += `<option value="${escAttr(parentVal)}" data-group="${escAttr(p.group_folder)}" data-kind="nanoclaw" title="${escAttr(parentTitle)}">${esc(parentLabel)}</option>`;
     }
     for (const s of (p.sdk_subsessions || [])) {
-      if (s.shape === 'ghost') continue; // not selectable individually — visible in "all events" view
       // ALWAYS use last_ts (not first_ts — that was the old bug: ghost sessions showed their
       // start time and looked "recently active" even though they died immediately).
       const ts = formatTimeFull(s.last_ts);
@@ -2584,13 +2582,6 @@ function renderFlowEntry(entry, idx, depth) {
     return `<div class="flow-notification">
       <span style="color:var(--text-muted);font-size:9px">${formatTimeFull(entry.timestamp)}</span>
       ${esc(entry.message || '')}
-    </div>`;
-  }
-  if (entry.type === 'instructions_loaded') {
-    return `<div class="flow-session-marker">
-      <span class="flow-label">INIT</span>
-      <span style="color:var(--text-muted)">Instructions loaded</span>
-      <span style="color:var(--text-muted);font-size:9px">${formatTimeFull(entry.timestamp)}</span>
     </div>`;
   }
   return '';
@@ -4555,18 +4546,7 @@ function renderCwThread() {
   // and the detail panel. Fall back to parentId slug if the thread is
   // newly opened with no persisted messages yet.
   if (parentLabel) {
-    // Prefer the NanoClaw session id for the slug so the thread header matches
-    // the session block's slug (both render "sunny-moor-sprouts" for the same
-    // conversation). Lookup key is the per-thread session's thread_id, which
-    // equals t.parentId. Fall back to any SDK session_id on a loaded message,
-    // and finally to parentId so there's always *some* label.
-    const matchingNano = (cachedSessions || []).find(
-      (s) => s.thread_id === t.parentId && s.group_folder === cwState.selected,
-    );
-    const sessionIdForSlug =
-      matchingNano?.nanoclaw_session_id ||
-      (t.messages || []).find((m) => m.session_id)?.session_id ||
-      t.parentId;
+    const sessionIdForSlug = (t.messages || []).find((m) => m.session_id)?.session_id || t.parentId;
     parentLabel.textContent = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
     parentLabel.title = `session=${sessionIdForSlug}\nthread_id=${t.parentId}`;
   }
@@ -4589,7 +4569,17 @@ function renderCwThread() {
   if (!msgsEl) return;
   const wasAtBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 60;
   const html = (t.messages || []).map((m) => {
-    const isOutgoing = m.direction === 'outgoing';
+    // Seed rows (written by router.ts into inbound.db when a new per-thread
+    // session is minted) carry a `direction` inside their parsed content to
+    // override the table-based default. Without this override, an agent's
+    // own prior reply — stored in inbound.db for context — would render as
+    // "You" in the thread panel. See src/router.ts seed block.
+    const seededDirection =
+      m.parsedContent && (m.parsedContent.direction === 'outgoing' || m.parsedContent.direction === 'incoming')
+        ? m.parsedContent.direction
+        : null;
+    const effectiveDirection = seededDirection || m.direction;
+    const isOutgoing = effectiveDirection === 'outgoing';
     const isFromCoworker = !isOutgoing && m.senderKind === 'coworker';
     const cls = isFromCoworker ? 'coworker' : isOutgoing ? 'assistant' : 'user';
     const time = m.timestamp ? formatTime(m.timestamp) : '';
@@ -4743,15 +4733,8 @@ async function updateCwDetail() {
     // Only rewrite the DOM when content actually changed — repeated identical writes
     // caused the panel to flash on every 3s poll.
     if (toolsEl._lastHtml !== newHtml) {
-      // Preserve open/closed state of <details> elements (e.g. hidden sessions expander).
-      const openDetailIds = new Set();
-      toolsEl.querySelectorAll('details').forEach((d, i) => { if (d.open) openDetailIds.add(i); });
       toolsEl.innerHTML = newHtml;
       toolsEl._lastHtml = newHtml;
-      // Restore open state by position (there's currently only one <details> per tools panel).
-      if (openDetailIds.size > 0) {
-        toolsEl.querySelectorAll('details').forEach((d, i) => { if (openDetailIds.has(i)) d.open = true; });
-      }
       const searchEl = document.getElementById('cw-other-session-search');
       if (searchEl) {
         searchEl.addEventListener('input', () => {
