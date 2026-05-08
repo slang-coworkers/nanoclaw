@@ -8,6 +8,27 @@ allowed-tools: Bash(git:*), Bash(pnpm:*), Bash(npm:*), Bash(bun:*), Bash(vitest:
 
 # Build & Test
 
+## Prerequisites
+
+**Check all of these before starting the build.** Request any missing packages in a single `install_packages` call — the container will be rebuilt and you must restart the build from scratch after that, so identify everything upfront.
+
+Required apt packages:
+- `nodejs`, `npm` — Node.js runtime
+- `python3` — needed by some npm native addons
+
+Check:
+```bash
+for pkg in nodejs npm python3; do
+  dpkg -l "$pkg" 2>/dev/null | grep -q "^ii" || echo "MISSING: $pkg"
+done
+```
+
+Required npm globals (check with `which pnpm bun`):
+- `pnpm` — package manager (`npm install -g pnpm`)
+- `bun` — agent-runner test runner (`npm install -g bun`)
+
+If any are missing, call `install_packages` or install npm globals before proceeding. After the container rebuilds, re-invoke this skill from scratch.
+
 ## Quick build
 
 ```bash

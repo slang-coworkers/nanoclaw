@@ -31,7 +31,7 @@ nanoclaw-reader:
   project: nanoclaw
   extends: nanoclaw-common
   workflows:
-    - plan
+    - nanoclaw-plan
 
 nanoclaw-writer:
   description: "Write-capable NanoClaw coworker — plan + implement. Can edit code, write tests, create PRs."
@@ -41,7 +41,7 @@ nanoclaw-writer:
     - nanoclaw-code-writer
     - nanoclaw-docs
   workflows:
-    - plan
+    - nanoclaw-plan
     - nanoclaw-implement
   bindings:
     code: nanoclaw-code-writer
