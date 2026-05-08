@@ -1010,6 +1010,10 @@ async function buildContainerArgs(
   // git doesn't honor SSL_CERT_FILE — needs GIT_SSL_CAINFO to trust
   // the OneCLI MITM CA so `git clone/push` work through the proxy.
   args.push('-e', 'GIT_SSL_CAINFO=/tmp/onecli-combined-ca.pem');
+  // pip uses REQUESTS_CA_BUNDLE / PIP_CERT rather than SSL_CERT_FILE.
+  // Without these, pip inside a venv fails SSL verification through the proxy.
+  args.push('-e', 'REQUESTS_CA_BUNDLE=/tmp/onecli-combined-ca.pem');
+  args.push('-e', 'PIP_CERT=/tmp/onecli-combined-ca.pem');
 
   if (agentGroup.name) {
     args.push('-e', `NANOCLAW_ASSISTANT_NAME=${agentGroup.name}`);

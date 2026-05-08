@@ -134,7 +134,7 @@ RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" && \
 
 # ---- pnpm + global Node CLIs -------------------------------------------------
 ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
+ENV PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
 RUN corepack enable
 
 # agent-browser has a postinstall build script — pnpm skips these by default.
