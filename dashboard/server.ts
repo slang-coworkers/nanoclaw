@@ -8018,7 +8018,7 @@ export async function handleRequest(
     const body = await readBody(req, res);
     if (body === null) return;
     try {
-      const { group, content, thread_id } = JSON.parse(body);
+      const { group, content, thread_id, parent_message } = JSON.parse(body);
       if (!group || !content) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end('{"error":"group and content required"}');
@@ -8044,6 +8044,20 @@ export async function handleRequest(
         threadIdOut = trimmed.length > 0 ? trimmed : null;
       }
 
+      // parent_message is optional context that the host seeds into a
+      // brand-new per-thread session's inbound.db before the user's own
+      // message, so the agent has the conversation's immediate parent.
+      // Shape is re-validated in the ingress; here we just forward.
+      let parentMessageOut: unknown = undefined;
+      if (parent_message !== undefined && parent_message !== null) {
+        if (typeof parent_message !== 'object' || Array.isArray(parent_message)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end('{"error":"parent_message must be an object"}');
+          return;
+        }
+        parentMessageOut = parent_message;
+      }
+
       const wdb = getWriteDb();
       if (!wdb) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -8065,10 +8079,12 @@ export async function handleRequest(
       if (secret) headers.Authorization = `Bearer ${secret}`;
 
       try {
+        const forwardBody: Record<string, unknown> = { group, content, thread_id: threadIdOut };
+        if (parentMessageOut !== undefined) forwardBody.parent_message = parentMessageOut;
         const upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/inbound`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ group, content, thread_id: threadIdOut }),
+          body: JSON.stringify(forwardBody),
           signal: AbortSignal.timeout(5000),
         });
         const upstreamText = await upstream.text();

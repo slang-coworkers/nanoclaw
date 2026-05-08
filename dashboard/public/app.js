@@ -4251,7 +4251,7 @@ async function ensureContainerRunning(folder) {
  * Shared send helper. `threadId` is the Slack-style thread id (= parent
  * message id). null/undefined routes to the root session.
  */
-async function sendMessage({ group, content, threadId = null, optimisticBucket }) {
+async function sendMessage({ group, content, threadId = null, parentMessage = null, optimisticBucket }) {
   // direction='incoming': user messages land in messages_in.db when
   // persisted, so the optimistic row needs to match that for both the
   // author renderer (shows "You" on !isOutgoing) and the dedupe matcher
@@ -4267,6 +4267,11 @@ async function sendMessage({ group, content, threadId = null, optimisticBucket }
   try {
     const body = { group, content };
     if (threadId) body.thread_id = threadId;
+    // parent_message seeds the new per-thread session with the message the
+    // user replied to, so the agent has the conversation's immediate context.
+    // Only sent on the first reply in a thread — on subsequent replies the
+    // session already exists and its inbound.db has history.
+    if (parentMessage) body.parent_message = parentMessage;
     const res = await fetch('/api/chat/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4306,10 +4311,31 @@ async function sendCwThreadMessage() {
   const content = input.value.trim();
   if (!cwState.selected || !cwState.thread || !content) return;
   input.value = '';
+  // First reply in a thread: ship the parent message so the server can seed
+  // it into the new per-thread session's inbound.db before the user's turn.
+  // Server ignores parent_message when the session already exists.
+  let parentMessage = null;
+  const isFirstReply = (cwState.thread.messages || []).length === 0;
+  const snap = cwState.thread.parentSnapshot;
+  if (isFirstReply && snap) {
+    const text = (snap.displayContent || snap.content || '').toString();
+    if (text) {
+      const sender = snap.direction === 'outgoing'
+        ? (cwState.selected || 'agent')
+        : (snap.senderCoworkerName ? `@${snap.senderCoworkerName}` : 'You');
+      parentMessage = {
+        content: text,
+        timestamp: snap.timestamp || null,
+        sender,
+        direction: snap.direction === 'outgoing' ? 'outgoing' : 'incoming',
+      };
+    }
+  }
   await sendMessage({
     group: cwState.selected,
     content,
     threadId: cwState.thread.parentId,
+    parentMessage,
     optimisticBucket: cwState.thread.messages,
   });
 }
