@@ -4547,7 +4547,18 @@ function renderCwThread() {
   // and the detail panel. Fall back to parentId slug if the thread is
   // newly opened with no persisted messages yet.
   if (parentLabel) {
-    const sessionIdForSlug = (t.messages || []).find((m) => m.session_id)?.session_id || t.parentId;
+    // Prefer the NanoClaw session id for the slug so the thread header matches
+    // the session block's slug (both render "sunny-moor-sprouts" for the same
+    // conversation). Lookup key is the per-thread session's thread_id, which
+    // equals t.parentId. Fall back to any SDK session_id on a loaded message,
+    // and finally to parentId so there's always *some* label.
+    const matchingNano = (cachedSessions || []).find(
+      (s) => s.thread_id === t.parentId && s.group_folder === cwState.selected,
+    );
+    const sessionIdForSlug =
+      matchingNano?.nanoclaw_session_id ||
+      (t.messages || []).find((m) => m.session_id)?.session_id ||
+      t.parentId;
     parentLabel.textContent = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
     parentLabel.title = `session=${sessionIdForSlug}\nthread_id=${t.parentId}`;
   }
