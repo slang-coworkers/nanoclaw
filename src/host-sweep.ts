@@ -29,7 +29,7 @@
 import type Database from 'better-sqlite3';
 import fs from 'fs';
 
-import { getActiveSessions } from './db/sessions.js';
+import { getActiveSessions, getSession } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import {
   countDueMessages,
@@ -148,15 +148,16 @@ async function sweep(): Promise<void> {
       log.warn('CLAUDE.md stale — killing container for respawn', { sessionId, folder });
       recomposeAndUpdateHash(sessionId);
       killContainer(sessionId, 'claude-md-stale');
+      const staleSession = getSession(sessionId);
       writeSessionMessage(agentGroupId, sessionId, {
         id: `claudemd-refresh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         kind: 'chat',
         timestamp: new Date().toISOString(),
         platformId: agentGroupId,
         channelType: 'agent',
-        threadId: null,
+        threadId: staleSession?.thread_id ?? null,
         content: JSON.stringify({
-          text: 'Your instructions were updated. Container restarted to apply them. Continue your current task.',
+          text: 'Your instructions were updated. Container restarted to apply them. If you have work in progress, resume it — otherwise no response needed.',
           sender: 'system',
           senderId: 'system',
         }),

@@ -566,7 +566,7 @@ export function renderCoworkerSpine(
       routeLines.join('\n') +
         '\n\nAlways start with a workflow. Never jump straight to code.' +
         '\nWorkflow bodies are embedded below — follow the steps inline. Workflows are not slash commands.' +
-        '\nYour role-specific standing orders: [Additional Instructions](#additional-instructions)',
+        (extraInstructions?.trim() ? '\nYour role-specific standing orders: [Additional Instructions](#additional-instructions)' : ''),
     );
   }
 

@@ -2,32 +2,31 @@
 
 Recurring tasks survive across sessions and restarts. Inspect with `list_tasks`; manage with `update_task` / `cancel_task` / `pause_task` / `resume_task`. Prefer `update_task` over cancel+reschedule.
 
-### Long-running task watchdog (mandatory for any task > 5 min)
+### Build and compilation tasks — delegate to Agent subagent
 
-Any task that runs longer than ~5 minutes (builds, external API calls, long compute jobs) **must** have a watchdog before it starts. Without one, the container's idle-end timer can close the query stream mid-work, and neither the user nor the orchestrator will know the outcome.
+**For cmake, make, cargo, pip install, npm install, or any other compilation task: do NOT use `run_in_background=True` and do NOT set up a watchdog.**
 
-**Three steps — do all three before starting the long work:**
+Builds produce large output that pollutes your context. Delegate to a subagent so only the result comes back:
 
-1. **Notify parent:**
-   ```
-   send_message(to="parent", text="⚙️ Long task started — <what/branch/worktree>. ETA ~<N> min. Will report when done.")
-   ```
-   This tells the orchestrator the session is actively working, not stalled.
+```
+Agent(prompt="Run the build: <build commands from your project skill>. Log to /workspace/agent/build/build.log. Report: success/fail, any errors, and the log path.")
+```
 
-2. **Schedule a watchdog** with `new_session=false` (REQUIRED — the watchdog must resume this session's context so it knows what to check):
-   ```
-   schedule_task(
-     prompt="Check status of <task description>. If done: report result, then call cancel_task(<this task id>). If still running: report 'still running' and let this fire again.",
-     processAfter="<now + N+5 min, naive local time>",
-     recurrence="*/30 * * * *",
-     new_session=false
-   )
-   ```
-   Store the task id. Call `cancel_task(taskId=<id>)` immediately once the work completes successfully.
+The subagent runs the build synchronously (blocking its own turn). You get back a clean summary. Before writing any build commands yourself, use `ToolSearch` or `Skill` to find and invoke your project's build skill — it has the exact steps for your project.
 
-3. **Start the long work.**
+**Why not `run_in_background`:** If the build triggers an `install_packages` approval, the container is rebuilt and every background process is killed. A background build vanishes with no output and no recovery path.
 
-**Why `new_session=false` is required here:** The watchdog needs to remember what it's checking (the worktree path, branch name, task goal). With `new_session=true` (the default) the agent wakes with no context and cannot make a meaningful check. `new_session=false` resumes the same SDK session so the full prior context is available.
+**Pre-build checklist:** Before spawning the subagent, identify ALL missing packages by checking the build manifest, then request them all in a single `install_packages` call. After the container rebuilds, then delegate the build to a subagent.
+
+### Mid-turn notifications
+
+`<message to="name">` blocks are **only dispatched from the final assistant response** (after all tool calls complete). Any `<message>` block written mid-turn is silently ignored. For progress updates during long work, use `mcp__nanoclaw__send_message` instead.
+
+**Never use your own group name as the destination.** `<message to="name">` is for routing to a *different* agent. Sending to yourself loops the message back as a2a, creating a duplicate bubble. To reply to the sender, write plain text with no wrapper.
+
+### Recurring and scheduled tasks
+
+Use `schedule_task` for cron-style work: heartbeats, periodic reports, briefings, scheduled reminders. Long-running work (builds, compute jobs) belongs in a synchronous `Agent` subagent instead — not in scheduled tasks.
 
 Frequent recurring tasks consume API credits and can hit rate limits. When possible, guard the task with a `script` so the agent only wakes when there's something to do:
 

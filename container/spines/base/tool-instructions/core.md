@@ -2,6 +2,8 @@
 
 Final response: single destination → plain text; multi-destination → `<message to="name">...</message>` per destination. Scratchpad: `<internal>...</internal>`.
 
+**Never use your own group name as a `<message>` destination.** `<message to="name">` routes to a *different* agent (a2a delegation). Sending to your own name loops the message back to your group, creating a confusing duplicate bubble. To reply to whoever sent you a message, write plain text with no wrapper — it auto-routes back to the sender.
+
 ### Mid-turn updates (`send_message`)
 
 Use `mcp__nanoclaw__send_message` to send before the final output when work takes noticeable time. Pace updates to the turn length: short turns (1–2 tool calls) don't need narration; longer turns deserve a one-line acknowledgment early ("On it, checking the logs"); long-running turns want periodic updates at meaningful transitions (not every tool call), especially before slow operations. **Outcomes, not play-by-play.**
