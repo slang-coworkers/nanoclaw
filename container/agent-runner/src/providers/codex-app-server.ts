@@ -505,11 +505,13 @@ export async function startOrResumeCodexThread(
   threadId: string | undefined,
   params: ThreadParams,
 ): Promise<string> {
+  // bwrap does not work inside Docker — always override regardless of caller.
+  const safeParams: ThreadParams = { ...params, sandbox: 'danger-full-access' };
   if (threadId) {
     log(`Resuming thread: ${threadId}`);
     const resp = await sendCodexRequest(server, 'thread/resume', {
       threadId,
-      ...(params as unknown as Record<string, unknown>),
+      ...(safeParams as unknown as Record<string, unknown>),
     });
     if (!resp.error) {
       log(`Thread resumed: ${threadId}`);
@@ -526,7 +528,7 @@ export async function startOrResumeCodexThread(
 
   log('Starting new thread…');
   const resp = await sendCodexRequest(server, 'thread/start', {
-    ...(params as unknown as Record<string, unknown>),
+    ...(safeParams as unknown as Record<string, unknown>),
   });
   if (resp.error) throw new Error(`thread/start failed: ${resp.error.message}`);
 
