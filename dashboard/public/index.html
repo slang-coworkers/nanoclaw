@@ -799,6 +799,11 @@
     }
     .session-icon-btn:hover { color: var(--text); border-color: var(--accent); }
     .session-icon-btn.active { color: var(--accent); border-color: var(--accent); }
+    .session-unread-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--status-active); margin-left: 6px; vertical-align: middle;
+      flex-shrink: 0; animation: pulse-badge 2s infinite;
+    }
     #coworkers.cw-fullscreen #cw-fullscreen-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
     .cw-sidebar { width: 220px; min-width: 140px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg-card); min-height: 0; overflow: hidden; }
     .cw-sidebar-header { padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
@@ -816,6 +821,7 @@
     .cw-dot.error { background: var(--red); }
     .cw-item-info { flex: 1; min-width: 0; }
     .cw-item-name { font-size: 0.8125rem; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cw-item-type { font-size: 0.625rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
     .cw-item-meta { font-size: 0.6875rem; color: var(--text-dim); }
     .cw-unread-badge { width: 8px; height: 8px; border-radius: 50%; background: var(--status-active); flex-shrink: 0; font-size: 0; cursor: help; }
     .cw-approval-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--status-thinking); flex-shrink: 0; animation: pulse-badge 2s infinite; cursor: help; }
