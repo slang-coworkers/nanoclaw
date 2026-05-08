@@ -169,7 +169,7 @@ export function writeSessionRouting(agentGroupId: string, sessionId: string): vo
   // original source — which routeAgentMessage's reply-detection branch
   // then delivers into source_session_id.
   const a2aSrc = getA2aSourceFor(sessionId);
-  if (a2aSrc) {
+  if (a2aSrc && a2aSrc.source_agent_group_id !== agentGroupId) {
     channelType = 'agent';
     platformId = a2aSrc.source_agent_group_id;
     threadId = a2aSrc.source_thread_id;
