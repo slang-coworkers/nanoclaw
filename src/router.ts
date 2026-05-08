@@ -444,6 +444,35 @@ async function deliverToAgent(
     }
   }
 
+  // Seed the new per-thread session with the parent message (if the caller
+  // supplied one). Only runs when `resolveSession` actually minted a fresh
+  // session AND we passed the command gate. Written with `trigger: 0` so it
+  // does NOT wake the container on its own — the user's real message (below)
+  // drives the wake and includes both rows as conversation context.
+  if (created && event.parentMessage) {
+    const pm = event.parentMessage;
+    writeSessionMessage(session.agent_group_id, session.id, {
+      id: `seed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'chat',
+      timestamp: pm.timestamp ?? event.message.timestamp,
+      platformId: deliveryAddr.platformId,
+      channelType: deliveryAddr.channelType,
+      threadId: deliveryAddr.threadId,
+      content: JSON.stringify({
+        text: pm.content,
+        sender: pm.sender ?? 'unknown',
+        senderId: pm.sender ?? 'unknown',
+      }),
+      trigger: 0,
+    });
+    log.info('Parent message seeded into new thread session', {
+      sessionId: session.id,
+      agentGroup: agent.agent_group_id,
+      parentDirection: pm.direction ?? 'unknown',
+      parentSender: pm.sender ?? 'unknown',
+    });
+  }
+
   writeSessionMessage(session.agent_group_id, session.id, {
     id: messageIdForAgent(event.message.id, agent.agent_group_id),
     kind: event.message.kind,
