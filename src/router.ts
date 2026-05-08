@@ -171,6 +171,7 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
       platform_id: event.platformId,
       name: null,
       is_group: event.message.isGroup ? 1 : 0,
+      admin_user_id: null,
       unknown_sender_policy: 'request_approval',
       denied_at: null,
       created_at: new Date().toISOString(),
@@ -323,6 +324,21 @@ export async function routeInbound(event: InboundEvent): Promise<void> {
   }
 }
 
+/** Cache compiled engage regexes by pattern string to avoid re-creation on every message. */
+const engageRegexCache = new Map<string, RegExp | null>();
+
+function getOrCompileRegex(pattern: string): RegExp | null {
+  let re = engageRegexCache.get(pattern);
+  if (re !== undefined) return re;
+  try {
+    re = new RegExp(pattern, 'i');
+  } catch {
+    re = null;
+  }
+  engageRegexCache.set(pattern, re);
+  return re;
+}
+
 /**
  * Decide whether a given wired agent should engage on this message.
  *
@@ -351,15 +367,14 @@ function evaluateEngage(
   threadId: string | null,
 ): boolean {
   switch (agent.engage_mode) {
+    case 'always':
+      return true;
     case 'pattern': {
       const pat = agent.engage_pattern ?? '.';
       if (pat === '.') return true;
-      try {
-        return new RegExp(pat).test(text);
-      } catch {
-        // Bad regex: fail open so admin sees the agent responding + can fix.
-        return true;
-      }
+      const re = getOrCompileRegex(pat);
+      // Bad regex (null): fail open so admin sees the agent responding + can fix.
+      return re ? re.test(text) : true;
     }
     case 'mention':
       return isMention;
@@ -427,6 +442,41 @@ async function deliverToAgent(
       log.info('Admin command denied by gate', { command: gate.command, userId, agentGroupId: agent.agent_group_id });
       return;
     }
+  }
+
+  // Seed the new per-thread session with the parent message (if the caller
+  // supplied one). Only runs when `resolveSession` actually minted a fresh
+  // session AND we passed the command gate. Written with `trigger: 0` so it
+  // does NOT wake the container on its own — the user's real message (below)
+  // drives the wake and includes both rows as conversation context.
+  if (created && event.parentMessage) {
+    const pm = event.parentMessage;
+    writeSessionMessage(session.agent_group_id, session.id, {
+      id: `seed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'chat',
+      timestamp: pm.timestamp ?? event.message.timestamp,
+      platformId: deliveryAddr.platformId,
+      channelType: deliveryAddr.channelType,
+      threadId: deliveryAddr.threadId,
+      content: JSON.stringify({
+        text: pm.content,
+        sender: pm.sender ?? 'unknown',
+        senderId: pm.sender ?? 'unknown',
+        // Original direction from the parent's perspective. The row physically
+        // lives in inbound.db (so the agent can read it as context), but the
+        // dashboard's thread renderer reads this field to restore the correct
+        // author attribution — "outgoing" → show the coworker's own name,
+        // "incoming" → show "You" or @sender.
+        direction: pm.direction ?? 'outgoing',
+      }),
+      trigger: 0,
+    });
+    log.info('Parent message seeded into new thread session', {
+      sessionId: session.id,
+      agentGroup: agent.agent_group_id,
+      parentDirection: pm.direction ?? 'unknown',
+      parentSender: pm.sender ?? 'unknown',
+    });
   }
 
   writeSessionMessage(session.agent_group_id, session.id, {

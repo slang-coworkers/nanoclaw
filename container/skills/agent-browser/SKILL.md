@@ -1,5 +1,6 @@
 ---
 name: agent-browser
+license: MIT
 description: Browse the web for any task — research topics, read articles, interact with web apps, fill forms, take screenshots, extract data, and test web pages. Use whenever a browser would be useful, not just when the user explicitly asks.
 allowed-tools: Bash(agent-browser:*)
 ---
@@ -15,6 +16,29 @@ agent-browser click @e1         # Click element by ref
 agent-browser fill @e2 "text"   # Fill input by ref
 agent-browser close             # Close browser
 ```
+
+## Browser vs API decision
+
+Use the browser when:
+- The target resource has no API (public web page, rendered JavaScript content, SaaS UI)
+- The task requires visual confirmation (screenshot, layout check)
+- Authentication is session-based with no API token available
+- Form interaction or multi-step wizard flows are needed
+
+Use a direct API/HTTP call (via Bash `curl` or an MCP tool) when:
+- A REST/GraphQL API exists for the same data (faster, cheaper, more reliable)
+- Only JSON data is needed and no JavaScript rendering is required
+- Rate limits are a concern (browsers consume more resources)
+
+Prefer API over browser when both options are available.
+
+## Error handling
+
+- If `agent-browser open` returns a navigation error or timeout, retry once. If it fails again, report the URL and error — do not loop.
+- If a snapshot returns no interactive elements (`[]`), check with `agent-browser get url` that navigation succeeded. If the page redirected, re-snapshot.
+- If a `fill` or `click` on a `@ref` fails with "element not found", re-snapshot to get fresh refs before retrying — refs are invalidated by navigation or DOM mutations.
+- If authentication state is stale (redirected to login page), re-authenticate and save new state with `agent-browser state save`.
+- Do not retry indefinitely — after 3 failed attempts on the same action, stop and report the failure with the last snapshot output.
 
 ## Core workflow
 

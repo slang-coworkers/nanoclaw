@@ -46,6 +46,37 @@ export function getAllDestinations(): DestinationEntry[] {
   return rows.map(rowToEntry);
 }
 
+/**
+ * Deterministic fingerprint of the destinations table — cheap to compute
+ * on every poll iteration, changes iff any row's significant content
+ * changes. Used by the poll loop to decide whether the system prompt's
+ * destinations section needs to be rebuilt (the host refreshes this
+ * table mid-session when new coworkers are wired; without a fingerprint
+ * check the agent would operate from its startup snapshot forever).
+ *
+ * Format is intentionally opaque — callers must compare for equality,
+ * not parse.
+ */
+export function getDestinationsFingerprint(): string {
+  const rows = getInboundDb()
+    .prepare(
+      'SELECT name, display_name, type, channel_type, platform_id, agent_group_id FROM destinations ORDER BY name',
+    )
+    .all() as DestRow[];
+  return rows
+    .map((r) =>
+      [
+        r.name,
+        r.display_name ?? '',
+        r.type,
+        r.channel_type ?? '',
+        r.platform_id ?? '',
+        r.agent_group_id ?? '',
+      ].join('\x1f'),
+    )
+    .join('\x1e');
+}
+
 export function findByName(name: string): DestinationEntry | undefined {
   const row = getInboundDb().prepare('SELECT * FROM destinations WHERE name = ?').get(name) as DestRow | undefined;
   return row ? rowToEntry(row) : undefined;
@@ -122,6 +153,10 @@ function buildDestinationsSection(): string {
     const label = d.displayName && d.displayName !== d.name ? ` (${d.displayName})` : '';
     lines.push(`- \`${d.name}\`${label}`);
   }
+  lines.push('');
+  lines.push(
+    'This list is regenerated at the top of every message you process — if the admin tells you they just created a new coworker, trust the list above rather than asking for a container restart. No restart is needed for the agent to see newly-wired coworkers.',
+  );
   lines.push('');
   lines.push('To send a message, wrap it in a `<message to="name">...</message>` block.');
   lines.push('You can include multiple `<message>` blocks in one response to send to multiple destinations.');

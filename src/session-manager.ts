@@ -17,6 +17,7 @@ import path from 'path';
 import { isSafeAttachmentName } from './attachment-safety.js';
 import type { OutboundFile } from './channels/adapter.js';
 import { DATA_DIR } from './config.js';
+import { getSourceFor as getA2aSourceFor } from './db/a2a-session-sources.js';
 import { getMessagingGroup } from './db/messaging-groups.js';
 import {
   createSession,
@@ -30,6 +31,7 @@ import {
   ensureSchema,
   openInboundDb as openInboundDbRaw,
   openOutboundDb as openOutboundDbRaw,
+  openOutboundDbWritable as openOutboundDbWritableRaw,
   upsertSessionRouting,
   insertMessage,
   migrateMessagesInTable,
@@ -112,6 +114,9 @@ export function resolveSession(
     agent_group_id: agentGroupId,
     messaging_group_id: messagingGroupId,
     thread_id: lookupThreadId,
+    display_title: null,
+    title_source: null,
+    title_updated_at: null,
     agent_provider: null,
     status: 'active',
     container_status: 'stopped',
@@ -156,7 +161,19 @@ export function writeSessionRouting(agentGroupId: string, sessionId: string): vo
 
   let channelType: string | null = null;
   let platformId: string | null = null;
-  if (session.messaging_group_id) {
+  let threadId: string | null = session.thread_id;
+
+  // a2a recipient sessions: override the synthetic `agent:<src>:<rcp>` mg
+  // platform_id with the real source agent group id, so the container's
+  // bare `send_message({text})` produces an outbound addressed at the
+  // original source — which routeAgentMessage's reply-detection branch
+  // then delivers into source_session_id.
+  const a2aSrc = getA2aSourceFor(sessionId);
+  if (a2aSrc && a2aSrc.source_agent_group_id !== agentGroupId) {
+    channelType = 'agent';
+    platformId = a2aSrc.source_agent_group_id;
+    threadId = a2aSrc.source_thread_id;
+  } else if (session.messaging_group_id) {
     const mg = getMessagingGroup(session.messaging_group_id);
     if (mg) {
       channelType = mg.channel_type;
@@ -169,12 +186,12 @@ export function writeSessionRouting(agentGroupId: string, sessionId: string): vo
     upsertSessionRouting(db, {
       channel_type: channelType,
       platform_id: platformId,
-      thread_id: session.thread_id,
+      thread_id: threadId,
     });
   } finally {
     db.close();
   }
-  log.debug('Session routing written', { sessionId, channelType, platformId, threadId: session.thread_id });
+  log.debug('Session routing written', { sessionId, channelType, platformId, threadId });
 }
 
 /**
@@ -312,7 +329,7 @@ export function writeOutboundDirect(
     content: string;
   },
 ): void {
-  const db = openOutboundDb(agentGroupId, sessionId);
+  const db = openOutboundDbWritableRaw(outboundDbPath(agentGroupId, sessionId));
   try {
     db.prepare(
       `INSERT OR IGNORE INTO messages_out (id, seq, timestamp, kind, platform_id, channel_type, thread_id, content)
