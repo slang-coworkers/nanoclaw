@@ -219,7 +219,12 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
     const body = await readBody(req, res);
     if (body === null) return;
 
-    let parsed: { group?: unknown; content?: unknown; thread_id?: unknown };
+    let parsed: {
+      group?: unknown;
+      content?: unknown;
+      thread_id?: unknown;
+      parent_message?: unknown;
+    };
     try {
       parsed = JSON.parse(body);
     } catch {
@@ -248,6 +253,36 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
       threadId = trimmed.length > 0 ? trimmed : null;
     }
 
+    // parent_message: optional seed for brand-new per-thread sessions.
+    // See InboundEvent.parentMessage in src/channels/adapter.ts.
+    let parentMessage: InboundEvent['parentMessage'] | undefined;
+    if (parsed.parent_message !== undefined && parsed.parent_message !== null) {
+      if (typeof parsed.parent_message !== 'object' || Array.isArray(parsed.parent_message)) {
+        writeJson(res, 400, { error: 'parent_message must be an object' });
+        return;
+      }
+      const pm = parsed.parent_message as Record<string, unknown>;
+      const pmContent = typeof pm.content === 'string' ? pm.content : '';
+      if (!pmContent) {
+        writeJson(res, 400, { error: 'parent_message.content required' });
+        return;
+      }
+      const MAX_PARENT = 32 * 1024; // 32 KB — comfortably larger than any single chat turn
+      if (pmContent.length > MAX_PARENT) {
+        writeJson(res, 400, { error: `parent_message.content too long (max ${MAX_PARENT} chars)` });
+        return;
+      }
+      const pmTs = typeof pm.timestamp === 'string' ? pm.timestamp : undefined;
+      const pmSender = typeof pm.sender === 'string' ? pm.sender : undefined;
+      const pmDir = pm.direction === 'outgoing' || pm.direction === 'incoming' ? pm.direction : undefined;
+      parentMessage = {
+        content: pmContent,
+        ...(pmTs ? { timestamp: pmTs } : {}),
+        ...(pmSender ? { sender: pmSender } : {}),
+        ...(pmDir ? { direction: pmDir } : {}),
+      };
+    }
+
     if (!isAdapterReady()) {
       writeJson(res, 503, { error: 'Dashboard channel adapter not ready' });
       return;
@@ -264,6 +299,7 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
           content: JSON.stringify({ text: content, sender: 'dashboard-admin', senderId: 'dashboard-admin' }),
           timestamp: new Date().toISOString(),
         },
+        ...(parentMessage ? { parentMessage } : {}),
       });
       writeJson(res, 200, { ok: true });
     } catch (err) {
