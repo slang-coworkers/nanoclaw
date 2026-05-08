@@ -1,6 +1,5 @@
 ---
 name: slack-formatting
-license: MIT
 description: Format messages for Slack using mrkdwn syntax. Use when responding to Slack channels (folder starts with "slack_" or JID contains slack identifiers).
 ---
 
@@ -12,7 +11,7 @@ When responding to Slack channels, use Slack's mrkdwn syntax instead of standard
 
 Check your group folder name or workspace path:
 - Folder starts with `slack_` (e.g., `slack_engineering`, `slack_general`)
-- Or check `/workspace/agent/` path for `slack_` prefix
+- Or check `/workspace/group/` path for `slack_` prefix
 
 ## Formatting reference
 
@@ -84,14 +83,6 @@ _March 21, 2026_
 
 :white_check_mark: All tests passing | <https://ci.example.com/builds/123|View Build>
 ```
-
-## Sending formatted messages
-
-Use `mcp__nanoclaw__send_message` to deliver the formatted text. The `text` field accepts mrkdwn directly — no conversion needed.
-
-For structured panels, use `mcp__nanoclaw__send_card` instead: it renders as a Slack Block Kit attachment and supports `title`, `fields`, and `color` properties.
-
-`mcp__nanoclaw__send_file({ path, text?, filename? })` — deliver a file artifact. Do not paste large outputs inline; send as a file instead.
 
 ## Quick rules
 

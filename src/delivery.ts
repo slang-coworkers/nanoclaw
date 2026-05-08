@@ -49,10 +49,6 @@ const deliveryAttempts = new Map<string, number>();
  */
 const inflightDeliveries = new Set<string>();
 
-export function shouldRetainOutboxFiles(channelType: string | null, files?: OutboundFile[]): boolean {
-  return channelType === 'dashboard' && Boolean(files?.length);
-}
-
 export interface ChannelDeliveryAdapter {
   deliver(
     channelType: string,
@@ -372,11 +368,7 @@ async function deliverMessage(
     fileCount: files?.length,
   });
 
-  // Dashboard reads attachment files directly from the session outbox, so those
-  // files must persist after delivery instead of being treated as transport-only.
-  if (!shouldRetainOutboxFiles(msg.channel_type, files)) {
-    clearOutbox(session.agent_group_id, session.id, msg.id);
-  }
+  clearOutbox(session.agent_group_id, session.id, msg.id);
 
   return platformMsgId;
 }
@@ -435,7 +427,3 @@ export function stopDeliveryPolls(): void {
   activePolling = false;
   sweepPolling = false;
 }
-
-export const __testHooks = {
-  handleSystemAction,
-};
