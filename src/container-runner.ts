@@ -1026,6 +1026,15 @@ async function buildContainerArgs(
   // (trigger=0 rows) rides along with wake-eligible rows up to this cap.
   args.push('-e', `NANOCLAW_MAX_MESSAGES_PER_PROMPT=${MAX_MESSAGES_PER_PROMPT}`);
 
+  // Idle-end timeout override. Agents that run long builds (e.g. CMake debug
+  // builds = 15-25 min) need a higher ceiling than the 600s default so the
+  // poll loop doesn't kill the query mid-build. Set NANOCLAW_IDLE_END_MS in
+  // the host .env to widen the window for all containers, or pass it through
+  // per-agent-group config. The poll-loop clamps to a 60s floor.
+  if (process.env.NANOCLAW_IDLE_END_MS) {
+    args.push('-e', `NANOCLAW_IDLE_END_MS=${process.env.NANOCLAW_IDLE_END_MS}`);
+  }
+
   // Provider-contributed env vars (e.g. XDG_DATA_HOME, OPENCODE_*, NO_PROXY).
   if (providerContribution.env) {
     for (const [key, value] of Object.entries(providerContribution.env)) {

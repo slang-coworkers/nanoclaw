@@ -22,7 +22,12 @@ import type { AgentProvider, AgentQuery, ProviderEvent } from './providers/types
 
 const POLL_INTERVAL_MS = 1000;
 const ACTIVE_POLL_INTERVAL_MS = 500;
-const IDLE_END_MS = 600_000; // End stream after 600s with no SDK events (background subagents need longer)
+// End stream after this many ms with no SDK events. Default 600s is fine for
+// interactive tasks but too short for long builds (CMake debug build = 15-25min).
+// Set NANOCLAW_IDLE_END_MS in the container env to override per-agent-group.
+const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
+  ? Math.max(60_000, parseInt(process.env.NANOCLAW_IDLE_END_MS, 10))
+  : 600_000;
 
 function log(msg: string): void {
   console.error(`[poll-loop] ${msg}`);
