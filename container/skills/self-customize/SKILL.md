@@ -1,6 +1,5 @@
 ---
 name: self-customize
-license: MIT
 description: Customize your own agent — add capabilities, install packages, add MCP servers, edit code or CLAUDE.md. Use when the user asks you to add a feature, install a tool, or modify how you work. For non-trivial code changes, delegate to a builder agent via create_agent.
 ---
 
@@ -26,7 +25,7 @@ For anything that requires editing source files (your own code, Dockerfile, etc.
 2. Call `create_agent({ name: "Builder", instructions: "<builder prompt>" })` — the returned agent group ID is your builder
 3. Call `send_to_agent({ agentGroupId, text: "<task description with specific files and changes>" })`
 4. The builder works in its own container, makes the changes, and reports back
-5. Review the builder's summary. If the changes look correct and tests pass, proceed. Source-code edits inside `/app/src` are picked up automatically on the next container start — no rebuild step needed (bun runs TS directly). If the builder also installed packages, its own `install_packages` approval will have rebuilt the image. Notify the orchestrator (see below). Only surface to the user if the builder reported failures or blockers.
+5. You review the builder's summary and confirm with the user. Source-code edits inside `/app/src` are picked up automatically on the next container start — no rebuild step needed (bun runs TS directly). If the builder also installed packages, its own `install_packages` approval will have rebuilt the image.
 
 ### Builder Agent Instructions (use as CLAUDE.md when creating)
 
@@ -86,18 +85,3 @@ User: "Can you transcribe audio?"
 - **The change is for a one-off task** — just do it in your workspace, don't modify the container
 - **The request is ambiguous** — ask the user what they actually need before spinning up builders or requesting installs
 - **You don't know if it will work** — prototype in your workspace first (`pnpm install` in `/workspace/agent/`), then promote to container-level install if it proves useful
-
-## Scope limits
-
-Customization scope is limited to the container and workspace you operate in. Do NOT:
-- Modify another group's `CLAUDE.local.md` or workspace files
-- Push changes to the host NanoClaw source (that requires a separate PR process)
-- Expand your own allowed-tools list without the corresponding source change being reviewed
-
-## Infinite-loop guard
-
-After any customization that triggers a container restart (package install, MCP server add), the container relaunches fresh. **Do not re-issue the same customization on the first turn after restart.** Check whether the capability is now available before requesting it again. The sequence is: request install → approval → rebuild → verify capability works → done. If verification fails, diagnose before re-requesting.
-
-## Notify the orchestrator after customization
-
-After any structural change (package installed, MCP server added, source code changed via builder), send a `mcp__nanoclaw__send_message` summary to the orchestrator group listing: (a) what changed, (b) how to verify it, (c) any caveats. This keeps the orchestrator's model of your capabilities current.

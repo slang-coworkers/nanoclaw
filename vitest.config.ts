@@ -2,13 +2,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: [
-      'src/**/*.test.ts',
-      'setup/**/*.test.ts',
-      // agent-runner tests use bun:test — run via 'bun test' in container/agent-runner/
-      'dashboard/**/*.test.ts',
-    ],
-    setupFiles: ['./vitest.setup.ts'],
-    testTimeout: 15000,
+    // container/agent-runner tests run under Bun (they depend on bun:sqlite).
+    // See container/agent-runner/package.json "test" script.
+    include: ['src/**/*.test.ts', 'setup/**/*.test.ts'],
   },
 });

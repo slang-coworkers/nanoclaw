@@ -90,7 +90,6 @@ export async function ensureUserDm(userId: string): Promise<MessagingGroup | nul
       platform_id: dmPlatformId,
       name: user.display_name,
       is_group: 0,
-      admin_user_id: null,
       unknown_sender_policy: 'strict',
       created_at: now,
     };

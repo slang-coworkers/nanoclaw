@@ -76,7 +76,6 @@ describe('session manager', () => {
       platform_id: 'chan-123',
       name: 'General',
       is_group: 1,
-      admin_user_id: null,
       unknown_sender_policy: 'strict',
       created_at: now(),
     });
@@ -230,7 +229,6 @@ describe('router', () => {
       platform_id: 'chan-123',
       name: 'General',
       is_group: 1,
-      admin_user_id: null,
       unknown_sender_policy: 'public',
       created_at: now(),
     });
@@ -238,8 +236,6 @@ describe('router', () => {
       id: 'mga-1',
       messaging_group_id: 'mg-1',
       agent_group_id: 'ag-1',
-      trigger_rules: null,
-      response_scope: 'all',
       engage_mode: 'pattern',
       engage_pattern: '.',
       sender_scope: 'all',
@@ -372,8 +368,6 @@ describe('router', () => {
       id: 'mga-2',
       messaging_group_id: 'mg-1',
       agent_group_id: 'ag-2',
-      trigger_rules: null,
-      response_scope: 'all',
       engage_mode: 'pattern',
       engage_pattern: '.',
       sender_scope: 'all',
@@ -473,7 +467,6 @@ describe('delivery', () => {
       platform_id: 'chan-test',
       name: 'Test',
       is_group: 0,
-      admin_user_id: null,
       unknown_sender_policy: 'strict',
       created_at: now(),
     });

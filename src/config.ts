@@ -6,25 +6,11 @@ import { getContainerImageBase, getDefaultContainerImage, getInstallSlug } from 
 import { isValidTimezone } from './timezone.js';
 
 // Read config values from .env (falls back to process.env).
-const envConfig = readEnvFile([
-  'ASSISTANT_NAME',
-  'ASSISTANT_HAS_OWN_NUMBER',
-  'ONECLI_URL',
-  'ONECLI_API_KEY',
-  'TZ',
-  'DASHBOARD_PORT',
-  'DASHBOARD_SECRET',
-  'DASHBOARD_INGRESS_PORT',
-  'MCP_PROXY_PORT',
-  'CONTAINER_IMAGE',
-  'CONTAINER_PREFIX',
-]);
+const envConfig = readEnvFile(['ASSISTANT_NAME', 'ASSISTANT_HAS_OWN_NUMBER', 'ONECLI_URL', 'ONECLI_API_KEY', 'TZ']);
 
 export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
 export const ASSISTANT_HAS_OWN_NUMBER =
   (process.env.ASSISTANT_HAS_OWN_NUMBER || envConfig.ASSISTANT_HAS_OWN_NUMBER) === 'true';
-export const POLL_INTERVAL = 2000;
-export const SCHEDULER_POLL_INTERVAL = 60000;
 
 // Absolute paths needed for container mounts
 const PROJECT_ROOT = process.cwd();
@@ -36,13 +22,11 @@ export const SENDER_ALLOWLIST_PATH = path.join(HOME_DIR, '.config', 'nanoclaw', 
 export const STORE_DIR = path.resolve(PROJECT_ROOT, 'store');
 export const GROUPS_DIR = path.resolve(PROJECT_ROOT, 'groups');
 export const DATA_DIR = path.resolve(PROJECT_ROOT, 'data');
-export const SHARED_DIR = path.resolve(DATA_DIR, 'shared');
 
 // Per-checkout image tag so two installs on the same host don't share
 // `nanoclaw-agent:latest` and clobber each other on rebuild.
 export const CONTAINER_IMAGE_BASE = process.env.CONTAINER_IMAGE_BASE || getContainerImageBase(PROJECT_ROOT);
 export const CONTAINER_IMAGE = process.env.CONTAINER_IMAGE || getDefaultContainerImage(PROJECT_ROOT);
-export const CONTAINER_PREFIX = process.env.CONTAINER_PREFIX || envConfig.CONTAINER_PREFIX || 'nanoclaw';
 // Install slug — stamped onto every spawned container via --label so
 // cleanupOrphans only reaps containers from this install, not peers.
 export const INSTALL_SLUG = getInstallSlug(PROJECT_ROOT);
@@ -52,52 +36,7 @@ export const CONTAINER_MAX_OUTPUT_SIZE = parseInt(process.env.CONTAINER_MAX_OUTP
 export const ONECLI_URL = process.env.ONECLI_URL || envConfig.ONECLI_URL;
 export const ONECLI_API_KEY = process.env.ONECLI_API_KEY || envConfig.ONECLI_API_KEY;
 export const MAX_MESSAGES_PER_PROMPT = Math.max(1, parseInt(process.env.MAX_MESSAGES_PER_PROMPT || '10', 10) || 10);
-export const IPC_POLL_INTERVAL = 1000;
-// Idle grace period. Default is 25% below CONTAINER_TIMEOUT so the idle
-// sweeper always has a window before the hard kill, even when operators
-// tune CONTAINER_TIMEOUT without also thinking about IDLE_TIMEOUT. If an
-// explicit env var is set and violates the invariant, resolveIdleTimeout()
-// clamps it with a loud warning.
-const IDLE_HEADROOM_MS = 300_000; // 5 min cushion before hard ceiling
-function resolveIdleTimeout(): number {
-  const raw = process.env.IDLE_TIMEOUT;
-  const fallback = Math.max(60_000, CONTAINER_TIMEOUT - IDLE_HEADROOM_MS);
-  if (!raw) return Math.min(fallback, CONTAINER_TIMEOUT - 1);
-  const parsed = parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) return Math.min(fallback, CONTAINER_TIMEOUT - 1);
-  if (parsed >= CONTAINER_TIMEOUT) {
-    const clamped = Math.max(60_000, CONTAINER_TIMEOUT - IDLE_HEADROOM_MS);
-    console.warn(
-      `[config] IDLE_TIMEOUT (${parsed}ms) >= CONTAINER_TIMEOUT (${CONTAINER_TIMEOUT}ms); clamping to ${clamped}ms. ` +
-        `Set IDLE_TIMEOUT strictly less than CONTAINER_TIMEOUT to silence this.`,
-    );
-    return clamped;
-  }
-  return parsed;
-}
-export const IDLE_TIMEOUT = resolveIdleTimeout();
-
-// Lifecycle invariant (regression guard for issue #2): IDLE_TIMEOUT is the
-// grace period after the last agent reply; CONTAINER_TIMEOUT is the hard
-// ceiling on total container lifetime. If idle >= ceiling, the idle sweeper
-// will never cull before the hard kill — producing orphaned containers and
-// misleading watchdog logs. resolveIdleTimeout() clamps bad operator config
-// so the runtime is always safe; this validator is kept for tests that
-// exercise the raw contract.
-export function validateContainerTimeouts(
-  idle = IDLE_TIMEOUT,
-  ceiling = CONTAINER_TIMEOUT,
-): { ok: boolean; warning?: string } {
-  if (idle >= ceiling) {
-    return {
-      ok: false,
-      warning:
-        `[config] IDLE_TIMEOUT (${idle}ms) >= CONTAINER_TIMEOUT (${ceiling}ms) — ` +
-        `idle sweep will never fire before the hard kill. Set IDLE_TIMEOUT strictly less than CONTAINER_TIMEOUT.`,
-    };
-  }
-  return { ok: true };
-}
+export const IDLE_TIMEOUT = parseInt(process.env.IDLE_TIMEOUT || '1800000', 10); // 30min default — how long to keep container alive after last result
 export const MAX_CONCURRENT_CONTAINERS = Math.max(1, parseInt(process.env.MAX_CONCURRENT_CONTAINERS || '5', 10) || 5);
 
 function escapeRegex(str: string): string {
@@ -116,21 +55,6 @@ export function getTriggerPattern(trigger?: string): RegExp {
 }
 
 export const TRIGGER_PATTERN = buildTriggerPattern(DEFAULT_TRIGGER);
-
-// MCP proxy
-export const MCP_PROXY_PORT = parseInt(process.env.MCP_PROXY_PORT || envConfig.MCP_PROXY_PORT || '3100', 10);
-export const PROXY_BIND_HOST = os.platform() === 'linux' ? '0.0.0.0' : '127.0.0.1';
-
-// Dashboard host/server configuration
-export const DASHBOARD_PORT = parseInt(process.env.DASHBOARD_PORT || envConfig.DASHBOARD_PORT || '3737', 10);
-export const DASHBOARD_SECRET = process.env.DASHBOARD_SECRET || envConfig.DASHBOARD_SECRET || '';
-
-// Dashboard chat ingress (host-only bridge used by the standalone dashboard server)
-export const DASHBOARD_INGRESS_PORT = parseInt(
-  process.env.DASHBOARD_INGRESS_PORT || envConfig.DASHBOARD_INGRESS_PORT || '3738',
-  10,
-);
-export const DASHBOARD_INGRESS_HOST = '127.0.0.1';
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.
