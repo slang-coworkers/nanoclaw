@@ -55,6 +55,14 @@ When reviewing or writing docs:
 - Check feature maturity tables in `docs/` if the change affects a support matrix.
 - Notable user-facing changes should appear in the CHANGELOG.
 
+## Output format
+
+- Docs go in the location matching their type (user guide, API inline, design doc — see locations above)
+- User guide pages: Markdown with Vitepress front matter; run `powershell ./build_toc.ps1` to regenerate TOC after adding/renaming pages
+- API comments (`include/slang.h`): C-style `/** ... */` with `@param`/`@return`/`@remarks` tags
+- Standard library (`.meta.slang`): `/// ... @param @return` triple-slash style
+- Do not add conversational filler or TODOs to committed docs — write finished text
+
 ## Documenting new diagnostics
 
 When introducing new warnings/errors, update:

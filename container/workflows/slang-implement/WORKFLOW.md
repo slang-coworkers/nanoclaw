@@ -34,4 +34,10 @@ overrides:
        Test: `./build/Debug/bin/slang-test tests/path/to/new-test.slang`.
        Format: `./extras/formatting.sh`.
        For cross-backend changes: `SLANG_RUN_SPIRV_VALIDATION=1 ./build/Debug/bin/slangc -target spirv -o /dev/null test.slang`.
+
+    Failure handling: if the build fails after 2 attempts (clean rebuild counts as attempt 2), commit a `wip:` branch with the failure log, cancel the watchdog task, and escalate to orchestrator with: build error summary, last 50 lines of build log, what was tried.
+
+    On restart: check `git branch --show-current` and `git log --oneline -5`. If on a fix branch with commits, proceed to verify. If mid-build (no binary), restart the build subagent.
+
+    Autonomy additions: build is always delegated to an `Agent` subagent — never run cmake/pip inline. Cancel the watchdog immediately after confirming results. If `slangc` binary exists but tests fail: fix, rebuild, retest — max 2 cycles before escalating.
 ---

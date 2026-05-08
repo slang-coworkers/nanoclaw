@@ -100,7 +100,7 @@ After collecting all data, gather all unique Slack user IDs found in messages.
 
 Only use full names and usernames which are present in the input data. If both are found, prefer full names.
 
-Save the report as 'daily-report-YYYY-MM-DD.md'. Or if a report with that name exists, ask whether to update it accordingly.
+Save the report as 'daily-report-YYYY-MM-DD.md'. If a report with that name already exists, overwrite it with the new version (append a `_updated` suffix only if you need to preserve both versions).
 
 ---
 
