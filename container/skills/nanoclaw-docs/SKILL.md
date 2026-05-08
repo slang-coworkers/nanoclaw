@@ -8,6 +8,14 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash(git add:*), Bash(git commit:*
 
 # Documentation
 
+## Output format
+
+- All docs are Markdown; write finished text — no conversational filler or TODOs in committed files
+- `docs/*.md` — plain Markdown, no special build step required
+- `container/skills/*/SKILL.md` — YAML front matter required; keep body concise and directive
+- Commit doc-only changes with `git commit -m "docs: <what changed>"` — no format check needed for Markdown-only changes
+- Proceed with edits directly; do not wait for confirmation
+
 ## Locations
 
 - `docs/` — Architecture docs, runbooks, coworker workflow spec
