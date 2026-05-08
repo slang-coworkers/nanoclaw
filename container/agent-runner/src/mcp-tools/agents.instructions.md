@@ -26,3 +26,13 @@ The right frame is: does this agent need its own memory and context that builds 
 ### Writing good `instructions`
 
 Cover: the agent's role, who it takes tasks from (you, by name), how it should report back (on completion only? with milestones for long work?), and any domain-specific rules. Don't restate NanoClaw base behavior or the coworker type's skills — the shared base and typed spine are already loaded on the agent's end.
+
+### PR creation callback
+
+When you create a PR as part of a delegated task, immediately report the PR number back to your delegator so webhook events (review comments, CI results) can be routed to your session:
+
+```
+send_message(to="<delegator>", text="PR_CREATED: repo=<owner/repo> pr=<number>")
+```
+
+This is essential for round-trip routing — without it, webhook events for your PR will not reach you.
