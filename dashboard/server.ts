@@ -4565,6 +4565,8 @@ export async function handleRequest(
           entries.push({ type: 'notification', timestamp: row.timestamp, message: row.message || '' });
         } else if (row.event === 'Stop' || row.event === 'SessionEnd') {
           entries.push({ type: 'session_end', timestamp: row.timestamp, extra });
+        } else if (row.event === 'InstructionsLoaded') {
+          entries.push({ type: 'instructions_loaded', timestamp: row.timestamp });
         }
       }
 
