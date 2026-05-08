@@ -4550,6 +4550,22 @@ function renderCwThread() {
     parentLabel.textContent = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
     parentLabel.title = `session=${sessionIdForSlug}\nthread_id=${t.parentId}`;
   }
+  const actionsEl = document.getElementById('cw-thread-actions');
+  if (actionsEl) {
+    if (matchingNano) {
+      const sid = escAttr(matchingNano.nanoclaw_session_id);
+      const agid = escAttr(matchingNano.agent_group_id || '');
+      const tgrp = escAttr(cwState.selected || '');
+      const currentTitle = matchingNano.display_title || '';
+      const isPinned = !!matchingNano.pinned_at;
+      actionsEl.innerHTML =
+        `<button class="session-icon-btn${isPinned ? ' active' : ''}" title="${isPinned ? 'Unpin session' : 'Pin session'}" data-pin-session="${sid}" data-pin-on="${isPinned ? '0' : '1'}">📌</button>` +
+        `<button class="session-icon-btn" title="Rename this session" data-rename-session="${sid}" data-rename-current="${escAttr(currentTitle)}">✎</button>` +
+        `<button class="session-icon-btn" title="Open in Timeline" data-view-nanoclaw-session="${sid}" data-view-nanoclaw-agid="${agid}" data-view-session-group="${tgrp}">≡</button>`;
+    } else {
+      actionsEl.innerHTML = '';
+    }
+  }
   if (parentEl) {
     if (t.parentSnapshot) {
       const p = t.parentSnapshot;
