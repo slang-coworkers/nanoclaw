@@ -70,13 +70,23 @@ A `critique-record-gate` PreToolUse hook blocks further `Edit`/`Write` until ste
    - Every `must-fix` / `should-fix` with `<file:line>` + rationale + recommended fix
    - codex `threadId` (for round 2/3 reply linkage)
 2. Append one line to `/workspace/agent/critiques/index.md`: `[STAGE] <slug> round N — <verdict> — M must-fix`
-3. Broadcast via `mcp__nanoclaw__send_message` using the **verbatim** template below — don't paraphrase, don't change emoji (the runtime pattern-matches):
+3. Send status via `mcp__nanoclaw__send_message` using the **verbatim** template below — don't paraphrase, don't change emoji (the runtime pattern-matches). **Audience matters**: the critique loop is between you and codex; status updates should reach whoever asked for the work, and *only* a final escalation goes to your supervisor. The "Send to" column is authoritative.
 
-| Event | Template |
-|---|---|
-| Entering | `🔴 [STAGE] gate — invoking /codex-critique. [1-line artifact summary].` |
-| Approved | `✅ [STAGE] round N/3 — approved. Verdict: [approve\|approve-with-nits]. Full: /workspace/agent/critiques/<slug>-round-N.md.` |
-| Must-fix | `🟡 [STAGE] round N/3 — M must-fix items:\n- <file:line> — <issue>\n…\nFixing. Full: <path>.` |
-| Escalating | `🚨 [STAGE] — 3 rounds exhausted. Unresolved:\n- <file:line> — <issue>\nEscalating to user.` |
+| Event | Template | Send to |
+|---|---|---|
+| Entering   | `🔴 [STAGE] gate — invoking /codex-critique. [1-line artifact summary].` | *(no send — `/codex-critique` is an internal tool call, not a conversation event)* |
+| Approved   | `✅ [STAGE] round N/3 — approved. Verdict: [approve\|approve-with-nits]. Full: /workspace/agent/critiques/<slug>-round-N.md.` | default route — omit `to=`, lets `session_routing` deliver back to whoever initiated the work (dashboard user or delegating coworker) |
+| Must-fix   | `🟡 [STAGE] round N/3 — M must-fix items:\n- <file:line> — <issue>\n…\nFixing. Full: <path>.` | default route (same as Approved) |
+| Escalating | `🚨 [STAGE] — 3 rounds exhausted. Unresolved:\n- <file:line> — <issue>\nEscalating to user.` | **`to="parent"`** — only here do you page the supervisor/orchestrator |
 
 `[STAGE]` ∈ {`PLAN_REVIEW`, `DIAGNOSIS_REVIEW`, `CODE_REVIEW`, `OUTPUT_REVIEW`}.
+
+**Why this matters.** Broadcasting every gate to `parent` turns the orchestrator into a noisy rubber-stamp for work it has no context for. The intended topology is:
+
+```
+  normal flow:       you <—tool—> codex         (tool call, no send_message)
+  progress updates:  you ——> default route      (whoever asked: dashboard or delegator)
+  escalation only:   you ——> parent              (supervisor steps in on stuck gates)
+```
+
+Omitting `to=` on a `send_message` honors session_routing — which is how the dashboard user keeps seeing your progress without orchestrator leaking in.
