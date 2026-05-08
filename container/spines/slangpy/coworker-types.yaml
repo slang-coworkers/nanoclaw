@@ -32,7 +32,7 @@ slangpy-reader:
   project: slangpy
   extends: slangpy-common
   workflows:
-    - plan
+    - slangpy-plan
 
 slangpy-writer:
   description: "Write-capable SlangPy coworker — plan + implement. Can edit code, write tests, create PRs."
@@ -42,7 +42,7 @@ slangpy-writer:
     - slangpy-code-writer
     - slangpy-docs
   workflows:
-    - plan
+    - slangpy-plan
     - slangpy-implement
   bindings:
     code: slangpy-code-writer

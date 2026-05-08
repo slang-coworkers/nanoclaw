@@ -6,6 +6,31 @@ provides: [code.build, test.run, test.gen, ci.inspect]
 allowed-tools: Bash(git:*), Bash(cmake:*), Bash(python:*), Bash(pytest:*), Bash(pip:*), Bash(pre-commit:*), Read, Grep, Glob
 ---
 
+## Prerequisites
+
+**Check all of these before starting the build.** Request any missing packages in a single `install_packages` call — the container will be rebuilt and you must restart the build from scratch after that, so identify everything upfront.
+
+Required apt packages:
+- `cmake`, `ninja-build` — build system
+- `libgl-dev`, `libegl-dev` — OpenGL/EGL headers (SlangPy/SGL requires these)
+- `libvulkan-dev` — Vulkan headers
+- `libx11-dev`, `libxext-dev`, `libxrandr-dev`, `libxinerama-dev`, `libxcursor-dev`, `libxi-dev` — X11 display headers
+
+Required Python packages (install via pip into the project venv after the build system is ready, not via `install_packages`):
+- `numpy` — required by SlangPy
+- `pillow` — required by tests
+- `pytest` — test runner
+
+Check:
+```bash
+# Check apt packages
+for pkg in cmake ninja-build libgl-dev libegl-dev libvulkan-dev libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev; do
+  dpkg -l "$pkg" 2>/dev/null | grep -q "^ii" || echo "MISSING: $pkg"
+done
+```
+
+If any are missing, call `install_packages` with all of them at once before proceeding. After the container rebuilds, re-invoke this skill from scratch.
+
 ## Clone
 
 ```bash
