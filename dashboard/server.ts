@@ -4693,17 +4693,22 @@ export async function handleRequest(
 
           let sessions: { id: string; thread_id: string | null }[];
           if (threadMode) {
-            sessions = dashMgId
-              ? (db
-                  .prepare(
-                    "SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND messaging_group_id = ? AND status = 'active' AND thread_id = ?",
-                  )
-                  .all(agRow.id, dashMgId, threadFilter) as { id: string; thread_id: string | null }[])
-              : (db
-                  .prepare(
-                    "SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND status = 'active' AND thread_id = ?",
-                  )
-                  .all(agRow.id, threadFilter) as { id: string; thread_id: string | null }[]);
+            // Thread view: key on (agent_group, thread_id) WITHOUT scoping to the
+            // dashboard messaging group. A per-thread session's messaging_group_id
+            // reflects who spawned it — dashboard chat, a2a delegation (mg-a2a-*),
+            // or another adapter. The user clicks 💬 on a SPECIFIC session slug
+            // in the session block, and expects to see that exact conversation.
+            // Scoping to dashMgId here hides a2a-spawned threads (e.g. orchestrator
+            // receiving a delegation from implementer) and returns 0 messages.
+            //
+            // Slack/Discord thread_ids (thread_ts, platform-native ids) are
+            // structurally distinct from NanoClaw's msg-* ids and won't collide
+            // in practice within a single agent's thread namespace.
+            sessions = db
+              .prepare(
+                "SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND status = 'active' AND thread_id = ?",
+              )
+              .all(agRow.id, threadFilter) as { id: string; thread_id: string | null }[];
           } else {
             sessions = dashMgId
               ? (db
