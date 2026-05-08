@@ -116,6 +116,46 @@ function hasUnread(folder) {
   return cw.lastMessageTs > cursor;
 }
 
+// Per-session unread tracking. Cursor is the ms timestamp of the last time the
+// user opened this session (via chat 💬 or timeline ≡, or by having it as the
+// currently-active session). A session is unread if its last_active is newer
+// than the cursor.
+const sessionReadCursors = {
+  KEY: 'nanoclaw-session-read-cursors',
+  _cache: null,
+  get() { if (!this._cache) { try { this._cache = JSON.parse(localStorage.getItem(this.KEY) || '{}'); } catch { this._cache = {}; } } return this._cache; },
+  getFor(sid) { return this.get()[sid] || 0; },
+  markRead(sid, ms) {
+    const c = this.get();
+    c[sid] = ms || Date.now();
+    this._cache = c;
+    try { localStorage.setItem(this.KEY, JSON.stringify(c)); } catch {}
+  },
+};
+
+function sessionLastActiveMs(sess) {
+  if (!sess) return 0;
+  if (sess.last_active) {
+    const t = new Date(sess.last_active).getTime();
+    if (Number.isFinite(t)) return t;
+  }
+  const subs = sess.sdk_subsessions;
+  if (Array.isArray(subs) && subs.length) {
+    const t = subs[0].last_ts || 0;
+    if (Number.isFinite(t)) return t;
+  }
+  return 0;
+}
+
+function hasSessionUnread(sess) {
+  const sid = sess?.nanoclaw_session_id;
+  if (!sid) return false;
+  const lastMs = sessionLastActiveMs(sess);
+  if (!lastMs) return false;
+  const cursor = sessionReadCursors.getFor(sid);
+  return lastMs > cursor;
+}
+
 let selectedCoworker = null;
 let frame = 0;
 let liveSource = null;
@@ -398,14 +438,22 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       const evCount = sess.event_count_total || 0;
       const subCount = (sess.sdk_subsessions || []).length;
       const metaParts = [cs, ago ? 'last ' + ago : '', evCount ? `${evCount} ev` : '', subCount ? `${subCount} sub` : ''].filter(Boolean);
+      const unread = hasSessionUnread(sess);
+      const unreadBadge = unread
+        ? `<span class="session-unread-dot" title="Unread activity since you last opened this session"></span>`
+        : '';
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
         <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
-        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}">${esc(primaryName)}</span>
+        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}">${esc(primaryName)}${unreadBadge}</span>
         <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, currentTitle || slug, sess)}</span>
       </div>
       ${previewBits.length ? `<div style="${previewStyle}" title="${escAttr(previewBits.join(' · '))}">${esc(previewBits.join(' · '))}</div>` : ''}
       <div style="${metaStyle}">${esc(metaParts.join(' · '))}</div>`;
     };
+    // Viewing the coworker's detail implicitly reads the currently-active session.
+    if (target.nanoSess.nanoclaw_session_id) {
+      sessionReadCursors.markRead(target.nanoSess.nanoclaw_session_id, sessionLastActiveMs(target.nanoSess) || Date.now());
+    }
     const targetHtml = `<div style="padding:5px 6px;border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,0.03);margin-bottom:5px">
       ${sessionRow(target.nanoSess, target.status, target.cs, target.ago, tagid, tsid, ttid, true)}
     </div>`;
@@ -2559,6 +2607,11 @@ document.addEventListener('click', (e) => {
     const sid = viewNanoBtn.dataset.viewNanoclawSession;
     const agid = viewNanoBtn.dataset.viewNanoclawAgid;
     const grp = viewNanoBtn.dataset.viewSessionGroup;
+    if (sid) {
+      sessionReadCursors.markRead(sid);
+      const tools = document.getElementById('cw-detail-tools');
+      if (tools) tools._lastHtml = null;
+    }
     if (sid && agid) {
       switchToTab('observability');
       // Reflect the selection in both dropdowns. The session option only exists in
@@ -2663,6 +2716,12 @@ document.addEventListener('click', (e) => {
   if (viewChatBtn) {
     const grp = viewChatBtn.dataset.viewChatGroup;
     const tid = viewChatBtn.dataset.viewChatThread || '';
+    const sid = viewChatBtn.dataset.viewChatSession || '';
+    if (sid) {
+      sessionReadCursors.markRead(sid);
+      const tools = document.getElementById('cw-detail-tools');
+      if (tools) tools._lastHtml = null;
+    }
     if (grp) {
       switchToTab('coworkers');
       if (cwState.selected !== grp) selectCoworker(grp);
@@ -3676,7 +3735,7 @@ function renderCwSidebar() {
   list.innerHTML = coworkers.map((cw) => {
     const selected = cwState.selected === cw.folder ? ' selected' : '';
     const label = cw.isMain ? `${cw.name} (main)` : cw.name;
-    const meta = cw.lastActivity ? timeAgo(cw.lastActivity) : cw.type;
+    const meta = cw.lastActivity ? timeAgo(cw.lastActivity) : '';
     const updateDot = updateDotHtml(cw.isAutoUpdate);
     const unread = hasUnread(cw.folder);
     const approvalCount = cwState.approvalCountByFolder[cw.folder] || 0;
@@ -3685,7 +3744,8 @@ function renderCwSidebar() {
       <div class="cw-dot ${cw.status}" title="${statusTitle}"></div>
       <div class="cw-item-info">
         <div class="cw-item-name">${esc(label)}${updateDot}</div>
-        <div class="cw-item-meta">${esc(meta)}</div>
+        ${cw.type ? `<div class="cw-item-type">${esc(cw.type)}</div>` : ''}
+        ${meta ? `<div class="cw-item-meta">${esc(meta)}</div>` : ''}
       </div>
       ${approvalCount > 0 ? `<div class="cw-approval-dot" title="Pending approval \u2014 ${approvalCount} action${approvalCount > 1 ? 's' : ''} waiting for admin review"></div>` : ''}
       ${unread ? '<div class="cw-unread-badge" title="Unread messages">\u25CF</div>' : ''}
