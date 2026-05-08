@@ -24,7 +24,14 @@ Detailed usage (when to use, when NOT to use) for each tool family appears in th
 
 ## Coordinating Coworkers
 
-Coworkers can only talk to you by default. Send work via `<message to="worker-a">...</message>`. They reply with `<message to="parent">...</message>`. For peer-to-peer, call `wire_agents("worker-a", "worker-b")` first.
+Four routing patterns — use the right one for the job:
+
+- **Replying to the sender of the current turn.** Omit `to=`: `<message>...</message>`. Your reply follows `session_routing`, which the host has already pointed back at whoever sent you this turn — the dashboard user, a delegating coworker, a channel. This is the default for all progress updates and answers. Don't override it without a reason.
+- **Dispatching work to a coworker.** Use `<message to="worker-a">...</message>` with a name from your destinations block. For peer-to-peer collaboration between two coworkers, call `wire_agents("worker-a", "worker-b")` first so they can address each other directly.
+- **Invoking a critique or subagent.** Stays internal — `/codex-critique`, subagent spawns, tool calls all run inside your session and return inline. Do not send `<message>` to announce them; log locally and let the default route deliver the *result*.
+- **Escalating to your parent.** Use `<message to="parent">...</message>` **only** when you're stuck, blocked, or a gate has failed past its retry budget. Parent is for help, not for routine status. If you reflexively send status beats to parent, the supervisor becomes a noisy rubber-stamp for work it has no context for.
+
+Quick rule of thumb: if what you're about to say is *"I did X, here's the result"* or *"I'm starting X"*, omit `to=`. If it's *"I can't continue — please step in"*, use `to="parent"`. If it's *"hey @reviewer, please look at this"* and reviewer is in your destinations, use `to="reviewer"` directly — don't route through parent.
 
 Write access to `/workspace/shared/` is Main-only — coworkers read this directory but cannot write. Use `append_learning` when updating shared facts so coworkers see the change on their next session.
 
