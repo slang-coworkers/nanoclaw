@@ -117,8 +117,9 @@ function hasUnread(folder) {
 }
 
 // Per-session unread tracking. Cursor is the ms timestamp of the last time the
-// user opened this session (via chat 💬 or timeline ≡). A session is unread if
-// its last_active is newer than the cursor, OR it has events and no cursor.
+// user opened this session (via chat 💬 or timeline ≡, or by having it as the
+// currently-active session). A session is unread if its last_active is newer
+// than the cursor.
 const sessionReadCursors = {
   KEY: 'nanoclaw-session-read-cursors',
   _cache: null,
@@ -464,11 +465,11 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
         : '';
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
         <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
-        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}">${esc(primaryName)}${unreadBadge}</span>
+        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}">${esc(primaryName)}</span>
         <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, currentTitle || slug, sess)}</span>
       </div>
       ${previewBits.length ? `<div style="${previewStyle}" title="${escAttr(previewBits.join(' · '))}">${esc(previewBits.join(' · '))}</div>` : ''}
-      <div style="${metaStyle}">${esc(metaParts.join(' · '))}</div>`;
+      <div style="${metaStyle}">${esc(metaParts.join(' · '))}${unreadBadge}</div>`;
     };
     // Viewing the coworker's detail implicitly reads the currently-active session.
     if (target.nanoSess.nanoclaw_session_id) {
@@ -665,7 +666,14 @@ function applyState(nextState) {
       const detailSessEl = document.getElementById('detail-session');
       if (detailSessEl) {
         const blk = renderActiveSessionBlock(updated, { wrapField: false });
-        if (blk) detailSessEl.innerHTML = blk;
+        if (blk) {
+          const openDetailIds = new Set();
+          detailSessEl.querySelectorAll('details').forEach((d, i) => { if (d.open) openDetailIds.add(i); });
+          detailSessEl.innerHTML = blk;
+          if (openDetailIds.size > 0) {
+            detailSessEl.querySelectorAll('details').forEach((d, i) => { if (openDetailIds.has(i)) d.open = true; });
+          }
+        }
       }
       hidePixelOfficeContext();
     }
@@ -2349,6 +2357,7 @@ function updateSessionSelector() {
       html += `<option value="${escAttr(parentVal)}" data-group="${escAttr(p.group_folder)}" data-kind="nanoclaw" title="${escAttr(parentTitle)}">${esc(parentLabel)}</option>`;
     }
     for (const s of (p.sdk_subsessions || [])) {
+      if (s.shape === 'ghost') continue; // not selectable individually — visible in "all events" view
       // ALWAYS use last_ts (not first_ts — that was the old bug: ghost sessions showed their
       // start time and looked "recently active" even though they died immediately).
       const ts = formatTimeFull(s.last_ts);
@@ -2582,6 +2591,13 @@ function renderFlowEntry(entry, idx, depth) {
     return `<div class="flow-notification">
       <span style="color:var(--text-muted);font-size:9px">${formatTimeFull(entry.timestamp)}</span>
       ${esc(entry.message || '')}
+    </div>`;
+  }
+  if (entry.type === 'instructions_loaded') {
+    return `<div class="flow-session-marker">
+      <span class="flow-label">INIT</span>
+      <span style="color:var(--text-muted)">Instructions loaded</span>
+      <span style="color:var(--text-muted);font-size:9px">${formatTimeFull(entry.timestamp)}</span>
     </div>`;
   }
   return '';
@@ -4546,13 +4562,24 @@ function renderCwThread() {
   // and the detail panel. Fall back to parentId slug if the thread is
   // newly opened with no persisted messages yet.
   if (parentLabel) {
-    const sessionIdForSlug = (t.messages || []).find((m) => m.session_id)?.session_id || t.parentId;
+    // Prefer the NanoClaw session id for the slug so the thread header matches
+    // the session block's slug (both render "sunny-moor-sprouts" for the same
+    // conversation). Lookup key is the per-thread session's thread_id, which
+    // equals t.parentId. Fall back to any SDK session_id on a loaded message,
+    // and finally to parentId so there's always *some* label.
+    const matchingNano = (cachedSessions || []).find(
+      (s) => s.thread_id === t.parentId && s.group_folder === cwState.selected,
+    );
+    const sessionIdForSlug =
+      matchingNano?.nanoclaw_session_id ||
+      (t.messages || []).find((m) => m.session_id)?.session_id ||
+      t.parentId;
     parentLabel.textContent = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
     parentLabel.title = `session=${sessionIdForSlug}\nthread_id=${t.parentId}`;
   }
   const actionsEl = document.getElementById('cw-thread-actions');
   if (actionsEl) {
-    if (matchingNano) {
+    if (matchingNano && matchingNano.nanoclaw_session_id) {
       const sid = escAttr(matchingNano.nanoclaw_session_id);
       const agid = escAttr(matchingNano.agent_group_id || '');
       const tgrp = escAttr(cwState.selected || '');
@@ -4749,8 +4776,15 @@ async function updateCwDetail() {
     // Only rewrite the DOM when content actually changed — repeated identical writes
     // caused the panel to flash on every 3s poll.
     if (toolsEl._lastHtml !== newHtml) {
+      // Preserve open/closed state of <details> elements (e.g. hidden sessions expander).
+      const openDetailIds = new Set();
+      toolsEl.querySelectorAll('details').forEach((d, i) => { if (d.open) openDetailIds.add(i); });
       toolsEl.innerHTML = newHtml;
       toolsEl._lastHtml = newHtml;
+      // Restore open state by position (there's currently only one <details> per tools panel).
+      if (openDetailIds.size > 0) {
+        toolsEl.querySelectorAll('details').forEach((d, i) => { if (openDetailIds.has(i)) d.open = true; });
+      }
       const searchEl = document.getElementById('cw-other-session-search');
       if (searchEl) {
         searchEl.addEventListener('input', () => {
