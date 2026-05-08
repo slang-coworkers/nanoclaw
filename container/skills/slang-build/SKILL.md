@@ -6,6 +6,27 @@ provides: [code.build, test.run, test.gen, ci.inspect]
 allowed-tools: Bash(git:*), Bash(cmake:*), Bash(python:*), Bash(ninja:*), Read, Grep, Glob
 ---
 
+## Prerequisites
+
+**Check all of these before starting the build.** Request any missing packages in a single `install_packages` call — the container will be rebuilt and you must restart the build from scratch after that, so identify everything upfront.
+
+Required apt packages:
+- `cmake`, `ninja-build` — build system
+- `python3`, `python3-dev` — Python bindings and scripting utilities
+- `libssl-dev` — HTTPS operations (used by CMake FetchContent and API integrations)
+
+Optional (for LLVM backend — include if building with `-DSLANG_ENABLE_LLVM=ON`):
+- `clang`, `llvm` — LLVM backend support
+
+Check:
+```bash
+for pkg in cmake ninja-build python3 python3-dev libssl-dev; do
+  dpkg -l "$pkg" 2>/dev/null | grep -q "^ii" || echo "MISSING: $pkg"
+done
+```
+
+If any are missing, call `install_packages` with all of them at once before proceeding. After the container rebuilds, re-invoke this skill from scratch.
+
 ## From project
 
 Drawn from: `repos/slang/CLAUDE.md` (build system, testing, debugging sections), `repos/slang/.claude/skills/repro-remix/SKILL.md` (RTX Remix shader repro), `repos/slang/.claude/skills/slangpy-debug/SKILL.md` (SlangPy compatibility testing).

@@ -25,7 +25,7 @@ Cross-cutting pitfalls that affect every `/slang-maintain` task. Read before you
 
 - **Squash-merged PRs** lose their per-commit messages. Use the PR description (not commit log) for release notes.
 - **Draft PRs** are excluded from release-notes and daily-report. Confirm via `pr.draft == false` if the MCP layer hasn't already filtered.
-- **PRs without labels** need manual categorization in release-notes — ask the user when uncertain, don't guess.
+- **PRs without labels** need manual categorization in release-notes — use title prefix heuristics to decide; only escalate to the user if the PR is ambiguous AND significant (e.g., potential breaking change).
 - **Issues with no `priority` field** fall through the ProjectV2 priority extractor. Treat as `P3` / unknown in issue-prioritization.
 
 ## Configuration
