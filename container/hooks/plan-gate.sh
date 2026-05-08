@@ -7,6 +7,16 @@
 # Exit 0 = allow, exit 2 = deny (stderr shown to agent).
 set -euo pipefail
 
+# Subagents spawned via the SDK Agent tool (CLAUDE_CODE_FORK_SUBAGENT=1) are
+# sandboxed helpers running inside a parent that already passed the gate. They
+# must not be re-blocked — the parent's plan approval covers their work, and
+# they cannot write workflow-state.json (Bash/Write may not be pre-approved in
+# their permission set). Allow unconditionally so they can apply the edits they
+# were dispatched to make.
+if [ "${CLAUDE_CODE_FORK_SUBAGENT:-0}" = "1" ]; then
+  exit 0
+fi
+
 # Paths are overridable for testing. Container runs use the defaults.
 STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
 DENIAL_COUNT_FILE="${DENIAL_COUNT_FILE:-/workspace/.claude/denial-counts.json}"

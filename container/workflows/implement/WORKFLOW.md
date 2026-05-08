@@ -31,5 +31,5 @@ Execute a plan. Diagnosis lives in `/plan`; this workflow is pure execution.
 1. **Setup** — load the plan from `/workspace/agent/reports/{{target_slug}}.md`. Branch off and extract the file list + verification plan.
 2. **Reproduce** {#reproduce} — for bug fixes: write a failing test that demonstrates the issue. For features: start with a skeleton that shows the gap. Commit separately so CI shows the delta.
 3. **Change** {#change} — make the minimum edit that matches the plan. Stay in one subsystem. Follow existing style. For doc-only changes, edit existing files before creating new.
-4. **Verify** {#verify} — full test suite + format + lint + typecheck. If updating a PR, address review feedback before re-running.
+4. **Verify** {#verify} — full test suite + format + lint + typecheck. If updating a PR, address review feedback before re-running. For any build that takes longer than ~5 minutes: (a) notify `parent` that a long build has started (`send_message(to="parent", text="⚙️ Build started — <branch>. ETA <N> min.")`), and (b) schedule a `schedule_task` watchdog with `new_session=false` and a recurrence that fires every 30 min to check build completion and cancel itself when done.
 5. **Ship** — descriptive commit linking the issue, push branch, open or update PR with summary + test plan.
