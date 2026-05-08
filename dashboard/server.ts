@@ -4817,8 +4817,12 @@ export async function handleRequest(
                   // coworker-styled bubble. Plumbing pings (no such resolution)
                   // stay filtered as system noise.
                   const isA2a = typeof r.id === 'string' && r.id.startsWith('a2a-');
+                  // Resolve sender name; fall back to '(deleted)' for a2a messages from
+                  // agents that have since been deleted — platform_id starts with 'ag-'.
+                  // Without the fallback, deleted-agent messages are indistinguishable
+                  // from plumbing pings and get silently dropped.
                   const senderCoworkerName = isA2a && r.channel_type === 'agent' && typeof r.platform_id === 'string'
-                    ? coworkerNameById.get(r.platform_id)
+                    ? (coworkerNameById.get(r.platform_id) ?? (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
                     : undefined;
                   if (!includeSystem && isSystemId(r.id) && !senderCoworkerName) continue;
                   messages.push({
@@ -4865,7 +4869,7 @@ export async function handleRequest(
                   // with claudemd-refresh-/a2a- AND no real recipient) stay
                   // filtered.
                   const recipientCoworkerName = r.channel_type === 'agent' && typeof r.platform_id === 'string'
-                    ? coworkerNameById.get(r.platform_id)
+                    ? (coworkerNameById.get(r.platform_id) ?? (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
                     : undefined;
                   if (!includeSystem && isSystemId(r.in_reply_to) && !recipientCoworkerName) continue;
                   const delivered = deliveredByMessageOutId.get(r.id);
