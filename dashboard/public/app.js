@@ -2357,7 +2357,7 @@ function updateSessionSelector() {
       html += `<option value="${escAttr(parentVal)}" data-group="${escAttr(p.group_folder)}" data-kind="nanoclaw" title="${escAttr(parentTitle)}">${esc(parentLabel)}</option>`;
     }
     for (const s of (p.sdk_subsessions || [])) {
-      if (s.shape === 'ghost') continue; // not selectable individually — visible in "all events" view
+      if (!s.user_prompt_count && !s.activity_count) continue;
       // ALWAYS use last_ts (not first_ts — that was the old bug: ghost sessions showed their
       // start time and looked "recently active" even though they died immediately).
       const ts = formatTimeFull(s.last_ts);

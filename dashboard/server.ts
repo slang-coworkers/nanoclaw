@@ -3983,6 +3983,7 @@ export async function handleRequest(
         ? `SELECT session_id, group_folder, MIN(timestamp) as first_ts, MAX(timestamp) as last_ts,
                   COUNT(*) as event_count,
                   SUM(CASE WHEN event = 'UserPromptSubmit' THEN 1 ELSE 0 END) as user_prompt_count,
+                  SUM(CASE WHEN event IN ('PostToolUse','PostToolUseFailure','SubagentStart','Notification') THEN 1 ELSE 0 END) as activity_count,
                   MAX(CASE WHEN event = 'SessionStart' THEN extra ELSE NULL END) as session_start_extra
              FROM hook_events
              WHERE session_id IS NOT NULL AND session_id != '' AND group_folder = ?
@@ -3992,6 +3993,7 @@ export async function handleRequest(
         : `SELECT session_id, group_folder, MIN(timestamp) as first_ts, MAX(timestamp) as last_ts,
                   COUNT(*) as event_count,
                   SUM(CASE WHEN event = 'UserPromptSubmit' THEN 1 ELSE 0 END) as user_prompt_count,
+                  SUM(CASE WHEN event IN ('PostToolUse','PostToolUseFailure','SubagentStart','Notification') THEN 1 ELSE 0 END) as activity_count,
                   MAX(CASE WHEN event = 'SessionStart' THEN extra ELSE NULL END) as session_start_extra
              FROM hook_events
              WHERE session_id IS NOT NULL AND session_id != ''
@@ -4219,6 +4221,8 @@ export async function handleRequest(
           first_ts: r.first_ts,
           last_ts: r.last_ts,
           event_count: r.event_count,
+          user_prompt_count: Number(r.user_prompt_count) || 0,
+          activity_count: Number(r.activity_count) || 0,
           shape: classifyShape(r),
           attribution_source: attributionSource,
         });
