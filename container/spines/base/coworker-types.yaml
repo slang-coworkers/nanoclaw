@@ -11,7 +11,6 @@ base-common:
   context:
     - container/spines/base/context/workspace.md
     - container/spines/base/context/invocation.md
-    - container/spines/base/tool-instructions/scheduling.md
   skills:
     - base-nanoclaw
     - codex-critique
