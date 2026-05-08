@@ -1,7 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 
-import { findByName, getAllDestinations, type DestinationEntry } from './destinations.js';
+import {
+  buildSystemPromptAddendum,
+  findByName,
+  getAllDestinations,
+  getDestinationsFingerprint,
+  type DestinationEntry,
+} from './destinations.js';
 import { getPendingMessages, markProcessing, markCompleted, type MessageInRow } from './db/messages-in.js';
 import { writeMessageOut } from './db/messages-out.js';
 import { touchHeartbeat, clearStaleProcessingAcks } from './db/connection.js';
@@ -65,6 +71,38 @@ function generateId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * Build a per-loop refresher for the destinations section of the system
+ * prompt. The host re-projects `inbound.db::destinations` whenever a new
+ * coworker is wired up (dashboard/server.ts → refreshRunningSessions),
+ * but the system prompt is built once at startup and frozen inside
+ * `config.systemContext.instructions`. Without this refresh the agent
+ * never learns about coworkers added after its container wakes —
+ * "list coworkers" reads the stale system prompt and answers from the
+ * startup snapshot.
+ *
+ * The check is a single SELECT + string-join; the prompt is only rebuilt
+ * when the fingerprint actually changes. State is captured in a closure
+ * so each call to `runPollLoop` gets its own cache (tests that reset the
+ * in-memory DB between cases also get fresh state).
+ */
+function makeDestinationsRefresher(
+  systemContext: PollLoopConfig['systemContext'],
+): () => void {
+  if (!systemContext) return () => {};
+  let lastFingerprint: string | null = null;
+  return () => {
+    const fp = getDestinationsFingerprint();
+    if (fp === lastFingerprint) return;
+    const fresh = buildSystemPromptAddendum();
+    if (fresh !== systemContext.instructions) {
+      systemContext.instructions = fresh;
+      log('Destinations changed — refreshed system prompt addendum');
+    }
+    lastFingerprint = fp;
+  };
+}
+
 export interface PollLoopConfig {
   provider: AgentProvider;
   /**
@@ -104,6 +142,8 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // Clear leftover 'processing' acks from a previous crashed container.
   // This lets the new container re-process those messages.
   clearStaleProcessingAcks();
+
+  const refreshDestinations = makeDestinationsRefresher(config.systemContext);
 
   let pollCount = 0;
   while (true) {
@@ -218,6 +258,10 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
 
     log(`Processing ${keep.length} message(s), kinds: ${[...new Set(keep.map((m) => m.kind))].join(',')}`);
     if (newSessionBatch) log('new_session flag set — running task in fresh context');
+
+    // Pick up destination changes the host wrote mid-session so the agent
+    // sees new coworkers without requiring a container restart.
+    refreshDestinations();
 
     const query = config.provider.query({
       prompt,
