@@ -4735,8 +4735,15 @@ async function updateCwDetail() {
     // Only rewrite the DOM when content actually changed — repeated identical writes
     // caused the panel to flash on every 3s poll.
     if (toolsEl._lastHtml !== newHtml) {
+      // Preserve open/closed state of <details> elements (e.g. hidden sessions expander).
+      const openDetailIds = new Set();
+      toolsEl.querySelectorAll('details').forEach((d, i) => { if (d.open) openDetailIds.add(i); });
       toolsEl.innerHTML = newHtml;
       toolsEl._lastHtml = newHtml;
+      // Restore open state by position (there's currently only one <details> per tools panel).
+      if (openDetailIds.size > 0) {
+        toolsEl.querySelectorAll('details').forEach((d, i) => { if (openDetailIds.has(i)) d.open = true; });
+      }
       const searchEl = document.getElementById('cw-other-session-search');
       if (searchEl) {
         searchEl.addEventListener('input', () => {
