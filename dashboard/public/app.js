@@ -2585,6 +2585,13 @@ function renderFlowEntry(entry, idx, depth) {
       ${esc(entry.message || '')}
     </div>`;
   }
+  if (entry.type === 'instructions_loaded') {
+    return `<div class="flow-session-marker">
+      <span class="flow-label">INIT</span>
+      <span style="color:var(--text-muted)">Instructions loaded</span>
+      <span style="color:var(--text-muted);font-size:9px">${formatTimeFull(entry.timestamp)}</span>
+    </div>`;
+  }
   return '';
 }
 
