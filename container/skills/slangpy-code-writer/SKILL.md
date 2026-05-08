@@ -68,6 +68,8 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob
 7. Commit with descriptive message (do not mention Claude)
 8. Push and create PR against `shader-slang/slangpy:main`
 
+**Autonomy:** Proceed through format, test, and commit without asking for confirmation. Only stop and notify the user if tests fail and the failure is not self-fixable.
+
 ## Documentation style
 
 ### C++ (Doxygen)
