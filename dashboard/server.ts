@@ -7283,6 +7283,19 @@ export async function handleRequest(
       wdb
         .prepare("DELETE FROM messaging_groups WHERE channel_type = 'dashboard' AND platform_id = ?")
         .run(`dashboard:${folder}`);
+      // Drop a2a messaging groups that involve this agent (platform_id = 'agent:<id1>:<id2>').
+      // Must cascade child rows (sessions FK, messaging_group_agents FK) before deleting the group.
+      const a2aMgSubquery =
+        "SELECT id FROM messaging_groups WHERE channel_type = 'agent' AND (platform_id LIKE 'agent:' || @agId || ':%' OR platform_id LIKE 'agent:%:' || @agId)";
+      wdb
+        .prepare(`UPDATE sessions SET messaging_group_id = NULL WHERE messaging_group_id IN (${a2aMgSubquery})`)
+        .run({ agId });
+      wdb
+        .prepare(`DELETE FROM messaging_group_agents WHERE messaging_group_id IN (${a2aMgSubquery})`)
+        .run({ agId });
+      wdb
+        .prepare(`DELETE FROM messaging_groups WHERE channel_type = 'agent' AND (platform_id LIKE 'agent:' || ? || ':%' OR platform_id LIKE 'agent:%:' || ?)`)
+        .run(agId, agId);
       // Drop non-dashboard messaging_groups that are now orphaned (no agent
       // references them after the cascade above).
       for (const { messaging_group_id } of ownedMgIds) {
