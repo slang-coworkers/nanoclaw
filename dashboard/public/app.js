@@ -465,11 +465,11 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
         : '';
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
         <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
-        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}">${esc(primaryName)}${unreadBadge}</span>
+        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}">${esc(primaryName)}</span>
         <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, currentTitle || slug, sess)}</span>
       </div>
       ${previewBits.length ? `<div style="${previewStyle}" title="${escAttr(previewBits.join(' · '))}">${esc(previewBits.join(' · '))}</div>` : ''}
-      <div style="${metaStyle}">${esc(metaParts.join(' · '))}</div>`;
+      <div style="${metaStyle}">${esc(metaParts.join(' · '))}${unreadBadge}</div>`;
     };
     // Viewing the coworker's detail implicitly reads the currently-active session.
     if (target.nanoSess.nanoclaw_session_id) {
