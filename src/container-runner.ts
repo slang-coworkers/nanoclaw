@@ -837,6 +837,16 @@ function buildMounts(
         });
       }
 
+      // PR auto-mapping: detect gh pr create / curl PR creation in Bash output
+      // and auto-register the PR→session mapping. Fires for ALL agents.
+      if (!hasCmd('PostToolUse', 'pr-auto-map.sh')) {
+        if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
+        settings.hooks.PostToolUse.push({
+          matcher: 'Bash',
+          hooks: [{ type: 'command', command: 'bash /app/hooks/pr-auto-map.sh', timeout: 5 }],
+        });
+      }
+
       if (hasPlan || hasCritique) {
         // plan-gate.sh enforces BOTH plan and critique gates — inject it
         // whenever either overlay is active (critique-only types still need
