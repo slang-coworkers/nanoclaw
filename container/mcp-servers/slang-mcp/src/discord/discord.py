@@ -2,6 +2,7 @@
 # pyright: reportOptionalMemberAccess=false, reportAttributeAccessIssue=false, reportCallIssue=false, reportArgumentType=false, reportGeneralTypeIssues=false, reportPossiblyUnboundVariable=false
 
 import asyncio
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -11,6 +12,7 @@ from typing import Any, Dict, Optional
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
+import aiohttp
 import discord
 
 # Load environment variables from .env file
@@ -29,6 +31,169 @@ intents.message_content = True
 intents.members = True
 
 from ..config import IsDebug  # noqa: E402
+
+# ── Event Forwarding Config ─────────────────────────────────────────────────
+
+DASHBOARD_INGRESS_URL = os.environ.get(
+    "DASHBOARD_INGRESS_URL",
+    f"http://127.0.0.1:{os.environ.get('DASHBOARD_INGRESS_PORT', '3839')}/api/dashboard/inbound",
+)
+DASHBOARD_SECRET = os.environ.get("DASHBOARD_SECRET", "").strip()
+SUMMON_TARGET_GROUP = os.environ.get("SUMMON_TARGET_GROUP", "slang-discord-support")
+WATCHED_FORUM_IDS = set(
+    f.strip()
+    for f in os.environ.get("DISCORD_WATCHED_FORUMS", "1494023079666647200,1313936640661524601").split(",")
+    if f.strip()
+)
+
+
+# ── REST-based Discord API (no Gateway needed, works through OneCLI proxy) ──
+
+_discord_http_client: Optional["httpx.AsyncClient"] = None
+
+DISCORD_API_BASE = "https://discord.com/api/v10"
+
+
+async def _get_discord_http_client():
+    """Get or create a shared httpx client for Discord REST API."""
+    global _discord_http_client
+    if _discord_http_client is None:
+        import httpx
+        from ..config import get_ssl_verify_config
+
+        _discord_http_client = httpx.AsyncClient(
+            verify=get_ssl_verify_config(),
+            timeout=httpx.Timeout(30.0, connect=10.0),
+        )
+    return _discord_http_client
+
+
+async def discord_rest_read_messages(channel_id: str, limit: int = 20) -> Dict[str, Any]:
+    """Read messages from a Discord channel using REST API (no Gateway).
+
+    Goes through OneCLI proxy which injects Bot token automatically.
+    """
+    import httpx
+
+    client_http = await _get_discord_http_client()
+    url = f"{DISCORD_API_BASE}/channels/{channel_id}/messages"
+    params = {"limit": min(limit, 100)}
+
+    try:
+        resp = await client_http.get(url, params=params)
+        resp.raise_for_status()
+        messages = resp.json()
+
+        filtered = []
+        for msg in messages:
+            filtered.append({
+                "id": msg.get("id"),
+                "author": msg.get("author", {}).get("username", "unknown"),
+                "author_id": msg.get("author", {}).get("id"),
+                "is_bot": msg.get("author", {}).get("bot", False),
+                "content": msg.get("content", ""),
+                "timestamp": msg.get("timestamp"),
+                "attachments": [a.get("url") for a in msg.get("attachments", [])],
+                "embeds_count": len(msg.get("embeds", [])),
+            })
+
+        return {
+            "filtered": {
+                "channel_id": channel_id,
+                "messages": filtered,
+                "total_count": len(filtered),
+            }
+        }
+    except httpx.HTTPStatusError as e:
+        return {"error": f"Discord API error {e.response.status_code}: {e.response.text[:200]}"}
+    except Exception as e:
+        return {"error": f"Discord REST request failed: {str(e)}"}
+
+
+async def _post_to_dashboard(content: str) -> bool:
+    """Forward an event to the dashboard ingress to wake the target agent."""
+    if not DASHBOARD_INGRESS_URL:
+        return False
+    headers = {"Content-Type": "application/json"}
+    if DASHBOARD_SECRET:
+        headers["Authorization"] = f"Bearer {DASHBOARD_SECRET}"
+    body = {"group": SUMMON_TARGET_GROUP, "content": content}
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                DASHBOARD_INGRESS_URL,
+                json=body,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=5),
+            ) as resp:
+                if resp.status == 200:
+                    return True
+                text = await resp.text()
+                logger.error(f"Dashboard ingress returned {resp.status}: {text}")
+                return False
+    except Exception as e:
+        logger.error(f"Dashboard ingress POST failed: {e}")
+        return False
+
+
+# ── Summon View ─────────────────────────────────────────────────────────────
+
+class SummonView(discord.ui.View):
+    """'Get Bot Help' button auto-posted on new forum threads."""
+
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="Get Bot Help",
+        style=discord.ButtonStyle.blurple,
+        custom_id="summon:get_help",
+        emoji="\U0001f916",
+    )
+    async def get_help(self, interaction: discord.Interaction, button: discord.ui.Button):
+        channel = interaction.channel
+        if isinstance(channel, discord.Thread) and channel.owner_id:
+            if interaction.user.id != channel.owner_id:
+                await interaction.response.send_message(
+                    "Only the thread author can summon the bot.", ephemeral=True
+                )
+                return
+
+        os.makedirs(FEEDBACK_DIR, exist_ok=True)
+        entry = json.dumps({
+            "type": "summon",
+            "thread_id": str(interaction.channel_id),
+            "thread_name": getattr(interaction.channel, "name", ""),
+            "parent_id": str(channel.parent_id) if isinstance(channel, discord.Thread) and channel.parent_id else None,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        with open(os.path.join(FEEDBACK_DIR, "summon_requests.jsonl"), "a") as f:
+            f.write(entry + "\n")
+
+        thread_name = getattr(interaction.channel, "name", "?")
+        thread_url = (
+            f"https://discord.com/channels/{interaction.guild_id}/{interaction.channel_id}"
+            if interaction.guild_id
+            else ""
+        )
+        prompt = (
+            f"A user has summoned you to answer a question.\n"
+            f"Thread: {thread_name}\n"
+            f"Thread ID: {interaction.channel_id}\n"
+            f"Link: {thread_url}\n"
+            f"Please read the thread and draft an answer."
+        )
+        posted = await _post_to_dashboard(prompt)
+
+        if posted:
+            button.label = "Bot summoned!"
+            button.style = discord.ButtonStyle.green
+            button.disabled = True
+        else:
+            button.label = "Couldn't reach bot — try again"
+            button.style = discord.ButtonStyle.red
+            button.disabled = False
+        await interaction.response.edit_message(view=self)
 
 
 #
@@ -190,8 +355,8 @@ async def init_discord_client():
 
     token = os.environ.get("DISCORD_BOT_TOKEN")
     if not token:
-        logger.error("DISCORD_BOT_TOKEN not found in environment variables")
-        raise ValueError("DISCORD_BOT_TOKEN not set")
+        logger.info("DISCORD_BOT_TOKEN not set — Gateway disabled, REST API via OneCLI proxy still works")
+        return None
 
     # Create a new client with intents
     client = discord.Client(intents=intents)
@@ -203,8 +368,36 @@ async def init_discord_client():
     async def on_ready():
         logger.info(f"Discord client initialized as {client.user}")
         client.add_view(FeedbackView())
-        logger.info("FeedbackView registered for persistent buttons")
+        client.add_view(SummonView())
+        logger.info("FeedbackView + SummonView registered for persistent buttons")
         ready_event.set()
+
+    @client.event
+    async def on_thread_create(thread: discord.Thread):
+        if thread.parent_id and str(thread.parent_id) in WATCHED_FORUM_IDS:
+            try:
+                await thread.send("", view=SummonView())
+                logger.info(f"Posted SummonView on new thread: {thread.name}")
+            except Exception as e:
+                logger.error(f"Failed to post SummonView: {e}")
+
+    @client.event
+    async def on_message(message: discord.Message):
+        if message.author.bot:
+            return
+        channel = message.channel
+        if not isinstance(channel, discord.Thread):
+            return
+        if not channel.parent_id or str(channel.parent_id) not in WATCHED_FORUM_IDS:
+            return
+        # New user message in a watched forum thread — notify agent
+        prompt = (
+            f"New message in Discord thread.\n"
+            f"Thread: {channel.name} (ID: {channel.id})\n"
+            f"Author: {message.author.name}\n"
+            f"Content: {message.content[:500]}"
+        )
+        await _post_to_dashboard(prompt)
 
 
     # Start the client
@@ -505,13 +698,14 @@ def filter_message_data(message) -> dict:
 async def read_messages(args: ReadMessagesArgs) -> Dict[str, Any]:
     """Read messages from a Discord channel.
 
-    Args:
-        args: Arguments for reading messages
-
-    Returns:
-        Dict containing messages or error
+    Uses REST API via OneCLI proxy when Gateway client is unavailable.
     """
     global client
+
+    # Prefer REST API — works without Gateway token, goes through OneCLI proxy
+    if not client or not hasattr(client, "is_ready") or not client.is_ready():
+        logger.info("Discord Gateway not connected, using REST API via OneCLI proxy")
+        return await discord_rest_read_messages(args.channel_id, args.limit or 20)
 
     try:
         # Ensure the client is connected

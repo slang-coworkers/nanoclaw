@@ -57,3 +57,54 @@ slang-maintainer:
     - slang-maintainer-tools
   workflows:
     - slang-maintain
+
+slang-triage:
+  description: "Slang issue triage — read issue, research docs + code, classify severity/priority, report to parent, forward to fixer if actionable. Read-only."
+  project: slang
+  extends: slang-reader
+  workflows:
+    - triage-issue
+
+slang-triage-buddy:
+  description: "Slang issue triage with real-time buddy monitor. Codex watches and guides mid-triage."
+  project: slang
+  extends: slang-triage
+  overlays:
+    - buddy-monitor
+
+slang-fixer-buddy:
+  description: "Slang issue fixer with real-time buddy monitor. Codex watches and guides mid-fix."
+  project: slang
+  extends: slang-fixer
+  overlays:
+    - buddy-monitor
+
+slang-fixer:
+  description: "Slang issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
+  project: slang
+  extends: slang-writer
+  workflows:
+    - fix-issue
+
+slang-discord:
+  description: "Slang Discord support — read user questions, research via DeepWiki + GitHub, draft verified answers, send to parent for review. Read-only, no posting."
+  project: slang
+  extends: slang-reader
+  context:
+    - container/spines/slang/context/discord-scope.md
+  workflows:
+    - discord-answer
+
+slang-discord-critiqued:
+  description: "Slang Discord support with answer-quality critique gate. Drafts pass codex review for factual accuracy before delivery."
+  project: slang
+  extends: slang-discord
+  overlays:
+    - discord-answer-critique
+
+slang-discord-buddy:
+  description: "Slang Discord support with real-time buddy monitor. Codex watches session and flags wrong assumptions mid-work."
+  project: slang
+  extends: slang-discord
+  overlays:
+    - buddy-monitor
