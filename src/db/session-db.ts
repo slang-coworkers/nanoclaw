@@ -216,6 +216,19 @@ export function getProcessingClaims(outDb: Database.Database): ProcessingClaim[]
     .all() as ProcessingClaim[];
 }
 
+/**
+ * Delete orphan 'processing' rows from processing_ack (host-side cleanup).
+ * Only call when the container is NOT running — avoids concurrent writes.
+ */
+export function clearOrphanProcessingAcks(outDbPath: string): void {
+  const db = openOutboundDbWritable(outDbPath);
+  try {
+    db.prepare("DELETE FROM processing_ack WHERE status = 'processing'").run();
+  } finally {
+    db.close();
+  }
+}
+
 export interface ContainerState {
   current_tool: string | null;
   tool_declared_timeout_ms: number | null;

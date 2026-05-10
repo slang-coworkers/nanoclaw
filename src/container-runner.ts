@@ -472,10 +472,15 @@ async function spawnContainer(session: Session): Promise<void> {
   activeContainers.set(session.id, { process: container, containerName });
   markContainerRunning(session.id);
 
-  // Log stderr
+  // Log stderr — warn level so container errors appear in the error log.
+  // Keep the last line for the exit handler to include in diagnostics.
+  let lastStderrLine = '';
   container.stderr?.on('data', (data) => {
     for (const line of data.toString().trim().split('\n')) {
-      if (line) log.debug(line, { container: agentGroup.folder });
+      if (line) {
+        log.warn(line, { container: agentGroup.folder });
+        lastStderrLine = line;
+      }
     }
   });
 
@@ -493,7 +498,11 @@ async function spawnContainer(session: Session): Promise<void> {
     markContainerStopped(session.id);
     stopTypingRefresh(session.id);
     revokeContainerToken(proxyToken);
-    log.info('Container exited', { sessionId: session.id, code, containerName });
+    if (code !== 0 && code !== null) {
+      log.warn('Container exited with error', { sessionId: session.id, code, containerName, lastStderr: lastStderrLine || undefined });
+    } else {
+      log.info('Container exited', { sessionId: session.id, code, containerName });
+    }
   });
 
   container.on('error', (err) => {
