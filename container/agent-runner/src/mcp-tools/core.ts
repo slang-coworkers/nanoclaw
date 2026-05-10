@@ -267,4 +267,39 @@ export const addReaction: McpToolDefinition = {
   },
 };
 
-registerTools([sendMessage, sendFile, addReaction]);
+const reportPrCreated: McpToolDefinition = {
+  tool: {
+    name: 'report_pr_created',
+    description:
+      'Report that you created a GitHub PR. Enables webhook events (review comments, CI status) for this PR to route back to your current session instead of creating an orphan.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        repo: { type: 'string', description: 'Repository in owner/name format (e.g. shader-slang/slangpy)' },
+        pr_number: { type: 'number', description: 'PR number' },
+      },
+      required: ['repo', 'pr_number'],
+    },
+  },
+  async handler(args) {
+    const repo = typeof args.repo === 'string' ? args.repo.trim() : '';
+    const prNumber = typeof args.pr_number === 'number' ? args.pr_number : NaN;
+    if (!repo || !Number.isFinite(prNumber)) {
+      return err('repo (string) and pr_number (number) are required');
+    }
+
+    const seq = writeMessageOut({
+      id: generateId(),
+      kind: 'system',
+      platform_id: null,
+      channel_type: null,
+      thread_id: null,
+      content: JSON.stringify({ action: 'map_pr_session', repo, pr_number: prNumber }),
+    });
+
+    log(`report_pr_created: #${seq} → ${repo}#${prNumber} mapped to this session`);
+    return ok(`PR ${repo}#${prNumber} mapped to this session. Webhook events will route here.`);
+  },
+};
+
+registerTools([sendMessage, sendFile, addReaction, reportPrCreated]);

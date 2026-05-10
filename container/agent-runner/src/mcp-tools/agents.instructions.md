@@ -29,10 +29,4 @@ Cover: the agent's role, who it takes tasks from (you, by name), how it should r
 
 ### PR creation callback
 
-When you create a PR as part of a delegated task, immediately report the PR number back to your delegator so webhook events (review comments, CI results) can be routed to your session:
-
-```
-send_message(to="<delegator>", text="PR_CREATED: repo=<owner/repo> pr=<number>")
-```
-
-This is essential for round-trip routing — without it, webhook events for your PR will not reach you.
+When you create a GitHub PR as part of a delegated task, immediately call `report_pr_created(repo="owner/name", pr_number=N)`. This registers a mapping so that webhook events for the PR (review comments, CI results) route to your session — without it, webhooks create an orphan session keyed on the PR number instead of reaching you.

@@ -5,8 +5,9 @@
  * receiving agent (orchestrator), which has GH_TOKEN injected via OneCLI.
  */
 import { getAdminAgentGroup, getAgentGroupByFolder } from './db/agent-groups.js';
+import { getDb } from './db/connection.js';
 import { openInboundDb, insertMessage } from './db/session-db.js';
-import { findSessionByAgentGroup } from './db/sessions.js';
+import { findSessionByAgentGroup, getSession } from './db/sessions.js';
 import { inboundDbPath } from './session-manager.js';
 import { log } from './log.js';
 import type { AgentGroup } from './types.js';
@@ -46,6 +47,60 @@ export function resolveAgentGroupFromBranch(branch: string | null | undefined): 
  * forwards to the coworker that owns it.
  */
 export function deliverGitHubMention(event: GitHubMentionEvent): void {
+  const eventContent = JSON.stringify({
+    event: 'github.pr_mention',
+    repo: event.repo,
+    issue_number: event.issueNumber,
+    is_pr: event.isPr,
+    comment_id: event.commentId,
+    comment_url: event.commentUrl,
+    commenter: event.commenter,
+    body: event.body,
+  });
+
+  // Check PR→session mapping first — routes webhooks to the session that created the PR
+  try {
+    const centralDb = getDb();
+    const mapping = centralDb
+      .prepare('SELECT agent_group_id, session_id, thread_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?')
+      .get(event.repo, event.issueNumber) as
+      | { agent_group_id: string; session_id: string; thread_id: string }
+      | undefined;
+
+    if (mapping) {
+      const mappedSession = getSession(mapping.session_id);
+      if (mappedSession) {
+        const dbPath = inboundDbPath(mapping.agent_group_id, mapping.session_id);
+        const db = openInboundDb(dbPath);
+        try {
+          insertMessage(db, {
+            id: `gh-${event.commentId}`,
+            kind: 'webhook',
+            timestamp: new Date().toISOString(),
+            platformId: `github:${event.repo}:${event.issueNumber}`,
+            channelType: 'github',
+            threadId: mapping.thread_id,
+            content: eventContent,
+            processAfter: null,
+            recurrence: null,
+          });
+          log.info('github-webhook: delivered via PR mapping', {
+            repo: event.repo,
+            pr: event.issueNumber,
+            session: mapping.session_id,
+            threadId: mapping.thread_id,
+          });
+          return;
+        } finally {
+          db.close();
+        }
+      }
+    }
+  } catch {
+    // pr_session_mappings table may not exist yet (pre-migration) — fall through
+  }
+
+  // Fallback: resolve by branch name or admin group
   const group = resolveAgentGroupFromBranch(event.prBranch);
   if (!group) {
     log.warn('github-webhook: no admin agent group configured — cannot deliver', { repo: event.repo });
@@ -72,16 +127,7 @@ export function deliverGitHubMention(event: GitHubMentionEvent): void {
       platformId: `github:${event.repo}:${event.issueNumber}`,
       channelType: 'github',
       threadId: String(event.issueNumber),
-      content: JSON.stringify({
-        event: 'github.pr_mention',
-        repo: event.repo,
-        issue_number: event.issueNumber,
-        is_pr: event.isPr,
-        comment_id: event.commentId,
-        comment_url: event.commentUrl,
-        commenter: event.commenter,
-        body: event.body,
-      }),
+      content: eventContent,
       processAfter: null,
       recurrence: null,
     });
