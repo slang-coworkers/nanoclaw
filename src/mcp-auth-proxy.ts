@@ -418,7 +418,14 @@ export function startMcpAuthProxy(bindHost: string, listenPort: number): { stop:
       upstreamHeaders.host = `127.0.0.1:${upstreamPort}`;
 
       const proxyReq = http.request(
-        { hostname: '127.0.0.1', port: upstreamPort, path: upstreamPath, method: req.method, headers: upstreamHeaders },
+        {
+          hostname: '127.0.0.1',
+          port: upstreamPort,
+          path: upstreamPath,
+          method: req.method,
+          headers: upstreamHeaders,
+          timeout: 300_000,
+        },
         (proxyRes) => {
           if (isToolsList && serverName) {
             // Buffer the response to filter tools/list results by allowed set
@@ -449,10 +456,36 @@ export function startMcpAuthProxy(bindHost: string, listenPort: number): { stop:
             });
           } else {
             res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
+            // Absolute wall-clock timeout: if the response stream doesn't
+            // complete within 5 minutes, destroy it. The socket-level timeout
+            // (on http.request) doesn't fire once headers arrive because the
+            // connection is "active" — this catches the case where supergateway
+            // sends headers but the Python MCP process hangs on an API call.
+            const absoluteDeadline = setTimeout(() => {
+              log.error('MCP auth proxy: response stream deadline exceeded (5m)', {
+                server: serverName,
+                path: upstreamPath,
+              });
+              proxyRes.destroy();
+              if (!res.writableEnded) {
+                res.end();
+              }
+            }, 300_000);
+            proxyRes.on('end', () => clearTimeout(absoluteDeadline));
+            proxyRes.on('error', () => clearTimeout(absoluteDeadline));
             proxyRes.pipe(res);
           }
         },
       );
+
+      proxyReq.on('timeout', () => {
+        log.error('MCP auth proxy: upstream timeout (5m)', { server: serverName, path: upstreamPath });
+        proxyReq.destroy();
+        if (!res.headersSent) {
+          res.writeHead(504, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Upstream MCP server timed out (5m)' }));
+        }
+      });
 
       proxyReq.on('error', (err) => {
         log.error('MCP auth proxy: upstream error', { err });

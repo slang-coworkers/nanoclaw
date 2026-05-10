@@ -19,6 +19,13 @@ esac
 
 [ "$IS_CRITIQUE" = "false" ] && exit 0
 
+# Skip buddy monitor pings — they use codex but aren't critique invocations.
+# Buddy threads use "buddy" or "companion" in threadId or start with monitoring prompt.
+TOOL_INPUT_STR=$(echo "$INPUT" | jq -r '.tool_input // empty')
+if echo "$TOOL_INPUT_STR" | grep -qiE 'buddy|companion|"You are Buddy"'; then
+  exit 0
+fi
+
 # Only count successful codex calls (errors don't reset the gate).
 RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty')
 if echo "$RESPONSE" | grep -qE '"error":|"is_error":\s*true|"timed out"'; then

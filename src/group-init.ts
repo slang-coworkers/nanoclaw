@@ -177,6 +177,48 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
     }
   }
 
+  // 4. Codex provider: symlinks + disable overlays (hooks not supported)
+  // Codex CLI doesn't execute settings.json hooks, so overlay enforcement
+  // (plan-gate, critique-gate, edit-counter) is completely inoperative.
+  // Set disable_overlays=1 so the composer doesn't render gate markers that
+  // the agent can't enforce, and create symlinks for native discovery.
+  if (group.agent_provider === 'codex') {
+    if (group.disable_overlays !== 1) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const Database = require('better-sqlite3');
+        const dbPath = path.join(DATA_DIR, 'v2.db');
+        const db = new Database(dbPath);
+        db.prepare('UPDATE agent_groups SET disable_overlays = 1 WHERE id = ?').run(group.id);
+        db.close();
+        initialized.push('disable_overlays=1 (codex: hooks unsupported)');
+      } catch {
+        /* non-critical — overlays just render uselessly */
+      }
+    }
+    const agentsMdLink = path.join(groupDir, 'AGENTS.md');
+    if (!fs.existsSync(agentsMdLink)) {
+      try {
+        fs.symlinkSync('CLAUDE.md', agentsMdLink);
+        initialized.push('AGENTS.md → CLAUDE.md');
+      } catch {
+        /* ignore if already exists */
+      }
+    }
+    // .agents → the .claude-shared dir (mounted as /home/node/.claude/ in container)
+    // In the container, CWD is /workspace/agent/ and .claude is at /home/node/.claude/
+    // The symlink target must be relative to CWD inside the container
+    const agentsLink = path.join(groupDir, '.agents');
+    if (!fs.existsSync(agentsLink)) {
+      try {
+        fs.symlinkSync('/home/node/.claude', agentsLink);
+        initialized.push('.agents → /home/node/.claude');
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
   if (initialized.length > 0) {
     log.info('Initialized group filesystem', {
       group: group.name,

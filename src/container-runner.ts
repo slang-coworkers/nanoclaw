@@ -813,6 +813,30 @@ function buildMounts(
           });
         }
       }
+      // Buddy hook: inject guidance from background companion monitor.
+      // Checked INDEPENDENTLY of disable_overlays — buddy is a relay hook,
+      // not a gate overlay. It must work even when critique overlays are disabled.
+      const buddyInType = (() => {
+        try {
+          const fakeGroup = { ...agentGroup, disable_overlays: 0 } as AgentGroup;
+          return resolveTypeManifest(fakeGroup).overlayNames.includes('buddy-monitor');
+        } catch {
+          return false;
+        }
+      })();
+      if (buddyInType && !hasCmd('UserPromptSubmit', 'buddy-inject.sh')) {
+        if (!settings.hooks.UserPromptSubmit) settings.hooks.UserPromptSubmit = [];
+        settings.hooks.UserPromptSubmit.push({
+          hooks: [
+            {
+              type: 'command',
+              command: 'bash /app/hooks/buddy-inject.sh',
+              timeout: 3,
+            },
+          ],
+        });
+      }
+
       if (hasPlan || hasCritique) {
         // plan-gate.sh enforces BOTH plan and critique gates — inject it
         // whenever either overlay is active (critique-only types still need

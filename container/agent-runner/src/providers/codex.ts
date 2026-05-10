@@ -217,10 +217,15 @@ function composeBaseInstructions(
   promptAddendum: string | undefined,
   additionalDirectories?: string[],
 ): string | undefined {
-  const claudeMd = readAgentAndGlobalClaudeMd();
-  const additionalContent = additionalDirectories?.length
-    ? discoverAdditionalContent(additionalDirectories)
-    : undefined;
+  // If AGENTS.md symlink exists, Codex CLI natively discovers CLAUDE.md content
+  // and .agents/skills/ from CWD. Skip manual injection to avoid duplication.
+  const agentsMdExists = fs.existsSync('/workspace/agent/AGENTS.md');
+  const claudeMd = agentsMdExists ? undefined : readAgentAndGlobalClaudeMd();
+  const additionalContent =
+    !agentsMdExists && additionalDirectories?.length
+      ? discoverAdditionalContent(additionalDirectories)
+      : undefined;
+  // Always include promptAddendum (routing/session context — not discoverable from filesystem)
   const pieces = [claudeMd, additionalContent, promptAddendum].filter((s): s is string => Boolean(s));
   return pieces.length > 0 ? pieces.join('\n\n---\n\n') : undefined;
 }
