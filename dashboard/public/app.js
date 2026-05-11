@@ -2842,9 +2842,6 @@ const adminState = {
   debug: null,
   overview: null,
   loaded: new Set(),
-  chatMessages: [],
-  chatGroup: null,
-  chatPolling: null,
   logs: [],
   channels: [],
   config: null,
@@ -2853,8 +2850,6 @@ const adminState = {
 // --- Admin pill navigation ---
 document.querySelectorAll('.admin-pill').forEach((pill) => {
   pill.addEventListener('click', () => {
-    // Stop chat polling when leaving chat panel
-    if (adminState.chatPolling) { clearInterval(adminState.chatPolling); adminState.chatPolling = null; }
     document.querySelectorAll('.admin-pill').forEach((p) => p.classList.remove('active'));
     document.querySelectorAll('.admin-panel').forEach((p) => p.classList.remove('active'));
     pill.classList.add('active');
@@ -2876,7 +2871,6 @@ function loadAdminPanel(name) {
     skills: loadAdminSkills,
     groups: loadAdminGroups,
     debug: loadAdminDebug,
-    chat: loadAdminChat,
     logs: loadAdminLogs,
     channels: loadAdminChannels,
     config: loadAdminConfig,
@@ -2923,7 +2917,7 @@ async function loadAdminMessages(append) {
   const el = document.getElementById('admin-messages-content');
   if (!append) el.innerHTML = '<div class="admin-loading">Loading...</div>';
   try {
-    let url = '/api/messages?limit=50';
+    let url = '/api/messages?limit=100&allSessions=1&includeSystem=1';
     if (append && adminState.messages.length > 0) {
       const last = adminState.messages[adminState.messages.length - 1];
       url += '&before=' + encodeURIComponent(last.timestamp);
@@ -2949,13 +2943,22 @@ function renderAdminMessages() {
     return;
   }
   let html = `<table class="admin-table">
-    <tr><th>Time</th><th>Group</th><th>Dir</th><th>Kind</th><th>Content</th></tr>`;
+    <tr><th>Time</th><th>Coworker</th><th>Session</th><th>Dir</th><th>Sender</th><th>Content</th></tr>`;
   for (const m of adminState.messages) {
     const dir = m.direction === 'incoming' ? 'IN' : 'OUT';
     const dirClass = m.direction === 'incoming' ? 'color:var(--accent)' : 'color:var(--green)';
-    const kindBadge = m.kind === 'system' ? '<span style="color:var(--yellow)">sys</span>'
-      : m.kind === 'card' ? '<span style="color:var(--purple,#8B5CF6)">card</span>'
-      : '<span style="color:var(--text-muted)">chat</span>';
+    const coworker = m.group_name || m.group_folder || '-';
+    const sessShort = m.session_id ? m.session_id.replace(/^sess-\d+-/, '') : '-';
+    let sender = '';
+    if (m.direction === 'incoming') {
+      sender = m.senderCoworkerName || m.displaySender || m.sender_name || '';
+      if (!sender) {
+        try { const p = JSON.parse(m.content || '{}'); sender = p.sender || p.senderId || ''; } catch {}
+      }
+    } else {
+      sender = coworker;
+      if (m.recipientCoworkerName) sender += ' → ' + m.recipientCoworkerName;
+    }
     const attachmentLabel =
       Array.isArray(m.attachments) && m.attachments.length > 0
         ? ` [${m.attachments.length} attachment${m.attachments.length === 1 ? '' : 's'}]`
@@ -2967,10 +2970,11 @@ function renderAdminMessages() {
     const time = m.timestamp;
     html += `<tr>
       <td style="white-space:nowrap">${esc(formatTime(time))}</td>
-      <td>${esc(m.group_folder || '-')}</td>
+      <td style="white-space:nowrap">${esc(coworker)}</td>
+      <td style="white-space:nowrap;font-size:0.65rem;color:var(--text-muted)" title="${escAttr(m.session_id || '')}">${esc(sessShort)}</td>
       <td style="${dirClass};font-weight:600">${dir}</td>
-      <td>${kindBadge}</td>
-      <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(content.slice(0, 500))}">${esc(content.slice(0, 200))}</td>
+      <td style="white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">${esc(sender)}</td>
+      <td style="max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(content.slice(0, 500))}">${esc(content.slice(0, 200))}</td>
     </tr>`;
   }
   html += '</table>';
@@ -3528,146 +3532,6 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
 });
 
 // ===================================================================
-// CHAT PANEL
-// ===================================================================
-
-async function loadAdminChat() {
-  // Populate group dropdown — use WS state or fetch from API
-  let groups = state.registeredGroups;
-  if (!groups || groups.length === 0) {
-    try {
-      const res = await fetch('/api/groups/detail');
-      if (res.ok) groups = await res.json();
-    } catch { /* ignore */ }
-  }
-  const select = document.getElementById('chat-group-select');
-  select.innerHTML = '<option value="">Select group...</option>';
-  for (const g of (groups || [])) {
-    const opt = document.createElement('option');
-    opt.value = g.folder;
-    opt.textContent = g.name || g.folder;
-    opt.dataset.isMain = g.is_main ? '1' : '0';
-    if (adminState.chatGroup === g.folder) opt.selected = true;
-    select.appendChild(opt);
-  }
-  adminState.loaded.add('chat');
-  if (adminState.chatGroup) fetchChatMessages();
-  else document.getElementById('chat-messages').innerHTML = '<div class="admin-empty">Select a group above to start chatting</div>';
-}
-
-async function fetchChatMessages() {
-  if (!adminState.chatGroup) return;
-  try {
-    const res = await fetch(`/api/messages?group=${encodeURIComponent(adminState.chatGroup)}&limit=100`);
-    if (!res.ok) return;
-    const data = await res.json();
-    adminState.chatMessages = (data.messages || []).reverse();
-    renderChatMessages();
-  } catch { /* ignore */ }
-}
-
-function renderChatMessages() {
-  const el = document.getElementById('chat-messages');
-  if (!el) return;
-  if (adminState.chatMessages.length === 0) {
-    el.innerHTML = '<div class="admin-empty">No messages yet. Send a message to start.</div>';
-    return;
-  }
-  el.innerHTML = adminState.chatMessages.map((m) => {
-    const isUser = m.is_from_me === 0 && !m.is_bot_message;
-    const isAssistant = m.is_from_me === 1 || m.is_bot_message === 1;
-    const cls = isAssistant ? 'assistant' : 'user';
-    const sender = m.sender_name || m.sender || (isAssistant ? 'Assistant' : 'User');
-    const time = m.timestamp ? formatTime(m.timestamp) : '';
-    return `<div class="chat-bubble ${cls}">
-      <div>${isAssistant ? md(m.content || m.body || '') : esc(m.content || m.body || '')}</div>
-      <div class="chat-meta">${esc(sender)} ${time}</div>
-    </div>`;
-  }).join('');
-  // Check for typing indicator
-  const recentHooks = state.hookEvents.filter((e) => e.group === adminState.chatGroup && Date.now() - e.timestamp < 10000);
-  if (recentHooks.length > 0) {
-    el.innerHTML += '<div class="chat-typing"><span></span><span></span><span></span></div>';
-  }
-  el.scrollTop = el.scrollHeight;
-}
-
-async function sendChatMessage() {
-  const input = document.getElementById('chat-input');
-  const content = input.value.trim();
-  if (!adminState.chatGroup) {
-    document.getElementById('chat-messages').innerHTML = '<div class="admin-empty">Select a group first</div>';
-    return;
-  }
-  if (!content) return;
-  input.value = '';
-  const optimisticMessage = {
-    content, sender: 'web@dashboard', sender_name: 'Dashboard',
-    is_from_me: 0, is_bot_message: 0, timestamp: new Date().toISOString(),
-  };
-  adminState.chatMessages.push(optimisticMessage);
-  renderChatMessages();
-  try {
-    const res = await fetch('/api/chat/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group: adminState.chatGroup, content }),
-    });
-    if (!res.ok) {
-      adminState.chatMessages = adminState.chatMessages.filter((m) => m !== optimisticMessage);
-      renderChatMessages();
-      let err = 'Failed to send message';
-      try {
-        const data = await res.json();
-        err = data.error || err;
-      } catch { /* ignore */ }
-      alert(err);
-      return;
-    }
-    fetchChatMessages();
-  } catch (e) {
-    adminState.chatMessages = adminState.chatMessages.filter((m) => m !== optimisticMessage);
-    renderChatMessages();
-    alert('Failed to send message: ' + e.message);
-  }
-}
-
-// Chat events
-document.getElementById('chat-group-select')?.addEventListener('change', (e) => {
-  adminState.chatGroup = e.target.value || null;
-  adminState.chatMessages = [];
-  if (adminState.chatPolling) { clearInterval(adminState.chatPolling); adminState.chatPolling = null; }
-  if (adminState.chatGroup) {
-    fetchChatMessages();
-    adminState.chatPolling = setInterval(fetchChatMessages, 3000);
-  } else {
-    document.getElementById('chat-messages').innerHTML = '';
-  }
-  // Update placeholder/tooltip based on whether this is the main group
-  const chatInput = document.getElementById('chat-input');
-  if (chatInput) {
-    const sel = e.target;
-    const opt = sel.options[sel.selectedIndex];
-    // Check if selected group is main (stored during populateChatGroups)
-    const isMain = opt?.dataset?.isMain === '1';
-    if (isMain) {
-      chatInput.placeholder = 'Message main — use @Coworker to route directly, or plain text for main to orchestrate';
-      chatInput.title = '@Coworker = routed directly (main skipped)\nPlain text = main picks it up and can read coworker files + send_message to coordinate';
-    } else {
-      chatInput.placeholder = 'Type a message...';
-      chatInput.title = '';
-    }
-  }
-});
-
-document.getElementById('chat-send-btn')?.addEventListener('click', sendChatMessage);
-
-document.getElementById('chat-input')?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendChatMessage();
-  }
-});
 
 /**
  * URL query suffix carrying the currently-viewed NanoClaw session's
