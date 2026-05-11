@@ -388,34 +388,56 @@ async function deliverMessage(
   if (msg.channel_type === 'dashboard' && msg.platform_id) {
     const mg = getMessagingGroupByPlatform(msg.channel_type, msg.platform_id);
     if (mg) {
-      const { getMessagingGroupAgents } = await import('./db/messaging-groups.js');
-      const bindings = getMessagingGroupAgents(mg.id);
-      for (const binding of bindings) {
-        if (binding.agent_group_id === session.agent_group_id) continue;
+      // The dashboard MG platform_id is "dashboard:<folder>". The owner is the
+      // agent group whose folder matches. Only forward to the owner — other
+      // agents wired to this MG (e.g. via shared admin group) are bystanders.
+      const ownerFolder = mg.platform_id.replace(/^dashboard:/, '');
+      const { getAgentGroupByFolder } = await import('./db/agent-groups.js');
+      const ownerAg = ownerFolder ? getAgentGroupByFolder(ownerFolder) : null;
+      if (ownerAg && ownerAg.id !== session.agent_group_id) {
         try {
+          // Find the recipient session that originally delegated TO the
+          // sender. a2a_session_sources maps (source_session → recipient_session)
+          // where source is the delegator and recipient is the delegate.
+          // We want the reverse: sender (delegate) → find the source session
+          // (delegator) so the reply lands in the same thread.
           const { resolveSession } = await import('./session-manager.js');
+          let crossThreadId = msg.thread_id || null;
+          if (!crossThreadId && hasTable(getDb(), 'a2a_session_sources')) {
+            const sourceRow = getDb()
+              .prepare(
+                `SELECT ssr.source_session_id, s.thread_id
+                 FROM a2a_session_sources ssr
+                 JOIN sessions s ON s.id = ssr.source_session_id
+                 WHERE ssr.source_agent_group_id = ? AND ssr.recipient_agent_group_id = ?
+                   AND s.thread_id IS NOT NULL AND s.status = 'active'
+                 ORDER BY ssr.created_at DESC LIMIT 1`,
+              )
+              .get(ownerAg.id, session.agent_group_id) as { source_session_id: string; thread_id: string | null } | undefined;
+            if (sourceRow?.thread_id) crossThreadId = sourceRow.thread_id;
+          }
           const { session: recipientSession } = resolveSession(
-            binding.agent_group_id, mg.id, msg.thread_id, binding.session_mode,
+            ownerAg.id, mg.id, crossThreadId, crossThreadId ? 'per-thread' : 'shared',
           );
           const crossId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-          let forwardedContent = msg.content;
+          const forwardedContent = msg.content;
           if (Array.isArray(content.files) && content.files.length > 0) {
             try {
               const { forwardAttachedFiles } = await import('./modules/agent-to-agent/agent-route.js');
               forwardAttachedFiles(
                 { agentGroupId: session.agent_group_id, sessionId: session.id, messageId: msg.id, filenames: content.files as string[] },
-                { agentGroupId: binding.agent_group_id, sessionId: recipientSession.id, messageId: crossId },
+                { agentGroupId: ownerAg.id, sessionId: recipientSession.id, messageId: crossId },
               );
             } catch { /* a2a module may not be installed */ }
           }
           const { writeSessionMessage } = await import('./session-manager.js');
-          writeSessionMessage(binding.agent_group_id, recipientSession.id, {
+          writeSessionMessage(ownerAg.id, recipientSession.id, {
             id: crossId,
             kind: 'chat',
             timestamp: new Date().toISOString(),
             platformId: session.agent_group_id,
             channelType: 'agent',
-            threadId: msg.thread_id,
+            threadId: crossThreadId,
             content: forwardedContent,
           });
           const recipientFresh = getSession(recipientSession.id);
@@ -425,14 +447,15 @@ async function deliverMessage(
           }
           log.info('Cross-coworker dashboard message forwarded', {
             from: session.agent_group_id,
-            to: binding.agent_group_id,
+            to: ownerAg.id,
             recipientSession: recipientSession.id,
+            crossThreadId,
             crossId,
           });
         } catch (err) {
           log.warn('Failed to forward cross-coworker dashboard message', {
             from: session.agent_group_id,
-            to: binding.agent_group_id,
+            to: ownerAg.id,
             err,
           });
         }
