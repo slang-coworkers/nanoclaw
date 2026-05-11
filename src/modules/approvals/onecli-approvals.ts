@@ -71,7 +71,9 @@ export function resolveOneCLIApproval(approvalId: string, selectedOption: string
   pending.delete(approvalId);
   clearTimeout(state.timer);
 
-  const decision: Decision = selectedOption === 'approve' ? 'approve' : 'deny';
+  // Upstream paths canonicalize to `Approve`/`Reject`, but some legacy
+  // callers still pass lowercase. Accept both by normalizing before compare.
+  const decision: Decision = selectedOption.trim().toLowerCase() === 'approve' ? 'approve' : 'deny';
   updatePendingApprovalStatus(approvalId, decision === 'approve' ? 'approved' : 'rejected');
   // Card is auto-edited to "✅ <option>" by chat-sdk-bridge's onAction handler,
   // so we don't need to deliver an edit here.

@@ -29,9 +29,10 @@
 import type Database from 'better-sqlite3';
 import fs from 'fs';
 
-import { getActiveSessions } from './db/sessions.js';
+import { getActiveSessions, getSession } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import {
+  clearOrphanProcessingAcks,
   countDueMessages,
   getContainerState,
   getMessageForRetry,
@@ -42,20 +43,43 @@ import {
   type ContainerState,
 } from './db/session-db.js';
 import { log } from './log.js';
-import { openInboundDb, openOutboundDb, inboundDbPath, heartbeatPath } from './session-manager.js';
-import { isContainerRunning, killContainer, wakeContainer } from './container-runner.js';
+import { openInboundDb, openOutboundDb, inboundDbPath, outboundDbPath, heartbeatPath } from './session-manager.js';
+import {
+  detectStaleContainers,
+  isContainerRunning,
+  killContainer,
+  recomposeAndUpdateHash,
+  wakeContainer,
+} from './container-runner.js';
+import { writeSessionMessage } from './session-manager.js';
 import type { Session } from './types.js';
 
 const SWEEP_INTERVAL_MS = 60_000;
 // Absolute idle ceiling for a running container. If the heartbeat file hasn't
 // been touched in this long, the container is either stuck or doing genuinely
 // nothing — kill and restart on the next inbound.
-export const ABSOLUTE_CEILING_MS = 30 * 60 * 1000;
+// Respects CONTAINER_TIMEOUT from .env (default 30 min).
+export const ABSOLUTE_CEILING_MS = parseInt(process.env.CONTAINER_TIMEOUT || '1800000', 10);
 // Stuck tolerance window applied per 'processing' claim — "did we see any
 // signs of life since this message was claimed?"
 export const CLAIM_STUCK_MS = 60 * 1000;
+// Service start time — claims older than this are orphans from a prior run.
+const SERVICE_START_MS = Date.now();
 const MAX_TRIES = 5;
 const BACKOFF_BASE_MS = 5000;
+
+/**
+ * Parse a timestamp that may be in SQLite datetime('now') format
+ * ("YYYY-MM-DD HH:MM:SS", always UTC but missing indicator) or
+ * ISO 8601 ("...T...Z"). Date.parse treats space-separated strings
+ * as local time — this normalises to UTC first.
+ */
+export function parseSqliteUtc(s: string): number {
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+    return Date.parse(s.replace(' ', 'T') + 'Z');
+  }
+  return Date.parse(s);
+}
 
 export type StuckDecision =
   | { action: 'ok' }
@@ -94,7 +118,7 @@ export function decideStuckAction(args: {
 
   const tolerance = Math.max(CLAIM_STUCK_MS, declaredBashMs ?? 0);
   for (const claim of claims) {
-    const claimedAt = Date.parse(claim.status_changed);
+    const claimedAt = parseSqliteUtc(claim.status_changed);
     if (Number.isNaN(claimedAt)) continue;
     const claimAge = now - claimedAt;
     if (claimAge <= tolerance) continue;
@@ -124,6 +148,38 @@ async function sweep(): Promise<void> {
     const sessions = getActiveSessions();
     for (const session of sessions) {
       await sweepSession(session);
+    }
+
+    // CLAUDE.md staleness: detect containers whose composed CLAUDE.md
+    // has changed since spawn (skills/overlays/instructions edited).
+    //
+    // Strategy: kill the container so it respawns with fresh CLAUDE.md.
+    // Session history is preserved in the inbound/outbound DBs — the
+    // agent picks up where it left off with updated instructions.
+    // No /clear: that wipes conversation context and causes amnesia.
+    const stale = detectStaleContainers();
+    for (const { sessionId, agentGroupId, folder } of stale) {
+      log.warn('CLAUDE.md stale — killing container for respawn', { sessionId, folder });
+      recomposeAndUpdateHash(sessionId);
+      killContainer(sessionId, 'claude-md-stale');
+      const staleSession = getSession(sessionId);
+      writeSessionMessage(agentGroupId, sessionId, {
+        id: `claudemd-refresh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        kind: 'chat',
+        timestamp: new Date().toISOString(),
+        platformId: agentGroupId,
+        channelType: 'agent',
+        threadId: staleSession?.thread_id ?? null,
+        content: JSON.stringify({
+          text: 'Your instructions were updated. Container restarted to apply them. If you have work in progress, resume it — otherwise no response needed.',
+          sender: 'system',
+          senderId: 'system',
+        }),
+        processAfter: new Date(Date.now() + 5000)
+          .toISOString()
+          .replace('T', ' ')
+          .replace(/\.\d+Z$/, ''),
+      });
     }
   } catch (err) {
     log.error('Host sweep error', { err });
@@ -165,16 +221,22 @@ async function sweepSession(session: Session): Promise<void> {
     // container/agent-runner/src/db/connection.ts). Otherwise the reset path
     // would keep bumping process_after into the future, dueCount would stay 0,
     // and the wake would never fire.
+    let justSpawned = false;
     const dueCount = countDueMessages(inDb);
     if (dueCount > 0 && !isContainerRunning(session.id)) {
       log.info('Waking container for due messages', { sessionId: session.id, count: dueCount });
       await wakeContainer(session);
+      justSpawned = true;
     }
 
     const alive = isContainerRunning(session.id);
 
     // 3. Running-container SLA: absolute ceiling + per-claim stuck rules.
-    if (alive && outDb) {
+    // Skip on the same tick that spawned the container — give it time to
+    // start up and clear orphan processing_ack rows from a prior crash.
+    // Without this gate, stale claims from the crashed container cause an
+    // immediate kill (spawn-kill loop).
+    if (alive && outDb && !justSpawned) {
       enforceRunningContainerSla(inDb, outDb, session, agentGroup.id);
     }
 
@@ -217,11 +279,20 @@ function enforceRunningContainerSla(
   session: Session,
   agentGroupId: string,
 ): void {
+  // Filter out orphan claims from before this service started — they're
+  // leftovers from a prior run. The container cleans its own processing_ack
+  // on startup; killing it before that cleanup runs causes a respawn loop.
+  const allClaims = getProcessingClaims(outDb);
+  const claims = allClaims.filter((c) => {
+    const ts = parseSqliteUtc(c.status_changed);
+    return !Number.isNaN(ts) && ts >= SERVICE_START_MS;
+  });
+
   const decision = decideStuckAction({
     now: Date.now(),
     heartbeatMtimeMs: heartbeatMtimeMs(agentGroupId, session.id),
     containerState: getContainerState(outDb),
-    claims: getProcessingClaims(outDb),
+    claims,
   });
 
   if (decision.action === 'ok') return;
@@ -262,7 +333,7 @@ function resetStuckProcessingRows(
     // Already rescheduled for a future retry — don't bump tries again. The
     // wake path (sweep step 2) will fire when process_after elapses and a
     // fresh container will clean the orphan claim on startup.
-    if (msg.processAfter && Date.parse(msg.processAfter) > now) continue;
+    if (msg.processAfter && parseSqliteUtc(msg.processAfter) > now) continue;
 
     if (msg.tries >= MAX_TRIES) {
       markMessageFailed(inDb, msg.id);
@@ -282,5 +353,17 @@ function resetStuckProcessingRows(
         reason,
       });
     }
+  }
+
+  // Clear the orphan processing_ack rows so the next container spawn isn't
+  // immediately killed by stale claims. Safe because this only runs when the
+  // container is dead (step 4) or just killed (step 3 kill path).
+  if (claims.length > 0) {
+    clearOrphanProcessingAcks(outboundDbPath(session.agent_group_id, session.id));
+    log.info('Cleared orphan processing_ack rows', {
+      sessionId: session.id,
+      count: claims.length,
+      reason,
+    });
   }
 }
