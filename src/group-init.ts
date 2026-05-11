@@ -8,6 +8,9 @@ import type { AgentGroup } from './types.js';
 const DEFAULT_SETTINGS_JSON =
   JSON.stringify(
     {
+      sandbox: {
+        enabled: false,
+      },
       preferences: {
         reasoningEffort: 'max',
       },
