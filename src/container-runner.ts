@@ -1266,6 +1266,7 @@ sandbox_mode = "danger-full-access"
 
 [features]
 use_linux_sandbox_bwrap = false
+codex_hooks = true
 
 [model_providers.\${CODEX_MODEL_PROVIDER:-nvinference}]
 name = "\${CODEX_MODEL_PROVIDER:-nvinference}"
