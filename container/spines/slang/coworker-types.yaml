@@ -86,6 +86,45 @@ slang-fixer:
   workflows:
     - fix-issue
 
+slang-fixer-v2:
+  description: "Slang issue fixer v2 — event-driven, re-entrant dispatch based on IKD state. Full lifecycle: ingest, reproduce, plan, implement, review, close. Pushes PRs."
+  project: slang
+  extends: slang-writer
+  identity: container/spines/slang/identity/fix-agent.md
+  invariants:
+    - container/spines/slang/invariants/fix-github-policy.md
+    - container/spines/slang/invariants/fix-git-policy.md
+  context:
+    - container/spines/slang/context/fix-vectored-review.md
+  workflows:
+    - issue-fix
+    - issue-heartbeat
+    - subproblem-fix
+  skills:
+    - ikd
+    - issue-ingest
+    - issue-reproduce
+    - issue-plan
+    - issue-implement
+    - issue-close
+    - subproblem-plan
+    - subproblem-implement
+    - subproblem-review
+    - subproblem-close
+    - review-plans
+    - review-peel
+    - review-repo-generic
+    - review-repo-slang
+  bindings:
+    fix.issue: issue-fix
+    fix.heartbeat: issue-heartbeat
+    fix.subproblem: subproblem-fix
+    review: review-plans
+    review.plans: review-plans
+    review.peel: review-peel
+    review.repo: review-repo-generic
+    review.repo.slang: review-repo-slang
+
 slang-discord:
   description: "Slang Discord support — read user questions, research via DeepWiki + GitHub, draft verified answers, send to parent for review. Read-only, no posting."
   project: slang
