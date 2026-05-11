@@ -297,7 +297,14 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     const skippedSet = new Set(skipped);
     const processingIds = ids.filter((id) => !commandIds.includes(id) && !skippedSet.has(id));
     try {
-      const result = await processQuery(query, routing, processingIds, config.providerName, newSessionBatch);
+      const result = await processQuery(
+        query,
+        routing,
+        processingIds,
+        config.providerName,
+        newSessionBatch,
+        refreshDestinations,
+      );
       // Don't overwrite the stored chat continuation with a task's ephemeral session.
       if (!newSessionBatch && result.continuation && result.continuation !== continuation) {
         continuation = result.continuation;
@@ -428,6 +435,7 @@ async function processQuery(
   initialBatchIds: string[],
   providerName: string,
   skipPersistContinuation = false,
+  refreshDestinations: () => string | null = () => null,
 ): Promise<QueryResult> {
   let queryContinuation: string | undefined;
   let done = false;
