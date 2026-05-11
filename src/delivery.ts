@@ -9,7 +9,7 @@
  */
 import type Database from 'better-sqlite3';
 
-import { getRunningSessions, getActiveSessions, createPendingQuestion } from './db/sessions.js';
+import { getRunningSessions, getActiveSessions, getSession, createPendingQuestion } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
 import { getMessagingGroupByPlatform } from './db/messaging-groups.js';
@@ -376,6 +376,68 @@ async function deliverMessage(
   // files must persist after delivery instead of being treated as transport-only.
   if (!shouldRetainOutboxFiles(msg.channel_type, files)) {
     clearOutbox(session.agent_group_id, session.id, msg.id);
+  }
+
+  // Cross-coworker dashboard message: the sender routed to another agent's
+  // dashboard messaging group (e.g. NeuralGraphics → dashboard:orchestrator).
+  // The adapter delivered it (marks the outbound as delivered), but the
+  // recipient agent never sees it because the dashboard adapter is outbound-only.
+  // Write the message into the recipient's session inbound so (a) the agent
+  // can process it and (b) the dashboard shows it in the recipient's chat.
+  // File attachments are copied from sender's outbox to recipient's inbox.
+  if (msg.channel_type === 'dashboard' && msg.platform_id) {
+    const mg = getMessagingGroupByPlatform(msg.channel_type, msg.platform_id);
+    if (mg) {
+      const { getMessagingGroupAgents } = await import('./db/messaging-groups.js');
+      const bindings = getMessagingGroupAgents(mg.id);
+      for (const binding of bindings) {
+        if (binding.agent_group_id === session.agent_group_id) continue;
+        try {
+          const { resolveSession } = await import('./session-manager.js');
+          const { session: recipientSession } = resolveSession(
+            binding.agent_group_id, mg.id, msg.thread_id, binding.session_mode,
+          );
+          const crossId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          let forwardedContent = msg.content;
+          if (Array.isArray(content.files) && content.files.length > 0) {
+            try {
+              const { forwardAttachedFiles } = await import('./modules/agent-to-agent/agent-route.js');
+              forwardAttachedFiles(
+                { agentGroupId: session.agent_group_id, sessionId: session.id, messageId: msg.id, filenames: content.files as string[] },
+                { agentGroupId: binding.agent_group_id, sessionId: recipientSession.id, messageId: crossId },
+              );
+            } catch { /* a2a module may not be installed */ }
+          }
+          const { writeSessionMessage } = await import('./session-manager.js');
+          writeSessionMessage(binding.agent_group_id, recipientSession.id, {
+            id: crossId,
+            kind: 'chat',
+            timestamp: new Date().toISOString(),
+            platformId: session.agent_group_id,
+            channelType: 'agent',
+            threadId: msg.thread_id,
+            content: forwardedContent,
+          });
+          const recipientFresh = getSession(recipientSession.id);
+          if (recipientFresh) {
+            const { wakeContainer } = await import('./container-runner.js');
+            wakeContainer(recipientFresh).catch(() => {});
+          }
+          log.info('Cross-coworker dashboard message forwarded', {
+            from: session.agent_group_id,
+            to: binding.agent_group_id,
+            recipientSession: recipientSession.id,
+            crossId,
+          });
+        } catch (err) {
+          log.warn('Failed to forward cross-coworker dashboard message', {
+            from: session.agent_group_id,
+            to: binding.agent_group_id,
+            err,
+          });
+        }
+      }
+    }
   }
 
   return platformMsgId;
