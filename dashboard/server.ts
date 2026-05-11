@@ -5554,6 +5554,21 @@ export async function handleRequest(
     return;
   }
 
+  // API: list coworkers. RESTful counterpart to the POST — returns the same
+  // projection the UI consumes via /api/state.coworkers, so external callers
+  // (CI probes, monitoring scripts) can enumerate coworkers without pulling
+  // the whole state blob. Optional `?type=<coworker-type>` narrows by type
+  // (e.g. `?type=main` for the admin coworker).
+  if (req.method === 'GET' && url.pathname === '/api/coworkers') {
+    if (!requireAuth(req, res)) return;
+    const coworkers = getState().coworkers;
+    const typeFilter = url.searchParams.get('type');
+    const filtered = typeFilter ? coworkers.filter((c) => c.type === typeFilter) : coworkers;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(filtered));
+    return;
+  }
+
   // API: create coworker
   if (req.method === 'POST' && url.pathname === '/api/coworkers') {
     if (!requireAuth(req, res)) return;
