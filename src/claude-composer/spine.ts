@@ -603,7 +603,7 @@ export function renderCoworkerSpine(
 
       const uses = w.uses.length > 0 ? ` Uses: ${w.uses.join(', ')}.` : '';
       const extendsNote = extendsC?.extendsWorkflow
-        ? ` (extends the **${extendsC.extendsWorkflow}** workflow section below)`
+        ? ` (extends the \`/${extendsC.extendsWorkflow}\` workflow section below)`
         : '';
       let block = `### /${w.name}\n\n${w.description}${uses}${extendsNote}`;
 
