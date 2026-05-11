@@ -4023,7 +4023,7 @@ export async function handleRequest(
       // per folder ordered ascending by created_at so the query-time
       // fallback can bracket unrouted SDK UUIDs correctly.
       const folderSet = new Set<string>(flatRows.map((r) => r.group_folder).filter(Boolean));
-      type NanoSess = { id: string; agent_group_id: string; folder: string; thread_id: string | null; display_title: string | null; title_source: string | null; hidden_at: string | null; pinned_at: string | null; status: string; container_status: string; last_active: string | null; created_at: string };
+      type NanoSess = { id: string; agent_group_id: string; folder: string; thread_id: string | null; messaging_group_id: string | null; display_title: string | null; title_source: string | null; hidden_at: string | null; pinned_at: string | null; status: string; container_status: string; last_active: string | null; created_at: string };
       const nanoSessionsByFolder = new Map<string, NanoSess[]>();
       if (folderSet.size > 0) {
         const folders = Array.from(folderSet);
@@ -4039,7 +4039,7 @@ export async function handleRequest(
           nanoRows = heDb
             .prepare(
               `SELECT s.id AS id, s.agent_group_id AS agent_group_id, ag.folder AS folder,
-                      s.thread_id AS thread_id,
+                      s.thread_id AS thread_id, s.messaging_group_id AS messaging_group_id,
                       ${titleSelect}
                       ${stateSelect}
                       s.status AS status, s.container_status AS container_status,
@@ -4122,6 +4122,7 @@ export async function handleRequest(
       type Parent = {
         nanoclaw_session_id: string | null;
         thread_id: string | null;
+        messaging_group_id: string | null;
         display_title: string | null;
         title_source: string | null;
         hidden_at: string | null;
@@ -4149,6 +4150,7 @@ export async function handleRequest(
       const makeParent = (nano: NanoSess | null, folder: string): Parent => ({
         nanoclaw_session_id: nano ? nano.id : null,
         thread_id: nano ? nano.thread_id : null,
+        messaging_group_id: nano ? nano.messaging_group_id : null,
         display_title: nano ? nano.display_title : null,
         title_source: nano ? nano.title_source : null,
         hidden_at: nano ? nano.hidden_at : null,
@@ -4639,6 +4641,11 @@ export async function handleRequest(
     const threadIdParam = url.searchParams.get('thread_id');
     const threadMode = threadIdParam !== null && threadIdParam.length > 0;
     const threadFilter = threadMode ? threadIdParam : null;
+    // Session-direct mode: fetch messages from a specific session by ID,
+    // bypassing messaging_group scoping. Used to view a2a-spawned sessions
+    // that have messaging_group_id = NULL and thread_id = NULL.
+    const sessionIdParam = url.searchParams.get('session_id');
+    const sessionDirect = !!sessionIdParam;
     // Admin unified view: load ALL sessions across all channels and threads.
     const allSessions = url.searchParams.get('allSessions') === '1';
     // System/protocol traffic (CLAUDE.md refresh pings, agent-to-agent
@@ -4698,7 +4705,16 @@ export async function handleRequest(
           const dashMgId = resolveDashboardMessagingGroupId(db, agRow.id, agRow.folder);
 
           let sessions: { id: string; thread_id: string | null }[];
-          if (allSessions) {
+          if (sessionDirect) {
+            // Session-direct: look up the exact session by ID, scoped to this
+            // agent group for security. Bypasses messaging_group/thread_id scoping
+            // so a2a sessions (messaging_group_id = NULL, thread_id = NULL) are accessible.
+            sessions = db
+              .prepare(
+                "SELECT id, thread_id FROM sessions WHERE id = ? AND agent_group_id = ? AND status = 'active'",
+              )
+              .all(sessionIdParam, agRow.id) as { id: string; thread_id: string | null }[];
+          } else if (allSessions) {
             sessions = db
               .prepare(
                 "SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND status = 'active'",
@@ -4743,7 +4759,7 @@ export async function handleRequest(
           // message lives in the root session. If we ever mirror parents
           // into thread DBs this count is off-by-one and needs WHERE id
           // != parentId.
-          if (!threadMode && dashMgId) {
+          if (!threadMode && !sessionDirect && dashMgId) {
             let threadSessions: Array<{ id: string; thread_id: string }> = [];
             try {
               threadSessions = db

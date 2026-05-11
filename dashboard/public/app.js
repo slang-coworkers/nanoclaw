@@ -293,6 +293,11 @@ function activeNanoSessionsForCoworker(cw) {
 }
 
 
+function isA2aSession(nanoSess) {
+  if (nanoSess?.thread_id) return false;
+  return !nanoSess?.messaging_group_id;
+}
+
 function sessionSlugOnly(nanoSess) {
   // Bare 3-word slug (e.g. "tender-fell-rests"), no "main · " / "thread · "
   // kind prefix. Used in the one-line display format per user feedback.
@@ -419,7 +424,8 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
         data-pin-session="${sid}" data-pin-on="${isPinned ? '0' : '1'}">📌</button><button class="session-icon-btn" title="Rename this session"
         data-rename-session="${sid}" data-rename-current="${escAttr(currentTitle || '')}">✎</button><button class="session-icon-btn" title="Open in Timeline"
         data-view-nanoclaw-session="${sid}" data-view-nanoclaw-agid="${agid}" data-view-session-group="${tgrp}">≡</button>${tid ? `<button class="session-icon-btn" title="Open chat view"
-        data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${tgrp}">💬</button>` : `<button class="session-icon-btn" title="Main session — already shown in chat" disabled style="opacity:0.35;cursor:not-allowed">💬</button>`}<button class="session-icon-btn${isHidden ? ' active' : ''}" title="${isHidden ? 'Unhide session' : 'Hide session'}"
+        data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${tgrp}">💬</button>` : isA2aSession(sess) ? `<button class="session-icon-btn" title="Open a2a session (read-only)"
+        data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${tgrp}">💬</button>` : `<button class="session-icon-btn" title="Main session — already shown in chat" disabled style="opacity:0.35;cursor:not-allowed">💬</button>`}<button class="session-icon-btn${isHidden ? ' active' : ''}" title="${isHidden ? 'Unhide session' : 'Hide session'}"
         data-hide-session="${sid}" data-hide-on="${isHidden ? '0' : '1'}">${isHidden ? '↺' : '−'}</button>`;
     };
     const lookupLastMessage = (threadId) => {
@@ -465,7 +471,7 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
         : '';
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
         <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
-        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1${tid ? ';cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px' : ''}" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}"${tid ? ` data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${escAttr(tgrp)}"` : ''}>${esc(primaryName)}</span>
+        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1${(tid || isA2aSession(sess)) ? ';cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px' : ''}" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}"${tid ? ` data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${escAttr(tgrp)}"` : isA2aSession(sess) ? ` data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${escAttr(tgrp)}"` : ''}>${esc(primaryName)}</span>
         <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, currentTitle || slug, sess)}</span>
       </div>
       ${previewBits.length ? `<div style="${previewStyle}" title="${escAttr(previewBits.join(' · '))}">${esc(previewBits.join(' · '))}</div>` : ''}
@@ -2751,10 +2757,13 @@ document.addEventListener('click', (e) => {
       const tools = document.getElementById('cw-detail-tools');
       if (tools) tools._lastHtml = null;
     }
+    const sessionDirect = viewChatBtn.dataset.viewSessionDirect || '';
     if (grp) {
       switchToTab('coworkers');
       if (cwState.selected !== grp) selectCoworker(grp);
-      if (tid) {
+      if (sessionDirect) {
+        setTimeout(() => openThread(sessionDirect, { sessionDirect: true }), 400);
+      } else if (tid) {
         setTimeout(() => openThread(tid), 400);
       } else {
         closeThread({ silent: true });
@@ -3959,7 +3968,14 @@ function renderCwMessages() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ approvalId: qid, decision }),
           });
-          if (!res.ok) {
+          if (res.ok) {
+            const btnRow = approvalBtn.closest('div');
+            if (btnRow) {
+              const color = decision === 'Approve' ? '#238636' : '#da3633';
+              const label = decision === 'Approve' ? 'Approved' : 'Rejected';
+              btnRow.innerHTML = `<span style="font-size:10px;color:${color};font-weight:600">${label}</span>`;
+            }
+          } else {
             const errData = await res.json().catch(() => ({}));
             approvalBtn.textContent = errData.error || 'Error';
             allBtns.forEach(b => { b.disabled = false; });
@@ -4212,14 +4228,18 @@ async function sendCwThreadMessage() {
   });
 }
 
-function openThread(parentId) {
+function openThread(parentId, opts = {}) {
   if (!cwState.selected || !parentId) return;
+  const isSessionDirect = !!opts.sessionDirect;
   // Snapshot the parent message from the current main view for the header.
-  const parentSnapshot = (cwState.messages || []).find((m) => m.id === parentId) || null;
+  const parentSnapshot = isSessionDirect ? null : ((cwState.messages || []).find((m) => m.id === parentId) || null);
   if (cwState.thread?.polling) clearInterval(cwState.thread.polling);
-  cwState.thread = { parentId, parentSnapshot, messages: [], polling: null };
+  cwState.thread = { parentId, parentSnapshot, messages: [], polling: null, sessionDirect: isSessionDirect };
   const panel = document.getElementById('cw-thread-panel');
   if (panel) panel.style.display = 'flex';
+  // Hide the reply composer for read-only a2a sessions
+  const inputArea = panel?.querySelector('.cw-thread-input');
+  if (inputArea) inputArea.style.display = isSessionDirect ? 'none' : '';
   // The dashboard's detail panel and thread panel fight for the same slot —
   // hide detail while the thread is open to avoid a squeezed layout.
   const detail = document.getElementById('cw-detail');
@@ -4240,6 +4260,8 @@ function closeThread({ silent = false } = {}) {
   cwState.thread = null;
   const panel = document.getElementById('cw-thread-panel');
   if (panel) panel.style.display = 'none';
+  const coworkers = document.getElementById('coworkers');
+  if (coworkers) coworkers.classList.remove('cw-thread-fullscreen');
   const detail = document.getElementById('cw-detail');
   if (detail && detail.dataset.wasVisible === '1') {
     detail.style.display = 'block';
@@ -4372,7 +4394,10 @@ function renderA2aInspector() {
 async function fetchCwThread(parentId) {
   if (!cwState.selected || !cwState.thread || cwState.thread.parentId !== parentId) return;
   try {
-    const res = await fetch(`/api/messages?group=${encodeURIComponent(cwState.selected)}&thread_id=${encodeURIComponent(parentId)}&limit=200`);
+    const queryParam = cwState.thread.sessionDirect
+      ? `session_id=${encodeURIComponent(parentId)}`
+      : `thread_id=${encodeURIComponent(parentId)}`;
+    const res = await fetch(`/api/messages?group=${encodeURIComponent(cwState.selected)}&${queryParam}&limit=200`);
     if (!res.ok) return;
     const data = await res.json();
     const incoming = (data.messages || []).reverse();
@@ -4418,17 +4443,26 @@ function renderCwThread() {
   // this label matches the same session's label in the Timeline dropdown
   // and the detail panel. Fall back to parentId slug if the thread is
   // newly opened with no persisted messages yet.
-  const matchingNano = (cachedSessions || []).find(
-    (s) => s.thread_id === t.parentId && s.group_folder === cwState.selected,
-  );
+  const matchingNano = t.sessionDirect
+    ? (cachedSessions || []).find(
+        (s) => s.nanoclaw_session_id === t.parentId && s.group_folder === cwState.selected,
+      )
+    : (cachedSessions || []).find(
+        (s) => s.thread_id === t.parentId && s.group_folder === cwState.selected,
+      );
   const sessionIdForSlug =
     matchingNano?.nanoclaw_session_id ||
     (t.messages || []).find((m) => m.session_id)?.session_id ||
     t.parentId;
   if (parentLabel) {
-    parentLabel.textContent = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
-    parentLabel.title = `session=${sessionIdForSlug}\nthread_id=${t.parentId}`;
+    const label = t.sessionDirect
+      ? `a2a · ${sessionLabelWithTitle(sessionIdForSlug, t.parentId)}`
+      : sessionLabelWithTitle(sessionIdForSlug, t.parentId);
+    parentLabel.textContent = label;
+    parentLabel.title = `session=${sessionIdForSlug}${t.sessionDirect ? ' (a2a read-only)' : `\nthread_id=${t.parentId}`}`;
   }
+  const titleEl = document.querySelector('#cw-thread-panel .cw-thread-title strong');
+  if (titleEl) titleEl.textContent = t.sessionDirect ? 'A2A Session' : 'Thread';
   const actionsEl = document.getElementById('cw-thread-actions');
   if (actionsEl) {
     if (matchingNano && matchingNano.nanoclaw_session_id) {
@@ -4457,6 +4491,8 @@ function renderCwThread() {
         : (p.senderCoworkerName ? `@${esc(p.senderCoworkerName)}` : 'You');
       parentEl.innerHTML = `<div class="parent-author">${pAuthor} <span style="color:var(--text-muted);font-weight:400">· ${p.timestamp ? formatTime(p.timestamp) : ''}</span></div>
         <div class="parent-body">${md(pText)}</div>`;
+    } else if (t.sessionDirect) {
+      parentEl.innerHTML = '<div class="parent-body" style="color:var(--text-muted);font-style:italic">Agent-to-agent session (read-only)</div>';
     } else {
       parentEl.innerHTML = '<div class="parent-body" style="color:var(--text-muted)">(parent message)</div>';
     }
@@ -4506,18 +4542,20 @@ function syncCwUrl() {
     let hash = '';
     if (cwState.selected) {
       hash = `#/cw/${encodeURIComponent(cwState.selected)}`;
-      if (cwState.thread) hash += `/t/${encodeURIComponent(cwState.thread.parentId)}`;
+      if (cwState.thread?.sessionDirect) hash += `/s/${encodeURIComponent(cwState.thread.parentId)}`;
+      else if (cwState.thread) hash += `/t/${encodeURIComponent(cwState.thread.parentId)}`;
     }
     if (location.hash !== hash) history.replaceState(null, '', hash || location.pathname);
   } catch { /* ignore */ }
 }
 
 function applyCwUrl(retries = 8) {
-  const m = /^#\/cw\/([^/]+)(?:\/t\/(.+))?$/.exec(location.hash || '');
+  const m = /^#\/cw\/([^/]+)(?:\/(t|s)\/(.+))?$/.exec(location.hash || '');
   if (!m) return;
   switchToTab('coworkers');
   const folder = decodeURIComponent(m[1]);
-  const parentId = m[2] ? decodeURIComponent(m[2]) : null;
+  const mode = m[2] || null;
+  const parentId = m[3] ? decodeURIComponent(m[3]) : null;
   const known = getCwCoworkers().some((c) => c.folder === folder);
   if (!known && retries > 0) {
     setTimeout(() => applyCwUrl(retries - 1), 250);
@@ -4525,9 +4563,8 @@ function applyCwUrl(retries = 8) {
   }
   if (cwState.selected !== folder) selectCoworker(folder);
   if (parentId && (!cwState.thread || cwState.thread.parentId !== parentId)) {
-    // Defer briefly so the main fetch has a chance to resolve first — gives
-    // openThread a non-null parent snapshot for the thread header.
-    setTimeout(() => openThread(parentId), 600);
+    const opts = mode === 's' ? { sessionDirect: true } : {};
+    setTimeout(() => openThread(parentId, opts), 600);
   }
 }
 
@@ -4904,8 +4941,16 @@ document.getElementById('cw-fullscreen-btn')?.addEventListener('click', () => {
 document.getElementById('cw-thread-fullscreen-btn')?.addEventListener('click', () => {
   const panel = document.getElementById('coworkers');
   if (!panel) return;
+  const wasFullscreen = panel.classList.contains('cw-thread-fullscreen');
   panel.classList.remove('cw-fullscreen');
   panel.classList.toggle('cw-thread-fullscreen');
+  if (wasFullscreen) {
+    const detail = document.getElementById('cw-detail');
+    if (detail && detail.dataset.wasVisible === '1') {
+      detail.style.display = 'block';
+      delete detail.dataset.wasVisible;
+    }
+  }
 });
 
 document.querySelectorAll('.cw-toggle-btn').forEach(btn => {
