@@ -602,8 +602,16 @@ export function renderCoworkerSpine(
       const overlays = wfCustomizations.filter((c) => c.kind === 'overlay');
 
       const uses = w.uses.length > 0 ? ` Uses: ${w.uses.join(', ')}.` : '';
+      // Extends-note surfaces the base workflow's literal slash form so the
+      // Workflows listing reads as a cross-reference. An em-dash separator
+      // keeps rewriteSlashRefs pass-2 from matching (its boundary pattern
+      // requires a whitespace/punct/`)` char after the name; U+2014 is none
+      // of those), so no phantom "Unknown slash ref" warnings fire for the
+      // parent workflow name — which isn't in this coworker's own workflow
+      // set. The slash-dash-name shape still reads unambiguously as a
+      // reference to the embedded parent section.
       const extendsNote = extendsC?.extendsWorkflow
-        ? ` (extends the \`/${extendsC.extendsWorkflow}\` workflow section below)`
+        ? ` (extends /${extendsC.extendsWorkflow}—see section below)`
         : '';
       let block = `### /${w.name}\n\n${w.description}${uses}${extendsNote}`;
 
