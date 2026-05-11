@@ -4563,8 +4563,9 @@ function renderCwThread() {
         : `${authorName} · system action`;
       const preview = (text || '').replace(/\s+/g, ' ').trim();
       const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
-      return `<div class="cw-msg relay collapsed"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
-        <div class="cw-msg-header" onclick="this.parentElement.classList.toggle('collapsed')" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ click to toggle</span></div>
+      const expanded = cwState.thread._expandedRelays && cwState.thread._expandedRelays.has(m.id);
+      return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
+        <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
         <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${body}</div></div>`;
     }
@@ -4575,6 +4576,13 @@ function renderCwThread() {
   msgsEl.innerHTML = html || '<div class="cw-empty" style="padding:12px">No replies yet.</div>';
   if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
 }
+
+document.addEventListener('relay-toggle', (e) => {
+  if (!cwState.thread) return;
+  if (!cwState.thread._expandedRelays) cwState.thread._expandedRelays = new Set();
+  if (e.detail.open) cwState.thread._expandedRelays.add(e.detail.id);
+  else cwState.thread._expandedRelays.delete(e.detail.id);
+});
 
 /**
  * Sync URL hash with current coworker/thread selection — shareable /
