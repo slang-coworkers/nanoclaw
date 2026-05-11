@@ -32,6 +32,7 @@ import fs from 'fs';
 import { getActiveSessions, getSession } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import {
+  clearOrphanProcessingAcks,
   countDueMessages,
   getContainerState,
   getMessageForRetry,
@@ -42,7 +43,7 @@ import {
   type ContainerState,
 } from './db/session-db.js';
 import { log } from './log.js';
-import { openInboundDb, openOutboundDb, inboundDbPath, heartbeatPath } from './session-manager.js';
+import { openInboundDb, openOutboundDb, inboundDbPath, outboundDbPath, heartbeatPath } from './session-manager.js';
 import {
   detectStaleContainers,
   isContainerRunning,
@@ -66,6 +67,19 @@ export const CLAIM_STUCK_MS = 60 * 1000;
 const SERVICE_START_MS = Date.now();
 const MAX_TRIES = 5;
 const BACKOFF_BASE_MS = 5000;
+
+/**
+ * Parse a timestamp that may be in SQLite datetime('now') format
+ * ("YYYY-MM-DD HH:MM:SS", always UTC but missing indicator) or
+ * ISO 8601 ("...T...Z"). Date.parse treats space-separated strings
+ * as local time — this normalises to UTC first.
+ */
+export function parseSqliteUtc(s: string): number {
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+    return Date.parse(s.replace(' ', 'T') + 'Z');
+  }
+  return Date.parse(s);
+}
 
 export type StuckDecision =
   | { action: 'ok' }
@@ -104,7 +118,7 @@ export function decideStuckAction(args: {
 
   const tolerance = Math.max(CLAIM_STUCK_MS, declaredBashMs ?? 0);
   for (const claim of claims) {
-    const claimedAt = Date.parse(claim.status_changed);
+    const claimedAt = parseSqliteUtc(claim.status_changed);
     if (Number.isNaN(claimedAt)) continue;
     const claimAge = now - claimedAt;
     if (claimAge <= tolerance) continue;
@@ -207,16 +221,22 @@ async function sweepSession(session: Session): Promise<void> {
     // container/agent-runner/src/db/connection.ts). Otherwise the reset path
     // would keep bumping process_after into the future, dueCount would stay 0,
     // and the wake would never fire.
+    let justSpawned = false;
     const dueCount = countDueMessages(inDb);
     if (dueCount > 0 && !isContainerRunning(session.id)) {
       log.info('Waking container for due messages', { sessionId: session.id, count: dueCount });
       await wakeContainer(session);
+      justSpawned = true;
     }
 
     const alive = isContainerRunning(session.id);
 
     // 3. Running-container SLA: absolute ceiling + per-claim stuck rules.
-    if (alive && outDb) {
+    // Skip on the same tick that spawned the container — give it time to
+    // start up and clear orphan processing_ack rows from a prior crash.
+    // Without this gate, stale claims from the crashed container cause an
+    // immediate kill (spawn-kill loop).
+    if (alive && outDb && !justSpawned) {
       enforceRunningContainerSla(inDb, outDb, session, agentGroup.id);
     }
 
@@ -264,7 +284,7 @@ function enforceRunningContainerSla(
   // on startup; killing it before that cleanup runs causes a respawn loop.
   const allClaims = getProcessingClaims(outDb);
   const claims = allClaims.filter((c) => {
-    const ts = Date.parse(c.status_changed);
+    const ts = parseSqliteUtc(c.status_changed);
     return !Number.isNaN(ts) && ts >= SERVICE_START_MS;
   });
 
@@ -313,7 +333,7 @@ function resetStuckProcessingRows(
     // Already rescheduled for a future retry — don't bump tries again. The
     // wake path (sweep step 2) will fire when process_after elapses and a
     // fresh container will clean the orphan claim on startup.
-    if (msg.processAfter && Date.parse(msg.processAfter) > now) continue;
+    if (msg.processAfter && parseSqliteUtc(msg.processAfter) > now) continue;
 
     if (msg.tries >= MAX_TRIES) {
       markMessageFailed(inDb, msg.id);
@@ -333,5 +353,17 @@ function resetStuckProcessingRows(
         reason,
       });
     }
+  }
+
+  // Clear the orphan processing_ack rows so the next container spawn isn't
+  // immediately killed by stale claims. Safe because this only runs when the
+  // container is dead (step 4) or just killed (step 3 kill path).
+  if (claims.length > 0) {
+    clearOrphanProcessingAcks(outboundDbPath(session.agent_group_id, session.id));
+    log.info('Cleared orphan processing_ack rows', {
+      sessionId: session.id,
+      count: claims.length,
+      reason,
+    });
   }
 }
