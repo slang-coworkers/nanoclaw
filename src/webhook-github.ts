@@ -64,7 +64,7 @@ export function deliverGitHubMention(event: GitHubMentionEvent): void {
     const mapping = centralDb
       .prepare('SELECT agent_group_id, session_id, thread_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?')
       .get(event.repo, event.issueNumber) as
-      | { agent_group_id: string; session_id: string; thread_id: string }
+      | { agent_group_id: string; session_id: string; thread_id: string | null }
       | undefined;
 
     if (mapping) {
