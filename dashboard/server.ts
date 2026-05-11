@@ -4659,7 +4659,7 @@ export async function handleRequest(
     // whether earlier rows exist beyond the returned page.
     const beforeParam = url.searchParams.get('before');
     const OVERSAMPLE = 3;
-    const SYSTEM_ID_PREFIXES = ['claudemd-refresh-', 'a2a-'];
+    const SYSTEM_ID_PREFIXES = ['claudemd-refresh-', 'a2a-', 'sys-'];
     const isSystemId = (id: unknown) =>
       typeof id === 'string' && SYSTEM_ID_PREFIXES.some((p) => id.startsWith(p));
     // Index all agent_groups by id so we can recognise when an a2a-* message is
@@ -4673,7 +4673,7 @@ export async function handleRequest(
     // Per-agent-group thread summaries: { [parentMessageId]: { replyCount, lastReplyTs } }.
     // Only populated in main view; the client uses it to render
     // "↳ N replies" stubs under parent messages.
-    const threadSummaries: Record<string, { replyCount: number; lastReplyTs: string | null }> = {};
+    const threadSummaries: Record<string, { replyCount: number; lastReplyTs: string | null; sessionId: string | null }> = {};
     if (db) {
       try {
         try {
@@ -4788,7 +4788,7 @@ export async function handleRequest(
                 } catch { /* ignore */ }
               }
               if (count > 0) {
-                threadSummaries[ts.thread_id] = { replyCount: count, lastReplyTs: lastTs };
+                threadSummaries[ts.thread_id] = { replyCount: count, lastReplyTs: lastTs, sessionId: ts.id };
               }
             }
           }
@@ -4834,9 +4834,9 @@ export async function handleRequest(
                   // Row-level thread filter as correctness belt to the
                   // session-level filter above — defends against legacy rows
                   // in a session whose scope later changed.
-                  if (!allSessions) {
+                  if (!allSessions && !sessionDirect) {
                     if (threadMode) {
-                      if (r.thread_id !== threadFilter) continue;
+                      if (r.thread_id != null && r.thread_id !== threadFilter) continue;
                     } else {
                       if (r.thread_id != null) continue;
                     }
@@ -4855,6 +4855,10 @@ export async function handleRequest(
                     ? (coworkerNameById.get(r.platform_id) ?? (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
                     : undefined;
                   if (!includeSystem && isSystemId(r.id) && !senderCoworkerName) continue;
+                  // Self-referencing a2a: sender is the same agent group we're
+                  // viewing — routing echo, not a real inbound message.
+                  const isSelfEcho = r.channel_type === 'agent' && r.platform_id === agRow.id;
+                  if (!includeSystem && isSelfEcho) continue;
                   messages.push({
                     ...r,
                     direction: 'incoming',
@@ -4888,7 +4892,12 @@ export async function handleRequest(
                   }
                 }
                 for (const r of rows) {
-                  if (!allSessions) {
+                  // Relay detection: outbound messages targeting the agent
+                  // channel with thread_id=NULL are relay commands to another
+                  // coworker. Tag (not filter) so the client can collapse them.
+                  // Also catches system actions (create_agent etc.) with no channel_type.
+                  const isRelayOut = threadMode && r.thread_id == null && (r.channel_type === 'agent' || !r.channel_type);
+                  if (!allSessions && !sessionDirect && !isRelayOut) {
                     if (threadMode) {
                       if (r.thread_id !== threadFilter) continue;
                     } else {
@@ -4901,13 +4910,16 @@ export async function handleRequest(
                   // subscript. Ack replies to system pings (in_reply_to starts
                   // with claudemd-refresh-/a2a- AND no real recipient) stay
                   // filtered.
-                  const recipientCoworkerName = r.channel_type === 'agent' && typeof r.platform_id === 'string'
+                  const rawRecipientName = r.channel_type === 'agent' && typeof r.platform_id === 'string'
                     ? (coworkerNameById.get(r.platform_id) ?? (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
                     : undefined;
-                  if (!includeSystem && isSystemId(r.in_reply_to) && !recipientCoworkerName) continue;
+                  // Suppress recipient name when it's the same agent group (self-echo)
+                  const recipientCoworkerName = (r.platform_id === agRow.id) ? undefined : rawRecipientName;
+                  if (!includeSystem && isSystemId(r.in_reply_to) && !recipientCoworkerName && !isRelayOut) continue;
                   const delivered = deliveredByMessageOutId.get(r.id);
                   messages.push({
                     ...r,
+                    isRelay: isRelayOut || undefined,
                     direction: 'outgoing',
                     agent_group_id: agRow.id,
                     group_folder: agRow.folder,

@@ -410,8 +410,12 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
     const latestMs = Math.max(...allMetas.map((m) => m.lastMs || 0), 0);
     const summaryStatus = runningCount > 0 ? `${runningCount} running` : 'all stopped';
     const otherSessions = metas.filter((m) => m.nanoSess.nanoclaw_session_id !== target.nanoSess.nanoclaw_session_id);
+    const hasAnyUnread = allMetas.some((m) => hasSessionUnread(m.nanoSess));
+    const markAllBtn = hasAnyUnread
+      ? ` · <a href="#" class="cw-mark-all-read" style="color:#3b82f6;text-decoration:none;font-size:9px" data-folder="${escAttr(cw.folder)}">mark all read</a>`
+      : '';
     const summary = `<div style="font-size:9px;color:var(--text-muted);margin-bottom:5px">
-      ${metas.length} session${metas.length === 1 ? '' : 's'} · ${esc(summaryStatus)}${latestMs ? ' · last ' + esc(timeAgo(latestMs)) : ''}
+      ${metas.length} session${metas.length === 1 ? '' : 's'} · ${esc(summaryStatus)}${latestMs ? ' · last ' + esc(timeAgo(latestMs)) : ''}${markAllBtn}
     </div>`;
     const tagid = escAttr(target.nanoSess.agent_group_id || '');
     const tsid = escAttr(target.nanoSess.nanoclaw_session_id);
@@ -2702,6 +2706,21 @@ document.addEventListener('click', (e) => {
     });
   };
 
+  // "Mark all read" link in sessions summary
+  const markAllRead = e.target.closest('.cw-mark-all-read');
+  if (markAllRead) {
+    e.preventDefault();
+    e.stopPropagation();
+    const folder = markAllRead.dataset.folder;
+    const sessions = activeNanoSessionsForCoworker({ folder });
+    const now = Date.now();
+    for (const s of sessions) {
+      if (s.nanoclaw_session_id) sessionReadCursors.markRead(s.nanoclaw_session_id, now);
+    }
+    if (typeof updateCwDetail === 'function') updateCwDetail();
+    return;
+  }
+
   // Click pin/unpin (📌) button — POST {on: true|false} to /api/sessions/<sid>/pinned.
   const pinBtn = e.target.closest('[data-pin-session]');
   if (pinBtn) {
@@ -3760,11 +3779,13 @@ async function fetchCwMessages() {
     // Sync into global approval counter for sidebar dot
     cwState.approvalCountByFolder[cwState.selected] = (cwState.pendingApprovals || []).length + (cwState.pendingCredentials || []).length;
     renderCwMessages();
-    // Mark as read using latest message timestamp
-    if (cwState.messages.length > 0 && cwState.selected) {
-      const latest = cwState.messages[cwState.messages.length - 1];
-      if (latest.timestamp) {
-        readCursors.markRead(cwState.selected, latest.timestamp);
+    // Mark as read using the coworker's lastMessageTs (covers all sessions
+    // including threads and a2a). Falls back to latest main-chat timestamp.
+    if (cwState.selected) {
+      const cw = (state.coworkers || []).find(c => c.folder === cwState.selected);
+      const ts = cw?.lastMessageTs || (cwState.messages.length > 0 ? cwState.messages[cwState.messages.length - 1].timestamp : null);
+      if (ts) {
+        readCursors.markRead(cwState.selected, ts);
         renderCwSidebar();
       }
     }
@@ -3897,8 +3918,15 @@ function renderCwMessages() {
 
     // Reply-count stub: only for main-view rows that are thread starters.
     const summary = cwState.threadSummaries && m.id ? cwState.threadSummaries[m.id] : null;
+    const threadUnread = (() => {
+      if (!summary?.sessionId || !summary.lastReplyTs) return 0;
+      const cursor = sessionReadCursors.getFor(summary.sessionId);
+      const lastMs = new Date(summary.lastReplyTs).getTime();
+      return (Number.isFinite(lastMs) && lastMs > cursor) ? 1 : 0;
+    })();
+    const unreadBadge = threadUnread ? ` <span style="background:#3b82f6;color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;margin-left:4px">new</span>` : '';
     const threadStubHtml = summary
-      ? `<div class="cw-thread-stub" data-parent-id="${esc(m.id)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}</div>`
+      ? `<div class="cw-thread-stub" data-parent-id="${esc(m.id)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
       : '';
     // Hover action toolbar — only offer "Reply in thread" when we have a
     // persisted message id (not optimistic) and it's not an approval/
@@ -3936,7 +3964,11 @@ function renderCwMessages() {
       const replyBtn = e.target.closest('.cw-reply-btn, .cw-thread-stub');
       if (replyBtn) {
         const parentId = replyBtn.dataset.parentId;
-        if (parentId) openThread(parentId);
+        if (parentId) {
+          const ts = cwState.threadSummaries && cwState.threadSummaries[parentId];
+          if (ts?.sessionId) sessionReadCursors.markRead(ts.sessionId);
+          openThread(parentId);
+        }
         return;
       }
       // ── a2a read-only inspector (Option C) ──
@@ -4525,6 +4557,18 @@ function renderCwThread() {
       ? (cwState.selected || 'A')
       : (m.senderCoworkerName || 'You');
     const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
+    if (m.isRelay) {
+      const relayLabel = m.recipientCoworkerName
+        ? `${authorName} → @${esc(m.recipientCoworkerName)}`
+        : `${authorName} · system action`;
+      const preview = (text || '').replace(/\s+/g, ' ').trim();
+      const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
+      const expanded = cwState.thread._expandedRelays && cwState.thread._expandedRelays.has(m.id);
+      return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
+        <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
+        <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
+        <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${body}</div></div>`;
+    }
     return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span></div>
       <div class="cw-msg-bubble">${body}</div></div>`;
@@ -4532,6 +4576,13 @@ function renderCwThread() {
   msgsEl.innerHTML = html || '<div class="cw-empty" style="padding:12px">No replies yet.</div>';
   if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
 }
+
+document.addEventListener('relay-toggle', (e) => {
+  if (!cwState.thread) return;
+  if (!cwState.thread._expandedRelays) cwState.thread._expandedRelays = new Set();
+  if (e.detail.open) cwState.thread._expandedRelays.add(e.detail.id);
+  else cwState.thread._expandedRelays.delete(e.detail.id);
+});
 
 /**
  * Sync URL hash with current coworker/thread selection — shareable /
