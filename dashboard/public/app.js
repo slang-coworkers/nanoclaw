@@ -858,16 +858,30 @@ function getCharAnim(key) {
 function lerp(a, b, t) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
 
 // --- Desk assignment ---
+let officeShowAll = false;
+
+function isCoworkerActive(cw) {
+  if (cw.status === 'working' || cw.status === 'active' || cw.status === 'thinking') return true;
+  if (cw.lastActivity) {
+    const ago = Date.now() - new Date(cw.lastActivity).getTime();
+    if (ago < 24 * 60 * 60 * 1000) return true;
+  }
+  return false;
+}
+
 function getDeskAssignments() {
   const maxSlots = state.maxConcurrentContainers || DESK_SLOTS.length;
   const activeSlots = DESK_SLOTS.slice(0, Math.max(maxSlots, DESK_SLOTS.length));
-  return state.coworkers.map((cw, i) => {
+  const coworkers = officeShowAll
+    ? state.coworkers
+    : state.coworkers.filter(isCoworkerActive);
+  return coworkers.map((cw, i) => {
     const slot = activeSlots[i % activeSlots.length];
     const stationType = slot.stationType || 'desk';
     const facing = slot.facing || (stationType === 'desk' ? 'back' : 'front');
     return {
       cw,
-      index: i,
+      index: state.coworkers.indexOf(cw),
       stationType,
       dCol: slot.col,
       dRow: slot.row,
@@ -1551,6 +1565,15 @@ document.getElementById('legend-toggle')?.addEventListener('click', () => {
   if (legend) legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
 });
 
+document.getElementById('office-show-all')?.addEventListener('click', () => {
+  officeShowAll = !officeShowAll;
+  const btn = document.getElementById('office-show-all');
+  if (btn) {
+    btn.textContent = officeShowAll ? 'Active only' : 'Show all';
+    btn.style.color = officeShowAll ? 'var(--accent)' : 'var(--text-dim)';
+  }
+});
+
 // --- Theme toggle ---
 (function() {
   const themeBtn = document.getElementById('theme-toggle');
@@ -1597,7 +1620,7 @@ canvas.addEventListener('mousemove', (e) => {
 
   // Update tooltip (positioned in CSS pixel space, not world space).
   if (hoveredDesk >= 0) {
-    const cw = state.coworkers[hoveredDesk];
+    const cw = _lastAssignments[hoveredDesk]?.cw || state.coworkers[hoveredDesk];
     const [statusColor, statusLabel] = getStatusConfig(cw.status);
     const activity = cw.lastActivity ? timeAgo(cw.lastActivity) : 'no activity';
     const tool = cw.lastToolUse ? `Tool: ${cw.lastToolUse}` : '';
@@ -1623,7 +1646,7 @@ canvas.addEventListener('mouseleave', () => {
 
 canvas.addEventListener('click', () => {
   if (hoveredDesk >= 0) {
-    selectedCoworker = state.coworkers[hoveredDesk];
+    selectedCoworker = _lastAssignments[hoveredDesk]?.cw || state.coworkers[hoveredDesk];
     showDetailPanel(selectedCoworker);
   } else {
     selectedCoworker = null;
@@ -4569,9 +4592,10 @@ function renderCwThread() {
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
         <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${body}</div></div>`;
     }
+    const attachHtml = renderMessageAttachmentsHtml(m.attachments);
     return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span></div>
-      <div class="cw-msg-bubble">${body}</div></div>`;
+      <div class="cw-msg-bubble">${body}${attachHtml}</div></div>`;
   }).join('');
   msgsEl.innerHTML = html || '<div class="cw-empty" style="padding:12px">No replies yet.</div>';
   if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;

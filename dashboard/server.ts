@@ -612,7 +612,9 @@ function buildMessageAttachments(
   messageId: string,
   fileNames: string[],
 ): Array<{ name: string; url: string; mime: string; isImage: boolean }> {
-  const attachmentDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'outbox', messageId);
+  const outboxDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'outbox', messageId);
+  const inboxDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'inbox', messageId);
+  const attachmentDir = existsSync(outboxDir) ? outboxDir : inboxDir;
   if (!existsSync(attachmentDir)) return [];
 
   return fileNames
@@ -4606,7 +4608,9 @@ export async function handleRequest(
       return;
     }
 
-    const attachmentDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'outbox', messageId);
+    const outboxDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'outbox', messageId);
+    const inboxDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'inbox', messageId);
+    const attachmentDir = existsSync(outboxDir) ? outboxDir : inboxDir;
     const fullPath = join(attachmentDir, fileName);
     if (!isInsideDir(attachmentDir, fullPath)) {
       res.writeHead(403);
@@ -4952,7 +4956,7 @@ export async function handleRequest(
         // Normalize content — extracts cardType, questionId, options, credentialId
         for (const m of messages) {
           normalizeMessageForDisplay(m);
-          if (m.direction === 'outgoing' && m.agent_group_id && m.session_id && Array.isArray(m.fileNames)) {
+          if (m.agent_group_id && m.session_id && Array.isArray(m.fileNames) && m.fileNames.length > 0) {
             m.attachments = buildMessageAttachments(m.agent_group_id, m.session_id, m.id, m.fileNames);
           }
           // Enrich with pending status so the client knows whether to show buttons
