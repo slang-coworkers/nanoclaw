@@ -499,7 +499,12 @@ async function spawnContainer(session: Session): Promise<void> {
     stopTypingRefresh(session.id);
     revokeContainerToken(proxyToken);
     if (code !== 0 && code !== null) {
-      log.warn('Container exited with error', { sessionId: session.id, code, containerName, lastStderr: lastStderrLine || undefined });
+      log.warn('Container exited with error', {
+        sessionId: session.id,
+        code,
+        containerName,
+        lastStderr: lastStderrLine || undefined,
+      });
     } else {
       log.info('Container exited', { sessionId: session.id, code, containerName });
     }
@@ -1258,6 +1263,9 @@ model_reasoning_effort = "\${CODEX_REASONING_EFFORT:-xhigh}"
 # seccomp profile blocks unshare(CLONE_NEWUSER). Skip codex's sandbox and
 # rely on the container boundary.
 sandbox_mode = "danger-full-access"
+
+[features]
+use_linux_sandbox_bwrap = false
 
 [model_providers.\${CODEX_MODEL_PROVIDER:-nvinference}]
 name = "\${CODEX_MODEL_PROVIDER:-nvinference}"
