@@ -4639,6 +4639,8 @@ export async function handleRequest(
     const threadIdParam = url.searchParams.get('thread_id');
     const threadMode = threadIdParam !== null && threadIdParam.length > 0;
     const threadFilter = threadMode ? threadIdParam : null;
+    // Admin unified view: load ALL sessions across all channels and threads.
+    const allSessions = url.searchParams.get('allSessions') === '1';
     // System/protocol traffic (CLAUDE.md refresh pings, agent-to-agent
     // acks) lives in the same inbound/outbound tables as real user chat and
     // clutters the channel view. Hidden by default for the single-coworker
@@ -4675,8 +4677,8 @@ export async function handleRequest(
         } catch { /* table may not exist in degraded test fixtures */ }
         // When group is specified, load messages for that group only; otherwise load all groups
         const agRows = group
-          ? [db.prepare('SELECT id, folder FROM agent_groups WHERE folder = ?').get(group) as any].filter(Boolean)
-          : (db.prepare('SELECT id, folder FROM agent_groups').all() as any[]);
+          ? [db.prepare('SELECT id, folder, name FROM agent_groups WHERE folder = ?').get(group) as any].filter(Boolean)
+          : (db.prepare('SELECT id, folder, name FROM agent_groups').all() as any[]);
         // Oversample when the caller paginates via `before`. Admin →
         // Messages in particular depends on getting non-trivial coverage
         // below the cutoff so hasMore accurately reflects the DB state.
@@ -4696,7 +4698,13 @@ export async function handleRequest(
           const dashMgId = resolveDashboardMessagingGroupId(db, agRow.id, agRow.folder);
 
           let sessions: { id: string; thread_id: string | null }[];
-          if (threadMode) {
+          if (allSessions) {
+            sessions = db
+              .prepare(
+                "SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND status = 'active'",
+              )
+              .all(agRow.id) as { id: string; thread_id: string | null }[];
+          } else if (threadMode) {
             // Thread view: key on (agent_group, thread_id) WITHOUT scoping to the
             // dashboard messaging group. A per-thread session's messaging_group_id
             // reflects who spawned it — dashboard chat, a2a delegation (mg-a2a-*),
@@ -4810,10 +4818,12 @@ export async function handleRequest(
                   // Row-level thread filter as correctness belt to the
                   // session-level filter above — defends against legacy rows
                   // in a session whose scope later changed.
-                  if (threadMode) {
-                    if (r.thread_id !== threadFilter) continue;
-                  } else {
-                    if (r.thread_id != null) continue;
+                  if (!allSessions) {
+                    if (threadMode) {
+                      if (r.thread_id !== threadFilter) continue;
+                    } else {
+                      if (r.thread_id != null) continue;
+                    }
                   }
                   // Agent-to-agent: a2a-* with channel_type='agent' and a
                   // platform_id that resolves to a real agent_group is a legit
@@ -4834,6 +4844,7 @@ export async function handleRequest(
                     direction: 'incoming',
                     agent_group_id: agRow.id,
                     group_folder: agRow.folder,
+                    group_name: agRow.name || agRow.folder,
                     session_id: sess.id,
                     ...(senderCoworkerName
                       ? { senderKind: 'coworker', senderCoworkerName }
@@ -4861,10 +4872,12 @@ export async function handleRequest(
                   }
                 }
                 for (const r of rows) {
-                  if (threadMode) {
-                    if (r.thread_id !== threadFilter) continue;
-                  } else {
-                    if (r.thread_id != null) continue;
+                  if (!allSessions) {
+                    if (threadMode) {
+                      if (r.thread_id !== threadFilter) continue;
+                    } else {
+                      if (r.thread_id != null) continue;
+                    }
                   }
                   // Outbound directed at another coworker: channel_type='agent'
                   // and platform_id resolves to a real agent_group. Mark with
@@ -4882,6 +4895,7 @@ export async function handleRequest(
                     direction: 'outgoing',
                     agent_group_id: agRow.id,
                     group_folder: agRow.folder,
+                    group_name: agRow.name || agRow.folder,
                     session_id: sess.id,
                     body: r.content,
                     platformMessageId: delivered?.platformMessageId ?? null,
@@ -4930,11 +4944,8 @@ export async function handleRequest(
         }
         // Sort descending (newest first).
         messages.sort(compareMessagesDescending);
-        // Honest hasMore: true when the filter left more rows than the
-        // requested page. Without a `before` cutoff we can't distinguish
-        // "more exist before this page" from "no pagination requested",
-        // so default to false in the non-paginated case.
-        hasMore = beforeParam ? messages.length > limit : false;
+        // Honest hasMore: true when total rows exceed the requested page.
+        hasMore = messages.length > limit;
         messages = messages.slice(0, limit);
       } catch {
         /* ignore */
