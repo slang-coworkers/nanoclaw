@@ -1212,6 +1212,15 @@ async function buildContainerArgs(
     args.push('-e', `MCP_PROXY_URL=http://host.docker.internal:${MCP_PROXY_PORT}`);
     if (mcpProxy.allowedTools.length > 0) {
       args.push('-e', `NANOCLAW_ALLOWED_MCP_TOOLS=${JSON.stringify(mcpProxy.allowedTools)}`);
+      // claude.ts::computeBlockedTools builds the disallowedTools list as
+      // (inventory − allowed). Without the inventory env var it returns
+      // undefined and NO tools are blocked — `allowed_mcp_tools` becomes
+      // advisory. Pass the discovered inventory so restrictions actually
+      // land at the SDK's disallowedTools option.
+      const inventory = getDiscoveredToolInventory();
+      if (Object.keys(inventory).length > 0) {
+        args.push('-e', `NANOCLAW_MCP_TOOL_INVENTORY=${JSON.stringify(inventory)}`);
+      }
     }
   }
 
