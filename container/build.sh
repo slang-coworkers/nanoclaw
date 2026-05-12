@@ -40,6 +40,12 @@ if [ "${ENABLE_GPU:-}" = "1" ] || [ "${ENABLE_GPU:-}" = "true" ]; then
     BUILD_ARGS+=(--build-arg ENABLE_GPU=1)
 fi
 
+# Fetch external skills declared in coworker-types.yaml
+if [ -x "$PROJECT_ROOT/scripts/fetch-skills.sh" ]; then
+    echo "Fetching external skills..."
+    bash "$PROJECT_ROOT/scripts/fetch-skills.sh" || echo "⚠ External skill fetch failed — using cached"
+fi
+
 echo "Building NanoClaw agent container image..."
 echo "Image: ${IMAGE_NAME}:${TAG}"
 

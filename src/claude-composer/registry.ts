@@ -47,7 +47,11 @@ export function readCoworkerTypes(projectRoot = process.cwd()): Record<string, C
       if (!fs.existsSync(typesFile)) continue;
       const loaded = yaml.load(fs.readFileSync(typesFile, 'utf-8'));
       if (!loaded || typeof loaded !== 'object') continue;
-      for (const [name, entry] of Object.entries(loaded as Record<string, CoworkerTypeEntry>)) {
+      for (const [name, raw] of Object.entries(loaded as Record<string, Record<string, unknown>>)) {
+        const entry = raw as CoworkerTypeEntry;
+        if (typeof (raw as Record<string, unknown>)['skill-source'] === 'string') {
+          entry.skillSource = (raw as Record<string, unknown>)['skill-source'] as string;
+        }
         registry[name] = registry[name] ? mergeTypeEntries(registry[name], entry, name) : entry;
       }
     }
@@ -85,6 +89,7 @@ function mergeTypeEntries(base: CoworkerTypeEntry, addon: CoworkerTypeEntry, typ
     context: [...(base.context || []), ...(addon.context || [])],
     workflows: [...(base.workflows || []), ...(addon.workflows || [])],
     skills: [...(base.skills || []), ...(addon.skills || [])],
+    skillSource: addon.skillSource ?? base.skillSource,
     overlays: [...(base.overlays || []), ...(addon.overlays || [])],
     bindings: { ...(base.bindings || {}), ...(addon.bindings || {}) },
     mcpServers: { ...(base.mcpServers || {}), ...(addon.mcpServers || {}) },
