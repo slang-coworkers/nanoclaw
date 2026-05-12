@@ -12,8 +12,6 @@ nanoclaw-common:
     - nanoclaw-code-reader
     - nanoclaw-github
   workflows: []
-  overlays:
-    - critique-overlay
   mcpServers:
     deepwiki:
       type: http
