@@ -84,6 +84,11 @@ export interface CoworkerTypeEntry {
   workflows?: string[];
   skills?: string[];
 
+  // External skill registry: "owner/repo@ref". Skills listed in `skills:`
+  // are fetched from this repo at build time via `gh skill install`. Leaf-wins
+  // across the extends chain. Per-skill @version in workflow `uses:` overrides.
+  skillSource?: string;
+
   // Trait bindings: abstract trait name → concrete skill name that provides it.
   // Leaf-wins across the type chain. Lets a type inherit a workflow that
   // declares `requires: [repo.pr]` without hard-coding which skill satisfies it.

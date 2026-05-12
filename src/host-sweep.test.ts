@@ -148,7 +148,10 @@ describe('decideStuckAction', () => {
     // SQLite datetime('now') emits "YYYY-MM-DD HH:MM:SS" in UTC.
     // A claim from 30s ago should NOT trigger kill (tolerance = 60s).
     const claimTime = new Date(BASE - 30_000);
-    const sqliteTimestamp = claimTime.toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+    const sqliteTimestamp = claimTime
+      .toISOString()
+      .replace('T', ' ')
+      .replace(/\.\d+Z$/, '');
     const res = decideStuckAction({
       now: BASE,
       heartbeatMtimeMs: 0,

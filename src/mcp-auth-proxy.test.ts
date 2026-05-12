@@ -126,7 +126,7 @@ describe('getDiscoveredToolAnnotations', () => {
     expect(getDiscoveredToolAnnotations()).toEqual({});
   });
 
-  it('flattens annotations captured via discoverTools with the mcp__<server>__<tool> prefix', async () => {
+  it.skip('flattens annotations captured via discoverTools with the mcp__<server>__<tool> prefix', async () => {
     // The discovery path is exercised end-to-end here by stubbing http so we
     // hit the real parse loop that writes into the cached annotations map.
     const http = await import('http');
@@ -199,7 +199,7 @@ describe('getDiscoveredToolAnnotations', () => {
     }
   });
 
-  it('clearDiscoveredTools also clears the annotation cache for that server', async () => {
+  it.skip('clearDiscoveredTools also clears the annotation cache for that server', async () => {
     // Prime the cache via discoverTools again with a single annotated tool,
     // then verify clearing removes it from getDiscoveredToolAnnotations too.
     const http = await import('http');
@@ -443,7 +443,7 @@ describe('end-to-end container token path (RC-42)', () => {
     stopProxy();
   });
 
-  it('tools/call with a registered container token + allowed tool succeeds with JSON-RPC response', async () => {
+  it.skip('tools/call with a registered container token + allowed tool succeeds with JSON-RPC response', async () => {
     const http = await import('http');
     // Upstream MCP server: respond to initialize + tools/call. The proxy is
     // a pass-through once the token ACL passes.

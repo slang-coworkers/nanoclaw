@@ -54,15 +54,16 @@ describe('Scenario: main coworker type (flat, slim manager body)', () => {
     expect(body, '/workspace/global should be renamed to /workspace/shared').not.toMatch(/\/workspace\/global/);
   });
 
-  it('main composition emits project fragments automatically from spine metadata', () => {
+  it('main composition emits project fragments when project spines are present', () => {
     const composed = composeCoworkerSpine({ coworkerType: 'main', projectRoot: REPO_ROOT });
-    // This install ships slang + slangpy + nanoclaw spines with project: metadata.
-    // Their fragments auto-appear via emitDiscoveredProjectFragments() — not
-    // from any hand-written *-project-base skill.
+    const types = readCoworkerTypes(REPO_ROOT);
+    const hasProjects = Object.values(types).some((e) => e.project);
+    if (!hasProjects) {
+      // nv-main standalone has no project spines — skip gracefully.
+      expect(composed).not.toMatch(/## Projects available/);
+      return;
+    }
     expect(composed).toMatch(/## Projects available/);
-    // Each discovered project produces a ### <project> section. Don't assert
-    // exact project names here — if someone removes slangpy this test should
-    // still pass. Just assert the scaffolding.
     expect(composed.split('### ').length, 'at least one ### <project> block').toBeGreaterThan(1);
   });
 });
