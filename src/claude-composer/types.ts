@@ -195,6 +195,11 @@ export interface ComposeCoworkerSpineOptions {
   // the per-coworker `agent_groups.disable_overlays` flag is 1. Workflows and
   // skills are unaffected.
   disableOverlays?: boolean;
+  // Per-agent overlay names from agent_groups.overlays (JSON array). When
+  // provided, these are injected into the manifest after type-chain resolution.
+  // This is the runtime source of overlays now that YAML types no longer
+  // declare them.
+  overlays?: string[];
 }
 
 export interface ComposeLegacyPromptOptions {

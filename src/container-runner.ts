@@ -193,10 +193,12 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
         /* no instructions */
       }
 
+      const overlays = agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined;
       const composed = composeCoworkerSpine({
         coworkerType: 'default',
         extraInstructions,
         disableOverlays: agentGroup.disable_overlays === 1,
+        overlays,
       });
       fs.mkdirSync(groupDir, { recursive: true });
       fs.writeFileSync(claudeMdPath, composed);
@@ -215,10 +217,12 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
       /* no explicit instructions */
     }
 
+    const overlays = agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined;
     const composed = composeCoworkerSpine({
       coworkerType: agentGroup.coworker_type,
       extraInstructions,
       disableOverlays: agentGroup.disable_overlays === 1,
+      overlays,
     });
 
     fs.mkdirSync(groupDir, { recursive: true });
@@ -571,10 +575,12 @@ export function recomposeAndUpdateHash(sessionId: string): void {
     } catch {
       /* */
     }
+    const overlays = ag.overlays ? JSON.parse(ag.overlays) : undefined;
     const composed = composeCoworkerSpine({
       coworkerType,
       extraInstructions: extra,
       disableOverlays: ag.disable_overlays === 1,
+      overlays,
     });
     spawnedClaudeMdHash.set(sessionId, crypto.createHash('sha256').update(composed).digest('hex'));
   } catch {
@@ -606,10 +612,12 @@ export function detectStaleContainers(): Array<{ sessionId: string; agentGroupId
       /* no instructions */
     }
 
+    const overlays = ag.overlays ? JSON.parse(ag.overlays) : undefined;
     const composed = composeCoworkerSpine({
       coworkerType,
       extraInstructions: extra,
       disableOverlays: ag.disable_overlays === 1,
+      overlays,
     });
     const currentHash = crypto.createHash('sha256').update(composed).digest('hex');
 

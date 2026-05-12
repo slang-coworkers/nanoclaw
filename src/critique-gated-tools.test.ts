@@ -38,6 +38,7 @@ function makeAgentGroup(overrides: Partial<AgentGroup> = {}): AgentGroup {
     container_config: null,
     coworker_type: null,
     allowed_mcp_tools: null,
+    overlays: null,
     routing: 'direct',
     disable_overlays: 0,
     created_at: new Date().toISOString(),

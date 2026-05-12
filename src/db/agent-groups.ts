@@ -6,8 +6,8 @@ export function createAgentGroup(
 ): void {
   getDb()
     .prepare(
-      `INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, routing, created_at)
-       VALUES (@id, @name, @folder, @is_admin, @agent_provider, @container_config, @coworker_type, @allowed_mcp_tools, @routing, @created_at)`,
+      `INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, overlays, routing, created_at)
+       VALUES (@id, @name, @folder, @is_admin, @agent_provider, @container_config, @coworker_type, @allowed_mcp_tools, @overlays, @routing, @created_at)`,
     )
     .run({
       is_admin: 0,
@@ -15,6 +15,7 @@ export function createAgentGroup(
       container_config: null,
       coworker_type: null,
       allowed_mcp_tools: null,
+      overlays: null,
       routing: 'direct',
       ...group,
     });
@@ -39,7 +40,7 @@ export function getAdminAgentGroup(): AgentGroup | undefined {
 export function updateAgentGroup(
   id: string,
   updates: Partial<
-    Pick<AgentGroup, 'name' | 'agent_provider' | 'container_config' | 'coworker_type' | 'allowed_mcp_tools'>
+    Pick<AgentGroup, 'name' | 'agent_provider' | 'container_config' | 'coworker_type' | 'allowed_mcp_tools' | 'overlays'>
   >,
 ): void {
   const fields: string[] = [];
