@@ -85,6 +85,7 @@ function makeAgentGroup(coworkerType: string | null): AgentGroup {
     container_config: null,
     coworker_type: coworkerType,
     allowed_mcp_tools: null,
+    overlays: null,
     routing: 'direct',
     disable_overlays: 0,
     created_at: new Date().toISOString(),

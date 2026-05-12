@@ -293,6 +293,11 @@ function activeNanoSessionsForCoworker(cw) {
 }
 
 
+function isA2aSession(nanoSess) {
+  if (nanoSess?.thread_id) return false;
+  return !nanoSess?.messaging_group_id;
+}
+
 function sessionSlugOnly(nanoSess) {
   // Bare 3-word slug (e.g. "tender-fell-rests"), no "main · " / "thread · "
   // kind prefix. Used in the one-line display format per user feedback.
@@ -405,8 +410,12 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
     const latestMs = Math.max(...allMetas.map((m) => m.lastMs || 0), 0);
     const summaryStatus = runningCount > 0 ? `${runningCount} running` : 'all stopped';
     const otherSessions = metas.filter((m) => m.nanoSess.nanoclaw_session_id !== target.nanoSess.nanoclaw_session_id);
+    const hasAnyUnread = allMetas.some((m) => hasSessionUnread(m.nanoSess));
+    const markAllBtn = hasAnyUnread
+      ? ` · <a href="#" class="cw-mark-all-read" style="color:#3b82f6;text-decoration:none;font-size:9px" data-folder="${escAttr(cw.folder)}">mark all read</a>`
+      : '';
     const summary = `<div style="font-size:9px;color:var(--text-muted);margin-bottom:5px">
-      ${metas.length} session${metas.length === 1 ? '' : 's'} · ${esc(summaryStatus)}${latestMs ? ' · last ' + esc(timeAgo(latestMs)) : ''}
+      ${metas.length} session${metas.length === 1 ? '' : 's'} · ${esc(summaryStatus)}${latestMs ? ' · last ' + esc(timeAgo(latestMs)) : ''}${markAllBtn}
     </div>`;
     const tagid = escAttr(target.nanoSess.agent_group_id || '');
     const tsid = escAttr(target.nanoSess.nanoclaw_session_id);
@@ -419,7 +428,8 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
         data-pin-session="${sid}" data-pin-on="${isPinned ? '0' : '1'}">📌</button><button class="session-icon-btn" title="Rename this session"
         data-rename-session="${sid}" data-rename-current="${escAttr(currentTitle || '')}">✎</button><button class="session-icon-btn" title="Open in Timeline"
         data-view-nanoclaw-session="${sid}" data-view-nanoclaw-agid="${agid}" data-view-session-group="${tgrp}">≡</button>${tid ? `<button class="session-icon-btn" title="Open chat view"
-        data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${tgrp}">💬</button>` : `<button class="session-icon-btn" title="Main session — already shown in chat" disabled style="opacity:0.35;cursor:not-allowed">💬</button>`}<button class="session-icon-btn${isHidden ? ' active' : ''}" title="${isHidden ? 'Unhide session' : 'Hide session'}"
+        data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${tgrp}">💬</button>` : isA2aSession(sess) ? `<button class="session-icon-btn" title="Open a2a session (read-only)"
+        data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${tgrp}">💬</button>` : `<button class="session-icon-btn" title="Main session — already shown in chat" disabled style="opacity:0.35;cursor:not-allowed">💬</button>`}<button class="session-icon-btn${isHidden ? ' active' : ''}" title="${isHidden ? 'Unhide session' : 'Hide session'}"
         data-hide-session="${sid}" data-hide-on="${isHidden ? '0' : '1'}">${isHidden ? '↺' : '−'}</button>`;
     };
     const lookupLastMessage = (threadId) => {
@@ -465,7 +475,7 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
         : '';
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
         <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
-        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1${tid ? ';cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px' : ''}" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}"${tid ? ` data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${escAttr(tgrp)}"` : ''}>${esc(primaryName)}</span>
+        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1${(tid || isA2aSession(sess)) ? ';cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px' : ''}" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}"${tid ? ` data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${escAttr(tgrp)}"` : isA2aSession(sess) ? ` data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${escAttr(tgrp)}"` : ''}>${esc(primaryName)}</span>
         <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, currentTitle || slug, sess)}</span>
       </div>
       ${previewBits.length ? `<div style="${previewStyle}" title="${escAttr(previewBits.join(' · '))}">${esc(previewBits.join(' · '))}</div>` : ''}
@@ -848,16 +858,30 @@ function getCharAnim(key) {
 function lerp(a, b, t) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
 
 // --- Desk assignment ---
+let officeShowAll = false;
+
+function isCoworkerActive(cw) {
+  if (cw.status === 'working' || cw.status === 'active' || cw.status === 'thinking') return true;
+  if (cw.lastActivity) {
+    const ago = Date.now() - new Date(cw.lastActivity).getTime();
+    if (ago < 24 * 60 * 60 * 1000) return true;
+  }
+  return false;
+}
+
 function getDeskAssignments() {
   const maxSlots = state.maxConcurrentContainers || DESK_SLOTS.length;
   const activeSlots = DESK_SLOTS.slice(0, Math.max(maxSlots, DESK_SLOTS.length));
-  return state.coworkers.map((cw, i) => {
+  const coworkers = officeShowAll
+    ? state.coworkers
+    : state.coworkers.filter(isCoworkerActive);
+  return coworkers.map((cw, i) => {
     const slot = activeSlots[i % activeSlots.length];
     const stationType = slot.stationType || 'desk';
     const facing = slot.facing || (stationType === 'desk' ? 'back' : 'front');
     return {
       cw,
-      index: i,
+      index: state.coworkers.indexOf(cw),
       stationType,
       dCol: slot.col,
       dRow: slot.row,
@@ -1541,6 +1565,15 @@ document.getElementById('legend-toggle')?.addEventListener('click', () => {
   if (legend) legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
 });
 
+document.getElementById('office-show-all')?.addEventListener('click', () => {
+  officeShowAll = !officeShowAll;
+  const btn = document.getElementById('office-show-all');
+  if (btn) {
+    btn.textContent = officeShowAll ? 'Active only' : 'Show all';
+    btn.style.color = officeShowAll ? 'var(--accent)' : 'var(--text-dim)';
+  }
+});
+
 // --- Theme toggle ---
 (function() {
   const themeBtn = document.getElementById('theme-toggle');
@@ -1587,7 +1620,7 @@ canvas.addEventListener('mousemove', (e) => {
 
   // Update tooltip (positioned in CSS pixel space, not world space).
   if (hoveredDesk >= 0) {
-    const cw = state.coworkers[hoveredDesk];
+    const cw = _lastAssignments[hoveredDesk]?.cw || state.coworkers[hoveredDesk];
     const [statusColor, statusLabel] = getStatusConfig(cw.status);
     const activity = cw.lastActivity ? timeAgo(cw.lastActivity) : 'no activity';
     const tool = cw.lastToolUse ? `Tool: ${cw.lastToolUse}` : '';
@@ -1613,7 +1646,7 @@ canvas.addEventListener('mouseleave', () => {
 
 canvas.addEventListener('click', () => {
   if (hoveredDesk >= 0) {
-    selectedCoworker = state.coworkers[hoveredDesk];
+    selectedCoworker = _lastAssignments[hoveredDesk]?.cw || state.coworkers[hoveredDesk];
     showDetailPanel(selectedCoworker);
   } else {
     selectedCoworker = null;
@@ -2696,6 +2729,21 @@ document.addEventListener('click', (e) => {
     });
   };
 
+  // "Mark all read" link in sessions summary
+  const markAllRead = e.target.closest('.cw-mark-all-read');
+  if (markAllRead) {
+    e.preventDefault();
+    e.stopPropagation();
+    const folder = markAllRead.dataset.folder;
+    const sessions = activeNanoSessionsForCoworker({ folder });
+    const now = Date.now();
+    for (const s of sessions) {
+      if (s.nanoclaw_session_id) sessionReadCursors.markRead(s.nanoclaw_session_id, now);
+    }
+    if (typeof updateCwDetail === 'function') updateCwDetail();
+    return;
+  }
+
   // Click pin/unpin (📌) button — POST {on: true|false} to /api/sessions/<sid>/pinned.
   const pinBtn = e.target.closest('[data-pin-session]');
   if (pinBtn) {
@@ -2751,10 +2799,13 @@ document.addEventListener('click', (e) => {
       const tools = document.getElementById('cw-detail-tools');
       if (tools) tools._lastHtml = null;
     }
+    const sessionDirect = viewChatBtn.dataset.viewSessionDirect || '';
     if (grp) {
       switchToTab('coworkers');
       if (cwState.selected !== grp) selectCoworker(grp);
-      if (tid) {
+      if (sessionDirect) {
+        setTimeout(() => openThread(sessionDirect, { sessionDirect: true }), 400);
+      } else if (tid) {
         setTimeout(() => openThread(tid), 400);
       } else {
         closeThread({ silent: true });
@@ -3751,11 +3802,13 @@ async function fetchCwMessages() {
     // Sync into global approval counter for sidebar dot
     cwState.approvalCountByFolder[cwState.selected] = (cwState.pendingApprovals || []).length + (cwState.pendingCredentials || []).length;
     renderCwMessages();
-    // Mark as read using latest message timestamp
-    if (cwState.messages.length > 0 && cwState.selected) {
-      const latest = cwState.messages[cwState.messages.length - 1];
-      if (latest.timestamp) {
-        readCursors.markRead(cwState.selected, latest.timestamp);
+    // Mark as read using the coworker's lastMessageTs (covers all sessions
+    // including threads and a2a). Falls back to latest main-chat timestamp.
+    if (cwState.selected) {
+      const cw = (state.coworkers || []).find(c => c.folder === cwState.selected);
+      const ts = cw?.lastMessageTs || (cwState.messages.length > 0 ? cwState.messages[cwState.messages.length - 1].timestamp : null);
+      if (ts) {
+        readCursors.markRead(cwState.selected, ts);
         renderCwSidebar();
       }
     }
@@ -3888,8 +3941,15 @@ function renderCwMessages() {
 
     // Reply-count stub: only for main-view rows that are thread starters.
     const summary = cwState.threadSummaries && m.id ? cwState.threadSummaries[m.id] : null;
+    const threadUnread = (() => {
+      if (!summary?.sessionId || !summary.lastReplyTs) return 0;
+      const cursor = sessionReadCursors.getFor(summary.sessionId);
+      const lastMs = new Date(summary.lastReplyTs).getTime();
+      return (Number.isFinite(lastMs) && lastMs > cursor) ? 1 : 0;
+    })();
+    const unreadBadge = threadUnread ? ` <span style="background:#3b82f6;color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;margin-left:4px">new</span>` : '';
     const threadStubHtml = summary
-      ? `<div class="cw-thread-stub" data-parent-id="${esc(m.id)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}</div>`
+      ? `<div class="cw-thread-stub" data-parent-id="${esc(m.id)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
       : '';
     // Hover action toolbar — only offer "Reply in thread" when we have a
     // persisted message id (not optimistic) and it's not an approval/
@@ -3927,7 +3987,11 @@ function renderCwMessages() {
       const replyBtn = e.target.closest('.cw-reply-btn, .cw-thread-stub');
       if (replyBtn) {
         const parentId = replyBtn.dataset.parentId;
-        if (parentId) openThread(parentId);
+        if (parentId) {
+          const ts = cwState.threadSummaries && cwState.threadSummaries[parentId];
+          if (ts?.sessionId) sessionReadCursors.markRead(ts.sessionId);
+          openThread(parentId);
+        }
         return;
       }
       // ── a2a read-only inspector (Option C) ──
@@ -3959,7 +4023,14 @@ function renderCwMessages() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ approvalId: qid, decision }),
           });
-          if (!res.ok) {
+          if (res.ok) {
+            const btnRow = approvalBtn.closest('div');
+            if (btnRow) {
+              const color = decision === 'Approve' ? '#238636' : '#da3633';
+              const label = decision === 'Approve' ? 'Approved' : 'Rejected';
+              btnRow.innerHTML = `<span style="font-size:10px;color:${color};font-weight:600">${label}</span>`;
+            }
+          } else {
             const errData = await res.json().catch(() => ({}));
             approvalBtn.textContent = errData.error || 'Error';
             allBtns.forEach(b => { b.disabled = false; });
@@ -4212,14 +4283,18 @@ async function sendCwThreadMessage() {
   });
 }
 
-function openThread(parentId) {
+function openThread(parentId, opts = {}) {
   if (!cwState.selected || !parentId) return;
+  const isSessionDirect = !!opts.sessionDirect;
   // Snapshot the parent message from the current main view for the header.
-  const parentSnapshot = (cwState.messages || []).find((m) => m.id === parentId) || null;
+  const parentSnapshot = isSessionDirect ? null : ((cwState.messages || []).find((m) => m.id === parentId) || null);
   if (cwState.thread?.polling) clearInterval(cwState.thread.polling);
-  cwState.thread = { parentId, parentSnapshot, messages: [], polling: null };
+  cwState.thread = { parentId, parentSnapshot, messages: [], polling: null, sessionDirect: isSessionDirect };
   const panel = document.getElementById('cw-thread-panel');
   if (panel) panel.style.display = 'flex';
+  // Hide the reply composer for read-only a2a sessions
+  const inputArea = panel?.querySelector('.cw-thread-input');
+  if (inputArea) inputArea.style.display = isSessionDirect ? 'none' : '';
   // The dashboard's detail panel and thread panel fight for the same slot —
   // hide detail while the thread is open to avoid a squeezed layout.
   const detail = document.getElementById('cw-detail');
@@ -4240,6 +4315,8 @@ function closeThread({ silent = false } = {}) {
   cwState.thread = null;
   const panel = document.getElementById('cw-thread-panel');
   if (panel) panel.style.display = 'none';
+  const coworkers = document.getElementById('coworkers');
+  if (coworkers) coworkers.classList.remove('cw-thread-fullscreen');
   const detail = document.getElementById('cw-detail');
   if (detail && detail.dataset.wasVisible === '1') {
     detail.style.display = 'block';
@@ -4372,7 +4449,10 @@ function renderA2aInspector() {
 async function fetchCwThread(parentId) {
   if (!cwState.selected || !cwState.thread || cwState.thread.parentId !== parentId) return;
   try {
-    const res = await fetch(`/api/messages?group=${encodeURIComponent(cwState.selected)}&thread_id=${encodeURIComponent(parentId)}&limit=200`);
+    const queryParam = cwState.thread.sessionDirect
+      ? `session_id=${encodeURIComponent(parentId)}`
+      : `thread_id=${encodeURIComponent(parentId)}`;
+    const res = await fetch(`/api/messages?group=${encodeURIComponent(cwState.selected)}&${queryParam}&limit=200`);
     if (!res.ok) return;
     const data = await res.json();
     const incoming = (data.messages || []).reverse();
@@ -4418,17 +4498,26 @@ function renderCwThread() {
   // this label matches the same session's label in the Timeline dropdown
   // and the detail panel. Fall back to parentId slug if the thread is
   // newly opened with no persisted messages yet.
-  const matchingNano = (cachedSessions || []).find(
-    (s) => s.thread_id === t.parentId && s.group_folder === cwState.selected,
-  );
+  const matchingNano = t.sessionDirect
+    ? (cachedSessions || []).find(
+        (s) => s.nanoclaw_session_id === t.parentId && s.group_folder === cwState.selected,
+      )
+    : (cachedSessions || []).find(
+        (s) => s.thread_id === t.parentId && s.group_folder === cwState.selected,
+      );
   const sessionIdForSlug =
     matchingNano?.nanoclaw_session_id ||
     (t.messages || []).find((m) => m.session_id)?.session_id ||
     t.parentId;
   if (parentLabel) {
-    parentLabel.textContent = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
-    parentLabel.title = `session=${sessionIdForSlug}\nthread_id=${t.parentId}`;
+    const label = t.sessionDirect
+      ? `a2a · ${sessionLabelWithTitle(sessionIdForSlug, t.parentId)}`
+      : sessionLabelWithTitle(sessionIdForSlug, t.parentId);
+    parentLabel.textContent = label;
+    parentLabel.title = `session=${sessionIdForSlug}${t.sessionDirect ? ' (a2a read-only)' : `\nthread_id=${t.parentId}`}`;
   }
+  const titleEl = document.querySelector('#cw-thread-panel .cw-thread-title strong');
+  if (titleEl) titleEl.textContent = t.sessionDirect ? 'A2A Session' : 'Thread';
   const actionsEl = document.getElementById('cw-thread-actions');
   if (actionsEl) {
     if (matchingNano && matchingNano.nanoclaw_session_id) {
@@ -4457,6 +4546,8 @@ function renderCwThread() {
         : (p.senderCoworkerName ? `@${esc(p.senderCoworkerName)}` : 'You');
       parentEl.innerHTML = `<div class="parent-author">${pAuthor} <span style="color:var(--text-muted);font-weight:400">· ${p.timestamp ? formatTime(p.timestamp) : ''}</span></div>
         <div class="parent-body">${md(pText)}</div>`;
+    } else if (t.sessionDirect) {
+      parentEl.innerHTML = '<div class="parent-body" style="color:var(--text-muted);font-style:italic">Agent-to-agent session (read-only)</div>';
     } else {
       parentEl.innerHTML = '<div class="parent-body" style="color:var(--text-muted)">(parent message)</div>';
     }
@@ -4489,13 +4580,33 @@ function renderCwThread() {
       ? (cwState.selected || 'A')
       : (m.senderCoworkerName || 'You');
     const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
+    if (m.isRelay) {
+      const relayLabel = m.recipientCoworkerName
+        ? `${authorName} → @${esc(m.recipientCoworkerName)}`
+        : `${authorName} · system action`;
+      const preview = (text || '').replace(/\s+/g, ' ').trim();
+      const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
+      const expanded = cwState.thread._expandedRelays && cwState.thread._expandedRelays.has(m.id);
+      return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
+        <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
+        <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
+        <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${body}</div></div>`;
+    }
+    const attachHtml = renderMessageAttachmentsHtml(m.attachments);
     return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span></div>
-      <div class="cw-msg-bubble">${body}</div></div>`;
+      <div class="cw-msg-bubble">${body}${attachHtml}</div></div>`;
   }).join('');
   msgsEl.innerHTML = html || '<div class="cw-empty" style="padding:12px">No replies yet.</div>';
   if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
 }
+
+document.addEventListener('relay-toggle', (e) => {
+  if (!cwState.thread) return;
+  if (!cwState.thread._expandedRelays) cwState.thread._expandedRelays = new Set();
+  if (e.detail.open) cwState.thread._expandedRelays.add(e.detail.id);
+  else cwState.thread._expandedRelays.delete(e.detail.id);
+});
 
 /**
  * Sync URL hash with current coworker/thread selection — shareable /
@@ -4506,18 +4617,20 @@ function syncCwUrl() {
     let hash = '';
     if (cwState.selected) {
       hash = `#/cw/${encodeURIComponent(cwState.selected)}`;
-      if (cwState.thread) hash += `/t/${encodeURIComponent(cwState.thread.parentId)}`;
+      if (cwState.thread?.sessionDirect) hash += `/s/${encodeURIComponent(cwState.thread.parentId)}`;
+      else if (cwState.thread) hash += `/t/${encodeURIComponent(cwState.thread.parentId)}`;
     }
     if (location.hash !== hash) history.replaceState(null, '', hash || location.pathname);
   } catch { /* ignore */ }
 }
 
 function applyCwUrl(retries = 8) {
-  const m = /^#\/cw\/([^/]+)(?:\/t\/(.+))?$/.exec(location.hash || '');
+  const m = /^#\/cw\/([^/]+)(?:\/(t|s)\/(.+))?$/.exec(location.hash || '');
   if (!m) return;
   switchToTab('coworkers');
   const folder = decodeURIComponent(m[1]);
-  const parentId = m[2] ? decodeURIComponent(m[2]) : null;
+  const mode = m[2] || null;
+  const parentId = m[3] ? decodeURIComponent(m[3]) : null;
   const known = getCwCoworkers().some((c) => c.folder === folder);
   if (!known && retries > 0) {
     setTimeout(() => applyCwUrl(retries - 1), 250);
@@ -4525,9 +4638,8 @@ function applyCwUrl(retries = 8) {
   }
   if (cwState.selected !== folder) selectCoworker(folder);
   if (parentId && (!cwState.thread || cwState.thread.parentId !== parentId)) {
-    // Defer briefly so the main fetch has a chance to resolve first — gives
-    // openThread a non-null parent snapshot for the thread header.
-    setTimeout(() => openThread(parentId), 600);
+    const opts = mode === 's' ? { sessionDirect: true } : {};
+    setTimeout(() => openThread(parentId, opts), 600);
   }
 }
 
@@ -4595,6 +4707,62 @@ async function updateCwDetail() {
         mcpToggle.textContent = hidden ? 'Collapse' : 'Expand';
       };
     }
+  }
+
+  // Overlays — show current overlays as tags, with edit toggle
+  const overlaysEl = document.getElementById('cw-detail-overlays');
+  const overlayEditorEl = document.getElementById('cw-overlay-editor');
+  const overlayToggleBtn = document.getElementById('cw-overlay-toggle');
+  if (overlaysEl) {
+    const currentOverlays = cw.overlays || [];
+    if (currentOverlays.length > 0) {
+      overlaysEl.innerHTML = currentOverlays.map(o =>
+        `<span class="mcp-tag allowed">${esc(o)}</span>`
+      ).join('');
+    } else {
+      overlaysEl.innerHTML = '<span style="color:var(--text-dim)">none</span>';
+    }
+  }
+  if (overlayToggleBtn && overlayEditorEl) {
+    overlayToggleBtn.onclick = async () => {
+      const isHidden = overlayEditorEl.style.display === 'none';
+      if (isHidden) {
+        if (!cwState.availableOverlays) {
+          try {
+            const r = await fetch('/api/overlays');
+            if (r.ok) cwState.availableOverlays = await r.json();
+          } catch { cwState.availableOverlays = []; }
+        }
+        const currentOverlays = cw.overlays || [];
+        overlayEditorEl.innerHTML = (cwState.availableOverlays || []).map(o =>
+          `<label style="display:block;margin:2px 0;cursor:pointer"><input type="checkbox" value="${esc(o.name)}" ${currentOverlays.includes(o.name) ? 'checked' : ''}> ${esc(o.name)}</label>`
+        ).join('') + '<button id="cw-overlay-save" style="margin-top:6px;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:0.6875rem">Save</button>';
+        overlayEditorEl.style.display = 'block';
+        overlayToggleBtn.textContent = 'Cancel';
+        overlayEditorEl.querySelector('#cw-overlay-save')?.addEventListener('click', async () => {
+          const selected = Array.from(overlayEditorEl.querySelectorAll('input:checked')).map(i => i.value);
+          try {
+            const r = await fetch(`/api/coworkers/${encodeURIComponent(folder)}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ overlays: selected }),
+            });
+            if (!r.ok) { const e = await r.json(); alert('Error: ' + e.error); return; }
+            overlayEditorEl.style.display = 'none';
+            overlayToggleBtn.textContent = 'Edit';
+            cw.overlays = selected;
+            if (overlaysEl) {
+              overlaysEl.innerHTML = selected.length > 0
+                ? selected.map(o => `<span class="mcp-tag allowed">${esc(o)}</span>`).join('')
+                : '<span style="color:var(--text-dim)">none</span>';
+            }
+          } catch (e) { alert('Error: ' + e.message); }
+        });
+      } else {
+        overlayEditorEl.style.display = 'none';
+        overlayToggleBtn.textContent = 'Edit';
+      }
+    };
   }
 
   // Last Activity: use hook timestamp, message timestamp, or task run — whichever is newest
@@ -4725,12 +4893,18 @@ async function updateCwDetail() {
 }
 
 async function showCreateModal() {
-  // Fetch types and instruction templates
+  // Fetch types, overlays, and instruction templates
   if (!cwState.types) {
     try {
       const res = await fetch('/api/types');
       if (res.ok) cwState.types = await res.json();
     } catch { cwState.types = {}; }
+  }
+  if (!cwState.availableOverlays) {
+    try {
+      const res = await fetch('/api/overlays');
+      if (res.ok) cwState.availableOverlays = await res.json();
+    } catch { cwState.availableOverlays = []; }
   }
   let instructionTemplates = [];
   try {
@@ -4752,6 +4926,9 @@ async function showCreateModal() {
   const typeCheckboxes = selectableTypes.map(
     ([k, v]) => `<label class="cw-type-checkbox"><input type="radio" name="cw-new-type" value="${esc(k)}"><span>${esc(k)}</span><span style="color:var(--text-muted)">— ${esc(v.description || '')}</span></label>`
   ).join('');
+  const overlayCheckboxes = (cwState.availableOverlays || []).map(
+    (o) => `<label class="cw-type-checkbox"><input type="checkbox" name="cw-new-overlay" value="${esc(o.name)}"><span>${esc(o.name)}</span><span style="color:var(--text-muted)">— ${esc(o.description || '')}</span></label>`
+  ).join('');
   const instructionOptions = instructionTemplates.map(
     (t) => `<option value="${esc(t.name)}">${esc(t.name)}</option>`
   ).join('');
@@ -4763,6 +4940,8 @@ async function showCreateModal() {
     <input id="cw-new-folder" placeholder="e.g. slang-cuda">
     <label>Type (select one — single inheritance)</label>
     <div id="cw-new-types" style="max-height:200px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--border);border-radius:4px;padding:8px;font-size:11px">${typeCheckboxes}</div>
+    <label>Overlays (optional — compose-time gates)</label>
+    <div id="cw-new-overlays" style="max-height:120px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--border);border-radius:4px;padding:8px;font-size:11px">${overlayCheckboxes || '<span style="color:var(--text-muted)">No overlays available</span>'}</div>
     <label>Instruction style (optional)</label>
     <select id="cw-new-instruction-style" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)">
       <option value="">(none — custom only)</option>
@@ -4815,6 +4994,7 @@ async function showCreateModal() {
     const name = nameInput.value.trim();
     const folder = folderInput.value.trim();
     const checkedTypes = Array.from(overlay.querySelectorAll('#cw-new-types input:checked')).map(c => c.value);
+    const checkedOverlays = Array.from(overlay.querySelectorAll('#cw-new-overlays input:checked')).map(c => c.value);
     const trigger = triggerInput.value.trim();
     const instructionStyle = overlay.querySelector('#cw-new-instruction-style')?.value || '';
     const agentProvider = overlay.querySelector('#cw-new-provider')?.value || '';
@@ -4834,6 +5014,7 @@ async function showCreateModal() {
         body: JSON.stringify({
           name, folder,
           types: checkedTypes.length ? checkedTypes : undefined,
+          overlays: checkedOverlays.length ? checkedOverlays : undefined,
           trigger: trigger || undefined,
           instructions: instructions || undefined,
           instructionTemplate: instructionStyle || undefined,
@@ -4904,8 +5085,16 @@ document.getElementById('cw-fullscreen-btn')?.addEventListener('click', () => {
 document.getElementById('cw-thread-fullscreen-btn')?.addEventListener('click', () => {
   const panel = document.getElementById('coworkers');
   if (!panel) return;
+  const wasFullscreen = panel.classList.contains('cw-thread-fullscreen');
   panel.classList.remove('cw-fullscreen');
   panel.classList.toggle('cw-thread-fullscreen');
+  if (wasFullscreen) {
+    const detail = document.getElementById('cw-detail');
+    if (detail && detail.dataset.wasVisible === '1') {
+      detail.style.display = 'block';
+      delete detail.dataset.wasVisible;
+    }
+  }
 });
 
 document.querySelectorAll('.cw-toggle-btn').forEach(btn => {

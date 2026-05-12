@@ -612,7 +612,9 @@ function buildMessageAttachments(
   messageId: string,
   fileNames: string[],
 ): Array<{ name: string; url: string; mime: string; isImage: boolean }> {
-  const attachmentDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'outbox', messageId);
+  const outboxDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'outbox', messageId);
+  const inboxDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'inbox', messageId);
+  const attachmentDir = existsSync(outboxDir) ? outboxDir : inboxDir;
   if (!existsSync(attachmentDir)) return [];
 
   return fileNames
@@ -1083,6 +1085,7 @@ interface CoworkerState {
   isAutoUpdate: boolean;
   allowedMcpTools: string[];
   disallowedMcpTools: string[];
+  overlays: string[];
   lastMessageTs: string | null;
   // Context indicator: token usage
   contextTokens: number | null;
@@ -2422,15 +2425,16 @@ function getState(): DashboardState {
         }
       }
 
-      // Resolve type, name, and MCP tools from DB
+      // Resolve type, name, MCP tools, and overlays from DB
       let dbAllowedMcp: string[] | null = null;
+      let dbOverlays: string[] = [];
       let dbAgentGroupId: string | null = null;
       let isMainGroup = false;
       if (db) {
         try {
           const row = db
             .prepare(
-              'SELECT id, name, folder, coworker_type, allowed_mcp_tools, is_admin FROM agent_groups WHERE folder = ?',
+              'SELECT id, name, folder, coworker_type, allowed_mcp_tools, overlays, is_admin FROM agent_groups WHERE folder = ?',
             )
             .get(folder) as any;
           if (row) {
@@ -2438,6 +2442,7 @@ function getState(): DashboardState {
             name = row.name || folder;
             isMainGroup = !!row.is_admin;
             dbAllowedMcp = row.allowed_mcp_tools ? JSON.parse(row.allowed_mcp_tools) : null;
+            dbOverlays = row.overlays ? JSON.parse(row.overlays) : [];
             if (row.coworker_type) {
               type = row.coworker_type;
               const metadata = resolveCoworkerTypeMetadata(row.coworker_type, types);
@@ -2540,6 +2545,7 @@ function getState(): DashboardState {
           types,
         ),
         disallowedMcpTools: [],
+        overlays: dbOverlays,
         lastMessageTs: lastMessageTsCache.get(folder) || null,
         contextTokens: ctxInfo?.contextTokens ?? null,
         maxContextTokens: ctxInfo?.maxContext ?? null,
@@ -2588,6 +2594,7 @@ function getState(): DashboardState {
       subagents: Array.from(liveSubagentState.get(folder)?.values() || []),
       allowedMcpTools: BASE_TIER_TOOLS,
       disallowedMcpTools: computeDisallowed(BASE_TIER_TOOLS),
+      overlays: [],
       lastMessageTs: lastMessageTsCache.get(folder) || null,
       contextTokens: null,
       maxContextTokens: null,
@@ -3818,6 +3825,28 @@ export async function handleRequest(
     return;
   }
 
+  // API: list available overlays from container/overlays/*/OVERLAY.md
+  if (url.pathname === '/api/overlays') {
+    if (!requireAuth(req, res)) return;
+    try {
+      const { readSkillCatalog } = await import('../src/claude-composer.js');
+      const catalog = readSkillCatalog(getProjectRoot());
+      const overlays = Object.values(catalog)
+        .filter((entry: any) => entry.type === 'overlay' && entry.overlay)
+        .map((entry: any) => ({
+          name: entry.name,
+          description: entry.description,
+          appliesToWorkflows: entry.overlay.appliesToWorkflows || [],
+        }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(overlays));
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   // API: get coworker CLAUDE.md
   // Returns X-Readonly: true header for typed coworkers (CLAUDE.md rebuilt from templates)
   if (req.method === 'GET' && url.pathname.startsWith('/api/memory/')) {
@@ -3846,12 +3875,14 @@ export async function handleRequest(
           const rdb = db;
           let coworkerType: string | null = null;
           let disableOverlays = false;
+          let overlays: string[] | undefined;
           if (rdb) {
             const row = rdb
-              .prepare('SELECT coworker_type, disable_overlays FROM agent_groups WHERE folder = ?')
+              .prepare('SELECT coworker_type, disable_overlays, overlays FROM agent_groups WHERE folder = ?')
               .get(folder) as any;
             coworkerType = row?.coworker_type || null;
             disableOverlays = row?.disable_overlays === 1;
+            overlays = row?.overlays ? JSON.parse(row.overlays) : undefined;
           }
           let extraInstructions: string | null = null;
           try {
@@ -3860,7 +3891,7 @@ export async function handleRequest(
             /* none */
           }
           if (coworkerType) {
-            content = composeCoworkerSpine({ coworkerType, extraInstructions, disableOverlays });
+            content = composeCoworkerSpine({ coworkerType, extraInstructions, disableOverlays, overlays });
           } else {
             content = readFileSync(join(groupDir, 'CLAUDE.md'), 'utf-8');
           }
@@ -4023,7 +4054,7 @@ export async function handleRequest(
       // per folder ordered ascending by created_at so the query-time
       // fallback can bracket unrouted SDK UUIDs correctly.
       const folderSet = new Set<string>(flatRows.map((r) => r.group_folder).filter(Boolean));
-      type NanoSess = { id: string; agent_group_id: string; folder: string; thread_id: string | null; display_title: string | null; title_source: string | null; hidden_at: string | null; pinned_at: string | null; status: string; container_status: string; last_active: string | null; created_at: string };
+      type NanoSess = { id: string; agent_group_id: string; folder: string; thread_id: string | null; messaging_group_id: string | null; display_title: string | null; title_source: string | null; hidden_at: string | null; pinned_at: string | null; status: string; container_status: string; last_active: string | null; created_at: string };
       const nanoSessionsByFolder = new Map<string, NanoSess[]>();
       if (folderSet.size > 0) {
         const folders = Array.from(folderSet);
@@ -4039,7 +4070,7 @@ export async function handleRequest(
           nanoRows = heDb
             .prepare(
               `SELECT s.id AS id, s.agent_group_id AS agent_group_id, ag.folder AS folder,
-                      s.thread_id AS thread_id,
+                      s.thread_id AS thread_id, s.messaging_group_id AS messaging_group_id,
                       ${titleSelect}
                       ${stateSelect}
                       s.status AS status, s.container_status AS container_status,
@@ -4122,6 +4153,7 @@ export async function handleRequest(
       type Parent = {
         nanoclaw_session_id: string | null;
         thread_id: string | null;
+        messaging_group_id: string | null;
         display_title: string | null;
         title_source: string | null;
         hidden_at: string | null;
@@ -4149,6 +4181,7 @@ export async function handleRequest(
       const makeParent = (nano: NanoSess | null, folder: string): Parent => ({
         nanoclaw_session_id: nano ? nano.id : null,
         thread_id: nano ? nano.thread_id : null,
+        messaging_group_id: nano ? nano.messaging_group_id : null,
         display_title: nano ? nano.display_title : null,
         title_source: nano ? nano.title_source : null,
         hidden_at: nano ? nano.hidden_at : null,
@@ -4604,7 +4637,9 @@ export async function handleRequest(
       return;
     }
 
-    const attachmentDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'outbox', messageId);
+    const outboxDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'outbox', messageId);
+    const inboxDir = join(getDataDir(), 'v2-sessions', agentGroupId, sessionId, 'inbox', messageId);
+    const attachmentDir = existsSync(outboxDir) ? outboxDir : inboxDir;
     const fullPath = join(attachmentDir, fileName);
     if (!isInsideDir(attachmentDir, fullPath)) {
       res.writeHead(403);
@@ -4639,6 +4674,11 @@ export async function handleRequest(
     const threadIdParam = url.searchParams.get('thread_id');
     const threadMode = threadIdParam !== null && threadIdParam.length > 0;
     const threadFilter = threadMode ? threadIdParam : null;
+    // Session-direct mode: fetch messages from a specific session by ID,
+    // bypassing messaging_group scoping. Used to view a2a-spawned sessions
+    // that have messaging_group_id = NULL and thread_id = NULL.
+    const sessionIdParam = url.searchParams.get('session_id');
+    const sessionDirect = !!sessionIdParam;
     // Admin unified view: load ALL sessions across all channels and threads.
     const allSessions = url.searchParams.get('allSessions') === '1';
     // System/protocol traffic (CLAUDE.md refresh pings, agent-to-agent
@@ -4652,7 +4692,7 @@ export async function handleRequest(
     // whether earlier rows exist beyond the returned page.
     const beforeParam = url.searchParams.get('before');
     const OVERSAMPLE = 3;
-    const SYSTEM_ID_PREFIXES = ['claudemd-refresh-', 'a2a-'];
+    const SYSTEM_ID_PREFIXES = ['claudemd-refresh-', 'a2a-', 'sys-'];
     const isSystemId = (id: unknown) =>
       typeof id === 'string' && SYSTEM_ID_PREFIXES.some((p) => id.startsWith(p));
     // Index all agent_groups by id so we can recognise when an a2a-* message is
@@ -4666,7 +4706,7 @@ export async function handleRequest(
     // Per-agent-group thread summaries: { [parentMessageId]: { replyCount, lastReplyTs } }.
     // Only populated in main view; the client uses it to render
     // "↳ N replies" stubs under parent messages.
-    const threadSummaries: Record<string, { replyCount: number; lastReplyTs: string | null }> = {};
+    const threadSummaries: Record<string, { replyCount: number; lastReplyTs: string | null; sessionId: string | null }> = {};
     if (db) {
       try {
         try {
@@ -4698,7 +4738,16 @@ export async function handleRequest(
           const dashMgId = resolveDashboardMessagingGroupId(db, agRow.id, agRow.folder);
 
           let sessions: { id: string; thread_id: string | null }[];
-          if (allSessions) {
+          if (sessionDirect) {
+            // Session-direct: look up the exact session by ID, scoped to this
+            // agent group for security. Bypasses messaging_group/thread_id scoping
+            // so a2a sessions (messaging_group_id = NULL, thread_id = NULL) are accessible.
+            sessions = db
+              .prepare(
+                "SELECT id, thread_id FROM sessions WHERE id = ? AND agent_group_id = ? AND status = 'active'",
+              )
+              .all(sessionIdParam, agRow.id) as { id: string; thread_id: string | null }[];
+          } else if (allSessions) {
             sessions = db
               .prepare(
                 "SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND status = 'active'",
@@ -4743,7 +4792,7 @@ export async function handleRequest(
           // message lives in the root session. If we ever mirror parents
           // into thread DBs this count is off-by-one and needs WHERE id
           // != parentId.
-          if (!threadMode && dashMgId) {
+          if (!threadMode && !sessionDirect && dashMgId) {
             let threadSessions: Array<{ id: string; thread_id: string }> = [];
             try {
               threadSessions = db
@@ -4772,7 +4821,7 @@ export async function handleRequest(
                 } catch { /* ignore */ }
               }
               if (count > 0) {
-                threadSummaries[ts.thread_id] = { replyCount: count, lastReplyTs: lastTs };
+                threadSummaries[ts.thread_id] = { replyCount: count, lastReplyTs: lastTs, sessionId: ts.id };
               }
             }
           }
@@ -4818,9 +4867,9 @@ export async function handleRequest(
                   // Row-level thread filter as correctness belt to the
                   // session-level filter above — defends against legacy rows
                   // in a session whose scope later changed.
-                  if (!allSessions) {
+                  if (!allSessions && !sessionDirect) {
                     if (threadMode) {
-                      if (r.thread_id !== threadFilter) continue;
+                      if (r.thread_id != null && r.thread_id !== threadFilter) continue;
                     } else {
                       if (r.thread_id != null) continue;
                     }
@@ -4839,6 +4888,10 @@ export async function handleRequest(
                     ? (coworkerNameById.get(r.platform_id) ?? (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
                     : undefined;
                   if (!includeSystem && isSystemId(r.id) && !senderCoworkerName) continue;
+                  // Self-referencing a2a: sender is the same agent group we're
+                  // viewing — routing echo, not a real inbound message.
+                  const isSelfEcho = r.channel_type === 'agent' && r.platform_id === agRow.id;
+                  if (!includeSystem && isSelfEcho) continue;
                   messages.push({
                     ...r,
                     direction: 'incoming',
@@ -4872,7 +4925,12 @@ export async function handleRequest(
                   }
                 }
                 for (const r of rows) {
-                  if (!allSessions) {
+                  // Relay detection: outbound messages targeting the agent
+                  // channel with thread_id=NULL are relay commands to another
+                  // coworker. Tag (not filter) so the client can collapse them.
+                  // Also catches system actions (create_agent etc.) with no channel_type.
+                  const isRelayOut = threadMode && r.thread_id == null && (r.channel_type === 'agent' || !r.channel_type);
+                  if (!allSessions && !sessionDirect && !isRelayOut) {
                     if (threadMode) {
                       if (r.thread_id !== threadFilter) continue;
                     } else {
@@ -4885,13 +4943,16 @@ export async function handleRequest(
                   // subscript. Ack replies to system pings (in_reply_to starts
                   // with claudemd-refresh-/a2a- AND no real recipient) stay
                   // filtered.
-                  const recipientCoworkerName = r.channel_type === 'agent' && typeof r.platform_id === 'string'
+                  const rawRecipientName = r.channel_type === 'agent' && typeof r.platform_id === 'string'
                     ? (coworkerNameById.get(r.platform_id) ?? (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
                     : undefined;
-                  if (!includeSystem && isSystemId(r.in_reply_to) && !recipientCoworkerName) continue;
+                  // Suppress recipient name when it's the same agent group (self-echo)
+                  const recipientCoworkerName = (r.platform_id === agRow.id) ? undefined : rawRecipientName;
+                  if (!includeSystem && isSystemId(r.in_reply_to) && !recipientCoworkerName && !isRelayOut) continue;
                   const delivered = deliveredByMessageOutId.get(r.id);
                   messages.push({
                     ...r,
+                    isRelay: isRelayOut || undefined,
                     direction: 'outgoing',
                     agent_group_id: agRow.id,
                     group_folder: agRow.folder,
@@ -4924,7 +4985,7 @@ export async function handleRequest(
         // Normalize content — extracts cardType, questionId, options, credentialId
         for (const m of messages) {
           normalizeMessageForDisplay(m);
-          if (m.direction === 'outgoing' && m.agent_group_id && m.session_id && Array.isArray(m.fileNames)) {
+          if (m.agent_group_id && m.session_id && Array.isArray(m.fileNames) && m.fileNames.length > 0) {
             m.attachments = buildMessageAttachments(m.agent_group_id, m.session_id, m.id, m.fileNames);
           }
           // Enrich with pending status so the client knows whether to show buttons
@@ -5500,12 +5561,14 @@ export async function handleRequest(
             const { composeCoworkerSpine } = await import('../src/claude-composer.js');
             let coworkerType: string | null = null;
             let disableOverlays = false;
+            let overlays: string[] | undefined;
             try {
               const row = db
-                .prepare('SELECT coworker_type, disable_overlays FROM agent_groups WHERE folder = ?')
+                .prepare('SELECT coworker_type, disable_overlays, overlays FROM agent_groups WHERE folder = ?')
                 .get(g.folder) as any;
               coworkerType = row?.coworker_type || null;
               disableOverlays = row?.disable_overlays === 1;
+              overlays = row?.overlays ? JSON.parse(row.overlays) : undefined;
             } catch {
               /* ignore */
             }
@@ -5516,7 +5579,7 @@ export async function handleRequest(
               } catch {
                 /* none */
               }
-              g.memory = composeCoworkerSpine({ coworkerType, extraInstructions, disableOverlays });
+              g.memory = composeCoworkerSpine({ coworkerType, extraInstructions, disableOverlays, overlays });
             } else {
               g.memory = readFileSync(join(getGroupsDir(), g.folder, 'CLAUDE.md'), 'utf-8');
             }
@@ -5575,7 +5638,7 @@ export async function handleRequest(
     const body = await readBody(req, res);
     if (body === null) return;
     try {
-      const { name, folder, types, type, trigger, instructions, instructionTemplate, agentProvider, routing: routingParam } = JSON.parse(body);
+      const { name, folder, types, type, trigger, instructions, instructionTemplate, agentProvider, routing: routingParam, overlays: overlaysParam } = JSON.parse(body);
       const routing: 'direct' | 'internal' = routingParam === 'internal' ? 'internal' : 'direct';
       if (!name || !folder) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -5653,11 +5716,26 @@ export async function handleRequest(
         res.end('{"error":"coworker_type=main is reserved for the admin orchestrator"}');
         return;
       }
+      let resolvedOverlays: string | null = null;
+      if (Array.isArray(overlaysParam) && overlaysParam.length > 0) {
+        const { readSkillCatalog } = await import('../src/claude-composer.js');
+        const catalog = readSkillCatalog(getProjectRoot());
+        const invalid = overlaysParam.filter((n: string) => {
+          const entry = catalog[n];
+          return !entry || entry.type !== 'overlay';
+        });
+        if (invalid.length > 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Unknown overlay(s): ${invalid.join(', ')}` }));
+          return;
+        }
+        resolvedOverlays = JSON.stringify(overlaysParam);
+      }
       wdb
         .prepare(
-          'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, routing, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)',
+          'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, overlays, routing, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)',
         )
-        .run(agId, name, folder, isAdmin, agentProvider || null, coworkerType, resolvedMcpTools, routing, now);
+        .run(agId, name, folder, isAdmin, agentProvider || null, coworkerType, resolvedMcpTools, resolvedOverlays, routing, now);
 
       if (routing === 'direct') {
         const { messagingGroupId } = ensureDashboardChatWiring(wdb, { id: agId, folder, name }, triggerPattern, now);
@@ -5776,6 +5854,26 @@ export async function handleRequest(
         wdb
           .prepare('UPDATE agent_groups SET container_config = ? WHERE folder = ?')
           .run(updates.container_config ? JSON.stringify(updates.container_config) : null, folder);
+      }
+      if (updates.overlays !== undefined) {
+        if (Array.isArray(updates.overlays)) {
+          // Validate overlay names against catalog
+          const { readSkillCatalog } = await import('../src/claude-composer.js');
+          const catalog = readSkillCatalog(getProjectRoot());
+          const invalid = updates.overlays.filter((n: string) => {
+            const entry = catalog[n];
+            return !entry || entry.type !== 'overlay';
+          });
+          if (invalid.length > 0) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: `Unknown overlay(s): ${invalid.join(', ')}` }));
+            return;
+          }
+        }
+        const val = Array.isArray(updates.overlays) && updates.overlays.length > 0
+          ? JSON.stringify(updates.overlays)
+          : null;
+        wdb.prepare('UPDATE agent_groups SET overlays = ? WHERE folder = ?').run(val, folder);
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('{"ok":true}');

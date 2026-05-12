@@ -862,6 +862,11 @@
     .cw-msg.coworker { border-left-color: #ec4899; }
     .cw-msg.coworker .cw-msg-avatar { background: rgba(236,72,153,0.2); color: #ec4899; }
     .cw-msg.coworker .cw-msg-author { color: #f472b6; }
+    .cw-msg.relay { border-left-color: var(--border); cursor: pointer; }
+    .cw-msg.relay.collapsed .relay-full { display: none !important; }
+    .cw-msg.relay.collapsed .relay-preview { display: block !important; }
+    .cw-msg.relay:not(.collapsed) .relay-full { display: block !important; }
+    .cw-msg.relay:not(.collapsed) .relay-preview { display: none !important; }
     /* "You → <coworker>" keeps the user's blue rail so direction stays readable. */
     .cw-msg.user.to-coworker { border-left-color: var(--status-active); }
     .cw-msg.user .cw-msg-bubble { white-space: pre-wrap; }
@@ -1018,6 +1023,7 @@
       <div class="stat" title="Agent is waiting for a message"><div class="dot" style="background:var(--text-dim)"></div> <span id="stat-idle">0</span> idle</div>
       <div class="stat" title="Agent encountered an error"><div class="dot" style="background:var(--red)"></div> <span id="stat-error">0</span> error</div>
       <div style="flex:1"></div>
+      <button id="office-show-all" title="Toggle: show all coworkers or only active ones" style="background:none;border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:0.6875rem;padding:1px 6px;cursor:pointer">Show all</button>
       <button id="legend-toggle" title="Show color legend" style="background:none;border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:0.6875rem;padding:1px 6px;cursor:pointer">?</button>
       <span id="stat-time"></span>
     </div>
@@ -1151,6 +1157,14 @@
           <button class="memory-toggle-btn" id="cw-mcp-toggle">Expand</button>
         </div>
         <div class="value" id="cw-detail-mcp" style="font-size:0.6875rem;max-height:100px;overflow-y:auto;display:none;margin-top:4px">-</div>
+      </div>
+      <div class="cw-detail-section">
+        <div class="memory-header">
+          <label>Overlays</label>
+          <button class="memory-toggle-btn" id="cw-overlay-toggle">Edit</button>
+        </div>
+        <div class="value" id="cw-detail-overlays" style="font-size:0.6875rem;margin-top:4px">-</div>
+        <div id="cw-overlay-editor" style="display:none;margin-top:6px;border:1px solid var(--border);border-radius:4px;padding:6px;font-size:0.6875rem"></div>
       </div>
       <div class="cw-detail-section" id="cw-detail-subagents-section" style="display:none">
         <label>Active Subagents</label>

@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { readCoworkerTypes, readSkillCatalog } from './registry.js';
-import { resolveCoworkerManifest } from './resolve.js';
+import { injectOverlays, resolveCoworkerManifest } from './resolve.js';
 import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta } from './types.js';
 
 function indentBlock(text: string, spaces: number): string {
@@ -483,11 +483,16 @@ export function renderCoworkerSpine(
   projectRoot: string,
   coworkerType: string,
   extraInstructions: string | null | undefined,
-  opts: { disableOverlays?: boolean } = {},
+  opts: { disableOverlays?: boolean; overlays?: string[] } = {},
 ): string {
   const types = readCoworkerTypes(projectRoot);
   const catalog = readSkillCatalog(projectRoot);
   const manifest = resolveCoworkerManifest(types, coworkerType, catalog, projectRoot);
+
+  // Inject per-agent overlays from DB (agent_groups.overlays column).
+  if (opts.overlays && opts.overlays.length > 0) {
+    injectOverlays(manifest, opts.overlays, catalog);
+  }
 
   // Per-coworker overlay disable: strip every overlay customization attached
   // to workflows before rendering. Drops all `⟐ ... GATE` inline blocks and
@@ -610,9 +615,7 @@ export function renderCoworkerSpine(
       // parent workflow name — which isn't in this coworker's own workflow
       // set. The slash-dash-name shape still reads unambiguously as a
       // reference to the embedded parent section.
-      const extendsNote = extendsC?.extendsWorkflow
-        ? ` (extends /${extendsC.extendsWorkflow}—see section below)`
-        : '';
+      const extendsNote = extendsC?.extendsWorkflow ? ` (extends /${extendsC.extendsWorkflow}—see section below)` : '';
       let block = `### /${w.name}\n\n${w.description}${uses}${extendsNote}`;
 
       if (w.steps.length > 0) {

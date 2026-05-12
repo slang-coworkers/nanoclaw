@@ -193,10 +193,12 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
         /* no instructions */
       }
 
+      const overlays = agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined;
       const composed = composeCoworkerSpine({
         coworkerType: 'default',
         extraInstructions,
         disableOverlays: agentGroup.disable_overlays === 1,
+        overlays,
       });
       fs.mkdirSync(groupDir, { recursive: true });
       fs.writeFileSync(claudeMdPath, composed);
@@ -215,10 +217,12 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
       /* no explicit instructions */
     }
 
+    const overlays = agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined;
     const composed = composeCoworkerSpine({
       coworkerType: agentGroup.coworker_type,
       extraInstructions,
       disableOverlays: agentGroup.disable_overlays === 1,
+      overlays,
     });
 
     fs.mkdirSync(groupDir, { recursive: true });
@@ -499,7 +503,12 @@ async function spawnContainer(session: Session): Promise<void> {
     stopTypingRefresh(session.id);
     revokeContainerToken(proxyToken);
     if (code !== 0 && code !== null) {
-      log.warn('Container exited with error', { sessionId: session.id, code, containerName, lastStderr: lastStderrLine || undefined });
+      log.warn('Container exited with error', {
+        sessionId: session.id,
+        code,
+        containerName,
+        lastStderr: lastStderrLine || undefined,
+      });
     } else {
       log.info('Container exited', { sessionId: session.id, code, containerName });
     }
@@ -566,10 +575,12 @@ export function recomposeAndUpdateHash(sessionId: string): void {
     } catch {
       /* */
     }
+    const overlays = ag.overlays ? JSON.parse(ag.overlays) : undefined;
     const composed = composeCoworkerSpine({
       coworkerType,
       extraInstructions: extra,
       disableOverlays: ag.disable_overlays === 1,
+      overlays,
     });
     spawnedClaudeMdHash.set(sessionId, crypto.createHash('sha256').update(composed).digest('hex'));
   } catch {
@@ -601,10 +612,12 @@ export function detectStaleContainers(): Array<{ sessionId: string; agentGroupId
       /* no instructions */
     }
 
+    const overlays = ag.overlays ? JSON.parse(ag.overlays) : undefined;
     const composed = composeCoworkerSpine({
       coworkerType,
       extraInstructions: extra,
       disableOverlays: ag.disable_overlays === 1,
+      overlays,
     });
     const currentHash = crypto.createHash('sha256').update(composed).digest('hex');
 
@@ -1258,6 +1271,10 @@ model_reasoning_effort = "\${CODEX_REASONING_EFFORT:-xhigh}"
 # seccomp profile blocks unshare(CLONE_NEWUSER). Skip codex's sandbox and
 # rely on the container boundary.
 sandbox_mode = "danger-full-access"
+
+[features]
+use_linux_sandbox_bwrap = false
+codex_hooks = true
 
 [model_providers.\${CODEX_MODEL_PROVIDER:-nvinference}]
 name = "\${CODEX_MODEL_PROVIDER:-nvinference}"
