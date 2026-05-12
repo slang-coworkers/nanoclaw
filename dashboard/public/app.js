@@ -3643,6 +3643,7 @@ function getCwCoworkers() {
       isAutoUpdate: live?.isAutoUpdate || false,
       allowedMcpTools: live?.allowedMcpTools || (g.allowed_mcp_tools ? JSON.parse(g.allowed_mcp_tools) : []),
       disallowedMcpTools: live?.disallowedMcpTools || [],
+      overlays: live?.overlays || (g.overlays ? JSON.parse(g.overlays) : []),
     });
   }
   return coworkers;
