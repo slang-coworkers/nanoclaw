@@ -1,117 +1,71 @@
 ---
 name: codex-critique
 license: MIT
-description: "Independent second-opinion review by an external Codex (gpt-5.5) reviewer. Direct skill — you (the parent agent) call mcp__codex__codex yourself; there is no Sonnet subagent in the middle. Read-only — produces a structured critique, never modifies files. Trigger after a patch, plan, investigation, or draft. Keywords: critique, review, second opinion, codex."
+description: "Independent second-opinion review by codex (gpt-5.5). You call mcp__codex__codex directly — no subagent. Read-only — produces a structured critique, never modifies files."
 provides: [critique.review]
 allowed-tools: Read, Grep, Glob, Bash(git diff:*), mcp__codex__codex, mcp__codex__codex-reply
 ---
 
 # Codex Critique
 
-You call `mcp__codex__codex` yourself — no subagent. Codex runs in a separate process (gpt-5.5 on NVIDIA inference), gets a fresh session per call, and has its own read-only filesystem access.
-
-## Why this works
-
-Three independence layers: **different model** (gpt-5.5, not yours), **different session** (fresh `threadId`), **different process** (MCP boundary — codex sees only `prompt` + `developer-instructions` + whatever it reads itself).
-
-**Pass paths, not file contents.** The whole workspace is readable at `cwd`; pasting file bodies wastes tokens and codex will re-read them anyway. The only things you MUST inline are the original user spec (not on disk) and the stage + stage-specific questions.
+You call `mcp__codex__codex` yourself — no subagent. Codex runs in a separate process (gpt-5.5), gets a fresh session, and has read-only filesystem access.
 
 ## Call
 
 ```
 mcp__codex__codex({
-  prompt:                 <prompt template below>,
-  developer-instructions: <developer-instructions template below>,
-  sandbox:                "danger-full-access",   // Docker IS the sandbox; bwrap doesn't work nested.
+  prompt:                 <see below>,
+  developer-instructions: <see below>,
+  sandbox:                "danger-full-access",
   cwd:                    "/workspace/agent",
 })
 ```
 
-Capture `threadId` from the response — required for round 2/3 via `mcp__codex__codex-reply`.
+Capture `threadId` — required for round 2/3 via `mcp__codex__codex-reply`.
 
-Triage: `must-fix` → fix → re-invoke (up to 3 rounds); `should-fix` → address or justify declining; `nits` → ack and skip. Record per `critique-overlay`: write `/workspace/agent/critiques/<slug>-round-N.md` AND broadcast a `send_message` summary — both are mandatory.
+**Pass file paths, not contents.** Codex can read the workspace; pasting bodies wastes tokens.
 
-**Autonomy:** Proceed through all triage steps without waiting for confirmation. Only pause and notify the user if `must-fix` items survive 3 rounds (see Round 3 section below). All other triage decisions are yours to make.
-
-## Severity scale
-
-| Level | Label | Action required |
-|-------|-------|-----------------|
-| P0 | `must-fix` / `blocked` | Blocks merge. Fix and re-invoke Codex (up to 3 rounds). |
-| P1 | `request-changes` (advisory) | Address or write justification for declining. |
-| P2 | `should-fix` (advisory) | Address or write justification for declining. |
-| P3 | `nits` / `approve-with-nits` | Acknowledge in verdict log; skip fixing unless trivial. |
-
-## Artifact location
-
-Write the review artifact to: `/workspace/agent/critiques/<slug>-round-N.md`
-
-Where `<slug>` is a short kebab-case identifier derived from the task name (e.g., `auth-refactor`, `ir-pass-fix`) and `N` is the round number (1, 2, 3).
-
-## Prompt template
+## Prompt
 
 ```
-[STAGE: PLAN_REVIEW | DIAGNOSIS_REVIEW | CODE_REVIEW | OUTPUT_REVIEW]
+STAGE: <DIAGNOSIS_REVIEW | PLAN_REVIEW | CODE_REVIEW | OUTPUT_REVIEW | ANSWER_REVIEW>
 
-ORIGINAL TASK / SPEC (verbatim — only lives in the parent's transcript, codex cannot read this from disk):
-<paste the user's original request here, no paraphrasing>
+TASK (verbatim — only you have this, codex cannot read it from disk):
+<paste the original user request, no paraphrasing>
 
-REVIEW THESE FILES (read them yourself):
-<for PLAN_REVIEW: /workspace/agent/reports/<slug>.md  (the proposed plan)>
-<for DIAGNOSIS_REVIEW: inline your synthesis notes here (evidence, hypotheses, approaches under consideration) — no file exists at this gate; it fires before the report is written>
-<for CODE_REVIEW: run `git diff <base>..HEAD` from cwd + /workspace/agent/reports/<slug>.md>
-<for OUTPUT_REVIEW: <path-to-deliverable>>
+WHAT I DID:
+<1-3 sentence summary of the action or decision at this stage>
 
-PROJECT INVARIANTS — read from disk, do not assume from training data:
-- <project>/AGENTS.md or CLAUDE.md
-- Any *.md under <project>/invariants/ or docs/invariants/ if present
+WHY:
+<reasoning, evidence, tradeoffs considered>
 
-ALSO INSPECT (cross-reference):
-- Source files the artifact references (Read/Grep)
-- Test files that exercise those paths (Glob)
-- Recent git history for behavioural changes (`git log`/`git show`)
-
-QUESTIONS TO ANSWER (stage-specific — see critique-overlay for the list).
+ARTIFACTS (read these yourself):
+<file paths, or "run git diff <base>..HEAD" for code review>
 ```
 
-## developer-instructions template
+## developer-instructions
 
 ```
-You are an independent reviewer. You have NO prior conversation context — only what is in this prompt — but you DO have full read-only access to the workspace at `cwd`.
-
-USE YOUR TOOLS. Read the artifact, invariants, and source files yourself — do not assume content from the prompt alone. Cite file and line for every concrete finding.
-
-Reason from first principles. Verify each claim against the spec, artifact, and invariants directly — not by analogy to "how similar code usually looks." If you lack evidence, say so explicitly.
-
-GUARD AGAINST SCOPE-SHRINKAGE. If the artifact reduces the deliverable below the original spec — e.g. proposing a "readiness assessment" when the spec said "make consumer X work", or proposing a synthetic test that exercises only paths the artifact already supports instead of the consumer named in the spec — flag it as MUST-FIX unless the artifact also documents an actual attempted execution that hit a concrete, evidenced blocker. Aspirational reductions ("the dependency probably can't be installed") are not acceptable; the agent must have tried before downgrading. Tests that mirror the artifact's current API surface are circular.
-
-Do not propose actions that mutate state. Use `git`/`ls`/`cat`/`grep`/`find` freely for verification; no writes.
-
-Produce the structured output below — nothing else. No conversational framing, no apologies, no follow-up offers.
-
-OUTPUT FORMAT
-=============
+You are an independent reviewer with read-only workspace access.
+Read the artifacts yourself — verify every claim against the code, not by analogy.
+Guard against scope shrinkage: if the deliverable reduces scope below the original spec without evidenced blockers, flag it as must-fix.
+Return ONLY the structured output below.
 
 ### Verdict
-One of: `approve` | `approve-with-nits` | `request-changes` | `blocked`
+One of: approve | must-fix
 
 ### Must-fix (blocks merge)
-- <file:line> — what is wrong, why it matters, the specific fix.
+- <file:line> — what is wrong, why, the fix.
 
-### Should-fix (advisory)
-- <file:line> — concern + suggested change. The author may decline with written justification.
+### Advisory
+- <file:line> — concern + suggestion. Author may decline with justification.
 
 ### Notes
-- Observations, patterns, suggestions for future work. No "what" without "why."
-
-(End of output. Stop.)
+- Observations for future work. No "what" without "why."
 ```
 
-## Round 2 / Round 3
+## Rounds
 
-Call `mcp__codex__codex-reply` with the saved `threadId` and a follow-up: the new diff (or revised plan) + "I addressed items 1, 2, 3 — please re-verify and check whether the fixes introduced new issues." Same session, codex remembers its prior verdict. Same `must-fix` surviving 3 rounds → stop and escalate to the user via `mcp__nanoclaw__send_message`.
-
-## Invariants
-
-- Critique is advisory — the parent still owns the decision. But every `must-fix` must be *answered* in the verdict log (fix, justify, or reject); silent skipping is not allowed.
-- Never paste your own reasoning, conclusions, or earlier-turn dialogue into the prompt. The MCP boundary is what makes the review independent — only artifacts and invariants cross it.
+- `must-fix` → fix the items → call `mcp__codex__codex-reply` with the saved `threadId` and a follow-up ("I addressed items 1, 2, 3 — re-verify").
+- 3 rounds with unresolved `must-fix` → stop, escalate to parent.
+- `advisory` → address or justify declining. Your call.

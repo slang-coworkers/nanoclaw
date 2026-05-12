@@ -254,7 +254,6 @@ interface WorkflowState {
   edits_since_plan: number;
   edits_since_critique: number;
   critique_rounds: number;
-  critique_recorded_for_round: number;
   critique_required: boolean;
   last_activity: string;
 }
@@ -270,7 +269,6 @@ function readState(): WorkflowState {
     edits_since_plan: 0,
     edits_since_critique: 0,
     critique_rounds: 0,
-    critique_recorded_for_round: 0,
     critique_required: false,
     last_activity: new Date().toISOString(),
   };
@@ -344,17 +342,6 @@ export function attachCodexAutoApproval(server: AppServer, hookConfig?: HookConf
             return;
           }
 
-          // Critique-record gate: block if critique round unrecorded
-          if (hasCritique && state.critique_rounds > state.critique_recorded_for_round) {
-            if (!filePath.includes('/workspace/agent/critiques/')) {
-              log(`[hooks] Critique-record gate: blocking edit — verdict not written for round ${state.critique_rounds}`);
-              sendCodexResponse(server, req.id, {
-                decision: 'reject',
-                reason: `Write the critique verdict to /workspace/agent/critiques/ before editing other files (round ${state.critique_rounds} unrecorded).`,
-              });
-              return;
-            }
-          }
         }
 
         sendCodexResponse(server, req.id, { decision: 'accept' });
@@ -427,14 +414,6 @@ export function attachCodexAutoApproval(server: AppServer, hookConfig?: HookConf
           state.plan_stale = false;
           state.edits_since_plan = 0;
           log(`[hooks] Plan written: ${filePath}`);
-          writeState(state);
-          return;
-        }
-
-        // Critique tracker: writing to critiques/ bumps recorded round
-        if (filePath.includes('/workspace/agent/critiques/')) {
-          state.critique_recorded_for_round = state.critique_rounds;
-          log(`[hooks] Critique recorded for round ${state.critique_rounds}`);
           writeState(state);
           return;
         }
