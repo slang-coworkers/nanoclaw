@@ -9,6 +9,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge nv-* branches (test the composed state, not standalone)
+        if: github.base_ref != 'main'
+        run: |
+          git config user.name "CI"
+          git config user.email "ci@nanoclaw"
+          BASE="${{ github.base_ref }}"
+          for branch in nv-main nv-dashboard nv-slang nv-slangpy nv-nanoclaw; do
+            [ "$branch" = "$BASE" ] && continue
+            if git fetch origin "$branch" 2>/dev/null; then
+              git merge "origin/$branch" --no-edit 2>/dev/null || {
+                echo "::warning::$branch merge conflict — skipping"
+                git merge --abort
+              }
+            fi
+          done
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
