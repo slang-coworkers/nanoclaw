@@ -65,6 +65,12 @@ export const createAgent: McpToolDefinition = {
           description:
             'Agent provider for this coworker ("claude" or "codex"). Defaults to "claude" if not specified.',
         },
+        overlays: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Compose-time overlay names (e.g., ["critique-overlay", "buddy-monitor"]). Overlays inject quality gates into workflows. Optional — defaults to none; operators can configure later via dashboard.',
+        },
       },
       required: ['name'],
     },
@@ -86,6 +92,7 @@ export const createAgent: McpToolDefinition = {
         allowedMcpTools: (args.allowedMcpTools as string[]) || null,
         instructionOverlay: (args.instructionOverlay as string) || null,
         agentProvider: (args.agentProvider as string) || null,
+        overlays: (args.overlays as string[]) || null,
       }),
     });
 
