@@ -3891,6 +3891,31 @@ function renderCwMessages() {
       : '';
     const systemStyle = isSystem ? ' style="opacity:0.5;font-size:9px;border-left:2px solid #555;padding-left:6px"' : '';
 
+    // Structured card — title, description, children (markdown blocks), action buttons
+    if (m.cardType === 'card') {
+      const titleHtml = m.cardTitle ? `<div style="font-weight:600;font-size:0.8125rem;margin-bottom:4px">${esc(m.cardTitle)}</div>` : '';
+      const descHtml = m.cardDescription ? `<div style="color:var(--text-muted);font-size:0.75rem;margin-bottom:6px">${md(m.cardDescription)}</div>` : '';
+      const childrenHtml = (m.cardChildren || [])
+        .filter(c => c.type === 'text' && c.text)
+        .map(c => `<div style="margin-top:6px">${md(c.text)}</div>`)
+        .join('');
+      const actBtns = (m.cardActions || []).map(a =>
+        `<button class="card-action-btn" data-action="${escAttr(a.value)}" data-label="${escAttr(a.label)}" style="background:#7c3aed;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(a.label)}</button>`
+      ).join('');
+      const actionsHtml = actBtns ? `<div style="margin-top:8px">${actBtns}</div>` : '';
+      return `<div class="cw-msg ${cls}" data-msg-id="${m.id ? esc(m.id) : ''}">
+        <div class="cw-msg-avatar">${monogram}</div>
+        <div class="cw-msg-header">
+          <span class="cw-msg-author">${authorName}</span>
+          <span class="cw-msg-time">${time}${kindLabel}${coworkerLabel}</span>
+        </div>
+        <div class="cw-msg-bubble" style="border-left:3px solid #8b5cf6;padding-left:8px">
+          ${titleHtml}${descHtml}${childrenHtml}${actionsHtml}
+        </div>
+        ${threadStubHtml}
+      </div>`;
+    }
+
     // Ask question card — render with option buttons if still pending
     if (m.cardType === 'ask_question' && m.questionId && m.options && m.options.length > 0) {
       const questionText = m.displayContent || m.content || '';
@@ -4074,6 +4099,21 @@ function renderCwMessages() {
         } finally {
           setTimeout(() => { cwState._inflightApprovals.delete(qid); fetchCwMessages(); }, 1000);
         }
+        return;
+      }
+
+      // ── Card action button → send action label as chat reply ──
+      const cardBtn = e.target.closest('.card-action-btn');
+      if (cardBtn) {
+        const label = cardBtn.dataset.label;
+        if (!label || !cwState.selected) return;
+        const card = cardBtn.closest('.cw-msg');
+        const allBtns = card ? card.querySelectorAll('.card-action-btn') : [cardBtn];
+        allBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+        cardBtn.textContent = 'Sending…';
+        const threadId = cwState.thread?.parentId || null;
+        const bucket = cwState.thread ? cwState.thread.messages : cwState.messages;
+        await sendMessage({ group: cwState.selected, content: label, threadId, optimisticBucket: bucket });
         return;
       }
 
@@ -4592,6 +4632,18 @@ function renderCwThread() {
         <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
         <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${body}</div></div>`;
+    }
+    if (m.cardType === 'card') {
+      const cTitle = m.cardTitle ? `<div style="font-weight:600;font-size:0.8125rem;margin-bottom:4px">${esc(m.cardTitle)}</div>` : '';
+      const cDesc = m.cardDescription ? `<div style="color:var(--text-muted);font-size:0.75rem;margin-bottom:6px">${md(m.cardDescription)}</div>` : '';
+      const cChildren = (m.cardChildren || []).filter(c => c.type === 'text' && c.text).map(c => `<div style="margin-top:6px">${md(c.text)}</div>`).join('');
+      const cBtns = (m.cardActions || []).map(a =>
+        `<button class="card-action-btn" data-action="${escAttr(a.value)}" data-label="${escAttr(a.label)}" style="background:#7c3aed;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(a.label)}</button>`
+      ).join('');
+      const cActions = cBtns ? `<div style="margin-top:8px">${cBtns}</div>` : '';
+      return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
+        <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span></div>
+        <div class="cw-msg-bubble" style="border-left:3px solid #8b5cf6;padding-left:8px">${cTitle}${cDesc}${cChildren}${cActions}</div></div>`;
     }
     const attachHtml = renderMessageAttachmentsHtml(m.attachments);
     return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
