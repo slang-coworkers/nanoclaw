@@ -1,0 +1,15 @@
+# nv-dashboard — pixel-office observability dashboard overlay.
+
+dashboard/**
+src/channels/dashboard.*
+src/dashboard-ingress.*
+src/dashboard-ingress.test.ts
+
+# Dashboard-related skills:
+.claude/skills/dashboard/**
+.claude/skills/add-dashboard/**
+
+# Dashboard-owned DB migrations and shared CLAUDE.md:
+src/db/migrations/022-session-hidden.ts
+groups/global/CLAUDE.md
+src/claude-md-compose.ts
