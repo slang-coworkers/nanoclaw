@@ -39,6 +39,15 @@ jobs:
         working-directory: container/agent-runner
         run: bun install --frozen-lockfile
 
+      - name: Build (needed for fetch-skills + tests)
+        run: pnpm run build
+
+      - name: Fetch external skills
+        if: hashFiles('scripts/fetch-skills.sh') != ''
+        run: |
+          gh extension install github/gh-skill 2>/dev/null || true
+          bash scripts/fetch-skills.sh
+
       - name: Format check
         run: pnpm run format:check
 
