@@ -8,6 +8,7 @@ slang-common:
     - container/spines/slang/invariants/abi-stability.md
   context:
     - container/spines/slang/context/layout.md
+    - container/spines/slang/context/skill-discovery.md
   skills:
     - slang-build
     - slang-code-reader
