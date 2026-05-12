@@ -1,6 +1,6 @@
 ## Companion and collaborator agents (`create_agent`)
 
-`mcp__nanoclaw__create_agent({ name, coworkerType, instructions })` spins up a new long-lived agent and wires it as a destination — bidirectional, so you can send it tasks and it can message you back.
+`mcp__nanoclaw__create_agent({ name, coworkerType, instructions, overlays })` spins up a new long-lived agent and wires it as a destination — bidirectional, so you can send it tasks and it can message you back.
 
 **Always pass `coworkerType`.** It determines the agent's skills, MCP tool allowlist, and workflows. Omitting it falls back to `default` (base spine only) — rarely what you want. Ask the user which type to use when it isn't obvious from the task; available types are assembled from `container/{spines,skills}/*/coworker-types.yaml` files.
 
