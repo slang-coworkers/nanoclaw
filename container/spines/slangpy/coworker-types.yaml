@@ -8,6 +8,8 @@ slangpy-common:
     - container/spines/slangpy/invariants/public-api.md
   context:
     - container/spines/slangpy/context/layout.md
+    - container/spines/slangpy/context/skill-discovery.md
+    - container/spines/slangpy/context/skill-discovery.md
   skills:
     - slangpy-build
     - slangpy-code-reader
