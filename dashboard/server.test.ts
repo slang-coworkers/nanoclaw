@@ -107,6 +107,7 @@ function createDashboardTestDb(): Database.Database {
       allowed_mcp_tools TEXT,
       routing TEXT NOT NULL DEFAULT 'direct',
       disable_overlays INTEGER NOT NULL DEFAULT 0,
+      overlays TEXT,
       created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS messaging_groups (
