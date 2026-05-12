@@ -4709,6 +4709,62 @@ async function updateCwDetail() {
     }
   }
 
+  // Overlays — show current overlays as tags, with edit toggle
+  const overlaysEl = document.getElementById('cw-detail-overlays');
+  const overlayEditorEl = document.getElementById('cw-overlay-editor');
+  const overlayToggleBtn = document.getElementById('cw-overlay-toggle');
+  if (overlaysEl) {
+    const currentOverlays = cw.overlays || [];
+    if (currentOverlays.length > 0) {
+      overlaysEl.innerHTML = currentOverlays.map(o =>
+        `<span class="mcp-tag allowed">${esc(o)}</span>`
+      ).join('');
+    } else {
+      overlaysEl.innerHTML = '<span style="color:var(--text-dim)">none</span>';
+    }
+  }
+  if (overlayToggleBtn && overlayEditorEl) {
+    overlayToggleBtn.onclick = async () => {
+      const isHidden = overlayEditorEl.style.display === 'none';
+      if (isHidden) {
+        if (!cwState.availableOverlays) {
+          try {
+            const r = await fetch('/api/overlays');
+            if (r.ok) cwState.availableOverlays = await r.json();
+          } catch { cwState.availableOverlays = []; }
+        }
+        const currentOverlays = cw.overlays || [];
+        overlayEditorEl.innerHTML = (cwState.availableOverlays || []).map(o =>
+          `<label style="display:block;margin:2px 0;cursor:pointer"><input type="checkbox" value="${esc(o.name)}" ${currentOverlays.includes(o.name) ? 'checked' : ''}> ${esc(o.name)}</label>`
+        ).join('') + '<button id="cw-overlay-save" style="margin-top:6px;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:0.6875rem">Save</button>';
+        overlayEditorEl.style.display = 'block';
+        overlayToggleBtn.textContent = 'Cancel';
+        overlayEditorEl.querySelector('#cw-overlay-save')?.addEventListener('click', async () => {
+          const selected = Array.from(overlayEditorEl.querySelectorAll('input:checked')).map(i => i.value);
+          try {
+            const r = await fetch(`/api/coworkers/${encodeURIComponent(folder)}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ overlays: selected }),
+            });
+            if (!r.ok) { const e = await r.json(); alert('Error: ' + e.error); return; }
+            overlayEditorEl.style.display = 'none';
+            overlayToggleBtn.textContent = 'Edit';
+            cw.overlays = selected;
+            if (overlaysEl) {
+              overlaysEl.innerHTML = selected.length > 0
+                ? selected.map(o => `<span class="mcp-tag allowed">${esc(o)}</span>`).join('')
+                : '<span style="color:var(--text-dim)">none</span>';
+            }
+          } catch (e) { alert('Error: ' + e.message); }
+        });
+      } else {
+        overlayEditorEl.style.display = 'none';
+        overlayToggleBtn.textContent = 'Edit';
+      }
+    };
+  }
+
   // Last Activity: use hook timestamp, message timestamp, or task run — whichever is newest
   const liveCw = (state.coworkers || []).find((c) => c.folder === folder);
   let lastAct = cw.lastActivity ? new Date(cw.lastActivity).getTime() : 0;
@@ -4837,12 +4893,18 @@ async function updateCwDetail() {
 }
 
 async function showCreateModal() {
-  // Fetch types and instruction templates
+  // Fetch types, overlays, and instruction templates
   if (!cwState.types) {
     try {
       const res = await fetch('/api/types');
       if (res.ok) cwState.types = await res.json();
     } catch { cwState.types = {}; }
+  }
+  if (!cwState.availableOverlays) {
+    try {
+      const res = await fetch('/api/overlays');
+      if (res.ok) cwState.availableOverlays = await res.json();
+    } catch { cwState.availableOverlays = []; }
   }
   let instructionTemplates = [];
   try {
@@ -4864,6 +4926,9 @@ async function showCreateModal() {
   const typeCheckboxes = selectableTypes.map(
     ([k, v]) => `<label class="cw-type-checkbox"><input type="radio" name="cw-new-type" value="${esc(k)}"><span>${esc(k)}</span><span style="color:var(--text-muted)">— ${esc(v.description || '')}</span></label>`
   ).join('');
+  const overlayCheckboxes = (cwState.availableOverlays || []).map(
+    (o) => `<label class="cw-type-checkbox"><input type="checkbox" name="cw-new-overlay" value="${esc(o.name)}"><span>${esc(o.name)}</span><span style="color:var(--text-muted)">— ${esc(o.description || '')}</span></label>`
+  ).join('');
   const instructionOptions = instructionTemplates.map(
     (t) => `<option value="${esc(t.name)}">${esc(t.name)}</option>`
   ).join('');
@@ -4875,6 +4940,8 @@ async function showCreateModal() {
     <input id="cw-new-folder" placeholder="e.g. slang-cuda">
     <label>Type (select one — single inheritance)</label>
     <div id="cw-new-types" style="max-height:200px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--border);border-radius:4px;padding:8px;font-size:11px">${typeCheckboxes}</div>
+    <label>Overlays (optional — compose-time gates)</label>
+    <div id="cw-new-overlays" style="max-height:120px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--border);border-radius:4px;padding:8px;font-size:11px">${overlayCheckboxes || '<span style="color:var(--text-muted)">No overlays available</span>'}</div>
     <label>Instruction style (optional)</label>
     <select id="cw-new-instruction-style" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)">
       <option value="">(none — custom only)</option>
@@ -4927,6 +4994,7 @@ async function showCreateModal() {
     const name = nameInput.value.trim();
     const folder = folderInput.value.trim();
     const checkedTypes = Array.from(overlay.querySelectorAll('#cw-new-types input:checked')).map(c => c.value);
+    const checkedOverlays = Array.from(overlay.querySelectorAll('#cw-new-overlays input:checked')).map(c => c.value);
     const trigger = triggerInput.value.trim();
     const instructionStyle = overlay.querySelector('#cw-new-instruction-style')?.value || '';
     const agentProvider = overlay.querySelector('#cw-new-provider')?.value || '';
@@ -4946,6 +5014,7 @@ async function showCreateModal() {
         body: JSON.stringify({
           name, folder,
           types: checkedTypes.length ? checkedTypes : undefined,
+          overlays: checkedOverlays.length ? checkedOverlays : undefined,
           trigger: trigger || undefined,
           instructions: instructions || undefined,
           instructionTemplate: instructionStyle || undefined,

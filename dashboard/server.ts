@@ -26,6 +26,8 @@ import {
   symlinkSync,
   cpSync,
   watch,
+  watchFile,
+  unwatchFile,
   writeFileSync,
   unlinkSync,
   mkdirSync,
@@ -1085,6 +1087,7 @@ interface CoworkerState {
   isAutoUpdate: boolean;
   allowedMcpTools: string[];
   disallowedMcpTools: string[];
+  overlays: string[];
   lastMessageTs: string | null;
   // Context indicator: token usage
   contextTokens: number | null;
@@ -2230,14 +2233,42 @@ function getMcpManagementToken(): string | null {
 }
 
 function watchMcpManagementToken(onChange: () => void): (() => void) | null {
+  const tokenPath = getMcpManagementTokenPath();
+  const cleanups: (() => void)[] = [];
+
+  // fs.watch on a directory doesn't reliably fire for file creation on all
+  // platforms. Use watchFile (stat-polling) on the token path itself so we
+  // catch both creation and content changes.
+  try {
+    watchFile(tokenPath, { interval: 2000 }, (curr, prev) => {
+      if (curr.mtimeMs !== prev.mtimeMs || (curr.size > 0 && prev.size === 0)) onChange();
+    });
+    cleanups.push(() => unwatchFile(tokenPath));
+  } catch { /* ignore */ }
+
+  // Also watch the directory for renames/moves (belt-and-suspenders).
   try {
     const watcher = watch(getDataDir(), (_eventType, filename) => {
       if (filename === '.mcp-management-token') onChange();
     });
-    return () => watcher.close();
-  } catch {
-    return null;
+    cleanups.push(() => watcher.close());
+  } catch { /* ignore */ }
+
+  // Startup race: the main service may still be booting when the dashboard
+  // starts. Poll every 3s for up to 30s until the token file appears.
+  if (!getMcpManagementToken()) {
+    let attempts = 0;
+    const poll = setInterval(() => {
+      attempts++;
+      if (getMcpManagementToken() || attempts >= 10) {
+        clearInterval(poll);
+        if (getMcpManagementToken()) onChange();
+      }
+    }, 3000);
+    poll.unref?.();
   }
+
+  return cleanups.length > 0 ? () => cleanups.forEach((fn) => fn()) : null;
 }
 
 async function refreshMcpTools(): Promise<void> {
@@ -2424,15 +2455,16 @@ function getState(): DashboardState {
         }
       }
 
-      // Resolve type, name, and MCP tools from DB
+      // Resolve type, name, MCP tools, and overlays from DB
       let dbAllowedMcp: string[] | null = null;
+      let dbOverlays: string[] = [];
       let dbAgentGroupId: string | null = null;
       let isMainGroup = false;
       if (db) {
         try {
           const row = db
             .prepare(
-              'SELECT id, name, folder, coworker_type, allowed_mcp_tools, is_admin FROM agent_groups WHERE folder = ?',
+              'SELECT id, name, folder, coworker_type, allowed_mcp_tools, overlays, is_admin FROM agent_groups WHERE folder = ?',
             )
             .get(folder) as any;
           if (row) {
@@ -2440,6 +2472,7 @@ function getState(): DashboardState {
             name = row.name || folder;
             isMainGroup = !!row.is_admin;
             dbAllowedMcp = row.allowed_mcp_tools ? JSON.parse(row.allowed_mcp_tools) : null;
+            dbOverlays = row.overlays ? JSON.parse(row.overlays) : [];
             if (row.coworker_type) {
               type = row.coworker_type;
               const metadata = resolveCoworkerTypeMetadata(row.coworker_type, types);
@@ -2542,6 +2575,7 @@ function getState(): DashboardState {
           types,
         ),
         disallowedMcpTools: [],
+        overlays: dbOverlays,
         lastMessageTs: lastMessageTsCache.get(folder) || null,
         contextTokens: ctxInfo?.contextTokens ?? null,
         maxContextTokens: ctxInfo?.maxContext ?? null,
@@ -2590,6 +2624,7 @@ function getState(): DashboardState {
       subagents: Array.from(liveSubagentState.get(folder)?.values() || []),
       allowedMcpTools: BASE_TIER_TOOLS,
       disallowedMcpTools: computeDisallowed(BASE_TIER_TOOLS),
+      overlays: [],
       lastMessageTs: lastMessageTsCache.get(folder) || null,
       contextTokens: null,
       maxContextTokens: null,
@@ -3820,6 +3855,28 @@ export async function handleRequest(
     return;
   }
 
+  // API: list available overlays from container/overlays/*/OVERLAY.md
+  if (url.pathname === '/api/overlays') {
+    if (!requireAuth(req, res)) return;
+    try {
+      const { readSkillCatalog } = await import('../src/claude-composer.js');
+      const catalog = readSkillCatalog(getProjectRoot());
+      const overlays = Object.values(catalog)
+        .filter((entry: any) => entry.type === 'overlay' && entry.overlay)
+        .map((entry: any) => ({
+          name: entry.name,
+          description: entry.description,
+          appliesToWorkflows: entry.overlay.appliesToWorkflows || [],
+        }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(overlays));
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   // API: get coworker CLAUDE.md
   // Returns X-Readonly: true header for typed coworkers (CLAUDE.md rebuilt from templates)
   if (req.method === 'GET' && url.pathname.startsWith('/api/memory/')) {
@@ -3848,12 +3905,14 @@ export async function handleRequest(
           const rdb = db;
           let coworkerType: string | null = null;
           let disableOverlays = false;
+          let overlays: string[] | undefined;
           if (rdb) {
             const row = rdb
-              .prepare('SELECT coworker_type, disable_overlays FROM agent_groups WHERE folder = ?')
+              .prepare('SELECT coworker_type, disable_overlays, overlays FROM agent_groups WHERE folder = ?')
               .get(folder) as any;
             coworkerType = row?.coworker_type || null;
             disableOverlays = row?.disable_overlays === 1;
+            overlays = row?.overlays ? JSON.parse(row.overlays) : undefined;
           }
           let extraInstructions: string | null = null;
           try {
@@ -3862,7 +3921,7 @@ export async function handleRequest(
             /* none */
           }
           if (coworkerType) {
-            content = composeCoworkerSpine({ coworkerType, extraInstructions, disableOverlays });
+            content = composeCoworkerSpine({ coworkerType, extraInstructions, disableOverlays, overlays });
           } else {
             content = readFileSync(join(groupDir, 'CLAUDE.md'), 'utf-8');
           }
@@ -5532,12 +5591,14 @@ export async function handleRequest(
             const { composeCoworkerSpine } = await import('../src/claude-composer.js');
             let coworkerType: string | null = null;
             let disableOverlays = false;
+            let overlays: string[] | undefined;
             try {
               const row = db
-                .prepare('SELECT coworker_type, disable_overlays FROM agent_groups WHERE folder = ?')
+                .prepare('SELECT coworker_type, disable_overlays, overlays FROM agent_groups WHERE folder = ?')
                 .get(g.folder) as any;
               coworkerType = row?.coworker_type || null;
               disableOverlays = row?.disable_overlays === 1;
+              overlays = row?.overlays ? JSON.parse(row.overlays) : undefined;
             } catch {
               /* ignore */
             }
@@ -5548,7 +5609,7 @@ export async function handleRequest(
               } catch {
                 /* none */
               }
-              g.memory = composeCoworkerSpine({ coworkerType, extraInstructions, disableOverlays });
+              g.memory = composeCoworkerSpine({ coworkerType, extraInstructions, disableOverlays, overlays });
             } else {
               g.memory = readFileSync(join(getGroupsDir(), g.folder, 'CLAUDE.md'), 'utf-8');
             }
@@ -5607,7 +5668,7 @@ export async function handleRequest(
     const body = await readBody(req, res);
     if (body === null) return;
     try {
-      const { name, folder, types, type, trigger, instructions, instructionTemplate, agentProvider, routing: routingParam } = JSON.parse(body);
+      const { name, folder, types, type, trigger, instructions, instructionTemplate, agentProvider, routing: routingParam, overlays: overlaysParam } = JSON.parse(body);
       const routing: 'direct' | 'internal' = routingParam === 'internal' ? 'internal' : 'direct';
       if (!name || !folder) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -5685,11 +5746,26 @@ export async function handleRequest(
         res.end('{"error":"coworker_type=main is reserved for the admin orchestrator"}');
         return;
       }
+      let resolvedOverlays: string | null = null;
+      if (Array.isArray(overlaysParam) && overlaysParam.length > 0) {
+        const { readSkillCatalog } = await import('../src/claude-composer.js');
+        const catalog = readSkillCatalog(getProjectRoot());
+        const invalid = overlaysParam.filter((n: string) => {
+          const entry = catalog[n];
+          return !entry || entry.type !== 'overlay';
+        });
+        if (invalid.length > 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Unknown overlay(s): ${invalid.join(', ')}` }));
+          return;
+        }
+        resolvedOverlays = JSON.stringify(overlaysParam);
+      }
       wdb
         .prepare(
-          'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, routing, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)',
+          'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, overlays, routing, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)',
         )
-        .run(agId, name, folder, isAdmin, agentProvider || null, coworkerType, resolvedMcpTools, routing, now);
+        .run(agId, name, folder, isAdmin, agentProvider || null, coworkerType, resolvedMcpTools, resolvedOverlays, routing, now);
 
       if (routing === 'direct') {
         const { messagingGroupId } = ensureDashboardChatWiring(wdb, { id: agId, folder, name }, triggerPattern, now);
@@ -5808,6 +5884,26 @@ export async function handleRequest(
         wdb
           .prepare('UPDATE agent_groups SET container_config = ? WHERE folder = ?')
           .run(updates.container_config ? JSON.stringify(updates.container_config) : null, folder);
+      }
+      if (updates.overlays !== undefined) {
+        if (Array.isArray(updates.overlays)) {
+          // Validate overlay names against catalog
+          const { readSkillCatalog } = await import('../src/claude-composer.js');
+          const catalog = readSkillCatalog(getProjectRoot());
+          const invalid = updates.overlays.filter((n: string) => {
+            const entry = catalog[n];
+            return !entry || entry.type !== 'overlay';
+          });
+          if (invalid.length > 0) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: `Unknown overlay(s): ${invalid.join(', ')}` }));
+            return;
+          }
+        }
+        const val = Array.isArray(updates.overlays) && updates.overlays.length > 0
+          ? JSON.stringify(updates.overlays)
+          : null;
+        wdb.prepare('UPDATE agent_groups SET overlays = ? WHERE folder = ?').run(val, folder);
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('{"ok":true}');
