@@ -2,91 +2,37 @@
 name: critique-overlay
 license: MIT
 type: overlay
-description: "Stage-aware critique gates across the plan and implement workflows. Spawns codex-critique with a different ROLE at each gate."
+description: "Stage-aware critique gates across the plan and implement workflows. Spawns codex-critique at each gate for independent verification."
 applies-to:
   workflows: [plan, implement]
   traits: [code.edit, test.gen, doc.write]
 insert-after: [diagnose, change, deliver]
 insert-before: [change]
 uses:
-  workflows: [plan]
   skills: [codex-critique]
 ---
 
-Splices a `/codex-critique` call at four anchors across `/plan` and `/implement`. Each anchor maps to a stage with its own question set. Three rounds max per stage; unresolved `must-fix` items never merge.
+At each gate, invoke `/codex-critique` with what you did, why, and which files to check. Codex reads the code itself and returns approve or must-fix.
 
 ## DIAGNOSIS_REVIEW (after `diagnose`)
 
-Artifact: working notes (evidence, hypotheses, approaches). Ask codex:
-
-- Root cause supported by evidence, or a leap?
-- Next-most-likely cause?
-- Evidence strong enough, or research more first?
-- Missed risks, edge cases, or spec requirements?
-- Does the approach actually address the root cause?
+Send your synthesis: root-cause hypothesis, evidence gathered, approaches considered. Codex verifies the reasoning holds up against the codebase.
 
 ## PLAN_REVIEW (before `change`)
 
-Write the plan at `/workspace/agent/reports/<target_slug>.md` first (spec ref, clarifying Qs, investigation findings, the change, gap check). Ask codex:
-
-- Does the plan cover every spec requirement?
-- Unclear requirements needing user clarification?
-- Is the root cause supported by evidence?
-- Is the change minimal and reversible?
-- Are verification steps strong enough?
-- Gaps between spec and plan?
+Send the plan from `{{report.path}}`: proposed changes, affected files, verification strategy. Codex checks coverage against the original spec and flags scope gaps.
 
 ## CODE_REVIEW (after `change`)
 
-Artifacts: plan at `/workspace/agent/reports/<target_slug>.md` + `git diff` (run it yourself). Ask codex:
-
-- Does the code match the approved plan? Deviations?
-- Does the plan satisfy the original spec?
-- Spec requirements not covered by the patch?
-- Correctness, safety, lifecycle, or performance issues?
-- Are tests sufficient?
+Send the diff (`git diff`) and your rationale. Codex verifies correctness, spec coverage, and test sufficiency.
 
 ## OUTPUT_REVIEW (after `deliver`)
 
-Artifact: the deliverable file path. Ask codex:
+Send the deliverable path. Codex checks completeness, factual accuracy, and silent omissions from the spec.
 
-- Does the output fully answer what was asked?
-- Factual errors or unsupported claims?
-- Silent omissions from the spec?
-- Clarifying questions to raise before finalizing?
+## Protocol
 
-## Protocol (3 rounds max)
-
-1. Invoke `/codex-critique`. Send `Stage: <STAGE>`, the original spec verbatim, artifact pointer(s), and the stage's questions.
-2. On `must-fix` → fix → re-invoke. `should-fix` may be declined with written justification.
-3. Round 3 still `must-fix` → **STOP**, escalate to user. Never proceed with unresolved `must-fix`.
-
-## Record the verdict (runtime-enforced)
-
-A `critique-record-gate` PreToolUse hook blocks further `Edit`/`Write` until step 1 lands. Do these in order:
-
-1. **Write** the reviewer output to `/workspace/agent/critiques/<slug>-round-N.md` (N from `workflow-state.json.critique_rounds`). Must contain:
-   - Verdict label (`approve` | `approve-with-nits` | `request-changes` | `blocked`)
-   - Every `must-fix` / `should-fix` with `<file:line>` + rationale + recommended fix
-   - codex `threadId` (for round 2/3 reply linkage)
-2. Append one line to `/workspace/agent/critiques/index.md`: `[STAGE] <slug> round N — <verdict> — M must-fix`
-3. Send status via `mcp__nanoclaw__send_message` using the **verbatim** template below — don't paraphrase, don't change emoji (the runtime pattern-matches). **Audience matters**: the critique loop is between you and codex; status updates should reach whoever asked for the work, and *only* a final escalation goes to your supervisor. The "Send to" column is authoritative.
-
-| Event | Template | Send to |
-|---|---|---|
-| Entering   | `🔴 [STAGE] gate — invoking /codex-critique. [1-line artifact summary].` | *(no send — `/codex-critique` is an internal tool call, not a conversation event)* |
-| Approved   | `✅ [STAGE] round N/3 — approved. Verdict: [approve\|approve-with-nits]. Full: /workspace/agent/critiques/<slug>-round-N.md.` | default route — omit `to=`, lets `session_routing` deliver back to whoever initiated the work (dashboard user or delegating coworker) |
-| Must-fix   | `🟡 [STAGE] round N/3 — M must-fix items:\n- <file:line> — <issue>\n…\nFixing. Full: <path>.` | default route (same as Approved) |
-| Escalating | `🚨 [STAGE] — 3 rounds exhausted. Unresolved:\n- <file:line> — <issue>\nEscalating to user.` | **`to="parent"`** — only here do you page the supervisor/orchestrator |
-
-`[STAGE]` ∈ {`PLAN_REVIEW`, `DIAGNOSIS_REVIEW`, `CODE_REVIEW`, `OUTPUT_REVIEW`}.
-
-**Why this matters.** Broadcasting every gate to `parent` turns the orchestrator into a noisy rubber-stamp for work it has no context for. The intended topology is:
-
-```
-  normal flow:       you <—tool—> codex         (tool call, no send_message)
-  progress updates:  you ——> default route      (whoever asked: dashboard or delegator)
-  escalation only:   you ——> parent              (supervisor steps in on stuck gates)
-```
-
-Omitting `to=` on a `send_message` honors session_routing — which is how the dashboard user keeps seeing your progress without orchestrator leaking in.
+1. Invoke `/codex-critique`. Send the stage name, original task spec (verbatim), your summary (what + why), and artifact file paths.
+2. `must-fix` → fix → re-invoke (up to 3 rounds). `advisory` → address or justify skipping.
+3. Round 3 still `must-fix` → **STOP** and escalate to parent via `send_message(to="parent")`.
+4. After each gate resolves, send a one-line status via `send_message`: approved, or how many must-fix items you're addressing.

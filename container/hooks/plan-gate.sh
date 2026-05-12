@@ -146,8 +146,8 @@ EXTERNAL POST BLOCKED: Plan required before posting to external systems.
 Tool: $TOOL
 HOW TO PROCEED:
 1. Write a plan to /workspace/agent/reports/<target-slug>.md first.
-2. Spawn codex-critique to review the plan (up to 3 rounds).
-3. Record verdict at plan top. Then retry the external post.
+2. Invoke /codex-critique to review the plan (up to 3 rounds).
+3. Then retry the external post.
 DENIAL
       else
         echo "EXTERNAL POST BLOCKED ($TOOL): Plan required before posting. (Repeated denial #$N)" >&2
@@ -157,10 +157,9 @@ DENIAL
 PLAN REQUIRED: Write a plan before editing source code.
 
 HOW TO PROCEED:
-1. Send: mcp__nanoclaw__send_message("🟡 Plan gate — writing plan.")
-2. Write plan to /workspace/agent/reports/<target-slug>.md (files, approach, verification).
-3. Spawn codex-critique to review the plan (up to 3 rounds).
-4. Record verdict at plan top. Then edit source code following the plan.
+1. Write plan to /workspace/agent/reports/<target-slug>.md (files, approach, verification).
+2. Invoke /codex-critique to review the plan (up to 3 rounds).
+3. Then edit source code following the plan.
 DENIAL
     else
       echo "PLAN REQUIRED: Write a plan to /workspace/agent/reports/ before editing. (Repeated denial #$N)" >&2
@@ -198,28 +197,27 @@ if [ "$CRIT_REQ" = "true" ]; then
 EXTERNAL POST BLOCKED: Critique required before posting to external systems.
 
 Tool: $TOOL
-$EDITS edits without review. Spawn codex-critique before posting.
+$EDITS edits without review. Invoke /codex-critique before posting.
 
 HOW TO PROCEED:
-1. Spawn codex-critique with: Problem, Changes, Thoughts.
-2. If must-fix → fix → re-spawn (up to 3 rounds). Escalate after 3.
+1. Invoke /codex-critique with what you did, why, and artifact paths.
+2. If must-fix → fix → re-invoke (up to 3 rounds). Escalate after 3.
 3. Once approved, retry the external post.
 DENIAL
       else
-        echo "EXTERNAL POST BLOCKED ($TOOL): Spawn codex-critique before posting. ($EDITS edits, denial #$N)" >&2
+        echo "EXTERNAL POST BLOCKED ($TOOL): Invoke /codex-critique before posting. ($EDITS edits, denial #$N)" >&2
       fi
     elif [ "$N" -le 1 ]; then
       cat >&2 << DENIAL
-CRITIQUE REQUIRED: $EDITS edits without review. Spawn codex-critique before further edits.
+CRITIQUE REQUIRED: $EDITS edits without review. Invoke /codex-critique before further edits.
 
 HOW TO PROCEED:
-1. Send: mcp__nanoclaw__send_message("🔴 Critique gate — spawning review.")
-2. Spawn codex-critique with: Problem, Changes, Thoughts.
-3. If must-fix → fix → re-spawn (up to 3 rounds). Escalate after 3.
-4. Once approved, send: mcp__nanoclaw__send_message("✅ Critique approved.")
+1. Invoke /codex-critique with what you did, why, and artifact paths.
+2. If must-fix → fix → re-invoke (up to 3 rounds). Escalate after 3.
+3. Once approved, continue editing.
 DENIAL
     else
-      echo "CRITIQUE REQUIRED: Spawn codex-critique before further edits. ($EDITS edits, denial #$N)" >&2
+      echo "CRITIQUE REQUIRED: Invoke /codex-critique before further edits. ($EDITS edits, denial #$N)" >&2
     fi
     exit 2
   fi

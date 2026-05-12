@@ -898,17 +898,6 @@ function buildMounts(
             hooks: [{ type: 'command', command: 'bash /app/hooks/plan-tracker.sh', timeout: 5 }],
           });
         }
-        // critique-record-gate enforces the disk-write half of the
-        // critique-overlay protocol: blocks Edit/Write on source files until
-        // the agent has recorded the verdict to /workspace/agent/critiques/.
-        if (!hasCmd('PreToolUse', 'critique-record-gate.sh')) {
-          // Matcher widened alongside plan-gate.sh (see above) — the
-          // script itself decides what to do with non-Edit/Write tools.
-          settings.hooks.PreToolUse.push({
-            matcher: 'Edit|Write|MultiEdit|NotebookEdit|mcp__.*',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/critique-record-gate.sh', timeout: 5 }],
-          });
-        }
       }
       if (hasCritique) {
         // Track every successful mcp__codex__codex call as a critique round.

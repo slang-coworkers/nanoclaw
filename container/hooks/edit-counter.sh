@@ -86,12 +86,12 @@ PLAN_WARN_AT=$(( PLAN_LIMIT - 5 ))
 MSG=""
 
 if [ "$NEW_EDITS_CRIT" -eq "$CRITIQUE_LIMIT" ]; then
-  MSG="⚡ CRITIQUE GATE TRIGGERED: $NEW_EDITS_CRIT edits since last critique. Your next Edit/Write will be blocked until you spawn codex-critique. Send a status update via mcp__nanoclaw__send_message before proceeding."
+  MSG="⚡ CRITIQUE GATE TRIGGERED: $NEW_EDITS_CRIT edits since last critique. Your next Edit/Write will be blocked until you invoke /codex-critique."
 elif [ "$NEW_EDITS_CRIT" -ge "$CRIT_WARN_AT" ] && [ "$NEW_EDITS_CRIT" -lt "$CRITIQUE_LIMIT" ]; then
   REMAINING=$(( CRITIQUE_LIMIT - NEW_EDITS_CRIT ))
   MSG="⚠️ Critique gate in $REMAINING edits ($NEW_EDITS_CRIT/$CRITIQUE_LIMIT). Plan your critique spawn."
 elif [ "$NEW_EDITS_PLAN" -eq "$PLAN_LIMIT" ]; then
-  MSG="⚡ PLAN STALE GATE TRIGGERED: $NEW_EDITS_PLAN edits since last plan. Your next Edit/Write will be blocked until you write a fresh plan. Send a status update via mcp__nanoclaw__send_message."
+  MSG="⚡ PLAN STALE GATE TRIGGERED: $NEW_EDITS_PLAN edits since last plan. Your next Edit/Write will be blocked until you write a fresh plan."
 elif [ "$NEW_EDITS_PLAN" -ge "$PLAN_WARN_AT" ] && [ "$NEW_EDITS_PLAN" -lt "$PLAN_LIMIT" ]; then
   REMAINING=$(( PLAN_LIMIT - NEW_EDITS_PLAN ))
   MSG="⚠️ Plan refresh gate in $REMAINING edits ($NEW_EDITS_PLAN/$PLAN_LIMIT)."
