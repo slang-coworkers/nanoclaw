@@ -12,7 +12,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { readCoworkerTypes } from '../../claude-composer.js';
+import { readCoworkerTypes, readSkillCatalog } from '../../claude-composer.js';
 import { GROUPS_DIR } from '../../config.js';
 import { createAgentGroup, getAgentGroup, getAgentGroupByFolder } from '../../db/agent-groups.js';
 import {
@@ -151,6 +151,23 @@ export async function handleCreateAgent(content: Record<string, unknown>, sessio
     }
   }
 
+  // Validate overlay names against the catalog
+  let validatedOverlays: string[] | null = null;
+  if (Array.isArray(content.overlays) && content.overlays.length > 0) {
+    const catalog = readSkillCatalog();
+    const invalid = (content.overlays as string[]).filter((n) => {
+      const entry = catalog[n];
+      return !entry || entry.type !== 'overlay';
+    });
+    if (invalid.length > 0) {
+      notifyAgent(session, `create_agent warning: unknown overlay(s) ${invalid.join(', ')} — skipped.`);
+      validatedOverlays = (content.overlays as string[]).filter((n) => !invalid.includes(n));
+    } else {
+      validatedOverlays = content.overlays as string[];
+    }
+    if (validatedOverlays.length === 0) validatedOverlays = null;
+  }
+
   const internalOnly = content.internalOnly === true;
   const directChannel = !internalOnly;
   const newGroup: AgentGroup = {
@@ -164,6 +181,7 @@ export async function handleCreateAgent(content: Record<string, unknown>, sessio
     allowed_mcp_tools: content.allowedMcpTools
       ? JSON.stringify((content.allowedMcpTools as string[]).filter((t) => t.startsWith('mcp__')))
       : null,
+    overlays: validatedOverlays ? JSON.stringify(validatedOverlays) : null,
     routing: (content.routing as string) || (directChannel ? 'direct' : 'internal'),
     disable_overlays: 0,
     created_at: now,

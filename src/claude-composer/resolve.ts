@@ -481,3 +481,79 @@ function humanize(value: string): string {
 function defaultIdentity(title: string): string {
   return `You are ${title}, a specialist coworker.`;
 }
+
+/**
+ * Inject per-agent overlays into a resolved manifest. Called from spine.ts
+ * when the caller supplies runtime overlay names (from agent_groups.overlays).
+ * Validates names, matches overlays to workflows, and appends WorkflowCustomizations.
+ */
+export function injectOverlays(
+  manifest: CoworkerManifest,
+  overlayNames: string[],
+  catalog: Record<string, SkillMeta>,
+): void {
+  // Dedup against overlays already present from the type chain
+  const alreadyApplied = new Set(
+    manifest.customizations.filter((c) => c.kind === 'overlay').map((c) => c.overlayName),
+  );
+  const unique = [...new Set(overlayNames)].filter((n) => !alreadyApplied.has(n));
+  for (const overlayName of unique) {
+    const overlayMeta = catalog[overlayName];
+    if (!overlayMeta || overlayMeta.type !== 'overlay' || !overlayMeta.overlay) {
+      console.warn(`injectOverlays: overlay "${overlayName}" not found in catalog, skipping.`);
+      continue;
+    }
+    const overlay = overlayMeta.overlay;
+    const targets = new Set<string>();
+    const appliesToSet = new Set(overlay.appliesToWorkflows);
+    for (const wf of manifest.workflows) {
+      if (appliesToSet.has(wf.name)) {
+        targets.add(wf.name);
+        continue;
+      }
+      const meta = catalog[wf.name];
+      if (meta?.extendsWorkflow && appliesToSet.has(meta.extendsWorkflow)) {
+        targets.add(wf.name);
+        continue;
+      }
+      for (const trait of wf.requires) {
+        const domain = trait.split('.')[0];
+        if (overlay.appliesToTraits.includes(trait) || overlay.appliesToTraits.includes(domain)) {
+          targets.add(wf.name);
+          break;
+        }
+      }
+    }
+    for (const target of [...targets]) {
+      const meta = catalog[target];
+      if (meta?.extendsWorkflow && targets.has(meta.extendsWorkflow)) {
+        targets.delete(meta.extendsWorkflow);
+      }
+    }
+    for (const target of targets) {
+      const anchorSteps: { position: 'before' | 'after'; step: string }[] = [];
+      const anchors: string[] = [];
+      for (const step of overlay.insertAfter) {
+        anchors.push(`after step \`${step}\``);
+        anchorSteps.push({ position: 'after', step });
+      }
+      for (const step of overlay.insertBefore) {
+        anchors.push(`before step \`${step}\``);
+        anchorSteps.push({ position: 'before', step });
+      }
+      const where = anchors.length > 0 ? anchors.join(' and ') : 'at the end';
+      manifest.customizations.push({
+        workflow: target,
+        kind: 'overlay',
+        overlayName,
+        anchorSteps,
+        summary: `\`/${target}\` is augmented by \`${overlayName}\` ${where}.`,
+        detail: overlay.step,
+      });
+    }
+    // Add overlay tools to manifest
+    for (const t of overlayMeta.allowedTools) {
+      if (!manifest.tools.includes(t)) manifest.tools.push(t);
+    }
+  }
+}
