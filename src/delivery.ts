@@ -413,11 +413,16 @@ async function deliverMessage(
                    AND s.thread_id IS NOT NULL AND s.status = 'active'
                  ORDER BY ssr.created_at DESC LIMIT 1`,
               )
-              .get(ownerAg.id, session.agent_group_id) as { source_session_id: string; thread_id: string | null } | undefined;
+              .get(ownerAg.id, session.agent_group_id) as
+              | { source_session_id: string; thread_id: string | null }
+              | undefined;
             if (sourceRow?.thread_id) crossThreadId = sourceRow.thread_id;
           }
           const { session: recipientSession } = resolveSession(
-            ownerAg.id, mg.id, crossThreadId, crossThreadId ? 'per-thread' : 'shared',
+            ownerAg.id,
+            mg.id,
+            crossThreadId,
+            crossThreadId ? 'per-thread' : 'shared',
           );
           const crossId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
           const forwardedContent = msg.content;
@@ -425,10 +430,17 @@ async function deliverMessage(
             try {
               const { forwardAttachedFiles } = await import('./modules/agent-to-agent/agent-route.js');
               forwardAttachedFiles(
-                { agentGroupId: session.agent_group_id, sessionId: session.id, messageId: msg.id, filenames: content.files as string[] },
+                {
+                  agentGroupId: session.agent_group_id,
+                  sessionId: session.id,
+                  messageId: msg.id,
+                  filenames: content.files as string[],
+                },
                 { agentGroupId: ownerAg.id, sessionId: recipientSession.id, messageId: crossId },
               );
-            } catch { /* a2a module may not be installed */ }
+            } catch {
+              /* a2a module may not be installed */
+            }
           }
           const { writeSessionMessage } = await import('./session-manager.js');
           writeSessionMessage(ownerAg.id, recipientSession.id, {

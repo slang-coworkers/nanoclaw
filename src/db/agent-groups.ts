@@ -40,7 +40,10 @@ export function getAdminAgentGroup(): AgentGroup | undefined {
 export function updateAgentGroup(
   id: string,
   updates: Partial<
-    Pick<AgentGroup, 'name' | 'agent_provider' | 'container_config' | 'coworker_type' | 'allowed_mcp_tools' | 'overlays'>
+    Pick<
+      AgentGroup,
+      'name' | 'agent_provider' | 'container_config' | 'coworker_type' | 'allowed_mcp_tools' | 'overlays'
+    >
   >,
 ): void {
   const fields: string[] = [];
