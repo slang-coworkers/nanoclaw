@@ -615,9 +615,7 @@ export function renderCoworkerSpine(
       // parent workflow name — which isn't in this coworker's own workflow
       // set. The slash-dash-name shape still reads unambiguously as a
       // reference to the embedded parent section.
-      const extendsNote = extendsC?.extendsWorkflow
-        ? ` (extends /${extendsC.extendsWorkflow}—see section below)`
-        : '';
+      const extendsNote = extendsC?.extendsWorkflow ? ` (extends /${extendsC.extendsWorkflow}—see section below)` : '';
       let block = `### /${w.name}\n\n${w.description}${uses}${extendsNote}`;
 
       if (w.steps.length > 0) {

@@ -493,9 +493,7 @@ export function injectOverlays(
   catalog: Record<string, SkillMeta>,
 ): void {
   // Dedup against overlays already present from the type chain
-  const alreadyApplied = new Set(
-    manifest.customizations.filter((c) => c.kind === 'overlay').map((c) => c.overlayName),
-  );
+  const alreadyApplied = new Set(manifest.customizations.filter((c) => c.kind === 'overlay').map((c) => c.overlayName));
   const unique = [...new Set(overlayNames)].filter((n) => !alreadyApplied.has(n));
   for (const overlayName of unique) {
     const overlayMeta = catalog[overlayName];
