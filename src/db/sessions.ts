@@ -81,6 +81,15 @@ export function findSessionForAgent(
     .get(agentGroupId, messagingGroupId) as Session | undefined;
 }
 
+/** Find an active session for an agent + thread, ignoring messaging group. */
+export function findSessionByAgentThread(agentGroupId: string, threadId: string): Session | undefined {
+  return getDb()
+    .prepare(
+      "SELECT * FROM sessions WHERE agent_group_id = ? AND thread_id = ? AND status = 'active' ORDER BY created_at ASC LIMIT 1",
+    )
+    .get(agentGroupId, threadId) as Session | undefined;
+}
+
 /** Find an active session scoped to an agent group (ignoring messaging group). */
 export function findSessionByAgentGroup(agentGroupId: string): Session | undefined {
   return getDb()

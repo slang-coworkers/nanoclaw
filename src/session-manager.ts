@@ -23,6 +23,7 @@ import {
   createSession,
   findSession,
   findSessionByAgentGroup,
+  findSessionByAgentThread,
   findSessionForAgent,
   getSession,
   updateSession,
@@ -104,6 +105,15 @@ export function resolveSession(
     const existing = findSessionForAgent(agentGroupId, messagingGroupId, lookupThreadId);
     if (existing) {
       return { session: existing, created: false };
+    }
+    // Fallback: reuse a session for this agent + thread on ANY channel (e.g. a2a
+    // session reused when the dashboard replies to the same thread). Thread IDs
+    // are globally unique message IDs so cross-channel collision is not a concern.
+    if (lookupThreadId) {
+      const crossChannel = findSessionByAgentThread(agentGroupId, lookupThreadId);
+      if (crossChannel) {
+        return { session: crossChannel, created: false };
+      }
     }
   }
 
