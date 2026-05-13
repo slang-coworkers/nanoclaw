@@ -95,17 +95,25 @@ If tests fail, iterate on the fix (go back to Step 3).
 
 ## Step 4.5: PEER REVIEW (only if `slang-reviewer` is in your destinations) {#peer-review}
 
-If `slang-reviewer` is in your destinations, send the diff for peer review BEFORE reporting to parent. The reviewer will return a verdict + suggestions; treat it like a real code review.
+If `slang-reviewer` is in your destinations, send the diff for peer review BEFORE reporting to parent. The reviewer wraps the production claude-code-action PR-review pipeline (`/slang-pr-review`) and accepts three input modes — `pr` (PR URL), `branch`, or `patch`. **A/B-test mode fixer doesn't push or open a PR**, so the only valid input here is `patch`.
+
+Save the diff as a patch file in the workspace, then send the path to the reviewer:
+
+```bash
+cd /workspace/agent/slang
+mkdir -p /workspace/agent/patches
+git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch
+```
 
 ```
-send_message(to="slang-reviewer", text="[Fix Review Request] <repo>#<number>: <title>\n\nDiff:\n```\n<git diff output>\n```\n\nTests added: tests/<path>\nTest results: <PASS / X failures>\n\nReview for: correctness, edge cases, style, test coverage. Reply APPROVE or REQUEST_CHANGES with specific suggestions.")
+send_file(to="slang-reviewer", path="/workspace/agent/patches/fix-<issue_number>.patch", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: patch\nBase: shader-slang/slang@main\n\nTests added: tests/<area>/test_<issue_number>.py\nTest results: <PASS / X failures>\n\nPlease run /slang-pr-review --patch <attached> --base shader-slang/slang@main and reply APPROVE or REQUEST_CHANGES with specific suggestions.")
 ```
 
-End your turn after sending. The reviewer's reply will arrive as a new inbound and trigger your next turn.
+End your turn after sending. The reviewer's reply (with `final-review.md` attached and a severity-counts summary) arrives as a new inbound and triggers your next turn.
 
 **On the reviewer's reply (next turn):**
-- If APPROVE → proceed to Step 5
-- If REQUEST_CHANGES → apply the suggested edits, re-run Step 4 (verify), then re-send to reviewer if changes are non-trivial. Two review rounds max — after that, take the better of the two diffs and proceed to Step 5 noting unresolved feedback in the report.
+- If APPROVE or 0 critical/high findings → proceed to Step 5; attach the review summary to your parent report
+- If REQUEST_CHANGES or critical/high findings → apply the suggested edits, re-run Step 4 (verify), regenerate the patch, then re-send to reviewer. Two review rounds max — after that, take the better of the two diffs and proceed to Step 5 noting unresolved feedback in the report
 
 If `slang-reviewer` is NOT in your destinations (current setup), skip this step and go directly to Step 5.
 
