@@ -170,9 +170,7 @@ export function retryWithBackoff(db: Database.Database, messageId: string, backo
   // into SQL (SQL injection risk if the caller ever passes untrusted input).
   const futureMs = Date.now() + Math.max(0, Math.floor(backoffSec)) * 1000;
   const processAfter = new Date(futureMs).toISOString();
-  db.prepare(
-    `UPDATE messages_in SET tries = tries + 1, process_after = ? WHERE id = ?`,
-  ).run(processAfter, messageId);
+  db.prepare(`UPDATE messages_in SET tries = tries + 1, process_after = ? WHERE id = ?`).run(processAfter, messageId);
 }
 
 export function getMessageForRetry(
