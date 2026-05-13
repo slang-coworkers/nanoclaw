@@ -11,7 +11,7 @@ install_packages({ apt: ["ffmpeg"], npm: ["@xenova/transformers"], reason: "Audi
 ```
 
 **When to use this vs workspace `pnpm install`:**
-- `pnpm install` if you only need it temporarily to do one task. Will not be available in subsequent turns.
+- `pnpm install` if you only need it temporarily to do one task. Will not be available in subsequent truns.
 - `install_packages` persists for all future turns. Use especially if the user specifically asks you to add a capability
 
 ### MCP servers (`add_mcp_server`)
