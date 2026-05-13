@@ -26,6 +26,7 @@ import {
   createPendingApproval,
   deletePendingApproval,
   getPendingApprovalsByAction,
+  updatePendingApprovalDelivery,
   updatePendingApprovalStatus,
 } from '../../db/sessions.js';
 import type { ChannelDeliveryAdapter } from '../../delivery.js';
@@ -130,20 +131,6 @@ async function handleRequest(request: ApprovalRequest): Promise<Decision> {
     return 'deny';
   }
 
-  // No origin channel preference — OneCLI requests don't carry one. First
-  // approver with a reachable DM wins.
-  const target = await pickApprovalDelivery(approvers, '');
-  if (!target) {
-    log.warn('OneCLI approval auto-denied: no DM channel for any approver', {
-      id: request.id,
-      approvers,
-    });
-    return 'deny';
-  }
-
-  // Use a short id for the card/button so Chat SDK's Telegram adapter can
-  // fit everything inside the 64-byte callback_data limit. The OneCLI
-  // request.id stays in the payload for audit.
   const approvalId = shortApprovalId();
   const question = buildQuestion(request, originGroup?.name ?? request.agent.name);
 
@@ -152,25 +139,6 @@ async function handleRequest(request: ApprovalRequest): Promise<Decision> {
     { label: 'Approve', selectedLabel: '✅ Approved', value: 'approve' },
     { label: 'Reject', selectedLabel: '❌ Rejected', value: 'reject' },
   ];
-  let platformMessageId: string | undefined;
-  try {
-    platformMessageId = await adapterRef.deliver(
-      target.messagingGroup.channel_type,
-      target.messagingGroup.platform_id,
-      null,
-      'chat-sdk',
-      JSON.stringify({
-        type: 'ask_question',
-        questionId: approvalId,
-        title: onecliTitle,
-        question,
-        options: onecliOptions,
-      }),
-    );
-  } catch (err) {
-    log.error('Failed to deliver OneCLI approval card', { approvalId, oneCliRequestId: request.id, err });
-    return 'deny';
-  }
 
   createPendingApproval({
     approval_id: approvalId,
@@ -184,21 +152,55 @@ async function handleRequest(request: ApprovalRequest): Promise<Decision> {
       path: request.path,
       bodyPreview: request.bodyPreview,
       agent: request.agent,
-      approver: target.userId,
+      approver: null,
     }),
     created_at: new Date().toISOString(),
     agent_group_id: agentGroupId,
-    channel_type: target.messagingGroup.channel_type,
-    platform_id: target.messagingGroup.platform_id,
-    platform_message_id: platformMessageId ?? null,
+    channel_type: null,
+    platform_id: null,
+    platform_message_id: null,
     expires_at: request.expiresAt,
     status: 'pending',
     title: onecliTitle,
     options_json: JSON.stringify(onecliOptions),
   });
 
-  // Expiry timer fires just before the gateway's own TTL so our decision lands
-  // in time to be recorded, even though the HTTP side will already be closing.
+  // Best-effort DM delivery — dashboard can approve even if DM fails.
+  const target = await pickApprovalDelivery(approvers, '');
+  if (target) {
+    try {
+      const platformMessageId = await adapterRef.deliver(
+        target.messagingGroup.channel_type,
+        target.messagingGroup.platform_id,
+        null,
+        'chat-sdk',
+        JSON.stringify({
+          type: 'ask_question',
+          questionId: approvalId,
+          title: onecliTitle,
+          question,
+          options: onecliOptions,
+        }),
+      );
+      updatePendingApprovalDelivery(approvalId, {
+        channel_type: target.messagingGroup.channel_type,
+        platform_id: target.messagingGroup.platform_id,
+        platform_message_id: platformMessageId ?? null,
+      });
+    } catch (err) {
+      log.error('Failed to deliver OneCLI approval card — row persisted for dashboard', {
+        approvalId,
+        oneCliRequestId: request.id,
+        err,
+      });
+    }
+  } else {
+    log.warn('OneCLI approval: no DM channel — row persisted for dashboard polling', {
+      id: request.id,
+      approvers,
+    });
+  }
+
   const expiresAtMs = new Date(request.expiresAt).getTime();
   const timeoutMs = Math.max(1000, expiresAtMs - Date.now() - 1000);
 

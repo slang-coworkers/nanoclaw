@@ -23,7 +23,7 @@
  */
 import { normalizeOptions, type RawOption } from '../../channels/ask-question.js';
 import { getMessagingGroup } from '../../db/messaging-groups.js';
-import { createPendingApproval, getSession } from '../../db/sessions.js';
+import { createPendingApproval, getSession, updatePendingApprovalDelivery } from '../../db/sessions.js';
 import { getDeliveryAdapter } from '../../delivery.js';
 import { wakeContainer } from '../../container-runner.js';
 import { log } from '../../log.js';
@@ -174,12 +174,6 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
     ? (getMessagingGroup(session.messaging_group_id)?.channel_type ?? '')
     : '';
 
-  const target = await pickApprovalDelivery(approvers, originChannelType);
-  if (!target) {
-    notifyAgent(session, `${action} failed: no DM channel found for any eligible approver.`);
-    return;
-  }
-
   const approvalId = `appr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const normalizedOptions = normalizeOptions(APPROVAL_OPTIONS);
   createPendingApproval({
@@ -190,12 +184,19 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
     payload: JSON.stringify(payload),
     created_at: new Date().toISOString(),
     agent_group_id: session.agent_group_id,
-    channel_type: target.messagingGroup.channel_type,
-    platform_id: target.messagingGroup.platform_id,
+    channel_type: null,
+    platform_id: null,
     platform_message_id: null,
     title,
     options_json: JSON.stringify(normalizedOptions),
   });
+
+  const target = await pickApprovalDelivery(approvers, originChannelType);
+  if (!target) {
+    log.warn('No DM channel for approval delivery — row persisted for dashboard', { action, approvalId });
+    notifyAgent(session, `${action} pending — awaiting admin review via dashboard.`);
+    return;
+  }
 
   const adapter = getDeliveryAdapter();
   if (adapter) {
@@ -213,9 +214,14 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
           options: APPROVAL_OPTIONS,
         }),
       );
+      updatePendingApprovalDelivery(approvalId, {
+        channel_type: target.messagingGroup.channel_type,
+        platform_id: target.messagingGroup.platform_id,
+        platform_message_id: null,
+      });
     } catch (err) {
-      log.error('Failed to deliver approval card', { action, approvalId, err });
-      notifyAgent(session, `${action} failed: could not deliver approval request to ${target.userId}.`);
+      log.error('Failed to deliver approval card — row persisted for dashboard', { action, approvalId, err });
+      notifyAgent(session, `${action} pending — DM delivery failed, awaiting admin review via dashboard.`);
       return;
     }
   }
