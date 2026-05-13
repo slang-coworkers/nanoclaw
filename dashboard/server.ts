@@ -5699,31 +5699,39 @@ export async function handleRequest(
       return;
     }
     try {
-      // a2a messaging_group for the recipient follows the `agent:<ag>`
-      // platform_id convention stamped by ensureA2aWiring().
-      const a2aMg = db
-        .prepare("SELECT id FROM messaging_groups WHERE channel_type = 'agent' AND platform_id = ?")
-        .get(`agent:${recipientAg}`) as { id: string } | undefined;
-      // Per-thread sessions live under (recipient_ag, a2a_mg, thread_id).
-      // If the sender is in root (thread_id=null), delivery takes the
-      // `agent-shared` path which keys on (recipient_ag, null, null) —
-      // so fall back to the messaging_group_id=null match for that case.
+      // Post-PR-#308 a2a model: per-source-recipient messaging groups with
+      // platform_id 'agent:<source_ag>:<recipient_ag>'. The `a2a_session_sources`
+      // table maps (recipient_session) → (source_session, source_thread_id, ...),
+      // which is the authoritative way to find the recipient's session for a
+      // given source thread — no need to guess via messaging-group naming.
       let sessRow: { id: string; thread_id: string | null; created_at: string | null } | undefined;
-      if (senderThread !== null && a2aMg) {
+      if (senderThread !== null) {
         sessRow = db
           .prepare(
-            "SELECT id, thread_id, created_at FROM sessions WHERE agent_group_id = ? AND messaging_group_id = ? AND thread_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+            `SELECT s.id, s.thread_id, s.created_at
+             FROM a2a_session_sources src
+             JOIN sessions s ON s.id = src.recipient_session_id
+             WHERE src.recipient_agent_group_id = ?
+               AND src.source_thread_id = ?
+               AND s.status = 'active'
+             ORDER BY src.created_at DESC LIMIT 1`,
           )
-          .get(recipientAg, a2aMg.id, senderThread) as any;
+          .get(recipientAg, senderThread) as any;
       } else {
-        // Root / unthreaded delegation — agent-shared session. Prefer a
-        // match on the recipient's agent-shared session (null mg, null
-        // thread) but tolerate rows that were written with the a2aMg id.
+        // Root delegation (no sender thread) — pick the most recent active
+        // a2a session for this recipient where source_thread_id is unset.
+        // Tolerate both NULL and empty-string (data drift from older paths).
         sessRow = db
           .prepare(
-            "SELECT id, thread_id, created_at FROM sessions WHERE agent_group_id = ? AND thread_id IS NULL AND status = 'active' AND (messaging_group_id IS NULL OR messaging_group_id = ?) ORDER BY created_at DESC LIMIT 1",
+            `SELECT s.id, s.thread_id, s.created_at
+             FROM a2a_session_sources src
+             JOIN sessions s ON s.id = src.recipient_session_id
+             WHERE src.recipient_agent_group_id = ?
+               AND (src.source_thread_id IS NULL OR src.source_thread_id = '')
+               AND s.status = 'active'
+             ORDER BY src.created_at DESC LIMIT 1`,
           )
-          .get(recipientAg, a2aMg?.id ?? '') as any;
+          .get(recipientAg) as any;
       }
       if (!sessRow) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
