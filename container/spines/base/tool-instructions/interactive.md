@@ -20,3 +20,5 @@ Use this when you genuinely cannot proceed without a decision. For free-text inp
 `card` supports: `title`, `description`, `children` (nested text or content blocks), and `actions` (buttons). `fallbackText` is sent as a plain message on platforms without card support.
 
 Use this for presenting information in a cleaner format than prose: summaries, options the user can read (but you're not waiting on), or results with contextual buttons. If you need the user to actually *choose* something and return a value, use `ask_user_question` instead.
+
+`send_card` always lands in the *current* conversation — wherever this turn was triggered from. It does not accept a `to:` parameter. To send a structured request to a peer or parent (e.g. credential requests, status updates that need someone else's attention), use `send_message({to: "parent" | "@coworker", text: "..."})` with markdown formatting — cards do not route across coworkers.
