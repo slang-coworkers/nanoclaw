@@ -2,10 +2,10 @@
 name: triage-issue
 license: MIT
 type: workflow
-description: "Triage a GitHub issue: read, research, classify, report, forward to fixer. Sequential steps, each mandatory."
+description: "Triage a GitHub issue: read, research, classify, report, forward to fixer. Sequential steps, each mandatory. Project-generic — projects override via their own triage workflow if needed."
 requires: [issues.read, code.read]
 uses:
-  skills: [slang-code-reader, slang-github]
+  skills: []
   workflows: []
 ---
 
@@ -13,12 +13,14 @@ uses:
 
 Use this workflow when asked to triage an issue, or when the orchestrator forwards an issue for analysis.
 
+This workflow is project-generic. Substitute `<project>` / `<repo>` / `<owner>` with the values for the project you're triaging in. Bind your project's reader / GitHub / docs skills via your coworker type's `bindings` so the steps below resolve to the right tools.
+
 **A/B test mode: NEVER post comments, create labels, or modify anything on GitHub. All output goes to parent via send_message.**
 
 ## Step 1: READ the issue {#read}
 
 ```bash
-gh issue view <number> -R <repo> --comments
+gh issue view <number> -R <owner>/<repo> --comments
 ```
 
 Extract:
@@ -32,7 +34,7 @@ Extract:
 Query DeepWiki for relevant project documentation:
 
 ```
-mcp__deepwiki__ask_question("<repo-owner>/<repo>", "<focused question about the issue's domain>")
+mcp__deepwiki__ask_question("<owner>/<repo>", "<focused question about the issue's domain>")
 ```
 
 Ask at least ONE question. Ask a SECOND if the first doesn't fully cover the issue's area. Good queries:
@@ -40,14 +42,13 @@ Ask at least ONE question. Ask a SECOND if the first doesn't fully cover the iss
 - "What is the architecture of <subsystem>?"
 - "What are the known limitations of <feature>?"
 
-## Step 3: RESEARCH via GitHub (MANDATORY) {#research-code}
+## Step 3: RESEARCH via project repo (MANDATORY) {#research-code}
 
-Search for related context:
+Use the project's GitHub / code-reader skills (bound by your coworker type) to gather context:
 
-```
-mcp__slang-mcp__github_search_issues(query="<keywords>", repo="<repo>")
-mcp__slang-mcp__github_get_file_contents(owner="<owner>", repo="<repo>", path="<relevant file>")
-```
+- Search for related issues (duplicates, prior reports)
+- Search for related PRs (past fixes in same area)
+- Read relevant source code (the component mentioned in the issue)
 
 Find:
 - Related issues (duplicates, prior reports)
@@ -62,7 +63,7 @@ Based on research, determine:
 |-------|---------|
 | Category | bug / feature-request / regression / enhancement / question / documentation |
 | Severity | critical / high / medium / low |
-| Component | (project-specific: e.g. CUDA backend, tensor dispatch, CI/wheels) |
+| Component | (project-specific subsystem or area) |
 | Priority | P0 (ship-stopper) / P1 (regression/broken) / P2 (normal) / P3 (nice-to-have) |
 | Duplicate? | Link to existing issue if duplicate |
 
@@ -76,10 +77,10 @@ send_message(text="[Triage] <repo>#<number>: <title>\n\nCategory: <cat>\nSeverit
 
 ## Step 6: FORWARD to fixer (if actionable) {#forward}
 
-If the issue is actionable (bug or regression with clear repro), forward to the fixer:
+If the issue is actionable (bug or regression with clear repro), forward to the project's fixer coworker:
 
 ```
-send_message(to="slang-fixer", text="[Triage handoff] <repo>#<number>: <title>\n\nPriority: <pri>\nComponent: <comp>\n\nSummary: <what's broken>\nRelevant files: <paths>\nRepro: <steps>\n\nPlease investigate and draft a fix. Do NOT push or create a PR — report back when done.")
+send_message(to="<project>-fixer", text="[Triage handoff] <repo>#<number>: <title>\n\nPriority: <pri>\nComponent: <comp>\n\nSummary: <what's broken>\nRelevant files: <paths>\nRepro: <steps>\n\nPlease investigate and draft a fix. Do NOT push or create a PR — report back when done.")
 ```
 
 If not actionable (feature request, needs-more-info, question), skip this step and note in the report why.
