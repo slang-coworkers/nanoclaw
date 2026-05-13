@@ -3855,6 +3855,37 @@ function renderCredentialItem(item) {
   </div>`;
 }
 
+function renderCardBubble(m, { cls, monogram, authorName, time, kindLabel, coworkerLabel, threadStubHtml, isOutgoing }) {
+  const titleHtml = m.cardTitle ? `<div style="font-weight:600;font-size:0.8125rem;margin-bottom:4px">${esc(m.cardTitle)}</div>` : '';
+  const descHtml = m.cardDescription ? `<div style="color:var(--text-muted);font-size:0.75rem;margin-bottom:6px">${md(m.cardDescription)}</div>` : '';
+  const childrenHtml = (m.cardChildren || [])
+    .filter(c => c.type === 'text' && c.text)
+    .map(c => `<div style="margin-top:6px">${md(c.text)}</div>`)
+    .join('');
+  const answered = m.id && cwState._answeredCards && cwState._answeredCards[m.id];
+  const inactive = isOutgoing || answered;
+  const actionsHtml = answered
+    ? `<div style="margin-top:4px;font-size:9px;color:#8b5cf6">(selected: ${esc(answered)})</div>`
+    : isOutgoing
+      ? (m.cardActions || []).length > 0 ? `<div style="margin-top:4px;font-size:9px;color:var(--text-dim)">(awaiting response)</div>` : ''
+      : (m.cardActions || []).length > 0
+        ? `<div style="margin-top:8px">${(m.cardActions || []).map(a =>
+            `<button class="card-action-btn" data-action="${escAttr(a.value)}" data-label="${escAttr(a.label)}" style="background:#7c3aed;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(a.label)}</button>`
+          ).join('')}</div>`
+        : '';
+  return `<div class="cw-msg ${cls}" data-msg-id="${m.id ? esc(m.id) : ''}">
+    <div class="cw-msg-avatar">${monogram}</div>
+    <div class="cw-msg-header">
+      <span class="cw-msg-author">${authorName}</span>
+      <span class="cw-msg-time">${time}${kindLabel || ''}${coworkerLabel || ''}</span>
+    </div>
+    <div class="cw-msg-bubble" style="border-left:3px solid ${inactive ? '#555' : '#8b5cf6'};padding-left:8px${inactive ? ';opacity:0.7' : ''}">
+      ${titleHtml}${descHtml}${childrenHtml}${actionsHtml}
+    </div>
+    ${threadStubHtml || ''}
+  </div>`;
+}
+
 function renderCwMessages() {
   const el = document.getElementById('cw-chat-messages');
   if (!el) return;
@@ -3881,8 +3912,9 @@ function renderCwMessages() {
     // keyed on (reviewer_ag, a2a_mg, sender_thread). sender_thread is
     // taken from the current view (thread.parentId if a thread is open,
     // empty for root view).
+    const a2aSourceThread = m.a2aSourceThread || m.parsedContent?._a2a_source_thread || '';
     const a2aInspectorBtn = isFromCoworker && m.senderCoworkerName && m.platform_id
-      ? ` <button class="cw-a2a-open-btn" title="Open ${esc(m.senderCoworkerName)}'s session for this thread (read-only)" data-recipient-ag="${escAttr(m.platform_id)}" data-recipient-name="${escAttr(m.senderCoworkerName)}" style="background:transparent;border:none;color:#d97706;cursor:pointer;font-size:8px;padding:0;margin-left:4px">&#x2197; open ${esc(m.senderCoworkerName)}'s session</button>`
+      ? ` <button class="cw-a2a-open-btn" title="Open ${esc(m.senderCoworkerName)}'s session for this thread (read-only)" data-recipient-ag="${escAttr(m.platform_id)}" data-recipient-name="${escAttr(m.senderCoworkerName)}" data-source-thread="${escAttr(a2aSourceThread)}" style="background:transparent;border:none;color:#d97706;cursor:pointer;font-size:8px;padding:0;margin-left:4px">&#x2197; open ${esc(m.senderCoworkerName)}'s session</button>`
       : '';
     const coworkerLabel = isFromCoworker && m.senderCoworkerName
       ? ` <span style="font-size:7px;color:#10b981;font-style:italic">from @${esc(m.senderCoworkerName)}</span>${a2aInspectorBtn}`
@@ -3890,6 +3922,10 @@ function renderCwMessages() {
       ? ` <span style="font-size:7px;color:#10b981;font-style:italic">→ @${esc(m.recipientCoworkerName)}</span>`
       : '';
     const systemStyle = isSystem ? ' style="opacity:0.5;font-size:9px;border-left:2px solid #555;padding-left:6px"' : '';
+
+    if (m.cardType === 'card') {
+      return renderCardBubble(m, { cls, monogram, authorName, time, kindLabel, coworkerLabel, threadStubHtml, isOutgoing });
+    }
 
     // Ask question card — render with option buttons if still pending
     if (m.cardType === 'ask_question' && m.questionId && m.options && m.options.length > 0) {
@@ -4001,7 +4037,7 @@ function renderCwMessages() {
         const recipientAg = a2aBtn.dataset.recipientAg;
         const recipientName = a2aBtn.dataset.recipientName || 'coworker';
         if (recipientAg) {
-          const senderThreadId = cwState.thread?.parentId || '';
+          const senderThreadId = a2aBtn.dataset.sourceThread || cwState.thread?.parentId || '';
           openA2aInspector({ recipientAgGroupId: recipientAg, senderThreadId, recipientName });
         }
         return;
@@ -4593,6 +4629,9 @@ function renderCwThread() {
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
         <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${body}</div></div>`;
     }
+    if (m.cardType === 'card') {
+      return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
+    }
     const attachHtml = renderMessageAttachmentsHtml(m.attachments);
     return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span></div>
@@ -5044,6 +5083,28 @@ document.getElementById('cw-create-btn')?.addEventListener('click', showCreateMo
 document.getElementById('cw-chat-send')?.addEventListener('click', sendCwMessage);
 document.getElementById('cw-chat-input')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCwMessage(); }
+});
+
+// Card action buttons (works in both main chat and thread panel)
+if (!cwState._answeredCards) cwState._answeredCards = {};
+document.addEventListener('click', async (e) => {
+  const cardBtn = e.target.closest('.card-action-btn');
+  if (!cardBtn) return;
+  const label = cardBtn.dataset.label;
+  if (!label || !cwState.selected) return;
+  const msgId = cardBtn.closest('.cw-msg')?.dataset?.msgId;
+  if (msgId && cwState._answeredCards[msgId]) return;
+  const card = cardBtn.closest('.cw-msg');
+  const allBtns = card ? card.querySelectorAll('.card-action-btn') : [cardBtn];
+  allBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+  cardBtn.textContent = 'Sending…';
+  const threadId = cwState.thread?.parentId || null;
+  const bucket = cwState.thread ? cwState.thread.messages : cwState.messages;
+  await sendMessage({ group: cwState.selected, content: label, threadId, optimisticBucket: bucket });
+  if (msgId) {
+    cwState._answeredCards[msgId] = label;
+    if (cwState.thread) renderCwThread(); else renderCwMessages();
+  }
 });
 
 // Thread panel composer + close button

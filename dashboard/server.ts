@@ -685,7 +685,7 @@ function normalizeMessageForDisplay(message: any): any {
     return message;
   }
   message.parsedContent = parsed;
-  message.displayContent = parsed.text || parsed.markdown || parsed.prompt || parsed.question || '';
+  message.displayContent = parsed.text || parsed.markdown || parsed.prompt || parsed.question || parsed.fallbackText || '';
 
   const fileNames = Array.isArray(parsed.files) ? parsed.files.filter((file: any) => typeof file === 'string') : [];
   if (fileNames.length > 0) {
@@ -715,6 +715,12 @@ function normalizeMessageForDisplay(message: any): any {
     message.cardType = 'credential_request';
     message.credentialId = typeof parsed.credentialId === 'string' ? parsed.credentialId : null;
     message.question = typeof parsed.question === 'string' ? parsed.question : message.displayContent;
+  } else if (parsed.type === 'card' && parsed.card && typeof parsed.card === 'object') {
+    message.cardType = 'card';
+    message.cardTitle = typeof parsed.card.title === 'string' ? parsed.card.title : '';
+    message.cardDescription = typeof parsed.card.description === 'string' ? parsed.card.description : '';
+    message.cardChildren = Array.isArray(parsed.card.children) ? parsed.card.children : [];
+    message.cardActions = Array.isArray(parsed.card.actions) ? parsed.card.actions : [];
   }
 
   return message;
@@ -4858,6 +4864,13 @@ export async function handleRequest(
           for (const sess of sessions) {
             const inDbPath = join(sessionsDir, sess.id, 'inbound.db');
             const outDbPath = join(sessionsDir, sess.id, 'outbound.db');
+            let a2aSourceThread: string | null = null;
+            try {
+              const srcRow = db?.prepare(
+                'SELECT source_thread_id FROM a2a_session_sources WHERE recipient_session_id = ? LIMIT 1',
+              ).get(sess.id) as { source_thread_id: string | null } | undefined;
+              a2aSourceThread = srcRow?.source_thread_id ?? null;
+            } catch { /* table may not exist */ }
             try {
               const deliveredByMessageOutId = new Map<string, { platformMessageId: string | null; status: string | null }>();
               if (existsSync(inDbPath)) {
@@ -4930,7 +4943,7 @@ export async function handleRequest(
                     group_name: agRow.name || agRow.folder,
                     session_id: sess.id,
                     ...(senderCoworkerName
-                      ? { senderKind: 'coworker', senderCoworkerName }
+                      ? { senderKind: 'coworker', senderCoworkerName, ...(a2aSourceThread ? { a2aSourceThread } : {}) }
                       : {}),
                   });
                 }
