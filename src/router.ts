@@ -522,3 +522,78 @@ function messageIdForAgent(baseId: string | undefined, agentGroupId: string): st
   const id = baseId && baseId.length > 0 ? baseId : generateId();
   return `${id}:${agentGroupId}`;
 }
+
+/**
+ * Bypass messaging-group routing: write a message directly into a known
+ * session's inbound.db and wake the container.
+ *
+ * Used by the dashboard "open a2a session" view, where the admin wants to
+ * interject in a peer-to-peer agent conversation. Normal routing
+ * (`routeInbound`) keys on (channel, platform, thread) and would either
+ * misroute the message into the coworker's main dashboard session OR
+ * create a new dashboard session — both wrong, because the admin is
+ * looking at a specific a2a session and expects their reply to land there.
+ *
+ * Caller is the dashboard ingress, gated by `DASHBOARD_SECRET`. No
+ * messaging_group lookup, no fan-out, no command-gate — admin-only.
+ */
+export async function routeInboundToSession(opts: {
+  sessionId: string;
+  content: string;
+  parentMessage?: InboundEvent['parentMessage'];
+}): Promise<void> {
+  const session = getSession(opts.sessionId);
+  if (!session) throw new Error(`session not found: ${opts.sessionId}`);
+
+  const now = new Date().toISOString();
+
+  // Optional parent_message seed (matches the existing per-thread seed
+  // semantics in routeInbound). trigger:0 so it accumulates as context.
+  if (opts.parentMessage) {
+    const pm = opts.parentMessage;
+    writeSessionMessage(session.agent_group_id, session.id, {
+      id: `seed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'chat',
+      timestamp: pm.timestamp ?? now,
+      platformId: 'dashboard:admin',
+      channelType: 'dashboard',
+      threadId: session.thread_id ?? null,
+      content: JSON.stringify({
+        text: pm.content,
+        sender: pm.sender ?? 'unknown',
+        senderId: pm.sender ?? 'unknown',
+        direction: pm.direction ?? 'outgoing',
+      }),
+      trigger: 0,
+    });
+  }
+
+  // The admin's own message — clearly attributed so the agent can
+  // distinguish it from the a2a peer's messages it has been receiving.
+  writeSessionMessage(session.agent_group_id, session.id, {
+    id: generateId(),
+    kind: 'chat',
+    timestamp: now,
+    platformId: 'dashboard:admin',
+    channelType: 'dashboard',
+    threadId: session.thread_id ?? null,
+    content: JSON.stringify({
+      text: opts.content,
+      sender: 'dashboard-admin',
+      senderId: 'dashboard-admin',
+    }),
+    trigger: 1,
+  });
+
+  log.info('Routed message direct to session', {
+    sessionId: session.id,
+    agentGroup: session.agent_group_id,
+    threadId: session.thread_id,
+  });
+
+  startTypingRefresh(session.id, session.agent_group_id, 'dashboard', 'dashboard:admin', session.thread_id ?? null);
+  const freshSession = getSession(session.id);
+  if (freshSession) {
+    await wakeContainer(freshSession);
+  }
+}
