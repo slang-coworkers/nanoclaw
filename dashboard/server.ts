@@ -5886,6 +5886,16 @@ export async function handleRequest(
       return;
     }
     try {
+      // Check that the column exists before attempting the UPDATE — migration
+      // 022 may not have run yet (the read path already handles this defensively).
+      const sessionCols = new Set(
+        (wdb.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>).map((c) => c.name),
+      );
+      if (!sessionCols.has(field)) {
+        res.writeHead(409, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `column ${field} not available — migration pending` }));
+        return;
+      }
       const value = on ? new Date().toISOString() : null;
       const r = wdb.prepare(`UPDATE sessions SET ${field} = ? WHERE id = ?`).run(value, sid);
       if (r.changes === 0) {
