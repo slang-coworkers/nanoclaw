@@ -647,15 +647,12 @@ export function writeCodexMcpConfigToml(
   let existingNonMcp = '';
   try {
     const existing = fs.readFileSync(configTomlPath, 'utf-8');
-    const filtered = existing.split('\n').filter((line) => {
-      // Drop all [mcp_servers*] blocks — we'll rewrite them below.
-      return true;
-    });
-    // Strip mcp_servers sections: everything from [mcp_servers. to the next top-level section
+    // Strip mcp_servers sections: everything from [mcp_servers...] to the next top-level section.
+    // We'll rewrite them below.
     const sections: string[] = [];
     let inMcp = false;
-    for (const line of filtered) {
-      if (/^\[mcp_servers[.\]]/.test(line)) { inMcp = true; continue; }
+    for (const line of existing.split('\n')) {
+      if (/^\[mcp_servers[\].]/.test(line)) { inMcp = true; continue; }
       if (/^\[/.test(line) && !/^\[mcp_servers/.test(line)) { inMcp = false; }
       if (!inMcp) sections.push(line);
     }

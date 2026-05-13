@@ -723,7 +723,7 @@ function buildMounts(
           // dashboard stamp sdk_session_routes at intake without guessing.
           // The env vars are set per-container by spawnContainer, so each
           // concurrent session (root + threads) carries its own identity.
-          command: `curl -sf --proxy '' -X POST ${hookUrl} -H 'Content-Type: application/json' -H 'X-Group-Folder: ${agentGroup.folder}' -H "X-NanoClaw-Session-Id: $NANOCLAW_SESSION_ID" -H "X-NanoClaw-Session-Thread-Id: $NANOCLAW_SESSION_THREAD_ID" -d "$(cat)" > /dev/null 2>&1 || true`,
+          command: `curl -sf --proxy '' -X POST ${hookUrl} -H 'Content-Type: application/json' -H 'X-Group-Folder: ${agentGroup.folder}' -H "X-NanoClaw-Session-Id: $NANOCLAW_SESSION_ID" -H "X-NanoClaw-Session-Thread-Id: $NANOCLAW_SESSION_THREAD_ID" -d @- > /dev/null 2>&1 || true`,
           timeout: 5,
         },
       ],

@@ -359,6 +359,13 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
         return;
       }
 
+      if (content.operation === 'edit' && content.messageId && content.text) {
+        await adapter.editMessage(tid, content.messageId as string, {
+          markdown: content.text as string,
+        });
+        return;
+      }
+
       // Ask question card — render as Card with buttons
       if (content.type === 'ask_question' && content.questionId && content.options) {
         const questionId = content.questionId as string;
