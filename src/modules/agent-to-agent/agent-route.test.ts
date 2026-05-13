@@ -197,7 +197,7 @@ describe('routeAgentMessage — thread_id routing', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('thread_id=null routes to agent-shared session (back-compat)', async () => {
+  it('thread_id=null routes to per-source shared session (not agent-shared)', async () => {
     const { senderSession } = seedPair();
     await routeAgentMessage(
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: null, content: JSON.stringify({ text: 'hi' }) },
@@ -208,7 +208,7 @@ describe('routeAgentMessage — thread_id routing', () => {
       .all('ag-recipient') as Array<{ id: string; thread_id: string | null; messaging_group_id: string | null }>;
     expect(rows).toHaveLength(1);
     expect(rows[0].thread_id).toBeNull();
-    expect(rows[0].messaging_group_id).toBeNull();
+    expect(rows[0].messaging_group_id).not.toBeNull();
   });
 
   it('two different thread_ids create two distinct recipient sessions', async () => {
@@ -246,7 +246,7 @@ describe('routeAgentMessage — thread_id routing', () => {
     expect(threaded).toHaveLength(1);
   });
 
-  it('empty-string thread_id is treated as null (root routing)', async () => {
+  it('empty-string thread_id is treated as null (per-source shared)', async () => {
     const { senderSession } = seedPair();
     await routeAgentMessage(
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: '', content: JSON.stringify({ text: 'x' }) },
@@ -257,7 +257,7 @@ describe('routeAgentMessage — thread_id routing', () => {
       .all('ag-recipient') as Array<{ thread_id: string | null; messaging_group_id: string | null }>;
     expect(rows).toHaveLength(1);
     expect(rows[0].thread_id).toBeNull();
-    expect(rows[0].messaging_group_id).toBeNull();
+    expect(rows[0].messaging_group_id).not.toBeNull();
   });
 
   it('unthreaded + threaded deliveries to the same recipient live in two different sessions', async () => {

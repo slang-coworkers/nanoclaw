@@ -268,15 +268,13 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
   //  - both null → agent-shared (back-compat for pre-threading installs).
   const explicitThread = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
   const threadId = explicitThread || session.thread_id || null;
-  let targetSession;
-  if (threadId) {
-    const a2aMgId = ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
-    const { session: s } = resolveSession(targetAgentGroupId, a2aMgId, threadId, 'per-thread');
-    targetSession = s;
-  } else {
-    const { session: s } = resolveSession(targetAgentGroupId, null, null, 'agent-shared');
-    targetSession = s;
-  }
+  // Always scope to the per-source a2a messaging group. Even when threadId is
+  // null, this creates a session keyed to (source, recipient) — not a global
+  // agent-shared session that every source's messages collapse into.
+  const a2aMgId = ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
+  const { session: targetSession } = resolveSession(
+    targetAgentGroupId, a2aMgId, threadId, threadId ? 'per-thread' : 'shared',
+  );
 
   // Stamp the route-back hint so the recipient's reply can find its way
   // home. Covers both per-thread and agent-shared paths — even shared
