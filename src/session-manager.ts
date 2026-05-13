@@ -106,13 +106,16 @@ export function resolveSession(
     if (existing) {
       return { session: existing, created: false };
     }
-    // Fallback: reuse a session for this agent + thread on ANY channel (e.g. a2a
-    // session reused when the dashboard replies to the same thread). Thread IDs
-    // are globally unique message IDs so cross-channel collision is not a concern.
-    if (lookupThreadId) {
-      const crossChannel = findSessionByAgentThread(agentGroupId, lookupThreadId);
-      if (crossChannel) {
-        return { session: crossChannel, created: false };
+    // Fallback: when a dashboard message targets a thread owned by an a2a session,
+    // reuse that session. Only for dashboard channels — a2a sources with the same
+    // thread_id must stay isolated per-source (the messaging_group scopes them).
+    if (lookupThreadId && messagingGroupId) {
+      const mg = getMessagingGroup(messagingGroupId);
+      if (mg && mg.channel_type === 'dashboard') {
+        const crossChannel = findSessionByAgentThread(agentGroupId, lookupThreadId);
+        if (crossChannel) {
+          return { session: crossChannel, created: false };
+        }
       }
     }
   }
