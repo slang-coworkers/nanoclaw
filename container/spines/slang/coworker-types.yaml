@@ -63,7 +63,7 @@ slang-triage:
   project: slang
   extends: slang-reader
   workflows:
-    - triage-issue
+    - slang-triage-issue
 
 slang-fixer:
   description: "Slang issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
