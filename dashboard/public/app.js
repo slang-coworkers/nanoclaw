@@ -3905,6 +3905,36 @@ function renderCwMessages() {
       : '';
     const systemStyle = isSystem ? ' style="opacity:0.5;font-size:9px;border-left:2px solid #555;padding-left:6px"' : '';
 
+    // NOTE on "direction": the dashboard API tags rows with
+    //   direction='outgoing' ← came from messages_out.db (agent's reply)
+    //   direction='incoming' ← came from messages_in.db (sent TO the agent)
+    // So isOutgoing=true is the AGENT speaking; !isOutgoing is the user
+    // (or another coworker via a2a). Author/monogram follow from that.
+    const authorName = isOutgoing
+      ? (isToCoworker && m.recipientCoworkerName
+          ? `${esc(cwState.selected || 'agent')} → @${esc(m.recipientCoworkerName)}`
+          : esc(cwState.selected || 'agent'))
+      : isFromCoworker && m.senderCoworkerName
+        ? `@${esc(m.senderCoworkerName)}`
+        : 'You';
+    const monogramSource = isOutgoing
+      ? (cwState.selected || 'A')
+      : (isFromCoworker && m.senderCoworkerName ? m.senderCoworkerName : 'You');
+    const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
+
+    // Reply-count stub: only for main-view rows that are thread starters.
+    const summary = cwState.threadSummaries && m.id ? cwState.threadSummaries[m.id] : null;
+    const threadUnread = (() => {
+      if (!summary?.sessionId || !summary.lastReplyTs) return 0;
+      const cursor = sessionReadCursors.getFor(summary.sessionId);
+      const lastMs = new Date(summary.lastReplyTs).getTime();
+      return (Number.isFinite(lastMs) && lastMs > cursor) ? 1 : 0;
+    })();
+    const unreadBadge = threadUnread ? ` <span style="background:#3b82f6;color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;margin-left:4px">new</span>` : '';
+    const threadStubHtml = summary
+      ? `<div class="cw-thread-stub" data-parent-id="${esc(m.id)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
+      : '';
+
     if (m.cardType === 'card') {
       return renderCardBubble(m, { cls, monogram, authorName, time, kindLabel, coworkerLabel, threadStubHtml, isOutgoing });
     }
@@ -3941,35 +3971,6 @@ function renderCwMessages() {
     const bubbleBody = `${text ? (renderAsMd ? md(text) : esc(text)) : ''}${attachmentsHtml}`;
 
     // Slack-style row: monogram avatar + header (name · time) + body.
-    // NOTE on "direction": the dashboard API tags rows with
-    //   direction='outgoing' ← came from messages_out.db (agent's reply)
-    //   direction='incoming' ← came from messages_in.db (sent TO the agent)
-    // So isOutgoing=true is the AGENT speaking; !isOutgoing is the user
-    // (or another coworker via a2a). Author/monogram follow from that.
-    const authorName = isOutgoing
-      ? (isToCoworker && m.recipientCoworkerName
-          ? `${esc(cwState.selected || 'agent')} → @${esc(m.recipientCoworkerName)}`
-          : esc(cwState.selected || 'agent'))
-      : isFromCoworker && m.senderCoworkerName
-        ? `@${esc(m.senderCoworkerName)}`
-        : 'You';
-    const monogramSource = isOutgoing
-      ? (cwState.selected || 'A')
-      : (isFromCoworker && m.senderCoworkerName ? m.senderCoworkerName : 'You');
-    const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
-
-    // Reply-count stub: only for main-view rows that are thread starters.
-    const summary = cwState.threadSummaries && m.id ? cwState.threadSummaries[m.id] : null;
-    const threadUnread = (() => {
-      if (!summary?.sessionId || !summary.lastReplyTs) return 0;
-      const cursor = sessionReadCursors.getFor(summary.sessionId);
-      const lastMs = new Date(summary.lastReplyTs).getTime();
-      return (Number.isFinite(lastMs) && lastMs > cursor) ? 1 : 0;
-    })();
-    const unreadBadge = threadUnread ? ` <span style="background:#3b82f6;color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;margin-left:4px">new</span>` : '';
-    const threadStubHtml = summary
-      ? `<div class="cw-thread-stub" data-parent-id="${esc(m.id)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
-      : '';
     // Hover action toolbar — only offer "Reply in thread" when we have a
     // persisted message id (not optimistic) and it's not an approval/
     // credential/question card (those have their own buttons).
