@@ -4,7 +4,7 @@ license: MIT
 type: overlay
 description: "Background companion monitor overlay. Injects a UserPromptSubmit hook that reads buddy guidance. Pair with the /buddy skill to activate."
 applies-to:
-  workflows: [plan, implement, fix-issue, triage-issue, discord-answer]
+  workflows: [plan, implement]
   traits: []
 insert-after: []
 insert-before: []
