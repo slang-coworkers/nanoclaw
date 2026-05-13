@@ -4596,6 +4596,7 @@ export async function handleRequest(
         nanoclaw_session_id: string | null;
         thread_id: string | null;
         messaging_group_id: string | null;
+        a2a_peer: string | null;
         display_title: string | null;
         title_source: string | null;
         hidden_at: string | null;
@@ -4620,10 +4621,29 @@ export async function handleRequest(
         _last_ts_num: number; // for sorting
       };
       const parentByKey = new Map<string, Parent>();
+      const resolveA2aPeer = (nano: NanoSess | null): string | null => {
+        if (!nano?.messaging_group_id || !db) return null;
+        try {
+          const mg = db
+            .prepare('SELECT platform_id FROM messaging_groups WHERE id = ?')
+            .get(nano.messaging_group_id) as { platform_id: string } | undefined;
+          if (!mg?.platform_id?.startsWith('agent:')) return null;
+          const parts = mg.platform_id.split(':');
+          const peerAgId = parts.find((p) => p.startsWith('ag-') && p !== nano.agent_group_id) || null;
+          if (!peerAgId) return null;
+          const peer = db.prepare('SELECT name, folder FROM agent_groups WHERE id = ?').get(peerAgId) as
+            | { name: string; folder: string }
+            | undefined;
+          return peer?.name || peer?.folder || null;
+        } catch {
+          return null;
+        }
+      };
       const makeParent = (nano: NanoSess | null, folder: string): Parent => ({
         nanoclaw_session_id: nano ? nano.id : null,
         thread_id: nano ? nano.thread_id : null,
         messaging_group_id: nano ? nano.messaging_group_id : null,
+        a2a_peer: resolveA2aPeer(nano),
         display_title: nano ? nano.display_title : null,
         title_source: nano ? nano.title_source : null,
         hidden_at: nano ? nano.hidden_at : null,
@@ -9410,7 +9430,6 @@ export async function handleRequest(
     }
     return;
   }
-
 
   // ── MCP server control (proxy to auth proxy on NanoClaw process) ────────
   if (req.method === 'POST' && url.pathname === '/api/mcp-control') {
