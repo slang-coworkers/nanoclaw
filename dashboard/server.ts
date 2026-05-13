@@ -62,6 +62,31 @@ function isInsideDir(baseDir: string, target: string): boolean {
   return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
 }
 
+function assetVersion(fileName: string): string {
+  try {
+    const publicDir = getPublicDir();
+    const content = readFileSync(resolve(publicDir, fileName));
+    return createHash('sha256').update(content).digest('hex').slice(0, 12);
+  } catch {
+    return String(Date.now());
+  }
+}
+
+function injectAssetVersions(html: Buffer): Buffer {
+  const versions = new Map<string, string>();
+  return Buffer.from(
+    html.toString('utf8').replace(/\b(src|href)="([^"?]+\.(?:js|css))"/g, (match, attr, assetPath) => {
+      if (/^(?:[a-z]+:)?\/\//i.test(assetPath) || assetPath.startsWith('/')) return match;
+      let version = versions.get(assetPath);
+      if (!version) {
+        version = assetVersion(assetPath);
+        versions.set(assetPath, version);
+      }
+      return `${attr}="${assetPath}?v=${version}"`;
+    }),
+  );
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Session display-title heuristic.
 //
@@ -9453,9 +9478,12 @@ export async function handleRequest(
   }
 
   try {
-    const content = readFileSync(filePath);
+    let content = readFileSync(filePath);
     const ext = extname(filePath);
     const headers: Record<string, string> = { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' };
+    if (ext === '.html') {
+      content = injectAssetVersions(content);
+    }
     // Prevent proxy caching of mutable assets (JS, HTML) so code updates are picked up immediately
     if (ext === '.js' || ext === '.html' || ext === '.css') {
       headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
