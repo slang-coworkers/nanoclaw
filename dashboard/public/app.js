@@ -4027,7 +4027,12 @@ function renderCwMessages() {
         const recipientAg = a2aBtn.dataset.recipientAg;
         const recipientName = a2aBtn.dataset.recipientName || 'coworker';
         if (recipientAg) {
-          const senderThreadId = a2aBtn.dataset.sourceThread || cwState.thread?.parentId || '';
+          // Use only the explicit data attribute. Older fallback to parentId
+          // was wrong — parentId is a MESSAGE id (msg-...), not a thread id;
+          // it never matches a2a_session_sources.source_thread_id.
+          // Empty string is fine — the server's null/empty branch finds the
+          // most recent a2a session for this recipient.
+          const senderThreadId = a2aBtn.dataset.sourceThread || '';
           openA2aInspector({ recipientAgGroupId: recipientAg, senderThreadId, recipientName });
         }
         return;
