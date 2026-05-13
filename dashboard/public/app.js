@@ -295,6 +295,8 @@ function activeNanoSessionsForCoworker(cw) {
 
 function isA2aSession(nanoSess) {
   if (nanoSess?.thread_id) return false;
+  if (nanoSess?.a2a_peer) return true;
+  if (typeof nanoSess?.messaging_group_id === 'string' && nanoSess.messaging_group_id.startsWith('mg-a2a-')) return true;
   return !nanoSess?.messaging_group_id;
 }
 
