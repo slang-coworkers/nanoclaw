@@ -263,10 +263,11 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
   //    agent:<source>:<recipient> mg, thread_id). Each unique
   //    (source, thread) pair starts its own isolated recipient session
   //    so two sources picking the same thread_id don't merge.
-  //  - thread_id null/empty → agent-shared (the original behaviour; every
-  //    unthreaded a2a message funnels into one recipient session). This
-  //    preserves back-compat for pre-threading installs.
-  const threadId = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
+  //  - thread_id null but source session has one → inherit it, so outbound
+  //    from a threaded session stays scoped (Slack-style DM isolation).
+  //  - both null → agent-shared (back-compat for pre-threading installs).
+  const explicitThread = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
+  const threadId = explicitThread || session.thread_id || null;
   let targetSession;
   if (threadId) {
     const a2aMgId = ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
