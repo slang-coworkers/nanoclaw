@@ -70,7 +70,7 @@ slang-fixer:
   project: slang
   extends: slang-writer
   workflows:
-    - fix-issue
+    - slang-fix-issue
 
 slang-discord:
   description: "Slang Discord support — read user questions, research via DeepWiki + GitHub, draft verified answers, send to parent for review. Read-only, no posting."
@@ -79,4 +79,4 @@ slang-discord:
   context:
     - container/spines/slang/context/discord-scope.md
   workflows:
-    - discord-answer
+    - slang-discord-answer
