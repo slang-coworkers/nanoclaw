@@ -429,7 +429,7 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
         data-pin-session="${sid}" data-pin-on="${isPinned ? '0' : '1'}">📌</button><button class="session-icon-btn" title="Rename this session"
         data-rename-session="${sid}" data-rename-current="${escAttr(currentTitle || '')}">✎</button><button class="session-icon-btn" title="Open in Timeline"
         data-view-nanoclaw-session="${sid}" data-view-nanoclaw-agid="${agid}" data-view-session-group="${tgrp}">≡</button>${tid ? `<button class="session-icon-btn" title="Open chat view"
-        data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${tgrp}">💬</button>` : isA2aSession(sess) ? `<button class="session-icon-btn" title="Open a2a session (read-only)"
+        data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${tgrp}">💬</button>` : isA2aSession(sess) ? `<button class="session-icon-btn" title="Open a2a session"
         data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${tgrp}">💬</button>` : `<button class="session-icon-btn" title="Main session — already shown in chat" disabled style="opacity:0.35;cursor:not-allowed">💬</button>`}<button class="session-icon-btn${isHidden ? ' active' : ''}" title="${isHidden ? 'Unhide session' : 'Hide session'}"
         data-hide-session="${sid}" data-hide-on="${isHidden ? '0' : '1'}">${isHidden ? '↺' : '−'}</button>`;
     };
@@ -4243,9 +4243,13 @@ function openThread(parentId, opts = {}) {
   cwState.thread = { parentId, parentSnapshot, messages: [], polling: null, sessionDirect: isSessionDirect };
   const panel = document.getElementById('cw-thread-panel');
   if (panel) panel.style.display = 'flex';
-  // Hide the reply composer for read-only a2a sessions
+  // Show the reply composer for both threaded and a2a (sessionDirect) views.
+  // Admin opens their own coworker's a2a sessions to interject — typing here
+  // lands in this session's inbound.db so the agent picks it up like any DM.
+  // (The cross-coworker peer inspector uses a different panel entirely and
+  // remains read-only — see openA2aInspector / cw-a2a-inspector-panel.)
   const inputArea = panel?.querySelector('.cw-thread-input');
-  if (inputArea) inputArea.style.display = isSessionDirect ? 'none' : '';
+  if (inputArea) inputArea.style.display = '';
   // The dashboard's detail panel and thread panel fight for the same slot —
   // hide detail while the thread is open to avoid a squeezed layout.
   const detail = document.getElementById('cw-detail');
