@@ -142,17 +142,51 @@ function extractTitleSignals(raw: string): { verb: string | null; refs: string[]
   if (verb) {
     const v = verb.toLowerCase();
     const imperatives = new Set([
-      'review', 'fix', 'investigate', 'implement', 'update', 'debug', 'refactor',
-      'add', 'remove', 'delete', 'rename', 'migrate', 'merge', 'split', 'rebase',
-      'check', 'verify', 'build', 'test', 'document', 'write', 'rewrite', 'port',
-      'extract', 'inline', 'optimize', 'profile', 'trace', 'audit', 'explore',
-      'land', 'ship', 'wire', 'replace', 'restore', 'revert', 'tidy', 'clean',
+      'review',
+      'fix',
+      'investigate',
+      'implement',
+      'update',
+      'debug',
+      'refactor',
+      'add',
+      'remove',
+      'delete',
+      'rename',
+      'migrate',
+      'merge',
+      'split',
+      'rebase',
+      'check',
+      'verify',
+      'build',
+      'test',
+      'document',
+      'write',
+      'rewrite',
+      'port',
+      'extract',
+      'inline',
+      'optimize',
+      'profile',
+      'trace',
+      'audit',
+      'explore',
+      'land',
+      'ship',
+      'wire',
+      'replace',
+      'restore',
+      'revert',
+      'tidy',
+      'clean',
     ]);
     verb = imperatives.has(v) ? verb.charAt(0).toUpperCase() + verb.slice(1).toLowerCase() : null;
   }
 
   // PR / issue references. Accept `PR #123`, `PR-123`, `#PR-A`, `issue #45`, `pull request 99`.
-  const prRefRe = /(?:\bPR\s?#?\s?([A-Za-z]?\d+[A-Za-z0-9-]*)|\bpull\s+request\s+#?\s?(\d+[A-Za-z0-9-]*)|#PR-([A-Za-z0-9-]+)|\bPR-([A-Za-z0-9-]+))/gi;
+  const prRefRe =
+    /(?:\bPR\s?#?\s?([A-Za-z]?\d+[A-Za-z0-9-]*)|\bpull\s+request\s+#?\s?(\d+[A-Za-z0-9-]*)|#PR-([A-Za-z0-9-]+)|\bPR-([A-Za-z0-9-]+))/gi;
   let m: RegExpExecArray | null;
   while ((m = prRefRe.exec(raw)) !== null) {
     const id = m[1] ?? m[2] ?? m[3] ?? m[4];
@@ -222,11 +256,7 @@ export function titleFromPrompt(prompt: string | null | undefined): string | nul
  * Runs AFTER the heuristic UPDATE completes, so the user sees a title
  * immediately and it optionally refines within ~1s.
  */
-async function refineTitleWithAgent(
-  heDb: Database.Database,
-  sessionId: string,
-  rawPrompt: string,
-): Promise<void> {
+async function refineTitleWithAgent(heDb: Database.Database, sessionId: string, rawPrompt: string): Promise<void> {
   if (process.env.DASHBOARD_TITLE_AGENT !== 'anthropic') return;
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return;
@@ -265,7 +295,10 @@ async function refineTitleWithAgent(
     const data = (await res.json()) as { content?: Array<{ type: string; text?: string }> };
     const text = data.content?.find((c) => c.type === 'text')?.text;
     if (!text) return;
-    const trimmed = text.trim().replace(/^["'`]|["'`]$/g, '').replace(/[?.!;:]+$/g, '');
+    const trimmed = text
+      .trim()
+      .replace(/^["'`]|["'`]$/g, '')
+      .replace(/[?.!;:]+$/g, '');
     if (!trimmed || trimmed.length > 72) return;
 
     heDb
@@ -281,8 +314,6 @@ async function refineTitleWithAgent(
     // is the acceptable fallback.
   }
 }
-
-
 
 function getProjectRoot(): string {
   return resolve(process.env.NANOCLAW_DASHBOARD_PROJECT_ROOT || resolve(import.meta.dirname, '..'));
@@ -305,15 +336,9 @@ function getGroupsDir(): string {
  * messaging_group_agents for older rows that use a non-canonical
  * platform_id. Returns null if the coworker has no dashboard wiring.
  */
-function resolveDashboardMessagingGroupId(
-  db: Database.Database,
-  agentGroupId: string,
-  folder: string,
-): string | null {
+function resolveDashboardMessagingGroupId(db: Database.Database, agentGroupId: string, folder: string): string | null {
   const primary = db
-    .prepare(
-      "SELECT id FROM messaging_groups WHERE channel_type = 'dashboard' AND platform_id = ?",
-    )
+    .prepare("SELECT id FROM messaging_groups WHERE channel_type = 'dashboard' AND platform_id = ?")
     .get(`dashboard:${folder}`) as { id: string } | undefined;
   if (primary?.id) return primary.id;
   const fallback = db
@@ -326,7 +351,10 @@ function resolveDashboardMessagingGroupId(
 
 function toSqliteDatetime(iso: string | null | undefined): string | null {
   if (!iso) return null;
-  return iso.replace('T', ' ').replace(/\.\d{3}Z$/, '').replace(/Z$/, '');
+  return iso
+    .replace('T', ' ')
+    .replace(/\.\d{3}Z$/, '')
+    .replace(/Z$/, '');
 }
 function getMcpManagementTokenPath(): string {
   return join(getDataDir(), '.mcp-management-token');
@@ -407,13 +435,20 @@ function postImportGroupInit(
   mkdirSync(claudeSharedDir, { recursive: true });
   const settingsFile = join(claudeSharedDir, 'settings.json');
   if (!existsSync(settingsFile)) {
-    writeFileSync(settingsFile, JSON.stringify({
-      preferences: { reasoningEffort: 'max' },
-      env: {
-        CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
-        CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
-      },
-    }, null, 2) + '\n');
+    writeFileSync(
+      settingsFile,
+      JSON.stringify(
+        {
+          preferences: { reasoningEffort: 'max' },
+          env: {
+            CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
+            CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
+          },
+        },
+        null,
+        2,
+      ) + '\n',
+    );
   }
 
   // 3. Container skills — merge individual skill dirs (import may have
@@ -425,7 +460,9 @@ function postImportGroupInit(
     for (const skill of readdirSync(skillsSrc)) {
       const dst = join(skillsDst, skill);
       if (!existsSync(dst)) {
-        try { cpSync(join(skillsSrc, skill), dst, { recursive: true }); } catch (e: any) {
+        try {
+          cpSync(join(skillsSrc, skill), dst, { recursive: true });
+        } catch (e: any) {
           warnings.push(`Skill copy '${skill}' failed: ${e.message}`);
         }
       }
@@ -446,7 +483,9 @@ function postImportGroupInit(
       if (existsSync(agentFile)) {
         const dst = join(agentsDst, `${entry}.md`);
         if (!existsSync(dst)) {
-          try { copyFileSync(agentFile, dst); } catch (e: any) {
+          try {
+            copyFileSync(agentFile, dst);
+          } catch (e: any) {
             warnings.push(`Subagent copy '${entry}' failed: ${e.message}`);
           }
         }
@@ -459,7 +498,9 @@ function postImportGroupInit(
   if (!existsSync(runnerDst)) {
     const runnerSrc = join(projectRoot, 'container', 'agent-runner', 'src');
     if (existsSync(runnerSrc)) {
-      try { cpSync(runnerSrc, runnerDst, { recursive: true }); } catch (e: any) {
+      try {
+        cpSync(runnerSrc, runnerDst, { recursive: true });
+      } catch (e: any) {
         warnings.push(`Agent-runner copy failed: ${e.message}`);
       }
     }
@@ -685,7 +726,8 @@ function normalizeMessageForDisplay(message: any): any {
     return message;
   }
   message.parsedContent = parsed;
-  message.displayContent = parsed.text || parsed.markdown || parsed.prompt || parsed.question || parsed.fallbackText || '';
+  message.displayContent =
+    parsed.text || parsed.markdown || parsed.prompt || parsed.question || parsed.fallbackText || '';
 
   const fileNames = Array.isArray(parsed.files) ? parsed.files.filter((file: any) => typeof file === 'string') : [];
   if (fileNames.length > 0) {
@@ -696,7 +738,9 @@ function normalizeMessageForDisplay(message: any): any {
     message.operationType = 'edit';
     message.targetPlatformMessageId = typeof parsed.messageId === 'string' ? parsed.messageId : null;
     message.operationText =
-      (typeof parsed.text === 'string' && parsed.text) || (typeof parsed.markdown === 'string' && parsed.markdown) || '';
+      (typeof parsed.text === 'string' && parsed.text) ||
+      (typeof parsed.markdown === 'string' && parsed.markdown) ||
+      '';
     message.displayContent = message.operationText || 'Edited a previous message';
   } else if (parsed.operation === 'reaction') {
     message.operationType = 'reaction';
@@ -710,7 +754,9 @@ function normalizeMessageForDisplay(message: any): any {
   if (parsed.type === 'ask_question') {
     message.cardType = 'ask_question';
     message.questionId = typeof parsed.questionId === 'string' ? parsed.questionId : null;
-    message.options = Array.isArray(parsed.options) ? parsed.options.filter((opt: any) => typeof opt === 'string' || (typeof opt === 'object' && opt?.label)) : [];
+    message.options = Array.isArray(parsed.options)
+      ? parsed.options.filter((opt: any) => typeof opt === 'string' || (typeof opt === 'object' && opt?.label))
+      : [];
   } else if (parsed.type === 'credential_request') {
     message.cardType = 'credential_request';
     message.credentialId = typeof parsed.credentialId === 'string' ? parsed.credentialId : null;
@@ -838,11 +884,7 @@ export function resolveCoworkerTypeMetadata(
  * Ensure a trigger pattern is unique across all messaging_group_agents.
  * If the candidate already exists (for a different agent), appends a numeric suffix.
  */
-export function getUniqueTrigger(
-  db: Database.Database,
-  candidate: string,
-  excludeAgentGroupId?: string,
-): string {
+export function getUniqueTrigger(db: Database.Database, candidate: string, excludeAgentGroupId?: string): string {
   const existing = db
     .prepare('SELECT mga.agent_group_id, mga.engage_mode, mga.engage_pattern FROM messaging_group_agents mga')
     .all() as { agent_group_id: string; engage_mode: string | null; engage_pattern: string | null }[];
@@ -932,13 +974,7 @@ export function ensureDashboardChatWiring(
       .prepare(
         "INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES (?, ?, ?, 'always', ?, 'all', 'per-thread', 0, ?)",
       )
-      .run(
-        `mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        mg.id,
-        group.id,
-        triggerPattern,
-        now,
-      );
+      .run(`mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, mg.id, group.id, triggerPattern, now);
   }
 
   const existingDestination = wdb
@@ -1227,7 +1263,11 @@ bootstrapHookEvents();
 // Last message timestamp cache (group_folder -> ISO timestamp)
 const lastMessageTsCache = new Map<string, string>();
 
-function pickLatestMessageTs(current: string | null, dbPath: string, table: 'messages_in' | 'messages_out'): string | null {
+function pickLatestMessageTs(
+  current: string | null,
+  dbPath: string,
+  table: 'messages_in' | 'messages_out',
+): string | null {
   if (!existsSync(dbPath)) return current;
   try {
     const sdb = new Database(dbPath, { readonly: true });
@@ -1249,9 +1289,7 @@ function refreshMessageTimestamps(): void {
     const groups = db.prepare('SELECT id, folder FROM agent_groups').all() as { id: string; folder: string }[];
     for (const group of groups) {
       let maxTs: string | null = null;
-      const sessions = db
-        .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-        .all(group.id) as { id: string }[];
+      const sessions = db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all(group.id) as { id: string }[];
       const sessionsDir = join(getDataDir(), 'v2-sessions', group.id);
       for (const sess of sessions) {
         maxTs = pickLatestMessageTs(maxTs, join(sessionsDir, sess.id, 'inbound.db'), 'messages_in');
@@ -1306,14 +1344,22 @@ function refreshContextWindowCache(): void {
               if (entry.isDirectory()) walkJsonl(full);
               else if (entry.name.endsWith('.jsonl')) jsonlFiles.push(full);
             }
-          } catch { /* skip */ }
+          } catch {
+            /* skip */
+          }
         };
         walkJsonl(claudeDir);
-      } catch { continue; }
+      } catch {
+        continue;
+      }
       if (jsonlFiles.length === 0) continue;
 
       jsonlFiles.sort((a, b) => {
-        try { return statSync(b).mtimeMs - statSync(a).mtimeMs; } catch { return 0; }
+        try {
+          return statSync(b).mtimeMs - statSync(a).mtimeMs;
+        } catch {
+          return 0;
+        }
       });
 
       const content = readFileSync(jsonlFiles[0], 'utf-8');
@@ -1342,10 +1388,14 @@ function refreshContextWindowCache(): void {
             });
             break;
           }
-        } catch { /* skip line */ }
+        } catch {
+          /* skip line */
+        }
       }
     }
-  } catch { /* DB not ready */ }
+  } catch {
+    /* DB not ready */
+  }
 }
 refreshContextWindowCache();
 const ctxTimer = setInterval(refreshContextWindowCache, 10000);
@@ -1364,19 +1414,28 @@ let groupTokenCache: Record<string, GroupTokenBucket> = {};
 
 function refreshGroupTokens(): void {
   const sessionsDir = join(getDataDir(), 'v2-sessions');
-  if (!existsSync(sessionsDir)) { groupTokenCache = {}; return; }
+  if (!existsSync(sessionsDir)) {
+    groupTokenCache = {};
+    return;
+  }
 
   const nameMap = new Map<string, string>();
   if (db) {
     try {
       const groups = db.prepare('SELECT id, name FROM agent_groups').all() as { id: string; name: string }[];
       for (const g of groups) nameMap.set(g.id, g.name);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   const byGroup: Record<string, GroupTokenBucket> = {};
   let agDirs: string[];
-  try { agDirs = readdirSync(sessionsDir).filter((d) => d.startsWith('ag-')); } catch { return; }
+  try {
+    agDirs = readdirSync(sessionsDir).filter((d) => d.startsWith('ag-'));
+  } catch {
+    return;
+  }
 
   for (const agDir of agDirs) {
     const claudeDir = join(sessionsDir, agDir, '.claude-shared', 'projects');
@@ -1390,26 +1449,42 @@ function refreshGroupTokens(): void {
           if (entry.isDirectory()) walkJsonl(full);
           else if (entry.name.endsWith('.jsonl')) jsonlFiles.push(full);
         }
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     };
     walkJsonl(claudeDir);
 
     for (const file of jsonlFiles) {
       let content: string;
-      try { content = readFileSync(file, 'utf-8'); } catch { continue; }
+      try {
+        content = readFileSync(file, 'utf-8');
+      } catch {
+        continue;
+      }
       for (const line of content.split('\n')) {
         if (!line.trim()) continue;
         try {
           const r = JSON.parse(line);
           if (r.type !== 'assistant' || !r.message?.usage) continue;
           const u = r.message.usage;
-          if (!byGroup[agDir]) byGroup[agDir] = { requests: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, name: nameMap.get(agDir) || agDir };
+          if (!byGroup[agDir])
+            byGroup[agDir] = {
+              requests: 0,
+              inputTokens: 0,
+              outputTokens: 0,
+              cacheReadTokens: 0,
+              cacheCreationTokens: 0,
+              name: nameMap.get(agDir) || agDir,
+            };
           byGroup[agDir].requests++;
           byGroup[agDir].inputTokens += u.input_tokens || 0;
           byGroup[agDir].outputTokens += u.output_tokens || 0;
           byGroup[agDir].cacheReadTokens += u.cache_read_input_tokens || 0;
           byGroup[agDir].cacheCreationTokens += u.cache_creation_input_tokens || 0;
-        } catch { /* skip line */ }
+        } catch {
+          /* skip line */
+        }
       }
     }
   }
@@ -1429,7 +1504,14 @@ interface CcusageDayEntry {
   totalTokens: number;
   totalCost: number;
   modelsUsed: string[];
-  modelBreakdowns: { modelName: string; inputTokens: number; outputTokens: number; cacheCreationTokens: number; cacheReadTokens: number; cost: number }[];
+  modelBreakdowns: {
+    modelName: string;
+    inputTokens: number;
+    outputTokens: number;
+    cacheCreationTokens: number;
+    cacheReadTokens: number;
+    cost: number;
+  }[];
 }
 interface CcusageGroupData {
   groupId: string;
@@ -1444,7 +1526,13 @@ interface CcusageCache {
   lastRefresh: number;
 }
 const emptyCcusagePeriod = { combined: [] as CcusageDayEntry[], byGroup: [] as CcusageGroupData[] };
-let ccusageCache: CcusageCache = { '1d': { ...emptyCcusagePeriod }, '7d': { ...emptyCcusagePeriod }, '30d': { ...emptyCcusagePeriod }, all: { ...emptyCcusagePeriod }, lastRefresh: 0 };
+let ccusageCache: CcusageCache = {
+  '1d': { ...emptyCcusagePeriod },
+  '7d': { ...emptyCcusagePeriod },
+  '30d': { ...emptyCcusagePeriod },
+  all: { ...emptyCcusagePeriod },
+  lastRefresh: 0,
+};
 
 function ccusageSinceDate(daysAgo: number): string {
   const d = new Date(Date.now() - daysAgo * 86400000);
@@ -1455,13 +1543,22 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
   return new Promise((resolve) => {
     const args = ['ccusage', 'daily', '--json', '--breakdown', '--offline'];
     if (since) args.push('--since', since);
-    exec(`npx ${args.join(' ')}`, { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, CLAUDE_CONFIG_DIR: claudeConfigDir } }, (err, stdout) => {
-      if (err) { resolve([]); return; }
-      try {
-        const parsed = JSON.parse(stdout);
-        resolve(parsed.daily || []);
-      } catch { resolve([]); }
-    });
+    exec(
+      `npx ${args.join(' ')}`,
+      { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, CLAUDE_CONFIG_DIR: claudeConfigDir } },
+      (err, stdout) => {
+        if (err) {
+          resolve([]);
+          return;
+        }
+        try {
+          const parsed = JSON.parse(stdout);
+          resolve(parsed.daily || []);
+        } catch {
+          resolve([]);
+        }
+      },
+    );
   });
 }
 
@@ -1526,11 +1623,16 @@ function runCodexCcusage(codexHome: string, since?: string): Promise<CcusageDayE
       `npx ${args.join(' ')}`,
       { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, CODEX_HOME: codexHome } },
       (err, stdout) => {
-        if (err) { resolve([]); return; }
+        if (err) {
+          resolve([]);
+          return;
+        }
         try {
           const parsed = JSON.parse(stdout);
           resolve((parsed.daily || []).map(normalizeCodexEntry));
-        } catch { resolve([]); }
+        } catch {
+          resolve([]);
+        }
       },
     );
   });
@@ -1541,7 +1643,11 @@ function mergeDailyEntries(allDays: CcusageDayEntry[][]): CcusageDayEntry[] {
   for (const days of allDays) {
     for (const d of days) {
       if (!byDate[d.date]) {
-        byDate[d.date] = { ...d, modelBreakdowns: d.modelBreakdowns.map(mb => ({ ...mb })), modelsUsed: [...d.modelsUsed] };
+        byDate[d.date] = {
+          ...d,
+          modelBreakdowns: d.modelBreakdowns.map((mb) => ({ ...mb })),
+          modelsUsed: [...d.modelsUsed],
+        };
       } else {
         const t = byDate[d.date];
         t.inputTokens += d.inputTokens;
@@ -1550,9 +1656,11 @@ function mergeDailyEntries(allDays: CcusageDayEntry[][]): CcusageDayEntry[] {
         t.cacheReadTokens += d.cacheReadTokens;
         t.totalTokens += d.totalTokens;
         t.totalCost += d.totalCost;
-        for (const m of d.modelsUsed) { if (!t.modelsUsed.includes(m)) t.modelsUsed.push(m); }
+        for (const m of d.modelsUsed) {
+          if (!t.modelsUsed.includes(m)) t.modelsUsed.push(m);
+        }
         for (const mb of d.modelBreakdowns) {
-          const existing = t.modelBreakdowns.find(e => e.modelName === mb.modelName);
+          const existing = t.modelBreakdowns.find((e) => e.modelName === mb.modelName);
           if (existing) {
             existing.cost += mb.cost;
             existing.inputTokens += mb.inputTokens;
@@ -1578,11 +1686,17 @@ async function refreshCcusageCache(): Promise<void> {
     try {
       const groups = db.prepare('SELECT id, name FROM agent_groups').all() as { id: string; name: string }[];
       for (const g of groups) nameMap.set(g.id, g.name);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   let agDirs: string[];
-  try { agDirs = readdirSync(sessionsDir).filter((d) => d.startsWith('ag-')); } catch { return; }
+  try {
+    agDirs = readdirSync(sessionsDir).filter((d) => d.startsWith('ag-'));
+  } catch {
+    return;
+  }
 
   const today = ccusageSinceDate(0);
   const week = ccusageSinceDate(7);
@@ -1596,7 +1710,12 @@ async function refreshCcusageCache(): Promise<void> {
     lastRefresh: Date.now(),
   };
 
-  const allByPeriod: { '1d': CcusageDayEntry[][]; '7d': CcusageDayEntry[][]; '30d': CcusageDayEntry[][]; all: CcusageDayEntry[][] } = { '1d': [], '7d': [], '30d': [], all: [] };
+  const allByPeriod: {
+    '1d': CcusageDayEntry[][];
+    '7d': CcusageDayEntry[][];
+    '30d': CcusageDayEntry[][];
+    all: CcusageDayEntry[][];
+  } = { '1d': [], '7d': [], '30d': [], all: [] };
 
   for (const agDir of agDirs) {
     const claudeShared = join(sessionsDir, agDir, '.claude-shared');
@@ -1611,7 +1730,7 @@ async function refreshCcusageCache(): Promise<void> {
           runCcusage(claudeShared, month),
           runCcusage(claudeShared),
         ])
-      : [[], [], [], []] as CcusageDayEntry[][];
+      : ([[], [], [], []] as CcusageDayEntry[][]);
 
     // --- Codex side (per-session-dir via CODEX_HOME) ---
     // Every session under this agent-group that used the codex provider has
@@ -1624,10 +1743,15 @@ async function refreshCcusageCache(): Promise<void> {
         const cxHome = join(sessionsDir, agDir, sessId, 'codex');
         if (existsSync(cxHome)) codexHomes.push(cxHome);
       }
-    } catch { /* ag-dir removed mid-scan — ignore */ }
+    } catch {
+      /* ag-dir removed mid-scan — ignore */
+    }
 
     const cxByPeriod: Record<'1d' | '7d' | '30d' | 'all', CcusageDayEntry[][]> = {
-      '1d': [], '7d': [], '30d': [], all: [],
+      '1d': [],
+      '7d': [],
+      '30d': [],
+      all: [],
     };
     for (const cxHome of codexHomes) {
       const [cx1, cx7, cx30, cxAll] = await Promise.all([
@@ -1668,8 +1792,12 @@ async function refreshCcusageCache(): Promise<void> {
 
   ccusageCache = result;
 }
-setTimeout(() => { refreshCcusageCache(); }, 5000);
-const ccusageTimer = setInterval(() => { refreshCcusageCache(); }, 120000);
+setTimeout(() => {
+  refreshCcusageCache();
+}, 5000);
+const ccusageTimer = setInterval(() => {
+  refreshCcusageCache();
+}, 120000);
 ccusageTimer.unref?.();
 
 // ---------- 24h message activity cache ----------
@@ -1682,7 +1810,10 @@ let activityDataCache: ActivityBucket[] | null = null;
 
 function refreshActivityData(): void {
   const sessionsDir = join(getDataDir(), 'v2-sessions');
-  if (!existsSync(sessionsDir)) { activityDataCache = null; return; }
+  if (!existsSync(sessionsDir)) {
+    activityDataCache = null;
+    return;
+  }
 
   const now = Date.now();
   const buckets: Record<string, { inbound: number; outbound: number }> = {};
@@ -1693,14 +1824,25 @@ function refreshActivityData(): void {
   const cutoff = new Date(now - 86400000).toISOString();
 
   let agDirs: string[];
-  try { agDirs = readdirSync(sessionsDir).filter((d) => d.startsWith('ag-')); } catch { return; }
+  try {
+    agDirs = readdirSync(sessionsDir).filter((d) => d.startsWith('ag-'));
+  } catch {
+    return;
+  }
 
   for (const agDir of agDirs) {
     const agPath = join(sessionsDir, agDir);
     let sessDirs: string[];
-    try { sessDirs = readdirSync(agPath).filter((d) => d.startsWith('sess-')); } catch { continue; }
+    try {
+      sessDirs = readdirSync(agPath).filter((d) => d.startsWith('sess-'));
+    } catch {
+      continue;
+    }
     for (const sessDir of sessDirs) {
-      for (const [dbName, direction] of [['inbound.db', 'inbound'], ['outbound.db', 'outbound']] as const) {
+      for (const [dbName, direction] of [
+        ['inbound.db', 'inbound'],
+        ['outbound.db', 'outbound'],
+      ] as const) {
         const dbPath = join(agPath, sessDir, dbName);
         if (!existsSync(dbPath)) continue;
         let sdb: InstanceType<typeof Database> | null = null;
@@ -1708,13 +1850,21 @@ function refreshActivityData(): void {
           sdb = new Database(dbPath, { readonly: true });
           sdb.pragma('busy_timeout = 1000');
           const table = direction === 'outbound' ? 'messages_out' : 'messages_in';
-          const rows = sdb.prepare(`SELECT timestamp FROM ${table} WHERE timestamp > ?`).all(cutoff) as { timestamp: string }[];
+          const rows = sdb.prepare(`SELECT timestamp FROM ${table} WHERE timestamp > ?`).all(cutoff) as {
+            timestamp: string;
+          }[];
           for (const row of rows) {
             const key = row.timestamp.slice(0, 13);
             if (buckets[key]) buckets[key][direction]++;
           }
-        } catch { /* skip */ } finally {
-          try { sdb?.close(); } catch { /* ignore */ }
+        } catch {
+          /* skip */
+        } finally {
+          try {
+            sdb?.close();
+          } catch {
+            /* ignore */
+          }
         }
       }
     }
@@ -1745,12 +1895,14 @@ function collectUsersData(): UserData[] {
     const users = db.prepare('SELECT id, kind, display_name, created_at FROM users').all() as any[];
     return users.map((u) => {
       const roles = db!.prepare('SELECT role, agent_group_id FROM user_roles WHERE user_id = ?').all(u.id) as any[];
-      const memberships = db!.prepare(
-        `SELECT agm.agent_group_id, ag.name as agent_group_name
+      const memberships = db!
+        .prepare(
+          `SELECT agm.agent_group_id, ag.name as agent_group_name
          FROM agent_group_members agm
          JOIN agent_groups ag ON ag.id = agm.agent_group_id
-         WHERE agm.user_id = ?`
-      ).all(u.id) as any[];
+         WHERE agm.user_id = ?`,
+        )
+        .all(u.id) as any[];
       const dms = db!.prepare('SELECT channel_type FROM user_dms WHERE user_id = ?').all(u.id) as any[];
 
       const rolesWithNames = roles.map((r: any) => {
@@ -1778,7 +1930,9 @@ function collectUsersData(): UserData[] {
         dmChannels: dms,
       };
     });
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 // ---------- Channel status collection ----------
@@ -1792,12 +1946,34 @@ interface ChannelStatusData {
 function collectChannelStatus(): ChannelStatusData[] {
   if (!db) return [];
   try {
-    const channelsDir = resolve(process.env.NANOCLAW_DASHBOARD_CHANNELS_DIR || join(getProjectRoot(), 'src', 'channels'));
-    const exclude = new Set(['index.ts', 'registry.ts', 'registry.test.ts', 'channel-registry.ts', 'channel-registry.test.ts', 'adapter.ts', 'chat-sdk-bridge.ts', 'chat-sdk-bridge.test.ts', 'ask-question.ts', 'cli.ts']);
+    const channelsDir = resolve(
+      process.env.NANOCLAW_DASHBOARD_CHANNELS_DIR || join(getProjectRoot(), 'src', 'channels'),
+    );
+    const exclude = new Set([
+      'index.ts',
+      'registry.ts',
+      'registry.test.ts',
+      'channel-registry.ts',
+      'channel-registry.test.ts',
+      'adapter.ts',
+      'chat-sdk-bridge.ts',
+      'chat-sdk-bridge.test.ts',
+      'ask-question.ts',
+      'cli.ts',
+    ]);
     const results: ChannelStatusData[] = [];
     if (!existsSync(channelsDir)) return [];
 
-    const prefixMap: Record<string, string> = { telegram: 'tg:', whatsapp: 'wa:', discord: 'disc:', slack: 'slack:', signal: 'sig:', matrix: 'mx:', gmail: 'gmail:', dashboard: 'dashboard:' };
+    const prefixMap: Record<string, string> = {
+      telegram: 'tg:',
+      whatsapp: 'wa:',
+      discord: 'disc:',
+      slack: 'slack:',
+      signal: 'sig:',
+      matrix: 'mx:',
+      gmail: 'gmail:',
+      dashboard: 'dashboard:',
+    };
 
     for (const file of readdirSync(channelsDir)) {
       if (!file.endsWith('.ts') || exclude.has(file) || file.includes('.test.')) continue;
@@ -1805,25 +1981,41 @@ function collectChannelStatus(): ChannelStatusData[] {
       const prefix = prefixMap[name] || `${name}:`;
       const groups: ChannelStatusData['groups'] = [];
       try {
-        const rows = db.prepare(
-          `SELECT mg.id, mg.platform_id, mg.name, mg.is_group, ag.name as ag_name
+        const rows = db
+          .prepare(
+            `SELECT mg.id, mg.platform_id, mg.name, mg.is_group, ag.name as ag_name
            FROM messaging_groups mg
            JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id
            JOIN agent_groups ag ON ag.id = mga.agent_group_id
-           WHERE mg.platform_id LIKE ?`
-        ).all(`${prefix}%`) as any[];
-        const byMg = new Map<string, { id: string; name: string | null; platform_id: string; is_group: number; agentGroups: string[] }>();
+           WHERE mg.platform_id LIKE ?`,
+          )
+          .all(`${prefix}%`) as any[];
+        const byMg = new Map<
+          string,
+          { id: string; name: string | null; platform_id: string; is_group: number; agentGroups: string[] }
+        >();
         for (const r of rows) {
-          if (!byMg.has(r.id)) byMg.set(r.id, { id: r.id, name: r.name, platform_id: r.platform_id, is_group: r.is_group, agentGroups: [] });
+          if (!byMg.has(r.id))
+            byMg.set(r.id, {
+              id: r.id,
+              name: r.name,
+              platform_id: r.platform_id,
+              is_group: r.is_group,
+              agentGroups: [],
+            });
           byMg.get(r.id)!.agentGroups.push(r.ag_name);
         }
         groups.push(...byMg.values());
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       results.push({ channelType: name, configured: groups.length > 0, groupCount: groups.length, groups });
     }
 
     return results.sort((a, b) => a.channelType.localeCompare(b.channelType));
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 // ---------- Manifest summary cache (composition breakdown) ----------
@@ -1850,14 +2042,24 @@ function refreshManifestSummaryCache(): void {
   if (!db) return;
   try {
     const req = createRequire(import.meta.url);
-    const { resolveCoworkerManifest, readCoworkerTypes, readSkillCatalog } = req(join(getProjectRoot(), 'dist', 'claude-composer.js'));
+    const { resolveCoworkerManifest, readCoworkerTypes, readSkillCatalog } = req(
+      join(getProjectRoot(), 'dist', 'claude-composer.js'),
+    );
     const types = readCoworkerTypes(getProjectRoot());
     const catalog = readSkillCatalog(getProjectRoot());
-    const groups = db.prepare('SELECT folder, coworker_type FROM agent_groups WHERE coworker_type IS NOT NULL AND coworker_type != \'\'').all() as { folder: string; coworker_type: string }[];
+    const groups = db
+      .prepare("SELECT folder, coworker_type FROM agent_groups WHERE coworker_type IS NOT NULL AND coworker_type != ''")
+      .all() as { folder: string; coworker_type: string }[];
     for (const group of groups) {
       try {
         const manifest = resolveCoworkerManifest(types, group.coworker_type, catalog, getProjectRoot());
-        const overlayNames = [...new Set((manifest.customizations || []).filter((c: any) => c.kind === 'overlay' && c.overlayName).map((c: any) => c.overlayName as string))];
+        const overlayNames = [
+          ...new Set(
+            (manifest.customizations || [])
+              .filter((c: any) => c.kind === 'overlay' && c.overlayName)
+              .map((c: any) => c.overlayName as string),
+          ),
+        ];
         manifestSummaryCache.set(group.folder, {
           typeName: manifest.typeName || group.coworker_type,
           skillCount: manifest.skills?.length || 0,
@@ -1872,12 +2074,28 @@ function refreshManifestSummaryCache(): void {
           workflows: (manifest.workflows || []).map((w: any) => w.name),
           overlays: overlayNames,
           tools: manifest.tools || [],
-          invariants: (manifest.invariants || []).map((t: string) => t.split('\n')[0].replace(/^#+\s*/, '').trim() || 'unnamed'),
-          contextFragments: (manifest.context || []).map((t: string) => t.split('\n')[0].replace(/^#+\s*/, '').trim() || 'unnamed'),
+          invariants: (manifest.invariants || []).map(
+            (t: string) =>
+              t
+                .split('\n')[0]
+                .replace(/^#+\s*/, '')
+                .trim() || 'unnamed',
+          ),
+          contextFragments: (manifest.context || []).map(
+            (t: string) =>
+              t
+                .split('\n')[0]
+                .replace(/^#+\s*/, '')
+                .trim() || 'unnamed',
+          ),
         });
-      } catch { /* skip broken type */ }
+      } catch {
+        /* skip broken type */
+      }
     }
-  } catch { /* composer not available */ }
+  } catch {
+    /* composer not available */
+  }
 }
 refreshManifestSummaryCache();
 const manifestTimer = setInterval(refreshManifestSummaryCache, 30000);
@@ -1906,7 +2124,9 @@ try {
     const rows = db.prepare('SELECT DISTINCT group_folder FROM hook_events').all() as { group_folder: string }[];
     for (const r of rows) hookEverSeen.add(r.group_folder);
   }
-} catch { /* hook_events table may not exist yet */ }
+} catch {
+  /* hook_events table may not exist yet */
+}
 
 // Cached set of running container name prefixes (refreshed async every 5s).
 // Scoped to the instance's CONTAINER_PREFIX so containers belonging to
@@ -1953,7 +2173,9 @@ function getCoworkerTypes(): Record<string, any> {
       jsonTypes = JSON.parse(readFileSync(getCoworkerTypesPath(), 'utf-8'));
       cachedTypes = { data: jsonTypes, mtimeMs: st.mtimeMs };
     }
-  } catch { /* no JSON file */ }
+  } catch {
+    /* no JSON file */
+  }
   const legoTypes = readLegoCoworkerTypes();
   return { ...legoTypes, ...jsonTypes };
 }
@@ -1965,8 +2187,14 @@ function getCoworkerTypes(): Record<string, any> {
 // preserved: extends, description. Full merge semantics live in the
 // composer (src/claude-composer.ts); this helper exists because the dashboard
 // only needs the extends chain for requires.coworkerTypes walks.
-function readLegoCoworkerTypes(): Record<string, { extends?: string | string[]; description?: string; project?: string; flat?: boolean; skills?: string[] }> {
-  const registry: Record<string, { extends?: string | string[]; description?: string; project?: string; flat?: boolean; skills?: string[] }> = {};
+function readLegoCoworkerTypes(): Record<
+  string,
+  { extends?: string | string[]; description?: string; project?: string; flat?: boolean; skills?: string[] }
+> {
+  const registry: Record<
+    string,
+    { extends?: string | string[]; description?: string; project?: string; flat?: boolean; skills?: string[] }
+  > = {};
   // Post-refactor, project/spine types (base-common, nanoclaw-*, slang-*,
   // slangpy-*) live under container/spines/*/coworker-types.yaml.
   // Capability-skill addons (dashboard-base, nanoclaw-base) still ship
@@ -1974,10 +2202,7 @@ function readLegoCoworkerTypes(): Record<string, { extends?: string | string[]; 
   // fragments to main/global. Scan both roots — spines first so authoritative
   // type definitions register before skill-layer addons extend them. This
   // mirrors TYPE_SOURCE_DIRS in src/claude-composer/registry.ts.
-  const roots = [
-    join(getProjectRoot(), 'container', 'spines'),
-    getSkillsDir(),
-  ];
+  const roots = [join(getProjectRoot(), 'container', 'spines'), getSkillsDir()];
   let yamlLoad: (input: string) => any;
   try {
     yamlLoad = createRequire(import.meta.url)('js-yaml').load;
@@ -2034,14 +2259,25 @@ function readSkillAllowedTools(): Record<string, string[]> {
         const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
         if (!fmMatch) continue;
         let yamlLoad: (input: string) => any;
-        try { yamlLoad = createRequire(import.meta.url)('js-yaml').load; } catch { continue; }
+        try {
+          yamlLoad = createRequire(import.meta.url)('js-yaml').load;
+        } catch {
+          continue;
+        }
         const meta = yamlLoad(fmMatch[1]);
         if (!meta?.name || !meta['allowed-tools']) continue;
-        const tools = String(meta['allowed-tools']).split(',').map(t => t.trim()).filter(t => t.startsWith('mcp__'));
+        const tools = String(meta['allowed-tools'])
+          .split(',')
+          .map((t) => t.trim())
+          .filter((t) => t.startsWith('mcp__'));
         if (tools.length > 0) result[meta.name] = tools;
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
-  } catch { /* no skills dir */ }
+  } catch {
+    /* no skills dir */
+  }
   _skillToolsCache = result;
   return result;
 }
@@ -2058,7 +2294,7 @@ function resolveLegoMcpTools(coworkerType: string): string[] {
     if (!t) return;
     for (const s of t.skills || []) allSkills.add(s);
     const ext = t.extends;
-    if (Array.isArray(ext)) ext.forEach(e => walkType(e, depth + 1));
+    if (Array.isArray(ext)) ext.forEach((e) => walkType(e, depth + 1));
     else if (ext) walkType(ext, depth + 1);
   }
 
@@ -2131,8 +2367,7 @@ export function matchContainerName(
     }
   }
 
-  const ownedByRival = (name: string): boolean =>
-    rivalFolderPrefixes.some((rp) => name.startsWith(rp));
+  const ownedByRival = (name: string): boolean => rivalFolderPrefixes.some((rp) => name.startsWith(rp));
 
   if (sessionId) {
     const tail = sessionId.startsWith('sess-') ? sessionId.slice(5) : sessionId;
@@ -2250,7 +2485,9 @@ function watchMcpManagementToken(onChange: () => void): (() => void) | null {
       if (curr.mtimeMs !== prev.mtimeMs || (curr.size > 0 && prev.size === 0)) onChange();
     });
     cleanups.push(() => unwatchFile(tokenPath));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   // Also watch the directory for renames/moves (belt-and-suspenders).
   try {
@@ -2258,7 +2495,9 @@ function watchMcpManagementToken(onChange: () => void): (() => void) | null {
       if (filename === '.mcp-management-token') onChange();
     });
     cleanups.push(() => watcher.close());
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   // Startup race: the main service may still be booting when the dashboard
   // starts. Poll every 3s for up to 30s until the token file appears.
@@ -2531,7 +2770,9 @@ function getState(): DashboardState {
             const { sessionIds } = collectSessionDbFiles(agRow2.id);
             taskCount = extractScheduledTasks(agRow2.id, sessionIds).length;
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       // Use agent hook state for real-time status (preferred over container check)
@@ -2661,18 +2902,22 @@ function getState(): DashboardState {
       // Enrich with trigger_pattern and jid from messaging_group_agents / messaging_groups
       for (const g of registeredGroups) {
         try {
-          const mga = db.prepare(
-            `SELECT mga.engage_mode, mga.engage_pattern, mg.platform_id
+          const mga = db
+            .prepare(
+              `SELECT mga.engage_mode, mga.engage_pattern, mg.platform_id
              FROM messaging_group_agents mga
              JOIN messaging_groups mg ON mg.id = mga.messaging_group_id
              WHERE mga.agent_group_id = ?
              LIMIT 1`,
-          ).get(g.id) as any;
+            )
+            .get(g.id) as any;
           if (mga) {
-            g.trigger_pattern = (mga.engage_mode === 'pattern' && mga.engage_pattern) ? mga.engage_pattern : null;
+            g.trigger_pattern = mga.engage_mode === 'pattern' && mga.engage_pattern ? mga.engage_pattern : null;
             g.jid = mga.platform_id || null;
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
     } catch {
       /* ignore */
@@ -2731,7 +2976,13 @@ export function resetTransientDashboardStateForTests(): void {
   db = null;
   writeDb = null;
   hookEventsDb = null;
-  ccusageCache = { '1d': { ...emptyCcusagePeriod }, '7d': { ...emptyCcusagePeriod }, '30d': { ...emptyCcusagePeriod }, all: { ...emptyCcusagePeriod }, lastRefresh: 0 };
+  ccusageCache = {
+    '1d': { ...emptyCcusagePeriod },
+    '7d': { ...emptyCcusagePeriod },
+    '30d': { ...emptyCcusagePeriod },
+    all: { ...emptyCcusagePeriod },
+    lastRefresh: 0,
+  };
   groupTokenCache = {};
   activityDataCache = null;
 }
@@ -2844,7 +3095,8 @@ const MAX_ARCHIVE_ENTRIES = 50_000;
 const MAX_EXTRACTED_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB
 const MAX_SINGLE_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 const MAX_GROUP_SUBDIR_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB (exports stay on host)
-const EXCLUDE_DIR_PATTERNS = /^(node_modules|cmake-.*|conda.*|build|dist|target|__pycache__|\.cache|venv|\.venv|\.tox|\.mypy_cache|\.pytest_cache)$/;
+const EXCLUDE_DIR_PATTERNS =
+  /^(node_modules|cmake-.*|conda.*|build|dist|target|__pycache__|\.cache|venv|\.venv|\.tox|\.mypy_cache|\.pytest_cache)$/;
 
 /** Read request body with size limit. Rejects with 413 if exceeded. */
 function readBody(req: import('http').IncomingMessage, res: import('http').ServerResponse): Promise<string | null> {
@@ -2916,23 +3168,28 @@ function shouldExcludeFromArchive(relativePath: string, isDir: boolean): boolean
 
 /** Walk a directory recursively, collecting { relativePath → absolutePath } entries.
  *  Skips excluded dirs/files. Enforces per-file and per-subdir size limits. */
-function walkDir(
-  baseDir: string,
-  opts?: { maxFileSize?: number; maxSubdirSize?: number },
-): Map<string, string> {
+function walkDir(baseDir: string, opts?: { maxFileSize?: number; maxSubdirSize?: number }): Map<string, string> {
   const maxFile = opts?.maxFileSize ?? MAX_SINGLE_FILE_SIZE;
   const maxSubdir = opts?.maxSubdirSize ?? Infinity;
   const result = new Map<string, string>();
 
   function recurse(dir: string, relPrefix: string, budgetLeft: number): number {
     let entries: string[];
-    try { entries = readdirSync(dir); } catch { return 0; }
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      return 0;
+    }
     let consumed = 0;
     for (const entry of entries) {
       const abs = join(dir, entry);
       const rel = relPrefix ? `${relPrefix}/${entry}` : entry;
       let st: ReturnType<typeof statSync>;
-      try { st = statSync(abs); } catch { continue; }
+      try {
+        st = statSync(abs);
+      } catch {
+        continue;
+      }
       if (st.isDirectory()) {
         if (shouldExcludeFromArchive(rel, true)) continue;
         consumed += recurse(abs, rel, budgetLeft - consumed);
@@ -2950,12 +3207,20 @@ function walkDir(
   if (maxSubdir < Infinity) {
     // Apply per-top-level-subdir budget
     let entries: string[];
-    try { entries = readdirSync(baseDir); } catch { return result; }
+    try {
+      entries = readdirSync(baseDir);
+    } catch {
+      return result;
+    }
     for (const entry of entries) {
       const abs = join(baseDir, entry);
       const rel = entry;
       let st: ReturnType<typeof statSync>;
-      try { st = statSync(abs); } catch { continue; }
+      try {
+        st = statSync(abs);
+      } catch {
+        continue;
+      }
       if (st.isDirectory()) {
         if (shouldExcludeFromArchive(rel, true)) continue;
         recurse(abs, rel, maxSubdir);
@@ -2992,12 +3257,20 @@ function collectSessionDbFiles(agentGroupId: string): { files: Map<string, strin
   const sessionIds: string[] = [];
   const agDir = join(getDataDir(), 'v2-sessions', agentGroupId);
   let entries: string[];
-  try { entries = readdirSync(agDir); } catch { return { files, sessionIds }; }
+  try {
+    entries = readdirSync(agDir);
+  } catch {
+    return { files, sessionIds };
+  }
   for (const entry of entries) {
     if (!entry.startsWith('sess-')) continue;
     const sessDir = join(agDir, entry);
     let st: ReturnType<typeof statSync>;
-    try { st = statSync(sessDir); } catch { continue; }
+    try {
+      st = statSync(sessDir);
+    } catch {
+      continue;
+    }
     if (!st.isDirectory()) continue;
     sessionIds.push(entry);
     for (const dbFile of ['inbound.db', 'outbound.db']) {
@@ -3014,8 +3287,22 @@ function collectSessionDbFiles(agentGroupId: string): { files: Map<string, strin
 function extractScheduledTasks(
   agentGroupId: string,
   sessionIds: string[],
-): { origId: string; sessionId: string; recurrence: string | null; processAfter: string | null; content: string; status: string }[] {
-  const tasks: { origId: string; sessionId: string; recurrence: string | null; processAfter: string | null; content: string; status: string }[] = [];
+): {
+  origId: string;
+  sessionId: string;
+  recurrence: string | null;
+  processAfter: string | null;
+  content: string;
+  status: string;
+}[] {
+  const tasks: {
+    origId: string;
+    sessionId: string;
+    recurrence: string | null;
+    processAfter: string | null;
+    content: string;
+    status: string;
+  }[] = [];
   for (const sessId of sessionIds) {
     const dbPath = join(getDataDir(), 'v2-sessions', agentGroupId, sessId, 'inbound.db');
     if (!existsSync(dbPath)) continue;
@@ -3023,9 +3310,11 @@ function extractScheduledTasks(
     try {
       sdb = new Database(dbPath, { readonly: true });
       sdb.pragma('busy_timeout = 3000');
-      const rows = sdb.prepare(
-        "SELECT id, recurrence, process_after, content, status FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')"
-      ).all() as any[];
+      const rows = sdb
+        .prepare(
+          "SELECT id, recurrence, process_after, content, status FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
+        )
+        .all() as any[];
       for (const r of rows) {
         tasks.push({
           origId: r.id,
@@ -3036,8 +3325,15 @@ function extractScheduledTasks(
           status: r.status,
         });
       }
-    } catch { /* DB may be corrupt or locked */ }
-    finally { try { sdb?.close(); } catch { /* */ } }
+    } catch {
+      /* DB may be corrupt or locked */
+    } finally {
+      try {
+        sdb?.close();
+      } catch {
+        /* */
+      }
+    }
   }
   return tasks;
 }
@@ -3111,7 +3407,9 @@ function composeV1Base(v1Root: string): string | null {
       const yaml = require('js-yaml');
       const manifest = yaml.load(readFileSync(manifestPath, 'utf-8')) as any;
       if (Array.isArray(manifest?.sections)) sections = manifest.sections;
-    } catch { /* use defaults */ }
+    } catch {
+      /* use defaults */
+    }
   }
 
   const sectionsDir = join(v1Root, 'groups', 'templates', 'sections');
@@ -3133,7 +3431,9 @@ function composeV1Base(v1Root: string): string | null {
           composed += `\n\n---\n\n${readFileSync(overlayPath, 'utf-8')}`;
         }
       }
-    } catch { /* no overlays */ }
+    } catch {
+      /* no overlays */
+    }
   }
 
   return composed;
@@ -3149,14 +3449,28 @@ function stripLegoSpineContent(instructions: string, coworkerType: string): stri
     const req = createRequire(import.meta.url);
     const { composeCoworkerSpine } = req(join(getProjectRoot(), 'dist', 'claude-composer.js'));
     spine = composeCoworkerSpine({ coworkerType });
-  } catch { return instructions; }
-  const spineLines = new Set(spine.split('\n').map(l => l.trim()).filter(l => l.length > 0));
+  } catch {
+    return instructions;
+  }
+  const spineLines = new Set(
+    spine
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0),
+  );
   const legoHeaders = new Set([
-    '## Identity', '## Invariants', '## Context', '## Workflows Available',
-    '## Skills Available', '## Trait Bindings', '## Workflow Customizations',
-    '### Safety invariants', '### Truthfulness invariants', '### Scope invariants',
+    '## Identity',
+    '## Invariants',
+    '## Context',
+    '## Workflows Available',
+    '## Skills Available',
+    '## Trait Bindings',
+    '## Workflow Customizations',
+    '### Safety invariants',
+    '### Truthfulness invariants',
+    '### Scope invariants',
   ]);
-  const filtered = instructions.split('\n').filter(line => {
+  const filtered = instructions.split('\n').filter((line) => {
     const trimmed = line.trim();
     if (trimmed.length === 0) return true;
     if (legoHeaders.has(trimmed)) return false;
@@ -3172,7 +3486,7 @@ function stripLegoSpineContent(instructions: string, coworkerType: string): stri
     prevBlank = blank;
   }
   const result = collapsed.join('\n').trim();
-  const meaningful = result.split('\n').filter(l => l.trim().length > 0);
+  const meaningful = result.split('\n').filter((l) => l.trim().length > 0);
   return meaningful.length < 5 ? '' : result;
 }
 
@@ -3196,7 +3510,10 @@ async function packageV1Archive(
   const stats = { groupFiles: 0, claudeFiles: 0, tasks: 0 };
 
   // 1. Read agent metadata from v1 store/messages.db
-  let agentName = folder.replace(/^dashboard_/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  let agentName = folder
+    .replace(/^dashboard_/, '')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
   let triggerPattern = `@${agentName.replace(/\s+/g, '')}`;
   let v1SessionId: string | null = null;
   let coworkerType: string | null = null;
@@ -3234,13 +3551,24 @@ async function packageV1Archive(
       try {
         const shortName = folder.replace(/^dashboard_/, '');
         const chatJid = `dashboard:${shortName}`;
-        const msgs = sdb.prepare(
-          'SELECT id, content, timestamp, is_from_me, is_bot_message, sender, sender_name FROM messages WHERE chat_jid = ? ORDER BY timestamp'
-        ).all(chatJid) as any[];
+        const msgs = sdb
+          .prepare(
+            'SELECT id, content, timestamp, is_from_me, is_bot_message, sender, sender_name FROM messages WHERE chat_jid = ? ORDER BY timestamp',
+          )
+          .all(chatJid) as any[];
         for (const m of msgs) v1Messages.push(m);
-      } catch { /* messages table may not exist in older v1 instances */ }
-    } catch { /* v1 DB may not exist or have different schema */ }
-    finally { try { sdb?.close(); } catch { /* */ } }
+      } catch {
+        /* messages table may not exist in older v1 instances */
+      }
+    } catch {
+      /* v1 DB may not exist or have different schema */
+    } finally {
+      try {
+        sdb?.close();
+      } catch {
+        /* */
+      }
+    }
   }
 
   // Fallback: if V1 DB didn't have coworkerType, look up from coworkers/*.yaml
@@ -3264,7 +3592,9 @@ async function packageV1Archive(
           }
         }
       }
-    } catch { /* YAML lookup is best-effort */ }
+    } catch {
+      /* YAML lookup is best-effort */
+    }
   }
 
   // 2. Extract custom instructions from CLAUDE.md.
@@ -3290,7 +3620,10 @@ async function packageV1Archive(
     const v1Base = composeV1Base(v1Root);
     if (v1Base && fullClaudeMd.startsWith(v1Base)) {
       // Base matches — extract only the delta
-      instructions = fullClaudeMd.slice(v1Base.length).replace(/^\n*---\n*/, '\n').trimStart();
+      instructions = fullClaudeMd
+        .slice(v1Base.length)
+        .replace(/^\n*---\n*/, '\n')
+        .trimStart();
     } else {
       // Fully rewritten — use entire file
       instructions = fullClaudeMd;
@@ -3301,12 +3634,20 @@ async function packageV1Archive(
   const groupFiles = new Map<string, string>();
   function collectV1GroupFiles(dir: string, relPrefix: string): void {
     let entries: string[];
-    try { entries = readdirSync(dir); } catch { return; }
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      return;
+    }
     for (const entry of entries) {
       const abs = join(dir, entry);
       const rel = relPrefix ? `${relPrefix}/${entry}` : entry;
       let st: ReturnType<typeof statSync>;
-      try { st = statSync(abs); } catch { continue; }
+      try {
+        st = statSync(abs);
+      } catch {
+        continue;
+      }
       if (st.isDirectory()) {
         if (V1_SKIP_GROUP_DIRS.test(entry)) continue;
         collectV1GroupFiles(abs, rel);
@@ -3326,12 +3667,20 @@ async function packageV1Archive(
   if (existsSync(v1ClaudeDir)) {
     function collectClaudeV1(dir: string, relPrefix: string): void {
       let entries: string[];
-      try { entries = readdirSync(dir); } catch { return; }
+      try {
+        entries = readdirSync(dir);
+      } catch {
+        return;
+      }
       for (const entry of entries) {
         const abs = join(dir, entry);
         let rel = relPrefix ? `${relPrefix}/${entry}` : entry;
         let st: ReturnType<typeof statSync>;
-        try { st = statSync(abs); } catch { continue; }
+        try {
+          st = statSync(abs);
+        } catch {
+          continue;
+        }
         if (st.isDirectory()) {
           if (entry === 'agent-runner-src') continue; // Reinitialised at session start
           collectClaudeV1(abs, rel);
@@ -3346,7 +3695,7 @@ async function packageV1Archive(
     collectClaudeV1(v1ClaudeDir, '');
   }
   stats.claudeFiles = claudeFiles.size;
-  stats.tasks = v1Tasks.filter(t => t.status === 'active').length;
+  stats.tasks = v1Tasks.filter((t) => t.status === 'active').length;
 
   // 5. Build v4 manifest
   const jsYaml = await import('js-yaml');
@@ -3370,19 +3719,21 @@ async function packageV1Archive(
     trigger: triggerPattern,
     destinations: null,
     sessions: v1SessionId ? [{ origId: `v1-${folder}`, status: 'active', v1SessionId }] : [],
-    scheduledTasks: v1Tasks.filter(t => t.status === 'active' || t.status === 'paused').map(t => ({
-      origId: t.id,
-      recurrence: t.schedule_type === 'cron' ? t.schedule_value : null,
-      processAfter: toSqliteDatetime(t.next_run),
-      content: JSON.stringify({ prompt: t.prompt, script: t.script || null }),
-      importStatus: 'paused',
-      v1ScheduleType: t.schedule_type,
-      v1ScheduleValue: t.schedule_value,
-    })),
+    scheduledTasks: v1Tasks
+      .filter((t) => t.status === 'active' || t.status === 'paused')
+      .map((t) => ({
+        origId: t.id,
+        recurrence: t.schedule_type === 'cron' ? t.schedule_value : null,
+        processAfter: toSqliteDatetime(t.next_run),
+        content: JSON.stringify({ prompt: t.prompt, script: t.script || null }),
+        importStatus: 'paused',
+        v1ScheduleType: t.schedule_type,
+        v1ScheduleValue: t.schedule_value,
+      })),
     memory: null,
     // V1 chat messages from the central messages table — backfilled into
     // session DBs during import so the dashboard chat shows history.
-    chatMessages: v1Messages.map(m => ({
+    chatMessages: v1Messages.map((m) => ({
       id: m.id,
       content: m.content,
       timestamp: m.timestamp,
@@ -3430,9 +3781,7 @@ async function packageV1Archive(
 
 /** Extract archive from gzipped tarball buffer. Validates security constraints.
  *  Returns manifest + files as Buffers keyed by archive-relative path. */
-async function extractArchiveBuffer(
-  buffer: Buffer,
-): Promise<{ manifest: any; files: Map<string, Buffer> }> {
+async function extractArchiveBuffer(buffer: Buffer): Promise<{ manifest: any; files: Map<string, Buffer> }> {
   const tarStream = await import('tar-stream');
   const { Readable, PassThrough } = await import('stream');
   const { createGunzip: gunzip } = await import('zlib');
@@ -3493,7 +3842,9 @@ async function extractArchiveBuffer(
           const jsYaml = await import('js-yaml');
           manifest = jsYaml.load(manifest.toString('utf-8'));
         } catch {
-          try { manifest = JSON.parse(manifest.toString('utf-8')); } catch {
+          try {
+            manifest = JSON.parse(manifest.toString('utf-8'));
+          } catch {
             return reject(new Error('Failed to parse manifest'));
           }
         }
@@ -3580,9 +3931,10 @@ export async function handleRequest(
       // an exact SDK → NanoClaw route at intake — no guessing. When
       // absent (pre-upgrade containers, bespoke runners), routing falls
       // through to the query-time fallback order.
-      const hookNanoSessId = typeof req.headers['x-nanoclaw-session-id'] === 'string'
-        ? (req.headers['x-nanoclaw-session-id'] as string).trim()
-        : '';
+      const hookNanoSessId =
+        typeof req.headers['x-nanoclaw-session-id'] === 'string'
+          ? (req.headers['x-nanoclaw-session-id'] as string).trim()
+          : '';
       // Normalize Claude Code's native HTTP hook payload into our HookEvent format.
       // HTTP hooks send the raw SDK JSON with different field names than our old
       // bash-script format. We accept both for backwards compatibility.
@@ -3670,7 +4022,9 @@ export async function handleRequest(
           try {
             const ag = heDb.prepare('SELECT id FROM agent_groups WHERE folder = ? LIMIT 1').get(event.group) as any;
             event.agent_group_id = ag?.id || undefined;
-          } catch { /* agent_groups table absent in degraded fixtures */ }
+          } catch {
+            /* agent_groups table absent in degraded fixtures */
+          }
         }
         try {
           heDb
@@ -3722,7 +4076,14 @@ export async function handleRequest(
                         first_seen_at, last_seen_at, source)
                      VALUES (?, ?, ?, ?, ?, ?, 'live')`,
                   )
-                  .run(event.session_id, row.session_id, row.agent_group_id, row.folder, event.timestamp, event.timestamp);
+                  .run(
+                    event.session_id,
+                    row.session_id,
+                    row.agent_group_id,
+                    row.folder,
+                    event.timestamp,
+                    event.timestamp,
+                  );
                 heDb
                   .prepare('UPDATE sdk_session_routes SET last_seen_at = ? WHERE sdk_session_id = ?')
                   .run(event.timestamp, event.session_id);
@@ -4090,14 +4451,30 @@ export async function handleRequest(
       // per folder ordered ascending by created_at so the query-time
       // fallback can bracket unrouted SDK UUIDs correctly.
       const folderSet = new Set<string>(flatRows.map((r) => r.group_folder).filter(Boolean));
-      type NanoSess = { id: string; agent_group_id: string; folder: string; thread_id: string | null; messaging_group_id: string | null; display_title: string | null; title_source: string | null; hidden_at: string | null; pinned_at: string | null; status: string; container_status: string; last_active: string | null; created_at: string };
+      type NanoSess = {
+        id: string;
+        agent_group_id: string;
+        folder: string;
+        thread_id: string | null;
+        messaging_group_id: string | null;
+        display_title: string | null;
+        title_source: string | null;
+        hidden_at: string | null;
+        pinned_at: string | null;
+        status: string;
+        container_status: string;
+        last_active: string | null;
+        created_at: string;
+      };
       const nanoSessionsByFolder = new Map<string, NanoSess[]>();
       if (folderSet.size > 0) {
         const folders = Array.from(folderSet);
         const placeholders = folders.map(() => '?').join(',');
         let nanoRows: any[] = [];
         try {
-          const sessionCols = new Set((heDb.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>).map((c) => c.name));
+          const sessionCols = new Set(
+            (heDb.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>).map((c) => c.name),
+          );
           const titleSelect = sessionCols.has('display_title')
             ? 's.display_title AS display_title, s.title_source AS title_source,'
             : 'NULL AS display_title, NULL AS title_source,';
@@ -4147,7 +4524,9 @@ export async function handleRequest(
             }
           }
         }
-      } catch { /* routes table absent — treat all as unrouted */ }
+      } catch {
+        /* routes table absent — treat all as unrouted */
+      }
 
       // Classify each SDK sub-session.
       //  - "ghost": event_count <= 3 AND no UserPromptSubmit (i.e. only InstructionsLoaded / session bookkeeping)
@@ -4163,7 +4542,9 @@ export async function handleRequest(
           try {
             const parsed = JSON.parse(r.session_start_extra);
             source = typeof parsed?.source === 'string' ? parsed.source : null;
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
         if (eventCount >= 40) {
           if (source === 'startup') return 'main';
@@ -4337,12 +4718,12 @@ export async function handleRequest(
                 LIMIT 5`,
             )
             .all(...sdkIds) as Array<{
-              event: string;
-              tool: string | null;
-              message: string | null;
-              timestamp: number;
-              session_id: string;
-            }>;
+            event: string;
+            tool: string | null;
+            message: string | null;
+            timestamp: number;
+            session_id: string;
+          }>;
           p.recent_events = recent.map((r) => ({
             event: r.event,
             tool: r.tool,
@@ -4362,7 +4743,9 @@ export async function handleRequest(
           } else {
             p.activity_status = 'active';
           }
-        } catch { /* hook_events may be unavailable in degraded fixtures */ }
+        } catch {
+          /* hook_events may be unavailable in degraded fixtures */
+        }
 
         // Read-only fallback for UI display. The authoritative title is
         // derived + written once in the hook-event intake path (see
@@ -4378,10 +4761,14 @@ export async function handleRequest(
           if (promptEvent) {
             try {
               const promptRow = heDb
-                .prepare('SELECT message FROM hook_events WHERE session_id = ? AND event = ? ORDER BY timestamp ASC LIMIT 1')
+                .prepare(
+                  'SELECT message FROM hook_events WHERE session_id = ? AND event = ? ORDER BY timestamp ASC LIMIT 1',
+                )
                 .get(promptEvent.session_id, 'UserPromptSubmit') as { message: string | null } | undefined;
               promptTitle = titleFromPrompt(promptRow?.message);
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
           }
           p.display_title = promptTitle || (p.thread_id ? 'thread' : 'main');
           p.title_source = promptTitle ? 'heuristic' : 'auto';
@@ -4460,7 +4847,9 @@ export async function handleRequest(
           )
           .get(nanoclawSessionId, nanoclawSessionId) as { created_at: string } | undefined;
         if (nextRow?.created_at) upperBoundMs = new Date(nextRow.created_at).getTime();
-      } catch { /* sessions may be missing in degraded fixtures */ }
+      } catch {
+        /* sessions may be missing in degraded fixtures */
+      }
 
       let rows: any[] = [];
       try {
@@ -4501,7 +4890,12 @@ export async function handleRequest(
         if (row.event === 'SessionStart') {
           entries.push({ type: 'session_start', timestamp: row.timestamp, extra, session_id: row.session_id });
         } else if (row.event === 'UserPromptSubmit') {
-          entries.push({ type: 'user_prompt', timestamp: row.timestamp, message: row.message || '', session_id: row.session_id });
+          entries.push({
+            type: 'user_prompt',
+            timestamp: row.timestamp,
+            message: row.message || '',
+            session_id: row.session_id,
+          });
         } else if (row.event === 'PreToolUse') {
           if (row.tool_use_id) preToolMap.set(row.tool_use_id, row);
         } else if (row.event === 'PostToolUse' || row.event === 'PostToolUseFailure') {
@@ -4523,7 +4917,13 @@ export async function handleRequest(
           else entries.push(entry);
           if (row.tool_use_id) preToolMap.delete(row.tool_use_id);
         } else if (row.event === 'SubagentStart') {
-          const block: any = { type: 'subagent_block', agent_id: row.agent_id, agent_type: row.agent_type, timestamp: row.timestamp, children: [] };
+          const block: any = {
+            type: 'subagent_block',
+            agent_id: row.agent_id,
+            agent_type: row.agent_type,
+            timestamp: row.timestamp,
+            children: [],
+          };
           subagentStack.push(block);
         } else if (row.event === 'SubagentStop') {
           const block = subagentStack.pop();
@@ -4729,8 +5129,7 @@ export async function handleRequest(
     const beforeParam = url.searchParams.get('before');
     const OVERSAMPLE = 3;
     const SYSTEM_ID_PREFIXES = ['claudemd-refresh-', 'a2a-', 'sys-'];
-    const isSystemId = (id: unknown) =>
-      typeof id === 'string' && SYSTEM_ID_PREFIXES.some((p) => id.startsWith(p));
+    const isSystemId = (id: unknown) => typeof id === 'string' && SYSTEM_ID_PREFIXES.some((p) => id.startsWith(p));
     // Index all agent_groups by id so we can recognise when an a2a-* message is
     // a legit inter-coworker send (platform_id matches a real agent_group.id)
     // versus plumbing noise (e.g. session-boot pings that have no corresponding
@@ -4742,15 +5141,24 @@ export async function handleRequest(
     // Per-agent-group thread summaries: { [parentMessageId]: { replyCount, lastReplyTs } }.
     // Only populated in main view; the client uses it to render
     // "↳ N replies" stubs under parent messages.
-    const threadSummaries: Record<string, { replyCount: number; lastReplyTs: string | null; sessionId: string | null }> = {};
+    const threadSummaries: Record<
+      string,
+      { replyCount: number; lastReplyTs: string | null; sessionId: string | null }
+    > = {};
     if (db) {
       try {
         try {
-          const allAg = db.prepare('SELECT id, folder, name FROM agent_groups').all() as Array<{ id: string; folder: string; name: string | null }>;
+          const allAg = db.prepare('SELECT id, folder, name FROM agent_groups').all() as Array<{
+            id: string;
+            folder: string;
+            name: string | null;
+          }>;
           for (const row of allAg) {
             coworkerNameById.set(row.id, row.name || row.folder);
           }
-        } catch { /* table may not exist in degraded test fixtures */ }
+        } catch {
+          /* table may not exist in degraded test fixtures */
+        }
         // When group is specified, load messages for that group only; otherwise load all groups
         const agRows = group
           ? [db.prepare('SELECT id, folder, name FROM agent_groups WHERE folder = ?').get(group) as any].filter(Boolean)
@@ -4779,15 +5187,11 @@ export async function handleRequest(
             // agent group for security. Bypasses messaging_group/thread_id scoping
             // so a2a sessions (messaging_group_id = NULL, thread_id = NULL) are accessible.
             sessions = db
-              .prepare(
-                "SELECT id, thread_id FROM sessions WHERE id = ? AND agent_group_id = ? AND status = 'active'",
-              )
+              .prepare("SELECT id, thread_id FROM sessions WHERE id = ? AND agent_group_id = ? AND status = 'active'")
               .all(sessionIdParam, agRow.id) as { id: string; thread_id: string | null }[];
           } else if (allSessions) {
             sessions = db
-              .prepare(
-                "SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND status = 'active'",
-              )
+              .prepare("SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND status = 'active'")
               .all(agRow.id) as { id: string; thread_id: string | null }[];
           } else if (threadMode) {
             // Thread view: key on (agent_group, thread_id) WITHOUT scoping to the
@@ -4836,7 +5240,9 @@ export async function handleRequest(
                   "SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND messaging_group_id = ? AND status = 'active' AND thread_id IS NOT NULL",
                 )
                 .all(agRow.id, dashMgId) as Array<{ id: string; thread_id: string }>;
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
             for (const ts of threadSessions) {
               let count = 0;
               let lastTs: string | null = null;
@@ -4847,14 +5253,19 @@ export async function handleRequest(
                   const sdb = new Database(p, { readonly: true });
                   try {
                     const table = file === 'inbound.db' ? 'messages_in' : 'messages_out';
-                    const row = sdb
-                      .prepare(`SELECT COUNT(*) AS n, MAX(timestamp) AS ts FROM ${table}`)
-                      .get() as { n: number; ts: string | null };
+                    const row = sdb.prepare(`SELECT COUNT(*) AS n, MAX(timestamp) AS ts FROM ${table}`).get() as {
+                      n: number;
+                      ts: string | null;
+                    };
                     count += row.n || 0;
                     if (row.ts && (!lastTs || row.ts > lastTs)) lastTs = row.ts;
-                  } catch { /* ignore */ }
+                  } catch {
+                    /* ignore */
+                  }
                   sdb.close();
-                } catch { /* ignore */ }
+                } catch {
+                  /* ignore */
+                }
               }
               if (count > 0) {
                 threadSummaries[ts.thread_id] = { replyCount: count, lastReplyTs: lastTs, sessionId: ts.id };
@@ -4866,19 +5277,28 @@ export async function handleRequest(
             const outDbPath = join(sessionsDir, sess.id, 'outbound.db');
             let a2aSourceThread: string | null = null;
             try {
-              const srcRow = db?.prepare(
-                'SELECT source_thread_id FROM a2a_session_sources WHERE recipient_session_id = ? LIMIT 1',
-              ).get(sess.id) as { source_thread_id: string | null } | undefined;
+              const srcRow = db
+                ?.prepare('SELECT source_thread_id FROM a2a_session_sources WHERE recipient_session_id = ? LIMIT 1')
+                .get(sess.id) as { source_thread_id: string | null } | undefined;
               a2aSourceThread = srcRow?.source_thread_id ?? null;
-            } catch { /* table may not exist */ }
+            } catch {
+              /* table may not exist */
+            }
             try {
-              const deliveredByMessageOutId = new Map<string, { platformMessageId: string | null; status: string | null }>();
+              const deliveredByMessageOutId = new Map<
+                string,
+                { platformMessageId: string | null; status: string | null }
+              >();
               if (existsSync(inDbPath)) {
                 const sdb = new Database(inDbPath, { readonly: true });
                 try {
                   const deliveredRows = sdb
                     .prepare('SELECT message_out_id, platform_message_id, status FROM delivered')
-                    .all() as Array<{ message_out_id: string; platform_message_id: string | null; status: string | null }>;
+                    .all() as Array<{
+                    message_out_id: string;
+                    platform_message_id: string | null;
+                    status: string | null;
+                  }>;
                   for (const row of deliveredRows) {
                     deliveredByMessageOutId.set(row.message_out_id, {
                       platformMessageId: row.platform_message_id ?? null,
@@ -4891,14 +5311,18 @@ export async function handleRequest(
                 let rows: any[];
                 try {
                   rows = sdb
-                    .prepare('SELECT id, kind, content, timestamp, channel_type, platform_id, thread_id FROM messages_in ORDER BY timestamp DESC LIMIT ?')
+                    .prepare(
+                      'SELECT id, kind, content, timestamp, channel_type, platform_id, thread_id FROM messages_in ORDER BY timestamp DESC LIMIT ?',
+                    )
                     .all(perGroupLimit) as any[];
                 } catch {
                   // Older session DBs without thread_id — fall back but keep
                   // channel_type/platform_id so a2a detection still works.
                   try {
                     rows = sdb
-                      .prepare('SELECT id, kind, content, timestamp, channel_type, platform_id FROM messages_in ORDER BY timestamp DESC LIMIT ?')
+                      .prepare(
+                        'SELECT id, kind, content, timestamp, channel_type, platform_id FROM messages_in ORDER BY timestamp DESC LIMIT ?',
+                      )
                       .all(perGroupLimit) as any[];
                   } catch {
                     rows = sdb
@@ -4927,9 +5351,11 @@ export async function handleRequest(
                   // agents that have since been deleted — platform_id starts with 'ag-'.
                   // Without the fallback, deleted-agent messages are indistinguishable
                   // from plumbing pings and get silently dropped.
-                  const senderCoworkerName = isA2a && r.channel_type === 'agent' && typeof r.platform_id === 'string'
-                    ? (coworkerNameById.get(r.platform_id) ?? (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
-                    : undefined;
+                  const senderCoworkerName =
+                    isA2a && r.channel_type === 'agent' && typeof r.platform_id === 'string'
+                      ? (coworkerNameById.get(r.platform_id) ??
+                        (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
+                      : undefined;
                   if (!includeSystem && isSystemId(r.id) && !senderCoworkerName) continue;
                   // Self-referencing a2a: sender is the same agent group we're
                   // viewing — routing echo, not a real inbound message.
@@ -4954,16 +5380,22 @@ export async function handleRequest(
                 let rows: any[];
                 try {
                   rows = sdb
-                    .prepare('SELECT id, kind, content, timestamp, in_reply_to, channel_type, platform_id, thread_id FROM messages_out ORDER BY timestamp DESC LIMIT ?')
+                    .prepare(
+                      'SELECT id, kind, content, timestamp, in_reply_to, channel_type, platform_id, thread_id FROM messages_out ORDER BY timestamp DESC LIMIT ?',
+                    )
                     .all(perGroupLimit) as any[];
                 } catch {
                   try {
                     rows = sdb
-                      .prepare('SELECT id, kind, content, timestamp, in_reply_to, channel_type, platform_id FROM messages_out ORDER BY timestamp DESC LIMIT ?')
+                      .prepare(
+                        'SELECT id, kind, content, timestamp, in_reply_to, channel_type, platform_id FROM messages_out ORDER BY timestamp DESC LIMIT ?',
+                      )
                       .all(perGroupLimit) as any[];
                   } catch {
                     rows = sdb
-                      .prepare('SELECT id, kind, content, timestamp, in_reply_to FROM messages_out ORDER BY timestamp DESC LIMIT ?')
+                      .prepare(
+                        'SELECT id, kind, content, timestamp, in_reply_to FROM messages_out ORDER BY timestamp DESC LIMIT ?',
+                      )
                       .all(perGroupLimit) as any[];
                   }
                 }
@@ -4972,7 +5404,8 @@ export async function handleRequest(
                   // channel with thread_id=NULL are relay commands to another
                   // coworker. Tag (not filter) so the client can collapse them.
                   // Also catches system actions (create_agent etc.) with no channel_type.
-                  const isRelayOut = threadMode && r.thread_id == null && (r.channel_type === 'agent' || !r.channel_type);
+                  const isRelayOut =
+                    threadMode && r.thread_id == null && (r.channel_type === 'agent' || !r.channel_type);
                   if (!allSessions && !sessionDirect && !isRelayOut) {
                     if (threadMode) {
                       if (r.thread_id !== threadFilter) continue;
@@ -4986,11 +5419,13 @@ export async function handleRequest(
                   // subscript. Ack replies to system pings (in_reply_to starts
                   // with claudemd-refresh-/a2a- AND no real recipient) stay
                   // filtered.
-                  const rawRecipientName = r.channel_type === 'agent' && typeof r.platform_id === 'string'
-                    ? (coworkerNameById.get(r.platform_id) ?? (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
-                    : undefined;
+                  const rawRecipientName =
+                    r.channel_type === 'agent' && typeof r.platform_id === 'string'
+                      ? (coworkerNameById.get(r.platform_id) ??
+                        (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
+                      : undefined;
                   // Suppress recipient name when it's the same agent group (self-echo)
-                  const recipientCoworkerName = (r.platform_id === agRow.id) ? undefined : rawRecipientName;
+                  const recipientCoworkerName = r.platform_id === agRow.id ? undefined : rawRecipientName;
                   if (!includeSystem && isSystemId(r.in_reply_to) && !recipientCoworkerName && !isRelayOut) continue;
                   const delivered = deliveredByMessageOutId.get(r.id);
                   messages.push({
@@ -5086,9 +5521,7 @@ export async function handleRequest(
       // a2a messaging_group for the recipient follows the `agent:<ag>`
       // platform_id convention stamped by ensureA2aWiring().
       const a2aMg = db
-        .prepare(
-          "SELECT id FROM messaging_groups WHERE channel_type = 'agent' AND platform_id = ?",
-        )
+        .prepare("SELECT id FROM messaging_groups WHERE channel_type = 'agent' AND platform_id = ?")
         .get(`agent:${recipientAg}`) as { id: string } | undefined;
       // Per-thread sessions live under (recipient_ag, a2a_mg, thread_id).
       // If the sender is in root (thread_id=null), delivery takes the
@@ -5117,7 +5550,13 @@ export async function handleRequest(
         return;
       }
       const sessionsDir = join(getDataDir(), 'v2-sessions', recipientAg, sessRow.id);
-      const msgs: Array<{ id: string; direction: 'incoming' | 'outgoing'; content: string | null; timestamp: string; thread_id?: string | null }> = [];
+      const msgs: Array<{
+        id: string;
+        direction: 'incoming' | 'outgoing';
+        content: string | null;
+        timestamp: string;
+        thread_id?: string | null;
+      }> = [];
       const inPath = join(sessionsDir, 'inbound.db');
       if (existsSync(inPath)) {
         try {
@@ -5126,15 +5565,26 @@ export async function handleRequest(
             const rows = sdb
               .prepare('SELECT id, content, timestamp, thread_id FROM messages_in ORDER BY timestamp DESC LIMIT 100')
               .all() as Array<{ id: string; content: string | null; timestamp: string; thread_id: string | null }>;
-            for (const r of rows) msgs.push({ id: r.id, direction: 'incoming', content: r.content, timestamp: r.timestamp, thread_id: r.thread_id });
-          } catch { /* older schema without thread_id */
+            for (const r of rows)
+              msgs.push({
+                id: r.id,
+                direction: 'incoming',
+                content: r.content,
+                timestamp: r.timestamp,
+                thread_id: r.thread_id,
+              });
+          } catch {
+            /* older schema without thread_id */
             const rows = sdb
               .prepare('SELECT id, content, timestamp FROM messages_in ORDER BY timestamp DESC LIMIT 100')
               .all() as Array<{ id: string; content: string | null; timestamp: string }>;
-            for (const r of rows) msgs.push({ id: r.id, direction: 'incoming', content: r.content, timestamp: r.timestamp });
+            for (const r of rows)
+              msgs.push({ id: r.id, direction: 'incoming', content: r.content, timestamp: r.timestamp });
           }
           sdb.close();
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
       const outPath = join(sessionsDir, 'outbound.db');
       if (existsSync(outPath)) {
@@ -5144,24 +5594,36 @@ export async function handleRequest(
             const rows = sdb
               .prepare('SELECT id, content, timestamp, thread_id FROM messages_out ORDER BY timestamp DESC LIMIT 100')
               .all() as Array<{ id: string; content: string | null; timestamp: string; thread_id: string | null }>;
-            for (const r of rows) msgs.push({ id: r.id, direction: 'outgoing', content: r.content, timestamp: r.timestamp, thread_id: r.thread_id });
+            for (const r of rows)
+              msgs.push({
+                id: r.id,
+                direction: 'outgoing',
+                content: r.content,
+                timestamp: r.timestamp,
+                thread_id: r.thread_id,
+              });
           } catch {
             const rows = sdb
               .prepare('SELECT id, content, timestamp FROM messages_out ORDER BY timestamp DESC LIMIT 100')
               .all() as Array<{ id: string; content: string | null; timestamp: string }>;
-            for (const r of rows) msgs.push({ id: r.id, direction: 'outgoing', content: r.content, timestamp: r.timestamp });
+            for (const r of rows)
+              msgs.push({ id: r.id, direction: 'outgoing', content: r.content, timestamp: r.timestamp });
           }
           sdb.close();
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
       // Sort descending by timestamp (string ISO compares lexicographically) — newest first, client reverses if desired.
       msgs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
       const limited = msgs.slice(0, 100);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        session: { id: sessRow.id, thread_id: sessRow.thread_id, created_at: sessRow.created_at },
-        messages: limited,
-      }));
+      res.end(
+        JSON.stringify({
+          session: { id: sessRow.id, thread_id: sessRow.thread_id, created_at: sessRow.created_at },
+          messages: limited,
+        }),
+      );
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: String((err as Error).message || err) }));
@@ -5199,7 +5661,14 @@ export async function handleRequest(
     const period = (url.searchParams.get('period') || 'all') as keyof typeof ccusageCache;
     const periodData = ccusageCache[period] || ccusageCache.all || emptyCcusagePeriod;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ daily: periodData.combined, byCoworker: periodData.byGroup, period, lastRefresh: ccusageCache.lastRefresh }));
+    res.end(
+      JSON.stringify({
+        daily: periodData.combined,
+        byCoworker: periodData.byGroup,
+        period,
+        lastRefresh: ccusageCache.lastRefresh,
+      }),
+    );
     return;
   }
 
@@ -5240,7 +5709,11 @@ export async function handleRequest(
           for (const t of tasks) {
             // Parse content JSON to extract prompt
             let prompt = '';
-            try { prompt = JSON.parse(t.content)?.prompt || ''; } catch { prompt = t.content || ''; }
+            try {
+              prompt = JSON.parse(t.content)?.prompt || '';
+            } catch {
+              prompt = t.content || '';
+            }
             // Map v2 status to frontend expected values
             const status = t.status === 'pending' ? 'active' : t.status;
             allTasks.push({
@@ -5257,7 +5730,9 @@ export async function handleRequest(
             });
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(allTasks));
@@ -5270,7 +5745,11 @@ export async function handleRequest(
     const parts = url.pathname.split('/');
     const action = parts.pop()!;
     const taskId = safeDecode(parts.pop()!);
-    if (!taskId) { res.writeHead(400); res.end('bad request'); return; }
+    if (!taskId) {
+      res.writeHead(400);
+      res.end('bad request');
+      return;
+    }
     const newStatus = action === 'pause' ? 'paused' : 'pending';
     let found = false;
     if (db) {
@@ -5280,7 +5759,11 @@ export async function handleRequest(
           if (found) break;
           const agDir = join(getDataDir(), 'v2-sessions', g.id);
           let entries: string[];
-          try { entries = readdirSync(agDir); } catch { continue; }
+          try {
+            entries = readdirSync(agDir);
+          } catch {
+            continue;
+          }
           for (const entry of entries) {
             if (!entry.startsWith('sess-')) continue;
             const dbPath = join(agDir, entry, 'inbound.db');
@@ -5289,13 +5772,27 @@ export async function handleRequest(
             try {
               sdb = new Database(dbPath);
               sdb.pragma('busy_timeout = 3000');
-              const result = sdb.prepare("UPDATE messages_in SET status = ? WHERE id = ? AND kind = 'task'").run(newStatus, taskId);
-              if (result.changes > 0) { found = true; break; }
-            } catch { /* */ }
-            finally { try { sdb?.close(); } catch { /* */ } }
+              const result = sdb
+                .prepare("UPDATE messages_in SET status = ? WHERE id = ? AND kind = 'task'")
+                .run(newStatus, taskId);
+              if (result.changes > 0) {
+                found = true;
+                break;
+              }
+            } catch {
+              /* */
+            } finally {
+              try {
+                sdb?.close();
+              } catch {
+                /* */
+              }
+            }
           }
         }
-      } catch { /* */ }
+      } catch {
+        /* */
+      }
     }
     res.writeHead(found ? 200 : 404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(found ? { ok: true, status: newStatus } : { error: 'task not found' }));
@@ -5306,7 +5803,11 @@ export async function handleRequest(
   if (req.method === 'DELETE' && /^\/api\/tasks\/[^/]+$/.test(url.pathname)) {
     if (!requireAuth(req, res)) return;
     const taskId = safeDecode(url.pathname.replace('/api/tasks/', ''));
-    if (!taskId) { res.writeHead(400); res.end('bad request'); return; }
+    if (!taskId) {
+      res.writeHead(400);
+      res.end('bad request');
+      return;
+    }
     let found = false;
     if (db) {
       try {
@@ -5315,7 +5816,11 @@ export async function handleRequest(
           if (found) break;
           const agDir = join(getDataDir(), 'v2-sessions', g.id);
           let entries: string[];
-          try { entries = readdirSync(agDir); } catch { continue; }
+          try {
+            entries = readdirSync(agDir);
+          } catch {
+            continue;
+          }
           for (const entry of entries) {
             if (!entry.startsWith('sess-')) continue;
             const dbPath = join(agDir, entry, 'inbound.db');
@@ -5325,12 +5830,24 @@ export async function handleRequest(
               sdb = new Database(dbPath);
               sdb.pragma('busy_timeout = 3000');
               const result = sdb.prepare("DELETE FROM messages_in WHERE id = ? AND kind = 'task'").run(taskId);
-              if (result.changes > 0) { found = true; break; }
-            } catch { /* */ }
-            finally { try { sdb?.close(); } catch { /* */ } }
+              if (result.changes > 0) {
+                found = true;
+                break;
+              }
+            } catch {
+              /* */
+            } finally {
+              try {
+                sdb?.close();
+              } catch {
+                /* */
+              }
+            }
           }
         }
-      } catch { /* */ }
+      } catch {
+        /* */
+      }
     }
     res.writeHead(found ? 200 : 404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(found ? { ok: true } : { error: 'task not found' }));
@@ -5354,7 +5871,9 @@ export async function handleRequest(
     const body = await readBody(req, res);
     if (body === null) return;
     let parsed: { on?: unknown };
-    try { parsed = JSON.parse(body); } catch {
+    try {
+      parsed = JSON.parse(body);
+    } catch {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end('{"error":"invalid json"}');
       return;
@@ -5397,7 +5916,9 @@ export async function handleRequest(
     const body = await readBody(req, res);
     if (body === null) return;
     let parsed: { title?: unknown };
-    try { parsed = JSON.parse(body); } catch {
+    try {
+      parsed = JSON.parse(body);
+    } catch {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end('{"error":"invalid json"}');
       return;
@@ -5498,10 +6019,14 @@ export async function handleRequest(
           try {
             const content = readFileSync(join(templatesDir, file), 'utf-8');
             templates.push({ name, content });
-          } catch { /* unreadable */ }
+          } catch {
+            /* unreadable */
+          }
         }
       }
-    } catch { /* dir missing */ }
+    } catch {
+      /* dir missing */
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(templates));
     return;
@@ -5586,18 +6111,22 @@ export async function handleRequest(
             (db.prepare('SELECT COUNT(*) as c FROM sessions WHERE agent_group_id = ?').get(g.id) as any)?.c || 0;
           // Enrich with trigger_pattern and jid from messaging tables
           try {
-            const mga = db.prepare(
-              `SELECT mga.engage_mode, mga.engage_pattern, mg.platform_id
+            const mga = db
+              .prepare(
+                `SELECT mga.engage_mode, mga.engage_pattern, mg.platform_id
                FROM messaging_group_agents mga
                JOIN messaging_groups mg ON mg.id = mga.messaging_group_id
                WHERE mga.agent_group_id = ?
                LIMIT 1`,
-            ).get(g.id) as any;
+              )
+              .get(g.id) as any;
             if (mga) {
-              g.trigger_pattern = (mga.engage_mode === 'pattern' && mga.engage_pattern) ? mga.engage_pattern : null;
+              g.trigger_pattern = mga.engage_mode === 'pattern' && mga.engage_pattern ? mga.engage_pattern : null;
               g.jid = mga.platform_id || null;
             }
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
           // Read composed CLAUDE.md for preview (typed coworkers only;
           // untyped fall back to the on-disk file).
           try {
@@ -5681,7 +6210,18 @@ export async function handleRequest(
     const body = await readBody(req, res);
     if (body === null) return;
     try {
-      const { name, folder, types, type, trigger, instructions, instructionTemplate, agentProvider, routing: routingParam, overlays: overlaysParam } = JSON.parse(body);
+      const {
+        name,
+        folder,
+        types,
+        type,
+        trigger,
+        instructions,
+        instructionTemplate,
+        agentProvider,
+        routing: routingParam,
+        overlays: overlaysParam,
+      } = JSON.parse(body);
       const routing: 'direct' | 'internal' = routingParam === 'internal' ? 'internal' : 'direct';
       if (!name || !folder) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -5778,25 +6318,48 @@ export async function handleRequest(
         .prepare(
           'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, overlays, routing, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)',
         )
-        .run(agId, name, folder, isAdmin, agentProvider || null, coworkerType, resolvedMcpTools, resolvedOverlays, routing, now);
+        .run(
+          agId,
+          name,
+          folder,
+          isAdmin,
+          agentProvider || null,
+          coworkerType,
+          resolvedMcpTools,
+          resolvedOverlays,
+          routing,
+          now,
+        );
 
       if (routing === 'direct') {
         const { messagingGroupId } = ensureDashboardChatWiring(wdb, { id: agId, folder, name }, triggerPattern, now);
         bootstrapEagerSession(wdb, agId, messagingGroupId, now);
       } else {
         // Internal: wire into admin's channel with @mention pattern
-        const adminMg = wdb.prepare(
-          `SELECT mg.id FROM messaging_groups mg
+        const adminMg = wdb
+          .prepare(
+            `SELECT mg.id FROM messaging_groups mg
            JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id
            JOIN agent_groups ag ON mga.agent_group_id = ag.id
            WHERE ag.is_admin = 1 AND mg.channel_type = 'dashboard' LIMIT 1`,
-        ).get() as { id: string } | undefined;
+          )
+          .get() as { id: string } | undefined;
         if (adminMg) {
-          const existingMga = wdb.prepare('SELECT 1 FROM messaging_group_agents WHERE messaging_group_id = ? AND agent_group_id = ? LIMIT 1').get(adminMg.id, agId);
+          const existingMga = wdb
+            .prepare('SELECT 1 FROM messaging_group_agents WHERE messaging_group_id = ? AND agent_group_id = ? LIMIT 1')
+            .get(adminMg.id, agId);
           if (!existingMga) {
-            wdb.prepare(
-              "INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES (?, ?, ?, 'pattern', ?, 'all', 'shared', 0, ?)",
-            ).run(`mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, adminMg.id, agId, `@${normalizeDestinationName(name)}\\b`, now);
+            wdb
+              .prepare(
+                "INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES (?, ?, ?, 'pattern', ?, 'all', 'shared', 0, ?)",
+              )
+              .run(
+                `mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                adminMg.id,
+                agId,
+                `@${normalizeDestinationName(name)}\\b`,
+                now,
+              );
           }
           bootstrapEagerSession(wdb, agId, adminMg.id, now);
         }
@@ -5806,10 +6369,24 @@ export async function handleRequest(
       if (isAdmin) {
         const dashUserId = 'dashboard:dashboard-admin';
         try {
-          wdb.prepare("INSERT OR IGNORE INTO users (id, kind, display_name, created_at) VALUES ('system', 'system', 'System', ?)").run(now);
-          wdb.prepare("INSERT OR IGNORE INTO users (id, kind, display_name, created_at) VALUES (?, 'dashboard', 'Dashboard Admin', ?)").run(dashUserId, now);
-          wdb.prepare("INSERT OR IGNORE INTO user_roles (user_id, role, agent_group_id, granted_by, granted_at) VALUES (?, 'owner', NULL, 'system', ?)").run(dashUserId, now);
-        } catch { /* tables may not exist if permissions module not installed */ }
+          wdb
+            .prepare(
+              "INSERT OR IGNORE INTO users (id, kind, display_name, created_at) VALUES ('system', 'system', 'System', ?)",
+            )
+            .run(now);
+          wdb
+            .prepare(
+              "INSERT OR IGNORE INTO users (id, kind, display_name, created_at) VALUES (?, 'dashboard', 'Dashboard Admin', ?)",
+            )
+            .run(dashUserId, now);
+          wdb
+            .prepare(
+              "INSERT OR IGNORE INTO user_roles (user_id, role, agent_group_id, granted_by, granted_at) VALUES (?, 'owner', NULL, 'system', ?)",
+            )
+            .run(dashUserId, now);
+        } catch {
+          /* tables may not exist if permissions module not installed */
+        }
       }
 
       // Wire parent↔child agent destinations (same as delivery.ts create_agent)
@@ -5819,21 +6396,29 @@ export async function handleRequest(
       if (adminGroup) {
         const localName = normalizeDestinationName(name);
         const existingAdminDest = wdb
-          .prepare("SELECT 1 FROM agent_destinations WHERE agent_group_id = ? AND target_type = 'agent' AND target_id = ? LIMIT 1")
+          .prepare(
+            "SELECT 1 FROM agent_destinations WHERE agent_group_id = ? AND target_type = 'agent' AND target_id = ? LIMIT 1",
+          )
           .get(adminGroup.id, agId);
         if (!existingAdminDest) {
           const destName = allocateDestinationNameDb(wdb, adminGroup.id, localName);
           wdb
-            .prepare("INSERT INTO agent_destinations (agent_group_id, local_name, target_type, target_id, created_at) VALUES (?, ?, 'agent', ?, ?)")
+            .prepare(
+              "INSERT INTO agent_destinations (agent_group_id, local_name, target_type, target_id, created_at) VALUES (?, ?, 'agent', ?, ?)",
+            )
             .run(adminGroup.id, destName, agId, now);
         }
         const existingParentDest = wdb
-          .prepare("SELECT 1 FROM agent_destinations WHERE agent_group_id = ? AND target_type = 'agent' AND target_id = ? LIMIT 1")
+          .prepare(
+            "SELECT 1 FROM agent_destinations WHERE agent_group_id = ? AND target_type = 'agent' AND target_id = ? LIMIT 1",
+          )
           .get(agId, adminGroup.id);
         if (!existingParentDest) {
           const parentName = allocateDestinationNameDb(wdb, agId, 'parent');
           wdb
-            .prepare("INSERT INTO agent_destinations (agent_group_id, local_name, target_type, target_id, created_at) VALUES (?, ?, 'agent', ?, ?)")
+            .prepare(
+              "INSERT INTO agent_destinations (agent_group_id, local_name, target_type, target_id, created_at) VALUES (?, ?, 'agent', ?, ?)",
+            )
             .run(agId, parentName, adminGroup.id, now);
         }
 
@@ -5913,9 +6498,8 @@ export async function handleRequest(
             return;
           }
         }
-        const val = Array.isArray(updates.overlays) && updates.overlays.length > 0
-          ? JSON.stringify(updates.overlays)
-          : null;
+        const val =
+          Array.isArray(updates.overlays) && updates.overlays.length > 0 ? JSON.stringify(updates.overlays) : null;
         wdb.prepare('UPDATE agent_groups SET overlays = ? WHERE folder = ?').run(val, folder);
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -5949,7 +6533,8 @@ export async function handleRequest(
     const hasExplicitThread = threadId !== null;
     const sessDb = getHookEventsDb();
     const sessionId = sessDb ? sessionIdForThread(sessDb, folder, threadId) : null;
-    const found = findRunningContainer(folder, sessionId) ?? (sessionId || hasExplicitThread ? null : findRunningContainer(folder));
+    const found =
+      findRunningContainer(folder, sessionId) ?? (sessionId || hasExplicitThread ? null : findRunningContainer(folder));
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({
@@ -5995,15 +6580,19 @@ export async function handleRequest(
       const hasExplicitThread = threadId !== null;
       const sessDb = getHookEventsDb();
       const sessionId = sessDb ? sessionIdForThread(sessDb, folder, threadId) : null;
-      const found = findRunningContainer(folder, sessionId) ?? (sessionId || hasExplicitThread ? null : findRunningContainer(folder));
+      const found =
+        findRunningContainer(folder, sessionId) ??
+        (sessionId || hasExplicitThread ? null : findRunningContainer(folder));
       if (!found) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          error: sessionId || hasExplicitThread ? 'session has no running container' : 'no running container',
-          action: sessionId || hasExplicitThread ? 'send_message_to_wake' : undefined,
-          session_id: sessionId,
-          thread_id: threadId,
-        }));
+        res.end(
+          JSON.stringify({
+            error: sessionId || hasExplicitThread ? 'session has no running container' : 'no running container',
+            action: sessionId || hasExplicitThread ? 'send_message_to_wake' : undefined,
+            session_id: sessionId,
+            thread_id: threadId,
+          }),
+        );
         return;
       }
       // Execute command (timeout 10s, max 64KB output)
@@ -6032,12 +6621,24 @@ export async function handleRequest(
   if (req.method === 'GET' && /^\/api\/coworkers\/[^/]+\/export$/.test(url.pathname)) {
     if (!requireAuth(req, res)) return;
     const folder = safeDecode(url.pathname.replace('/api/coworkers/', '').replace('/export', ''));
-    if (!folder) { res.writeHead(400); res.end('{"error":"invalid folder"}'); return; }
+    if (!folder) {
+      res.writeHead(400);
+      res.end('{"error":"invalid folder"}');
+      return;
+    }
     const rdb = getHookEventsDb();
-    if (!rdb) { res.writeHead(500); res.end('{"error":"db unavailable"}'); return; }
+    if (!rdb) {
+      res.writeHead(500);
+      res.end('{"error":"db unavailable"}');
+      return;
+    }
 
     const group = rdb.prepare('SELECT * FROM agent_groups WHERE folder = ?').get(folder) as any;
-    if (!group) { res.writeHead(404); res.end('{"error":"coworker not found"}'); return; }
+    if (!group) {
+      res.writeHead(404);
+      res.end('{"error":"coworker not found"}');
+      return;
+    }
 
     // Export mode: lightweight | standard | full
     //   lightweight — metadata only (version, agent, requires, trigger, destinations,
@@ -6061,22 +6662,36 @@ export async function handleRequest(
     // .instructions.md (user-owned instructions) — only read if needed
     let instructions = '';
     if (includeInstructions) {
-      try { instructions = readFileSync(join(getGroupsDir(), folder, '.instructions.md'), 'utf-8'); } catch { /* none */ }
+      try {
+        instructions = readFileSync(join(getGroupsDir(), folder, '.instructions.md'), 'utf-8');
+      } catch {
+        /* none */
+      }
     }
 
     // Resolve trigger from messaging_group_agents
     let trigger = `@${group.name.replace(/\s+/g, '')}`;
     try {
-      const mgaRow = rdb.prepare(
-        "SELECT mga.engage_mode, mga.engage_pattern FROM messaging_group_agents mga JOIN messaging_groups mg ON mg.id = mga.messaging_group_id WHERE mga.agent_group_id = ? LIMIT 1"
-      ).get(group.id) as any;
+      const mgaRow = rdb
+        .prepare(
+          'SELECT mga.engage_mode, mga.engage_pattern FROM messaging_group_agents mga JOIN messaging_groups mg ON mg.id = mga.messaging_group_id WHERE mga.agent_group_id = ? LIMIT 1',
+        )
+        .get(group.id) as any;
       if (mgaRow?.engage_mode === 'pattern' && mgaRow?.engage_pattern) {
         trigger = mgaRow.engage_pattern;
       }
-    } catch { /* use default */ }
+    } catch {
+      /* use default */
+    }
 
     // Destinations
-    const destinations: { name: string; type: string; targetFolder?: string; channelType?: string; platformId?: string }[] = [];
+    const destinations: {
+      name: string;
+      type: string;
+      targetFolder?: string;
+      channelType?: string;
+      platformId?: string;
+    }[] = [];
     try {
       const destRows = rdb.prepare('SELECT * FROM agent_destinations WHERE agent_group_id = ?').all(group.id) as any[];
       for (const d of destRows) {
@@ -6084,11 +6699,20 @@ export async function handleRequest(
           const targetAg = rdb.prepare('SELECT folder FROM agent_groups WHERE id = ?').get(d.target_id) as any;
           destinations.push({ name: d.local_name, type: 'agent', targetFolder: targetAg?.folder || d.target_id });
         } else if (d.target_type === 'channel') {
-          const mg = rdb.prepare('SELECT channel_type, platform_id FROM messaging_groups WHERE id = ?').get(d.target_id) as any;
-          destinations.push({ name: d.local_name, type: 'channel', channelType: mg?.channel_type, platformId: mg?.platform_id });
+          const mg = rdb
+            .prepare('SELECT channel_type, platform_id FROM messaging_groups WHERE id = ?')
+            .get(d.target_id) as any;
+          destinations.push({
+            name: d.local_name,
+            type: 'channel',
+            channelType: mg?.channel_type,
+            platformId: mg?.platform_id,
+          });
         }
       }
-    } catch { /* no destinations */ }
+    } catch {
+      /* no destinations */
+    }
 
     // Export only config files needed to reconstruct the coworker.
     // Runtime artifacts (cloned repos, compiled binaries, installed tools) are
@@ -6098,7 +6722,10 @@ export async function handleRequest(
     // Collect compatibility requirements so the target instance can validate
     const requires: Record<string, unknown> = {};
     if (group.coworker_type) {
-      const rootTypes = group.coworker_type.split('+').map((t: string) => t.trim()).filter(Boolean);
+      const rootTypes = group.coworker_type
+        .split('+')
+        .map((t: string) => t.trim())
+        .filter(Boolean);
       const typesData = readLegoCoworkerTypes();
       const allRequired = new Set<string>();
       const walk = (name: string | undefined): void => {
@@ -6126,7 +6753,9 @@ export async function handleRequest(
             if (!f.endsWith('.md') || memoryFiles[f]) continue;
             memoryFiles[f] = readFileSync(join(memDir, f), 'utf-8');
           }
-        } catch { /* no memory dir or files */ }
+        } catch {
+          /* no memory dir or files */
+        }
       }
     }
 
@@ -6144,7 +6773,9 @@ export async function handleRequest(
       try {
         const meta = JSON.parse(readFileSync(join(getGroupsDir(), folder, '.instruction-meta.json'), 'utf-8'));
         return meta.template || null;
-      } catch { return null; }
+      } catch {
+        return null;
+      }
     })();
 
     // ---- Full-archive export (mode=full) ----
@@ -6160,9 +6791,7 @@ export async function handleRequest(
         const scheduledTasks = extractScheduledTasks(group.id, sessionIds);
 
         // Session rows from v2.db
-        const sessionRows = rdb.prepare(
-          'SELECT * FROM sessions WHERE agent_group_id = ?'
-        ).all(group.id) as any[];
+        const sessionRows = rdb.prepare('SELECT * FROM sessions WHERE agent_group_id = ?').all(group.id) as any[];
 
         // Build v4 manifest
         const manifest: Record<string, unknown> = {
@@ -6181,7 +6810,7 @@ export async function handleRequest(
             status: s.status,
             agentProvider: s.agent_provider || null,
           })),
-          scheduledTasks: scheduledTasks.map(t => ({
+          scheduledTasks: scheduledTasks.map((t) => ({
             origId: t.origId,
             sessionId: t.sessionId,
             recurrence: t.recurrence,
@@ -6221,7 +6850,8 @@ export async function handleRequest(
         const gzip = createGzip();
         const chunks: Buffer[] = [];
         await new Promise<void>((resolve, reject) => {
-          pack.pipe(gzip)
+          pack
+            .pipe(gzip)
             .on('data', (chunk: Buffer) => chunks.push(chunk))
             .on('end', resolve)
             .on('error', reject);
@@ -6247,8 +6877,15 @@ export async function handleRequest(
               sdb.pragma('busy_timeout = 5000');
               sdb.prepare("UPDATE messages_in SET status = 'paused' WHERE kind = 'task' AND status = 'pending'").run();
               pausedTasks = true;
-            } catch { /* best-effort */ }
-            finally { try { sdb?.close(); } catch { /* */ } }
+            } catch {
+              /* best-effort */
+            } finally {
+              try {
+                sdb?.close();
+              } catch {
+                /* */
+              }
+            }
           }
         }
 
@@ -6273,7 +6910,9 @@ export async function handleRequest(
           mkdirSync(coworkersDir, { recursive: true });
           yamlPath = join(coworkersDir, `${folder}.yaml`);
           writeFileSync(yamlPath, yamlContent);
-        } catch { /* best-effort */ }
+        } catch {
+          /* best-effort */
+        }
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, path: exportPath, yamlPath, size: archiveData.length, pausedTasks }));
@@ -6300,11 +6939,14 @@ export async function handleRequest(
       instructionTemplate,
       trigger,
       destinations: destinations.length > 0 ? destinations : null,
-      scheduledTasks: lightScheduledTasks.length > 0 ? lightScheduledTasks.map(t => ({
-        recurrence: t.recurrence,
-        processAfter: t.processAfter,
-        content: t.content,
-      })) : null,
+      scheduledTasks:
+        lightScheduledTasks.length > 0
+          ? lightScheduledTasks.map((t) => ({
+              recurrence: t.recurrence,
+              processAfter: t.processAfter,
+              content: t.content,
+            }))
+          : null,
     };
     if (includeInstructions) bundle.instructions = instructions || null;
     if (includeMemory) bundle.memory = Object.keys(memoryFiles).length > 0 ? memoryFiles : null;
@@ -6332,7 +6974,9 @@ export async function handleRequest(
     writeFileSync(coworkerYamlPath, yamlContent);
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, path: exportPath, yamlPath: coworkerYamlPath, size: Buffer.byteLength(yamlContent) }));
+    res.end(
+      JSON.stringify({ ok: true, path: exportPath, yamlPath: coworkerYamlPath, size: Buffer.byteLength(yamlContent) }),
+    );
     return;
   }
 
@@ -6342,7 +6986,8 @@ export async function handleRequest(
 
     // Detect binary archive by content-type
     const ct = req.headers['content-type'] || '';
-    const isBinaryArchive = ct.includes('application/gzip') || ct.includes('application/x-gzip') || ct.includes('application/octet-stream');
+    const isBinaryArchive =
+      ct.includes('application/gzip') || ct.includes('application/x-gzip') || ct.includes('application/octet-stream');
 
     if (isBinaryArchive) {
       // ---- Full-archive import ----
@@ -6365,7 +7010,11 @@ export async function handleRequest(
         }
 
         const wdb = getWriteDb();
-        if (!wdb) { res.writeHead(500); res.end('{"error":"db unavailable"}'); return; }
+        if (!wdb) {
+          res.writeHead(500);
+          res.end('{"error":"db unavailable"}');
+          return;
+        }
 
         const warnings: string[] = [];
 
@@ -6373,14 +7022,18 @@ export async function handleRequest(
         if (manifest.requires?.coworkerTypes) {
           const localTypes = readLegoCoworkerTypes();
           for (const t of manifest.requires.coworkerTypes) {
-            if (!localTypes[t]) warnings.push(`Missing coworker type: "${t}" — install its provider skill before this agent will compose correctly`);
+            if (!localTypes[t])
+              warnings.push(
+                `Missing coworker type: "${t}" — install its provider skill before this agent will compose correctly`,
+              );
           }
         }
 
         const triggerCandidate = manifest.trigger || `@${agent.name.replace(/\s+/g, '')}`;
         const trigger = getUniqueTrigger(wdb, triggerCandidate);
         let folder = sanitizeImportedFolder(agent.folder);
-        { // Unique folder allocator
+        {
+          // Unique folder allocator
           const baseFolder = folder;
           let suffix = 2;
           while (wdb.prepare('SELECT 1 FROM agent_groups WHERE folder = ?').get(folder)) {
@@ -6403,7 +7056,9 @@ export async function handleRequest(
         // 1. Back up target v2.db before merge
         const dbPath = getDbPath();
         const backupPath = `${dbPath}.backup-${Date.now()}`;
-        try { copyFileSync(dbPath, backupPath); } catch (e: any) {
+        try {
+          copyFileSync(dbPath, backupPath);
+        } catch (e: any) {
           warnings.push(`DB backup failed: ${e.message} — proceeding without backup`);
         }
 
@@ -6429,7 +7084,11 @@ export async function handleRequest(
             writeFileSync(dst, buf);
           }
         } catch (fsErr: any) {
-          try { rmSync(stagingDir, { recursive: true, force: true }); } catch { /* */ }
+          try {
+            rmSync(stagingDir, { recursive: true, force: true });
+          } catch {
+            /* */
+          }
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: `Import staging failed: ${fsErr.message}` }));
           return;
@@ -6480,23 +7139,32 @@ export async function handleRequest(
               if (Array.isArray(manifest.scheduledTasks)) {
                 let seq = 2; // even seq for host-written
                 for (const task of manifest.scheduledTasks) {
-                  inDb.prepare(
-                    `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, recurrence, content)
-                     VALUES (?, ?, 'task', ?, 'paused', ?, ?, ?)`
-                  ).run(
-                    task.origId,
-                    seq,
-                    now,
-                    toSqliteDatetime(task.processAfter),
-                    task.recurrence || null,
-                    typeof task.content === 'string' ? task.content : JSON.stringify(task.content),
-                  );
+                  inDb
+                    .prepare(
+                      `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, recurrence, content)
+                     VALUES (?, ?, 'task', ?, 'paused', ?, ?, ?)`,
+                    )
+                    .run(
+                      task.origId,
+                      seq,
+                      now,
+                      toSqliteDatetime(task.processAfter),
+                      task.recurrence || null,
+                      typeof task.content === 'string' ? task.content : JSON.stringify(task.content),
+                    );
                   seq += 2;
                   tasksImported++;
                 }
               }
-            } catch { /* best effort */ }
-            finally { try { inDb?.close(); } catch { /* */ } }
+            } catch {
+              /* best effort */
+            } finally {
+              try {
+                inDb?.close();
+              } catch {
+                /* */
+              }
+            }
 
             // Create outbound.db with schema + session_state (for session resume)
             const outDbPath = join(sessDir, 'outbound.db');
@@ -6507,12 +7175,19 @@ export async function handleRequest(
               outDb.exec(V2_OUTBOUND_SCHEMA);
 
               if (v1SessionId) {
-                outDb.prepare(
-                  "INSERT INTO session_state (key, value, updated_at) VALUES ('claude_sdk_session_id', ?, ?)"
-                ).run(v1SessionId, now);
+                outDb
+                  .prepare("INSERT INTO session_state (key, value, updated_at) VALUES ('claude_sdk_session_id', ?, ?)")
+                  .run(v1SessionId, now);
               }
-            } catch { /* best effort */ }
-            finally { try { outDb?.close(); } catch { /* */ } }
+            } catch {
+              /* best effort */
+            } finally {
+              try {
+                outDb?.close();
+              } catch {
+                /* */
+              }
+            }
 
             // Backfill v1 chat messages from the central messages table.
             // This is the canonical source — v1 stores all chat history in
@@ -6529,28 +7204,46 @@ export async function handleRequest(
                 const maxSeq = (inDb2.prepare('SELECT MAX(seq) as m FROM messages_in').get() as any)?.m || 0;
                 let inSeq = maxSeq + 2;
                 const inStmt = inDb2.prepare(
-                  `INSERT OR IGNORE INTO messages_in (id, seq, kind, timestamp, status, content) VALUES (?, ?, 'chat', ?, 'completed', ?)`
+                  `INSERT OR IGNORE INTO messages_in (id, seq, kind, timestamp, status, content) VALUES (?, ?, 'chat', ?, 'completed', ?)`,
                 );
                 for (const msg of chatIn) {
-                  const content = JSON.stringify({ text: msg.content, sender: msg.sender || 'dashboard', senderId: msg.sender || 'v1-import' });
+                  const content = JSON.stringify({
+                    text: msg.content,
+                    sender: msg.sender || 'dashboard',
+                    senderId: msg.sender || 'v1-import',
+                  });
                   inStmt.run(msg.id, inSeq, msg.timestamp, content);
                   inSeq += 2;
                 }
-              } catch { /* best effort */ }
-              finally { try { inDb2?.close(); } catch { /* */ } }
+              } catch {
+                /* best effort */
+              } finally {
+                try {
+                  inDb2?.close();
+                } catch {
+                  /* */
+                }
+              }
               try {
                 outDb2 = new Database(outDbPath);
                 outDb2.pragma('busy_timeout = 3000');
                 let outSeq = 1;
                 const outStmt = outDb2.prepare(
-                  `INSERT OR IGNORE INTO messages_out (id, seq, kind, timestamp, content) VALUES (?, ?, 'chat', ?, ?)`
+                  `INSERT OR IGNORE INTO messages_out (id, seq, kind, timestamp, content) VALUES (?, ?, 'chat', ?, ?)`,
                 );
                 for (const msg of chatOut) {
                   outStmt.run(msg.id, outSeq, msg.timestamp, JSON.stringify({ text: msg.content }));
                   outSeq += 2;
                 }
-              } catch { /* best effort */ }
-              finally { try { outDb2?.close(); } catch { /* */ } }
+              } catch {
+                /* best effort */
+              } finally {
+                try {
+                  outDb2?.close();
+                } catch {
+                  /* */
+                }
+              }
             }
 
             sessionsRestored++;
@@ -6575,13 +7268,26 @@ export async function handleRequest(
                 sdb = new Database(inDbPath);
                 sdb.pragma('journal_mode = DELETE');
                 sdb.pragma('busy_timeout = 5000');
-                const taskCount = (sdb.prepare(
-                  "SELECT COUNT(*) as c FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')"
-                ).get() as any).c;
+                const taskCount = (
+                  sdb
+                    .prepare(
+                      "SELECT COUNT(*) as c FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
+                    )
+                    .get() as any
+                ).c;
                 tasksImported += taskCount;
-                sdb.prepare("UPDATE messages_in SET status = 'paused' WHERE kind = 'task' AND status = 'pending'").run();
-              } catch { /* DB may not have schema yet */ }
-              finally { try { sdb?.close(); } catch { /* */ } }
+                sdb
+                  .prepare("UPDATE messages_in SET status = 'paused' WHERE kind = 'task' AND status = 'pending'")
+                  .run();
+              } catch {
+                /* DB may not have schema yet */
+              } finally {
+                try {
+                  sdb?.close();
+                } catch {
+                  /* */
+                }
+              }
             }
             sessionsRestored++;
           }
@@ -6596,47 +7302,83 @@ export async function handleRequest(
           const importRouting: 'direct' | 'internal' = agent.routing === 'internal' ? 'internal' : 'direct';
           // Privilege guard: never import a non-admin group with coworker_type='main'.
           const importedType = agent.coworkerType === 'main' ? null : agent.coworkerType;
-          wdb.prepare(
-            'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, routing, created_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?)'
-          ).run(
-            newAgId, agent.name, folder,
-            agent.agentProvider || null,
-            agent.containerConfig ? JSON.stringify(agent.containerConfig) : null,
-            importedType || null,
-            agent.allowedMcpTools ? JSON.stringify(agent.allowedMcpTools) : null,
-            importRouting,
-            now,
-          );
+          wdb
+            .prepare(
+              'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, routing, created_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?)',
+            )
+            .run(
+              newAgId,
+              agent.name,
+              folder,
+              agent.agentProvider || null,
+              agent.containerConfig ? JSON.stringify(agent.containerConfig) : null,
+              importedType || null,
+              agent.allowedMcpTools ? JSON.stringify(agent.allowedMcpTools) : null,
+              importRouting,
+              now,
+            );
 
           // Insert session rows
           for (const ms of manifestSessions) {
             const newSessId = sessionMap.get(ms.origId)!;
-            wdb.prepare(
-              'INSERT INTO sessions (id, agent_group_id, status, agent_provider, container_status, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-            ).run(newSessId, newAgId, ms.status || 'active', ms.agentProvider || agent.agentProvider || null, 'stopped', now);
+            wdb
+              .prepare(
+                'INSERT INTO sessions (id, agent_group_id, status, agent_provider, container_status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+              )
+              .run(
+                newSessId,
+                newAgId,
+                ms.status || 'active',
+                ms.agentProvider || agent.agentProvider || null,
+                'stopped',
+                now,
+              );
           }
 
           let importedMgId: string;
           if (importRouting === 'direct') {
-            ({ messagingGroupId: importedMgId } = ensureDashboardChatWiring(wdb, { id: newAgId, folder, name: agent.name }, trigger, now));
+            ({ messagingGroupId: importedMgId } = ensureDashboardChatWiring(
+              wdb,
+              { id: newAgId, folder, name: agent.name },
+              trigger,
+              now,
+            ));
           } else {
             // Internal: wire into admin's channel
-            const adminMgRow = wdb.prepare(
-              `SELECT mg.id FROM messaging_groups mg JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id JOIN agent_groups ag ON mga.agent_group_id = ag.id WHERE ag.is_admin = 1 AND mg.channel_type = 'dashboard' LIMIT 1`,
-            ).get() as { id: string } | undefined;
+            const adminMgRow = wdb
+              .prepare(
+                `SELECT mg.id FROM messaging_groups mg JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id JOIN agent_groups ag ON mga.agent_group_id = ag.id WHERE ag.is_admin = 1 AND mg.channel_type = 'dashboard' LIMIT 1`,
+              )
+              .get() as { id: string } | undefined;
             importedMgId = adminMgRow?.id || '';
             if (adminMgRow) {
-              const existingMga = wdb.prepare('SELECT 1 FROM messaging_group_agents WHERE messaging_group_id = ? AND agent_group_id = ? LIMIT 1').get(adminMgRow.id, newAgId);
+              const existingMga = wdb
+                .prepare(
+                  'SELECT 1 FROM messaging_group_agents WHERE messaging_group_id = ? AND agent_group_id = ? LIMIT 1',
+                )
+                .get(adminMgRow.id, newAgId);
               if (!existingMga) {
-                wdb.prepare(
-                  "INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES (?, ?, ?, 'pattern', ?, 'all', 'shared', 0, ?)",
-                ).run(`mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, adminMgRow.id, newAgId, `@${normalizeDestinationName(agent.name)}\\b`, now);
+                wdb
+                  .prepare(
+                    "INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES (?, ?, ?, 'pattern', ?, 'all', 'shared', 0, ?)",
+                  )
+                  .run(
+                    `mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    adminMgRow.id,
+                    newAgId,
+                    `@${normalizeDestinationName(agent.name)}\\b`,
+                    now,
+                  );
               }
             }
           }
 
           // Link restored sessions to the dashboard messaging group so they route correctly
-          wdb.prepare('UPDATE sessions SET messaging_group_id = ? WHERE agent_group_id = ? AND messaging_group_id IS NULL').run(importedMgId, newAgId);
+          wdb
+            .prepare(
+              'UPDATE sessions SET messaging_group_id = ? WHERE agent_group_id = ? AND messaging_group_id IS NULL',
+            )
+            .run(importedMgId, newAgId);
 
           // Destinations — resolve by folder name
           if (Array.isArray(manifest.destinations)) {
@@ -6645,20 +7387,26 @@ export async function handleRequest(
               let targetId: string | null = null;
               let resolvedLabel = '';
               if (dest.type === 'agent' && dest.targetFolder) {
-                const targetAg = wdb.prepare('SELECT id, name FROM agent_groups WHERE folder = ?').get(dest.targetFolder) as any;
+                const targetAg = wdb
+                  .prepare('SELECT id, name FROM agent_groups WHERE folder = ?')
+                  .get(dest.targetFolder) as any;
                 targetId = targetAg?.id || null;
                 if (targetAg) resolvedLabel = `${dest.targetFolder} (${targetAg.id})`;
               } else if (dest.type === 'channel' && dest.channelType && dest.platformId) {
-                const mg = wdb.prepare('SELECT id FROM messaging_groups WHERE channel_type = ? AND platform_id = ?').get(dest.channelType, dest.platformId) as any;
+                const mg = wdb
+                  .prepare('SELECT id FROM messaging_groups WHERE channel_type = ? AND platform_id = ?')
+                  .get(dest.channelType, dest.platformId) as any;
                 targetId = mg?.id || null;
                 if (mg) resolvedLabel = `${dest.channelType}:${dest.platformId}`;
               }
               if (targetId) {
                 const existingByName = getDestinationByLocalNameDb(wdb, newAgId, dest.name);
                 if (!existingByName) {
-                  wdb.prepare(
-                    'INSERT INTO agent_destinations (agent_group_id, local_name, target_type, target_id, created_at) VALUES (?, ?, ?, ?, ?)'
-                  ).run(newAgId, dest.name, dest.type, targetId, now);
+                  wdb
+                    .prepare(
+                      'INSERT INTO agent_destinations (agent_group_id, local_name, target_type, target_id, created_at) VALUES (?, ?, ?, ?, ?)',
+                    )
+                    .run(newAgId, dest.name, dest.type, targetId, now);
                   destsCreated++;
                   resolvedDests.push({ name: dest.name, type: dest.type, resolvedTo: resolvedLabel });
                 }
@@ -6670,8 +7418,16 @@ export async function handleRequest(
 
           wdb.exec('COMMIT');
         } catch (dbErr: any) {
-          try { wdb.exec('ROLLBACK'); } catch { /* */ }
-          try { rmSync(stagingDir, { recursive: true, force: true }); } catch { /* */ }
+          try {
+            wdb.exec('ROLLBACK');
+          } catch {
+            /* */
+          }
+          try {
+            rmSync(stagingDir, { recursive: true, force: true });
+          } catch {
+            /* */
+          }
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: `Import failed (DB): ${dbErr.message}` }));
           return;
@@ -6710,19 +7466,21 @@ export async function handleRequest(
         }
 
         res.writeHead(201, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          ok: true,
-          folder,
-          name: agent.name,
-          id: newAgId,
-          backupPath: existsSync(backupPath) ? backupPath : undefined,
-          sessionsRestored,
-          tasksImported,
-          tasksPaused: true,
-          destsCreated,
-          resolvedDests: resolvedDests.length > 0 ? resolvedDests : undefined,
-          warnings: warnings.length > 0 ? warnings : undefined,
-        }));
+        res.end(
+          JSON.stringify({
+            ok: true,
+            folder,
+            name: agent.name,
+            id: newAgId,
+            backupPath: existsSync(backupPath) ? backupPath : undefined,
+            sessionsRestored,
+            tasksImported,
+            tasksPaused: true,
+            destsCreated,
+            resolvedDests: resolvedDests.length > 0 ? resolvedDests : undefined,
+            warnings: warnings.length > 0 ? warnings : undefined,
+          }),
+        );
       } catch (e: any) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));
@@ -6751,18 +7509,27 @@ export async function handleRequest(
       }
 
       const wdb = getWriteDb();
-      if (!wdb) { res.writeHead(500); res.end('{"error":"db unavailable"}'); return; }
+      if (!wdb) {
+        res.writeHead(500);
+        res.end('{"error":"db unavailable"}');
+        return;
+      }
 
       // Compatibility check: warn if required types are missing from the local lego registry
       const warnings: string[] = [];
       if (isV3 && data.requires?.coworkerTypes) {
         const localTypes = readLegoCoworkerTypes();
         for (const t of data.requires.coworkerTypes) {
-          if (!localTypes[t]) warnings.push(`Missing coworker type: "${t}" — install its provider skill before this agent will compose correctly`);
+          if (!localTypes[t])
+            warnings.push(
+              `Missing coworker type: "${t}" — install its provider skill before this agent will compose correctly`,
+            );
         }
       }
 
-      const triggerCandidate = isV3 ? (data.trigger || `@${agent.name.replace(/\s+/g, '')}`) : (agent.trigger || `@${agent.name.replace(/\s+/g, '')}`);
+      const triggerCandidate = isV3
+        ? data.trigger || `@${agent.name.replace(/\s+/g, '')}`
+        : agent.trigger || `@${agent.name.replace(/\s+/g, '')}`;
       const trigger = getUniqueTrigger(wdb, triggerCandidate);
       let folder = sanitizeImportedFolder(agent.folder);
       // Unique folder allocator — suffix with -2, -3, etc. on collision
@@ -6804,7 +7571,10 @@ export async function handleRequest(
 
         // Fix 6: Save instruction template metadata if present
         if (isV3 && data.instructionTemplate) {
-          writeFileSync(join(stagingDir, '.instruction-meta.json'), JSON.stringify({ template: data.instructionTemplate }));
+          writeFileSync(
+            join(stagingDir, '.instruction-meta.json'),
+            JSON.stringify({ template: data.instructionTemplate }),
+          );
         }
 
         // Write files — reject any hidden path component (starts with .)
@@ -6812,7 +7582,7 @@ export async function handleRequest(
         for (const [relPath, content] of Object.entries(bundleFiles)) {
           if (!relPath) continue;
           // Reject any path component that starts with . (hidden files/dirs)
-          const hasHiddenComponent = relPath.split('/').some(part => part.startsWith('.'));
+          const hasHiddenComponent = relPath.split('/').some((part) => part.startsWith('.'));
           if (hasHiddenComponent) {
             warnings.push(`Blocked file: "${relPath}" (hidden path component)`);
             continue;
@@ -6832,7 +7602,11 @@ export async function handleRequest(
         }
       } catch (fsErr: any) {
         // Staging failed → cleanup temp, return error (no DB changes yet)
-        try { rmSync(stagingDir, { recursive: true, force: true }); } catch { /* cleanup best-effort */ }
+        try {
+          rmSync(stagingDir, { recursive: true, force: true });
+        } catch {
+          /* cleanup best-effort */
+        }
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: `Import failed (filesystem staging): ${fsErr.message}` }));
         return;
@@ -6844,27 +7618,41 @@ export async function handleRequest(
         const stdRouting: 'direct' | 'internal' = agent.routing === 'internal' ? 'internal' : 'direct';
         // Privilege guard: never import a non-admin group with coworker_type='main'.
         const safeType = agent.coworkerType === 'main' ? null : agent.coworkerType;
-        wdb.prepare(
-          'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, routing, created_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?)'
-        ).run(
-          agId, agent.name, folder,
-          agent.agentProvider || null,
-          agent.containerConfig ? JSON.stringify(agent.containerConfig) : null,
-          safeType || null,
-          agent.allowedMcpTools ? JSON.stringify(agent.allowedMcpTools) : null,
-          stdRouting,
-          now,
-        );
+        wdb
+          .prepare(
+            'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, routing, created_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?)',
+          )
+          .run(
+            agId,
+            agent.name,
+            folder,
+            agent.agentProvider || null,
+            agent.containerConfig ? JSON.stringify(agent.containerConfig) : null,
+            safeType || null,
+            agent.allowedMcpTools ? JSON.stringify(agent.allowedMcpTools) : null,
+            stdRouting,
+            now,
+          );
         if (stdRouting === 'direct') {
           ensureDashboardChatWiring(wdb, { id: agId, folder, name: agent.name }, trigger, now);
         } else {
-          const adminMgRow = wdb.prepare(
-            `SELECT mg.id FROM messaging_groups mg JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id JOIN agent_groups ag ON mga.agent_group_id = ag.id WHERE ag.is_admin = 1 AND mg.channel_type = 'dashboard' LIMIT 1`,
-          ).get() as { id: string } | undefined;
+          const adminMgRow = wdb
+            .prepare(
+              `SELECT mg.id FROM messaging_groups mg JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id JOIN agent_groups ag ON mga.agent_group_id = ag.id WHERE ag.is_admin = 1 AND mg.channel_type = 'dashboard' LIMIT 1`,
+            )
+            .get() as { id: string } | undefined;
           if (adminMgRow) {
-            wdb.prepare(
-              "INSERT OR IGNORE INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES (?, ?, ?, 'pattern', ?, 'all', 'shared', 0, ?)",
-            ).run(`mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, adminMgRow.id, agId, `@${normalizeDestinationName(agent.name)}\\b`, now);
+            wdb
+              .prepare(
+                "INSERT OR IGNORE INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES (?, ?, ?, 'pattern', ?, 'all', 'shared', 0, ?)",
+              )
+              .run(
+                `mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                adminMgRow.id,
+                agId,
+                `@${normalizeDestinationName(agent.name)}\\b`,
+                now,
+              );
           }
         }
 
@@ -6875,11 +7663,15 @@ export async function handleRequest(
             let targetId: string | null = null;
             let resolvedLabel = '';
             if (dest.type === 'agent' && dest.targetFolder) {
-              const targetAg = wdb.prepare('SELECT id, name FROM agent_groups WHERE folder = ?').get(dest.targetFolder) as any;
+              const targetAg = wdb
+                .prepare('SELECT id, name FROM agent_groups WHERE folder = ?')
+                .get(dest.targetFolder) as any;
               targetId = targetAg?.id || null;
               if (targetAg) resolvedLabel = `${dest.targetFolder} (${targetAg.id})`;
             } else if (dest.type === 'channel' && dest.channelType && dest.platformId) {
-              const mg = wdb.prepare('SELECT id FROM messaging_groups WHERE channel_type = ? AND platform_id = ?').get(dest.channelType, dest.platformId) as any;
+              const mg = wdb
+                .prepare('SELECT id FROM messaging_groups WHERE channel_type = ? AND platform_id = ?')
+                .get(dest.channelType, dest.platformId) as any;
               targetId = mg?.id || null;
               if (mg) resolvedLabel = `${dest.channelType}:${dest.platformId}`;
             }
@@ -6916,8 +7708,16 @@ export async function handleRequest(
 
         wdb.exec('COMMIT');
       } catch (dbErr: any) {
-        try { wdb.exec('ROLLBACK'); } catch { /* already rolled back */ }
-        try { rmSync(stagingDir, { recursive: true, force: true }); } catch { /* cleanup staged files */ }
+        try {
+          wdb.exec('ROLLBACK');
+        } catch {
+          /* already rolled back */
+        }
+        try {
+          rmSync(stagingDir, { recursive: true, force: true });
+        } catch {
+          /* cleanup staged files */
+        }
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: `Import failed (DB): ${dbErr.message}` }));
         return;
@@ -6951,11 +7751,23 @@ export async function handleRequest(
         try {
           wdb.prepare('DELETE FROM agent_destinations WHERE agent_group_id = ?').run(agId);
           wdb.prepare('DELETE FROM messaging_group_agents WHERE agent_group_id = ?').run(agId);
-          wdb.prepare("DELETE FROM messaging_groups WHERE channel_type = 'dashboard' AND platform_id = ?").run(`dashboard:${folder}`);
+          wdb
+            .prepare("DELETE FROM messaging_groups WHERE channel_type = 'dashboard' AND platform_id = ?")
+            .run(`dashboard:${folder}`);
           wdb.prepare('DELETE FROM agent_groups WHERE id = ?').run(agId);
-        } catch { /* best-effort cleanup */ }
-        try { rmSync(stagingDir, { recursive: true, force: true }); } catch { /* cleanup */ }
-        try { rmSync(groupDir, { recursive: true, force: true }); } catch { /* cleanup */ }
+        } catch {
+          /* best-effort cleanup */
+        }
+        try {
+          rmSync(stagingDir, { recursive: true, force: true });
+        } catch {
+          /* cleanup */
+        }
+        try {
+          rmSync(groupDir, { recursive: true, force: true });
+        } catch {
+          /* cleanup */
+        }
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: `Import failed (file copy): ${copyErr.message}` }));
         return;
@@ -6967,7 +7779,15 @@ export async function handleRequest(
       let memoriesRestored = 0;
       if (isV3 && data.memory && typeof data.memory === 'object') {
         try {
-          const memDir = join(getDataDir(), 'v2-sessions', agId, '.claude-shared', 'projects', '-workspace-agent', 'memory');
+          const memDir = join(
+            getDataDir(),
+            'v2-sessions',
+            agId,
+            '.claude-shared',
+            'projects',
+            '-workspace-agent',
+            'memory',
+          );
           mkdirSync(memDir, { recursive: true });
           for (const [filename, content] of Object.entries(data.memory)) {
             if (!filename.endsWith('.md') || filename.includes('..') || filename.includes('/')) continue;
@@ -6996,15 +7816,19 @@ export async function handleRequest(
           for (const task of data.scheduledTasks) {
             if (!task.content) continue;
             const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-            inDb.prepare(
-              `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, recurrence, content)
-               VALUES (?, ?, 'task', ?, 'paused', ?, ?, ?)`
-            ).run(
-              taskId, seq, taskNow,
-              toSqliteDatetime(task.processAfter),
-              task.recurrence || null,
-              typeof task.content === 'string' ? task.content : JSON.stringify(task.content),
-            );
+            inDb
+              .prepare(
+                `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, recurrence, content)
+               VALUES (?, ?, 'task', ?, 'paused', ?, ?, ?)`,
+              )
+              .run(
+                taskId,
+                seq,
+                taskNow,
+                toSqliteDatetime(task.processAfter),
+                task.recurrence || null,
+                typeof task.content === 'string' ? task.content : JSON.stringify(task.content),
+              );
             seq += 2;
             tasksImported++;
           }
@@ -7012,9 +7836,9 @@ export async function handleRequest(
           // Register session in central DB
           const wdb2 = getWriteDb();
           if (wdb2) {
-            wdb2.prepare(
-              'INSERT OR IGNORE INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, ?, ?)'
-            ).run(sessId, agId, 'active', taskNow);
+            wdb2
+              .prepare('INSERT OR IGNORE INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, ?, ?)')
+              .run(sessId, agId, 'active', taskNow);
           }
         } catch (taskErr: any) {
           warnings.push(`Scheduled tasks restore partial: ${taskErr.message}`);
@@ -7026,17 +7850,19 @@ export async function handleRequest(
       }
 
       res.writeHead(201, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        ok: true,
-        folder,
-        name: agent.name,
-        id: agId,
-        filesWritten,
-        destsCreated,
-        memoriesRestored: memoriesRestored > 0 ? memoriesRestored : undefined,
-        resolvedDests: resolvedDests.length > 0 ? resolvedDests : undefined,
-        warnings: warnings.length > 0 ? warnings : undefined,
-      }));
+      res.end(
+        JSON.stringify({
+          ok: true,
+          folder,
+          name: agent.name,
+          id: agId,
+          filesWritten,
+          destsCreated,
+          memoriesRestored: memoriesRestored > 0 ? memoriesRestored : undefined,
+          resolvedDests: resolvedDests.length > 0 ? resolvedDests : undefined,
+          warnings: warnings.length > 0 ? warnings : undefined,
+        }),
+      );
     } catch (e: any) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));
@@ -7084,13 +7910,18 @@ export async function handleRequest(
       // Allow caller to override coworkerType (e.g. typed import from dashboard)
       if (requestedType) agent.coworkerType = requestedType;
       const wdb = getWriteDb();
-      if (!wdb) { res.writeHead(500); res.end('{"error":"db unavailable"}'); return; }
+      if (!wdb) {
+        res.writeHead(500);
+        res.end('{"error":"db unavailable"}');
+        return;
+      }
 
       const warnings: string[] = [];
       const triggerCandidate = manifest.trigger || `@${agent.name.replace(/\s+/g, '')}`;
       const trigger = getUniqueTrigger(wdb, triggerCandidate);
       let importFolder = sanitizeImportedFolder(agent.folder);
-      { // Unique folder allocator
+      {
+        // Unique folder allocator
         const baseFolder = importFolder;
         let suffix = 2;
         while (wdb.prepare('SELECT 1 FROM agent_groups WHERE folder = ?').get(importFolder)) {
@@ -7113,7 +7944,9 @@ export async function handleRequest(
       // Backup v2.db
       const dbPath = getDbPath();
       const backupPath = `${dbPath}.backup-${Date.now()}`;
-      try { copyFileSync(dbPath, backupPath); } catch (e: any) {
+      try {
+        copyFileSync(dbPath, backupPath);
+      } catch (e: any) {
         warnings.push(`DB backup failed: ${e.message}`);
       }
 
@@ -7135,7 +7968,11 @@ export async function handleRequest(
           writeFileSync(dst, buf);
         }
       } catch (fsErr: any) {
-        try { rmSync(stagingDir, { recursive: true, force: true }); } catch { /* */ }
+        try {
+          rmSync(stagingDir, { recursive: true, force: true });
+        } catch {
+          /* */
+        }
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: `Import staging failed: ${fsErr.message}` }));
         return;
@@ -7154,7 +7991,9 @@ export async function handleRequest(
             } else {
               unlinkSync(instrPath);
             }
-          } catch { /* best effort */ }
+          } catch {
+            /* best effort */
+          }
         }
       }
 
@@ -7197,17 +8036,32 @@ export async function handleRequest(
           if (Array.isArray(manifest.scheduledTasks)) {
             let seq = 2;
             for (const task of manifest.scheduledTasks) {
-              inDb.prepare(
-                `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, recurrence, content)
-                 VALUES (?, ?, 'task', ?, 'paused', ?, ?, ?)`
-              ).run(task.origId, seq, now, toSqliteDatetime(task.processAfter), task.recurrence || null,
-                typeof task.content === 'string' ? task.content : JSON.stringify(task.content));
+              inDb
+                .prepare(
+                  `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, recurrence, content)
+                 VALUES (?, ?, 'task', ?, 'paused', ?, ?, ?)`,
+                )
+                .run(
+                  task.origId,
+                  seq,
+                  now,
+                  toSqliteDatetime(task.processAfter),
+                  task.recurrence || null,
+                  typeof task.content === 'string' ? task.content : JSON.stringify(task.content),
+                );
               seq += 2;
               tasksImported++;
             }
           }
-        } catch { /* best effort */ }
-        finally { try { inDb?.close(); } catch { /* */ } }
+        } catch {
+          /* best effort */
+        } finally {
+          try {
+            inDb?.close();
+          } catch {
+            /* */
+          }
+        }
 
         // Create outbound.db with session_state
         const outDbPath = join(sessDir, 'outbound.db');
@@ -7217,12 +8071,19 @@ export async function handleRequest(
           outDb.pragma('journal_mode = DELETE');
           outDb.exec(V2_OUTBOUND_SCHEMA);
           if (v1SessionId) {
-            outDb.prepare(
-              "INSERT INTO session_state (key, value, updated_at) VALUES ('claude_sdk_session_id', ?, ?)"
-            ).run(v1SessionId, now);
+            outDb
+              .prepare("INSERT INTO session_state (key, value, updated_at) VALUES ('claude_sdk_session_id', ?, ?)")
+              .run(v1SessionId, now);
           }
-        } catch { /* best effort */ }
-        finally { try { outDb?.close(); } catch { /* */ } }
+        } catch {
+          /* best effort */
+        } finally {
+          try {
+            outDb?.close();
+          } catch {
+            /* */
+          }
+        }
 
         // Backfill v1 chat messages into session DBs
         const chatMsgs = Array.isArray(manifest.chatMessages) ? manifest.chatMessages : [];
@@ -7237,28 +8098,46 @@ export async function handleRequest(
             const maxSeq = (inDb2.prepare('SELECT MAX(seq) as m FROM messages_in').get() as any)?.m || 0;
             let inSeq = maxSeq + 2;
             const inStmt = inDb2.prepare(
-              `INSERT OR IGNORE INTO messages_in (id, seq, kind, timestamp, status, content) VALUES (?, ?, 'chat', ?, 'completed', ?)`
+              `INSERT OR IGNORE INTO messages_in (id, seq, kind, timestamp, status, content) VALUES (?, ?, 'chat', ?, 'completed', ?)`,
             );
             for (const msg of chatIn) {
-              const content = JSON.stringify({ text: msg.content, sender: msg.sender || 'dashboard', senderId: msg.sender || 'v1-import' });
+              const content = JSON.stringify({
+                text: msg.content,
+                sender: msg.sender || 'dashboard',
+                senderId: msg.sender || 'v1-import',
+              });
               inStmt.run(msg.id, inSeq, msg.timestamp, content);
               inSeq += 2;
             }
-          } catch { /* best effort */ }
-          finally { try { inDb2?.close(); } catch { /* */ } }
+          } catch {
+            /* best effort */
+          } finally {
+            try {
+              inDb2?.close();
+            } catch {
+              /* */
+            }
+          }
           try {
             outDb2 = new Database(outDbPath);
             outDb2.pragma('busy_timeout = 3000');
             let outSeq = 1;
             const outStmt = outDb2.prepare(
-              `INSERT OR IGNORE INTO messages_out (id, seq, kind, timestamp, content) VALUES (?, ?, 'chat', ?, ?)`
+              `INSERT OR IGNORE INTO messages_out (id, seq, kind, timestamp, content) VALUES (?, ?, 'chat', ?, ?)`,
             );
             for (const msg of chatOut) {
               outStmt.run(msg.id, outSeq, msg.timestamp, JSON.stringify({ text: msg.content }));
               outSeq += 2;
             }
-          } catch { /* best effort */ }
-          finally { try { outDb2?.close(); } catch { /* */ } }
+          } catch {
+            /* best effort */
+          } finally {
+            try {
+              outDb2?.close();
+            } catch {
+              /* */
+            }
+          }
         }
 
         sessionsRestored++;
@@ -7270,29 +8149,54 @@ export async function handleRequest(
         wdb.exec('BEGIN TRANSACTION');
         // Privilege guard: never import a non-admin group with coworker_type='main'.
         const legacyImportedType = agent.coworkerType === 'main' ? null : agent.coworkerType;
-        wdb.prepare(
-          'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, created_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)'
-        ).run(newAgId, agent.name, importFolder, agent.agentProvider || null,
-          agent.containerConfig ? JSON.stringify(agent.containerConfig) : null,
-          legacyImportedType || null,
-          agent.allowedMcpTools ? JSON.stringify(agent.allowedMcpTools) : null, now);
+        wdb
+          .prepare(
+            'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, created_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)',
+          )
+          .run(
+            newAgId,
+            agent.name,
+            importFolder,
+            agent.agentProvider || null,
+            agent.containerConfig ? JSON.stringify(agent.containerConfig) : null,
+            legacyImportedType || null,
+            agent.allowedMcpTools ? JSON.stringify(agent.allowedMcpTools) : null,
+            now,
+          );
 
         for (const ms of manifestSessions) {
           const newSessId = sessionMap.get(ms.origId)!;
-          wdb.prepare(
-            'INSERT INTO sessions (id, agent_group_id, status, agent_provider, container_status, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-          ).run(newSessId, newAgId, 'active', agent.agentProvider || null, 'stopped', now);
+          wdb
+            .prepare(
+              'INSERT INTO sessions (id, agent_group_id, status, agent_provider, container_status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            )
+            .run(newSessId, newAgId, 'active', agent.agentProvider || null, 'stopped', now);
         }
 
-        const { messagingGroupId: yamlImportMgId } = ensureDashboardChatWiring(wdb, { id: newAgId, folder: importFolder, name: agent.name }, trigger, now);
+        const { messagingGroupId: yamlImportMgId } = ensureDashboardChatWiring(
+          wdb,
+          { id: newAgId, folder: importFolder, name: agent.name },
+          trigger,
+          now,
+        );
 
         // Link restored sessions to the dashboard messaging group so they route correctly
-        wdb.prepare('UPDATE sessions SET messaging_group_id = ? WHERE agent_group_id = ? AND messaging_group_id IS NULL').run(yamlImportMgId, newAgId);
+        wdb
+          .prepare('UPDATE sessions SET messaging_group_id = ? WHERE agent_group_id = ? AND messaging_group_id IS NULL')
+          .run(yamlImportMgId, newAgId);
 
         wdb.exec('COMMIT');
       } catch (dbErr: any) {
-        try { wdb.exec('ROLLBACK'); } catch { /* */ }
-        try { rmSync(stagingDir, { recursive: true, force: true }); } catch { /* */ }
+        try {
+          wdb.exec('ROLLBACK');
+        } catch {
+          /* */
+        }
+        try {
+          rmSync(stagingDir, { recursive: true, force: true });
+        } catch {
+          /* */
+        }
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: `Import failed (DB): ${dbErr.message}` }));
         return;
@@ -7339,7 +8243,7 @@ export async function handleRequest(
           // Rebuild INDEX.md from all learning files
           if (copied > 0) {
             const files = readdirSync(v2LearningsDir)
-              .filter(f => f.endsWith('.md') && f !== 'INDEX.md')
+              .filter((f) => f.endsWith('.md') && f !== 'INDEX.md')
               .sort();
             const indexLines = ['# Shared Learnings Index\n'];
             for (const f of files) {
@@ -7355,20 +8259,22 @@ export async function handleRequest(
       }
 
       res.writeHead(201, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        ok: true,
-        folder: importFolder,
-        name: agentName,
-        id: newAgId,
-        sourceFormat: 'v1',
-        backupPath: existsSync(backupPath) ? backupPath : undefined,
-        sessionsRestored,
-        tasksImported,
-        tasksPaused: true,
-        destsCreated,
-        stats,
-        warnings: warnings.length > 0 ? warnings : undefined,
-      }));
+      res.end(
+        JSON.stringify({
+          ok: true,
+          folder: importFolder,
+          name: agentName,
+          id: newAgId,
+          sourceFormat: 'v1',
+          backupPath: existsSync(backupPath) ? backupPath : undefined,
+          sessionsRestored,
+          tasksImported,
+          tasksPaused: true,
+          destsCreated,
+          stats,
+          warnings: warnings.length > 0 ? warnings : undefined,
+        }),
+      );
     } catch (e: any) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));
@@ -7450,9 +8356,7 @@ export async function handleRequest(
       wdb.prepare('DELETE FROM agent_destinations WHERE agent_group_id = ?').run(agId);
       // Bidirectional: destinations from OTHER agents pointing AT this one.
       // Without this, parent agents keep stale `target_id` pointers.
-      wdb
-        .prepare("DELETE FROM agent_destinations WHERE target_type = 'agent' AND target_id = ?")
-        .run(agId);
+      wdb.prepare("DELETE FROM agent_destinations WHERE target_type = 'agent' AND target_id = ?").run(agId);
       wdb.prepare('DELETE FROM sessions WHERE agent_group_id = ?').run(agId);
       // Drop the dashboard messaging group for this agent.
       wdb
@@ -7465,11 +8369,11 @@ export async function handleRequest(
       wdb
         .prepare(`UPDATE sessions SET messaging_group_id = NULL WHERE messaging_group_id IN (${a2aMgSubquery})`)
         .run({ agId });
+      wdb.prepare(`DELETE FROM messaging_group_agents WHERE messaging_group_id IN (${a2aMgSubquery})`).run({ agId });
       wdb
-        .prepare(`DELETE FROM messaging_group_agents WHERE messaging_group_id IN (${a2aMgSubquery})`)
-        .run({ agId });
-      wdb
-        .prepare(`DELETE FROM messaging_groups WHERE channel_type = 'agent' AND (platform_id LIKE 'agent:' || ? || ':%' OR platform_id LIKE 'agent:%:' || ?)`)
+        .prepare(
+          `DELETE FROM messaging_groups WHERE channel_type = 'agent' AND (platform_id LIKE 'agent:' || ? || ':%' OR platform_id LIKE 'agent:%:' || ?)`,
+        )
         .run(agId, agId);
       // Drop non-dashboard messaging_groups that are now orphaned (no agent
       // references them after the cascade above).
@@ -7542,22 +8446,25 @@ export async function handleRequest(
         }),
       );
     };
-    exec(`docker ps --filter name=${getContainerNameFilter()}${folderHyphenated}- --format '{{.Names}}'`, (_err, stdout) => {
-      const containers = (stdout || '').trim().split('\n').filter(Boolean);
-      if (containers.length === 0) {
-        doCleanup().catch((err) => {
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'cleanup failed', detail: String(err) }));
+    exec(
+      `docker ps --filter name=${getContainerNameFilter()}${folderHyphenated}- --format '{{.Names}}'`,
+      (_err, stdout) => {
+        const containers = (stdout || '').trim().split('\n').filter(Boolean);
+        if (containers.length === 0) {
+          doCleanup().catch((err) => {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'cleanup failed', detail: String(err) }));
+          });
+          return;
+        }
+        exec(`docker stop ${containers.join(' ')}`, () => {
+          doCleanup().catch((err) => {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'cleanup failed', detail: String(err) }));
+          });
         });
-        return;
-      }
-      exec(`docker stop ${containers.join(' ')}`, () => {
-        doCleanup().catch((err) => {
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'cleanup failed', detail: String(err) }));
-        });
-      });
-    });
+      },
+    );
     return;
   }
 
@@ -7747,7 +8654,9 @@ export async function handleRequest(
     const isImage = mime.startsWith('image/');
     res.writeHead(200, {
       'Content-Type': mime,
-      'Content-Disposition': isImage ? 'inline' : `attachment; filename="${(filePath.split('/').pop() || 'file').replace(/["\r\n]/g, '_')}"`,
+      'Content-Disposition': isImage
+        ? 'inline'
+        : `attachment; filename="${(filePath.split('/').pop() || 'file').replace(/["\r\n]/g, '_')}"`,
     });
     res.end(content);
     return;
@@ -7825,9 +8734,7 @@ export async function handleRequest(
           return;
         }
         const tools = (await r.json()) as Record<string, unknown>;
-        const serverEntries = Object.entries(tools).filter(
-          (e): e is [string, string[]] => Array.isArray(e[1]),
-        );
+        const serverEntries = Object.entries(tools).filter((e): e is [string, string[]] => Array.isArray(e[1]));
         // Per-server counts so the MCP Servers table can show the right number per row.
         // The flat `toolCount` is kept for the top "Discovered Tools" stat card.
         const servers = Object.fromEntries(serverEntries.map(([k, v]) => [k, v.length]));
@@ -8331,8 +9238,10 @@ export async function handleRequest(
             .all() as any[];
           approvals = rows.map((row: any) => {
             let payload: any = {};
-            try { payload = JSON.parse(row.payload || '{}'); } catch {}
-            const packages = ((payload.apt || []).concat(payload.npm || [])).filter(Boolean);
+            try {
+              payload = JSON.parse(row.payload || '{}');
+            } catch {}
+            const packages = (payload.apt || []).concat(payload.npm || []).filter(Boolean);
             return {
               approvalId: row.approval_id,
               action: row.action,
@@ -8369,7 +9278,11 @@ export async function handleRequest(
       const canonical = canonicalizeDecision(actionDecision);
       if (!canonical) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: `Invalid decision "${actionDecision}". Must be one of: ${[...CANONICAL_DECISIONS].join(', ')}` }));
+        res.end(
+          JSON.stringify({
+            error: `Invalid decision "${actionDecision}". Must be one of: ${[...CANONICAL_DECISIONS].join(', ')}`,
+          }),
+        );
         return;
       }
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -8630,11 +9543,13 @@ export async function handleRequest(
   const forceDesktop = url.searchParams.get('desktop') === '1';
   const forceMobile = url.searchParams.get('mobile') === '1';
   const serveMobile = !forceDesktop && (forceMobile || isMobileUA);
-  const isCoworkerSpaRoute = decodedPath === '/coworkers'
-    || decodedPath.startsWith('/coworkers/')
-    || decodedPath === '/cw'
-    || decodedPath.startsWith('/cw/');
-  let filePath = decodedPath === '/' || isCoworkerSpaRoute ? (serveMobile ? '/mobile.html' : '/index.html') : decodedPath;
+  const isCoworkerSpaRoute =
+    decodedPath === '/coworkers' ||
+    decodedPath.startsWith('/coworkers/') ||
+    decodedPath === '/cw' ||
+    decodedPath.startsWith('/cw/');
+  let filePath =
+    decodedPath === '/' || isCoworkerSpaRoute ? (serveMobile ? '/mobile.html' : '/index.html') : decodedPath;
   filePath = resolve(getPublicDir(), '.' + filePath);
   if (!isInsideDir(getPublicDir(), filePath)) {
     res.writeHead(403);
