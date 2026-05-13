@@ -59,3 +59,11 @@ LICENSE
 .eslintrc*
 .husky/**
 groups/main/CLAUDE.md
+
+# Generic workflow templates (project-specific workflows live on project branches):
+container/workflows/plan/**
+container/workflows/implement/**
+
+# Generic critique/observer overlays (project-specific overlays live on project branches):
+container/overlays/buddy/**
+container/overlays/critique-overlay/**
