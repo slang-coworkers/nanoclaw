@@ -2,8 +2,6 @@
 
 dashboard/**
 src/channels/dashboard.*
-src/dashboard-ingress.*
-src/dashboard-ingress.test.ts
 
 # Dashboard-related skills:
 .claude/skills/dashboard/**

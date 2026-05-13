@@ -10,6 +10,10 @@ function log(msg: string): void {
   console.error(`[opencode-provider] ${msg}`);
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 const SESSION_STATUS_RETRY_ERROR_AFTER = 3;
 
 /** Stale / dead OpenCode session heuristics (complement Claude-centric host patterns). */
@@ -62,12 +66,12 @@ function readClaudeMdForPrompt(): string | undefined {
 
 function wrapPromptWithContext(text: string, systemInstructions?: string): string {
   let out = text;
-  if (systemInstructions) {
-    out = `<system>\n${systemInstructions}\n</system>\n\n${out}`;
-  }
   const claudeMd = readClaudeMdForPrompt();
   if (claudeMd) {
     out = `<system>\n${claudeMd}\n</system>\n\n${out}`;
+  }
+  if (systemInstructions) {
+    out = `<system>\n${systemInstructions}\n</system>\n\n${out}`;
   }
   return out;
 }
@@ -78,8 +82,8 @@ function buildOpenCodeConfig(options: ProviderOptions): Record<string, unknown> 
   const smallModel = process.env.OPENCODE_SMALL_MODEL;
   const proxyUrl = process.env.ANTHROPIC_BASE_URL;
 
-  const providerModelId = model ? model.replace(new RegExp(`^${provider}/`), '') : undefined;
-  const providerSmallModelId = smallModel ? smallModel.replace(new RegExp(`^${provider}/`), '') : undefined;
+  const providerModelId = model ? model.replace(new RegExp(`^${escapeRegExp(provider)}/`), '') : undefined;
+  const providerSmallModelId = smallModel ? smallModel.replace(new RegExp(`^${escapeRegExp(provider)}/`), '') : undefined;
   const modelsToRegister = [providerModelId, providerSmallModelId]
     .filter(Boolean)
     .filter((mid, i, a) => a.indexOf(mid as string) === i);
