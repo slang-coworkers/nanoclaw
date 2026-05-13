@@ -4248,20 +4248,156 @@ export async function handleRequest(
   }
 
   // API: list available overlays from container/overlays/*/OVERLAY.md
+  //
+  // Optional ?coworker=<folder> narrows the result set to overlays that apply
+  // to that coworker's workflows — directly, via the multi-level extends
+  // chain, or via a workflow trait/domain match. Each surviving overlay
+  // includes `inheritedFrom` listing the workflow names that triggered the
+  // match (so the editor can show "via /<workflow>" hints). Without the
+  // query param we fall back to the legacy "return everything" behavior so
+  // any other consumers stay intact.
   if (url.pathname === '/api/overlays') {
     if (!requireAuth(req, res)) return;
     try {
       const { readSkillCatalog } = await import('../src/claude-composer.js');
       const catalog = readSkillCatalog(getProjectRoot());
-      const overlays = Object.values(catalog)
+      const allOverlays = Object.values(catalog)
         .filter((entry: any) => entry.type === 'overlay' && entry.overlay)
         .map((entry: any) => ({
           name: entry.name,
           description: entry.description,
           appliesToWorkflows: entry.overlay.appliesToWorkflows || [],
+          appliesToTraits: entry.overlay.appliesToTraits || [],
         }));
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(overlays));
+
+      const coworkerFolder = url.searchParams.get('coworker');
+      if (!coworkerFolder) {
+        // Legacy behavior: return every overlay in the catalog.
+        const overlays = allOverlays.map((o) => ({
+          name: o.name,
+          description: o.description,
+          appliesToWorkflows: o.appliesToWorkflows,
+        }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(overlays));
+        return;
+      }
+
+      // Per-coworker filter: walk the workflow set (including the full
+      // multi-level extendsWorkflow chain) and the workflows' trait
+      // requirements, then keep only overlays whose appliesToWorkflows or
+      // appliesToTraits hits something in that effective set.
+      let coworkerType: string | null = null;
+      try {
+        if (db) {
+          const row = db
+            .prepare('SELECT coworker_type FROM agent_groups WHERE folder = ?')
+            .get(coworkerFolder) as { coworker_type?: string } | undefined;
+          coworkerType = row?.coworker_type || null;
+        }
+      } catch {
+        coworkerType = null;
+      }
+
+      if (!coworkerType) {
+        // Coworker isn't typed (legacy / untyped group) — fall back to all
+        // overlays so the editor still works, but flag it for the UI.
+        const overlays = allOverlays.map((o) => ({
+          name: o.name,
+          description: o.description,
+          appliesToWorkflows: o.appliesToWorkflows,
+        }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ _warning: 'coworker has no type; returning all overlays', overlays }));
+        return;
+      }
+
+      try {
+        const { resolveCoworkerManifest, readCoworkerTypes } = await import('../src/claude-composer.js');
+        const types = readCoworkerTypes(getProjectRoot());
+        const manifest = resolveCoworkerManifest(types, coworkerType, catalog, getProjectRoot());
+        const directWorkflows: string[] = (manifest.workflows || []).map((w: any) => w.name);
+
+        // Walk the full multi-level extendsWorkflow chain for each workflow
+        // (e.g. slang-fix-issue → fix-issue → implement). The effective set
+        // is what overlays' appliesToWorkflows is matched against.
+        const effectiveWorkflows = new Set<string>(directWorkflows);
+        // Track the originating workflow for each ancestor so we can
+        // attribute matches back to the coworker's actual workflow.
+        const ancestorOrigin = new Map<string, string>();
+        for (const wf of directWorkflows) {
+          ancestorOrigin.set(wf, wf);
+          let cursor: string | null = wf;
+          const seen = new Set<string>();
+          while (cursor && !seen.has(cursor)) {
+            seen.add(cursor);
+            const meta: any = catalog[cursor];
+            const parent: string | null = meta?.extendsWorkflow || null;
+            if (parent && !effectiveWorkflows.has(parent)) {
+              effectiveWorkflows.add(parent);
+              if (!ancestorOrigin.has(parent)) ancestorOrigin.set(parent, wf);
+            }
+            cursor = parent;
+          }
+        }
+
+        // Trait/domain set across all of the coworker's workflows. Domains
+        // are the prefix before the first dot (repo.pr → repo).
+        const traitOrigin = new Map<string, string[]>();
+        for (const wf of (manifest.workflows || []) as any[]) {
+          for (const trait of wf.requires || []) {
+            const domain = trait.split('.')[0];
+            for (const key of [trait, domain]) {
+              const list = traitOrigin.get(key) || [];
+              if (!list.includes(wf.name)) list.push(wf.name);
+              traitOrigin.set(key, list);
+            }
+          }
+        }
+
+        const filtered = allOverlays
+          .map((o) => {
+            const inheritedFrom = new Set<string>();
+            for (const target of o.appliesToWorkflows) {
+              if (effectiveWorkflows.has(target)) {
+                inheritedFrom.add(ancestorOrigin.get(target) || target);
+              }
+            }
+            for (const trait of o.appliesToTraits) {
+              const origins = traitOrigin.get(trait);
+              if (origins) for (const origin of origins) inheritedFrom.add(origin);
+            }
+            return inheritedFrom.size > 0
+              ? {
+                  name: o.name,
+                  description: o.description,
+                  appliesToWorkflows: o.appliesToWorkflows,
+                  inheritedFrom: [...inheritedFrom],
+                }
+              : null;
+          })
+          .filter((o): o is NonNullable<typeof o> => o !== null);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(filtered));
+        return;
+      } catch (innerErr: any) {
+        // Composer/resolver failed — surface a warning and fall back to the
+        // unfiltered list rather than break the editor.
+        const overlays = allOverlays.map((o) => ({
+          name: o.name,
+          description: o.description,
+          appliesToWorkflows: o.appliesToWorkflows,
+        }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            _warning: `failed to resolve manifest for coworker "${coworkerFolder}" (type "${coworkerType}"): ${innerErr?.message || innerErr}`,
+            overlays,
+          }),
+        );
+        return;
+      }
     } catch (e: any) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));
