@@ -467,8 +467,11 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       const unreadBadge = unread
         ? `<span class="session-unread-dot" title="Unread activity since you last opened this session"></span>`
         : '';
+      const isA2a = !!sess.a2a_peer;
+      const a2aBadge = isA2a ? '<span style="font-size:7px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;flex-shrink:0;letter-spacing:.03em">a2a</span>' : '';
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
         <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
+        ${a2aBadge}
         <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1${(tid || isA2aSession(sess)) ? ';cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px' : ''}" title="${escAttr(sess.nanoclaw_session_id)}"${tid ? ` data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${escAttr(tgrp)}"` : isA2aSession(sess) ? ` data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${escAttr(tgrp)}"` : ''}>${esc(primaryName)}</span>
         <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, primaryName, sess)}</span>
       </div>
