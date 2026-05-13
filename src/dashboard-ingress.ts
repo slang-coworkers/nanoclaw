@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { DASHBOARD_INGRESS_HOST, DASHBOARD_INGRESS_PORT, DASHBOARD_SECRET } from './config.js';
 import { getChannelAdapter } from './channels/channel-registry.js';
 import { log } from './log.js';
-import { routeInbound } from './router.js';
+import { routeInbound, routeInboundToSession } from './router.js';
 import type { InboundEvent } from './channels/adapter.js';
 import { CANONICAL_DECISIONS, canonicalizeDecision } from './modules/approvals/decision.js';
 
@@ -22,6 +22,12 @@ interface DashboardIngressOptions {
   secret?: string;
   isAdapterReady?: () => boolean;
   routeInboundFn?: (event: InboundEvent) => Promise<void>;
+  /** Inject for tests: bypass-messaging-group session-direct write. */
+  routeInboundToSessionFn?: (opts: {
+    sessionId: string;
+    content: string;
+    parentMessage?: InboundEvent['parentMessage'];
+  }) => Promise<void>;
   onActionFn?: (questionId: string, selectedOption: string, userId: string) => Promise<void>;
   /** Handle arbitrary question responses (no VALID_DECISIONS restriction). */
   onQuestionFn?: (questionId: string, selectedOption: string, userId: string) => Promise<void>;
@@ -109,6 +115,7 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
   const secret = options.secret ?? DASHBOARD_SECRET;
   const isAdapterReady = options.isAdapterReady || (() => Boolean(getChannelAdapter('dashboard')));
   const routeInboundFn = options.routeInboundFn || routeInbound;
+  const routeInboundToSessionFn = options.routeInboundToSessionFn ?? null;
   const onActionFn = options.onActionFn;
   const onQuestionFn = options.onQuestionFn;
   const onCredentialSubmitFn = options.onCredentialSubmitFn;
@@ -210,6 +217,59 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
       } catch (err) {
         log.error('Failed to handle dashboard credential reject', { err });
         writeJson(res, 500, { error: err instanceof Error ? err.message : String(err) });
+      }
+      return;
+    }
+
+    // Session-direct write — bypass messaging-group routing for admin
+    // replies into a specific a2a session opened from the dashboard.
+    if (req.url === '/api/dashboard/inbound-session') {
+      const body = await readBody(req, res);
+      if (body === null) return;
+      let parsed: { session_id?: unknown; content?: unknown; parent_message?: unknown };
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        writeJson(res, 400, { error: 'invalid json' });
+        return;
+      }
+      const sessionId = typeof parsed.session_id === 'string' ? parsed.session_id.trim() : '';
+      const content = typeof parsed.content === 'string' ? parsed.content.trim() : '';
+      if (!sessionId || !content) {
+        writeJson(res, 400, { error: 'session_id and content required' });
+        return;
+      }
+      let parentMessage: InboundEvent['parentMessage'] | undefined;
+      if (parsed.parent_message !== undefined && parsed.parent_message !== null) {
+        if (typeof parsed.parent_message !== 'object' || Array.isArray(parsed.parent_message)) {
+          writeJson(res, 400, { error: 'parent_message must be an object' });
+          return;
+        }
+        const pm = parsed.parent_message as Record<string, unknown>;
+        const pmContent = typeof pm.content === 'string' ? pm.content : '';
+        if (pmContent && pmContent.length <= 32 * 1024) {
+          parentMessage = {
+            content: pmContent,
+            ...(typeof pm.timestamp === 'string' ? { timestamp: pm.timestamp } : {}),
+            ...(typeof pm.sender === 'string' ? { sender: pm.sender } : {}),
+            ...(pm.direction === 'outgoing' || pm.direction === 'incoming'
+              ? { direction: pm.direction as 'outgoing' | 'incoming' }
+              : {}),
+          };
+        }
+      }
+      try {
+        await (routeInboundToSessionFn ?? routeInboundToSession)({
+          sessionId,
+          content,
+          ...(parentMessage ? { parentMessage } : {}),
+        });
+        writeJson(res, 200, { ok: true });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const status = msg.startsWith('session not found') ? 404 : 500;
+        log.error('Failed to route session-direct dashboard message', { sessionId, err });
+        writeJson(res, status, { error: msg });
       }
       return;
     }
