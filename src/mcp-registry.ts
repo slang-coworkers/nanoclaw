@@ -201,10 +201,11 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
 
       const proc = spawn(
         supergwPath,
-        ['--stdio', def.command!, '--outputTransport', 'streamableHttp', '--port', String(port), '--host', '127.0.0.1'],
+        ['--stdio', def.command!, '--outputTransport', 'streamableHttp', '--stateful', '--port', String(port), '--host', '127.0.0.1'],
         {
           env: { ...(process.env as Record<string, string>), ...tokens, ...onecliProxyEnv },
           stdio: ['ignore', 'pipe', 'pipe'],
+          detached: true,
         },
       );
 
@@ -221,6 +222,7 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
         const entry = servers.get(def.name);
         if (entry) entry.alive = false;
         clearDiscoveredTools(def.name);
+        try { process.kill(-proc.pid!, 'SIGTERM'); } catch { /* group already dead */ }
         if (code !== null && code !== 0) {
           log.warn('MCP server exited unexpectedly', { server: def.name, code });
         }
@@ -274,9 +276,9 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
       for (const [name, running] of servers) {
         if (running.process?.pid) {
           try {
-            running.process.kill('SIGTERM');
+            process.kill(-running.process.pid, 'SIGTERM');
           } catch {
-            // Process already gone
+            try { running.process.kill('SIGTERM'); } catch { /* already gone */ }
           }
           log.info('MCP server stopped', { server: name });
         }
@@ -317,9 +319,9 @@ export function stopServer(name: string): void {
   clearDiscoveredTools(name);
   if (running.process?.pid) {
     try {
-      running.process.kill('SIGTERM');
+      process.kill(-running.process.pid, 'SIGTERM');
     } catch {
-      // Already gone
+      try { running.process.kill('SIGTERM'); } catch { /* already gone */ }
     }
     running.process = undefined;
     log.info('MCP server stopped', { server: name });
@@ -350,10 +352,11 @@ export async function restartServer(name: string): Promise<void> {
     }
     proc = spawn(
       supergwPath,
-      ['--stdio', def.command!, '--outputTransport', 'streamableHttp', '--port', String(port), '--host', '127.0.0.1'],
+      ['--stdio', def.command!, '--outputTransport', 'streamableHttp', '--stateful', '--port', String(port), '--host', '127.0.0.1'],
       {
         env: { ...(process.env as Record<string, string>), ...tokens, ...proxyEnv },
         stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
       },
     );
   } else if (def.type === 'http' && def.url) {
@@ -388,6 +391,7 @@ export async function restartServer(name: string): Promise<void> {
     const entry = servers.get(name);
     if (entry) entry.alive = false;
     clearDiscoveredTools(name);
+    try { process.kill(-proc.pid!, 'SIGTERM'); } catch { /* group already dead */ }
     if (code !== null && code !== 0) {
       log.warn('Restarted MCP server exited unexpectedly', { server: name, code });
     }
