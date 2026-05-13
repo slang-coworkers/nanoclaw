@@ -88,7 +88,6 @@ let cwState = {
   polling: null,
   types: null,
   pendingApprovals: [],
-  pendingCredentials: [],
   approvalCountByFolder: {},
   _inflightApprovals: new Set(),
 };
@@ -293,7 +292,7 @@ function selectCoworker(folder) {
   cwState.selected = folder;
   cwState.messages = [];
   cwState.pendingApprovals = [];
-  cwState.pendingCredentials = [];
+
   if (cwState.polling) { clearInterval(cwState.polling); cwState.polling = null; }
   renderCwList();
   if (folder) {
@@ -329,11 +328,7 @@ async function fetchCwMessages() {
       const ar = await fetch(`/api/approvals?group=${encodeURIComponent(cwState.selected)}`);
       cwState.pendingApprovals = ar.ok ? await ar.json() : [];
     } catch { cwState.pendingApprovals = []; }
-    try {
-      const cr = await fetch(`/api/credentials?group=${encodeURIComponent(cwState.selected)}`);
-      cwState.pendingCredentials = cr.ok ? await cr.json() : [];
-    } catch { cwState.pendingCredentials = []; }
-    cwState.approvalCountByFolder[cwState.selected] = (cwState.pendingApprovals || []).length + (cwState.pendingCredentials || []).length;
+    cwState.approvalCountByFolder[cwState.selected] = (cwState.pendingApprovals || []).length;
     renderCwMessages();
     if (cwState.messages.length > 0 && cwState.selected) {
       const latest = cwState.messages[cwState.messages.length - 1];
@@ -360,33 +355,32 @@ function renderAttachments(attachments) {
 }
 
 function renderApprovalCard(item) {
+  const coworkerHeader = item.coworkerName
+    ? `<div style="font-size:9px;color:#10b981;font-weight:600;margin-bottom:4px">@${esc(item.coworkerName)}</div>`
+    : '';
   const safeReason = item.reason ? `\n\n*Reason:* ${esc(item.reason)}` : '';
-  const desc = item.action === 'install_packages'
-    ? `**Install packages:** ${(item.packages || []).map(p => esc(p)).join(', ')}${safeReason}`
-    : item.action === 'request_rebuild'
-    ? `**Rebuild container**${safeReason}`
-    : item.action === 'add_mcp_server'
-    ? `**Add MCP server**`
-    : `**${esc(item.action)}**`;
+  let desc;
+  if (item.action === 'install_packages') {
+    desc = `**Install packages:** ${(item.packages || []).map(p => esc(p)).join(', ')}${safeReason}`;
+  } else if (item.action === 'request_rebuild') {
+    desc = `**Rebuild container**${safeReason}`;
+  } else if (item.action === 'add_mcp_server') {
+    desc = `**Add MCP server**${safeReason}`;
+  } else if (item.action === 'onecli_credential') {
+    const endpoint = item.method && item.host
+      ? `\n\n\`${esc(item.method)} ${esc(item.host)}${esc(item.path || '')}\``
+      : '';
+    desc = `**Credentials request**${endpoint}`;
+  } else {
+    desc = `**${esc(item.action)}**${safeReason}`;
+  }
   return `<div class="m-card m-card-approval">
-    <div class="m-card-body">${md(desc)}</div>
+    <div class="m-card-body">${coworkerHeader}${md(desc)}</div>
     <div class="m-card-actions">
       <button class="m-btn m-btn-approve approval-btn" data-qid="${escAttr(item.approvalId)}" data-decision="Approve">Approve</button>
       <button class="m-btn m-btn-reject approval-btn" data-qid="${escAttr(item.approvalId)}" data-decision="Reject">Reject</button>
     </div>
     <div class="m-card-label">${formatTime(item.createdAt)} — approval</div>
-  </div>`;
-}
-
-function renderCredentialCard(item) {
-  const desc = `**Credential request:** ${esc(item.name)}\n\nHost: \`${esc(item.hostPattern)}\`${item.headerName ? `\nHeader: \`${esc(item.headerName)}\`` : ''}${item.valueFormat ? `\nFormat: \`${esc(item.valueFormat)}\`` : ''}${item.description ? `\n\n${esc(item.description)}` : ''}`;
-  return `<div class="m-card m-card-credential">
-    <div class="m-card-body">${md(desc)}</div>
-    <div class="m-card-actions">
-      <button class="m-btn m-btn-approve cred-enter-btn" data-cid="${escAttr(item.credentialId)}" data-name="${escAttr(item.name)}" data-desc="${escAttr(item.description || item.name)}">Enter credential</button>
-      <button class="m-btn m-btn-reject cred-reject-btn" data-cid="${escAttr(item.credentialId)}">Reject</button>
-    </div>
-    <div class="m-card-label">${formatTime(item.createdAt)} — credential</div>
   </div>`;
 }
 
@@ -396,7 +390,6 @@ function renderCwMessages() {
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
 
   const approvalHtml = (cwState.pendingApprovals || []).map(renderApprovalCard).join('');
-  const credentialHtml = (cwState.pendingCredentials || []).map(renderCredentialCard).join('');
 
   const messageHtml = cwState.messages.map(m => {
     const isOutgoing = m.direction === 'outgoing';
@@ -432,14 +425,14 @@ function renderCwMessages() {
     </div>`;
   }).join('');
 
-  if (!approvalHtml && !credentialHtml && !messageHtml) {
+  if (!approvalHtml && !messageHtml) {
     el.innerHTML = '<div class="m-chat-empty">No messages yet. Send a message to start.</div>';
     return;
   }
 
-  const totalPending = (cwState.pendingApprovals || []).length + (cwState.pendingCredentials || []).length;
-  const bannerHtml = totalPending > 0
-    ? `<div class="m-approval-banner"><div class="m-approval-banner-label">Pending Actions (${totalPending})</div>${approvalHtml}${credentialHtml}</div>`
+  const approvalCount = (cwState.pendingApprovals || []).length;
+  const bannerHtml = approvalCount > 0
+    ? `<div class="m-approval-banner"><div class="m-approval-banner-label">Pending Actions (${approvalCount})</div>${approvalHtml}</div>`
     : '';
   el.innerHTML = messageHtml + bannerHtml;
   if (wasAtBottom) el.scrollTop = el.scrollHeight;
@@ -458,30 +451,11 @@ document.getElementById('m-chat-messages').addEventListener('click', async (e) =
       await fetch('/api/approvals/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approvalId: qid, action: decision.toLowerCase() }),
+        body: JSON.stringify({ approvalId: qid, decision }),
       });
       setTimeout(fetchCwMessages, 500);
     } catch (err) { alert('Failed: ' + err.message); }
     cwState._inflightApprovals.delete(qid);
-    return;
-  }
-
-  const credEnterBtn = e.target.closest('.cred-enter-btn');
-  if (credEnterBtn) {
-    showCredentialModal(credEnterBtn.dataset.cid, credEnterBtn.dataset.name, credEnterBtn.dataset.desc);
-    return;
-  }
-
-  const credRejectBtn = e.target.closest('.cred-reject-btn');
-  if (credRejectBtn) {
-    try {
-      await fetch('/api/credentials/reject', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credentialId: credRejectBtn.dataset.cid }),
-      });
-      setTimeout(fetchCwMessages, 500);
-    } catch (err) { alert('Failed: ' + err.message); }
     return;
   }
 
@@ -499,41 +473,6 @@ document.getElementById('m-chat-messages').addEventListener('click', async (e) =
     return;
   }
 });
-
-function showCredentialModal(credentialId, name, desc) {
-  const overlay = document.createElement('div');
-  overlay.className = 'm-modal-overlay';
-  overlay.innerHTML = `<div class="m-modal">
-    <h3>Enter Credential</h3>
-    <p>${esc(desc)}</p>
-    <input type="password" id="m-cred-input" placeholder="${escAttr(name)}" autocomplete="off">
-    <div class="m-modal-actions">
-      <button class="m-btn m-btn-reject" id="m-cred-cancel">Cancel</button>
-      <button class="m-btn m-btn-approve" id="m-cred-submit">Submit</button>
-    </div>
-  </div>`;
-  document.body.appendChild(overlay);
-  const input = document.getElementById('m-cred-input');
-  input.focus();
-  document.getElementById('m-cred-cancel').onclick = () => overlay.remove();
-  document.getElementById('m-cred-submit').onclick = async () => {
-    const value = input.value.trim();
-    if (!value) return;
-    try {
-      await fetch('/api/credentials/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credentialId, value }),
-      });
-      overlay.remove();
-      setTimeout(fetchCwMessages, 500);
-    } catch (err) { alert('Failed: ' + err.message); }
-  };
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('m-cred-submit').click();
-  });
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-}
 
 // --- Send message ---
 async function sendCwMessage() {
