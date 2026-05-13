@@ -93,6 +93,22 @@ cd /workspace/agent/slang && python -m pytest tests/ -x --timeout=120 2>&1 | tai
 
 If tests fail, iterate on the fix (go back to Step 3).
 
+## Step 4.5: PEER REVIEW (only if `slang-reviewer` is in your destinations) {#peer-review}
+
+If `slang-reviewer` is in your destinations, send the diff for peer review BEFORE reporting to parent. The reviewer will return a verdict + suggestions; treat it like a real code review.
+
+```
+send_message(to="slang-reviewer", text="[Fix Review Request] <repo>#<number>: <title>\n\nDiff:\n```\n<git diff output>\n```\n\nTests added: tests/<path>\nTest results: <PASS / X failures>\n\nReview for: correctness, edge cases, style, test coverage. Reply APPROVE or REQUEST_CHANGES with specific suggestions.")
+```
+
+End your turn after sending. The reviewer's reply will arrive as a new inbound and trigger your next turn.
+
+**On the reviewer's reply (next turn):**
+- If APPROVE → proceed to Step 5
+- If REQUEST_CHANGES → apply the suggested edits, re-run Step 4 (verify), then re-send to reviewer if changes are non-trivial. Two review rounds max — after that, take the better of the two diffs and proceed to Step 5 noting unresolved feedback in the report.
+
+If `slang-reviewer` is NOT in your destinations (current setup), skip this step and go directly to Step 5.
+
 ## Step 5: REPORT to parent (MANDATORY) {#report}
 
 **Do NOT push or create a PR.** Report results to parent:
