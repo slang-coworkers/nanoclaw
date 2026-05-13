@@ -31,11 +31,7 @@ const HIDDEN_PATH_GROUP_DIR = path.join(GROUPS_DIR, 'hidden-path-reviewer');
 const EXPORT_PROBE_GROUP_DIR = path.join(GROUPS_DIR, 'export-warning-probe');
 const ROUNDTRIP_SOURCE_GROUP_DIR = path.join(GROUPS_DIR, 'roundtrip-export-probe');
 const ROUNDTRIP_IMPORTED_GROUP_DIR = path.join(GROUPS_DIR, 'roundtrip-imported-probe');
-const COWORKER_EXPORT_PROBE_FILES = [
-  'archive-probe.yaml',
-  'export-warning-probe.yaml',
-  'roundtrip-export-probe.yaml',
-];
+const COWORKER_EXPORT_PROBE_FILES = ['archive-probe.yaml', 'export-warning-probe.yaml', 'roundtrip-export-probe.yaml'];
 
 let server: ReturnType<typeof startServer>;
 let baseUrl = '';
@@ -44,7 +40,6 @@ let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 beforeAll(() => {
   consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 });
-
 
 afterAll(() => {
   consoleLogSpy.mockRestore();
@@ -90,7 +85,6 @@ afterEach(async () => {
   rmSync(DATA_DIR, { recursive: true, force: true });
   rmSync(V1_IMPORT_ROOT, { recursive: true, force: true });
 });
-
 
 function createDashboardTestDb(): Database.Database {
   mkdirSync(DATA_DIR, { recursive: true });
@@ -712,7 +706,6 @@ describe('dashboard server', () => {
     }
   });
 
-
   it('uses the project-local MCP management token for server restart actions', async () => {
     mkdirSync(DATA_DIR, { recursive: true });
     writeFileSync(path.join(DATA_DIR, '.mcp-management-token'), 'project-local-token', 'utf-8');
@@ -729,10 +722,13 @@ describe('dashboard server', () => {
           else auth = headers ? (headers as Record<string, string>).Authorization : undefined;
         }
         return Promise.resolve(
-          new Response(JSON.stringify(auth === 'Bearer project-local-token' ? { ok: true } : { error: 'Unauthorized' }), {
-            status: auth === 'Bearer project-local-token' ? 200 : 401,
-            headers: { 'Content-Type': 'application/json' },
-          }),
+          new Response(
+            JSON.stringify(auth === 'Bearer project-local-token' ? { ok: true } : { error: 'Unauthorized' }),
+            {
+              status: auth === 'Bearer project-local-token' ? 200 : 401,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
         );
       }
       return realFetch(input, init);
@@ -921,9 +917,7 @@ describe('dashboard server', () => {
       )
       .get(created.id, 'ag-admin') as any;
     const childChannelDest = verifyDb
-      .prepare(
-        "SELECT local_name FROM agent_destinations WHERE agent_group_id = ? AND target_type = 'channel'",
-      )
+      .prepare("SELECT local_name FROM agent_destinations WHERE agent_group_id = ? AND target_type = 'channel'")
       .get(created.id) as any;
     verifyDb.close();
 
@@ -954,9 +948,7 @@ describe('dashboard server', () => {
         containerConfig: null,
       },
       trigger: '@Reviewer',
-      destinations: [
-        { name: 'reviewer-dashboard', type: 'agent', targetFolder: 'peer-worker' },
-      ],
+      destinations: [{ name: 'reviewer-dashboard', type: 'agent', targetFolder: 'peer-worker' }],
     };
 
     const res = await fetch(`${baseUrl}/api/coworkers/import`, {
@@ -976,10 +968,14 @@ describe('dashboard server', () => {
         resolvedTo: expect.stringContaining('peer-worker'),
       }),
     ]);
-    expect(result.warnings).toContain('Destination "reviewer-dashboard" renamed to "reviewer-dashboard-2" to avoid name collision');
+    expect(result.warnings).toContain(
+      'Destination "reviewer-dashboard" renamed to "reviewer-dashboard-2" to avoid name collision',
+    );
 
     const verifyDb = new Database(DB_PATH, { readonly: true, fileMustExist: true });
-    const importedGroup = verifyDb.prepare('SELECT id FROM agent_groups WHERE folder = ?').get('import-collision-reviewer') as any;
+    const importedGroup = verifyDb
+      .prepare('SELECT id FROM agent_groups WHERE folder = ?')
+      .get('import-collision-reviewer') as any;
     const destinations = verifyDb
       .prepare('SELECT local_name, target_type FROM agent_destinations WHERE agent_group_id = ? ORDER BY local_name')
       .all(importedGroup.id) as any[];
@@ -1043,7 +1039,10 @@ describe('dashboard server', () => {
 
     mkdirSync(path.join(EXPORT_PROBE_GROUP_DIR, 'reports'), { recursive: true });
     writeFileSync(path.join(EXPORT_PROBE_GROUP_DIR, '.instructions.md'), 'Export me\n', 'utf-8');
-    writeFileSync(path.join(EXPORT_PROBE_GROUP_DIR, '.instruction-meta.json'), JSON.stringify({ template: 'code-reviewer' }));
+    writeFileSync(
+      path.join(EXPORT_PROBE_GROUP_DIR, '.instruction-meta.json'),
+      JSON.stringify({ template: 'code-reviewer' }),
+    );
     writeFileSync(path.join(EXPORT_PROBE_GROUP_DIR, 'notes.md'), '# notes\n', 'utf-8');
 
     const res = await fetch(`${baseUrl}/api/coworkers/export-warning-probe/export`);
@@ -1071,10 +1070,21 @@ describe('dashboard server', () => {
 
     mkdirSync(EXPORT_PROBE_GROUP_DIR, { recursive: true });
     writeFileSync(path.join(EXPORT_PROBE_GROUP_DIR, '.instructions.md'), 'Should not appear\n', 'utf-8');
-    writeFileSync(path.join(EXPORT_PROBE_GROUP_DIR, '.instruction-meta.json'), JSON.stringify({ template: 'code-reviewer' }));
+    writeFileSync(
+      path.join(EXPORT_PROBE_GROUP_DIR, '.instruction-meta.json'),
+      JSON.stringify({ template: 'code-reviewer' }),
+    );
 
     // Also seed memory — it should also be excluded in lightweight mode
-    const memDir = path.join(DATA_DIR, 'v2-sessions', 'ag-light', '.claude-shared', 'projects', '-workspace-agent', 'memory');
+    const memDir = path.join(
+      DATA_DIR,
+      'v2-sessions',
+      'ag-light',
+      '.claude-shared',
+      'projects',
+      '-workspace-agent',
+      'memory',
+    );
     mkdirSync(memDir, { recursive: true });
     writeFileSync(path.join(memDir, 'user.md'), '# Memory should not appear\n', 'utf-8');
 
@@ -1126,9 +1136,9 @@ describe('dashboard server', () => {
     expect(importRes.status).toBe(201);
     const importResult = await importRes.json();
     expect(importResult.ok).toBe(true);
-    expect(
-      (importResult.warnings || []).some((w: string) => w.includes('Blocked file: ".instructions.md"')),
-    ).toBe(false);
+    expect((importResult.warnings || []).some((w: string) => w.includes('Blocked file: ".instructions.md"'))).toBe(
+      false,
+    );
     expect(existsSync(path.join(ROUNDTRIP_IMPORTED_GROUP_DIR, '.instructions.md'))).toBe(true);
     expect(readFileSync(path.join(ROUNDTRIP_IMPORTED_GROUP_DIR, '.instructions.md'), 'utf-8')).toContain('Line one');
   });
@@ -1143,12 +1153,18 @@ describe('dashboard server', () => {
       );
     `);
     const now = new Date().toISOString();
-    db.prepare(
-      'INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)',
-    ).run('ag-archive', 'Archive Probe', 'archive-probe', now);
-    db.prepare(
-      'INSERT INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, ?, ?)',
-    ).run('sess-archive', 'ag-archive', 'active', now);
+    db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)').run(
+      'ag-archive',
+      'Archive Probe',
+      'archive-probe',
+      now,
+    );
+    db.prepare('INSERT INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, ?, ?)').run(
+      'sess-archive',
+      'ag-archive',
+      'active',
+      now,
+    );
     db.close();
 
     // Create group dir with a .git subdirectory (should NOT be excluded)
@@ -1162,7 +1178,9 @@ describe('dashboard server', () => {
     const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-archive', 'sess-archive');
     mkdirSync(sessDir, { recursive: true });
     const inDb = new Database(path.join(sessDir, 'inbound.db'));
-    inDb.exec('CREATE TABLE messages_in (id TEXT PRIMARY KEY, seq INTEGER, kind TEXT, timestamp TEXT, status TEXT, content TEXT, process_after TEXT, recurrence TEXT)');
+    inDb.exec(
+      'CREATE TABLE messages_in (id TEXT PRIMARY KEY, seq INTEGER, kind TEXT, timestamp TEXT, status TEXT, content TEXT, process_after TEXT, recurrence TEXT)',
+    );
     inDb.close();
 
     const res = await fetch(`${baseUrl}/api/coworkers/archive-probe/export?full=true`);
@@ -1237,23 +1255,23 @@ describe('dashboard server', () => {
         is_from_me INTEGER, is_bot_message INTEGER, sender TEXT, sender_name TEXT
       );
     `);
-    sdb.prepare('INSERT INTO registered_groups VALUES (?, ?, ?, NULL, NULL, NULL)').run(
-      v1Folder, 'Test Agent', '@TestAgent',
-    );
+    sdb
+      .prepare('INSERT INTO registered_groups VALUES (?, ?, ?, NULL, NULL, NULL)')
+      .run(v1Folder, 'Test Agent', '@TestAgent');
     sdb.prepare('INSERT INTO sessions VALUES (?, ?)').run(v1Folder, 'v1-sess-abc');
     // Insert 4 messages: 2 inbound (user), 2 outbound (bot)
-    sdb.prepare('INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-      'msg-1', 'dashboard:test-agent', 'Hello agent', '2026-04-01T10:00:00Z', 0, 0, 'web@dashboard', 'User',
-    );
-    sdb.prepare('INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-      'msg-2', 'dashboard:test-agent', 'Hi there!', '2026-04-01T10:00:05Z', 1, 1, null, 'Test Agent',
-    );
-    sdb.prepare('INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-      'msg-3', 'dashboard:test-agent', 'Fix the bug', '2026-04-01T11:00:00Z', 0, 0, 'web@dashboard', 'User',
-    );
-    sdb.prepare('INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-      'msg-4', 'dashboard:test-agent', 'Done, bug fixed.', '2026-04-01T11:05:00Z', 1, 1, null, 'Test Agent',
-    );
+    sdb
+      .prepare('INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run('msg-1', 'dashboard:test-agent', 'Hello agent', '2026-04-01T10:00:00Z', 0, 0, 'web@dashboard', 'User');
+    sdb
+      .prepare('INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run('msg-2', 'dashboard:test-agent', 'Hi there!', '2026-04-01T10:00:05Z', 1, 1, null, 'Test Agent');
+    sdb
+      .prepare('INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run('msg-3', 'dashboard:test-agent', 'Fix the bug', '2026-04-01T11:00:00Z', 0, 0, 'web@dashboard', 'User');
+    sdb
+      .prepare('INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run('msg-4', 'dashboard:test-agent', 'Done, bug fixed.', '2026-04-01T11:05:00Z', 1, 1, null, 'Test Agent');
     sdb.close();
 
     // Call v1 import
@@ -1271,9 +1289,9 @@ describe('dashboard server', () => {
     // Verify chat messages were backfilled into session DBs
     const agId = result.id;
     const agSessDir = path.join(DATA_DIR, 'v2-sessions', agId);
-    const sessDirs = require('fs').readdirSync(agSessDir).filter(
-      (d: string) => d.startsWith('sess-'),
-    );
+    const sessDirs = require('fs')
+      .readdirSync(agSessDir)
+      .filter((d: string) => d.startsWith('sess-'));
     expect(sessDirs.length).toBe(1);
 
     const inDbPath = path.join(agSessDir, sessDirs[0], 'inbound.db');
@@ -1353,9 +1371,12 @@ describe('dashboard server', () => {
       const createdAt = new Date(now - 86400000).toISOString();
 
       // One agent_group + one ACTIVE nanoclaw session (the primary identity).
-      db.prepare(
-        'INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)',
-      ).run('ag-forger', 'Forger', 'nanoclaw-forger', createdAt);
+      db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)').run(
+        'ag-forger',
+        'Forger',
+        'nanoclaw-forger',
+        createdAt,
+      );
       db.prepare(
         `INSERT INTO sessions (id, agent_group_id, status, container_status, last_active, created_at)
          VALUES (?, ?, 'active', 'running', ?, ?)`,
@@ -1365,26 +1386,71 @@ describe('dashboard server', () => {
       //   main — heavy, source=startup, includes a UserPromptSubmit
       //   task-fire — heavy, source=resume, includes a UserPromptSubmit
       //   ghost — 2 events, no UserPromptSubmit
-      insertHookEvent(db, { group_folder: 'nanoclaw-forger', event: 'SessionStart', session_id: 'sdk-main', timestamp: now - 60000, extra: { source: 'startup' } });
-      insertHookEvent(db, { group_folder: 'nanoclaw-forger', event: 'UserPromptSubmit', session_id: 'sdk-main', timestamp: now - 59000 });
+      insertHookEvent(db, {
+        group_folder: 'nanoclaw-forger',
+        event: 'SessionStart',
+        session_id: 'sdk-main',
+        timestamp: now - 60000,
+        extra: { source: 'startup' },
+      });
+      insertHookEvent(db, {
+        group_folder: 'nanoclaw-forger',
+        event: 'UserPromptSubmit',
+        session_id: 'sdk-main',
+        timestamp: now - 59000,
+      });
       for (let i = 0; i < 45; i++) {
-        insertHookEvent(db, { group_folder: 'nanoclaw-forger', event: 'PostToolUse', tool: 'Read', session_id: 'sdk-main', timestamp: now - 50000 + i });
+        insertHookEvent(db, {
+          group_folder: 'nanoclaw-forger',
+          event: 'PostToolUse',
+          tool: 'Read',
+          session_id: 'sdk-main',
+          timestamp: now - 50000 + i,
+        });
       }
 
-      insertHookEvent(db, { group_folder: 'nanoclaw-forger', event: 'SessionStart', session_id: 'sdk-task', timestamp: now - 30000, extra: { source: 'resume' } });
-      insertHookEvent(db, { group_folder: 'nanoclaw-forger', event: 'UserPromptSubmit', session_id: 'sdk-task', timestamp: now - 29000 });
+      insertHookEvent(db, {
+        group_folder: 'nanoclaw-forger',
+        event: 'SessionStart',
+        session_id: 'sdk-task',
+        timestamp: now - 30000,
+        extra: { source: 'resume' },
+      });
+      insertHookEvent(db, {
+        group_folder: 'nanoclaw-forger',
+        event: 'UserPromptSubmit',
+        session_id: 'sdk-task',
+        timestamp: now - 29000,
+      });
       for (let i = 0; i < 45; i++) {
-        insertHookEvent(db, { group_folder: 'nanoclaw-forger', event: 'PostToolUse', tool: 'Bash', session_id: 'sdk-task', timestamp: now - 20000 + i });
+        insertHookEvent(db, {
+          group_folder: 'nanoclaw-forger',
+          event: 'PostToolUse',
+          tool: 'Bash',
+          session_id: 'sdk-task',
+          timestamp: now - 20000 + i,
+        });
       }
 
-      insertHookEvent(db, { group_folder: 'nanoclaw-forger', event: 'SessionStart', session_id: 'sdk-ghost', timestamp: now - 15000, extra: { source: 'startup' } });
-      insertHookEvent(db, { group_folder: 'nanoclaw-forger', event: 'InstructionsLoaded', session_id: 'sdk-ghost', timestamp: now - 14999 });
+      insertHookEvent(db, {
+        group_folder: 'nanoclaw-forger',
+        event: 'SessionStart',
+        session_id: 'sdk-ghost',
+        timestamp: now - 15000,
+        extra: { source: 'startup' },
+      });
+      insertHookEvent(db, {
+        group_folder: 'nanoclaw-forger',
+        event: 'InstructionsLoaded',
+        session_id: 'sdk-ghost',
+        timestamp: now - 14999,
+      });
 
       db.close();
 
       const res = await fetch(`${baseUrl}/api/hook-events/sessions`);
       expect(res.status).toBe(200);
-      const body = await res.json() as any[];
+      const body = (await res.json()) as any[];
       expect(Array.isArray(body)).toBe(true);
 
       const forger = body.find((p: any) => p.group_folder === 'nanoclaw-forger');
@@ -1416,18 +1482,31 @@ describe('dashboard server', () => {
       const now = Date.now();
       const createdAt = new Date(now - 3600000).toISOString();
       db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)').run(
-        'ag-g', 'Ghosts', 'ghost-probe', createdAt,
+        'ag-g',
+        'Ghosts',
+        'ghost-probe',
+        createdAt,
       );
       db.prepare(
         `INSERT INTO sessions (id, agent_group_id, status, container_status, created_at) VALUES (?, ?, 'active', 'stopped', ?)`,
       ).run('sess-g', 'ag-g', createdAt);
-      insertHookEvent(db, { group_folder: 'ghost-probe', event: 'SessionStart', session_id: 'sdk-g', timestamp: now - 10000 });
-      insertHookEvent(db, { group_folder: 'ghost-probe', event: 'InstructionsLoaded', session_id: 'sdk-g', timestamp: now - 9999 });
+      insertHookEvent(db, {
+        group_folder: 'ghost-probe',
+        event: 'SessionStart',
+        session_id: 'sdk-g',
+        timestamp: now - 10000,
+      });
+      insertHookEvent(db, {
+        group_folder: 'ghost-probe',
+        event: 'InstructionsLoaded',
+        session_id: 'sdk-g',
+        timestamp: now - 9999,
+      });
       db.close();
 
       const res = await fetch(`${baseUrl}/api/hook-events/sessions`);
       expect(res.status).toBe(200);
-      const body = await res.json() as any[];
+      const body = (await res.json()) as any[];
       const g = body.find((p: any) => p.group_folder === 'ghost-probe');
       expect(g).toBeDefined();
       expect(g.sdk_subsessions).toHaveLength(1);
@@ -1440,18 +1519,34 @@ describe('dashboard server', () => {
       const now = Date.now();
       const createdAt = new Date(now - 3600000).toISOString();
       db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)').run(
-        'ag-f', 'Flat', 'flat-probe', createdAt,
+        'ag-f',
+        'Flat',
+        'flat-probe',
+        createdAt,
       );
-      db.prepare(
-        `INSERT INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, 'active', ?)`,
-      ).run('sess-f', 'ag-f', createdAt);
-      insertHookEvent(db, { group_folder: 'flat-probe', event: 'UserPromptSubmit', session_id: 'sdk-f', timestamp: now - 5000 });
-      insertHookEvent(db, { group_folder: 'flat-probe', event: 'PostToolUse', tool: 'Read', session_id: 'sdk-f', timestamp: now - 4000 });
+      db.prepare(`INSERT INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, 'active', ?)`).run(
+        'sess-f',
+        'ag-f',
+        createdAt,
+      );
+      insertHookEvent(db, {
+        group_folder: 'flat-probe',
+        event: 'UserPromptSubmit',
+        session_id: 'sdk-f',
+        timestamp: now - 5000,
+      });
+      insertHookEvent(db, {
+        group_folder: 'flat-probe',
+        event: 'PostToolUse',
+        tool: 'Read',
+        session_id: 'sdk-f',
+        timestamp: now - 4000,
+      });
       db.close();
 
       const res = await fetch(`${baseUrl}/api/hook-events/sessions?flat=1`);
       expect(res.status).toBe(200);
-      const body = await res.json() as any[];
+      const body = (await res.json()) as any[];
       expect(Array.isArray(body)).toBe(true);
       const row = body.find((r: any) => r.session_id === 'sdk-f');
       expect(row).toBeDefined();
@@ -1478,28 +1573,64 @@ describe('dashboard server', () => {
       // world where each task fire spins up a fresh SDK UUID under the same nanoclaw
       // session). Coworker Y is a DIFFERENT coworker on a DIFFERENT folder — its events
       // must never leak into X's aggregated view.
-      db.prepare(
-        'INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)',
-      ).run('ag-X', 'CoworkerX', 'cw-x', createdAt);
-      db.prepare(
-        'INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)',
-      ).run('ag-Y', 'CoworkerY', 'cw-y', createdAt);
+      db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)').run(
+        'ag-X',
+        'CoworkerX',
+        'cw-x',
+        createdAt,
+      );
+      db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)').run(
+        'ag-Y',
+        'CoworkerY',
+        'cw-y',
+        createdAt,
+      );
       db.prepare(
         `INSERT INTO sessions (id, agent_group_id, status, container_status, last_active, created_at)
          VALUES (?, ?, 'active', 'running', ?, ?)`,
       ).run('sess-A', 'ag-X', new Date(now - 1000).toISOString(), createdAt);
 
       // Coworker X — uuid-main: UserPromptSubmit + PostToolUse pair (Pre/Post for duration).
-      insertHookEvent(db, { group_folder: 'cw-x', event: 'UserPromptSubmit', session_id: 'uuid-main', timestamp: now - 60000 });
-      insertHookEvent(db, { group_folder: 'cw-x', event: 'SessionStart', session_id: 'uuid-main', timestamp: now - 59500 });
+      insertHookEvent(db, {
+        group_folder: 'cw-x',
+        event: 'UserPromptSubmit',
+        session_id: 'uuid-main',
+        timestamp: now - 60000,
+      });
+      insertHookEvent(db, {
+        group_folder: 'cw-x',
+        event: 'SessionStart',
+        session_id: 'uuid-main',
+        timestamp: now - 59500,
+      });
       insertHookEvent(db, { group_folder: 'cw-x', event: 'Stop', session_id: 'uuid-main', timestamp: now - 59000 });
       // Coworker X — uuid-taskfire: UserPromptSubmit + SessionStart + Stop (all flow-renderable).
-      insertHookEvent(db, { group_folder: 'cw-x', event: 'UserPromptSubmit', session_id: 'uuid-taskfire', timestamp: now - 30000 });
-      insertHookEvent(db, { group_folder: 'cw-x', event: 'SessionStart', session_id: 'uuid-taskfire', timestamp: now - 29500 });
+      insertHookEvent(db, {
+        group_folder: 'cw-x',
+        event: 'UserPromptSubmit',
+        session_id: 'uuid-taskfire',
+        timestamp: now - 30000,
+      });
+      insertHookEvent(db, {
+        group_folder: 'cw-x',
+        event: 'SessionStart',
+        session_id: 'uuid-taskfire',
+        timestamp: now - 29500,
+      });
       insertHookEvent(db, { group_folder: 'cw-x', event: 'Stop', session_id: 'uuid-taskfire', timestamp: now - 29000 });
       // Coworker Y — uuid-other: three flow-renderable events on a DIFFERENT folder.
-      insertHookEvent(db, { group_folder: 'cw-y', event: 'UserPromptSubmit', session_id: 'uuid-other', timestamp: now - 20000 });
-      insertHookEvent(db, { group_folder: 'cw-y', event: 'SessionStart', session_id: 'uuid-other', timestamp: now - 19500 });
+      insertHookEvent(db, {
+        group_folder: 'cw-y',
+        event: 'UserPromptSubmit',
+        session_id: 'uuid-other',
+        timestamp: now - 20000,
+      });
+      insertHookEvent(db, {
+        group_folder: 'cw-y',
+        event: 'SessionStart',
+        session_id: 'uuid-other',
+        timestamp: now - 19500,
+      });
       insertHookEvent(db, { group_folder: 'cw-y', event: 'Stop', session_id: 'uuid-other', timestamp: now - 19000 });
 
       db.close();
@@ -1510,7 +1641,7 @@ describe('dashboard server', () => {
         `${baseUrl}/api/hook-events/nanoclaw-session-flow?agent_group_id=ag-X&nanoclaw_session_id=sess-A`,
       );
       expect(nanoRes.status).toBe(200);
-      const nanoBody = await nanoRes.json() as any;
+      const nanoBody = (await nanoRes.json()) as any;
       expect(nanoBody.group_folder).toBe('cw-x');
       expect(nanoBody.entries).toHaveLength(6);
       const nanoSessionIds = new Set<string>(nanoBody.entries.map((e: any) => e.session_id));
@@ -1521,7 +1652,7 @@ describe('dashboard server', () => {
       // 2) Single-SDK session-flow for uuid-main + group=cw-x must return ONLY uuid-main events.
       const sdkRes = await fetch(`${baseUrl}/api/hook-events/session-flow?session_id=uuid-main&group=cw-x`);
       expect(sdkRes.status).toBe(200);
-      const sdkBody = await sdkRes.json() as any;
+      const sdkBody = (await sdkRes.json()) as any;
       expect(sdkBody.entries).toHaveLength(3);
       // No taskfire / other leakage — all event timestamps must fall in uuid-main's range.
       for (const e of sdkBody.entries) {
@@ -1532,7 +1663,7 @@ describe('dashboard server', () => {
       // 3) /api/hook-events/sessions — coworker X's parent has both sdks, Y's has only uuid-other.
       const sessRes = await fetch(`${baseUrl}/api/hook-events/sessions`);
       expect(sessRes.status).toBe(200);
-      const sessBody = await sessRes.json() as any[];
+      const sessBody = (await sessRes.json()) as any[];
       const parentX = sessBody.find((p: any) => p.group_folder === 'cw-x');
       const parentY = sessBody.find((p: any) => p.group_folder === 'cw-y');
       expect(parentX).toBeDefined();
@@ -1608,6 +1739,15 @@ function createTestDbWithSessions(): Database.Database {
       status TEXT NOT NULL DEFAULT 'pending',
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS a2a_session_sources (
+      recipient_session_id     TEXT PRIMARY KEY,
+      recipient_agent_group_id TEXT NOT NULL,
+      recipient_thread_id      TEXT,
+      source_session_id        TEXT NOT NULL,
+      source_agent_group_id    TEXT NOT NULL,
+      source_thread_id         TEXT,
+      created_at               TEXT NOT NULL
+    );
   `);
   return db;
 }
@@ -1617,22 +1757,36 @@ describe('/api/messages — card metadata and pending state', () => {
     const db = createTestDbWithSessions();
     const now = new Date().toISOString();
     db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, ?, ?)').run(
-      'ag-q', 'Q-Agent', 'q-agent', 0, now,
+      'ag-q',
+      'Q-Agent',
+      'q-agent',
+      0,
+      now,
     );
     db.prepare('INSERT INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, ?, ?)').run(
-      'sess-q', 'ag-q', 'active', now,
+      'sess-q',
+      'ag-q',
+      'active',
+      now,
     );
-    db.prepare('INSERT INTO pending_questions (question_id, session_id, message_out_id, created_at) VALUES (?, ?, ?, ?)').run(
-      'qid-1', 'sess-q', 'msg-1', now,
-    );
+    db.prepare(
+      'INSERT INTO pending_questions (question_id, session_id, message_out_id, created_at) VALUES (?, ?, ?, ?)',
+    ).run('qid-1', 'sess-q', 'msg-1', now);
     // Create session outbound.db with an ask_question message
     const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-q', 'sess-q');
     mkdirSync(sessDir, { recursive: true });
     const outDb = new Database(path.join(sessDir, 'outbound.db'));
-    outDb.exec('CREATE TABLE messages_out (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, in_reply_to TEXT)');
-    outDb.prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)').run(
-      'msg-1', 'chat-sdk', JSON.stringify({ type: 'ask_question', questionId: 'qid-1', question: 'Pick one', options: ['A', 'B'] }), now,
+    outDb.exec(
+      'CREATE TABLE messages_out (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, in_reply_to TEXT)',
     );
+    outDb
+      .prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)')
+      .run(
+        'msg-1',
+        'chat-sdk',
+        JSON.stringify({ type: 'ask_question', questionId: 'qid-1', question: 'Pick one', options: ['A', 'B'] }),
+        now,
+      );
     outDb.close();
     db.close();
     forceOpenDbForTests();
@@ -1653,19 +1807,33 @@ describe('/api/messages — card metadata and pending state', () => {
     const db = createTestDbWithSessions();
     const now = new Date().toISOString();
     db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, ?, ?)').run(
-      'ag-q2', 'Q2-Agent', 'q2-agent', 0, now,
+      'ag-q2',
+      'Q2-Agent',
+      'q2-agent',
+      0,
+      now,
     );
     db.prepare('INSERT INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, ?, ?)').run(
-      'sess-q2', 'ag-q2', 'active', now,
+      'sess-q2',
+      'ag-q2',
+      'active',
+      now,
     );
     // No pending_questions row → already resolved
     const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-q2', 'sess-q2');
     mkdirSync(sessDir, { recursive: true });
     const outDb = new Database(path.join(sessDir, 'outbound.db'));
-    outDb.exec('CREATE TABLE messages_out (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, in_reply_to TEXT)');
-    outDb.prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)').run(
-      'msg-2', 'chat-sdk', JSON.stringify({ type: 'ask_question', questionId: 'qid-gone', question: 'Old Q', options: ['X'] }), now,
+    outDb.exec(
+      'CREATE TABLE messages_out (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, in_reply_to TEXT)',
     );
+    outDb
+      .prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)')
+      .run(
+        'msg-2',
+        'chat-sdk',
+        JSON.stringify({ type: 'ask_question', questionId: 'qid-gone', question: 'Old Q', options: ['X'] }),
+        now,
+      );
     outDb.close();
     db.close();
     forceOpenDbForTests();
@@ -1681,10 +1849,17 @@ describe('/api/messages — card metadata and pending state', () => {
     const db = createTestDbWithSessions();
     const now = new Date().toISOString();
     db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, ?, ?)').run(
-      'ag-ops', 'Ops-Agent', 'ops-agent', 0, now,
+      'ag-ops',
+      'Ops-Agent',
+      'ops-agent',
+      0,
+      now,
     );
     db.prepare('INSERT INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, ?, ?)').run(
-      'sess-ops', 'ag-ops', 'active', now,
+      'sess-ops',
+      'ag-ops',
+      'active',
+      now,
     );
     db.close();
     const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-ops', 'sess-ops');
@@ -1703,25 +1878,33 @@ describe('/api/messages — card metadata and pending state', () => {
     inDb.close();
 
     const outDb = new Database(path.join(sessDir, 'outbound.db'));
-    outDb.exec('CREATE TABLE messages_out (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, in_reply_to TEXT)');
-    outDb.prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)').run(
-      'msg-base',
-      'chat-sdk',
-      JSON.stringify({ text: 'Draft update', files: ['report.txt'] }),
-      '2026-04-16T10:00:00.000Z',
+    outDb.exec(
+      'CREATE TABLE messages_out (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, in_reply_to TEXT)',
     );
-    outDb.prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)').run(
-      'msg-edit',
-      'chat-sdk',
-      JSON.stringify({ operation: 'edit', messageId: 'platform-1', text: 'Final update' }),
-      '2026-04-16T10:01:00.000Z',
-    );
-    outDb.prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)').run(
-      'msg-react',
-      'chat-sdk',
-      JSON.stringify({ operation: 'reaction', messageId: 'platform-1', emoji: ':thumbsup:' }),
-      '2026-04-16T10:02:00.000Z',
-    );
+    outDb
+      .prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)')
+      .run(
+        'msg-base',
+        'chat-sdk',
+        JSON.stringify({ text: 'Draft update', files: ['report.txt'] }),
+        '2026-04-16T10:00:00.000Z',
+      );
+    outDb
+      .prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)')
+      .run(
+        'msg-edit',
+        'chat-sdk',
+        JSON.stringify({ operation: 'edit', messageId: 'platform-1', text: 'Final update' }),
+        '2026-04-16T10:01:00.000Z',
+      );
+    outDb
+      .prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)')
+      .run(
+        'msg-react',
+        'chat-sdk',
+        JSON.stringify({ operation: 'reaction', messageId: 'platform-1', emoji: ':thumbsup:' }),
+        '2026-04-16T10:02:00.000Z',
+      );
     outDb.close();
 
     const attachmentDir = path.join(sessDir, 'outbox', 'msg-base');
@@ -1747,10 +1930,17 @@ describe('/api/messages — card metadata and pending state', () => {
     const db = createTestDbWithSessions();
     const now = new Date().toISOString();
     db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, ?, ?)').run(
-      'ag-files', 'Files-Agent', 'files-agent', 0, now,
+      'ag-files',
+      'Files-Agent',
+      'files-agent',
+      0,
+      now,
     );
     db.prepare('INSERT INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, ?, ?)').run(
-      'sess-files', 'ag-files', 'active', now,
+      'sess-files',
+      'ag-files',
+      'active',
+      now,
     );
     db.close();
     const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-files', 'sess-files');
@@ -1769,13 +1959,12 @@ describe('/api/messages — card metadata and pending state', () => {
     inDb.close();
 
     const outDb = new Database(path.join(sessDir, 'outbound.db'));
-    outDb.exec('CREATE TABLE messages_out (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, in_reply_to TEXT)');
-    outDb.prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)').run(
-      'msg-file',
-      'chat-sdk',
-      JSON.stringify({ files: ['artifact.json'] }),
-      now,
+    outDb.exec(
+      'CREATE TABLE messages_out (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, in_reply_to TEXT)',
     );
+    outDb
+      .prepare('INSERT INTO messages_out (id, kind, content, timestamp) VALUES (?, ?, ?, ?)')
+      .run('msg-file', 'chat-sdk', JSON.stringify({ files: ['artifact.json'] }), now);
     outDb.close();
 
     const attachmentDir = path.join(sessDir, 'outbox', 'msg-file');
@@ -1896,10 +2085,17 @@ describe('/api/messages system-id filter', () => {
     const db = createTestDbWithSessions();
     const now = new Date().toISOString();
     db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, ?, ?)').run(
-      'ag-filter-test', 'FilterTest', 'filter-test', 0, now,
+      'ag-filter-test',
+      'FilterTest',
+      'filter-test',
+      0,
+      now,
     );
     db.prepare('INSERT INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, ?, ?)').run(
-      'sess-filter-test', 'ag-filter-test', 'active', now,
+      'sess-filter-test',
+      'ag-filter-test',
+      'active',
+      now,
     );
     db.close();
 
@@ -1915,7 +2111,9 @@ describe('/api/messages system-id filter', () => {
     inDb.close();
 
     const outDb = new Database(path.join(sessDir, 'outbound.db'));
-    outDb.exec('CREATE TABLE messages_out (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, in_reply_to TEXT)');
+    outDb.exec(
+      'CREATE TABLE messages_out (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, in_reply_to TEXT)',
+    );
     const outIns = outDb.prepare('INSERT INTO messages_out VALUES (?, ?, ?, ?, ?)');
     outIns.run('msg-real-reply', 'chat', '{"text":"real agent reply"}', now, 'dash-real-1');
     outIns.run('msg-ack-claudemd', 'chat', '{"text":"ack"}', now, 'claudemd-refresh-1');
@@ -1953,21 +2151,34 @@ describe('/api/messages system-id filter', () => {
     const db = createTestDbWithSessions();
     const now = new Date().toISOString();
     db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, ?, ?)').run(
-      'ag-receiver', 'Receiver', 'receiver', 0, now,
+      'ag-receiver',
+      'Receiver',
+      'receiver',
+      0,
+      now,
     );
     // The "other" coworker whose platform_id will be embedded in the a2a row
     db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, ?, ?)').run(
-      'ag-sender-123', 'SenderBot', 'sender-bot', 0, now,
+      'ag-sender-123',
+      'SenderBot',
+      'sender-bot',
+      0,
+      now,
     );
     db.prepare('INSERT INTO sessions (id, agent_group_id, status, created_at) VALUES (?, ?, ?, ?)').run(
-      'sess-receiver', 'ag-receiver', 'active', now,
+      'sess-receiver',
+      'ag-receiver',
+      'active',
+      now,
     );
     db.close();
 
     const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-receiver', 'sess-receiver');
     mkdirSync(sessDir, { recursive: true });
     const inDb = new Database(path.join(sessDir, 'inbound.db'));
-    inDb.exec('CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, channel_type TEXT, platform_id TEXT)');
+    inDb.exec(
+      'CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, channel_type TEXT, platform_id TEXT)',
+    );
     const inIns = inDb.prepare('INSERT INTO messages_in VALUES (?, ?, ?, ?, ?, ?)');
     // Legit inter-coworker send: platform_id resolves to a real agent_group
     inIns.run('a2a-from-real-coworker', 'chat', '{"text":"Hey, can you bump deps?"}', now, 'agent', 'ag-sender-123');
@@ -2094,7 +2305,7 @@ describe('/api/messages — Slack-style thread filtering', () => {
     expect(ids).not.toContain('slack-root-1');
   });
 
-  it('thread view returns only that thread\'s messages', async () => {
+  it("thread view returns only that thread's messages", async () => {
     seedThreadScenario();
     const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&thread_id=t1&limit=50`);
     expect(res.status).toBe(200);
@@ -2110,7 +2321,9 @@ describe('/api/messages — Slack-style thread filtering', () => {
   it('main view response includes threadSummaries for every per-thread session', async () => {
     seedThreadScenario();
     const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&limit=50`);
-    const data = (await res.json()) as { threadSummaries: Record<string, { replyCount: number; lastReplyTs: string | null }> };
+    const data = (await res.json()) as {
+      threadSummaries: Record<string, { replyCount: number; lastReplyTs: string | null }>;
+    };
     expect(data.threadSummaries).toBeDefined();
     expect(Object.keys(data.threadSummaries).sort()).toEqual(['t1', 't2']);
     expect(data.threadSummaries.t1.replyCount).toBe(2);
@@ -2143,6 +2356,39 @@ describe('/api/a2a-session — read-only inspector (Option C)', () => {
         .run(id, tid, now);
     sess('sess-rev-pra', 'thread-pr-A');
     sess('sess-rev-prb', 'thread-pr-B');
+
+    // Seed a2a_session_sources mapping (post-PR-#308: inspector lookup is
+    // (recipient_ag, source_thread_id) → recipient_session_id).
+    db.prepare(
+      'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, created_at) VALUES (?, ?, ?, 0, NULL, NULL, NULL, NULL, ?)',
+    ).run('ag-implementer', 'Implementer', 'implementer', now);
+    db.prepare(
+      "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES (?, 'ag-implementer', NULL, ?, 'active', 'stopped', NULL, ?)",
+    ).run('sess-impl-pra', 'thread-pr-A', now);
+    db.prepare(
+      "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES (?, 'ag-implementer', NULL, ?, 'active', 'stopped', NULL, ?)",
+    ).run('sess-impl-prb', 'thread-pr-B', now);
+    const insertSource = db.prepare(
+      'INSERT INTO a2a_session_sources (recipient_session_id, recipient_agent_group_id, recipient_thread_id, source_session_id, source_agent_group_id, source_thread_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    );
+    insertSource.run(
+      'sess-rev-pra',
+      'ag-reviewer',
+      'thread-pr-A',
+      'sess-impl-pra',
+      'ag-implementer',
+      'thread-pr-A',
+      now,
+    );
+    insertSource.run(
+      'sess-rev-prb',
+      'ag-reviewer',
+      'thread-pr-B',
+      'sess-impl-prb',
+      'ag-implementer',
+      'thread-pr-B',
+      now,
+    );
 
     const seedInOut = (
       sid: string,
@@ -2261,10 +2507,7 @@ describe('matchContainerName', () => {
 
   it('with sessionId → exact match on <prefix>-<folder>-<tail>-<ts>', () => {
     const tail = '1778143510824-x485si';
-    const names = [
-      `${PREFIX}-orchestrator-${tail}-1762512225123`,
-      `${PREFIX}-orchestrator-other-tail-1762512225999`,
-    ];
+    const names = [`${PREFIX}-orchestrator-${tail}-1762512225123`, `${PREFIX}-orchestrator-other-tail-1762512225999`];
     expect(matchContainerName(names, 'orchestrator', 'sess-' + tail, PREFIX)).toBe(names[0]);
   });
 
@@ -2293,10 +2536,7 @@ describe('matchContainerName', () => {
 
   it('folder `foo` DOES match a container for `foo` when a rival `foo-bar` also exists', () => {
     const tail = '1778143510824-x485si';
-    const names = [
-      `${PREFIX}-foo-${tail}-1762512225123`,
-      `${PREFIX}-foo-bar-${tail}-1762512225999`,
-    ];
+    const names = [`${PREFIX}-foo-${tail}-1762512225123`, `${PREFIX}-foo-bar-${tail}-1762512225999`];
     const knownFolders = new Set(['foo', 'foo-bar']);
     expect(matchContainerName(names, 'foo', null, PREFIX, knownFolders)).toBe(names[0]);
   });
