@@ -4383,7 +4383,7 @@ export async function handleRequest(
               promptTitle = titleFromPrompt(promptRow?.message);
             } catch { /* ignore */ }
           }
-          p.display_title = promptTitle || (p.thread_id ? 'Thread session' : 'Main session');
+          p.display_title = promptTitle || (p.thread_id ? 'thread' : 'main');
           p.title_source = promptTitle ? 'heuristic' : 'auto';
           // Deliberately no UPDATE here — title writes live in the hook
           // intake path so this GET stays side-effect-free. The heuristic

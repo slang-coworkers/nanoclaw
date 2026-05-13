@@ -312,7 +312,11 @@ function sessionKindPrefix(nanoSess) {
 }
 
 function sessionDisplayTitle(nanoSess) {
-  return nanoSess?.display_title || '';
+  const title = nanoSess?.display_title || '';
+  const peer = nanoSess?.a2a_peer;
+  if (peer && title) return `${peer}: ${title}`;
+  if (peer) return peer;
+  return title;
 }
 
 function sessionKeyLabel(nanoSess) {
@@ -335,12 +339,8 @@ function lookupNanoSessById(sessionId) {
 // `kind · slug` when no display_title is set, or `kind · slug: title` when
 // the session has either a manual rename or an auto heuristic title.
 function sessionLabelWithTitle(sessionId, threadId) {
-  const base = typeof window.sessionLabel === 'function'
-    ? window.sessionLabel(sessionId, threadId)
-    : String(sessionId || '').slice(0, 12);
   const nanoSess = lookupNanoSessById(sessionId);
-  const title = sessionDisplayTitle(nanoSess);
-  return title ? `${base}: ${title}` : base;
+  return sessionDisplayTitle(nanoSess) || String(sessionId || '').slice(0, 16);
 }
 
 /**
@@ -354,9 +354,8 @@ function sessionLabelWithTitle(sessionId, threadId) {
  */
 function sessionTitleHtml(nanoSess, { compact = false } = {}) {
   if (!nanoSess?.nanoclaw_session_id) return '';
-  const slug = sessionSlugOnly(nanoSess);
   const title = sessionDisplayTitle(nanoSess);
-  const label = title ? `${slug}: ${title}` : slug;
+  const label = title || String(nanoSess?.nanoclaw_session_id || '').slice(0, 16);
   const color = compact ? 'var(--text-dim)' : 'var(--text)';
   const size = compact ? '' : 'font-size:10px;';
   return `<span style="${size}color:${color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0${compact ? ';flex:1' : ''}" title="${escAttr(nanoSess.nanoclaw_session_id)}">${esc(label)}</span>`;
@@ -450,16 +449,11 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       return '';
     };
     const sessionRow = (sess, status, cs, ago, agid, sid, tid, outer) => {
-      const slug = sessionSlugOnly(sess);
       const currentTitle = sessionDisplayTitle(sess);
-      // Primary name format is consistent with every other dashboard view:
-      // "slug: title" when a title exists, bare slug otherwise. The slug stays
-      // visible so operators can cross-reference with Timeline, thread header,
-      // a2a inspector, and logs.
-      const primaryName = currentTitle ? `${slug}: ${currentTitle}` : slug;
+      const primaryName = currentTitle || String(sess.nanoclaw_session_id || '').slice(0, 16);
       const lastMsg = lookupLastMessage(sess.thread_id);
       const previewBits = [
-        lastMsg ? `last: ${lastMsg}` : null,
+        lastMsg || null,
       ].filter(Boolean);
       const dotSize = outer ? '6px' : '5px';
       const dotColor = outer ? statusDotColor(status) : statusDotCanvasColor(status);
@@ -476,7 +470,7 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
         <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
         <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1${(tid || isA2aSession(sess)) ? ';cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px' : ''}" title="${escAttr(slug)} — ${escAttr(sess.nanoclaw_session_id)}"${tid ? ` data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${escAttr(tgrp)}"` : isA2aSession(sess) ? ` data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${escAttr(tgrp)}"` : ''}>${esc(primaryName)}</span>
-        <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, currentTitle || slug, sess)}</span>
+        <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, primaryName, sess)}</span>
       </div>
       ${previewBits.length ? `<div style="${previewStyle}" title="${escAttr(previewBits.join(' · '))}">${esc(previewBits.join(' · '))}</div>` : ''}
       <div style="${metaStyle}">${esc(metaParts.join(' · '))}${unreadBadge}</div>`;
@@ -587,10 +581,9 @@ function renderCurrentSessionEvents(folder) {
   // One-line format: `Session- tender-fell-rests: Fix PR#124` (or
   // `Thread- …: …` for a thread session). Falls back to just the slug
   // when no display_title has landed yet.
-  const slug = sessionSlugOnly(nanoSess);
   const kind = sessionKindPrefix(nanoSess);
   const title = sessionDisplayTitle(nanoSess);
-  const label = title ? `${kind}- ${slug}: ${title}` : `${kind}- ${slug}`;
+  const label = `${kind}- ${title || String(nanoSess?.nanoclaw_session_id || '').slice(0, 16)}`;
   const events = nanoSess.recent_events || [];
   if (events.length === 0) return '';
   const eventHtml = events.slice(0, 5).map((e) => `<button class="hook-entry hook-entry-link" data-event-group="${escAttr(folder)}" data-event-time="${String(e.timestamp)}">
@@ -4547,10 +4540,10 @@ function renderCwThread() {
     (t.messages || []).find((m) => m.session_id)?.session_id ||
     t.parentId;
   if (parentLabel) {
-    const label = t.sessionDirect
-      ? `a2a · ${sessionLabelWithTitle(sessionIdForSlug, t.parentId)}`
-      : sessionLabelWithTitle(sessionIdForSlug, t.parentId);
-    parentLabel.textContent = label;
+    const labelText = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
+    const isA2aThread = t.sessionDirect || matchingNano?.a2a_peer;
+    const badge = isA2aThread ? '<span style="font-size:7px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;margin-right:4px;vertical-align:middle;letter-spacing:.03em">a2a</span>' : '';
+    parentLabel.innerHTML = `${badge}${esc(labelText)}`;
     parentLabel.title = `session=${sessionIdForSlug}${t.sessionDirect ? ' (a2a read-only)' : `\nthread_id=${t.parentId}`}`;
   }
   const titleEl = document.querySelector('#cw-thread-panel .cw-thread-title strong');
