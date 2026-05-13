@@ -4102,21 +4102,6 @@ function renderCwMessages() {
         return;
       }
 
-      // ── Card action button → send action label as chat reply ──
-      const cardBtn = e.target.closest('.card-action-btn');
-      if (cardBtn) {
-        const label = cardBtn.dataset.label;
-        if (!label || !cwState.selected) return;
-        const card = cardBtn.closest('.cw-msg');
-        const allBtns = card ? card.querySelectorAll('.card-action-btn') : [cardBtn];
-        allBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
-        cardBtn.textContent = 'Sending…';
-        const threadId = cwState.thread?.parentId || null;
-        const bucket = cwState.thread ? cwState.thread.messages : cwState.messages;
-        await sendMessage({ group: cwState.selected, content: label, threadId, optimisticBucket: bucket });
-        return;
-      }
-
       // ── Credential enter button → show modal ──
       const credEnterBtn = e.target.closest('.cred-enter-btn');
       if (credEnterBtn) {
@@ -5096,6 +5081,21 @@ document.getElementById('cw-create-btn')?.addEventListener('click', showCreateMo
 document.getElementById('cw-chat-send')?.addEventListener('click', sendCwMessage);
 document.getElementById('cw-chat-input')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCwMessage(); }
+});
+
+// Card action buttons (works in both main chat and thread panel)
+document.addEventListener('click', async (e) => {
+  const cardBtn = e.target.closest('.card-action-btn');
+  if (!cardBtn) return;
+  const label = cardBtn.dataset.label;
+  if (!label || !cwState.selected) return;
+  const card = cardBtn.closest('.cw-msg');
+  const allBtns = card ? card.querySelectorAll('.card-action-btn') : [cardBtn];
+  allBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+  cardBtn.textContent = 'Sending…';
+  const threadId = cwState.thread?.parentId || null;
+  const bucket = cwState.thread ? cwState.thread.messages : cwState.messages;
+  await sendMessage({ group: cwState.selected, content: label, threadId, optimisticBucket: bucket });
 });
 
 // Thread panel composer + close button
