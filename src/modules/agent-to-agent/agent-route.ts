@@ -265,18 +265,17 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
   //    so two sources picking the same thread_id don't merge.
   //  - thread_id null but source session has one → inherit it, so outbound
   //    from a threaded session stays scoped (Slack-style DM isolation).
-  //  - both null → agent-shared (back-compat for pre-threading installs).
+  //  - both null → per-source shared (each source↔recipient pair gets its
+  //    own session, not a global agent-shared that collapses all sources).
   const explicitThread = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
   const threadId = explicitThread || session.thread_id || null;
-  let targetSession;
-  if (threadId) {
-    const a2aMgId = ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
-    const { session: s } = resolveSession(targetAgentGroupId, a2aMgId, threadId, 'per-thread');
-    targetSession = s;
-  } else {
-    const { session: s } = resolveSession(targetAgentGroupId, null, null, 'agent-shared');
-    targetSession = s;
-  }
+  const a2aMgId = ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
+  const { session: targetSession } = resolveSession(
+    targetAgentGroupId,
+    a2aMgId,
+    threadId,
+    threadId ? 'per-thread' : 'shared',
+  );
 
   // Stamp the route-back hint so the recipient's reply can find its way
   // home. Covers both per-thread and agent-shared paths — even shared
