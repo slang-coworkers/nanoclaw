@@ -189,12 +189,15 @@ async function handleRequest(request: ApprovalRequest): Promise<Decision> {
       });
     } catch (err) {
       log.error('Failed to deliver OneCLI approval card — row persisted for dashboard', {
-        approvalId, oneCliRequestId: request.id, err,
+        approvalId,
+        oneCliRequestId: request.id,
+        err,
       });
     }
   } else {
     log.warn('OneCLI approval: no DM channel — row persisted for dashboard polling', {
-      id: request.id, approvers,
+      id: request.id,
+      approvers,
     });
   }
 
