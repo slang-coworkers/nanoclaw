@@ -1328,19 +1328,6 @@
     </div>
   </div>
 
-  <!-- Credential modal (hidden by default) -->
-  <div id="cred-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:var(--modal-scrim);align-items:center;justify-content:center">
-    <div style="background:var(--bg-card,#161b22);border:1px solid var(--border,#30363d);border-radius:8px;padding:20px;width:360px;max-width:90vw">
-      <div style="font-size:0.9375rem;font-weight:bold;margin-bottom:8px" id="cred-modal-name">Enter credential</div>
-      <div style="font-size:0.75rem;color:var(--text-dim,#8b949e);margin-bottom:12px" id="cred-modal-desc"></div>
-      <input id="cred-modal-value" type="password" placeholder="Paste your credential value" autocomplete="off"
-        style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--border,#30363d);border-radius:4px;background:var(--bg,#0d1117);color:var(--text,#c9d1d9);font-size:0.8125rem;margin-bottom:12px">
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button id="cred-modal-cancel" style="background:transparent;color:var(--text-dim,#8b949e);border:1px solid var(--border,#30363d);border-radius:4px;padding:6px 16px;cursor:pointer;font-size:0.75rem">Cancel</button>
-        <button id="cred-modal-save" style="background:#238636;color:#fff;border:none;border-radius:4px;padding:6px 16px;cursor:pointer;font-size:0.75rem">Save</button>
-      </div>
-    </div>
-  </div>
 
   <script src="sprites.js"></script>
   <!-- session-slug.js is an ESM module that attaches window.sessionSlug /

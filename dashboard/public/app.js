@@ -3787,14 +3787,8 @@ async function fetchCwMessages() {
     } catch {
       cwState.pendingApprovals = [];
     }
-    try {
-      const cr = await fetch(`/api/credentials?group=${encodeURIComponent(cwState.selected)}`);
-      cwState.pendingCredentials = cr.ok ? await cr.json() : [];
-    } catch {
-      cwState.pendingCredentials = [];
-    }
     // Sync into global approval counter for sidebar dot
-    cwState.approvalCountByFolder[cwState.selected] = (cwState.pendingApprovals || []).length + (cwState.pendingCredentials || []).length;
+    cwState.approvalCountByFolder[cwState.selected] = (cwState.pendingApprovals || []).length;
     renderCwMessages();
     // Mark as read using the coworker's lastMessageTs (covers all sessions
     // including threads and a2a). Falls back to latest main-chat timestamp.
@@ -3810,22 +3804,32 @@ async function fetchCwMessages() {
 }
 
 function renderApprovalItem(item) {
-  // Server returns normalized DTOs: { approvalId, action, reason, packages, createdAt, status }
-  // item.reason and item.packages originate from container (user-influenced) — escape them
+  const coworkerHeader = item.coworkerName
+    ? `<div style="font-size:9px;color:#10b981;font-weight:600;margin-bottom:4px">@${esc(item.coworkerName)}</div>`
+    : '';
   const safeReason = item.reason ? `\n\n*Reason:* ${esc(item.reason)}` : '';
-  const desc = item.action === 'install_packages'
-    ? `**Install packages:** ${(item.packages || []).map(p => esc(p)).join(', ')}${safeReason}`
-    : item.action === 'request_rebuild'
-    ? `**Rebuild container**${safeReason}`
-    : item.action === 'add_mcp_server'
-    ? `**Add MCP server**`
-    : `**${esc(item.action)}**`;
+  let desc;
+  if (item.action === 'install_packages') {
+    desc = `**Install packages:** ${(item.packages || []).map(p => esc(p)).join(', ')}${safeReason}`;
+  } else if (item.action === 'request_rebuild') {
+    desc = `**Rebuild container**${safeReason}`;
+  } else if (item.action === 'add_mcp_server') {
+    desc = `**Add MCP server**${safeReason}`;
+  } else if (item.action === 'onecli_credential') {
+    const endpoint = item.method && item.host
+      ? `\n\n\`${esc(item.method)} ${esc(item.host)}${esc(item.path || '')}\``
+      : '';
+    desc = `**Credentials request**${endpoint}`;
+  } else {
+    desc = `**${esc(item.action)}**${safeReason}`;
+  }
   const controls = `<div style="margin-top:8px">
         <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Approve" style="background:#238636;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;cursor:pointer;font-size:10px">Approve</button>
         <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Reject" style="background:#da3633;color:#fff;border:none;border-radius:3px;padding:4px 14px;cursor:pointer;font-size:10px">Reject</button>
       </div>`;
   return `<div class="cw-msg assistant">
     <div class="cw-msg-bubble" style="border-left:3px solid #f59e0b;padding-left:8px">
+      ${coworkerHeader}
       ${md(desc)}
       ${controls}
     </div>
@@ -3833,20 +3837,6 @@ function renderApprovalItem(item) {
   </div>`;
 }
 
-function renderCredentialItem(item) {
-  const desc = `**Credential request:** ${esc(item.name)}\n\nHost: \`${esc(item.hostPattern)}\`${item.headerName ? `\nHeader: \`${esc(item.headerName)}\`` : ''}${item.valueFormat ? `\nFormat: \`${esc(item.valueFormat)}\`` : ''}${item.description ? `\n\n${esc(item.description)}` : ''}`;
-  const controls = `<div style="margin-top:8px">
-        <button class="cred-enter-btn" data-cid="${esc(item.credentialId)}" data-name="${esc(item.name)}" data-desc="${esc(item.description || item.name)}" style="background:#238636;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;cursor:pointer;font-size:10px">Enter credential</button>
-        <button class="cred-reject-btn" data-cid="${esc(item.credentialId)}" style="background:#da3633;color:#fff;border:none;border-radius:3px;padding:4px 14px;cursor:pointer;font-size:10px">Reject</button>
-      </div>`;
-  return `<div class="cw-msg assistant">
-    <div class="cw-msg-bubble" style="border-left:3px solid #d97706;padding-left:8px">
-      ${md(desc)}
-      ${controls}
-    </div>
-    <div class="cw-msg-time">${formatTime(item.createdAt)} <span style="font-size:7px;color:#d97706;font-style:italic">credential</span></div>
-  </div>`;
-}
 
 function renderCardBubble(m, { cls, monogram, authorName, time, kindLabel, coworkerLabel, threadStubHtml, isOutgoing }) {
   const titleHtml = m.cardTitle ? `<div style="font-weight:600;font-size:0.8125rem;margin-bottom:4px">${esc(m.cardTitle)}</div>` : '';
@@ -3884,7 +3874,6 @@ function renderCwMessages() {
   if (!el) return;
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
   const approvalHtml = (cwState.pendingApprovals || []).map(renderApprovalItem).join('');
-  const credentialHtml = (cwState.pendingCredentials || []).map(renderCredentialItem).join('');
   const messageHtml = cwState.messages.map((m) => {
     const isOutgoing = m.direction === 'outgoing';
     // Agent-to-agent styling: inbound from another coworker gets its own class
@@ -3996,15 +3985,13 @@ function renderCwMessages() {
       ${threadStubHtml}
     </div>`;
   }).join('');
-  if (!approvalHtml && !credentialHtml && !messageHtml) {
+  if (!approvalHtml && !messageHtml) {
     el.innerHTML = '<div class="cw-empty">No messages yet. Send a message to start.</div>';
     return;
   }
   const approvalCount = (cwState.pendingApprovals || []).length;
-  const credentialCount = (cwState.pendingCredentials || []).length;
-  const totalPending = approvalCount + credentialCount;
-  const bannerHtml = totalPending > 0
-    ? `<div class="approval-banner"><div class="approval-banner-label">⚠ Pending Actions (${totalPending})</div>${approvalHtml}${credentialHtml}</div>`
+  const bannerHtml = approvalCount > 0
+    ? `<div class="approval-banner"><div class="approval-banner-label">⚠ Pending Actions (${approvalCount})</div>${approvalHtml}</div>`
     : '';
   el.innerHTML = messageHtml + bannerHtml;
 
@@ -4106,46 +4093,6 @@ function renderCwMessages() {
         return;
       }
 
-      // ── Credential enter button → show modal ──
-      const credEnterBtn = e.target.closest('.cred-enter-btn');
-      if (credEnterBtn) {
-        const cid = credEnterBtn.dataset.cid;
-        if (!cid) return;
-        const modal = document.getElementById('cred-modal');
-        if (!modal) return;
-        modal.style.display = 'flex';
-        modal.dataset.cid = cid;
-        document.getElementById('cred-modal-name').textContent = credEnterBtn.dataset.name || 'Credential';
-        document.getElementById('cred-modal-desc').textContent = credEnterBtn.dataset.desc || '';
-        const input = document.getElementById('cred-modal-value');
-        input.value = '';
-        input.focus();
-        return;
-      }
-
-      // ── Credential reject button ──
-      const credRejectBtn = e.target.closest('.cred-reject-btn');
-      if (credRejectBtn) {
-        const cid = credRejectBtn.dataset.cid;
-        if (!cid) return;
-        if (cwState._inflightApprovals.has(cid)) return;
-        cwState._inflightApprovals.add(cid);
-        const card = credRejectBtn.closest('.cw-msg');
-        const allBtns = card ? card.querySelectorAll('.cred-enter-btn,.cred-reject-btn') : [credRejectBtn];
-        allBtns.forEach(b => { b.disabled = true; });
-        credRejectBtn.textContent = 'Rejecting…';
-        try {
-          await fetch('/api/credentials/reject', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ credentialId: cid }),
-          });
-        } catch { /* ignore */ }
-        finally {
-          setTimeout(() => { cwState._inflightApprovals.delete(cid); fetchCwMessages(); }, 1000);
-        }
-        return;
-      }
     });
   }
   const recentHooks = (state.hookEvents || []).filter(
@@ -4156,42 +4103,6 @@ function renderCwMessages() {
   }
   if (wasAtBottom) el.scrollTop = el.scrollHeight;
 }
-
-// ── Credential modal handlers (attached once globally) ──
-(function initCredentialModal() {
-  document.addEventListener('click', async (e) => {
-    const modal = document.getElementById('cred-modal');
-    if (!modal) return;
-
-    // Save button
-    if (e.target.id === 'cred-modal-save') {
-      const cid = modal.dataset.cid;
-      const value = document.getElementById('cred-modal-value')?.value || '';
-      if (!cid || !value) return;
-      e.target.disabled = true;
-      e.target.textContent = 'Saving…';
-      try {
-        await fetch('/api/credentials/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ credentialId: cid, value }),
-        });
-      } catch { /* ignore */ }
-      modal.style.display = 'none';
-      e.target.disabled = false;
-      e.target.textContent = 'Save';
-      document.getElementById('cred-modal-value').value = '';
-      setTimeout(fetchCwMessages, 1000);
-      return;
-    }
-
-    // Cancel button or overlay click
-    if (e.target.id === 'cred-modal-cancel' || e.target === modal) {
-      modal.style.display = 'none';
-      document.getElementById('cred-modal-value').value = '';
-    }
-  });
-})();
 
 /**
  * Ensure a container is running for the selected coworker.

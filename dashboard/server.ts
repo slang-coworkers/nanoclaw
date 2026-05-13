@@ -9219,7 +9219,6 @@ export async function handleRequest(
   }
 
   // API: list pending approvals for a specific admin group folder.
-  // Returns normalized DTOs: { approvalId, action, reason, packages, createdAt, status }
   if (req.method === 'GET' && url.pathname === '/api/approvals') {
     if (!requireAuth(req, res)) return;
     const group = url.searchParams.get('group') || '';
@@ -9230,7 +9229,9 @@ export async function handleRequest(
         if (agRow?.is_admin) {
           const rows = db
             .prepare(
-              `SELECT pa.* FROM pending_approvals pa
+              `SELECT pa.*, ag.folder AS coworker_folder, ag.name AS coworker_name
+               FROM pending_approvals pa
+               LEFT JOIN agent_groups ag ON ag.id = pa.agent_group_id
                WHERE pa.status = 'pending'
                ORDER BY pa.created_at DESC
                LIMIT 50`,
@@ -9249,6 +9250,11 @@ export async function handleRequest(
               packages,
               createdAt: row.created_at,
               status: row.status,
+              coworkerFolder: row.coworker_folder || null,
+              coworkerName: row.coworker_name || null,
+              host: payload.host || null,
+              method: payload.method || null,
+              path: payload.path || null,
             };
           });
         }
@@ -9370,117 +9376,6 @@ export async function handleRequest(
     return;
   }
 
-  // API: list pending credentials for a group
-  if (req.method === 'GET' && url.pathname === '/api/credentials') {
-    if (!requireAuth(req, res)) return;
-    const group = url.searchParams.get('group') || '';
-    let credentials: any[] = [];
-    if (db && group) {
-      try {
-        const agRow = db.prepare('SELECT id FROM agent_groups WHERE folder = ?').get(group) as any;
-        if (agRow) {
-          const rows = db
-            .prepare(
-              `SELECT pc.* FROM pending_credentials pc
-               JOIN sessions s ON s.id = pc.session_id
-               WHERE pc.status = 'pending' AND s.agent_group_id = ?
-               ORDER BY pc.created_at DESC
-               LIMIT 50`,
-            )
-            .all(agRow.id) as any[];
-          credentials = rows.map((row: any) => ({
-            credentialId: row.id,
-            name: row.name,
-            hostPattern: row.host_pattern,
-            headerName: row.header_name || null,
-            valueFormat: row.value_format || null,
-            description: row.description || null,
-            createdAt: row.created_at,
-          }));
-        }
-      } catch {
-        /* table may not exist */
-      }
-    }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(credentials));
-    return;
-  }
-
-  // API: submit credential value (same auth as approvals for parity)
-  if (req.method === 'POST' && url.pathname === '/api/credentials/submit') {
-    if (!requireAuth(req, res)) return;
-    const body = await readBody(req, res);
-    if (body === null) return;
-    try {
-      const parsed = JSON.parse(body);
-      const credentialId = typeof parsed.credentialId === 'string' ? parsed.credentialId.trim() : '';
-      const value = typeof parsed.value === 'string' ? parsed.value : '';
-      if (!credentialId || !value) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end('{"error":"credentialId and value required"}');
-        return;
-      }
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      const secret = getDashboardSecret();
-      if (secret) headers.Authorization = `Bearer ${secret}`;
-      const upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/credential-submit`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ credentialId, value }),
-        signal: AbortSignal.timeout(15000), // OneCLI secret creation can be slow
-      });
-      if (!upstream.ok) {
-        const errText = await upstream.text();
-        res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
-        res.end(errText);
-        return;
-      }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end('{"ok":true}');
-    } catch (e: any) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: e.message }));
-    }
-    return;
-  }
-
-  // API: reject credential request
-  if (req.method === 'POST' && url.pathname === '/api/credentials/reject') {
-    if (!requireAuth(req, res)) return;
-    const body = await readBody(req, res);
-    if (body === null) return;
-    try {
-      const parsed = JSON.parse(body);
-      const credentialId = typeof parsed.credentialId === 'string' ? parsed.credentialId.trim() : '';
-      if (!credentialId) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end('{"error":"credentialId required"}');
-        return;
-      }
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      const secret = getDashboardSecret();
-      if (secret) headers.Authorization = `Bearer ${secret}`;
-      const upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/credential-reject`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ credentialId }),
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!upstream.ok) {
-        const errText = await upstream.text();
-        res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
-        res.end(errText);
-        return;
-      }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end('{"ok":true}');
-    } catch (e: any) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: e.message }));
-    }
-    return;
-  }
 
   // ── MCP server control (proxy to auth proxy on NanoClaw process) ────────
   if (req.method === 'POST' && url.pathname === '/api/mcp-control') {
