@@ -1,4 +1,3 @@
-
 /**
  * NanoClaw Dashboard — Main Application
  *
@@ -59,7 +58,9 @@ async function promptForDashboardSecret() {
       try {
         const data = await res.json();
         err = data.error || err;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       alert(err);
       dashboardAuth.authenticated = false;
       return false;
@@ -76,9 +77,7 @@ async function promptForDashboardSecret() {
 }
 
 async function ensureDashboardAuth(forcePrompt = false) {
-  const status = forcePrompt || !dashboardAuth.checked
-    ? await refreshDashboardAuthStatus()
-    : dashboardAuth;
+  const status = forcePrompt || !dashboardAuth.checked ? await refreshDashboardAuthStatus() : dashboardAuth;
   if (!status.required) return true;
   if (status.authenticated) return true;
   const loggedIn = await promptForDashboardSecret();
@@ -87,7 +86,7 @@ async function ensureDashboardAuth(forcePrompt = false) {
   return !!refreshed.authenticated;
 }
 
-window.fetch = async function(input, init) {
+window.fetch = async function (input, init) {
   if (!isApiRequest(input) || isAuthRequest(input)) {
     return nativeFetch(input, init);
   }
@@ -103,13 +102,29 @@ window.fetch = async function(input, init) {
 const readCursors = {
   KEY: 'nanoclaw-read-cursors',
   _cache: null,
-  get() { if (!this._cache) { try { this._cache = JSON.parse(localStorage.getItem(this.KEY) || '{}'); } catch { this._cache = {}; } } return this._cache; },
-  getFor(folder) { return this.get()[folder] || null; },
-  markRead(folder, timestamp) { const c = this.get(); c[folder] = timestamp; this._cache = c; localStorage.setItem(this.KEY, JSON.stringify(c)); },
+  get() {
+    if (!this._cache) {
+      try {
+        this._cache = JSON.parse(localStorage.getItem(this.KEY) || '{}');
+      } catch {
+        this._cache = {};
+      }
+    }
+    return this._cache;
+  },
+  getFor(folder) {
+    return this.get()[folder] || null;
+  },
+  markRead(folder, timestamp) {
+    const c = this.get();
+    c[folder] = timestamp;
+    this._cache = c;
+    localStorage.setItem(this.KEY, JSON.stringify(c));
+  },
 };
 
 function hasUnread(folder) {
-  const cw = (state.coworkers || []).find(c => c.folder === folder);
+  const cw = (state.coworkers || []).find((c) => c.folder === folder);
   if (!cw || !cw.lastMessageTs) return false;
   const cursor = readCursors.getFor(folder);
   if (!cursor) return true;
@@ -123,13 +138,26 @@ function hasUnread(folder) {
 const sessionReadCursors = {
   KEY: 'nanoclaw-session-read-cursors',
   _cache: null,
-  get() { if (!this._cache) { try { this._cache = JSON.parse(localStorage.getItem(this.KEY) || '{}'); } catch { this._cache = {}; } } return this._cache; },
-  getFor(sid) { return this.get()[sid] || 0; },
+  get() {
+    if (!this._cache) {
+      try {
+        this._cache = JSON.parse(localStorage.getItem(this.KEY) || '{}');
+      } catch {
+        this._cache = {};
+      }
+    }
+    return this._cache;
+  },
+  getFor(sid) {
+    return this.get()[sid] || 0;
+  },
   markRead(sid, ms) {
     const c = this.get();
     c[sid] = ms || Date.now();
     this._cache = c;
-    try { localStorage.setItem(this.KEY, JSON.stringify(c)); } catch {}
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(c));
+    } catch {}
   },
 };
 
@@ -220,16 +248,20 @@ function formatSubagentName(subagent) {
 
 function renderSubagentList(cw) {
   if (!cw.subagents || cw.subagents.length === 0) return 'None';
-  return `<div class="subagent-list">${cw.subagents.map((subagent) => `
+  return `<div class="subagent-list">${cw.subagents
+    .map(
+      (subagent) => `
     <div class="subagent-card">
       <div class="subagent-head">
         <span class="subagent-name">${esc(formatSubagentName(subagent))}</span>
         ${renderSubagentBadge(subagent)}
       </div>
       <div class="subagent-type">${esc(subagent.agentType || 'default')}</div>
-      <div class="subagent-meta">${esc(subagent.phase === 'leaving' ? (subagent.lastNotification || 'Leaving desk') : (subagent.lastToolUse || subagent.lastNotification || 'Standing by'))}</div>
+      <div class="subagent-meta">${esc(subagent.phase === 'leaving' ? subagent.lastNotification || 'Leaving desk' : subagent.lastToolUse || subagent.lastNotification || 'Standing by')}</div>
     </div>
-  `).join('')}</div>`;
+  `,
+    )
+    .join('')}</div>`;
 }
 
 function setLiveStatus(label, colorVar) {
@@ -257,23 +289,33 @@ function switchToTab(tabId) {
  */
 function statusDotColor(status) {
   switch (status) {
-    case 'working': return 'var(--green)';
-    case 'thinking': return 'var(--yellow)';
-    case 'error': return 'var(--red)';
-    case 'active': return '#3B82F6'; // blue
+    case 'working':
+      return 'var(--green)';
+    case 'thinking':
+      return 'var(--yellow)';
+    case 'error':
+      return 'var(--red)';
+    case 'active':
+      return '#3B82F6'; // blue
     case 'idle':
-    default: return 'var(--text-muted)';
+    default:
+      return 'var(--text-muted)';
   }
 }
 
 function statusDotCanvasColor(status) {
   switch (status) {
-    case 'working': return '#10B981';
-    case 'thinking': return '#F59E0B';
-    case 'error': return '#EF4444';
-    case 'active': return '#3B82F6';
+    case 'working':
+      return '#10B981';
+    case 'thinking':
+      return '#F59E0B';
+    case 'error':
+      return '#EF4444';
+    case 'active':
+      return '#3B82F6';
     case 'idle':
-    default: return '#6B7280';
+    default:
+      return '#6B7280';
   }
 }
 
@@ -292,11 +334,11 @@ function activeNanoSessionsForCoworker(cw) {
   });
 }
 
-
 function isA2aSession(nanoSess) {
   if (nanoSess?.thread_id) return false;
   if (nanoSess?.a2a_peer) return true;
-  if (typeof nanoSess?.messaging_group_id === 'string' && nanoSess.messaging_group_id.startsWith('mg-a2a-')) return true;
+  if (typeof nanoSess?.messaging_group_id === 'string' && nanoSess.messaging_group_id.startsWith('mg-a2a-'))
+    return true;
   return !nanoSess?.messaging_group_id;
 }
 
@@ -330,7 +372,7 @@ function sessionKeyLabel(nanoSess) {
 // callers fall back to the bare slug label in that case.
 function lookupNanoSessById(sessionId) {
   if (!sessionId) return null;
-  for (const p of (cachedSessions || [])) {
+  for (const p of cachedSessions || []) {
     if (p.nanoclaw_session_id === sessionId) return p;
   }
   return null;
@@ -428,9 +470,15 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       return `<button class="session-icon-btn${isPinned ? ' active' : ''}" title="${isPinned ? 'Unpin session' : 'Pin session to top'}"
         data-pin-session="${sid}" data-pin-on="${isPinned ? '0' : '1'}">📌</button><button class="session-icon-btn" title="Rename this session"
         data-rename-session="${sid}" data-rename-current="${escAttr(currentTitle || '')}">✎</button><button class="session-icon-btn" title="Open in Timeline"
-        data-view-nanoclaw-session="${sid}" data-view-nanoclaw-agid="${agid}" data-view-session-group="${tgrp}">≡</button>${tid ? `<button class="session-icon-btn" title="Open chat view"
-        data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${tgrp}">💬</button>` : isA2aSession(sess) ? `<button class="session-icon-btn" title="Open a2a session"
-        data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${tgrp}">💬</button>` : `<button class="session-icon-btn" title="Main session — already shown in chat" disabled style="opacity:0.35;cursor:not-allowed">💬</button>`}<button class="session-icon-btn${isHidden ? ' active' : ''}" title="${isHidden ? 'Unhide session' : 'Hide session'}"
+        data-view-nanoclaw-session="${sid}" data-view-nanoclaw-agid="${agid}" data-view-session-group="${tgrp}">≡</button>${
+          tid
+            ? `<button class="session-icon-btn" title="Open chat view"
+        data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${tgrp}">💬</button>`
+            : isA2aSession(sess)
+              ? `<button class="session-icon-btn" title="Open a2a session"
+        data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${tgrp}">💬</button>`
+              : `<button class="session-icon-btn" title="Main session — already shown in chat" disabled style="opacity:0.35;cursor:not-allowed">💬</button>`
+        }<button class="session-icon-btn${isHidden ? ' active' : ''}" title="${isHidden ? 'Unhide session' : 'Hide session'}"
         data-hide-session="${sid}" data-hide-on="${isHidden ? '0' : '1'}">${isHidden ? '↺' : '−'}</button>`;
     };
     const lookupLastMessage = (threadId) => {
@@ -454,27 +502,35 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       const currentTitle = sessionDisplayTitle(sess);
       const primaryName = currentTitle || String(sess.nanoclaw_session_id || '').slice(0, 16);
       const lastMsg = lookupLastMessage(sess.thread_id);
-      const previewBits = [
-        lastMsg || null,
-      ].filter(Boolean);
+      const previewBits = [lastMsg || null].filter(Boolean);
       const dotSize = outer ? '6px' : '5px';
       const dotColor = outer ? statusDotColor(status) : statusDotCanvasColor(status);
-      const titleStyle = outer ? 'font-size:10px;color:var(--text);font-weight:600' : 'font-size:9px;color:var(--text-dim)';
+      const titleStyle = outer
+        ? 'font-size:10px;color:var(--text);font-weight:600'
+        : 'font-size:9px;color:var(--text-dim)';
       const metaStyle = 'font-size:9px;color:var(--text-muted);margin-top:2px';
-      const previewStyle = 'font-size:9px;color:var(--text-dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      const previewStyle =
+        'font-size:9px;color:var(--text-dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
       const evCount = sess.event_count_total || 0;
       const subCount = (sess.sdk_subsessions || []).length;
-      const metaParts = [cs, ago ? 'last ' + ago : '', evCount ? `${evCount} ev` : '', subCount ? `${subCount} sub` : ''].filter(Boolean);
+      const metaParts = [
+        cs,
+        ago ? 'last ' + ago : '',
+        evCount ? `${evCount} ev` : '',
+        subCount ? `${subCount} sub` : '',
+      ].filter(Boolean);
       const unread = hasSessionUnread(sess);
       const unreadBadge = unread
         ? `<span class="session-unread-dot" title="Unread activity since you last opened this session"></span>`
         : '';
       const isA2a = !!sess.a2a_peer;
-      const a2aBadge = isA2a ? '<span style="font-size:7px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;flex-shrink:0;letter-spacing:.03em">a2a</span>' : '';
+      const a2aBadge = isA2a
+        ? '<span style="font-size:7px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;flex-shrink:0;letter-spacing:.03em">a2a</span>'
+        : '';
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
         <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
         ${a2aBadge}
-        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1${(tid || isA2aSession(sess)) ? ';cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px' : ''}" title="${escAttr(sess.nanoclaw_session_id)}"${tid ? ` data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${escAttr(tgrp)}"` : isA2aSession(sess) ? ` data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${escAttr(tgrp)}"` : ''}>${esc(primaryName)}</span>
+        <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1${tid || isA2aSession(sess) ? ';cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px' : ''}" title="${escAttr(sess.nanoclaw_session_id)}"${tid ? ` data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${escAttr(tgrp)}"` : isA2aSession(sess) ? ` data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${escAttr(tgrp)}"` : ''}>${esc(primaryName)}</span>
         <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, primaryName, sess)}</span>
       </div>
       ${previewBits.length ? `<div style="${previewStyle}" title="${escAttr(previewBits.join(' · '))}">${esc(previewBits.join(' · '))}</div>` : ''}
@@ -482,7 +538,10 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
     };
     // Viewing the coworker's detail implicitly reads the currently-active session.
     if (target.nanoSess.nanoclaw_session_id) {
-      sessionReadCursors.markRead(target.nanoSess.nanoclaw_session_id, sessionLastActiveMs(target.nanoSess) || Date.now());
+      sessionReadCursors.markRead(
+        target.nanoSess.nanoclaw_session_id,
+        sessionLastActiveMs(target.nanoSess) || Date.now(),
+      );
     }
     const targetHtml = `<div style="padding:5px 6px;border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,0.03);margin-bottom:5px">
       ${sessionRow(target.nanoSess, target.status, target.cs, target.ago, tagid, tsid, ttid, true)}
@@ -499,14 +558,20 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       </div>`;
     };
     const needsSearch = otherSessions.length > 8;
-    const othersHtml = otherSessions.length === 0 ? '' : `<div style="display:flex;align-items:center;gap:6px;margin:5px 0 3px">
+    const othersHtml =
+      otherSessions.length === 0
+        ? ''
+        : `<div style="display:flex;align-items:center;gap:6px;margin:5px 0 3px">
         <div style="font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;flex:1">Other Sessions (${otherSessions.length})</div>
         ${needsSearch ? `<input type="text" id="cw-other-session-search" placeholder="filter…" style="font-size:9px;padding:1px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;width:80px">` : ''}
       </div>
       <div id="cw-other-session-list" style="display:flex;flex-direction:column;gap:3px;margin-bottom:5px;max-height:280px;overflow-y:auto">
         ${otherSessions.map((m) => renderRow(m)).join('')}
       </div>`;
-    const hiddenHtml = hiddenMetas.length === 0 ? '' : `<details style="margin-top:4px">
+    const hiddenHtml =
+      hiddenMetas.length === 0
+        ? ''
+        : `<details style="margin-top:4px">
         <summary style="font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;padding:2px 0">
           ⌄ Hidden Sessions (${hiddenMetas.length})
         </summary>
@@ -525,9 +590,7 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
         <button class="admin-action-btn" style="font-size:8px;padding:1px 6px" data-view-session="${escAttr(activeSession)}" data-view-session-group="${escAttr(cw.folder)}">View Session</button>
       </div>`;
   }
-  return wrapField
-    ? `<div class="field"><label>Sessions</label>${inner}</div>`
-    : inner;
+  return wrapField ? `<div class="field"><label>Sessions</label>${inner}</div>` : inner;
 }
 
 function agentGroupIdForFolder(folder) {
@@ -557,19 +620,28 @@ function renderDetailHooks(cw) {
   // its own "Session" panel (#detail-session, populated at :1410 + :458),
   // so don't inline the session block here — previously that produced a
   // visible duplicate of each thread/main entry in the detail panel.
-  const recentTools = groupEvents.filter((e) => e.event === 'PostToolUse' || e.event === 'PostToolUseFailure').slice(-5);
+  const recentTools = groupEvents
+    .filter((e) => e.event === 'PostToolUse' || e.event === 'PostToolUseFailure')
+    .slice(-5);
   let html = '';
 
   if (recentTools.length === 0 && groupEvents.length === 0) return html;
   // Newest-first: take the last 5 chronologically, then reverse so the top entry is most recent.
-  const display = groupEvents.filter((e) => e.event !== 'PreToolUse').slice(-5).reverse();
-  html += display.map((e) => {
-    const dur = (e.event === 'PostToolUse' || e.event === 'PostToolUseFailure') && e.tool_use_id && preTimes.has(e.tool_use_id)
-      ? ` <span style="color:var(--text-muted)">${formatDuration(e.timestamp - preTimes.get(e.tool_use_id))}</span>` : '';
-    return `<button class="hook-entry hook-entry-link" data-event-group="${escAttr(cw.folder)}" data-event-time="${String(e.timestamp)}">
+  const display = groupEvents
+    .filter((e) => e.event !== 'PreToolUse')
+    .slice(-5)
+    .reverse();
+  html += display
+    .map((e) => {
+      const dur =
+        (e.event === 'PostToolUse' || e.event === 'PostToolUseFailure') && e.tool_use_id && preTimes.has(e.tool_use_id)
+          ? ` <span style="color:var(--text-muted)">${formatDuration(e.timestamp - preTimes.get(e.tool_use_id))}</span>`
+          : '';
+      return `<button class="hook-entry hook-entry-link" data-event-group="${escAttr(cw.folder)}" data-event-time="${String(e.timestamp)}">
       <span class="ts">${formatTime(e.timestamp)}</span> <span class="tool-name">${esc(e.tool || e.event)}</span>${dur}
     </button>`;
-  }).join('');
+    })
+    .join('');
   return html;
 }
 
@@ -591,9 +663,16 @@ function renderCurrentSessionEvents(folder) {
   const label = `${kind}- ${title || String(nanoSess?.nanoclaw_session_id || '').slice(0, 16)}`;
   const events = nanoSess.recent_events || [];
   if (events.length === 0) return '';
-  const eventHtml = events.slice(0, 5).map((e) => `<button class="hook-entry hook-entry-link" data-event-group="${escAttr(folder)}" data-event-time="${String(e.timestamp)}">
+  const eventHtml = events
+    .slice(0, 5)
+    .map(
+      (
+        e,
+      ) => `<button class="hook-entry hook-entry-link" data-event-group="${escAttr(folder)}" data-event-time="${String(e.timestamp)}">
         <span class="ts">${formatTime(e.timestamp)}</span> <span class="tool-name">${formatSessionEventLine(e)}</span>
-      </button>`).join('');
+      </button>`,
+    )
+    .join('');
   return `<div style="margin-top:6px">${eventHtml}</div>`;
 }
 
@@ -608,10 +687,10 @@ function hidePixelOfficeContext() {
 
 function focusTimelineEntry(group, timestamp) {
   const entries = Array.from(document.querySelectorAll('#timeline-list .tl-entry'));
-  const match = entries.find((el) =>
-    el.dataset.eventGroup === group &&
-    el.dataset.eventType === 'hook' &&
-    el.dataset.eventTime === String(timestamp));
+  const match = entries.find(
+    (el) =>
+      el.dataset.eventGroup === group && el.dataset.eventType === 'hook' && el.dataset.eventTime === String(timestamp),
+  );
   if (!match) return;
 
   const expandBtn = match.querySelector('.tl-expand-btn');
@@ -665,7 +744,9 @@ function applyState(nextState) {
       document.getElementById('detail-tool').textContent = updated.lastToolUse || '-';
       const statusEl = document.getElementById('detail-status');
       if (statusEl) statusEl.innerHTML = renderStatusBadge(updated.status);
-      document.getElementById('detail-activity').textContent = updated.lastActivity ? timeAgo(updated.lastActivity) : 'Never';
+      document.getElementById('detail-activity').textContent = updated.lastActivity
+        ? timeAgo(updated.lastActivity)
+        : 'Never';
       const subagentsEl = document.getElementById('detail-subagents');
       if (subagentsEl) subagentsEl.innerHTML = renderSubagentList(updated);
       // Keep #detail-session (Pixel Office inspector) live — `last N ago` + container status
@@ -676,10 +757,14 @@ function applyState(nextState) {
         const blk = renderActiveSessionBlock(updated, { wrapField: false });
         if (blk) {
           const openDetailIds = new Set();
-          detailSessEl.querySelectorAll('details').forEach((d, i) => { if (d.open) openDetailIds.add(i); });
+          detailSessEl.querySelectorAll('details').forEach((d, i) => {
+            if (d.open) openDetailIds.add(i);
+          });
           detailSessEl.innerHTML = blk;
           if (openDetailIds.size > 0) {
-            detailSessEl.querySelectorAll('details').forEach((d, i) => { if (openDetailIds.has(i)) d.open = true; });
+            detailSessEl.querySelectorAll('details').forEach((d, i) => {
+              if (openDetailIds.has(i)) d.open = true;
+            });
           }
         }
       }
@@ -763,27 +848,45 @@ const TW = PixelSprites.TILE * Z; // 48px per tile at zoom 3
 // --- Layout data (loaded from JSON) ---
 let layoutData = null;
 fetch('assets/default-layout-1.json')
-  .then(r => r.json())
-  .then(d => { layoutData = d; })
+  .then((r) => r.json())
+  .then((d) => {
+    layoutData = d;
+  })
   .catch(() => {});
 
 const FIRST_VIS_ROW = 10;
 
 // Layout furniture type → PixelSprites key
 const FURN_MAP = {
-  TABLE_FRONT: 'tableFront', COFFEE_TABLE: 'coffeeTable',
-  SOFA_FRONT: 'sofa', SOFA_BACK: 'sofaBack', SOFA_SIDE: 'sofaSide',
-  HANGING_PLANT: 'hangingPlant', DOUBLE_BOOKSHELF: 'doubleBookshelf',
-  SMALL_PAINTING: 'smallPainting', SMALL_PAINTING_2: 'smallPainting2',
-  LARGE_PAINTING: 'largePainting', CLOCK: 'clock',
-  PLANT: 'plant', PLANT_2: 'plant2', LARGE_PLANT: 'largePlant',
-  COFFEE: 'coffee', BOOKSHELF: 'bookshelf', CACTUS: 'cactus',
-  WHITEBOARD: 'whiteboard', POT: 'pot', BIN: 'bin',
-  WOODEN_BENCH: 'woodenBench', CUSHIONED_BENCH: 'cushionedBench',
+  TABLE_FRONT: 'tableFront',
+  COFFEE_TABLE: 'coffeeTable',
+  SOFA_FRONT: 'sofa',
+  SOFA_BACK: 'sofaBack',
+  SOFA_SIDE: 'sofaSide',
+  HANGING_PLANT: 'hangingPlant',
+  DOUBLE_BOOKSHELF: 'doubleBookshelf',
+  SMALL_PAINTING: 'smallPainting',
+  SMALL_PAINTING_2: 'smallPainting2',
+  LARGE_PAINTING: 'largePainting',
+  CLOCK: 'clock',
+  PLANT: 'plant',
+  PLANT_2: 'plant2',
+  LARGE_PLANT: 'largePlant',
+  COFFEE: 'coffee',
+  BOOKSHELF: 'bookshelf',
+  CACTUS: 'cactus',
+  WHITEBOARD: 'whiteboard',
+  POT: 'pot',
+  BIN: 'bin',
+  WOODEN_BENCH: 'woodenBench',
+  CUSHIONED_BENCH: 'cushionedBench',
   WOODEN_CHAIR_SIDE: 'woodenChairSide',
-  DESK_FRONT: 'desk', PC_FRONT_OFF: 'pcOff',
-  PC_SIDE: 'pcSide', PC_BACK: 'pcBack',
-  SMALL_TABLE_FRONT: 'smallTable', SMALL_TABLE_SIDE: 'smallTableSide',
+  DESK_FRONT: 'desk',
+  PC_FRONT_OFF: 'pcOff',
+  PC_SIDE: 'pcSide',
+  PC_BACK: 'pcBack',
+  SMALL_TABLE_FRONT: 'smallTable',
+  SMALL_TABLE_SIDE: 'smallTableSide',
 };
 
 // Desk slot positions in tile grid coordinates
@@ -802,9 +905,7 @@ const DESK_SLOTS = [
 ];
 
 // Types that should be skipped from layout furniture (animated PCs are handled per-coworker)
-const SKIP_LAYOUT_TYPES = new Set([
-  'PC_FRONT_ON_1', 'PC_FRONT_ON_2', 'PC_FRONT_ON_3',
-]);
+const SKIP_LAYOUT_TYPES = new Set(['PC_FRONT_ON_1', 'PC_FRONT_ON_2', 'PC_FRONT_ON_3']);
 
 // --- Canvas sizing ---
 let needsResize = true;
@@ -815,8 +916,7 @@ function resizeCanvas() {
   const rect = parent.getBoundingClientRect();
   const bar = parent.querySelector('.office-bar');
   const barH = bar?.getBoundingClientRect().height || 28;
-  const sideW = detailPanel.classList.contains('visible')
-    ? detailPanel.getBoundingClientRect().width || 0 : 0;
+  const sideW = detailPanel.classList.contains('visible') ? detailPanel.getBoundingClientRect().width || 0 : 0;
   const w = Math.floor(rect.width - sideW);
   const h = Math.floor(rect.height - barH);
   if (w < 64 || h < 64) return false;
@@ -840,9 +940,12 @@ function getCharAnim(key) {
   if (!charAnims.has(key)) {
     charAnims.set(key, {
       phase: 'walk', // 'walk' | 'sit'
-      x: 0, y: 0,
-      startX: 0, startY: 0,
-      targetX: 0, targetY: 0,
+      x: 0,
+      y: 0,
+      startX: 0,
+      startY: 0,
+      targetX: 0,
+      targetY: 0,
       progress: 0,
       facing: 'front',
       inited: false,
@@ -853,7 +956,9 @@ function getCharAnim(key) {
   return charAnims.get(key);
 }
 
-function lerp(a, b, t) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
+function lerp(a, b, t) {
+  return a + (b - a) * Math.max(0, Math.min(1, t));
+}
 
 // --- Desk assignment ---
 let officeShowAll = false;
@@ -870,9 +975,7 @@ function isCoworkerActive(cw) {
 function getDeskAssignments() {
   const maxSlots = state.maxConcurrentContainers || DESK_SLOTS.length;
   const activeSlots = DESK_SLOTS.slice(0, Math.max(maxSlots, DESK_SLOTS.length));
-  const coworkers = officeShowAll
-    ? state.coworkers
-    : state.coworkers.filter(isCoworkerActive);
+  const coworkers = officeShowAll ? state.coworkers : state.coworkers.filter(isCoworkerActive);
   return coworkers.map((cw, i) => {
     const slot = activeSlots[i % activeSlots.length];
     const stationType = slot.stationType || 'desk';
@@ -897,21 +1000,24 @@ function tileXY(col, row, ox, oy) {
 
 // Tile type → solid fill color (matching pixel-agents screenshot)
 const TILE_COLORS = {
-  0: '#2a3548',  // wall — dark navy
-  1: '#8b9aaa',  // main room floor — cool gray
-  7: '#9a7a55',  // left room floor — warm brown wood
-  9: '#6e8899',  // lounge floor — muted blue-gray
+  0: '#2a3548', // wall — dark navy
+  1: '#8b9aaa', // main room floor — cool gray
+  7: '#9a7a55', // left room floor — warm brown wood
+  9: '#6e8899', // lounge floor — muted blue-gray
 };
 function tileColor(tileType) {
   return TILE_COLORS[tileType] || '#7a6a55';
 }
 
 function isDrawable(img) {
-  return img && ((img.naturalWidth > 0) || (img.width > 0));
+  return img && (img.naturalWidth > 0 || img.width > 0);
 }
 
 function roundedRectPath(context, x, y, width, height, radius) {
-  if (typeof context.roundRect === 'function') { context.roundRect(x, y, width, height, radius); return; }
+  if (typeof context.roundRect === 'function') {
+    context.roundRect(x, y, width, height, radius);
+    return;
+  }
   const r = Math.max(0, Math.min(radius, width / 2, height / 2));
   context.moveTo(x + r, y);
   context.lineTo(x + width - r, y);
@@ -990,7 +1096,12 @@ function collectDrawables(assignments, ox, oy) {
   // Static furniture from layout (decorative items — skip desks/PCs, we place those per-coworker)
   if (layoutData?.furniture) {
     for (const item of layoutData.furniture) {
-      const baseType = item.type.replace(':left', '').replace(/_FRONT_OFF$/, '').replace(/_FRONT$/, '').replace(/_SIDE$/, '').replace(/_BACK$/, '');
+      const baseType = item.type
+        .replace(':left', '')
+        .replace(/_FRONT_OFF$/, '')
+        .replace(/_FRONT$/, '')
+        .replace(/_SIDE$/, '')
+        .replace(/_BACK$/, '');
       if (SKIP_LAYOUT_TYPES.has(item.type) || SKIP_LAYOUT_TYPES.has(baseType)) continue;
       const key = FURN_MAP[item.type.replace(':left', '')] || FURN_MAP[baseType];
       if (!key) continue;
@@ -998,7 +1109,8 @@ function collectDrawables(assignments, ox, oy) {
       const info = PixelSprites.getFurnitureInfo(key);
       if (!isDrawable(sprite) || !info) continue;
       const pos = tileXY(item.col, item.row, ox, oy);
-      const w = info.w * Z, h = info.h * Z;
+      const w = info.w * Z,
+        h = info.h * Z;
       const mirrored = item.type.endsWith(':left');
       const isWhiteboard = item.type === 'WHITEBOARD';
       const isClock = item.type === 'CLOCK';
@@ -1041,42 +1153,56 @@ function addDeskDrawables(drawables, a, ox, oy) {
     const deskSprite = PixelSprites.getFurniture('desk');
     if (isDrawable(deskSprite)) {
       const dp = tileXY(dCol, dRow, ox, oy);
-      const dw = 48 * Z, dh = 32 * Z;
-      drawables.push({ zY: dp.y + dh, draw() {
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(deskSprite, dp.x, dp.y, dw, dh);
-      }});
+      const dw = 48 * Z,
+        dh = 32 * Z;
+      drawables.push({
+        zY: dp.y + dh,
+        draw() {
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(deskSprite, dp.x, dp.y, dw, dh);
+        },
+      });
     }
 
     // PC on desk
     const pcSprite = isActive ? PixelSprites.getPcFrame(frame) : PixelSprites.getFurniture('pcOff');
     if (isDrawable(pcSprite)) {
       const pp = tileXY(dCol + 1, dRow, ox, oy);
-      const pw = 16 * Z, ph = 32 * Z;
-      drawables.push({ zY: pp.y + ph + 1, draw() {
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(pcSprite, pp.x, pp.y, pw, ph);
-      }});
+      const pw = 16 * Z,
+        ph = 32 * Z;
+      drawables.push({
+        zY: pp.y + ph + 1,
+        draw() {
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(pcSprite, pp.x, pp.y, pw, ph);
+        },
+      });
     }
 
     // Coffee mug on desk
     const coffeeSprite = PixelSprites.getFurniture('coffee');
     if (isDrawable(coffeeSprite)) {
       const cp = tileXY(dCol + 2, dRow + 1, ox, oy);
-      drawables.push({ zY: cp.y + 16 * Z + 2, draw() {
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(coffeeSprite, cp.x, cp.y, 16 * Z, 16 * Z);
-      }});
+      drawables.push({
+        zY: cp.y + 16 * Z + 2,
+        draw() {
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(coffeeSprite, cp.x, cp.y, 16 * Z, 16 * Z);
+        },
+      });
     }
 
     // Chair below desk
     const chairSprite = PixelSprites.getFurniture('chair');
     if (isDrawable(chairSprite)) {
       const chp = tileXY(seatCol, seatRow, ox, oy);
-      drawables.push({ zY: chp.y + 16 * Z - 1, draw() {
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(chairSprite, chp.x, chp.y, 16 * Z, 16 * Z);
-      }});
+      drawables.push({
+        zY: chp.y + 16 * Z - 1,
+        draw() {
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(chairSprite, chp.x, chp.y, 16 * Z, 16 * Z);
+        },
+      });
     }
   }
   // Kitchen/lounge: no desk/PC/chair — layout furniture already provides the set pieces
@@ -1129,7 +1255,7 @@ function addCharacterDrawable(drawables, cw, assignment, ox, oy, isSub, subInfo)
   }
 
   // Track status changes for cue
-  const status = isSub ? (subInfo.sub.status || 'idle') : cw.status;
+  const status = isSub ? subInfo.sub.status || 'idle' : cw.status;
   if (anim.lastStatus !== status) {
     if (status !== 'idle') anim.startCueUntil = Date.now() + 1800;
     anim.lastStatus = status;
@@ -1186,12 +1312,20 @@ function addCharacterDrawable(drawables, cw, assignment, ox, oy, isSub, subInfo)
   if (anim.phase === 'walk') {
     charStatus = 'walking';
   } else if (isSub) {
-    charStatus = status === 'working' ? 'working' : status === 'thinking' ? 'thinking' : status === 'active' ? 'idle' : 'idle';
+    charStatus =
+      status === 'working' ? 'working' : status === 'thinking' ? 'thinking' : status === 'active' ? 'idle' : 'idle';
   } else {
-    charStatus = status === 'working' ? 'working' : status === 'thinking' ? 'thinking' : status === 'active' ? 'working' : 'sitting';
+    charStatus =
+      status === 'working'
+        ? 'working'
+        : status === 'thinking'
+          ? 'thinking'
+          : status === 'active'
+            ? 'working'
+            : 'sitting';
   }
 
-  const animRate = charStatus === 'walking' ? 4 : (charStatus === 'working' || charStatus === 'thinking') ? 8 : 0;
+  const animRate = charStatus === 'walking' ? 4 : charStatus === 'working' || charStatus === 'thinking' ? 8 : 0;
   let charIdx;
   if (isSub && subInfo?.sub?.agentId) {
     // Deterministic hash of agentId → consistent random character per subagent
@@ -1212,9 +1346,11 @@ function addCharacterDrawable(drawables, cw, assignment, ox, oy, isSub, subInfo)
   const drawX = Math.round(anim.x);
   const drawY = Math.round(anim.y - charH + TW);
   const charZY = Math.round(anim.y) + TW;
-  const notification = isSub ? (subInfo.sub.lastNotification || '') : (cw.lastNotification || '');
+  const notification = isSub ? subInfo.sub.lastNotification || '' : cw.lastNotification || '';
   const cue = getActorCue(notification, anim);
-  const speech = isSub ? (subInfo.sub.lastToolUse || subInfo.sub.lastNotification || '') : (cw.lastToolUse || cw.currentTask || '');
+  const speech = isSub
+    ? subInfo.sub.lastToolUse || subInfo.sub.lastNotification || ''
+    : cw.lastToolUse || cw.currentTask || '';
   const isWorking = status === 'active' || status === 'working' || status === 'thinking';
 
   drawables.push({
@@ -1253,9 +1389,10 @@ function addCharacterDrawable(drawables, cw, assignment, ox, oy, isSub, subInfo)
       }
     },
     // Overlay info for post-draw pass
-    overlayX: drawX, overlayY: drawY,
+    overlayX: drawX,
+    overlayY: drawY,
     speech: isWorking ? speech : '',
-    speechColor: isSub ? mapSubagentColor(subInfo.sub?.agentType) : (cw.color || '#475569'),
+    speechColor: isSub ? mapSubagentColor(subInfo.sub?.agentType) : cw.color || '#475569',
   });
 }
 
@@ -1297,7 +1434,7 @@ const NVIDIA_FONT = {
 };
 
 function drawSlangText(bx, by, bw, bh) {
-  const letters = ['N','V','I','D','I','A'];
+  const letters = ['N', 'V', 'I', 'D', 'I', 'A'];
   const px = Math.max(2, Math.round(Z * 0.9)); // scale with zoom
   const gap = px;
   const lw = 5;
@@ -1335,7 +1472,8 @@ function drawSlangText(bx, by, bw, bh) {
 function drawCueBubble(x, y, cue) {
   const width = cue.label.length > 1 ? 26 : 18;
   const height = 14;
-  const bx = x + 8, by = y - 18;
+  const bx = x + 8,
+    by = y - 18;
   ctx.fillStyle = '#0f172aEE';
   ctx.strokeStyle = cue.color;
   ctx.lineWidth = 1;
@@ -1446,7 +1584,7 @@ function drawNameplate(assignment, ox, oy, isHovered) {
     const barY = plateY + 14;
     const barW = plateW;
     const pct = Math.min(cw.contextUsagePercent, 100);
-    const fillW = barW * pct / 100;
+    const fillW = (barW * pct) / 100;
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(pos.x, barY, barW, 2);
     ctx.fillStyle = pct > 85 ? '#EF4444AA' : pct > 60 ? '#F59E0BAA' : '#10B981AA';
@@ -1473,7 +1611,7 @@ function drawOffice() {
 
   // Center the map in the viewport, scaling down to fit if needed
   const mapCols = layoutData?.cols || 21;
-  const mapVisRows = layoutData ? (layoutData.rows - FIRST_VIS_ROW) : 12;
+  const mapVisRows = layoutData ? layoutData.rows - FIRST_VIS_ROW : 12;
   const mapW = mapCols * TW;
   const mapH = mapVisRows * TW;
   const scale = Math.min(canvas.width / mapW, canvas.height / mapH, 1);
@@ -1514,15 +1652,15 @@ function drawOffice() {
   }
 
   // Speech bubbles (draw on top of everything)
-  const speechDrawables = drawables.filter(d => d.speech && !d.isSub);
+  const speechDrawables = drawables.filter((d) => d.speech && !d.isSub);
   // Prefer subagent speech if available
-  const subSpeakers = drawables.filter(d => d.speech && d.isSub);
+  const subSpeakers = drawables.filter((d) => d.speech && d.isSub);
   for (const d of subSpeakers) {
     drawSpeechBubble(d.overlayX, d.overlayY - 6, d.speech, d.speechColor);
   }
   for (const d of speechDrawables) {
     // Skip parent speech if a subagent is already speaking for this desk
-    if (!subSpeakers.some(s => s.cwIndex === d.cwIndex)) {
+    if (!subSpeakers.some((s) => s.cwIndex === d.cwIndex)) {
       drawSpeechBubble(d.overlayX, d.overlayY - 6, d.speech, d.speechColor);
     }
   }
@@ -1549,11 +1687,14 @@ function drawOffice() {
 }
 
 let _lastAssignments = [];
-let _lastOx = 0, _lastOy = 0, _lastScale = 1;
+let _lastOx = 0,
+  _lastOy = 0,
+  _lastScale = 1;
 
 // --- Canvas tooltip ---
 const canvasTooltip = document.createElement('div');
-canvasTooltip.style.cssText = 'position:absolute;display:none;pointer-events:none;background:var(--tooltip-bg);border:1px solid var(--tooltip-border);border-radius:4px;padding:5px 8px;font-size:10px;color:var(--text);font-family:"Courier New",monospace;white-space:nowrap;z-index:100;line-height:1.5';
+canvasTooltip.style.cssText =
+  'position:absolute;display:none;pointer-events:none;background:var(--tooltip-bg);border:1px solid var(--tooltip-border);border-radius:4px;padding:5px 8px;font-size:10px;color:var(--text);font-family:"Courier New",monospace;white-space:nowrap;z-index:100;line-height:1.5';
 canvas.parentElement.style.position = 'relative';
 canvas.parentElement.appendChild(canvasTooltip);
 
@@ -1573,17 +1714,23 @@ document.getElementById('office-show-all')?.addEventListener('click', () => {
 });
 
 // --- Theme toggle ---
-(function() {
+(function () {
   const themeBtn = document.getElementById('theme-toggle');
   function setTheme(t) {
     if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
     else document.documentElement.removeAttribute('data-theme');
     if (themeBtn) themeBtn.textContent = t === 'light' ? '☀️' : '🌙';
-    try { localStorage.setItem('nanoclaw-theme', t); } catch (e) {}
+    try {
+      localStorage.setItem('nanoclaw-theme', t);
+    } catch (e) {}
     document.dispatchEvent(new CustomEvent('theme-change', { detail: t }));
   }
-  const initial = (function() {
-    try { return localStorage.getItem('nanoclaw-theme') || 'dark'; } catch (e) { return 'dark'; }
+  const initial = (function () {
+    try {
+      return localStorage.getItem('nanoclaw-theme') || 'dark';
+    } catch (e) {
+      return 'dark';
+    }
   })();
   setTheme(initial);
   themeBtn?.addEventListener('click', () => {
@@ -1624,15 +1771,19 @@ canvas.addEventListener('mousemove', (e) => {
     const tool = cw.lastToolUse ? `Tool: ${cw.lastToolUse}` : '';
     const subs = (cw.subagents || []).length;
     const subsLine = subs > 0 ? `\nSubagents: ${subs}` : '';
-    canvasTooltip.innerHTML = `<strong>${esc(cw.name)}</strong> <span style="color:${statusColor}">${statusLabel}</span>\n${activity}${tool ? '\n' + tool : ''}${subsLine}`.replace(/\n/g, '<br>');
+    canvasTooltip.innerHTML =
+      `<strong>${esc(cw.name)}</strong> <span style="color:${statusColor}">${statusLabel}</span>\n${activity}${tool ? '\n' + tool : ''}${subsLine}`.replace(
+        /\n/g,
+        '<br>',
+      );
     canvasTooltip.style.display = 'block';
-    canvasTooltip.style.left = (cssMx + 16) + 'px';
-    canvasTooltip.style.top = (cssMy + 16) + 'px';
+    canvasTooltip.style.left = cssMx + 16 + 'px';
+    canvasTooltip.style.top = cssMy + 16 + 'px';
     // Keep tooltip inside canvas bounds
     const ttRect = canvasTooltip.getBoundingClientRect();
     const parentRect = canvas.parentElement.getBoundingClientRect();
-    if (ttRect.right > parentRect.right) canvasTooltip.style.left = (cssMx - ttRect.width - 8) + 'px';
-    if (ttRect.bottom > parentRect.bottom) canvasTooltip.style.top = (cssMy - ttRect.height - 8) + 'px';
+    if (ttRect.right > parentRect.right) canvasTooltip.style.left = cssMx - ttRect.width - 8 + 'px';
+    if (ttRect.bottom > parentRect.bottom) canvasTooltip.style.top = cssMy - ttRect.height - 8 + 'px';
   } else {
     canvasTooltip.style.display = 'none';
   }
@@ -1668,17 +1819,19 @@ async function showDetailPanel(cw) {
 
   // Tasks for this coworker
   const tasksEl = document.getElementById('detail-tasks-list');
-  const cwTasks = (state.tasks || []).filter(t => t.group_folder === cw.folder);
+  const cwTasks = (state.tasks || []).filter((t) => t.group_folder === cw.folder);
   if (cwTasks.length === 0) {
     tasksEl.textContent = 'None';
   } else {
-    tasksEl.innerHTML = cwTasks.map(t => {
-      const label = t.prompt ? t.prompt.split('\n')[0].substring(0, 40) : '';
-      const badge = t.status === 'active' ? '🟢' : t.status === 'paused' ? '⏸️' : '⚪';
-      const sched = t.schedule_type === 'cron' ? t.schedule_value : t.schedule_type;
-      const shortId = t.id.replace('task-', '').substring(0, 10);
-      return `<div title="${esc(t.prompt?.substring(0, 200) || '')}" style="margin-bottom:2px">${badge} <span style="color:var(--accent)">${esc(shortId)}</span> <span style="color:var(--text-muted)">${esc(sched)}</span> ${esc(label)}</div>`;
-    }).join('');
+    tasksEl.innerHTML = cwTasks
+      .map((t) => {
+        const label = t.prompt ? t.prompt.split('\n')[0].substring(0, 40) : '';
+        const badge = t.status === 'active' ? '🟢' : t.status === 'paused' ? '⏸️' : '⚪';
+        const sched = t.schedule_type === 'cron' ? t.schedule_value : t.schedule_type;
+        const shortId = t.id.replace('task-', '').substring(0, 10);
+        return `<div title="${esc(t.prompt?.substring(0, 200) || '')}" style="margin-bottom:2px">${badge} <span style="color:var(--accent)">${esc(shortId)}</span> <span style="color:var(--text-muted)">${esc(sched)}</span> ${esc(label)}</div>`;
+      })
+      .join('');
     tasksEl.style.cursor = 'pointer';
     tasksEl.title = 'Click to view in Admin > Tasks';
     tasksEl.onclick = () => {
@@ -1710,7 +1863,9 @@ async function showDetailPanel(cw) {
     } else {
       memEl.textContent = '(no CLAUDE.md)';
     }
-  } catch { memEl.textContent = '(error)'; }
+  } catch {
+    memEl.textContent = '(error)';
+  }
 
   const memToggle = document.getElementById('memory-toggle');
   if (memToggle) {
@@ -1742,7 +1897,9 @@ async function showDetailPanel(cw) {
 }
 
 // Reuse the richer md() renderer (defined below esc/escAttr) for all markdown
-function renderMarkdown(text) { return md(text); }
+function renderMarkdown(text) {
+  return md(text);
+}
 
 // Timeline filter management
 function setTimelineFilter(group) {
@@ -1826,7 +1983,9 @@ async function fetchMessages() {
       const data = await res.json();
       cachedMessages = data.messages || data;
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 // Fetch messages every 5s
 setInterval(fetchMessages, 5000);
@@ -1857,11 +2016,17 @@ document.getElementById('timeline-list')?.addEventListener('click', async (e) =>
     }
     for (const row of rows) {
       timelineOlderEvents.push({
-        group: row.group_folder, event: row.event, tool: row.tool || undefined,
-        tool_use_id: row.tool_use_id || undefined, message: row.message || undefined,
-        tool_input: row.tool_input || undefined, tool_response: row.tool_response || undefined,
-        session_id: row.session_id || undefined, agent_id: row.agent_id || undefined,
-        agent_type: row.agent_type || undefined, timestamp: row.timestamp,
+        group: row.group_folder,
+        event: row.event,
+        tool: row.tool || undefined,
+        tool_use_id: row.tool_use_id || undefined,
+        message: row.message || undefined,
+        tool_input: row.tool_input || undefined,
+        tool_response: row.tool_response || undefined,
+        session_id: row.session_id || undefined,
+        agent_id: row.agent_id || undefined,
+        agent_type: row.agent_type || undefined,
+        timestamp: row.timestamp,
       });
     }
     timelineDisplayLimit += rows.length;
@@ -1875,8 +2040,11 @@ document.getElementById('timeline-list')?.addEventListener('click', async (e) =>
       const newScrollHeight = scrollParent.scrollHeight;
       scrollParent.scrollTop = scrollTop + (newScrollHeight - scrollHeight);
     }
-  } catch { btn.textContent = 'Error loading'; }
-  finally { timelineLoadingMore = false; }
+  } catch {
+    btn.textContent = 'Error loading';
+  } finally {
+    timelineLoadingMore = false;
+  }
 });
 
 function updateTimeline() {
@@ -1889,7 +2057,8 @@ function updateTimeline() {
 
   const successes = state.taskRunLogs.filter((l) => l.status === 'success').length;
   const total = state.taskRunLogs.length;
-  document.getElementById('obs-success-rate').textContent = total > 0 ? Math.round((successes / total) * 100) + '%' : '-';
+  document.getElementById('obs-success-rate').textContent =
+    total > 0 ? Math.round((successes / total) * 100) + '%' : '-';
 
   const durations = state.taskRunLogs.filter((l) => l.duration_ms).map((l) => l.duration_ms);
   const avg = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
@@ -2008,9 +2177,7 @@ function updateTimeline() {
   timeline.sort((a, b) => b.time - a.time);
 
   // Apply filter
-  const filtered = timelineFilter
-    ? timeline.filter((ev) => ev.group === timelineFilter)
-    : timeline;
+  const filtered = timelineFilter ? timeline.filter((ev) => ev.group === timelineFilter) : timeline;
 
   const container = document.getElementById('timeline-list');
 
@@ -2025,7 +2192,7 @@ function updateTimeline() {
   // minor = SDK sub-session change within the same nanoclaw session).
   const sessionLookup = new Map();
   for (const p of cachedSessions || []) {
-    for (const s of (p.sdk_subsessions || [])) {
+    for (const s of p.sdk_subsessions || []) {
       sessionLookup.set(s.session_id, {
         nanoclaw_session_id: p.nanoclaw_session_id || null,
         agent_group_id: p.agent_group_id || null,
@@ -2078,7 +2245,7 @@ function updateTimeline() {
         const shape = meta?.shape || 'session';
         const start = meta?.first_ts ? formatTimeFull(meta.first_ts) : '';
         const end = meta?.last_ts ? formatTimeFull(meta.last_ts) : '';
-        const range = start && end ? `${start}–${end}` : (start || end || '');
+        const range = start && end ? `${start}–${end}` : start || end || '';
         htmlParts.push(`<div class="tl-sep tl-sep-minor" style="display:flex;align-items:center;gap:6px;margin:2px 0 2px 16px;padding:2px 6px;border-top:1px dotted var(--border);color:var(--text-dim);font-size:9px;font-family:'Courier New',monospace">
           <span>└</span>
           <span style="font-family:monospace">${esc(String(sdk).slice(0, 12))}</span>
@@ -2107,10 +2274,14 @@ function updateTimeline() {
         </div>
         ${ev.prompt ? `<div class="tl-prompt">${esc(ev.prompt.slice(0, 120))}</div>` : ''}
         <div class="tl-detail">${esc(ev.detail)}</div>
-        ${hasExpand ? `<div class="tl-expand-content" id="${expandId}" style="display:none">
+        ${
+          hasExpand
+            ? `<div class="tl-expand-content" id="${expandId}" style="display:none">
           ${ev.toolInput ? `<div class="tl-code-block"><label>Tool Input</label><pre>${esc(ev.toolInput)}</pre></div>` : ''}
           ${ev.toolResponse ? `<div class="tl-code-block"><label>Tool Response</label><pre>${esc(ev.toolResponse)}</pre></div>` : ''}
-        </div>` : ''}
+        </div>`
+            : ''
+        }
       </div>
     </div>`);
   }
@@ -2152,8 +2323,11 @@ function drawSparkline() {
   tctx.clearRect(0, 0, tc.width, tc.height);
   if (state.taskRunLogs.length === 0) return;
 
-  const now = Date.now(), hours = 24, bucketMs = 3600000;
-  const buckets = new Array(hours).fill(0), errBuckets = new Array(hours).fill(0);
+  const now = Date.now(),
+    hours = 24,
+    bucketMs = 3600000;
+  const buckets = new Array(hours).fill(0),
+    errBuckets = new Array(hours).fill(0);
   for (const log of state.taskRunLogs) {
     const bucket = hours - 1 - Math.floor((now - new Date(log.run_at).getTime()) / bucketMs);
     if (bucket >= 0 && bucket < hours) {
@@ -2179,9 +2353,9 @@ function drawSparkline() {
 }
 
 function getGroupColor(f) {
-  const c = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6','#F97316'];
+  const c = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
   let h = 0;
-  for (let i = 0; i < f.length; i++) h = (h * 31 + f.charCodeAt(i)) & 0xFFFF;
+  for (let i = 0; i < f.length; i++) h = (h * 31 + f.charCodeAt(i)) & 0xffff;
   return c[h % c.length];
 }
 
@@ -2214,14 +2388,16 @@ function formatDuration(ms) {
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
 }
 function esc(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 /** Lightweight markdown → HTML for chat bubbles. Handles the subset agents actually use. */
 function md(s) {
   let h = esc(s);
   // Fenced code blocks: ```...```
-  h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, _lang, code) =>
-    `<pre><code>${code.replace(/\n$/, '')}</code></pre>`);
+  h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, _lang, code) => `<pre><code>${code.replace(/\n$/, '')}</code></pre>`);
   // Inline code: `...`
   h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>');
   // Headings: ## ...
@@ -2234,23 +2410,28 @@ function md(s) {
   // Italic: _text_
   h = h.replace(/(?<!\w)_([^_\n]+)_(?!\w)/g, '<em>$1</em>');
   // Links: [text](url)
-  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   // Bare URLs
-  h = h.replace(/(?<!")(?<!=)(https?:\/\/[^\s<)"]+)/g,
-    '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  h = h.replace(/(?<!")(?<!=)(https?:\/\/[^\s<)"]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
   // Tables: detect | header | ... | pattern and convert
   h = h.replace(/((?:^\|.+\|[ \t]*\n)+)/gm, (block) => {
-    const rows = block.trim().split('\n').filter(r => r.trim());
+    const rows = block
+      .trim()
+      .split('\n')
+      .filter((r) => r.trim());
     // Skip separator rows (|---|---|)
-    const dataRows = rows.filter(r => !/^\|[\s\-:|]+\|$/.test(r));
+    const dataRows = rows.filter((r) => !/^\|[\s\-:|]+\|$/.test(r));
     if (dataRows.length === 0) return block;
-    const parseRow = (r) => r.split('|').slice(1, -1).map(c => c.trim());
+    const parseRow = (r) =>
+      r
+        .split('|')
+        .slice(1, -1)
+        .map((c) => c.trim());
     let t = '<table>';
     dataRows.forEach((r, i) => {
       const cells = parseRow(r);
       const tag = i === 0 ? 'th' : 'td';
-      t += '<tr>' + cells.map(c => `<${tag}>${c}</${tag}>`).join('') + '</tr>';
+      t += '<tr>' + cells.map((c) => `<${tag}>${c}</${tag}>`).join('') + '</tr>';
     });
     return t + '</table>';
   });
@@ -2274,19 +2455,21 @@ function escAttr(s) {
 
 function renderMessageAttachmentsHtml(attachments) {
   if (!Array.isArray(attachments) || attachments.length === 0) return '';
-  const items = attachments.map((attachment) => {
-    if (!attachment || !attachment.url || !attachment.name) return '';
-    if (attachment.isImage) {
-      return `<a href="${escAttr(attachment.url)}" target="_blank" rel="noopener" style="display:inline-flex;flex-direction:column;gap:4px;text-decoration:none;color:inherit">
+  const items = attachments
+    .map((attachment) => {
+      if (!attachment || !attachment.url || !attachment.name) return '';
+      if (attachment.isImage) {
+        return `<a href="${escAttr(attachment.url)}" target="_blank" rel="noopener" style="display:inline-flex;flex-direction:column;gap:4px;text-decoration:none;color:inherit">
         <img src="${escAttr(attachment.url)}" alt="${escAttr(attachment.name)}" style="max-width:220px;max-height:160px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:#111;object-fit:cover" />
         <span style="font-size:10px;color:#9ca3af">${esc(attachment.name)}</span>
       </a>`;
-    }
-    return `<a href="${escAttr(attachment.url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(255,255,255,0.14);border-radius:8px;text-decoration:none;color:inherit;background:rgba(255,255,255,0.03)">
+      }
+      return `<a href="${escAttr(attachment.url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(255,255,255,0.14);border-radius:8px;text-decoration:none;color:inherit;background:rgba(255,255,255,0.03)">
       <span style="font-size:14px">📎</span>
       <span style="font-size:11px">${esc(attachment.name)}</span>
     </a>`;
-  }).filter(Boolean);
+    })
+    .filter(Boolean);
   if (items.length === 0) return '';
   return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${items.join('')}</div>`;
 }
@@ -2313,7 +2496,9 @@ async function fetchSessions() {
   try {
     const res = await fetch('/api/hook-events/sessions');
     if (res.ok) cachedSessions = await res.json();
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   updateSessionSelector();
 }
 
@@ -2338,10 +2523,13 @@ function updateSessionSelector() {
     let cwHtml = '<option value="">All coworkers</option>';
     // Sort coworkers by their latest activity DESC so the most recently active is at top.
     const coworkerEntries = Array.from(byCoworker.entries()).map(([folder, parents]) => {
-      const latestMs = Math.max(...parents.map((p) => {
-        if (p.last_active) return new Date(p.last_active).getTime();
-        return p.sdk_subsessions?.[0]?.last_ts ?? 0;
-      }), 0);
+      const latestMs = Math.max(
+        ...parents.map((p) => {
+          if (p.last_active) return new Date(p.last_active).getTime();
+          return p.sdk_subsessions?.[0]?.last_ts ?? 0;
+        }),
+        0,
+      );
       return { folder, parents, latestMs };
     });
     coworkerEntries.sort((a, b) => b.latestMs - a.latestMs);
@@ -2357,18 +2545,14 @@ function updateSessionSelector() {
   // --- Repopulate the session dropdown, filtered to the selected coworker. ---
   const selectedCoworker = coworkerSel ? coworkerSel.value : '';
   const prevSession = sessionSel.value;
-  const parentsToShow = selectedCoworker
-    ? (byCoworker.get(selectedCoworker) || [])
-    : cachedSessions;
+  const parentsToShow = selectedCoworker ? byCoworker.get(selectedCoworker) || [] : cachedSessions;
 
   const allEventsLabel = selectedCoworker
     ? `Timeline view (all ${selectedCoworker} events)`
     : 'Timeline view (all events)';
   let html = `<option value="">${esc(allEventsLabel)}</option>`;
   for (const p of parentsToShow) {
-    const parentLastMs = p.last_active
-      ? new Date(p.last_active).getTime()
-      : (p.sdk_subsessions[0]?.last_ts ?? 0);
+    const parentLastMs = p.last_active ? new Date(p.last_active).getTime() : (p.sdk_subsessions[0]?.last_ts ?? 0);
     const parentTs = parentLastMs ? formatTimeFull(parentLastMs) : '';
     const parentAgo = parentLastMs ? timeAgo(parentLastMs) : '';
     // When "All coworkers" is selected, prefix the option with the folder so rows are
@@ -2387,7 +2571,7 @@ function updateSessionSelector() {
     if (parentVal) {
       html += `<option value="${escAttr(parentVal)}" data-group="${escAttr(p.group_folder)}" data-kind="nanoclaw" title="${escAttr(parentTitle)}">${esc(parentLabel)}</option>`;
     }
-    for (const s of (p.sdk_subsessions || [])) {
+    for (const s of p.sdk_subsessions || []) {
       if (!s.user_prompt_count && !s.activity_count) continue;
       // ALWAYS use last_ts (not first_ts — that was the old bug: ghost sessions showed their
       // start time and looked "recently active" even though they died immediately).
@@ -2524,13 +2708,11 @@ function renderSessionFlow(entries) {
     const e = ordered[i];
     const sdk = e.session_id || null;
     if (sdk && prevSdk !== undefined && prevSdk !== sdk) {
-      const meta = (cachedSessions || [])
-        .flatMap((p) => (p.sdk_subsessions || []))
-        .find((s) => s.session_id === sdk);
+      const meta = (cachedSessions || []).flatMap((p) => p.sdk_subsessions || []).find((s) => s.session_id === sdk);
       const shape = meta?.shape || 'session';
       const start = meta?.first_ts ? formatTimeFull(meta.first_ts) : '';
       const end = meta?.last_ts ? formatTimeFull(meta.last_ts) : '';
-      const range = start && end ? `${start}–${end}` : (start || end || '');
+      const range = start && end ? `${start}–${end}` : start || end || '';
       parts.push(`<div class="tl-sep tl-sep-minor" style="display:flex;align-items:center;gap:6px;margin:6px 0 2px 12px;padding:2px 6px;border-top:1px dotted var(--border);color:var(--text-dim);font-size:9px;font-family:'Courier New',monospace">
         <span>└</span>
         <span style="font-family:monospace">${esc(String(sdk).slice(0, 12))}</span>
@@ -2557,7 +2739,9 @@ function renderFlowEntry(entry, idx, depth) {
   if (entry.type === 'session_end') {
     const toolCount = entry.extra?.tool_count || '';
     const filesMod = entry.extra?.files_modified || '';
-    const stats = [toolCount ? `${toolCount} tool calls` : '', filesMod ? `${filesMod} files modified` : ''].filter(Boolean).join(' | ');
+    const stats = [toolCount ? `${toolCount} tool calls` : '', filesMod ? `${filesMod} files modified` : '']
+      .filter(Boolean)
+      .join(' | ');
     return `<div class="flow-session-marker end">
       <span class="flow-label">STOP</span>
       <span style="color:var(--text-muted)">${stats || 'session ended'}</span>
@@ -2584,18 +2768,26 @@ function renderFlowEntry(entry, idx, depth) {
         ${durStr ? `<span class="flow-duration">${durStr}</span>` : ''}
         ${entry.failed ? '<span style="color:var(--red);font-size:9px">FAILED</span>' : ''}
       </div>
-      ${hasInput ? `<div class="flow-tool-io">
+      ${
+        hasInput
+          ? `<div class="flow-tool-io">
         <label>Input:</label>
         <span class="flow-preview">${esc(inputPreview)}</span>
         ${entry.tool_input.length > 100 ? `<button class="flow-expand-btn" data-target="${prefix}-in">[+]</button>` : ''}
         <pre class="flow-expanded-content" id="${prefix}-in">${esc(entry.tool_input)}</pre>
-      </div>` : ''}
-      ${hasOutput ? `<div class="flow-tool-io">
+      </div>`
+          : ''
+      }
+      ${
+        hasOutput
+          ? `<div class="flow-tool-io">
         <label>Output:</label>
         <span class="flow-preview">${esc(outputPreview)}</span>
         ${entry.tool_response.length > 100 ? `<button class="flow-expand-btn" data-target="${prefix}-out">[+]</button>` : ''}
         <pre class="flow-expanded-content" id="${prefix}-out">${esc(entry.tool_response)}</pre>
-      </div>` : ''}
+      </div>`
+          : ''
+      }
     </div>`;
   }
   if (entry.type === 'subagent_block') {
@@ -2632,7 +2824,10 @@ function openSessionFlowById(group, sessionId) {
   const sel = document.getElementById('session-select');
   // Try to select the option, or just enter flow directly
   for (const opt of sel.options) {
-    if (opt.value === sessionId) { sel.value = sessionId; break; }
+    if (opt.value === sessionId) {
+      sel.value = sessionId;
+      break;
+    }
   }
   enterSessionFlow(group, sessionId);
 }
@@ -2686,7 +2881,10 @@ document.addEventListener('click', (e) => {
       if (sel) {
         const parentVal = `nano:${agid}:${sid}`;
         for (const opt of sel.options) {
-          if (opt.value === parentVal) { sel.value = parentVal; break; }
+          if (opt.value === parentVal) {
+            sel.value = parentVal;
+            break;
+          }
         }
       }
       enterNanoclawSessionFlow(grp, agid, sid);
@@ -2705,26 +2903,36 @@ document.addEventListener('click', (e) => {
     const prevBg = btn.style.background;
     btn.style.background = on ? 'var(--green)' : 'var(--bg-hover)';
     btn.style.color = '#fff';
-    setTimeout(() => { btn.style.background = prevBg; btn.style.color = ''; }, 300);
+    setTimeout(() => {
+      btn.style.background = prevBg;
+      btn.style.color = '';
+    }, 300);
     fetch(`/api/sessions/${encodeURIComponent(sid)}/${endpoint}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ on }),
-    }).then((r) => {
-      if (!r.ok) {
-        // Revert on failure
+    })
+      .then((r) => {
+        if (!r.ok) {
+          // Revert on failure
+          btn.classList.toggle('active', !on);
+          btn.style.borderColor = 'var(--red)';
+          setTimeout(() => {
+            btn.style.borderColor = '';
+          }, 600);
+          return;
+        }
+        if (typeof fetchSessions === 'function') fetchSessions();
+        const tools = document.getElementById('cw-detail-tools');
+        if (tools) tools._lastHtml = null;
+      })
+      .catch(() => {
         btn.classList.toggle('active', !on);
         btn.style.borderColor = 'var(--red)';
-        setTimeout(() => { btn.style.borderColor = ''; }, 600);
-        return;
-      }
-      if (typeof fetchSessions === 'function') fetchSessions();
-      const tools = document.getElementById('cw-detail-tools');
-      if (tools) tools._lastHtml = null;
-    }).catch(() => {
-      btn.classList.toggle('active', !on);
-      btn.style.borderColor = 'var(--red)';
-      setTimeout(() => { btn.style.borderColor = ''; }, 600);
-    });
+        setTimeout(() => {
+          btn.style.borderColor = '';
+        }, 600);
+      });
   };
 
   // "Mark all read" link in sessions summary
@@ -2773,13 +2981,15 @@ document.addEventListener('click', (e) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: next.trim() }),
-      }).then((r) => {
-        if (!r.ok) return r.json().then((j) => alert('Rename failed: ' + (j.error || r.statusText)));
-        // Force a refresh of the sessions cache on next tick
-        if (typeof fetchSessions === 'function') fetchSessions();
-        const tools = document.getElementById('cw-detail-tools');
-        if (tools) tools._lastHtml = null;
-      }).catch((e) => alert('Rename failed: ' + e.message));
+      })
+        .then((r) => {
+          if (!r.ok) return r.json().then((j) => alert('Rename failed: ' + (j.error || r.statusText)));
+          // Force a refresh of the sessions cache on next tick
+          if (typeof fetchSessions === 'function') fetchSessions();
+          const tools = document.getElementById('cw-detail-tools');
+          if (tools) tools._lastHtml = null;
+        })
+        .catch((e) => alert('Rename failed: ' + e.message));
     }
     return;
   }
@@ -2816,7 +3026,9 @@ document.addEventListener('click', (e) => {
             chatEl.scrollTop = chatEl.scrollHeight;
             chatEl.style.transition = 'background 0.3s';
             chatEl.style.background = 'rgba(59,130,246,0.08)';
-            setTimeout(() => { chatEl.style.background = ''; }, 400);
+            setTimeout(() => {
+              chatEl.style.background = '';
+            }, 400);
           }
         }, 200);
       }
@@ -2910,7 +3122,6 @@ document.querySelectorAll('.admin-pill').forEach((pill) => {
   });
 });
 
-
 function loadAdminPanel(name) {
   const loaders = {
     overview: loadAdminOverview,
@@ -2940,7 +3151,9 @@ async function loadAdminOverview() {
     adminState.overview = await res.json();
     adminState.loaded.add('overview');
     renderAdminOverview();
-  } catch { if (el) el.innerHTML = '<div class="admin-empty">Failed to load overview</div>'; }
+  } catch {
+    if (el) el.innerHTML = '<div class="admin-empty">Failed to load overview</div>';
+  }
   loadAllMetrics();
 }
 
@@ -2982,7 +3195,9 @@ async function loadAdminMessages(append) {
     adminState.messagesHasMore = data.hasMore;
     adminState.loaded.add('messages');
     renderAdminMessages();
-  } catch { if (!append) el.innerHTML = '<div class="admin-empty">Failed to load messages</div>'; }
+  } catch {
+    if (!append) el.innerHTML = '<div class="admin-empty">Failed to load messages</div>';
+  }
 }
 
 function renderAdminMessages() {
@@ -3002,7 +3217,10 @@ function renderAdminMessages() {
     if (m.direction === 'incoming') {
       sender = m.senderCoworkerName || m.displaySender || m.sender_name || '';
       if (!sender) {
-        try { const p = JSON.parse(m.content || '{}'); sender = p.sender || p.senderId || ''; } catch {}
+        try {
+          const p = JSON.parse(m.content || '{}');
+          sender = p.sender || p.senderId || '';
+        } catch {}
       }
     } else {
       sender = coworker;
@@ -3012,8 +3230,7 @@ function renderAdminMessages() {
       Array.isArray(m.attachments) && m.attachments.length > 0
         ? ` [${m.attachments.length} attachment${m.attachments.length === 1 ? '' : 's'}]`
         : '';
-    const reactionLabel =
-      Array.isArray(m.reactions) && m.reactions.length > 0 ? ` ${m.reactions.join(' ')}` : '';
+    const reactionLabel = Array.isArray(m.reactions) && m.reactions.length > 0 ? ` ${m.reactions.join(' ')}` : '';
     const editedLabel = m.edited ? ' (edited)' : '';
     const content = `${m.displayContent || m.body || m.content || ''}${attachmentLabel}${editedLabel}${reactionLabel}`;
     const time = m.timestamp;
@@ -3043,7 +3260,9 @@ async function loadAdminTasks() {
     adminState.tasks = await res.json();
     adminState.loaded.add('tasks');
     renderAdminTasks();
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load tasks</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load tasks</div>';
+  }
 }
 
 function renderAdminTasks() {
@@ -3056,10 +3275,13 @@ function renderAdminTasks() {
     <tr><th>ID</th><th>Group</th><th>Prompt</th><th>Schedule</th><th>Status</th><th>Last Run</th><th>Actions</th></tr>`;
   for (const t of adminState.tasks) {
     const statusClass = t.status === 'active' ? 'active' : 'paused';
-    const pauseResumeBtn = t.status === 'active'
-      ? `<button class="admin-action-btn" data-action="pause-task" data-id="${t.id}">Pause</button>`
-      : `<button class="admin-action-btn success" data-action="resume-task" data-id="${t.id}">Resume</button>`;
-    const actionBtn = pauseResumeBtn + `<button class="admin-action-btn danger" data-action="delete-task" data-id="${t.id}">Delete</button>`;
+    const pauseResumeBtn =
+      t.status === 'active'
+        ? `<button class="admin-action-btn" data-action="pause-task" data-id="${t.id}">Pause</button>`
+        : `<button class="admin-action-btn success" data-action="resume-task" data-id="${t.id}">Resume</button>`;
+    const actionBtn =
+      pauseResumeBtn +
+      `<button class="admin-action-btn danger" data-action="delete-task" data-id="${t.id}">Delete</button>`;
     html += `<tr>
       <td>${t.id}</td>
       <td>${esc(t.group_folder)}</td>
@@ -3073,13 +3295,15 @@ function renderAdminTasks() {
     if (t.recentLogs && t.recentLogs.length > 0) {
       html += `<tr><td colspan="7" style="padding:2px 10px 8px 30px;background:var(--bg)">
         <span style="font-size:8px;color:var(--text-muted);text-transform:uppercase">Recent Runs</span>
-        ${t.recentLogs.map((l) => {
-          const c = l.status === 'success' ? 'var(--green)' : l.status === 'error' ? 'var(--red)' : 'var(--yellow)';
-          return `<div style="font-size:9px;color:var(--text-dim);padding:1px 0">
+        ${t.recentLogs
+          .map((l) => {
+            const c = l.status === 'success' ? 'var(--green)' : l.status === 'error' ? 'var(--red)' : 'var(--yellow)';
+            return `<div style="font-size:9px;color:var(--text-dim);padding:1px 0">
             <span style="color:${c}">${l.status}</span> ${formatTime(l.run_at)} — ${formatDuration(l.duration_ms)}
             ${l.error ? ` <span style="color:var(--red)">${esc(l.error.slice(0, 80))}</span>` : ''}
           </div>`;
-        }).join('')}
+          })
+          .join('')}
       </td></tr>`;
     }
   }
@@ -3097,7 +3321,9 @@ async function loadAdminSessions() {
     adminState.sessions = await res.json();
     adminState.loaded.add('sessions');
     renderAdminSessions();
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load sessions</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load sessions</div>';
+  }
 }
 
 function renderAdminSessions() {
@@ -3130,7 +3356,9 @@ async function loadAdminSkills() {
     adminState.skills = await res.json();
     adminState.loaded.add('skills');
     renderAdminSkills();
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load skills</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load skills</div>';
+  }
 }
 
 function renderAdminSkills() {
@@ -3206,27 +3434,33 @@ async function loadAdminGroups() {
     adminState.groups = await res.json();
     adminState.loaded.add('groups');
     renderAdminGroups();
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load groups</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load groups</div>';
+  }
 }
 
 function renderGroupDestinations(destinations) {
   if (!destinations || destinations.length === 0) return '';
-  const peers = destinations.filter(d => d.target_type === 'agent');
-  const channels = destinations.filter(d => d.target_type === 'channel');
+  const peers = destinations.filter((d) => d.target_type === 'agent');
+  const channels = destinations.filter((d) => d.target_type === 'channel');
   if (peers.length === 0 && channels.length === 0) return '';
   let html = '<div style="margin-top:4px;font-size:10px;color:var(--text-dim)">';
   if (peers.length > 0) {
-    const peerTags = peers.map(d => {
-      const name = esc(d.local_name);
-      return `<span class="admin-chip" style="background:#3B82F620;color:#3B82F6;font-size:9px" title="Peer agent: ${name}">&#x2194; ${name}</span>`;
-    }).join(' ');
+    const peerTags = peers
+      .map((d) => {
+        const name = esc(d.local_name);
+        return `<span class="admin-chip" style="background:#3B82F620;color:#3B82F6;font-size:9px" title="Peer agent: ${name}">&#x2194; ${name}</span>`;
+      })
+      .join(' ');
     html += `<span>Peers: </span>${peerTags} `;
   }
   if (channels.length > 0) {
-    const chTags = channels.map(d => {
-      const name = esc(d.local_name);
-      return `<span class="admin-chip" style="background:#10B98120;color:#10B981;font-size:9px" title="Channel: ${name}">&#x25CB; ${name}</span>`;
-    }).join(' ');
+    const chTags = channels
+      .map((d) => {
+        const name = esc(d.local_name);
+        return `<span class="admin-chip" style="background:#10B98120;color:#10B981;font-size:9px" title="Channel: ${name}">&#x25CB; ${name}</span>`;
+      })
+      .join(' ');
     html += `<span>Channels: </span>${chTags}`;
   }
   html += '</div>';
@@ -3245,7 +3479,7 @@ function renderAdminGroups() {
       ? '<span class="admin-chip running">Running</span>'
       : '<span class="admin-chip stopped">Stopped</span>';
     const mainBadge = g.is_main ? ' <span class="admin-chip active">Main</span>' : '';
-    const matchedCw = (state.coworkers || []).find(c => c.folder === g.folder);
+    const matchedCw = (state.coworkers || []).find((c) => c.folder === g.folder);
     const isAutoUpdate = matchedCw ? matchedCw.isAutoUpdate : false;
     const updateChip = isAutoUpdate
       ? '<span class="admin-chip auto-update">auto-update</span>'
@@ -3283,14 +3517,16 @@ async function loadAdminDebug() {
     adminState.debug = await res.json();
     adminState.loaded.add('debug');
     renderAdminDebug();
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load debug info</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load debug info</div>';
+  }
 }
 
 function renderAdminDebug() {
   const d = adminState.debug;
   if (!d) return;
   const el = document.getElementById('admin-debug-content');
-  const fmtBytes = (b) => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : (b / 1024).toFixed(0) + ' KB';
+  const fmtBytes = (b) => (b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : (b / 1024).toFixed(0) + ' KB');
   el.innerHTML = `
     <div class="admin-stat-grid">
       <div class="admin-stat-card"><div class="num">${d.pid}</div><div class="label">PID</div></div>
@@ -3303,7 +3539,9 @@ function renderAdminDebug() {
     <h4 style="font-size:11px;margin:10px 0 6px">Database Row Counts</h4>
     <table class="admin-table">
       <tr><th>Table</th><th>Rows</th></tr>
-      ${Object.entries(d.rowCounts || {}).map(([t, c]) => `<tr><td>${esc(t)}</td><td>${c}</td></tr>`).join('')}
+      ${Object.entries(d.rowCounts || {})
+        .map(([t, c]) => `<tr><td>${esc(t)}</td><td>${c}</td></tr>`)
+        .join('')}
     </table>
     <h4 style="font-size:11px;margin:10px 0 6px">Memory Details</h4>
     <div class="admin-code">${JSON.stringify(d.memory, null, 2)}</div>
@@ -3354,7 +3592,9 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       await fetch(`/api/tasks/${id}/pause`, { method: 'POST' });
       adminState.loaded.delete('tasks');
       loadAdminTasks();
-    } catch { btn.disabled = false; }
+    } catch {
+      btn.disabled = false;
+    }
     return;
   }
 
@@ -3365,7 +3605,9 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       await fetch(`/api/tasks/${id}/resume`, { method: 'POST' });
       adminState.loaded.delete('tasks');
       loadAdminTasks();
-    } catch { btn.disabled = false; }
+    } catch {
+      btn.disabled = false;
+    }
     return;
   }
 
@@ -3377,7 +3619,9 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       await fetch(`/api/sessions/${encodeURIComponent(folder)}`, { method: 'DELETE' });
       adminState.loaded.delete('sessions');
       loadAdminSessions();
-    } catch { btn.disabled = false; }
+    } catch {
+      btn.disabled = false;
+    }
     return;
   }
 
@@ -3388,7 +3632,9 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       await fetch(`/api/skills/${encodeURIComponent(name)}/toggle`, { method: 'POST' });
       adminState.loaded.delete('skills');
       loadAdminSkills();
-    } catch { btn.disabled = false; }
+    } catch {
+      btn.disabled = false;
+    }
     return;
   }
 
@@ -3407,10 +3653,16 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
         body: textarea.value,
       });
       btn.textContent = 'Saved!';
-      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
+      setTimeout(() => {
+        btn.textContent = 'Save';
+        btn.disabled = false;
+      }, 1500);
     } catch {
       btn.textContent = 'Error';
-      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
+      setTimeout(() => {
+        btn.textContent = 'Save';
+        btn.disabled = false;
+      }, 1500);
     }
     return;
   }
@@ -3424,7 +3676,9 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
       adminState.loaded.delete('tasks');
       loadAdminTasks();
-    } catch { btn.disabled = false; }
+    } catch {
+      btn.disabled = false;
+    }
     return;
   }
 
@@ -3467,7 +3721,9 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       editor.dataset.mode = 'edit';
       editor.dataset.skillName = name;
       editor.scrollIntoView({ behavior: 'smooth' });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     btn.disabled = false;
     return;
   }
@@ -3494,7 +3750,9 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       editor.dataset.mode = 'edit';
       editor.dataset.skillName = name;
       editor.scrollIntoView({ behavior: 'smooth' });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     btn.disabled = false;
     return;
   }
@@ -3507,7 +3765,9 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       await fetch(`/api/skills/${encodeURIComponent(name)}?confirm=true`, { method: 'DELETE' });
       adminState.loaded.delete('skills');
       loadAdminSkills();
-    } catch { btn.disabled = false; }
+    } catch {
+      btn.disabled = false;
+    }
     return;
   }
 
@@ -3547,7 +3807,10 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
       loadAdminSkills();
     } catch {
       btn.textContent = 'Error';
-      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
+      setTimeout(() => {
+        btn.textContent = 'Save';
+        btn.disabled = false;
+      }, 1500);
     }
     return;
   }
@@ -3571,10 +3834,16 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
         body: content,
       });
       btn.textContent = 'Saved!';
-      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
+      setTimeout(() => {
+        btn.textContent = 'Save';
+        btn.disabled = false;
+      }, 1500);
     } catch {
       btn.textContent = 'Error';
-      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
+      setTimeout(() => {
+        btn.textContent = 'Save';
+        btn.disabled = false;
+      }, 1500);
     }
     return;
   }
@@ -3599,24 +3868,24 @@ function currentShellThreadQuery() {
 // ===================================================================
 
 const cwState = {
-  selected: null,             // currently selected coworker folder
-  messages: [],               // main-view messages (thread_id IS NULL). Alias for .main.messages; kept as a top-level field so existing readers don't break.
-  threadSummaries: {},        // { [parentMessageId]: { replyCount, lastReplyTs } } — main view only
-  polling: null,              // main-view polling interval
-  thread: null,               // { parentId, parentSnapshot, messages: [], polling } when a thread panel is open; null otherwise
-  a2aInspector: null,         // { recipientAgGroupId, senderThreadId, recipientName, session, messages } — Option C read-only peek
-  types: null,                // coworker-types.json cache
-  approvalCountByFolder: {},  // { folder: count } for sidebar dot
-  lastMainMessageTs: null,    // tracks last-seen state.lastMessageTs for WS-driven refresh dedupe
+  selected: null, // currently selected coworker folder
+  messages: [], // main-view messages (thread_id IS NULL). Alias for .main.messages; kept as a top-level field so existing readers don't break.
+  threadSummaries: {}, // { [parentMessageId]: { replyCount, lastReplyTs } } — main view only
+  polling: null, // main-view polling interval
+  thread: null, // { parentId, parentSnapshot, messages: [], polling } when a thread panel is open; null otherwise
+  a2aInspector: null, // { recipientAgGroupId, senderThreadId, recipientName, session, messages } — Option C read-only peek
+  types: null, // coworker-types.json cache
+  approvalCountByFolder: {}, // { folder: count } for sidebar dot
+  lastMainMessageTs: null, // tracks last-seen state.lastMessageTs for WS-driven refresh dedupe
 };
 
 function getCwCoworkers() {
   // Combine state.coworkers (from WebSocket) with state.registeredGroups
-  const validTypes = (cwState.types && cwState.types !== 'loading') ? Object.keys(cwState.types) : [];
+  const validTypes = cwState.types && cwState.types !== 'loading' ? Object.keys(cwState.types) : [];
   const coworkers = [];
   const seen = new Set();
   // Registered groups with dashboard:* JIDs are coworkers
-  for (const g of (state.registeredGroups || [])) {
+  for (const g of state.registeredGroups || []) {
     const folder = g.folder;
     seen.add(folder);
     // Find matching coworker from state for live status
@@ -3653,10 +3922,15 @@ function renderCwSidebar() {
   // Eagerly fetch coworker-types.json for type validation
   if (!cwState.types) {
     cwState.types = 'loading'; // sentinel to prevent duplicate fetches
-    fetch('/api/types').then(r => r.ok ? r.json() : {}).then(t => {
-      cwState.types = t;
-      renderCwSidebar(); // re-render with valid types
-    }).catch(() => { cwState.types = {}; });
+    fetch('/api/types')
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((t) => {
+        cwState.types = t;
+        renderCwSidebar(); // re-render with valid types
+      })
+      .catch(() => {
+        cwState.types = {};
+      });
   }
   const coworkers = getCwCoworkers();
   if (coworkers.length === 0) {
@@ -3675,15 +3949,18 @@ function renderCwSidebar() {
     if (ta !== tb) return tb.localeCompare(ta);
     return a.name.localeCompare(b.name);
   });
-  list.innerHTML = coworkers.map((cw) => {
-    const selected = cwState.selected === cw.folder ? ' selected' : '';
-    const label = cw.isMain ? `${cw.name} (main)` : cw.name;
-    const meta = cw.lastActivity ? timeAgo(cw.lastActivity) : '';
-    const updateDot = updateDotHtml(cw.isAutoUpdate);
-    const unread = hasUnread(cw.folder);
-    const approvalCount = cwState.approvalCountByFolder[cw.folder] || 0;
-    const statusTitle = { idle: 'Idle', active: 'Active', working: 'Working', thinking: 'Thinking', error: 'Error' }[cw.status] || cw.status;
-    return `<div class="cw-item${selected}" data-folder="${esc(cw.folder)}">
+  list.innerHTML = coworkers
+    .map((cw) => {
+      const selected = cwState.selected === cw.folder ? ' selected' : '';
+      const label = cw.isMain ? `${cw.name} (main)` : cw.name;
+      const meta = cw.lastActivity ? timeAgo(cw.lastActivity) : '';
+      const updateDot = updateDotHtml(cw.isAutoUpdate);
+      const unread = hasUnread(cw.folder);
+      const approvalCount = cwState.approvalCountByFolder[cw.folder] || 0;
+      const statusTitle =
+        { idle: 'Idle', active: 'Active', working: 'Working', thinking: 'Thinking', error: 'Error' }[cw.status] ||
+        cw.status;
+      return `<div class="cw-item${selected}" data-folder="${esc(cw.folder)}">
       <div class="cw-dot ${cw.status}" title="${statusTitle}"></div>
       <div class="cw-item-info">
         <div class="cw-item-name">${esc(label)}${updateDot}</div>
@@ -3693,7 +3970,8 @@ function renderCwSidebar() {
       ${approvalCount > 0 ? `<div class="cw-approval-dot" title="Pending approval \u2014 ${approvalCount} action${approvalCount > 1 ? 's' : ''} waiting for admin review"></div>` : ''}
       ${unread ? '<div class="cw-unread-badge" title="Unread messages">\u25CF</div>' : ''}
     </div>`;
-  }).join('');
+    })
+    .join('');
   // Click handlers — use onclick for Playwright/agent-browser compatibility
   list.querySelectorAll('.cw-item').forEach((el) => {
     el.onclick = () => selectCoworker(el.dataset.folder);
@@ -3709,7 +3987,10 @@ function selectCoworker(folder) {
   // ?coworker= filter — otherwise the first coworker's per-coworker view
   // would stick around forever for every subsequent selection.
   cwState.availableOverlays = null;
-  if (cwState.polling) { clearInterval(cwState.polling); cwState.polling = null; }
+  if (cwState.polling) {
+    clearInterval(cwState.polling);
+    cwState.polling = null;
+  }
   // Any open thread belongs to the previous coworker — close it.
   closeThread({ silent: true });
   // Push URL state for shareable / reload-safe navigation.
@@ -3723,49 +4004,67 @@ function selectCoworker(folder) {
     const cwInput = document.getElementById('cw-chat-input');
     const cw = getCwCoworkers().find((c) => c.folder === folder);
     // Always reset disabled state first, then apply per-type overrides
-    if (cwInput) { cwInput.disabled = false; cwInput.title = ''; }
+    if (cwInput) {
+      cwInput.disabled = false;
+      cwInput.title = '';
+    }
     const sendBtn = document.getElementById('cw-chat-send');
-    if (sendBtn) { sendBtn.disabled = false; sendBtn.title = ''; }
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.title = '';
+    }
 
     if (cwInput && cw?.isMain) {
-      cwInput.placeholder = 'Message main \u2014 @Coworker routes directly (main skipped), plain text = main orchestrates';
-      cwInput.title = '@Coworker = routed directly to that coworker, main never sees it\nPlain text = main picks it up and can read coworker files + send_message to coordinate';
+      cwInput.placeholder =
+        'Message main \u2014 @Coworker routes directly (main skipped), plain text = main orchestrates';
+      cwInput.title =
+        '@Coworker = routed directly to that coworker, main never sees it\nPlain text = main picks it up and can read coworker files + send_message to coordinate';
     } else if (cwInput && cw?.routing === 'internal') {
       cwInput.placeholder = `Internal agent — message via @${cw.folder} from Orchestrator`;
       cwInput.disabled = true;
       const sendBtn = document.getElementById('cw-chat-send');
-      if (sendBtn) { sendBtn.disabled = true; sendBtn.title = `Internal agent — message via @${cw.folder} from Orchestrator`; }
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.title = `Internal agent — message via @${cw.folder} from Orchestrator`;
+      }
     } else if (cwInput) {
       cwInput.placeholder = 'Type a message...';
       cwInput.title = '';
       cwInput.disabled = false;
       const sendBtn = document.getElementById('cw-chat-send');
-      if (sendBtn) { sendBtn.disabled = false; sendBtn.title = ''; }
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.title = '';
+      }
     }
     // Reset to chat view
     document.getElementById('cw-chat-messages').style.display = '';
     document.getElementById('cw-shell-view').style.display = 'none';
     document.getElementById('cw-work-view').style.display = 'none';
-    document.querySelectorAll('.cw-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'chat'));
+    document.querySelectorAll('.cw-toggle-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === 'chat'));
     fetchCwMessages();
     cwState.polling = setInterval(fetchCwMessages, 3000);
     updateCwDetail();
     updateCwHeader();
     // Update shell button state (don't auto-spawn — message send handles that via the message loop)
-    fetch(`/api/coworkers/${encodeURIComponent(folder)}/container${currentShellThreadQuery()}`).then(r => r.json()).then(d => {
-      const shellBtn = document.querySelector('[data-view=shell]');
-      if (shellBtn) {
-        shellBtn.style.opacity = d.running ? '1' : '0.4';
-        shellBtn.title = d.running ? 'Container running' : 'Send a message to start container';
-      }
-    }).catch(() => {});
+    fetch(`/api/coworkers/${encodeURIComponent(folder)}/container${currentShellThreadQuery()}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const shellBtn = document.querySelector('[data-view=shell]');
+        if (shellBtn) {
+          shellBtn.style.opacity = d.running ? '1' : '0.4';
+          shellBtn.title = d.running ? 'Container running' : 'Send a message to start container';
+        }
+      })
+      .catch(() => {});
   } else {
     document.getElementById('cw-chat-input-area').style.display = 'none';
     document.getElementById('cw-detail').style.display = 'none';
     document.getElementById('cw-view-toggle').style.display = 'none';
     document.getElementById('cw-shell-view').style.display = 'none';
     document.getElementById('cw-work-view').style.display = 'none';
-    document.getElementById('cw-chat-messages').innerHTML = '<div class="cw-empty">Select a coworker from the sidebar to start chatting.</div>';
+    document.getElementById('cw-chat-messages').innerHTML =
+      '<div class="cw-empty">Select a coworker from the sidebar to start chatting.</div>';
   }
 }
 
@@ -3775,10 +4074,16 @@ function updateCwHeader() {
   document.getElementById('cw-chat-name').textContent = cw.name;
   const badge = document.getElementById('cw-chat-status');
   badge.textContent = cw.status;
-  badge.style.background = cw.status === 'working' ? 'var(--green)' :
-    cw.status === 'active' ? '#3B82F6' :
-    cw.status === 'thinking' ? 'var(--yellow)' :
-    cw.status === 'error' ? 'var(--red)' : 'var(--text-muted)';
+  badge.style.background =
+    cw.status === 'working'
+      ? 'var(--green)'
+      : cw.status === 'active'
+        ? '#3B82F6'
+        : cw.status === 'thinking'
+          ? 'var(--yellow)'
+          : cw.status === 'error'
+            ? 'var(--red)'
+            : 'var(--text-muted)';
   badge.style.color = '#fff';
 }
 
@@ -3802,14 +4107,18 @@ async function fetchCwMessages() {
     // Mark as read using the coworker's lastMessageTs (covers all sessions
     // including threads and a2a). Falls back to latest main-chat timestamp.
     if (cwState.selected) {
-      const cw = (state.coworkers || []).find(c => c.folder === cwState.selected);
-      const ts = cw?.lastMessageTs || (cwState.messages.length > 0 ? cwState.messages[cwState.messages.length - 1].timestamp : null);
+      const cw = (state.coworkers || []).find((c) => c.folder === cwState.selected);
+      const ts =
+        cw?.lastMessageTs ||
+        (cwState.messages.length > 0 ? cwState.messages[cwState.messages.length - 1].timestamp : null);
       if (ts) {
         readCursors.markRead(cwState.selected, ts);
         renderCwSidebar();
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 function renderApprovalItem(item) {
@@ -3819,15 +4128,14 @@ function renderApprovalItem(item) {
   const safeReason = item.reason ? `\n\n*Reason:* ${esc(item.reason)}` : '';
   let desc;
   if (item.action === 'install_packages') {
-    desc = `**Install packages:** ${(item.packages || []).map(p => esc(p)).join(', ')}${safeReason}`;
+    desc = `**Install packages:** ${(item.packages || []).map((p) => esc(p)).join(', ')}${safeReason}`;
   } else if (item.action === 'request_rebuild') {
     desc = `**Rebuild container**${safeReason}`;
   } else if (item.action === 'add_mcp_server') {
     desc = `**Add MCP server**${safeReason}`;
   } else if (item.action === 'onecli_credential') {
-    const endpoint = item.method && item.host
-      ? `\n\n\`${esc(item.method)} ${esc(item.host)}${esc(item.path || '')}\``
-      : '';
+    const endpoint =
+      item.method && item.host ? `\n\n\`${esc(item.method)} ${esc(item.host)}${esc(item.path || '')}\`` : '';
     desc = `**Credentials request**${endpoint}`;
   } else {
     desc = `**${esc(item.action)}**${safeReason}`;
@@ -3846,24 +4154,35 @@ function renderApprovalItem(item) {
   </div>`;
 }
 
-
-function renderCardBubble(m, { cls, monogram, authorName, time, kindLabel, coworkerLabel, threadStubHtml, isOutgoing }) {
-  const titleHtml = m.cardTitle ? `<div style="font-weight:600;font-size:0.8125rem;margin-bottom:4px">${esc(m.cardTitle)}</div>` : '';
-  const descHtml = m.cardDescription ? `<div style="color:var(--text-muted);font-size:0.75rem;margin-bottom:6px">${md(m.cardDescription)}</div>` : '';
+function renderCardBubble(
+  m,
+  { cls, monogram, authorName, time, kindLabel, coworkerLabel, threadStubHtml, isOutgoing },
+) {
+  const titleHtml = m.cardTitle
+    ? `<div style="font-weight:600;font-size:0.8125rem;margin-bottom:4px">${esc(m.cardTitle)}</div>`
+    : '';
+  const descHtml = m.cardDescription
+    ? `<div style="color:var(--text-muted);font-size:0.75rem;margin-bottom:6px">${md(m.cardDescription)}</div>`
+    : '';
   const childrenHtml = (m.cardChildren || [])
-    .filter(c => c.type === 'text' && c.text)
-    .map(c => `<div style="margin-top:6px">${md(c.text)}</div>`)
+    .filter((c) => c.type === 'text' && c.text)
+    .map((c) => `<div style="margin-top:6px">${md(c.text)}</div>`)
     .join('');
   const answered = m.id && cwState._answeredCards && cwState._answeredCards[m.id];
   const inactive = isOutgoing || answered;
   const actionsHtml = answered
     ? `<div style="margin-top:4px;font-size:9px;color:#8b5cf6">(selected: ${esc(answered)})</div>`
     : isOutgoing
-      ? (m.cardActions || []).length > 0 ? `<div style="margin-top:4px;font-size:9px;color:var(--text-dim)">(awaiting response)</div>` : ''
+      ? (m.cardActions || []).length > 0
+        ? `<div style="margin-top:4px;font-size:9px;color:var(--text-dim)">(awaiting response)</div>`
+        : ''
       : (m.cardActions || []).length > 0
-        ? `<div style="margin-top:8px">${(m.cardActions || []).map(a =>
-            `<button class="card-action-btn" data-action="${escAttr(a.value)}" data-label="${escAttr(a.label)}" style="background:#7c3aed;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(a.label)}</button>`
-          ).join('')}</div>`
+        ? `<div style="margin-top:8px">${(m.cardActions || [])
+            .map(
+              (a) =>
+                `<button class="card-action-btn" data-action="${escAttr(a.value)}" data-label="${escAttr(a.label)}" style="background:#7c3aed;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(a.label)}</button>`,
+            )
+            .join('')}</div>`
         : '';
   return `<div class="cw-msg ${cls}" data-msg-id="${m.id ? esc(m.id) : ''}">
     <div class="cw-msg-avatar">${monogram}</div>
@@ -3883,126 +4202,151 @@ function renderCwMessages() {
   if (!el) return;
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
   const approvalHtml = (cwState.pendingApprovals || []).map(renderApprovalItem).join('');
-  const messageHtml = cwState.messages.map((m) => {
-    const isOutgoing = m.direction === 'outgoing';
-    // Agent-to-agent styling: inbound from another coworker gets its own class
-    // with a green left-border bubble, mirroring the approval/question/credential
-    // card pattern so the operator can tell at a glance "this didn't come from me".
-    const isFromCoworker = !isOutgoing && m.senderKind === 'coworker';
-    const isToCoworker = isOutgoing && m.recipientKind === 'coworker';
-    const cls = isFromCoworker ? 'coworker' : isOutgoing ? 'assistant' : (isToCoworker ? 'user to-coworker' : 'user');
-    const time = m.timestamp ? formatTime(m.timestamp) : '';
-    const text = m.displayContent || m.content || '';
-    const attachmentsHtml = renderMessageAttachmentsHtml(m.attachments);
-    const metaSuffix = renderMessageMetaSuffix(m);
-    const isSystem = m.kind === 'task' || m.kind === 'system';
-    const kindLabel = m.kind && m.kind !== 'chat' ? ` <span style="font-size:7px;color:#999;font-style:italic">${esc(m.kind)}</span>` : '';
-    // Option C a2a inspector affordance: for "from @reviewer" bubbles the
-    // sender's platform_id IS reviewer's agent_group_id, so the button
-    // passes enough for the inspector to resolve reviewer's session
-    // keyed on (reviewer_ag, a2a_mg, sender_thread). sender_thread is
-    // taken from the current view (thread.parentId if a thread is open,
-    // empty for root view).
-    const a2aSourceThread = m.a2aSourceThread || m.parsedContent?._a2a_source_thread || '';
-    const a2aInspectorBtn = isFromCoworker && m.senderCoworkerName && m.platform_id
-      ? ` <button class="cw-a2a-open-btn" title="Open ${esc(m.senderCoworkerName)}'s session for this thread (read-only)" data-recipient-ag="${escAttr(m.platform_id)}" data-recipient-name="${escAttr(m.senderCoworkerName)}" data-source-thread="${escAttr(a2aSourceThread)}" style="background:transparent;border:none;color:#d97706;cursor:pointer;font-size:8px;padding:0;margin-left:4px">&#x2197; open ${esc(m.senderCoworkerName)}'s session</button>`
-      : '';
-    const coworkerLabel = isFromCoworker && m.senderCoworkerName
-      ? ` <span style="font-size:7px;color:#10b981;font-style:italic">from @${esc(m.senderCoworkerName)}</span>${a2aInspectorBtn}`
-      : isToCoworker && m.recipientCoworkerName
-      ? ` <span style="font-size:7px;color:#10b981;font-style:italic">→ @${esc(m.recipientCoworkerName)}</span>`
-      : '';
-    const systemStyle = isSystem ? ' style="opacity:0.5;font-size:9px;border-left:2px solid #555;padding-left:6px"' : '';
+  const messageHtml = cwState.messages
+    .map((m) => {
+      const isOutgoing = m.direction === 'outgoing';
+      // Agent-to-agent styling: inbound from another coworker gets its own class
+      // with a green left-border bubble, mirroring the approval/question/credential
+      // card pattern so the operator can tell at a glance "this didn't come from me".
+      const isFromCoworker = !isOutgoing && m.senderKind === 'coworker';
+      const isToCoworker = isOutgoing && m.recipientKind === 'coworker';
+      const cls = isFromCoworker ? 'coworker' : isOutgoing ? 'assistant' : isToCoworker ? 'user to-coworker' : 'user';
+      const time = m.timestamp ? formatTime(m.timestamp) : '';
+      const text = m.displayContent || m.content || '';
+      const attachmentsHtml = renderMessageAttachmentsHtml(m.attachments);
+      const metaSuffix = renderMessageMetaSuffix(m);
+      const isSystem = m.kind === 'task' || m.kind === 'system';
+      const kindLabel =
+        m.kind && m.kind !== 'chat'
+          ? ` <span style="font-size:7px;color:#999;font-style:italic">${esc(m.kind)}</span>`
+          : '';
+      // Option C a2a inspector affordance: for "from @reviewer" bubbles the
+      // sender's platform_id IS reviewer's agent_group_id, so the button
+      // passes enough for the inspector to resolve reviewer's session
+      // keyed on (reviewer_ag, a2a_mg, sender_thread). sender_thread is
+      // taken from the current view (thread.parentId if a thread is open,
+      // empty for root view).
+      const a2aSourceThread = m.a2aSourceThread || m.parsedContent?._a2a_source_thread || '';
+      const a2aInspectorBtn =
+        isFromCoworker && m.senderCoworkerName && m.platform_id
+          ? ` <button class="cw-a2a-open-btn" title="Open ${esc(m.senderCoworkerName)}'s session for this thread (read-only)" data-recipient-ag="${escAttr(m.platform_id)}" data-recipient-name="${escAttr(m.senderCoworkerName)}" data-source-thread="${escAttr(a2aSourceThread)}" style="background:transparent;border:none;color:#d97706;cursor:pointer;font-size:8px;padding:0;margin-left:4px">&#x2197; open ${esc(m.senderCoworkerName)}'s session</button>`
+          : '';
+      const coworkerLabel =
+        isFromCoworker && m.senderCoworkerName
+          ? ` <span style="font-size:7px;color:#10b981;font-style:italic">from @${esc(m.senderCoworkerName)}</span>${a2aInspectorBtn}`
+          : isToCoworker && m.recipientCoworkerName
+            ? ` <span style="font-size:7px;color:#10b981;font-style:italic">→ @${esc(m.recipientCoworkerName)}</span>`
+            : '';
+      const systemStyle = isSystem
+        ? ' style="opacity:0.5;font-size:9px;border-left:2px solid #555;padding-left:6px"'
+        : '';
 
-    // NOTE on "direction": the dashboard API tags rows with
-    //   direction='outgoing' ← came from messages_out.db (agent's reply)
-    //   direction='incoming' ← came from messages_in.db (sent TO the agent)
-    // So isOutgoing=true is the AGENT speaking; !isOutgoing is the user
-    // (or another coworker via a2a). Author/monogram follow from that.
-    const authorName = isOutgoing
-      ? (isToCoworker && m.recipientCoworkerName
+      // NOTE on "direction": the dashboard API tags rows with
+      //   direction='outgoing' ← came from messages_out.db (agent's reply)
+      //   direction='incoming' ← came from messages_in.db (sent TO the agent)
+      // So isOutgoing=true is the AGENT speaking; !isOutgoing is the user
+      // (or another coworker via a2a). Author/monogram follow from that.
+      const authorName = isOutgoing
+        ? isToCoworker && m.recipientCoworkerName
           ? `${esc(cwState.selected || 'agent')} → @${esc(m.recipientCoworkerName)}`
-          : esc(cwState.selected || 'agent'))
-      : isFromCoworker && m.senderCoworkerName
-        ? `@${esc(m.senderCoworkerName)}`
-        : 'You';
-    const monogramSource = isOutgoing
-      ? (cwState.selected || 'A')
-      : (isFromCoworker && m.senderCoworkerName ? m.senderCoworkerName : 'You');
-    const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
+          : esc(cwState.selected || 'agent')
+        : isFromCoworker && m.senderCoworkerName
+          ? `@${esc(m.senderCoworkerName)}`
+          : 'You';
+      const monogramSource = isOutgoing
+        ? cwState.selected || 'A'
+        : isFromCoworker && m.senderCoworkerName
+          ? m.senderCoworkerName
+          : 'You';
+      const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
 
-    // Reply-count stub: only for main-view rows that are thread starters.
-    const summary = cwState.threadSummaries && m.id ? cwState.threadSummaries[m.id] : null;
-    const threadUnread = (() => {
-      if (!summary?.sessionId || !summary.lastReplyTs) return 0;
-      const cursor = sessionReadCursors.getFor(summary.sessionId);
-      const lastMs = new Date(summary.lastReplyTs).getTime();
-      return (Number.isFinite(lastMs) && lastMs > cursor) ? 1 : 0;
-    })();
-    const unreadBadge = threadUnread ? ` <span style="background:#3b82f6;color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;margin-left:4px">new</span>` : '';
-    const threadStubHtml = summary
-      ? `<div class="cw-thread-stub" data-parent-id="${esc(m.id)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
-      : '';
+      // Reply-count stub: only for main-view rows that are thread starters.
+      const summary = cwState.threadSummaries && m.id ? cwState.threadSummaries[m.id] : null;
+      const threadUnread = (() => {
+        if (!summary?.sessionId || !summary.lastReplyTs) return 0;
+        const cursor = sessionReadCursors.getFor(summary.sessionId);
+        const lastMs = new Date(summary.lastReplyTs).getTime();
+        return Number.isFinite(lastMs) && lastMs > cursor ? 1 : 0;
+      })();
+      const unreadBadge = threadUnread
+        ? ` <span style="background:#3b82f6;color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;margin-left:4px">new</span>`
+        : '';
+      const threadStubHtml = summary
+        ? `<div class="cw-thread-stub" data-parent-id="${esc(m.id)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
+        : '';
 
-    if (m.cardType === 'card') {
-      return renderCardBubble(m, { cls, monogram, authorName, time, kindLabel, coworkerLabel, threadStubHtml, isOutgoing });
-    }
+      if (m.cardType === 'card') {
+        return renderCardBubble(m, {
+          cls,
+          monogram,
+          authorName,
+          time,
+          kindLabel,
+          coworkerLabel,
+          threadStubHtml,
+          isOutgoing,
+        });
+      }
 
-    // Ask question card — render with option buttons if still pending
-    if (m.cardType === 'ask_question' && m.questionId && m.options && m.options.length > 0) {
-      const questionText = m.displayContent || m.content || '';
-      if (m.isPending) {
-        const btns = m.options.map(opt => {
-          const label = typeof opt === 'string' ? opt : (opt.label || opt.value || String(opt));
-          const value = typeof opt === 'string' ? opt : (opt.value || opt.label || String(opt));
-          return `<button class="question-btn" data-qid="${esc(m.questionId)}" data-option="${esc(value)}" style="background:#3B82F6;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(label)}</button>`;
-        }).join('');
-        return `<div class="cw-msg assistant">
+      // Ask question card — render with option buttons if still pending
+      if (m.cardType === 'ask_question' && m.questionId && m.options && m.options.length > 0) {
+        const questionText = m.displayContent || m.content || '';
+        if (m.isPending) {
+          const btns = m.options
+            .map((opt) => {
+              const label = typeof opt === 'string' ? opt : opt.label || opt.value || String(opt);
+              const value = typeof opt === 'string' ? opt : opt.value || opt.label || String(opt);
+              return `<button class="question-btn" data-qid="${esc(m.questionId)}" data-option="${esc(value)}" style="background:#3B82F6;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(label)}</button>`;
+            })
+            .join('');
+          return `<div class="cw-msg assistant">
           <div class="cw-msg-bubble" style="border-left:3px solid #3B82F6;padding-left:8px">
             ${md(questionText)}
             <div style="margin-top:8px">${btns}</div>
           </div>
           <div class="cw-msg-time">${time} <span style="font-size:7px;color:#3B82F6;font-style:italic">question</span></div>
         </div>`;
-      }
-      return `<div class="cw-msg assistant">
+        }
+        return `<div class="cw-msg assistant">
         <div class="cw-msg-bubble" style="border-left:3px solid #555;padding-left:8px;opacity:0.7">
           ${md(questionText)}
           <div style="margin-top:4px;font-size:9px;color:#666">(answered)</div>
         </div>
         <div class="cw-msg-time">${time} <span style="font-size:7px;color:#555;font-style:italic">question</span></div>
       </div>`;
-    }
+      }
 
-    // Messages from another coworker are markdown-authored just like assistant replies,
-    // so render as markdown rather than escaped plain text.
-    const renderAsMd = isOutgoing || isFromCoworker;
-    const bubbleBody = `${text ? (renderAsMd ? md(text) : esc(text)) : ''}${attachmentsHtml}`;
+      // Messages from another coworker are markdown-authored just like assistant replies,
+      // so render as markdown rather than escaped plain text.
+      const renderAsMd = isOutgoing || isFromCoworker;
+      const bubbleBody = `${text ? (renderAsMd ? md(text) : esc(text)) : ''}${attachmentsHtml}`;
 
-    // Slack-style row: monogram avatar + header (name · time) + body.
-    // Hover action toolbar — only offer "Reply in thread" when we have a
-    // persisted message id (not optimistic) and it's not an approval/
-    // credential/question card (those have their own buttons).
-    const canReply = !!m.id && !m.optimistic;
-    const actionsHtml = canReply
-      ? `<div class="cw-msg-actions"><button class="cw-msg-action-btn cw-reply-btn" data-parent-id="${esc(m.id)}" title="Reply in thread">↳ Reply</button></div>`
-      : '';
-    return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"${systemStyle}>
+      // Slack-style row: monogram avatar + header (name · time) + body.
+      // Hover action toolbar — only offer "Reply in thread" when we have a
+      // persisted message id (not optimistic) and it's not an approval/
+      // credential/question card (those have their own buttons).
+      const canReply = !!m.id && !m.optimistic;
+      const actionsHtml = canReply
+        ? `<div class="cw-msg-actions"><button class="cw-msg-action-btn cw-reply-btn" data-parent-id="${esc(m.id)}" title="Reply in thread">↳ Reply</button></div>`
+        : '';
+      return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"${systemStyle}>
       <div class="cw-msg-avatar">${monogram}</div>
       ${actionsHtml}
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}${kindLabel}${coworkerLabel}${metaSuffix}</span></div>
       <div class="cw-msg-bubble">${bubbleBody || '<span style="color:#9ca3af">(empty message)</span>'}</div>
       ${threadStubHtml}
     </div>`;
-  }).join('');
+    })
+    .join('');
   if (!approvalHtml && !messageHtml) {
     el.innerHTML = '<div class="cw-empty">No messages yet. Send a message to start.</div>';
     return;
   }
   const approvalCount = (cwState.pendingApprovals || []).length;
-  const bannerHtml = approvalCount > 0
-    ? `<div class="approval-banner"><div class="approval-banner-label">⚠ Pending Actions (${approvalCount})</div>${approvalHtml}</div>`
-    : '';
+  const bannerHtml =
+    approvalCount > 0
+      ? `<div class="approval-banner"><div class="approval-banner-label">⚠ Pending Actions (${approvalCount})</div>${approvalHtml}</div>`
+      : '';
   el.innerHTML = messageHtml + bannerHtml;
 
   if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
@@ -4047,7 +4391,9 @@ function renderCwMessages() {
         cwState._inflightApprovals.add(qid);
         const card = approvalBtn.closest('.cw-msg');
         const allBtns = card ? card.querySelectorAll('.approval-btn') : [approvalBtn];
-        allBtns.forEach(b => { b.disabled = true; });
+        allBtns.forEach((b) => {
+          b.disabled = true;
+        });
         approvalBtn.textContent = 'Submitting…';
         try {
           const res = await fetch('/api/approvals/action', {
@@ -4065,13 +4411,20 @@ function renderCwMessages() {
           } else {
             const errData = await res.json().catch(() => ({}));
             approvalBtn.textContent = errData.error || 'Error';
-            allBtns.forEach(b => { b.disabled = false; });
+            allBtns.forEach((b) => {
+              b.disabled = false;
+            });
           }
         } catch {
           approvalBtn.textContent = 'Error';
-          allBtns.forEach(b => { b.disabled = false; });
+          allBtns.forEach((b) => {
+            b.disabled = false;
+          });
         } finally {
-          setTimeout(() => { cwState._inflightApprovals.delete(qid); fetchCwMessages(); }, 1000);
+          setTimeout(() => {
+            cwState._inflightApprovals.delete(qid);
+            fetchCwMessages();
+          }, 1000);
         }
         return;
       }
@@ -4086,7 +4439,9 @@ function renderCwMessages() {
         cwState._inflightApprovals.add(qid);
         const card = questionBtn.closest('.cw-msg');
         const allBtns = card ? card.querySelectorAll('.question-btn') : [questionBtn];
-        allBtns.forEach(b => { b.disabled = true; });
+        allBtns.forEach((b) => {
+          b.disabled = true;
+        });
         questionBtn.textContent = 'Submitting…';
         try {
           const res = await fetch('/api/questions/respond', {
@@ -4097,24 +4452,31 @@ function renderCwMessages() {
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
             questionBtn.textContent = errData.error || 'Error';
-            allBtns.forEach(b => { b.disabled = false; });
+            allBtns.forEach((b) => {
+              b.disabled = false;
+            });
           }
         } catch {
           questionBtn.textContent = 'Error';
-          allBtns.forEach(b => { b.disabled = false; });
+          allBtns.forEach((b) => {
+            b.disabled = false;
+          });
         } finally {
-          setTimeout(() => { cwState._inflightApprovals.delete(qid); fetchCwMessages(); }, 1000);
+          setTimeout(() => {
+            cwState._inflightApprovals.delete(qid);
+            fetchCwMessages();
+          }, 1000);
         }
         return;
       }
-
     });
   }
   const recentHooks = (state.hookEvents || []).filter(
-    (e) => e.group === cwState.selected && Date.now() - e.timestamp < 10000
+    (e) => e.group === cwState.selected && Date.now() - e.timestamp < 10000,
   );
   if (recentHooks.length > 0) {
-    el.innerHTML += '<div class="cw-msg assistant"><div class="cw-msg-bubble" style="opacity:0.5"><span class="chat-typing"><span></span><span></span><span></span></span></div></div>';
+    el.innerHTML +=
+      '<div class="cw-msg assistant"><div class="cw-msg-bubble" style="opacity:0.5"><span class="chat-typing"><span></span><span></span><span></span></span></div></div>';
   }
   if (wasAtBottom) el.scrollTop = el.scrollHeight;
 }
@@ -4137,13 +4499,15 @@ async function ensureContainerRunning(folder) {
 
     // Poll until container appears (max 15s)
     for (let i = 0; i < 15; i++) {
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1000));
       const check = await fetch(`/api/coworkers/${encodeURIComponent(folder)}/container${currentShellThreadQuery()}`);
       const status = await check.json();
       if (status.running) return true;
     }
     return false;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -4156,13 +4520,20 @@ async function sendMessage({ group, content, threadId = null, parentMessage = nu
   // author renderer (shows "You" on !isOutgoing) and the dedupe matcher
   // below to identify its server twin when it arrives.
   const optimistic = {
-    id: null, optimistic: true, content, direction: 'incoming',
-    sender: 'web@dashboard', sender_name: 'Dashboard',
-    is_from_me: 0, is_bot_message: 0, timestamp: new Date().toISOString(),
+    id: null,
+    optimistic: true,
+    content,
+    direction: 'incoming',
+    sender: 'web@dashboard',
+    sender_name: 'Dashboard',
+    is_from_me: 0,
+    is_bot_message: 0,
+    timestamp: new Date().toISOString(),
     thread_id: threadId,
   };
   optimisticBucket.push(optimistic);
-  if (threadId) renderCwThread(); else renderCwMessages();
+  if (threadId) renderCwThread();
+  else renderCwMessages();
   try {
     const body = { group, content };
     if (threadId) body.thread_id = threadId;
@@ -4179,18 +4550,25 @@ async function sendMessage({ group, content, threadId = null, parentMessage = nu
     if (!res.ok) {
       const idx = optimisticBucket.indexOf(optimistic);
       if (idx >= 0) optimisticBucket.splice(idx, 1);
-      if (threadId) renderCwThread(); else renderCwMessages();
+      if (threadId) renderCwThread();
+      else renderCwMessages();
       let err = 'Failed to send message';
-      try { err = (await res.json()).error || err; } catch { /* ignore */ }
+      try {
+        err = (await res.json()).error || err;
+      } catch {
+        /* ignore */
+      }
       alert(err);
       return false;
     }
-    if (threadId) fetchCwThread(threadId); else fetchCwMessages();
+    if (threadId) fetchCwThread(threadId);
+    else fetchCwMessages();
     return true;
   } catch (e) {
     const idx = optimisticBucket.indexOf(optimistic);
     if (idx >= 0) optimisticBucket.splice(idx, 1);
-    if (threadId) renderCwThread(); else renderCwMessages();
+    if (threadId) renderCwThread();
+    else renderCwMessages();
     alert('Failed to send message: ' + e.message);
     return false;
   }
@@ -4219,9 +4597,12 @@ async function sendCwThreadMessage() {
   if (isFirstReply && snap) {
     const text = (snap.displayContent || snap.content || '').toString();
     if (text) {
-      const sender = snap.direction === 'outgoing'
-        ? (cwState.selected || 'agent')
-        : (snap.senderCoworkerName ? `@${snap.senderCoworkerName}` : 'You');
+      const sender =
+        snap.direction === 'outgoing'
+          ? cwState.selected || 'agent'
+          : snap.senderCoworkerName
+            ? `@${snap.senderCoworkerName}`
+            : 'You';
       parentMessage = {
         content: text,
         timestamp: snap.timestamp || null,
@@ -4229,6 +4610,19 @@ async function sendCwThreadMessage() {
         direction: snap.direction === 'outgoing' ? 'outgoing' : 'incoming',
       };
     }
+  }
+  // sessionDirect → /api/chat/send-to-session (writes directly to the
+  // session's inbound.db, bypassing messaging-group routing). Without this,
+  // sends from a root a2a session (thread_id=null) misroute to the coworker's
+  // main dashboard session because /api/chat/send keys on (channel, thread).
+  if (cwState.thread.sessionDirect) {
+    await sendToSessionDirect({
+      sessionId: cwState.thread.parentId,
+      content,
+      parentMessage,
+      optimisticBucket: cwState.thread.messages,
+    });
+    return;
   }
   await sendMessage({
     group: cwState.selected,
@@ -4239,11 +4633,56 @@ async function sendCwThreadMessage() {
   });
 }
 
+async function sendToSessionDirect({ sessionId, content, parentMessage, optimisticBucket }) {
+  const optimistic = {
+    id: null,
+    optimistic: true,
+    content,
+    direction: 'incoming',
+    sender: 'web@dashboard',
+    sender_name: 'Dashboard',
+    is_from_me: 0,
+    is_bot_message: 0,
+    timestamp: new Date().toISOString(),
+  };
+  optimisticBucket.push(optimistic);
+  renderCwThread();
+  try {
+    const body = { session_id: sessionId, content };
+    if (parentMessage) body.parent_message = parentMessage;
+    const res = await fetch('/api/chat/send-to-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const idx = optimisticBucket.indexOf(optimistic);
+      if (idx >= 0) optimisticBucket.splice(idx, 1);
+      renderCwThread();
+      let err = 'Failed to send message';
+      try {
+        err = (await res.json()).error || err;
+      } catch {
+        /* ignore */
+      }
+      alert(err);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    const idx = optimisticBucket.indexOf(optimistic);
+    if (idx >= 0) optimisticBucket.splice(idx, 1);
+    renderCwThread();
+    alert(`Failed to send: ${err.message || err}`);
+    return false;
+  }
+}
+
 function openThread(parentId, opts = {}) {
   if (!cwState.selected || !parentId) return;
   const isSessionDirect = !!opts.sessionDirect;
   // Snapshot the parent message from the current main view for the header.
-  const parentSnapshot = isSessionDirect ? null : ((cwState.messages || []).find((m) => m.id === parentId) || null);
+  const parentSnapshot = isSessionDirect ? null : (cwState.messages || []).find((m) => m.id === parentId) || null;
   if (cwState.thread?.polling) clearInterval(cwState.thread.polling);
   cwState.thread = { parentId, parentSnapshot, messages: [], polling: null, sessionDirect: isSessionDirect };
   const panel = document.getElementById('cw-thread-panel');
@@ -4346,7 +4785,8 @@ async function fetchA2aInspector() {
     const msgsEl = document.getElementById('cw-a2a-inspector-messages');
     if (!msgsEl) return;
     if (res.status === 404) {
-      msgsEl.innerHTML = '<div class="cw-a2a-inspector-empty">No recipient session exists yet for this thread. The delegation may not have landed, or the reviewer hasn\'t processed it yet.</div>';
+      msgsEl.innerHTML =
+        '<div class="cw-a2a-inspector-empty">No recipient session exists yet for this thread. The delegation may not have landed, or the reviewer hasn\'t processed it yet.</div>';
       return;
     }
     if (!res.ok) {
@@ -4359,7 +4799,8 @@ async function fetchA2aInspector() {
     renderA2aInspector();
   } catch (err) {
     const msgsEl = document.getElementById('cw-a2a-inspector-messages');
-    if (msgsEl) msgsEl.innerHTML = `<div class="cw-a2a-inspector-empty">Error loading session: ${esc(String(err.message || err))}</div>`;
+    if (msgsEl)
+      msgsEl.innerHTML = `<div class="cw-a2a-inspector-empty">Error loading session: ${esc(String(err.message || err))}</div>`;
   }
 }
 
@@ -4379,30 +4820,32 @@ function renderA2aInspector() {
     msgsEl.innerHTML = '<div class="cw-a2a-inspector-empty">Session exists but has no messages yet.</div>';
     return;
   }
-  msgsEl.innerHTML = ordered.map((m) => {
-    // direction here is from the RECIPIENT's point of view:
-    //   incoming = the @sender posted it into the recipient's session
-    //   outgoing = the recipient (reviewer) replied
-    const isOutgoing = m.direction === 'outgoing';
-    const cls = isOutgoing ? 'assistant' : 'coworker';
-    const time = m.timestamp ? formatTime(m.timestamp) : '';
-    // content from session DBs is usually a JSON envelope — reuse the
-    // same display-content normalization the main chat view does so
-    // the text renders instead of a JSON blob.
-    let text = '';
-    try {
-      const parsed = JSON.parse(m.content || '');
-      text = parsed?.text || parsed?.content || m.content || '';
-    } catch { text = m.content || ''; }
-    const authorName = isOutgoing
-      ? esc(st.recipientName || 'recipient')
-      : `@${esc(cwState.selected || 'sender')}`;
-    const monogramSource = isOutgoing ? (st.recipientName || 'R') : (cwState.selected || 'S');
-    const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
-    return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
+  msgsEl.innerHTML = ordered
+    .map((m) => {
+      // direction here is from the RECIPIENT's point of view:
+      //   incoming = the @sender posted it into the recipient's session
+      //   outgoing = the recipient (reviewer) replied
+      const isOutgoing = m.direction === 'outgoing';
+      const cls = isOutgoing ? 'assistant' : 'coworker';
+      const time = m.timestamp ? formatTime(m.timestamp) : '';
+      // content from session DBs is usually a JSON envelope — reuse the
+      // same display-content normalization the main chat view does so
+      // the text renders instead of a JSON blob.
+      let text = '';
+      try {
+        const parsed = JSON.parse(m.content || '');
+        text = parsed?.text || parsed?.content || m.content || '';
+      } catch {
+        text = m.content || '';
+      }
+      const authorName = isOutgoing ? esc(st.recipientName || 'recipient') : `@${esc(cwState.selected || 'sender')}`;
+      const monogramSource = isOutgoing ? st.recipientName || 'R' : cwState.selected || 'S';
+      const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
+      return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span></div>
       <div class="cw-msg-bubble">${text ? md(text) : '<span style="color:#9ca3af">(empty)</span>'}</div></div>`;
-  }).join('');
+    })
+    .join('');
   msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 
@@ -4444,7 +4887,9 @@ async function fetchCwThread(parentId) {
     const pending = cwState.thread.messages.filter((m) => m.optimistic && !matched(m));
     cwState.thread.messages = incoming.concat(pending);
     renderCwThread();
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 function renderCwThread() {
@@ -4459,20 +4904,16 @@ function renderCwThread() {
   // and the detail panel. Fall back to parentId slug if the thread is
   // newly opened with no persisted messages yet.
   const matchingNano = t.sessionDirect
-    ? (cachedSessions || []).find(
-        (s) => s.nanoclaw_session_id === t.parentId && s.group_folder === cwState.selected,
-      )
-    : (cachedSessions || []).find(
-        (s) => s.thread_id === t.parentId && s.group_folder === cwState.selected,
-      );
+    ? (cachedSessions || []).find((s) => s.nanoclaw_session_id === t.parentId && s.group_folder === cwState.selected)
+    : (cachedSessions || []).find((s) => s.thread_id === t.parentId && s.group_folder === cwState.selected);
   const sessionIdForSlug =
-    matchingNano?.nanoclaw_session_id ||
-    (t.messages || []).find((m) => m.session_id)?.session_id ||
-    t.parentId;
+    matchingNano?.nanoclaw_session_id || (t.messages || []).find((m) => m.session_id)?.session_id || t.parentId;
   if (parentLabel) {
     const labelText = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
     const isA2aThread = t.sessionDirect || matchingNano?.a2a_peer;
-    const badge = isA2aThread ? '<span style="font-size:7px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;margin-right:4px;vertical-align:middle;letter-spacing:.03em">a2a</span>' : '';
+    const badge = isA2aThread
+      ? '<span style="font-size:7px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;margin-right:4px;vertical-align:middle;letter-spacing:.03em">a2a</span>'
+      : '';
     parentLabel.innerHTML = `${badge}${esc(labelText)}`;
     parentLabel.title = `session=${sessionIdForSlug}${t.sessionDirect ? ' (a2a read-only)' : `\nthread_id=${t.parentId}`}`;
   }
@@ -4503,63 +4944,68 @@ function renderCwThread() {
       // !outgoing = user or a2a sender → "You" or "@coworker".
       const pAuthor = pIsOutgoing
         ? esc(cwState.selected || 'agent')
-        : (p.senderCoworkerName ? `@${esc(p.senderCoworkerName)}` : 'You');
+        : p.senderCoworkerName
+          ? `@${esc(p.senderCoworkerName)}`
+          : 'You';
       parentEl.innerHTML = `<div class="parent-author">${pAuthor} <span style="color:var(--text-muted);font-weight:400">· ${p.timestamp ? formatTime(p.timestamp) : ''}</span></div>
         <div class="parent-body">${md(pText)}</div>`;
     } else if (t.sessionDirect) {
-      parentEl.innerHTML = '<div class="parent-body" style="color:var(--text-muted);font-style:italic">Agent-to-agent session (read-only)</div>';
+      parentEl.innerHTML =
+        '<div class="parent-body" style="color:var(--text-muted);font-style:italic">Agent-to-agent session (read-only)</div>';
     } else {
       parentEl.innerHTML = '<div class="parent-body" style="color:var(--text-muted)">(parent message)</div>';
     }
   }
   if (!msgsEl) return;
   const wasAtBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 60;
-  const html = (t.messages || []).map((m) => {
-    // Seed rows (written by router.ts into inbound.db when a new per-thread
-    // session is minted) carry a `direction` inside their parsed content to
-    // override the table-based default. Without this override, an agent's
-    // own prior reply — stored in inbound.db for context — would render as
-    // "You" in the thread panel. See src/router.ts seed block.
-    const seededDirection =
-      m.parsedContent && (m.parsedContent.direction === 'outgoing' || m.parsedContent.direction === 'incoming')
-        ? m.parsedContent.direction
-        : null;
-    const effectiveDirection = seededDirection || m.direction;
-    const isOutgoing = effectiveDirection === 'outgoing';
-    const isFromCoworker = !isOutgoing && m.senderKind === 'coworker';
-    const cls = isFromCoworker ? 'coworker' : isOutgoing ? 'assistant' : 'user';
-    const time = m.timestamp ? formatTime(m.timestamp) : '';
-    const text = m.displayContent || m.content || '';
-    const renderAsMd = isOutgoing || isFromCoworker;
-    const body = text ? (renderAsMd ? md(text) : esc(text)) : '<span style="color:#9ca3af">(empty message)</span>';
-    // direction='outgoing' = agent reply; !outgoing = user or a2a sender.
-    const authorName = isOutgoing
-      ? esc(cwState.selected || 'agent')
-      : (m.senderCoworkerName ? `@${esc(m.senderCoworkerName)}` : 'You');
-    const monogramSource = isOutgoing
-      ? (cwState.selected || 'A')
-      : (m.senderCoworkerName || 'You');
-    const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
-    if (m.isRelay) {
-      const relayLabel = m.recipientCoworkerName
-        ? `${authorName} → @${esc(m.recipientCoworkerName)}`
-        : `${authorName} · system action`;
-      const preview = (text || '').replace(/\s+/g, ' ').trim();
-      const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
-      const expanded = cwState.thread._expandedRelays && cwState.thread._expandedRelays.has(m.id);
-      return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
+  const html = (t.messages || [])
+    .map((m) => {
+      // Seed rows (written by router.ts into inbound.db when a new per-thread
+      // session is minted) carry a `direction` inside their parsed content to
+      // override the table-based default. Without this override, an agent's
+      // own prior reply — stored in inbound.db for context — would render as
+      // "You" in the thread panel. See src/router.ts seed block.
+      const seededDirection =
+        m.parsedContent && (m.parsedContent.direction === 'outgoing' || m.parsedContent.direction === 'incoming')
+          ? m.parsedContent.direction
+          : null;
+      const effectiveDirection = seededDirection || m.direction;
+      const isOutgoing = effectiveDirection === 'outgoing';
+      const isFromCoworker = !isOutgoing && m.senderKind === 'coworker';
+      const cls = isFromCoworker ? 'coworker' : isOutgoing ? 'assistant' : 'user';
+      const time = m.timestamp ? formatTime(m.timestamp) : '';
+      const text = m.displayContent || m.content || '';
+      const renderAsMd = isOutgoing || isFromCoworker;
+      const body = text ? (renderAsMd ? md(text) : esc(text)) : '<span style="color:#9ca3af">(empty message)</span>';
+      // direction='outgoing' = agent reply; !outgoing = user or a2a sender.
+      const authorName = isOutgoing
+        ? esc(cwState.selected || 'agent')
+        : m.senderCoworkerName
+          ? `@${esc(m.senderCoworkerName)}`
+          : 'You';
+      const monogramSource = isOutgoing ? cwState.selected || 'A' : m.senderCoworkerName || 'You';
+      const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
+      if (m.isRelay) {
+        const relayLabel = m.recipientCoworkerName
+          ? `${authorName} → @${esc(m.recipientCoworkerName)}`
+          : `${authorName} · system action`;
+        const preview = (text || '').replace(/\s+/g, ' ').trim();
+        const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
+        const expanded = cwState.thread._expandedRelays && cwState.thread._expandedRelays.has(m.id);
+        return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
         <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
         <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${body}</div></div>`;
-    }
-    if (m.cardType === 'card') {
-      return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
-    }
-    const attachHtml = renderMessageAttachmentsHtml(m.attachments);
-    return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
+      }
+      if (m.cardType === 'card') {
+        return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
+      }
+      const attachHtml = renderMessageAttachmentsHtml(m.attachments);
+      return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span></div>
       <div class="cw-msg-bubble">${body}${attachHtml}</div></div>`;
-  }).join('');
+    })
+    .join('');
   msgsEl.innerHTML = html || '<div class="cw-empty" style="padding:12px">No replies yet.</div>';
   if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
 }
@@ -4584,7 +5030,9 @@ function syncCwUrl() {
       else if (cwState.thread) hash += `/t/${encodeURIComponent(cwState.thread.parentId)}`;
     }
     if (location.hash !== hash) history.replaceState(null, '', hash || location.pathname);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 function applyCwUrl(retries = 8) {
@@ -4606,7 +5054,6 @@ function applyCwUrl(retries = 8) {
   }
 }
 
-
 function renderOtherSessionLinks(cw, currentSession) {
   const sessions = activeNanoSessionsForCoworker(cw).filter(
     (s) => s.nanoclaw_session_id && s.nanoclaw_session_id !== currentSession?.nanoclaw_session_id,
@@ -4614,16 +5061,20 @@ function renderOtherSessionLinks(cw, currentSession) {
   if (sessions.length === 0) return '';
   return `<div style="font-size:0.625rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin:7px 0 3px">Other Sessions</div>
     <div style="display:flex;flex-direction:column;gap:3px">
-      ${sessions.slice(0, 3).map((sess) => {
-        const lastMs = sess.last_active ? new Date(sess.last_active).getTime() : (sess.sdk_subsessions?.[0]?.last_ts ?? 0);
-        const ago = lastMs ? timeAgo(lastMs) : '';
-        const cs = sess.container_status || '';
-        const status = sess.activity_status || 'idle';
-        const agid = escAttr(sess.agent_group_id || '');
-        const sid = escAttr(sess.nanoclaw_session_id);
-        const grp = escAttr(cw.folder);
-        const tid = escAttr(sess.thread_id || '');
-        return `<div class="other-session-row" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,0.02);font-size:9px">
+      ${sessions
+        .slice(0, 3)
+        .map((sess) => {
+          const lastMs = sess.last_active
+            ? new Date(sess.last_active).getTime()
+            : (sess.sdk_subsessions?.[0]?.last_ts ?? 0);
+          const ago = lastMs ? timeAgo(lastMs) : '';
+          const cs = sess.container_status || '';
+          const status = sess.activity_status || 'idle';
+          const agid = escAttr(sess.agent_group_id || '');
+          const sid = escAttr(sess.nanoclaw_session_id);
+          const grp = escAttr(cw.folder);
+          const tid = escAttr(sess.thread_id || '');
+          return `<div class="other-session-row" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,0.02);font-size:9px">
           <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDotCanvasColor(status)};opacity:.8;flex-shrink:0"></span>
           ${sessionTitleHtml(sess, { compact: true })}
           <span style="color:var(--text-muted);flex-shrink:0">${esc(cs)}${ago ? ' · ' + esc(ago) : ''}</span>
@@ -4632,7 +5083,8 @@ function renderOtherSessionLinks(cw, currentSession) {
           <button class="other-session-open-btn" title="Open chat view"
             data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${grp}">Chat</button>
         </div>`;
-      }).join('')}
+        })
+        .join('')}
       ${sessions.length > 3 ? `<div style="font-size:9px;color:var(--text-dim);margin-left:4px">+${sessions.length - 3} more in Timeline</div>` : ''}
     </div>`;
 }
@@ -4644,7 +5096,7 @@ async function updateCwDetail() {
   if (!cw) return;
   document.getElementById('cw-detail-name').textContent = cw.name;
   document.getElementById('cw-detail-type').innerHTML = esc(cw.type) + ' ' + updateDotHtml(cw.isAutoUpdate, true);
-  document.getElementById('cw-detail-trigger').textContent = (cw.trigger?.replace(/\\b$/, '') || '-');
+  document.getElementById('cw-detail-trigger').textContent = cw.trigger?.replace(/\\b$/, '') || '-';
   document.getElementById('cw-detail-jid').textContent = cw.jid || `dashboard:${cw.folder}`;
   document.getElementById('cw-detail-status').textContent = cw.status;
   document.getElementById('cw-detail-tasks').textContent = String(cw.taskCount);
@@ -4654,12 +5106,12 @@ async function updateCwDetail() {
   const mcpEl = document.getElementById('cw-detail-mcp');
   if (mcpEl) {
     const shortName = (t) => t.replace(/^mcp__\w+__/, '');
-    const allowed = (cw.allowedMcpTools || []).map(t =>
-      `<span class="mcp-tag allowed">${esc(shortName(t))}</span>`
-    ).join('');
-    const blocked = (cw.disallowedMcpTools || []).map(t =>
-      `<span class="mcp-tag blocked">${esc(shortName(t))}</span>`
-    ).join('');
+    const allowed = (cw.allowedMcpTools || [])
+      .map((t) => `<span class="mcp-tag allowed">${esc(shortName(t))}</span>`)
+      .join('');
+    const blocked = (cw.disallowedMcpTools || [])
+      .map((t) => `<span class="mcp-tag blocked">${esc(shortName(t))}</span>`)
+      .join('');
     mcpEl.innerHTML = allowed + blocked || '<span style="color:var(--text-dim)">none</span>';
     const mcpToggle = document.getElementById('cw-mcp-toggle');
     if (mcpToggle) {
@@ -4679,9 +5131,7 @@ async function updateCwDetail() {
   if (overlaysEl) {
     const currentOverlays = cw.overlays || [];
     if (currentOverlays.length > 0) {
-      overlaysEl.innerHTML = currentOverlays.map(o =>
-        `<span class="mcp-tag allowed">${esc(o)}</span>`
-      ).join('');
+      overlaysEl.innerHTML = currentOverlays.map((o) => `<span class="mcp-tag allowed">${esc(o)}</span>`).join('');
     } else {
       overlaysEl.innerHTML = '<span style="color:var(--text-dim)">none</span>';
     }
@@ -4700,36 +5150,50 @@ async function updateCwDetail() {
             const body = await r.json();
             // Server may return either a bare array (filtered) or
             // `{ _warning, overlays }` when it had to fall back.
-            cwState.availableOverlays = Array.isArray(body) ? body : (body.overlays || []);
+            cwState.availableOverlays = Array.isArray(body) ? body : body.overlays || [];
           }
-        } catch { cwState.availableOverlays = []; }
+        } catch {
+          cwState.availableOverlays = [];
+        }
         const currentOverlays = cw.overlays || [];
-        overlayEditorEl.innerHTML = (cwState.availableOverlays || []).map(o => {
-          const inherited = Array.isArray(o.inheritedFrom) && o.inheritedFrom.length > 0
-            ? ` <span style="font-size:9px;color:var(--text-dim)">via ${esc(o.inheritedFrom.map((w) => '/' + w).join(', '))}</span>`
-            : '';
-          return `<label style="display:block;margin:2px 0;cursor:pointer"><input type="checkbox" value="${esc(o.name)}" ${currentOverlays.includes(o.name) ? 'checked' : ''}> ${esc(o.name)}${inherited}</label>`;
-        }).join('') + '<button id="cw-overlay-save" style="margin-top:6px;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:0.6875rem">Save</button>';
+        overlayEditorEl.innerHTML =
+          (cwState.availableOverlays || [])
+            .map((o) => {
+              const inherited =
+                Array.isArray(o.inheritedFrom) && o.inheritedFrom.length > 0
+                  ? ` <span style="font-size:9px;color:var(--text-dim)">via ${esc(o.inheritedFrom.map((w) => '/' + w).join(', '))}</span>`
+                  : '';
+              return `<label style="display:block;margin:2px 0;cursor:pointer"><input type="checkbox" value="${esc(o.name)}" ${currentOverlays.includes(o.name) ? 'checked' : ''}> ${esc(o.name)}${inherited}</label>`;
+            })
+            .join('') +
+          '<button id="cw-overlay-save" style="margin-top:6px;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:0.6875rem">Save</button>';
         overlayEditorEl.style.display = 'block';
         overlayToggleBtn.textContent = 'Cancel';
         overlayEditorEl.querySelector('#cw-overlay-save')?.addEventListener('click', async () => {
-          const selected = Array.from(overlayEditorEl.querySelectorAll('input:checked')).map(i => i.value);
+          const selected = Array.from(overlayEditorEl.querySelectorAll('input:checked')).map((i) => i.value);
           try {
             const r = await fetch(`/api/coworkers/${encodeURIComponent(folder)}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ overlays: selected }),
             });
-            if (!r.ok) { const e = await r.json(); alert('Error: ' + e.error); return; }
+            if (!r.ok) {
+              const e = await r.json();
+              alert('Error: ' + e.error);
+              return;
+            }
             overlayEditorEl.style.display = 'none';
             overlayToggleBtn.textContent = 'Edit';
             cw.overlays = selected;
             if (overlaysEl) {
-              overlaysEl.innerHTML = selected.length > 0
-                ? selected.map(o => `<span class="mcp-tag allowed">${esc(o)}</span>`).join('')
-                : '<span style="color:var(--text-dim)">none</span>';
+              overlaysEl.innerHTML =
+                selected.length > 0
+                  ? selected.map((o) => `<span class="mcp-tag allowed">${esc(o)}</span>`).join('')
+                  : '<span style="color:var(--text-dim)">none</span>';
             }
-          } catch (e) { alert('Error: ' + e.message); }
+          } catch (e) {
+            alert('Error: ' + e.message);
+          }
         });
       } else {
         overlayEditorEl.style.display = 'none';
@@ -4747,20 +5211,20 @@ async function updateCwDetail() {
     const lastMsg = new Date(cwState.messages[cwState.messages.length - 1].timestamp).getTime();
     if (lastMsg > lastAct) lastAct = lastMsg;
   }
-  document.getElementById('cw-detail-activity').textContent = lastAct > 0
-    ? new Date(lastAct).toLocaleString() : '-';
+  document.getElementById('cw-detail-activity').textContent = lastAct > 0 ? new Date(lastAct).toLocaleString() : '-';
 
   // Subagents from live state
   const subagents = liveCw?.subagents || [];
-  document.getElementById('cw-detail-subagents').textContent = subagents.length > 0
-    ? subagents.map((s) => `${s.agentType || 'agent'} (${s.status || 'unknown'})`).join(', ')
-    : 'None';
+  document.getElementById('cw-detail-subagents').textContent =
+    subagents.length > 0
+      ? subagents.map((s) => `${s.agentType || 'agent'} (${s.status || 'unknown'})`).join(', ')
+      : 'None';
 
   // Recent events: lead with the currently viewed session (main or open
   // thread), then show the folder-wide rollup below. This avoids the old
   // ambiguity where a thread view displayed events from every session under
   // the coworker without saying so.
-  const liveCwForHooks = (state.coworkers || []).find(c => c.folder === folder);
+  const liveCwForHooks = (state.coworkers || []).find((c) => c.folder === folder);
   const toolsEl = document.getElementById('cw-detail-tools');
   if (liveCwForHooks) {
     const sessionsBlock = renderActiveSessionBlock(liveCwForHooks, { wrapField: false });
@@ -4771,12 +5235,16 @@ async function updateCwDetail() {
     if (toolsEl._lastHtml !== newHtml) {
       // Preserve open/closed state of <details> elements (e.g. hidden sessions expander).
       const openDetailIds = new Set();
-      toolsEl.querySelectorAll('details').forEach((d, i) => { if (d.open) openDetailIds.add(i); });
+      toolsEl.querySelectorAll('details').forEach((d, i) => {
+        if (d.open) openDetailIds.add(i);
+      });
       toolsEl.innerHTML = newHtml;
       toolsEl._lastHtml = newHtml;
       // Restore open state by position (there's currently only one <details> per tools panel).
       if (openDetailIds.size > 0) {
-        toolsEl.querySelectorAll('details').forEach((d, i) => { if (openDetailIds.has(i)) d.open = true; });
+        toolsEl.querySelectorAll('details').forEach((d, i) => {
+          if (openDetailIds.has(i)) d.open = true;
+        });
       }
       const searchEl = document.getElementById('cw-other-session-search');
       if (searchEl) {
@@ -4789,7 +5257,7 @@ async function updateCwDetail() {
       }
     }
     // Wire up hook-entry-link click handlers (same as Pixel Office detail panel)
-    toolsEl.querySelectorAll('.hook-entry-link').forEach(btn => {
+    toolsEl.querySelectorAll('.hook-entry-link').forEach((btn) => {
       btn.addEventListener('click', () => {
         const group = btn.dataset.eventGroup;
         const time = btn.dataset.eventTime;
@@ -4797,7 +5265,7 @@ async function updateCwDetail() {
       });
     });
     // Wire up "View Session" button if present
-    toolsEl.querySelectorAll('[data-view-session]').forEach(btn => {
+    toolsEl.querySelectorAll('[data-view-session]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const sid = btn.dataset.viewSession;
@@ -4821,15 +5289,17 @@ async function updateCwDetail() {
       if (files.length === 0) {
         filesEl.textContent = 'No files';
       } else {
-        filesEl.innerHTML = files.map((f) => {
-          const icon = f.isDir ? '📁' : '📄';
-          const size = f.isDir ? '' : ` (${f.size > 1024 ? Math.round(f.size/1024)+'KB' : f.size+'B'})`;
-          return `<div class="cw-file-link" data-name="${esc(f.name)}" data-isdir="${f.isDir}" style="cursor:pointer;color:#60a5fa">${icon} ${esc(f.name)}${size}</div>`;
-        }).join('');
-        filesEl.querySelectorAll('.cw-file-link').forEach(el => {
+        filesEl.innerHTML = files
+          .map((f) => {
+            const icon = f.isDir ? '📁' : '📄';
+            const size = f.isDir ? '' : ` (${f.size > 1024 ? Math.round(f.size / 1024) + 'KB' : f.size + 'B'})`;
+            return `<div class="cw-file-link" data-name="${esc(f.name)}" data-isdir="${f.isDir}" style="cursor:pointer;color:#60a5fa">${icon} ${esc(f.name)}${size}</div>`;
+          })
+          .join('');
+        filesEl.querySelectorAll('.cw-file-link').forEach((el) => {
           el.addEventListener('click', () => {
             // Switch to Artifacts tab
-            document.querySelectorAll('.cw-toggle-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.cw-toggle-btn').forEach((b) => b.classList.remove('active'));
             const workBtn = document.querySelector('[data-view="work"]');
             if (workBtn) workBtn.classList.add('active');
             document.getElementById('cw-chat-messages').style.display = 'none';
@@ -4841,7 +5311,9 @@ async function updateCwDetail() {
         });
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   // Load memory (API returns plain text, not JSON)
   try {
@@ -4860,9 +5332,12 @@ async function updateCwDetail() {
         };
       }
     } else {
-      document.getElementById('cw-memory-preview').innerHTML = '<span style="color:var(--text-muted)">(no CLAUDE.md found)</span>';
+      document.getElementById('cw-memory-preview').innerHTML =
+        '<span style="color:var(--text-muted)">(no CLAUDE.md found)</span>';
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 async function showCreateModal() {
@@ -4871,19 +5346,25 @@ async function showCreateModal() {
     try {
       const res = await fetch('/api/types');
       if (res.ok) cwState.types = await res.json();
-    } catch { cwState.types = {}; }
+    } catch {
+      cwState.types = {};
+    }
   }
   if (!cwState.availableOverlays) {
     try {
       const res = await fetch('/api/overlays');
       if (res.ok) cwState.availableOverlays = await res.json();
-    } catch { cwState.availableOverlays = []; }
+    } catch {
+      cwState.availableOverlays = [];
+    }
   }
   let instructionTemplates = [];
   try {
     const res = await fetch('/api/instruction-templates');
     if (res.ok) instructionTemplates = await res.json();
-  } catch { /* none available */ }
+  } catch {
+    /* none available */
+  }
 
   const overlay = document.createElement('div');
   overlay.className = 'cw-modal-overlay';
@@ -4891,20 +5372,26 @@ async function showCreateModal() {
   // are reserved and already provisioned; base-common / *-common are abstract
   // parents, never a direct coworker type).
   const selectableTypes = Object.entries(cwState.types || {}).filter(
-    ([k, v]) => !v.flat && !k.endsWith('-common') && k !== 'base-common'
+    ([k, v]) => !v.flat && !k.endsWith('-common') && k !== 'base-common',
   );
   // Single-select: coworker types use single inheritance (one `extends`
   // parent); exposing multi-select produced invalid compositions like
   // slang-reader + slang-writer. Radio enforces exactly-one pick.
-  const typeCheckboxes = selectableTypes.map(
-    ([k, v]) => `<label class="cw-type-checkbox"><input type="radio" name="cw-new-type" value="${esc(k)}"><span>${esc(k)}</span><span style="color:var(--text-muted)">— ${esc(v.description || '')}</span></label>`
-  ).join('');
-  const overlayCheckboxes = (cwState.availableOverlays || []).map(
-    (o) => `<label class="cw-type-checkbox"><input type="checkbox" name="cw-new-overlay" value="${esc(o.name)}"><span>${esc(o.name)}</span><span style="color:var(--text-muted)">— ${esc(o.description || '')}</span></label>`
-  ).join('');
-  const instructionOptions = instructionTemplates.map(
-    (t) => `<option value="${esc(t.name)}">${esc(t.name)}</option>`
-  ).join('');
+  const typeCheckboxes = selectableTypes
+    .map(
+      ([k, v]) =>
+        `<label class="cw-type-checkbox"><input type="radio" name="cw-new-type" value="${esc(k)}"><span>${esc(k)}</span><span style="color:var(--text-muted)">— ${esc(v.description || '')}</span></label>`,
+    )
+    .join('');
+  const overlayCheckboxes = (cwState.availableOverlays || [])
+    .map(
+      (o) =>
+        `<label class="cw-type-checkbox"><input type="checkbox" name="cw-new-overlay" value="${esc(o.name)}"><span>${esc(o.name)}</span><span style="color:var(--text-muted)">— ${esc(o.description || '')}</span></label>`,
+    )
+    .join('');
+  const instructionOptions = instructionTemplates
+    .map((t) => `<option value="${esc(t.name)}">${esc(t.name)}</option>`)
+    .join('');
   overlay.innerHTML = `<div class="cw-modal">
     <h3>Create Coworker</h3>
     <label>Name</label>
@@ -4945,7 +5432,10 @@ async function showCreateModal() {
   const folderInput = overlay.querySelector('#cw-new-folder');
   const triggerInput = overlay.querySelector('#cw-new-trigger');
   nameInput.addEventListener('input', () => {
-    const slug = nameInput.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
+    const slug = nameInput.value
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9_-]/g, '');
     folderInput.value = slug;
     triggerInput.value = '@' + nameInput.value.replace(/\s+/g, '');
   });
@@ -4955,19 +5445,24 @@ async function showCreateModal() {
     const picked = overlay.querySelector('#cw-new-types input:checked');
     if (picked && !nameInput.value) {
       const t = picked.value;
-      const typeName = t.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+      const typeName = t
+        .split('-')
+        .map((w) => w[0].toUpperCase() + w.slice(1))
+        .join(' ');
       nameInput.value = typeName;
       folderInput.value = t;
       triggerInput.value = '@' + typeName.replace(/\s+/g, '');
     }
   });
   overlay.querySelector('#cw-modal-cancel').addEventListener('click', () => overlay.remove());
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
   overlay.querySelector('#cw-modal-create').addEventListener('click', async () => {
     const name = nameInput.value.trim();
     const folder = folderInput.value.trim();
-    const checkedTypes = Array.from(overlay.querySelectorAll('#cw-new-types input:checked')).map(c => c.value);
-    const checkedOverlays = Array.from(overlay.querySelectorAll('#cw-new-overlays input:checked')).map(c => c.value);
+    const checkedTypes = Array.from(overlay.querySelectorAll('#cw-new-types input:checked')).map((c) => c.value);
+    const checkedOverlays = Array.from(overlay.querySelectorAll('#cw-new-overlays input:checked')).map((c) => c.value);
     const trigger = triggerInput.value.trim();
     const instructionStyle = overlay.querySelector('#cw-new-instruction-style')?.value || '';
     const agentProvider = overlay.querySelector('#cw-new-provider')?.value || '';
@@ -4975,7 +5470,7 @@ async function showCreateModal() {
     // Compose instructions: selected overlay + custom text
     let instructions = '';
     if (instructionStyle) {
-      const tmpl = instructionTemplates.find(t => t.name === instructionStyle);
+      const tmpl = instructionTemplates.find((t) => t.name === instructionStyle);
       if (tmpl) instructions += tmpl.content + '\n\n';
     }
     if (customInstructions) instructions += customInstructions;
@@ -4985,7 +5480,8 @@ async function showCreateModal() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name, folder,
+          name,
+          folder,
           types: checkedTypes.length ? checkedTypes : undefined,
           overlays: checkedOverlays.length ? checkedOverlays : undefined,
           trigger: trigger || undefined,
@@ -5006,7 +5502,9 @@ async function showCreateModal() {
         renderCwSidebar();
         selectCoworker(folder);
       }, 500);
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
   });
   nameInput.focus();
 }
@@ -5015,7 +5513,10 @@ async function showCreateModal() {
 document.getElementById('cw-create-btn')?.addEventListener('click', showCreateModal);
 document.getElementById('cw-chat-send')?.addEventListener('click', sendCwMessage);
 document.getElementById('cw-chat-input')?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCwMessage(); }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendCwMessage();
+  }
 });
 
 // Card action buttons (works in both main chat and thread panel)
@@ -5029,25 +5530,31 @@ document.addEventListener('click', async (e) => {
   if (msgId && cwState._answeredCards[msgId]) return;
   const card = cardBtn.closest('.cw-msg');
   const allBtns = card ? card.querySelectorAll('.card-action-btn') : [cardBtn];
-  allBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+  allBtns.forEach((b) => {
+    b.disabled = true;
+    b.style.opacity = '0.5';
+  });
   cardBtn.textContent = 'Sending…';
   const threadId = cwState.thread?.parentId || null;
   const bucket = cwState.thread ? cwState.thread.messages : cwState.messages;
   await sendMessage({ group: cwState.selected, content: label, threadId, optimisticBucket: bucket });
   if (msgId) {
     cwState._answeredCards[msgId] = label;
-    if (cwState.thread) renderCwThread(); else renderCwMessages();
+    if (cwState.thread) renderCwThread();
+    else renderCwMessages();
   }
 });
 
 // Thread panel composer + close button
 document.getElementById('cw-thread-send')?.addEventListener('click', sendCwThreadMessage);
 document.getElementById('cw-thread-input-text')?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCwThreadMessage(); }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendCwThreadMessage();
+  }
 });
 document.getElementById('cw-thread-close')?.addEventListener('click', () => closeThread());
 document.getElementById('cw-a2a-inspector-close')?.addEventListener('click', () => closeA2aInspector());
-
 
 function normalizePathRouteToHash() {
   const m = /^\/(?:cw|coworkers)\/([^/]+)(?:\/t\/(.+))?\/?$/.exec(location.pathname || '');
@@ -5092,10 +5599,10 @@ document.getElementById('cw-thread-fullscreen-btn')?.addEventListener('click', (
   }
 });
 
-document.querySelectorAll('.cw-toggle-btn').forEach(btn => {
+document.querySelectorAll('.cw-toggle-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     const view = btn.dataset.view;
-    document.querySelectorAll('.cw-toggle-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.cw-toggle-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     const chatEl = document.getElementById('cw-chat-messages');
     const inputEl = document.getElementById('cw-chat-input-area');
@@ -5117,7 +5624,10 @@ document.querySelectorAll('.cw-toggle-btn').forEach(btn => {
 async function renderCwWork(subpath, isDir) {
   const breadcrumb = document.getElementById('cw-work-breadcrumb');
   const content = document.getElementById('cw-work-content');
-  if (!cwState.selected) { content.innerHTML = '<span style="color:var(--text-muted)">Select a coworker first.</span>'; return; }
+  if (!cwState.selected) {
+    content.innerHTML = '<span style="color:var(--text-muted)">Select a coworker first.</span>';
+    return;
+  }
   const folder = cwState.selected;
   const path = subpath || '';
   // Track current directory for the work-shell
@@ -5138,8 +5648,11 @@ async function renderCwWork(subpath, isDir) {
     crumbs += ` / <a href="#" data-path="${escAttr(cumulative)}" style="color:#58a6ff;text-decoration:none;cursor:pointer">${esc(p)}</a>`;
   }
   breadcrumb.innerHTML = crumbs;
-  breadcrumb.querySelectorAll('a').forEach(a => {
-    a.addEventListener('click', (e) => { e.preventDefault(); renderCwWork(a.dataset.path); });
+  breadcrumb.querySelectorAll('a').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      renderCwWork(a.dataset.path);
+    });
   });
 
   // Render file content if not a directory (isDir===false from browse, or fallback to extension check)
@@ -5153,7 +5666,10 @@ async function renderCwWork(subpath, isDir) {
     content.innerHTML = '<span style="color:var(--text-muted)">Loading...</span>';
     try {
       const res = await fetch(`/api/coworkers/${encodeURIComponent(folder)}/read?path=${encodeURIComponent(path)}`);
-      if (!res.ok) { content.innerHTML = `<span style="color:#f87171">Error: ${(await res.json()).error}</span>`; return; }
+      if (!res.ok) {
+        content.innerHTML = `<span style="color:#f87171">Error: ${(await res.json()).error}</span>`;
+        return;
+      }
       const file = await res.json();
       const isMarkdown = ['md', 'markdown'].includes(file.ext);
       const isDiff = ['diff', 'patch'].includes(file.ext);
@@ -5164,18 +5680,25 @@ async function renderCwWork(subpath, isDir) {
         try {
           const pretty = JSON.stringify(JSON.parse(file.content), null, 2);
           content.innerHTML = `<pre style="padding:8px;background:#0d1117;color:#c9d1d9;border-radius:4px;overflow-x:auto;font-size:10px;white-space:pre-wrap">${esc(pretty)}</pre>`;
-        } catch { content.innerHTML = `<pre style="padding:8px;background:#0d1117;color:#c9d1d9;border-radius:4px;font-size:10px;white-space:pre-wrap">${esc(file.content)}</pre>`; }
+        } catch {
+          content.innerHTML = `<pre style="padding:8px;background:#0d1117;color:#c9d1d9;border-radius:4px;font-size:10px;white-space:pre-wrap">${esc(file.content)}</pre>`;
+        }
       } else if (isDiff) {
-        content.innerHTML = `<pre style="padding:8px;background:#0d1117;border-radius:4px;font-size:10px;white-space:pre-wrap;overflow-x:auto">${file.content.split('\n').map(l => {
-          if (l.startsWith('+')) return `<span style="color:#3fb950">${esc(l)}</span>`;
-          if (l.startsWith('-')) return `<span style="color:#f85149">${esc(l)}</span>`;
-          if (l.startsWith('@@')) return `<span style="color:#a371f7">${esc(l)}</span>`;
-          return esc(l);
-        }).join('\n')}</pre>`;
+        content.innerHTML = `<pre style="padding:8px;background:#0d1117;border-radius:4px;font-size:10px;white-space:pre-wrap;overflow-x:auto">${file.content
+          .split('\n')
+          .map((l) => {
+            if (l.startsWith('+')) return `<span style="color:#3fb950">${esc(l)}</span>`;
+            if (l.startsWith('-')) return `<span style="color:#f85149">${esc(l)}</span>`;
+            if (l.startsWith('@@')) return `<span style="color:#a371f7">${esc(l)}</span>`;
+            return esc(l);
+          })
+          .join('\n')}</pre>`;
       } else {
         content.innerHTML = `<pre style="padding:8px;background:#0d1117;color:#c9d1d9;border-radius:4px;font-size:10px;white-space:pre-wrap;overflow-x:auto">${esc(file.content)}</pre>`;
       }
-    } catch (e) { content.innerHTML = `<span style="color:#f87171">Failed to load file</span>`; }
+    } catch (e) {
+      content.innerHTML = `<span style="color:#f87171">Failed to load file</span>`;
+    }
     return;
   }
 
@@ -5183,7 +5706,10 @@ async function renderCwWork(subpath, isDir) {
   content.innerHTML = '<span style="color:var(--text-muted)">Loading...</span>';
   try {
     const res = await fetch(`/api/coworkers/${encodeURIComponent(folder)}/browse?path=${encodeURIComponent(path)}`);
-    if (!res.ok) { content.innerHTML = '<span style="color:#f87171">Failed to load</span>'; return; }
+    if (!res.ok) {
+      content.innerHTML = '<span style="color:#f87171">Failed to load</span>';
+      return;
+    }
     const files = await res.json();
     if (files.length === 0) {
       content.innerHTML = '<span style="color:var(--text-muted)">Empty folder</span>';
@@ -5198,23 +5724,35 @@ async function renderCwWork(subpath, isDir) {
         <th style="text-align:right;padding:4px 8px">Size</th>
         <th style="text-align:right;padding:4px 8px">Modified</th>
       </tr>
-      ${files.map(f => {
-        const icon = f.isDir ? '\uD83D\uDCC1' : (f.name.endsWith('.md') ? '\uD83D\uDCDD' : f.name.endsWith('.json') ? '\uD83D\uDCCA' : f.name.endsWith('.diff') || f.name.endsWith('.patch') ? '\uD83D\uDD00' : '\uD83D\uDCC4');
-        const size = f.isDir ? '-' : f.size > 1024 ? Math.round(f.size/1024) + 'KB' : f.size + 'B';
-        const time = new Date(f.modified).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'});
-        return `<tr style="border-bottom:1px solid var(--border);cursor:pointer" class="cw-work-row" data-path="${escAttr(f.path)}" data-isdir="${f.isDir}">
+      ${files
+        .map((f) => {
+          const icon = f.isDir
+            ? '\uD83D\uDCC1'
+            : f.name.endsWith('.md')
+              ? '\uD83D\uDCDD'
+              : f.name.endsWith('.json')
+                ? '\uD83D\uDCCA'
+                : f.name.endsWith('.diff') || f.name.endsWith('.patch')
+                  ? '\uD83D\uDD00'
+                  : '\uD83D\uDCC4';
+          const size = f.isDir ? '-' : f.size > 1024 ? Math.round(f.size / 1024) + 'KB' : f.size + 'B';
+          const time = new Date(f.modified).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          return `<tr style="border-bottom:1px solid var(--border);cursor:pointer" class="cw-work-row" data-path="${escAttr(f.path)}" data-isdir="${f.isDir}">
           <td style="padding:4px 8px">${icon} ${esc(f.name)}</td>
           <td style="text-align:right;padding:4px 8px;color:var(--text-muted)">${size}</td>
           <td style="text-align:right;padding:4px 8px;color:var(--text-muted)">${time}</td>
         </tr>`;
-      }).join('')}
+        })
+        .join('')}
     </table>`;
-    content.querySelectorAll('.cw-work-row').forEach(row => {
+    content.querySelectorAll('.cw-work-row').forEach((row) => {
       row.addEventListener('click', () => renderCwWork(row.dataset.path, row.dataset.isdir === 'true'));
-      row.addEventListener('mouseenter', () => row.style.background = 'var(--bg-hover)');
-      row.addEventListener('mouseleave', () => row.style.background = '');
+      row.addEventListener('mouseenter', () => (row.style.background = 'var(--bg-hover)'));
+      row.addEventListener('mouseleave', () => (row.style.background = ''));
     });
-  } catch { content.innerHTML = '<span style="color:#f87171">Failed to load</span>'; }
+  } catch {
+    content.innerHTML = '<span style="color:#f87171">Failed to load</span>';
+  }
 
   // Init work-shell panel.
   //
@@ -5258,10 +5796,15 @@ async function renderCwShell() {
   const statusEl = document.getElementById('cw-shell-status');
   const outputEl = document.getElementById('cw-shell-output');
   const inputEl = document.getElementById('cw-shell-input');
-  if (!cwState.selected) { statusEl.innerHTML = '<span style="color:var(--text-muted)">Select a coworker first.</span>'; return; }
+  if (!cwState.selected) {
+    statusEl.innerHTML = '<span style="color:var(--text-muted)">Select a coworker first.</span>';
+    return;
+  }
   statusEl.innerHTML = 'Checking container...';
   try {
-    const res = await fetch(`/api/coworkers/${encodeURIComponent(cwState.selected)}/container${currentShellThreadQuery()}`);
+    const res = await fetch(
+      `/api/coworkers/${encodeURIComponent(cwState.selected)}/container${currentShellThreadQuery()}`,
+    );
     const data = await res.json();
     if (data.running) {
       statusEl.innerHTML = `<span style="color:#34d399">Connected</span> <span style="color:var(--text-muted)">${esc(data.container)}</span>`;
@@ -5276,7 +5819,9 @@ async function renderCwShell() {
       inputEl.disabled = true;
       const ok = await ensureContainerRunning(cwState.selected);
       if (ok) {
-        const r2 = await fetch(`/api/coworkers/${encodeURIComponent(cwState.selected)}/container${currentShellThreadQuery()}`);
+        const r2 = await fetch(
+          `/api/coworkers/${encodeURIComponent(cwState.selected)}/container${currentShellThreadQuery()}`,
+        );
         const d2 = await r2.json();
         statusEl.innerHTML = `<span style="color:#34d399">Connected</span> <span style="color:var(--text-muted)">${esc(d2.container)}</span>`;
         outputEl.textContent = `Connected to ${d2.container}\nType commands below. Try: ls /workspace/agent/\n\n`;
@@ -5287,7 +5832,9 @@ async function renderCwShell() {
         statusEl.innerHTML = '<span style="color:#f87171">Failed to start container.</span>';
       }
     }
-  } catch (e) { statusEl.textContent = 'Error: ' + e.message; }
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  }
 }
 
 async function execShellCommand(cmd, outputId, inputId, { forceFolderShell = false } = {}) {
@@ -5301,7 +5848,7 @@ async function execShellCommand(cmd, outputId, inputId, { forceFolderShell = fal
     // open; null / omitted → folder-level (root) session. The Shared
     // Artifacts shell always uses folder-level so it works even when
     // the chat side is currently in a thread with no running container.
-    const threadId = forceFolderShell ? null : (cwState.thread?.parentId || null);
+    const threadId = forceFolderShell ? null : cwState.thread?.parentId || null;
     const res = await fetch(`/api/coworkers/${encodeURIComponent(cwState.selected)}/exec`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -5315,7 +5862,9 @@ async function execShellCommand(cmd, outputId, inputId, { forceFolderShell = fal
       if (data.stderr) outputEl.textContent += data.stderr + (data.stderr.endsWith('\n') ? '' : '\n');
       if (!data.stdout && !data.stderr) outputEl.textContent += '\n';
     }
-  } catch (e) { outputEl.textContent += `Error: ${e.message}\n\n`; }
+  } catch (e) {
+    outputEl.textContent += `Error: ${e.message}\n\n`;
+  }
   inputEl.disabled = false;
   inputEl.focus();
   outputEl.scrollTop = outputEl.scrollHeight;
@@ -5324,13 +5873,19 @@ async function execShellCommand(cmd, outputId, inputId, { forceFolderShell = fal
 document.getElementById('cw-shell-input')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     const cmd = e.target.value.trim();
-    if (cmd) { execCwShellCommand(cmd); e.target.value = ''; }
+    if (cmd) {
+      execCwShellCommand(cmd);
+      e.target.value = '';
+    }
   }
 });
 document.getElementById('cw-shell-run')?.addEventListener('click', () => {
   const input = document.getElementById('cw-shell-input');
   const cmd = input.value.trim();
-  if (cmd) { execCwShellCommand(cmd); input.value = ''; }
+  if (cmd) {
+    execCwShellCommand(cmd);
+    input.value = '';
+  }
 });
 
 // Main shell: track cwd so consecutive commands respect cd
@@ -5352,7 +5907,10 @@ function execCwShellCommand(cmd) {
       cwState.workPath = rel;
     }
     const outputEl = document.getElementById('cw-shell-output');
-    if (outputEl) { outputEl.textContent += `$ cd ${target}\n`; outputEl.scrollTop = outputEl.scrollHeight; }
+    if (outputEl) {
+      outputEl.textContent += `$ cd ${target}\n`;
+      outputEl.scrollTop = outputEl.scrollHeight;
+    }
     return;
   }
   const wrappedCmd = `cd '${cwState.shellCwd.replace(/'/g, "'\\''")}' && ${cmd}`;
@@ -5397,36 +5955,50 @@ function execWorkShellCommand(cmd) {
 document.getElementById('cw-work-shell-input')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     const cmd = e.target.value.trim();
-    if (cmd) { execWorkShellCommand(cmd); e.target.value = ''; }
+    if (cmd) {
+      execWorkShellCommand(cmd);
+      e.target.value = '';
+    }
   }
 });
 document.getElementById('cw-work-shell-run')?.addEventListener('click', () => {
   const input = document.getElementById('cw-work-shell-input');
   const cmd = input.value.trim();
-  if (cmd) { execWorkShellCommand(cmd); input.value = ''; }
+  if (cmd) {
+    execWorkShellCommand(cmd);
+    input.value = '';
+  }
 });
 
 // Drag-to-resize between file browser and shell
-(function() {
+(function () {
   const divider = document.getElementById('cw-work-divider');
   const shell = document.getElementById('cw-work-shell');
   const container = document.getElementById('cw-work-view');
   if (!divider || !shell || !container) return;
-  let dragging = false, startY = 0, startH = 0;
+  let dragging = false,
+    startY = 0,
+    startH = 0;
   divider.addEventListener('mousedown', (e) => {
-    dragging = true; startY = e.clientY; startH = shell.offsetHeight;
-    document.body.style.cursor = 'row-resize'; document.body.style.userSelect = 'none';
+    dragging = true;
+    startY = e.clientY;
+    startH = shell.offsetHeight;
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
     e.preventDefault();
   });
   document.addEventListener('mousemove', (e) => {
     if (!dragging) return;
     const delta = startY - e.clientY;
     const newH = Math.max(60, Math.min(startH + delta, container.offsetHeight - 100));
-    shell.style.flex = 'none'; shell.style.height = newH + 'px';
+    shell.style.flex = 'none';
+    shell.style.height = newH + 'px';
   });
   document.addEventListener('mouseup', () => {
     if (!dragging) return;
-    dragging = false; document.body.style.cursor = ''; document.body.style.userSelect = '';
+    dragging = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
   });
 })();
 
@@ -5437,7 +6009,6 @@ document.getElementById('cw-view-timeline')?.addEventListener('click', () => {
   if (typeof setTimelineFilter === 'function') setTimelineFilter(cwState.selected);
 });
 
-
 // Export coworker as YAML bundle (saved to host). Prompt for mode:
 //   lightweight — metadata only; new instance rehydrates from the local lego registry
 //   standard    — default; includes .instructions.md overlay and memory snapshot
@@ -5445,18 +6016,23 @@ document.getElementById('cw-export-btn')?.addEventListener('click', async () => 
   if (!cwState.selected) return;
   const useLight = confirm(
     'Export as lightweight bundle?\n\n' +
-    'OK  → lightweight (metadata only — the new instance rehydrates identity/invariants/' +
-    'context/workflows from its coworker type)\n' +
-    'Cancel → standard (metadata + .instructions.md overlay + memory snapshot)'
+      'OK  → lightweight (metadata only — the new instance rehydrates identity/invariants/' +
+      'context/workflows from its coworker type)\n' +
+      'Cancel → standard (metadata + .instructions.md overlay + memory snapshot)',
   );
   const mode = useLight ? 'lightweight' : 'standard';
   try {
     const res = await fetch(`/api/coworkers/${encodeURIComponent(cwState.selected)}/export?mode=${mode}`);
     const result = await res.json();
-    if (!res.ok || !result.ok) { alert('Export failed: ' + (result.error || 'Unknown')); return; }
+    if (!res.ok || !result.ok) {
+      alert('Export failed: ' + (result.error || 'Unknown'));
+      return;
+    }
     const sizeKB = (result.size / 1024).toFixed(1);
     alert(`Exported to host (${mode}):\n${result.path}\n\nSize: ${sizeKB} KB`);
-  } catch (e) { alert('Export error: ' + e.message); }
+  } catch (e) {
+    alert('Export error: ' + e.message);
+  }
 });
 
 // Full Archive export (saved to host)
@@ -5464,7 +6040,9 @@ document.getElementById('cw-full-archive-btn')?.addEventListener('click', async 
   // Prompt for folder — button is in admin tab, not coworker detail
   const folder = prompt('Coworker folder to export:\n(e.g. slang-triage)');
   if (!folder) return;
-  const pauseTasks = confirm('Pause scheduled tasks on source after export?\n\n(Recommended to prevent duplicate execution)');
+  const pauseTasks = confirm(
+    'Pause scheduled tasks on source after export?\n\n(Recommended to prevent duplicate execution)',
+  );
   try {
     const qp = `full=true${pauseTasks ? '&pauseTasks=true' : ''}`;
     const res = await fetch(`/api/coworkers/${encodeURIComponent(folder)}/export?${qp}`);
@@ -5477,7 +6055,9 @@ document.getElementById('cw-full-archive-btn')?.addEventListener('click', async 
     let msg = `Exported to host:\n${result.path}\n\nSize: ${sizeMB} MB`;
     if (result.pausedTasks) msg += '\n\nSource tasks have been paused.';
     alert(msg);
-  } catch (e) { alert('Full archive export error: ' + e.message); }
+  } catch (e) {
+    alert('Full archive export error: ' + e.message);
+  }
 });
 
 // Import coworker from YAML, JSON, or full archive (.tar.gz)
@@ -5494,7 +6074,12 @@ document.getElementById('cw-import-btn')?.addEventListener('click', () => {
       if (isArchive) {
         // Binary archive import
         const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-        if (!confirm(`Import full archive "${file.name}"?\n\nSize: ${sizeMB} MB\nThis will restore sessions, tasks, and Claude state.`)) return;
+        if (
+          !confirm(
+            `Import full archive "${file.name}"?\n\nSize: ${sizeMB} MB\nThis will restore sessions, tasks, and Claude state.`,
+          )
+        )
+          return;
         const buf = await file.arrayBuffer();
         const res = await fetch('/api/coworkers/import', {
           method: 'POST',
@@ -5509,10 +6094,12 @@ document.getElementById('cw-import-btn')?.addEventListener('click', () => {
           msg += `\nDestinations: ${result.destsCreated || 0}`;
           if (result.backupPath) msg += `\n\nDB backup: ${result.backupPath}`;
           if (result.resolvedDests && result.resolvedDests.length > 0) {
-            msg += '\n\nDestination mappings:\n' + result.resolvedDests.map(d => `  ${d.name} (${d.type}) \u2192 ${d.resolvedTo}`).join('\n');
+            msg +=
+              '\n\nDestination mappings:\n' +
+              result.resolvedDests.map((d) => `  ${d.name} (${d.type}) \u2192 ${d.resolvedTo}`).join('\n');
           }
           if (result.warnings && result.warnings.length > 0) {
-            msg += '\n\nWarnings:\n' + result.warnings.map(w => '  - ' + w).join('\n');
+            msg += '\n\nWarnings:\n' + result.warnings.map((w) => '  - ' + w).join('\n');
           }
           alert(msg);
           setTimeout(renderCwSidebar, 500);
@@ -5548,17 +6135,21 @@ document.getElementById('cw-import-btn')?.addEventListener('click', () => {
       if (result.ok) {
         let msg = `Imported "${result.name}"\nFolder: ${result.folder}\nFiles: ${result.filesWritten}\nDestinations: ${result.destsCreated || 0}`;
         if (result.resolvedDests && result.resolvedDests.length > 0) {
-          msg += '\n\nDestination mappings:\n' + result.resolvedDests.map(d => `  ${d.name} (${d.type}) \u2192 ${d.resolvedTo}`).join('\n');
+          msg +=
+            '\n\nDestination mappings:\n' +
+            result.resolvedDests.map((d) => `  ${d.name} (${d.type}) \u2192 ${d.resolvedTo}`).join('\n');
         }
         if (result.warnings && result.warnings.length > 0) {
-          msg += '\n\nWarnings:\n' + result.warnings.map(w => '  - ' + w).join('\n');
+          msg += '\n\nWarnings:\n' + result.warnings.map((w) => '  - ' + w).join('\n');
         }
         alert(msg);
         setTimeout(renderCwSidebar, 500);
       } else {
         alert('Import error: ' + (result.error || 'Unknown'));
       }
-    } catch (e) { alert('Import error: ' + e.message); }
+    } catch (e) {
+      alert('Import error: ' + e.message);
+    }
   };
   input.click();
 });
@@ -5569,7 +6160,12 @@ document.getElementById('cw-import-v1-btn')?.addEventListener('click', async () 
   if (!v1Path) return;
   const folder = prompt('Agent folder name:\n(e.g. slang-triage)');
   if (!folder) return;
-  if (!confirm(`Import from V1?\n\nPath: ${v1Path}\nFolder: ${folder}\n\nThis will migrate all data: instructions, sessions, learnings, tasks, conversations.`)) return;
+  if (
+    !confirm(
+      `Import from V1?\n\nPath: ${v1Path}\nFolder: ${folder}\n\nThis will migrate all data: instructions, sessions, learnings, tasks, conversations.`,
+    )
+  )
+    return;
   try {
     const res = await fetch('/api/coworkers/import-v1', {
       method: 'POST',
@@ -5589,14 +6185,16 @@ document.getElementById('cw-import-v1-btn')?.addEventListener('click', async () 
       msg += `\nTasks imported: ${result.tasksImported || 0} (all paused)`;
       if (result.backupPath) msg += `\n\nDB backup: ${result.backupPath}`;
       if (result.warnings && result.warnings.length > 0) {
-        msg += '\n\nWarnings:\n' + result.warnings.map(w => '  - ' + w).join('\n');
+        msg += '\n\nWarnings:\n' + result.warnings.map((w) => '  - ' + w).join('\n');
       }
       alert(msg);
       setTimeout(renderCwSidebar, 500);
     } else {
       alert('V1 Import error: ' + (result.error || 'Unknown'));
     }
-  } catch (e) { alert('V1 Import error: ' + e.message); }
+  } catch (e) {
+    alert('V1 Import error: ' + e.message);
+  }
 });
 
 document.getElementById('cw-delete-btn')?.addEventListener('click', async () => {
@@ -5613,7 +6211,9 @@ document.getElementById('cw-delete-btn')?.addEventListener('click', async () => 
       const err = await res.json();
       alert('Error: ' + (err.error || 'Unknown error'));
     }
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
 });
 
 // Refresh coworker sidebar when switching to the tab
@@ -5627,15 +6227,19 @@ async function refreshApprovalCounts() {
   if (approvalCountFetchPending) return;
   approvalCountFetchPending = true;
   try {
-    const mainGroups = getCwCoworkers().filter(c => c.isMain);
+    const mainGroups = getCwCoworkers().filter((c) => c.isMain);
     for (const g of mainGroups) {
       try {
         const r = await fetch(`/api/approvals?group=${encodeURIComponent(g.folder)}`);
         const arr = r.ok ? await r.json() : [];
         cwState.approvalCountByFolder[g.folder] = arr.length;
-      } catch { cwState.approvalCountByFolder[g.folder] = 0; }
+      } catch {
+        cwState.approvalCountByFolder[g.folder] = 0;
+      }
     }
-  } finally { approvalCountFetchPending = false; }
+  } finally {
+    approvalCountFetchPending = false;
+  }
 }
 
 // Also refresh on state updates (called from WebSocket handler)
@@ -5689,14 +6293,16 @@ function renderLogs() {
     viewer.innerHTML = '<span style="color:var(--text-muted)">No log lines found</span>';
     return;
   }
-  viewer.innerHTML = adminState.logs.map((line) => {
-    let cls = 'log-info';
-    const lower = line.toLowerCase();
-    if (lower.includes('error') || lower.includes('err]')) cls = 'log-error';
-    else if (lower.includes('warn')) cls = 'log-warn';
-    else if (lower.includes('debug')) cls = 'log-debug';
-    return `<div class="log-line ${cls}">${esc(line)}</div>`;
-  }).join('');
+  viewer.innerHTML = adminState.logs
+    .map((line) => {
+      let cls = 'log-info';
+      const lower = line.toLowerCase();
+      if (lower.includes('error') || lower.includes('err]')) cls = 'log-error';
+      else if (lower.includes('warn')) cls = 'log-warn';
+      else if (lower.includes('debug')) cls = 'log-debug';
+      return `<div class="log-line ${cls}">${esc(line)}</div>`;
+    })
+    .join('');
   viewer.scrollTop = viewer.scrollHeight;
 }
 
@@ -5739,7 +6345,9 @@ async function loadAdminChannels() {
     adminState.channels = await res.json();
     adminState.loaded.add('channels');
     renderChannels();
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load channels</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load channels</div>';
+  }
 }
 
 function renderChannels() {
@@ -5748,13 +6356,12 @@ function renderChannels() {
     el.innerHTML = '<div class="admin-empty">No channels found in src/channels/</div>';
     return;
   }
-  el.innerHTML = adminState.channels.map((ch) => {
-    const dotColor = ch.configured ? 'var(--green)' : 'var(--text-muted)';
-    const statusText = ch.configured ? 'Connected' : 'Not configured';
-    const groupsList = ch.groups.length > 0
-      ? ch.groups.map((g) => esc(g.name || g.folder)).join(', ')
-      : 'No groups';
-    return `<div class="channel-card">
+  el.innerHTML = adminState.channels
+    .map((ch) => {
+      const dotColor = ch.configured ? 'var(--green)' : 'var(--text-muted)';
+      const statusText = ch.configured ? 'Connected' : 'Not configured';
+      const groupsList = ch.groups.length > 0 ? ch.groups.map((g) => esc(g.name || g.folder)).join(', ') : 'No groups';
+      return `<div class="channel-card">
       <div class="channel-status-dot" style="background:${dotColor}"></div>
       <div class="channel-info">
         <h4>${esc(ch.name)}</h4>
@@ -5762,7 +6369,8 @@ function renderChannels() {
         <div class="channel-groups">${groupsList}</div>
       </div>
     </div>`;
-  }).join('');
+    })
+    .join('');
 }
 
 // ===================================================================
@@ -5775,13 +6383,17 @@ async function loadAdminConfig() {
   try {
     const [configRes, claudeMdRes] = await Promise.all([
       fetch('/api/config'),
-      fetch('/api/config/claude-md').then((r) => r.ok ? r.text() : '(not found)').catch(() => '(not found)'),
+      fetch('/api/config/claude-md')
+        .then((r) => (r.ok ? r.text() : '(not found)'))
+        .catch(() => '(not found)'),
     ]);
     if (!configRes.ok) throw new Error('fetch failed');
     adminState.config = await configRes.json();
     adminState.loaded.add('config');
     renderConfig(claudeMdRes);
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load config</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load config</div>';
+  }
 }
 
 function renderConfig(claudeMdContent) {
@@ -5824,7 +6436,9 @@ function renderConfig(claudeMdContent) {
       const text = res.ok ? await res.text() : '(not found)';
       editor.value = text;
       if (preview) preview.innerHTML = md(text);
-    } catch { editor.value = '(error loading)'; }
+    } catch {
+      editor.value = '(error loading)';
+    }
   });
 
   // Preview toggle
@@ -5851,9 +6465,13 @@ document.querySelector('[data-tab="admin"]')?.addEventListener('click', () => {
 });
 
 // --- Init ---
-window.addEventListener('resize', () => { needsResize = true; });
+window.addEventListener('resize', () => {
+  needsResize = true;
+});
 // Ensure canvas is sized after layout settles (fixes race in some browsers)
-function scheduleResize() { needsResize = true; }
+function scheduleResize() {
+  needsResize = true;
+}
 window.addEventListener('load', scheduleResize);
 setTimeout(scheduleResize, 100);
 setTimeout(scheduleResize, 500);
@@ -5887,7 +6505,9 @@ async function loadAdminInfra() {
     adminState.infra = await res.json();
     adminState.loaded.add('infra');
     renderAdminInfra();
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load infrastructure status</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load infrastructure status</div>';
+  }
 }
 
 function renderAdminInfra() {
@@ -5895,7 +6515,8 @@ function renderAdminInfra() {
   if (!d) return;
   const el = document.getElementById('admin-infra-content');
 
-  const dot = (ok) => ok ? '<span style="color:var(--green)">&#9679;</span>' : '<span style="color:var(--red)">&#9679;</span>';
+  const dot = (ok) =>
+    ok ? '<span style="color:var(--green)">&#9679;</span>' : '<span style="color:var(--red)">&#9679;</span>';
   const mcpOk = d.mcpAuthProxy?.status === 'running';
   const onecliOk = d.onecli?.status === 'running';
   const netOk = d.network?.status === 'active';
@@ -5915,44 +6536,60 @@ function renderAdminInfra() {
   // window.* function. Avoids interpolating untrusted server names into JS
   // string literals inside onclick="" (RC-H1: MCP names containing an
   // apostrophe would have broken out of the JS-string context).
-  const localServers = serverEntries.map(([s, count]) => `
+  const localServers = serverEntries
+    .map(
+      ([s, count]) => `
     <tr><td>${esc(s)}</td><td>Local (stdio)</td><td>${count} tools</td>
     <td><span class="admin-chip active">Running</span>
     <button class="admin-action-btn" style="font-size:9px;padding:1px 6px;margin-left:4px" data-mcp-action="restartMcp" data-mcp-server="${esc(s)}">Restart</button>
-    <button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" data-mcp-action="stopMcp" data-mcp-server="${esc(s)}">Stop</button></td></tr>`).join('');
+    <button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" data-mcp-action="stopMcp" data-mcp-server="${esc(s)}">Stop</button></td></tr>`,
+    )
+    .join('');
 
   // Remote MCP servers (registered via dashboard) — check token status per server
   const tokenStatus = d.oauth?.tokenStatus || {};
-  const remoteServers = (d.remoteMcpServers || []).map(s => {
-    const hasToken = tokenStatus[s.name];
-    const authBadge = hasToken
-      ? `<span class="admin-chip active" style="font-size:8px">Authorized</span>`
-      : `<span class="admin-chip stopped" style="font-size:8px">No token</span>`;
-    const authBtn = hasToken
-      ? `<button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" data-mcp-action="revokeOAuth" data-mcp-server="${esc(s.name)}">Revoke</button>`
-      : `<button class="admin-action-btn success" style="font-size:9px;padding:1px 6px" data-mcp-action="pasteToken" data-mcp-server="${esc(s.name)}">Add Token</button>`;
-    return `<tr><td>${esc(s.name)}</td><td>${authBadge}</td><td style="font-size:8px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(s.url)}</td>
+  const remoteServers = (d.remoteMcpServers || [])
+    .map((s) => {
+      const hasToken = tokenStatus[s.name];
+      const authBadge = hasToken
+        ? `<span class="admin-chip active" style="font-size:8px">Authorized</span>`
+        : `<span class="admin-chip stopped" style="font-size:8px">No token</span>`;
+      const authBtn = hasToken
+        ? `<button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" data-mcp-action="revokeOAuth" data-mcp-server="${esc(s.name)}">Revoke</button>`
+        : `<button class="admin-action-btn success" style="font-size:9px;padding:1px 6px" data-mcp-action="pasteToken" data-mcp-server="${esc(s.name)}">Add Token</button>`;
+      return `<tr><td>${esc(s.name)}</td><td>${authBadge}</td><td style="font-size:8px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(s.url)}</td>
     <td>${authBtn} <button class="admin-action-btn danger" style="font-size:9px;padding:1px 6px" data-mcp-action="removeRemoteMcp" data-mcp-server="${esc(s.name)}">Remove</button></td></tr>`;
-  }).join('');
+    })
+    .join('');
 
   // OAuth servers
   const oauthServers = d.oauth?.servers || [];
-  const oauthRows = oauthServers.map(s => `
+  const oauthRows =
+    oauthServers
+      .map(
+        (s) => `
     <tr><td>${esc(s.name)}</td>
     <td><span class="admin-chip ${s.authorized ? 'active' : 'stopped'}">${s.authorized ? 'Authorized' : 'Not authorized'}</span></td>
-    <td>${s.authorized
-      ? `<button class="admin-action-btn danger" data-mcp-action="revokeOAuth" data-mcp-server="${esc(s.name)}">Revoke</button>`
-      : `<button class="admin-action-btn success" data-mcp-action="authorizeOAuth" data-mcp-server="${esc(s.name)}">Browser Auth</button>
+    <td>${
+      s.authorized
+        ? `<button class="admin-action-btn danger" data-mcp-action="revokeOAuth" data-mcp-server="${esc(s.name)}">Revoke</button>`
+        : `<button class="admin-action-btn success" data-mcp-action="authorizeOAuth" data-mcp-server="${esc(s.name)}">Browser Auth</button>
          <button class="admin-action-btn" data-mcp-action="pasteToken" data-mcp-server="${esc(s.name)}">Paste Token</button>`
-    }</td></tr>`).join('')
-    || '<tr><td colspan="3" style="color:var(--text-muted)">No OAuth servers. Import MCP servers below to auto-create.</td></tr>';
+    }</td></tr>`,
+      )
+      .join('') ||
+    '<tr><td colspan="3" style="color:var(--text-muted)">No OAuth servers. Import MCP servers below to auto-create.</td></tr>';
 
   // Containers
-  const containers = (d.containers?.list || []).map(c => `
+  const containers =
+    (d.containers?.list || [])
+      .map(
+        (c) => `
     <tr><td>${esc(c.name.replace('nanoclaw-', ''))}</td>
     <td><span class="admin-chip running">${esc(c.status)}</span></td>
-    <td>${esc(c.networks || 'default')}</td></tr>`).join('')
-    || '<tr><td colspan="3" style="color:var(--text-muted)">No containers running</td></tr>';
+    <td>${esc(c.networks || 'default')}</td></tr>`,
+      )
+      .join('') || '<tr><td colspan="3" style="color:var(--text-muted)">No containers running</td></tr>';
 
   el.innerHTML = `
     <div class="admin-stat-grid">
@@ -5965,9 +6602,11 @@ function renderAdminInfra() {
     </div>
 
     <h4 style="font-size:11px;margin:10px 0 6px">MCP Servers</h4>
-    ${d.mcpAuthProxy?.status && d.mcpAuthProxy.status !== 'running'
-      ? `<p style="font-size:10px;color:var(--red);margin:0 0 6px">Proxy ${esc(d.mcpAuthProxy.status)}${d.mcpAuthProxy.statusCode ? ` (HTTP ${d.mcpAuthProxy.statusCode})` : ''} — check that the main service is running and data/.mcp-management-token matches the proxy process</p>`
-      : ''}
+    ${
+      d.mcpAuthProxy?.status && d.mcpAuthProxy.status !== 'running'
+        ? `<p style="font-size:10px;color:var(--red);margin:0 0 6px">Proxy ${esc(d.mcpAuthProxy.status)}${d.mcpAuthProxy.statusCode ? ` (HTTP ${d.mcpAuthProxy.statusCode})` : ''} — check that the main service is running and data/.mcp-management-token matches the proxy process</p>`
+        : ''
+    }
     <table class="admin-table">
       <tr><th>Server</th><th>Type</th><th>Details</th><th></th></tr>
       ${localServers}${remoteServers}
@@ -6005,11 +6644,11 @@ function renderAdminInfra() {
 }
 
 // --- Infra panel actions ---
-window.authorizeOAuth = function(serverName) {
+window.authorizeOAuth = function (serverName) {
   window.open('/oauth/authorize?server=' + encodeURIComponent(serverName), '_blank');
 };
 
-window.pasteToken = function(serverName) {
+window.pasteToken = function (serverName) {
   const token = prompt('Paste your access token for ' + serverName + ':');
   if (!token) return;
   const refresh = prompt('Paste refresh token (optional, press Cancel to skip):');
@@ -6017,39 +6656,70 @@ window.pasteToken = function(serverName) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ serverName, accessToken: token, refreshToken: refresh || undefined }),
-  }).then(r => {
-    if (r.ok) { adminState.loaded.delete('infra'); loadAdminInfra(); alert('Token saved for ' + serverName); }
-    else r.json().then(j => alert('Error: ' + j.error));
-  }).catch(e => alert('Failed: ' + e.message));
+  })
+    .then((r) => {
+      if (r.ok) {
+        adminState.loaded.delete('infra');
+        loadAdminInfra();
+        alert('Token saved for ' + serverName);
+      } else r.json().then((j) => alert('Error: ' + j.error));
+    })
+    .catch((e) => alert('Failed: ' + e.message));
 };
 
-window.revokeOAuth = function(serverName) {
+window.revokeOAuth = function (serverName) {
   if (!confirm('Revoke tokens for ' + serverName + '?')) return;
   fetch('/oauth/revoke?server=' + encodeURIComponent(serverName), { method: 'POST' })
-    .then(() => { adminState.loaded.delete('infra'); loadAdminInfra(); })
-    .catch(e => alert('Revoke failed: ' + e.message));
+    .then(() => {
+      adminState.loaded.delete('infra');
+      loadAdminInfra();
+    })
+    .catch((e) => alert('Revoke failed: ' + e.message));
 };
 
-window.removeRemoteMcp = function(name) {
+window.removeRemoteMcp = function (name) {
   if (!confirm('Remove remote MCP server ' + name + '?')) return;
   fetch('/api/mcp-servers?name=' + encodeURIComponent(name), { method: 'DELETE' })
-    .then(() => { adminState.loaded.delete('infra'); loadAdminInfra(); })
-    .catch(e => alert('Remove failed: ' + e.message));
+    .then(() => {
+      adminState.loaded.delete('infra');
+      loadAdminInfra();
+    })
+    .catch((e) => alert('Remove failed: ' + e.message));
 };
 
-window.stopMcp = function(name) {
+window.stopMcp = function (name) {
   if (!confirm('Stop MCP server ' + name + '? Agents will lose access to its tools.')) return;
   // Auth proxy management endpoints are on the MCP port — read from infra data
   const mcpPort = location.port; // Dashboard proxies, or use direct
-  fetch('/api/mcp-control', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stop', name }) })
-    .then(r => r.json()).then(j => { if (j.ok) { adminState.loaded.delete('infra'); loadAdminInfra(); } else alert(j.error); })
-    .catch(e => alert('Failed: ' + e.message));
+  fetch('/api/mcp-control', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'stop', name }),
+  })
+    .then((r) => r.json())
+    .then((j) => {
+      if (j.ok) {
+        adminState.loaded.delete('infra');
+        loadAdminInfra();
+      } else alert(j.error);
+    })
+    .catch((e) => alert('Failed: ' + e.message));
 };
 
-window.restartMcp = function(name) {
-  fetch('/api/mcp-control', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'restart', name }) })
-    .then(r => r.json()).then(j => { if (j.ok) { adminState.loaded.delete('infra'); loadAdminInfra(); } else alert(j.error); })
-    .catch(e => alert('Failed: ' + e.message));
+window.restartMcp = function (name) {
+  fetch('/api/mcp-control', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'restart', name }),
+  })
+    .then((r) => r.json())
+    .then((j) => {
+      if (j.ok) {
+        adminState.loaded.delete('infra');
+        loadAdminInfra();
+      } else alert(j.error);
+    })
+    .catch((e) => alert('Failed: ' + e.message));
 };
 
 // Delegated click handler for MCP action buttons. Buttons opt in with
@@ -6068,7 +6738,7 @@ if (!window.__mcpActionDelegated) {
   });
 }
 
-window.importMcpServers = function() {
+window.importMcpServers = function () {
   const textarea = document.getElementById('infra-import-json');
   try {
     const raw = JSON.parse(textarea.value);
@@ -6077,15 +6747,20 @@ window.importMcpServers = function() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    }).then(r => r.json()).then(j => {
-      if (j.ok) {
-        textarea.value = '';
-        adminState.loaded.delete('infra');
-        loadAdminInfra();
-        alert('Imported ' + j.count + ' servers: ' + j.imported.join(', '));
-      } else alert('Error: ' + j.error);
-    }).catch(e => alert('Import failed: ' + e.message));
-  } catch { alert('Invalid JSON. Paste a valid mcpServers config.'); }
+    })
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) {
+          textarea.value = '';
+          adminState.loaded.delete('infra');
+          loadAdminInfra();
+          alert('Imported ' + j.count + ' servers: ' + j.imported.join(', '));
+        } else alert('Error: ' + j.error);
+      })
+      .catch((e) => alert('Import failed: ' + e.message));
+  } catch {
+    alert('Invalid JSON. Paste a valid mcpServers config.');
+  }
 };
 
 // ============================================================
@@ -6113,7 +6788,9 @@ async function loadMetricsTokens(period) {
     const data = await res.json();
     metricsState.loaded.add('tokens');
     renderMetricsTokens(el, data);
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load token metrics</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load token metrics</div>';
+  }
 }
 
 function fmtUsd(n) {
@@ -6127,7 +6804,12 @@ function renderMetricsTokens(el, data) {
   const p = data.period || metricsState.tokenPeriod;
 
   // Aggregate across all days in the period
-  let totalCost = 0, totalInput = 0, totalOutput = 0, totalCacheRead = 0, totalCacheCreation = 0, totalTokens = 0;
+  let totalCost = 0,
+    totalInput = 0,
+    totalOutput = 0,
+    totalCacheRead = 0,
+    totalCacheCreation = 0,
+    totalTokens = 0;
   const modelAgg = {};
   for (const day of days) {
     totalCost += day.totalCost || 0;
@@ -6136,8 +6818,15 @@ function renderMetricsTokens(el, data) {
     totalCacheRead += day.cacheReadTokens || 0;
     totalCacheCreation += day.cacheCreationTokens || 0;
     totalTokens += day.totalTokens || 0;
-    for (const mb of (day.modelBreakdowns || [])) {
-      if (!modelAgg[mb.modelName]) modelAgg[mb.modelName] = { cost: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 };
+    for (const mb of day.modelBreakdowns || []) {
+      if (!modelAgg[mb.modelName])
+        modelAgg[mb.modelName] = {
+          cost: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+        };
       modelAgg[mb.modelName].cost += mb.cost || 0;
       modelAgg[mb.modelName].inputTokens += mb.inputTokens || 0;
       modelAgg[mb.modelName].outputTokens += mb.outputTokens || 0;
@@ -6145,14 +6834,24 @@ function renderMetricsTokens(el, data) {
       modelAgg[mb.modelName].cacheCreationTokens += mb.cacheCreationTokens || 0;
     }
   }
-  const cacheHitPct = (totalInput + totalCacheRead + totalCacheCreation) > 0
-    ? Math.round((totalCacheRead / (totalInput + totalCacheRead + totalCacheCreation)) * 100) : 0;
+  const cacheHitPct =
+    totalInput + totalCacheRead + totalCacheCreation > 0
+      ? Math.round((totalCacheRead / (totalInput + totalCacheRead + totalCacheCreation)) * 100)
+      : 0;
 
   // Period filter buttons
-  const periods = [['1d', '24h'], ['7d', '7 days'], ['30d', '30 days'], ['all', 'All time']];
-  const filterHtml = periods.map(([val, label]) =>
-    `<button style="padding:4px 12px;border-radius:4px;border:1px solid ${p === val ? '#3B82F6' : '#334155'};background:${p === val ? '#3B82F6' : 'transparent'};color:${p === val ? '#fff' : '#94A3B8'};cursor:pointer;font-size:12px" data-metrics-period="${val}">${label}</button>`
-  ).join(' ');
+  const periods = [
+    ['1d', '24h'],
+    ['7d', '7 days'],
+    ['30d', '30 days'],
+    ['all', 'All time'],
+  ];
+  const filterHtml = periods
+    .map(
+      ([val, label]) =>
+        `<button style="padding:4px 12px;border-radius:4px;border:1px solid ${p === val ? '#3B82F6' : '#334155'};background:${p === val ? '#3B82F6' : 'transparent'};color:${p === val ? '#fff' : '#94A3B8'};cursor:pointer;font-size:12px" data-metrics-period="${val}">${label}</button>`,
+    )
+    .join(' ');
 
   let html = `<div style="display:flex;gap:6px;margin-bottom:12px">${filterHtml}</div>`;
 
@@ -6190,19 +6889,26 @@ function renderMetricsTokens(el, data) {
   // By Coworker cost breakdown
   const coworkers = data.byCoworker || [];
   if (coworkers.length > 0) {
-    const cwSummary = coworkers.map(cw => {
-      let cost = 0, tokens = 0, input = 0, output = 0, cacheRead = 0, cacheCreate = 0;
-      for (const d of cw.daily) {
-        cost += d.totalCost || 0;
-        tokens += d.totalTokens || 0;
-        input += d.inputTokens || 0;
-        output += d.outputTokens || 0;
-        cacheRead += d.cacheReadTokens || 0;
-        cacheCreate += d.cacheCreationTokens || 0;
-      }
-      const models = [...new Set(cw.daily.flatMap(d => d.modelsUsed || []))];
-      return { name: cw.groupName, cost, tokens, input, output, cacheRead, cacheCreate, models };
-    }).sort((a, b) => b.cost - a.cost);
+    const cwSummary = coworkers
+      .map((cw) => {
+        let cost = 0,
+          tokens = 0,
+          input = 0,
+          output = 0,
+          cacheRead = 0,
+          cacheCreate = 0;
+        for (const d of cw.daily) {
+          cost += d.totalCost || 0;
+          tokens += d.totalTokens || 0;
+          input += d.inputTokens || 0;
+          output += d.outputTokens || 0;
+          cacheRead += d.cacheReadTokens || 0;
+          cacheCreate += d.cacheCreationTokens || 0;
+        }
+        const models = [...new Set(cw.daily.flatMap((d) => d.modelsUsed || []))];
+        return { name: cw.groupName, cost, tokens, input, output, cacheRead, cacheCreate, models };
+      })
+      .sort((a, b) => b.cost - a.cost);
 
     html += `<h4 style="margin:16px 0 8px;color:#94A3B8">By Coworker</h4>
     <table class="admin-table"><thead><tr><th>Coworker</th><th>Cost</th><th>Tokens</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Models</th></tr></thead><tbody>`;
@@ -6212,7 +6918,8 @@ function renderMetricsTokens(el, data) {
     html += '</tbody></table>';
   }
 
-  if (days.length === 0 && coworkers.length === 0) html += '<div class="admin-empty">No usage data yet. Data appears after agent container sessions.</div>';
+  if (days.length === 0 && coworkers.length === 0)
+    html += '<div class="admin-empty">No usage data yet. Data appears after agent container sessions.</div>';
   el.innerHTML = html;
 }
 
@@ -6231,7 +6938,9 @@ async function loadMetricsActivity() {
     const data = await res.json();
     metricsState.loaded.add('activity');
     renderMetricsActivity(data);
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load activity data</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load activity data</div>';
+  }
 }
 
 function renderMetricsActivity(data) {
@@ -6251,7 +6960,7 @@ function renderMetricsActivity(data) {
     return;
   }
 
-  const maxVal = Math.max(...data.map(d => Math.max(d.inbound, d.outbound)), 1);
+  const maxVal = Math.max(...data.map((d) => Math.max(d.inbound, d.outbound)), 1);
   const pairW = Math.max(8, (canvas.width - 40) / data.length - 2);
   const halfBar = pairW / 2 - 1;
   const chartH = canvas.height - 24;
@@ -6291,7 +7000,9 @@ async function loadMetricsUsers() {
     const data = await res.json();
     metricsState.loaded.add('users');
     renderMetricsUsers(el, data);
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load users</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load users</div>';
+  }
 }
 
 function renderMetricsUsers(el, users) {
@@ -6300,12 +7011,18 @@ function renderMetricsUsers(el, users) {
     return;
   }
 
-  const privColors = { owner: '#EF4444', global_admin: '#F59E0B', admin: '#F97316', member: '#10B981', none: '#64748B' };
+  const privColors = {
+    owner: '#EF4444',
+    global_admin: '#F59E0B',
+    admin: '#F97316',
+    member: '#10B981',
+    none: '#64748B',
+  };
   let html = `<table class="admin-table"><thead><tr><th>Name</th><th>Kind</th><th>Privilege</th><th>Memberships</th><th>DM Channels</th></tr></thead><tbody>`;
   for (const u of users) {
     const badge = `<span style="color:${privColors[u.privilege] || '#64748B'};font-weight:600">${esc(u.privilege)}</span>`;
-    const mems = u.memberships.map(m => esc(m.agent_group_name)).join(', ') || '-';
-    const dms = u.dmChannels.map(d => esc(d.channel_type)).join(', ') || '-';
+    const mems = u.memberships.map((m) => esc(m.agent_group_name)).join(', ') || '-';
+    const dms = u.dmChannels.map((d) => esc(d.channel_type)).join(', ') || '-';
     html += `<tr><td>${esc(u.display_name || u.id)}</td><td>${esc(u.kind)}</td><td>${badge}</td><td>${mems}</td><td>${dms}</td></tr>`;
   }
   html += '</tbody></table>';
@@ -6321,7 +7038,9 @@ async function loadMetricsChannels() {
     const data = await res.json();
     metricsState.loaded.add('channels');
     renderMetricsChannels(el, data);
-  } catch { el.innerHTML = '<div class="admin-empty">Failed to load channel status</div>'; }
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load channel status</div>';
+  }
 }
 
 function renderMetricsChannels(el, channels) {
@@ -6332,16 +7051,24 @@ function renderMetricsChannels(el, channels) {
 
   let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">';
   for (const ch of channels) {
-    const dot = ch.configured ? '<span style="color:#10B981">&#9679;</span>' : '<span style="color:#64748B">&#9679;</span>';
-    const status = ch.configured ? '<span style="color:#10B981;font-size:11px">Connected</span>' : '<span style="color:#64748B;font-size:11px">Not configured</span>';
+    const dot = ch.configured
+      ? '<span style="color:#10B981">&#9679;</span>'
+      : '<span style="color:#64748B">&#9679;</span>';
+    const status = ch.configured
+      ? '<span style="color:#10B981;font-size:11px">Connected</span>'
+      : '<span style="color:#64748B;font-size:11px">Not configured</span>';
     let groupList = '';
     if (ch.groups.length > 0) {
-      groupList = '<div style="margin-top:6px;font-size:11px;color:#94A3B8">' +
-        ch.groups.map(g => {
-          const label = esc(g.name || g.platform_id) + (g.is_group ? ' (group)' : '');
-          const agents = g.agentGroups ? g.agentGroups.map(a => esc(a)).join(', ') : '';
-          return agents ? `${label} → ${agents}` : label;
-        }).join('<br>') + '</div>';
+      groupList =
+        '<div style="margin-top:6px;font-size:11px;color:#94A3B8">' +
+        ch.groups
+          .map((g) => {
+            const label = esc(g.name || g.platform_id) + (g.is_group ? ' (group)' : '');
+            const agents = g.agentGroups ? g.agentGroups.map((a) => esc(a)).join(', ') : '';
+            return agents ? `${label} → ${agents}` : label;
+          })
+          .join('<br>') +
+        '</div>';
     }
     html += `<div style="background:#1E293B;border:1px solid #334155;border-radius:8px;padding:12px">
       <div style="display:flex;align-items:center;gap:8px">${dot}<strong style="color:#E2E8F0">${esc(ch.channelType)}</strong>${status}</div>
