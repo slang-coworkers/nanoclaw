@@ -3705,6 +3705,10 @@ function selectCoworker(folder) {
   cwState.messages = [];
   cwState.threadSummaries = {};
   cwState.lastMainMessageTs = null;
+  // Drop the cached overlay catalog so the editor refetches with the new
+  // ?coworker= filter — otherwise the first coworker's per-coworker view
+  // would stick around forever for every subsequent selection.
+  cwState.availableOverlays = null;
   if (cwState.polling) { clearInterval(cwState.polling); cwState.polling = null; }
   // Any open thread belongs to the previous coworker — close it.
   closeThread({ silent: true });
@@ -4677,16 +4681,26 @@ async function updateCwDetail() {
     overlayToggleBtn.onclick = async () => {
       const isHidden = overlayEditorEl.style.display === 'none';
       if (isHidden) {
-        if (!cwState.availableOverlays) {
-          try {
-            const r = await fetch('/api/overlays');
-            if (r.ok) cwState.availableOverlays = await r.json();
-          } catch { cwState.availableOverlays = []; }
-        }
+        // Always refetch with the current coworker — the catalog is
+        // per-coworker now (different workflows → different overlays), so
+        // a cached value from another coworker (or from the Create modal)
+        // would show the wrong list.
+        try {
+          const r = await fetch(`/api/overlays?coworker=${encodeURIComponent(cwState.selected)}`);
+          if (r.ok) {
+            const body = await r.json();
+            // Server may return either a bare array (filtered) or
+            // `{ _warning, overlays }` when it had to fall back.
+            cwState.availableOverlays = Array.isArray(body) ? body : (body.overlays || []);
+          }
+        } catch { cwState.availableOverlays = []; }
         const currentOverlays = cw.overlays || [];
-        overlayEditorEl.innerHTML = (cwState.availableOverlays || []).map(o =>
-          `<label style="display:block;margin:2px 0;cursor:pointer"><input type="checkbox" value="${esc(o.name)}" ${currentOverlays.includes(o.name) ? 'checked' : ''}> ${esc(o.name)}</label>`
-        ).join('') + '<button id="cw-overlay-save" style="margin-top:6px;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:0.6875rem">Save</button>';
+        overlayEditorEl.innerHTML = (cwState.availableOverlays || []).map(o => {
+          const inherited = Array.isArray(o.inheritedFrom) && o.inheritedFrom.length > 0
+            ? ` <span style="font-size:9px;color:var(--text-dim)">via ${esc(o.inheritedFrom.map((w) => '/' + w).join(', '))}</span>`
+            : '';
+          return `<label style="display:block;margin:2px 0;cursor:pointer"><input type="checkbox" value="${esc(o.name)}" ${currentOverlays.includes(o.name) ? 'checked' : ''}> ${esc(o.name)}${inherited}</label>`;
+        }).join('') + '<button id="cw-overlay-save" style="margin-top:6px;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:0.6875rem">Save</button>';
         overlayEditorEl.style.display = 'block';
         overlayToggleBtn.textContent = 'Cancel';
         overlayEditorEl.querySelector('#cw-overlay-save')?.addEventListener('click', async () => {
