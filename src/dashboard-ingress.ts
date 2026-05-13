@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'http';
 
 import { DASHBOARD_INGRESS_HOST, DASHBOARD_INGRESS_PORT, DASHBOARD_SECRET } from './config.js';
@@ -121,7 +122,9 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
 
     if (secret) {
       const auth = req.headers.authorization || '';
-      if (auth !== `Bearer ${secret}`) {
+      const expected = `Bearer ${secret}`;
+      const authOk = auth.length === expected.length && crypto.timingSafeEqual(Buffer.from(auth), Buffer.from(expected));
+      if (!authOk) {
         writeJson(res, 401, { error: 'unauthorized' });
         return;
       }
