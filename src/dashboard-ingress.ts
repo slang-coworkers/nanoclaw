@@ -123,7 +123,8 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
     if (secret) {
       const auth = req.headers.authorization || '';
       const expected = `Bearer ${secret}`;
-      const authOk = auth.length === expected.length && crypto.timingSafeEqual(Buffer.from(auth), Buffer.from(expected));
+      const authOk =
+        auth.length === expected.length && crypto.timingSafeEqual(Buffer.from(auth), Buffer.from(expected));
       if (!authOk) {
         writeJson(res, 401, { error: 'unauthorized' });
         return;
