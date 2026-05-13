@@ -3912,8 +3912,9 @@ function renderCwMessages() {
     // keyed on (reviewer_ag, a2a_mg, sender_thread). sender_thread is
     // taken from the current view (thread.parentId if a thread is open,
     // empty for root view).
+    const a2aSourceThread = m.parsedContent?._a2a_source_thread || '';
     const a2aInspectorBtn = isFromCoworker && m.senderCoworkerName && m.platform_id
-      ? ` <button class="cw-a2a-open-btn" title="Open ${esc(m.senderCoworkerName)}'s session for this thread (read-only)" data-recipient-ag="${escAttr(m.platform_id)}" data-recipient-name="${escAttr(m.senderCoworkerName)}" style="background:transparent;border:none;color:#d97706;cursor:pointer;font-size:8px;padding:0;margin-left:4px">&#x2197; open ${esc(m.senderCoworkerName)}'s session</button>`
+      ? ` <button class="cw-a2a-open-btn" title="Open ${esc(m.senderCoworkerName)}'s session for this thread (read-only)" data-recipient-ag="${escAttr(m.platform_id)}" data-recipient-name="${escAttr(m.senderCoworkerName)}" data-source-thread="${escAttr(a2aSourceThread)}" style="background:transparent;border:none;color:#d97706;cursor:pointer;font-size:8px;padding:0;margin-left:4px">&#x2197; open ${esc(m.senderCoworkerName)}'s session</button>`
       : '';
     const coworkerLabel = isFromCoworker && m.senderCoworkerName
       ? ` <span style="font-size:7px;color:#10b981;font-style:italic">from @${esc(m.senderCoworkerName)}</span>${a2aInspectorBtn}`
@@ -4036,7 +4037,7 @@ function renderCwMessages() {
         const recipientAg = a2aBtn.dataset.recipientAg;
         const recipientName = a2aBtn.dataset.recipientName || 'coworker';
         if (recipientAg) {
-          const senderThreadId = cwState.thread?.parentId || '';
+          const senderThreadId = a2aBtn.dataset.sourceThread || cwState.thread?.parentId || '';
           openA2aInspector({ recipientAgGroupId: recipientAg, senderThreadId, recipientName });
         }
         return;
