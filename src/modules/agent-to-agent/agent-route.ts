@@ -230,7 +230,7 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
       platformId: session.agent_group_id,
       channelType: 'agent',
       threadId: sourceHint.source_thread_id,
-      content: forwardedReplyContent,
+      content: injectA2aSourceThread(forwardedReplyContent, session.thread_id),
     });
     log.info('Agent reply routed back to source session', {
       from: session.agent_group_id,
@@ -263,10 +263,11 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
   //    agent:<source>:<recipient> mg, thread_id). Each unique
   //    (source, thread) pair starts its own isolated recipient session
   //    so two sources picking the same thread_id don't merge.
-  //  - thread_id null/empty → agent-shared (the original behaviour; every
-  //    unthreaded a2a message funnels into one recipient session). This
-  //    preserves back-compat for pre-threading installs.
-  const threadId = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
+  //  - thread_id null but source session has one → inherit it, so outbound
+  //    from a threaded session stays scoped (Slack-style DM isolation).
+  //  - both null → agent-shared (back-compat for pre-threading installs).
+  const explicitThread = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
+  const threadId = explicitThread || session.thread_id || null;
   let targetSession;
   if (threadId) {
     const a2aMgId = ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
@@ -306,7 +307,7 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
     platformId: session.agent_group_id,
     channelType: 'agent',
     threadId,
-    content: forwardedContent,
+    content: injectA2aSourceThread(forwardedContent, session.thread_id),
   });
   log.info('Agent message routed', {
     from: session.agent_group_id,
@@ -365,6 +366,17 @@ function forwardFileAttachments(
   parsed.attachments = [...existing, ...attachments];
 
   return JSON.stringify(parsed);
+}
+
+function injectA2aSourceThread(content: string, sourceThreadId: string | null): string {
+  if (!sourceThreadId) return content;
+  try {
+    const parsed = JSON.parse(content);
+    parsed._a2a_source_thread = sourceThreadId;
+    return JSON.stringify(parsed);
+  } catch {
+    return content;
+  }
 }
 
 function countForwardedFiles(contentStr: string): number {

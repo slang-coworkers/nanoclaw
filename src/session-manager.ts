@@ -23,6 +23,7 @@ import {
   createSession,
   findSession,
   findSessionByAgentGroup,
+  findSessionByAgentThread,
   findSessionForAgent,
   getSession,
   updateSession,
@@ -104,6 +105,18 @@ export function resolveSession(
     const existing = findSessionForAgent(agentGroupId, messagingGroupId, lookupThreadId);
     if (existing) {
       return { session: existing, created: false };
+    }
+    // Fallback: when a dashboard message targets a thread owned by an a2a session,
+    // reuse that session. Only for dashboard channels — a2a sources with the same
+    // thread_id must stay isolated per-source (the messaging_group scopes them).
+    if (lookupThreadId && messagingGroupId) {
+      const mg = getMessagingGroup(messagingGroupId);
+      if (mg && mg.channel_type === 'dashboard') {
+        const crossChannel = findSessionByAgentThread(agentGroupId, lookupThreadId);
+        if (crossChannel) {
+          return { session: crossChannel, created: false };
+        }
+      }
     }
   }
 
