@@ -4290,9 +4290,9 @@ export async function handleRequest(
       let coworkerType: string | null = null;
       try {
         if (db) {
-          const row = db
-            .prepare('SELECT coworker_type FROM agent_groups WHERE folder = ?')
-            .get(coworkerFolder) as { coworker_type?: string } | undefined;
+          const row = db.prepare('SELECT coworker_type FROM agent_groups WHERE folder = ?').get(coworkerFolder) as
+            | { coworker_type?: string }
+            | undefined;
           coworkerType = row?.coworker_type || null;
         }
       } catch {
@@ -9408,6 +9408,66 @@ export async function handleRequest(
       }
 
       lastMessageTsCache.set(group, new Date().toISOString());
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  // POST /api/chat/send-to-session — admin reply into a specific a2a session.
+  // Bypasses messaging-group routing; forwards to host /api/dashboard/inbound-session
+  // which writes directly to the session's inbound.db. Used by the dashboard
+  // when admin opens an a2a session (sessionDirect mode) and the normal
+  // /api/chat/send path would misroute (because routing keys on (channel,
+  // platform, thread) and root a2a sessions have thread_id=null).
+  if (req.method === 'POST' && url.pathname === '/api/chat/send-to-session') {
+    if (!requireAuth(req, res)) return;
+    const body = await readBody(req, res);
+    if (body === null) return;
+    try {
+      const { session_id, content, parent_message } = JSON.parse(body);
+      if (typeof session_id !== 'string' || !session_id.trim() || typeof content !== 'string' || !content.trim()) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end('{"error":"session_id and content required"}');
+        return;
+      }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const secret = getDashboardSecret();
+      if (secret) headers.Authorization = `Bearer ${secret}`;
+      const forwardBody: Record<string, unknown> = { session_id: session_id.trim(), content: content.trim() };
+      if (parent_message && typeof parent_message === 'object' && !Array.isArray(parent_message)) {
+        forwardBody.parent_message = parent_message;
+      }
+      try {
+        const upstream = await fetch(`${getDashboardIngressBaseUrl()}/api/dashboard/inbound-session`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(forwardBody),
+          signal: AbortSignal.timeout(5000),
+        });
+        const upstreamText = await upstream.text();
+        if (!upstream.ok) {
+          let error = upstreamText || 'Dashboard host bridge request failed';
+          try {
+            const parsed = JSON.parse(upstreamText);
+            error = parsed.error || error;
+          } catch {
+            /* text body */
+          }
+          res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error }));
+          return;
+        }
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Dashboard host bridge unreachable. Ensure NanoClaw host is running.';
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: message }));
+        return;
+      }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
     } catch (e: any) {
