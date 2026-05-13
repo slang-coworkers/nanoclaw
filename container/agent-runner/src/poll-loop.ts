@@ -351,10 +351,15 @@ function resolveSkillBody(command: string): string | null {
   const skillName = command.replace(/^\//, '').split(/\s/)[0];
   if (!skillName) return null;
 
+  const agentDirs: string[] = [];
+  try {
+    agentDirs.push(...fs.readdirSync('/workspace/agent'));
+  } catch { /* /workspace/agent may not exist */ }
+
   const candidates = [
     path.join('/home/node/.claude/skills', skillName, 'SKILL.md'),
     // Additional dirs: cloned repos may put skills under the agent workspace
-    ...fs.readdirSync('/workspace/agent').flatMap((dir) => {
+    ...agentDirs.flatMap((dir) => {
       const p = path.join('/workspace/agent', dir, '.claude', 'skills', skillName, 'SKILL.md');
       return fs.existsSync(p) ? [p] : [];
     }),

@@ -155,7 +155,7 @@ export function countDueMessages(db: Database.Database): number {
         `SELECT COUNT(*) as count FROM messages_in
        WHERE status = 'pending'
          AND trigger = 1
-         AND (process_after IS NULL OR REPLACE(REPLACE(process_after, 'T', ' '), 'Z', '') <= datetime('now'))`,
+         AND (process_after IS NULL OR SUBSTR(REPLACE(REPLACE(process_after, 'T', ' '), 'Z', ''), 1, 19) <= datetime('now'))`,
       )
       .get() as { count: number }
   ).count;
@@ -166,9 +166,13 @@ export function markMessageFailed(db: Database.Database, messageId: string): voi
 }
 
 export function retryWithBackoff(db: Database.Database, messageId: string, backoffSec: number): void {
+  // Compute the future timestamp in JS to avoid string-interpolating backoffSec
+  // into SQL (SQL injection risk if the caller ever passes untrusted input).
+  const futureMs = Date.now() + Math.max(0, Math.floor(backoffSec)) * 1000;
+  const processAfter = new Date(futureMs).toISOString();
   db.prepare(
-    `UPDATE messages_in SET tries = tries + 1, process_after = datetime('now', '+${backoffSec} seconds') WHERE id = ?`,
-  ).run(messageId);
+    `UPDATE messages_in SET tries = tries + 1, process_after = ? WHERE id = ?`,
+  ).run(processAfter, messageId);
 }
 
 export function getMessageForRetry(
