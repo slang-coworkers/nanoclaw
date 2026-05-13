@@ -4864,6 +4864,13 @@ export async function handleRequest(
           for (const sess of sessions) {
             const inDbPath = join(sessionsDir, sess.id, 'inbound.db');
             const outDbPath = join(sessionsDir, sess.id, 'outbound.db');
+            let a2aSourceThread: string | null = null;
+            try {
+              const srcRow = db?.prepare(
+                'SELECT source_thread_id FROM a2a_session_sources WHERE recipient_session_id = ? LIMIT 1',
+              ).get(sess.id) as { source_thread_id: string | null } | undefined;
+              a2aSourceThread = srcRow?.source_thread_id ?? null;
+            } catch { /* table may not exist */ }
             try {
               const deliveredByMessageOutId = new Map<string, { platformMessageId: string | null; status: string | null }>();
               if (existsSync(inDbPath)) {
@@ -4936,7 +4943,7 @@ export async function handleRequest(
                     group_name: agRow.name || agRow.folder,
                     session_id: sess.id,
                     ...(senderCoworkerName
-                      ? { senderKind: 'coworker', senderCoworkerName }
+                      ? { senderKind: 'coworker', senderCoworkerName, ...(a2aSourceThread ? { a2aSourceThread } : {}) }
                       : {}),
                   });
                 }

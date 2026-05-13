@@ -3912,7 +3912,7 @@ function renderCwMessages() {
     // keyed on (reviewer_ag, a2a_mg, sender_thread). sender_thread is
     // taken from the current view (thread.parentId if a thread is open,
     // empty for root view).
-    const a2aSourceThread = m.parsedContent?._a2a_source_thread || '';
+    const a2aSourceThread = m.a2aSourceThread || m.parsedContent?._a2a_source_thread || '';
     const a2aInspectorBtn = isFromCoworker && m.senderCoworkerName && m.platform_id
       ? ` <button class="cw-a2a-open-btn" title="Open ${esc(m.senderCoworkerName)}'s session for this thread (read-only)" data-recipient-ag="${escAttr(m.platform_id)}" data-recipient-name="${escAttr(m.senderCoworkerName)}" data-source-thread="${escAttr(a2aSourceThread)}" style="background:transparent;border:none;color:#d97706;cursor:pointer;font-size:8px;padding:0;margin-left:4px">&#x2197; open ${esc(m.senderCoworkerName)}'s session</button>`
       : '';
