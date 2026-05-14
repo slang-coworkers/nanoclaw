@@ -82,11 +82,15 @@ The two reviewers see the same diff and produce independent findings. They are c
 
    Acknowledgments add no information; the peer already knows your state from your last outbound. Replying to a status-only inbound just wakes the peer, who acks back, who wakes you again — wasting tokens until Reviewer A breaks the cycle. End the turn silently and the loop dies on its own.
 
-6. **Report** {#report} — output goes to the caller — never to GitHub.
+6. **Report** {#report} — output goes to your parent. Never to GitHub.
 
-   - `mcp__nanoclaw__send_file` Reviewer A's `final-review.md`
-   - `mcp__nanoclaw__send_file` Reviewer B's `devin-flags.md` (if Reviewer B ran)
-   - `mcp__nanoclaw__send_message` with a side-by-side summary: severity counts, wall time, cost, and any disagreements (e.g. one reviewer flags a bug the other says is correct-per-spec — surface BOTH).
+   - `mcp__nanoclaw__send_file(to="parent")` — Reviewer A's `final-review.md`
+   - `mcp__nanoclaw__send_file(to="parent")` — Reviewer B's `devin-flags.md` (if Reviewer B ran)
+   - `mcp__nanoclaw__send_message(to="parent")` with the [Review Verdict] 5-bullet:
+
+   ```
+   send_message(to="parent", text="[Review Verdict] <repo>#<number> (<mode>)\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n• Findings: <X bugs, Y gaps, Z questions> (A: <counts>; B: <counts or skipped>)\n• Top concern: <one-line of the highest-severity finding, or 'no bugs'>\n• Test gaps: <one-line of recommended tests, or 'none'>\n• Disagreements: <N A/B disagreements — see final-review.md, or 'none'>")
+   ```
 
 7. **Cleanup** {#cleanup} — if Step 2 created a draft PR for the sole purpose of getting a Devin URL:
 

@@ -14,7 +14,9 @@ uses:
 
 Use when you receive a triage handoff from slang-triage, or when asked to fix a specific Slang issue.
 
-**A/B TEST MODE: Do NOT push, do NOT create PRs, do NOT post comments on GitHub. All work stays local. Report results to parent via send_message.**
+**Draft PR mode.** You MAY push your fix branch to a fork where you have push rights, and open a **draft PR** against `shader-slang/slang:main` — this gives Reviewer A and Reviewer B (Devin) a real URL to inspect, and gives the operator a real artifact to iterate on. You MAY NOT: merge the PR, mark it ready-for-review, post comments on user-facing issues/PRs, or push to a repo where you don't have write rights. The human gates the "draft → ready-for-review → merge" transition; you propose the change as a draft.
+
+If no fork has push rights (sandboxed environment, missing remote, etc.), fall back to **patch mode** — attach the .patch file to the reviewer message; Reviewer A still runs, Reviewer B is skipped.
 
 ## Steps
 
@@ -126,18 +128,78 @@ Use when you receive a triage handoff from slang-triage, or when asked to fix a 
 
    If tests fail, iterate on the fix (go back to Step 5).
 
-7. **Peer review (only if `slang-reviewer` is in your destinations)** {#peer-review} — if `slang-reviewer` is in your destinations, send the diff for peer review BEFORE reporting to parent. The reviewer runs the slang-pr-review workflow on the slang-reviewer agent (production claude-code-action PR-review pipeline) and accepts three input modes — `pr` (PR URL), `branch`, or `patch`. **A/B-test mode fixer doesn't push or open a PR**, so the only valid input here is `patch`.
+7. **Push branch + open draft PR** {#draft-pr} — share the code change as a real artifact when you have push rights.
 
-   Save the diff as a patch file in the workspace, then send the path to the reviewer:
+   **Resolve fork target.** Inspect existing remotes at `/workspace/agent/slang`:
 
    ```bash
    cd /workspace/agent/slang
+   git remote -v
+   ```
+
+   - If a remote exists where you have push rights (e.g. `slang-coworkers/slang`, an `nv-slang-bot` fork, or one nominated by the requester via `--fork-repo <owner>/<repo>` in the inbound) — pick that as `<fork-repo>`. Verify with `gh auth status` + a dry-run `gh repo view <fork-repo>`.
+   - If no usable fork remote exists, skip to **patch fallback** below.
+
+   **Push the branch.** Branch name should be flat and topical, e.g. `fix/issue-<number>` or `fix/<short-slug>-<number>`:
+
+   ```bash
+   cd /workspace/agent/slang
+   BRANCH="fix/issue-<number>"
+   git checkout -b "$BRANCH"
+   git add -A && git commit -m "Fix shader-slang/slang#<number>: <one-line title>"
+   git push <fork-remote> "$BRANCH"
+   ```
+
+   **Open the draft PR (cross-fork → shader-slang/slang:main).**
+
+   ```bash
+   gh pr create \
+     --repo shader-slang/slang \
+     --base main \
+     --head "<fork-owner>:$BRANCH" \
+     --draft \
+     --title "[draft] Fix #<number>: <one-line title>" \
+     --body "$(cat <<EOF
+   Draft fix for #<number>. Not ready for merge — use this PR for review only.
+
+   ## Summary
+   <2–3 sentence summary of the bug + fix>
+
+   ## Changes
+   - <file>: <what changed>
+
+   ## Tests
+   - tests/<area>/...: <PASS/FAIL>
+   - Broader suite: <result>
+
+   Closes #<number> (when merged)
+   EOF
+   )"
+   ```
+
+   Capture the resulting PR URL — you'll pass it to the reviewer in Step 8.
+
+   **Patch fallback.** If push fails (no rights, no fork, no network):
+
+   ```bash
    mkdir -p /workspace/agent/patches
    git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch
    ```
 
+   Then in Step 8, dispatch with `--mode patch <path>` instead of `--mode pr <N>`. Reviewer A still runs; Reviewer B (Devin) skipped because no PR URL.
+
+8. **Peer review (only if `slang-reviewer` is in your destinations)** {#peer-review} — dispatch to slang-reviewer with the artifact you just produced. Provide the mode + URL/path + test summary; the reviewer's own workflow handles dispatch.
+
+   **PR mode (default — Step 7 succeeded):**
+
    ```
-   send_file(to="slang-reviewer", path="/workspace/agent/patches/fix-<issue_number>.patch", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: patch\nBase: shader-slang/slang@main\n\nTests added: tests/<area>/test_<issue_number>.py\nTest results: <PASS / X failures>\n\nPlease run /slang-pr-review --patch <attached> --base shader-slang/slang@main and reply APPROVE or REQUEST_CHANGES with specific suggestions.")
+   send_message(to="slang-reviewer", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: pr\nPR: <pr-url-from-step-7>\nBase: shader-slang/slang@main\n\nTests added: tests/<area>/test_<issue_number>.py\nTest results: <PASS / X failures>")
+   ```
+
+   **Patch mode (Step 7 fell back):**
+
+   ```
+   send_file(to="slang-reviewer", path="/workspace/agent/patches/fix-<issue_number>.patch", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: patch\nBase: shader-slang/slang@main\n\nTests added: tests/<area>/test_<issue_number>.py\nTest results: <PASS / X failures>")
    ```
 
    End your turn after sending. The reviewer's reply (with `final-review.md` attached and a severity-counts summary) arrives as a new inbound and triggers your next turn.
@@ -150,18 +212,18 @@ Use when you receive a triage handoff from slang-triage, or when asked to fix a 
    Acknowledgments add no information; the peer already knows your state from your last outbound. Replying to a status-only inbound just wakes the peer, who acks back, who wakes you again — wasting tokens until the long operation breaks the cycle. End the turn silently and the loop dies on its own.
 
    **On the reviewer's substantive reply (next turn):**
-   - If APPROVE or 0 critical/high findings → proceed to Step 8; attach the review summary to your parent report
-   - If REQUEST_CHANGES or critical/high findings → apply the suggested edits, re-run Step 6 (verify), regenerate the patch, then re-send to reviewer. Two review rounds max — after that, take the better of the two diffs and proceed to Step 8 noting unresolved feedback in the report
+   - If APPROVE or 0 critical/high findings → proceed to Step 9; attach the review summary to your parent report
+   - If REQUEST_CHANGES or critical/high findings → apply the suggested edits, re-run Step 6 (verify), regenerate the patch (and re-push the branch + comment on the draft PR if you're in PR mode), then re-send to reviewer. Two review rounds max — after that, take the better of the two diffs and proceed to Step 9 noting unresolved feedback in the report.
 
-   If `slang-reviewer` is NOT in your destinations (current setup), skip this step and go directly to Step 8.
+   If `slang-reviewer` is NOT in your destinations, skip this step and go directly to Step 9.
 
-8. **Report to parent (mandatory)** {#report} — do NOT push or create a PR. Report results to parent:
+9. **Report to parent (mandatory)** {#report} — `send_message(to="parent")` with the 5-bullet [Fix Report]:
 
    ```
-   send_message(text="[Fix Report] <repo>#<number>: <title>\n\nStatus: <fixed / partial / blocked>\n\nChanges:\n- <file>: <what changed>\n\nTest:\n- tests/<path>: <PASS/FAIL>\n- Broader suite: <PASS/X failures>\n\nDiff summary:\n```\n<git diff --stat output>\n```\n\nNotes:\n<any caveats, edge cases, or follow-up needed>")
+   send_message(to="parent", text="[Fix Report] <repo>#<number>: <title>\n\n• Status: <fixed / partial / blocked>\n• Changes: <N files, +X / −Y> — <one-line of what changed>\n• Tests: <repro PASS/FAIL>; broader suite <result>\n• Review: <APPROVE / REQUEST_CHANGES / N findings — top concern>\n• Next: <draft PR <url> / patch attached / human action needed>")
    ```
 
-9. **Save work locally** {#save} — stash the changes and write a memory file. Leave the active-work sentinel in place; it serves as a "this issue was worked on by session X at time T" record. Stale sentinels are ignored by the next claimer.
+10. **Save work locally** {#save} — stash the changes and write a memory file. Leave the active-work sentinel in place; it serves as a "this issue was worked on by session X at time T" record. Stale sentinels are ignored by the next claimer.
 
    ```bash
    cd /workspace/agent/slang
@@ -192,6 +254,6 @@ Use when you receive a triage handoff from slang-triage, or when asked to fix a 
 
 When fixing multiple issues:
 
-1. ONE issue at a time (Steps 1–9 fully before next)
+1. ONE issue at a time (Steps 1–10 fully before next)
 2. Max 2 parallel MCP calls
 3. Report progress: `send_message(text="Fixing <N>/<total>: #<number>...")`

@@ -2,7 +2,7 @@
 name: slang-triage-issue
 license: MIT
 type: workflow
-description: "Triage a Slang GitHub issue (shader-slang/slang): read, research via DeepWiki + slang-mcp, classify, report to parent, forward to slang-fixer. Sequential steps, each mandatory."
+description: "Triage a Slang GitHub issue (shader-slang/slang): read, research via DeepWiki + slang-mcp, classify, report to parent, forward to slang-fixer, then forward fixer's resolution back upstream when it lands."
 requires: [issues.read, code.read]
 uses:
   skills: [slang-code-reader, slang-github]
@@ -13,7 +13,7 @@ uses:
 
 Slang-specific triage workflow. Use when asked to triage an issue on `shader-slang/slang`, or when the orchestrator forwards a Slang issue for analysis.
 
-**A/B test mode: NEVER post comments, create labels, or modify anything on GitHub. All output goes to parent via send_message.**
+**Read-only triage.** You NEVER post comments, create labels, or modify anything on GitHub. All output flows back to your parent via `send_message(to="parent")` per the chain-reporting protocol.
 
 ## Steps
 
@@ -65,19 +65,21 @@ Slang-specific triage workflow. Use when asked to triage an issue on `shader-sla
    | Priority | P0 (ship-stopper) / P1 (regression/broken) / P2 (normal) / P3 (nice-to-have) |
    | Duplicate? | Link to existing issue if duplicate |
 
-5. **Report to parent (mandatory)** {#report} — send the triage report to parent. This step is NOT optional.
+5. **Report initial triage to parent (mandatory)** {#report} — `send_message(to="parent")` with the [Triage] 5-bullet so your parent has the classification before any fix work begins. This is the *initial* report; the *resolution* comes in Step 8 after the downstream chain reports back.
 
    ```
-   send_message(text="[Triage] shader-slang/slang#<number>: <title>\n\nCategory: <cat>\nSeverity: <sev>\nComponent: <comp>\nPriority: <pri>\n\nSummary:\n<2-3 sentence summary>\n\nRelevant code:\n- <file paths>\n\nRelated issues:\n- #<num>: <title>\n\nRecommendation: <fix approach or 'needs more info'>\n\nSources:\n- <deepwiki finding>\n- <github links>")
+   send_message(to="parent", text="[Triage] shader-slang/slang#<number>: <title>\n\n• Classification: <category> / <severity> / <component> / <priority>\n• Summary: <one-line of the bug>\n• Relevant code: <top 1–2 file paths>\n• Related: <duplicate of #X / fix in flight #Y / no prior work>\n• Routing: <forwarding to slang-fixer / not actionable — reason>")
    ```
 
-6. **Forward to slang-fixer (if actionable)** {#forward} — if the issue is actionable (bug or regression with clear repro), forward to the Slang fixer:
+   The full classification + research notes go into Step 7 memory; the bullets are the scannable signal.
+
+6. **Forward to slang-fixer (if actionable)** {#forward} — if the issue is actionable (bug or regression with clear repro), forward to the fixer. Send the handoff as a `[Triage handoff]` message; the fixer's workflow handles the rest.
 
    ```
-   send_message(to="slang-fixer", text="[Triage handoff] shader-slang/slang#<number>: <title>\n\nPriority: <pri>\nComponent: <comp>\n\nSummary: <what's broken>\nRelevant files: <paths>\nRepro: <steps>\n\nPlease investigate and draft a fix. Do NOT push or create a PR — report back when done.")
+   send_message(to="slang-fixer", text="[Triage handoff] shader-slang/slang#<number>: <title>\n\nPriority: <pri>\nComponent: <comp>\n\nSummary: <what's broken>\nRelevant files: <paths>\nRepro: <steps>")
    ```
 
-   If not actionable (feature request, needs-more-info, question), skip this step and note in the report why.
+   If not actionable (feature request, needs-more-info, question), skip this step and note in Step 5's "Routing" bullet why.
 
 7. **Save to memory** {#save}
 
@@ -99,10 +101,25 @@ Slang-specific triage workflow. Use when asked to triage an issue on `shader-sla
    EOF
    ```
 
+8. **Forward resolution upstream (when fixer reports back)** {#forward-up} — your downstream chain (fixer → reviewer → fixer) takes 30–60 min. When a `[Fix Report]` arrives in your inbound, **the chain isn't closed until you forward the resolution to your parent.** Compile the [Triage Resolution] 5-bullet from the fixer's report and send up:
+
+   ```
+   send_message(to="parent", text="[Triage Resolution] shader-slang/slang#<number>: <title>\n\n• Outcome: <fixed / partial / blocked / abandoned>\n• Draft PR: <url-or-'patch only, no PR'>\n• Review: <APPROVE / REQUEST_CHANGES / N findings — top concern> (A: <verdict>; B: <verdict or skipped>)\n• Tests: <repro PASS/FAIL>; broader suite <result>\n• Next human action: <merge draft / address review / coordinate / close as wontfix / none>")
+   ```
+
+   If the fixer's report is partial or blocked, still forward the resolution — substitute "blocked: <reason>" in the relevant bullets. Orchestrator needs to know the chain is closed even when the result is incomplete.
+
+   **Quietness rule while waiting.** Don't reply to status echoes during the long downstream wait:
+
+   - **Substantive — RESPOND:** `[Fix Report]` arrives (proceed with this step); fixer reports a blocker or asks for direction; new instructions arrive from your parent (e.g. "abort", "change scope").
+   - **No-op — END YOUR TURN SILENTLY:** status echo from fixer ("working on it"); polite ack from your parent ("got it", "👍"); generic "still waiting" messages; any inbound with no new artifact, decision, error, or instruction.
+
+   Acknowledgments add no information — the peer already knows your state from your last outbound. End the turn silently and the loop dies on its own.
+
 ## Batch Mode
 
 When asked to triage multiple issues:
 
-1. Process ONE issue at a time (Steps 1–7 fully before next)
+1. Process ONE issue at a time (Steps 1–8 fully before next)
 2. Max 2 parallel MCP calls at any time
-3. Send progress: `send_message(text="Triaging <N>/<total>: #<number>...")`
+3. Send progress: `send_message(to="parent", text="Triaging <N>/<total>: #<number>...")`
