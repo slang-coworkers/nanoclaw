@@ -883,6 +883,60 @@ describe('dashboard server', () => {
     }
   });
 
+  it('direct-routing coworker is bound to admin messaging group AND its own dashboard tab', async () => {
+    const db = createDashboardTestDb();
+    const now = new Date().toISOString();
+    // Seed admin + admin's dashboard messaging group + the binding row, so
+    // the lookup `WHERE ag.is_admin = 1 AND mg.channel_type = 'dashboard'`
+    // resolves.
+    db.prepare(
+      'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, created_at) VALUES (?, ?, ?, 1, NULL, NULL, NULL, NULL, ?)',
+    ).run('ag-admin', 'Orchestrator', 'orchestrator', now);
+    db.prepare(
+      "INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES ('mg-admin', 'dashboard', 'dashboard:orchestrator', 'Orchestrator', 0, 'public', ?)",
+    ).run(now);
+    db.prepare(
+      "INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES ('mga-admin', 'mg-admin', 'ag-admin', 'always', '@Orchestrator', 'all', 'shared', 0, ?)",
+    ).run(now);
+    db.close();
+
+    const res = await fetch(`${baseUrl}/api/coworkers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Review Bot',
+        folder: 'review-bot',
+        trigger: '@ReviewBot',
+        // routing defaults to 'direct'
+      }),
+    });
+    expect(res.status).toBe(201);
+    const created = await res.json();
+
+    const verifyDb = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+    // The new coworker should have BOTH wirings:
+    //   1. its own dashboard messaging group (dashboard:review-bot)
+    //   2. a row in admin's messaging group with @reviewbot engage pattern
+    const ownMg = verifyDb
+      .prepare("SELECT id FROM messaging_groups WHERE platform_id = 'dashboard:review-bot' AND channel_type = 'dashboard'")
+      .get() as { id: string } | undefined;
+    expect(ownMg, 'direct routing must give the coworker its own dashboard tab').toBeTruthy();
+    const ownMembership = verifyDb
+      .prepare('SELECT 1 FROM messaging_group_agents WHERE messaging_group_id = ? AND agent_group_id = ?')
+      .get(ownMg!.id, created.id);
+    expect(ownMembership, 'coworker must be a member of its own dashboard mg').toBeTruthy();
+
+    const adminMembership = verifyDb
+      .prepare(
+        "SELECT engage_mode, engage_pattern FROM messaging_group_agents WHERE messaging_group_id = 'mg-admin' AND agent_group_id = ?",
+      )
+      .get(created.id) as { engage_mode: string; engage_pattern: string } | undefined;
+    expect(adminMembership, 'coworker must also be bound into admin mg so orchestrator can see it').toBeTruthy();
+    expect(adminMembership!.engage_mode).toBe('pattern');
+    expect(adminMembership!.engage_pattern).toBe('@review-bot\\b');
+    verifyDb.close();
+  });
+
   it('creates coworker with parent↔child agent wiring when an admin group exists', async () => {
     const db = createDashboardTestDb();
     const now = new Date().toISOString();
