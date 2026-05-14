@@ -20,6 +20,9 @@
 //   R12 backticked `/workflow` refs inside bodies rewritten to section refs;
 //       `/overlay` refs rewritten to Task subagent pointer;
 //       capability skill slash commands left literal
+//   R13 every real on-disk WORKFLOW.md parses to ≥1 step OR declares extends
+//       (catches the silent-empty-body failure mode where a wrong step format
+//       causes the parser to drop the entire workflow body)
 
 import fs from 'fs';
 import os from 'os';
@@ -27,7 +30,7 @@ import path from 'path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { composeCoworkerSpine, readCoworkerTypes } from './claude-composer.js';
+import { composeCoworkerSpine, readCoworkerTypes, readSkillCatalog } from './claude-composer.js';
 
 const tempDirs: string[] = [];
 
@@ -626,6 +629,54 @@ describe('R18: composing every non-abstract coworker type emits zero "Unknown sl
     }
     const unknownSlash = warnings.filter((w) => /\[composer\] Unknown slash ref/.test(w));
     expect(unknownSlash, `composer warnings:\n${unknownSlash.join('\n')}`).toEqual([]);
+  });
+});
+
+describe('R13: every real WORKFLOW.md parses to ≥1 step (or declares extends)', () => {
+  // The composer's step parser (src/claude-composer/registry.ts) only matches
+  // numbered-list step headers shaped `N. **Title** {#id}`. Workflows that use
+  // `## Step N: TITLE` H2 headers, `#### N. Title` H4 headers, or any other
+  // shape silently produce steps=[], stepBodies={}, and renderCoworkerSpine
+  // emits the description with no body. This is a recurring foot-gun (4
+  // workflows shipped broken before this test landed) so we pin it.
+  //
+  // Workflows that declare `extends: <parent>` legitimately inherit step
+  // structure from a parent and may have an empty own-body — those are exempt.
+  it('on-disk workflows produce non-empty step parses', () => {
+    const workflowsDir = path.join(REPO_ROOT, 'container', 'workflows');
+    if (!fs.existsSync(workflowsDir)) return;
+
+    const catalog = readSkillCatalog(REPO_ROOT);
+    const broken: Array<{ name: string; reason: string }> = [];
+    for (const meta of Object.values(catalog)) {
+      if (meta.type !== 'workflow') continue;
+      if (meta.extendsWorkflow) continue;
+      if (meta.steps.length === 0) {
+        broken.push({
+          name: meta.name,
+          reason: `${meta.path} parsed to zero steps`,
+        });
+        continue;
+      }
+      const totalBody = Object.values(meta.stepBodies).reduce((acc, b) => acc + b.length, 0);
+      // 100 chars is a generous floor — any workflow with real procedural
+      // content easily clears it. The previous broken slang workflows had
+      // 200+ lines of body that the parser dropped to 0 chars.
+      if (totalBody < 100) {
+        broken.push({
+          name: meta.name,
+          reason: `${meta.path} parses to ${meta.steps.length} step(s) but stepBodies sum to only ${totalBody} chars (likely the parser captured headers but not body content)`,
+        });
+      }
+    }
+
+    expect(
+      broken,
+      broken.length === 0
+        ? ''
+        : `Workflow body silently dropped — fix step format to \`N. **Title** {#id}\`:\n` +
+            broken.map((b) => `  - ${b.name}: ${b.reason}`).join('\n'),
+    ).toEqual([]);
   });
 });
 
