@@ -6530,38 +6530,46 @@ export async function handleRequest(
           now,
         );
 
-      if (routing === 'direct') {
-        const { messagingGroupId } = ensureDashboardChatWiring(wdb, { id: agId, folder, name }, triggerPattern, now);
-        bootstrapEagerSession(wdb, agId, messagingGroupId, now);
-      } else {
-        // Internal: wire into admin's channel with @mention pattern
-        const adminMg = wdb
-          .prepare(
-            `SELECT mg.id FROM messaging_groups mg
+      // Admin-group binding: every new non-admin coworker is reachable from
+      // the admin (orchestrator) via @<name> mention. Without this, the admin
+      // can't discover the new coworker as a destination — `direct` routing
+      // alone gives the coworker its own dashboard tab but leaves it invisible
+      // to peers, breaking handoff flows like Triager → Fixer → Reviewer.
+      // Both `direct` and `internal` routings get the admin binding; only
+      // `direct` additionally gets its own dashboard tab.
+      const adminMg = wdb
+        .prepare(
+          `SELECT mg.id FROM messaging_groups mg
            JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id
            JOIN agent_groups ag ON mga.agent_group_id = ag.id
            WHERE ag.is_admin = 1 AND mg.channel_type = 'dashboard' LIMIT 1`,
-          )
-          .get() as { id: string } | undefined;
-        if (adminMg) {
-          const existingMga = wdb
-            .prepare('SELECT 1 FROM messaging_group_agents WHERE messaging_group_id = ? AND agent_group_id = ? LIMIT 1')
-            .get(adminMg.id, agId);
-          if (!existingMga) {
-            wdb
-              .prepare(
-                "INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES (?, ?, ?, 'pattern', ?, 'all', 'shared', 0, ?)",
-              )
-              .run(
-                `mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                adminMg.id,
-                agId,
-                `@${normalizeDestinationName(name)}\\b`,
-                now,
-              );
-          }
-          bootstrapEagerSession(wdb, agId, adminMg.id, now);
+        )
+        .get() as { id: string } | undefined;
+      if (adminMg && !isAdmin) {
+        const existingMga = wdb
+          .prepare('SELECT 1 FROM messaging_group_agents WHERE messaging_group_id = ? AND agent_group_id = ? LIMIT 1')
+          .get(adminMg.id, agId);
+        if (!existingMga) {
+          wdb
+            .prepare(
+              "INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES (?, ?, ?, 'pattern', ?, 'all', 'shared', 0, ?)",
+            )
+            .run(
+              `mga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              adminMg.id,
+              agId,
+              `@${normalizeDestinationName(name)}\\b`,
+              now,
+            );
         }
+      }
+
+      if (routing === 'direct') {
+        const { messagingGroupId } = ensureDashboardChatWiring(wdb, { id: agId, folder, name }, triggerPattern, now);
+        bootstrapEagerSession(wdb, agId, messagingGroupId, now);
+      } else if (adminMg) {
+        // Internal routing: no own dashboard tab, lives inside admin's group.
+        bootstrapEagerSession(wdb, agId, adminMg.id, now);
       }
 
       // Grant dashboard-admin the owner role so strict sender policy works
