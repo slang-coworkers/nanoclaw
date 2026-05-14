@@ -47,6 +47,22 @@ WATCHED_FORUM_IDS = set(
 )
 
 
+# ── Read-only mode ──────────────────────────────────────────────────────────
+# When DISCORD_READ_ONLY=1 is set, every code path that writes to Discord
+# (Gateway-driven thread.send, the send_message / moderate_message /
+# create_channel tools, the feedback_collector button-post) aborts before
+# making the API call. The agent's allowed_mcp_tools list is the primary
+# gate; this is defense-in-depth at the slang-mcp layer so even a misconfig
+# can't cause lego (or any read-only install) to write to Discord.
+
+def _read_only_blocked(action: str) -> bool:
+    """Return True if DISCORD_READ_ONLY=1 — caller must abort the write."""
+    if os.environ.get("DISCORD_READ_ONLY") == "1":
+        logger.warning(f"DISCORD_READ_ONLY=1 — blocked Discord write: {action}")
+        return True
+    return False
+
+
 # ── REST-based Discord API (no Gateway needed, works through OneCLI proxy) ──
 
 _discord_http_client: Optional["httpx.AsyncClient"] = None
@@ -375,6 +391,8 @@ async def init_discord_client():
     @client.event
     async def on_thread_create(thread: discord.Thread):
         if thread.parent_id and str(thread.parent_id) in WATCHED_FORUM_IDS:
+            if _read_only_blocked(f"post SummonView in on_thread_create thread={thread.id}"):
+                return
             try:
                 await thread.send("", view=SummonView())
                 logger.info(f"Posted SummonView on new thread: {thread.name}")
@@ -541,6 +559,8 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
     global client
 
     try:
+        if _read_only_blocked(f"send_message channel={args.channel_id}"):
+            return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
         allowed_channels_raw = os.environ.get("DISCORD_ALLOWED_SEND_CHANNELS", "")
         allowed_channels = {c.strip() for c in allowed_channels_raw.split(",") if c.strip()}
         allowed_forums_raw = os.environ.get("DISCORD_ALLOWED_SEND_FORUMS", "")
@@ -938,6 +958,8 @@ async def moderate_message(args: ModerateMessageArgs) -> Dict[str, Any]:
     global client
 
     try:
+        if _read_only_blocked(f"moderate_message channel={args.channel_id} msg={args.message_id}"):
+            return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
         # Ensure client is connected
         client = await ensure_client_connected()
 
@@ -1455,6 +1477,8 @@ async def create_channel(args: CreateChannelArgs) -> Dict[str, Any]:
     global client
 
     try:
+        if _read_only_blocked(f"create_channel server={args.server_id} name={args.name}"):
+            return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
         # Ensure the client is connected
         await ensure_client_connected()
 
