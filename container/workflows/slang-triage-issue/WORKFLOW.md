@@ -13,7 +13,7 @@ uses:
 
 Slang-specific triage workflow. Use when asked to triage an issue on `shader-slang/slang`, or when the orchestrator forwards a Slang issue for analysis.
 
-**Read-only triage.** You NEVER post comments, create labels, or modify anything on GitHub. All output flows back to your parent (the orchestrator) via `send_message(to="parent")`. Downstream agents (slang-fixer) may push branches and open **draft PRs** under their own workflow rules — that's their decision, not yours.
+**Read-only triage.** You NEVER post comments, create labels, or modify anything on GitHub. All output flows back to your parent via `send_message(to="parent")` per the chain-reporting protocol.
 
 ## Steps
 
@@ -65,18 +65,18 @@ Slang-specific triage workflow. Use when asked to triage an issue on `shader-sla
    | Priority | P0 (ship-stopper) / P1 (regression/broken) / P2 (normal) / P3 (nice-to-have) |
    | Duplicate? | Link to existing issue if duplicate |
 
-5. **Report initial triage to parent (mandatory)** {#report} — send a tight 5-bullet summary to your parent (the orchestrator) so they know the classification before any fix work begins. This is NOT the final summary — that comes in Step 8 after slang-fixer reports back.
+5. **Report initial triage to parent (mandatory)** {#report} — `send_message(to="parent")` with the [Triage] 5-bullet so your parent has the classification before any fix work begins. This is the *initial* report; the *resolution* comes in Step 8 after the downstream chain reports back.
 
    ```
    send_message(to="parent", text="[Triage] shader-slang/slang#<number>: <title>\n\n• Classification: <category> / <severity> / <component> / <priority>\n• Summary: <one-line of the bug>\n• Relevant code: <top 1–2 file paths>\n• Related: <duplicate of #X / fix in flight #Y / no prior work>\n• Routing: <forwarding to slang-fixer / not actionable — reason>")
    ```
 
-   Five bullets, no more. The full classification + research notes go into Step 7 memory; the bullets are what your parent reads.
+   The full classification + research notes go into Step 7 memory; the bullets are the scannable signal.
 
-6. **Forward to slang-fixer (if actionable)** {#forward} — if the issue is actionable (bug or regression with clear repro), forward to the Slang fixer. Slang-fixer's workflow allows pushing a branch + opening a **draft PR** to a fork (so Reviewer B / Devin can run); they'll fall back to patch mode if no fork has push rights. Either way, they'll report back here with their result.
+6. **Forward to slang-fixer (if actionable)** {#forward} — if the issue is actionable (bug or regression with clear repro), forward to the fixer. Send the handoff as a `[Triage handoff]` message; the fixer's workflow handles the rest.
 
    ```
-   send_message(to="slang-fixer", text="[Triage handoff] shader-slang/slang#<number>: <title>\n\nPriority: <pri>\nComponent: <comp>\n\nSummary: <what's broken>\nRelevant files: <paths>\nRepro: <steps>\n\nPlease investigate and draft a fix. You may push a branch + open a draft PR if you have push rights to a fork — otherwise fall back to patch mode. Report back with a 5-bullet [Fix Report].")
+   send_message(to="slang-fixer", text="[Triage handoff] shader-slang/slang#<number>: <title>\n\nPriority: <pri>\nComponent: <comp>\n\nSummary: <what's broken>\nRelevant files: <paths>\nRepro: <steps>")
    ```
 
    If not actionable (feature request, needs-more-info, question), skip this step and note in Step 5's "Routing" bullet why.
@@ -101,27 +101,20 @@ Slang-specific triage workflow. Use when asked to triage an issue on `shader-sla
    EOF
    ```
 
-8. **Forward fixer's resolution upstream (when it arrives)** {#forward-up} — slang-fixer reports back via `send_message(to="parent")` with a `[Fix Report]` once their work is done (fixed / partial / blocked, including the draft PR url and review verdict). That message wakes your session as a new inbound. **The chain isn't closed until orchestrator hears about the resolution.**
-
-   When you receive a `[Fix Report]` inbound from slang-fixer:
-
-   - **Compile a chain summary.** Pull the key fields from the fixer's 5 bullets — status, draft PR url (if any), review verdict, next-action.
-   - **Forward 5 bullets up to orchestrator** via `send_message(to="parent")`:
+8. **Forward resolution upstream (when fixer reports back)** {#forward-up} — your downstream chain (fixer → reviewer → fixer) takes 30–60 min. When a `[Fix Report]` arrives in your inbound, **the chain isn't closed until you forward the resolution to your parent.** Compile the [Triage Resolution] 5-bullet from the fixer's report and send up:
 
    ```
-   send_message(to="parent", text="[Triage Resolution] shader-slang/slang#<number>: <title>\n\n• Outcome: <fixed / partial / blocked / abandoned>\n• Draft PR: <url-from-fixer-report-or-'patch only, no PR'>\n• Review: <APPROVE / REQUEST_CHANGES / N findings — top concern> (Reviewer A: <verdict>; Reviewer B: <verdict or skipped>)\n• Tests: <repro PASS/FAIL>; broader suite <result>\n• Next human action: <merge draft PR / address review / coordinate with maintainer X / close as wontfix / none>")
+   send_message(to="parent", text="[Triage Resolution] shader-slang/slang#<number>: <title>\n\n• Outcome: <fixed / partial / blocked / abandoned>\n• Draft PR: <url-or-'patch only, no PR'>\n• Review: <APPROVE / REQUEST_CHANGES / N findings — top concern> (A: <verdict>; B: <verdict or skipped>)\n• Tests: <repro PASS/FAIL>; broader suite <result>\n• Next human action: <merge draft / address review / coordinate / close as wontfix / none>")
    ```
 
-   Five bullets. Orchestrator sees this and the user can decide what to do (promote draft to ready-for-review, merge, etc.).
+   If the fixer's report is partial or blocked, still forward the resolution — substitute "blocked: <reason>" in the relevant bullets. Orchestrator needs to know the chain is closed even when the result is incomplete.
 
-   **If fixer's report is partial or blocked** (no PR url, missing review, etc.), still forward the 5-bullet resolution — substitute "blocked: <reason>" in the relevant bullets. Orchestrator needs to know the chain is closed even when the result is incomplete.
+   **Quietness rule while waiting.** Don't reply to status echoes during the long downstream wait:
 
-   **Quietness rule while waiting on slang-fixer's report.** Slang-fixer's full workflow (clone, repro, fix, build, peer-review) takes 30–60 min. If an inbound arrives during that window:
+   - **Substantive — RESPOND:** `[Fix Report]` arrives (proceed with this step); fixer reports a blocker or asks for direction; new instructions arrive from your parent (e.g. "abort", "change scope").
+   - **No-op — END YOUR TURN SILENTLY:** status echo from fixer ("working on it"); polite ack from your parent ("got it", "👍"); generic "still waiting" messages; any inbound with no new artifact, decision, error, or instruction.
 
-   - **Substantive — RESPOND:** the fixer sends `[Fix Report]` (proceed with this Step 8); fixer reports a blocker or asks for direction; new instructions arrive from orchestrator (e.g. "abort", "change scope"); fixer's review surfaces a `REQUEST_CHANGES` you need to relay.
-   - **No-op — END YOUR TURN SILENTLY (do not reply):** status echo from the fixer ("working on it", "build in progress"); polite ack from orchestrator ("got it", "👍"); generic "still waiting" messages; any inbound that contains no new artifact, no decision, no error, no new instruction.
-
-   Acknowledgments add no information; the peer already knows your state from your last outbound. Replying to a status-only inbound just wakes the peer, who acks back, who wakes you again — wasting tokens until the long operation breaks the cycle. End the turn silently.
+   Acknowledgments add no information — the peer already knows your state from your last outbound. End the turn silently and the loop dies on its own.
 
 ## Batch Mode
 
