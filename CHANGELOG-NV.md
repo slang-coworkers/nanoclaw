@@ -8,7 +8,7 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 |---|---|---:|
 | `nv-main` | Host process, composer, base spines/workflows, CI | 121 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 76 |
-| `nv-slang` | slang project spine, skills, workflows | 40 |
+| `nv-slang` | slang project spine, skills, workflows | 41 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 13 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 11 |
 
@@ -19,22 +19,23 @@ Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or 
 ## 📅 2026-05-14
 
 ### nv-main (4 PRs)
-- **#345** `fix: fetch-skills compares tree-sha, not just branch name` — comparing branch names skipped re-fetch when upstream advanced; now compares cached `github-tree-sha` against upstream sha per skill, with API-failure fallback to "skip"
-- **#341** `feat: chain-reporting protocol hoisted to base spine` — every coworker now inherits the 5-bullet `send_message(to="parent")` + `send_file` narrative-attachment shape (was slang-only); coordinated with #342 land sequence
-- **#338** `fix(host-sweep): stale CLAUDE.md detect survives host restarts` — empty in-memory `spawnedClaudeMdHash` after restart silently bypassed every active session; falls back to disk-hash and reseeds the map
-- **#336** `ci: catch silent empty-workflow-body` — `validate-templates` now fails on zero-step non-extends workflows; new R13 vitest asserts ≥1 step + 100-char `stepBodies` floor; CONTRIBUTING.md documents the required `N. **Title** {#id}` step format
+- **#336** `ci(nv-main): catch silent-empty-workflow-body failure mode`
+- **#338** `fix(host-sweep): stale CLAUDE.md detect survives host restarts`
+- **#341** `feat(nv-main): add chain-reporting protocol to base spine`
+- **#345** `fix(nv-main): fetch-skills compares tree-sha, not just branch name`
 
 ### nv-dashboard (3 PRs)
-- **#344** `fix: hidden-session count + Create Modal type-cache regression` — Pixel Office badge now filters `hidden_at`; transient `/api/types` failure no longer poisons the cache (empty `{}` was truthy → never retried)
-- **#343** `fix: unread badges propagate + don't auto-mark on view` — outbound poll 30s→3s for agent-originated activity; right-panel render no longer auto-marks the "target" session; coworker click no longer bumps the folder cursor; "mark all read" now also bumps folder cursor
-- **#337** `fix: always bind new coworkers to admin's messaging group` — `routing: direct` previously got own dashboard tab but no admin binding (multi-agent handoff broken); both wirings now apply unconditionally for non-admin coworkers
+- **#337** `fix(dashboard): always bind new coworkers to admin's messaging group`
+- **#343** `fix(dashboard): unread badges propagate correctly + don't auto-mark on view`
+- **#344** `fix(dashboard): hidden-session count + Create Modal type-cache regression`
 
-### nv-slang (5 PRs)
-- **#342** `feat: draft-PR mode + 5-bullet chain reporting` — `slang-fix-issue` can push fork branch + open cross-fork draft PR (unlocks Devin reviewer); chain-reporting moved to base spine via #341
-- **#339** `fix: peer-review quietness rule + active-work sentinel` — kills polite-ack loops between fixer/reviewer (substantive vs no-op classification); `/workspace/agent/active-work/<target>/` claim sentinel deduplicates handoffs arriving via multiple a2a sources, with 30-min TTL
-- **#335** `fix: reformat slang-* workflow steps to numbered-list` — four workflows (`slang-discord-answer`, `slang-fix-issue`, `slang-pr-review`, `slang-triage-issue`) were silently composing as description-only because the parser regex requires `N. **Title** {#id}`; rewrote all four with anchor IDs preserved
-- **#334** `feat: add slang-reviewer coworker + slang-pr-review workflow` — coworker type + workflow; the skill files live upstream at `shader-slang/slang-skills@coworkers` and are fetched at build time via skill-source inheritance
-- **#333** `feat: optional peer-review step in slang-fix-issue` — Step 4.5 sends diff to `slang-reviewer` when present in destinations; silent skip when absent; two-round cap
+### nv-slang (6 PRs)
+- **#334** `feat(nv-slang): add slang-reviewer coworker + slang-pr-review workflow`
+- **#333** `feat(nv-slang): add optional peer-review step to slang-fix-issue`
+- **#335** `fix(nv-slang): reformat workflow steps to numbered-list (composer compat)`
+- **#339** `fix(nv-slang): peer-review quietness rule + active-work sentinel`
+- **#342** `feat(nv-slang): draft-PR mode + 5-bullet chain reporting`
+- **#347** `feat(slang-mcp): DISCORD_READ_ONLY env gate for Discord-write paths`
 
 ## 📅 2026-05-13
 
