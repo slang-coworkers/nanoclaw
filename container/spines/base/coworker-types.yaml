@@ -16,6 +16,7 @@ base-common:
     # directly and not inherited by typed coworkers.
     - container/spines/base/context/workspace.md
     - container/spines/base/context/invocation.md
+    - container/spines/base/context/chain-reporting.md
   skills:
     - base-nanoclaw
     - codex-critique
