@@ -601,9 +601,6 @@ export function detectStaleContainers(): Array<{ sessionId: string; agentGroupId
     const ag = getAgentGroup(session.agent_group_id);
     if (!ag) continue;
 
-    const spawnHash = spawnedClaudeMdHash.get(sessionId);
-    if (!spawnHash) continue;
-
     const coworkerType = ag.coworker_type || 'default';
     let extra: string | null = null;
     try {
@@ -620,6 +617,32 @@ export function detectStaleContainers(): Array<{ sessionId: string; agentGroupId
       overlays,
     });
     const currentHash = crypto.createHash('sha256').update(composed).digest('hex');
+
+    // Resolve the baseline hash for the running container. The in-memory map
+    // is populated when this host process spawned the container, but it
+    // empties on host restart — without a fallback, every container that
+    // outlived a host restart becomes permanently invisible to stale
+    // detection (the bug that left slang-triage running with a 3-day-old
+    // CLAUDE.md after multiple /update-nanoclaw-instance cycles).
+    //
+    // The on-disk CLAUDE.md is what the running container actually started
+    // with (the container reads it at spawn time). Hashing it gives a
+    // reliable baseline that survives host restarts. Seed the map so the
+    // next sweep tick skips the disk read.
+    let spawnHash = spawnedClaudeMdHash.get(sessionId);
+    if (!spawnHash) {
+      try {
+        // Read as Buffer (no encoding) to match the spawn site at line ~404
+        // exactly — eliminates any theoretical encoding-roundtrip drift.
+        const onDisk = fs.readFileSync(path.join(GROUPS_DIR, ag.folder, 'CLAUDE.md'));
+        spawnHash = crypto.createHash('sha256').update(onDisk).digest('hex');
+        spawnedClaudeMdHash.set(sessionId, spawnHash);
+      } catch {
+        // No CLAUDE.md on disk — group hasn't been spawned by anyone yet.
+        // Skip; the next real spawn will populate the map.
+        continue;
+      }
+    }
 
     if (currentHash !== spawnHash) {
       stale.push({ sessionId, agentGroupId: ag.id, folder: ag.folder });
