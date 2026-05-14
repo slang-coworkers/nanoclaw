@@ -75,6 +75,13 @@ The two reviewers see the same diff and produce independent findings. They are c
 
 5. **Summarize** {#summarize} — when both subprocesses complete (or just A if B was skipped), call the skill's summarizer for each run-directory. The skill returns severity counts, per-subagent cost, and a drift signal (GitHub-write attempts must be 0 — non-zero means the read-only allowlist leaked).
 
+   **Quietness rule while Reviewer A runs.** Reviewer A's claude pipeline is dispatched in the background in Step 4 and runs ~20–30 min. While that's in flight, your only obligation is to wait. If an inbound arrives during that window:
+
+   - **Substantive — RESPOND:** the requester sends a new patch (e.g. a clang-format-only update); the requester asks you to restart on a different patch or to abort; the requester reports an error or blocker; new instructions arrive that change the review scope; Reviewer A's subprocess emits a completion signal you can act on.
+   - **No-op — END YOUR TURN SILENTLY (do not reply):** status echo from the requester ("waiting", "standing by"); polite ack from your parent ("got it", "👍"); generic "still waiting" messages; any inbound that contains no new patch, no decision, no error, no new instruction.
+
+   Acknowledgments add no information; the peer already knows your state from your last outbound. Replying to a status-only inbound just wakes the peer, who acks back, who wakes you again — wasting tokens until Reviewer A breaks the cycle. End the turn silently and the loop dies on its own.
+
 6. **Report** {#report} — output goes to the caller — never to GitHub.
 
    - `mcp__nanoclaw__send_file` Reviewer A's `final-review.md`
