@@ -329,6 +329,11 @@ function activeNanoSessionsForCoworker(cw) {
   const agentGroupId = cw.agentGroupId || cw.agent_group_id || agentGroupIdForFolder(cw.folder);
   return (cachedSessions || []).filter((s) => {
     if (!s.nanoclaw_session_id) return false;
+    // Hidden sessions are user-suppressed: they don't render in the right-panel
+    // session list, so they shouldn't count toward summaries either (Pixel
+    // Office "N sessions" badge, hasMultipleActiveSessions, mark-all-read,
+    // etc.). Callers that need the unfiltered view can scan cachedSessions.
+    if (s.hidden_at) return false;
     if (agentGroupId && s.agent_group_id) return s.agent_group_id === agentGroupId;
     return s.group_folder === cw.folder;
   });
@@ -3924,17 +3929,20 @@ function getCwCoworkers() {
 function renderCwSidebar() {
   const list = document.getElementById('cw-list');
   if (!list) return;
-  // Eagerly fetch coworker-types.json for type validation
+  // Lazy-fetch /api/types for validation. On error or empty response, leave
+  // cwState.types null so the next call retries — caching {} silently
+  // breaks downstream consumers (Create Coworker dropdown saw empty Type +
+  // Overlays after a transient fetch failure on first page load).
   if (!cwState.types) {
     cwState.types = 'loading'; // sentinel to prevent duplicate fetches
     fetch('/api/types')
-      .then((r) => (r.ok ? r.json() : {}))
+      .then((r) => (r.ok ? r.json() : null))
       .then((t) => {
-        cwState.types = t;
+        cwState.types = t && Object.keys(t).length > 0 ? t : null;
         renderCwSidebar(); // re-render with valid types
       })
       .catch(() => {
-        cwState.types = {};
+        cwState.types = null; // retry on next render
       });
   }
   const coworkers = getCwCoworkers();
@@ -5339,22 +5347,21 @@ async function updateCwDetail() {
 }
 
 async function showCreateModal() {
-  // Fetch types, overlays, and instruction templates
-  if (!cwState.types) {
-    try {
-      const res = await fetch('/api/types');
-      if (res.ok) cwState.types = await res.json();
-    } catch {
-      cwState.types = {};
-    }
+  // Always re-fetch types + overlays on Create Modal open — it's a
+  // user-initiated action, two cheap GETs, and ensures the dropdowns reflect
+  // the current state even if a previous lazy fetch landed empty (e.g.
+  // dashboard restart / transient network blip during initial sidebar render).
+  try {
+    const res = await fetch('/api/types');
+    if (res.ok) cwState.types = await res.json();
+  } catch {
+    /* fall through — keep whatever we had */
   }
-  if (!cwState.availableOverlays) {
-    try {
-      const res = await fetch('/api/overlays');
-      if (res.ok) cwState.availableOverlays = await res.json();
-    } catch {
-      cwState.availableOverlays = [];
-    }
+  try {
+    const res = await fetch('/api/overlays');
+    if (res.ok) cwState.availableOverlays = await res.json();
+  } catch {
+    /* fall through */
   }
   let instructionTemplates = [];
   try {
