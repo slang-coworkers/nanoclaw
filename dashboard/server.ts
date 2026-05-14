@@ -1329,7 +1329,11 @@ function refreshMessageTimestamps(): void {
   }
 }
 refreshMessageTimestamps();
-const msgTsTimer = setInterval(refreshMessageTimestamps, 30000);
+// Poll every 3s — agent-originated messages (a2a replies, fix reports, peer-review
+// verdicts) write to outbound.db inside container subprocesses; the dashboard has no
+// direct hook, so we rely on this poll to surface new activity to the unread badge.
+// 3s is the balance between dashboard responsiveness and disk I/O across all sessions.
+const msgTsTimer = setInterval(refreshMessageTimestamps, 3000);
 msgTsTimer.unref?.();
 
 // ---------- Context window cache (token usage per coworker) ----------
