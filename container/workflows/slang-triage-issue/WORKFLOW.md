@@ -11,7 +11,7 @@ uses:
 
 # /slang-triage-issue — Triage a Slang GitHub Issue
 
-Slang-specific overlay of the generic `/triage-issue` workflow. Use when asked to triage an issue on `shader-slang/slang`, or when the orchestrator forwards a Slang issue for analysis.
+Slang-specific triage workflow. Use when asked to triage an issue on `shader-slang/slang`, or when the orchestrator forwards a Slang issue for analysis.
 
 **A/B test mode: NEVER post comments, create labels, or modify anything on GitHub. All output goes to parent via send_message.**
 

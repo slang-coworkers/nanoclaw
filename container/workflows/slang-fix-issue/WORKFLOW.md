@@ -93,7 +93,7 @@ Use when you receive a triage handoff from slang-triage, or when asked to fix a 
 
    If tests fail, iterate on the fix (go back to Step 4).
 
-6. **Peer review (only if `slang-reviewer` is in your destinations)** {#peer-review} — if `slang-reviewer` is in your destinations, send the diff for peer review BEFORE reporting to parent. The reviewer wraps the production claude-code-action PR-review pipeline (`/slang-pr-review`) and accepts three input modes — `pr` (PR URL), `branch`, or `patch`. **A/B-test mode fixer doesn't push or open a PR**, so the only valid input here is `patch`.
+6. **Peer review (only if `slang-reviewer` is in your destinations)** {#peer-review} — if `slang-reviewer` is in your destinations, send the diff for peer review BEFORE reporting to parent. The reviewer runs the slang-pr-review workflow on the slang-reviewer agent (production claude-code-action PR-review pipeline) and accepts three input modes — `pr` (PR URL), `branch`, or `patch`. **A/B-test mode fixer doesn't push or open a PR**, so the only valid input here is `patch`.
 
    Save the diff as a patch file in the workspace, then send the path to the reviewer:
 
