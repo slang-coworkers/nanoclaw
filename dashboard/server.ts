@@ -6530,13 +6530,10 @@ export async function handleRequest(
           now,
         );
 
-      // Admin-group binding: every new non-admin coworker is reachable from
-      // the admin (orchestrator) via @<name> mention. Without this, the admin
-      // can't discover the new coworker as a destination — `direct` routing
-      // alone gives the coworker its own dashboard tab but leaves it invisible
-      // to peers, breaking handoff flows like Triager → Fixer → Reviewer.
-      // Both `direct` and `internal` routings get the admin binding; only
-      // `direct` additionally gets its own dashboard tab.
+      // Look up admin's dashboard messaging group up-front (no insert yet —
+      // ensureDashboardChatWiring's fallback path looks for "any dashboard
+      // mg this agent is already a member of," and inserting into the admin
+      // mg first would make it pick that up instead of creating an own tab).
       const adminMg = wdb
         .prepare(
           `SELECT mg.id FROM messaging_groups mg
@@ -6545,6 +6542,19 @@ export async function handleRequest(
            WHERE ag.is_admin = 1 AND mg.channel_type = 'dashboard' LIMIT 1`,
         )
         .get() as { id: string } | undefined;
+
+      if (routing === 'direct') {
+        const { messagingGroupId } = ensureDashboardChatWiring(wdb, { id: agId, folder, name }, triggerPattern, now);
+        bootstrapEagerSession(wdb, agId, messagingGroupId, now);
+      }
+
+      // Admin-group binding: every new non-admin coworker is reachable from
+      // the admin (orchestrator) via @<name> mention. Without this, the admin
+      // can't discover the new coworker as a destination — `direct` routing
+      // alone gives the coworker its own dashboard tab but leaves it invisible
+      // to peers, breaking handoff flows like Triager → Fixer → Reviewer.
+      // Both `direct` and `internal` routings get the admin binding; only
+      // `direct` additionally gets its own dashboard tab (handled above).
       if (adminMg && !isAdmin) {
         const existingMga = wdb
           .prepare('SELECT 1 FROM messaging_group_agents WHERE messaging_group_id = ? AND agent_group_id = ? LIMIT 1')
@@ -6562,14 +6572,10 @@ export async function handleRequest(
               now,
             );
         }
-      }
-
-      if (routing === 'direct') {
-        const { messagingGroupId } = ensureDashboardChatWiring(wdb, { id: agId, folder, name }, triggerPattern, now);
-        bootstrapEagerSession(wdb, agId, messagingGroupId, now);
-      } else if (adminMg) {
-        // Internal routing: no own dashboard tab, lives inside admin's group.
-        bootstrapEagerSession(wdb, agId, adminMg.id, now);
+        if (routing !== 'direct') {
+          // Internal routing: no own dashboard tab, session lives in admin mg.
+          bootstrapEagerSession(wdb, agId, adminMg.id, now);
+        }
       }
 
       // Grant dashboard-admin the owner role so strict sender policy works
