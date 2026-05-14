@@ -73,6 +73,32 @@ function main(): number {
     }
   }
 
+  // Workflow body assertion: catches the silent-empty-body failure mode where
+  // a WORKFLOW.md uses an unrecognized step format (e.g. `## Step N: TITLE`
+  // instead of `N. **Title** {#id}`). The composer's step parser regex in
+  // src/claude-composer/registry.ts only matches numbered-list items, so any
+  // other format produces steps=[], stepBodies={}, and the rendered CLAUDE.md
+  // emits the description with no body. Workflows that declare `extends:`
+  // legitimately inherit step structure from a parent and may have an empty
+  // own-body — those are exempt.
+  for (const meta of Object.values(catalog)) {
+    if (meta.type !== 'workflow') continue;
+    if (meta.extendsWorkflow) continue;
+    if (meta.steps.length > 0) continue;
+    failures.push({
+      typeName: meta.name,
+      message:
+        `WORKFLOW.md at ${meta.path} parsed to zero steps. The composer's step parser ` +
+        `(src/claude-composer/registry.ts) only matches numbered-list items shaped ` +
+        `\`N. **Title** {#id}\` — see container/workflows/plan/WORKFLOW.md for the ` +
+        `canonical example. ` +
+        `If you used \`## Step N: TITLE\` H2 headers or \`#### N. Title\` H4 headers, ` +
+        `rewrite as numbered-list items at column 0. ` +
+        `If this workflow inherits its steps from a parent, declare \`extends: <parent>\` ` +
+        `in frontmatter to opt out of this check.`,
+    });
+  }
+
   const skillCount = Object.keys(catalog).length;
   const leafCount = typeNames.length - abstractBases.size;
   console.log(
