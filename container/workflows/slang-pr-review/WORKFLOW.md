@@ -82,17 +82,15 @@ The two reviewers see the same diff and produce independent findings. They are c
 
    Acknowledgments add no information; the peer already knows your state from your last outbound. Replying to a status-only inbound just wakes the peer, who acks back, who wakes you again — wasting tokens until Reviewer A breaks the cycle. End the turn silently and the loop dies on its own.
 
-6. **Report** {#report} — output goes to the caller (your parent — typically slang-fixer). Never to GitHub.
+6. **Report** {#report} — output goes to your parent. Never to GitHub.
 
    - `mcp__nanoclaw__send_file(to="parent")` — Reviewer A's `final-review.md`
    - `mcp__nanoclaw__send_file(to="parent")` — Reviewer B's `devin-flags.md` (if Reviewer B ran)
-   - `mcp__nanoclaw__send_message(to="parent")` — **5-bullet executive summary** so your parent can make a decision and forward up the chain without re-reading the full review:
+   - `mcp__nanoclaw__send_message(to="parent")` with the [Review Verdict] 5-bullet:
 
    ```
-   send_message(to="parent", text="[Review Verdict] <repo>#<number> (<mode>)\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n• Findings: <X bugs, Y gaps, Z questions> (Reviewer A: <counts>; Reviewer B: <counts or skipped>)\n• Top concern: <one-line of the highest-severity finding, or 'no bugs'>\n• Test gaps: <one-line of recommended tests, or 'none'>\n• Artifacts: final-review.md attached; devin-flags.md attached (if B ran)")
+   send_message(to="parent", text="[Review Verdict] <repo>#<number> (<mode>)\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n• Findings: <X bugs, Y gaps, Z questions> (A: <counts>; B: <counts or skipped>)\n• Top concern: <one-line of the highest-severity finding, or 'no bugs'>\n• Test gaps: <one-line of recommended tests, or 'none'>\n• Disagreements: <N A/B disagreements — see final-review.md, or 'none'>")
    ```
-
-   Five bullets, no more. Disagreements between A and B (e.g. one flags a bug the other says is correct-per-spec) belong in the attached `final-review.md` for the human to read; the executive bullet just notes "<N> A/B disagreements — see final-review.md".
 
 7. **Cleanup** {#cleanup} — if Step 2 created a draft PR for the sole purpose of getting a Devin URL:
 

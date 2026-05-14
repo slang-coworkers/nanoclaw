@@ -9,6 +9,7 @@ slang-common:
   context:
     - container/spines/slang/context/layout.md
     - container/spines/slang/context/skill-discovery.md
+    - container/spines/slang/context/chain-reporting.md
   skills:
     - slang-build
     - slang-code-reader

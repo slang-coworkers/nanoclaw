@@ -188,18 +188,18 @@ If no fork has push rights (sandboxed environment, missing remote, etc.), fall b
 
    Then in Step 8, dispatch with `--mode patch <path>` instead of `--mode pr <N>`. Reviewer A still runs; Reviewer B (Devin) skipped because no PR URL.
 
-8. **Peer review (only if `slang-reviewer` is in your destinations)** {#peer-review} — dispatch to slang-reviewer with the artifact you just produced.
+8. **Peer review (only if `slang-reviewer` is in your destinations)** {#peer-review} — dispatch to slang-reviewer with the artifact you just produced. Provide the mode + URL/path + test summary; the reviewer's own workflow handles dispatch.
 
-   **PR mode (default — Step 7 succeeded).** Both Reviewer A (claude pipeline) and Reviewer B (Devin) run in parallel.
-
-   ```
-   send_message(to="slang-reviewer", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: pr\nDraft PR: <pr-url-from-step-7>\nBranch: <fork-owner>:<branch>\nBase: shader-slang/slang@main\n\nTests added: tests/<area>/test_<issue_number>.py\nTest results: <PASS / X failures>\n\nPlease run /slang-pr-review --mode pr --pr <N> --repo shader-slang/slang and reply APPROVE or REQUEST_CHANGES with specific suggestions. Code is on the branch; review commands here.")
-   ```
-
-   **Patch mode (Step 7 fell back).** Reviewer A only, Devin skipped.
+   **PR mode (default — Step 7 succeeded):**
 
    ```
-   send_file(to="slang-reviewer", path="/workspace/agent/patches/fix-<issue_number>.patch", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: patch\nBase: shader-slang/slang@main\n\nTests added: tests/<area>/test_<issue_number>.py\nTest results: <PASS / X failures>\n\nPlease run /slang-pr-review --mode patch --patch <attached> --base shader-slang/slang@main and reply APPROVE or REQUEST_CHANGES with specific suggestions.")
+   send_message(to="slang-reviewer", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: pr\nPR: <pr-url-from-step-7>\nBase: shader-slang/slang@main\n\nTests added: tests/<area>/test_<issue_number>.py\nTest results: <PASS / X failures>")
+   ```
+
+   **Patch mode (Step 7 fell back):**
+
+   ```
+   send_file(to="slang-reviewer", path="/workspace/agent/patches/fix-<issue_number>.patch", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: patch\nBase: shader-slang/slang@main\n\nTests added: tests/<area>/test_<issue_number>.py\nTest results: <PASS / X failures>")
    ```
 
    End your turn after sending. The reviewer's reply (with `final-review.md` attached and a severity-counts summary) arrives as a new inbound and triggers your next turn.
@@ -217,13 +217,11 @@ If no fork has push rights (sandboxed environment, missing remote, etc.), fall b
 
    If `slang-reviewer` is NOT in your destinations, skip this step and go directly to Step 9.
 
-9. **Report to parent (mandatory)** {#report} — send a tight 5-bullet executive summary to your parent (the agent that handed off — typically slang-triage). Use `send_message(to="parent")`. Five bullets, no more — your parent will compile their own 5-bullet summary upstream.
+9. **Report to parent (mandatory)** {#report} — `send_message(to="parent")` with the 5-bullet [Fix Report]:
 
    ```
-   send_message(to="parent", text="[Fix Report] <repo>#<number>: <title>\n\n• Status: <fixed / partial / blocked>\n• Changes: <N files, +X / −Y> — <one-line of what changed>\n• Tests: <repro test PASS/FAIL>; broader suite <result>\n• Review: <APPROVE / REQUEST_CHANGES / N findings — top concern>\n• Next: <draft PR <url> / patch attached / human action needed>")
+   send_message(to="parent", text="[Fix Report] <repo>#<number>: <title>\n\n• Status: <fixed / partial / blocked>\n• Changes: <N files, +X / −Y> — <one-line of what changed>\n• Tests: <repro PASS/FAIL>; broader suite <result>\n• Review: <APPROVE / REQUEST_CHANGES / N findings — top concern>\n• Next: <draft PR <url> / patch attached / human action needed>")
    ```
-
-   Anchors for parent (slang-triage) to include in its upstream summary: the **draft PR url** (or "patch only"), the **review verdict**, and the **next-action** the human should take.
 
 10. **Save work locally** {#save} — stash the changes and write a memory file. Leave the active-work sentinel in place; it serves as a "this issue was worked on by session X at time T" record. Stale sentinels are ignored by the next claimer.
 
