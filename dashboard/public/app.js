@@ -536,13 +536,11 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       ${previewBits.length ? `<div style="${previewStyle}" title="${escAttr(previewBits.join(' · '))}">${esc(previewBits.join(' · '))}</div>` : ''}
       <div style="${metaStyle}">${esc(metaParts.join(' · '))}${unreadBadge}</div>`;
     };
-    // Viewing the coworker's detail implicitly reads the currently-active session.
-    if (target.nanoSess.nanoclaw_session_id) {
-      sessionReadCursors.markRead(
-        target.nanoSess.nanoclaw_session_id,
-        sessionLastActiveMs(target.nanoSess) || Date.now(),
-      );
-    }
+    // No auto-mark-read on right-panel render. Marking a session as read should
+    // only happen when the user explicitly opens its thread/chat (via the 💬
+    // button or thread-stub click) — that way the per-session badge reflects
+    // actual user attention, not just dashboard navigation. The "mark all read"
+    // button below clears state explicitly when wanted.
     const targetHtml = `<div style="padding:5px 6px;border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,0.03);margin-bottom:5px">
       ${sessionRow(target.nanoSess, target.status, target.cs, target.ago, tagid, tsid, ttid, true)}
     </div>`;
@@ -2946,6 +2944,13 @@ document.addEventListener('click', (e) => {
     for (const s of sessions) {
       if (s.nanoclaw_session_id) sessionReadCursors.markRead(s.nanoclaw_session_id, now);
     }
+    // Advance the folder-level cursor too — without this, the left-panel
+    // coworker badge stays lit even after every session has been marked read.
+    // Use cw.lastMessageTs (server-aggregated max across all sessions) so the
+    // cursor matches the latest activity the user has acknowledged.
+    const cw = (state.coworkers || []).find((c) => c.folder === folder);
+    if (cw?.lastMessageTs) readCursors.markRead(folder, cw.lastMessageTs);
+    if (typeof renderCwSidebar === 'function') renderCwSidebar();
     if (typeof updateCwDetail === 'function') updateCwDetail();
     return;
   }
@@ -4104,18 +4109,11 @@ async function fetchCwMessages() {
     // Sync into global approval counter for sidebar dot
     cwState.approvalCountByFolder[cwState.selected] = (cwState.pendingApprovals || []).length;
     renderCwMessages();
-    // Mark as read using the coworker's lastMessageTs (covers all sessions
-    // including threads and a2a). Falls back to latest main-chat timestamp.
-    if (cwState.selected) {
-      const cw = (state.coworkers || []).find((c) => c.folder === cwState.selected);
-      const ts =
-        cw?.lastMessageTs ||
-        (cwState.messages.length > 0 ? cwState.messages[cwState.messages.length - 1].timestamp : null);
-      if (ts) {
-        readCursors.markRead(cwState.selected, ts);
-        renderCwSidebar();
-      }
-    }
+    // No auto-mark-read on coworker click. The folder-level cursor only advances
+    // when the user explicitly clicks "mark all read" (or via per-session opens
+    // that aggregate up). Otherwise clicking a coworker would silently mark
+    // unread activity in side a2a sessions as seen, even though the user only
+    // glanced at the main chat.
   } catch {
     /* ignore */
   }
