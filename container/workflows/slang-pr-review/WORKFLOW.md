@@ -5,7 +5,7 @@ type: workflow
 description: "Run TWO independent Slang PR reviewers on the same target and merge their output. Reviewer A is the production-equivalent claude-code-action@v1 + .github/workflows/claude-pr-review.yml pipeline (six .claude/agents/* subagents driven by REVIEW.md). Reviewer B is Devin Review (app.devin.ai/review) via agent-browser, requires a PR URL. Both reviewers are read-only — output is returned to the caller as a markdown file via send_file; no GitHub posting. For branch input the workflow may open a draft PR on a nominated fork to give Devin a URL (best-effort, skipped without push rights). Patch mode applies locally and runs Reviewer A only."
 requires: [code.read, issues.read]
 uses:
-  skills: [slang-pr-review, agent-browser, slang-code-reader, slang-github]
+  skills: [slang-pr-review-runner, agent-browser, slang-code-reader, slang-github]
   workflows: []
 ---
 
@@ -13,7 +13,7 @@ uses:
 
 Use when asked to review a Slang PR / branch / patch. The workflow runs **two reviewers concurrently** and produces a combined report:
 
-- **Reviewer A — nv-slang-bot.** The production claude-code-action@v1 + claude-pr-review.yml pipeline run locally. Six .claude/agents/* subagents, REVIEW.md protocol, deepwiki MCP. Owned by the `slang-pr-review` skill (scripts + prompt templates + byte-equivalence harness live there).
+- **Reviewer A — nv-slang-bot.** The production claude-code-action@v1 + claude-pr-review.yml pipeline run locally. Six .claude/agents/* subagents, REVIEW.md protocol, deepwiki MCP. Owned by the `slang-pr-review-runner` skill (scripts + prompt templates + byte-equivalence harness live there).
 - **Reviewer B — Devin Review.** Triggered by browsing `https://app.devin.ai/review/<owner>/<repo>/pull/<n>` via the `agent-browser` skill. Requires a GitHub PR URL — see Step 0.5.
 
 The two reviewers see the same diff and produce independent findings. They are complementary in practice (Devin tends to surface portability / silent-behavior issues; nv-slang-bot is stronger on subagent-domain correctness). Running both raises recall.
@@ -40,13 +40,13 @@ If ambiguous, ask before proceeding. Wrong mode wastes ~25 min and ~$20.
 
 If `branch` mode has no fork nominated, no working remote exists, OR the bot lacks `pull_requests: write` on the chosen fork, set `DEVIN_URL=""` and proceed with Reviewer A only. For `patch` mode `DEVIN_URL` is always empty — there's no PR to point Devin at. The workflow MUST still complete — Devin is best-effort.
 
-The slang-pr-review skill exposes a helper for this; the workflow's job is to decide whether to call it.
+The slang-pr-review-runner skill exposes a helper for this; the workflow's job is to decide whether to call it.
 
 ## Step 1: PREFLIGHT {#preflight}
 
 Both reviewers need their tooling ready:
 
-- **Reviewer A:** invoke the slang-pr-review skill's installer (idempotent). Ensures `~/.local/bin/claude` (>=2.1.x) and `/workspace/agent/slang` checkout (depth-50 master).
+- **Reviewer A:** invoke the slang-pr-review-runner skill's installer (idempotent). Ensures `~/.local/bin/claude` (>=2.1.x) and `/workspace/agent/slang` checkout (depth-50 master).
 - **Reviewer B:** verify the `agent-browser` skill is available (`agent-browser --help`). It comes pre-installed in the container's base skill set.
 
 For `pr` and `branch` modes, verify `gh auth status` resolves to a token that can read the target repo (read-only is sufficient — the skill never writes back). For `branch` mode where the workflow may open a Devin draft PR per Step 0.5, the token also needs `pull_requests: write` on the nominated fork.
@@ -57,10 +57,10 @@ Run A and B concurrently. Total wall time = max(A, B) ≈ 25 min instead of the 
 
 ### Step 2a — Reviewer A (nv-slang-bot)
 
-Invoke the slang-pr-review skill's `compose-and-run` entry point in the **background**. Same call shape as before:
+Invoke the slang-pr-review-runner skill's `compose-and-run` entry point in the **background**. Same call shape as before:
 
 ```
-slang-pr-review compose-and-run \
+slang-pr-review-runner compose-and-run \
   --mode {pr|branch|patch} \
   --pr <N> | --branch <ref> | --patch <path> \
   --repo <owner/repo>    [for pr/branch] \
@@ -74,7 +74,7 @@ Use `Agent(run_in_background=true)` or `Bash(run_in_background=true)`. Capture t
 Skip if `DEVIN_URL` is empty (per Step 0.5). Otherwise call the skill:
 
 ```
-slang-pr-review devin-fetch --url <DEVIN_URL> --out <run_dir>
+slang-pr-review-runner devin-fetch --url <DEVIN_URL> --out <run_dir>
 ```
 
 Best-effort: exit 2 = auth-wall, exit 3 = timeout, both treated as Reviewer-B-skipped. Reviewer A still completes.

@@ -73,11 +73,11 @@ slang-fixer:
     - slang-fix-issue
 
 slang-reviewer:
-  description: "Slang PR reviewer — runs the production claude-code-action@v1 + .github/workflows/claude-pr-review.yml protocol locally against a PR, branch, or patch. Dry-run by default; --live-on-fork posts as nv-slang-bot[bot] but only against a nominated fork repo where the bot has push rights (never upstream shader-slang/slang). Wraps the same six .claude/agents/* subagents, REVIEW.md protocol, system-prompt append, allowed-tools list, and deepwiki MCP that production sends. Used for review-bot iteration without adding noise to real PRs."
+  description: "Slang PR reviewer — runs the production claude-code-action@v1 + .github/workflows/claude-pr-review.yml protocol locally against a PR, branch, or patch, in parallel with Devin Review. Read-only: produces a final-review.md (Reviewer A) and devin-flags.md (Reviewer B), returned to the caller via send_file. Wraps the same six .claude/agents/* subagents, REVIEW.md protocol, system-prompt append, and deepwiki MCP that production sends; tool allowlist deliberately narrows to read-only. Used for PR review without writing back to GitHub."
   project: slang
   extends: slang-reader
   skills:
-    - slang-pr-review
+    - slang-pr-review-runner
   workflows:
     - slang-pr-review
 
