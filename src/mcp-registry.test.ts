@@ -288,15 +288,17 @@ describe('mcp-registry — stdio server detection', () => {
 
     const { startMcpServers, stopServer, isServerAlive } = await import('./mcp-registry.js');
     const handle = await startMcpServers(45000);
+    expect(isServerAlive('slang-mcp')).toBe(true);
 
+    // First stop: marks server dead. The child kill happens via reapProcessTree's
+    // global process.kill calls (not stubProcesses[0].kill) — see mcp-registry.ts
+    // reapProcessTree() for why we walk the descendant tree explicitly.
     stopServer('slang-mcp');
     expect(isServerAlive('slang-mcp')).toBe(false);
-    expect(stubProcesses[0].kill).toHaveBeenCalledWith('SIGTERM');
 
-    // Second stop: the process handle is already cleared, so no kill.
-    (stubProcesses[0].kill as ReturnType<typeof vi.fn>).mockClear();
-    stopServer('slang-mcp');
-    expect(stubProcesses[0].kill).not.toHaveBeenCalled();
+    // Second stop: server already dead, idempotent — no throw, alive stays false.
+    expect(() => stopServer('slang-mcp')).not.toThrow();
+    expect(isServerAlive('slang-mcp')).toBe(false);
 
     handle.stop();
   });

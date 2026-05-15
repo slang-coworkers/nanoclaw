@@ -7,7 +7,7 @@
  *
  * Servers are defined in config or auto-detected from container/mcp-servers/.
  */
-import { ChildProcess, spawn } from 'child_process';
+import { ChildProcess, execSync, spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -232,11 +232,10 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
         const entry = servers.get(def.name);
         if (entry) entry.alive = false;
         clearDiscoveredTools(def.name);
-        try {
-          process.kill(-proc.pid!, 'SIGTERM');
-        } catch {
-          /* group already dead */
-        }
+        // Reap any descendants left behind. supergateway's child tree
+        // (sh → uv → python) often survives the parent — without this,
+        // each restart leaks one tree (see reapProcessTree comment).
+        if (proc.pid) reapProcessTree(proc.pid, { server: def.name, on: 'exit' });
         if (code !== null && code !== 0) {
           log.warn('MCP server exited unexpectedly', { server: def.name, code });
         }
@@ -289,15 +288,7 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
     stop: () => {
       for (const [name, running] of servers) {
         if (running.process?.pid) {
-          try {
-            process.kill(-running.process.pid, 'SIGTERM');
-          } catch {
-            try {
-              running.process.kill('SIGTERM');
-            } catch {
-              /* already gone */
-            }
-          }
+          reapProcessTree(running.process.pid, { server: name });
           log.info('MCP server stopped', { server: name });
         }
       }
@@ -329,6 +320,80 @@ export function getServerDef(name: string): McpServerDef | undefined {
   return servers.get(name)?.def;
 }
 
+/**
+ * Reap a process and ALL its descendants. Without this, supergateway's child
+ * tree (sh → uv → python) survives a process-group SIGTERM because uv/python
+ * call setsid(), escaping supergateway's group. Result: each /servers/restart
+ * leaves a live python slang-mcp-server connected to upstream APIs (Discord
+ * Gateway, etc.), accumulating until the host runs out of file descriptors,
+ * memory, or duplicate Discord button posts give the leak away.
+ *
+ * Strategy:
+ *   1. SIGTERM the supergateway process group (best-effort, gives clean
+ *      shutdown to anything that listens to its parent group)
+ *   2. Walk the descendant tree via `pgrep -P` and SIGKILL every PID
+ *   3. SIGKILL the supergateway itself
+ */
+function reapProcessTree(rootPid: number, logCtx: Record<string, unknown> = {}): void {
+  const descendants = collectDescendantPids(rootPid);
+
+  // Step 1: best-effort SIGTERM the process group
+  try {
+    process.kill(-rootPid, 'SIGTERM');
+  } catch {
+    /* group already dead or pid invalid */
+  }
+
+  // Step 2: SIGKILL each descendant by PID. Order: leaves first, then up.
+  // Reverse the BFS order so leaves get killed before their parents — avoids
+  // momentary re-parenting to init while we're walking.
+  for (const pid of [...descendants].reverse()) {
+    try {
+      process.kill(pid, 'SIGKILL');
+    } catch {
+      /* already gone */
+    }
+  }
+
+  // Step 3: SIGKILL the root
+  try {
+    process.kill(rootPid, 'SIGKILL');
+  } catch {
+    /* already gone */
+  }
+
+  if (descendants.length > 0) {
+    log.info('Reaped MCP supergateway subtree', {
+      ...logCtx,
+      rootPid,
+      descendantCount: descendants.length,
+    });
+  }
+}
+
+/** Walk a process subtree via `pgrep -P`. Returns descendants in BFS order. */
+function collectDescendantPids(rootPid: number): number[] {
+  const all: number[] = [];
+  const queue: number[] = [rootPid];
+  while (queue.length > 0) {
+    const parent = queue.shift()!;
+    try {
+      const out = execSync(`pgrep -P ${parent} 2>/dev/null || true`, { encoding: 'utf-8' });
+      const direct = out
+        .trim()
+        .split('\n')
+        .filter(Boolean)
+        .map(Number)
+        .filter((n) => Number.isFinite(n));
+      all.push(...direct);
+      queue.push(...direct);
+    } catch {
+      /* pgrep unavailable or no children */
+    }
+  }
+  return all;
+}
+
 /** Stop a running local MCP server (keeps definition for restart). */
 export function stopServer(name: string): void {
   const running = servers.get(name);
@@ -336,15 +401,7 @@ export function stopServer(name: string): void {
   running.alive = false;
   clearDiscoveredTools(name);
   if (running.process?.pid) {
-    try {
-      process.kill(-running.process.pid, 'SIGTERM');
-    } catch {
-      try {
-        running.process.kill('SIGTERM');
-      } catch {
-        /* already gone */
-      }
-    }
+    reapProcessTree(running.process.pid, { server: name });
     running.process = undefined;
     log.info('MCP server stopped', { server: name });
   }
@@ -423,11 +480,7 @@ export async function restartServer(name: string): Promise<void> {
     const entry = servers.get(name);
     if (entry) entry.alive = false;
     clearDiscoveredTools(name);
-    try {
-      process.kill(-proc.pid!, 'SIGTERM');
-    } catch {
-      /* group already dead */
-    }
+    if (proc.pid) reapProcessTree(proc.pid, { server: name, on: 'exit' });
     if (code !== null && code !== 0) {
       log.warn('Restarted MCP server exited unexpectedly', { server: name, code });
     }
