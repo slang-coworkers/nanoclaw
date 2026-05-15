@@ -6,8 +6,13 @@
 # not always populated) and obsolete with Option A.
 # Stdin: JSON with tool_name, tool_input, tool_response.
 set -euo pipefail
+# Env-addressable workspace roots so hooks work both in Docker (where
+# /workspace is mounted) and AGENT_RUNTIME=local (where the bun child carries
+# WORKSPACE_SESSION/WORKSPACE_AGENT pointing at the session and group dirs).
+WS_SESSION="${WORKSPACE_SESSION:-/workspace}"
+WS_AGENT="${WORKSPACE_AGENT:-/workspace/agent}"
 
-STATE="/workspace/.claude/workflow-state.json"
+STATE="$WS_SESSION/.claude/workflow-state.json"
 INPUT=$(cat)
 
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
@@ -50,7 +55,7 @@ else
 fi
 
 # Reset denial counter so next critique denial is verbose again
-DENIAL_COUNT_FILE="/workspace/.claude/denial-counts.json"
+DENIAL_COUNT_FILE="$WS_SESSION/.claude/denial-counts.json"
 if [ -f "$DENIAL_COUNT_FILE" ]; then
   jq '.critique_required = 0' "$DENIAL_COUNT_FILE" > "${DENIAL_COUNT_FILE}.tmp" \
     && mv "${DENIAL_COUNT_FILE}.tmp" "$DENIAL_COUNT_FILE"

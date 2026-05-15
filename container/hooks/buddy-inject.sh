@@ -1,9 +1,15 @@
 #!/bin/bash
 # UserPromptSubmit hook: inject buddy guidance into the primary's next turn.
-# Reads /workspace/agent/.buddy-guidance and prepends as <buddy-note> if present.
+# Reads $WS_AGENT/.buddy-guidance and prepends as <buddy-note> if present.
 # The buddy background agent writes to this file when codex flags a concern.
 
-GUIDANCE="/workspace/agent/.buddy-guidance"
+# Env-addressable workspace roots so hooks work both in Docker (where
+# $WS_SESSION is mounted) and AGENT_RUNTIME=local (where the bun child carries
+# WORKSPACE_SESSION/WORKSPACE_AGENT pointing at the session and group dirs).
+WS_SESSION="${WORKSPACE_SESSION:-$WS_SESSION}"
+WS_AGENT="${WORKSPACE_AGENT:-$WS_AGENT}"
+
+GUIDANCE="$WS_AGENT/.buddy-guidance"
 
 if [ -f "$GUIDANCE" ] && [ -s "$GUIDANCE" ]; then
   CONTENT=$(cat "$GUIDANCE")

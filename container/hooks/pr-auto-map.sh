@@ -5,6 +5,11 @@
 #
 # Stdin: JSON with tool_name, tool_input, tool_response.
 set -euo pipefail
+# Env-addressable workspace roots so hooks work both in Docker (where
+# $WS_SESSION is mounted) and AGENT_RUNTIME=local (where the bun child carries
+# WORKSPACE_SESSION/WORKSPACE_AGENT pointing at the session and group dirs).
+WS_SESSION="${WORKSPACE_SESSION:-$WS_SESSION}"
+WS_AGENT="${WORKSPACE_AGENT:-$WS_AGENT}"
 
 INPUT=$(cat)
 

@@ -2,19 +2,24 @@
 # PostToolUse hook (matcher: Write): detect plan file writes and update state.
 # Stdin: JSON with tool_name, tool_input.file_path, tool_response, etc.
 set -euo pipefail
+# Env-addressable workspace roots so hooks work both in Docker (where
+# /workspace is mounted) and AGENT_RUNTIME=local (where the bun child carries
+# WORKSPACE_SESSION/WORKSPACE_AGENT pointing at the session and group dirs).
+WS_SESSION="${WORKSPACE_SESSION:-/workspace}"
+WS_AGENT="${WORKSPACE_AGENT:-/workspace/agent}"
 
-STATE="/workspace/.claude/workflow-state.json"
+STATE="$WS_SESSION/.claude/workflow-state.json"
 INPUT=$(cat)
 
 FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 [ -z "$FILE" ] && exit 0
 
 # Tracks two kinds of writes:
-#   /workspace/agent/reports/*   → marks plan_written, resets edits_since_plan
+#   $WS_AGENT/reports/*   → marks plan_written, resets edits_since_plan
 #     (the /plan workflow's `produces` path; `plans/` kept as a legacy alias)
-#   /workspace/agent/critiques/* → marks the active critique round as recorded
+#   $WS_AGENT/critiques/* → marks the active critique round as recorded
 case "$FILE" in
-  /workspace/agent/reports/*|/workspace/agent/plans/*)
+  "$WS_AGENT"/reports/*|$WS_AGENT/plans/*)
     mkdir -p "$(dirname "$STATE")"
     if [ -f "$STATE" ]; then
       jq --arg path "$FILE" \
@@ -31,7 +36,7 @@ case "$FILE" in
 esac
 
 # Reset denial counters so next denial is verbose again
-DENIAL_COUNT_FILE="/workspace/.claude/denial-counts.json"
+DENIAL_COUNT_FILE="$WS_SESSION/.claude/denial-counts.json"
 if [ -f "$DENIAL_COUNT_FILE" ]; then
   jq '.plan_required = 0 | .plan_stale = 0' "$DENIAL_COUNT_FILE" > "${DENIAL_COUNT_FILE}.tmp" \
     && mv "${DENIAL_COUNT_FILE}.tmp" "$DENIAL_COUNT_FILE"

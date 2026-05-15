@@ -4,8 +4,13 @@
 # Stdin: JSON with tool_name, tool_input.file_path, tool_response, etc.
 # Exit 0 always (PostToolUse cannot block).
 set -euo pipefail
+# Env-addressable workspace roots so hooks work both in Docker (where
+# $WS_SESSION is mounted) and AGENT_RUNTIME=local (where the bun child carries
+# WORKSPACE_SESSION/WORKSPACE_AGENT pointing at the session and group dirs).
+WS_SESSION="${WORKSPACE_SESSION:-$WS_SESSION}"
+WS_AGENT="${WORKSPACE_AGENT:-$WS_AGENT}"
 
-STATE="/workspace/.claude/workflow-state.json"
+STATE="$WS_SESSION/.claude/workflow-state.json"
 INPUT=$(cat)
 
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
@@ -28,25 +33,25 @@ else
 
   # Plan writes reset counters (handled by plan-tracker.sh, but skip here)
   case "$FILE" in
-    /workspace/agent/plans/*) exit 0 ;;
+    "$WS_AGENT"/plans/*) exit 0 ;;
   esac
 
   # Allowlist: workspace bookkeeping files don't count toward edit thresholds
   case "$FILE" in
-    /workspace/agent/reports/*) exit 0 ;;
-    /workspace/agent/memory/*) exit 0 ;;
-    /workspace/agent/conversations/*) exit 0 ;;
-    /workspace/agent/fixes/*) exit 0 ;;
-    /workspace/agent/reviews/*) exit 0 ;;
-    /workspace/agent/critiques/*) exit 0 ;;
-    /workspace/agent/CLAUDE.local.md) exit 0 ;;
-    /workspace/.claude/*) exit 0 ;;
+    "$WS_AGENT"/reports/*) exit 0 ;;
+    "$WS_AGENT"/memory/*) exit 0 ;;
+    "$WS_AGENT"/conversations/*) exit 0 ;;
+    "$WS_AGENT"/fixes/*) exit 0 ;;
+    "$WS_AGENT"/reviews/*) exit 0 ;;
+    "$WS_AGENT"/critiques/*) exit 0 ;;
+    "$WS_AGENT"/CLAUDE.local.md) exit 0 ;;
+    "$WS_SESSION"/.claude/*) exit 0 ;;
   esac
 
-  # Allow .md and .json directly under /workspace/agent/ (bookkeeping, not source)
+  # Allow .md and .json directly under $WS_AGENT/ (bookkeeping, not source)
   DIR=$(dirname "$FILE")
   EXT="${FILE##*.}"
-  if [ "$DIR" = "/workspace/agent" ] && { [ "$EXT" = "md" ] || [ "$EXT" = "json" ]; }; then
+  if [ "$DIR" = "$WS_AGENT" ] && { [ "$EXT" = "md" ] || [ "$EXT" = "json" ]; }; then
     exit 0
   fi
 fi

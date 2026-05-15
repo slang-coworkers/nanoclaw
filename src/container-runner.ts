@@ -7,6 +7,7 @@ import { ChildProcess, execSync, spawn } from 'child_process';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 
 import { OneCLI } from '@onecli-sh/sdk';
 
@@ -19,6 +20,8 @@ import {
   type SkillMeta,
 } from './claude-composer.js';
 import {
+  AGENT_HOST_GATEWAY,
+  AGENT_RUNTIME,
   CONTAINER_IMAGE,
   CONTAINER_IMAGE_BASE,
   CONTAINER_INSTALL_LABEL,
@@ -32,8 +35,23 @@ import {
   ONECLI_URL,
   TIMEZONE,
 } from './config.js';
+
+// Hook scripts live at `/app/hooks/` inside the container image, and at
+// `container/hooks/` in the source tree. In AGENT_RUNTIME=local the bun child
+// runs on the host and has no `/app/hooks/` — anchor the path off this source
+// file (module-relative, not cwd-based) so hook injection survives any cwd.
+const HOOKS_DIR =
+  AGENT_RUNTIME === 'local'
+    ? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'container', 'hooks')
+    : '/app/hooks';
+
+/** POSIX single-quote escape: wrap in `'…'`, replace internal `'` with `'\''`. */
+function shellSingleQuote(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`;
+}
 import { readContainerConfig, writeContainerConfig } from './container-config.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
+import { killLocalAgent, type LocalAgentHandle, spawnLocalAgent } from './local-runner.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
 import { getSession } from './db/sessions.js';
@@ -144,8 +162,16 @@ function detectGpuMode(): GpuMode {
   return (gpuModeCache = 'gpus-all');
 }
 
-/** Active containers tracked by session ID. */
-const activeContainers = new Map<string, { process: ChildProcess; containerName: string }>();
+/**
+ * Active agent processes tracked by session ID. The same map serves both
+ * runtimes; `kind` disambiguates the termination path (docker stop vs
+ * SIGTERM). For Docker, `process` is the `docker run` child; for local,
+ * it is the `bun` child.
+ */
+type ActiveEntry =
+  | { kind: 'docker'; process: ChildProcess; containerName: string }
+  | { kind: 'local'; process: ChildProcess; containerName: string };
+const activeContainers = new Map<string, ActiveEntry>();
 
 /** SHA-256 hash of CLAUDE.md at spawn time, keyed by session ID. */
 const spawnedClaudeMdHash = new Map<string, string>();
@@ -443,6 +469,61 @@ async function spawnContainer(session: Session): Promise<void> {
   const allowedTools = resolveAllowedMcpTools(agentGroup);
   const proxyToken = registerContainerToken(agentGroup.folder, allowedTools);
 
+  // Local-runtime path: spawn the agent-runner as a bun child on the host.
+  // Docker-specific work (mounts, container args, OneCLI applyContainerConfig)
+  // is skipped — local mode inherits host env for proxy/CA.
+  if (AGENT_RUNTIME === 'local') {
+    const { mcpServers } = resolveTypeManifest(agentGroup);
+    const containerConfig = readContainerConfig(agentGroup.folder);
+    const mergedMcpServers = { ...mcpServers, ...(containerConfig.mcpServers ?? {}) };
+    fs.rmSync(heartbeatPath(agentGroup.id, session.id), { force: true });
+    let handle: LocalAgentHandle;
+    try {
+      handle = await spawnLocalAgent({
+        session,
+        agentGroup,
+        provider,
+        contribution,
+        proxyToken,
+        allowedTools,
+        mcpServers: mergedMcpServers,
+      });
+    } catch (err) {
+      revokeContainerToken(proxyToken);
+      log.error('Local agent spawn failed', { sessionId: session.id, err });
+      throw err;
+    }
+    activeContainers.set(session.id, {
+      kind: 'local',
+      process: handle.process,
+      containerName: handle.name,
+    });
+    markContainerRunning(session.id);
+    handle.process.stderr?.on('data', (data) => {
+      for (const line of data.toString().trim().split('\n')) {
+        if (line) log.debug(line, { agent: agentGroup.folder });
+      }
+    });
+    handle.process.stdout?.on('data', () => {});
+    handle.process.on('close', (code) => {
+      activeContainers.delete(session.id);
+      spawnedClaudeMdHash.delete(session.id);
+      markContainerStopped(session.id);
+      stopTypingRefresh(session.id);
+      revokeContainerToken(proxyToken);
+      log.info('Local agent exited', { sessionId: session.id, code, name: handle.name });
+    });
+    handle.process.on('error', (err) => {
+      activeContainers.delete(session.id);
+      spawnedClaudeMdHash.delete(session.id);
+      markContainerStopped(session.id);
+      stopTypingRefresh(session.id);
+      revokeContainerToken(proxyToken);
+      log.error('Local agent spawn error', { sessionId: session.id, err });
+    });
+    return;
+  }
+
   const args = await buildContainerArgs(
     mounts,
     containerName,
@@ -473,7 +554,7 @@ async function spawnContainer(session: Session): Promise<void> {
 
   const container = spawn(CONTAINER_RUNTIME_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
-  activeContainers.set(session.id, { process: container, containerName });
+  activeContainers.set(session.id, { kind: 'docker', process: container, containerName });
   markContainerRunning(session.id);
 
   // Log stderr — warn level so container errors appear in the error log.
@@ -522,12 +603,17 @@ async function spawnContainer(session: Session): Promise<void> {
   });
 }
 
-/** Kill a container for a session. */
+/** Kill a container (or local process) for a session. */
 export function killContainer(sessionId: string, reason: string): void {
   const entry = activeContainers.get(sessionId);
   if (!entry) return;
 
-  log.info('Killing container', { sessionId, reason, containerName: entry.containerName });
+  log.info('Killing agent', { sessionId, reason, kind: entry.kind, name: entry.containerName });
+  if (entry.kind === 'local') {
+    // Fire-and-forget — the close handler on the child will clear activeContainers.
+    void killLocalAgent({ process: entry.process, name: entry.containerName });
+    return;
+  }
   try {
     stopContainer(entry.containerName);
   } catch {
@@ -730,11 +816,15 @@ function buildMounts(
   const claudeDir = path.join(DATA_DIR, 'v2-sessions', agentGroup.id, '.claude-shared');
   const settingsFile = path.join(claudeDir, 'settings.json');
 
-  // Dashboard hook injection (port comes from config/.env)
+  // Dashboard hook injection (port comes from config/.env). Works in both
+  // AGENT_RUNTIME=docker and =local: docker routes `host.docker.internal`
+  // through the container's host-gateway alias; local uses 127.0.0.1 via
+  // `AGENT_HOST_GATEWAY`. Hook-script paths are resolved from `HOOKS_DIR`
+  // (module-relative in local mode, `/app/hooks` in docker).
   const dashboardPort = DASHBOARD_PORT ? String(DASHBOARD_PORT) : '';
   if (dashboardPort) {
     const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
-    const hookUrl = `http://host.docker.internal:${dashboardPort}/api/hook-event`;
+    const hookUrl = `http://${AGENT_HOST_GATEWAY}:${dashboardPort}/api/hook-event`;
     if (!settings.hooks) settings.hooks = {};
     // Use command-type hooks with curl --proxy '' to bypass OneCLI HTTPS_PROXY.
     // The Claude SDK pipes hook event JSON to stdin; curl reads it via $(cat).
@@ -823,8 +913,10 @@ function buildMounts(
     // Overlay hook injection: enforce plan/critique gates via runtime hooks.
     // Uses resolveOverlayHookFlags() so agent_groups.disable_overlays=1 skips
     // injection entirely — matches the compose-time contract in PR #97.
-    const hooksDir = path.join(process.cwd(), 'container', 'hooks');
-    if (fs.existsSync(hooksDir)) {
+    // HOOKS_DIR is module-relative in local mode (see top of file); docker
+    // mode has it baked at /app/hooks inside the image. Feature-detect so
+    // hook injection is a no-op if the hooks tree is missing on disk.
+    if (fs.existsSync(HOOKS_DIR)) {
       const { hasPlan, hasCritique } = resolveOverlayHookFlags(agentGroup);
 
       const hasCmd = (event: string, cmd: string): boolean =>
@@ -836,7 +928,7 @@ function buildMounts(
         if (!settings.hooks.UserPromptSubmit) settings.hooks.UserPromptSubmit = [];
         if (!hasCmd('UserPromptSubmit', 'workflow-state-reset.sh')) {
           settings.hooks.UserPromptSubmit.push({
-            hooks: [{ type: 'command', command: 'bash /app/hooks/workflow-state-reset.sh', timeout: 5 }],
+            hooks: [{ type: 'command', command: `bash ${shellSingleQuote(`${HOOKS_DIR}/workflow-state-reset.sh`)}`, timeout: 5 }],
           });
         }
         // Intent router: LLM-based workflow classification on each user message.
@@ -851,7 +943,7 @@ function buildMounts(
             hooks: [
               {
                 type: 'command',
-                command: `OVERLAY_WORKFLOWS='${routingTable}' bash /app/hooks/intent-router.sh`,
+                command: `OVERLAY_WORKFLOWS='${routingTable}' bash ${shellSingleQuote(`${HOOKS_DIR}/intent-router.sh`)}`,
                 timeout: 8,
               },
             ],
@@ -875,7 +967,7 @@ function buildMounts(
           hooks: [
             {
               type: 'command',
-              command: 'bash /app/hooks/buddy-inject.sh',
+              command: `bash ${shellSingleQuote(`${HOOKS_DIR}/buddy-inject.sh`)}`,
               timeout: 3,
             },
           ],
@@ -888,7 +980,7 @@ function buildMounts(
         if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
         settings.hooks.PostToolUse.push({
           matcher: 'Bash',
-          hooks: [{ type: 'command', command: 'bash /app/hooks/pr-auto-map.sh', timeout: 5 }],
+          hooks: [{ type: 'command', command: `bash ${shellSingleQuote(`${HOOKS_DIR}/pr-auto-map.sh`)}`, timeout: 5 }],
         });
       }
 
@@ -908,7 +1000,7 @@ function buildMounts(
             hooks: [
               {
                 type: 'command',
-                command: `OVERLAY_HAS_PLAN=${hasPlan ? '1' : '0'} bash /app/hooks/plan-gate.sh`,
+                command: `OVERLAY_HAS_PLAN=${hasPlan ? '1' : '0'} bash ${shellSingleQuote(`${HOOKS_DIR}/plan-gate.sh`)}`,
                 timeout: 5,
               },
             ],
@@ -918,9 +1010,10 @@ function buildMounts(
         if (!hasCmd('PostToolUse', 'plan-tracker.sh')) {
           settings.hooks.PostToolUse.push({
             matcher: 'Write',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/plan-tracker.sh', timeout: 5 }],
+            hooks: [{ type: 'command', command: `bash ${shellSingleQuote(`${HOOKS_DIR}/plan-tracker.sh`)}`, timeout: 5 }],
           });
         }
+
       }
       if (hasCritique) {
         // Track every successful mcp__codex__codex call as a critique round.
@@ -931,7 +1024,7 @@ function buildMounts(
         if (!hasCmd('PostToolUse', 'critique-tracker.sh')) {
           settings.hooks.PostToolUse.push({
             matcher: 'mcp__codex__codex|mcp__codex__codex-reply',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/critique-tracker.sh', timeout: 5 }],
+            hooks: [{ type: 'command', command: `bash ${shellSingleQuote(`${HOOKS_DIR}/critique-tracker.sh`)}`, timeout: 5 }],
           });
         }
       }
@@ -940,7 +1033,7 @@ function buildMounts(
         if (!hasCmd('PostToolUse', 'edit-counter.sh')) {
           settings.hooks.PostToolUse.push({
             matcher: 'Edit|Write|MultiEdit|NotebookEdit',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/edit-counter.sh', timeout: 5 }],
+            hooks: [{ type: 'command', command: `bash ${shellSingleQuote(`${HOOKS_DIR}/edit-counter.sh`)}`, timeout: 5 }],
           });
         }
         log.debug('Overlay hooks injected', { folder: agentGroup.folder, plan: hasPlan, critique: hasCritique });
@@ -948,6 +1041,25 @@ function buildMounts(
     }
 
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+
+    // Local mode view: the Claude SDK reads `user` settings from
+    // `$HOME/.claude/settings.json`. Docker mode satisfies this by mounting
+    // `claudeDir` (which holds `settings.json` at its root) onto
+    // `/home/node/.claude`, so the file ends up at `/home/node/.claude/settings.json`.
+    // Local mode sets HOME=claudeDir directly (no remap), so the SDK
+    // resolves `$HOME/.claude/settings.json` inside claudeDir's own nested
+    // `.claude/` state dir — missing the hooks entirely. Point a symlink
+    // at the real file so both runtimes see the same view.
+    if (AGENT_RUNTIME === 'local') {
+      const nestedSettingsLink = path.join(claudeDir, '.claude', 'settings.json');
+      fs.mkdirSync(path.dirname(nestedSettingsLink), { recursive: true });
+      try {
+        fs.unlinkSync(nestedSettingsLink);
+      } catch {
+        /* no prior link */
+      }
+      fs.symlinkSync(path.join('..', 'settings.json'), nestedSettingsLink);
+    }
   }
   mounts.push({ hostPath: claudeDir, containerPath: '/home/node/.claude', readonly: false });
 
@@ -1305,6 +1417,13 @@ exec bun run /app/src/index.ts`,
 
 /** Build a per-agent-group Docker image with custom packages. */
 export async function buildAgentGroupImage(agentGroupId: string): Promise<void> {
+  if (AGENT_RUNTIME === 'local') {
+    // Local mode has no container image — custom packages must be installed
+    // on the host directly. Log and return so callers (dashboard approvals)
+    // don't error out; the package list is still persisted in container.json.
+    log.info('buildAgentGroupImage skipped in local mode', { agentGroupId });
+    return;
+  }
   const agentGroup = getAgentGroup(agentGroupId);
   if (!agentGroup) throw new Error('Agent group not found');
 

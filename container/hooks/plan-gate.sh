@@ -6,6 +6,11 @@
 # Stdin: JSON with tool_name, tool_input.file_path or tool_input.command, etc.
 # Exit 0 = allow, exit 2 = deny (stderr shown to agent).
 set -euo pipefail
+# Env-addressable workspace roots so hooks work both in Docker (where
+# /workspace is mounted) and AGENT_RUNTIME=local (where the bun child carries
+# WORKSPACE_SESSION/WORKSPACE_AGENT pointing at the session and group dirs).
+WS_SESSION="${WORKSPACE_SESSION:-/workspace}"
+WS_AGENT="${WORKSPACE_AGENT:-/workspace/agent}"
 
 # Subagents spawned via the SDK Agent tool (CLAUDE_CODE_FORK_SUBAGENT=1) are
 # sandboxed helpers running inside a parent that already passed the gate. They
@@ -18,8 +23,8 @@ if [ "${CLAUDE_CODE_FORK_SUBAGENT:-0}" = "1" ]; then
 fi
 
 # Paths are overridable for testing. Container runs use the defaults.
-STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
-DENIAL_COUNT_FILE="${DENIAL_COUNT_FILE:-/workspace/.claude/denial-counts.json}"
+STATE="${WORKFLOW_STATE_FILE:-$WS_SESSION/.claude/workflow-state.json}"
+DENIAL_COUNT_FILE="${DENIAL_COUNT_FILE:-$WS_SESSION/.claude/denial-counts.json}"
 INPUT=$(cat)
 
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
@@ -68,20 +73,20 @@ else
 
   # Allowlist: workspace files that don't need a plan
   case "$FILE" in
-    /workspace/agent/plans/*) exit 0 ;;
-    /workspace/agent/reports/*) exit 0 ;;
-    /workspace/agent/memory/*) exit 0 ;;
-    /workspace/agent/conversations/*) exit 0 ;;
-    /workspace/agent/fixes/*) exit 0 ;;
-    /workspace/agent/reviews/*) exit 0 ;;
-    /workspace/agent/critiques/*) exit 0 ;;
-    /workspace/agent/CLAUDE.local.md) exit 0 ;;
-    /workspace/.claude/*) exit 0 ;;
+    "$WS_AGENT"/plans/*) exit 0 ;;
+    "$WS_AGENT"/reports/*) exit 0 ;;
+    "$WS_AGENT"/memory/*) exit 0 ;;
+    "$WS_AGENT"/conversations/*) exit 0 ;;
+    "$WS_AGENT"/fixes/*) exit 0 ;;
+    "$WS_AGENT"/reviews/*) exit 0 ;;
+    "$WS_AGENT"/critiques/*) exit 0 ;;
+    "$WS_AGENT"/CLAUDE.local.md) exit 0 ;;
+    "$WS_SESSION"/.claude/*) exit 0 ;;
   esac
 
   DIR=$(dirname "$FILE")
   EXT="${FILE##*.}"
-  if [ "$DIR" = "/workspace/agent" ] && { [ "$EXT" = "md" ] || [ "$EXT" = "json" ]; }; then
+  if [ "$DIR" = "$WS_AGENT" ] && { [ "$EXT" = "md" ] || [ "$EXT" = "json" ]; }; then
     exit 0
   fi
 fi
@@ -145,7 +150,7 @@ EXTERNAL POST BLOCKED: Plan required before posting to external systems.
 
 Tool: $TOOL
 HOW TO PROCEED:
-1. Write a plan to /workspace/agent/reports/<target-slug>.md first.
+1. Write a plan to $WS_AGENT/reports/<target-slug>.md first.
 2. Invoke /codex-critique to review the plan (up to 3 rounds).
 3. Then retry the external post.
 DENIAL
@@ -157,12 +162,12 @@ DENIAL
 PLAN REQUIRED: Write a plan before editing source code.
 
 HOW TO PROCEED:
-1. Write plan to /workspace/agent/reports/<target-slug>.md (files, approach, verification).
+1. Write plan to $WS_AGENT/reports/<target-slug>.md (files, approach, verification).
 2. Invoke /codex-critique to review the plan (up to 3 rounds).
 3. Then edit source code following the plan.
 DENIAL
     else
-      echo "PLAN REQUIRED: Write a plan to /workspace/agent/reports/ before editing. (Repeated denial #$N)" >&2
+      echo "PLAN REQUIRED: Write a plan to $WS_AGENT/reports/ before editing. (Repeated denial #$N)" >&2
     fi
     exit 2
   fi
@@ -173,11 +178,11 @@ DENIAL
     EDITS=$(jq '.edits_since_plan // 0' "$STATE")
     N=$(increment_denial "plan_stale")
     if [ "$IS_MCP_TOOL" = "true" ]; then
-      echo "EXTERNAL POST BLOCKED ($TOOL): Plan stale — $EDITS edits since last plan. Refresh the plan in /workspace/agent/reports/ before posting. (denial #$N)" >&2
+      echo "EXTERNAL POST BLOCKED ($TOOL): Plan stale — $EDITS edits since last plan. Refresh the plan in $WS_AGENT/reports/ before posting. (denial #$N)" >&2
     elif [ "$N" -le 1 ]; then
-      echo "PLAN STALE: $EDITS edits since last plan. Write an updated plan to /workspace/agent/reports/ then continue. Send: mcp__nanoclaw__send_message('📝 Plan refresh — $EDITS edits.')" >&2
+      echo "PLAN STALE: $EDITS edits since last plan. Write an updated plan to $WS_AGENT/reports/ then continue. Send: mcp__nanoclaw__send_message('📝 Plan refresh — $EDITS edits.')" >&2
     else
-      echo "PLAN STALE: Refresh your plan in /workspace/agent/reports/ before continuing. ($EDITS edits, denial #$N)" >&2
+      echo "PLAN STALE: Refresh your plan in $WS_AGENT/reports/ before continuing. ($EDITS edits, denial #$N)" >&2
     fi
     exit 2
   fi
