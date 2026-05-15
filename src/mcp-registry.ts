@@ -207,6 +207,16 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
           '--outputTransport',
           'streamableHttp',
           '--stateful',
+          // --sessionTimeout: idle sessions are reaped after this many ms.
+          // Without it, supergateway only deletes a session when the client
+          // explicitly terminates — but our containers die abruptly (host-sweep
+          // claude-md-stale → docker kill, request_restart → docker kill,
+          // absolute-ceiling, heartbeat timeout). The MCP session is never
+          // gracefully closed → stdio child (sh→uv→python slang-mcp-server)
+          // leaks forever. 10 min covers normal idle gaps in active sessions
+          // while reaping abandoned ones promptly. Tune via env if needed.
+          '--sessionTimeout',
+          process.env.MCP_SESSION_TIMEOUT_MS || '600000',
           '--port',
           String(port),
           '--host',
@@ -437,6 +447,9 @@ export async function restartServer(name: string): Promise<void> {
         '--outputTransport',
         'streamableHttp',
         '--stateful',
+        // See startMcpServers above for why --sessionTimeout is required.
+        '--sessionTimeout',
+        process.env.MCP_SESSION_TIMEOUT_MS || '600000',
         '--port',
         String(port),
         '--host',
