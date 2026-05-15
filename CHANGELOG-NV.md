@@ -6,15 +6,23 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 121 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 122 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 76 |
-| `nv-slang` | slang project spine, skills, workflows | 41 |
+| `nv-slang` | slang project spine, skills, workflows | 42 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 13 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 11 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-05-15
+
+### nv-main (1 PRs)
+- **#352** `fix(mcp-registry): reap supergateway descendants on stop + log /servers/restart callers`
+
+### nv-slang (1 PRs)
+- **#351** `feat(slang-mcp): gate on_thread_create SummonView post behind DISCORD_POST_SUMMON`
 
 ## 📅 2026-05-14
 
