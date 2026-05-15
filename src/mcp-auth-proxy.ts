@@ -304,6 +304,12 @@ export function startMcpAuthProxy(bindHost: string, listenPort: number): { stop:
 
     if (req.method === 'POST' && (req.url || '').startsWith('/servers/stop')) {
       const serverName = new URL(req.url || '', 'http://localhost').searchParams.get('name');
+      log.info('MCP /servers/stop called', {
+        server: serverName,
+        remoteAddr: req.socket.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        referer: req.headers.referer,
+      });
       if (!serverName) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Missing ?name= parameter' }));
@@ -322,6 +328,12 @@ export function startMcpAuthProxy(bindHost: string, listenPort: number): { stop:
 
     if (req.method === 'POST' && (req.url || '').startsWith('/servers/restart')) {
       const serverName = new URL(req.url || '', 'http://localhost').searchParams.get('name');
+      log.info('MCP /servers/restart called', {
+        server: serverName,
+        remoteAddr: req.socket.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        referer: req.headers.referer,
+      });
       if (!serverName) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Missing ?name= parameter' }));
