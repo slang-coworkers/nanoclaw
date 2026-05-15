@@ -216,7 +216,11 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
           // leaks forever. 10 min covers normal idle gaps in active sessions
           // while reaping abandoned ones promptly. Tune via env if needed.
           '--sessionTimeout',
-          process.env.MCP_SESSION_TIMEOUT_MS || '600000',
+          // Parse env to int and fall back to 600000 if invalid. systemd's
+          // EnvironmentFile passes `KEY=val # comment` literally — without
+          // this sanitization, an inline comment would make supergateway
+          // reject the value and silently disable the timeout entirely.
+          String(parseInt(process.env.MCP_SESSION_TIMEOUT_MS || '', 10) || 600000),
           '--port',
           String(port),
           '--host',
