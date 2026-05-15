@@ -3880,9 +3880,11 @@ function currentShellThreadQuery() {
 const cwState = {
   selected: null, // currently selected coworker folder
   messages: [], // main-view messages (thread_id IS NULL). Alias for .main.messages; kept as a top-level field so existing readers don't break.
+  messagesHasMore: false, // server-reported flag: more rows exist below the loaded window — drives "Load older" button
   threadSummaries: {}, // { [parentMessageId]: { replyCount, lastReplyTs } } — main view only
   polling: null, // main-view polling interval
-  thread: null, // { parentId, parentSnapshot, messages: [], polling } when a thread panel is open; null otherwise
+  loadingOlder: false, // re-entrancy guard for the "Load older" click — pagination requests can race with the 3s poll
+  thread: null, // { parentId, parentSnapshot, messages: [], polling, hasMore, loadingOlder } when a thread panel is open; null otherwise
   a2aInspector: null, // { recipientAgGroupId, senderThreadId, recipientName, session, messages } — Option C read-only peek
   types: null, // coworker-types.json cache
   approvalCountByFolder: {}, // { folder: count } for sidebar dot
@@ -3994,6 +3996,9 @@ function renderCwSidebar() {
 function selectCoworker(folder) {
   cwState.selected = folder;
   cwState.messages = [];
+  cwState.messagesHasMore = false;
+  cwState._paginatedAtFloor = false;
+  cwState.loadingOlder = false;
   cwState.threadSummaries = {};
   cwState.lastMainMessageTs = null;
   // Drop the cached overlay catalog so the editor refetches with the new
@@ -4100,13 +4105,57 @@ function updateCwHeader() {
   badge.style.color = '#fff';
 }
 
-async function fetchCwMessages() {
+async function fetchCwMessages(append = false) {
   if (!cwState.selected) return;
+  if (append && cwState.loadingOlder) return; // re-entrancy guard
   try {
-    const res = await fetch(`/api/messages?group=${encodeURIComponent(cwState.selected)}&limit=100`);
+    if (append) cwState.loadingOlder = true;
+    let url = `/api/messages?group=${encodeURIComponent(cwState.selected)}&limit=100`;
+    if (append && cwState.messages.length > 0) {
+      // cwState.messages is chronological (oldest first after reverse below);
+      // page backwards from the oldest currently-loaded timestamp.
+      const oldest = cwState.messages[0]?.timestamp;
+      if (oldest) url += '&before=' + encodeURIComponent(oldest);
+    }
+    const res = await fetch(url);
     if (!res.ok) return;
     const data = await res.json();
-    cwState.messages = (data.messages || []).reverse();
+    // Server returns newest-first; reverse to chronological (oldest-first).
+    const incoming = (data.messages || []).slice().reverse();
+    if (append) {
+      // Prepend older rows; dedup by id so a concurrent poll-refresh racing
+      // a paginate doesn't double-render any row.
+      const seen = new Set(cwState.messages.map((m) => m.id).filter(Boolean));
+      const fresh = incoming.filter((m) => !m.id || !seen.has(m.id));
+      cwState.messages = fresh.concat(cwState.messages);
+      // Floor reached when the server reports no more rows OR when every row
+      // it returned was already on the client (dedup ate them all). Latch via
+      // _paginatedAtFloor so the 3s poll-refresh — which fetches the latest
+      // window with no `before=` — can't flip hasMore back to true.
+      if (!data.hasMore || fresh.length === 0) {
+        cwState.messagesHasMore = false;
+        cwState._paginatedAtFloor = true;
+      } else {
+        cwState.messagesHasMore = true;
+      }
+    } else {
+      // Polling refresh: dedup-merge with any older rows the user has already
+      // paginated in, so we don't lose them when the latest-N window is refetched.
+      const incomingById = new Map(incoming.map((m) => [m.id, m]).filter(([id]) => id));
+      const incomingOldestTs = incoming[0]?.timestamp || '';
+      const olderRetained = cwState.messages.filter((m) => {
+        if (!m.id) return false; // optimistic / id-less rows are recreated on each render
+        if (incomingById.has(m.id)) return false; // server has fresher copy
+        return !incomingOldestTs || (m.timestamp && m.timestamp < incomingOldestTs);
+      });
+      cwState.messages = olderRetained.concat(incoming);
+      // Only adopt the server's hasMore on the initial load (no paginated rows
+      // retained yet AND we haven't latched the floor). After pagination,
+      // hasMore is owned by the load-more flow.
+      if (olderRetained.length === 0 && !cwState._paginatedAtFloor) {
+        cwState.messagesHasMore = !!data.hasMore;
+      }
+    }
     cwState.threadSummaries = data.threadSummaries || {};
     try {
       const ar = await fetch(`/api/approvals?group=${encodeURIComponent(cwState.selected)}`);
@@ -4124,6 +4173,8 @@ async function fetchCwMessages() {
     // glanced at the main chat.
   } catch {
     /* ignore */
+  } finally {
+    if (append) cwState.loadingOlder = false;
   }
 }
 
@@ -4353,13 +4404,39 @@ function renderCwMessages() {
     approvalCount > 0
       ? `<div class="approval-banner"><div class="approval-banner-label">⚠ Pending Actions (${approvalCount})</div>${approvalHtml}</div>`
       : '';
-  el.innerHTML = messageHtml + bannerHtml;
+  // "Load older" button at the top — only when the server says more rows
+  // exist below the loaded window AND we have at least one row to anchor a
+  // `before=<oldest_ts>` cursor against.
+  const loadMoreHtml =
+    cwState.messagesHasMore && cwState.messages.length > 0
+      ? `<button class="admin-load-more" id="cw-messages-more"${cwState.loadingOlder ? ' disabled' : ''}>${cwState.loadingOlder ? 'Loading…' : 'Load older messages'}</button>`
+      : '';
+  el.innerHTML = loadMoreHtml + messageHtml + bannerHtml;
 
   if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
   // Event delegation: attach once on the stable parent, survives innerHTML rebuilds
   if (!el._approvalDelegateAttached) {
     el._approvalDelegateAttached = true;
     el.addEventListener('click', async (e) => {
+      // ── Load older messages (pagination) ──
+      const loadMoreBtn = e.target.closest('#cw-messages-more');
+      if (loadMoreBtn) {
+        if (cwState.loadingOlder) return;
+        // Anchor scroll on the row that's currently at the top so prepending
+        // older messages keeps the viewport stable instead of jumping.
+        const firstRow = el.querySelector('.cw-msg');
+        const anchorId = firstRow?.dataset.msgId || null;
+        const anchorOffset = firstRow ? firstRow.getBoundingClientRect().top - el.getBoundingClientRect().top : 0;
+        await fetchCwMessages(true);
+        if (anchorId) {
+          const restored = el.querySelector(`.cw-msg[data-msg-id="${CSS.escape(anchorId)}"]`);
+          if (restored) {
+            const newOffset = restored.getBoundingClientRect().top - el.getBoundingClientRect().top;
+            el.scrollTop += newOffset - anchorOffset;
+          }
+        }
+        return;
+      }
       // ── Reply-in-thread hover button or reply-count stub ──
       const replyBtn = e.target.closest('.cw-reply-btn, .cw-thread-stub');
       if (replyBtn) {
@@ -4690,7 +4767,15 @@ function openThread(parentId, opts = {}) {
   // Snapshot the parent message from the current main view for the header.
   const parentSnapshot = isSessionDirect ? null : (cwState.messages || []).find((m) => m.id === parentId) || null;
   if (cwState.thread?.polling) clearInterval(cwState.thread.polling);
-  cwState.thread = { parentId, parentSnapshot, messages: [], polling: null, sessionDirect: isSessionDirect };
+  cwState.thread = {
+    parentId,
+    parentSnapshot,
+    messages: [],
+    polling: null,
+    sessionDirect: isSessionDirect,
+    hasMore: false,
+    loadingOlder: false,
+  };
   const panel = document.getElementById('cw-thread-panel');
   if (panel) panel.style.display = 'flex';
   // Show the reply composer for both threaded and a2a (sessionDirect) views.
@@ -4855,16 +4940,25 @@ function renderA2aInspector() {
   msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 
-async function fetchCwThread(parentId) {
+async function fetchCwThread(parentId, append = false) {
   if (!cwState.selected || !cwState.thread || cwState.thread.parentId !== parentId) return;
+  if (append && cwState.thread.loadingOlder) return;
   try {
+    if (append) cwState.thread.loadingOlder = true;
     const queryParam = cwState.thread.sessionDirect
       ? `session_id=${encodeURIComponent(parentId)}`
       : `thread_id=${encodeURIComponent(parentId)}`;
-    const res = await fetch(`/api/messages?group=${encodeURIComponent(cwState.selected)}&${queryParam}&limit=200`);
+    let url = `/api/messages?group=${encodeURIComponent(cwState.selected)}&${queryParam}&limit=200`;
+    if (append) {
+      // Page backwards from the oldest persisted (non-optimistic) row in view.
+      const persisted = (cwState.thread.messages || []).filter((m) => !m.optimistic && m.timestamp);
+      const oldest = persisted[0]?.timestamp;
+      if (oldest) url += '&before=' + encodeURIComponent(oldest);
+    }
+    const res = await fetch(url);
     if (!res.ok) return;
     const data = await res.json();
-    const incoming = (data.messages || []).reverse();
+    const incoming = (data.messages || []).slice().reverse();
     // Preserve locally-pushed optimistic messages UNTIL their persisted
     // twin arrives. Heuristic: drop an optimistic row once the server
     // returns any outgoing thread row with identical content within 30 s
@@ -4891,10 +4985,37 @@ async function fetchCwThread(parentId) {
       });
     };
     const pending = cwState.thread.messages.filter((m) => m.optimistic && !matched(m));
-    cwState.thread.messages = incoming.concat(pending);
+    if (append) {
+      // Prepend older rows to existing persisted ones; dedup by id.
+      const existing = cwState.thread.messages.filter((m) => !m.optimistic);
+      const seen = new Set(existing.map((m) => m.id).filter(Boolean));
+      const fresh = incoming.filter((m) => !m.id || !seen.has(m.id));
+      cwState.thread.messages = fresh.concat(existing).concat(pending);
+      if (!data.hasMore || fresh.length === 0) {
+        cwState.thread.hasMore = false;
+        cwState.thread._paginatedAtFloor = true;
+      } else {
+        cwState.thread.hasMore = true;
+      }
+    } else {
+      // Polling refresh: keep older paginated rows, refresh the latest window.
+      const incomingById = new Map(incoming.map((m) => [m.id, m]).filter(([id]) => id));
+      const incomingOldestTs = incoming[0]?.timestamp || '';
+      const olderRetained = cwState.thread.messages.filter((m) => {
+        if (m.optimistic || !m.id) return false;
+        if (incomingById.has(m.id)) return false;
+        return !incomingOldestTs || (m.timestamp && m.timestamp < incomingOldestTs);
+      });
+      cwState.thread.messages = olderRetained.concat(incoming).concat(pending);
+      if (olderRetained.length === 0 && !cwState.thread._paginatedAtFloor) {
+        cwState.thread.hasMore = !!data.hasMore;
+      }
+    }
     renderCwThread();
   } catch {
     /* ignore */
+  } finally {
+    if (append && cwState.thread) cwState.thread.loadingOlder = false;
   }
 }
 
@@ -5007,12 +5128,37 @@ function renderCwThread() {
         return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
       }
       const attachHtml = renderMessageAttachmentsHtml(m.attachments);
-      return `<div class="cw-msg ${cls}"><div class="cw-msg-avatar">${monogram}</div>
+      return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"><div class="cw-msg-avatar">${monogram}</div>
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span></div>
       <div class="cw-msg-bubble">${body}${attachHtml}</div></div>`;
     })
     .join('');
-  msgsEl.innerHTML = html || '<div class="cw-empty" style="padding:12px">No replies yet.</div>';
+  const persistedCount = (t.messages || []).filter((m) => !m.optimistic).length;
+  const loadMoreHtml =
+    t.hasMore && persistedCount > 0
+      ? `<button class="admin-load-more" id="cw-thread-more"${t.loadingOlder ? ' disabled' : ''}>${t.loadingOlder ? 'Loading…' : 'Load older messages'}</button>`
+      : '';
+  msgsEl.innerHTML = loadMoreHtml + (html || (loadMoreHtml ? '' : '<div class="cw-empty" style="padding:12px">No replies yet.</div>'));
+  if (!msgsEl._loadMoreDelegateAttached) {
+    msgsEl._loadMoreDelegateAttached = true;
+    msgsEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('#cw-thread-more');
+      if (!btn || !cwState.thread) return;
+      if (cwState.thread.loadingOlder) return;
+      const firstRow = msgsEl.querySelector('.cw-msg');
+      const anchorOffset = firstRow ? firstRow.getBoundingClientRect().top - msgsEl.getBoundingClientRect().top : 0;
+      const anchorId = firstRow?.dataset.msgId || firstRow?.dataset.relayId || null;
+      const anchorAttr = firstRow?.dataset.msgId ? 'data-msg-id' : 'data-relay-id';
+      await fetchCwThread(cwState.thread.parentId, true);
+      if (anchorId) {
+        const restored = msgsEl.querySelector(`.cw-msg[${anchorAttr}="${CSS.escape(anchorId)}"]`);
+        if (restored) {
+          const newOffset = restored.getBoundingClientRect().top - msgsEl.getBoundingClientRect().top;
+          msgsEl.scrollTop += newOffset - anchorOffset;
+        }
+      }
+    });
+  }
   if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 
