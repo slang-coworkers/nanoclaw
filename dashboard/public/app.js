@@ -3997,7 +3997,6 @@ function selectCoworker(folder) {
   cwState.selected = folder;
   cwState.messages = [];
   cwState.messagesHasMore = false;
-  cwState._paginatedAtFloor = false;
   cwState.loadingOlder = false;
   cwState.threadSummaries = {};
   cwState.lastMainMessageTs = null;
@@ -4108,9 +4107,23 @@ function updateCwHeader() {
 async function fetchCwMessages(append = false) {
   if (!cwState.selected) return;
   if (append && cwState.loadingOlder) return; // re-entrancy guard
+  // Capture selection at fetch start so a late-arriving response doesn't
+  // mutate state for a different coworker the user has since switched to.
+  const selectedAtStart = cwState.selected;
   try {
     if (append) cwState.loadingOlder = true;
-    let url = `/api/messages?group=${encodeURIComponent(cwState.selected)}&limit=100`;
+    // Polling-refresh limit covers the currently-loaded row count (capped at
+    // the server's 500 ceiling). This makes the polling window inclusive of
+    // every paginated row, so:
+    //   - server-side deletes of older rows are detected via incomingById
+    //     (resolves S1: no zombies in the [0, 500] range);
+    //   - rows backfilled below the previously-loaded floor surface as
+    //     either incoming rows OR data.hasMore=true on the next poll
+    //     (resolves S2: "Load older" can re-arm without coworker reselect).
+    // Append (paginate-older) keeps the original 100 — that's the page size,
+    // not a window cover.
+    const fetchLimit = append ? 100 : Math.min(500, Math.max(100, cwState.messages.length));
+    let url = `/api/messages?group=${encodeURIComponent(selectedAtStart)}&limit=${fetchLimit}`;
     if (append && cwState.messages.length > 0) {
       // cwState.messages is chronological (oldest first after reverse below);
       // page backwards from the oldest currently-loaded timestamp.
@@ -4119,7 +4132,12 @@ async function fetchCwMessages(append = false) {
     }
     const res = await fetch(url);
     if (!res.ok) return;
+    if (cwState.selected !== selectedAtStart) return; // user switched mid-fetch
     const data = await res.json();
+    // Re-check after the parse-await: the user could have switched coworkers
+    // while res.json() was streaming. Without this guard, stale polling data
+    // for the previous coworker would clobber the new selection's state.
+    if (cwState.selected !== selectedAtStart) return;
     // Server returns newest-first; reverse to chronological (oldest-first).
     const incoming = (data.messages || []).slice().reverse();
     if (append) {
@@ -4129,43 +4147,56 @@ async function fetchCwMessages(append = false) {
       const fresh = incoming.filter((m) => !m.id || !seen.has(m.id));
       cwState.messages = fresh.concat(cwState.messages);
       // Floor reached when the server reports no more rows OR when every row
-      // it returned was already on the client (dedup ate them all). Latch via
-      // _paginatedAtFloor so the 3s poll-refresh — which fetches the latest
-      // window with no `before=` — can't flip hasMore back to true.
-      if (!data.hasMore || fresh.length === 0) {
-        cwState.messagesHasMore = false;
-        cwState._paginatedAtFloor = true;
-      } else {
-        cwState.messagesHasMore = true;
-      }
+      // it returned was already on the client (dedup ate them all).
+      cwState.messagesHasMore = !!data.hasMore && fresh.length > 0;
     } else {
-      // Polling refresh: dedup-merge with any older rows the user has already
-      // paginated in, so we don't lose them when the latest-N window is refetched.
+      // Polling refresh. The bumped fetchLimit above pulls every loaded row
+      // (up to the 500 cap) into incoming, so the response is authoritative
+      // for the [0, fetchLimit] range whenever data.hasMore=false.
+      // - Authoritative (!data.hasMore): cwState becomes incoming verbatim.
+      //   Any retained row absent from incomingById is treated as deleted,
+      //   not "older than the window" — that closes S1 (no zombie rows).
+      // - Partial (data.hasMore=true): the response covers only part of the
+      //   server's row set, so we retain rows older than incomingOldestTs.
+      //   This commonly fires when loaded count > 500 (server cap), but it
+      //   also fires transiently when a row gets backfilled below the
+      //   current floor — once that backfilled row is paginated in, the
+      //   next poll's incomingOldestTs covers it and the branch quiesces.
+      //   In the deep-pagination >500 case S1 zombies remain a trade-off,
+      //   same as the original PR.
       const incomingById = new Map(incoming.map((m) => [m.id, m]).filter(([id]) => id));
       const incomingOldestTs = incoming[0]?.timestamp || '';
-      const olderRetained = cwState.messages.filter((m) => {
-        if (!m.id) return false; // optimistic / id-less rows are recreated on each render
-        if (incomingById.has(m.id)) return false; // server has fresher copy
-        return !incomingOldestTs || (m.timestamp && m.timestamp < incomingOldestTs);
-      });
+      const olderRetained = data.hasMore
+        ? cwState.messages.filter((m) => {
+            if (!m.id) return false; // id-less rows are recreated on each render
+            if (incomingById.has(m.id)) return false; // server has fresher copy
+            return !incomingOldestTs || (m.timestamp && m.timestamp < incomingOldestTs);
+          })
+        : [];
       cwState.messages = olderRetained.concat(incoming);
-      // Only adopt the server's hasMore on the initial load (no paginated rows
-      // retained yet AND we haven't latched the floor). After pagination,
-      // hasMore is owned by the load-more flow.
-      if (olderRetained.length === 0 && !cwState._paginatedAtFloor) {
+      // When the response is authoritative the load-more button is owned by
+      // data.hasMore directly. When partial (loaded > 500 + rows below), the
+      // load-more flow owns it; polling defers.
+      if (olderRetained.length === 0) {
         cwState.messagesHasMore = !!data.hasMore;
       }
     }
     cwState.threadSummaries = data.threadSummaries || {};
     try {
-      const ar = await fetch(`/api/approvals?group=${encodeURIComponent(cwState.selected)}`);
-      cwState.pendingApprovals = ar.ok ? await ar.json() : [];
+      const ar = await fetch(`/api/approvals?group=${encodeURIComponent(selectedAtStart)}`);
+      // Parse into a local first; only commit to the visible state if the
+      // user hasn't switched coworkers while ar.json() was streaming.
+      const approvals = ar.ok ? await ar.json() : [];
+      if (cwState.selected === selectedAtStart) {
+        cwState.pendingApprovals = approvals;
+        cwState.approvalCountByFolder[selectedAtStart] = (approvals || []).length;
+      }
     } catch {
-      cwState.pendingApprovals = [];
+      if (cwState.selected === selectedAtStart) {
+        cwState.pendingApprovals = [];
+        cwState.approvalCountByFolder[selectedAtStart] = 0;
+      }
     }
-    // Sync into global approval counter for sidebar dot
-    cwState.approvalCountByFolder[cwState.selected] = (cwState.pendingApprovals || []).length;
-    renderCwMessages();
     // No auto-mark-read on coworker click. The folder-level cursor only advances
     // when the user explicitly clicks "mark all read" (or via per-session opens
     // that aggregate up). Otherwise clicking a coworker would silently mark
@@ -4174,7 +4205,16 @@ async function fetchCwMessages(append = false) {
   } catch {
     /* ignore */
   } finally {
-    if (append) cwState.loadingOlder = false;
+    // Clear the re-entrancy guard BEFORE rendering so the "Load older" button
+    // exits its disabled "Loading…" state in the same tick. Failure paths
+    // (`!res.ok` early-return, network catch) also reach here, so the UI
+    // never gets stuck waiting for the next 3 s poll to clear it. Both the
+    // clear and the render are gated on selectedAtStart so a stale append
+    // response can't poison a different coworker's in-flight pagination.
+    if (cwState.selected === selectedAtStart) {
+      if (append) cwState.loadingOlder = false;
+      renderCwMessages();
+    }
   }
 }
 
@@ -4943,12 +4983,21 @@ function renderA2aInspector() {
 async function fetchCwThread(parentId, append = false) {
   if (!cwState.selected || !cwState.thread || cwState.thread.parentId !== parentId) return;
   if (append && cwState.thread.loadingOlder) return;
+  // Capture the thread identity at fetch start; a late-arriving response
+  // shouldn't mutate state for a thread the user has since closed/switched.
+  const selectedAtStart = cwState.selected;
   try {
     if (append) cwState.thread.loadingOlder = true;
     const queryParam = cwState.thread.sessionDirect
       ? `session_id=${encodeURIComponent(parentId)}`
       : `thread_id=${encodeURIComponent(parentId)}`;
-    let url = `/api/messages?group=${encodeURIComponent(cwState.selected)}&${queryParam}&limit=200`;
+    // Polling-refresh limit covers the currently-loaded persisted row count
+    // (capped at the server's 500 ceiling). See fetchCwMessages above for
+    // the S1/S2 rationale — same trade-off, capped window covers backfills
+    // and detects deletes within [0, 500].
+    const persistedCount = (cwState.thread.messages || []).filter((m) => !m.optimistic).length;
+    const fetchLimit = append ? 200 : Math.min(500, Math.max(200, persistedCount));
+    let url = `/api/messages?group=${encodeURIComponent(selectedAtStart)}&${queryParam}&limit=${fetchLimit}`;
     if (append) {
       // Page backwards from the oldest persisted (non-optimistic) row in view.
       const persisted = (cwState.thread.messages || []).filter((m) => !m.optimistic && m.timestamp);
@@ -4957,7 +5006,13 @@ async function fetchCwThread(parentId, append = false) {
     }
     const res = await fetch(url);
     if (!res.ok) return;
+    // If the user closed the thread or switched coworkers mid-fetch, drop the
+    // response on the floor.
+    if (!cwState.thread || cwState.thread.parentId !== parentId || cwState.selected !== selectedAtStart) return;
     const data = await res.json();
+    // Re-check identity after the parse-await — same race protection as the
+    // pre-parse guard above, repeated because res.json() is also async.
+    if (!cwState.thread || cwState.thread.parentId !== parentId || cwState.selected !== selectedAtStart) return;
     const incoming = (data.messages || []).slice().reverse();
     // Preserve locally-pushed optimistic messages UNTIL their persisted
     // twin arrives. Heuristic: drop an optimistic row once the server
@@ -4991,31 +5046,46 @@ async function fetchCwThread(parentId, append = false) {
       const seen = new Set(existing.map((m) => m.id).filter(Boolean));
       const fresh = incoming.filter((m) => !m.id || !seen.has(m.id));
       cwState.thread.messages = fresh.concat(existing).concat(pending);
-      if (!data.hasMore || fresh.length === 0) {
-        cwState.thread.hasMore = false;
-        cwState.thread._paginatedAtFloor = true;
-      } else {
-        cwState.thread.hasMore = true;
-      }
+      cwState.thread.hasMore = !!data.hasMore && fresh.length > 0;
     } else {
-      // Polling refresh: keep older paginated rows, refresh the latest window.
+      // Polling refresh. Same authoritative/partial split as fetchCwMessages:
+      // when data.hasMore=false the bumped fetchLimit covers every loaded
+      // persisted row, so absent ids are treated as deletes (closes S1).
+      // When data.hasMore=true the response is partial — commonly because
+      // the loaded thread exceeds the 500 cap, but also when a row was
+      // backfilled below the current floor. Retained rows older than
+      // incomingOldestTs cover both cases; the deep-pagination >500 case
+      // keeps the residual zombie trade-off documented above.
       const incomingById = new Map(incoming.map((m) => [m.id, m]).filter(([id]) => id));
       const incomingOldestTs = incoming[0]?.timestamp || '';
-      const olderRetained = cwState.thread.messages.filter((m) => {
-        if (m.optimistic || !m.id) return false;
-        if (incomingById.has(m.id)) return false;
-        return !incomingOldestTs || (m.timestamp && m.timestamp < incomingOldestTs);
-      });
+      const olderRetained = data.hasMore
+        ? cwState.thread.messages.filter((m) => {
+            if (m.optimistic || !m.id) return false;
+            if (incomingById.has(m.id)) return false;
+            return !incomingOldestTs || (m.timestamp && m.timestamp < incomingOldestTs);
+          })
+        : [];
       cwState.thread.messages = olderRetained.concat(incoming).concat(pending);
-      if (olderRetained.length === 0 && !cwState.thread._paginatedAtFloor) {
+      // Same hasMore ownership rule as the main view: authoritative response
+      // → adopt server's flag; partial → load-more flow owns it.
+      if (olderRetained.length === 0) {
         cwState.thread.hasMore = !!data.hasMore;
       }
     }
-    renderCwThread();
   } catch {
     /* ignore */
   } finally {
-    if (append && cwState.thread) cwState.thread.loadingOlder = false;
+    // Clear the re-entrancy guard BEFORE rendering so the "Load older" button
+    // exits its disabled "Loading…" state in the same tick — including on
+    // failure paths where the success-side render would otherwise be skipped.
+    // Guard render against mid-fetch thread switches: only repaint if the
+    // captured (parentId, coworker) identity still matches.
+    if (append && cwState.thread && cwState.thread.parentId === parentId && cwState.selected === selectedAtStart) {
+      cwState.thread.loadingOlder = false;
+    }
+    if (cwState.thread && cwState.thread.parentId === parentId && cwState.selected === selectedAtStart) {
+      renderCwThread();
+    }
   }
 }
 
@@ -5138,7 +5208,8 @@ function renderCwThread() {
     t.hasMore && persistedCount > 0
       ? `<button class="admin-load-more" id="cw-thread-more"${t.loadingOlder ? ' disabled' : ''}>${t.loadingOlder ? 'Loading…' : 'Load older messages'}</button>`
       : '';
-  msgsEl.innerHTML = loadMoreHtml + (html || (loadMoreHtml ? '' : '<div class="cw-empty" style="padding:12px">No replies yet.</div>'));
+  msgsEl.innerHTML =
+    loadMoreHtml + (html || (loadMoreHtml ? '' : '<div class="cw-empty" style="padding:12px">No replies yet.</div>'));
   if (!msgsEl._loadMoreDelegateAttached) {
     msgsEl._loadMoreDelegateAttached = true;
     msgsEl.addEventListener('click', async (e) => {
