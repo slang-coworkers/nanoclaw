@@ -63,6 +63,16 @@ def _read_only_blocked(action: str) -> bool:
     return False
 
 
+def _post_summon_disabled() -> bool:
+    """Return True when slang-mcp should NOT post SummonView in on_thread_create.
+
+    Default is True (slang-mcp does not post) — feedback_collector.py is the
+    canonical poster. Set DISCORD_POST_SUMMON=1 only on installs that don't run
+    feedback_collector.py and intentionally want slang-mcp to post buttons.
+    """
+    return os.environ.get("DISCORD_POST_SUMMON", "0") != "1"
+
+
 # ── REST-based Discord API (no Gateway needed, works through OneCLI proxy) ──
 
 _discord_http_client: Optional["httpx.AsyncClient"] = None
@@ -391,6 +401,12 @@ async def init_discord_client():
     @client.event
     async def on_thread_create(thread: discord.Thread):
         if thread.parent_id and str(thread.parent_id) in WATCHED_FORUM_IDS:
+            if _post_summon_disabled():
+                logger.info(
+                    f"DISCORD_POST_SUMMON!=1 — slang-mcp skipping SummonView post; "
+                    f"feedback_collector.py is the canonical poster. thread={thread.id}"
+                )
+                return
             if _read_only_blocked(f"post SummonView in on_thread_create thread={thread.id}"):
                 return
             try:
