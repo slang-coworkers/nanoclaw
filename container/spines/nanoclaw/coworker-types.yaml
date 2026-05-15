@@ -45,3 +45,12 @@ nanoclaw-writer:
     code: nanoclaw-code-writer
     test: nanoclaw-build
     doc: nanoclaw-docs
+
+nanoclaw-reviewer:
+  description: "NanoClaw PR reviewer — drives Devin Review (app.devin.ai/review) via agent-browser against a slang-coworkers/nanoclaw PR. Read-only: returns devin-flags.md to the caller via send_file. No GitHub posting, no Reviewer-A pipeline (Devin only)."
+  project: nanoclaw
+  extends: nanoclaw-reader
+  skills:
+    - nanoclaw-pr-review-runner
+  workflows:
+    - nanoclaw-pr-review
