@@ -165,6 +165,24 @@ function formatSingleChat(msg: MessageInRow): string {
   const replyPrefix = formatReplyContext(content.replyTo);
   const attachmentsSuffix = formatAttachments(content.attachments);
 
+  // Engine-synthesized system notifications (channelType='system' OR
+  // sender='system') get rendered as <system-notification>, NOT as a
+  // <message id=… from=…> envelope. Two reasons:
+  //
+  //   1. Routing leak: the old envelope was `from="unknown:agent:<self
+  //      group id>"` because findByRouting couldn't resolve the bogus
+  //      channelType='agent' + platformId=self that notifyAgent used to
+  //      set. The model literally mirrored that envelope in its output,
+  //      turning a benign "Learning saved" notification into a self-
+  //      prompt loop.
+  //   2. Attribution clarity: a system notification is unambiguously
+  //      from the engine, not from a human or another agent, so it
+  //      shouldn't share the same envelope shape and risk the model
+  //      treating it as a conversational turn it must respond to.
+  if (msg.channel_type === 'system' || sender === 'system') {
+    return `<system-notification${idAttr} time="${escapeXml(time)}">${escapeXml(text)}</system-notification>`;
+  }
+
   // Look up the destination name for the origin (reverse map lookup).
   // If not found, fall back to a raw channel:platform_id marker so nothing
   // gets silently dropped — this should only happen if the destination was
