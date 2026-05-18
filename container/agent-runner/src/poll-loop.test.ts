@@ -4,6 +4,7 @@ import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from '
 import { getPendingMessages, markCompleted } from './db/messages-in.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
 import { formatMessages, extractRouting } from './formatter.js';
+import { dispatchResultText, isNewSessionBatch, taskOptsOutOfNewSession } from './poll-loop.js';
 import { MockProvider } from './providers/mock.js';
 
 beforeEach(() => {
@@ -185,6 +186,40 @@ describe('on_wake filtering', () => {
       .run();
     // Should be returned even on non-first poll (on_wake=0)
     expect(getPendingMessages(false)).toHaveLength(1);
+  });
+});
+
+describe('dispatchResultText auto-route gate', () => {
+  // L1's job is to feed L2 a well-formed outbound row. These pin that
+  // contract: agent channel emits with platformId=source-group; system
+  // channel emits nothing. Same-session protection is exercised in the
+  // host agent-route tests.
+
+  it('agent channel: plain text auto-routes back to source platformId', () => {
+    dispatchResultText('Verdict: approve_with_nits.', {
+      platformId: 'ag-nanoclaw',
+      channelType: 'agent',
+      threadId: 'review-thread-1',
+      inReplyTo: 'in-msg-1',
+    });
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(out[0].channel_type).toBe('agent');
+    expect(out[0].platform_id).toBe('ag-nanoclaw');
+    expect(out[0].thread_id).toBe('review-thread-1');
+    expect(out[0].in_reply_to).toBe('in-msg-1');
+    expect(JSON.parse(out[0].content).text).toBe('Verdict: approve_with_nits.');
+  });
+
+  it('system channel: plain text is NOT auto-routed (scratchpad only)', () => {
+    dispatchResultText('Saved learning.', {
+      platformId: null,
+      channelType: 'system',
+      threadId: null,
+      inReplyTo: 'sys-msg-1',
+    });
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(0);
   });
 });
 
@@ -373,5 +408,47 @@ describe('end-to-end with mock provider', () => {
     expect(outMessages).toHaveLength(1);
     expect(JSON.parse(outMessages[0].content).text).toBe('The answer is 4');
     expect(outMessages[0].in_reply_to).toBe('m1');
+  });
+});
+
+describe('new_session predicate (default-on: opt-out via new_session:false)', () => {
+  // Post-default-on (PR #107): fresh session is the default for recurring
+  // task batches. Only explicit `new_session: false` opts out. The shared
+  // predicates (used by both the initial-batch gate and the mid-query
+  // follow-up guard) pin the inverted semantics.
+
+  const task = (content: object) => ({ kind: 'task', content: JSON.stringify(content) });
+  const chat = (content: object) => ({ kind: 'chat', content: JSON.stringify(content) });
+
+  it('taskOptsOutOfNewSession — true only for task kind with explicit new_session:false', () => {
+    expect(taskOptsOutOfNewSession(task({ prompt: 'x', new_session: false }))).toBe(true);
+    expect(taskOptsOutOfNewSession(task({ prompt: 'x' }))).toBe(false); // absent = default (not opt-out)
+    expect(taskOptsOutOfNewSession(task({ prompt: 'x', new_session: true }))).toBe(false);
+    expect(taskOptsOutOfNewSession(chat({ text: 'hi', new_session: false }))).toBe(false); // chat never participates
+  });
+
+  it('taskOptsOutOfNewSession — swallows malformed JSON instead of throwing', () => {
+    expect(taskOptsOutOfNewSession({ kind: 'task', content: 'not-json' })).toBe(false);
+    expect(taskOptsOutOfNewSession({ kind: 'task', content: '' })).toBe(false);
+  });
+
+  it('isNewSessionBatch — TRUE when every message is a task and none opts out (default-on)', () => {
+    expect(isNewSessionBatch([task({ prompt: 'a' })])).toBe(true); // absent = default on
+    expect(isNewSessionBatch([task({ prompt: 'a', new_session: true })])).toBe(true); // explicit true
+    expect(isNewSessionBatch([task({ prompt: 'a' }), task({ prompt: 'b', new_session: true })])).toBe(true);
+  });
+
+  it('isNewSessionBatch — FALSE when any task opts out', () => {
+    expect(isNewSessionBatch([task({ prompt: 'a', new_session: false })])).toBe(false);
+    expect(isNewSessionBatch([task({ prompt: 'a' }), task({ prompt: 'b', new_session: false })])).toBe(false); // one opt-out blocks whole batch
+  });
+
+  it('isNewSessionBatch — FALSE on mixed batches (chat present preserves history)', () => {
+    expect(isNewSessionBatch([chat({ text: 'hi' }), task({ prompt: 'a' })])).toBe(false);
+    expect(isNewSessionBatch([chat({ text: 'hi' }), task({ prompt: 'a', new_session: true })])).toBe(false);
+  });
+
+  it('isNewSessionBatch — FALSE on empty batch (defensive: no spurious fresh sessions)', () => {
+    expect(isNewSessionBatch([])).toBe(false);
   });
 });

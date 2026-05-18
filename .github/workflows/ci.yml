@@ -2,13 +2,30 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, nv-main, nv-dashboard, nv-slang, nv-slangpy, nv-nanoclaw]
 
 jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge nv-* branches (test the composed state, not standalone)
+        if: github.base_ref != 'main'
+        run: |
+          git config user.name "CI"
+          git config user.email "ci@nanoclaw"
+          BASE="${{ github.base_ref }}"
+          for branch in nv-main nv-dashboard nv-slang nv-slangpy nv-nanoclaw; do
+            [ "$branch" = "$BASE" ] && continue
+            if git fetch origin "$branch" 2>/dev/null; then
+              git merge "origin/$branch" --no-edit 2>/dev/null || {
+                echo "::warning::$branch merge conflict — skipping"
+                git merge --abort
+              }
+            fi
+          done
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -22,6 +39,25 @@ jobs:
         working-directory: container/agent-runner
         run: bun install --frozen-lockfile
 
+      - name: Build (needed for fetch-skills + tests)
+        run: pnpm run build
+
+      - name: Upgrade gh CLI (need >= 2.90 for gh skill)
+        run: |
+          gh --version
+          gh extension install github/gh-skill 2>/dev/null || true
+          gh skill --help >/dev/null 2>&1 || {
+            echo "Installing latest gh CLI..."
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt-get update -qq && sudo apt-get install -y -qq gh
+          }
+          gh --version
+
+      - name: Fetch external skills
+        if: hashFiles('scripts/fetch-skills.sh') != ''
+        run: bash scripts/fetch-skills.sh
+
       - name: Format check
         run: pnpm run format:check
 
@@ -30,6 +66,9 @@ jobs:
 
       - name: Typecheck container
         run: pnpm exec tsc -p container/agent-runner/tsconfig.json --noEmit
+
+      - name: Validate coworker templates
+        run: pnpm run validate:templates
 
       - name: Host tests
         run: pnpm exec vitest run

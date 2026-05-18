@@ -1,0 +1,76 @@
+# nv-main — core NanoClaw infrastructure.
+# Owns everything that is NOT a project-specific overlay.
+#
+# This allowlist is intentionally broad — nv-main is where infrastructure,
+# agent-runner code, setup wizards, tests, and shared skills live.
+
+# Host-side TypeScript:
+src/**
+scripts/**
+setup/**
+
+# Agent-runner + container-side:
+container/agent-runner/**
+container/hooks/**
+container/Dockerfile
+container/build.sh
+container/entrypoint.sh
+container/config/**
+
+# Shared container skills (NOT overlay-specific ones):
+.claude/skills/*.md
+.claude/skills/add-*/SKILL.md
+.claude/skills/debug/**
+.claude/skills/setup/**
+.claude/skills/customize/**
+.claude/skills/update-nanoclaw/**
+.claude/skills/agent-browser/**
+.claude/skills/self-customize/**
+.claude/skills/slack-formatting/**
+.claude/skills/welcome/**
+
+# Base infrastructure spine + skills (NOT project overlays):
+container/skills/spine-base/**
+container/spines/base/**
+
+# Upstream-originated skills (on main but not overlay-owned):
+container/skills/base/**
+container/skills/frontend-engineer/**
+container/skills/vercel-cli/**
+
+# Agent-runner mcp-tool instruction docs:
+container/agent-runner/src/mcp-tools/**.md
+
+# Top-level config / docs / tooling:
+package.json
+package-lock.json
+pnpm-lock.yaml
+tsconfig.json
+vitest.config.ts
+vitest.setup.ts
+.github/**
+docs/**
+CLAUDE.md
+README.md
+CONTRIBUTING.md
+LICENSE
+.gitignore
+.prettierrc*
+.eslintrc*
+.husky/**
+groups/main/CLAUDE.md
+
+# Generic workflow templates (project-specific workflows live on project branches):
+container/workflows/plan/**
+container/workflows/implement/**
+
+# Generic critique/observer overlays (project-specific overlays live on project branches):
+container/overlays/buddy/**
+container/overlays/critique-overlay/**
+
+# Removed in this PR (still allowlisted to permit the deletion through path-guard):
+container/workflows/triage-issue/**
+container/workflows/fix-issue/**
+container/workflows/discord-answer/**
+container/overlays/discord-answer-critique/**
+container/skills/github-webhook/**

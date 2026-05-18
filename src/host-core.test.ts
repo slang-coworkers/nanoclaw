@@ -80,6 +80,7 @@ describe('session manager', () => {
       platform_id: 'chan-123',
       name: 'General',
       is_group: 1,
+      admin_user_id: null,
       unknown_sender_policy: 'strict',
       created_at: now(),
     });
@@ -374,6 +375,7 @@ describe('router', () => {
       platform_id: 'chan-123',
       name: 'General',
       is_group: 1,
+      admin_user_id: null,
       unknown_sender_policy: 'public',
       created_at: now(),
     });
@@ -381,6 +383,8 @@ describe('router', () => {
       id: 'mga-1',
       messaging_group_id: 'mg-1',
       agent_group_id: 'ag-1',
+      trigger_rules: null,
+      response_scope: 'all',
       engage_mode: 'pattern',
       engage_pattern: '.',
       sender_scope: 'all',
@@ -513,6 +517,8 @@ describe('router', () => {
       id: 'mga-2',
       messaging_group_id: 'mg-1',
       agent_group_id: 'ag-2',
+      trigger_rules: null,
+      response_scope: 'all',
       engage_mode: 'pattern',
       engage_pattern: '.',
       sender_scope: 'all',
@@ -958,9 +964,12 @@ describe('agent-to-agent routing', () => {
     expect(discordA2a).toHaveLength(0);
   });
 
-  it('BUG: A2A-only session gets null session_routing (#2332)', async () => {
-    // Researcher only has an agent-shared session (no channel wiring).
-    // writeSessionRouting writes nulls because messaging_group_id is null.
+  it('A2A-only session gets agent-typed session_routing (#2332)', async () => {
+    // Fixed: writeSessionRouting overrides the synthetic `agent:<src>:<rcp>`
+    // mg with channel_type='agent', platform_id=<source agent group id>,
+    // so the container's bare send_message produces an outbound addressed
+    // at the real source — routeAgentMessage's reply-detection branch
+    // then delivers it into the source's session.
     const { routeAgentMessage } = await import('./modules/agent-to-agent/agent-route.js');
 
     const { session: paSession } = resolveSession('ag-pa', 'mg-slack', null, 'shared');
@@ -984,10 +993,9 @@ describe('agent-to-agent routing', () => {
       | undefined;
     rDb.close();
 
-    // BUG: session_routing is all null — researcher has no default routing
     expect(routing).toBeDefined();
-    expect(routing!.channel_type).toBeNull();
-    expect(routing!.platform_id).toBeNull();
+    expect(routing!.channel_type).toBe('agent');
+    expect(routing!.platform_id).toBe('ag-pa');
   });
 });
 
@@ -1006,6 +1014,7 @@ describe('delivery', () => {
       platform_id: 'chan-test',
       name: 'Test',
       is_group: 0,
+      admin_user_id: null,
       unknown_sender_policy: 'strict',
       created_at: now(),
     });

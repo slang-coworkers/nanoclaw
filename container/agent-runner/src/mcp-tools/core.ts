@@ -1,5 +1,5 @@
 /**
- * Core MCP tools: send_message, send_file, edit_message, add_reaction.
+ * Core MCP tools: send_message, send_file, add_reaction.
  *
  * All outbound tools resolve destinations via the local destination map
  * (see destinations.ts). Agents reference destinations by name; the map
@@ -46,12 +46,26 @@ function destinationList(): string {
  *
  * If `to` is specified, look up the named destination. If it resolves to
  * the same channel the session is bound to, the session's thread_id is
- * preserved so replies land in the correct thread. Otherwise thread_id
- * is null (a cross-destination send starts a new conversation).
+ * preserved so replies land in the correct thread.
+ *
+ * For cross-channel sends and agent-to-agent (a2a) destinations, the
+ * sender's current `thread_id` auto-propagates so parallel delegations
+ * don't collapse into one shared recipient session ("I'm working on
+ * PR-A in my thread, reviewer gets a PR-A-scoped session; I delegate
+ * PR-B in a different thread, reviewer gets a PR-B-scoped session").
+ *
+ * `explicitThreadId`, if provided by the caller, always wins — enables
+ * fan-out (sender sends N distinct sub-delegations from one thread) and
+ * fan-in (two sender-threads collapse into one recipient session).
+ * Pass `null` or `undefined` to fall through to the auto-propagation
+ * rules above.
  */
 function resolveRouting(
   to: string | undefined,
-): { channel_type: string; platform_id: string; thread_id: string | null; resolvedName: string } | { error: string } {
+  explicitThreadId: string | null,
+):
+  | { channel_type: string; platform_id: string; thread_id: string | null; resolvedName: string }
+  | { error: string } {
   if (!to) {
     // Default: reply to whatever thread/channel this session is bound to.
     const session = getSessionRouting();
@@ -59,7 +73,7 @@ function resolveRouting(
       return {
         channel_type: session.channel_type,
         platform_id: session.platform_id,
-        thread_id: session.thread_id,
+        thread_id: explicitThreadId ?? session.thread_id,
         resolvedName: '(current conversation)',
       };
     }
@@ -80,8 +94,9 @@ function resolveRouting(
     // If the destination is the same channel the session is bound to,
     // preserve the thread_id so replies land in the correct thread.
     const session = getSessionRouting();
-    const threadId =
-      session.channel_type === dest.channelType && session.platform_id === dest.platformId ? session.thread_id : null;
+    const sameChannel =
+      session.channel_type === dest.channelType && session.platform_id === dest.platformId;
+    const threadId = explicitThreadId ?? (sameChannel ? session.thread_id : null);
     return {
       channel_type: dest.channelType!,
       platform_id: dest.platformId!,
@@ -89,21 +104,46 @@ function resolveRouting(
       resolvedName: to,
     };
   }
-  return { channel_type: 'agent', platform_id: dest.agentGroupId!, thread_id: null, resolvedName: to };
+  // Agent-to-agent destination: auto-propagate sender's thread so each
+  // sender-thread → one recipient-session. Explicit override wins for
+  // fan-out / fan-in flows. Null → recipient's agent-shared root session
+  // (back-compat with unthreaded installs).
+  const session = getSessionRouting();
+  const threadId = explicitThreadId ?? session.thread_id ?? null;
+  return {
+    channel_type: 'agent',
+    platform_id: dest.agentGroupId!,
+    thread_id: threadId,
+    resolvedName: to,
+  };
+}
+
+/** Normalise an optional thread_id tool argument. Matches the ingress
+ *  contract: trim, empty → null, non-string → reject. */
+function normalizeThreadIdArg(raw: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
+  if (raw === undefined || raw === null) return { ok: true, value: null };
+  if (typeof raw !== 'string') return { ok: false, error: 'thread_id must be a string when provided' };
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return { ok: true, value: null };
+  if (trimmed.length > 200) return { ok: false, error: 'thread_id too long (max 200 chars)' };
+  return { ok: true, value: trimmed };
 }
 
 export const sendMessage: McpToolDefinition = {
   tool: {
     name: 'send_message',
-    description: 'Send a message to a named destination. If you have only one destination, you can omit `to`.',
+    description:
+      'Send a message to a named destination. If you have only one destination, you can omit `to`. For threaded contexts, thread_id auto-propagates from the sender\'s current thread unless explicitly overridden.',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        to: {
-          type: 'string',
-          description: 'Destination name (e.g., "family", "worker-1"). Optional if you have only one destination.',
-        },
+        to: { type: 'string', description: 'Destination name (e.g., "family", "worker-1"). Optional if you have only one destination.' },
         text: { type: 'string', description: 'Message content' },
+        thread_id: {
+          type: 'string',
+          description:
+            'Optional thread identifier. Defaults to the current session\'s thread_id so parallel delegations (e.g. one PR review per thread) stay isolated. Pass an explicit value for fan-out ("review-PR-A"), fan-in (shared id), or leave empty string / omit for auto.',
+        },
       },
       required: ['text'],
     },
@@ -112,21 +152,24 @@ export const sendMessage: McpToolDefinition = {
     const text = args.text as string;
     if (!text) return err('text is required');
 
-    const routing = resolveRouting(args.to as string | undefined);
+    const threadIdArg = normalizeThreadIdArg(args.thread_id);
+    if (!threadIdArg.ok) return err(threadIdArg.error);
+
+    const routing = resolveRouting(args.to as string | undefined, threadIdArg.value);
     if ('error' in routing) return err(routing.error);
 
     const id = generateId();
     const seq = writeMessageOut({
       id,
-      in_reply_to: getCurrentInReplyTo(),
       kind: 'chat',
       platform_id: routing.platform_id,
       channel_type: routing.channel_type,
       thread_id: routing.thread_id,
       content: JSON.stringify({ text }),
+      in_reply_to: getCurrentInReplyTo(),
     });
 
-    log(`send_message: #${seq} → ${routing.resolvedName}`);
+    log(`send_message: #${seq} → ${routing.resolvedName}${routing.thread_id ? ` (thread=${routing.thread_id})` : ''}`);
     return ok(`Message sent to ${routing.resolvedName} (id: ${seq})`);
   },
 };
@@ -142,6 +185,11 @@ export const sendFile: McpToolDefinition = {
         path: { type: 'string', description: 'File path (relative to /workspace/agent/ or absolute)' },
         text: { type: 'string', description: 'Optional accompanying message' },
         filename: { type: 'string', description: 'Display name (default: basename of path)' },
+        thread_id: {
+          type: 'string',
+          description:
+            'Optional thread identifier. Same semantics as send_message: auto-propagates from the sender\'s current thread unless explicitly set.',
+        },
       },
       required: ['path'],
     },
@@ -150,7 +198,10 @@ export const sendFile: McpToolDefinition = {
     const filePath = args.path as string;
     if (!filePath) return err('path is required');
 
-    const routing = resolveRouting(args.to as string | undefined);
+    const threadIdArg = normalizeThreadIdArg(args.thread_id);
+    if (!threadIdArg.ok) return err(threadIdArg.error);
+
+    const routing = resolveRouting(args.to as string | undefined, threadIdArg.value);
     if ('error' in routing) return err(routing.error);
 
     const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve('/workspace/agent', filePath);
@@ -165,57 +216,16 @@ export const sendFile: McpToolDefinition = {
 
     writeMessageOut({
       id,
-      in_reply_to: getCurrentInReplyTo(),
       kind: 'chat',
       platform_id: routing.platform_id,
       channel_type: routing.channel_type,
       thread_id: routing.thread_id,
       content: JSON.stringify({ text: (args.text as string) || '', files: [filename] }),
+      in_reply_to: getCurrentInReplyTo(),
     });
 
     log(`send_file: ${id} → ${routing.resolvedName} (${filename})`);
     return ok(`File sent to ${routing.resolvedName} (id: ${id}, filename: ${filename})`);
-  },
-};
-
-export const editMessage: McpToolDefinition = {
-  tool: {
-    name: 'edit_message',
-    description: 'Edit a previously sent message. Targets the same destination the original message was sent to.',
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        messageId: { type: 'integer', description: 'Message ID (the numeric id shown in messages)' },
-        text: { type: 'string', description: 'New message content' },
-      },
-      required: ['messageId', 'text'],
-    },
-  },
-  async handler(args) {
-    const seq = Number(args.messageId);
-    const text = args.text as string;
-    if (!seq || !text) return err('messageId and text are required');
-
-    const platformId = getMessageIdBySeq(seq);
-    if (!platformId) return err(`Message #${seq} not found`);
-
-    const routing = getRoutingBySeq(seq);
-    if (!routing || !routing.channel_type || !routing.platform_id) {
-      return err(`Cannot determine destination for message #${seq}`);
-    }
-
-    const id = generateId();
-    writeMessageOut({
-      id,
-      kind: 'chat',
-      platform_id: routing.platform_id,
-      channel_type: routing.channel_type,
-      thread_id: routing.thread_id,
-      content: JSON.stringify({ operation: 'edit', messageId: platformId, text }),
-    });
-
-    log(`edit_message: #${seq} → ${platformId}`);
-    return ok(`Message edit queued for #${seq}`);
   },
 };
 
@@ -260,4 +270,39 @@ export const addReaction: McpToolDefinition = {
   },
 };
 
-registerTools([sendMessage, sendFile, editMessage, addReaction]);
+const reportPrCreated: McpToolDefinition = {
+  tool: {
+    name: 'report_pr_created',
+    description:
+      'Report that you created a GitHub PR. Enables webhook events (review comments, CI status) for this PR to route back to your current session instead of creating an orphan.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        repo: { type: 'string', description: 'Repository in owner/name format (e.g. shader-slang/slangpy)' },
+        pr_number: { type: 'number', description: 'PR number' },
+      },
+      required: ['repo', 'pr_number'],
+    },
+  },
+  async handler(args) {
+    const repo = typeof args.repo === 'string' ? args.repo.trim() : '';
+    const prNumber = typeof args.pr_number === 'number' ? args.pr_number : NaN;
+    if (!repo || !Number.isFinite(prNumber)) {
+      return err('repo (string) and pr_number (number) are required');
+    }
+
+    const seq = writeMessageOut({
+      id: generateId(),
+      kind: 'system',
+      platform_id: null,
+      channel_type: null,
+      thread_id: null,
+      content: JSON.stringify({ action: 'map_pr_session', repo, pr_number: prNumber }),
+    });
+
+    log(`report_pr_created: #${seq} → ${repo}#${prNumber} mapped to this session`);
+    return ok(`PR ${repo}#${prNumber} mapped to this session. Webhook events will route here.`);
+  },
+};
+
+registerTools([sendMessage, sendFile, addReaction, reportPrCreated]);

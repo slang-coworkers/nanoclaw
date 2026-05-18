@@ -46,6 +46,37 @@ export function getAllDestinations(): DestinationEntry[] {
   return rows.map(rowToEntry);
 }
 
+/**
+ * Deterministic fingerprint of the destinations table — cheap to compute
+ * on every poll iteration, changes iff any row's significant content
+ * changes. Used by the poll loop to decide whether the system prompt's
+ * destinations section needs to be rebuilt (the host refreshes this
+ * table mid-session when new coworkers are wired; without a fingerprint
+ * check the agent would operate from its startup snapshot forever).
+ *
+ * Format is intentionally opaque — callers must compare for equality,
+ * not parse.
+ */
+export function getDestinationsFingerprint(): string {
+  const rows = getInboundDb()
+    .prepare(
+      'SELECT name, display_name, type, channel_type, platform_id, agent_group_id FROM destinations ORDER BY name',
+    )
+    .all() as DestRow[];
+  return rows
+    .map((r) =>
+      [
+        r.name,
+        r.display_name ?? '',
+        r.type,
+        r.channel_type ?? '',
+        r.platform_id ?? '',
+        r.agent_group_id ?? '',
+      ].join('\x1f'),
+    )
+    .join('\x1e');
+}
+
 export function findByName(name: string): DestinationEntry | undefined {
   const row = getInboundDb().prepare('SELECT * FROM destinations WHERE name = ?').get(name) as DestRow | undefined;
   return row ? rowToEntry(row) : undefined;
@@ -102,29 +133,38 @@ function buildDestinationsSection(): string {
     ].join('\n');
   }
 
-  const lines = ['## Sending messages', ''];
+  // Single-destination shortcut: the agent just writes its response normally.
   if (all.length === 1) {
     const d = all[0];
     const label = d.displayName && d.displayName !== d.name ? ` (${d.displayName})` : '';
-    lines.push(`Your destination is \`${d.name}\`${label}.`);
-  } else {
-    lines.push('You can send messages to the following destinations:', '');
-    for (const d of all) {
-      const label = d.displayName && d.displayName !== d.name ? ` (${d.displayName})` : '';
-      lines.push(`- \`${d.name}\`${label}`);
-    }
+    return [
+      '## Sending messages',
+      '',
+      `Your messages are delivered to \`${d.name}\`${label}. Just write your response directly — no special wrapping needed.`,
+      '',
+      'To mark something as scratchpad (logged but not sent), wrap it in `<internal>...</internal>`.',
+      '',
+      'To send a message mid-response (e.g., an acknowledgment before a long task), call the `send_message` MCP tool.',
+    ].join('\n');
+  }
+
+  const lines = ['## Sending messages', '', 'You can send messages to the following destinations:', ''];
+  for (const d of all) {
+    const label = d.displayName && d.displayName !== d.name ? ` (${d.displayName})` : '';
+    lines.push(`- \`${d.name}\`${label}`);
   }
   lines.push('');
   lines.push(
-    'Wrap each delivered message in a `<message to="name">…</message>` block; include several blocks in one response to address several destinations. `<internal>…</internal>` marks thinking you don\'t want sent.',
+    'This list is regenerated at the top of every message you process — if the admin tells you they just created a new coworker, trust the list above rather than asking for a container restart. No restart is needed for the agent to see newly-wired coworkers.',
   );
   lines.push('');
-  lines.push(
-    'When replying to an incoming message, default to addressing the destination it came `from` (every inbound `<message>` tag carries a `from="name"` attribute). Pick a different destination when the request asks for it (e.g., "tell Laura that…").',
-  );
+  lines.push('To send a message, wrap it in a `<message to="name">...</message>` block.');
+  lines.push('You can include multiple `<message>` blocks in one response to send to multiple destinations.');
+  lines.push('Text outside of `<message>` blocks is scratchpad — logged but not sent anywhere.');
+  lines.push('Use `<internal>...</internal>` to make scratchpad intent explicit.');
   lines.push('');
   lines.push(
-    'The `send_message` MCP tool is the same delivery, available mid-turn — handy for a quick acknowledgment ("on it") before a slow tool call. Each `send_message` call and each final-response `<message>` block lands as its own message in the conversation, so they read as a sequence rather than as one combined reply.',
+    'To send a message mid-response (e.g., an acknowledgment before a long task), call the `send_message` MCP tool with the `to` parameter set to a destination name.',
   );
   return lines.join('\n');
 }
