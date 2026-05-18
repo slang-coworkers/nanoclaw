@@ -1122,24 +1122,35 @@ def main(port: int, transport: str) -> int:
             console.print("[green]Server running on stdio[/green]")
 
             async def arun():
-                # Eagerly initialize the Discord Gateway client so live event
-                # handlers (on_message, on_thread_create) register at server
-                # startup. Without this, init_discord_client() only fires on
-                # the first discord_* tool call (via ensure_client_connected),
-                # so push events from Discord are missed until something wakes
-                # the client.
+                # Optionally pre-initialize the Discord Gateway client so live
+                # event handlers (on_message, on_thread_create) register at
+                # server startup instead of waiting for the first discord_* tool
+                # call.
                 #
-                # init_discord_client() is a no-op when DISCORD_BOT_TOKEN is
-                # unset — REST tools still work via the OneCLI proxy. We catch
-                # exceptions defensively so a Discord init failure can't take
-                # the whole MCP server down.
-                try:
-                    await init_discord_client()
-                except Exception as e:
-                    console.print(
-                        f"[yellow]Eager Discord client init failed: {e} — "
-                        f"REST tools still work via OneCLI proxy[/yellow]"
-                    )
+                # OPT-IN via DISCORD_EAGER_INIT=1 (default off). Installs that
+                # already run a separate feedback_collector daemon (e.g.
+                # `nanoclaw-prod-discord-feedback.service` on prod) should
+                # leave this off — feedback_collector already holds the
+                # Gateway connection, and a second connection from slang-mcp
+                # for the same bot is wasteful (two duplicate event streams,
+                # two POSTs to the dashboard ingress for every user message).
+                #
+                # Lego does NOT run feedback_collector and benefits from
+                # eager init: live read events flow into the dashboard the
+                # instant slang-mcp starts, no first-tool-call wakeup needed.
+                #
+                # init_discord_client() is itself a no-op when
+                # DISCORD_BOT_TOKEN is unset — REST tools still work via the
+                # OneCLI proxy. Exceptions are caught defensively so a
+                # Discord init failure can't take the whole MCP server down.
+                if os.environ.get("DISCORD_EAGER_INIT") == "1":
+                    try:
+                        await init_discord_client()
+                    except Exception as e:
+                        console.print(
+                            f"[yellow]Eager Discord client init failed: {e} — "
+                            f"REST tools still work via OneCLI proxy[/yellow]"
+                        )
 
                 async with stdio_server() as streams:
                     await app.run(
