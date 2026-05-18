@@ -120,6 +120,22 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
     throw new Error(`target agent group ${targetAgentGroupId} not found for message ${msg.id}`);
   }
   const { session: targetSession } = resolveSession(targetAgentGroupId, null, null, 'agent-shared');
+
+  // Self-loop guard. If the resolved target session is the SAME session
+  // that's emitting the message, dropping is the only safe option:
+  // delivering would re-prompt the model with its own prior text and the
+  // model role-plays the next turn. Layered defense in depth on top of the agent-runner
+  // poll-loop guard that prevents plain assistant text on the agent
+  // channel from being auto-routed in the first place.
+  if (targetSession.id === session.id) {
+    log.warn('a2a self-loop dropped: target session equals source session', {
+      msgId: msg.id,
+      sessionId: session.id,
+      agentGroupId: session.agent_group_id,
+    });
+    return;
+  }
+
   const a2aMsgId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   // If the source message references files (via `send_file`), forward the

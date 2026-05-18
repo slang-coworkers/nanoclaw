@@ -385,8 +385,19 @@ function dispatchResultText(text: string, routing: RoutingContext): void {
   // Single-destination shortcut: the agent wrote plain text — send to
   // the session's originating channel (from session_routing) if available,
   // otherwise fall back to the single destination.
+  //
+  // Self-loop guard: the shortcut MUST NOT fire when the inbound came from
+  // an internal source (engine-synthesized system notifications, agent-to-
+  // agent chat). Those have channelType ∈ {'agent','system'} and no real
+  // remote destination to reply to. Auto-routing plain text in that case
+  // turns the agent's status update into a self-prompt — the assistant's
+  // text lands as a new inbound, the model role-plays the next turn, and
+  // the loop sustains itself. Plain text on internal channels is
+  // scratchpad only; explicit destinations require a <message to=…>
+  // block or a send_message tool call.
   if (sent === 0 && scratchpad) {
-    if (routing.channelType && routing.platformId) {
+    const internalChannel = routing.channelType === 'agent' || routing.channelType === 'system';
+    if (routing.channelType && routing.platformId && !internalChannel) {
       // Reply to the channel/thread the message came from
       writeMessageOut({
         id: generateId(),
@@ -399,10 +410,12 @@ function dispatchResultText(text: string, routing: RoutingContext): void {
       });
       return;
     }
-    const all = getAllDestinations();
-    if (all.length === 1) {
-      sendToDestination(all[0], scratchpad, routing);
-      return;
+    if (!internalChannel) {
+      const all = getAllDestinations();
+      if (all.length === 1) {
+        sendToDestination(all[0], scratchpad, routing);
+        return;
+      }
     }
   }
 

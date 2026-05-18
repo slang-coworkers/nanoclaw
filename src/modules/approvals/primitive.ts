@@ -125,14 +125,29 @@ function channelTypeOf(userId: string): string {
 
 // ── Request API ──
 
-/** Send a system chat to the agent's session. Used by callers and by the response handler. */
+/**
+ * Send a system chat to the agent's session. Used by callers and by the
+ * response handler.
+ *
+ * Tagged with channelType='system' and platformId=null. Two reasons:
+ * - The container formatter renders sender='system' messages as a
+ *   `<system-notification>` envelope, not as `<message id=… from=…>`,
+ *   so the model can't mirror the inbound XML format in its output.
+ * - The 'system' channel type is not a valid a2a routing destination,
+ *   so even if the agent emits a plain reply that the agent-runner's
+ *   single-destination shortcut tries to auto-route, the routing layer
+ *   has nothing to resolve. Previously we tagged these as channelType
+ *   ='agent' with platformId=session.agent_group_id, which the formatter
+ *   mis-rendered as `from="unknown:agent:<self group id>"` and the
+ *   agent-runner mis-routed back to self.
+ */
 export function notifyAgent(session: Session, text: string): void {
   writeSessionMessage(session.agent_group_id, session.id, {
     id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: 'chat',
     timestamp: new Date().toISOString(),
-    platformId: session.agent_group_id,
-    channelType: 'agent',
+    platformId: null,
+    channelType: 'system',
     threadId: null,
     content: JSON.stringify({ text, sender: 'system', senderId: 'system' }),
   });
