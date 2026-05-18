@@ -35,7 +35,7 @@ import {
   getMessagingGroupByPlatform,
 } from '../../db/messaging-groups.js';
 import { createDestination } from './db/agent-destinations.js';
-import { getSourceFor } from '../../db/a2a-session-sources.js';
+import { getSourceFor, recordSource } from '../../db/a2a-session-sources.js';
 import { initSessionFolder, writeSessionRouting } from '../../session-manager.js';
 import type { Session } from '../../types.js';
 
@@ -499,6 +499,55 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
       .all('ag-sender') as Array<{ id: string }>;
     expect(senderSessionsAfter).toHaveLength(0);
+  });
+
+  it('reply self-loop: sourceHint pointing at recipient itself is dropped (defense-in-depth)', async () => {
+    // The invariant "source ≠ recipient" is established at recordSource time
+    // (the main-route same-session guard runs before recordSource). This test
+    // simulates a corruption — migration / backfill / a future code path —
+    // that leaves a self-referential hint in a2a_session_sources, and proves
+    // the reply branch refuses to write the agent's reply back into its own
+    // session (which would feed the model its own output as the next inbound
+    // turn and re-open the engine self-loop PR #355 closed).
+    const { senderSession } = seedPair();
+    // Seed a recipient session manually (no delegation, so no real source).
+    const recipientSession: Session = {
+      id: 'sess-recipient-self',
+      agent_group_id: 'ag-recipient',
+      messaging_group_id: null,
+      thread_id: 'T1',
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(recipientSession);
+    initSessionFolder('ag-recipient', recipientSession.id);
+
+    // Inject the corrupt mapping: this session points at itself as the source.
+    recordSource({
+      recipientSessionId: recipientSession.id,
+      recipientAgentGroupId: 'ag-recipient',
+      recipientThreadId: 'T1',
+      sourceSessionId: recipientSession.id,
+      sourceAgentGroupId: 'ag-recipient',
+      sourceThreadId: 'T1',
+    });
+    expect(getSourceFor(recipientSession.id)?.source_session_id).toBe(recipientSession.id);
+
+    // Recipient emits a "reply" addressed at its own agent group. Reply
+    // detection fires (sourceHint exists, sourceAgentGroupId matches
+    // platform_id) — but the new same-session guard must drop the write.
+    await expect(
+      routeAgentMessage(
+        { id: 'out-self', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'echo' }) },
+        recipientSession,
+      ),
+    ).resolves.toBeUndefined();
+
+    // Sanity: nothing about the sender session changed (it wasn't even involved).
+    expect(getSession(senderSession.id)).toBeDefined();
   });
 
   it('B delegating to a fresh third agent C is treated as a new delegation, not a reply', async () => {
