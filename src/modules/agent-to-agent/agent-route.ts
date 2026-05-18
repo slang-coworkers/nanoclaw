@@ -377,6 +377,25 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
       threadId ? 'per-thread' : 'shared',
     ));
 
+    // L2 same-session guard — the host-side last line of defense against
+    // engine self-loop (PR #355's regression class). If a self-targeted
+    // a2a (channel='agent', platform_id=<own group>) leaks past the
+    // formatter <system-notification> wrap (L3a), notifyAgent's
+    // channelType='system' (L3b), and the poll-loop L1 platformId/system
+    // gate, this guard drops the write before recordSource creates a
+    // self-referential a2a_session_sources row and writeSessionMessage
+    // delivers the agent's own outbound back into its own inbox.
+    if (targetSession.id === session.id) {
+      log.warn('a2a main-route self-target dropped: target session resolves to emitter', {
+        msgId: msg.id,
+        sessionId: session.id,
+        agentGroupId: session.agent_group_id,
+        targetAgentGroupId,
+        threadId,
+      });
+      return;
+    }
+
     // Stamp the route-back hint so the recipient's reply can find its way
     // home. Covers both per-thread and agent-shared paths — even shared
     // sessions benefit from the reply-detection branch above, so long as
