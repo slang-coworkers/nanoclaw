@@ -1,0 +1,11 @@
+# Slang GitHub webhook routing for the main (orchestrator) assistant.
+#
+# Contributes always-in-context routing instructions so the orchestrator
+# knows how to handle `github.pr_mention` webhook messages and forward them
+# to the correct slang coworker session.
+
+main:
+  context:
+    - container/skills/slang-github-webhook/context/routing.md
+  skills:
+    - container/skills/slang-github-webhook/SKILL.md
