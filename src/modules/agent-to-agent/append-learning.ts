@@ -21,8 +21,8 @@ function notifyAgent(session: Session, text: string): void {
     id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: 'chat',
     timestamp: new Date().toISOString(),
-    platformId: session.agent_group_id,
-    channelType: 'agent',
+    platformId: null,
+    channelType: 'system',
     threadId: null,
     content: JSON.stringify({ text, sender: 'system', senderId: 'system' }),
   });

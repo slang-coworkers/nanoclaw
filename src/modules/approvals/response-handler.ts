@@ -107,8 +107,11 @@ async function handleRegisteredApproval(
       id: `appr-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       kind: 'chat',
       timestamp: new Date().toISOString(),
-      platformId: session.agent_group_id,
-      channelType: 'agent',
+      // System notification — channelType='system' / platformId=null so the
+      // formatter renders <system-notification> and the routing layer can
+      // never resolve self as an a2a destination.
+      platformId: null,
+      channelType: 'system',
       threadId: null,
       content: JSON.stringify({ text, sender: 'system', senderId: 'system' }),
     });

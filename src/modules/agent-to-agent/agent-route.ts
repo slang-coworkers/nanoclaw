@@ -277,6 +277,24 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
     threadId ? 'per-thread' : 'shared',
   );
 
+  // Self-loop guard. If the resolved target session is the SAME session
+  // that's emitting the message, dropping is the only safe option:
+  // delivering would re-prompt the model with its own prior text and the
+  // model role-plays the next turn. Layered defense in depth on top of
+  // the agent-runner poll-loop guard that prevents plain assistant text
+  // on the agent/system channel from being auto-routed in the first
+  // place. Cross-thread (same group, different thread → different
+  // session) is preserved — only same-session writes are blocked.
+  if (targetSession.id === session.id) {
+    log.warn('a2a self-loop dropped: target session equals source session', {
+      msgId: msg.id,
+      sessionId: session.id,
+      agentGroupId: session.agent_group_id,
+      threadId,
+    });
+    return;
+  }
+
   // Stamp the route-back hint so the recipient's reply can find its way
   // home. Covers both per-thread and agent-shared paths — even shared
   // sessions benefit from the reply-detection branch above, so long as
