@@ -46,31 +46,88 @@ WATCHED_FORUM_IDS = set(
     if f.strip()
 )
 
+# Continuation cap: maximum bot replies per summoned thread before the bot
+# silently stops. Default 15. Counts bot's own answers; the agent is told on
+# its final allowed reply to ask the user to open a new thread.
+MAX_BOT_REPLIES_PER_THREAD = int(os.environ.get("MAX_BOT_REPLIES_PER_THREAD", "15"))
 
-# ── Read-only mode ──────────────────────────────────────────────────────────
-# When DISCORD_READ_ONLY=1 is set, every code path that writes to Discord
-# (Gateway-driven thread.send, the send_message / moderate_message /
-# create_channel tools, the feedback_collector button-post) aborts before
-# making the API call. The agent's allowed_mcp_tools list is the primary
-# gate; this is defense-in-depth at the slang-mcp layer so even a misconfig
-# can't cause lego (or any read-only install) to write to Discord.
 
-def _read_only_blocked(action: str) -> bool:
-    """Return True if DISCORD_READ_ONLY=1 — caller must abort the write."""
-    if os.environ.get("DISCORD_READ_ONLY") == "1":
-        logger.warning(f"DISCORD_READ_ONLY=1 — blocked Discord write: {action}")
-        return True
+# ── Per-thread continuation state helpers ───────────────────────────────────
+# State is sourced from two append-only audit files in the feedback dir:
+#   summon_requests.jsonl — written when a user clicks "Get Bot Help"
+#   thread_state.jsonl    — written by SummonView, FeedbackView, and on_message
+# Read on every event (low traffic) instead of holding an in-memory cache,
+# because feedback_collector.py and this module are two separate processes
+# and would otherwise drift.
+
+def _feedback_path(name: str) -> str:
+    return os.path.join(os.environ.get("DISCORD_FEEDBACK_DIR", "/tmp/discord-feedback"), name)
+
+
+def _has_summon(thread_id: str) -> bool:
+    """True if the thread has at least one summon click recorded."""
+    path = _feedback_path("summon_requests.jsonl")
+    if not os.path.exists(path):
+        return False
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    if json.loads(line).get("thread_id") == thread_id:
+                        return True
+                except Exception:
+                    continue
+    except Exception:
+        return False
     return False
 
 
-def _post_summon_disabled() -> bool:
-    """Return True when slang-mcp should NOT post SummonView in on_thread_create.
+def _read_thread_state(thread_id: str) -> dict:
+    """Replay thread_state.jsonl events and return current state for thread."""
+    state = {"resolved": False, "bot_reply_count": 0}
+    path = _feedback_path("thread_state.jsonl")
+    if not os.path.exists(path):
+        return state
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except Exception:
+                    continue
+                if row.get("thread_id") != thread_id:
+                    continue
+                e = row.get("event")
+                if e == "resolved":
+                    state["resolved"] = True
+                elif e == "unresolved":
+                    state["resolved"] = False
+                elif e == "bot_reply":
+                    state["bot_reply_count"] += 1
+    except Exception:
+        pass
+    return state
 
-    Default is True (slang-mcp does not post) — feedback_collector.py is the
-    canonical poster. Set DISCORD_POST_SUMMON=1 only on installs that don't run
-    feedback_collector.py and intentionally want slang-mcp to post buttons.
-    """
-    return os.environ.get("DISCORD_POST_SUMMON", "0") != "1"
+
+def _record_thread_event(thread_id: str, event: str) -> None:
+    """Append an event to thread_state.jsonl."""
+    path = _feedback_path("thread_state.jsonl")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    try:
+        with open(path, "a") as f:
+            f.write(json.dumps({
+                "thread_id": thread_id,
+                "event": event,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            }) + "\n")
+    except Exception as e:
+        logger.error(f"Failed to record thread event {event} for {thread_id}: {e}")
 
 
 # ── REST-based Discord API (no Gateway needed, works through OneCLI proxy) ──
@@ -186,15 +243,21 @@ class SummonView(discord.ui.View):
                 return
 
         os.makedirs(FEEDBACK_DIR, exist_ok=True)
+        thread_id = str(interaction.channel_id)
         entry = json.dumps({
             "type": "summon",
-            "thread_id": str(interaction.channel_id),
+            "thread_id": thread_id,
             "thread_name": getattr(interaction.channel, "name", ""),
             "parent_id": str(channel.parent_id) if isinstance(channel, discord.Thread) and channel.parent_id else None,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
         with open(os.path.join(FEEDBACK_DIR, "summon_requests.jsonl"), "a") as f:
             f.write(entry + "\n")
+
+        # Mark thread as summoned and pre-record the upcoming first reply
+        # toward the cap. on_message gates rely on these events.
+        _record_thread_event(thread_id, "summoned")
+        _record_thread_event(thread_id, "bot_reply")
 
         thread_name = getattr(interaction.channel, "name", "?")
         thread_url = (
@@ -205,9 +268,17 @@ class SummonView(discord.ui.View):
         prompt = (
             f"A user has summoned you to answer a question.\n"
             f"Thread: {thread_name}\n"
-            f"Thread ID: {interaction.channel_id}\n"
+            f"Thread ID: {thread_id}\n"
             f"Link: {thread_url}\n"
-            f"Please read the thread and draft an answer."
+            f"Please read the thread and draft an answer.\n"
+            f"\n"
+            f"This is your FIRST reply in this thread. After your answer, append the "
+            f"following italicized footer on its own line, exactly as written:\n"
+            f"\n"
+            f"  *Keep asking follow-ups in this thread (up to {MAX_BOT_REPLIES_PER_THREAD} replies). "
+            f"Click **Resolved** on any of my messages to pause me; click again to resume.*\n"
+            f"\n"
+            f"Use this exact phrasing — users see it on every first reply."
         )
         posted = await _post_to_dashboard(prompt)
 
@@ -398,22 +469,10 @@ async def init_discord_client():
         logger.info("FeedbackView + SummonView registered for persistent buttons")
         ready_event.set()
 
-    @client.event
-    async def on_thread_create(thread: discord.Thread):
-        if thread.parent_id and str(thread.parent_id) in WATCHED_FORUM_IDS:
-            if _post_summon_disabled():
-                logger.info(
-                    f"DISCORD_POST_SUMMON!=1 — slang-mcp skipping SummonView post; "
-                    f"feedback_collector.py is the canonical poster. thread={thread.id}"
-                )
-                return
-            if _read_only_blocked(f"post SummonView in on_thread_create thread={thread.id}"):
-                return
-            try:
-                await thread.send("", view=SummonView())
-                logger.info(f"Posted SummonView on new thread: {thread.name}")
-            except Exception as e:
-                logger.error(f"Failed to post SummonView: {e}")
+    # on_thread_create is intentionally not registered here. The
+    # nanoclaw-prod-discord-feedback service (always-on daemon) posts the
+    # summon button — slang-mcp's Discord client lazy-initializes so it can't
+    # be the reliable poster, and registering it here too would duplicate.
 
     @client.event
     async def on_message(message: discord.Message):
@@ -424,14 +483,51 @@ async def init_discord_client():
             return
         if not channel.parent_id or str(channel.parent_id) not in WATCHED_FORUM_IDS:
             return
-        # New user message in a watched forum thread — notify agent
+
+        # OP-only continuation: only the thread author's follow-ups wake the bot.
+        # Other members can read along, but a knowledgeable bystander can't
+        # rack up the OP's reply cap or steer the bot off-topic.
+        if channel.owner_id and message.author.id != channel.owner_id:
+            return
+
+        thread_id = str(channel.id)
+
+        # Continuation gates — silent skips, not errors
+        if not _has_summon(thread_id):
+            return  # bot was never summoned in this thread; do not auto-engage
+        state = _read_thread_state(thread_id)
+        if state["resolved"]:
+            return  # OP marked the thread resolved; conversation ended
+        if state["bot_reply_count"] >= MAX_BOT_REPLIES_PER_THREAD:
+            return  # cap reached; bot has tapped out
+
+        is_final = (state["bot_reply_count"] + 1) >= MAX_BOT_REPLIES_PER_THREAD
+        final_clause = (
+            "\n\nThis will be your FINAL allowed reply in this thread. End your "
+            "message with a polite single-line note telling the user that further "
+            "questions should be opened in a new thread."
+            if is_final else ""
+        )
         prompt = (
             f"New message in Discord thread.\n"
             f"Thread: {channel.name} (ID: {channel.id})\n"
             f"Author: {message.author.name}\n"
             f"Content: {message.content[:500]}"
+            f"{final_clause}"
         )
-        await _post_to_dashboard(prompt)
+
+        # Pre-record the upcoming bot reply toward the cap. We do this before
+        # the POST so simultaneous user messages can't both squeak past the
+        # gate by reading the same pre-increment count.
+        _record_thread_event(thread_id, "bot_reply")
+        posted = await _post_to_dashboard(prompt)
+        if posted:
+            logger.info(
+                f"Forwarded follow-up to dashboard ingress for thread {channel.name} "
+                f"(bot_reply_count was {state['bot_reply_count']}, final={is_final})"
+            )
+        else:
+            logger.error(f"Failed to forward follow-up for thread {channel.name}")
 
 
     # Start the client
@@ -511,16 +607,39 @@ async def cleanup_discord_client():
 FEEDBACK_DIR = os.environ.get("DISCORD_FEEDBACK_DIR", "/tmp/discord-feedback")
 
 
+# In-memory toggle state per message_id. Mirrors feedback_collector.py so both
+# Discord clients hand the same UX regardless of which one Discord routes the
+# interaction to. Per-process — that's fine because the persisted truth lives
+# in feedback.jsonl and thread_state.jsonl which both clients read.
+_active_selections: dict[str, set[str]] = {}
+
+
 class FeedbackView(discord.ui.View):
-    """Persistent feedback buttons: Resolved / Helpful / Not Helpful."""
+    """Persistent feedback buttons: Resolved / Helpful / Not Helpful.
+
+    Toggleable: clicking a selected button un-selects it. Resolved toggling
+    flips between resolved/unresolved in thread_state.jsonl, which gates the
+    continuation forwarder in on_message.
+    """
 
     def __init__(self):
         super().__init__(timeout=None)
 
-    def _save_feedback(self, label: str, interaction: discord.Interaction):
+    async def _check_op(self, interaction: discord.Interaction) -> bool:
+        channel = interaction.channel
+        if isinstance(channel, discord.Thread) and channel.owner_id:
+            if interaction.user.id != channel.owner_id:
+                await interaction.response.send_message(
+                    "Only the thread author can provide feedback.", ephemeral=True
+                )
+                return False
+        return True
+
+    def _save_feedback(self, label: str, action: str, interaction: discord.Interaction):
         os.makedirs(FEEDBACK_DIR, exist_ok=True)
         entry = json.dumps({
             "label": label,
+            "action": action,
             "message_id": str(interaction.message.id) if interaction.message else None,
             "channel_id": str(interaction.channel_id),
             "user": interaction.user.name,
@@ -529,31 +648,59 @@ class FeedbackView(discord.ui.View):
         with open(os.path.join(FEEDBACK_DIR, "feedback.jsonl"), "a") as f:
             f.write(entry + "\n")
 
-    @discord.ui.button(label="Resolved", style=discord.ButtonStyle.green, custom_id="feedback:resolved")
-    async def resolved(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self._save_feedback("resolved", interaction)
-        await interaction.response.edit_message(view=self._disabled_view("Resolved"))
+    async def _toggle(self, label: str, interaction: discord.Interaction):
+        if not await self._check_op(interaction):
+            return
+        msg_id = str(interaction.message.id) if interaction.message else ""
+        selections = _active_selections.setdefault(msg_id, set())
+        thread_id = str(interaction.channel_id)
+        if label in selections:
+            selections.discard(label)
+            self._save_feedback(label, "removed", interaction)
+            if label == "resolved":
+                _record_thread_event(thread_id, "unresolved")
+        else:
+            selections.add(label)
+            self._save_feedback(label, "added", interaction)
+            if label == "resolved":
+                _record_thread_event(thread_id, "resolved")
+        try:
+            await interaction.response.edit_message(view=self._updated_view(selections))
+        except discord.NotFound:
+            logger.warning(
+                f"Could not update feedback view for thread {thread_id} "
+                f"(interaction expired); feedback was recorded regardless."
+            )
 
-    @discord.ui.button(label="Helpful", style=discord.ButtonStyle.blurple, custom_id="feedback:helpful")
+    @discord.ui.button(label="Resolved", style=discord.ButtonStyle.grey, custom_id="feedback:resolved")
+    async def resolved(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._toggle("resolved", interaction)
+
+    @discord.ui.button(label="Helpful", style=discord.ButtonStyle.grey, custom_id="feedback:helpful")
     async def helpful(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self._save_feedback("helpful", interaction)
-        await interaction.response.edit_message(view=self._disabled_view("Helpful"))
+        await self._toggle("helpful", interaction)
 
     @discord.ui.button(label="Not Helpful", style=discord.ButtonStyle.grey, custom_id="feedback:not_helpful")
     async def not_helpful(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self._save_feedback("not_helpful", interaction)
-        await interaction.response.edit_message(view=self._disabled_view("Not Helpful"))
+        await self._toggle("not_helpful", interaction)
 
-    def _disabled_view(self, selected: str) -> discord.ui.View:
-        view = discord.ui.View(timeout=None)
-        for item in self.children:
-            b = discord.ui.Button(
-                label=f"{item.label} {'(selected)' if item.label == selected else ''}",  # type: ignore
-                style=discord.ButtonStyle.green if item.label == selected else discord.ButtonStyle.grey,  # type: ignore
-                custom_id=item.custom_id,  # type: ignore
-                disabled=True,
-            )
-            view.add_item(b)
+    @staticmethod
+    def _updated_view(selections: set[str]) -> "FeedbackView":
+        view = FeedbackView()
+        for item in view.children:
+            label = {
+                "feedback:resolved": "resolved",
+                "feedback:helpful": "helpful",
+                "feedback:not_helpful": "not_helpful",
+            }.get(getattr(item, "custom_id", ""), "")
+            if label in selections:
+                item.style = (  # type: ignore
+                    discord.ButtonStyle.green if label == "resolved"
+                    else discord.ButtonStyle.blurple if label == "helpful"
+                    else discord.ButtonStyle.red
+                )
+            else:
+                item.style = discord.ButtonStyle.grey  # type: ignore
         return view
 
 
@@ -575,8 +722,6 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
     global client
 
     try:
-        if _read_only_blocked(f"send_message channel={args.channel_id}"):
-            return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
         allowed_channels_raw = os.environ.get("DISCORD_ALLOWED_SEND_CHANNELS", "")
         allowed_channels = {c.strip() for c in allowed_channels_raw.split(",") if c.strip()}
         allowed_forums_raw = os.environ.get("DISCORD_ALLOWED_SEND_FORUMS", "")
@@ -974,8 +1119,6 @@ async def moderate_message(args: ModerateMessageArgs) -> Dict[str, Any]:
     global client
 
     try:
-        if _read_only_blocked(f"moderate_message channel={args.channel_id} msg={args.message_id}"):
-            return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
         # Ensure client is connected
         client = await ensure_client_connected()
 
@@ -1493,8 +1636,6 @@ async def create_channel(args: CreateChannelArgs) -> Dict[str, Any]:
     global client
 
     try:
-        if _read_only_blocked(f"create_channel server={args.server_id} name={args.name}"):
-            return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
         # Ensure the client is connected
         await ensure_client_connected()
 
