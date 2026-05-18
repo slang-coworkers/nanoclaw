@@ -474,7 +474,12 @@ export function startMcpAuthProxy(bindHost: string, listenPort: number): { stop:
             // connection is "active" — this catches the case where supergateway
             // sends headers but the Python MCP process hangs on an API call.
             const absoluteDeadline = setTimeout(() => {
-              log.error('MCP auth proxy: response stream deadline exceeded (5m)', {
+              // Expected when supergateway's --sessionTimeout fires on an idle
+              // MCP session — supergateway closes the upstream stream and we
+              // hit this deadline. Logged at INFO so it's traceable but not
+              // alarming. A real problem (Python MCP genuinely hung mid-call)
+              // would manifest as repeated firings on a NEW session each time.
+              log.info('MCP auth proxy: response stream deadline (5m)', {
                 server: serverName,
                 path: upstreamPath,
               });
@@ -491,7 +496,8 @@ export function startMcpAuthProxy(bindHost: string, listenPort: number): { stop:
       );
 
       proxyReq.on('timeout', () => {
-        log.error('MCP auth proxy: upstream timeout (5m)', { server: serverName, path: upstreamPath });
+        // See response-stream deadline above — same expected-behavior story.
+        log.info('MCP auth proxy: upstream request timeout (5m)', { server: serverName, path: upstreamPath });
         proxyReq.destroy();
         if (!res.headersSent) {
           res.writeHead(504, { 'Content-Type': 'application/json' });
