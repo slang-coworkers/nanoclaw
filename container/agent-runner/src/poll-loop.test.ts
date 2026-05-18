@@ -131,12 +131,10 @@ describe('accumulate gate (trigger column)', () => {
 });
 
 describe('dispatchResultText auto-route gate', () => {
-  // Pins the post-2026-05-18 behavior: only 'system' is internal for the
-  // purposes of blocking plain-text auto-route. 'agent' channel auto-routes
-  // back to its source — that's the natural "reply to whoever delegated to
-  // me" path the nanoclaw-reviewer needed. Self-loop prevention lives in
-  // formatter L3a (system-notification envelope) + notifyAgent L3b
-  // (channelType='system') + host agent-route.ts L2 (same-session guard).
+  // L1's job is to feed L2 a well-formed outbound row. These pin that
+  // contract: agent channel emits with platformId=source-group; system
+  // channel emits nothing. Same-session protection is exercised in the
+  // host agent-route tests.
 
   it('agent channel: plain text auto-routes back to source platformId', () => {
     dispatchResultText('Verdict: approve_with_nits.', {
@@ -160,19 +158,6 @@ describe('dispatchResultText auto-route gate', () => {
       channelType: 'system',
       threadId: null,
       inReplyTo: 'sys-msg-1',
-    });
-    const out = getUndeliveredMessages();
-    expect(out).toHaveLength(0);
-  });
-
-  it('agent channel with no platformId: no auto-route (defensive)', () => {
-    // Sanity: even with channel='agent', a missing platformId must not
-    // produce an outbound. The gate requires both fields.
-    dispatchResultText('plain text', {
-      platformId: null,
-      channelType: 'agent',
-      threadId: null,
-      inReplyTo: 'in-msg-3',
     });
     const out = getUndeliveredMessages();
     expect(out).toHaveLength(0);
