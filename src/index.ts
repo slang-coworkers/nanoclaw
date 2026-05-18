@@ -21,6 +21,7 @@ import { runMigrations } from './db/migrations/index.js';
 import { runGlobalToSharedMigration } from './migrations/global-to-shared.js';
 import { getMessagingGroupsByChannel, getMessagingGroupAgents } from './db/messaging-groups.js';
 import { ensureContainerRuntimeRunning, cleanupOrphans } from './container-runtime.js';
+import { recomposeAllGroupsClaudeMd } from './container-runner.js';
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
 import { routeInbound } from './router.js';
@@ -170,6 +171,14 @@ async function main(): Promise<void> {
   cleanupOrphans();
   // Reset stale container_status from previous host runs
   getDb().prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'").run();
+
+  // 2a. Recompose every group's CLAUDE.md from current spine + .instructions.md.
+  // Without this, idle coworkers (no active container at deploy time) sit on
+  // stale CLAUDE.md until next wake — host-sweep's claude-md-stale detection
+  // only iterates RUNNING containers, and on-spawn ensureGroupFilesystem only
+  // fires when a session actually wakes. After /update-* + restart, operators
+  // expect fresh CLAUDE.md visible immediately for confidence in the deploy.
+  recomposeAllGroupsClaudeMd();
 
   // 2b. MCP server stack (registry + auth proxy)
   const mcpStack = await startMcpServers(MCP_PROXY_PORT + 100);

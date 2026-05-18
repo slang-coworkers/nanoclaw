@@ -34,7 +34,7 @@ import {
 } from './config.js';
 import { readContainerConfig, writeContainerConfig } from './container-config.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
-import { getAgentGroup } from './db/agent-groups.js';
+import { getAgentGroup, getAllAgentGroups } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
 import { getSession } from './db/sessions.js';
 import { initGroupFilesystem } from './group-init.js';
@@ -552,6 +552,34 @@ export function resolveProviderName(
   containerConfigProvider: string | null | undefined,
 ): string {
   return (sessionProvider || agentGroupProvider || containerConfigProvider || 'claude').toLowerCase();
+}
+
+/**
+ * Recompose CLAUDE.md for every agent group from current spine source.
+ *
+ * Called once on host startup. Without this, idle coworkers (no active
+ * container at deploy time) sit on stale CLAUDE.md until their next wake —
+ * because host-sweep's claude-md-stale detection only iterates running
+ * containers, and on-spawn ensureGroupFilesystem only fires when a session
+ * actually wakes. After a /update-* deploy + restart, operators expect to
+ * see fresh CLAUDE.md files immediately for confidence; this provides that.
+ *
+ * Idempotent and best-effort: failures are logged per group and don't take
+ * the host down. composeCoworkerClaudeMd already creates groupDir if absent
+ * and handles the auto-migration cases.
+ */
+export function recomposeAllGroupsClaudeMd(): void {
+  const groups = getAllAgentGroups();
+  let recomposed = 0;
+  for (const ag of groups) {
+    try {
+      composeCoworkerClaudeMd(ag);
+      recomposed++;
+    } catch (err) {
+      log.warn('Failed to recompose CLAUDE.md at startup', { folder: ag.folder, err });
+    }
+  }
+  log.info('Recomposed CLAUDE.md for all groups', { total: groups.length, recomposed });
 }
 
 /**
