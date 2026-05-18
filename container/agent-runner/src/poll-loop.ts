@@ -656,27 +656,13 @@ export function dispatchResultText(text: string, routing: RoutingContext): void 
 
   const scratchpad = stripInternalTags(scratchpadParts.join(''));
 
-  // Single-destination shortcut: the agent wrote plain text — send to
-  // the session's originating channel (from session_routing) if available,
-  // otherwise fall back to the single destination.
-  //
-  // Self-loop guard: only block 'system'. System notifications carry
-  // platformId=null (notifyAgent and friends — see L3b in PR #355) so the
-  // shortcut would have nowhere to send anyway, but keeping the explicit
-  // gate is defense-in-depth in case a callsite regresses.
-  //
-  // 'agent' channel is NOT internal for this purpose: an A2A inbound
-  // arrives with channelType='agent' and platformId=<source-group-id>,
-  // and auto-routing plain text back to that platformId is the natural
-  // "reply to whoever delegated to me" path. Host-side agent-route.ts
-  // takes over: the reply-detection branch (sourceHint check) delivers
-  // into the original source session, and the same-session guard
-  // ('a2a self-loop dropped') prevents a self-write even if routing
-  // resolves to the emitting session. Without this, an agent that
-  // received an A2A delegation must explicitly pick a destination via
-  // <message to=…> or send_message — and tends to mis-pick a visible
-  // supervisor instead of the actual requester (the bug the
-  // nanoclaw-reviewer hit on 2026-05-18).
+  // Single-destination shortcut: plain text is auto-routed.
+  // 'system' is blocked — its inbound carries platformId=null, so there's
+  // nowhere to send anyway; explicit gate as defense-in-depth.
+  // 'agent' auto-routes to platformId (the source agent group). Same-session
+  // protection lives in agent-route.ts's same-session guard, which catches
+  // any write that resolves back to the emitting session regardless of how
+  // it was emitted (auto-route, <message to=…>, or send_message).
   if (sent === 0 && scratchpad) {
     const internalChannel = routing.channelType === 'system';
     if (routing.channelType && routing.platformId && !internalChannel) {

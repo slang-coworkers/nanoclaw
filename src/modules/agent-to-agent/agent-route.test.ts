@@ -501,6 +501,63 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(senderSessionsAfter).toHaveLength(0);
   });
 
+  it('main-route self-target: a2a addressed at own group whose target session resolves to emitter is dropped (L2)', async () => {
+    // Coverage net for the auto-route path on `channel_type='agent'`. If
+    // formatter L3a or notifyAgent L3b ever regresses and re-introduces a
+    // channel='agent' / platformId=<own-group> envelope into the session's
+    // inbound, the agent-runner auto-route will emit an outbound with the
+    // same routing — a self-targeted a2a. The host's same-session guard at
+    // routeAgentMessage's main-route path is the last line of defense and
+    // must drop it before any new session, message, or source-mapping is
+    // written.
+    createAgentGroup({
+      id: 'ag-self',
+      name: 'Self',
+      folder: 'self',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+
+    // Pre-create the synthetic mg ensureA2aWiring(self,self) would create,
+    // and bind the emitting session to it on threadId=T1. Per-thread
+    // resolveSession lookup keys on (agent_group, mg, thread) — so this
+    // session IS what resolveSession returns when routeAgentMessage tries
+    // to deliver a self-targeted a2a from it. That's exactly the condition
+    // L2 watches for.
+    const mgId = ensureA2aWiring('ag-self', 'ag-self');
+    const session: Session = {
+      id: 'sess-self',
+      agent_group_id: 'ag-self',
+      messaging_group_id: mgId,
+      thread_id: 'T1',
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(session);
+    initSessionFolder('ag-self', session.id);
+
+    await routeAgentMessage(
+      { id: 'self-a2a', platform_id: 'ag-self', thread_id: 'T1', content: JSON.stringify({ text: 'self-loop bait' }) },
+      session,
+    );
+
+    // L2 fired: no second session in ag-self, no source-mapping recorded
+    // (recordSource is downstream of the L2 return).
+    const allSessions = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-self') as Array<{
+      id: string;
+    }>;
+    expect(allSessions).toHaveLength(1);
+    expect(allSessions[0].id).toBe(session.id);
+    expect(getSourceFor(session.id)).toBeUndefined();
+  });
+
   it('reply self-loop: sourceHint pointing at recipient itself is dropped (defense-in-depth)', async () => {
     // The invariant "source ≠ recipient" is established at recordSource time
     // (the main-route same-session guard runs before recordSource). This test
