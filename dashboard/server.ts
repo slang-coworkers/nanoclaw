@@ -1576,15 +1576,50 @@ function ccusageSinceDate(daysAgo: number): string {
  * both. We synthesize them here so changes upstream don't take cost reporting
  * to zero — observed on 2026-05-18 with ccusage 19.0.3.
  */
+/**
+ * ccusage 19+ auto-aggregates ALL detected coding agents (Claude, Codex, Gemini)
+ * regardless of CLAUDE_CONFIG_DIR. We only want Claude data here — codex
+ * is collected separately per-session via runCodexCcusage. Without this
+ * filter, every per-coworker row gets the host-wide codex spend mixed in,
+ * mis-attributing global codex usage to lego/dev coworkers that have zero
+ * session-local codex/ directories.
+ */
+function isClaudeModel(name: string): boolean {
+  // Claude model identifiers: 'claude-*', 'aws/anthropic/*', 'anthropic/*'
+  return /^(claude-|aws\/anthropic\/|anthropic\/)/.test(name);
+}
+
 function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
   const date = (raw.date as string) || (raw.period as string) || '';
-  const inputTokens = (raw.inputTokens as number) || 0;
-  const outputTokens = (raw.outputTokens as number) || 0;
-  const cacheCreationTokens = (raw.cacheCreationTokens as number) || 0;
-  const cacheReadTokens = (raw.cacheReadTokens as number) || 0;
-  const totalTokens = (raw.totalTokens as number) || 0;
-  const totalCost = (raw.totalCost as number) || 0;
-  const modelsUsed = Array.isArray(raw.modelsUsed) ? (raw.modelsUsed as string[]) : [];
+  const allModels = Array.isArray(raw.modelsUsed) ? (raw.modelsUsed as string[]) : [];
+  const modelsUsed = allModels.filter(isClaudeModel);
+  // If no Claude models in this entry, return a zero entry (caller can drop
+  // it; mergeDailyEntries already skips entries without dates).
+  if (modelsUsed.length === 0) {
+    return {
+      date: '',
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheCreationTokens: 0,
+      cacheReadTokens: 0,
+      totalTokens: 0,
+      totalCost: 0,
+      modelsUsed: [],
+      modelBreakdowns: [],
+    };
+  }
+  // ccusage gives totals across ALL models (claude+codex). To get the
+  // Claude-only slice, prefer per-model breakdown if present; otherwise
+  // proportionally split (claudeCount / totalModelCount).
+  const allCount = allModels.length || 1;
+  const claudeCount = modelsUsed.length;
+  const claudeShare = claudeCount / allCount;
+  const inputTokens = Math.round(((raw.inputTokens as number) || 0) * claudeShare);
+  const outputTokens = Math.round(((raw.outputTokens as number) || 0) * claudeShare);
+  const cacheCreationTokens = Math.round(((raw.cacheCreationTokens as number) || 0) * claudeShare);
+  const cacheReadTokens = Math.round(((raw.cacheReadTokens as number) || 0) * claudeShare);
+  const totalTokens = Math.round(((raw.totalTokens as number) || 0) * claudeShare);
+  const totalCost = ((raw.totalCost as number) || 0) * claudeShare;
   // Synthesize modelBreakdowns if absent: split totals proportionally across modelsUsed.
   // For a single model (the common case), this is exact. For mixed-model days we lose
   // per-model granularity in the UI but keep the totals correct.
@@ -1593,7 +1628,9 @@ function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
     | undefined;
   let modelBreakdowns: CcusageDayEntry['modelBreakdowns'];
   if (Array.isArray(rawBreakdowns) && rawBreakdowns.length > 0) {
-    modelBreakdowns = rawBreakdowns.map((mb) => ({ ...mb }));
+    // Filter rawBreakdowns to Claude-only models too (defense-in-depth if a
+    // future ccusage version restores breakdowns including codex entries).
+    modelBreakdowns = rawBreakdowns.filter((mb) => isClaudeModel(mb.modelName)).map((mb) => ({ ...mb }));
   } else if (modelsUsed.length > 0) {
     const share = 1 / modelsUsed.length;
     modelBreakdowns = modelsUsed.map((modelName) => ({
