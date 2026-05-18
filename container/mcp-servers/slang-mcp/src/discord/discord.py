@@ -52,6 +52,32 @@ WATCHED_FORUM_IDS = set(
 MAX_BOT_REPLIES_PER_THREAD = int(os.environ.get("MAX_BOT_REPLIES_PER_THREAD", "15"))
 
 
+# ── Read-only mode + summon-post gate ──────────────────────────────────────
+# DISCORD_READ_ONLY=1 hard-blocks every Discord-write code path (lego uses
+# this; prod doesn't). DISCORD_POST_SUMMON=1 enables slang-mcp's
+# on_thread_create to post the summon button — defaults OFF because
+# feedback_collector.py is the canonical poster (eager-init makes slang-mcp
+# a reliable fallback when feedback_collector is down). Both gates are
+# defense-in-depth; the agent's allowed_mcp_tools list is the primary control.
+
+def _read_only_blocked(action: str) -> bool:
+    """Return True if DISCORD_READ_ONLY=1 — caller must abort the write."""
+    if os.environ.get("DISCORD_READ_ONLY") == "1":
+        logger.warning(f"DISCORD_READ_ONLY=1 — blocked Discord write: {action}")
+        return True
+    return False
+
+
+def _post_summon_disabled() -> bool:
+    """Return True when slang-mcp should NOT post SummonView in on_thread_create.
+
+    Default is True — feedback_collector.py is the canonical SummonView poster.
+    Set DISCORD_POST_SUMMON=1 only on installs that don't run feedback_collector.py
+    and intentionally want slang-mcp to be the poster (or as a hot-failover).
+    """
+    return os.environ.get("DISCORD_POST_SUMMON", "0") != "1"
+
+
 # ── Per-thread continuation state helpers ───────────────────────────────────
 # State is sourced from two append-only audit files in the feedback dir:
 #   summon_requests.jsonl — written when a user clicks "Get Bot Help"
@@ -469,10 +495,30 @@ async def init_discord_client():
         logger.info("FeedbackView + SummonView registered for persistent buttons")
         ready_event.set()
 
-    # on_thread_create is intentionally not registered here. The
-    # nanoclaw-prod-discord-feedback service (always-on daemon) posts the
-    # summon button — slang-mcp's Discord client lazy-initializes so it can't
-    # be the reliable poster, and registering it here too would duplicate.
+    # on_thread_create — gated double-post protection.
+    # By default, feedback_collector.py is the canonical summon-button poster
+    # (DISCORD_POST_SUMMON=0). With eager init at startup (see arun() in
+    # server.py), slang-mcp's Gateway is reliably connected on every restart,
+    # so this handler exists as a fallback poster — flip
+    # DISCORD_POST_SUMMON=1 on installs without feedback_collector running.
+    # DISCORD_READ_ONLY=1 (lego) blocks regardless.
+    @client.event
+    async def on_thread_create(thread: discord.Thread):
+        if not (thread.parent_id and str(thread.parent_id) in WATCHED_FORUM_IDS):
+            return
+        if _post_summon_disabled():
+            logger.info(
+                f"DISCORD_POST_SUMMON!=1 — slang-mcp skipping SummonView post; "
+                f"feedback_collector.py is the canonical poster. thread={thread.id}"
+            )
+            return
+        if _read_only_blocked(f"post SummonView in on_thread_create thread={thread.id}"):
+            return
+        try:
+            await thread.send("", view=SummonView())
+            logger.info(f"Posted SummonView on new thread: {thread.name}")
+        except Exception as e:
+            logger.error(f"Failed to post SummonView: {e}")
 
     @client.event
     async def on_message(message: discord.Message):
@@ -722,6 +768,8 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
     global client
 
     try:
+        if _read_only_blocked(f"send_message channel={args.channel_id}"):
+            return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
         allowed_channels_raw = os.environ.get("DISCORD_ALLOWED_SEND_CHANNELS", "")
         allowed_channels = {c.strip() for c in allowed_channels_raw.split(",") if c.strip()}
         allowed_forums_raw = os.environ.get("DISCORD_ALLOWED_SEND_FORUMS", "")
@@ -1119,6 +1167,8 @@ async def moderate_message(args: ModerateMessageArgs) -> Dict[str, Any]:
     global client
 
     try:
+        if _read_only_blocked(f"moderate_message channel={args.channel_id} msg={args.message_id}"):
+            return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
         # Ensure client is connected
         client = await ensure_client_connected()
 
@@ -1636,6 +1686,8 @@ async def create_channel(args: CreateChannelArgs) -> Dict[str, Any]:
     global client
 
     try:
+        if _read_only_blocked(f"create_channel server={args.server_id} name={args.name}"):
+            return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
         # Ensure the client is connected
         await ensure_client_connected()
 

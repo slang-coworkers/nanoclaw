@@ -1122,6 +1122,25 @@ def main(port: int, transport: str) -> int:
             console.print("[green]Server running on stdio[/green]")
 
             async def arun():
+                # Eagerly initialize the Discord Gateway client so live event
+                # handlers (on_message, on_thread_create) register at server
+                # startup. Without this, init_discord_client() only fires on
+                # the first discord_* tool call (via ensure_client_connected),
+                # so push events from Discord are missed until something wakes
+                # the client.
+                #
+                # init_discord_client() is a no-op when DISCORD_BOT_TOKEN is
+                # unset — REST tools still work via the OneCLI proxy. We catch
+                # exceptions defensively so a Discord init failure can't take
+                # the whole MCP server down.
+                try:
+                    await init_discord_client()
+                except Exception as e:
+                    console.print(
+                        f"[yellow]Eager Discord client init failed: {e} — "
+                        f"REST tools still work via OneCLI proxy[/yellow]"
+                    )
+
                 async with stdio_server() as streams:
                     await app.run(
                         streams[0], streams[1], app.create_initialization_options()

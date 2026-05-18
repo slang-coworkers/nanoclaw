@@ -360,6 +360,14 @@ async def main():
         """Auto-post summon button on new forum threads."""
         if not thread.parent_id or str(thread.parent_id) not in WATCHED_FORUM_IDS:
             return
+        # Defense-in-depth for read-only installs (lego). If feedback_collector
+        # is ever started on a read-only install by mistake, this prevents it
+        # from posting buttons. Prod has DISCORD_READ_ONLY unset → no effect.
+        if os.environ.get("DISCORD_READ_ONLY") == "1":
+            logger.warning(
+                f"DISCORD_READ_ONLY=1 — feedback_collector: blocked summon-button post on thread={thread.id}"
+            )
+            return
         # Wait briefly for the thread to be fully created before posting
         await asyncio.sleep(2)
         prompt_text = (
