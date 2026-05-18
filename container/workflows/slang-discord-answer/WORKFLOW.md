@@ -2,7 +2,7 @@
 name: slang-discord-answer
 license: MIT
 type: workflow
-description: "Process Discord support questions: read thread, research with DeepWiki + GitHub, draft answer, send to parent. Each step is mandatory."
+description: "Answer a Discord support question in a watched forum thread. Triggered by an inbound dashboard message (summon button click or thread continuation reply). Read thread, research with DeepWiki + GitHub, draft answer, post to Discord (or send to parent on read-only installs)."
 requires: [code.read, issues.read]
 uses:
   skills: [slang-code-reader, slang-github]
@@ -11,7 +11,12 @@ uses:
 
 # /slang-discord-answer — Answer a Discord Support Question
 
-Use this workflow when processing summon requests from `summon_requests.jsonl` or when asked to answer a Discord question.
+Use this workflow when slang-discord-support is woken with an inbound dashboard message about a Discord forum thread. The inbound carries the thread ID and either:
+
+- a **summon** (the OP clicked "Get Bot Help" — this is the first turn for the thread), or
+- a **continuation** (the OP replied after you'd already answered — keep helping, subject to the 15-reply cap and Resolved gate).
+
+Both cases are server-side filtered before you wake: only OP messages, only un-Resolved threads, only within the per-thread reply budget. By the time you're running, those gates have all passed; just do good work.
 
 ## Steps
 
@@ -27,9 +32,9 @@ Use this workflow when processing summon requests from `summon_requests.jsonl` o
    git clone --depth 1 --single-branch https://github.com/shader-slang/slang.git /workspace/agent/slang
    ```
 
-   This persists across sessions — only runs once. Having local source lets you grep for exact implementations, test patterns, and function signatures when answering questions.
+   This persists across sessions — only runs once. Local source lets you grep for exact implementations, test patterns, and function signatures when answering questions.
 
-2. **Read the thread** {#read} — read the Discord thread to understand the user's question.
+2. **Read the thread** {#read} — read the Discord thread to understand the user's question and the conversation so far.
 
    ```
    mcp__slang-mcp__discord_read_messages(channel_id="<thread_id>", limit=20)
@@ -37,9 +42,13 @@ Use this workflow when processing summon requests from `summon_requests.jsonl` o
 
    Extract:
 
-   - The core question (what the user needs help with)
+   - The OP's original question
    - Any context they provided (error messages, code snippets, versions)
-   - Whether another user already answered (if yes, skip to Step 7)
+   - Your prior replies (if continuation) — don't repeat what you already said
+   - Any human helpers who already chimed in — defer to them rather than overriding
+   - The most recent OP message — that's what you're responding to
+
+   If another helper already gave a complete answer and the OP isn't asking a follow-up, end the turn quietly without posting.
 
 3. **Research via DeepWiki (mandatory)** {#research-docs} — query DeepWiki for relevant Slang documentation. This step is NOT optional — even if you think you know the answer, verify it.
 
@@ -73,46 +82,79 @@ Use this workflow when processing summon requests from `summon_requests.jsonl` o
    - Includes code examples where relevant (use ```slang fences)
    - Cites sources: link to GitHub issues/PRs, reference DeepWiki findings
    - Notes any caveats or version-specific behavior
-   - Is concise but thorough (aim for 3–8 paragraphs max)
+   - Is concise but thorough — Discord posts are a single message, so aim for ~3–8 paragraphs max
+   - In **continuation** turns, builds on your prior reply rather than repeating context
 
-6. **Send to parent (mandatory)** {#send} — send the draft to the orchestrator for review. This step is NOT optional.
+6. **Soft-stop check** {#soft-stop} — if the inbound prompt indicates you've hit the 15-reply cap (`MAX_BOT_REPLIES_PER_THREAD`), your reply must end by asking the user to open a new thread for further questions. Example footer:
+
+   > *I've answered this thread the maximum number of times — for any further questions, please open a new thread in #slang-support-bot and I'll be happy to help.*
+
+   Do not try to bypass the cap. Do not post additional follow-ups after the soft-stop reply.
+
+7. **Post or draft** {#post} — branches based on whether `discord_send_message` is in your allowlist.
+
+   **If `discord_send_message` IS allowed** (typical prod):
 
    ```
-   send_message(text="[Draft] Thread: <thread_name> (ID: <thread_id>)\n\nQ: <one-line question summary>\n\nA:\n<your drafted answer>\n\nSources:\n- <deepwiki finding>\n- <github issue link>\n- <source file path>")
+   mcp__slang-mcp__discord_send_message(
+     channel_id="<thread_id>",
+     content="<your answer with sources cited inline>",
+     add_feedback_buttons=true,
+   )
    ```
 
-7. **Save and mark handled** {#save} — save the draft to disk and mark the summon as handled.
+   `add_feedback_buttons=true` attaches Resolved / Helpful / Not Helpful buttons. The OP can use Resolved to pause the bot in this thread. The buttons also feed into the audit log (`thread_state.jsonl`) for trends.
+
+   On the **first** reply in a summoned thread, append a short footer mentioning the off-switch:
+
+   > *Tip: click **Resolved** on any of my replies if this is sorted — that pauses me in this thread; click again to resume.*
+
+   On continuation replies, omit the footer (the OP already knows).
+
+   **If `discord_send_message` is NOT allowed** (read-only installs — dev, lego):
+
+   ```
+   send_message(to="parent", text="[Draft] Thread: <thread_name> (ID: <thread_id>)\n\nQ: <one-line question summary>\n\nA:\n<your drafted answer>\n\nSources:\n- <deepwiki finding>\n- <github issue link>\n- <source file path>")
+   ```
+
+   The human reviews and decides whether to post.
+
+8. **Save draft locally** {#save} — keep a copy in workspace memory for replay/debugging:
 
    ```bash
-   # Save draft
+   mkdir -p /workspace/agent/memory/drafts
    cat > /workspace/agent/memory/drafts/<thread_id>.md << 'EOF'
    # Thread: <thread_name> (<thread_id>)
-   **User question:** <summary>
+   **OP question:** <summary>
+   **Turn:** <summon | continuation N>
 
-   ## Draft answer
+   ## Answer
 
    <your answer>
 
    ## Sources
    - <links>
    EOF
-
-   # Mark handled
-   echo '{"thread_id":"<thread_id>","handled_at":"<ISO timestamp>"}' >> /workspace/agent/memory/feedback/summon_handled.jsonl
    ```
 
-## Batch Mode
+   No need to write a separate "handled" record — the audit trail lives in `thread_state.jsonl` (managed by `feedback_collector.py` and the SummonView/FeedbackView click handlers, not by you).
 
-When asked to "backfill" or "process all pending":
+9. **End the turn** {#end} — once Steps 7 and 8 are done, end the turn. Do not poll for follow-ups; the next continuation reply will wake you again via the inbound message path.
 
-1. Read `summon_requests.jsonl`
-2. Read `summon_handled.jsonl` to identify already-handled thread IDs
-3. For each unhandled request, run Steps 1–7 **SEQUENTIALLY — one thread at a time**
+## Learning from feedback
 
-**IMPORTANT: Max 2 parallel MCP calls at any time.** Do NOT use subagents (Agent tool) to parallelize thread processing. Do NOT fire multiple DeepWiki + GitHub calls simultaneously. Process one thread fully (Steps 1–7) before starting the next. This prevents rate limiting and response stream hangs.
+When a future turn surfaces a "Not Helpful" feedback or a human correction (either visible in the thread or relayed by your parent), append a lesson to `/workspace/agent/memory/corrections.md`:
 
-4. After all are processed, send a summary to parent:
+```
+## YYYY-MM-DD — Topic
+**OP question:** (brief summary)
+**My answer:** (what I said)
+**Feedback/Correction:** (what was wrong or unhelpful)
+**Lesson:** (what to do differently next time)
+```
 
-   ```
-   send_message(text="[Batch Complete] Processed N threads. Drafts saved to memory/drafts/. M skipped (already answered in thread).")
-   ```
+Read this file before drafting in Step 5 — it should keep you from repeating known mistakes.
+
+## What changed (architecture notes)
+
+If you've seen older versions of this workflow that polled `summon_requests.jsonl` or wrote `summon_handled.jsonl`: those are obsolete. Summons now arrive via dashboard inbound messages (push), not file polling. Handled state is tracked by the `feedback_collector` daemon in `thread_state.jsonl` — the agent doesn't write to it.
