@@ -625,7 +625,7 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
  * This preserves the simple case of one user on one channel — the agent
  * doesn't need to know about wrapping syntax at all.
  */
-function dispatchResultText(text: string, routing: RoutingContext): void {
+export function dispatchResultText(text: string, routing: RoutingContext): void {
   const MESSAGE_RE = /<message\s+to="([^"]+)"\s*>([\s\S]*?)<\/message>/g;
 
   let match: RegExpExecArray | null;
@@ -660,17 +660,25 @@ function dispatchResultText(text: string, routing: RoutingContext): void {
   // the session's originating channel (from session_routing) if available,
   // otherwise fall back to the single destination.
   //
-  // Self-loop guard: the shortcut MUST NOT fire when the inbound came from
-  // an internal source (engine-synthesized system notifications, agent-to-
-  // agent chat). Those have channelType ∈ {'agent','system'} and no real
-  // remote destination to reply to. Auto-routing plain text in that case
-  // turns the agent's status update into a self-prompt — the assistant's
-  // text lands as a new inbound, the model role-plays the next turn, and
-  // the loop sustains itself. Plain text on internal channels is
-  // scratchpad only; explicit destinations require a <message to=…>
-  // block or a send_message tool call.
+  // Self-loop guard: only block 'system'. System notifications carry
+  // platformId=null (notifyAgent and friends — see L3b in PR #355) so the
+  // shortcut would have nowhere to send anyway, but keeping the explicit
+  // gate is defense-in-depth in case a callsite regresses.
+  //
+  // 'agent' channel is NOT internal for this purpose: an A2A inbound
+  // arrives with channelType='agent' and platformId=<source-group-id>,
+  // and auto-routing plain text back to that platformId is the natural
+  // "reply to whoever delegated to me" path. Host-side agent-route.ts
+  // takes over: the reply-detection branch (sourceHint check) delivers
+  // into the original source session, and the same-session guard
+  // ('a2a self-loop dropped') prevents a self-write even if routing
+  // resolves to the emitting session. Without this, an agent that
+  // received an A2A delegation must explicitly pick a destination via
+  // <message to=…> or send_message — and tends to mis-pick a visible
+  // supervisor instead of the actual requester (the bug the
+  // nanoclaw-reviewer hit on 2026-05-18).
   if (sent === 0 && scratchpad) {
-    const internalChannel = routing.channelType === 'agent' || routing.channelType === 'system';
+    const internalChannel = routing.channelType === 'system';
     if (routing.channelType && routing.platformId && !internalChannel) {
       // Reply to the channel/thread the message came from
       writeMessageOut({

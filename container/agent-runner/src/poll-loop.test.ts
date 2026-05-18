@@ -4,7 +4,7 @@ import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from '
 import { getPendingMessages, markCompleted } from './db/messages-in.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
 import { formatMessages, extractRouting } from './formatter.js';
-import { isNewSessionBatch, taskOptsOutOfNewSession } from './poll-loop.js';
+import { dispatchResultText, isNewSessionBatch, taskOptsOutOfNewSession } from './poll-loop.js';
 import { MockProvider } from './providers/mock.js';
 
 beforeEach(() => {
@@ -127,6 +127,55 @@ describe('accumulate gate (trigger column)', () => {
       .run();
     const [msg] = getPendingMessages();
     expect(msg.trigger).toBe(1);
+  });
+});
+
+describe('dispatchResultText auto-route gate', () => {
+  // Pins the post-2026-05-18 behavior: only 'system' is internal for the
+  // purposes of blocking plain-text auto-route. 'agent' channel auto-routes
+  // back to its source — that's the natural "reply to whoever delegated to
+  // me" path the nanoclaw-reviewer needed. Self-loop prevention lives in
+  // formatter L3a (system-notification envelope) + notifyAgent L3b
+  // (channelType='system') + host agent-route.ts L2 (same-session guard).
+
+  it('agent channel: plain text auto-routes back to source platformId', () => {
+    dispatchResultText('Verdict: approve_with_nits.', {
+      platformId: 'ag-nanoclaw',
+      channelType: 'agent',
+      threadId: 'review-thread-1',
+      inReplyTo: 'in-msg-1',
+    });
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(out[0].channel_type).toBe('agent');
+    expect(out[0].platform_id).toBe('ag-nanoclaw');
+    expect(out[0].thread_id).toBe('review-thread-1');
+    expect(out[0].in_reply_to).toBe('in-msg-1');
+    expect(JSON.parse(out[0].content).text).toBe('Verdict: approve_with_nits.');
+  });
+
+  it('system channel: plain text is NOT auto-routed (scratchpad only)', () => {
+    dispatchResultText('Saved learning.', {
+      platformId: null,
+      channelType: 'system',
+      threadId: null,
+      inReplyTo: 'sys-msg-1',
+    });
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(0);
+  });
+
+  it('agent channel with no platformId: no auto-route (defensive)', () => {
+    // Sanity: even with channel='agent', a missing platformId must not
+    // produce an outbound. The gate requires both fields.
+    dispatchResultText('plain text', {
+      platformId: null,
+      channelType: 'agent',
+      threadId: null,
+      inReplyTo: 'in-msg-3',
+    });
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(0);
   });
 });
 
