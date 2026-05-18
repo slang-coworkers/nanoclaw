@@ -1568,9 +1568,63 @@ function ccusageSinceDate(daysAgo: number): string {
   return d.toISOString().slice(0, 10).replace(/-/g, '');
 }
 
+/**
+ * Normalise a `ccusage daily --json` entry to our shared CcusageDayEntry shape.
+ *
+ * Schema drift defense: ccusage 19+ renamed `date` to `period` and dropped
+ * the `modelBreakdowns` array. The dashboard's mergeDailyEntries depends on
+ * both. We synthesize them here so changes upstream don't take cost reporting
+ * to zero — observed on 2026-05-18 with ccusage 19.0.3.
+ */
+function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
+  const date = (raw.date as string) || (raw.period as string) || '';
+  const inputTokens = (raw.inputTokens as number) || 0;
+  const outputTokens = (raw.outputTokens as number) || 0;
+  const cacheCreationTokens = (raw.cacheCreationTokens as number) || 0;
+  const cacheReadTokens = (raw.cacheReadTokens as number) || 0;
+  const totalTokens = (raw.totalTokens as number) || 0;
+  const totalCost = (raw.totalCost as number) || 0;
+  const modelsUsed = Array.isArray(raw.modelsUsed) ? (raw.modelsUsed as string[]) : [];
+  // Synthesize modelBreakdowns if absent: split totals proportionally across modelsUsed.
+  // For a single model (the common case), this is exact. For mixed-model days we lose
+  // per-model granularity in the UI but keep the totals correct.
+  const rawBreakdowns = raw.modelBreakdowns as
+    | { modelName: string; inputTokens: number; outputTokens: number; cacheCreationTokens: number; cacheReadTokens: number; cost: number }[]
+    | undefined;
+  let modelBreakdowns: CcusageDayEntry['modelBreakdowns'];
+  if (Array.isArray(rawBreakdowns) && rawBreakdowns.length > 0) {
+    modelBreakdowns = rawBreakdowns.map((mb) => ({ ...mb }));
+  } else if (modelsUsed.length > 0) {
+    const share = 1 / modelsUsed.length;
+    modelBreakdowns = modelsUsed.map((modelName) => ({
+      modelName,
+      inputTokens: Math.round(inputTokens * share),
+      outputTokens: Math.round(outputTokens * share),
+      cacheCreationTokens: Math.round(cacheCreationTokens * share),
+      cacheReadTokens: Math.round(cacheReadTokens * share),
+      cost: totalCost * share,
+    }));
+  } else {
+    modelBreakdowns = [];
+  }
+  return {
+    date,
+    inputTokens,
+    outputTokens,
+    cacheCreationTokens,
+    cacheReadTokens,
+    totalTokens,
+    totalCost,
+    modelsUsed,
+    modelBreakdowns,
+  };
+}
+
 function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDayEntry[]> {
   return new Promise((resolve) => {
-    const args = ['ccusage', 'daily', '--json', '--breakdown', '--offline'];
+    // --breakdown and other legacy flags were removed in ccusage 19. Keep
+    // the call to the lowest-common-denominator flags that still work.
+    const args = ['ccusage', 'daily', '--json', '--offline'];
     if (since) args.push('--since', since);
     exec(
       `npx ${args.join(' ')}`,
@@ -1582,7 +1636,8 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
         }
         try {
           const parsed = JSON.parse(stdout);
-          resolve(parsed.daily || []);
+          const daily = Array.isArray(parsed.daily) ? parsed.daily : [];
+          resolve(daily.map(normalizeCcusageEntry));
         } catch {
           resolve([]);
         }
@@ -1671,11 +1726,14 @@ function mergeDailyEntries(allDays: CcusageDayEntry[][]): CcusageDayEntry[] {
   const byDate: Record<string, CcusageDayEntry> = {};
   for (const days of allDays) {
     for (const d of days) {
+      if (!d.date) continue; // entry missing date field — can't merge, skip rather than crash
+      const breakdowns = Array.isArray(d.modelBreakdowns) ? d.modelBreakdowns : [];
+      const models = Array.isArray(d.modelsUsed) ? d.modelsUsed : [];
       if (!byDate[d.date]) {
         byDate[d.date] = {
           ...d,
-          modelBreakdowns: d.modelBreakdowns.map((mb) => ({ ...mb })),
-          modelsUsed: [...d.modelsUsed],
+          modelBreakdowns: breakdowns.map((mb) => ({ ...mb })),
+          modelsUsed: [...models],
         };
       } else {
         const t = byDate[d.date];
@@ -1685,10 +1743,10 @@ function mergeDailyEntries(allDays: CcusageDayEntry[][]): CcusageDayEntry[] {
         t.cacheReadTokens += d.cacheReadTokens;
         t.totalTokens += d.totalTokens;
         t.totalCost += d.totalCost;
-        for (const m of d.modelsUsed) {
+        for (const m of models) {
           if (!t.modelsUsed.includes(m)) t.modelsUsed.push(m);
         }
-        for (const mb of d.modelBreakdowns) {
+        for (const mb of breakdowns) {
           const existing = t.modelBreakdowns.find((e) => e.modelName === mb.modelName);
           if (existing) {
             existing.cost += mb.cost;
