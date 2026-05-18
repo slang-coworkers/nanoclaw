@@ -215,6 +215,25 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
       return;
     }
 
+    // Self-loop guard, mirror of the line ~288 guard on the main route.
+    // The invariant "source session ≠ recipient session" is established
+    // at recordSource time (line ~302, gated by the main-route same-
+    // session guard), so a sourceHint pointing at self should never
+    // exist in practice. Belt-and-braces: if a migration / backfill /
+    // future code path ever populates a self-reference, drop here
+    // rather than write the recipient's reply back into its own session
+    // and feed the model its own output as the next inbound turn.
+    if (originalSourceSession.id === session.id) {
+      log.warn('a2a reply self-loop dropped: sourceHint points at recipient session', {
+        msgId: msg.id,
+        sessionId: session.id,
+        agentGroupId: session.agent_group_id,
+        sourceAgentGroupId: sourceHint.source_agent_group_id,
+        sourceThreadId: sourceHint.source_thread_id,
+      });
+      return;
+    }
+
     const a2aReplyId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const forwardedReplyContent = forwardFileAttachments(
       msg,
