@@ -73,3 +73,4 @@ container/workflows/triage-issue/**
 container/workflows/fix-issue/**
 container/workflows/discord-answer/**
 container/overlays/discord-answer-critique/**
+container/skills/github-webhook/**
