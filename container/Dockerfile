@@ -24,6 +24,11 @@ ARG AGENT_BROWSER_VERSION=latest
 ARG VERCEL_VERSION=52.2.1
 ARG BUN_VERSION=1.3.12
 
+# Enable contrib + non-free + non-free-firmware so per-group container_configs
+# can install packages like nvidia-cuda-toolkit (in non-free) without surprise
+# "no installation candidate" failures.
+RUN sed -i 's/^Components: main$/Components: main contrib non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources
+
 # Conditionally add NVIDIA CUDA repository (Debian bookworm)
 RUN if [ "$ENABLE_GPU" = "1" ]; then \
       apt-get update && apt-get install -y wget gnupg \
