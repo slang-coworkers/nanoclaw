@@ -32,9 +32,10 @@ import {
   ONECLI_URL,
   TIMEZONE,
 } from './config.js';
-import { readContainerConfig, writeContainerConfig } from './container-config.js';
+import { materializeContainerJson } from './container-config.js';
+import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
-import { getAgentGroup, getAllAgentGroups } from './db/agent-groups.js';
+import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
 import { getSession } from './db/sessions.js';
 import { initGroupFilesystem } from './group-init.js';
@@ -199,6 +200,7 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
         extraInstructions,
         disableOverlays: agentGroup.disable_overlays === 1,
         overlays,
+        cliScope: (getContainerConfig(agentGroup.id)?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
       });
       fs.mkdirSync(groupDir, { recursive: true });
       fs.writeFileSync(claudeMdPath, composed);
@@ -223,6 +225,7 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
       extraInstructions,
       disableOverlays: agentGroup.disable_overlays === 1,
       overlays,
+      cliScope: (getContainerConfig(agentGroup.id)?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
     });
 
     fs.mkdirSync(groupDir, { recursive: true });
@@ -523,7 +526,7 @@ async function spawnContainer(session: Session): Promise<void> {
 }
 
 /** Kill a container for a session. */
-export function killContainer(sessionId: string, reason: string): void {
+export function killContainer(sessionId: string, reason: string, onExit?: () => void): void {
   const entry = activeContainers.get(sessionId);
   if (!entry) return;
 
@@ -532,6 +535,15 @@ export function killContainer(sessionId: string, reason: string): void {
     stopContainer(entry.containerName);
   } catch {
     entry.process.kill('SIGKILL');
+  }
+  if (onExit) {
+    entry.process.once('exit', () => {
+      try {
+        onExit();
+      } catch (err) {
+        log.warn('killContainer onExit callback threw', { sessionId, err });
+      }
+    });
   }
 }
 
@@ -549,37 +561,9 @@ export function killContainer(sessionId: string, reason: string): void {
 export function resolveProviderName(
   sessionProvider: string | null | undefined,
   agentGroupProvider: string | null | undefined,
-  containerConfigProvider: string | null | undefined,
+  containerConfigProvider?: string | null | undefined,
 ): string {
   return (sessionProvider || agentGroupProvider || containerConfigProvider || 'claude').toLowerCase();
-}
-
-/**
- * Recompose CLAUDE.md for every agent group from current spine source.
- *
- * Called once on host startup. Without this, idle coworkers (no active
- * container at deploy time) sit on stale CLAUDE.md until their next wake —
- * because host-sweep's claude-md-stale detection only iterates running
- * containers, and on-spawn ensureGroupFilesystem only fires when a session
- * actually wakes. After a /update-* deploy + restart, operators expect to
- * see fresh CLAUDE.md files immediately for confidence; this provides that.
- *
- * Idempotent and best-effort: failures are logged per group and don't take
- * the host down. composeCoworkerClaudeMd already creates groupDir if absent
- * and handles the auto-migration cases.
- */
-export function recomposeAllGroupsClaudeMd(): void {
-  const groups = getAllAgentGroups();
-  let recomposed = 0;
-  for (const ag of groups) {
-    try {
-      composeCoworkerClaudeMd(ag);
-      recomposed++;
-    } catch (err) {
-      log.warn('Failed to recompose CLAUDE.md at startup', { folder: ag.folder, err });
-    }
-  }
-  log.info('Recomposed CLAUDE.md for all groups', { total: groups.length, recomposed });
 }
 
 /**
@@ -609,6 +593,7 @@ export function recomposeAndUpdateHash(sessionId: string): void {
       extraInstructions: extra,
       disableOverlays: ag.disable_overlays === 1,
       overlays,
+      cliScope: (getContainerConfig(ag.id)?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
     });
     spawnedClaudeMdHash.set(sessionId, crypto.createHash('sha256').update(composed).digest('hex'));
   } catch {
@@ -643,6 +628,7 @@ export function detectStaleContainers(): Array<{ sessionId: string; agentGroupId
       extraInstructions: extra,
       disableOverlays: ag.disable_overlays === 1,
       overlays,
+      cliScope: (getContainerConfig(ag.id)?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
     });
     const currentHash = crypto.createHash('sha256').update(composed).digest('hex');
 
@@ -686,7 +672,7 @@ function resolveProviderContribution(
   // Precedence: session provider > agent_group provider > container.json > default.
   // Previously passed undefined for container-config, making `provider:` in
   // groups/<folder>/container.json dead config.
-  const containerConfigProvider = readContainerConfig(agentGroup.folder).provider ?? null;
+  const containerConfigProvider = materializeContainerJson(agentGroup.id).provider ?? null;
   const provider = resolveProviderName(session.agent_provider, agentGroup.agent_provider, containerConfigProvider);
   const fn = getProviderContainerConfig(provider);
   const contribution = fn
@@ -991,7 +977,7 @@ function buildMounts(
   mounts.push({ hostPath: groupRunnerDir, containerPath: '/app/src', readonly: false });
 
   // Additional mounts from container config (groups/<folder>/container.json)
-  const containerConfig = readContainerConfig(agentGroup.folder);
+  const containerConfig = materializeContainerJson(agentGroup.id);
   if (containerConfig.additionalMounts && containerConfig.additionalMounts.length > 0) {
     const validated = validateAdditionalMounts(containerConfig.additionalMounts, agentGroup.name);
     mounts.push(...validated);
@@ -1253,7 +1239,7 @@ async function buildContainerArgs(
   // MCP servers: type-level (from coworker registry) + per-instance (from container.json).
   // Per-instance overrides type-level per server name.
   const typeMcpServers = resolveTypeManifest(agentGroup).mcpServers;
-  const containerConfig = readContainerConfig(agentGroup.folder);
+  const containerConfig = materializeContainerJson(agentGroup.id);
   const mergedMcpServers = { ...typeMcpServers, ...containerConfig.mcpServers };
   if (Object.keys(mergedMcpServers).length > 0) {
     args.push('-e', `NANOCLAW_MCP_SERVERS=${JSON.stringify(mergedMcpServers)}`);
@@ -1336,7 +1322,7 @@ export async function buildAgentGroupImage(agentGroupId: string): Promise<void> 
   const agentGroup = getAgentGroup(agentGroupId);
   if (!agentGroup) throw new Error('Agent group not found');
 
-  const containerConfig = readContainerConfig(agentGroup.folder);
+  const containerConfig = materializeContainerJson(agentGroup.id);
   const aptPackages = containerConfig.packages.apt;
   const npmPackages = containerConfig.packages.npm;
 
@@ -1377,7 +1363,7 @@ export async function buildAgentGroupImage(agentGroupId: string): Promise<void> 
 
   // Store the image tag in groups/<folder>/container.json
   containerConfig.imageTag = imageTag;
-  writeContainerConfig(agentGroup.folder, containerConfig);
+  updateContainerConfigScalars(agentGroup.id, { image_tag: containerConfig.imageTag });
 
   log.info('Per-agent-group image built', { agentGroupId, imageTag });
 }

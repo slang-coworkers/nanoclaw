@@ -74,3 +74,40 @@ container/workflows/fix-issue/**
 container/workflows/discord-answer/**
 container/overlays/discord-answer-critique/**
 container/skills/github-webhook/**
+
+# Operational skills (instruction-only workflows, not channel/provider installs):
+.claude/skills/init-first-agent/**
+.claude/skills/init-onecli/**
+.claude/skills/manage-channels/**
+.claude/skills/manage-mounts/**
+.claude/skills/migrate-from-v1/**
+.claude/skills/migrate-nanoclaw/**
+.claude/skills/update-skills/**
+.claude/skills/use-native-credential-proxy/**
+.claude/skills/convert-to-apple-container/**
+.claude/skills/x-integration/**
+
+# Channel install skills carry resources beyond SKILL.md (e.g. add-dashboard/resources/):
+.claude/skills/add-*/**
+
+# Top-level repo files:
+CHANGELOG.md
+CONTRIBUTORS.md
+README_ja.md
+README_zh.md
+RELEASING.md
+
+# Setup assets + launchers:
+assets/**
+bin/**
+migrate-v2*.sh
+nanoclaw.sh
+
+# Repo tooling (action.yml + badge for repo-tokens):
+repo-tokens/**
+
+# Removed in this PR — Python bytecode that should never have been committed:
+container/mcp-servers/**
+
+# Removed in this PR — base-nanoclaw moves to nv-nanoclaw's territory:
+container/skills/base-nanoclaw/**

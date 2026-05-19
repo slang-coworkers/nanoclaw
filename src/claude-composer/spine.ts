@@ -483,8 +483,13 @@ export function renderCoworkerSpine(
   projectRoot: string,
   coworkerType: string,
   extraInstructions: string | null | undefined,
-  opts: { disableOverlays?: boolean; overlays?: string[] } = {},
+  opts: { disableOverlays?: boolean; overlays?: string[]; cliScope?: 'disabled' | 'group' | 'global' } = {},
 ): string {
+  // cliScope is plumbed through but currently unused at render time —
+  // ncl/cli tool-instruction gating happens via skill manifest filtering
+  // upstream when added. Acceptance: option present so container-runner
+  // call sites compile.
+  void opts.cliScope;
   const types = readCoworkerTypes(projectRoot);
   const catalog = readSkillCatalog(projectRoot);
   const manifest = resolveCoworkerManifest(types, coworkerType, catalog, projectRoot);

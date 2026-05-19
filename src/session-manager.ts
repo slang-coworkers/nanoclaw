@@ -234,6 +234,10 @@ export function writeSessionMessage(
      * a trigger-1 message does arrive.
      */
     trigger?: 0 | 1;
+    /** 1 = only deliver on the container's first poll (fresh start). */
+    onWake?: 0 | 1;
+    /** Source session id for A2A inbound rows. */
+    sourceSessionId?: string | null;
   },
 ): void {
   // Extract base64 attachment data, save to inbox, replace with file paths
@@ -252,6 +256,8 @@ export function writeSessionMessage(
       processAfter: message.processAfter ?? null,
       recurrence: message.recurrence ?? null,
       trigger: message.trigger ?? 1,
+      onWake: message.onWake ?? 0,
+      sourceSessionId: message.sourceSessionId ?? null,
     });
   } finally {
     db.close();
@@ -298,9 +304,42 @@ function extractAttachmentFiles(
           replacement: filename,
         });
       }
-      const inboxDir = path.join(sessionDir(agentGroupId, sessionId), 'inbox', messageId);
+      if (!isSafeAttachmentName(messageId)) {
+        log.warn('Refused unsafe inbox messageId', { messageId });
+        continue;
+      }
+      const inboxRoot = path.join(sessionDir(agentGroupId, sessionId), 'inbox');
+      const inboxDir = path.join(inboxRoot, messageId);
+      // Reject if inboxDir or any parent is a symlink leading outside inboxRoot.
+      if (fs.existsSync(inboxDir)) {
+        try {
+          if (fs.lstatSync(inboxDir).isSymbolicLink()) {
+            log.warn('Refused inbox dir that is a symlink', { messageId });
+            continue;
+          }
+          const realInbox = fs.realpathSync(inboxDir);
+          if (!isPathInside(realInbox, fs.realpathSync(inboxRoot))) {
+            log.warn('Inbox dir resolves outside inbox root', { messageId });
+            continue;
+          }
+        } catch (err) {
+          log.warn('Inbox dir stat failed', { messageId, err });
+          continue;
+        }
+      }
       fs.mkdirSync(inboxDir, { recursive: true });
       const filePath = path.join(inboxDir, filename);
+      // Refuse to follow a pre-existing symlink at the attachment path.
+      if (fs.existsSync(filePath)) {
+        try {
+          if (fs.lstatSync(filePath).isSymbolicLink()) {
+            log.warn('Refused inbox attachment path that is a symlink', { messageId, filename });
+            continue;
+          }
+        } catch {
+          /* best-effort */
+        }
+      }
       fs.writeFileSync(filePath, Buffer.from(att.data as string, 'base64'));
       att.name = filename;
       att.localPath = `inbox/${messageId}/${filename}`;
@@ -323,6 +362,11 @@ export function openInboundDb(agentGroupId: string, sessionId: string): Database
 /** Open the outbound DB for a session (host reads only). */
 export function openOutboundDb(agentGroupId: string, sessionId: string): Database.Database {
   return openOutboundDbRaw(outboundDbPath(agentGroupId, sessionId));
+}
+
+/** Open the outbound DB read-write. Only safe when no container is running (e.g. kill-and-respawn cleanup path). */
+export function openOutboundDbRw(agentGroupId: string, sessionId: string): Database.Database {
+  return openOutboundDbWritableRaw(outboundDbPath(agentGroupId, sessionId));
 }
 
 /**
@@ -398,18 +442,62 @@ export function readOutboxFiles(
   messageId: string,
   filenames: string[],
 ): OutboundFile[] | undefined {
-  const outboxDir = path.join(sessionDir(agentGroupId, sessionId), 'outbox', messageId);
+  if (!isSafeAttachmentName(messageId)) {
+    log.warn('Refused unsafe outbox messageId', { messageId });
+    return undefined;
+  }
+  const sessDir = sessionDir(agentGroupId, sessionId);
+  const outboxRoot = path.join(sessDir, 'outbox');
+  const outboxDir = path.join(outboxRoot, messageId);
   if (!fs.existsSync(outboxDir)) return undefined;
+  // Reject if outboxDir is a symlink escaping outboxRoot.
+  try {
+    if (fs.lstatSync(outboxDir).isSymbolicLink()) {
+      log.warn('Refused outbox dir that is a symlink', { messageId });
+      return undefined;
+    }
+    const realOutbox = fs.realpathSync(outboxDir);
+    if (!isPathInside(realOutbox, fs.realpathSync(outboxRoot))) {
+      log.warn('Outbox dir resolves outside session outbox root', { messageId });
+      return undefined;
+    }
+  } catch (err) {
+    log.warn('Outbox dir stat failed', { messageId, err });
+    return undefined;
+  }
   const files: OutboundFile[] = [];
   for (const filename of filenames) {
-    const filePath = path.join(outboxDir, filename);
-    if (fs.existsSync(filePath)) {
-      files.push({ filename, data: fs.readFileSync(filePath) });
-    } else {
-      log.warn('Outbox file not found', { messageId, filename });
+    if (!isSafeAttachmentName(filename)) {
+      log.warn('Refused unsafe outbox filename', { messageId, filename });
+      continue;
     }
+    const filePath = path.join(outboxDir, filename);
+    if (!fs.existsSync(filePath)) {
+      log.warn('Outbox file not found', { messageId, filename });
+      continue;
+    }
+    try {
+      if (fs.lstatSync(filePath).isSymbolicLink()) {
+        log.warn('Refused outbox attachment that is a symlink', { messageId, filename });
+        continue;
+      }
+      const realFile = fs.realpathSync(filePath);
+      if (!isPathInside(realFile, fs.realpathSync(outboxDir))) {
+        log.warn('Outbox attachment resolves outside outbox dir', { messageId, filename });
+        continue;
+      }
+    } catch (err) {
+      log.warn('Outbox attachment stat failed', { messageId, filename, err });
+      continue;
+    }
+    files.push({ filename, data: fs.readFileSync(filePath) });
   }
   return files.length > 0 ? files : undefined;
+}
+
+function isPathInside(child: string, parent: string): boolean {
+  const rel = path.relative(parent, child);
+  return rel.length > 0 && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
 /**
@@ -419,9 +507,24 @@ export function readOutboxFiles(
  * thrown error would trigger the delivery retry path and deliver twice.
  */
 export function clearOutbox(agentGroupId: string, sessionId: string, messageId: string): void {
-  const outboxDir = path.join(sessionDir(agentGroupId, sessionId), 'outbox', messageId);
+  if (!isSafeAttachmentName(messageId)) {
+    log.warn('Refused to clear outbox for unsafe messageId', { messageId });
+    return;
+  }
+  const sessDir = sessionDir(agentGroupId, sessionId);
+  const outboxRoot = path.join(sessDir, 'outbox');
+  const outboxDir = path.join(outboxRoot, messageId);
   if (!fs.existsSync(outboxDir)) return;
   try {
+    if (fs.lstatSync(outboxDir).isSymbolicLink()) {
+      log.warn('Refused to rmSync outbox dir that is a symlink', { messageId });
+      return;
+    }
+    const realOutbox = fs.realpathSync(outboxDir);
+    if (!isPathInside(realOutbox, fs.realpathSync(outboxRoot))) {
+      log.warn('Refused to rmSync outbox dir outside outbox root', { messageId });
+      return;
+    }
     fs.rmSync(outboxDir, { recursive: true, force: true });
   } catch (err) {
     log.warn('Outbox cleanup failed (message already delivered)', { messageId, err });

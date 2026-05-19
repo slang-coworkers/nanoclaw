@@ -47,7 +47,7 @@ async function main(): Promise<void> {
   // Load /workspace/agent/container.json once at startup. Without this call,
   // getConfig() throws on first read, leaving features like maxMessagesPerPrompt
   // stuck on the hardcoded fallback. Safe to call multiple times (memoized).
-  loadConfig();
+  const config = loadConfig();
 
   const providerName = (process.env.AGENT_PROVIDER || 'claude').toLowerCase() as ProviderName;
   const assistantName = process.env.NANOCLAW_ASSISTANT_NAME;
@@ -220,6 +220,8 @@ async function main(): Promise<void> {
     mcpServers,
     env: { ...process.env },
     additionalDirectories: additionalDirectories.length > 0 ? additionalDirectories : undefined,
+    model: config.model,
+    effort: config.effort,
   });
 
   await runPollLoop({

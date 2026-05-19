@@ -659,6 +659,124 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(cSource!.source_session_id).toBe(recipientSession.id);
     expect(cSource!.source_agent_group_id).toBe('ag-recipient');
   });
+
+  it('layer 1.5: explicit in_reply_to routes to the originating session even when a2a_session_sources mapping was overwritten', async () => {
+    // Scenario: B has been a recipient of TWO sources sequentially —
+    // first A (sess-sender), then a third source (sess-other). The
+    // a2a_session_sources upsert leaves only the latest mapping (other),
+    // so the fork's per-session reply-detection branch can't recover
+    // A's session from B alone. Layer 1.5 reads `in_reply_to` and looks
+    // up source_session_id in B's inbound DB — which still holds A's
+    // session id stamped on the original delegation row.
+    const { senderSession } = seedPair();
+
+    // Second source — a peer that also delegates to ag-recipient.
+    createAgentGroup({
+      id: 'ag-other',
+      name: 'Other',
+      folder: 'other',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+    createDestination({
+      agent_group_id: 'ag-other',
+      local_name: 'recipient',
+      target_type: 'agent',
+      target_id: 'ag-recipient',
+      created_at: now(),
+    });
+    const otherSession: Session = {
+      id: 'sess-other',
+      agent_group_id: 'ag-other',
+      messaging_group_id: null,
+      thread_id: null,
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(otherSession);
+    initSessionFolder('ag-other', otherSession.id);
+
+    // 1) A → B with thread T1 (records source for B's session = A).
+    await routeAgentMessage(
+      { id: 'out-A1', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'from A' }) },
+      senderSession,
+    );
+    const [recipientRow] = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    const recipientSession = getSession(recipientRow.id)!;
+
+    // 2) Other → same recipient on a DIFFERENT thread to land in a NEW
+    // recipient session (so a2a_session_sources for THAT session = other).
+    // (Same-session delegations from a different source overwrite via
+    // ON CONFLICT, but here we're not testing that — we're testing
+    // that B replying to A still routes to A even when a 'other' is
+    // active alongside.)
+    await routeAgentMessage(
+      {
+        id: 'out-O1',
+        platform_id: 'ag-recipient',
+        thread_id: 'T-other',
+        content: JSON.stringify({ text: 'from other' }),
+      },
+      otherSession,
+    );
+
+    // 3) B replies to A's original delegation. Outbound carries
+    //    in_reply_to=<id of the a2a inbound A→B>. We read that inbound's
+    //    real id (the synthetic a2a- prefix) from B's inbound DB.
+    const { openInboundDb } = await import('../../session-manager.js');
+    const recipDb = openInboundDb('ag-recipient', recipientSession.id);
+    const aToBInboundRow = recipDb
+      .prepare("SELECT id, source_session_id FROM messages_in WHERE source_session_id = ? AND channel_type = 'agent'")
+      .get('sess-sender') as { id: string; source_session_id: string } | undefined;
+    recipDb.close();
+    expect(aToBInboundRow).toBeDefined();
+    expect(aToBInboundRow!.source_session_id).toBe('sess-sender');
+
+    const aSessionsBefore = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-sender') as Array<{ id: string }>;
+    expect(aSessionsBefore).toHaveLength(1);
+
+    await routeAgentMessage(
+      {
+        id: 'out-B-reply',
+        platform_id: 'ag-sender',
+        thread_id: 'T1',
+        content: JSON.stringify({ text: 'on it' }),
+        in_reply_to: aToBInboundRow!.id,
+      },
+      recipientSession,
+    );
+
+    // A still has exactly one session (no fresh one created).
+    const aSessionsAfter = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-sender') as Array<{ id: string }>;
+    expect(aSessionsAfter).toHaveLength(1);
+    expect(aSessionsAfter[0].id).toBe('sess-sender');
+
+    // The reply landed in sess-sender's inbound (verified via the row's
+    // source_session_id stamp pointing back to the recipient).
+    const senderDb = openInboundDb('ag-sender', 'sess-sender');
+    const replyRow = senderDb
+      .prepare(
+        "SELECT source_session_id, content FROM messages_in WHERE channel_type = 'agent' ORDER BY seq DESC LIMIT 1",
+      )
+      .get() as { source_session_id: string; content: string } | undefined;
+    senderDb.close();
+    expect(replyRow).toBeDefined();
+    expect(replyRow!.source_session_id).toBe(recipientSession.id);
+    expect(JSON.parse(replyRow!.content).text).toBe('on it');
+  });
 });
 
 describe('migration 020', () => {

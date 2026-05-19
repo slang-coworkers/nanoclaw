@@ -100,6 +100,9 @@ export const scheduleTask: McpToolDefinition = {
         script,
         processAfter,
         recurrence,
+        platformId: r.platform_id,
+        channelType: r.channel_type,
+        threadId: r.thread_id,
         ...newSessionField,
       }),
     });

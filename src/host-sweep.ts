@@ -34,6 +34,7 @@ import { getAgentGroup } from './db/agent-groups.js';
 import {
   clearOrphanProcessingAcks,
   countDueMessages,
+  deleteOrphanProcessingClaims,
   getContainerState,
   getMessageForRetry,
   getProcessingClaims,
@@ -43,7 +44,15 @@ import {
   type ContainerState,
 } from './db/session-db.js';
 import { log } from './log.js';
-import { openInboundDb, openOutboundDb, inboundDbPath, outboundDbPath, heartbeatPath } from './session-manager.js';
+import {
+  openInboundDb,
+  openOutboundDb,
+  openOutboundDbRw,
+  inboundDbPath,
+  outboundDbPath,
+  heartbeatPath,
+  writeSessionMessage,
+} from './session-manager.js';
 import {
   detectStaleContainers,
   isContainerRunning,
@@ -51,7 +60,6 @@ import {
   recomposeAndUpdateHash,
   wakeContainer,
 } from './container-runner.js';
-import { writeSessionMessage } from './session-manager.js';
 import type { Session } from './types.js';
 
 const SWEEP_INTERVAL_MS = 60_000;
@@ -75,10 +83,15 @@ const BACKOFF_BASE_MS = 5000;
  * as local time — this normalises to UTC first.
  */
 export function parseSqliteUtc(s: string): number {
+  // SQLite TIMESTAMP columns store UTC without a timezone marker.
+  // Date.parse treats timezoneless ISO strings as local time, so on non-UTC
+  // hosts every timestamp looks (TZ offset) hours stale — leading to
+  // spurious kill-claim decisions on freshly-claimed messages. Append "Z"
+  // when no zone marker is present so Date.parse interprets as UTC.
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
     return Date.parse(s.replace(' ', 'T') + 'Z');
   }
-  return Date.parse(s);
+  return Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(s) ? s : s + 'Z');
 }
 
 export type StuckDecision =
@@ -225,6 +238,8 @@ async function sweepSession(session: Session): Promise<void> {
     const dueCount = countDueMessages(inDb);
     if (dueCount > 0 && !isContainerRunning(session.id)) {
       log.info('Waking container for due messages', { sessionId: session.id, count: dueCount });
+      // wakeContainer never throws — transient spawn failures (OneCLI down,
+      // etc.) return false and leave messages pending for the next tick.
       await wakeContainer(session);
       justSpawned = true;
     }
@@ -318,11 +333,21 @@ function enforceRunningContainerSla(
   resetStuckProcessingRows(inDb, outDb, session, 'claim-stuck');
 }
 
+export function _resetStuckProcessingRowsForTesting(
+  inDb: Database.Database,
+  outDb: Database.Database,
+  session: Session,
+  reason: string,
+): void {
+  resetStuckProcessingRows(inDb, outDb, session, reason, outDb);
+}
+
 function resetStuckProcessingRows(
   inDb: Database.Database,
   outDb: Database.Database,
   session: Session,
   reason: string,
+  writableOutDb?: Database.Database,
 ): void {
   const claims = getProcessingClaims(outDb);
   const now = Date.now();
@@ -355,15 +380,25 @@ function resetStuckProcessingRows(
     }
   }
 
-  // Clear the orphan processing_ack rows so the next container spawn isn't
-  // immediately killed by stale claims. Safe because this only runs when the
-  // container is dead (step 4) or just killed (step 3 kill path).
+  // Drop the orphan 'processing' rows. Without this, the next sweep tick
+  // would re-read them, see the old status_changed timestamp, conclude the
+  // freshly respawned container is stuck, and SIGKILL it before its
+  // agent-runner has a chance to run clearStaleProcessingAcks() on startup.
+  // Safe because this only runs when the container is dead (step 4) or just
+  // killed (step 3 kill path).
   if (claims.length > 0) {
-    clearOrphanProcessingAcks(outboundDbPath(session.agent_group_id, session.id));
-    log.info('Cleared orphan processing_ack rows', {
-      sessionId: session.id,
-      count: claims.length,
-      reason,
-    });
+    const ownsDb = !writableOutDb;
+    let useDb: Database.Database | null = writableOutDb ?? null;
+    try {
+      if (!useDb) useDb = openOutboundDbRw(session.agent_group_id, session.id);
+      const cleared = deleteOrphanProcessingClaims(useDb);
+      if (cleared > 0) {
+        log.info('Cleared orphan processing claims', { sessionId: session.id, cleared, reason });
+      }
+    } catch (err) {
+      log.warn('Failed to clear orphan processing claims', { sessionId: session.id, err });
+    } finally {
+      if (ownsDb) useDb?.close();
+    }
   }
 }

@@ -205,6 +205,10 @@ export interface ComposeCoworkerSpineOptions {
   // This is the runtime source of overlays now that YAML types no longer
   // declare them.
   overlays?: string[];
+  // Per-group ncl CLI scope (from agent_groups.cli_scope). Forwarded to spine
+  // rendering so cli/ncl-specific tool-instructions can be conditionally
+  // omitted when the group disables CLI access.
+  cliScope?: 'disabled' | 'group' | 'global';
 }
 
 export interface ComposeLegacyPromptOptions {

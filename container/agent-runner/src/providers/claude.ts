@@ -35,7 +35,12 @@ const SDK_DISALLOWED_TOOLS = [
   'ExitWorktree',
 ];
 
-// Base tool allowlist for NanoClaw agent containers (always included)
+// Base tool allowlist for NanoClaw agent containers (always included).
+// MCP-tool entries are derived at the call site from the registered
+// `mcpServers` map so that any server added via `add_mcp_server` (or wired
+// in container.json directly) is reachable to the agent — without this,
+// the SDK's allowedTools filter silently drops every MCP namespace not
+// listed here.
 const BASE_TOOL_ALLOWLIST = [
   'Bash',
   'Read',
@@ -55,7 +60,6 @@ const BASE_TOOL_ALLOWLIST = [
   'ToolSearch',
   'Skill',
   'NotebookEdit',
-  'mcp__nanoclaw__*',
 ];
 
 export function parseAllowedMcpTools(env?: Record<string, string | undefined>): string[] {
@@ -90,6 +94,13 @@ function computeBlockedTools(
     log('Failed to parse NANOCLAW_MCP_TOOL_INVENTORY');
   }
   return undefined;
+}
+
+// MCP server names are sanitized by the SDK when forming tool prefixes:
+// any character outside [A-Za-z0-9_-] becomes '_'. Mirror that here so our
+// allowlist patterns match what the SDK actually exposes.
+function mcpAllowPattern(serverName: string): string {
+  return `mcp__${serverName.replace(/[^a-zA-Z0-9_-]/g, '_')}__*`;
 }
 
 interface SDKUserMessage {
@@ -262,7 +273,9 @@ function createPreCompactHook(assistantName?: string): HookCallback {
  * Claude Code auto-compacts context at this window (tokens). Default is
  * tuned for a 200K context model (~80% fill). For 1M models (model ID
  * contains "[1m]"), we raise the window to 900K so the agent can use the
- * full context before compacting.
+ * full context before compacting. Operator override: set
+ * CLAUDE_CODE_AUTO_COMPACT_WINDOW in the host env to raise or lower the
+ * threshold without editing source.
  */
 function getAutoCompactWindow(): string {
   if (process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW) return process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW;
@@ -288,10 +301,14 @@ export class ClaudeProvider implements AgentProvider {
   private additionalDirectories?: string[];
   private extraAllowedTools: string[];
   private blockedTools?: string[];
+  private model?: string;
+  private effort?: string;
 
   constructor(options: ProviderOptions = {}) {
     this.assistantName = options.assistantName;
     this.additionalDirectories = options.additionalDirectories;
+    this.model = options.model;
+    this.effort = options.effort;
     this.env = {
       ...(options.env ?? {}),
       CLAUDE_CODE_AUTO_COMPACT_WINDOW,
@@ -336,9 +353,16 @@ export class ClaudeProvider implements AgentProvider {
         additionalDirectories: this.additionalDirectories,
         resume: input.continuation,
         systemPrompt: instructions ? { type: 'preset' as const, preset: 'claude_code' as const, append: instructions } : undefined,
-        allowedTools: [...BASE_TOOL_ALLOWLIST, ...this.extraAllowedTools],
+        allowedTools: [
+          ...BASE_TOOL_ALLOWLIST,
+          ...Object.keys(this.mcpServers).map(mcpAllowPattern),
+          ...this.extraAllowedTools,
+        ],
         disallowedTools: [...SDK_DISALLOWED_TOOLS, ...(this.blockedTools ?? [])],
         env: this.env,
+        model: this.model,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        effort: this.effort as any,
         permissionMode: 'bypassPermissions',
         allowDangerouslySkipPermissions: true,
         settingSources: ['project', 'user'],

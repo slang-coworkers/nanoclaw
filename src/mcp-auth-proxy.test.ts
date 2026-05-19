@@ -126,6 +126,8 @@ describe('getDiscoveredToolAnnotations', () => {
     expect(getDiscoveredToolAnnotations()).toEqual({});
   });
 
+  // Skipped: env's NO_PROXY='*' must be set for the http stub to bypass the
+  // outbound proxy; un-skip once that's wired into test setup.
   it.skip('flattens annotations captured via discoverTools with the mcp__<server>__<tool> prefix', async () => {
     // The discovery path is exercised end-to-end here by stubbing http so we
     // hit the real parse loop that writes into the cached annotations map.
@@ -199,6 +201,7 @@ describe('getDiscoveredToolAnnotations', () => {
     }
   });
 
+  // Skipped: same NO_PROXY='*' bypass dependency as the previous discovery test.
   it.skip('clearDiscoveredTools also clears the annotation cache for that server', async () => {
     // Prime the cache via discoverTools again with a single annotated tool,
     // then verify clearing removes it from getDiscoveredToolAnnotations too.
@@ -443,6 +446,8 @@ describe('end-to-end container token path (RC-42)', () => {
     stopProxy();
   });
 
+  // Skipped: needs NO_PROXY='*' so the local upstream stub bypasses the
+  // outbound HTTPS proxy; un-skip once test env is wired with that.
   it.skip('tools/call with a registered container token + allowed tool succeeds with JSON-RPC response', async () => {
     const http = await import('http');
     // Upstream MCP server: respond to initialize + tools/call. The proxy is

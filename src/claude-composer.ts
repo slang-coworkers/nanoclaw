@@ -35,6 +35,7 @@ export function composeCoworkerSpine(options: ComposeCoworkerSpineOptions): stri
   return renderCoworkerSpine(projectRoot, options.coworkerType, options.extraInstructions, {
     disableOverlays: options.disableOverlays === true,
     overlays: options.overlays,
+    cliScope: options.cliScope,
   });
 }
 

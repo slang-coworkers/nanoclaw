@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { backfillContainerConfigs } from './backfill-container-configs.js';
 import {
   DASHBOARD_INGRESS_HOST,
   DASHBOARD_INGRESS_PORT,
@@ -21,7 +22,6 @@ import { runMigrations } from './db/migrations/index.js';
 import { runGlobalToSharedMigration } from './migrations/global-to-shared.js';
 import { getMessagingGroupsByChannel, getMessagingGroupAgents } from './db/messaging-groups.js';
 import { ensureContainerRuntimeRunning, cleanupOrphans } from './container-runtime.js';
-import { recomposeAllGroupsClaudeMd } from './container-runner.js';
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
 import { routeInbound } from './router.js';
@@ -66,6 +66,12 @@ import './channels/index.js';
 // Modules barrel — default modules (typing, mount-security) ship here; skills
 // append registry-based modules. Imported for side effects (registrations).
 import './modules/index.js';
+
+// CLI command barrel — populates the `ncl` registry before the CLI server
+// accepts connections.
+import './cli/commands/index.js';
+import './cli/delivery-action.js';
+import { startCliServer, stopCliServer } from './cli/socket-server.js';
 
 import type { ChannelAdapter, ChannelSetup } from './channels/adapter.js';
 import {
@@ -152,7 +158,11 @@ async function main(): Promise<void> {
     log.warn('global-to-shared migration threw', { err: String(err) });
   }
 
-  // 1c. Orphan-dir reconciler (task #40). `groups/<folder>/` directories
+  // 1c. Backfill container_configs from legacy container.json files.
+  // Idempotent — skips groups that already have a config row.
+  backfillContainerConfigs();
+
+  // 1d. Orphan-dir reconciler (task #40). `groups/<folder>/` directories
   // can be left behind when a coworker is deleted via the dashboard API
   // with `deleteData=false` (the default — the delete path preserves WIP
   // reports/critiques). This is by design, but without visibility the
@@ -171,14 +181,6 @@ async function main(): Promise<void> {
   cleanupOrphans();
   // Reset stale container_status from previous host runs
   getDb().prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'").run();
-
-  // 2a. Recompose every group's CLAUDE.md from current spine + .instructions.md.
-  // Without this, idle coworkers (no active container at deploy time) sit on
-  // stale CLAUDE.md until next wake — host-sweep's claude-md-stale detection
-  // only iterates RUNNING containers, and on-spawn ensureGroupFilesystem only
-  // fires when a session actually wakes. After /update-* + restart, operators
-  // expect fresh CLAUDE.md visible immediately for confidence in the deploy.
-  recomposeAllGroupsClaudeMd();
 
   // 2b. MCP server stack (registry + auth proxy)
   const mcpStack = await startMcpServers(MCP_PROXY_PORT + 100);
@@ -336,6 +338,9 @@ async function main(): Promise<void> {
   startHostSweep();
   log.info('Host sweep started');
 
+  // 7. Start the `ncl` CLI socket server (data/ncl.sock).
+  await startCliServer();
+
   log.info('NanoClaw running');
 }
 
@@ -398,6 +403,7 @@ async function shutdown(signal: string): Promise<void> {
   mcpStackHandle?.stop();
   await dashboardIngressHandle?.stop();
   await githubWebhookHandle?.stop();
+  await stopCliServer();
   try {
     await teardownChannelAdapters();
   } finally {

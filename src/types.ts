@@ -5,6 +5,7 @@ export interface AgentGroup {
   name: string;
   folder: string;
   is_admin: number; // 0 | 1
+  /** @deprecated Use container_configs.provider instead. */
   agent_provider: string | null;
   container_config: string | null; // JSON: { additionalMounts, timeout }
   coworker_type: string | null; // coworker-types.yaml key, e.g. "slang-reader" or "slang-writer"
@@ -15,6 +16,25 @@ export interface AgentGroup {
   created_at: string;
 }
 
+/** Per-agent-group container runtime config. Source of truth in the DB;
+ *  materialized to `groups/<folder>/container.json` at spawn time. */
+export interface ContainerConfigRow {
+  agent_group_id: string;
+  provider: string | null;
+  model: string | null;
+  effort: string | null;
+  image_tag: string | null;
+  assistant_name: string | null;
+  max_messages_per_prompt: number | null;
+  skills: string; // JSON: '"all"' | '["skill1","skill2"]'
+  mcp_servers: string; // JSON: Record<string, McpServerConfig>
+  packages_apt: string; // JSON: string[]
+  packages_npm: string; // JSON: string[]
+  additional_mounts: string; // JSON: AdditionalMountConfig[]
+  cli_scope: string; // 'disabled' | 'group' | 'global'
+  updated_at: string;
+}
+
 export type UnknownSenderPolicy = 'strict' | 'request_approval' | 'public';
 
 export interface MessagingGroup {
@@ -23,7 +43,7 @@ export interface MessagingGroup {
   platform_id: string;
   name: string | null;
   is_group: number; // 0 | 1
-  admin_user_id: string | null;
+  admin_user_id?: string | null;
   unknown_sender_policy: UnknownSenderPolicy;
   /**
    * When set, the owner explicitly denied registering this channel — the
@@ -42,8 +62,8 @@ export interface MessagingGroupAgent {
   id: string;
   messaging_group_id: string;
   agent_group_id: string;
-  trigger_rules: string | null; // JSON: { pattern, mentionOnly, excludeSenders, includeSenders }
-  response_scope: 'all' | 'triggered' | 'allowlisted';
+  trigger_rules?: string | null; // JSON: { pattern, mentionOnly, excludeSenders, includeSenders }
+  response_scope?: 'all' | 'triggered' | 'allowlisted';
   session_mode: 'shared' | 'per-thread' | 'agent-shared';
   priority: number;
   engage_mode: 'always' | 'pattern' | 'mention' | 'mention-sticky' | 'never';
