@@ -479,6 +479,22 @@ async function spawnContainer(session: Session): Promise<void> {
   activeContainers.set(session.id, { process: container, containerName });
   markContainerRunning(session.id);
 
+  // Tee for dashboard's Container Logs admin panel — reads groups/<folder>/logs/container-*.log
+  const ts = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const tsStr = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}`;
+  const containerLogDir = path.join(GROUPS_DIR, agentGroup.folder, 'logs');
+  let containerLogStream: fs.WriteStream | undefined;
+  try {
+    fs.mkdirSync(containerLogDir, { recursive: true });
+    const containerLogPath = path.join(containerLogDir, `container-${session.id}-${tsStr}.log`);
+    containerLogStream = fs.createWriteStream(containerLogPath, { flags: 'a' });
+    container.stdout?.pipe(containerLogStream, { end: false });
+    container.stderr?.pipe(containerLogStream, { end: false });
+  } catch (err) {
+    log.warn('Failed to open container log file', { folder: agentGroup.folder, err });
+  }
+
   // Log stderr — warn level so container errors appear in the error log.
   // Keep the last line for the exit handler to include in diagnostics.
   let lastStderrLine = '';
@@ -505,6 +521,7 @@ async function spawnContainer(session: Session): Promise<void> {
     markContainerStopped(session.id);
     stopTypingRefresh(session.id);
     revokeContainerToken(proxyToken);
+    containerLogStream?.end();
     if (code !== 0 && code !== null) {
       log.warn('Container exited with error', {
         sessionId: session.id,
@@ -521,6 +538,7 @@ async function spawnContainer(session: Session): Promise<void> {
     activeContainers.delete(session.id);
     markContainerStopped(session.id);
     stopTypingRefresh(session.id);
+    containerLogStream?.end();
     log.error('Container spawn error', { sessionId: session.id, err });
   });
 }
