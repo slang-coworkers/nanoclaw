@@ -22,7 +22,14 @@ import fs from 'fs';
 import path from 'path';
 
 import { isSafeAttachmentName } from '../../attachment-safety.js';
+import { getSourceFor, recordSource } from '../../db/a2a-session-sources.js';
 import { getAgentGroup } from '../../db/agent-groups.js';
+import {
+  createMessagingGroup,
+  createMessagingGroupAgent,
+  getMessagingGroupAgents,
+  getMessagingGroupByPlatform,
+} from '../../db/messaging-groups.js';
 import { getInboundSourceSessionId, getMostRecentPeerSourceSessionId } from '../../db/session-db.js';
 import { getSession } from '../../db/sessions.js';
 import { wakeContainer } from '../../container-runner.js';
@@ -30,6 +37,71 @@ import { log } from '../../log.js';
 import { openInboundDb, resolveSession, sessionDir, writeSessionMessage } from '../../session-manager.js';
 import type { Session } from '../../types.js';
 import { hasDestination } from './db/agent-destinations.js';
+
+/**
+ * Ensure a per-(source, recipient) messaging_group exists with a per-thread
+ * wiring for the recipient. Idempotent; returns the mg id.
+ *
+ * Platform-id format: `agent:<source-ag>:<recipient-ag>` so two distinct
+ * sources delegating into the same recipient with the same thread_id
+ * (e.g. both picking "review-PR-A") get two distinct recipient sessions,
+ * one per pair. The older `agent:<recipient>` form (sourceAgentGroupId=null)
+ * is kept for back-compat callers that intentionally share across senders —
+ * none in-tree today, but the signature leaves the door open.
+ *
+ * Rationale: per-thread session resolution needs a messaging_group_id as
+ * part of its lookup key. Old code used `agent-shared` which ignores
+ * messaging_group + thread_id entirely — that's kept as the fallback for
+ * unthreaded (thread_id=null) a2a calls. Threaded a2a calls route through
+ * this synthetic group so `(recipient, a2a_mg, thread_id)` can key a
+ * unique session per delegation.
+ *
+ * Back-compat: pre-existing a2a wirings (rare — most installs have none
+ * since agent-shared doesn't create mga rows) are upgraded via migration
+ * 019. This helper's own UPDATE catches any slipped-through `'shared'`
+ * rows on the synthetic group too, so first threaded delivery self-heals.
+ */
+export function ensureA2aWiring(
+  targetAgentGroupId: string,
+  sourceAgentGroupId: string | null = null,
+  now: string = new Date().toISOString(),
+): string {
+  const platformId = sourceAgentGroupId
+    ? `agent:${sourceAgentGroupId}:${targetAgentGroupId}`
+    : `agent:${targetAgentGroupId}`;
+  let mg = getMessagingGroupByPlatform('agent', platformId);
+  if (!mg) {
+    const mgId = `mg-a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    createMessagingGroup({
+      id: mgId,
+      channel_type: 'agent',
+      platform_id: platformId,
+      name: null,
+      is_group: 0,
+      unknown_sender_policy: 'public',
+      admin_user_id: null,
+      created_at: now,
+    });
+    mg = getMessagingGroupByPlatform('agent', platformId)!;
+  }
+
+  const existing = getMessagingGroupAgents(mg.id).find((a) => a.agent_group_id === targetAgentGroupId);
+  if (!existing) {
+    createMessagingGroupAgent({
+      id: `mga-a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      messaging_group_id: mg.id,
+      agent_group_id: targetAgentGroupId,
+      engage_mode: 'always',
+      engage_pattern: null,
+      sender_scope: 'all',
+      ignored_message_policy: 'drop',
+      session_mode: 'per-thread',
+      priority: 0,
+      created_at: now,
+    } as never);
+  }
+  return mg.id;
+}
 
 export { isSafeAttachmentName };
 
@@ -101,62 +173,72 @@ export function forwardAttachedFiles(
 export interface RoutableAgentMessage {
   id: string;
   platform_id: string | null;
+  /** Thread identifier carried from sender's context. When non-null, routes
+   *  to a per-thread session under the recipient; when null, falls back to
+   *  agent-shared for back-compat with pre-threading installs. */
+  thread_id?: string | null;
   content: string;
-  /**
-   * For replies, the id of the inbound message being replied to. The
-   * container's formatter sets this from the first inbound in the batch
-   * (`container/agent-runner/src/formatter.ts`). Used here to route the
-   * reply back to the originating session — see `resolveTargetSession`.
-   */
-  in_reply_to: string | null;
+  /** For replies, the id of the inbound message being replied to. The
+   *  container's MCP tools (send_message/send_file) stamp this from
+   *  current-batch.ts. Used here as layer 1.5 to look up the originating
+   *  session in the source agent's inbound DB and route the reply there
+   *  even when the target has multiple active sessions. */
+  in_reply_to?: string | null;
 }
 
 /**
- * Pick which session of `targetAgentGroupId` should receive this a2a message.
+ * Try to resolve an explicit reply target via `in_reply_to`.
  *
- * Three layers, highest-fidelity first:
+ * Two layers, both backed by `messages_in.source_session_id` in the source
+ * agent's inbound DB (stamped by `routeAgentMessage` when delivering
+ * a2a inbound rows):
  *
- * 1. **Direct return-path** (in_reply_to lookup): if the message is a reply
- *    (`in_reply_to` set), open the source agent's inbound DB and read the
- *    triggering row's `source_session_id`. That column was stamped when the
- *    original outbound was routed — it's the session that started the
- *    conversation, and replies should land there even when the target has
- *    multiple active sessions.
+ * 1. **Direct lookup** — if `msg.in_reply_to` is set, read the triggering
+ *    inbound row's `source_session_id`. That's the session that initiated
+ *    the conversation; replies should land there even when the target
+ *    agent has multiple active sessions.
  *
- * 2. **Peer-affinity fallback**: if (1) misses (in_reply_to is null or the
- *    referenced row isn't an a2a inbound), look up the most recent a2a
- *    inbound *from the target agent group* in source's inbound and use its
- *    `source_session_id`. The intuition: the last time this peer talked to
- *    me, which target session was driving? Route the reply there, since
- *    that's the session most plausibly in active conversation.
+ * 2. **Peer-affinity fallback** — if direct lookup misses (no in_reply_to,
+ *    referenced row isn't an a2a inbound, or column is null), find the
+ *    most recent a2a inbound from this peer in the source's inbound DB
+ *    and use its `source_session_id`. Intuition: the last time this peer
+ *    talked to me, which session was driving?
  *
- * 3. **Newest active session**: legacy heuristic. Used when no prior a2a
- *    has been recorded with `source_session_id` (e.g. fresh installs,
- *    pre-migration data).
+ * Returns null if neither layer resolves to an active session in the
+ * target agent group — caller falls through to the fork's existing
+ * reply-detection / fresh-delegation logic below.
  */
-function resolveTargetSession(msg: RoutableAgentMessage, sourceSession: Session, targetAgentGroupId: string): Session {
-  const srcDb = openInboundDb(sourceSession.agent_group_id, sourceSession.id);
+function resolveExplicitReplyTarget(
+  msg: RoutableAgentMessage,
+  sourceSession: Session,
+  targetAgentGroupId: string,
+): Session | null {
+  let srcDb;
+  try {
+    srcDb = openInboundDb(sourceSession.agent_group_id, sourceSession.id);
+  } catch {
+    // Source session's inbound DB may not exist yet (fresh source, never
+    // received an inbound). No prior a2a inbounds means no source_session_id
+    // to look up — fall through to existing reply-detection / fresh path.
+    return null;
+  }
   let originSessionId: string | null = null;
   try {
     if (msg.in_reply_to) {
       originSessionId = getInboundSourceSessionId(srcDb, msg.in_reply_to);
     }
     if (!originSessionId) {
-      // Peer-affinity fallback — covers the case where the container's
-      // outbound write didn't carry in_reply_to (e.g. legacy MCP send_message
-      // path, container running pre-fix code).
       originSessionId = getMostRecentPeerSourceSessionId(srcDb, targetAgentGroupId);
     }
   } finally {
     srcDb.close();
   }
-  if (originSessionId) {
-    const candidate = getSession(originSessionId);
-    if (candidate && candidate.agent_group_id === targetAgentGroupId && candidate.status === 'active') {
-      return candidate;
-    }
+  if (!originSessionId) return null;
+  const candidate = getSession(originSessionId);
+  if (candidate && candidate.agent_group_id === targetAgentGroupId && candidate.status === 'active') {
+    return candidate;
   }
-  return resolveSession(targetAgentGroupId, null, null, 'agent-shared').session;
+  return null;
 }
 
 export async function routeAgentMessage(msg: RoutableAgentMessage, session: Session): Promise<void> {
@@ -164,6 +246,88 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
   if (!targetAgentGroupId) {
     throw new Error(`agent-to-agent message ${msg.id} is missing a target agent group id`);
   }
+
+  // Reply-detection branch.
+  //
+  // If the sending session is itself the recipient side of a prior a2a
+  // delegation (i.e. a2a_session_sources has a row for it), AND the
+  // outbound is addressed to the original source's agent group, this is a
+  // REPLY to that delegation. Deliver directly into the original source
+  // session, bypassing mg + thread resolution — re-resolving would land
+  // the reply in a brand-new synthetic session and lose the conversation.
+  //
+  // All other outbound agent messages (fresh delegations, lateral calls
+  // to unrelated peers) fall through to the normal route below.
+  const sourceHint = getSourceFor(session.id);
+  if (sourceHint && sourceHint.source_agent_group_id === targetAgentGroupId) {
+    const originalSourceSession = getSession(sourceHint.source_session_id);
+    if (!originalSourceSession) {
+      // Fail closed. The source session the recipient was supposed to
+      // reply to is gone (deleted, archived, reset). We must NOT synthesise
+      // a brand-new session on the sender's side — that would silently
+      // stage reply content into an operator-less room. Drop the message
+      // with an audit trail instead.
+      log.warn('a2a reply dropped: source session no longer exists', {
+        msgId: msg.id,
+        recipientSessionId: session.id,
+        sourceSessionId: sourceHint.source_session_id,
+        sourceAgentGroupId: sourceHint.source_agent_group_id,
+        sourceThreadId: sourceHint.source_thread_id,
+      });
+      return;
+    }
+
+    // Self-loop guard, mirror of the line ~288 guard on the main route.
+    // The invariant "source session ≠ recipient session" is established
+    // at recordSource time (line ~302, gated by the main-route same-
+    // session guard), so a sourceHint pointing at self should never
+    // exist in practice. Belt-and-braces: if a migration / backfill /
+    // future code path ever populates a self-reference, drop here
+    // rather than write the recipient's reply back into its own session
+    // and feed the model its own output as the next inbound turn.
+    if (originalSourceSession.id === session.id) {
+      log.warn('a2a reply self-loop dropped: sourceHint points at recipient session', {
+        msgId: msg.id,
+        sessionId: session.id,
+        agentGroupId: session.agent_group_id,
+        sourceAgentGroupId: sourceHint.source_agent_group_id,
+        sourceThreadId: sourceHint.source_thread_id,
+      });
+      return;
+    }
+
+    const a2aReplyId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const forwardedReplyContent = forwardFileAttachments(
+      msg,
+      a2aReplyId,
+      session,
+      originalSourceSession.agent_group_id,
+      originalSourceSession.id,
+    );
+    writeSessionMessage(originalSourceSession.agent_group_id, originalSourceSession.id, {
+      id: a2aReplyId,
+      kind: 'chat',
+      timestamp: new Date().toISOString(),
+      platformId: session.agent_group_id,
+      channelType: 'agent',
+      threadId: sourceHint.source_thread_id,
+      content: injectA2aSourceThread(forwardedReplyContent, session.thread_id),
+      sourceSessionId: session.id,
+    });
+    log.info('Agent reply routed back to source session', {
+      from: session.agent_group_id,
+      recipientSessionId: session.id,
+      to: originalSourceSession.agent_group_id,
+      targetSession: originalSourceSession.id,
+      threadId: sourceHint.source_thread_id,
+      a2aMsgId: a2aReplyId,
+      forwardedFileCount: countForwardedFiles(forwardedReplyContent),
+    });
+    const freshSource = getSession(originalSourceSession.id);
+    if (freshSource) await wakeContainer(freshSource);
+    return;
+  }
+
   if (
     targetAgentGroupId !== session.agent_group_id &&
     !hasDestination(session.agent_group_id, 'agent', targetAgentGroupId)
@@ -175,7 +339,77 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
   if (!getAgentGroup(targetAgentGroupId)) {
     throw new Error(`target agent group ${targetAgentGroupId} not found for message ${msg.id}`);
   }
-  const targetSession = resolveTargetSession(msg, session, targetAgentGroupId);
+
+  // Layer 1.5: explicit in_reply_to / peer-affinity lookup.
+  //
+  // The fork's per-session reply-detection above misses two cases this
+  // covers: (a) the sending session has been a recipient of multiple
+  // distinct sources, so a2a_session_sources only records the LAST one;
+  // (b) the in_reply_to references an inbound that pre-dates the
+  // a2a_session_sources entry (e.g. session was replayed). When set,
+  // the resolved session bypasses the fresh-delegation mg+thread path
+  // — it's the conversation's actual originator.
+  let targetSession: Session;
+  let threadId: string | null;
+  let usedExplicitReplyTarget = false;
+  const explicitTarget = resolveExplicitReplyTarget(msg, session, targetAgentGroupId);
+  if (explicitTarget) {
+    targetSession = explicitTarget;
+    threadId = explicitTarget.thread_id ?? null;
+    usedExplicitReplyTarget = true;
+  } else {
+    // Fresh-delegation path:
+    //  - thread_id present → per-thread session keyed on (recipient,
+    //    agent:<source>:<recipient> mg, thread_id). Each unique
+    //    (source, thread) pair starts its own isolated recipient session
+    //    so two sources picking the same thread_id don't merge.
+    //  - thread_id null but source session has one → inherit it, so outbound
+    //    from a threaded session stays scoped (Slack-style DM isolation).
+    //  - both null → per-source shared (each source↔recipient pair gets its
+    //    own session, not a global agent-shared that collapses all sources).
+    const explicitThread = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
+    threadId = explicitThread || session.thread_id || null;
+    const a2aMgId = ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
+    ({ session: targetSession } = resolveSession(
+      targetAgentGroupId,
+      a2aMgId,
+      threadId,
+      threadId ? 'per-thread' : 'shared',
+    ));
+
+    // L2 same-session guard — the host-side last line of defense against
+    // engine self-loop (PR #355's regression class). If a self-targeted
+    // a2a (channel='agent', platform_id=<own group>) leaks past the
+    // formatter <system-notification> wrap (L3a), notifyAgent's
+    // channelType='system' (L3b), and the poll-loop L1 platformId/system
+    // gate, this guard drops the write before recordSource creates a
+    // self-referential a2a_session_sources row and writeSessionMessage
+    // delivers the agent's own outbound back into its own inbox.
+    if (targetSession.id === session.id) {
+      log.warn('a2a main-route self-target dropped: target session resolves to emitter', {
+        msgId: msg.id,
+        sessionId: session.id,
+        agentGroupId: session.agent_group_id,
+        targetAgentGroupId,
+        threadId,
+      });
+      return;
+    }
+
+    // Stamp the route-back hint so the recipient's reply can find its way
+    // home. Covers both per-thread and agent-shared paths — even shared
+    // sessions benefit from the reply-detection branch above, so long as
+    // only one source is active at a time against that recipient.
+    recordSource({
+      recipientSessionId: targetSession.id,
+      recipientAgentGroupId: targetAgentGroupId,
+      recipientThreadId: threadId,
+      sourceSessionId: session.id,
+      sourceAgentGroupId: session.agent_group_id,
+      sourceThreadId: threadId,
+    });
+  }
+
   const a2aMsgId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   // If the source message references files (via `send_file`), forward the
@@ -191,16 +425,18 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
     timestamp: new Date().toISOString(),
     platformId: session.agent_group_id,
     channelType: 'agent',
-    threadId: null,
-    content: forwardedContent,
+    threadId,
+    content: injectA2aSourceThread(forwardedContent, session.thread_id),
     sourceSessionId: session.id,
   });
   log.info('Agent message routed', {
     from: session.agent_group_id,
     to: targetAgentGroupId,
     targetSession: targetSession.id,
+    threadId,
     a2aMsgId,
     forwardedFileCount: countForwardedFiles(forwardedContent),
+    via: usedExplicitReplyTarget ? 'in_reply_to' : 'fresh',
   });
   const fresh = getSession(targetSession.id);
   if (fresh) await wakeContainer(fresh);
@@ -251,6 +487,17 @@ function forwardFileAttachments(
   parsed.attachments = [...existing, ...attachments];
 
   return JSON.stringify(parsed);
+}
+
+function injectA2aSourceThread(content: string, sourceThreadId: string | null): string {
+  if (!sourceThreadId) return content;
+  try {
+    const parsed = JSON.parse(content);
+    parsed._a2a_source_thread = sourceThreadId;
+    return JSON.stringify(parsed);
+  } catch {
+    return content;
+  }
 }
 
 function countForwardedFiles(contentStr: string): number {

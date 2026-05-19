@@ -32,13 +32,16 @@ export function openOutboundDb(dbPath: string): Database.Database {
   return db;
 }
 
-/** Open the outbound DB for a session with write access. Only safe to call when no container is running. */
-export function openOutboundDbRw(dbPath: string): Database.Database {
+/** Open the outbound DB for a session with write access (host direct-write path). */
+export function openOutboundDbWritable(dbPath: string): Database.Database {
   const db = new Database(dbPath);
   db.pragma('journal_mode = DELETE');
   db.pragma('busy_timeout = 5000');
   return db;
 }
+
+/** Alias: open outbound DB read-write. Only safe to call when no container is running. */
+export const openOutboundDbRw = openOutboundDbWritable;
 
 export function upsertSessionRouting(
   db: Database.Database,
@@ -91,6 +94,29 @@ export function nextEvenSeq(db: Database.Database): number {
   return maxSeq < 2 ? 2 : maxSeq + 2 - (maxSeq % 2);
 }
 
+// Stored-timestamp shape contract for messages_in: always an ISO-8601 UTC
+// string. Historically some callers slipped `Date.now()` in as a number,
+// which SQLite stored as REAL and printed back as "<ms>.0" — unparseable by
+// Date.parse and able to bisect downstream sorts via NaN poisoning. We guard
+// at the insert site so the corruption can't re-enter the DB.
+function toIsoTimestamp(raw: unknown, field: string): string {
+  if (typeof raw === 'string') {
+    const s = raw.trim();
+    if (/^\d+(\.\d+)?$/.test(s)) {
+      const n = Number(s);
+      if (Number.isFinite(n)) return new Date(n).toISOString();
+    }
+    const parsed = Date.parse(s);
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+    throw new Error(`insertMessage: unparseable ${field} "${raw}"`);
+  }
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return new Date(raw).toISOString();
+  }
+  if (raw instanceof Date) return raw.toISOString();
+  throw new Error(`insertMessage: invalid ${field} type ${typeof raw}`);
+}
+
 export function insertMessage(
   db: Database.Database,
   message: {
@@ -121,11 +147,16 @@ export function insertMessage(
     onWake?: 0 | 1;
   },
 ): void {
+  const normalizedTimestamp = toIsoTimestamp(message.timestamp, 'timestamp');
+  const normalizedProcessAfter =
+    message.processAfter == null ? null : toIsoTimestamp(message.processAfter, 'processAfter');
   db.prepare(
     `INSERT INTO messages_in (id, seq, kind, timestamp, status, platform_id, channel_type, thread_id, content, process_after, recurrence, series_id, trigger, source_session_id, on_wake)
      VALUES (@id, @seq, @kind, @timestamp, 'pending', @platformId, @channelType, @threadId, @content, @processAfter, @recurrence, @id, @trigger, @sourceSessionId, @onWake)`,
   ).run({
     ...message,
+    timestamp: normalizedTimestamp,
+    processAfter: normalizedProcessAfter,
     trigger: message.trigger ?? 1,
     onWake: message.onWake ?? 0,
     sourceSessionId: message.sourceSessionId ?? null,
@@ -140,7 +171,7 @@ export function countDueMessages(db: Database.Database): number {
         `SELECT COUNT(*) as count FROM messages_in
        WHERE status = 'pending'
          AND trigger = 1
-         AND (process_after IS NULL OR datetime(process_after) <= datetime('now'))`,
+         AND (process_after IS NULL OR SUBSTR(REPLACE(REPLACE(process_after, 'T', ' '), 'Z', ''), 1, 19) <= datetime('now'))`,
       )
       .get() as { count: number }
   ).count;
@@ -151,9 +182,11 @@ export function markMessageFailed(db: Database.Database, messageId: string): voi
 }
 
 export function retryWithBackoff(db: Database.Database, messageId: string, backoffSec: number): void {
-  db.prepare(
-    `UPDATE messages_in SET tries = tries + 1, process_after = datetime('now', '+${backoffSec} seconds') WHERE id = ?`,
-  ).run(messageId);
+  // Compute the future timestamp in JS to avoid string-interpolating backoffSec
+  // into SQL (SQL injection risk if the caller ever passes untrusted input).
+  const futureMs = Date.now() + Math.max(0, Math.floor(backoffSec)) * 1000;
+  const processAfter = new Date(futureMs).toISOString();
+  db.prepare(`UPDATE messages_in SET tries = tries + 1, process_after = ? WHERE id = ?`).run(processAfter, messageId);
 }
 
 export function getMessageForRetry(
@@ -202,10 +235,23 @@ export function getProcessingClaims(outDb: Database.Database): ProcessingClaim[]
 }
 
 /**
- * Delete orphan 'processing' rows. Called by the host after killing a
- * container so the leftover claim doesn't trip claim-stuck on the next sweep
- * tick (which would kill the freshly respawned container before its
- * agent-runner can run its own startup cleanup).
+ * Delete orphan 'processing' rows from processing_ack (host-side cleanup by path).
+ * Only call when the container is NOT running — avoids concurrent writes.
+ */
+export function clearOrphanProcessingAcks(outDbPath: string): void {
+  const db = openOutboundDbWritable(outDbPath);
+  try {
+    db.prepare("DELETE FROM processing_ack WHERE status = 'processing'").run();
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Delete orphan 'processing' rows on an already-open DB handle. Called by the
+ * host after killing a container so the leftover claim doesn't trip claim-stuck
+ * on the next sweep tick (which would kill the freshly respawned container
+ * before its agent-runner can run its own startup cleanup).
  *
  * Safe because the host only writes to outbound.db when no container is
  * running (we just killed it). Returns the number of rows deleted.

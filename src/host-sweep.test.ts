@@ -152,6 +152,40 @@ describe('decideStuckAction', () => {
     });
     expect(res.action).toBe('ok');
   });
+
+  it('handles SQLite datetime format correctly (no timezone inflation)', () => {
+    // SQLite datetime('now') emits "YYYY-MM-DD HH:MM:SS" in UTC.
+    // A claim from 30s ago should NOT trigger kill (tolerance = 60s).
+    const claimTime = new Date(BASE - 30_000);
+    const sqliteTimestamp = claimTime
+      .toISOString()
+      .replace('T', ' ')
+      .replace(/\.\d+Z$/, '');
+    const res = decideStuckAction({
+      now: BASE,
+      heartbeatMtimeMs: 0,
+      containerState: null,
+      claims: [{ message_id: 'sqlite-fmt', status_changed: sqliteTimestamp }],
+    });
+    expect(res.action).toBe('ok');
+  });
+});
+
+describe('parseSqliteUtc', () => {
+  it('parses ISO 8601 timestamps correctly', () => {
+    const ts = '2026-05-10T15:07:36.000Z';
+    expect(parseSqliteUtc(ts)).toBe(Date.parse(ts));
+  });
+
+  it('parses SQLite datetime format as UTC', () => {
+    const sqliteTs = '2026-05-10 15:07:36';
+    const isoTs = '2026-05-10T15:07:36.000Z';
+    expect(parseSqliteUtc(sqliteTs)).toBe(Date.parse(isoTs));
+  });
+
+  it('returns NaN for unparseable strings', () => {
+    expect(Number.isNaN(parseSqliteUtc('not-a-date'))).toBe(true);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
