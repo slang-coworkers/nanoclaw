@@ -6,15 +6,40 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 122 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 76 |
-| `nv-slang` | slang project spine, skills, workflows | 42 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 13 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 11 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 128 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 78 |
+| `nv-slang` | slang project spine, skills, workflows | 43 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 15 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 13 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-05-19
+
+### nv-main (6 PRs)
+- **#369** `Rebase nv-main on upstream/main v2.0.64 — cli_scope, ncl, A2A in_reply_to + L2 guard, drop onecli-gateway/add-deltachat`
+- **#377** `Sync nv-main with upstream/main (2026-05-19)`
+- **#382** `feat(nv-main): tee container stdio to per-session log files`
+- **#383** `fix(nv-main): enable contrib/non-free apt components in base image`
+- **#385** `fix(nv-main): self-heal container_configs row on first spawn`
+- **#384** `feat(nv-main): ncl sessions messages — read-only transcript verb`
+
+### nv-dashboard (2 PRs)
+- **#371** `Rebase nv-dashboard on upstream/main v2.0.64 — pixel-office + a2a inspector + ccusage 19+ + paginate`
+- **#379** `Sync nv-dashboard with upstream/main (2026-05-19)`
+
+### nv-slang (1 PRs)
+- **#372** `Rebase nv-slang stacked on wip/nv-main — slang skills, slang-mcp, slang-github-webhook (moved from nv-main #357), slang-reviewer`
+
+### nv-slangpy (2 PRs)
+- **#373** `Rebase nv-slangpy on upstream/main v2.0.64 — skill-discovery context for SlangPy agents (#297)`
+- **#380** `Sync nv-slangpy with upstream/main (2026-05-19)`
+
+### nv-nanoclaw (2 PRs)
+- **#374** `Rebase nv-nanoclaw on upstream/main v2.0.64 — base-nanoclaw + nanoclaw-reviewer coworker (Devin PR review #350)`
+- **#381** `Sync nv-nanoclaw with upstream/main (2026-05-19)`
 
 ## 📅 2026-05-15
 
