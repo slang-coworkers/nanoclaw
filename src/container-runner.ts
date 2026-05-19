@@ -398,6 +398,18 @@ async function spawnContainer(session: Session): Promise<void> {
     return;
   }
 
+  // Initialize per-group filesystem + container_configs row before any code
+  // path that reads container config (composeCoworkerClaudeMd reads cli_scope;
+  // resolveProviderContribution calls materializeContainerJson which throws
+  // when the row is missing). initGroupFilesystem is documented idempotent
+  // (group-init.ts:91) so this is a no-op for groups that have spawned
+  // before. Running it here makes spawn self-healing for any creation path
+  // that didn't pre-create the row (e.g. the dashboard create-coworker
+  // handler) — without this, a brand-new coworker stays jammed in a
+  // 1-per-minute "Container config not found" sweep retry until the next
+  // host restart triggers backfillContainerConfigs from container.json.
+  initGroupFilesystem(agentGroup);
+
   // Compose CLAUDE.md for typed coworkers (lego spine model).
   composeCoworkerClaudeMd(agentGroup);
 
@@ -708,13 +720,9 @@ function buildMounts(
   session: Session,
   providerContribution: ProviderContainerContribution,
 ): VolumeMount[] {
-  // Per-group filesystem state lives forever after first creation. Init is
-  // idempotent: it only writes paths that don't already exist, so this call
-  // is a no-op for groups that have spawned before. Pulling in upstream
-  // built-in skill or agent-runner source updates is an explicit operation
-  // (host-mediated tools), not something the spawn path does silently.
-  initGroupFilesystem(agentGroup);
-
+  // Per-group filesystem + container_configs row are initialized at the top
+  // of spawnContainer, before composeCoworkerClaudeMd / resolveProviderContribution
+  // touch container config. By the time we get here both are guaranteed.
   const mounts: VolumeMount[] = [];
   const sessDir = sessionDir(agentGroup.id, session.id);
   const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
