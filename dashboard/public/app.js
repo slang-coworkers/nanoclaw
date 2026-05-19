@@ -2955,6 +2955,10 @@ document.addEventListener('click', (e) => {
     // cursor matches the latest activity the user has acknowledged.
     const cw = (state.coworkers || []).find((c) => c.folder === folder);
     if (cw?.lastMessageTs) readCursors.markRead(folder, cw.lastMessageTs);
+    // Clear our chat-open snapshot so the unread divider disappears on next
+    // render (otherwise it would stick around above messages the user has
+    // now explicitly acknowledged via Mark All Read).
+    if (cwState.selected === folder) cwState.unreadCursorAtOpen = 0;
     if (typeof renderCwSidebar === 'function') renderCwSidebar();
     if (typeof updateCwDetail === 'function') updateCwDetail();
     return;
@@ -3995,6 +3999,10 @@ function renderCwSidebar() {
 
 function selectCoworker(folder) {
   cwState.selected = folder;
+  // Snapshot the read-cursor BEFORE any mark-read fires, so renderCwMessages
+  // can place the "New" divider on the first message past it. Re-snapshot on
+  // every (re)select so switching back later picks up new activity.
+  cwState.unreadCursorAtOpen = folder ? readCursors.getFor(folder) : 0;
   cwState.messages = [];
   cwState.messagesHasMore = false;
   cwState.loadingOlder = false;
@@ -4294,13 +4302,69 @@ function renderCardBubble(
   </div>`;
 }
 
+// Floating "Jump to unread" button: visible when the unread divider exists
+// and is currently outside the chat viewport. Re-attached on every render
+// since innerHTML rebuilds the divider node, but the button is a sibling of
+// #cw-chat-messages inside .cw-chat so it survives.
+function ensureJumpToUnreadBtn(chatEl, hasDivider) {
+  const parent = chatEl.parentElement;
+  if (!parent) return;
+  let btn = parent.querySelector('.cw-jump-unread-btn');
+  if (!hasDivider) {
+    if (btn) btn.remove();
+    if (chatEl._unreadObserver) {
+      chatEl._unreadObserver.disconnect();
+      chatEl._unreadObserver = null;
+    }
+    return;
+  }
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.className = 'cw-jump-unread-btn';
+    btn.type = 'button';
+    btn.textContent = 'Jump to unread ↓';
+    btn.onclick = () => {
+      const d = chatEl.querySelector('#cw-unread-divider');
+      if (d) d.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    };
+    parent.appendChild(btn);
+  }
+  btn.hidden = true; // start hidden until observer reports off-screen
+  if (chatEl._unreadObserver) chatEl._unreadObserver.disconnect();
+  const divider = chatEl.querySelector('#cw-unread-divider');
+  if (!divider) return;
+  const obs = new IntersectionObserver(
+    (entries) => {
+      const e = entries[0];
+      btn.hidden = !!e && e.isIntersecting;
+    },
+    { root: chatEl, threshold: 0.05 },
+  );
+  obs.observe(divider);
+  chatEl._unreadObserver = obs;
+}
+
 function renderCwMessages() {
   const el = document.getElementById('cw-chat-messages');
   if (!el) return;
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
   const approvalHtml = (cwState.pendingApprovals || []).map(renderApprovalItem).join('');
+  // "Jump to unread" support: drop a single divider above the first message
+  // whose ts is past the cursor we snapshotted at chat-open. Only one divider
+  // per render; subsequent messages skip the check via dividerInjected.
+  const cursorAtOpen = cwState.unreadCursorAtOpen || 0;
+  let dividerInjected = false;
   const messageHtml = cwState.messages
     .map((m) => {
+      let dividerHtml = '';
+      if (cursorAtOpen && !dividerInjected && m.timestamp) {
+        const ts = new Date(m.timestamp).getTime();
+        if (Number.isFinite(ts) && ts > cursorAtOpen) {
+          dividerHtml = '<div class="cw-unread-divider" id="cw-unread-divider"><span>New</span></div>';
+          dividerInjected = true;
+        }
+      }
+      const __bubble = (() => {
       const isOutgoing = m.direction === 'outgoing';
       // Agent-to-agent styling: inbound from another coworker gets its own class
       // with a green left-border bubble, mirroring the approval/question/credential
@@ -4433,6 +4497,8 @@ function renderCwMessages() {
       <div class="cw-msg-bubble">${bubbleBody || '<span style="color:#9ca3af">(empty message)</span>'}</div>
       ${threadStubHtml}
     </div>`;
+    })();
+    return dividerHtml + __bubble;
     })
     .join('');
   if (!approvalHtml && !messageHtml) {
@@ -4452,6 +4518,8 @@ function renderCwMessages() {
       ? `<button class="admin-load-more" id="cw-messages-more"${cwState.loadingOlder ? ' disabled' : ''}>${cwState.loadingOlder ? 'Loading…' : 'Load older messages'}</button>`
       : '';
   el.innerHTML = loadMoreHtml + messageHtml + bannerHtml;
+
+  ensureJumpToUnreadBtn(el, dividerInjected);
 
   if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
   // Event delegation: attach once on the stable parent, survives innerHTML rebuilds

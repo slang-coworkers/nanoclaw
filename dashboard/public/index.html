@@ -831,7 +831,12 @@
     .approval-banner-label { font-size: 0.6875rem; color: var(--status-thinking); font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
     .approval-banner-item { border-left: 3px solid var(--status-thinking); padding: 4px 8px; margin-bottom: 6px; font-size: 0.75rem; }
     .approval-banner-item:last-child { margin-bottom: 0; }
-    .cw-chat { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+    .cw-chat { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; position: relative; }
+    .cw-unread-divider { display: flex; align-items: center; gap: 8px; margin: 12px 0; color: #3b82f6; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+    .cw-unread-divider::before, .cw-unread-divider::after { content: ''; flex: 1; height: 1px; background: #3b82f6; opacity: 0.45; }
+    .cw-jump-unread-btn { position: absolute; right: 18px; bottom: 88px; background: #3b82f6; color: #fff; border: none; border-radius: 18px; padding: 7px 14px; cursor: pointer; font-size: 11px; font-family: var(--font); box-shadow: 0 2px 10px rgba(0,0,0,0.35); z-index: 50; transition: opacity 0.15s; }
+    .cw-jump-unread-btn:hover { background: #2563eb; }
+    .cw-jump-unread-btn[hidden] { display: none; }
     .cw-chat-header { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--bg-card); }
     .cw-chat-header h3 { font-size: 0.875rem; margin: 0; }
     .cw-chat-header .cw-status-badge { font-size: 0.6875rem; padding: 1px 6px; border-radius: 3px; }
