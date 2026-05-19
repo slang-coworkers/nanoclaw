@@ -57,7 +57,7 @@ ncl help
 | roles | list, grant, revoke | Owner / admin privileges (global or scoped to an agent group) |
 | members | list, add, remove | Unprivileged access gate for an agent group |
 | destinations | list, add, remove | Where an agent group can send messages |
-| sessions | list, get | Active sessions (read-only) |
+| sessions | list, get, messages | Active sessions (read-only). `messages` returns the merged inbound+outbound transcript for a session — global scope sees any session, group scope sees its own. |
 | user-dms | list | Cold-DM cache (read-only) |
 | dropped-messages | list | Messages from unregistered senders (read-only) |
 | approvals | list, get | Pending approval requests (read-only) |
