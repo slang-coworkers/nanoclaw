@@ -35,6 +35,9 @@ nanoclaw-writer:
   description: "Write-capable NanoClaw coworker — plan + implement. Can edit code, write tests, create PRs."
   project: nanoclaw
   extends: nanoclaw-common
+  invariants:
+    # Code-change rules apply when authoring; readers don't carry these.
+    - container/spines/nanoclaw/invariants/code-changes.md
   skills:
     - nanoclaw-code-writer
     - nanoclaw-docs
@@ -50,6 +53,9 @@ nanoclaw-reviewer:
   description: "NanoClaw PR reviewer — drives Devin Review (app.devin.ai/review) via agent-browser against a slang-coworkers/nanoclaw PR. Read-only: returns devin-flags.md to the caller via send_file. No GitHub posting, no Reviewer-A pipeline (Devin only)."
   project: nanoclaw
   extends: nanoclaw-reader
+  invariants:
+    # Reviewers enforce the code-change rules during PR review.
+    - container/spines/nanoclaw/invariants/code-changes.md
   skills:
     - nanoclaw-pr-review-runner
   workflows:
