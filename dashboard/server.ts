@@ -9205,26 +9205,30 @@ export async function handleRequest(
     const channels: any[] = [];
     try {
       if (existsSync(getChannelsDir())) {
-        const exclude = new Set(['index.ts', 'registry.ts', 'registry.test.ts']);
+        // Helper modules colocated under src/channels/ that don't register
+        // adapters. Add to this set when introducing new helpers.
+        const exclude = new Set([
+          'index.ts',
+          'registry.ts',
+          'registry.test.ts',
+          'adapter.ts',
+          'channel-registry.ts',
+          'chat-sdk-bridge.ts',
+          'ask-question.ts',
+        ]);
+        const helperSuffixes = ['-pairing.ts', '-markdown-sanitize.ts', '-bridge.ts'];
         for (const file of readdirSync(getChannelsDir())) {
           if (!file.endsWith('.ts') || exclude.has(file) || file.includes('.test.')) continue;
+          if (helperSuffixes.some((s) => file.endsWith(s))) continue;
           const name = file.replace('.ts', '');
-          // Determine prefix for JID matching
-          const prefixMap: Record<string, string> = {
-            telegram: 'tg:',
-            whatsapp: 'wa:',
-            discord: 'disc:',
-            slack: 'slack:',
-          };
-          const prefix = prefixMap[name] || `${name}:`;
           const groups: any[] = [];
           if (db) {
             try {
               const rows = db
                 .prepare(
-                  'SELECT ag.name, ag.folder, ag.id FROM agent_groups ag JOIN messaging_groups mg ON mg.platform_id LIKE ? JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id AND mga.agent_group_id = ag.id',
+                  'SELECT ag.name, ag.folder, ag.id FROM agent_groups ag JOIN messaging_groups mg ON mg.channel_type = ? JOIN messaging_group_agents mga ON mga.messaging_group_id = mg.id AND mga.agent_group_id = ag.id',
                 )
-                .all(`${prefix}%`) as any[];
+                .all(name) as any[];
               for (const r of rows) groups.push({ name: r.name, folder: r.folder });
             } catch {
               /* ignore */
