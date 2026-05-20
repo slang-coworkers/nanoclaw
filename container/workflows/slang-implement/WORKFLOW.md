@@ -10,7 +10,7 @@ uses:
   workflows: []
 overrides:
   reproduce: "Write a failing test as a `.slang` file under `tests/`. Use CPU (`//TEST:COMPARE_COMPUTE(filecheck-buffer=CHECK):-cpu -output-using-type`) or interpreter (`//TEST:INTERPRET(filecheck=CHECK):`) directives since no GPU is available. For diagnostic tests use `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):`. Commit the failing test first."
-  change: "Use /slang-code-writer. Keep changes minimal and within one subsystem (parser, semantic checker, IR pass, or emitter). When fixing emitters, check all sibling slang-emit-*.cpp files for consistency. Prefer IR pass fixes over emit-level workarounds. When adding new IR instructions, update slang-ir-insts.lua."
+  change: "Use /slang-code-writer. Keep changes minimal, follow existing style in the file, and stay within one subsystem (parser, semantic checker, IR pass, or emitter). When fixing emitters, check all sibling slang-emit-*.cpp files for consistency. Prefer IR pass fixes over emit-level workarounds. When adding new IR instructions, update slang-ir-insts.lua."
   verify: |
     Build takes 15-25 min. Before starting, do three things:
 
@@ -34,6 +34,8 @@ overrides:
        Test: `./build/Debug/bin/slang-test tests/path/to/new-test.slang`.
        Format: `./extras/formatting.sh`.
        For cross-backend changes: `SLANG_RUN_SPIRV_VALIDATION=1 ./build/Debug/bin/slangc -target spirv -o /dev/null test.slang`.
+
+    If updating an existing PR: address every reviewer comment before re-running build/tests, so the next run reflects the resolved state.
 
     Failure handling: if the build fails after 2 attempts (clean rebuild counts as attempt 2), commit a `wip:` branch with the failure log, cancel the watchdog task, and escalate to orchestrator with: build error summary, last 50 lines of build log, what was tried.
 
