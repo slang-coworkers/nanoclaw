@@ -56,6 +56,13 @@ registerResource({
       required: true,
     },
     { name: 'created_at', type: 'string', description: 'Auto-set.', generated: true },
+    {
+      name: 'agent_provider',
+      type: 'string',
+      description:
+        'Agent runtime provider (e.g. "claude", "codex", "opencode"). Set via the dashboard UI or `update`. Takes precedence over container_configs.provider in the resolution chain (session → agent_group → container_config → "claude").',
+      updatable: true,
+    },
   ],
   operations: { list: 'open', get: 'open', create: 'approval', update: 'approval', delete: 'approval' },
   customOperations: {
