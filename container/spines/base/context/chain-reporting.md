@@ -32,11 +32,22 @@ When you're running parallel chains, status routing changes shape:
 
 - **Per-chain decision or follow-up** → reply on that chain's thread with `in_reply_to`. Only that chain acts on it.
 - **Cross-chain rollup** → your own conversation. The user is the only consumer of "here's everything across all chains".
-- **Acknowledgement** → end the turn silently. Adds no signal, costs every reader.
+- **Acknowledgement** → emit nothing. No "acknowledged", no "thanks", no "no echo needed". End the turn.
 
 **IMPORTANT:** Never put chain-B content onto chain-A's thread. Chain-A's agents have no decision to make about chain-B; their inbox should not see it.
 
 **IMPORTANT:** The handoff IS the ack. Forwarding output to the next stage acknowledges the previous stage by definition. Do not also send a separate "thanks, forwarding" reply back upstream — that is an echo with no recipient action.
+
+**IMPORTANT:** A meta-acknowledgement is still an acknowledgement. Phrases like "Acknowledged silently", "No echo needed", "Status report stays with the orchestrator", "Ending turn" are all themselves messages — they consume the same tokens the silent-ack rule was meant to save. If you have nothing substantive to add, send no message at all.
+
+### Closing a chain
+
+When you finish your role in a chain — including when you decide your stage doesn't apply (out of scope, blocked, no fixer-forward needed, etc.) — send the closing report **upward** before going silent. Don't drop a chain by ending the turn without telling your parent the chain stopped.
+
+- **Stage applied:** send the `[Resolution]` / `[Report]` your workflow defines.
+- **Stage refused:** still send the report; substitute the relevant outcome bullet with `not actionable: <one-line reason>` so the parent knows the chain closed at this stage and why. The parent decides what happens next — escalate, reassign, or close.
+
+The lower-cost mistake is to forward upstream when in doubt. The higher-cost mistake is to silently drop the chain so the parent has to reconstruct what happened from polling state.
 
 ### Outcome line
 
