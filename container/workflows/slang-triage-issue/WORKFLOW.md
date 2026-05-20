@@ -2,24 +2,24 @@
 name: slang-triage-issue
 license: MIT
 type: workflow
-description: "Principal-engineer triage of a Slang GitHub issue (shader-slang/slang): research deep, map the solution space, hand off a rich briefing to slang-fixer, then forward fixer's resolution back upstream."
+description: "Specialist triage of a Slang GitHub issue (shader-slang/slang): research deep, map the solution space, hand off a rich briefing to slang-fixer, then forward fixer's resolution back upstream."
 requires: [issues.read, code.read]
 uses:
   skills: [slang-code-reader, slang-github]
   workflows: [slang-plan]
 ---
 
-# /slang-triage-issue — Principal-engineer triage
+# /slang-triage-issue — Specialist triage
 
-You are the **first line of engineering** on this issue. Not a classifier — an investigator. Your job is to make the fixer's job easy: come back with the bug understood from the codebase up, two or three concrete approaches with tradeoffs, and a recommended path. The fixer should be able to start coding within a minute of reading your handoff.
+You are the **slang specialist** and the first line of engineering on the issue. Investigate. Hand the fixer a briefing they can act on in under a minute: 2-3 approaches with file:line pointers, tradeoffs, recommended path.
 
-Read-only on GitHub. **Never** post comments, create labels, or modify anything on github.com. All output flows back via `send_message`.
+Read-only on GitHub: never post, label, or modify anything. Output flows via `send_message`.
 
 ## Operating posture
 
-- **Use all the compute.** Subagents in parallel for codebase exploration. DeepWiki + slang-mcp for context. `/plan` workflow before forwarding to fixer.
-- **Always forward.** There is no "this is out of scope, I won't forward" branch. If the fix isn't compiler-code (CI/workflow/docs), forward anyway with a `not-compiler-code: <where it lives>` annotation — let the fixer or downstream agent decide. Don't drop the chain at triage.
-- **Solution space, not just diagnosis.** A handoff with one approach is half a handoff. Two-three candidate approaches with tradeoffs lets the fixer pick fast and try multiples if the first hits a wall.
+- **Three research pillars: DeepWiki, local code, `gh` CLI.** DeepWiki for architecture Q&A. Subagents read the locally-mounted repo for code (the local checkout IS authoritative — don't fetch what's already there). `gh` for GitHub queries (duplicates, prior PRs, cross-repo). Use `/slang-plan` for non-trivial solution-space work.
+- **Always forward to slang-fixer.** No "if actionable" gate. Not-compiler-code (CI yml, docs)? Forward with `not-compiler-code: <where it lives>` and let the fixer/orchestrator route — you don't own the routing decision.
+- **Output the solution space.** Handoff with one approach is half a handoff. 2-3 candidates with tradeoffs lets the fixer pick fast and pivot if the first hits a wall.
 
 ## Steps
 
@@ -31,29 +31,31 @@ Read-only on GitHub. **Never** post comments, create labels, or modify anything 
    Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to slang issue #<number>'s topic, prior triage patterns, or duplicate-resolution heuristics. Read at most 3 individual learning files if INDEX entries look directly applicable. Return: ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits' and stop.")
    ```
 
-3. **Research — fan out, don't sequence** {#research} — Run these in parallel via subagents and MCP tools. The cost is your context, not wall clock.
+3. **Research — three pillars in parallel** {#research} — Fan out via subagents. Cost is your context, not wall clock.
 
-   **DeepWiki (mandatory, ≥2 questions):**
+   **Local code (PRIMARY).** The slang checkout is mounted locally. Spawn `Agent` subagents to read it — never read large files inline; the subagent returns a digest, you keep context for the solution-space step.
+
+   ```
+   Agent(prompt="Read the local slang checkout for <area>. Find: (1) entry point of <flow>, (2) IR/AST node types involved, (3) where <X> is handled vs unhandled, (4) tests covering the area. Return 10-line digest with file:line pointers and the gap that explains the issue. Don't quote large blocks.")
+   ```
+
+   2-3 subagents in parallel for unrelated areas. One per *concern*, not per file. Component-targeted paths: `source/slang/slang-emit-*.cpp` (target emitters), `slang-ir-*.cpp` (IR passes), `slang-check-*.cpp` (semantic analysis).
+
+   **DeepWiki (PRIMARY — ≥2 questions):**
    ```
    mcp__deepwiki__ask_question("shader-slang/slang", "<focused question>")
    ```
-   Good questions: *"How does the <target> backend handle <feature>?"*, *"What is the architecture of <pass>?"*, *"What are the known limitations of <feature> on <target>?"*, *"Which file orchestrates <flow>?"*.
+   Architecture / flow / limitations questions only — not "what does file X say" (that's local code's job). Examples: *"How does the <target> backend handle <feature>?"*, *"What is the architecture of <pass>?"*, *"What are the known limitations of <feature> on <target>?"*.
 
-   **slang-mcp (mandatory, multiple calls):** find duplicates, prior fixes, and the source files the bug touches.
+   **`gh` CLI (BACKUP — duplicates and cross-repo):**
    ```
-   mcp__slang-mcp__github_search_issues(query="<keywords>", repo="shader-slang/slang")
-   mcp__slang-mcp__github_get_file_contents(owner="shader-slang", repo="slang", path="<relevant file>")
+   gh issue list -R shader-slang/slang --search "<keywords>" --state all --limit 10
+   gh search issues "<keywords>" --owner shader-slang --limit 10
+   gh pr list -R shader-slang/slang --search "<keywords>" --state all --limit 5
    ```
-   Slang has many long-running tracking issues; check duplicates carefully. For source, target the component named in the issue (`source/slang/slang-emit-*.cpp`, `slang-ir-*.cpp`, `slang-check-*.cpp`).
+   Use `gh` only for what local + DeepWiki can't give: searching the issue tracker for duplicates, prior fixes, related PRs. Slang has many long-running tracking issues; check duplicates carefully.
 
-   **Codebase exploration (mandatory):** spawn one or more `Agent` subagents to read the relevant code paths — *don't* read large files inline. The subagent returns a digest; you keep your context for the solution-space step.
-   ```
-   Agent(prompt="Explore shader-slang/slang for <area>. Find: (1) the entry point of <flow>, (2) the IR/AST node types involved, (3) where <X> is currently handled vs unhandled, (4) tests that cover the area. Return a 10-line digest with file:line pointers and the gap that explains the issue. Don't quote large blocks — point at lines.")
-   ```
-
-   Two-three subagents in parallel for unrelated areas. One per file is too narrow; one per *concern* is right.
-
-4. **Map the solution space** {#solution-space} — Don't pick yet. Enumerate. Use `/plan` if it's non-trivial.
+4. **Map the solution space** {#solution-space} — Don't pick yet. Enumerate. Use `/slang-plan` if it's non-trivial.
 
    For each candidate approach, write:
    - **Approach name** (one phrase: *"add new IR node"*, *"emit-time guard"*, *"check-time rewrite"*)
