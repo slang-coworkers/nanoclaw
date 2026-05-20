@@ -317,6 +317,23 @@ async function deliverAncestorReply(
     return;
   }
 
+  // Closed/archived ancestor: refuse to write or wake. Mirrors the active-
+  // status guard in resolveExplicitReplyTarget (see line ~250). A closed
+  // session row can still be returned by getSession, but staging a new
+  // inbound row + waking its container would resurrect a conversation the
+  // operator explicitly ended. Drop with an audit trail.
+  if (ancestorSession.status !== 'active') {
+    log.warn('a2a ancestor reply dropped: ancestor session not active', {
+      msgId: msg.id,
+      recipientSessionId: session.id,
+      ancestorSessionId: ancestorSession.id,
+      ancestorAgentGroupId: ancestorSession.agent_group_id,
+      ancestorThreadId: route.source_thread_id,
+      ancestorStatus: ancestorSession.status,
+    });
+    return;
+  }
+
   // Self-loop guard. A sourceHint pointing at self should never exist
   // (recordSource is gated by the main-route same-session guard), but if
   // a migration / backfill / future code path ever populates a self-
@@ -370,7 +387,22 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
     throw new Error(`agent-to-agent message ${msg.id} is missing a target agent group id`);
   }
 
-  // Reply-detection branch — ancestor walk through a2a_session_sources.
+  // Layer 1: explicit in_reply_to / peer-affinity wins.
+  //
+  // If the agent named the exact inbound it's answering (or peer-affinity
+  // recovers it from the source's inbound DB), the target session is
+  // already determined. Resolve it FIRST so it beats the ancestor walk
+  // below — "exact inbound named by the sender" is a stronger signal than
+  // "target group is in my lineage." Without this precedence, an agent
+  // that explicitly references a specific cross-thread inbound would be
+  // overridden by the ancestor row keyed only on agent group, losing the
+  // routing the sender clearly intended.
+  //
+  // resolveExplicitReplyTarget already filters to active sessions of the
+  // target agent group, so a hit is always a valid delivery target.
+  const explicitTarget = resolveExplicitReplyTarget(msg, session, targetAgentGroupId);
+
+  // Layer 2: ancestor walk through a2a_session_sources.
   //
   // If the sending session is the recipient side of a prior a2a delegation
   // (a2a_session_sources has a row for it) AND the outbound is addressed
@@ -390,16 +422,29 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
   // normal route below — preserves peer-to-peer (e.g. reviewer → fixer
   // when neither is in the other's ancestry) and B → C fresh delegation.
   //
+  // Ancestor walk is implicitly authorised by lineage — a child writing
+  // upward to its source chain doesn't need a destination row. This
+  // mirrors the original 1-hop reply-detection branch, which also bypassed
+  // the destination check on the same reasoning.
+  //
   // The contract is: default communication follows the lineage edge
   // upward; explicit communication may target an ancestor, but never
   // creates a new ancestor session if lineage proves an existing one.
-  const ancestorRoute = findAncestorRoute(session.id, targetAgentGroupId);
-  if (ancestorRoute) {
-    await deliverAncestorReply(msg, session, ancestorRoute);
-    return;
+  if (!explicitTarget) {
+    const ancestorRoute = findAncestorRoute(session.id, targetAgentGroupId);
+    if (ancestorRoute) {
+      await deliverAncestorReply(msg, session, ancestorRoute);
+      return;
+    }
   }
 
+  // Authorization check: a fresh peer-to-peer write needs an explicit
+  // destination row. Skipped on explicit-reply paths because the resolved
+  // target session IS the conversation's originator — it talked to us
+  // first, so reply privilege is implicit (same reasoning as lineage on
+  // the ancestor-walk path above).
   if (
+    !explicitTarget &&
     targetAgentGroupId !== session.agent_group_id &&
     !hasDestination(session.agent_group_id, 'agent', targetAgentGroupId)
   ) {
@@ -411,19 +456,12 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
     throw new Error(`target agent group ${targetAgentGroupId} not found for message ${msg.id}`);
   }
 
-  // Layer 1.5: explicit in_reply_to / peer-affinity lookup.
-  //
-  // The fork's per-session reply-detection above misses two cases this
-  // covers: (a) the sending session has been a recipient of multiple
-  // distinct sources, so a2a_session_sources only records the LAST one;
-  // (b) the in_reply_to references an inbound that pre-dates the
-  // a2a_session_sources entry (e.g. session was replayed). When set,
-  // the resolved session bypasses the fresh-delegation mg+thread path
-  // — it's the conversation's actual originator.
+  // Layer 3: deliver — using the explicit target resolved at Layer 1, or
+  // a fresh per-thread / per-source session as a final fallback. Both
+  // share the rest of the writeback path below.
   let targetSession: Session;
   let threadId: string | null;
   let usedExplicitReplyTarget = false;
-  const explicitTarget = resolveExplicitReplyTarget(msg, session, targetAgentGroupId);
   if (explicitTarget) {
     targetSession = explicitTarget;
     threadId = explicitTarget.thread_id ?? null;
