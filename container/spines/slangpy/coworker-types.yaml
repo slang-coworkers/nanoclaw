@@ -1,15 +1,14 @@
 slangpy-common:
-  description: "SlangPy spine — identity, API invariants, repo layout."
+  description: "SlangPy spine — identity, repo layout."
   project: slangpy
   extends: base-common
   skill-source: shader-slang/slang-skills@coworkers
   identity: container/spines/slangpy/identity/engineer.md
-  invariants:
-    - container/spines/slangpy/invariants/public-api.md
+  invariants: []
   context:
     - container/spines/slangpy/context/layout.md
-    - container/spines/slangpy/context/skill-discovery.md
-    - container/spines/slangpy/context/skill-discovery.md
+    # skill-discovery moved to slangpy-writer's context — only writers need
+    # to install new skills; readers don't pay for the registry instructions.
   skills:
     - slangpy-build
     - slangpy-code-reader
@@ -39,6 +38,13 @@ slangpy-writer:
   description: "Write-capable SlangPy coworker — plan + implement. Can edit code, write tests, create PRs."
   project: slangpy
   extends: slangpy-common
+  invariants:
+    # Writer-only code-style / PR / commit rules.
+    - container/spines/slangpy/invariants/code-changes.md
+  context:
+    # Pulled in here so writers can install additional skills, but readers
+    # don't pay for the registry instructions.
+    - container/spines/slangpy/context/skill-discovery.md
   skills:
     - slangpy-code-writer
     - slangpy-docs

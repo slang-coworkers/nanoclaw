@@ -17,3 +17,5 @@
 - `.github/workflows/` -- CI workflows. See `/slangpy-github` for CI issues.
 - `CMakeLists.txt` -- Native build config. CMake presets: `linux-gcc`, `windows-msvc`, `macos-arm64-clang`.
 - `pyproject.toml` -- Python package build config (setuptools + cmake + ninja).
+
+**Debug aid:** set `SLANGPY_PRINT_GENERATED_SHADERS=1` to dump the generated kernel code for any function call.
