@@ -174,6 +174,8 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
 
   const steps: string[] = [];
   const stepBodies: Record<string, string> = {};
+  let prologue: string | undefined;
+  let epilogue: string | undefined;
   if (type === 'workflow') {
     const body = text.slice(match[0].length);
     // Capture step ids in order. We match every numbered-list step
@@ -232,6 +234,35 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
       }
       stepBodies[cur.id] = body.slice(startLine, endLine).trim();
     }
+
+    // Prologue: text between the workflow's `# /name` H1 and the first step.
+    // Lets workflows surface top-of-doc framing (IMPORTANT callouts, mode
+    // notes) into the rendered CLAUDE.md alongside the description.
+    if (positions.length > 0) {
+      const firstStepNl = body.lastIndexOf('\n', positions[0].index);
+      const prologueRaw = body.slice(0, firstStepNl === -1 ? 0 : firstStepNl);
+      const stripped = prologueRaw
+        // Drop ANY leading H1 — the workflow's own top-of-file heading is
+        // redundant with the rendered `### /name` wrapper. Matches both
+        // `# /workflow-name — Title` and `# Plan`.
+        .replace(/^\s*#\s+[^\n]*\n/, '')
+        .replace(/^\s*##\s+Steps\s*$\n?/im, '') // drop "## Steps" heading
+        .trim();
+      if (stripped) prologue = stripped;
+    }
+
+    // Epilogue: text after the last step's body — workflows often have a
+    // `## Mode invariants` / `## Notes` block at the end whose bullets are
+    // load-bearing across all modes. Without this, those bullets are silently
+    // dropped from the rendered CLAUDE.md.
+    if (positions.length > 0) {
+      const last = positions[positions.length - 1];
+      const tail = body.slice(last.index);
+      const nextHeading = tail.match(/\n## /);
+      const epilogueStart = nextHeading ? last.index + (nextHeading.index ?? 0) + 1 : body.length;
+      const epilogueRaw = body.slice(epilogueStart).trim();
+      if (epilogueRaw) epilogue = epilogueRaw;
+    }
   }
 
   let overlay: OverlayMeta | undefined;
@@ -260,6 +291,8 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
     provides,
     steps,
     stepBodies,
+    prologue,
+    epilogue,
     requires,
     extendsWorkflow,
     overrides,

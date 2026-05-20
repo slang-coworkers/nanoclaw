@@ -71,8 +71,10 @@ export function resolveCoworkerManifest(
   typeName: string,
   catalog: Record<string, SkillMeta>,
   projectRoot: string,
+  opts: { cliScope?: 'disabled' | 'group' | 'global' } = {},
 ): CoworkerManifest {
   validateCrossProjectExtends(types);
+  const cliScope = opts.cliScope ?? 'group';
 
   const roles = typeName
     .split('+')
@@ -150,12 +152,25 @@ export function resolveCoworkerManifest(
     }
   }
 
+  // cliScope filter for ncl-* fragments. The YAML lists both ncl-group.md
+  // and ncl-global.md when an agent might use either; the runtime cli_scope
+  // setting decides which one (or neither) actually renders into CLAUDE.md.
+  const filterByCliScope = (paths: string[]): string[] =>
+    paths.filter((p) => {
+      const base = p.split('/').pop() ?? '';
+      if (base !== 'ncl-group.md' && base !== 'ncl-global.md') return true;
+      if (cliScope === 'disabled') return false;
+      if (cliScope === 'group') return base === 'ncl-group.md';
+      if (cliScope === 'global') return base === 'ncl-global.md';
+      return true;
+    });
+
   // Flat types are verbatim prose bodies (main/global). Skip workflow/skill/
   // overlay/binding validation — they don't apply. Additive skills contribute
   // context fragments only.
   if (flat) {
     const identity = readFragments(dedupRelative(identityParts, projectRoot), projectRoot).join('\n\n').trim();
-    const context = readFragments(dedupRelative(contextFiles, projectRoot), projectRoot);
+    const context = readFragments(filterByCliScope(dedupRelative(contextFiles, projectRoot)), projectRoot);
     const leafEntry = types[typeName];
     const title = leafEntry?.title ?? humanize(roles[roles.length - 1]);
     return {
@@ -190,7 +205,7 @@ export function resolveCoworkerManifest(
   // Read spine fragments (dedup by resolved absolute path).
   const identity = readFragments(dedupRelative(identityParts, projectRoot), projectRoot).join('\n\n').trim();
   const invariants = readFragments(dedupRelative(invariantFiles, projectRoot), projectRoot);
-  const context = readFragments(dedupRelative(contextFiles, projectRoot), projectRoot);
+  const context = readFragments(filterByCliScope(dedupRelative(contextFiles, projectRoot)), projectRoot);
 
   // Classify workflow vs skill by the catalog's declared type. Overlays are
   // not directly invocable; they appear in ## Workflow Customizations only.
@@ -202,13 +217,18 @@ export function resolveCoworkerManifest(
     const meta = catalog[name];
     if (meta.type === 'workflow') {
       const uses = [...meta.uses.skills, ...meta.uses.workflows];
-      // Inherit steps + step bodies from parent workflow if this child has none.
+      // Inherit steps + step bodies + prologue + epilogue from parent
+      // workflow if this child has none of its own.
       let steps = meta.steps;
       let stepBodies = meta.stepBodies;
+      let prologue = meta.prologue;
+      let epilogue = meta.epilogue;
       if (steps.length === 0 && meta.extendsWorkflow && catalog[meta.extendsWorkflow]) {
         const parent = catalog[meta.extendsWorkflow];
         steps = parent.steps;
         stepBodies = { ...parent.stepBodies };
+        if (!prologue) prologue = parent.prologue;
+        if (!epilogue) epilogue = parent.epilogue;
       }
       workflowEntries.push({
         name: meta.name,
@@ -217,6 +237,8 @@ export function resolveCoworkerManifest(
         requires: meta.requires,
         steps,
         stepBodies,
+        prologue,
+        epilogue,
       });
       workflowSet.add(meta.name);
     } else if (meta.type === 'capability') {

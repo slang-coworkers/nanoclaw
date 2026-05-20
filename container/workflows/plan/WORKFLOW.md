@@ -27,11 +27,18 @@ Any task that ends in a written artifact: a plan, an investigation, a review, or
 ## Steps
 
 1. **Understand** — restate the ask. Identify `mode` (plan / investigate / review / research). If scope is ambiguous, state your interpretation and proceed — do not ask. Never pause for human confirmation between steps. On restart: if a report already exists at `{{report.path}}`, check if it has a Conclusion/Verdict section — if complete, skip to Handoff; if partial, resume from where it stalled.
-2. **Research** — read code, issues, docs; run Grep, git log; spawn sub-agents for wide scope. Stay read-only. Send `mcp__nanoclaw__send_message(to="parent")` with a one-line status at the start of this step. Use `send_message` (not `<message>`), since `<message>` blocks only dispatch from the final response.
-3. **Synthesize** {#diagnose} — organize the evidence by mode:
+2. **Recall** {#recall} — Before doing your own investigation, spawn an `Agent` subagent to scan prior shared learnings for hits on `{{target}}`. Keeps your context clean — you never read the full INDEX or learning files yourself.
+
+   ```
+   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to <target>. Read at most 3 individual learning files if INDEX entries look directly applicable. Return: ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits' and stop.")
+   ```
+
+   If a hit looks directly applicable, read just that file before continuing.
+3. **Research** — read code, issues, docs; run Grep, git log; spawn sub-agents for wide scope. Stay read-only. Send `mcp__nanoclaw__send_message(to="parent")` with a one-line status at the start of this step. Use `send_message` (not `<message>`), since `<message>` blocks only dispatch from the final response.
+4. **Synthesize** {#diagnose} — organize the evidence by mode:
    - **plan**: 2–3 approaches with trade-offs.
    - **investigate**: classify + facts vs hypotheses.
    - **review**: findings by severity (must-change / should-change / nit), each with file:line.
    - **research**: answer the question with evidence.
-4. **Deliver** {#deliver} — write the deliverable to `{{report.path}}` with mode-appropriate sections (status/verdict/conclusion, facts, hypotheses, next, references). Send `mcp__nanoclaw__send_message(to="parent")` with a one-line status when done.
-5. **Handoff** — post a ≤5-bullet summary with a link to the report. If mode is `plan` and a project implement workflow is available for this coworker type, invoke it immediately — do not wait for human confirmation. If mode is `review` or `research`, post the summary and stop.
+5. **Deliver** {#deliver} — write the deliverable to `{{report.path}}` with mode-appropriate sections (status/verdict/conclusion, facts, hypotheses, next, references). Send `mcp__nanoclaw__send_message(to="parent")` with a one-line status when done.
+6. **Handoff** — post a ≤5-bullet summary with a link to the report. If mode is `plan` and a project implement workflow is available for this coworker type, invoke it immediately — do not wait for human confirmation. If mode is `review` or `research`, post the summary and stop.

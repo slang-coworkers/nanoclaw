@@ -86,6 +86,7 @@ container/skills/github-webhook/**
 .claude/skills/use-native-credential-proxy/**
 .claude/skills/convert-to-apple-container/**
 .claude/skills/x-integration/**
+.claude/skills/lego-system-tour/**
 
 # Channel install skills carry resources beyond SKILL.md (e.g. add-dashboard/resources/):
 .claude/skills/add-*/**

@@ -1,25 +1,25 @@
-## Installing packages & tools
+## Self-modification (`install_packages`, `add_mcp_server`)
 
-To install packages that persist, use the self-modification tools:
+Both tools require admin approval. Anyone can request; the admin sees an approval card.
 
-**`install_packages`** — request system (apt) or global npm packages. Requires admin approval.
+### `install_packages` — add apt/npm packages
 
-Example flow:
 ```
 install_packages({ apt: ["ffmpeg"], npm: ["@xenova/transformers"], reason: "Audio transcription" })
-# → Admin gets an approval card → approves
 ```
 
-**When to use this vs workspace `pnpm install`:**
-- `pnpm install` if you only need it temporarily to do one task. Will not be available in subsequent turns.
-- `install_packages` persists for all future turns. Use especially if the user specifically asks you to add a capability
+Approval triggers an image rebuild + container restart (bundled). Persists for all future turns.
 
-### MCP servers (`add_mcp_server`)
+**vs workspace `pnpm install`:**
+- `pnpm install` in `/workspace/agent/` — temporary, gone after this turn.
+- `install_packages` — durable. Use when the user asks for a capability that should stick.
 
-Use **`add_mcp_server`** to add an MCP server to your configuration. Browse available servers at https://mcp.so — it's a curated directory of high-quality MCP servers. Most Node.js servers run via `pnpm dlx`, e.g.:
+### `add_mcp_server` — register an MCP server
 
 ```
 add_mcp_server({ name: "memory", command: "pnpm", args: ["dlx", "@modelcontextprotocol/server-memory"] })
 ```
 
-Do not ask the user to give you credentials. Credentials are managed by the user in the OneCLI agent vault. Add a "placeholder" string instead of the credential, and ask the user to add the credential to the vault. You can make a test request before the secret is added and the vault proxy will respond with the local url of the vault dashboard on the user's machine and a link to a form for adding that specific credential.
+Approval triggers a container restart (no rebuild — bun loads the MCP config directly). Browse servers at https://mcp.so.
+
+**Credentials**: don't ask the user for them. Pass a placeholder string and tell the user to add the real credential to the OneCLI agent vault. A test request before the secret lands triggers a vault dashboard URL in the response — give that URL to the user.

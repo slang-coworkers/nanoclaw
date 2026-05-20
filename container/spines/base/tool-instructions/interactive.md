@@ -1,24 +1,21 @@
 ## Interactive prompts
 
-The two tools here solve different problems: `ask_user_question` forces a decision and waits for it; `send_card` displays structured content and moves on.
+Two tools, two purposes — pick the one that matches what you need.
 
-### Asking a multiple-choice question (`ask_user_question`)
+| Tool | Behavior | Use when |
+|---|---|---|
+| `mcp__nanoclaw__ask_user_question({ title, question, options, timeout? })` | **Blocks the turn** until the user taps an option or `timeout` (default 300s) expires. Returns the chosen value. | You genuinely cannot proceed without a multiple-choice decision. Not for free-text — send a normal message and wait for their reply. |
+| `mcp__nanoclaw__send_card({ card, fallbackText? })` | **Returns immediately** — does not pause your turn or collect a response. | Presenting structured info (summaries, status, results with optional buttons) more cleanly than prose. |
 
-`mcp__nanoclaw__ask_user_question({ title, question, options, timeout? })` presents the user with a set of choices and **blocks your turn** until they tap one or the timeout expires (default: 300 seconds). Returns their chosen value.
+### `ask_user_question` options
 
-`options` can be plain strings or `{ label, selectedLabel?, value? }` objects:
-- `label` — the button text shown before selection
-- `selectedLabel` — the text shown on the button *after* selection (useful for confirmations, e.g. `"✓ Confirmed"`)
-- `value` — the string returned to you when that option is chosen (defaults to `label`)
+`options` may be plain strings, or `{ label, selectedLabel?, value? }`:
+- `label` — button text before selection.
+- `selectedLabel` — button text *after* selection (e.g. `"✓ Confirmed"`).
+- `value` — the string returned to you (defaults to `label`).
 
-Use this when you genuinely cannot proceed without a decision. For free-text input, send a normal message and wait for their reply — don't reach for this tool.
+### `send_card` shape
 
-### Structured cards (`send_card`)
+`card` supports `title`, `description`, `children` (nested text or content blocks), `actions` (buttons). `fallbackText` renders on platforms without card support.
 
-`mcp__nanoclaw__send_card({ card, fallbackText? })` renders a structured card and **returns immediately** — it does not pause your turn or collect a response.
-
-`card` supports: `title`, `description`, `children` (nested text or content blocks), and `actions` (buttons). `fallbackText` is sent as a plain message on platforms without card support.
-
-Use this for presenting information in a cleaner format than prose: summaries, options the user can read (but you're not waiting on), or results with contextual buttons. If you need the user to actually *choose* something and return a value, use `ask_user_question` instead.
-
-`send_card` always lands in the *current* conversation — wherever this turn was triggered from. It does not accept a `to:` parameter. To send a structured request to a peer or parent (e.g. credential requests, status updates that need someone else's attention), use `send_message({to: "parent" | "@coworker", text: "..."})` with markdown formatting — cards do not route across coworkers.
+`send_card` always lands in the **current** conversation — no `to:` parameter. To send structured content to a peer or parent, use `send_message` with markdown formatting; cards don't route across coworkers.

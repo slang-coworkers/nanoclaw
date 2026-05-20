@@ -145,6 +145,15 @@ export interface SkillMeta {
   // between one `{#step-id}` anchor and the next. Used to embed full workflow
   // content into CLAUDE.md at compose time (no runtime slash-command loading).
   stepBodies: Record<string, string>;
+  // Prologue text from the workflow body — everything between the `# /name`
+  // H1 and the first numbered step. Lets workflows surface top-of-doc prose
+  // (`> [!IMPORTANT]` callouts, mode notes, framing) into the rendered output
+  // alongside the description.
+  prologue?: string;
+  // Epilogue text from the workflow body — text after the last step
+  // (e.g. `## Mode invariants` block). Renders below the steps so
+  // cross-mode rules survive composition.
+  epilogue?: string;
   extendsWorkflow?: string;
   overrides: Record<string, string>;
 
@@ -176,6 +185,8 @@ export interface CoworkerManifest {
     requires: string[];
     steps: string[];
     stepBodies: Record<string, string>;
+    prologue?: string;
+    epilogue?: string;
   }[];
   skills: { name: string; description: string; provides: string[] }[];
   tools: string[];
