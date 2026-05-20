@@ -55,3 +55,26 @@ slangpy-writer:
     code: slangpy-code-writer
     test: slangpy-build
     doc: slangpy-docs
+
+slangpy-triage:
+  description: "SlangPy issue triage — specialist first-line investigator. Read issue, fan out research (DeepWiki + local code + gh CLI), map solution space, hand off rich briefing to slangpy-fixer. Always forward; never drop the chain. Read-only."
+  project: slangpy
+  extends: slangpy-reader
+  workflows:
+    - slangpy-triage-issue
+
+slangpy-fixer:
+  description: "SlangPy issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
+  project: slangpy
+  extends: slangpy-writer
+  workflows:
+    - slangpy-implement
+
+slangpy-reviewer:
+  description: "SlangPy PR reviewer — read-only verdict on a PR / branch / patch. Inherits slangpy-reader's investigation toolkit; no write skills."
+  project: slangpy
+  extends: slangpy-reader
+  invariants:
+    # Reviewers enforce code-change rules during review.
+    - container/spines/slangpy/invariants/code-changes.md
+  workflows: []
