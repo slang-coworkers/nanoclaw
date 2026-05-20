@@ -3832,13 +3832,11 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
 
   // Config CLAUDE.md save
   if (action === 'save-config-md') {
-    const scope = document.getElementById('config-md-scope')?.value || 'root';
     const content = document.getElementById('config-md-editor')?.value || '';
-    const url = scope === 'root' ? '/api/config/claude-md' : `/api/memory/global`;
     btn.disabled = true;
     btn.textContent = 'Saving...';
     try {
-      await fetch(url, {
+      await fetch('/api/config/claude-md', {
         method: 'PUT',
         headers: { 'Content-Type': 'text/plain' },
         body: content,
@@ -6633,35 +6631,19 @@ function renderConfig(claudeMdContent) {
   }
   html += '</table>';
 
-  // CLAUDE.md editor
+  // CLAUDE.md editor — edits the project root CLAUDE.md. The earlier
+  // "Global Memory (groups/global)" scope was a v1-era concept (composed
+  // CLAUDE.md base) that v2 retired; v2 installs have no `groups/global/`
+  // dir, so the option only ever rendered "(not found)".
   html += `<h4 style="font-size:11px;margin:16px 0 8px">CLAUDE.md Editor</h4>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-      <select id="config-md-scope" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 8px;font-family:var(--font);font-size:10px">
-        <option value="root">Root CLAUDE.md</option>
-        <option value="global">Global Memory (groups/global)</option>
-      </select>
+      <span style="color:var(--text-muted);font-size:10px">Root CLAUDE.md</span>
       <button class="admin-action-btn" id="config-md-toggle-view" style="font-size:9px;padding:2px 8px">Edit</button>
     </div>
     <div id="config-md-preview" class="md-content md-preview" style="max-height:400px;overflow-y:auto;margin-bottom:8px">${md(claudeMdContent)}</div>
     <textarea id="config-md-editor" class="admin-editor" style="min-height:200px;display:none">${esc(claudeMdContent)}</textarea>
     <button class="admin-save-btn" data-action="save-config-md">Save</button>`;
   el.innerHTML = html;
-
-  // Scope change handler
-  document.getElementById('config-md-scope')?.addEventListener('change', async (e) => {
-    const editor = document.getElementById('config-md-editor');
-    const preview = document.getElementById('config-md-preview');
-    const scope = e.target.value;
-    try {
-      const url = scope === 'root' ? '/api/config/claude-md' : '/api/memory/global';
-      const res = await fetch(url);
-      const text = res.ok ? await res.text() : '(not found)';
-      editor.value = text;
-      if (preview) preview.innerHTML = md(text);
-    } catch {
-      editor.value = '(error loading)';
-    }
-  });
 
   // Preview toggle
   document.getElementById('config-md-toggle-view')?.addEventListener('click', () => {
