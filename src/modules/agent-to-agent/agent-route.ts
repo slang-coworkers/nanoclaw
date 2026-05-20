@@ -228,7 +228,15 @@ function resolveExplicitReplyTarget(
       originSessionId = getInboundSourceSessionId(srcDb, msg.in_reply_to);
     }
     if (!originSessionId) {
-      originSessionId = getMostRecentPeerSourceSessionId(srcDb, targetAgentGroupId);
+      // Pass msg.thread_id so peer-affinity respects the thread the sender
+      // explicitly addressed. Without this filter, an outbound to peer P
+      // on thread X would route to whichever P-session most recently
+      // talked to us — even if that session belongs to thread Y. With
+      // multi-thread fan-out (a parent dispatches to one peer agent group
+      // on two distinct threads), the unfiltered heuristic mis-routes;
+      // the thread-scoped lookup pins to the right peer session.
+      const threadId = msg.thread_id?.trim() || null;
+      originSessionId = getMostRecentPeerSourceSessionId(srcDb, targetAgentGroupId, threadId);
     }
   } finally {
     srcDb.close();

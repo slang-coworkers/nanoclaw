@@ -397,11 +397,40 @@ export function getInboundSourceSessionId(db: Database.Database, messageId: stri
  * container's send_message MCP tool path didn't thread the batch's
  * in_reply_to through).
  *
- * Heuristic: "the last time this peer talked to me, which session was it?"
- * Returns null when no prior a2a inbound from that peer carries a
- * non-null source_session_id (typical for pre-migration installs).
+ * Heuristic: "the last time this peer talked to me on this thread, which
+ * session was it?" When `threadId` is provided, the lookup filters to
+ * inbound rows on that exact thread — this is the multi-thread case
+ * (e.g. a parent dispatches to one peer agent group on two distinct
+ * threads; replying without a thread filter would route to whichever
+ * thread happened to be most-recent overall, even if the sender
+ * explicitly addressed a different one). When `threadId` is null/omitted
+ * (single-thread peer relationship, or unthreaded a2a), the lookup falls
+ * back to most-recent regardless of thread — preserving the original
+ * single-thread behavior.
+ *
+ * Returns null when no prior a2a inbound from that peer (on the matching
+ * thread, when filtered) carries a non-null source_session_id (typical
+ * for pre-migration installs and brand-new dispatches).
  */
-export function getMostRecentPeerSourceSessionId(db: Database.Database, peerAgentGroupId: string): string | null {
+export function getMostRecentPeerSourceSessionId(
+  db: Database.Database,
+  peerAgentGroupId: string,
+  threadId?: string | null,
+): string | null {
+  if (threadId) {
+    const row = db
+      .prepare(
+        `SELECT source_session_id FROM messages_in
+          WHERE channel_type = 'agent'
+            AND platform_id = ?
+            AND thread_id = ?
+            AND source_session_id IS NOT NULL
+          ORDER BY seq DESC
+          LIMIT 1`,
+      )
+      .get(peerAgentGroupId, threadId) as { source_session_id: string | null } | undefined;
+    return row?.source_session_id ?? null;
+  }
   const row = db
     .prepare(
       `SELECT source_session_id FROM messages_in

@@ -1648,6 +1648,154 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(replyRow!.source_session_id).toBe(recipientSession.id);
     expect(JSON.parse(replyRow!.content).text).toBe('on it');
   });
+
+  it('peer-affinity respects thread_id: re-dispatch on thread X routes to that thread, not most-recent peer overall', async () => {
+    // Multi-thread fan-out scenario: A dispatches to B on TWO different
+    // threads (T-1 and T-2). Two B sessions emerge. B-on-T-2 replies
+    // most-recently. A then re-dispatches on T-1 (no in_reply_to). The
+    // unfiltered peer-affinity heuristic would route to B-on-T-2 (most
+    // recent overall); the thread-filtered lookup must pin to B-on-T-1.
+    const { senderSession } = seedPair();
+
+    // 1) A → B on thread T-1.
+    await routeAgentMessage(
+      {
+        id: 'out-A-T1-1',
+        platform_id: 'ag-recipient',
+        thread_id: 'T-1',
+        content: JSON.stringify({ text: 'first dispatch on T-1' }),
+      },
+      senderSession,
+    );
+    const [bOnT1Row] = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    const bOnT1 = getSession(bOnT1Row.id)!;
+
+    // 2) A → B on thread T-2 (creates a SECOND B session via per-thread routing).
+    await routeAgentMessage(
+      {
+        id: 'out-A-T2',
+        platform_id: 'ag-recipient',
+        thread_id: 'T-2',
+        content: JSON.stringify({ text: 'dispatch on T-2' }),
+      },
+      senderSession,
+    );
+    const bSessions = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ? ORDER BY created_at')
+      .all('ag-recipient') as Array<{ id: string }>;
+    expect(bSessions).toHaveLength(2);
+    const bOnT2 = getSession(bSessions.find((s) => s.id !== bOnT1.id)!.id)!;
+
+    // 3) B-on-T-2 replies (so its reply is the MOST RECENT inbound from
+    //    ag-recipient in A's inbound DB).
+    await routeAgentMessage(
+      {
+        id: 'out-B-T2-reply',
+        platform_id: 'ag-sender',
+        thread_id: 'T-2',
+        content: JSON.stringify({ text: 'T-2 reply' }),
+      },
+      bOnT2,
+    );
+
+    // 4) A re-dispatches on thread T-1 (no in_reply_to). Without the
+    //    thread filter, peer-affinity would resolve to bOnT-2 (most recent
+    //    inbound from peer overall) and the message would mis-route.
+    //    With the filter, it pins to bOnT-1.
+    await routeAgentMessage(
+      {
+        id: 'out-A-T1-2',
+        platform_id: 'ag-recipient',
+        thread_id: 'T-1',
+        content: JSON.stringify({ text: 'second dispatch on T-1' }),
+      },
+      senderSession,
+    );
+
+    // The new dispatch should land in bOnT-1, NOT in bOnT-2 and NOT spawn a third session.
+    const bSessionsAfter = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    expect(bSessionsAfter).toHaveLength(2);
+
+    const { openInboundDb } = await import('../../session-manager.js');
+    const bT1Db = openInboundDb('ag-recipient', bOnT1.id);
+    const bT1Latest = bT1Db
+      .prepare("SELECT content FROM messages_in WHERE channel_type = 'agent' ORDER BY seq DESC LIMIT 1")
+      .get() as { content: string } | undefined;
+    bT1Db.close();
+    expect(bT1Latest).toBeDefined();
+    expect(JSON.parse(bT1Latest!.content).text).toBe('second dispatch on T-1');
+
+    // bOnT-2 should NOT have received the T-1 dispatch.
+    const bT2Db = openInboundDb('ag-recipient', bOnT2.id);
+    const bT2Latest = bT2Db
+      .prepare("SELECT content FROM messages_in WHERE channel_type = 'agent' ORDER BY seq DESC LIMIT 1")
+      .get() as { content: string } | undefined;
+    bT2Db.close();
+    expect(bT2Latest).toBeDefined();
+    // Most recent T-2 inbound is still the original T-2 dispatch ("dispatch on T-2"),
+    // NOT the new T-1 dispatch ("second dispatch on T-1").
+    expect(JSON.parse(bT2Latest!.content).text).toBe('dispatch on T-2');
+  });
+
+  it('peer-affinity with thread_id=null preserves most-recent-overall behavior (single-thread parity)', async () => {
+    // When the outbound carries no thread_id, peer-affinity must keep
+    // the old "most recent inbound from this peer wins" semantics.
+    // Multi-thread inboxes don't apply here (the sender didn't pick a
+    // thread); the heuristic is meant to be "answer whoever talked to me
+    // last." Regression guard so the new threadId param doesn't change
+    // the unthreaded path.
+    const { senderSession } = seedPair();
+
+    // Two B sessions, on T-1 and T-2.
+    await routeAgentMessage(
+      { id: 'out-A-T1', platform_id: 'ag-recipient', thread_id: 'T-1', content: JSON.stringify({ text: 'd-T1' }) },
+      senderSession,
+    );
+    const bOnT1 = getSession(
+      (
+        getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-recipient') as Array<{ id: string }>
+      )[0].id,
+    )!;
+    await routeAgentMessage(
+      { id: 'out-A-T2', platform_id: 'ag-recipient', thread_id: 'T-2', content: JSON.stringify({ text: 'd-T2' }) },
+      senderSession,
+    );
+    const bSessions = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ? ORDER BY created_at')
+      .all('ag-recipient') as Array<{ id: string }>;
+    const bOnT2 = getSession(bSessions.find((s) => s.id !== bOnT1.id)!.id)!;
+
+    // B-on-T-2 replies most-recently.
+    await routeAgentMessage(
+      { id: 'out-BT2-r', platform_id: 'ag-sender', thread_id: 'T-2', content: JSON.stringify({ text: 'r-T2' }) },
+      bOnT2,
+    );
+
+    // A sends to B with NO thread_id. Peer-affinity falls back to
+    // most-recent-overall (which is the T-2 reply). The unthreaded reply
+    // routes to bOnT-2 — same as pre-fix behavior.
+    await routeAgentMessage(
+      { id: 'out-A-untrhd', platform_id: 'ag-recipient', thread_id: null, content: JSON.stringify({ text: 'untrhd' }) },
+      senderSession,
+    );
+
+    // No new B session created.
+    expect(getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-recipient')).toHaveLength(2);
+
+    // The unthreaded message landed in bOnT-2 (most-recent peer overall).
+    const { openInboundDb } = await import('../../session-manager.js');
+    const bT2Db = openInboundDb('ag-recipient', bOnT2.id);
+    const bT2Latest = bT2Db
+      .prepare("SELECT content FROM messages_in WHERE channel_type = 'agent' ORDER BY seq DESC LIMIT 1")
+      .get() as { content: string } | undefined;
+    bT2Db.close();
+    expect(bT2Latest).toBeDefined();
+    expect(JSON.parse(bT2Latest!.content).text).toBe('untrhd');
+  });
 });
 
 describe('migration 020', () => {
