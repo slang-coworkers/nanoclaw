@@ -3345,10 +3345,24 @@ function renderAdminSessions() {
   let html = `<table class="admin-table">
     <tr><th>Group Folder</th><th>Group Name</th><th>Session ID</th><th>Actions</th></tr>`;
   for (const s of adminState.sessions) {
+    const sid = s.session_id || '';
+    const grp = s.group_folder || '';
+    const nanoSess = sid ? lookupNanoSessById(sid) : null;
+    const tid = nanoSess?.thread_id || '';
+    const direct = nanoSess && isA2aSession(nanoSess) ? sid : '';
+    let sidCell = esc(sid || '-');
+    if (sid && grp) {
+      const attrs =
+        `data-view-chat-session="${escAttr(sid)}" data-view-chat-group="${escAttr(grp)}"` +
+        (tid ? ` data-view-chat-thread="${escAttr(tid)}"` : '') +
+        (direct ? ` data-view-session-direct="${escAttr(direct)}"` : '');
+      const dest = tid ? 'thread panel' : direct ? 'a2a panel' : 'main chat';
+      sidCell = `<span style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px" title="Open in Coworkers (${dest})" ${attrs}>${esc(sid)}</span>`;
+    }
     html += `<tr>
       <td>${esc(s.group_folder)}</td>
       <td>${esc(s.group_name || '-')}</td>
-      <td style="font-size:9px;color:var(--text-muted)">${esc(s.session_id || '-')}</td>
+      <td style="font-size:9px;color:var(--text-muted)">${sidCell}</td>
       <td><button class="admin-action-btn danger" data-action="delete-session" data-folder="${esc(s.group_folder)}">Delete</button></td>
     </tr>`;
   }
