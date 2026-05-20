@@ -28,8 +28,26 @@ Execute a plan. Diagnosis lives in `/plan`; this workflow is pure execution.
 
 ## Steps
 
-1. **Setup** — If no plan exists at `{{report.path}}` and the task is non-trivial, run the plan workflow autonomously before proceeding — do not ask permission. Load the plan from `/workspace/agent/reports/{{target_slug}}.md`. Branch off and extract the file list + verification plan. Never ask for permission between steps; document judgment calls in the log and proceed. Plan loop limit: loop back to the plan workflow at most **2 times** total — on the third failure, escalate. On restart: read `{{implementation_log.path}}` and `git log --oneline -10` to determine current progress; check out the working branch and resume from the last incomplete step.
-2. **Reproduce** {#reproduce} — for bug fixes: write a failing test that demonstrates the issue. For features: start with a skeleton that shows the gap. Commit separately so CI shows the delta.
-3. **Change** {#change} — make the minimum edit that matches the plan. Stay in one subsystem. Follow existing style. For doc-only changes, edit existing files before creating new.
-4. **Verify** {#verify} — For any build >5 min: (a) notify parent via `send_message` with format "⚙️ [step] — [branch] — [status/ETA]", (b) schedule a `schedule_task` watchdog (`new_session=false`, recurrence `*/30 * * * *`) that checks completion and cancels itself — cancel it immediately when the build finishes. Full test suite + format + lint + typecheck. If updating a PR, address review feedback before re-running. Failure handling: if verify fails after **2 independent fix attempts**, commit the failing state with a `wip:` prefix, write a failure summary to `{{implementation_log.path}}`, and escalate to the orchestrator — do not loop.
-5. **Ship** — descriptive commit linking the issue, push branch, open or update PR with summary + test plan. Push branch and open PR immediately — do not wait for human confirmation. Notify parent via `send_message`: 'PR opened: <url>'.
+1. **Setup** — If no plan exists at `{{report.path}}` and the task is non-trivial, run the plan workflow autonomously before proceeding — do not ask permission. Load the plan from `/workspace/agent/reports/{{target_slug}}.md`. Extract the file list + verification plan.
+
+   **Use a separate git worktree per issue/PR.** Don't edit the main checkout directly. Create a dedicated worktree so this session's work is isolated from other concurrent sessions, and so review comments on this PR can be addressed independently:
+
+   ```bash
+   git worktree add /workspace/agent/wt-{{target_slug}} -b dev/<coworker>/{{target_slug}}
+   cd /workspace/agent/wt-{{target_slug}}
+   ```
+
+   All editing, building, and committing happens inside that worktree. Other sessions own their own worktrees in parallel — no shared working tree, no merge conflicts on shared dirty state.
+
+   Never ask for permission between steps; document judgment calls in the log and proceed. Plan loop limit: loop back to the plan workflow at most **2 times** total — on the third failure, escalate. On restart: read `{{implementation_log.path}}` and `git log --oneline -10` to determine current progress; `cd` back into your worktree and resume from the last incomplete step.
+2. **Recall** {#recall} — Before making changes, spawn an `Agent` subagent to scan prior shared learnings for hits on `{{target}}`. Keeps your context clean — you never read the full INDEX or learning files yourself.
+
+   ```
+   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to <target>. Read at most 3 individual learning files if INDEX entries look directly applicable. Return: ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits' and stop.")
+   ```
+
+   If a hit looks directly applicable, read just that file before continuing.
+3. **Reproduce** {#reproduce} — for bug fixes: write a failing test that demonstrates the issue. For features: start with a skeleton that shows the gap. Commit separately so CI shows the delta.
+4. **Change** {#change} — make the minimum edit that matches the plan. Stay in one subsystem. Follow existing style. For doc-only changes, edit existing files before creating new.
+5. **Verify** {#verify} — For any build >5 min: (a) notify parent via `send_message` with format "⚙️ [step] — [branch] — [status/ETA]", (b) schedule a `schedule_task` watchdog (`new_session=false`, recurrence `*/30 * * * *`) that checks completion and cancels itself — cancel it immediately when the build finishes. Full test suite + format + lint + typecheck. If updating a PR, address review feedback before re-running. Failure handling: if verify fails after **2 independent fix attempts**, commit the failing state with a `wip:` prefix, write a failure summary to `{{implementation_log.path}}`, and escalate to the orchestrator — do not loop.
+6. **Ship** — descriptive commit linking the issue, push branch, open or update PR with summary + test plan. Push branch and open PR immediately — do not wait for human confirmation. Notify parent via `send_message`: 'PR opened: <url>'.

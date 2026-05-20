@@ -1,6 +1,6 @@
 ### Invocation
 
-- Workflows are prose — follow steps inline. `/workflow-name` is NOT a runtime command.
-- Gate overlays (`⟐ NAME GATE`) are mandatory at their anchor step.
+- Workflows are prose — follow the numbered steps inline.
+- If you see `⟐ NAME GATE` blocks inside a workflow step, they are mandatory at their anchor.
 - Parameters `{{name}}` are placeholders — ask when ambiguous.
-- **Long-running tasks:** For builds and compilation, delegate to a subagent (`Agent`) — see scheduling instructions. For recurring/cron work, use `schedule_task`.
+- **Delegate to a subagent (`Agent`)** whenever output volume would pollute your context — builds, large file reads, multi-step searches. One task per subagent. For recurring/cron work, use `schedule_task` instead.

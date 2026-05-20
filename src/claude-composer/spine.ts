@@ -62,17 +62,26 @@ function renderStepBlock(n: number, stepId: string, rawBody: string, title: stri
   const cleaned = stripStepAnchors(demotedBody).trim();
   if (!cleaned) return header;
   const lines = cleaned.split('\n');
-  // Remove "N. " source numbering (we own the count) AND the bolded title
-  // repeat. Accept optional "— " / "- " separators between title and body.
-  const first = lines[0];
-  const prefixMatch = first.match(/^\s*\d+[.)]\s+(?:\*\*[^*\n]+\*\*\s*(?:\{#[^}]+\})?\s*[—-]?\s*)?(.*)$/);
-  let body: string;
-  if (prefixMatch) {
-    const remainder = prefixMatch[1].trim();
-    body = [remainder, ...lines.slice(1)].join('\n').trimEnd();
-  } else {
-    body = cleaned;
+  // Two-stage strip from line 1: source numbering (we own the count), then
+  // a bolded title repeat that matches our heading title (override bodies
+  // often start with "**Title** — ..." even without a leading number).
+  let firstLine = lines[0];
+  const numMatch = firstLine.match(/^\s*\d+[.)]\s+(.*)$/);
+  if (numMatch) firstLine = numMatch[1];
+  const titleMatch = firstLine.match(/^\s*\*\*([^*\n]+)\*\*\s*(?:\{#[^}]+\})?\s*[—-]?\s*(.*)$/);
+  if (titleMatch && titleMatch[1].trim().toLowerCase() === title.trim().toLowerCase()) {
+    firstLine = titleMatch[2];
   }
+  // When the source step header is `**Title** {#anchor}` on its own line
+  // (no inline body), firstLine after stripping is empty. Skip it from
+  // the join so the rendered body doesn't get a leading blank-line block,
+  // and trimStart any remaining leading whitespace from the actual body.
+  const tail = lines
+    .slice(1)
+    .join('\n')
+    .replace(/^\s*\n+/, '');
+  const head = firstLine.trim();
+  const body = (head ? head + (tail ? '\n' + tail : '') : tail).trimEnd();
   return body ? `${header}\n\n${body}` : header;
 }
 
@@ -152,7 +161,7 @@ function parseStagedOverlay(body: string): StagedOverlay | null {
     // (rendered by emitGate) already carries the `(before|after \`step\`)`
     // context, so repeating the full heading here produces the stutter
     // `**DIAGNOSIS_REVIEW** — DIAGNOSIS_REVIEW (after \`diagnose\`)`.
-    const body = `**${stageName}**\n\n${s.body.join('\n').trimEnd()}`.trim();
+    const body = `**${stageName}**\n\n${s.body.join('\n').trim()}`.trim();
     stagesByAnchor.set(`${position}:${m[3]}`, body);
     if (m[4]) stagesByAnchor.set(`${position}:${m[4]}`, body);
   }
@@ -181,6 +190,28 @@ function demoteHeadings(md: string, levels: number): string {
     lines[i] = '#'.repeat(newLevel) + ' ' + m[2];
   }
   return lines.join('\n');
+}
+
+// Normalize a fragment so its top heading sits at `targetMinLevel`. Computes
+// the offset from the fragment's own minimum heading level and applies a
+// uniform demote so internal hierarchy is preserved. Used at fragment-join
+// time in typed mode: identity / invariants / context fragments live under
+// `## Wrapper` (h2), so we want their top heading to be h3.
+function normalizeFragment(md: string, targetMinLevel: number): string {
+  const lines = md.split('\n');
+  let inCodeFence = false;
+  let minLevel = Infinity;
+  for (const line of lines) {
+    if (/^\s*```/.test(line)) {
+      inCodeFence = !inCodeFence;
+      continue;
+    }
+    if (inCodeFence) continue;
+    const m = line.match(/^(#{1,6}) /);
+    if (m) minLevel = Math.min(minLevel, m[1].length);
+  }
+  if (!isFinite(minLevel) || minLevel >= targetMinLevel) return md;
+  return demoteHeadings(md, targetMinLevel - minLevel);
 }
 
 // Rewrite unresolved template placeholders (`{{name}}`, `{{foo.bar}}`,
@@ -426,7 +457,9 @@ function readIdentityLeadIn(identityPath: string | undefined, projectRoot: strin
 }
 
 function emitDiscoveredProjectFragments(types: Record<string, CoworkerTypeEntry>, projectRoot: string): string {
-  // Group type names by their `project:` field.
+  // Group type names by their `project:` field, then emit a single compact
+  // table. Source: spine metadata only — adding a new spine with a `project:`
+  // field produces a row automatically; no per-project hardcoding.
   const byProject = new Map<string, string[]>();
   for (const [typeName, entry] of Object.entries(types)) {
     const project = entry.project;
@@ -436,45 +469,25 @@ function emitDiscoveredProjectFragments(types: Record<string, CoworkerTypeEntry>
   }
   if (byProject.size === 0) return '';
 
-  // Per project, emit:
-  //   ### <project>
-  //   <identity lead-in OR description fallback>
-  //   - Types: `<reader>` (routing), `<writer>` (routing), ...
-  //   - Workflows: <workflow names from root spine>
-  //
-  // Source: spine metadata only. Adding a new spine with a `project:`
-  // field produces a block automatically; no per-project hardcoding
-  // anywhere in the composer.
-  const lines: string[] = ['## Projects available', ''];
+  const lines: string[] = ['## Projects available', '', '| Project | Types | Workflows |', '|---|---|---|'];
   const projectNames = [...byProject.keys()].sort();
-  for (let i = 0; i < projectNames.length; i++) {
-    const project = projectNames[i];
+  for (const project of projectNames) {
     const typeNames = byProject.get(project)!.sort();
     const commonName = typeNames.find((n) => n === `${project}-common`) ?? typeNames[0];
-    const common = types[commonName];
     const leaves = typeNames.filter((n) => n !== commonName && !types[n].flat).sort();
 
-    lines.push(`### ${project}`);
-    // Prefer the identity file's first sentence (richer role statement);
-    // fall back to the type's description if identity is absent.
-    const leadIn = readIdentityLeadIn(common?.identity, projectRoot) ?? common?.description;
-    if (leadIn) lines.push(leadIn);
-    if (leaves.length > 0) lines.push(`- Types: ${leaves.map((n) => `\`${n}\``).join(', ')}`);
-    // Union of workflows across the leaf types — tells Main what a
-    // coworker of this project can actually do.
+    const typeCell = leaves.map((n) => `\`${n}\``).join(', ') || '—';
     const workflowSet = new Set<string>();
     for (const leaf of leaves) {
       for (const wf of types[leaf]?.workflows ?? []) workflowSet.add(wf);
     }
-    if (workflowSet.size > 0) {
-      lines.push(
-        `- Workflows: ${[...workflowSet]
-          .sort()
-          .map((w) => `\`${w}\``)
-          .join(', ')}`,
-      );
-    }
-    if (i < projectNames.length - 1) lines.push('');
+    const workflowCell =
+      [...workflowSet]
+        .sort()
+        .map((w) => `\`${w}\``)
+        .join(', ') || '—';
+
+    lines.push(`| **${project}** | ${typeCell} | ${workflowCell} |`);
   }
   return lines.join('\n');
 }
@@ -485,14 +498,17 @@ export function renderCoworkerSpine(
   extraInstructions: string | null | undefined,
   opts: { disableOverlays?: boolean; overlays?: string[]; cliScope?: 'disabled' | 'group' | 'global' } = {},
 ): string {
-  // cliScope is plumbed through but currently unused at render time —
-  // ncl/cli tool-instruction gating happens via skill manifest filtering
-  // upstream when added. Acceptance: option present so container-runner
-  // call sites compile.
-  void opts.cliScope;
+  // cliScope gates inclusion of the `ncl-*.md` tool-instruction fragments.
+  //   'disabled' → strip every ncl-*.md from context (agent has no CLI access)
+  //   'group'    → keep ncl-group.md, drop ncl-global.md
+  //   'global'   → keep both (typically only Main / owner agents)
+  // Filtering happens after fragment load by matching the rendered text
+  // against the fragment's own H2 heading, since manifest.context is a
+  // string array — the path is gone by then.
+  const cliScope = opts.cliScope ?? 'group';
   const types = readCoworkerTypes(projectRoot);
   const catalog = readSkillCatalog(projectRoot);
-  const manifest = resolveCoworkerManifest(types, coworkerType, catalog, projectRoot);
+  const manifest = resolveCoworkerManifest(types, coworkerType, catalog, projectRoot, { cliScope });
 
   // Inject per-agent overlays from DB (agent_groups.overlays column).
   if (opts.overlays && opts.overlays.length > 0) {
@@ -503,6 +519,10 @@ export function renderCoworkerSpine(
   // to workflows before rendering. Drops all `⟐ ... GATE` inline blocks and
   // the trailing `## Gate Protocol` section. Honors `agent_groups.disable_overlays`
   // passed from container-runner.ts.
+  //
+  // No-op when the coworker has no overlays in its type chain *and* no
+  // runtime overlays were injected via agent_groups.overlays — there's
+  // simply nothing to strip. Common case for vanilla typed coworkers.
   if (opts.disableOverlays) {
     manifest.customizations = manifest.customizations.filter((c) => c.kind !== 'overlay');
   }
@@ -524,23 +544,30 @@ export function renderCoworkerSpine(
     }
     const extra = extraInstructions?.trim();
     if (extra) bodies.push(extra);
-    return bodies.join('\n\n---\n\n').trimEnd() + '\n';
+    // Section boundaries are H2 headings inside each fragment — no `---`
+    // separators. Horizontal rules between every fragment created visual
+    // noise without adding structure that the headings didn't already carry.
+    return bodies.join('\n\n').trimEnd() + '\n';
   }
 
   const parts: string[] = [];
   parts.push(`# ${manifest.title}`);
 
+  // Fragments are normalized to start at h3 so they nest correctly under
+  // their ## h2 wrapper regardless of how they were authored. Without this,
+  // fragments authored at # or ## (e.g. context/chain-reporting.md, slang's
+  // skill-discovery.md) leak their headings out to the top of the document.
   parts.push('## Identity');
-  parts.push(manifest.identity);
+  parts.push(normalizeFragment(manifest.identity, 3));
 
   if (manifest.invariants.length > 0) {
     parts.push('## Invariants');
-    parts.push(manifest.invariants.join('\n\n'));
+    parts.push(manifest.invariants.map((f) => normalizeFragment(f, 3)).join('\n\n'));
   }
 
   if (manifest.context.length > 0) {
     parts.push('## Context');
-    parts.push(manifest.context.join('\n\n'));
+    parts.push(manifest.context.map((f) => normalizeFragment(f, 3)).join('\n\n'));
   }
 
   // Build name lookups for slash-rewrite. Three distinct resolutions:
@@ -555,21 +582,20 @@ export function renderCoworkerSpine(
   }
 
   // --- Task routing guide (every workflow, no category dedup) ---
+  // Each entry uses the workflow's own description's first sentence as the
+  // trigger label — generic per-trait labels collide when two workflows in
+  // the same category coexist (e.g. /slang-plan + /slang-maintain both
+  // dominate to `repo`). First-sentence labels are workflow-distinct by
+  // construction. Truncated at ~120 chars to keep the index scannable.
   if (manifest.workflows.length > 0) {
-    const TRIGGER_MAP: Record<Category, string> = {
-      repo: 'Investigation / triage / "what\'s going on?"',
-      code: 'Code change / fix / feature',
-      test: 'Test authoring / CI fix',
-      ci: 'CI investigation',
-      doc: 'Documentation update',
-      plan: 'Research / planning',
-      critique: 'Review / critique',
-      other: 'General task',
-    };
     const routeLines: string[] = [];
     for (const w of manifest.workflows) {
-      const cat = categorize(w.requires);
-      routeLines.push(`- ${TRIGGER_MAP[cat]} → \`/${w.name}\` workflow`);
+      const desc = (w.description || '').trim();
+      const firstSentenceMatch = desc.match(/^[^.!?]*[.!?]/);
+      let label = (firstSentenceMatch ? firstSentenceMatch[0] : desc).trim().replace(/[.!?]$/, '');
+      if (label.length > 120) label = label.slice(0, 117).trimEnd() + '…';
+      if (!label) label = `Run /${w.name}`;
+      routeLines.push(`- ${label} → \`/${w.name}\` workflow`);
     }
     parts.push('## How to Work');
     parts.push(
@@ -622,6 +648,17 @@ export function renderCoworkerSpine(
       // reference to the embedded parent section.
       const extendsNote = extendsC?.extendsWorkflow ? ` (extends /${extendsC.extendsWorkflow}—see section below)` : '';
       let block = `### /${w.name}\n\n${w.description}${uses}${extendsNote}`;
+
+      // Prologue: workflow's top-of-doc framing prose (IMPORTANT callouts,
+      // mode notes, framing) lifted from the source body. Renders between the
+      // description line and the numbered steps so the agent sees it before
+      // executing the workflow.
+      if (w.prologue) {
+        // Headings inside the prologue need to nest under the workflow's H3
+        // wrapper (### /name) — demote H1/H2 by 2 levels so an authored `# Foo`
+        // becomes `### Foo` under the workflow heading.
+        block += '\n\n' + normalizeFragment(w.prologue, 4);
+      }
 
       if (w.steps.length > 0) {
         // Override lookup by stepId.
@@ -695,6 +732,13 @@ export function renderCoworkerSpine(
         block += '\n\n' + chunks.join('\n\n');
       }
 
+      // Epilogue: cross-mode notes / `## Mode invariants` block authored
+      // after the last step. Same heading-normalize as the prologue so any
+      // `## Sub-heading` nests under the workflow's H3.
+      if (w.epilogue) {
+        block += '\n\n' + normalizeFragment(w.epilogue, 4);
+      }
+
       wfBlocks.push(block);
     }
 
@@ -736,18 +780,16 @@ export function renderCoworkerSpine(
   }
 
   // --- Skills ---
-  // Filter to only skills that are trait-bound in this type's manifest.
-  // Skills declared in the `skills:` list but never bound to any trait are
-  // not referenced by embedded workflows — hide them. Claude Code's
-  // progressive skill discovery will surface them if an agent invokes
-  // them ad-hoc.
-  const boundSkillNames = new Set(Object.values(manifest.bindings));
-  const visibleSkills = manifest.skills.filter((s) => boundSkillNames.has(s.name));
-  if (visibleSkills.length > 0) {
-    parts.push('## Skills Available');
+  // Every inherited capability skill is listed (slash-invoked, loaded on demand
+  // via Claude Code's progressive skill discovery). The list is categorized by
+  // the skill's `provides:` traits — bound skills land under their domain
+  // heading (Repo, Code, Test, …), unbound skills (e.g. `base-nanoclaw` host
+  // tools) land under "Other" so they're still visible to the reader.
+  if (manifest.skills.length > 0) {
+    parts.push('## Skills');
     parts.push(
       renderCategorizedList(
-        visibleSkills,
+        manifest.skills,
         (s) => s.provides,
         (s) => `- \`/${s.name}\` — ${s.description}`,
       ),
@@ -758,7 +800,9 @@ export function renderCoworkerSpine(
 
   if (extraInstructions?.trim()) {
     parts.push('## Additional Instructions');
-    parts.push(extraInstructions.trim());
+    // Normalize so any operator-authored `## Foo` headings nest under our
+    // `## Additional Instructions` wrapper (they should be `### Foo`).
+    parts.push(normalizeFragment(extraInstructions.trim(), 3));
   }
 
   return parts.join('\n\n').trimEnd() + '\n';

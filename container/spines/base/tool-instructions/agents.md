@@ -1,28 +1,33 @@
-## Companion and collaborator agents (`create_agent`)
+## Spawning coworkers (`create_agent`) and ephemeral subagents (`Agent`)
 
-`mcp__nanoclaw__create_agent({ name, coworkerType, instructions, overlays })` spins up a new long-lived agent and wires it as a destination — bidirectional, so you can send it tasks and it can message you back.
+Two delegation patterns — different lifecycles:
 
-**Always pass `coworkerType`.** It determines the agent's skills, MCP tool allowlist, and workflows. Omitting it falls back to `default` (base spine only) — rarely what you want. Ask the user which type to use when it isn't obvious from the task; available types are assembled from `container/{spines,skills}/*/coworker-types.yaml` files.
+| | `create_agent` (long-lived coworker) | `Agent` (SDK subagent) |
+|---|---|---|
+| **Persistence** | Own container, workspace, session — survives across turns | Stateless one-shot, dies with the call |
+| **State** | `groups/<name>/` accumulates memory, conversations, notes | Returns a single result, leaves no trace |
+| **When** | Multi-turn role: a `Researcher` tracking a long inquiry, a `Builder` editing code while you stay in chat, a `Reviewer` running checks in parallel | One-off lookup, single-task delegation, anything that finishes inside this turn |
+| **Cost** | Persists indefinitely (cleanup is your job) | Free — collects on return |
 
-### How it works
+**Default to `Agent` for one-offs.** `create_agent` is a real footprint — don't spawn one for work that finishes before the user's next message.
 
-- Creates a new agent with its own container, workspace, and session. Your `instructions` string is written to the agent's `.instructions.md`, which the composer appends after its typed spine on every container wake — its starting role and domain-specific rules.
-- The agent's `name` becomes a destination on both sides: you address it via `send_message({ to: "<name>", ... })`, and its replies arrive as inbound messages with `from="<name>"`.
-- Each agent has its own persistent workspace under `groups/<folder>/` — memory, conversation history, and notes all survive across sessions. This is a full standalone agent, not a stateless sub-query.
-- **Fire-and-forget:** the call returns immediately without waiting for the agent to confirm it's ready. Messages you send will queue until it's up.
+### `create_agent({ name, coworkerType, instructions, overlays? })`
 
-### When to use
+- **Always pass `coworkerType`** — determines skills, MCP allowlist, workflows. Omitting it falls back to `default` (base spine only). Available types are assembled from `container/{spines,skills}/*/coworker-types.yaml`. Ask the user when not obvious.
+- `name` becomes a destination on both sides — you address it via `send_message({ to: "<name>", … })`, replies arrive with `from="<name>"`.
+- `instructions` is written to `groups/<name>/.instructions.md` and appended to its CLAUDE.md after the typed spine on every wake. Cover: role, who it takes tasks from (you, by name), how it reports back. Don't restate base behavior or its typed-spine skills — already loaded.
+- **Fire-and-forget:** call returns immediately. Messages you send queue until the container is up.
 
-- **Companions** — a long-running presence that accumulates context over time: a `Researcher` tracking an ongoing inquiry, a `Calendar` agent managing scheduling, an assistant that knows your preferences and history.
-- **Collaborators** — a parallel specialist that works independently and reports back: a `Builder` handling code edits while you stay in conversation, a `Reviewer` running checks in the background.
+### Build / compile / install — delegate to `Agent`, never run inline
 
-The right frame is: does this agent need its own memory and context that builds over time, or does it need to work independently without blocking your turn? Either is a good reason to spawn one.
+For cmake, make, cargo, pip install, npm install, or any other compilation: use `Agent`. Builds produce large output that pollutes context. Subagent runs synchronously and returns a clean summary:
 
-### When NOT to use
+```
+Agent(prompt="Run the build: <build commands from your project skill>. Log to /workspace/agent/build/build.log. Report: success/fail, any errors, and the log path.")
+```
 
-- **One-off lookups or short tasks** — use the SDK `Agent` tool instead. It's stateless, spins up and completes in one shot, and leaves no persistent footprint.
-- **Work that finishes before the user's next message** — agents persist indefinitely. Don't create one for something you could do inline.
+Before spawning, find your project's build skill (via `Skill` or `ToolSearch`) — it has the exact commands.
 
-### Writing good `instructions`
+**Never use `run_in_background=True` for builds.** If the build triggers an `install_packages` approval, the container rebuilds and every background process dies — your build vanishes with no recovery path.
 
-Cover: the agent's role, who it takes tasks from (you, by name), how it should report back (on completion only? with milestones for long work?), and any domain-specific rules. Don't restate NanoClaw base behavior or the coworker type's skills — the shared base and typed spine are already loaded on the agent's end.
+**Pre-build checklist:** identify all missing packages from the build manifest, request them in a single `install_packages` call, wait for the rebuild, then delegate the build.

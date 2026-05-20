@@ -2,25 +2,16 @@
 name: buddy-monitor
 license: MIT
 type: overlay
-description: "Background companion monitor overlay. Injects a UserPromptSubmit hook that reads buddy guidance. Pair with the /buddy skill to activate."
+description: "Spawn a background /buddy companion at workflow start. Codex-powered monitor watches the session in real-time and flags wrong assumptions or overlooked context."
 applies-to:
   workflows: [plan, implement]
   traits: []
+insert-before: [understand, setup]
 insert-after: []
-insert-before: []
 uses:
   skills: [buddy]
 ---
 
-## Buddy — Background Companion Monitor
+Before any real work in this workflow, invoke `/buddy` once. It spawns a background Agent (codex-powered, GPT-5.5) that watches your session transcript in real-time and writes guidance into your next turn as `<buddy-note>` — a genuinely independent second opinion, not self-review.
 
-A background Agent (codex-powered) monitors your session in real-time. It reads your transcript, flags concerns, and writes guidance that appears on your next turn as `<buddy-note>`.
-
-**Activate at session start** by invoking `/buddy`. The background agent watches silently until it spots a wrong assumption, overlooked context, or quality risk.
-
-When you see a `<buddy-note>`:
-- Read it carefully — it's flagging something your independent reviewer thinks is wrong
-- Adjust your approach if the concern is valid
-- If you disagree, note why and continue (buddy isn't always right, but it's usually worth considering)
-
-Buddy uses codex (GPT-5.5) as the reviewer model — a genuinely independent second opinion, not self-review.
+If a `<buddy-note>` appears later, read it carefully — it's flagging a wrong assumption, overlooked context, or quality risk that an independent reviewer caught. Adjust your approach if the concern is valid; note your disagreement and continue if not. Buddy isn't always right, but it's usually worth considering.
