@@ -5194,10 +5194,17 @@ function renderCwThread() {
           : 'You';
       const monogramSource = isOutgoing ? cwState.selected || 'A' : m.senderCoworkerName || 'You';
       const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
-      if (m.isRelay) {
+      // cli_response is the system-injected reply to a `cli_request` an
+      // agent sent earlier — it arrives via messages_in (so isRelay isn't
+      // set server-side) but should fold the same way as the cli_request
+      // outbound relay above. Match the JSON head; payloads are 1+ KiB
+      // and dominate the thread when expanded by default.
+      const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
+      if (m.isRelay || isCliResponse) {
+        const sysActionLabel = isCliResponse ? 'system response' : 'system action';
         const relayLabel = m.recipientCoworkerName
           ? `${authorName} → @${esc(m.recipientCoworkerName)}`
-          : `${authorName} · system action`;
+          : `${authorName} · ${sysActionLabel}`;
         const preview = (text || '').replace(/\s+/g, ' ').trim();
         const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
         const expanded = cwState.thread._expandedRelays && cwState.thread._expandedRelays.has(m.id);
