@@ -28,30 +28,15 @@ Inbound rows show `thread="…"` only when the thread differs from your own sess
 
 ### Multi-chain orchestration
 
-If you're handling several parallel chains (e.g. you fanned work out to N triagers, or N issues to N fixers), the temptation is to send "here's what's happening" summaries to every chain. **Don't.** Each chain only needs to know about its own work; cross-chain status belongs in your own conversation, not in someone else's thread.
+When you're running parallel chains, status routing changes shape:
 
-**IMPORTANT — where status goes:**
+- **Per-chain decision or follow-up** → reply on that chain's thread with `in_reply_to`. Only that chain acts on it.
+- **Cross-chain rollup** → your own conversation. The user is the only consumer of "here's everything across all chains".
+- **Acknowledgement** → end the turn silently. Adds no signal, costs every reader.
 
-| Audience | Goes to | Why |
-|---|---|---|
-| Per-chain progress / next-step decision | the thread that produced it (use `in_reply_to`) | only that chain acts on it |
-| Cross-chain rollup ("3 updates landed") | your own conversation (dashboard / channel / user) | the user is the only consumer |
-| "Acknowledged" / "thanks" / "got it" | nowhere — end the turn silently | adds zero signal, costs every reader |
+**IMPORTANT:** Never put chain-B content onto chain-A's thread. Chain-A's agents have no decision to make about chain-B; their inbox should not see it.
 
-**IMPORTANT — never broadcast across chains.** A status update about chain B is not delivered by sending it onto chain A's thread. The agents on chain A have no business decision to make about chain B's progress, and chain A's session inbox should not see chain B content. If you find yourself writing "*here's what chain B's reviewer said*" with `to="<chain-A-coworker>"`, stop — that message belongs to your own conversation, not to chain A.
-
-**The handoff IS the ack.** When you forward one stage's output onward (e.g. triage → fixer), the forward itself acknowledges what the previous stage produced. Do not also send a separate "Proceed, forward this to <next-stage>" message back to the previous stage — that's a self-echo with no recipient action implied.
-
-Concretely, the correct shape for "multiple chains finished a step" is **one** rollup post on your own conversation:
-
-```
-Three updates landed:
-- <thread-1> → <stage> <decision> (in_reply_to=#A)
-- <thread-2> → <stage> <decision> (in_reply_to=#B)
-- <thread-3> → <stage> <decision> (in_reply_to=#C)
-```
-
-…not three separate cross-posts to each individual chain.
+**IMPORTANT:** The handoff IS the ack. Forwarding output to the next stage acknowledges the previous stage by definition. Do not also send a separate "thanks, forwarding" reply back upstream — that is an echo with no recipient action.
 
 ### Outcome line
 
