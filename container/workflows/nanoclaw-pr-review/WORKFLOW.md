@@ -26,7 +26,15 @@ The Devin scraper (`devin-fetch.sh`) lives in the `nanoclaw-pr-review-runner` sk
 
    Verify the PR exists and is OPEN before continuing. Devin handles any base branch (`nv-coworkers`, `nv-main`, `nv-dashboard`, `nv-slang`, etc.) — no special handling needed. If the PR is CLOSED or merged, ask the requester whether they want a historical review (Devin still works on closed PRs) or stop.
 
-2. **Preflight** {#preflight} — confirm `agent-browser` is installed:
+2. **Recall** {#recall} — Before running the scraper, spawn an `Agent` subagent to scan prior shared learnings for hits on this PR or similar review patterns. Keeps your context clean.
+
+   ```
+   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to slang-coworkers/nanoclaw PR review or recurring Devin flags. Read at most 3 individual learning files if INDEX entries look directly applicable. Return: ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits' and stop.")
+   ```
+
+   If a hit looks directly applicable, read just that file before continuing.
+
+3. **Preflight** {#preflight} — confirm `agent-browser` is installed:
 
    ```bash
    agent-browser --help >/dev/null
@@ -34,7 +42,7 @@ The Devin scraper (`devin-fetch.sh`) lives in the `nanoclaw-pr-review-runner` sk
 
    The `agent-browser` skill is part of the base container image — failure here means the container is misconfigured, not user error. Report and stop.
 
-3. **Run Devin scraper** {#scrape} — invoke `devin-fetch.sh` from the `nanoclaw-pr-review-runner` skill:
+4. **Run Devin scraper** {#scrape} — invoke `devin-fetch.sh` from the `nanoclaw-pr-review-runner` skill:
 
    ```bash
    RUN_DIR=$(mktemp -d /tmp/nanoclaw-pr-review-<N>.XXXXXX)
@@ -52,7 +60,7 @@ The Devin scraper (`devin-fetch.sh`) lives in the `nanoclaw-pr-review-runner` sk
    - `3` — timeout. Devin took longer than `--max-minutes` to produce results. Report status as `timeout`; don't fail. Re-running later usually succeeds.
    - other non-zero — actual error. Report and stop.
 
-4. **Return findings** {#return} — send the artifact and a 5-bullet summary back to the parent.
+5. **Return findings** {#return} — send the artifact and a 5-bullet summary back to the parent.
 
    ```
    mcp__nanoclaw__send_file(to="parent", path="<RUN_DIR>/devin-flags.md")
