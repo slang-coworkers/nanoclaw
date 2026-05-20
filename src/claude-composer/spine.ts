@@ -575,6 +575,18 @@ export function renderCoworkerSpine(
   //   capability skills   → runtime slash commands, leave literal
   //   overlays (agent.md) → Task-tool subagents, rewrite accordingly
   const workflowNames = new Set(manifest.workflows.map((w) => w.name));
+  // Also treat extends-chain parents as known names. A typed coworker that
+  // has /slang-plan inherits /plan's body; that body's prose may say "run
+  // `/plan`" referring to the parent concept. Without this, the slash-rewrite
+  // would warn "Unknown slash ref /plan" for every typed coworker that
+  // extends a base workflow.
+  for (const w of manifest.workflows) {
+    let cur = catalog[w.name];
+    while (cur?.extendsWorkflow) {
+      workflowNames.add(cur.extendsWorkflow);
+      cur = catalog[cur.extendsWorkflow];
+    }
+  }
   const capabilitySkillNames = new Set(manifest.skills.map((s) => s.name));
   const overlayNames = new Set<string>();
   for (const meta of Object.values(catalog) as SkillMeta[]) {

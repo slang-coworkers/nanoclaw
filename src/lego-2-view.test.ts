@@ -128,15 +128,16 @@ describe('2-view model: Main (orchestrator) and Coworker (typed+untyped)', () =>
 });
 
 describe('Auto-discovered project fragments on Main', () => {
-  it('emits a ### <project> block for each spine with a project: field', () => {
+  it('emits a row in the projects table for each spine with a project: field', () => {
     scaffoldBase(tmpRoot);
     scaffoldProjectSpine(tmpRoot, 'slang', ['slang-reader', 'slang-writer']);
     scaffoldProjectSpine(tmpRoot, 'slangpy', ['slangpy-reader', 'slangpy-writer']);
 
     const out = composeCoworkerSpine({ projectRoot: tmpRoot, coworkerType: 'main' });
     expect(out).toMatch(/## Projects available/);
-    expect(out).toMatch(/### slang\b/);
-    expect(out).toMatch(/### slangpy\b/);
+    // Compact 3-row table: `| **<project>** | <types> | <workflows> |`
+    expect(out).toMatch(/\| \*\*slang\*\* \|/);
+    expect(out).toMatch(/\| \*\*slangpy\*\* \|/);
     expect(out).toMatch(/`slang-reader`, `slang-writer`/);
     expect(out).toMatch(/`slangpy-reader`, `slangpy-writer`/);
   });
@@ -148,7 +149,7 @@ describe('Auto-discovered project fragments on Main', () => {
     scaffoldProjectSpine(tmpRoot, 'graphics', ['graphics-reader', 'graphics-writer']);
 
     const out = composeCoworkerSpine({ projectRoot: tmpRoot, coworkerType: 'main' });
-    expect(out).toMatch(/### graphics\b/);
+    expect(out).toMatch(/\| \*\*graphics\*\* \|/);
     expect(out).toMatch(/`graphics-reader`, `graphics-writer`/);
   });
 
@@ -169,33 +170,14 @@ describe('Auto-discovered project fragments on Main', () => {
     expect(out).not.toMatch(/`slang-common`/);
   });
 
-  it("uses the spine's identity file first paragraph when present (richer than description)", () => {
-    scaffoldBase(tmpRoot);
-    scaffoldProjectSpine(tmpRoot, 'slang', ['slang-writer'], {
-      identityLine:
-        'You are a Slang compiler engineer working on a shader compiler for GPU programming with C++ and a custom IR.',
-    });
-    const out = composeCoworkerSpine({ projectRoot: tmpRoot, coworkerType: 'main' });
-    // The block should show the identity lead-in, not the fallback description.
-    expect(out).toMatch(/You are a Slang compiler engineer/);
-    expect(out).not.toMatch(/slang project spine — identity/);
-  });
-
-  it('falls back to description when the spine has no identity file', () => {
-    scaffoldBase(tmpRoot);
-    scaffoldProjectSpine(tmpRoot, 'acme', ['acme-writer']);
-    const out = composeCoworkerSpine({ projectRoot: tmpRoot, coworkerType: 'main' });
-    // description is in yaml; no identity file — the fallback is used.
-    expect(out).toMatch(/acme project spine — identity, invariants, layout\./);
-  });
-
   it('emits the union of workflow names across leaf types for each project', () => {
     scaffoldBase(tmpRoot);
     scaffoldProjectSpine(tmpRoot, 'slang', ['slang-reader', 'slang-writer'], {
       workflows: ['slang-investigate', 'slang-implement'],
     });
     const out = composeCoworkerSpine({ projectRoot: tmpRoot, coworkerType: 'main' });
-    expect(out).toMatch(/Workflows: `slang-implement`, `slang-investigate`/);
+    // Workflows column lists names alphabetically inside the table row.
+    expect(out).toMatch(/`slang-implement`, `slang-investigate`/);
   });
 
   it('sorts projects alphabetically for deterministic output', () => {
@@ -205,9 +187,9 @@ describe('Auto-discovered project fragments on Main', () => {
     scaffoldProjectSpine(tmpRoot, 'middle', ['middle-worker']);
 
     const out = composeCoworkerSpine({ projectRoot: tmpRoot, coworkerType: 'main' });
-    const alphaIdx = out.indexOf('### alpha');
-    const middleIdx = out.indexOf('### middle');
-    const zetaIdx = out.indexOf('### zeta');
+    const alphaIdx = out.indexOf('| **alpha** |');
+    const middleIdx = out.indexOf('| **middle** |');
+    const zetaIdx = out.indexOf('| **zeta** |');
     expect(alphaIdx).toBeGreaterThan(-1);
     expect(alphaIdx).toBeLessThan(middleIdx);
     expect(middleIdx).toBeLessThan(zetaIdx);
@@ -249,14 +231,16 @@ describe('Tool-instructions files are loaded into composed bodies', () => {
   // tool-instructions files or their yaml wiring drift out of sync.
   const REPO_ROOT = process.cwd();
 
-  it('Main composes with all 5 tool-instructions sections inlined', () => {
+  it('Main composes with all tool-instructions sections inlined', () => {
     const out = composeCoworkerSpine({ coworkerType: 'main', projectRoot: REPO_ROOT });
-    // Headings unique to each instructions file.
-    expect(out).toMatch(/## Companion and collaborator agents/); // agents.md
+    // Headings unique to each instructions file (post-rewrite May 2026:
+    // agents.md heading is now "Spawning coworkers ... and ephemeral subagents").
+    expect(out).toMatch(/## Spawning coworkers/); // agents.md
     expect(out).toMatch(/## Interactive prompts/); // interactive.md
-    expect(out).toMatch(/## Installing packages/); // self-mod.md
+    expect(out).toMatch(/## Self-modification/); // self-mod.md
     expect(out).toMatch(/## Sending messages/); // core.md
     expect(out).toMatch(/## Task scheduling/); // scheduling.md
+    expect(out).toMatch(/## Peer-to-peer wiring/); // wire-agents.md
   });
 
   it("default (typed, base-common only) doesn't carry core/scheduling bodies or admin guidance — those live in /base-nanoclaw skill (loaded on demand)", () => {
@@ -270,8 +254,8 @@ describe('Tool-instructions files are loaded into composed bodies', () => {
     // so the composer filters it out of Skills Available. Claude Code's
     // progressive skill discovery surfaces it on-demand.
     // Admin-only guidance must NOT leak into typed coworkers.
-    expect(out).not.toMatch(/## Companion and collaborator agents/);
-    expect(out).not.toMatch(/## Installing packages/);
+    expect(out).not.toMatch(/## Spawning coworkers/);
+    expect(out).not.toMatch(/## Self-modification/);
   });
 });
 

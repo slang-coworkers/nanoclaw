@@ -376,11 +376,12 @@ slang-triage:
       expect(out).toContain('## Workflows');
       expect(out).toContain('### /slang-triage');
       expect(out).toContain('Triage a Slang issue.');
-      expect(out).toContain('## Skills Available');
+      expect(out).toContain('## Skills');
       expect(out).toContain('- `/slang-github` — Fetch Slang issues.');
-      // base-nanoclaw is declared but not trait-bound; filter drops it.
-      // Claude Code's progressive skill discovery surfaces it on demand.
-      expect(out).not.toContain('- `/base-nanoclaw` — Host tools.');
+      // base-nanoclaw is declared but not trait-bound; post-May-2026 it
+      // still renders under the "Other" category for visibility (was
+      // filtered out previously).
+      expect(out).toContain('- `/base-nanoclaw` — Host tools.');
       expect(out).not.toContain('Skill bodies load on demand.'); // footer dropped — invocation.md covers this
 
       // The 6-section headings must NOT appear — this is the spine model.
@@ -428,9 +429,11 @@ slang-triage:
       expect(out).toBe('# Main\n\nSlim.\n');
     });
 
-    it('appends additive context fragments under --- when addon skills contribute to the same type', () => {
+    it('appends additive context fragments after identity when addon skills contribute to the same type', () => {
       // Two skills both declare `main`: the base owns identity, the addon
-      // contributes context. Expect identity body + `\n\n---\n\n` + addon body.
+      // contributes context. Expect identity body + blank line + addon body
+      // (flat mode no longer inserts `---` separators — H2 headings carry
+      // section structure).
       const root = makeTempProject();
       writeFile(path.join(root, 'container/skills/nanoclaw-base/prompts/main-body.md'), '# Main\n\nHello.\n');
       writeFile(
@@ -448,7 +451,7 @@ slang-triage:
         `main:\n  context:\n    - container/skills/dashboard-base/prompts/formatting.md\n`,
       );
       const out = composeCoworkerSpine({ projectRoot: root, coworkerType: 'main' });
-      expect(out).toBe('# Main\n\nHello.\n\n---\n\n### Dashboard\n\nMarkdown.\n');
+      expect(out).toBe('# Main\n\nHello.\n\n### Dashboard\n\nMarkdown.\n');
     });
 
     it('suppresses structured sections and auto-title in flat mode', () => {
