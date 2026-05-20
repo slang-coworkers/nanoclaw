@@ -2,16 +2,16 @@
 name: slangpy-triage-issue
 license: MIT
 type: workflow
-description: "Principal-engineer triage of a SlangPy GitHub issue (shader-slang/slangpy): research deep, map the solution space, hand off a rich briefing to slangpy-fixer (or escalate to slang-fixer for upstream compiler bugs), then forward fixer's resolution back upstream."
+description: "Specialist triage of a SlangPy GitHub issue (shader-slang/slangpy): research deep, map the solution space, hand off a rich briefing to slangpy-fixer (or escalate to slang-fixer for upstream compiler bugs), then forward fixer's resolution back upstream."
 requires: [issues.read, code.read]
 uses:
   skills: [slangpy-code-reader, slangpy-github]
   workflows: [slangpy-plan]
 ---
 
-# /slangpy-triage-issue — Principal-engineer triage
+# /slangpy-triage-issue — Specialist triage
 
-You are the **first line of engineering**. Investigate. Hand the fixer a briefing they can act on in under a minute: 2-3 approaches with file:line pointers, tradeoffs, recommended path.
+You are the **slangpy specialist** and the first line of engineering on the issue. Investigate. Hand the fixer a briefing they can act on in under a minute: 2-3 approaches with file:line pointers, tradeoffs, recommended path.
 
 Read-only on GitHub: never post, label, or modify anything. Output flows via `send_message`.
 
