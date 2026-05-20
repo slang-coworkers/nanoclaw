@@ -2084,12 +2084,14 @@ function collectChannelStatus(): ChannelStatusData[] {
       'chat-sdk-bridge.test.ts',
       'ask-question.ts',
       'cli.ts',
+      'telegram-pairing.ts',
+      'telegram-markdown-sanitize.ts',
     ]);
     const results: ChannelStatusData[] = [];
     if (!existsSync(channelsDir)) return [];
 
     const prefixMap: Record<string, string> = {
-      telegram: 'tg:',
+      telegram: 'telegram:',
       whatsapp: 'wa:',
       discord: 'disc:',
       slack: 'slack:',
