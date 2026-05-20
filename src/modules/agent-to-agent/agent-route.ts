@@ -22,7 +22,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { isSafeAttachmentName } from '../../attachment-safety.js';
-import { getSourceFor, recordSource } from '../../db/a2a-session-sources.js';
+import { getSourceFor, recordSource, type A2aSessionSource } from '../../db/a2a-session-sources.js';
 import { getAgentGroup } from '../../db/agent-groups.js';
 import {
   createMessagingGroup,
@@ -241,90 +241,161 @@ function resolveExplicitReplyTarget(
   return null;
 }
 
+/**
+ * Maximum a2a chain depth to walk when looking for an ancestor session.
+ * Real chains are shallow (orchestrator → triager → fixer → reviewer is 4
+ * sessions / 3 hops). The cap exists purely to bound runaway walks if
+ * `a2a_session_sources` ever holds a corrupt cycle.
+ */
+const ANCESTOR_HOP_LIMIT = 16;
+
+/**
+ * Walk `a2a_session_sources` upward from `startSessionId`, looking for the
+ * closest ancestor whose `source_agent_group_id` matches the target.
+ *
+ * Returns the matching `A2aSessionSource` row when found — its
+ * `source_session_id` is the ancestor session to deliver into and
+ * `source_thread_id` is the thread the ancestor used to delegate downward
+ * (i.e. the thread the ancestor knows this conversation by).
+ *
+ * Returns null when:
+ *   - the start session has no a2a source (it's a top-level / channel-side
+ *     session), OR
+ *   - no hop in the chain matches the target (the target is a peer or
+ *     unrelated group, not an ancestor).
+ *
+ * Bounded by ANCESTOR_HOP_LIMIT and a visited set so corrupt cycles are
+ * dropped instead of looping.
+ */
+function findAncestorRoute(startSessionId: string, targetAgentGroupId: string): A2aSessionSource | null {
+  const visited = new Set<string>([startSessionId]);
+  let cursor = getSourceFor(startSessionId);
+  let hops = 0;
+  while (cursor && hops < ANCESTOR_HOP_LIMIT) {
+    if (cursor.source_agent_group_id === targetAgentGroupId) {
+      return cursor;
+    }
+    if (visited.has(cursor.source_session_id)) {
+      log.warn('a2a ancestor walk: cycle detected, dropping', {
+        startSessionId,
+        targetAgentGroupId,
+        cycleAt: cursor.source_session_id,
+      });
+      return null;
+    }
+    visited.add(cursor.source_session_id);
+    cursor = getSourceFor(cursor.source_session_id);
+    hops++;
+  }
+  return null;
+}
+
+/**
+ * Deliver an a2a outbound as a reply into the ancestor session identified
+ * by `route` (a row from `a2a_session_sources`). Mirrors the previous
+ * direct-parent reply handler — same stale-source / self-loop guards,
+ * same write semantics — generalised to any depth.
+ */
+async function deliverAncestorReply(
+  msg: RoutableAgentMessage,
+  session: Session,
+  route: A2aSessionSource,
+): Promise<void> {
+  const ancestorSession = getSession(route.source_session_id);
+  if (!ancestorSession) {
+    // Fail closed. The ancestor session the lineage points at is gone
+    // (deleted, archived, reset). Synthesising a brand-new session would
+    // silently stage reply content into an operator-less room. Drop with
+    // an audit trail instead.
+    log.warn('a2a ancestor reply dropped: ancestor session no longer exists', {
+      msgId: msg.id,
+      recipientSessionId: session.id,
+      ancestorSessionId: route.source_session_id,
+      ancestorAgentGroupId: route.source_agent_group_id,
+      ancestorThreadId: route.source_thread_id,
+    });
+    return;
+  }
+
+  // Self-loop guard. A sourceHint pointing at self should never exist
+  // (recordSource is gated by the main-route same-session guard), but if
+  // a migration / backfill / future code path ever populates a self-
+  // reference, drop here rather than write the agent's own outbound back
+  // into its own inbox.
+  if (ancestorSession.id === session.id) {
+    log.warn('a2a ancestor reply self-loop dropped: walk landed on emitter', {
+      msgId: msg.id,
+      sessionId: session.id,
+      agentGroupId: session.agent_group_id,
+      ancestorAgentGroupId: route.source_agent_group_id,
+      ancestorThreadId: route.source_thread_id,
+    });
+    return;
+  }
+
+  const a2aReplyId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const forwardedReplyContent = forwardFileAttachments(
+    msg,
+    a2aReplyId,
+    session,
+    ancestorSession.agent_group_id,
+    ancestorSession.id,
+  );
+  writeSessionMessage(ancestorSession.agent_group_id, ancestorSession.id, {
+    id: a2aReplyId,
+    kind: 'chat',
+    timestamp: new Date().toISOString(),
+    platformId: session.agent_group_id,
+    channelType: 'agent',
+    threadId: route.source_thread_id,
+    content: injectA2aSourceThread(forwardedReplyContent, session.thread_id),
+    sourceSessionId: session.id,
+  });
+  log.info('Agent reply routed back to ancestor session', {
+    from: session.agent_group_id,
+    recipientSessionId: session.id,
+    to: ancestorSession.agent_group_id,
+    targetSession: ancestorSession.id,
+    threadId: route.source_thread_id,
+    a2aMsgId: a2aReplyId,
+    forwardedFileCount: countForwardedFiles(forwardedReplyContent),
+  });
+  const freshAncestor = getSession(ancestorSession.id);
+  if (freshAncestor) await wakeContainer(freshAncestor);
+}
+
 export async function routeAgentMessage(msg: RoutableAgentMessage, session: Session): Promise<void> {
   const targetAgentGroupId = msg.platform_id;
   if (!targetAgentGroupId) {
     throw new Error(`agent-to-agent message ${msg.id} is missing a target agent group id`);
   }
 
-  // Reply-detection branch.
+  // Reply-detection branch — ancestor walk through a2a_session_sources.
   //
-  // If the sending session is itself the recipient side of a prior a2a
-  // delegation (i.e. a2a_session_sources has a row for it), AND the
-  // outbound is addressed to the original source's agent group, this is a
-  // REPLY to that delegation. Deliver directly into the original source
-  // session, bypassing mg + thread resolution — re-resolving would land
-  // the reply in a brand-new synthetic session and lose the conversation.
+  // If the sending session is the recipient side of a prior a2a delegation
+  // (a2a_session_sources has a row for it) AND the outbound is addressed
+  // to an agent group anywhere in this session's source ancestry, route
+  // the message into that ancestor's existing session instead of
+  // synthesising a fresh one. This subsumes the original 1-hop "reply to
+  // direct parent" shortcut and adds multi-hop ancestor delivery:
   //
-  // All other outbound agent messages (fresh delegations, lateral calls
-  // to unrelated peers) fall through to the normal route below.
-  const sourceHint = getSourceFor(session.id);
-  if (sourceHint && sourceHint.source_agent_group_id === targetAgentGroupId) {
-    const originalSourceSession = getSession(sourceHint.source_session_id);
-    if (!originalSourceSession) {
-      // Fail closed. The source session the recipient was supposed to
-      // reply to is gone (deleted, archived, reset). We must NOT synthesise
-      // a brand-new session on the sender's side — that would silently
-      // stage reply content into an operator-less room. Drop the message
-      // with an audit trail instead.
-      log.warn('a2a reply dropped: source session no longer exists', {
-        msgId: msg.id,
-        recipientSessionId: session.id,
-        sourceSessionId: sourceHint.source_session_id,
-        sourceAgentGroupId: sourceHint.source_agent_group_id,
-        sourceThreadId: sourceHint.source_thread_id,
-      });
-      return;
-    }
-
-    // Self-loop guard, mirror of the line ~288 guard on the main route.
-    // The invariant "source session ≠ recipient session" is established
-    // at recordSource time (line ~302, gated by the main-route same-
-    // session guard), so a sourceHint pointing at self should never
-    // exist in practice. Belt-and-braces: if a migration / backfill /
-    // future code path ever populates a self-reference, drop here
-    // rather than write the recipient's reply back into its own session
-    // and feed the model its own output as the next inbound turn.
-    if (originalSourceSession.id === session.id) {
-      log.warn('a2a reply self-loop dropped: sourceHint points at recipient session', {
-        msgId: msg.id,
-        sessionId: session.id,
-        agentGroupId: session.agent_group_id,
-        sourceAgentGroupId: sourceHint.source_agent_group_id,
-        sourceThreadId: sourceHint.source_thread_id,
-      });
-      return;
-    }
-
-    const a2aReplyId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const forwardedReplyContent = forwardFileAttachments(
-      msg,
-      a2aReplyId,
-      session,
-      originalSourceSession.agent_group_id,
-      originalSourceSession.id,
-    );
-    writeSessionMessage(originalSourceSession.agent_group_id, originalSourceSession.id, {
-      id: a2aReplyId,
-      kind: 'chat',
-      timestamp: new Date().toISOString(),
-      platformId: session.agent_group_id,
-      channelType: 'agent',
-      threadId: sourceHint.source_thread_id,
-      content: injectA2aSourceThread(forwardedReplyContent, session.thread_id),
-      sourceSessionId: session.id,
-    });
-    log.info('Agent reply routed back to source session', {
-      from: session.agent_group_id,
-      recipientSessionId: session.id,
-      to: originalSourceSession.agent_group_id,
-      targetSession: originalSourceSession.id,
-      threadId: sourceHint.source_thread_id,
-      a2aMsgId: a2aReplyId,
-      forwardedFileCount: countForwardedFiles(forwardedReplyContent),
-    });
-    const freshSource = getSession(originalSourceSession.id);
-    if (freshSource) await wakeContainer(freshSource);
+  //   - 1 hop  = direct parent reply (e.g. fixer → triager in
+  //              orchestrator → triager → fixer; existing behaviour)
+  //   - 2+ hops = explicit ancestor report (e.g. fixer → orchestrator;
+  //              previously created a fresh per-thread session like
+  //              q7xfmf, fragmenting the dashboard view)
+  //
+  // The walk is bounded by ANCESTOR_HOP_LIMIT and a visited set so corrupt
+  // cycles drop. Targets that are NOT in the ancestry fall through to the
+  // normal route below — preserves peer-to-peer (e.g. reviewer → fixer
+  // when neither is in the other's ancestry) and B → C fresh delegation.
+  //
+  // The contract is: default communication follows the lineage edge
+  // upward; explicit communication may target an ancestor, but never
+  // creates a new ancestor session if lineage proves an existing one.
+  const ancestorRoute = findAncestorRoute(session.id, targetAgentGroupId);
+  if (ancestorRoute) {
+    await deliverAncestorReply(msg, session, ancestorRoute);
     return;
   }
 

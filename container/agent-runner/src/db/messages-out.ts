@@ -131,6 +131,28 @@ export function getRoutingBySeq(
   return outRow ?? null;
 }
 
+/**
+ * True if this session has previously written an outbound row to the same
+ * (channel_type, platform_id, thread_id) tuple — i.e. we originated /
+ * already dispatched on this thread to this destination. Used by the a2a
+ * runtime guard in send_message to distinguish "I'm continuing my own
+ * thread" from "I'm writing into a thread the peer owns" (the latter
+ * should require in_reply_to to prove the link).
+ */
+export function hasOutboundToThread(
+  channelType: string,
+  platformId: string,
+  threadId: string,
+): boolean {
+  const result = getOutboundDb()
+    .prepare(
+      `SELECT COUNT(*) AS n FROM messages_out
+        WHERE channel_type = ? AND platform_id = ? AND thread_id = ?`,
+    )
+    .get(channelType, platformId, threadId) as { n: number } | undefined;
+  return (result?.n ?? 0) > 0;
+}
+
 /** Get undelivered messages (for host polling — reads from outbound.db). */
 export function getUndeliveredMessages(): MessageOutRow[] {
   return getOutboundDb()

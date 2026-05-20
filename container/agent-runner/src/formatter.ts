@@ -1,5 +1,6 @@
 import { findByRouting } from './destinations.js';
 import type { MessageInRow } from './db/messages-in.js';
+import { getSessionRouting } from './db/session-routing.js';
 import { TIMEZONE, formatLocalTime } from './timezone.js';
 
 /**
@@ -124,11 +125,21 @@ export function extractRouting(messages: MessageInRow[]): RoutingContext {
  * (src/v1/router.ts:20-22); dropping it led to misinterpretations where the
  * agent scheduled tasks for the wrong hour.
  *
- * Strips routing fields — the agent never sees platform_id, channel_type, thread_id.
+ * Strips most routing fields — the agent never sees platform_id or channel_type.
+ *
+ * `thread_id` is surfaced as a `thread="…"` attribute when an inbound row's
+ * thread differs from the session's bound thread (i.e. an a2a fan-in or
+ * cross-thread inbound). This lets the agent reply on the correct thread
+ * without having to infer the thread_id from message content — critical
+ * when a parent session receives several batched replies on different
+ * thread_ids in one turn. Replies on the session's own thread suppress
+ * the attribute (no-op for single-thread sessions).
  */
 export function formatMessages(messages: MessageInRow[]): string {
   const header = `<context timezone="${escapeXml(TIMEZONE)}" />\n`;
   if (messages.length === 0) return header;
+
+  const sessionThreadId = getSessionRouting().thread_id;
 
   // Group by kind
   const chatMessages = messages.filter((m) => m.kind === 'chat' || m.kind === 'chat-sdk');
@@ -139,7 +150,7 @@ export function formatMessages(messages: MessageInRow[]): string {
   const parts: string[] = [];
 
   if (chatMessages.length > 0) {
-    parts.push(formatChatMessages(chatMessages));
+    parts.push(formatChatMessages(chatMessages, sessionThreadId));
   }
   if (taskMessages.length > 0) {
     parts.push(...taskMessages.map(formatTaskMessage));
@@ -154,26 +165,30 @@ export function formatMessages(messages: MessageInRow[]): string {
   return header + parts.join('\n\n');
 }
 
-function formatChatMessages(messages: MessageInRow[]): string {
+function formatChatMessages(messages: MessageInRow[], sessionThreadId: string | null): string {
   if (messages.length === 1) {
-    return formatSingleChat(messages[0]);
+    return formatSingleChat(messages[0], sessionThreadId);
   }
 
   const lines = ['<messages>'];
   for (const msg of messages) {
-    lines.push(formatSingleChat(msg));
+    lines.push(formatSingleChat(msg, sessionThreadId));
   }
   lines.push('</messages>');
   return lines.join('\n');
 }
 
-function formatSingleChat(msg: MessageInRow): string {
+function formatSingleChat(msg: MessageInRow, sessionThreadId: string | null): string {
   const content = parseContent(msg.content);
   const sender = content.sender || content.author?.fullName || content.author?.userName || 'Unknown';
   const time = formatLocalTime(msg.timestamp, TIMEZONE);
   const text = content.text || '';
   const idAttr = msg.seq != null ? ` id="${msg.seq}"` : '';
   const replyAttr = content.replyTo?.id ? ` reply_to="${escapeXml(String(content.replyTo.id))}"` : '';
+  const threadAttr =
+    msg.thread_id && msg.thread_id !== sessionThreadId
+      ? ` thread="${escapeXml(msg.thread_id)}"`
+      : '';
   const replyPrefix = formatReplyContext(content.replyTo);
   const attachmentsSuffix = formatAttachments(content.attachments);
 
@@ -197,7 +212,7 @@ function formatSingleChat(msg: MessageInRow): string {
 
   const fromAttr = originAttr(msg);
 
-  return `<message${idAttr}${fromAttr} sender="${escapeXml(sender)}" time="${escapeXml(time)}"${replyAttr}>${replyPrefix}${escapeXml(text)}${attachmentsSuffix}</message>`;
+  return `<message${idAttr}${fromAttr} sender="${escapeXml(sender)}" time="${escapeXml(time)}"${threadAttr}${replyAttr}>${replyPrefix}${escapeXml(text)}${attachmentsSuffix}</message>`;
 }
 
 /**

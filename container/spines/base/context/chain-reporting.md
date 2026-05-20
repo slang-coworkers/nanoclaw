@@ -10,6 +10,22 @@ Your specific workflow's "Report" step gives the exact 5-bullet template for you
 
 If you have no parent (e.g. you are the admin/orchestrator, or a top-level coworker the user talks to directly), the protocol still applies to messages you produce that summarize work — just deliver them via the channel adapter rather than `to="parent"`. The shape (≤5 scannable bullets, narrative as attachment) is the same.
 
+### Peer and ancestor messaging
+
+Default communication goes **one hop upward** to your direct parent. Not every reply goes to the root.
+
+**IMPORTANT:** When responding to an inbound message, pass `in_reply_to=<id>` from the inbound `<message id="…">`. This copies the right thread automatically and stamps the routing link. Don't infer thread identity from message content — that's how cross-thread mis-tagging happens.
+
+**IMPORTANT:** Don't echo a coworker their own conclusion. Status reports go up, not sideways. If a child reported to you, your parent hears about it from you — the child doesn't need an "acknowledged" reply back.
+
+Routing rules:
+- **Bare `send_message(to="parent")`** → direct parent. Right for status/result reports.
+- **`send_message(to="<ancestor>")`** (when wired) → delivered to that ancestor's existing session. Don't double-send to parent + grandparent; pick one.
+- **`send_message(to="<peer>")`** with no shared history → fresh delegation, peer gets a new sub-session.
+- **Continuing a peer's existing thread** → requires `in_reply_to`. Bare writes to a peer-owned thread are refused by the runtime.
+
+Inbound rows show `thread="…"` only when the thread differs from your own session's. Treat that attribute as a routing label, not as a value to type back into prose.
+
 ### Outcome line
 
 End every multi-step task with **one outcome line**: result + concrete artifacts (file paths, group ids, PR numbers, round-trip times — whatever's load-bearing). No play-by-play, no restatement of the ask. Single-step replies don't need this.

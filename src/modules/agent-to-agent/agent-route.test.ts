@@ -660,6 +660,303 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(cSource!.source_agent_group_id).toBe('ag-recipient');
   });
 
+  it('multi-hop default: child replies to its direct parent node, not the root ancestor', async () => {
+    const { senderSession } = seedPair();
+
+    createAgentGroup({
+      id: 'ag-child',
+      name: 'Child',
+      folder: 'child',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+    createDestination({
+      agent_group_id: 'ag-recipient',
+      local_name: 'child',
+      target_type: 'agent',
+      target_id: 'ag-child',
+      created_at: now(),
+    });
+
+    // Root A delegates thread T1 to node B.
+    await routeAgentMessage(
+      { id: 'out-A-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'triage' }) },
+      senderSession,
+    );
+    const [recipientRow] = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    const recipientSession = getSession(recipientRow.id)!;
+
+    // Node B delegates the same thread to child C.
+    await routeAgentMessage(
+      { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
+      recipientSession,
+    );
+    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+      id: string;
+    }>;
+    const childSession = getSession(childRow.id)!;
+
+    // Child C's bare/default reply goes to its direct source B. It must not
+    // skip B and land in root A just because A exists in the ancestry.
+    await routeAgentMessage(
+      { id: 'out-C-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'fix done' }) },
+      childSession,
+    );
+
+    const { openInboundDb } = await import('../../session-manager.js');
+    const recipientDb = openInboundDb('ag-recipient', recipientSession.id);
+    const directReply = recipientDb
+      .prepare(
+        "SELECT source_session_id, thread_id, content FROM messages_in WHERE channel_type = 'agent' ORDER BY seq DESC LIMIT 1",
+      )
+      .get() as { source_session_id: string; thread_id: string | null; content: string } | undefined;
+    recipientDb.close();
+
+    expect(directReply).toBeDefined();
+    expect(directReply!.source_session_id).toBe(childSession.id);
+    expect(directReply!.thread_id).toBe('T1');
+    expect(JSON.parse(directReply!.content).text).toBe('fix done');
+
+    const senderDb = openInboundDb('ag-sender', senderSession.id);
+    const rootRows = senderDb
+      .prepare("SELECT id FROM messages_in WHERE channel_type = 'agent' AND source_session_id = ?")
+      .all(childSession.id) as Array<{ id: string }>;
+    senderDb.close();
+    expect(rootRows).toHaveLength(0);
+  });
+
+  it('multi-hop explicit ancestor: child can report to root without creating a sibling root thread', async () => {
+    const { senderSession } = seedPair();
+
+    createAgentGroup({
+      id: 'ag-child',
+      name: 'Child',
+      folder: 'child',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+    createDestination({
+      agent_group_id: 'ag-recipient',
+      local_name: 'child',
+      target_type: 'agent',
+      target_id: 'ag-child',
+      created_at: now(),
+    });
+    createDestination({
+      agent_group_id: 'ag-child',
+      local_name: 'root',
+      target_type: 'agent',
+      target_id: 'ag-sender',
+      created_at: now(),
+    });
+
+    // Root A → node B → child C.
+    await routeAgentMessage(
+      { id: 'out-A-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'triage' }) },
+      senderSession,
+    );
+    const [recipientRow] = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    const recipientSession = getSession(recipientRow.id)!;
+
+    await routeAgentMessage(
+      { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
+      recipientSession,
+    );
+    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+      id: string;
+    }>;
+    const childSession = getSession(childRow.id)!;
+
+    const senderSessionsBefore = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-sender') as Array<{ id: string }>;
+    expect(senderSessionsBefore).toHaveLength(1);
+
+    // This is the desired anti-fragmentation behavior for q7xfmf-like cases:
+    // C may explicitly report to ancestor A, but it should land in A's
+    // existing origin session rather than creating a new per-thread session.
+    await routeAgentMessage(
+      { id: 'out-C-to-A', platform_id: 'ag-sender', thread_id: 'T1', content: JSON.stringify({ text: 'root report' }) },
+      childSession,
+    );
+
+    const senderSessionsAfter = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-sender') as Array<{ id: string }>;
+    expect(senderSessionsAfter).toHaveLength(1);
+    expect(senderSessionsAfter[0].id).toBe(senderSession.id);
+
+    const { openInboundDb } = await import('../../session-manager.js');
+    const senderDb = openInboundDb('ag-sender', senderSession.id);
+    const rootReport = senderDb
+      .prepare(
+        "SELECT source_session_id, thread_id, content FROM messages_in WHERE channel_type = 'agent' ORDER BY seq DESC LIMIT 1",
+      )
+      .get() as { source_session_id: string; thread_id: string | null; content: string } | undefined;
+    senderDb.close();
+
+    expect(rootReport).toBeDefined();
+    expect(rootReport!.source_session_id).toBe(childSession.id);
+    expect(rootReport!.thread_id).toBe('T1');
+    expect(JSON.parse(rootReport!.content).text).toBe('root report');
+  });
+
+  it('multi-hop stale ancestor: child→root drops when the root session was deleted (no fresh root synthesised)', async () => {
+    const { senderSession } = seedPair();
+
+    createAgentGroup({
+      id: 'ag-child',
+      name: 'Child',
+      folder: 'child',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+    createDestination({
+      agent_group_id: 'ag-recipient',
+      local_name: 'child',
+      target_type: 'agent',
+      target_id: 'ag-child',
+      created_at: now(),
+    });
+    createDestination({
+      agent_group_id: 'ag-child',
+      local_name: 'root',
+      target_type: 'agent',
+      target_id: 'ag-sender',
+      created_at: now(),
+    });
+
+    // A → B → C, with all three sessions established.
+    await routeAgentMessage(
+      { id: 'out-A-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'triage' }) },
+      senderSession,
+    );
+    const [recipientRow] = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    const recipientSession = getSession(recipientRow.id)!;
+
+    await routeAgentMessage(
+      { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
+      recipientSession,
+    );
+    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+      id: string;
+    }>;
+    const childSession = getSession(childRow.id)!;
+
+    // Adversarial state: nuke A's session but leave the chain intact in
+    // a2a_session_sources so the walk reaches a row whose source_session_id
+    // points at a deleted session. Fail-closed must drop, not synthesise.
+    const db = getDb();
+    db.pragma('foreign_keys = OFF');
+    db.prepare('DELETE FROM sessions WHERE id = ?').run('sess-sender');
+    db.pragma('foreign_keys = ON');
+
+    expect(db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender')).toHaveLength(0);
+
+    await expect(
+      routeAgentMessage(
+        {
+          id: 'out-C-to-A',
+          platform_id: 'ag-sender',
+          thread_id: 'T1',
+          content: JSON.stringify({ text: 'late root report' }),
+        },
+        childSession,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender')).toHaveLength(0);
+  });
+
+  it('ancestor walk drops cleanly when the chain encodes a self-cycle', async () => {
+    // Adversarial backfill: corrupt a2a_session_sources so the walk would
+    // visit the emitting session itself. The bounded walk + visited-set
+    // must terminate without delivering and without throwing.
+    const { senderSession } = seedPair();
+    await routeAgentMessage(
+      { id: 'out-A-to-B', platform_id: 'ag-recipient', thread_id: 'T1', content: JSON.stringify({ text: 'first' }) },
+      senderSession,
+    );
+    const [recipientRow] = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    const recipientSession = getSession(recipientRow.id)!;
+
+    // Stamp a self-pointing source row over the recipient's existing one.
+    // INSERT OR REPLACE matches the production upsert semantics.
+    getDb()
+      .prepare(
+        `INSERT OR REPLACE INTO a2a_session_sources
+           (recipient_session_id, recipient_agent_group_id, recipient_thread_id,
+            source_session_id, source_agent_group_id, source_thread_id, created_at)
+         VALUES (?, ?, 'T1', ?, ?, 'T1', ?)`,
+      )
+      .run(
+        recipientSession.id,
+        recipientSession.agent_group_id,
+        recipientSession.id, // self-pointing
+        recipientSession.agent_group_id,
+        now(),
+      );
+
+    // B writes to a third (unrelated) group. The ancestor walk should
+    // detect the self-cycle and bail; main-route fresh delegation takes
+    // over. No exception, no infinite loop, fresh peer session created.
+    createAgentGroup({
+      id: 'ag-stranger',
+      name: 'Stranger',
+      folder: 'stranger',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+    createDestination({
+      agent_group_id: 'ag-recipient',
+      local_name: 'stranger',
+      target_type: 'agent',
+      target_id: 'ag-stranger',
+      created_at: now(),
+    });
+
+    await expect(
+      routeAgentMessage(
+        {
+          id: 'out-B-to-stranger',
+          platform_id: 'ag-stranger',
+          thread_id: 'T1',
+          content: JSON.stringify({ text: 'lateral' }),
+        },
+        recipientSession,
+      ),
+    ).resolves.toBeUndefined();
+
+    const strangerSessions = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-stranger') as Array<{ id: string }>;
+    expect(strangerSessions).toHaveLength(1);
+  });
+
   it('layer 1.5: explicit in_reply_to routes to the originating session even when a2a_session_sources mapping was overwritten', async () => {
     // Scenario: B has been a recipient of TWO sources sequentially —
     // first A (sess-sender), then a third source (sess-other). The
