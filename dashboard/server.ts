@@ -1735,10 +1735,21 @@ function normalizeCodexEntry(raw: Record<string, unknown>): CcusageDayEntry {
 // Scoped to a specific CODEX_HOME so we can attribute Codex usage to the coworker that
 // produced it. Each NanoClaw session that used the codex provider has its own codex dir
 // (src/providers/codex.ts mounts <sessionDir>/codex → /home/node/.codex inside the
-// container), so we point @ccusage/codex at that dir and get just that session's rows.
+// container), so we point ccusage's codex subcommand at that dir and get just
+// that session's rows.
+//
+// Why `ccusage codex` (not `@ccusage/codex`): ccusage 20.x absorbed every
+// per-agent shim package into a unified CLI with subcommands. The old
+// `@ccusage/codex` is now a stub that prints "use npx ccusage instead" to
+// stdout — JSON.parse fails on that, runCodexCcusage silently returns [],
+// and the dashboard Overview shows zero cost for every Codex coworker even
+// when usage is logged. The unified `ccusage codex daily` accepts the same
+// flags (`--json --offline --since`) and produces the same shape, so the
+// rest of the pipeline (normalizeCodexEntry → mergeDailyEntries) is
+// untouched.
 function runCodexCcusage(codexHome: string, since?: string): Promise<CcusageDayEntry[]> {
   return new Promise((resolve) => {
-    const args = ['@ccusage/codex', 'daily', '--json', '--offline'];
+    const args = ['ccusage', 'codex', 'daily', '--json', '--offline'];
     if (since) args.push('--since', since);
     exec(
       `npx ${args.join(' ')}`,
