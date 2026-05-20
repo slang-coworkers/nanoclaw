@@ -7,10 +7,14 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
 import { initTestSessionDb, closeSessionDb, getInboundDb } from '../db/connection.js';
 import { getUndeliveredMessages } from '../db/messages-out.js';
 import { setCurrentInReplyTo, clearCurrentInReplyTo } from '../current-batch.js';
-import { sendMessage } from './core.js';
+import { sendFile, sendMessage } from './core.js';
 
 beforeEach(() => {
   initTestSessionDb();
@@ -238,5 +242,44 @@ describe('send_message MCP tool — 3b peer-thread guard', () => {
       thread_id: 'msg-x',
     });
     expect(result.isError).toBeUndefined();
+  });
+});
+
+describe('send_file MCP tool — in_reply_to + 3b guard parity (validation paths)', () => {
+  // sendFile's filesystem write requires `/workspace/outbox` which only
+  // exists inside the agent container. These tests cover the validation
+  // layer (in_reply_to resolution + 3b guard) that runs BEFORE the fs
+  // write, so we can assert error-path parity with sendMessage without
+  // needing a writable outbox.
+
+  it('rejects an in_reply_to that names no inbound row', async () => {
+    const result = await sendFile.handler({ to: 'peer', path: '/tmp/some.txt', in_reply_to: 999 });
+    expect(result.isError).toBe(true);
+    expect((result.content[0] as { text: string }).text).toContain('no inbound message with that id');
+  });
+
+  it('rejects a non-integer in_reply_to', async () => {
+    const result = await sendFile.handler({ to: 'peer', path: '/tmp/some.txt', in_reply_to: 'abc' });
+    expect(result.isError).toBe(true);
+    expect((result.content[0] as { text: string }).text).toContain('integer id');
+  });
+
+  it('3b guard fires before the fs check: rejects bare a2a writes to peer-owned thread', async () => {
+    // Inbound row from peer on slang-11144; we never originated.
+    insertInbound('inbound-peer-file', 500, {
+      thread_id: 'slang-11144',
+      channel_type: 'agent',
+      platform_id: 'ag-peer',
+    });
+
+    // Use a non-existent path; if the guard didn't fire first, we'd get
+    // a "File not found" error instead of the in_reply_to-required hint.
+    const result = await sendFile.handler({
+      to: 'peer',
+      path: '/nonexistent.txt',
+      thread_id: 'slang-11144',
+    });
+    expect(result.isError).toBe(true);
+    expect((result.content[0] as { text: string }).text).toContain('without in_reply_to');
   });
 });

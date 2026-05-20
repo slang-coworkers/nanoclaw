@@ -175,6 +175,16 @@ function resolveInReplyTo(
  * that's how new threads get started. Continuations of a thread we
  * originated (prior outbound exists) are allowed without in_reply_to —
  * we already own the thread.
+ *
+ * **Scope:** this guard catches *writes into peer-owned threads* without
+ * explicit linkage. It does NOT detect content/thread mismatch on threads
+ * the session originated — e.g. the seq-129 incident where the
+ * orchestrator stamped slangpy-807 content onto thread_id=slang-11144
+ * (both originated by the orchestrator) is NOT blocked here. That class
+ * is addressed at the prevention layer: the formatter's `thread="…"`
+ * attribute (so the agent sees thread context per inbound) plus the
+ * `in_reply_to` arg on send_message/send_file (so the agent names the
+ * exact inbound it's answering). Layering: prevention before 3b guard.
  */
 function checkPeerThreadGuard(
   routing: { channel_type: string; platform_id: string; thread_id: string | null },
