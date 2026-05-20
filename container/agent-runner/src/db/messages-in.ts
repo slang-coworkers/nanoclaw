@@ -139,6 +139,46 @@ export function getMessageIn(id: string): MessageInRow | undefined {
   }
 }
 
+/** Get a message by seq (the integer id surfaced to the agent in formatted
+ *  messages, e.g. `<message id="120">`). Used by the `in_reply_to` arg on
+ *  send_message/send_file so the agent can name an exact inbound row when
+ *  the batch contains several. */
+export function getMessageInBySeq(seq: number): MessageInRow | undefined {
+  if (!Number.isInteger(seq) || seq <= 0) return undefined;
+  const inbound = openInboundDb();
+  try {
+    return inbound.prepare('SELECT * FROM messages_in WHERE seq = ?').get(seq) as MessageInRow | undefined;
+  } finally {
+    inbound.close();
+  }
+}
+
+/**
+ * True if this session has ever received an inbound row from the given
+ * (channel_type, platform_id, thread_id) tuple — i.e. the peer has talked
+ * to us on this thread before. Pairs with `hasOutboundToThread` for the
+ * a2a runtime guard: a write to a peer-owned thread without explicit
+ * in_reply_to indicates the agent is dropping context.
+ */
+export function hasInboundFromThread(
+  channelType: string,
+  platformId: string,
+  threadId: string,
+): boolean {
+  const inbound = openInboundDb();
+  try {
+    const result = inbound
+      .prepare(
+        `SELECT COUNT(*) AS n FROM messages_in
+          WHERE channel_type = ? AND platform_id = ? AND thread_id = ?`,
+      )
+      .get(channelType, platformId, threadId) as { n: number } | undefined;
+    return (result?.n ?? 0) > 0;
+  } finally {
+    inbound.close();
+  }
+}
+
 /**
  * Find a pending response to a question (by questionId in content).
  * Reads from inbound.db, checks processing_ack to skip already-handled responses.
