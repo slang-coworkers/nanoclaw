@@ -2,20 +2,28 @@
 name: slang-triage-issue
 license: MIT
 type: workflow
-description: "Triage a Slang GitHub issue (shader-slang/slang): read, research, classify, report to parent, forward to slang-fixer, then forward fixer's resolution back upstream when it lands."
+description: "Specialist triage of a Slang GitHub issue (shader-slang/slang): research deep, map the solution space, hand off a rich briefing to slang-fixer, then forward fixer's resolution back upstream."
 requires: [issues.read, code.read]
 uses:
   skills: [slang-code-reader, slang-github]
-  workflows: []
+  workflows: [slang-plan]
 ---
 
-# /slang-triage-issue — Triage a Slang GitHub Issue
+# /slang-triage-issue — Specialist triage
 
-Read-only workflow. **Never** post comments, create labels, or modify anything on GitHub. All output flows back to your parent via `send_message(to="parent")`.
+You are the **slang specialist** and the first line of engineering on the issue. Investigate. Hand the fixer a briefing they can act on in under a minute: 2-3 approaches with file:line pointers, tradeoffs, recommended path.
+
+Read-only on GitHub: never post, label, or modify anything. Output flows via `send_message`.
+
+## Operating posture
+
+- **Three research pillars: DeepWiki, local code, `gh` CLI.** DeepWiki for architecture Q&A. Subagents read the locally-mounted repo for code (the local checkout IS authoritative — don't fetch what's already there). `gh` for GitHub queries (duplicates, prior PRs, cross-repo). Use `/slang-plan` for non-trivial solution-space work.
+- **Always forward to slang-fixer.** No "if actionable" gate. Not-compiler-code (CI yml, docs)? Forward with `not-compiler-code: <where it lives>` and let the fixer/orchestrator route — you don't own the routing decision.
+- **Output the solution space.** Handoff with one approach is half a handoff. 2-3 candidates with tradeoffs lets the fixer pick fast and pivot if the first hits a wall.
 
 ## Steps
 
-1. **Read** {#read} — `gh issue view <number> -R shader-slang/slang --comments`. Extract: what's broken or being requested, error messages + repro, Slang versions / targets (HLSL, GLSL, SPIR-V, Metal, WGSL, CUDA), affected component (frontend, IR, target-emit, autodiff, modules, language-server), confirmations from other users.
+1. **Read the issue** {#read} — `gh issue view <number> -R shader-slang/slang --comments`. Extract: what's broken or being requested, error messages + repro, Slang versions / targets (HLSL, GLSL, SPIR-V, Metal, WGSL, CUDA), affected component, confirmations from other users.
 
 2. **Recall** {#recall} — Spawn an `Agent` subagent to scan prior triage learnings before researching:
 
@@ -23,22 +31,44 @@ Read-only workflow. **Never** post comments, create labels, or modify anything o
    Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to slang issue #<number>'s topic, prior triage patterns, or duplicate-resolution heuristics. Read at most 3 individual learning files if INDEX entries look directly applicable. Return: ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits' and stop.")
    ```
 
-3. **Research** {#research} — Two paths, run in parallel:
+3. **Research — three pillars in parallel** {#research} — Fan out via subagents. Cost is your context, not wall clock.
 
-   **DeepWiki** (mandatory — at least one focused question, two if the first doesn't cover the issue's area):
+   **Local code (PRIMARY).** The slang checkout is mounted locally. Spawn `Agent` subagents to read it — never read large files inline; the subagent returns a digest, you keep context for the solution-space step.
+
+   ```
+   Agent(prompt="Read the local slang checkout for <area>. Find: (1) entry point of <flow>, (2) IR/AST node types involved, (3) where <X> is handled vs unhandled, (4) tests covering the area. Return 10-line digest with file:line pointers and the gap that explains the issue. Don't quote large blocks.")
+   ```
+
+   2-3 subagents in parallel for unrelated areas. One per *concern*, not per file. Component-targeted paths: `source/slang/slang-emit-*.cpp` (target emitters), `slang-ir-*.cpp` (IR passes), `slang-check-*.cpp` (semantic analysis).
+
+   **DeepWiki (PRIMARY — ≥2 questions):**
    ```
    mcp__deepwiki__ask_question("shader-slang/slang", "<focused question>")
    ```
-   Good queries: "How does the <target> backend handle <feature>?", "What is the architecture of <pass>?", "What are the known limitations of <feature> on <target>?"
+   Architecture / flow / limitations questions only — not "what does file X say" (that's local code's job). Examples: *"How does the <target> backend handle <feature>?"*, *"What is the architecture of <pass>?"*, *"What are the known limitations of <feature> on <target>?"*.
 
-   **slang-mcp** (mandatory — find duplicates, prior fixes, relevant source):
+   **`gh` CLI (BACKUP — duplicates and cross-repo):**
    ```
-   mcp__slang-mcp__github_search_issues(query="<keywords>", repo="shader-slang/slang")
-   mcp__slang-mcp__github_get_file_contents(owner="shader-slang", repo="slang", path="<relevant file>")
+   gh issue list -R shader-slang/slang --search "<keywords>" --state all --limit 10
+   gh search issues "<keywords>" --owner shader-slang --limit 10
+   gh pr list -R shader-slang/slang --search "<keywords>" --state all --limit 5
    ```
-   Slang has many long-running tracking issues; check duplicates carefully. For source, target the component named in the issue (`source/slang/slang-emit-*.cpp`, `slang-ir-*.cpp`, `slang-check-*.cpp`).
+   Use `gh` only for what local + DeepWiki can't give: searching the issue tracker for duplicates, prior fixes, related PRs. Slang has many long-running tracking issues; check duplicates carefully.
 
-4. **Classify** {#classify} —
+4. **Map the solution space** {#solution-space} — Don't pick yet. Enumerate. Use `/slang-plan` if it's non-trivial.
+
+   For each candidate approach, write:
+   - **Approach name** (one phrase: *"add new IR node"*, *"emit-time guard"*, *"check-time rewrite"*)
+   - **Where it lives** (file:line — the spot that changes)
+   - **Behaviour delta** (what the user sees)
+   - **Tradeoffs** (perf / correctness / maintenance / blast radius)
+   - **Risk** (one line: what could go wrong)
+
+   Two minimum, three when they exist. If only one approach is viable, say so explicitly with the constraint that ruled others out — that's a load-bearing finding.
+
+5. **Pick a recommended path** {#recommend} — Not a verdict; a starting point. The fixer can override. Recommend by: *fastest correct fix that doesn't regress adjacent surfaces*. Note explicitly when a recommendation is uncertain.
+
+6. **Classify + persist** {#classify} —
 
    | Field | Options |
    |---|---|
@@ -46,48 +76,59 @@ Read-only workflow. **Never** post comments, create labels, or modify anything o
    | Severity | critical / high / medium / low |
    | Component | frontend / IR / target-emit (HLSL/GLSL/SPIR-V/Metal/WGSL/CUDA) / autodiff / modules / language-server / CI / docs |
    | Priority | P0 ship-stopper / P1 regression / P2 normal / P3 nice-to-have |
-   | Duplicate? | link to existing issue, or "no" |
+   | Duplicate | link or `no` |
 
-5. **Report + persist** {#report} — Send the [Triage] 5-bullet to parent so they have classification before any fix work. Save the full notes to memory in the same step (one transcript file, easy to find later).
-
-   ```
-   send_message(to="parent", text="[Triage] shader-slang/slang#<number>: <title>\n\n• Classification: <category> / <severity> / <component> / <priority>\n• Summary: <one-line of the bug>\n• Relevant code: <top 1–2 file paths>\n• Related: <duplicate of #X / fix in flight #Y / no prior work>\n• Routing: <forwarding to slang-fixer / not actionable — reason>")
-   ```
+   Write the full investigation to `/workspace/agent/memory/triage-<number>.md` — issue body, research findings, all candidate approaches with their tradeoffs, the recommended path, file:line pointers, repro. The fixer reads this; do not skip.
 
    ```bash
    cat > /workspace/agent/memory/triage-<number>.md << 'EOF'
    # Triage: shader-slang/slang#<number> — <title>
-   Date: <ISO timestamp> | Category: <cat> | Severity: <sev> | Priority: <pri> | Component: <comp>
+   Date: <ISO> | Category | Severity | Priority | Component
 
-   ## Summary
-   <findings>
-
-   ## Sources
-   - <links>
-
-   ## Action
-   <forwarded to slang-fixer / needs more info / duplicate of #X>
+   ## What's broken / being requested
+   ## Repro
+   ## Codebase digest (file:line pointers)
+   ## Candidate approaches
+     ### Approach A: <name>
+       - Where: <file:line>
+       - Behaviour delta: ...
+       - Tradeoffs: ...
+       - Risk: ...
+     ### Approach B: ...
+   ## Recommended path
+   ## Sources (DeepWiki Q&A summaries, related issues, PRs)
    EOF
    ```
 
-6. **Forward to slang-fixer (if actionable)** {#forward} — Bug or regression with a clear repro? Hand off:
+7. **Report up to parent** {#report} — Send the [Triage] 5-bullet *and* attach the memo file. Bullets are the rollup; the memo is the briefing.
 
    ```
-   send_message(to="slang-fixer", text="[Triage handoff] shader-slang/slang#<number>: <title>\n\nPriority: <pri>\nComponent: <comp>\n\nSummary: <what's broken>\nRelevant files: <paths>\nRepro: <steps>")
+   send_message(to="parent", text="[Triage] shader-slang/slang#<number>: <title>\n\n• Classification: <cat> / <sev> / <comp> / <pri>\n• Summary: <one-line of the bug>\n• Solution space: <N> candidate approaches in memo (recommended: <name>)\n• Files: <top 3 paths the fix will touch>\n• Routing: forwarding to slang-fixer with full briefing")
+   send_file(to="parent", path="/workspace/agent/memory/triage-<number>.md")
    ```
 
-   Not actionable (feature request, needs-more-info, question)? Skip; note the reason in Step 5's `Routing:` bullet.
-
-7. **(Async) Forward resolution upstream** {#forward-up} — The fixer → reviewer → fixer chain takes 30-60 min. **The triage chain isn't closed until you forward the resolution to your parent.** When `[Fix Report]` lands in inbound, compile the [Triage Resolution] 5-bullet and send up:
+8. **Forward to slang-fixer — always** {#forward} — Hand off the rich briefing. **Do not gate on "if actionable"; do not drop the chain at triage.** The fixer decides whether and how to fix.
 
    ```
-   send_message(to="parent", text="[Triage Resolution] shader-slang/slang#<number>: <title>\n\n• Outcome: <fixed / partial / blocked / abandoned>\n• Draft PR: <url-or-'patch only, no PR'>\n• Review: <APPROVE / REQUEST_CHANGES / N findings — top concern> (A: <verdict>; B: <verdict or skipped>)\n• Tests: <repro PASS/FAIL>; broader suite <result>\n• Next human action: <merge draft / address review / coordinate / close as wontfix / none>")
+   send_message(to="slang-fixer", text="[Triage handoff] shader-slang/slang#<number>: <title>\n\nPriority: <pri>\nComponent: <comp>\nNot-compiler-code: <yes/no — if yes, where (CI/docs/build/etc.)>\n\n## Summary\n<what's broken / being requested>\n\n## Repro\n<exact steps + expected vs actual>\n\n## Candidate approaches\n1. <name> — <file:line> — <one-line tradeoff>\n2. <name> — ...\n3. <name> — ...\nRecommended: <which> because <why>\n\n## Files in scope\n<paths>\n\n## Risks / open questions\n<bullets>\n\nFull notes: /workspace/agent/memory/triage-<number>.md")
+   send_file(to="slang-fixer", path="/workspace/agent/memory/triage-<number>.md")
    ```
 
-   For partial/blocked outcomes, still forward — substitute "blocked: <reason>" in the relevant bullets. Orchestrator needs to know the chain closed even when incomplete.
+   For *not-compiler-code* issues (CI yml, docs, build scripts): the fixer may bounce back — that's fine. Forward anyway and let the parent escalate; you do not own the routing decision.
 
-   **Quietness while waiting.** Don't reply to status echoes during the long wait. Substantive inbounds (fix-report, blocker, abort) → respond. Status-only inbounds (acks, "still waiting", emoji) → end the turn silently. Per `### Reporting upstream` invariant.
+9. **Wait for fixer's [Fix Report]** {#wait} — The fixer → reviewer → fixer chain takes 30-60 min. **The triage chain is NOT closed until you forward the resolution upstream.** While waiting:
+   - Substantive inbound (fix-report, blocker, abort) → respond.
+   - Status echoes ("still working", emoji, acks) → emit nothing.
+   - Don't poll. Don't re-dispatch. The fixer reports back when it has signal.
+
+10. **Forward resolution upstream** {#forward-up} — When `[Fix Report]` lands, compile the [Triage Resolution] 5-bullet:
+
+    ```
+    send_message(to="parent", in_reply_to=<id-of-fix-report>, text="[Triage Resolution] shader-slang/slang#<number>: <title>\n\n• Outcome: <fixed / partial / blocked / abandoned>\n• Draft PR: <url-or-'patch only, no PR'>\n• Review: <APPROVE / REQUEST_CHANGES / N findings — top concern>\n• Tests: <repro PASS/FAIL>; broader suite <result>\n• Next human action: <merge draft / address review / coordinate / close as wontfix>")
+    ```
+
+    For partial/blocked outcomes, still forward — substitute `blocked: <reason>` in the outcome bullet. Per `### Chain communication` in your spine: close every chain explicitly.
 
 ## Batch mode
 
-Triaging multiple issues: process ONE at a time (Steps 1-6 fully before next), max 2 parallel MCP calls, send `send_message(to="parent", text="Triaging <N>/<total>: #<number>...")` between issues.
+Triaging multiple issues: process ONE at a time (Steps 1–8 fully before next). Multi-issue rollup goes to parent only, not to peer triagers.
