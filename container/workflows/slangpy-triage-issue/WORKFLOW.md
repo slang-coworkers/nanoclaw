@@ -11,15 +11,15 @@ uses:
 
 # /slangpy-triage-issue — Principal-engineer triage
 
-You are the **first line of engineering** on this issue. Not a classifier — an investigator. Your job is to make the fixer's job easy: come back with the bug understood from the codebase up, two or three concrete approaches with tradeoffs, and a recommended path. The fixer should be able to start coding within a minute of reading your handoff.
+You are the **first line of engineering**. Investigate. Hand the fixer a briefing they can act on in under a minute: 2-3 approaches with file:line pointers, tradeoffs, recommended path.
 
-Read-only on GitHub. **Never** post comments, create labels, or modify anything on github.com. All output flows back via `send_message`.
+Read-only on GitHub: never post, label, or modify anything. Output flows via `send_message`.
 
 ## Operating posture
 
-- **Use all the compute.** The plan = **local codebase + DeepWiki**. Subagents read the local repo in parallel; DeepWiki answers the architectural questions. `/slangpy-plan` for non-trivial solution-space work. Lean on slang-mcp only for what local can't give you (duplicate issue search) — not for fetching files.
-- **Always forward.** There is no "this is out of scope, I won't forward" branch. If the bug is upstream-compiler (codegen, target-specific failure), forward to `slangpy-fixer` anyway with `escalate-to-slang: <why>` in the briefing — the fixer or orchestrator escalates to the slang chain. Don't drop the chain at triage.
-- **Solution space, not just diagnosis.** A handoff with one approach is half a handoff. Two-three candidate approaches with tradeoffs lets the fixer pick fast and try multiples if the first hits a wall.
+- **Three research pillars: DeepWiki, local code, `gh` CLI.** DeepWiki for architecture Q&A. Subagents read the locally-mounted repo for code (the local checkout IS authoritative — don't fetch what's already there). `gh` for GitHub queries (duplicates, prior PRs, cross-repo). Use `/slangpy-plan` for non-trivial solution-space work.
+- **Always forward to slangpy-fixer.** No "if actionable" gate. Upstream-compiler bug? Forward with `escalate-to-slang: <why>` and let the fixer/orchestrator route — you don't own the routing decision.
+- **Output the solution space.** Handoff with one approach is half a handoff. 2-3 candidates with tradeoffs lets the fixer pick fast and pivot if the first hits a wall.
 
 ## Steps
 
@@ -35,17 +35,17 @@ Read-only on GitHub. **Never** post comments, create labels, or modify anything 
    Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to slangpy issue #<number>'s topic, prior triage patterns, or duplicate-resolution heuristics. Read at most 3 individual learning files if INDEX entries look directly applicable. Return: ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits' and stop.")
    ```
 
-3. **Research — fan out, don't sequence** {#research} — Two pillars: **local codebase exploration** and **DeepWiki**. Run them in parallel via subagents. The cost is your context, not wall clock.
+3. **Research — three pillars in parallel** {#research} — Fan out via subagents. Cost is your context, not wall clock.
 
-   **Local codebase exploration (PRIMARY).** The slangpy repo is mounted at `/workspace/project/slangpy` (or your project's local path — check your skills). Spawn `Agent` subagents to read the actual code — *don't* read large files inline. The subagent returns a digest; you keep your context for the solution-space step.
+   **Local code (PRIMARY).** The slangpy checkout is mounted locally. Spawn `Agent` subagents to read it — never read large files inline; the subagent returns a digest, you keep context for the solution-space step.
 
    ```
-   Agent(prompt="Explore the local slangpy checkout at <path> for <area>. Find: (1) the entry point of <flow>, (2) the type/marshall path involved, (3) where <X> is currently handled vs unhandled, (4) tests that cover the area. Return a 10-line digest with file:line pointers and the gap that explains the issue. Don't quote large blocks — point at lines.")
+   Agent(prompt="Read the local slangpy checkout for <area>. Find: (1) entry point of <flow>, (2) type/marshall path, (3) where <X> is handled vs unhandled, (4) tests covering the area. Return 10-line digest with file:line pointers and the gap that explains the issue. Don't quote large blocks.")
    ```
 
-   Two-three subagents in parallel for unrelated areas. One per file is too narrow; one per *concern* is right. The local checkout is authoritative — read it, don't fetch it.
+   2-3 subagents in parallel for unrelated areas. One per *concern*, not per file.
 
-   For source, target the layer named in the issue:
+   Layer paths to target:
    - Functional API → `slangpy/core/{function,calldata,callsignature,module}.py`
    - Type marshalling → `slangpy/bindings/{boundvariable,marshall,typeregistry}.py`, `slangpy/builtin/*.py`
    - Type resolution → `slangpy/reflection/typeresolution.py`
@@ -57,15 +57,17 @@ Read-only on GitHub. **Never** post comments, create labels, or modify anything 
    ```
    mcp__deepwiki__ask_question("shader-slang/slangpy", "<focused question>")
    ```
-   Good questions: *"How does the functional API handle <type> in kernel generation?"*, *"What is the marshalling path for `<python type>` to Slang `<param type>`?"*, *"How does the torch integration synchronize CUDA streams?"*, *"What are the limitations of <feature> on the Metal / Vulkan / D3D12 backend?"*.
+   Architecture / flow / limitations questions only — not "what does file X say" (that's local code's job). Examples: *"How does the functional API handle <type> in kernel generation?"*, *"What is the marshalling path for `<python type>` to Slang `<param type>`?"*, *"What are the limitations of <feature> on Metal / Vulkan / D3D12?"*.
 
-   **slang-mcp (only when local can't help):** the *one* thing slang-mcp does that local can't is search GitHub issues for duplicates / prior fixes:
+   **`gh` CLI (BACKUP — duplicates and cross-repo):**
    ```
-   mcp__slang-mcp__github_search_issues(query="<keywords>", repo="shader-slang/slangpy")
+   gh issue list -R shader-slang/slangpy --search "<keywords>" --state all --limit 10
+   gh search issues "<keywords>" --owner shader-slang --limit 10
+   gh pr list -R shader-slang/slangpy --search "<keywords>" --state all --limit 5
    ```
-   Don't use `github_get_file_contents` — read the local checkout instead, it's the same bytes.
+   Use `gh` only for what local + DeepWiki can't give: searching the issue tracker for duplicates, prior fixes, related PRs.
 
-   Many SlangPy bugs trace back to the upstream Slang compiler. If the issue smells compiler-side (codegen of generated kernel, target-specific failure), call out *"escalate-to-slang"* in your handoff — but still forward to slangpy-fixer first; the chain decides escalation, not the triager.
+   Many SlangPy bugs trace to the upstream Slang compiler. Compiler-side smell (codegen, target-specific failure)? Annotate *"escalate-to-slang"* in the handoff — still forward to slangpy-fixer; chain decides escalation, not the triager.
 
 4. **Map the solution space** {#solution-space} — Don't pick yet. Enumerate. Use `/slangpy-plan` if it's non-trivial.
 
