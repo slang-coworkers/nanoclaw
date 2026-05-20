@@ -8,7 +8,8 @@ slang-common:
     - container/spines/slang/invariants/abi-stability.md
   context:
     - container/spines/slang/context/layout.md
-    - container/spines/slang/context/skill-discovery.md
+    # skill-discovery is moved to slang-writer's context — only writers/fixer
+    # need to install new skills. Readers / triagers / reviewers don't.
   skills:
     - slang-build
     - slang-code-reader
@@ -38,6 +39,13 @@ slang-writer:
   description: "Write-capable Slang coworker — plan + implement. Can edit code, write tests, create PRs."
   project: slang
   extends: slang-common
+  invariants:
+    # Writer-only ABI/PR/commit rules. Inherited by slang-fixer.
+    - container/spines/slang/invariants/code-changes.md
+  context:
+    # Pulled in here so writers/fixer can install additional skills, but
+    # readers/triagers/reviewers don't pay for the registry instructions.
+    - container/spines/slang/context/skill-discovery.md
   skills:
     - slang-code-writer
     - slang-docs
@@ -76,6 +84,9 @@ slang-reviewer:
   description: "Slang PR reviewer — runs the production claude-code-action@v1 + .github/workflows/claude-pr-review.yml protocol locally against a PR, branch, or patch, in parallel with Devin Review. Read-only: produces a final-review.md (Reviewer A) and devin-flags.md (Reviewer B), returned to the caller via send_file. Wraps the same six .claude/agents/* subagents, REVIEW.md protocol, system-prompt append, and deepwiki MCP that production sends; tool allowlist deliberately narrows to read-only. Used for PR review without writing back to GitHub."
   project: slang
   extends: slang-reader
+  invariants:
+    # Reviewers enforce code-change rules during PR review.
+    - container/spines/slang/invariants/code-changes.md
   skills:
     - slang-pr-review-runner
   workflows:
