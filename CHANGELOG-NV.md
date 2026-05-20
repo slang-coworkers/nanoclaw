@@ -6,15 +6,49 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 128 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 78 |
-| `nv-slang` | slang project spine, skills, workflows | 43 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 15 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 13 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 137 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 84 |
+| `nv-slang` | slang project spine, skills, workflows | 46 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 18 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 14 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-05-20
+
+### nv-main (9 PRs)
+- **#389** `feat(channels): add Telegram channel adapter`
+- **#391** `feat(nv-main): lego spine refactor — composer features, base spine split, workflow tightening`
+- **#398** `feat(ncl): expose agent_provider field on groups resource`
+- **#401** `fix(nv-main): a2a multi-hop ancestor routing + thread-aware reply primitives`
+- **#402** `fix(nv-main): tighten a2a reply precedence and ancestor guards`
+- **#403** `fix(nv-main): orchestrator must not cross-post status across chains`
+- **#404** `fix(spine): no meta-acknowledgements + close chains explicitly`
+- **#405** `fix(a2a): peer-affinity respects thread_id when sender supplied one`
+- **#406** `fix(spine): consolidate chain-reporting to 5 rules with [MUST] markers`
+
+### nv-dashboard (6 PRs)
+- **#390** `feat(dashboard): recognize the telegram channel adapter`
+- **#395** `fix(dashboard): channels list — drop wrong prefix map, exclude helper modules`
+- **#396** `fix(dashboard): drop "Global Memory" CLAUDE.md scope retired in v2`
+- **#397** `feat(dashboard): clickable session IDs in Admin → Sessions`
+- **#399** `fix(dashboard): codex cost — switch to unified ccusage CLI`
+- **#400** `fix(dashboard): fold cli_response payloads in thread view`
+
+### nv-slang (3 PRs)
+- **#386** `feat(slang-mcp): mandate DeepWiki + GitHub research in summon and continuation prompts`
+- **#393** `feat(nv-slang): code-changes invariant + workflow tightening + identity restoration`
+- **#407** `feat(slang-triage): principal-engineer rewrite — research, solution space, always forward`
+
+### nv-slangpy (3 PRs)
+- **#394** `feat(nv-slangpy): code-changes invariant split + slangpy-implement signal restoration`
+- **#408** `feat(slangpy-triage): specialist workflow — DeepWiki + local + gh, always forward`
+- **#409** `feat(slangpy): register slangpy-triage / fixer / reviewer types`
+
+### nv-nanoclaw (1 PRs)
+- **#392** `feat(nv-nanoclaw): code-changes invariant split + writer rules + workflow tightening`
 
 ## 📅 2026-05-19
 
