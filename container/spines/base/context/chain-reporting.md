@@ -1,54 +1,24 @@
-### Reporting upstream
+### Chain communication — five rules
 
-When you produce a status update or end-of-work report destined for your parent (the agent that handed work to you), use `send_message(to="parent")` with a **tight 5-bullet executive summary**.
+These are the only rules you need to route messages correctly within a chain. The first two are non-negotiable; everything else is mechanics.
 
-- Five bullets, no more. Your parent will compile their own 5 bullets upstream — a wall of text means they re-read your whole report to extract the signal.
-- Full narrative, multi-paragraph context, code snippets, etc. → attach as a markdown file via `send_file(to="parent")`. The bullets reference the attachment.
-- Concrete signals (status, links, decision verdicts, next-action) belong in the bullets so they're scannable. Reasoning belongs in the attachment.
+**[MUST]** Every reply to a specific inbound carries `in_reply_to=<id>` from that inbound's `<message id="…">`. The runtime uses it to route precisely; without it, multi-thread chains fall back to a heuristic. Do **not** infer a thread from message content.
 
-Your specific workflow's "Report" step gives the exact 5-bullet template for your output shape. If you have nothing substantive to report (e.g. claimed-and-deferred via an active-work sentinel, or a polite-ack that adds no information), a 1-line `send_message` is enough — or end the turn silently. Bullets are for actual work results.
+**[MUST]** Close every chain with an upstream report — even on refusal. If your stage doesn't apply (out of scope, blocked, no downstream forward needed), still emit the `[Resolution]` / `[Report]` your workflow defines and substitute the outcome bullet with `not actionable: <one-line reason>`. The parent decides what happens next; do not drop the chain.
 
-If you have no parent (e.g. you are the admin/orchestrator, or a top-level coworker the user talks to directly), the protocol still applies to messages you produce that summarize work — just deliver them via the channel adapter rather than `to="parent"`. The shape (≤5 scannable bullets, narrative as attachment) is the same.
+Routing — pick the right destination, not the loudest:
 
-### Peer and ancestor messaging
+| Intent | `to=` | Notes |
+|---|---|---|
+| Status / result report | `parent` | Always one hop up. Bare `send_message(to="parent")`. |
+| Continue an existing peer thread | the peer | **Requires** `in_reply_to`. Bare writes are refused by the runtime. |
+| Fresh delegation to a peer | the peer | New sub-session is created automatically. |
+| Send to a wired ancestor (skip parent) | `<ancestor>` | Only for explicit escalation/rollup. Don't double-send to parent + grandparent — pick one. |
 
-Default communication goes **one hop upward** to your direct parent. Not every reply goes to the root.
+No echoes. No meta-acknowledgements. *"Acknowledged silently"*, *"No echo needed"*, *"Status report stays with the orchestrator"*, *"Ending turn"* are themselves messages — they cost the reader the same tokens the silent-ack rule was meant to save. If you have nothing substantive to add, **send nothing**.
 
-**IMPORTANT:** When responding to an inbound message, pass `in_reply_to=<id>` from the inbound `<message id="…">`. This copies the right thread automatically and stamps the routing link. Don't infer thread identity from message content — that's how cross-thread mis-tagging happens.
+The 5-bullet shape for upstream reports stays: status / link / verdict / next-action / blocker. Reasoning and narrative go in an attached file via `send_file(to="parent")`. Top-of-chain agents (no parent) deliver the same shape via the channel adapter — to the user, not to a peer.
 
-**IMPORTANT:** Don't echo a coworker their own conclusion. Status reports go up, not sideways. If a child reported to you, your parent hears about it from you — the child doesn't need an "acknowledged" reply back.
+Inbound rows show `thread="…"` only when the thread differs from your own session's. Treat the attribute as a routing label to copy via `in_reply_to`, not as a value to type back into prose.
 
-Routing rules:
-- **Bare `send_message(to="parent")`** → direct parent. Right for status/result reports.
-- **`send_message(to="<ancestor>")`** (when wired) → delivered to that ancestor's existing session. Don't double-send to parent + grandparent; pick one.
-- **`send_message(to="<peer>")`** with no shared history → fresh delegation, peer gets a new sub-session.
-- **Continuing a peer's existing thread** → requires `in_reply_to`. Bare writes to a peer-owned thread are refused by the runtime.
-
-Inbound rows show `thread="…"` only when the thread differs from your own session's. Treat that attribute as a routing label, not as a value to type back into prose.
-
-### Multi-chain orchestration
-
-When you're running parallel chains, status routing changes shape:
-
-- **Per-chain decision or follow-up** → reply on that chain's thread with `in_reply_to`. Only that chain acts on it.
-- **Cross-chain rollup** → your own conversation. The user is the only consumer of "here's everything across all chains".
-- **Acknowledgement** → emit nothing. No "acknowledged", no "thanks", no "no echo needed". End the turn.
-
-**IMPORTANT:** Never put chain-B content onto chain-A's thread. Chain-A's agents have no decision to make about chain-B; their inbox should not see it.
-
-**IMPORTANT:** The handoff IS the ack. Forwarding output to the next stage acknowledges the previous stage by definition. Do not also send a separate "thanks, forwarding" reply back upstream — that is an echo with no recipient action.
-
-**IMPORTANT:** A meta-acknowledgement is still an acknowledgement. Phrases like "Acknowledged silently", "No echo needed", "Status report stays with the orchestrator", "Ending turn" are all themselves messages — they consume the same tokens the silent-ack rule was meant to save. If you have nothing substantive to add, send no message at all.
-
-### Closing a chain
-
-When you finish your role in a chain — including when you decide your stage doesn't apply (out of scope, blocked, no fixer-forward needed, etc.) — send the closing report **upward** before going silent. Don't drop a chain by ending the turn without telling your parent the chain stopped.
-
-- **Stage applied:** send the `[Resolution]` / `[Report]` your workflow defines.
-- **Stage refused:** still send the report; substitute the relevant outcome bullet with `not actionable: <one-line reason>` so the parent knows the chain closed at this stage and why. The parent decides what happens next — escalate, reassign, or close.
-
-The lower-cost mistake is to forward upstream when in doubt. The higher-cost mistake is to silently drop the chain so the parent has to reconstruct what happened from polling state.
-
-### Outcome line
-
-End every multi-step task with **one outcome line**: result + concrete artifacts (file paths, group ids, PR numbers, round-trip times — whatever's load-bearing). No play-by-play, no restatement of the ask. Single-step replies don't need this.
+End every multi-step task with **one outcome line**: result + concrete artifacts (file paths, group ids, PR numbers, round-trip times). No play-by-play. Single-step replies don't need this.
