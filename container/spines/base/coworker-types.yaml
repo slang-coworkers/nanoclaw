@@ -53,6 +53,12 @@ main:
     - container/spines/base/tool-instructions/interactive.md
     - container/spines/base/tool-instructions/self-mod.md
     - container/spines/base/tool-instructions/scheduling.md
+    # Multi-chain orchestration / cross-post avoidance / outcome-line
+    # protocol. base-common loads this for typed coworkers via the
+    # extends chain; main is flat, so it has to reference the file
+    # directly. Without this, main has no rule against broadcasting
+    # cross-chain status to peer chains' threads.
+    - container/spines/base/context/chain-reporting.md
     # ncl-global.md replaces ncl-group.md for owner / global-scope agents.
     # Composer drops it when cli_scope != 'global'. Default for main is
     # global, set by init-first-agent at owner-group bootstrap.

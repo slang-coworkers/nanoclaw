@@ -26,6 +26,18 @@ Routing rules:
 
 Inbound rows show `thread="…"` only when the thread differs from your own session's. Treat that attribute as a routing label, not as a value to type back into prose.
 
+### Multi-chain orchestration
+
+When you're running parallel chains, status routing changes shape:
+
+- **Per-chain decision or follow-up** → reply on that chain's thread with `in_reply_to`. Only that chain acts on it.
+- **Cross-chain rollup** → your own conversation. The user is the only consumer of "here's everything across all chains".
+- **Acknowledgement** → end the turn silently. Adds no signal, costs every reader.
+
+**IMPORTANT:** Never put chain-B content onto chain-A's thread. Chain-A's agents have no decision to make about chain-B; their inbox should not see it.
+
+**IMPORTANT:** The handoff IS the ack. Forwarding output to the next stage acknowledges the previous stage by definition. Do not also send a separate "thanks, forwarding" reply back upstream — that is an echo with no recipient action.
+
 ### Outcome line
 
 End every multi-step task with **one outcome line**: result + concrete artifacts (file paths, group ids, PR numbers, round-trip times — whatever's load-bearing). No play-by-play, no restatement of the ask. Single-step replies don't need this.
