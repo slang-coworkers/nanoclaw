@@ -697,9 +697,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
       recipientSession,
     );
-    const [childRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-child') as Array<{ id: string }>;
+    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+      id: string;
+    }>;
     const childSession = getSession(childRow.id)!;
 
     // Child C's bare/default reply goes to its direct source B. It must not
@@ -774,9 +774,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
       recipientSession,
     );
-    const [childRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-child') as Array<{ id: string }>;
+    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+      id: string;
+    }>;
     const childSession = getSession(childRow.id)!;
 
     const senderSessionsBefore = getDb()
@@ -856,9 +856,9 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
       { id: 'out-B-to-C', platform_id: 'ag-child', thread_id: 'T1', content: JSON.stringify({ text: 'fix' }) },
       recipientSession,
     );
-    const [childRow] = getDb()
-      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
-      .all('ag-child') as Array<{ id: string }>;
+    const [childRow] = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-child') as Array<{
+      id: string;
+    }>;
     const childSession = getSession(childRow.id)!;
 
     // Adversarial state: nuke A's session but leave the chain intact in
@@ -869,20 +869,21 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     db.prepare('DELETE FROM sessions WHERE id = ?').run('sess-sender');
     db.pragma('foreign_keys = ON');
 
-    expect(
-      db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender'),
-    ).toHaveLength(0);
+    expect(db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender')).toHaveLength(0);
 
     await expect(
       routeAgentMessage(
-        { id: 'out-C-to-A', platform_id: 'ag-sender', thread_id: 'T1', content: JSON.stringify({ text: 'late root report' }) },
+        {
+          id: 'out-C-to-A',
+          platform_id: 'ag-sender',
+          thread_id: 'T1',
+          content: JSON.stringify({ text: 'late root report' }),
+        },
         childSession,
       ),
     ).resolves.toBeUndefined();
 
-    expect(
-      db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender'),
-    ).toHaveLength(0);
+    expect(db.prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-sender')).toHaveLength(0);
   });
 
   it('ancestor walk drops cleanly when the chain encodes a self-cycle', async () => {
@@ -940,7 +941,12 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
 
     await expect(
       routeAgentMessage(
-        { id: 'out-B-to-stranger', platform_id: 'ag-stranger', thread_id: 'T1', content: JSON.stringify({ text: 'lateral' }) },
+        {
+          id: 'out-B-to-stranger',
+          platform_id: 'ag-stranger',
+          thread_id: 'T1',
+          content: JSON.stringify({ text: 'lateral' }),
+        },
         recipientSession,
       ),
     ).resolves.toBeUndefined();

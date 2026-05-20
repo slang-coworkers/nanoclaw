@@ -267,10 +267,7 @@ const ANCESTOR_HOP_LIMIT = 16;
  * Bounded by ANCESTOR_HOP_LIMIT and a visited set so corrupt cycles are
  * dropped instead of looping.
  */
-function findAncestorRoute(
-  startSessionId: string,
-  targetAgentGroupId: string,
-): A2aSessionSource | null {
+function findAncestorRoute(startSessionId: string, targetAgentGroupId: string): A2aSessionSource | null {
   const visited = new Set<string>([startSessionId]);
   let cursor = getSourceFor(startSessionId);
   let hops = 0;
