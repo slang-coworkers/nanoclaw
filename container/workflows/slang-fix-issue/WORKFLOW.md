@@ -4,7 +4,7 @@ license: MIT
 type: workflow
 description: "Fix a triaged Slang issue: setup worktree, write repro test, implement fix, verify, push draft PR, peer review, report."
 extends: implement
-requires: [code.build, code.edit, test.run]
+requires: [code.edit, test.run]
 uses:
   skills: [slang-build, slang-code-writer, slang-code-reader]
   workflows: []
