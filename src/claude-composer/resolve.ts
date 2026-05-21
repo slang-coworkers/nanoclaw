@@ -4,7 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta, WorkflowCustomization } from './types.js';
+import type { CoworkerManifest, CoworkerTypeEntry, OverlayMeta, SkillMeta, WorkflowCustomization } from './types.js';
 
 function normalizeList<T>(v: T | T[] | undefined | null): T[] {
   if (v == null) return [];
@@ -34,6 +34,48 @@ function collectWorkflowExtendsChain(workflowName: string, catalog: Record<strin
     cur = catalog[cur.extendsWorkflow];
   }
   return chain;
+}
+
+// Build the anchorSteps array for an overlay attaching to a target workflow.
+// Combines named-step anchors (insert-after / insert-before) with the synthetic
+// `start` anchor when the overlay declared `applies-to.start: true`. Also emits
+// the "no anchors matched any step" warning so authors catch typos.
+function buildOverlayAnchors(
+  overlay: OverlayMeta,
+  target: string,
+  workflowEntries: { name: string; steps: string[] }[],
+  overlayName: string,
+): { anchorSteps: { position: 'before' | 'after' | 'start'; step: string }[]; where: string } {
+  const anchorSteps: { position: 'before' | 'after' | 'start'; step: string }[] = [];
+  const anchors: string[] = [];
+  if (overlay.applyAtStart) {
+    anchorSteps.push({ position: 'start', step: '' });
+    anchors.push('at workflow start');
+  }
+  for (const step of overlay.insertAfter) {
+    anchors.push(`after step \`${step}\``);
+    anchorSteps.push({ position: 'after', step });
+  }
+  for (const step of overlay.insertBefore) {
+    anchors.push(`before step \`${step}\``);
+    anchorSteps.push({ position: 'before', step });
+  }
+  const where = anchors.length > 0 ? anchors.join(' and ') : 'at the end';
+  // Warn when named anchors don't match any of the target's steps. The
+  // `start` synthetic anchor is exempt — it always lands somewhere.
+  const namedAnchors = anchorSteps.filter((a) => a.position !== 'start');
+  if (namedAnchors.length > 0) {
+    const targetWf = workflowEntries.find((w) => w.name === target);
+    const targetStepSet = new Set(targetWf?.steps ?? []);
+    const matched = namedAnchors.filter((a) => targetStepSet.has(a.step));
+    if (matched.length === 0 && !overlay.applyAtStart) {
+      const declared = [...overlay.insertAfter, ...overlay.insertBefore];
+      console.warn(
+        `Overlay "${overlayName}" targets workflow "${target}" but none of its anchors [${declared.join(', ')}] match steps [${[...targetStepSet].join(', ')}]. No inline gate markers will render.`,
+      );
+    }
+  }
+  return { anchorSteps, where };
 }
 
 // Does this workflow match the overlay's `applies-to`? An overlay attaches
@@ -440,28 +482,7 @@ export function resolveCoworkerManifest(
       }
     }
     for (const target of targets) {
-      const anchors: string[] = [];
-      const anchorSteps: { position: 'before' | 'after'; step: string }[] = [];
-      for (const step of overlay.insertAfter) {
-        anchors.push(`after step \`${step}\``);
-        anchorSteps.push({ position: 'after', step });
-      }
-      for (const step of overlay.insertBefore) {
-        anchors.push(`before step \`${step}\``);
-        anchorSteps.push({ position: 'before', step });
-      }
-      const where = anchors.length > 0 ? anchors.join(' and ') : 'at the end';
-      if (anchorSteps.length > 0) {
-        const targetWf = workflowEntries.find((w) => w.name === target);
-        const targetStepSet = new Set(targetWf?.steps ?? []);
-        const matched = anchorSteps.filter((a) => targetStepSet.has(a.step));
-        if (matched.length === 0) {
-          const declared = [...overlay.insertAfter, ...overlay.insertBefore];
-          console.warn(
-            `Overlay "${overlayName}" targets workflow "${target}" but none of its anchors [${declared.join(', ')}] match steps [${[...targetStepSet].join(', ')}]. No inline gate markers will render.`,
-          );
-        }
-      }
+      const { anchorSteps, where } = buildOverlayAnchors(overlay, target, workflowEntries, overlayName);
       customizations.push({
         workflow: target,
         kind: 'overlay',
@@ -576,23 +597,13 @@ export function injectOverlays(
       }
     }
     for (const target of [...targets]) {
-      const meta = catalog[target];
-      if (meta?.extendsWorkflow && targets.has(meta.extendsWorkflow)) {
-        targets.delete(meta.extendsWorkflow);
+      const chain = collectWorkflowExtendsChain(target, catalog);
+      for (const ancestor of chain.slice(1)) {
+        if (targets.has(ancestor)) targets.delete(ancestor);
       }
     }
     for (const target of targets) {
-      const anchorSteps: { position: 'before' | 'after'; step: string }[] = [];
-      const anchors: string[] = [];
-      for (const step of overlay.insertAfter) {
-        anchors.push(`after step \`${step}\``);
-        anchorSteps.push({ position: 'after', step });
-      }
-      for (const step of overlay.insertBefore) {
-        anchors.push(`before step \`${step}\``);
-        anchorSteps.push({ position: 'before', step });
-      }
-      const where = anchors.length > 0 ? anchors.join(' and ') : 'at the end';
+      const { anchorSteps, where } = buildOverlayAnchors(overlay, target, manifest.workflows, overlayName);
       manifest.customizations.push({
         workflow: target,
         kind: 'overlay',

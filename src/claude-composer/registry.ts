@@ -306,6 +306,9 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
       appliesToTraits: Array.isArray(appliesTo.traits) ? (appliesTo.traits as unknown[]).map(String) : [],
       insertAfter,
       insertBefore,
+      // `applies-to.start: true` — splice at workflow body start. Coexists
+      // with named anchors; an overlay can declare both.
+      applyAtStart: appliesTo.start === true,
       step: body,
     };
   }
