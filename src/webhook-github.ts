@@ -100,6 +100,17 @@ export function deliverGitHubMention(event: GitHubMentionEvent): void {
     // pr_session_mappings table may not exist yet (pre-migration) — fall through
   }
 
+  // When WEBHOOK_REQUIRE_MAPPING is set, only act on PRs this instance originated
+  // (i.e. has a row in pr_session_mappings). Used by dev instances that share a
+  // webhook target with prod so they don't double-reply on PRs they didn't create.
+  if (process.env.WEBHOOK_REQUIRE_MAPPING === '1') {
+    log.info('github-webhook: no PR mapping, dropping (WEBHOOK_REQUIRE_MAPPING=1)', {
+      repo: event.repo,
+      pr: event.issueNumber,
+    });
+    return;
+  }
+
   // Fallback: resolve by branch name or admin group
   const group = resolveAgentGroupFromBranch(event.prBranch);
   if (!group) {

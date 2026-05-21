@@ -13,10 +13,62 @@ import { log } from './log.js';
 import { deliverGitHubMention } from './webhook-github.js';
 
 const MAX_BODY_SIZE = 512 * 1024; // 512 KB
+const FANOUT_HEADER = 'x-webhook-fanout';
 
 export interface GitHubWebhookServerHandle {
   server: Server;
   stop(): Promise<void>;
+}
+
+/**
+ * Forward an authenticated webhook delivery to peer instances. Set via env var
+ * WEBHOOK_FANOUT_URLS as a comma-separated list of `URL|SECRET` pairs (the
+ * peer's GITHUB_WEBHOOK_SECRET, used to re-sign the body so the receiver's
+ * existing HMAC check passes). If `|SECRET` is omitted, falls back to this
+ * instance's GITHUB_WEBHOOK_SECRET (only useful when peers share a secret).
+ *
+ * Used to share App-webhook deliveries across instances when only one URL is
+ * registered with the App but multiple instances need to react. Fire-and-
+ * forget: failures are logged but never block the response to GitHub.
+ */
+function fanOutWebhook(
+  rawBody: string,
+  headers: { event: string; delivery: string },
+): void {
+  const list = (process.env.WEBHOOK_FANOUT_URLS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (list.length === 0) return;
+
+  for (const entry of list) {
+    const [url, peerSecret] = entry.split('|', 2);
+    const secret = peerSecret || GITHUB_WEBHOOK_SECRET;
+    if (!url || !secret) {
+      log.warn('github-webhook: fan-out entry missing url or secret', { entry: url });
+      continue;
+    }
+    const peerSig = `sha256=${crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')}`;
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GitHub-Event': headers.event,
+        'X-GitHub-Delivery': headers.delivery,
+        'X-Hub-Signature-256': peerSig,
+        [FANOUT_HEADER]: '1',
+      },
+      body: rawBody,
+    })
+      .then((r) => {
+        if (!r.ok) {
+          log.warn('github-webhook: fan-out non-OK', { url, status: r.status });
+        }
+      })
+      .catch((err: unknown) => {
+        log.warn('github-webhook: fan-out failed', { url, error: String(err) });
+      });
+  }
 }
 
 function writeJson(res: ServerResponse, status: number, payload: Record<string, unknown>): void {
@@ -88,6 +140,15 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       log.warn('github-webhook: invalid or missing signature');
       writeJson(res, 401, { error: 'invalid signature' });
       return;
+    }
+
+    // Fan-out to peer instances. Skip if this request is itself a fan-out
+    // delivery (avoids loops when peers reciprocate by mistake).
+    if (req.headers[FANOUT_HEADER] !== '1') {
+      fanOutWebhook(rawBody, {
+        event: String(eventType),
+        delivery: String(req.headers['x-github-delivery'] ?? ''),
+      });
     }
 
     let payload: Record<string, unknown>;
