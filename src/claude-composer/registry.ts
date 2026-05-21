@@ -18,7 +18,33 @@ import path from 'path';
 
 import yaml from 'js-yaml';
 
-import type { CoworkerTypeEntry, OverlayMeta, SkillMeta } from './types.js';
+import type { AnchorSpec, CoworkerTypeEntry, OverlayMeta, SkillMeta } from './types.js';
+
+// Parse the `insert-after` / `insert-before` frontmatter list. Each entry can
+// be a plain string (canonical-only) or an object with `step` + optional
+// `aliases`. Plain-string back-compat is preserved: `[ change, deliver ]`
+// renders identically to the pre-alias world. Malformed entries are skipped
+// quietly so a bad object doesn't crash the composer mid-load.
+function parseAnchorList(raw: unknown): AnchorSpec[] {
+  if (!Array.isArray(raw)) return [];
+  const out: AnchorSpec[] = [];
+  for (const entry of raw) {
+    if (typeof entry === 'string') {
+      out.push({ step: entry, aliases: [] });
+      continue;
+    }
+    if (entry && typeof entry === 'object') {
+      const obj = entry as Record<string, unknown>;
+      const step = typeof obj.step === 'string' ? obj.step : '';
+      if (!step) continue;
+      const aliases = Array.isArray(obj.aliases)
+        ? (obj.aliases as unknown[]).filter((a): a is string => typeof a === 'string')
+        : [];
+      out.push({ step, aliases });
+    }
+  }
+  return out;
+}
 
 // Directories that may contribute coworker-type registrations. Capability
 // skill dirs can add type contributions (e.g. `dashboard-base` appends
@@ -298,8 +324,8 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
   if (type === 'overlay') {
     const appliesTo =
       fm['applies-to'] && typeof fm['applies-to'] === 'object' ? (fm['applies-to'] as Record<string, unknown>) : {};
-    const insertAfter = Array.isArray(fm['insert-after']) ? (fm['insert-after'] as unknown[]).map(String) : [];
-    const insertBefore = Array.isArray(fm['insert-before']) ? (fm['insert-before'] as unknown[]).map(String) : [];
+    const insertAfter = parseAnchorList(fm['insert-after']);
+    const insertBefore = parseAnchorList(fm['insert-before']);
     const body = text.slice(match[0].length).trim();
     overlay = {
       appliesToWorkflows: Array.isArray(appliesTo.workflows) ? (appliesTo.workflows as unknown[]).map(String) : [],

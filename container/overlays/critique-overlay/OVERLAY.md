@@ -7,8 +7,12 @@ applies-to:
   workflows: []
   traits: [code.edit, test.gen, doc.write]
   start: false
-insert-after: [diagnose, change, deliver]
-insert-before: [change]
+insert-after:
+  - { step: diagnose, aliases: [understand, synthesize, reproduce] }
+  - { step: change, aliases: [implement, patch] }
+  - { step: deliver, aliases: [report, finalize] }
+insert-before:
+  - { step: change, aliases: [implement, patch] }
 uses:
   skills: [codex-critique]
 ---

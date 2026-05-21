@@ -113,15 +113,27 @@ export interface McpServerTypeConfig {
   headers?: Record<string, string>;
 }
 
+// One anchor entry. `step` is the canonical (overlay-author-chosen) step id.
+// `aliases` are alternate ids that this anchor also matches when the canonical
+// step isn't in the target workflow's step set. Resolution order is canonical
+// first, then aliases left-to-right; first hit wins. Plain-string anchors
+// (back-compat) parse to `{ step, aliases: [] }`.
+export interface AnchorSpec {
+  step: string;
+  aliases: string[];
+}
+
 export interface OverlayMeta {
   // Which workflows this overlay attaches to (by workflow name).
   appliesToWorkflows: string[];
   // Alternative targeting: any workflow that requires one of these traits.
   appliesToTraits: string[];
-  // Step-id anchors. Overlay body is inserted AFTER each listed step id.
-  insertAfter: string[];
-  // Step-id anchors. Overlay body is inserted BEFORE each listed step id.
-  insertBefore: string[];
+  // Step-id anchors. Overlay body is inserted AFTER each listed step (or
+  // alias). See `AnchorSpec`.
+  insertAfter: AnchorSpec[];
+  // Step-id anchors. Overlay body is inserted BEFORE each listed step (or
+  // alias). See `AnchorSpec`.
+  insertBefore: AnchorSpec[];
   // `applies-to.start: true` — splice the overlay body at the very start of
   // every matched workflow's body, before step 1. Independent of (and
   // composes with) named-step anchors. Used by always-on observers (e.g.
