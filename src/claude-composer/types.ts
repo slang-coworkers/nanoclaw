@@ -155,6 +155,10 @@ export interface SkillMeta {
   // cross-mode rules survive composition.
   epilogue?: string;
   extendsWorkflow?: string;
+  // Author wrote `extends: none` — opts out of the implicit `extends: base`
+  // applied by the post-pass when `extends:` is absent. Honored only on
+  // workflows; capability/overlay skills never auto-extend.
+  extendsExplicitNone?: boolean;
   overrides: Record<string, string>;
 
   // Overlay metadata (only populated for type: overlay skills).

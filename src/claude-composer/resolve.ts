@@ -386,9 +386,16 @@ export function resolveCoworkerManifest(
 
   // Collect workflow customizations: extends-chains, overrides, and overlays.
   const customizations: WorkflowCustomization[] = [];
+  const manifestWorkflowSet = new Set(workflowEntries.map((w) => w.name));
   for (const wf of workflowEntries) {
     const meta = catalog[wf.name];
-    if (meta.extendsWorkflow) {
+    // Suppress the visible "(extends /base—see section below)" note when the
+    // parent is the implicit `base` workflow that the coworker didn't actually
+    // include. Without this, every concrete workflow would render a phantom
+    // pointer to a section that doesn't exist in this coworker's spine. If a
+    // coworker DOES list `base` in its workflows, the note still renders.
+    const suppressExtendsNote = meta.extendsWorkflow === 'base' && !manifestWorkflowSet.has('base');
+    if (meta.extendsWorkflow && !suppressExtendsNote) {
       customizations.push({
         workflow: wf.name,
         kind: 'extends',
