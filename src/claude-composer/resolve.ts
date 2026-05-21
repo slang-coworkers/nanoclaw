@@ -12,6 +12,57 @@ function normalizeList<T>(v: T | T[] | undefined | null): T[] {
   return [v];
 }
 
+// Walk a workflow's `extends:` chain in catalog order, starting at the
+// workflow itself. Cycle-safe (a malformed chain that loops back to a seen
+// ancestor terminates quietly — the cycle ancestor still appears in the
+// returned list, so any overlay name match in that ring still hits).
+//
+// Used by overlay matching so an overlay declaring `applies-to.workflows:
+// [implement]` auto-attaches to every workflow whose extends chain reaches
+// `implement` — not just the direct child. Without this, project workflows
+// that go `slang-fix-issue → implement → base` skip cross-cutting overlays
+// targeted at `implement`.
+function collectWorkflowExtendsChain(workflowName: string, catalog: Record<string, SkillMeta>): string[] {
+  const chain: string[] = [];
+  const seen = new Set<string>();
+  let cur: SkillMeta | undefined = catalog[workflowName];
+  while (cur) {
+    if (seen.has(cur.name)) break;
+    seen.add(cur.name);
+    chain.push(cur.name);
+    if (!cur.extendsWorkflow) break;
+    cur = catalog[cur.extendsWorkflow];
+  }
+  return chain;
+}
+
+// Does this workflow match the overlay's `applies-to`? An overlay attaches
+// when EITHER the workflow's name (or any ancestor in its `extends:` chain)
+// is in the overlay's `appliesToWorkflows` list, OR the workflow declares a
+// `requires:` trait whose name or domain is in the overlay's appliesToTraits.
+function workflowMatchesOverlay(
+  workflowName: string,
+  workflowRequires: string[],
+  appliesToWorkflows: Set<string>,
+  appliesToTraits: string[],
+  catalog: Record<string, SkillMeta>,
+): boolean {
+  if (appliesToWorkflows.size > 0) {
+    for (const ancestor of collectWorkflowExtendsChain(workflowName, catalog)) {
+      if (appliesToWorkflows.has(ancestor)) return true;
+    }
+  }
+  if (appliesToTraits.length > 0) {
+    for (const trait of workflowRequires) {
+      const domain = trait.split('.')[0];
+      if (appliesToTraits.includes(trait) || appliesToTraits.includes(domain)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function validateCrossProjectExtends(types: Record<string, CoworkerTypeEntry>): void {
   for (const [name, entry] of Object.entries(types)) {
     if (!entry.project) continue;
@@ -367,32 +418,18 @@ export function resolveCoworkerManifest(
     const targets = new Set<string>();
     const appliesToSet = new Set(overlay.appliesToWorkflows);
     for (const wf of workflowEntries) {
-      // Direct name match
-      if (appliesToSet.has(wf.name)) {
+      if (workflowMatchesOverlay(wf.name, wf.requires, appliesToSet, overlay.appliesToTraits, catalog)) {
         targets.add(wf.name);
-        continue;
-      }
-      // Child workflow that extends a listed parent (e.g. slang-review extends review)
-      const meta = catalog[wf.name];
-      if (meta?.extendsWorkflow && appliesToSet.has(meta.extendsWorkflow)) {
-        targets.add(wf.name);
-        continue;
-      }
-      // Trait match
-      for (const trait of wf.requires) {
-        const domain = trait.split('.')[0];
-        if (overlay.appliesToTraits.includes(trait) || overlay.appliesToTraits.includes(domain)) {
-          targets.add(wf.name);
-          break;
-        }
       }
     }
-    // Deduplicate: if a child workflow extends a parent that's also a target,
-    // drop the parent — the child's customization subsumes it.
+    // Deduplicate: if a child workflow extends an ancestor that's also a
+    // target, drop the ancestor — the child's customization subsumes it.
+    // Walks the full extends chain so transitive (grand)parents are pruned.
     for (const target of [...targets]) {
-      const meta = catalog[target];
-      if (meta?.extendsWorkflow && targets.has(meta.extendsWorkflow)) {
-        targets.delete(meta.extendsWorkflow);
+      const chain = collectWorkflowExtendsChain(target, catalog);
+      // chain[0] is `target` itself; everything past it is an ancestor.
+      for (const ancestor of chain.slice(1)) {
+        if (targets.has(ancestor)) targets.delete(ancestor);
       }
     }
     for (const target of targets) {
@@ -527,21 +564,8 @@ export function injectOverlays(
     const targets = new Set<string>();
     const appliesToSet = new Set(overlay.appliesToWorkflows);
     for (const wf of manifest.workflows) {
-      if (appliesToSet.has(wf.name)) {
+      if (workflowMatchesOverlay(wf.name, wf.requires, appliesToSet, overlay.appliesToTraits, catalog)) {
         targets.add(wf.name);
-        continue;
-      }
-      const meta = catalog[wf.name];
-      if (meta?.extendsWorkflow && appliesToSet.has(meta.extendsWorkflow)) {
-        targets.add(wf.name);
-        continue;
-      }
-      for (const trait of wf.requires) {
-        const domain = trait.split('.')[0];
-        if (overlay.appliesToTraits.includes(trait) || overlay.appliesToTraits.includes(domain)) {
-          targets.add(wf.name);
-          break;
-        }
       }
     }
     for (const target of [...targets]) {
