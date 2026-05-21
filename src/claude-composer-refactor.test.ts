@@ -680,6 +680,73 @@ describe('R13: every real WORKFLOW.md parses to ≥1 step (or declares extends)'
   });
 });
 
+describe('R20: overlay matching follows workflow `extends:` chain transitively', () => {
+  // The naive matcher checked only the workflow's direct name and one-level
+  // extends. That left transitive children (`slang-fix-issue → implement →
+  // base`) skipping cross-cutting overlays whose `applies-to.workflows` lists
+  // a transitive ancestor. The fix walks the full extends chain when matching.
+  it('overlay targeting `base-flow` attaches to a grandchild that extends an intermediate', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    // Three-tier chain: base-flow ← mid-flow ← leaf-flow.
+    writeWorkflow(root, 'base-flow', '# B\n\n## Steps\n\n1. **Anchor** {#anchor} — base-body.');
+    writeWorkflow(root, 'mid-flow', '', { extends: 'base-flow' });
+    writeWorkflow(root, 'leaf-flow', '# L\n\n## Steps\n\n1. **Custom** {#custom} — leaf-body.', {
+      extends: 'mid-flow',
+    });
+    writeOverlay(root, 'guard', 'TRANSITIVE_GATE_BODY', {
+      appliesToWorkflows: ['base-flow'],
+      insertAfter: ['custom'],
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [leaf-flow]',
+        '  overlays: [guard]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    // Gate must land inside leaf-flow's section even though it only extends
+    // base-flow transitively (via mid-flow).
+    const leafStart = spine.indexOf('### /leaf-flow');
+    expect(leafStart).toBeGreaterThanOrEqual(0);
+    const leafEnd = spine.indexOf('\n## ', leafStart);
+    const leafSection = spine.slice(leafStart, leafEnd === -1 ? undefined : leafEnd);
+    expect(leafSection).toMatch(/⟐ GUARD GATE/);
+    expect(leafSection).toContain('TRANSITIVE_GATE_BODY');
+  });
+
+  it('runtime-injected overlays also follow the chain', () => {
+    // Same shape but the overlay attaches via agent_groups.overlays at
+    // compose time (the path slang-fixer / slang-triage actually take).
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(root, 'base-flow', '# B\n\n## Steps\n\n1. **Anchor** {#anchor} — base-body.');
+    writeWorkflow(root, 'leaf-flow', '# L\n\n## Steps\n\n1. **Custom** {#custom} — leaf-body.', {
+      extends: 'base-flow',
+    });
+    writeOverlay(root, 'runtime-guard', 'RUNTIME_TRANSITIVE_BODY', {
+      appliesToWorkflows: ['base-flow'],
+      insertAfter: ['custom'],
+    });
+    writeProjectType(
+      root,
+      ['probe:', '  extends: base-common', '  description: "Probe."', '  workflows: [leaf-flow]', ''].join('\n'),
+    );
+    const spine = composeCoworkerSpine({
+      projectRoot: root,
+      coworkerType: 'probe',
+      overlays: ['runtime-guard'],
+    });
+    expect(spine).toMatch(/⟐ RUNTIME GUARD GATE/);
+    expect(spine).toContain('RUNTIME_TRANSITIVE_BODY');
+  });
+});
+
 describe('R19: disableOverlays option strips every overlay gate and the Gate Protocol section', () => {
   // Honors per-coworker `agent_groups.disable_overlays` — when set, the composed
   // CLAUDE.md must contain no `⟐ ... GATE` inline blocks and no trailing
