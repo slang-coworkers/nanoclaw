@@ -180,6 +180,44 @@ export function hasInboundFromThread(
 }
 
 /**
+ * Inbound rows on the given (channel_type, platform_id, thread_id) tuple
+ * that have NOT yet been responded to (no outbound row has
+ * `in_reply_to = inbound.id`). Returned newest-first.
+ *
+ * Used to auto-default `in_reply_to` when the agent calls send_message on a
+ * peer-originated thread without specifying which inbound it's answering.
+ * The "unresponded" filter prevents re-linking to inbounds the agent has
+ * already replied to — those are no longer the active conversation.
+ *
+ * Implementation: 1-query inbound fetch + 1 prepared "is this responded"
+ * stmt reused across the small candidate set. Avoids loading every
+ * responded id into JS while staying compatible with the per-DB test-mode
+ * connections (ATTACH doesn't work across `:memory:` DBs).
+ */
+export function getUnrespondedInboundsFromThread(
+  channelType: string,
+  platformId: string,
+  threadId: string,
+): MessageInRow[] {
+  const inbound = openInboundDb();
+  try {
+    const inboundRows = inbound
+      .prepare(
+        `SELECT * FROM messages_in
+          WHERE channel_type = ? AND platform_id = ? AND thread_id = ?
+          ORDER BY seq DESC`,
+      )
+      .all(channelType, platformId, threadId) as MessageInRow[];
+    if (inboundRows.length === 0) return [];
+    const isResponded = getOutboundDb()
+      .prepare('SELECT 1 AS r FROM messages_out WHERE in_reply_to = ? LIMIT 1');
+    return inboundRows.filter((r) => !isResponded.get(r.id));
+  } finally {
+    inbound.close();
+  }
+}
+
+/**
  * Find a pending response to a question (by questionId in content).
  * Reads from inbound.db, checks processing_ack to skip already-handled responses.
  */
