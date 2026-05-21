@@ -89,9 +89,15 @@ function renderStepBlock(n: number, stepId: string, rawBody: string, title: stri
 // body markdown headings are demoted so they live below the gate's `####`
 // header: `## Foo` becomes `##### Foo`. Prevents overlay sub-headings from
 // breaking the outer `## Workflows` section boundary.
-function renderGateBlock(overlayName: string, body: string, position: 'BEFORE' | 'AFTER', stepId: string): string {
+function renderGateBlock(
+  overlayName: string,
+  body: string,
+  position: 'BEFORE' | 'AFTER' | 'START',
+  stepId: string,
+): string {
   const label = `${overlayName.toUpperCase().replaceAll('-', ' ')} GATE`;
-  const where = position === 'BEFORE' ? `before \`${stepId}\`` : `after \`${stepId}\``;
+  const where =
+    position === 'START' ? 'at workflow start' : position === 'BEFORE' ? `before \`${stepId}\`` : `after \`${stepId}\``;
   const demoted = demoteHeadings(body.trim(), 3);
   return `#### ⟐ ${label} (${where})\n\n${demoted}`;
 }
@@ -680,14 +686,21 @@ export function renderCoworkerSpine(
         }
 
         // Overlay anchor maps: stepId → full bodies to emit before/after.
+        // The synthetic `start` anchor is collected separately and rendered
+        // ahead of step 1 below.
         const stepSet = new Set(w.steps);
         const gatesAfter = new Map<string, { overlayName: string; body: string }[]>();
         const gatesBefore = new Map<string, { overlayName: string; body: string }[]>();
+        const gatesAtStart: { overlayName: string; body: string }[] = [];
         for (const ov of overlays) {
           if (!ov.anchorSteps || !ov.overlayName || !ov.detail) continue;
           for (const anchor of ov.anchorSteps) {
-            if (!stepSet.has(anchor.step)) continue;
             const entry = { overlayName: ov.overlayName, body: ov.detail.trim() };
+            if (anchor.position === 'start') {
+              gatesAtStart.push(entry);
+              continue;
+            }
+            if (!stepSet.has(anchor.step)) continue;
             const map = anchor.position === 'after' ? gatesAfter : gatesBefore;
             const arr = map.get(anchor.step) || [];
             arr.push(entry);
@@ -696,6 +709,14 @@ export function renderCoworkerSpine(
         }
 
         const chunks: string[] = [];
+        // Workflow-start gates: render once, ahead of step 1. Use a synthetic
+        // anchor label so the inline marker reads naturally ("at start") and
+        // the dedup map (`emittedOverlay`) treats it as a normal anchor site.
+        for (const gate of gatesAtStart) {
+          chunks.push(
+            emitGate(emittedOverlay, stagedCache, sharedGateState, gate.overlayName, gate.body, 'START', '', w.name),
+          );
+        }
         let n = 1;
         for (const stepId of w.steps) {
           // BEFORE gates.
@@ -835,7 +856,7 @@ function emitGate(
   sharedGateSections: Map<string, { leading: string; shared: string }>,
   overlayName: string,
   body: string,
-  position: 'BEFORE' | 'AFTER',
+  position: 'BEFORE' | 'AFTER' | 'START',
   stepId: string,
   workflowName: string,
 ): string {
@@ -846,7 +867,8 @@ function emitGate(
   const parsed = staged.get(overlayName);
 
   const label = `${overlayName.toUpperCase().replaceAll('-', ' ')} GATE`;
-  const where = position === 'BEFORE' ? `before \`${stepId}\`` : `after \`${stepId}\``;
+  const where =
+    position === 'START' ? 'at workflow start' : position === 'BEFORE' ? `before \`${stepId}\`` : `after \`${stepId}\``;
 
   if (parsed) {
     // Stage-aware: find the matching stage body.

@@ -890,6 +890,182 @@ describe('R21: implicit `extends: base` for workflows omitting extends:', () => 
   });
 });
 
+describe('R22: trait-based union matching + `applies-to.start: true` mode', () => {
+  // Phase 3 contract:
+  //   1. Overlay matching is a UNION of name-based and trait-based — either
+  //      gets the overlay attached to the workflow.
+  //   2. `applies-to.start: true` — splice the overlay body at the start of
+  //      every matched workflow's body, before step 1. Coexists with named
+  //      anchors (an overlay can declare both).
+  function writeStartOverlay(
+    root: string,
+    name: string,
+    body: string,
+    fm: { appliesToWorkflows?: string[]; appliesToTraits?: string[]; insertAfter?: string[] },
+  ): void {
+    const text = [
+      '---',
+      `name: ${name}`,
+      'type: overlay',
+      `description: "Test ${name} overlay."`,
+      'applies-to:',
+      `  workflows: ${JSON.stringify(fm.appliesToWorkflows || [])}`,
+      `  traits: ${JSON.stringify(fm.appliesToTraits || [])}`,
+      '  start: true',
+      `insert-after: ${JSON.stringify(fm.insertAfter || [])}`,
+      `insert-before: []`,
+      'uses:',
+      '  skills: []',
+      '---',
+      '',
+      body,
+    ].join('\n');
+    write(path.join(root, 'container', 'overlays', name, 'OVERLAY.md'), text);
+  }
+
+  it('union: trait match attaches an overlay even when the workflow name is not listed', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeCapabilitySkill(root, 'editor', 'Edit code.');
+    fs.writeFileSync(
+      path.join(root, 'container', 'skills', 'editor', 'SKILL.md'),
+      [
+        '---',
+        'name: editor',
+        'type: capability',
+        'description: "Edit."',
+        'provides: [code.edit]',
+        '---',
+        '',
+        'Body.',
+      ].join('\n'),
+    );
+    writeWorkflow(root, 'project-flow', '# P\n\n## Steps\n\n1. **Custom** {#custom} — edit a thing.', {
+      requires: ['code.edit'],
+    });
+    writeOverlay(root, 'guard', 'TRAIT_UNION_BODY', {
+      // No workflow name listed — match relies on trait union.
+      appliesToWorkflows: [],
+      insertAfter: ['custom'],
+    });
+    // Tweak the overlay's traits to match `code.edit`.
+    const overlayPath = path.join(root, 'container', 'overlays', 'guard', 'OVERLAY.md');
+    const txt = fs.readFileSync(overlayPath, 'utf-8').replace('  traits: []', '  traits: [code.edit]');
+    fs.writeFileSync(overlayPath, txt);
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [project-flow]',
+        '  skills: [editor]',
+        '  overlays: [guard]',
+        '  bindings:',
+        '    code: editor',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    expect(spine).toMatch(/⟐ GUARD GATE/);
+    expect(spine).toContain('TRAIT_UNION_BODY');
+  });
+
+  it('start: true alone splices the overlay body before step 1', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'flow',
+      '# F\n\n## Steps\n\n1. **First** {#first} — first-step.\n\n2. **Second** {#second} — second-step.',
+    );
+    writeStartOverlay(root, 'observer', 'OBSERVER_START_BODY', {
+      appliesToWorkflows: ['flow'],
+      // No insertAfter / insertBefore — purely a start splice.
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [flow]',
+        '  overlays: [observer]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    expect(spine).toMatch(/⟐ OBSERVER GATE \(at workflow start\)/);
+    expect(spine).toContain('OBSERVER_START_BODY');
+    // The start gate must land before step 1's heading.
+    const wfStart = spine.indexOf('### /flow');
+    const gateIdx = spine.indexOf('OBSERVER GATE', wfStart);
+    const step1Idx = spine.indexOf('#### 1. First', wfStart);
+    expect(gateIdx).toBeGreaterThanOrEqual(0);
+    expect(step1Idx).toBeGreaterThanOrEqual(0);
+    expect(gateIdx).toBeLessThan(step1Idx);
+  });
+
+  it('start: true coexists with named anchors — both render', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'flow',
+      '# F\n\n## Steps\n\n1. **First** {#first} — first-step.\n\n2. **Second** {#second} — second-step.',
+    );
+    writeStartOverlay(root, 'observer', 'OBSERVER_BOTH_BODY', {
+      appliesToWorkflows: ['flow'],
+      insertAfter: ['second'],
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [flow]',
+        '  overlays: [observer]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    expect(spine).toMatch(/⟐ OBSERVER GATE \(at workflow start\)/);
+    expect(spine).toMatch(/⟐ OBSERVER GATE \(after `second`\)/);
+    // Body emitted once at the first anchor (start); the second anchor
+    // (after `second`) becomes a back-pointer per the existing dedup rule.
+    expect((spine.match(/OBSERVER_BOTH_BODY/g) || []).length).toBe(1);
+  });
+
+  it('start: true with `applies-to.workflows: [base]` reaches every implicit-base workflow', () => {
+    // Combines Phase 2 (implicit base) + Phase 3 (start mode). One overlay
+    // declaration covers an arbitrary set of project workflows.
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(root, 'base', '# Base\n\n## Steps\n\n1. **A** {#a} — base-body.');
+    writeWorkflow(root, 'flow-a', '# A\n\n## Steps\n\n1. **First** {#first} — a-body.');
+    writeWorkflow(root, 'flow-b', '# B\n\n## Steps\n\n1. **First** {#first} — b-body.');
+    writeStartOverlay(root, 'observer', 'CROSS_CUTTING_BODY', {
+      appliesToWorkflows: ['base'],
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [flow-a, flow-b]',
+        '  overlays: [observer]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    // Both workflows get a start gate.
+    const matches = spine.match(/⟐ OBSERVER GATE \(at workflow start\)/g) || [];
+    expect(matches.length).toBe(2);
+  });
+});
+
 describe('R19: disableOverlays option strips every overlay gate and the Gate Protocol section', () => {
   // Honors per-coworker `agent_groups.disable_overlays` — when set, the composed
   // CLAUDE.md must contain no `⟐ ... GATE` inline blocks and no trailing

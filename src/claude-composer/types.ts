@@ -122,6 +122,11 @@ export interface OverlayMeta {
   insertAfter: string[];
   // Step-id anchors. Overlay body is inserted BEFORE each listed step id.
   insertBefore: string[];
+  // `applies-to.start: true` — splice the overlay body at the very start of
+  // every matched workflow's body, before step 1. Independent of (and
+  // composes with) named-step anchors. Used by always-on observers (e.g.
+  // /buddy) whose protocol must fire before any real work runs.
+  applyAtStart: boolean;
   // Inline step markdown (body of the overlay after the frontmatter).
   step: string;
 }
@@ -172,7 +177,11 @@ export interface WorkflowCustomization {
   detail?: string; // Optional longer form (step body / override body).
   stepId?: string; // For kind=override: the step id whose body is replaced.
   overlayName?: string; // For kind=overlay: the overlay skill name (used to group rendering).
-  anchorSteps?: { position: 'before' | 'after'; step: string }[]; // For kind=overlay: which steps this gate attaches to.
+  // For kind=overlay: which steps this gate attaches to.
+  // `position: 'start'` is a synthetic anchor (`step` is unused) used when
+  // the overlay declared `applies-to.start: true` — splices at workflow
+  // body start, before step 1.
+  anchorSteps?: { position: 'before' | 'after' | 'start'; step: string }[];
   extendsWorkflow?: string; // For kind=extends: the parent workflow name.
 }
 
