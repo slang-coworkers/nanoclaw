@@ -4384,6 +4384,25 @@ function renderCwMessages() {
         ? `<div class="cw-thread-stub" data-parent-id="${esc(m.id)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
         : '';
 
+      // Same fold as the thread view: outbound cli_request rows are tagged
+      // server-side with isRelay; matching cli_response replies arrive via
+      // messages_in untagged, detected here by JSON head. Both are 1+ KiB
+      // payloads that dominate the main feed when expanded by default.
+      const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
+      if (m.isRelay || isCliResponse) {
+        const sysActionLabel = isCliResponse ? 'system response' : 'system action';
+        const relayLabel = m.recipientCoworkerName
+          ? `${authorName} → @${esc(m.recipientCoworkerName)}`
+          : `${authorName} · ${sysActionLabel}`;
+        const preview = (text || '').replace(/\s+/g, ' ').trim();
+        const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
+        const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
+        return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
+        <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
+        <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
+        <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${esc(text)}</div></div>`;
+      }
+
       if (m.cardType === 'card') {
         return renderCardBubble(m, {
           cls,
@@ -5207,7 +5226,7 @@ function renderCwThread() {
           : `${authorName} · ${sysActionLabel}`;
         const preview = (text || '').replace(/\s+/g, ' ').trim();
         const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
-        const expanded = cwState.thread._expandedRelays && cwState.thread._expandedRelays.has(m.id);
+        const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
         return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
         <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
@@ -5253,10 +5272,9 @@ function renderCwThread() {
 }
 
 document.addEventListener('relay-toggle', (e) => {
-  if (!cwState.thread) return;
-  if (!cwState.thread._expandedRelays) cwState.thread._expandedRelays = new Set();
-  if (e.detail.open) cwState.thread._expandedRelays.add(e.detail.id);
-  else cwState.thread._expandedRelays.delete(e.detail.id);
+  if (!cwState._expandedRelays) cwState._expandedRelays = new Set();
+  if (e.detail.open) cwState._expandedRelays.add(e.detail.id);
+  else cwState._expandedRelays.delete(e.detail.id);
 });
 
 /**
