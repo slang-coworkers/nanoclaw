@@ -2,10 +2,11 @@
 name: critique-overlay
 license: MIT
 type: overlay
-description: "Stage-aware critique gates across the plan and implement workflows. Spawns codex-critique at each gate for independent verification."
+description: "Stage-aware critique gates for any writer-style workflow. Spawns codex-critique at each gate for independent verification."
 applies-to:
-  workflows: [plan, implement]
+  workflows: []
   traits: [code.edit, test.gen, doc.write]
+  start: false
 insert-after: [diagnose, change, deliver]
 insert-before: [change]
 uses:
