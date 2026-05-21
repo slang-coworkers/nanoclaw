@@ -1092,9 +1092,13 @@ describe('R23: real overlays adopt the auto-attach shape', () => {
     const fm = text.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
     expect(fm).toMatch(/workflows:\s*\[\]/);
     expect(fm, 'trait list preserved').toMatch(/traits:\s*\[code\.edit,\s*test\.gen,\s*doc\.write\]/);
-    // Anchor splices preserved — gates still inline at diagnose/change/deliver.
-    expect(fm).toMatch(/insert-after:\s*\[diagnose,\s*change,\s*deliver\]/);
-    expect(fm).toMatch(/insert-before:\s*\[change\]/);
+    // Anchor splices preserved — canonical stages with aliases so project
+    // workflows using stage-specific ids (`implement`, `report`, etc.) still
+    // get the inline gates. R24 covers the resolution behavior end-to-end.
+    expect(fm).toMatch(/step:\s*diagnose/);
+    expect(fm).toMatch(/step:\s*change/);
+    expect(fm).toMatch(/step:\s*deliver/);
+    expect(fm).toMatch(/aliases:\s*\[implement,\s*patch\]/);
   });
 
   it('writer-style workflows pick up critique-overlay via trait union', () => {
@@ -1188,6 +1192,191 @@ describe('R23: real overlays adopt the auto-attach shape', () => {
     const gateIdx = spine.indexOf('BUDDY MONITOR GATE', wfStart);
     const step1Idx = spine.indexOf('#### 1. First', wfStart);
     expect(gateIdx).toBeLessThan(step1Idx);
+  });
+});
+
+describe('R24: anchor aliases resolve canonical stages against project step ids', () => {
+  // Canonical-stage anchor matching: an overlay author declares anchors in
+  // canonical terms (`change`, `deliver`, …) and lists per-anchor aliases for
+  // the project-specific step ids workflows actually use (`implement`,
+  // `report`, …). Resolution order is canonical first, then aliases
+  // left-to-right, first hit wins. Plain-string anchors keep working.
+  function writeAliasOverlay(
+    root: string,
+    name: string,
+    body: string,
+    fm: {
+      appliesToWorkflows?: string[];
+      appliesToTraits?: string[];
+      // Each entry can be `'step'` (back-compat) OR `{ step, aliases }`.
+      insertAfter?: Array<string | { step: string; aliases?: string[] }>;
+      insertBefore?: Array<string | { step: string; aliases?: string[] }>;
+    },
+  ): void {
+    function renderAnchor(a: string | { step: string; aliases?: string[] }): string {
+      if (typeof a === 'string') return JSON.stringify(a);
+      const aliases = JSON.stringify(a.aliases ?? []);
+      return `{ step: ${a.step}, aliases: ${aliases} }`;
+    }
+    const insertAfter = (fm.insertAfter ?? []).map(renderAnchor).join(', ');
+    const insertBefore = (fm.insertBefore ?? []).map(renderAnchor).join(', ');
+    const text = [
+      '---',
+      `name: ${name}`,
+      'type: overlay',
+      `description: "Test ${name} overlay."`,
+      'applies-to:',
+      `  workflows: ${JSON.stringify(fm.appliesToWorkflows || [])}`,
+      `  traits: ${JSON.stringify(fm.appliesToTraits || [])}`,
+      `insert-after: [${insertAfter}]`,
+      `insert-before: [${insertBefore}]`,
+      'uses:',
+      '  skills: []',
+      '---',
+      '',
+      body,
+    ].join('\n');
+    write(path.join(root, 'container', 'overlays', name, 'OVERLAY.md'), text);
+  }
+
+  it('plain-string anchor still resolves when step matches (back-compat)', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'flow',
+      '# F\n\n## Steps\n\n1. **Change** {#change} — apply edits.\n\n2. **Deliver** {#deliver} — push.',
+    );
+    writeOverlay(root, 'guard', 'PLAIN_STRING_BODY', {
+      appliesToWorkflows: ['flow'],
+      insertAfter: ['change'],
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [flow]',
+        '  overlays: [guard]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    expect(spine).toMatch(/⟐ GUARD GATE \(after `change`\)/);
+    expect(spine).toContain('PLAIN_STRING_BODY');
+  });
+
+  it('object form: canonical step matches → uses canonical, aliases ignored', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'flow',
+      '# F\n\n## Steps\n\n1. **Change** {#change} — apply edits.\n\n2. **Deliver** {#deliver} — push.',
+    );
+    writeAliasOverlay(root, 'guard', 'CANONICAL_HIT_BODY', {
+      appliesToWorkflows: ['flow'],
+      insertAfter: [{ step: 'change', aliases: ['implement', 'patch'] }],
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [flow]',
+        '  overlays: [guard]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    // Canonical step is in the workflow, so it wins — aliases not mentioned.
+    expect(spine).toMatch(/⟐ GUARD GATE \(after `change`\)/);
+    expect(spine).not.toMatch(/after `implement`/);
+    expect(spine).not.toMatch(/after `patch`/);
+    expect(spine).toContain('CANONICAL_HIT_BODY');
+  });
+
+  it('object form: canonical missing, first alias matches → uses alias and customization summary names it', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'flow',
+      // Project workflow uses `implement` (no `change` step).
+      '# F\n\n## Steps\n\n1. **Implement** {#implement} — apply edits.\n\n2. **Report** {#report} — push.',
+    );
+    writeAliasOverlay(root, 'guard', 'ALIAS_HIT_BODY', {
+      appliesToWorkflows: ['flow'],
+      insertAfter: [{ step: 'change', aliases: ['implement', 'patch'] }],
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [flow]',
+        '  overlays: [guard]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    // Resolved step is `implement` (first alias). The inline gate marker
+    // names the resolved step, and the gate lands inside the `implement`
+    // step's section (between step 1 and step 2).
+    expect(spine).toMatch(/⟐ GUARD GATE \(after `implement`\)/);
+    expect(spine).not.toMatch(/after `change`/);
+    expect(spine).toContain('ALIAS_HIT_BODY');
+    const step1 = spine.indexOf('#### 1. Implement');
+    const gate = spine.indexOf('GUARD GATE');
+    const step2 = spine.indexOf('#### 2. Report');
+    expect(step1).toBeGreaterThanOrEqual(0);
+    expect(gate).toBeGreaterThan(step1);
+    expect(gate).toBeLessThan(step2);
+  });
+
+  it('object form: neither canonical nor any alias matches → warn fires, no anchor markers render', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(
+      root,
+      'flow',
+      // Steps do not include canonical or any alias.
+      '# F\n\n## Steps\n\n1. **Setup** {#setup} — prep.\n\n2. **Verify** {#verify} — check.',
+    );
+    writeAliasOverlay(root, 'guard', 'NO_HIT_BODY', {
+      appliesToWorkflows: ['flow'],
+      insertAfter: [{ step: 'change', aliases: ['implement', 'patch'] }],
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [flow]',
+        '  overlays: [guard]',
+        '',
+      ].join('\n'),
+    );
+    const warnings: string[] = [];
+    const origWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+    let spine: string;
+    try {
+      spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    } finally {
+      console.warn = origWarn;
+    }
+    // Warn fires and lists the spec with aliases joined by `|`.
+    const matched = warnings.find((w) => w.includes('Overlay "guard"') && w.includes('change|implement|patch'));
+    expect(matched, `expected unmatched-anchor warning, got: ${warnings.join(' | ')}`).toBeDefined();
+    // No inline gate marker for this overlay against the unmatched workflow.
+    expect(spine).not.toMatch(/⟐ GUARD GATE/);
   });
 });
 

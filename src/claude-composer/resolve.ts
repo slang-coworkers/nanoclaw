@@ -36,10 +36,40 @@ function collectWorkflowExtendsChain(workflowName: string, catalog: Record<strin
   return chain;
 }
 
+// Resolve a single anchor spec against the target workflow's step set.
+// Canonical step is preferred; falls back to aliases left-to-right; first
+// match wins. Returns the resolved step name (canonical or alias), or `null`
+// if neither canonical nor any alias matches the target. Authors get to
+// declare overlay anchors in canonical-stage terms ("after `change`") while
+// project workflows are free to use stage-specific ids ("after `implement`").
+function resolveAnchor(spec: { step: string; aliases: string[] }, targetStepSet: Set<string>): string | null {
+  if (targetStepSet.has(spec.step)) return spec.step;
+  for (const alias of spec.aliases) {
+    if (targetStepSet.has(alias)) return alias;
+  }
+  return null;
+}
+
+// Format an anchor spec for the unmatched-anchor warning ("declared anchors").
+// Plain canonical-only anchors render as `step`; aliased anchors render as
+// `step|alias1|alias2` so the author can see what was tried.
+function formatAnchorSpec(spec: { step: string; aliases: string[] }): string {
+  if (spec.aliases.length === 0) return spec.step;
+  return [spec.step, ...spec.aliases].join('|');
+}
+
 // Build the anchorSteps array for an overlay attaching to a target workflow.
 // Combines named-step anchors (insert-after / insert-before) with the synthetic
 // `start` anchor when the overlay declared `applies-to.start: true`. Also emits
 // the "no anchors matched any step" warning so authors catch typos.
+//
+// Per-anchor alias resolution: each `insert-after`/`insert-before` entry may
+// declare aliases (canonical-stage matching). If the canonical step isn't a
+// step id of the target workflow, aliases are tried in order. The resolved
+// step name is what flows into both the rendered "after step `X`" pointer
+// and the downstream gate placement in spine.ts — so the agent reads the
+// step id their workflow actually uses (e.g. `implement`), not the canonical
+// anchor (`change`).
 function buildOverlayAnchors(
   overlay: OverlayMeta,
   target: string,
@@ -48,32 +78,47 @@ function buildOverlayAnchors(
 ): { anchorSteps: { position: 'before' | 'after' | 'start'; step: string }[]; where: string } {
   const anchorSteps: { position: 'before' | 'after' | 'start'; step: string }[] = [];
   const anchors: string[] = [];
+  const targetWf = workflowEntries.find((w) => w.name === target);
+  const targetStepSet = new Set(targetWf?.steps ?? []);
+
   if (overlay.applyAtStart) {
     anchorSteps.push({ position: 'start', step: '' });
     anchors.push('at workflow start');
   }
-  for (const step of overlay.insertAfter) {
-    anchors.push(`after step \`${step}\``);
-    anchorSteps.push({ position: 'after', step });
+  // Track which specs failed to resolve so we can emit one combined warning
+  // listing the actual tried-and-missed anchors. Successful resolutions push
+  // the resolved (post-alias) step into anchorSteps + render summary.
+  const unresolvedSpecs: { spec: { step: string; aliases: string[] }; position: 'after' | 'before' }[] = [];
+  for (const spec of overlay.insertAfter) {
+    const resolved = resolveAnchor(spec, targetStepSet);
+    if (resolved == null) {
+      unresolvedSpecs.push({ spec, position: 'after' });
+      continue;
+    }
+    anchors.push(`after step \`${resolved}\``);
+    anchorSteps.push({ position: 'after', step: resolved });
   }
-  for (const step of overlay.insertBefore) {
-    anchors.push(`before step \`${step}\``);
-    anchorSteps.push({ position: 'before', step });
+  for (const spec of overlay.insertBefore) {
+    const resolved = resolveAnchor(spec, targetStepSet);
+    if (resolved == null) {
+      unresolvedSpecs.push({ spec, position: 'before' });
+      continue;
+    }
+    anchors.push(`before step \`${resolved}\``);
+    anchorSteps.push({ position: 'before', step: resolved });
   }
   const where = anchors.length > 0 ? anchors.join(' and ') : 'at the end';
-  // Warn when named anchors don't match any of the target's steps. The
-  // `start` synthetic anchor is exempt — it always lands somewhere.
-  const namedAnchors = anchorSteps.filter((a) => a.position !== 'start');
-  if (namedAnchors.length > 0) {
-    const targetWf = workflowEntries.find((w) => w.name === target);
-    const targetStepSet = new Set(targetWf?.steps ?? []);
-    const matched = namedAnchors.filter((a) => targetStepSet.has(a.step));
-    if (matched.length === 0 && !overlay.applyAtStart) {
-      const declared = [...overlay.insertAfter, ...overlay.insertBefore];
-      console.warn(
-        `Overlay "${overlayName}" targets workflow "${target}" but none of its anchors [${declared.join(', ')}] match steps [${[...targetStepSet].join(', ')}]. No inline gate markers will render.`,
-      );
-    }
+
+  // Warn only when *neither* canonical nor any alias matches for any named
+  // anchor. The `start` synthetic anchor is exempt. Suppressed if at least
+  // one named anchor (or `start`) resolved — partial matches are normal when
+  // an overlay declares more anchors than a given workflow uses.
+  const namedResolvedCount = anchorSteps.filter((a) => a.position !== 'start').length;
+  if (namedResolvedCount === 0 && unresolvedSpecs.length > 0 && !overlay.applyAtStart) {
+    const declared = [...overlay.insertAfter, ...overlay.insertBefore].map(formatAnchorSpec);
+    console.warn(
+      `Overlay "${overlayName}" targets workflow "${target}" but none of its anchors [${declared.join(', ')}] match steps [${[...targetStepSet].join(', ')}]. No inline gate markers will render.`,
+    );
   }
   return { anchorSteps, where };
 }
