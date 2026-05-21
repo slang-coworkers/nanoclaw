@@ -4,9 +4,10 @@ license: MIT
 type: overlay
 description: "Spawn a background /buddy companion at workflow start. Codex-powered monitor watches the session in real-time and flags wrong assumptions or overlooked context."
 applies-to:
-  workflows: [plan, implement]
+  workflows: [base]
   traits: []
-insert-before: [understand, setup]
+  start: true
+insert-before: []
 insert-after: []
 uses:
   skills: [buddy]

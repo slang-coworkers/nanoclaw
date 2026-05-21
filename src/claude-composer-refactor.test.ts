@@ -1066,6 +1066,131 @@ describe('R22: trait-based union matching + `applies-to.start: true` mode', () =
   });
 });
 
+describe('R23: real overlays adopt the auto-attach shape', () => {
+  // Phase 4 contract — assertions about the shipped buddy + critique
+  // overlays' frontmatter plus end-to-end render checks that don't depend
+  // on the slang/slangpy spines (which aren't shipped in nv-main alone).
+  it('buddy-monitor declares applies-to.start: true and applies-to.workflows: [base]', () => {
+    const buddyPath = path.join(REPO_ROOT, 'container', 'overlays', 'buddy', 'OVERLAY.md');
+    if (!fs.existsSync(buddyPath)) return;
+    const text = fs.readFileSync(buddyPath, 'utf-8');
+    const fm = text.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+    expect(fm, 'buddy frontmatter').toMatch(/start:\s*true/);
+    // After Phase 4, buddy targets [base] not [plan, implement] — combined
+    // with the implicit-extends post-pass (R21), this reaches every
+    // workflow that didn't opt out.
+    expect(fm).toMatch(/workflows:\s*\[base\]/);
+    // Named anchors are dropped — start mode is enough.
+    expect(fm).toMatch(/insert-before:\s*\[\]/);
+    expect(fm).toMatch(/insert-after:\s*\[\]/);
+  });
+
+  it('critique-overlay drops the workflow name list and relies on traits', () => {
+    const critiquePath = path.join(REPO_ROOT, 'container', 'overlays', 'critique-overlay', 'OVERLAY.md');
+    if (!fs.existsSync(critiquePath)) return;
+    const text = fs.readFileSync(critiquePath, 'utf-8');
+    const fm = text.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+    expect(fm).toMatch(/workflows:\s*\[\]/);
+    expect(fm, 'trait list preserved').toMatch(/traits:\s*\[code\.edit,\s*test\.gen,\s*doc\.write\]/);
+    // Anchor splices preserved — gates still inline at diagnose/change/deliver.
+    expect(fm).toMatch(/insert-after:\s*\[diagnose,\s*change,\s*deliver\]/);
+    expect(fm).toMatch(/insert-before:\s*\[change\]/);
+  });
+
+  it('writer-style workflows pick up critique-overlay via trait union', () => {
+    // Hermetic — proves the new critique-overlay frontmatter works against
+    // a synthetic writer workflow that requires `code.edit`. Doesn't depend
+    // on the slang/slangpy spines.
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeCapabilitySkill(root, 'editor', 'Edit code.');
+    fs.writeFileSync(
+      path.join(root, 'container', 'skills', 'editor', 'SKILL.md'),
+      [
+        '---',
+        'name: editor',
+        'type: capability',
+        'description: "Edit."',
+        'provides: [code.edit]',
+        '---',
+        '',
+        'Body.',
+      ].join('\n'),
+    );
+    writeWorkflow(
+      root,
+      'project-fix',
+      [
+        '# Project fix',
+        '',
+        '## Steps',
+        '',
+        '1. **Diagnose** {#diagnose} — root cause.',
+        '',
+        '2. **Change** {#change} — apply the fix.',
+        '',
+        '3. **Deliver** {#deliver} — push the artifact.',
+      ].join('\n'),
+      { requires: ['code.edit'] },
+    );
+    // Drop the shipped critique-overlay body into the fixture verbatim.
+    const realCritique = fs.readFileSync(
+      path.join(REPO_ROOT, 'container', 'overlays', 'critique-overlay', 'OVERLAY.md'),
+      'utf-8',
+    );
+    write(path.join(root, 'container', 'overlays', 'critique-overlay', 'OVERLAY.md'), realCritique);
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [project-fix]',
+        '  skills: [editor]',
+        '  overlays: [critique-overlay]',
+        '  bindings:',
+        '    code: editor',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    // Trait-driven attach: critique-overlay has `traits: [code.edit, ...]`,
+    // project-fix declares `requires: [code.edit]`, so the gates inline.
+    expect(spine).toMatch(/⟐ CRITIQUE OVERLAY GATE/);
+  });
+
+  it('base-extending workflows pick up buddy-monitor at start', () => {
+    // Uses the shipped buddy-monitor body against a synthetic base + project
+    // workflow. Validates the Phase 4 shape end-to-end without slang spines.
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(root, 'base', '# Base\n\n## Steps\n\n1. **A** {#a} — base-body.');
+    writeWorkflow(root, 'project-flow', '# P\n\n## Steps\n\n1. **First** {#first} — project-body.');
+    const realBuddy = fs.readFileSync(path.join(REPO_ROOT, 'container', 'overlays', 'buddy', 'OVERLAY.md'), 'utf-8');
+    write(path.join(root, 'container', 'overlays', 'buddy', 'OVERLAY.md'), realBuddy);
+    writeCapabilitySkill(root, 'buddy', 'Buddy.');
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [project-flow]',
+        '  skills: [buddy]',
+        '  overlays: [buddy-monitor]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    expect(spine).toMatch(/⟐ BUDDY MONITOR GATE \(at workflow start\)/);
+    // Gate must precede step 1.
+    const wfStart = spine.indexOf('### /project-flow');
+    const gateIdx = spine.indexOf('BUDDY MONITOR GATE', wfStart);
+    const step1Idx = spine.indexOf('#### 1. First', wfStart);
+    expect(gateIdx).toBeLessThan(step1Idx);
+  });
+});
+
 describe('R19: disableOverlays option strips every overlay gate and the Gate Protocol section', () => {
   // Honors per-coworker `agent_groups.disable_overlays` — when set, the composed
   // CLAUDE.md must contain no `⟐ ... GATE` inline blocks and no trailing
