@@ -747,6 +747,149 @@ describe('R20: overlay matching follows workflow `extends:` chain transitively',
   });
 });
 
+describe('R21: implicit `extends: base` for workflows omitting extends:', () => {
+  // Phase 2 contract. When a `base` workflow ships in the catalog, every
+  // workflow that didn't explicitly opt in or out of extends inherits from
+  // `base`. Combined with R20's chain-walking matcher, an overlay declaring
+  // `applies-to.workflows: [base]` reaches every implicit-base workflow.
+  function writeBaseWorkflow(root: string): void {
+    writeWorkflow(root, 'base', '# Base\n\n## Steps\n\n1. **Anchor** {#anchor} — base-body.');
+  }
+
+  it('workflow with no extends: matches an overlay targeting [base]', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeBaseWorkflow(root);
+    // `flow` declares no `extends:` — picks up implicit base parent.
+    writeWorkflow(root, 'flow', '# F\n\n## Steps\n\n1. **Custom** {#custom} — flow-body.');
+    writeOverlay(root, 'guard', 'IMPLICIT_BASE_GATE_BODY', {
+      appliesToWorkflows: ['base'],
+      insertAfter: ['custom'],
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [flow]',
+        '  overlays: [guard]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    expect(spine).toMatch(/⟐ GUARD GATE/);
+    expect(spine).toContain('IMPLICIT_BASE_GATE_BODY');
+  });
+
+  it('`extends: none` opts out — overlay targeting [base] does NOT attach', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeBaseWorkflow(root);
+    // Hand-written WORKFLOW.md so `extends: none` lands literally — the
+    // helper treats undefined and "none" the same upstream and we need the
+    // explicit token here.
+    write(
+      path.join(root, 'container', 'workflows', 'opt-out', 'WORKFLOW.md'),
+      [
+        '---',
+        'name: opt-out',
+        'type: workflow',
+        'description: "Opted out."',
+        'requires: []',
+        'uses:',
+        '  skills: []',
+        '  workflows: []',
+        'extends: none',
+        '---',
+        '',
+        '# Opt-out',
+        '',
+        '## Steps',
+        '',
+        '1. **Custom** {#custom} — flow-body that should not get the gate.',
+      ].join('\n'),
+    );
+    writeOverlay(root, 'guard', 'OPTED_OUT_GATE_BODY', {
+      appliesToWorkflows: ['base'],
+      insertAfter: ['custom'],
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [opt-out]',
+        '  overlays: [guard]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    expect(spine).not.toMatch(/⟐ GUARD GATE/);
+    expect(spine).not.toContain('OPTED_OUT_GATE_BODY');
+  });
+
+  it('transitive: overlay targeting [base] reaches a grandchild via a named intermediate', () => {
+    // mid-flow extends nothing → implicit base. leaf-flow extends mid-flow
+    // explicitly. Chain becomes leaf → mid → base. Phase 1's chain matcher
+    // (R20) should find the implicit base ancestor.
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeBaseWorkflow(root);
+    writeWorkflow(root, 'mid-flow', '# M\n\n## Steps\n\n1. **MStep** {#mstep} — mid-body.');
+    writeWorkflow(root, 'leaf-flow', '# L\n\n## Steps\n\n1. **Custom** {#custom} — leaf-body.', {
+      extends: 'mid-flow',
+    });
+    writeOverlay(root, 'guard', 'TRANSITIVE_IMPLICIT_BODY', {
+      appliesToWorkflows: ['base'],
+      insertAfter: ['custom'],
+    });
+    writeProjectType(
+      root,
+      [
+        'probe:',
+        '  extends: base-common',
+        '  description: "Probe."',
+        '  workflows: [leaf-flow]',
+        '  overlays: [guard]',
+        '',
+      ].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    expect(spine).toMatch(/⟐ GUARD GATE/);
+    expect(spine).toContain('TRANSITIVE_IMPLICIT_BODY');
+  });
+
+  it('no-base catalog → implicit extends is a no-op (pre-Phase-2 fixtures unchanged)', () => {
+    // When no `base/WORKFLOW.md` exists, the post-pass shouldn't fill in
+    // anything. Old fixtures keep their pre-Phase-2 shape.
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeWorkflow(root, 'solo-flow', '# S\n\n## Steps\n\n1. **Custom** {#custom} — solo-body.');
+    writeProjectType(
+      root,
+      ['probe:', '  extends: base-common', '  description: "Probe."', '  workflows: [solo-flow]', ''].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    expect(spine).not.toMatch(/extends \/base/);
+  });
+
+  it('does not render a phantom "(extends /base—see section below)" pointer when base is implicit', () => {
+    const root = makeTempProject();
+    writeSpineBase(root);
+    writeBaseWorkflow(root);
+    writeWorkflow(root, 'flow', '# F\n\n## Steps\n\n1. **Custom** {#custom} — flow-body.');
+    writeProjectType(
+      root,
+      ['probe:', '  extends: base-common', '  description: "Probe."', '  workflows: [flow]', ''].join('\n'),
+    );
+    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
+    // /flow's section header should not include the implicit-base pointer.
+    expect(spine).not.toMatch(/\/flow[^\n]*\(extends \/base/);
+  });
+});
+
 describe('R19: disableOverlays option strips every overlay gate and the Gate Protocol section', () => {
   // Honors per-coworker `agent_groups.disable_overlays` — when set, the composed
   // CLAUDE.md must contain no `⟐ ... GATE` inline blocks and no trailing

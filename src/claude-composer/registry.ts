@@ -138,6 +138,27 @@ export function readSkillCatalog(projectRoot = process.cwd()): Record<string, Sk
     }
   }
 
+  // Implicit `extends: base` — every workflow that didn't declare an
+  // `extends:` and didn't opt out (`extends: none`) inherits from `base`,
+  // provided a `base` workflow exists in the catalog. Opt-in via presence,
+  // so installations that haven't shipped a `base/WORKFLOW.md` retain the
+  // pre-base-workflow behavior automatically.
+  //
+  // Combined with the chain-walking matcher (R20), an overlay declaring
+  // `applies-to.workflows: [base]` reaches every workflow that didn't
+  // explicitly opt out. Cross-cutting concerns (buddy, codex-critique) can
+  // target `[base]` once instead of name-matching every concrete workflow.
+  const baseEntry = catalog['base'];
+  if (baseEntry && baseEntry.type === 'workflow') {
+    for (const meta of Object.values(catalog)) {
+      if (meta.type !== 'workflow') continue;
+      if (meta.name === 'base') continue;
+      if (meta.extendsWorkflow) continue;
+      if (meta.extendsExplicitNone) continue;
+      meta.extendsWorkflow = 'base';
+    }
+  }
+
   return catalog;
 }
 
@@ -163,7 +184,15 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
 
   const provides = Array.isArray(fm.provides) ? (fm.provides as unknown[]).map(String) : [];
   const requires = Array.isArray(fm.requires) ? (fm.requires as unknown[]).map(String) : [];
-  const extendsWorkflow = typeof fm.extends === 'string' ? fm.extends.trim() || undefined : undefined;
+  // `extends:` semantics on workflows:
+  //   absent / empty       → implicit `extends: base` filled in by the post-pass
+  //   "none" (literal)     → explicit opt-out; never auto-extends `base`
+  //   "<workflow-name>"    → standard parent reference
+  // The post-pass in `readSkillCatalog` reads `extendsExplicitNone` to decide
+  // whether to fill in the implicit base parent.
+  const rawExtends = typeof fm.extends === 'string' ? fm.extends.trim() : '';
+  const extendsExplicitNone = rawExtends.toLowerCase() === 'none';
+  const extendsWorkflow = rawExtends && !extendsExplicitNone ? rawExtends : undefined;
 
   const overridesRaw =
     fm.overrides && typeof fm.overrides === 'object' ? (fm.overrides as Record<string, unknown>) : {};
@@ -295,6 +324,7 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
     epilogue,
     requires,
     extendsWorkflow,
+    extendsExplicitNone: extendsExplicitNone || undefined,
     overrides,
     overlay,
   };
