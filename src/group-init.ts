@@ -99,6 +99,16 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
     initialized.push('groupDir');
   }
 
+  // groups/<folder>/memory/ — agent-writable per-group notes (triage memos,
+  // fix reports, learnings). Workflows write to /workspace/agent/memory/<file>
+  // assuming the dir exists; without scaffolding the first turn fails with
+  // `ls: cannot access /workspace/agent/memory/: No such file or directory`.
+  const memoryDir = path.join(groupDir, 'memory');
+  if (!fs.existsSync(memoryDir)) {
+    fs.mkdirSync(memoryDir, { recursive: true });
+    initialized.push('memory');
+  }
+
   // groups/<folder>/CLAUDE.md is composed by composeCoworkerClaudeMd in
   // container-runner.ts on every wake — for both 'main' (flat body +
   // additive fragments) and typed coworkers (full spine). The host never
