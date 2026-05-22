@@ -23,20 +23,6 @@ uses:
 
 1. **Setup** {#setup} — Active-work claim + worktree + repo, in one pass.
 
-   **[MUST] Auth preflight first.** Before any worktree or clone work, confirm `gh` auth resolves to a real user:
-
-   ```bash
-   gh api user --jq .login 2>&1 | head -1
-   ```
-
-   If this returns empty / "not authenticated" / "401" / "Bad credentials": **abort immediately** with a blocked Fix Report:
-   ```
-   send_message(to="parent", text="[Fix Report] shader-slang/slang#<number>: <title>\n\n• Status: blocked — gh auth preflight failed (gh api user returned: <error head>). Token likely missing/expired/scope-insufficient.\n• Next: human / orchestrator intervention to refresh OneCLI token or fork access.")
-   ```
-   Do not start the worktree, do not attempt `gh pr create` — both will fail later wasting cycles. Observed in slang#10267 fixer: 5+ wasted turns hitting "createPullRequest requires public_repo" before recovering via REST workaround. Preflight catches this in 1 turn.
-
-   Token-good case: continue.
-
    ```bash
    TARGET="slang-<number>"   # flat name, e.g. slang-10188
    SENTINEL="/workspace/agent/active-work/$TARGET"
