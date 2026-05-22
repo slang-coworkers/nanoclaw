@@ -6,11 +6,11 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 142 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 84 |
-| `nv-slang` | slang project spine, skills, workflows | 48 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 157 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 88 |
+| `nv-slang` | slang project spine, skills, workflows | 54 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 19 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 15 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 16 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
@@ -18,12 +18,13 @@ Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or 
 
 ## 📅 2026-05-22
 
-### nv-main (5 PRs)
+### nv-main (6 PRs)
 - **#424** `ci(format): apply prettier to src/github-webhook-server.ts`
 - **#422** `fix(a2a): in_reply_to auto-resolve + soft gate audit`
 - **#423** `fix(host): scaffold groups/<gid>/memory/ + --pull=never on per-group rebuilds`
 - **#425** `prose(nv-main): buddy rewrite + base spine path-tokens + implement worktree isolation`
 - **#430** `fix(audit): meta-ack audit — soft enforcement of [MUST] no-meta-ack rule`
+- **#432** `fix(host): --pull=never → --pull=false on per-group docker build`
 
 ### nv-slang (2 PRs)
 - **#426** `prose(nv-slang): workflow hardening across slang-{plan,triage-issue,fix-issue}`
