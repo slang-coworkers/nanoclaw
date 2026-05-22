@@ -31,10 +31,7 @@ export interface GitHubWebhookServerHandle {
  * registered with the App but multiple instances need to react. Fire-and-
  * forget: failures are logged but never block the response to GitHub.
  */
-function fanOutWebhook(
-  rawBody: string,
-  headers: { event: string; delivery: string },
-): void {
+function fanOutWebhook(rawBody: string, headers: { event: string; delivery: string }): void {
   const list = (process.env.WEBHOOK_FANOUT_URLS ?? '')
     .split(',')
     .map((s) => s.trim())
