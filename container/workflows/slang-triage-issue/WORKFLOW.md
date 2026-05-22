@@ -55,6 +55,8 @@ Read-only on GitHub: never post, label, or modify anything. Output flows via `se
    ```
    Use `gh` only for what local + DeepWiki can't give: searching the issue tracker for duplicates, prior fixes, related PRs. Slang has many long-running tracking issues; check duplicates carefully.
 
+   **[MUST] Tool parallelism rule.** Subagents are isolated and safe to run in parallel — fire 2-3 `Agent` subagents at once for unrelated local-code areas. **Do NOT** group a direct `mcp__deepwiki__ask_question` call together with a direct `Bash(gh ...)` call in the same assistant turn — if either errors (gh returns non-zero on partial output, deepwiki times out), the harness cancels the parallel sibling and you lose the result. Run direct `deepwiki` and `gh` queries in **separate** turns, or wrap each in its own `Agent` subagent for failure isolation.
+
 4. **Map the solution space** {#solution-space} — Don't pick yet. Enumerate. Use `/slang-plan` if it's non-trivial.
 
    For each candidate approach, write:
@@ -78,7 +80,7 @@ Read-only on GitHub: never post, label, or modify anything. Output flows via `se
    | Priority | P0 ship-stopper / P1 regression / P2 normal / P3 nice-to-have |
    | Duplicate | link or `no` |
 
-   Write the full investigation to `/workspace/agent/memory/triage-<number>.md` — issue body, research findings, all candidate approaches with their tradeoffs, the recommended path, file:line pointers, repro. The fixer reads this; do not skip.
+   Compose the full investigation memo at `/workspace/agent/memory/triage-<number>.md` using the heredoc block below (do **not** use the `Write` tool — the file is new and `Write` requires Read-first which fails or stales). Memo includes: issue body, research findings, all candidate approaches with tradeoffs, the recommended path, file:line pointers, repro. The fixer reads this; do not skip.
 
    ```bash
    cat > /workspace/agent/memory/triage-<number>.md << 'EOF'

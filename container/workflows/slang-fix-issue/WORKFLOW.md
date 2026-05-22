@@ -23,6 +23,20 @@ uses:
 
 1. **Setup** {#setup} — Active-work claim + worktree + repo, in one pass.
 
+   **[MUST] Auth preflight first.** Before any worktree or clone work, confirm `gh` auth resolves to a real user:
+
+   ```bash
+   gh api user --jq .login 2>&1 | head -1
+   ```
+
+   If this returns empty / "not authenticated" / "401" / "Bad credentials": **abort immediately** with a blocked Fix Report:
+   ```
+   send_message(to="parent", text="[Fix Report] shader-slang/slang#<number>: <title>\n\n• Status: blocked — gh auth preflight failed (gh api user returned: <error head>). Token likely missing/expired/scope-insufficient.\n• Next: human / orchestrator intervention to refresh OneCLI token or fork access.")
+   ```
+   Do not start the worktree, do not attempt `gh pr create` — both will fail later wasting cycles. Observed in slang#10267 fixer: 5+ wasted turns hitting "createPullRequest requires public_repo" before recovering via REST workaround. Preflight catches this in 1 turn.
+
+   Token-good case: continue.
+
    ```bash
    TARGET="slang-<number>"   # flat name, e.g. slang-10188
    SENTINEL="/workspace/agent/active-work/$TARGET"
@@ -50,6 +64,11 @@ uses:
    git worktree add /workspace/agent/wt-{{target_slug}} -b fix/issue-<number>
    cd /workspace/agent/wt-{{target_slug}}
    ```
+
+   **[MUST NOT] Worktree isolation.** Sibling fixer sessions write to their own `wt-<other-target>/` dirs in the same `groups/slang-fixer/` filesystem; you can SEE them but **never read, write, mv, rm, or `git worktree remove`** them. Cross-session reads can produce silent wrong-source confusion (a fixer probing another's prebuilt slangc); cross-session deletes have caused mid-build failures (concurrent `rm -rf wt-<sibling>/build/` killed an active build). If `/workspace` runs out of disk, **report `blocked` to parent** with status + `df -h /workspace` output — do **not** reclaim space by deleting sibling worktrees or build dirs.
+
+   - **Paths YOU own (rw):** `wt-{{target_slug}}/`, `active-work/{{target_slug}}/`, `memory/fix-<number>.md`, `patches/fix-<number>.patch`.
+   - **Shared (read-only):** `/workspace/agent/slang/` (base clone — `git fetch` only).
 
 2. **Recall** {#recall} — Subagent for prior fixes / similar patterns before researching:
 
@@ -91,7 +110,15 @@ uses:
 
    Build is 15-25 min; use the watchdog pattern (notify parent + `schedule_task` watchdog every 30 min, cancel on completion) — see `/slang-implement` Step 5 for the exact template.
 
-   If verify fails after **2 independent fix attempts**, commit with a `wip:` prefix, escalate to parent with the failure log, and stop.
+   **[MUST] React to build failure on the same turn it surfaces.** When the watchdog (or a `Monitor` tool tail) reports `BUILD_EXIT=<non-zero>`, build failure stderr, ninja `FAILED:` lines, or "command failed" status, do NOT end the turn silently. The next turn must:
+
+   1. Read the last 30 lines of the build log: `tail -n 30 /workspace/agent/wt-{{target_slug}}/build/build.log` (or wherever the watchdog writes output).
+   2. If the failure is recoverable (compile error in your patch, missing dep, environment glitch): fix and re-run — counts as 1 of the 2 allowed attempts.
+   3. If unrecoverable OR you've used both attempts: commit current state with `wip:` prefix, **send `[Fix Report]` to parent with `Status: blocked`** + first 30 lines of the error tail + what was tried + worktree path. Then `cancel_task(<watchdog-id>)` and end the turn.
+
+   Silent abandonment after a build failure leaves the chain stranded — the orchestrator can't tell "still building" from "broke 2h ago and gave up". Escalate every failure explicitly.
+
+   If verify fails after **2 independent fix attempts** without a watchdog event (e.g., test fails but build succeeds), the same blocked-Fix Report rule applies.
 
 6. **Push + draft PR** {#draft-pr} — Once verify is green, commit and open the draft PR:
 
@@ -112,7 +139,26 @@ uses:
 
    Capture the PR URL — pass to Step 7.
 
-   **Patch fallback** (no push rights / no usable fork): `git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 7 dispatches with `--mode patch <path>` instead of the PR URL.
+   **Patch fallback** (no push rights / no usable fork): `git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 7 dispatches with `--mode patch <path>` instead of the PR URL. Skip Step 6.5 in patch mode (no PR to watch).
+
+   **6.5 Set the PR watcher [MUST]** {#watcher} — Once the draft PR is open, schedule a recurring task that polls for new review comments + state changes and GCs the worktree when the PR closes or ages out. This replaces passive "wait for inbound" with active polling so a long-running review or a closed PR doesn't strand the fixer.
+
+   ```
+   echo "0" > /workspace/agent/active-work/{{target_slug}}/last-pr-count
+
+   schedule_task(
+     prompt="[PR watcher slang#<number>] " +
+       "1. `gh pr view <number> -R shader-slang/slang --json state,createdAt,reviewDecision,comments,reviews,reviewThreads` — capture state + total count of comments+reviews+reviewThreads. " +
+       "2. If state ∈ {CLOSED, MERGED}: cleanup. `cancel_task(<this taskId>)`; `cd /workspace/agent/slang && git worktree remove --force /workspace/agent/wt-<target_slug>`; `rm -rf /workspace/agent/active-work/<target_slug>`; `send_message(to='parent', text='[Watcher] slang#<number> PR <state>; worktree GC done.')`. End turn. " +
+       "3. If `(now - createdAt) > 10 days`: same cleanup as #2, reason='10d-stale'. " +
+       "4. Otherwise: compare current count to `/workspace/agent/active-work/<target_slug>/last-pr-count`. If higher → fetch new comments and address them per Step 7's REQUEST_CHANGES path (apply edits, re-run Step 5 verify, re-push). Update last-pr-count. End turn. " +
+       "5. If unchanged: end turn (no message — silent poll).",
+     recurrence="*/30 * * * *",
+     new_session=false,
+   )
+   ```
+
+   The watcher self-cancels on PR close/merge or after 10 days. No manual cleanup required.
 
 7. **Peer review** {#peer-review} — When `slang-reviewer` is in your destinations, dispatch with the artifact + test summary:
 
