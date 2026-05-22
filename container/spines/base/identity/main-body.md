@@ -46,9 +46,8 @@ Three rules that keep this orchestrator honest. The full coding-discipline set l
 
 | Container path | Access | Notes |
 |---|---|---|
-| `/workspace/agent` | rw | Your per-group folder (notes, memory, conversations). |
+| `/workspace/agent` | rw | Your per-group folder (notes, memory, conversations). When wired to a project, the project clone lives at `/workspace/agent/<project>/`. |
 | `/workspace/shared` | rw (Main) / ro (coworkers) | Cross-group facts and learnings. |
-| `/workspace/project` | ro | Project source — mounted only when a coworker's `container_configs` row declares it. |
 
 ## Message formatting (`dashboard:*`)
 
