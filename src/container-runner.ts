@@ -1378,7 +1378,12 @@ export async function buildAgentGroupImage(agentGroupId: string): Promise<void> 
   const tmpDockerfile = path.join(DATA_DIR, `Dockerfile.${agentGroupId}`);
   fs.writeFileSync(tmpDockerfile, dockerfile);
   try {
-    execSync(`${CONTAINER_RUNTIME_BIN} build -t ${imageTag} -f ${tmpDockerfile} .`, {
+    // --pull=never: the FROM tag is a local-only base image (built by
+    // ./container/build.sh, never pushed to a registry). Without this flag,
+    // buildkit attempts a registry pull and fails with "pull access denied".
+    // Observed in slang#11004 fixer's install_packages call (clang-format-18,
+    // prettier, gersemi) — rebuild errored, packages never landed.
+    execSync(`${CONTAINER_RUNTIME_BIN} build --pull=never -t ${imageTag} -f ${tmpDockerfile} .`, {
       cwd: DATA_DIR,
       stdio: 'pipe',
       timeout: 300_000,
