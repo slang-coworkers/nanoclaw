@@ -112,3 +112,4 @@ container/mcp-servers/**
 
 # Removed in this PR — base-nanoclaw moves to nv-nanoclaw's territory:
 container/skills/base-nanoclaw/**
+container/skills/buddy/**
