@@ -11,9 +11,10 @@ import path from 'path';
 
 import { getCurrentInReplyTo } from '../current-batch.js';
 import { findByName, findByRouting, getAllDestinations } from '../destinations.js';
-import { getMessageInBySeq, hasInboundFromThread, type MessageInRow } from '../db/messages-in.js';
+import { getMessageInBySeq, getUnrespondedInboundsFromThread, hasInboundFromThread, type MessageInRow } from '../db/messages-in.js';
 import { getMessageIdBySeq, getRoutingBySeq, hasOutboundToThread, writeMessageOut } from '../db/messages-out.js';
 import { getSessionRouting } from '../db/session-routing.js';
+import { auditCompletionMarkers } from './gate-audit.js';
 import { registerTools } from './server.js';
 import type { McpToolDefinition } from './types.js';
 
@@ -234,6 +235,53 @@ function applyInReplyToDefaults(
   return { to: resolvedTo, threadId: resolvedThread };
 }
 
+/**
+ * Auto-default `in_reply_to` when the agent sends to a peer-originated
+ * thread without specifying which inbound it's answering. Returns:
+ *   - { row, error: null } — caller's inReplyRow (explicit wins), OR a
+ *     silent auto-resolve when exactly one unresponded inbound exists, OR
+ *     null when the case isn't peer-thread-replying.
+ *   - { row: null, error: string } — STRICT REJECTION when multiple
+ *     unresponded inbounds exist. Forces the agent to pass `in_reply_to=<id>`
+ *     explicitly so it can't silently re-attach the wrong message under
+ *     ambiguity. The error names the candidate seqs so the agent can pick.
+ *
+ * "Unresponded" means no outbound row's `in_reply_to` points at the inbound's
+ * id. If all candidates are responded, the helper returns null and falls
+ * through to normal guard behavior.
+ */
+function autoResolveInReplyForPeerThread(
+  routing: { channel_type: string; platform_id: string; thread_id: string | null },
+  inReplyRow: MessageInRow | null,
+): { row: MessageInRow | null; error: string | null } {
+  if (inReplyRow) return { row: inReplyRow, error: null };
+  if (routing.channel_type !== 'agent') return { row: null, error: null };
+  if (!routing.thread_id) return { row: null, error: null };
+  // NOTE: we do NOT short-circuit on hasOutboundToThread. An originated
+  // thread can still accumulate unresponded peer replies (e.g. orchestrator
+  // sends kickoff, peer replies multiple times); skipping auto-resolve in
+  // that case lets bare writes go through and silently mis-attach. The
+  // unresponded-inbound check below is the deterministic signal — it
+  // already filters out inbounds we've already replied to, so continuation
+  // (all replied) naturally returns 0 candidates and falls through.
+  const candidates = getUnrespondedInboundsFromThread(
+    routing.channel_type,
+    routing.platform_id,
+    routing.thread_id,
+  );
+  if (candidates.length === 0) return { row: null, error: null };
+  if (candidates.length === 1) return { row: candidates[0], error: null };
+  // Multiple unresponded inbounds — REJECT to force the agent to disambiguate.
+  // Auto-picking "latest" is convenient but unsafe: the agent may have intended
+  // an older message. Strict mode prevents silent wrong-attachment.
+  const seqs = candidates.map((c) => `#${c.seq}`).join(', ');
+  const error =
+    `Refusing to send to thread "${routing.thread_id}" without in_reply_to: ` +
+    `${candidates.length} unresponded inbound rows exist on this peer thread (${seqs}). ` +
+    `Pass in_reply_to=<seq> explicitly to name which inbound you're answering.`;
+  return { row: null, error };
+}
+
 export const sendMessage: McpToolDefinition = {
   tool: {
     name: 'send_message',
@@ -277,7 +325,11 @@ export const sendMessage: McpToolDefinition = {
     const routing = resolveRouting(effectiveTo, effectiveThread);
     if ('error' in routing) return err(routing.error);
 
-    const guard = checkPeerThreadGuard(routing, inReplyRow);
+    const auto = autoResolveInReplyForPeerThread(routing, inReplyRow);
+    if (auto.error) return err(auto.error);
+    const effectiveInReplyRow = auto.row;
+
+    const guard = checkPeerThreadGuard(routing, effectiveInReplyRow);
     if (!guard.ok) return err(guard.error);
 
     const id = generateId();
@@ -288,11 +340,15 @@ export const sendMessage: McpToolDefinition = {
       channel_type: routing.channel_type,
       thread_id: routing.thread_id,
       content: JSON.stringify({ text }),
-      in_reply_to: inReplyRow ? inReplyRow.id : getCurrentInReplyTo(),
+      in_reply_to: effectiveInReplyRow ? effectiveInReplyRow.id : getCurrentInReplyTo(),
     });
 
-    log(`send_message: #${seq} → ${routing.resolvedName}${routing.thread_id ? ` (thread=${routing.thread_id})` : ''}${inReplyRow ? ` (in_reply_to=${inReplyRow.seq})` : ''}`);
-    return ok(`Message sent to ${routing.resolvedName} (id: ${seq})`);
+    const wasAutoResolved = effectiveInReplyRow && effectiveInReplyRow !== inReplyRow;
+    log(`send_message: #${seq} → ${routing.resolvedName}${routing.thread_id ? ` (thread=${routing.thread_id})` : ''}${effectiveInReplyRow ? ` (in_reply_to=${effectiveInReplyRow.seq}${wasAutoResolved ? ' auto' : ''})` : ''}`);
+    const baseMsg = `Message sent to ${routing.resolvedName} (id: ${seq})`;
+    const audit = auditCompletionMarkers(text);
+    if (audit) log(audit);
+    return ok(audit ? `${baseMsg}\n${audit}` : baseMsg);
   },
 };
 
@@ -340,7 +396,11 @@ export const sendFile: McpToolDefinition = {
     const routing = resolveRouting(effectiveTo, effectiveThread);
     if ('error' in routing) return err(routing.error);
 
-    const guard = checkPeerThreadGuard(routing, inReplyRow);
+    const auto = autoResolveInReplyForPeerThread(routing, inReplyRow);
+    if (auto.error) return err(auto.error);
+    const effectiveInReplyRow = auto.row;
+
+    const guard = checkPeerThreadGuard(routing, effectiveInReplyRow);
     if (!guard.ok) return err(guard.error);
 
     const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve('/workspace/agent', filePath);
@@ -360,10 +420,11 @@ export const sendFile: McpToolDefinition = {
       channel_type: routing.channel_type,
       thread_id: routing.thread_id,
       content: JSON.stringify({ text: (args.text as string) || '', files: [filename] }),
-      in_reply_to: inReplyRow ? inReplyRow.id : getCurrentInReplyTo(),
+      in_reply_to: effectiveInReplyRow ? effectiveInReplyRow.id : getCurrentInReplyTo(),
     });
 
-    log(`send_file: ${id} → ${routing.resolvedName} (${filename})${inReplyRow ? ` (in_reply_to=${inReplyRow.seq})` : ''}`);
+    const wasAutoResolvedFile = effectiveInReplyRow && effectiveInReplyRow !== inReplyRow;
+    log(`send_file: ${id} → ${routing.resolvedName} (${filename})${effectiveInReplyRow ? ` (in_reply_to=${effectiveInReplyRow.seq}${wasAutoResolvedFile ? ' auto' : ''})` : ''}`);
     return ok(`File sent to ${routing.resolvedName} (id: ${id}, filename: ${filename})`);
   },
 };
