@@ -14,7 +14,7 @@ import { findByName, findByRouting, getAllDestinations } from '../destinations.j
 import { getMessageInBySeq, getUnrespondedInboundsFromThread, hasInboundFromThread, type MessageInRow } from '../db/messages-in.js';
 import { getMessageIdBySeq, getRoutingBySeq, hasOutboundToThread, writeMessageOut } from '../db/messages-out.js';
 import { getSessionRouting } from '../db/session-routing.js';
-import { auditCompletionMarkers } from './gate-audit.js';
+import { auditCompletionMarkers, auditMetaAck } from './gate-audit.js';
 import { registerTools } from './server.js';
 import type { McpToolDefinition } from './types.js';
 
@@ -346,9 +346,13 @@ export const sendMessage: McpToolDefinition = {
     const wasAutoResolved = effectiveInReplyRow && effectiveInReplyRow !== inReplyRow;
     log(`send_message: #${seq} → ${routing.resolvedName}${routing.thread_id ? ` (thread=${routing.thread_id})` : ''}${effectiveInReplyRow ? ` (in_reply_to=${effectiveInReplyRow.seq}${wasAutoResolved ? ' auto' : ''})` : ''}`);
     const baseMsg = `Message sent to ${routing.resolvedName} (id: ${seq})`;
-    const audit = auditCompletionMarkers(text);
-    if (audit) log(audit);
-    return ok(audit ? `${baseMsg}\n${audit}` : baseMsg);
+    const audits: string[] = [];
+    const completionAudit = auditCompletionMarkers(text);
+    if (completionAudit) audits.push(completionAudit);
+    const metaAckAudit = auditMetaAck(text, routing.channel_type);
+    if (metaAckAudit) audits.push(metaAckAudit);
+    if (audits.length > 0) log(audits.join('\n'));
+    return ok(audits.length > 0 ? `${baseMsg}\n${audits.join('\n')}` : baseMsg);
   },
 };
 

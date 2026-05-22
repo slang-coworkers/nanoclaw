@@ -177,3 +177,62 @@ export function auditCompletionMarkers(text: string): string | null {
   }
   return lines.length > 0 ? lines.join('\n') : null;
 }
+
+/**
+ * Pure-acknowledgement patterns that violate the spine's `[MUST] no
+ * meta-acknowledgements` rule (PR #404 / chain-reporting fragment). When
+ * a peer says "done", the right response is to act on it (or nothing) —
+ * not to fire back "Acknowledged" / "Noted" / "Standing by".
+ *
+ * Detection is deliberately conservative: we only flag short messages
+ * (≤120 chars) whose first sentence is one of these openers. Longer
+ * messages with substantive content following an opener slip through.
+ */
+const META_ACK_OPENERS = [
+  /^acknowledged\b[.,—\-:!\s]/i,
+  /^noted\b[.,—\-:!\s]/i,
+  /^thanks\b[.,—\-:!\s]/i,
+  /^thank you\b[.,—\-:!\s]/i,
+  /^got it\b[.,—\-:!\s]/i,
+  /^will do\b[.,—\-:!\s]/i,
+  /^standing by\b[.,—\-:!\s]/i,
+  /^standby\b[.,—\-:!\s]/i,
+  /^received\b[.,—\-:!\s]/i,
+  /^ok\b[.,—\-:!\s]/i,
+  /^okay\b[.,—\-:!\s]/i,
+  /^understood\b[.,—\-:!\s]/i,
+  /^copy that\b[.,—\-:!\s]/i,
+  /^ack\b[.,—\-:!\s]/i,
+];
+
+const META_ACK_MAX_LEN = 120;
+
+/**
+ * Returns an audit warning string when the outbound text looks like a
+ * peer-to-peer meta-ack with no substantive content. Only fires for agent-
+ * to-agent (peer) sends — channel destinations (telegram/discord/dashboard)
+ * are exempt because user-facing acks have a real role.
+ *
+ * Soft enforcement: warning surfaced; message still sends. Promote to hard
+ * refusal once the rate of false-positives is calibrated.
+ */
+export function auditMetaAck(
+  text: string,
+  channelType: string | null | undefined,
+): string | null {
+  if (channelType !== 'agent') return null;
+  const trimmed = text.trim();
+  if (trimmed.length === 0 || trimmed.length > META_ACK_MAX_LEN) return null;
+  for (const opener of META_ACK_OPENERS) {
+    if (opener.test(trimmed)) {
+      const head = trimmed.split(/[.\n]/)[0].slice(0, 80);
+      return (
+        `[META-ACK AUDIT] outbound looks like a pure peer-to-peer acknowledgement (` +
+        `"${head}…"). Spine [MUST]: no meta-acks — ending the turn silently is the ` +
+        `correct response when a peer reports done/standby. Send only when there's ` +
+        `substantive content.`
+      );
+    }
+  }
+  return null;
+}
