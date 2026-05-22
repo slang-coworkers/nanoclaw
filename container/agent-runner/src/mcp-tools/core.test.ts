@@ -530,3 +530,69 @@ describe('send_message MCP tool — gate audit', () => {
     expect((result.content[0] as { text: string }).text).toContain('GATE AUDIT');
   });
 });
+
+/**
+ * Meta-ack audit tests — soft enforcement of the spine's [MUST] no
+ * meta-acknowledgements rule. Pure peer-to-peer acks (no substantive
+ * content) get a warning appended to the tool response. Channel
+ * destinations (telegram/discord/dashboard) are exempt.
+ */
+describe('send_message MCP tool — meta-ack audit', () => {
+  it('warns on bare "Acknowledged" peer-to-peer ack', async () => {
+    insertInbound('inbound-peer-meta', 600, {
+      thread_id: 'review-PR-meta',
+      channel_type: 'agent',
+      platform_id: 'ag-peer',
+    });
+    const result = await sendMessage.handler({
+      to: 'peer',
+      text: 'Acknowledged. Standing by.',
+      in_reply_to: 600,
+    });
+    expect(result.isError).toBeUndefined();
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toContain('META-ACK AUDIT');
+    expect(text).toContain('no meta-acks');
+  });
+
+  it('warns on "Noted, will do." — short ack', async () => {
+    insertInbound('inbound-peer-meta-2', 601, {
+      thread_id: 'review-PR-meta',
+      channel_type: 'agent',
+      platform_id: 'ag-peer',
+    });
+    const result = await sendMessage.handler({
+      to: 'peer',
+      text: 'Noted, will do.',
+      in_reply_to: 601,
+    });
+    expect((result.content[0] as { text: string }).text).toContain('META-ACK AUDIT');
+  });
+
+  it('does NOT warn on substantive message starting with "OK"', async () => {
+    insertInbound('inbound-peer-meta-3', 602, {
+      thread_id: 'review-PR-meta',
+      channel_type: 'agent',
+      platform_id: 'ag-peer',
+    });
+    // Long enough message — actual content beyond the OK opener.
+    const long =
+      'OK — pulled the diff for PR #11218. Three concrete edits needed in source/slang/slang-emit-spirv.cpp lines 4521-4537 and a new regression test under tests/raytracing/. Patch attached.';
+    const result = await sendMessage.handler({
+      to: 'peer',
+      text: long,
+      in_reply_to: 602,
+    });
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).not.toContain('META-ACK AUDIT');
+  });
+
+  it('does NOT warn on channel destinations (user-facing acks have a role)', async () => {
+    // Channel destination, not peer-to-peer → exempt from meta-ack rule.
+    const result = await sendMessage.handler({
+      to: 'dashboard',
+      text: 'Acknowledged.',
+    });
+    expect((result.content[0] as { text: string }).text).not.toContain('META-ACK AUDIT');
+  });
+});
