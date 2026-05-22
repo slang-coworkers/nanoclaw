@@ -65,7 +65,7 @@ uses:
    cd /workspace/agent/wt-{{target_slug}}
    ```
 
-   **[MUST NOT] Worktree isolation.** Sibling fixer sessions write to their own `wt-<other-target>/` dirs in the same `groups/slang-fixer/` filesystem; you can SEE them but **never read, write, mv, rm, or `git worktree remove`** them. Cross-session reads can produce silent wrong-source confusion (a fixer probing another's prebuilt slangc); cross-session deletes have caused mid-build failures (concurrent `rm -rf wt-<sibling>/build/` killed an active build). If `/workspace` runs out of disk, **report `blocked` to parent** with status + `df -h /workspace` output — do **not** reclaim space by deleting sibling worktrees or build dirs.
+   **[MUST NOT] Worktree isolation.** Sibling fixer sessions write to their own `wt-<other-target>/` dirs in the same `groups/slang-fixer/` filesystem; you can SEE them but **never read, write, mv, rm, or `git worktree remove`** them. Cross-session reads can produce silent wrong-source confusion (a fixer probing another's prebuilt slangc); cross-session deletes have caused mid-build failures (concurrent `rm -rf wt-<sibling>/build/` killed an active build). If `/workspace/` runs out of disk, **report `blocked` to parent** with status + `df -h /workspace` output — do **not** reclaim space by deleting sibling worktrees or build dirs.
 
    - **Paths YOU own (rw):** `wt-{{target_slug}}/`, `active-work/{{target_slug}}/`, `memory/fix-<number>.md`, `patches/fix-<number>.patch`.
    - **Shared (read-only):** `/workspace/agent/slang/` (base clone — `git fetch` only).
