@@ -15,13 +15,13 @@ overrides:
     First, check whether the SlangPy repo is available locally:
 
     ```bash
-    [ -d /workspace/project ] && ls /workspace/project | head -5
+    [ -d /workspace/agent/slangpy ] && ls /workspace/agent/slangpy | head -5
     ```
 
-    **If `/workspace/project/` exists and is non-empty** — run these two research paths in parallel:
+    **If `/workspace/agent/slangpy/` exists and is non-empty** — run these two research paths in parallel:
 
     Path A (local code exploration) — spawn an `Agent` subagent:
-    > Explore `/workspace/project/` to understand the code relevant to <target>. Use Grep, Glob, and Read. Focus on: structure, entry points, call paths, test files, recent git log. Produce a concise findings note.
+    > Explore `/workspace/agent/slangpy/` to understand the code relevant to <target>. Use Grep, Glob, and Read. Focus on: structure, entry points, call paths, test files, recent git log. Produce a concise findings note.
 
     Path B (upstream docs) — query DeepWiki in parallel with Path A:
     ```
@@ -31,7 +31,7 @@ overrides:
 
     Merge the findings from both paths before proceeding to Synthesize.
 
-    **If `/workspace/project/` is absent or empty** — invoke `/slangpy-build` to clone and set up the repo first, then proceed with a single research path:
+    **If `/workspace/agent/slangpy/` is absent or empty** — invoke `/slangpy-build` to clone and set up the repo first, then proceed with a single research path:
     - Local code exploration (grep, read files, git log) inside `/workspace/agent/slangpy/`
     - DeepWiki queries (same as Path B above) to cross-reference upstream docs
 
