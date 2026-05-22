@@ -15,13 +15,13 @@ overrides:
     First, check whether the Slang repo is available locally:
 
     ```bash
-    [ -d /workspace/project ] && ls /workspace/project | head -5
+    [ -d /workspace/agent/slang ] && ls /workspace/agent/slang | head -5
     ```
 
-    **If `/workspace/project/` exists and is non-empty** — run these two research paths in parallel:
+    **If `/workspace/agent/slang/` exists and is non-empty** — run these two research paths in parallel:
 
     Path A (local code exploration) — spawn an `Agent` subagent:
-    > Explore `/workspace/project/` to understand the code relevant to <target>. Use Grep, Glob, and Read. Focus on: compiler pipeline stages, relevant source files in `source/slang/`, IR passes, emitters, test files under `tests/`, recent git log. Produce a concise findings note.
+    > Explore `/workspace/agent/slang/` to understand the code relevant to <target>. Use Grep, Glob, and Read. Focus on: compiler pipeline stages, relevant source files in `source/slang/`, IR passes, emitters, test files under `tests/`, recent git log. Produce a concise findings note.
 
     Path B (upstream docs) — query DeepWiki in parallel with Path A:
     ```
@@ -31,7 +31,7 @@ overrides:
 
     Merge the findings from both paths before proceeding to Synthesize.
 
-    **If `/workspace/project/` is absent or empty** — invoke `/slang-build` to clone and set up the repo first, then proceed with a single research path:
+    **If `/workspace/agent/slang/` is absent or empty** — invoke `/slang-build` to clone and set up the repo first, then proceed with a single research path:
     - Local code exploration (grep, read files, git log) inside the cloned repo
     - DeepWiki queries (same as Path B above) to cross-reference upstream docs
 
