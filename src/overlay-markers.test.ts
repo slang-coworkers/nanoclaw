@@ -46,10 +46,7 @@ function scaffoldMinimalRegistry(root: string): void {
 
   // Empty spine that 'test-coworker' references
   fs.mkdirSync(path.join(root, 'container', 'spines', 'tests'), { recursive: true });
-  fs.writeFileSync(
-    path.join(root, 'container', 'spines', 'tests', 'identity.md'),
-    `You are a test coworker.\n`,
-  );
+  fs.writeFileSync(path.join(root, 'container', 'spines', 'tests', 'identity.md'), `You are a test coworker.\n`);
 
   // coworker-types.yaml at a known location
   fs.writeFileSync(
@@ -123,9 +120,7 @@ describe('materializeOverlayMarkers', () => {
 
   it('handles overlay names not in the catalog without throwing', () => {
     const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
-    expect(() =>
-      materializeOverlayMarkers(['does-not-exist'], tmpRoot, groupDir),
-    ).not.toThrow();
+    expect(() => materializeOverlayMarkers(['does-not-exist'], tmpRoot, groupDir)).not.toThrow();
     expect(fs.readdirSync(groupDir)).toHaveLength(0);
     fs.rmSync(groupDir, { recursive: true, force: true });
   });

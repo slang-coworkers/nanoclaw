@@ -706,11 +706,7 @@ export function getAppliedOverlayNames(
  *
  * Idempotent. Safe to call on every spawn.
  */
-export function materializeOverlayMarkers(
-  overlayNames: string[],
-  projectRoot: string,
-  groupDir: string,
-): void {
+export function materializeOverlayMarkers(overlayNames: string[], projectRoot: string, groupDir: string): void {
   const catalog = readSkillCatalog(projectRoot);
   for (const name of overlayNames) {
     const meta = catalog[name];

@@ -1170,7 +1170,10 @@ describe('R23: real overlays adopt the auto-attach shape', () => {
     writeSpineBase(root);
     writeWorkflow(root, 'base', '# Base\n\n## Steps\n\n1. **A** {#a} — base-body.');
     writeWorkflow(root, 'project-flow', '# P\n\n## Steps\n\n1. **First** {#first} — project-body.');
-    const realBuddy = fs.readFileSync(path.join(REPO_ROOT, 'container', 'overlays', 'buddy-monitor', 'OVERLAY.md'), 'utf-8');
+    const realBuddy = fs.readFileSync(
+      path.join(REPO_ROOT, 'container', 'overlays', 'buddy-monitor', 'OVERLAY.md'),
+      'utf-8',
+    );
     write(path.join(root, 'container', 'overlays', 'buddy-monitor', 'OVERLAY.md'), realBuddy);
     writeCapabilitySkill(root, 'buddy', 'Buddy.');
     writeProjectType(
