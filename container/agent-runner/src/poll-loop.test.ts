@@ -1,10 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from './db/connection.js';
 import { getPendingMessages, markCompleted } from './db/messages-in.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
 import { formatMessages, extractRouting } from './formatter.js';
-import { dispatchResultText, isNewSessionBatch, taskOptsOutOfNewSession } from './poll-loop.js';
+import { checkCritiqueGate, dispatchResultText, isNewSessionBatch, taskOptsOutOfNewSession } from './poll-loop.js';
 import { MockProvider } from './providers/mock.js';
 
 beforeEach(() => {
@@ -569,5 +572,188 @@ describe('new_session predicate (default-on: opt-out via new_session:false)', ()
 
   it('isNewSessionBatch — FALSE on empty batch (defensive: no spurious fresh sessions)', () => {
     expect(isNewSessionBatch([])).toBe(false);
+  });
+});
+
+describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', () => {
+  // The bash hook (gate-critique-on-deliver.sh) catches send_message and
+  // gh-pr-create paths. This in-process check covers the text-output
+  // <message to=>...</message> path that bypasses the bash hook entirely.
+  // Logic must mirror the hook: same MARKER file, same workflow-state.json,
+  // same delivery-marker regex.
+
+  let tmp: string;
+  let markerPath: string;
+  let statePath: string;
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'critique-gate-test-'));
+    markerPath = path.join(tmp, 'overlay-critique-gate');
+    statePath = path.join(tmp, 'workflow-state.json');
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('marker absent → not blocked (overlay opt-out)', () => {
+    const r = checkCritiqueGate('[Fix Report] something', { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+    expect(r.blocked).toBe(false);
+  });
+
+  it('marker present + no delivery marker in body → not blocked', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    const r = checkCritiqueGate('Just a chat response, no delivery marker.', {
+      overlayMarkerPath: markerPath,
+      workflowStatePath: statePath,
+    });
+    expect(r.blocked).toBe(false);
+  });
+
+  it('marker present + [Fix Report] + critique_rounds=0 → BLOCKED', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    const r = checkCritiqueGate('[Fix Report] all done', { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toContain('critique_rounds=0');
+    expect(r.reason).toContain('Fix Report');
+  });
+
+  it('marker present + [Fix Report] + missing state file → BLOCKED (treats as 0)', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    const r = checkCritiqueGate('[Fix Report] all done', { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+    expect(r.blocked).toBe(true);
+  });
+
+  it('marker present + [Fix Report] + critique_rounds=1 → not blocked', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
+    const r = checkCritiqueGate('[Fix Report] all done', { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+    expect(r.blocked).toBe(false);
+  });
+
+  it.each(['Fix Report', 'Resolution', 'Triage Resolution', 'Review Verdict', 'handoff'])(
+    'recognizes [%s] as a delivery marker',
+    (marker) => {
+      fs.writeFileSync(markerPath, 'critique-gate\n');
+      fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+      const r = checkCritiqueGate(`[${marker}] body`, { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+      expect(r.blocked).toBe(true);
+    },
+  );
+});
+
+describe('dispatchResultText — critique-gate text-output integration (#67)', () => {
+  let tmp: string;
+  let markerPath: string;
+  let statePath: string;
+  let originalOverlayCheck: string | undefined;
+
+  function addDestination(name: string) {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO destinations (name, display_name, type, channel_type, platform_id, agent_group_id)
+         VALUES (?, ?, 'agent', NULL, NULL, ?)`,
+      )
+      .run(name, name, `ag-${name}`);
+  }
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'critique-dispatch-test-'));
+    markerPath = path.join(tmp, '.overlay-critique-gate');
+    statePath = path.join(tmp, 'workflow-state.json');
+    // Override default paths via env so the in-process gate uses the
+    // test temp dir instead of /workspace/agent and /workspace/.claude
+    process.env.CRITIQUE_GATE_OVERLAY_PATH = markerPath;
+    process.env.CRITIQUE_GATE_STATE_PATH = statePath;
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    delete process.env.CRITIQUE_GATE_OVERLAY_PATH;
+    delete process.env.CRITIQUE_GATE_STATE_PATH;
+  });
+
+  const sourceRouting = {
+    platformId: 'ag-source',
+    channelType: 'agent',
+    threadId: 'src-thread',
+    inReplyTo: 'src-msg',
+  };
+
+  it('marker absent → [Fix Report] passes through unchanged (R1: no opt-in, no gating)', () => {
+    addDestination('peer');
+    const result = dispatchResultText('<message to="peer">[Fix Report] hello</message>', sourceRouting);
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(JSON.parse(out[0].content).text).toBe('[Fix Report] hello');
+  });
+
+  it('marker present + critique_rounds=0 → original [Fix Report] is REPLACED by refusal note', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    addDestination('peer');
+    const result = dispatchResultText(
+      '<message to="peer">[Fix Report] all done — please ship</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    const text = JSON.parse(out[0].content).text;
+    expect(text).toContain('[critique-gate] REFUSED');
+    expect(text).toContain('Fix Report');
+    expect(text).toContain('/codex-critique');
+    expect(text).not.toContain('please ship'); // original body NOT delivered
+  });
+
+  it('marker present + critique_rounds=1 → original [Fix Report] passes through (gate satisfied)', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
+    addDestination('peer');
+    const result = dispatchResultText('<message to="peer">[Fix Report] shipped</message>', sourceRouting);
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(JSON.parse(out[0].content).text).toBe('[Fix Report] shipped');
+  });
+
+  it('marker present + non-delivery body → passes through (only delivery markers are gated)', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    addDestination('peer');
+    const result = dispatchResultText('<message to="peer">just a regular reply</message>', sourceRouting);
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(JSON.parse(out[0].content).text).toBe('just a regular reply');
+  });
+
+  it('mixed batch: one [Fix Report] block + one normal block → first refused, second delivered', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    addDestination('peer-a');
+    addDestination('peer-b');
+    const result = dispatchResultText(
+      '<message to="peer-a">[Fix Report] blocked</message>\n<message to="peer-b">passes through</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(2);
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(2);
+    const byDest = Object.fromEntries(out.map((r) => [r.platform_id, JSON.parse(r.content).text]));
+    expect(byDest['ag-peer-a']).toContain('[critique-gate] REFUSED');
+    expect(byDest['ag-peer-b']).toBe('passes through');
+  });
+
+  it('thread_id override is preserved even when the body is gate-replaced', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    addDestination('peer');
+    dispatchResultText(
+      '<message to="peer" thread_id="branch-A">[Fix Report] body</message>',
+      sourceRouting,
+    );
+    const out = getUndeliveredMessages();
+    expect(out[0].thread_id).toBe('branch-A'); // refusal still flows on the agent's chosen thread
   });
 });

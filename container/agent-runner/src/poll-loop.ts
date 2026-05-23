@@ -680,6 +680,59 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
 }
 
 /**
+ * Critique-gate scope-extender: the bash hook
+ * (container/hooks/gate-critique-on-deliver.sh) is wired as a PreToolUse
+ * matcher on `mcp__nanoclaw__send_message|Bash`, so it only catches
+ * delivery-marker traffic that goes through those tools. The most common
+ * delivery path — the agent emitting `<message to="X">[Fix Report]…</message>`
+ * as plain text and letting `dispatchResultText` parse it — uses neither
+ * tool, so the hook never fires and the gate is silently bypassed.
+ *
+ * This in-process check mirrors the bash hook's logic (same MARKER file,
+ * same workflow-state.json, same delivery-marker regex) and runs at the
+ * one chokepoint left for text-output dispatch.
+ *
+ * Returns null when the gate either doesn't apply or permits the body.
+ * Returns a string (the explanation) when the gate refuses delivery —
+ * the caller substitutes that explanation for the original body so the
+ * destination sees a clear refusal note instead of the gated content.
+ *
+ * Paths overridable for tests via the optional opts.
+ */
+const DELIVERY_MARKER_RE = /\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]/;
+
+export function checkCritiqueGate(
+  body: string,
+  opts: { overlayMarkerPath?: string; workflowStatePath?: string } = {},
+): { blocked: boolean; reason?: string } {
+  const fs = require('fs') as typeof import('fs');
+  // Path resolution mirrors the bash hook's two-stage override (env var
+  // wins over default), with an opts-arg layer on top for unit tests.
+  const markerPath =
+    opts.overlayMarkerPath ?? process.env.CRITIQUE_GATE_OVERLAY_PATH ?? '/workspace/agent/.overlay-critique-gate';
+  if (!fs.existsSync(markerPath)) return { blocked: false };
+  if (!DELIVERY_MARKER_RE.test(body)) return { blocked: false };
+  const statePath =
+    opts.workflowStatePath ?? process.env.CRITIQUE_GATE_STATE_PATH ?? '/workspace/.claude/workflow-state.json';
+  let rounds = 0;
+  try {
+    const raw = fs.readFileSync(statePath, 'utf-8');
+    const parsed = JSON.parse(raw) as { critique_rounds?: number };
+    rounds = typeof parsed.critique_rounds === 'number' ? parsed.critique_rounds : 0;
+  } catch {
+    rounds = 0;
+  }
+  if (rounds >= 1) return { blocked: false };
+  const marker = body.match(DELIVERY_MARKER_RE)?.[1] ?? '<delivery>';
+  return {
+    blocked: true,
+    reason:
+      `[critique-gate] REFUSED — your message contained a [${marker}] marker but no /codex-critique round has been recorded for this session (critique_rounds=${rounds}). ` +
+      `Run /codex-critique on the work first, then resend. The original delivery body was retained in the container scratchpad log only — it was not delivered to the destination.`,
+  };
+}
+
+/**
  * Parse the agent's final text for <message to="name">...</message> blocks
  * and dispatch each one to its resolved destination. Text outside of blocks
  * (including <internal>...</internal>) is scratchpad — logged but not sent.
@@ -728,6 +781,20 @@ export function dispatchResultText(text: string, routing: RoutingContext): { sen
     if (!dest) {
       log(`Unknown destination in <message to="${toName}">, dropping block`);
       scratchpadParts.push(`[dropped: unknown destination "${toName}"] ${body}`);
+      continue;
+    }
+    // Critique-gate scope extension (#67): the bash PreToolUse hook only
+    // catches send_message/Bash invocations; this text-output path is
+    // where most delivery markers actually land. Same gate, same state,
+    // re-applied here. When gated, we substitute a refusal note for the
+    // body so the destination sees explicit feedback instead of silently
+    // dropping (which the user would mistake for an agent crash).
+    const gate = checkCritiqueGate(body);
+    if (gate.blocked) {
+      log(`Critique-gate refused delivery to "${toName}": body contained delivery marker, critique_rounds=0`);
+      scratchpadParts.push(`[critique-gate refused delivery to "${toName}"] ${body}`);
+      sendToDestination(dest, gate.reason!, routing, { threadIdOverride, inReplyToOverride });
+      sent++;
       continue;
     }
     sendToDestination(dest, body, routing, { threadIdOverride, inReplyToOverride });
