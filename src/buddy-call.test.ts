@@ -18,13 +18,7 @@ import path from 'path';
 
 import { describe, expect, it } from 'vitest';
 
-const SCRIPT_PATH = path.resolve(
-  process.cwd(),
-  'container',
-  'agent-runner',
-  'scripts',
-  'buddy-call.sh',
-);
+const SCRIPT_PATH = path.resolve(process.cwd(), 'container', 'agent-runner', 'scripts', 'buddy-call.sh');
 
 function extractDistillFilter(): string {
   const src = fs.readFileSync(SCRIPT_PATH, 'utf8');
@@ -32,7 +26,7 @@ function extractDistillFilter(): string {
   // immediately before `2>/dev/null | head -12)`. Match non-greedily.
   const m = src.match(/jq -rc '([^']*(?:\\'[^']*)*)'\s*2>\/dev\/null \| head -12/);
   if (!m) {
-    throw new Error("Could not extract jq filter from buddy-call.sh — file structure changed?");
+    throw new Error('Could not extract jq filter from buddy-call.sh — file structure changed?');
   }
   return m[1];
 }
