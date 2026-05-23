@@ -2490,8 +2490,15 @@ export function matchContainerName(
   prefix: string,
   knownFolders?: Iterable<string>,
 ): string | null {
-  const containerFolder = folder.replace(/_/g, '-');
-  const folderPrefix = `${prefix}-${containerFolder}-`;
+  // Container names preserve folder underscores verbatim — see
+  // src/container-runner.ts:435 which builds the name as
+  // `${CONTAINER_PREFIX}-${agentGroup.folder}-${tail}-${ts}`. An earlier
+  // version of this matcher normalized `_` → `-`, which silently broke
+  // container lookup for any coworker whose folder contains an underscore
+  // (e.g. `codex_test`): findRunningContainer returned null even though
+  // docker ps showed `<prefix>-codex_test-…` running, surfacing in the
+  // dashboard as "Shell: nothing running" while the container was healthy.
+  const folderPrefix = `${prefix}-${folder}-`;
 
   const rivalFolderPrefixes: string[] = [];
   if (knownFolders) {
