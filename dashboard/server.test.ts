@@ -2595,10 +2595,19 @@ describe('matchContainerName', () => {
     expect(matchContainerName(names, 'foo', null, PREFIX, knownFolders)).toBe(names[0]);
   });
 
-  it('underscores in folder are normalised to dashes before matching', () => {
-    const names = [`${PREFIX}-my-cw-1778143510824-x485si-1762512225123`];
-    expect(matchContainerName(names, 'my_cw', null, PREFIX)).toBe(names[0]);
-    expect(matchContainerName(names, 'my-cw', null, PREFIX)).toBe(names[0]);
+  it('preserves folder underscores in container name match', () => {
+    // Container names are built verbatim from agent_groups.folder
+    // (src/container-runner.ts:435), so `my_cw` produces `nc-…-my_cw-…`,
+    // not `nc-…-my-cw-…`. PR #448 removed an earlier `_` → `-` normalize
+    // that silently broke folder lookup for coworkers like `codex_test`.
+    const namesWithUnderscore = [`${PREFIX}-my_cw-1778143510824-x485si-1762512225123`];
+    const namesWithDash = [`${PREFIX}-my-cw-1778143510824-x485si-1762512225123`];
+    expect(matchContainerName(namesWithUnderscore, 'my_cw', null, PREFIX)).toBe(namesWithUnderscore[0]);
+    expect(matchContainerName(namesWithDash, 'my-cw', null, PREFIX)).toBe(namesWithDash[0]);
+    // Cross-match must NOT happen: `my_cw` does not match `nc-…-my-cw-…`
+    // and vice versa.
+    expect(matchContainerName(namesWithDash, 'my_cw', null, PREFIX)).toBeNull();
+    expect(matchContainerName(namesWithUnderscore, 'my-cw', null, PREFIX)).toBeNull();
   });
 
   it('returns null when no candidate matches', () => {
