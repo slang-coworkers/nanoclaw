@@ -98,13 +98,33 @@ $DISTILLED
 
 Anything to flag? Reply OK or one CONCERN (with required Quote: field per your charter)."
 
-# First fire vs resume
+# First fire vs resume.
+#
+# Resume failure recovery (container-restart resilience): the thread-id
+# file persists across container restarts on the per-session /workspace
+# mount, but the codex session it references is stored in
+# /home/node/.codex/sessions/ which is NOT preserved (only .claude-shared
+# is). So after a container restart, `codex exec resume <stale-id>` will
+# fail with empty/error output. We detect that, drop the stale thread-id,
+# and fall through to first-fire init — preserving the cursor so we don't
+# replay or skip batches.
+RESUME_FAILED=false
 if [ -f "$THREAD" ] && [ -s "$THREAD" ]; then
   THREAD_ID=$(cat "$THREAD")
   log_event "calling-codex-resume"
   RESPONSE=$(printf '%s' "$BATCH_PROMPT" | timeout 120 codex exec resume "$THREAD_ID" \
     -s danger-full-access --skip-git-repo-check -C /workspace/agent - 2>>"$LOG" || true)
-else
+  # Empty response on resume → session likely gone (container restart).
+  # Codex also writes "session not found" / "thread not found" to stderr,
+  # but the simplest reliable signal is empty stdout despite a successful
+  # exit shape (`|| true` masked any non-zero).
+  if [ -z "$(printf '%s' "$RESPONSE" | tr -d '[:space:]')" ]; then
+    log_event "resume-empty-fallback-init"
+    rm -f "$THREAD"
+    RESUME_FAILED=true
+  fi
+fi
+if [ "$RESUME_FAILED" = "true" ] || [ ! -f "$THREAD" ] || [ ! -s "$THREAD" ]; then
   if [ ! -f "$CHARTER" ]; then
     log_event "no-charter-file"
     echo "$SIZE" > "$CURSOR"
