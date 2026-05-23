@@ -38,6 +38,62 @@ function log(msg: string): void {
 }
 
 /**
+ * Mirror an overlay event to the dashboard's hook-event ingest. Same
+ * shape the universal SDK PostToolUse curl uses, with `tool_name="overlay"`
+ * and an `event` namespace prefix so the timeline can filter / colorize.
+ *
+ * Container-runner sets `NANOCLAW_HOOK_URL` when the dashboard is
+ * configured; empty value → silent no-op (dashboards don't exist on every
+ * install). Errors are swallowed: this is observability, not control flow.
+ */
+function postOverlayEvent(event: string, extra: Record<string, unknown> = {}): void {
+  const url = process.env.NANOCLAW_HOOK_URL;
+  if (!url) return;
+  const payload = JSON.stringify({
+    hook_event_name: event,
+    tool_name: 'overlay',
+    session_id: process.env.NANOCLAW_SESSION_ID ?? '',
+    thread_id: process.env.NANOCLAW_SESSION_THREAD_ID ?? '',
+    group: process.env.NANOCLAW_GROUP_FOLDER ?? '',
+    ...extra,
+  });
+  // Fire-and-forget — do not await, do not block dispatch on a slow
+  // dashboard. The host curl runs as a child process so we get the same
+  // proxy-bypass behavior as the universal hook.
+  try {
+    const { spawn } = require('child_process') as typeof import('child_process');
+    const child = spawn(
+      'curl',
+      [
+        '-sf',
+        '--proxy',
+        '',
+        '-X',
+        'POST',
+        url,
+        '-H',
+        'Content-Type: application/json',
+        '-H',
+        `X-Group-Folder: ${process.env.NANOCLAW_GROUP_FOLDER ?? ''}`,
+        '-H',
+        `X-NanoClaw-Session-Id: ${process.env.NANOCLAW_SESSION_ID ?? ''}`,
+        '-H',
+        `X-NanoClaw-Session-Thread-Id: ${process.env.NANOCLAW_SESSION_THREAD_ID ?? ''}`,
+        '-d',
+        payload,
+        '--max-time',
+        '3',
+      ],
+      { stdio: 'ignore', detached: true },
+    );
+    child.unref();
+    child.on('error', () => {});
+  } catch {
+    // ignore — observability is best-effort
+  }
+}
+
+/**
  * True iff the message is a scheduled task that explicitly OPTS OUT of the
  * fresh-session default by setting `content.new_session === false`. The
  * default across the system is now fresh-session-on for recurring task
@@ -793,6 +849,7 @@ export function dispatchResultText(text: string, routing: RoutingContext): { sen
     if (gate.blocked) {
       log(`Critique-gate refused delivery to "${toName}": body contained delivery marker, critique_rounds=0`);
       scratchpadParts.push(`[critique-gate refused delivery to "${toName}"] ${body}`);
+      postOverlayEvent('critique-gate.refused', { destination: toName, reason: gate.reason });
       sendToDestination(dest, gate.reason!, routing, { threadIdOverride, inReplyToOverride });
       sent++;
       continue;

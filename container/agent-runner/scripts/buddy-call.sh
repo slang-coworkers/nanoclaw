@@ -38,7 +38,39 @@ THREAD="$BUDDY_DIR/thread-id"
 LOG="$BUDDY_DIR/log.jsonl"
 CHARTER="${BUDDY_CHARTER_PATH:-/app/skills/buddy/CHARTER.md}"
 
-log_event() { jq -nc --arg t "$(date -u +%FT%TZ)" --arg e "$1" '{t:$t,event:$e}' >> "$LOG" 2>/dev/null || true; }
+log_event() {
+  jq -nc --arg t "$(date -u +%FT%TZ)" --arg e "$1" '{t:$t,event:$e}' >> "$LOG" 2>/dev/null || true
+  post_dashboard_event "$1"
+}
+
+# Mirror buddy events to the dashboard's hook-event ingest so the overlay
+# is observable in the timeline (init / resume / thread-saved / lock-busy /
+# concern-written, etc.). Container-runner sets NANOCLAW_HOOK_URL when the
+# dashboard is configured; empty value → silent no-op (dashboards don't
+# exist on every install).
+post_dashboard_event() {
+  [ -z "${NANOCLAW_HOOK_URL:-}" ] && return 0
+  local event="$1"
+  local payload
+  payload=$(jq -nc \
+    --arg event "buddy.${event}" \
+    --arg session "${NANOCLAW_SESSION_ID:-}" \
+    --arg thread "${NANOCLAW_SESSION_THREAD_ID:-}" \
+    --arg group "${NANOCLAW_GROUP_FOLDER:-}" \
+    '{
+      hook_event_name: $event,
+      tool_name: "buddy",
+      session_id: $session,
+      thread_id: $thread,
+      group: $group
+    }' 2>/dev/null) || return 0
+  curl -sf --proxy '' -X POST "$NANOCLAW_HOOK_URL" \
+    -H 'Content-Type: application/json' \
+    -H "X-Group-Folder: ${NANOCLAW_GROUP_FOLDER:-}" \
+    -H "X-NanoClaw-Session-Id: ${NANOCLAW_SESSION_ID:-}" \
+    -H "X-NanoClaw-Session-Thread-Id: ${NANOCLAW_SESSION_THREAD_ID:-}" \
+    -d "$payload" >/dev/null 2>&1 || true
+}
 
 # Concurrency guard — second fire while first in flight (<60s) exits silently
 if [ -f "$LOCK" ]; then
