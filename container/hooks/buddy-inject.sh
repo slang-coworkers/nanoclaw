@@ -10,7 +10,16 @@
 # across sessions and is no longer used.
 #
 # Stdin: JSON event payload (we don't read it). Exit 0 always.
+#
+# Symmetric opt-in (Model A): coworkers opt into buddy via the
+# `buddy-monitor` overlay; the composer materializes
+# /workspace/agent/.overlay-buddy-monitor next to CLAUDE.md when active.
+# Without that file, this hook is a silent no-op so wiring it universally
+# in the agent-runner is safe — no overlay-name special-casing needed
+# host-side.
 set -euo pipefail
+
+[ -f /workspace/agent/.overlay-buddy-monitor ] || exit 0
 
 GUIDANCE="/workspace/.claude/buddy/guidance.txt"
 

@@ -881,18 +881,14 @@ function buildMounts(
           });
         }
       }
-      // Buddy hook: inject guidance from background companion monitor.
-      // Checked INDEPENDENTLY of disable_overlays — buddy is a relay hook,
-      // not a gate overlay. It must work even when critique overlays are disabled.
-      const buddyInType = (() => {
-        try {
-          const fakeGroup = { ...agentGroup, disable_overlays: 0 } as AgentGroup;
-          return resolveTypeManifest(fakeGroup).overlayNames.includes('buddy-monitor');
-        } catch {
-          return false;
-        }
-      })();
-      if (buddyInType && !hasCmd('UserPromptSubmit', 'buddy-inject.sh')) {
+      // Buddy hooks — wired unconditionally. Each script first-line checks
+      // /workspace/agent/.overlay-buddy-monitor (materialized by
+      // materializeOverlayMarkers when the buddy-monitor overlay is active
+      // for this group) and exits 0 if absent. Activation flows through
+      // R1 (eligibility via applies-to) × R2 (operator selects in dashboard,
+      // writes agent_groups.overlays) — gated by R3 (disable_overlays=1).
+      // Host code stays generic; no overlay names baked in.
+      if (!hasCmd('UserPromptSubmit', 'buddy-inject.sh')) {
         if (!settings.hooks.UserPromptSubmit) settings.hooks.UserPromptSubmit = [];
         settings.hooks.UserPromptSubmit.push({
           hooks: [
@@ -904,13 +900,7 @@ function buildMounts(
           ],
         });
       }
-      // spawn-buddy.sh — async fire-and-forget on every PostToolUse for
-      // coworkers with the buddy-monitor overlay. The hook itself first-
-      // line checks /workspace/agent/.overlay-buddy-monitor and exits 0
-      // if absent (Model A symmetric opt-in), so wiring it whenever the
-      // coworker is buddy-eligible is safe. Fires buddy-call.sh with
-      // nohup so codex's wall-time (30-120s) doesn't block the agent.
-      if (buddyInType && !hasCmd('PostToolUse', 'spawn-buddy.sh')) {
+      if (!hasCmd('PostToolUse', 'spawn-buddy.sh')) {
         if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
         settings.hooks.PostToolUse.push({
           hooks: [
