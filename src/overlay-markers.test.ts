@@ -14,7 +14,7 @@ import path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { materializeOverlayMarkers } from './claude-composer.js';
+import { getAppliedOverlayNames, materializeOverlayMarkers } from './claude-composer.js';
 
 let tmpRoot: string;
 
@@ -48,10 +48,10 @@ function scaffoldMinimalRegistry(root: string): void {
   fs.mkdirSync(path.join(root, 'container', 'spines', 'tests'), { recursive: true });
   fs.writeFileSync(path.join(root, 'container', 'spines', 'tests', 'identity.md'), `You are a test coworker.\n`);
 
-  // coworker-types.yaml at a known location
+  // coworker-types.yaml — production format has type keys at top level
   fs.writeFileSync(
     path.join(root, 'container', 'spines', 'tests', 'coworker-types.yaml'),
-    `project: tests\ntypes:\n  test-coworker:\n    title: Test\n    workflows: [base]\n    identity: container/spines/tests/identity.md\n`,
+    `test-coworker:\n  title: Test\n  description: "Test coworker"\n  workflows: [base]\n  identity: container/spines/tests/identity.md\n`,
   );
 }
 
@@ -178,8 +178,120 @@ describe('materializeOverlayMarkers', () => {
   });
 });
 
-// getAppliedOverlayNames is a thin wrapper around resolveCoworkerManifest +
-// injectOverlays + dedup; the underlying resolution is exercised end-to-end
-// by claude-composer.test.ts and lego-2-view.test.ts. The behavior unique to
-// this helper (returning [] when disableOverlays is set) is covered by the
-// composer's existing disable-overlays tests via the same predicate.
+// getAppliedOverlayNames returns names from two sources, unioned:
+//   1. anchor-spliced overlays (kind:'overlay' customizations from manifest)
+//   2. operator-selected overlays from agent_groups.overlays — even if their
+//      applies-to is empty, so MARKER materialization is decoupled from
+//      anchor placement (lets pure-hook overlays like critique-gate activate
+//      without spine prose).
+describe('getAppliedOverlayNames decouples MARKER from anchor placement', () => {
+  it('returns operator-selected overlay even when applies-to.workflows is empty', () => {
+    // Pure-hook overlay: empty applies-to → no anchor target, no spine prose.
+    writeOverlay(
+      tmpRoot,
+      'hook-only',
+      {
+        name: 'hook-only',
+        license: 'MIT',
+        type: 'overlay',
+        description: 'pure-hook overlay (empty applies-to)',
+        'applies-to': { workflows: [], traits: [], start: false },
+        'insert-before': [],
+        'insert-after': [],
+        uses: { skills: [] },
+      },
+      'No prose.',
+      'hook-only',
+    );
+
+    const applied = getAppliedOverlayNames(tmpRoot, 'test-coworker', {
+      overlays: ['hook-only'],
+      cliScope: 'group',
+    });
+    expect(applied).toContain('hook-only');
+  });
+
+  it('returns the operator-selected overlay AND any anchor-spliced overlay (union)', () => {
+    writeOverlay(
+      tmpRoot,
+      'hook-only',
+      {
+        name: 'hook-only',
+        license: 'MIT',
+        type: 'overlay',
+        description: 'pure-hook',
+        'applies-to': { workflows: [], traits: [], start: false },
+        'insert-before': [],
+        'insert-after': [],
+        uses: { skills: [] },
+      },
+      '.',
+      'hook-only',
+    );
+    writeOverlay(
+      tmpRoot,
+      'spliced',
+      {
+        name: 'spliced',
+        license: 'MIT',
+        type: 'overlay',
+        description: 'spliced overlay',
+        'applies-to': { workflows: ['base'], traits: [], start: true },
+        'insert-before': [],
+        'insert-after': [],
+        uses: { skills: [] },
+      },
+      'Spliced body.',
+      'spliced',
+    );
+
+    const applied = getAppliedOverlayNames(tmpRoot, 'test-coworker', {
+      overlays: ['hook-only', 'spliced'],
+      cliScope: 'group',
+    });
+    expect(new Set(applied)).toEqual(new Set(['hook-only', 'spliced']));
+  });
+
+  it('returns [] when disableOverlays kills both anchor-spliced AND operator-selected (R3)', () => {
+    writeOverlay(
+      tmpRoot,
+      'hook-only',
+      {
+        name: 'hook-only',
+        license: 'MIT',
+        type: 'overlay',
+        description: 'pure-hook',
+        'applies-to': { workflows: [], traits: [], start: false },
+        'insert-before': [],
+        'insert-after': [],
+        uses: { skills: [] },
+      },
+      '.',
+      'hook-only',
+    );
+    const applied = getAppliedOverlayNames(tmpRoot, 'test-coworker', {
+      overlays: ['hook-only'],
+      disableOverlays: true,
+      cliScope: 'group',
+    });
+    expect(applied).toEqual([]);
+  });
+
+  it('default state with no overlays returns [] (R1)', () => {
+    const applied = getAppliedOverlayNames(tmpRoot, 'test-coworker', { cliScope: 'group' });
+    expect(applied).toEqual([]);
+  });
+
+  it('ignores names that are not overlays in the catalog', () => {
+    fs.mkdirSync(path.join(tmpRoot, 'container', 'skills', 'not-an-overlay'), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpRoot, 'container', 'skills', 'not-an-overlay', 'SKILL.md'),
+      `---\nname: not-an-overlay\nlicense: MIT\ntype: skill\ndescription: skill not overlay\nuses: { skills: [] }\n---\n\nbody.\n`,
+    );
+    const applied = getAppliedOverlayNames(tmpRoot, 'test-coworker', {
+      overlays: ['not-an-overlay'],
+      cliScope: 'group',
+    });
+    expect(applied).toEqual([]);
+  });
+});
