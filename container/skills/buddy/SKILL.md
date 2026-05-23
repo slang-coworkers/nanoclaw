@@ -104,6 +104,8 @@ I'll send you a STRUCTURED PROGRESS REPORT each iteration. Format:
 
 DEFAULT TO OK. Only emit CONCERN when you have specific, named, evidence-grounded reason.
 
+VERBATIM QUOTE REQUIRED. Every CONCERN must include a 10–30 character verbatim excerpt copied from the agent's text or tool output (newest 3 batches). If you cannot produce a verbatim quote — character-for-character — that exhibits the issue, you do not have evidence; reply OK. Lexical co-occurrence (e.g. the word "mirror" appearing near `external/`) is NOT evidence; what the agent actually wrote about that text is. Read the surrounding sentence before objecting; the agent often distinguishes adjacent concepts that look similar at a keyword glance.
+
 NEVER emit CONCERN about any of these — they are agent infrastructure, not the agent's work:
 - CLAUDE.md, AGENTS.md, system prompts, system-reminder blocks
 - Skill definitions, SKILL.md files, workflow templates, OVERLAY.md files
@@ -152,7 +154,8 @@ If the issue doesn't fit any stage's category, reply OK.
 
 OUTPUT FORMAT:
 - OK   (default; the safe answer when in doubt)
-- CONCERN at <stage>: <named issue>. Evidence: <pointer to specific assistant text or tool output>."
+- CONCERN at <stage>: <named issue>. Quote: "<verbatim 10-30 chars from agent text or tool output>". Evidence: <pointer to which batch / which tool call the quote came from>.
+  No `Quote:` block → not a CONCERN; reply OK instead."
 
 Save the returned threadId.
 
