@@ -145,3 +145,104 @@ describe('buddy-call.sh distill jq filter', () => {
     expect(r.stdout.trim()).toBe('[Bash] echo hi');
   });
 });
+
+// codex 0.124+ changed --json output shape: `thread.started` events with
+// `thread_id` (was top-level `session_id`) and `item.completed`/`agent_message`
+// items (was top-level `agent_message` events). Earlier buddy-call.sh used
+// stale selectors so thread-id was never extracted, every fire was a fresh
+// `codex exec` init, and ledger continuity was lost across batches.
+function extractThreadIdSelector(): string {
+  const src = fs.readFileSync(SCRIPT_PATH, 'utf8');
+  // The selector lives inside extract_thread_id(). Match between
+  // `extract_thread_id() {` and the closing `}` (single-quoted jq inside).
+  const m = src.match(/extract_thread_id\(\)\s*\{\s*jq -r '([^']*)'/);
+  if (!m) throw new Error('Could not extract thread-id jq selector from buddy-call.sh');
+  return m[1];
+}
+function extractResponseSelector(): string {
+  const src = fs.readFileSync(SCRIPT_PATH, 'utf8');
+  const m = src.match(/extract_response\(\)\s*\{\s*[^j]*jq -r '([\s\S]*?)'\s*2>/);
+  if (!m) throw new Error('Could not extract response jq selector from buddy-call.sh');
+  return m[1];
+}
+
+describe('buddy-call.sh codex --json event-shape selectors (v0.124+ + back-compat)', () => {
+  const threadIdFilter = extractThreadIdSelector();
+  const responseFilter = extractResponseSelector();
+
+  // Real codex 0.124 events captured live from `codex exec --json`:
+  const newShapeEvents = [
+    JSON.stringify({ type: 'thread.started', thread_id: '019e555c-a6f4-7990-b8cb-3807ddc2176f' }),
+    JSON.stringify({ type: 'turn.started' }),
+    JSON.stringify({
+      type: 'item.completed',
+      item: { id: 'item_0', type: 'agent_message', text: 'Confirmed — I can read this.' },
+    }),
+    JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 10, output_tokens: 5 } }),
+  ].join('\n');
+
+  it('thread_id extraction: pulls thread_id from {type:"thread.started",thread_id:"…"}', () => {
+    const r = runJq(threadIdFilter, newShapeEvents + '\n');
+    expect(r.status).not.toBe(3);
+    expect(r.stdout.trim()).toBe('019e555c-a6f4-7990-b8cb-3807ddc2176f');
+  });
+
+  it('thread_id extraction: back-compat with old shape {session_id:"…"}', () => {
+    const oldShape = JSON.stringify({ session_id: 'old-uuid', type: 'session.started' });
+    const r = runJq(threadIdFilter, oldShape + '\n');
+    expect(r.stdout.trim()).toBe('old-uuid');
+  });
+
+  it('thread_id extraction: empty input → empty output, no error', () => {
+    const r = runJq(threadIdFilter, '{}\n');
+    expect(r.status).not.toBe(3);
+    expect(r.stdout.trim()).toBe('');
+  });
+
+  it('response extraction: pulls .item.text from item.completed/agent_message', () => {
+    const r = runJq(responseFilter, newShapeEvents + '\n');
+    expect(r.status).not.toBe(3);
+    expect(r.stdout.trim()).toBe('Confirmed — I can read this.');
+  });
+
+  it('response extraction: when multiple agent_messages emit, the SCRIPT-side `| tail -1` picks the last', () => {
+    // The selector itself outputs every match; the script applies `| tail -1`
+    // around it to pick the final one. Mirror that here so the test pins
+    // end-to-end behavior, not just the raw jq.
+    const multi = [
+      JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'first thinking' } }),
+      JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'final answer' } }),
+    ].join('\n');
+    const r = runJq(responseFilter, multi + '\n');
+    const lastLine = r.stdout.trim().split('\n').pop();
+    expect(lastLine).toBe('final answer');
+  });
+
+  it('response extraction: back-compat with old top-level {type:"agent_message",message:"…"}', () => {
+    const old = JSON.stringify({ type: 'agent_message', message: 'old shape body' });
+    const r = runJq(responseFilter, old + '\n');
+    expect(r.stdout.trim()).toBe('old shape body');
+  });
+
+  it('response extraction: ignores non-agent items (turn.started, tool_use, etc.)', () => {
+    const noisy = [
+      JSON.stringify({ type: 'turn.started' }),
+      JSON.stringify({ type: 'item.completed', item: { type: 'tool_use', name: 'bash' } }),
+      JSON.stringify({ type: 'turn.completed' }),
+    ].join('\n');
+    const r = runJq(responseFilter, noisy + '\n');
+    expect(r.status).not.toBe(3);
+    expect(r.stdout.trim()).toBe('');
+  });
+
+  it('codex flags: resume invocation uses -c sandbox_mode (no -s, no -C)', () => {
+    // Ground truth from `codex exec resume --help` on v0.124: -s and -C are
+    // not accepted on resume. Pin the flag string we built so a future
+    // refactor can't quietly reintroduce them.
+    const src = fs.readFileSync(SCRIPT_PATH, 'utf8');
+    expect(src).toContain('CODEX_FLAGS="-c sandbox_mode=danger-full-access --skip-git-repo-check"');
+    // Defensive: the literal `-s danger-full-access` must NOT appear (it
+    // breaks resume even though codex exec accepts it; uniformity is safer).
+    expect(src).not.toMatch(/codex exec[^\n]*-s\s+danger-full-access/);
+  });
+});
