@@ -904,6 +904,24 @@ function buildMounts(
           ],
         });
       }
+      // spawn-buddy.sh — async fire-and-forget on every PostToolUse for
+      // coworkers with the buddy-monitor overlay. The hook itself first-
+      // line checks /workspace/agent/.overlay-buddy-monitor and exits 0
+      // if absent (Model A symmetric opt-in), so wiring it whenever the
+      // coworker is buddy-eligible is safe. Fires buddy-call.sh with
+      // nohup so codex's wall-time (30-120s) doesn't block the agent.
+      if (buddyInType && !hasCmd('PostToolUse', 'spawn-buddy.sh')) {
+        if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
+        settings.hooks.PostToolUse.push({
+          hooks: [
+            {
+              type: 'command',
+              command: 'bash /app/hooks/spawn-buddy.sh',
+              timeout: 3,
+            },
+          ],
+        });
+      }
 
       // PR auto-mapping: detect gh pr create / curl PR creation in Bash output
       // and auto-register the PR→session mapping. Fires for ALL agents.
@@ -988,6 +1006,23 @@ function buildMounts(
   const hooksMount = path.join(process.cwd(), 'container', 'hooks');
   if (fs.existsSync(hooksMount)) {
     mounts.push({ hostPath: hooksMount, containerPath: '/app/hooks', readonly: true });
+  }
+
+  // Agent-runner scripts at /app/scripts — host-managed, read-only. Carries
+  // buddy-call.sh and any other sibling-process helpers that hooks invoke.
+  // Separate from /app/src (per-group agent-runner code, writable) because
+  // these scripts are infrastructure, not agent workspace.
+  const scriptsMount = path.join(process.cwd(), 'container', 'agent-runner', 'scripts');
+  if (fs.existsSync(scriptsMount)) {
+    mounts.push({ hostPath: scriptsMount, containerPath: '/app/scripts', readonly: true });
+  }
+
+  // Buddy charter (read-only). buddy-call.sh reads this and prepends to
+  // codex's first call. Separate mount because container/skills/buddy/
+  // is otherwise a runtime skill bundle the agent could load.
+  const charterPath = path.join(process.cwd(), 'container', 'skills', 'buddy', 'CHARTER.md');
+  if (fs.existsSync(charterPath)) {
+    mounts.push({ hostPath: charterPath, containerPath: '/app/skills/buddy/CHARTER.md', readonly: true });
   }
 
   // Per-group agent-runner source at /app/src (initialized once at group
