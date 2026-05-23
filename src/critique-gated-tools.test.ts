@@ -155,7 +155,15 @@ describe('resolveCritiqueGatedTools', () => {
     expect(resolveCritiqueGatedTools(ag)).toEqual([]);
   });
 
-  it('returns [] when the coworker type has no critique-overlay bound', () => {
+  it('Model A: returns gated tools regardless of critique-overlay binding (hook itself gates by marker)', () => {
+    // Under Model A symmetric opt-in (PR-B), the hook activation lives in
+    // /workspace/agent/.overlay-critique-gate, not in
+    // resolveCritiqueGatedTools. So this function returns gated tools
+    // whenever hasPlan/hasCritique is true (which is the default when
+    // disable_overlays=0). Note: under PR-B, gate-critique-on-deliver.sh
+    // does not actually consume CRITIQUE_GATED_TOOLS — that env var is now
+    // dead weight pending PR-C cleanup. Test pins the function's behavior;
+    // the env var injection is harmless until removed.
     process.chdir(makeFixture());
     resetCoworkerTypesCacheForTests();
 
@@ -166,7 +174,7 @@ describe('resolveCritiqueGatedTools', () => {
       coworker_type: 'gated-reader',
       allowed_mcp_tools: JSON.stringify(['mcp__slang-mcp__discord_send_message']),
     });
-    expect(resolveCritiqueGatedTools(ag)).toEqual([]);
+    expect(resolveCritiqueGatedTools(ag)).toEqual(['mcp__slang-mcp__discord_send_message']);
   });
 
   it('returns [] when no tools are annotated (PR-1 ships as no-op)', () => {
