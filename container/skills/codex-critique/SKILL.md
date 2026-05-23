@@ -1,14 +1,14 @@
 ---
 name: codex-critique
 license: MIT
-description: "Independent second-opinion review by codex (gpt-5.5). You call mcp__codex__codex directly — no subagent. Read-only — produces a structured critique, never modifies files."
+description: "Independent second-opinion review by codex. You call mcp__codex__codex directly — no subagent. Read-only — produces a structured critique, never modifies files."
 provides: [critique.review]
 allowed-tools: Read, Grep, Glob, Bash(git diff:*), mcp__codex__codex, mcp__codex__codex-reply
 ---
 
 # Codex Critique
 
-You call `mcp__codex__codex` yourself — no subagent. Codex runs in a separate process (gpt-5.5), gets a fresh session, and has read-only filesystem access.
+You call `mcp__codex__codex` yourself — no subagent. Codex runs in a separate process, gets a fresh session, and has read-only filesystem access.
 
 ## Call
 
