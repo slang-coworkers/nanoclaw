@@ -146,10 +146,14 @@ describe('R20: resolveOverlayHookFlags honors disable_overlays at runtime', () =
     expect(resolveOverlayHookFlags(ag)).toEqual({ hasPlan: false, hasCritique: false });
   });
 
-  it('untyped coworker (coworker_type=null) yields {false, false}', () => {
+  it('untyped coworker (coworker_type=null) yields {true, true} — hooks wired, marker gates activation', () => {
+    // Model A: hooks are wired universally; the per-coworker gate lives in
+    // each hook's `[ -f /workspace/agent/.overlay-<name> ]` marker check.
+    // Without disable_overlays=1, both flags now return true so the hook
+    // configuration is injected — hooks themselves no-op when no marker.
     expect(resolveOverlayHookFlags(makeAgentGroup({ coworker_type: null }))).toEqual({
-      hasPlan: false,
-      hasCritique: false,
+      hasPlan: true,
+      hasCritique: true,
     });
   });
 
@@ -171,12 +175,16 @@ describe('R20: resolveOverlayHookFlags honors disable_overlays at runtime', () =
     expect(resolveOverlayHookFlags(ag)).toEqual({ hasPlan: false, hasCritique: false });
   });
 
-  it('typed coworker with no overlay binding → neither flag fires even when enabled', () => {
+  it('typed coworker with no overlay binding → flags still true (Model A)', () => {
+    // Model A: per-coworker activation lives in the hook's marker check,
+    // not in this function. Even a coworker with empty `overlays:` gets
+    // hooks wired into settings.json — they just no-op at runtime when
+    // no marker file is present at /workspace/agent/.overlay-*.
     const root = makeFixtureWithCritiqueOverlay();
     process.chdir(root);
     resetCoworkerTypesCacheForTests();
 
     const ag = makeAgentGroup({ coworker_type: 'test-reader', disable_overlays: 0 });
-    expect(resolveOverlayHookFlags(ag)).toEqual({ hasPlan: false, hasCritique: false });
+    expect(resolveOverlayHookFlags(ag)).toEqual({ hasPlan: true, hasCritique: true });
   });
 });
