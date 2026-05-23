@@ -70,14 +70,6 @@ slang-triage:
   description: "Slang issue triage — read issue, research docs + code, classify severity/priority, report to parent, forward to fixer if actionable. Read-only."
   project: slang
   extends: slang-reader
-  overlays:
-    # critique-gate: refuses [Triage Resolution] / [handoff] send_message until
-    # /codex-critique has run at least once for the session. Prevents the
-    # post-then-addendum pattern observed on shader-slang/slang#11037.
-    # buddy-monitor: codex companion reviewing the triage in real-time;
-    # surfaces wrong-target / severity-drift / missed-prior-work concerns.
-    - critique-gate
-    - buddy-monitor
   workflows:
     - slang-triage-issue
 
@@ -85,16 +77,6 @@ slang-fixer:
   description: "Slang issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
   project: slang
   extends: slang-writer
-  overlays:
-    # critique-gate: refuses [Fix Report] send_message and `gh pr create` until
-    # /codex-critique has run for this session. Was 0% adoption pre-merge of
-    # PR #442; this opt-in flips the fixer to enforced.
-    # buddy-monitor: codex companion reviewing edits / build commands /
-    # verification before the fixer reports up. Catches workaround patterns
-    # (--no-verify, disabled flags, swallowed errors) and quality gaps
-    # (missing tests, silent scope cuts) per the buddy CHARTER axes.
-    - critique-gate
-    - buddy-monitor
   workflows:
     - slang-fix-issue
 
@@ -105,13 +87,6 @@ slang-reviewer:
   invariants:
     # Reviewers enforce code-change rules during PR review.
     - container/spines/slang/invariants/code-changes.md
-  overlays:
-    # critique-gate: refuses [Review Verdict] send_message until codex has
-    # cross-checked the verdict against the diff. Catches verdict-vs-diff
-    # contradictions (PASS on a patch that breaks tests).
-    # buddy-monitor: parallel codex review of the reviewer's own work.
-    - critique-gate
-    - buddy-monitor
   skills:
     - slang-pr-review-runner
   workflows:
