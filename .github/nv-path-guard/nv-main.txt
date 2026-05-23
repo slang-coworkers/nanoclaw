@@ -66,6 +66,7 @@ container/workflows/implement/**
 
 # Generic critique/observer overlays (project-specific overlays live on project branches):
 container/overlays/buddy/**
+container/overlays/buddy-monitor/**
 container/overlays/critique-overlay/**
 
 # Removed in this PR (still allowlisted to permit the deletion through path-guard):
