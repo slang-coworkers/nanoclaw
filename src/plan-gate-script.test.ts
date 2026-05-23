@@ -255,4 +255,64 @@ describe('plan-gate.sh — regression: Edit/Write/Bash unchanged', () => {
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('PLAN REQUIRED');
   });
+
+  // Subagent fork (CLAUDE_CODE_FORK_SUBAGENT=1) historically passed every
+  // gate unconditionally — the parent's plan was assumed to cover children.
+  // That left the critique gate trivially bypassable: parent could spawn a
+  // subagent and edit indefinitely past the flagged threshold (observed:
+  // critique_required=true, edits_since_critique=56). These tests lock in
+  // the new contract — subagents skip plan checks, but critique_required
+  // still blocks them.
+  it('subagent fork passes Edit when critique_required is false', () => {
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        plan_written: false, // would normally block parent
+        critique_required: false,
+      }),
+    );
+    const result = runPlanGate(
+      { tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } },
+      envOverride({ CLAUDE_CODE_FORK_SUBAGENT: '1', OVERLAY_HAS_PLAN: '1' }),
+    );
+    expect(result.status).toBe(0);
+  });
+
+  it('subagent fork is blocked when critique_required=true and rounds <= flag', () => {
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        plan_written: true,
+        critique_required: true,
+        critique_rounds: 0,
+        critique_round_at_flag: 0,
+        edits_since_critique: 56,
+      }),
+    );
+    const result = runPlanGate(
+      { tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } },
+      envOverride({ CLAUDE_CODE_FORK_SUBAGENT: '1' }),
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('CRITIQUE REQUIRED (subagent context)');
+    expect(result.stderr).toContain('56 edits');
+  });
+
+  it('subagent fork passes when critique_required=true but a fresh round has been recorded', () => {
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        plan_written: true,
+        critique_required: true,
+        critique_rounds: 1, // one round recorded after the flag
+        critique_round_at_flag: 0,
+        edits_since_critique: 0,
+      }),
+    );
+    const result = runPlanGate(
+      { tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } },
+      envOverride({ CLAUDE_CODE_FORK_SUBAGENT: '1' }),
+    );
+    expect(result.status).toBe(0);
+  });
 });

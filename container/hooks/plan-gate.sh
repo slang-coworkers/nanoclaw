@@ -7,13 +7,30 @@
 # Exit 0 = allow, exit 2 = deny (stderr shown to agent).
 set -euo pipefail
 
-# Subagents spawned via the SDK Agent tool (CLAUDE_CODE_FORK_SUBAGENT=1) are
-# sandboxed helpers running inside a parent that already passed the gate. They
-# must not be re-blocked — the parent's plan approval covers their work, and
-# they cannot write workflow-state.json (Bash/Write may not be pre-approved in
-# their permission set). Allow unconditionally so they can apply the edits they
-# were dispatched to make.
+# Subagents spawned via the SDK Agent tool (CLAUDE_CODE_FORK_SUBAGENT=1) skip
+# plan-required checks — the parent's plan covers their work — but MUST still
+# respect critique_required. Otherwise a parent can spawn a subagent to bypass
+# the critique gate and drift past it (observed on nv-main sync conflict
+# session: critique_required=true with 56 edits past the flagged threshold,
+# all driven through subagents).
 if [ "${CLAUDE_CODE_FORK_SUBAGENT:-0}" = "1" ]; then
+  SUB_STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
+  if [ -f "$SUB_STATE" ]; then
+    SUB_CRIT_REQ=$(jq -r '.critique_required // false' "$SUB_STATE" 2>/dev/null || echo false)
+    if [ "$SUB_CRIT_REQ" = "true" ]; then
+      SUB_ROUNDS=$(jq '.critique_rounds // 0' "$SUB_STATE" 2>/dev/null || echo 0)
+      SUB_FLAGGED_AT=$(jq '.critique_round_at_flag // 0' "$SUB_STATE" 2>/dev/null || echo 0)
+      if [ "$SUB_ROUNDS" -le "$SUB_FLAGGED_AT" ]; then
+        SUB_EDITS=$(jq '.edits_since_critique // 0' "$SUB_STATE" 2>/dev/null || echo 0)
+        cat >&2 << DENIAL
+CRITIQUE REQUIRED (subagent context): $SUB_EDITS edits past the critique flag. The parent must invoke /codex-critique before further subagent edits.
+
+Subagents inherit the parent's plan but cannot bypass the critique gate. Return control to parent. Parent invokes /codex-critique then either applies fixes itself or re-spawns this subagent. (CLAUDE_CODE_FORK_SUBAGENT=1)
+DENIAL
+        exit 2
+      fi
+    fi
+  fi
   exit 0
 fi
 
