@@ -279,27 +279,29 @@ function resolveTypeManifest(agentGroup: AgentGroup): {
 }
 
 /**
- * Whether the runtime overlay hooks (plan-gate, critique-tracker, intent-router,
- * edit-counter, workflow-state-reset) should be injected into the container's
- * settings.json for this agent group.
+ * Whether the runtime overlay hooks (gate-plan, gate-critique-on-deliver,
+ * track-edits, track-critique, intent-router, workflow-state-reset) should
+ * be injected into the container's settings.json for this agent group.
  *
- * Mirrors the compose-time contract in `claude-composer/spine.ts`: when the
- * per-coworker `agent_groups.disable_overlays` flag is 1, every overlay-driven
- * behavior is suppressed — spine rendering (PR #97) AND runtime hook gates.
- * Without this, disable_overlays would strip the Gate Protocol text but the
- * hooks would still block Edit/Write/Bash, so the coworker would fail writes
- * with no corresponding prompt explaining why.
+ * Critique enforcement under Model A is overlay-marker-gated at the hook
+ * level (gate-critique-on-deliver.sh first-line `[ -f .overlay-critique-gate ]`),
+ * so wiring the hook universally is safe — coworkers without the overlay
+ * are no-op'd by the hook itself. The flags returned here decide whether to
+ * wire the hook configuration AT ALL into settings.json; we keep it
+ * unconditional now (always wire), matching the symmetric opt-in design.
+ *
+ * `disable_overlays=1` still wins as a hard kill switch: when set, neither
+ * gate runs, mirroring the compose-time strip of overlay prose.
  *
  * Exported for the R20 runtime-side counterpart of the R19 compose-time test.
  */
 export function resolveOverlayHookFlags(agentGroup: AgentGroup): { hasPlan: boolean; hasCritique: boolean } {
   if (agentGroup.disable_overlays === 1) return { hasPlan: false, hasCritique: false };
-  const { overlayNames, workflows: wfManifest } = resolveTypeManifest(agentGroup);
-  const hasCritique = overlayNames.includes('critique-overlay');
-  // Plan gate is part of critique-overlay (insert-before: [patch]) and only
-  // applies when the coworker has implement-family workflows.
-  const hasPlan = hasCritique && wfManifest.some((w) => w.name.includes('implement'));
-  return { hasPlan, hasCritique };
+  // Hooks are wired unconditionally; per-coworker activation lives in the
+  // hook's marker check (`/workspace/agent/.overlay-<name>`), materialized by
+  // the composer when the coworker's `overlays:` list includes the relevant
+  // overlay. See container/overlays/{buddy-monitor,critique-gate}/MARKER.
+  return { hasPlan: true, hasCritique: true };
 }
 
 /**
@@ -944,25 +946,32 @@ function buildMounts(
       }
 
       if (hasPlan || hasCritique) {
-        // plan-gate.sh enforces BOTH plan and critique gates — inject it
-        // whenever either overlay is active (critique-only types still need
-        // the blocking hook for critique_required enforcement).
-        if (!hasCmd('PreToolUse', 'plan-gate.sh')) {
-          // Widened matcher includes `mcp__.*` so the hook can gate
-          // external-posting MCP tools (openWorldHint: true) under the
-          // same plan/critique conditions as Edit/Write. The script itself
-          // reads CRITIQUE_GATED_TOOLS and exits 0 for MCP tools that are
-          // not in the gated set, so this is a no-op until PR-2 lands
-          // annotations on slang-mcp tools.
+        // gate-plan.sh enforces plan-required (must have a plan before
+        // editing). Subagents pass through (parent's plan covers them).
+        // OVERLAY_HAS_PLAN=0 disables for one-off bring-up.
+        if (!hasCmd('PreToolUse', 'gate-plan.sh')) {
           settings.hooks.PreToolUse.push({
-            matcher: 'Edit|Write|MultiEdit|NotebookEdit|mcp__.*',
+            matcher: 'Edit|Write|MultiEdit|NotebookEdit|Bash',
             hooks: [
               {
                 type: 'command',
-                command: `OVERLAY_HAS_PLAN=${hasPlan ? '1' : '0'} bash /app/hooks/plan-gate.sh`,
+                command: `OVERLAY_HAS_PLAN=${hasPlan ? '1' : '0'} bash /app/hooks/gate-plan.sh`,
                 timeout: 5,
               },
             ],
+          });
+        }
+        // gate-critique-on-deliver.sh refuses delivery markers
+        // ([Fix Report]/[Resolution]/[Triage Resolution]/[Review Verdict]/[handoff])
+        // and PR-create commands until /codex-critique has run at least once.
+        // Symmetric opt-in: the hook itself first-line checks
+        // /workspace/agent/.overlay-critique-gate and exits 0 if absent, so
+        // wiring it universally is safe — coworkers without the overlay
+        // see no gating at all.
+        if (!hasCmd('PreToolUse', 'gate-critique-on-deliver.sh')) {
+          settings.hooks.PreToolUse.push({
+            matcher: 'mcp__nanoclaw__send_message|Bash',
+            hooks: [{ type: 'command', command: 'bash /app/hooks/gate-critique-on-deliver.sh', timeout: 5 }],
           });
         }
         if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
@@ -974,24 +983,27 @@ function buildMounts(
         }
       }
       if (hasCritique) {
-        // Track every successful mcp__codex__codex call as a critique round.
-        // PostToolUse fires reliably for tool_use; SubagentStart was unreliable
-        // (agent_type field not always populated) and obsolete now that
-        // codex-critique is invoked directly via Skill, not as an Agent subagent.
+        // track-critique.sh — PostToolUse on every successful mcp__codex__codex
+        // call increments critique_rounds. Filters out buddy invocations by
+        // signature (the codex-CLI thread also used by buddy carries
+        // "You are Buddy" or "BATCH n (" prompts).
         if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
-        if (!hasCmd('PostToolUse', 'critique-tracker.sh')) {
+        if (!hasCmd('PostToolUse', 'track-critique.sh')) {
           settings.hooks.PostToolUse.push({
             matcher: 'mcp__codex__codex|mcp__codex__codex-reply',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/critique-tracker.sh', timeout: 5 }],
+            hooks: [{ type: 'command', command: 'bash /app/hooks/track-critique.sh', timeout: 5 }],
           });
         }
       }
       if (hasPlan || hasCritique) {
+        // track-edits.sh — pure telemetry, bumps edits_since_plan and
+        // edits_since_critique counters. No threshold logic; gate decisions
+        // live in gate-plan.sh / gate-critique-on-deliver.sh.
         if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
-        if (!hasCmd('PostToolUse', 'edit-counter.sh')) {
+        if (!hasCmd('PostToolUse', 'track-edits.sh')) {
           settings.hooks.PostToolUse.push({
-            matcher: 'Edit|Write|MultiEdit|NotebookEdit',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/edit-counter.sh', timeout: 5 }],
+            matcher: 'Edit|Write|MultiEdit|NotebookEdit|Bash',
+            hooks: [{ type: 'command', command: 'bash /app/hooks/track-edits.sh', timeout: 5 }],
           });
         }
         log.debug('Overlay hooks injected', { folder: agentGroup.folder, plan: hasPlan, critique: hasCritique });
