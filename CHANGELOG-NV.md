@@ -6,15 +6,38 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 157 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 88 |
-| `nv-slang` | slang project spine, skills, workflows | 54 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 171 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 91 |
+| `nv-slang` | slang project spine, skills, workflows | 56 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 19 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 16 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-05-23
+
+### nv-main (14 PRs)
+- **#456** `feat(overlay): emit buddy + critique-gate events to dashboard hook stream`
+- **#455** `fix(buddy): wait for SDK to flush JSONL before distilling (#68)`
+- **#454** `fix(buddy): repair codex --json thread-id extraction (codex 0.124+ shape)`
+- **#453** `fix(critique-gate): close text-output bypass — gate enforces on <message to=> blocks too`
+- **#452** `fix(agent-runner): chain regex accepts thread_id; buddy-call.sh jq compiles`
+- **#451** `fix(overlay): MARKER materialization is operator-driven, not anchor-driven`
+- **#447** `feat(container): per-session ~/.codex mount for ALL coworkers, not just codex-provider`
+- **#446** `fix(buddy,critique): missing OVERLAY.md + container-restart resilience`
+- **#444** `feat(buddy): hook-driven companion via codex exec; replace Agent-fork pattern`
+_+5 more: #443, #442, #441, #440, #439_
+
+### nv-dashboard (3 PRs)
+- **#448** `fix(dashboard): preserve underscores in folder→container name match`
+- **#450** `fix(dashboard): repair matchContainerName rival logic + matching test (PR #448 follow-up)`
+- **#457** `feat(dashboard): render critique-gate REFUSED as collapsed yellow card`
+
+### nv-slang (2 PRs)
+- **#445** `feat(slang-pilot): activate critique-gate + buddy-monitor on slang-fixer / -triage / -reviewer`
+- **#449** `revert(slang-pilot): drop static overlay assignments — use runtime per-group config`
 
 ## 📅 2026-05-22
 
