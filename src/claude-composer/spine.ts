@@ -104,7 +104,7 @@ function renderGateBlock(
 
 // ---- Stage-aware overlay rendering ----
 //
-// Many overlays (e.g. critique-overlay) organize their body into per-stage
+// Some overlays organize their body into per-stage
 // sections whose headings encode anchor semantics, e.g.:
 //
 //     ## PLAN_REVIEW (before `patch` in /implement)

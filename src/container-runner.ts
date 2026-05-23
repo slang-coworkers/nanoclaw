@@ -304,36 +304,6 @@ export function resolveOverlayHookFlags(agentGroup: AgentGroup): { hasPlan: bool
   return { hasPlan: true, hasCritique: true };
 }
 
-/**
- * For a given coworker, return the subset of its allowed MCP tools whose MCP
- * annotations say `openWorldHint: true` — i.e. tools that interact with
- * external systems (GitHub posting, Discord messaging, etc.). These tools
- * should be gated by plan-gate.sh under the same conditions as Edit/Write,
- * so external-facing side effects respect the critique gate.
- *
- * Empty when no tools are annotated yet (PR-1 ships as no-op until PR-2
- * lands annotations on slang-mcp tools).
- *
- * Also empty when disable_overlays=1 (no gate, no need to gate anything).
- *
- * Exported for test access.
- */
-export function resolveCritiqueGatedTools(agentGroup: AgentGroup): string[] {
-  const { hasPlan, hasCritique } = resolveOverlayHookFlags(agentGroup);
-  if (!hasPlan && !hasCritique) return [];
-
-  const allowed = resolveAllowedMcpTools(agentGroup);
-  if (allowed.length === 0) return [];
-
-  const annotations = getDiscoveredToolAnnotations();
-  const gated: string[] = [];
-  for (const tool of allowed) {
-    const anno = annotations[tool];
-    if (anno?.openWorldHint === true) gated.push(tool);
-  }
-  return gated;
-}
-
 export function resolveAllowedMcpTools(agentGroup: AgentGroup): string[] {
   if (agentGroup.is_admin) {
     const adminOverride = process.env.ADMIN_MCP_TOOLS || '';
@@ -1090,18 +1060,6 @@ async function buildContainerArgs(
           .join(';');
         args.push('-e', `OVERLAY_WORKFLOWS=${routingTable}`);
       }
-    }
-  }
-
-  // CRITIQUE_GATED_TOOLS: comma-joined MCP tool names that plan-gate.sh should
-  // block under plan/critique conditions (openWorldHint: true tools that
-  // interact with external systems — GitHub posts, Discord messages, etc.).
-  // Empty until PR-2 lands openWorldHint annotations on slang-mcp tools, at
-  // which point the matcher widened above starts having visible effect.
-  {
-    const gated = resolveCritiqueGatedTools(agentGroup);
-    if (gated.length > 0) {
-      args.push('-e', `CRITIQUE_GATED_TOOLS=${gated.join(',')}`);
     }
   }
 

@@ -230,11 +230,11 @@ const STATE_PATH = '/workspace/.claude/workflow-state.json';
 const PLAN_EDIT_LIMIT = 15;
 const CRITIQUE_EDIT_LIMIT = 3;
 
-// Bookkeeping-path classifier for edit-counter / plan-gate / critique-gate
-// tracking. Keep in lockstep with container/hooks/edit-counter.sh — the shell
-// hook is the authoritative allowlist for the Claude path; diverging here
-// would cause stale-plan/critique counters to fire on bookkeeping writes
-// that the shell hook would have let through (RC-M3).
+// Bookkeeping-path classifier for track-edits / gate-plan tracking. Keep
+// in lockstep with container/hooks/track-edits.sh — the shell hook is the
+// authoritative allowlist for the Claude path; diverging here would cause
+// stale-plan/critique counters to fire on bookkeeping writes that the
+// shell hook would have let through (RC-M3).
 const BOOKKEEPING_DIRS = [
   '/workspace/agent/plans/',
   '/workspace/agent/reports/',
