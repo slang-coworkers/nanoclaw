@@ -1171,6 +1171,16 @@ async function buildContainerArgs(
   // dashboard treats the empty string as "root session".
   args.push('-e', `NANOCLAW_SESSION_ID=${session.id}`);
   args.push('-e', `NANOCLAW_SESSION_THREAD_ID=${session.thread_id ?? ''}`);
+  // Dashboard hook URL — exposed to in-container overlay scripts (buddy-
+  // call.sh, dispatchResultText) so they can post overlay-emitted events
+  // alongside the SDK's universal PostToolUse stream. Same URL shape the
+  // universal curl hook uses; empty when DASHBOARD_PORT isn't configured
+  // so call sites can no-op cleanly.
+  args.push(
+    '-e',
+    `NANOCLAW_HOOK_URL=${DASHBOARD_PORT ? `http://host.docker.internal:${DASHBOARD_PORT}/api/hook-event` : ''}`,
+  );
+  args.push('-e', `NANOCLAW_GROUP_FOLDER=${agentGroup.folder}`);
   // Cap on how many pending messages reach one prompt. Accumulated context
   // (trigger=0 rows) rides along with wake-eligible rows up to this cap.
   args.push('-e', `NANOCLAW_MAX_MESSAGES_PER_PROMPT=${MAX_MESSAGES_PER_PROMPT}`);
