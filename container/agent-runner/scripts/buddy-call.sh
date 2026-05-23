@@ -66,16 +66,24 @@ DELTA=$(tail -c "+$((LAST + 1))" "$JSONL" 2>/dev/null || true)
 # Distill — extract assistant tool_use entries, drop read-only and
 # buddy-meta tools, format compact one-line-per-action. Cap at 12 actions
 # per batch so codex prompt stays small.
+# NB: filter is in a SINGLE-quoted bash heredoc, so backslashes pass to jq
+# verbatim. At expression level (inside `\(...)` interpolation) we MUST use
+# bare `"..."` for string literals — `\"...\"` is a jq compile error there.
+# `\"` is only valid inside a jq STRING body to escape a literal `"` (e.g.
+# `text=\"...\"` below interpolates with literal-quote wrapping). The earlier
+# version had `\"<unknown>\"`, `\"\"`, `\"?\"` at expression level which made
+# jq exit 3 on every fire — set -euo pipefail then killed the script before
+# any log_event call, so spawn-buddy's nohup'd child died silently.
 DISTILLED=$(printf '%s' "$DELTA" | jq -rc '
   select(.type == "assistant") | .message.content[]? |
   select(.type == "tool_use") |
   select(.name | test("^(Read|Grep|Glob|LS|WebSearch|WebFetch)$") | not) |
   if   .name == "Edit"   or .name == "Write" or .name == "MultiEdit" or .name == "NotebookEdit" then
-    "[\(.name)] \(.input.file_path // .input.path // \"<unknown>\")"
+    "[\(.name)] \(.input.file_path // .input.path // "<unknown>")"
   elif .name == "Bash" then
-    "[Bash] \((.input.command // \"\") | .[:200])"
+    "[Bash] \((.input.command // "") | .[:200])"
   elif (.name | startswith("mcp__nanoclaw__")) then
-    "[\(.name)] to=\(.input.to // \"?\") text=\"\((.input.text // \"\") | .[:120])\""
+    "[\(.name)] to=\(.input.to // "?") text=\"\((.input.text // "") | .[:120])\""
   else
     "[\(.name)] \((.input | tostring) | .[:140])"
   end

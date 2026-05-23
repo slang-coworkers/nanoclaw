@@ -688,7 +688,18 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
  * blocks, even with a single destination. Bare text is scratchpad only.
  */
 export function dispatchResultText(text: string, routing: RoutingContext): { sent: number; hasUnwrapped: boolean } {
-  const MESSAGE_RE = /<message\s+to="([^"]+)"\s*>([\s\S]*?)<\/message>/g;
+  // Capture the destination name (group 1), any additional attributes as one
+  // string (group 2), and the body (group 3). Extra attributes — `thread_id`,
+  // `in_reply_to`, plus unknown ones — are tolerated. Earlier versions of
+  // this regex demanded `>` immediately after `to="..."`, so any agent
+  // emitting `<message to="X" thread_id="Y">` saw the entire markup fall
+  // through to the scratchpad path and get dumped to the inbound channel
+  // instead of routed to the chain target. Branching workflows need the
+  // explicit thread_id channel because `resolveDestinationThread` only
+  // recovers a thread from prior inbound history — it has no way to
+  // synthesize a NEW thread.
+  const MESSAGE_RE = /<message\s+to="([^"]+)"((?:\s+\w+="[^"]*")*)\s*>([\s\S]*?)<\/message>/g;
+  const ATTR_RE = /(\w+)="([^"]*)"/g;
 
   let match: RegExpExecArray | null;
   let sent = 0;
@@ -700,8 +711,18 @@ export function dispatchResultText(text: string, routing: RoutingContext): { sen
       scratchpadParts.push(text.slice(lastIndex, match.index));
     }
     const toName = match[1];
-    const body = match[2].trim();
+    const attrsStr = match[2] ?? '';
+    const body = match[3].trim();
     lastIndex = MESSAGE_RE.lastIndex;
+
+    let threadIdOverride: string | undefined;
+    let inReplyToOverride: string | undefined;
+    for (const am of attrsStr.matchAll(ATTR_RE)) {
+      if (am[1] === 'thread_id') threadIdOverride = am[2];
+      else if (am[1] === 'in_reply_to') inReplyToOverride = am[2];
+      // Unknown attributes are tolerated and ignored — keeps the parser
+      // forward-compatible with future protocol extensions.
+    }
 
     const dest = findByName(toName);
     if (!dest) {
@@ -709,7 +730,7 @@ export function dispatchResultText(text: string, routing: RoutingContext): { sen
       scratchpadParts.push(`[dropped: unknown destination "${toName}"] ${body}`);
       continue;
     }
-    sendToDestination(dest, body, routing);
+    sendToDestination(dest, body, routing, { threadIdOverride, inReplyToOverride });
     sent++;
   }
   if (lastIndex < text.length) {
@@ -759,21 +780,32 @@ export function dispatchResultText(text: string, routing: RoutingContext): { sen
   return { sent, hasUnwrapped };
 }
 
-function sendToDestination(dest: DestinationEntry, body: string, routing: RoutingContext): void {
+function sendToDestination(
+  dest: DestinationEntry,
+  body: string,
+  routing: RoutingContext,
+  overrides?: { threadIdOverride?: string; inReplyToOverride?: string },
+): void {
   const platformId = dest.type === 'channel' ? dest.platformId! : dest.agentGroupId!;
   const channelType = dest.type === 'channel' ? dest.channelType! : 'agent';
   // Resolve thread_id per-destination from the most recent inbound message
   // that came from this same channel+platform. In agent-shared sessions,
   // different destinations have different thread contexts — using a single
   // routing.threadId would stamp one channel's thread onto another.
+  // Agent-supplied overrides win: a `<message to="X" thread_id="...">` is
+  // explicit branching intent (e.g. starting a new chain on a destination
+  // we've never received from), and inbound-history resolution can't
+  // produce a thread we've never seen.
   const destRouting = resolveDestinationThread(channelType, platformId);
+  const threadId = overrides?.threadIdOverride ?? destRouting?.threadId ?? null;
+  const inReplyTo = overrides?.inReplyToOverride ?? destRouting?.inReplyTo ?? routing.inReplyTo;
   writeMessageOut({
     id: generateId(),
-    in_reply_to: destRouting?.inReplyTo ?? routing.inReplyTo,
+    in_reply_to: inReplyTo,
     kind: 'chat',
     platform_id: platformId,
     channel_type: channelType,
-    thread_id: destRouting?.threadId ?? null,
+    thread_id: threadId,
     content: JSON.stringify({ text: body }),
   });
 }

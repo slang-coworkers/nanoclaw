@@ -223,6 +223,125 @@ describe('dispatchResultText auto-route gate', () => {
   });
 });
 
+describe('dispatchResultText <message> attribute parsing', () => {
+  // The chain primitive lets agents emit <message to="X" thread_id="Y"
+  // in_reply_to="Z">...</message> blocks. Earlier the regex only accepted
+  // exactly `to=`, so any extra attribute pushed the entire markup to the
+  // scratchpad path and the agent's output got dumped on the source
+  // channel as raw text. These tests pin the new behavior:
+  //   1. Bare `to=` keeps working (backward compat)
+  //   2. thread_id / in_reply_to overrides win over destRouting fallback
+  //   3. Unknown attributes are tolerated and ignored
+  function addDestination(name: string) {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO destinations (name, display_name, type, channel_type, platform_id, agent_group_id)
+         VALUES (?, ?, 'agent', NULL, NULL, ?)`,
+      )
+      .run(name, name, `ag-${name}`);
+  }
+
+  const sourceRouting = {
+    platformId: 'ag-source',
+    channelType: 'agent',
+    threadId: 'src-thread',
+    inReplyTo: 'src-msg',
+  };
+
+  it('bare <message to="X">…</message> still routes (backward compat)', () => {
+    addDestination('peer');
+    const result = dispatchResultText('<message to="peer">hello</message>', sourceRouting);
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(out[0].platform_id).toBe('ag-peer');
+    expect(out[0].thread_id).toBe(null); // no agent-supplied thread_id, no destRouting history
+    expect(JSON.parse(out[0].content).text).toBe('hello');
+  });
+
+  it('thread_id="X" overrides destRouting fallback', () => {
+    addDestination('peer');
+    const result = dispatchResultText(
+      '<message to="peer" thread_id="branch-A">hello</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out[0].thread_id).toBe('branch-A');
+  });
+
+  it('in_reply_to="X" overrides destRouting fallback', () => {
+    addDestination('peer');
+    const result = dispatchResultText(
+      '<message to="peer" in_reply_to="parent-msg-42">hello</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out[0].in_reply_to).toBe('parent-msg-42');
+  });
+
+  it('thread_id + in_reply_to + body all work together', () => {
+    addDestination('peer');
+    const result = dispatchResultText(
+      '<message to="peer" thread_id="thr-1" in_reply_to="m-7">payload</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out[0].thread_id).toBe('thr-1');
+    expect(out[0].in_reply_to).toBe('m-7');
+    expect(JSON.parse(out[0].content).text).toBe('payload');
+  });
+
+  it('unknown attributes are tolerated and ignored', () => {
+    addDestination('peer');
+    const result = dispatchResultText(
+      '<message to="peer" thread_id="T" foo="bar" priority="high">body</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out[0].thread_id).toBe('T'); // known attr still applied
+    expect(JSON.parse(out[0].content).text).toBe('body');
+  });
+
+  it('two <message> blocks with different thread_ids route independently', () => {
+    addDestination('peer-a');
+    addDestination('peer-b');
+    const result = dispatchResultText(
+      '<message to="peer-a" thread_id="ta">A</message>\n<message to="peer-b" thread_id="tb">B</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(2);
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(2);
+    const byDest = Object.fromEntries(out.map((r) => [r.platform_id, r]));
+    expect(byDest['ag-peer-a'].thread_id).toBe('ta');
+    expect(byDest['ag-peer-b'].thread_id).toBe('tb');
+  });
+
+  it('unknown destination drops the block, preserves attribute parsing path', () => {
+    // Unknown name → block goes to scratchpad. With agent-channel source
+    // routing, the scratchpad-fallback then auto-routes the dropped text
+    // back to the source. We verify the chain-attribute parser didn't
+    // crash on the unknown name (regression: the old code didn't even
+    // recognize the block as a <message> tag because of the regex bug).
+    const result = dispatchResultText(
+      '<message to="nonexistent" thread_id="T">body</message>',
+      sourceRouting,
+    );
+    // sent=1 from the scratchpad auto-route fallback (existing behavior),
+    // not from a successful dispatch. The dropped block's body is in
+    // the scratchpad payload routed back to source.
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(out[0].platform_id).toBe('ag-source');
+    expect(JSON.parse(out[0].content).text).toContain('[dropped: unknown destination "nonexistent"]');
+    expect(result.sent).toBe(1);
+  });
+});
+
 describe('routing', () => {
   it('should extract routing from messages', () => {
     getInboundDb()
