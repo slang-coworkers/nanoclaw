@@ -1002,6 +1002,37 @@ function buildMounts(
   }
   mounts.push({ hostPath: claudeDir, containerPath: '/home/node/.claude', readonly: false });
 
+  // Per-session codex state at /home/node/.codex (sessions/, memories/, etc.).
+  //
+  // Mounted UNIVERSALLY — not just for the codex agent provider. Two reasons:
+  //  1. Cost accounting: dashboard/server.ts:runCodexCcusage scans
+  //     <sessDir>/codex/ to attribute codex usage to the producing coworker.
+  //     Without the mount, container-side codex calls (mcp__codex__codex,
+  //     codex-critique, buddy-call.sh) write to ephemeral /home/node/.codex
+  //     which dies with the container — invisible to ccusage.
+  //  2. Container-restart resilience: codex sessions persist across respawns,
+  //     so `codex exec resume <id>` from buddy-call.sh works without falling
+  //     back to a fresh init (PR #446's fallback stays as defense-in-depth).
+  //
+  // Auth.json is opportunistically copied from the host's ~/.codex (matches
+  // the prior provider-only behavior). It's a per-session copy, not a host
+  // mount — host's directory stays read-only from the container's view.
+  const codexDir = path.join(sessDir, 'codex');
+  fs.mkdirSync(codexDir, { recursive: true });
+  const hostHome = process.env.HOME;
+  if (hostHome) {
+    const hostAuth = path.join(hostHome, '.codex', 'auth.json');
+    const localAuth = path.join(codexDir, 'auth.json');
+    if (fs.existsSync(hostAuth) && !fs.existsSync(localAuth)) {
+      try {
+        fs.copyFileSync(hostAuth, localAuth);
+      } catch (err) {
+        log.debug('Codex auth.json copy skipped', { err: err instanceof Error ? err.message : String(err) });
+      }
+    }
+  }
+  mounts.push({ hostPath: codexDir, containerPath: '/home/node/.codex', readonly: false });
+
   // Overlay hook scripts at /app/hooks (read-only — host-managed)
   const hooksMount = path.join(process.cwd(), 'container', 'hooks');
   if (fs.existsSync(hooksMount)) {
