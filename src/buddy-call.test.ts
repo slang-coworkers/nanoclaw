@@ -246,3 +246,49 @@ describe('buddy-call.sh codex --json event-shape selectors (v0.124+ + back-compa
     expect(src).not.toMatch(/codex exec[^\n]*-s\s+danger-full-access/);
   });
 });
+
+describe('buddy-call.sh SDK-flush race fix (#68)', () => {
+  // PostToolUse fires BEFORE the Claude Agent SDK flushes the tool_use
+  // entry that triggered it. The script needs to WAIT for JSONL to grow
+  // past cursor before reading, otherwise distill is empty, cursor
+  // advances, and subsequent fires see no-new-bytes — that whole tool
+  // batch escapes review.
+  const scriptSrc = fs.readFileSync(SCRIPT_PATH, 'utf8');
+
+  it('wait loop polls JSONL size against cursor (not just sleep + read once)', () => {
+    // The fix has to be a polling loop, not a fixed sleep — fixed sleep
+    // either wastes time or under-waits. Pin the structural shape:
+    expect(scriptSrc).toMatch(/CUR_SIZE=\$\(stat -c %s "\$JSONL"/);
+    expect(scriptSrc).toMatch(/CUR_SIZE.*-gt.*WAIT_LAST.*break/s);
+  });
+
+  it('wait loop has a budget (configurable, with sane default)', () => {
+    // Without a budget the script could hang forever if the SDK never
+    // writes (e.g., crashed agent). Pin the env-var override too — it's
+    // the test/debug seam.
+    expect(scriptSrc).toContain('BUDDY_FLUSH_WAIT_BUDGET_DECISECONDS');
+    expect(scriptSrc).toMatch(/WAIT_BUDGET=.*BUDDY_FLUSH_WAIT_BUDGET_DECISECONDS:-30/);
+  });
+
+  it('wait runs AFTER lock acquisition (so concurrent fires bail with lock-busy, not stack waits)', () => {
+    // Order matters: if the wait ran before the lock, every concurrent
+    // PostToolUse would each wait 3s independently — wasteful and creates
+    // a thundering herd on JSONL stat. Lock first, then the single owner
+    // waits.
+    const lockIdx = scriptSrc.indexOf('touch "$LOCK"');
+    const waitIdx = scriptSrc.indexOf('WAIT_LAST=$(cat "$CURSOR"');
+    expect(lockIdx).toBeGreaterThan(0);
+    expect(waitIdx).toBeGreaterThan(lockIdx);
+  });
+
+  it('wait does NOT advance cursor on its own (cursor write only after distill decision)', () => {
+    // The wait is read-only — it doesn't write CURSOR. Otherwise it could
+    // skip content if the SDK writes between the wait check and the
+    // distill read. Verify CURSOR write only appears AFTER the wait
+    // section.
+    const waitIdx = scriptSrc.indexOf('WAIT_LAST=$(cat "$CURSOR"');
+    expect(waitIdx).toBeGreaterThan(0);
+    const earlyCursorWrite = scriptSrc.slice(0, waitIdx).match(/echo .* > "\$CURSOR"/);
+    expect(earlyCursorWrite).toBeNull();
+  });
+});
