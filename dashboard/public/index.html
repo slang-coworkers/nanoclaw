@@ -867,6 +867,17 @@
     .cw-msg.relay.collapsed .relay-preview { display: block !important; }
     .cw-msg.relay:not(.collapsed) .relay-full { display: block !important; }
     .cw-msg.relay:not(.collapsed) .relay-preview { display: none !important; }
+    /* Overlay event: critique-gate REFUSED a delivery marker. Yellow rail
+       + faint amber wash so the operator immediately sees this isn't a
+       normal agent reply — it's a routing-layer enforcement event. The
+       collapsed/preview/full toggle reuses the relay machinery; only the
+       border + background are different. */
+    .cw-msg.overlay-event { border-left: 3px solid #facc15; background: rgba(250,204,21,0.06); cursor: pointer; }
+    .cw-msg.overlay-event .cw-msg-author { color: #ca8a04; }
+    .cw-msg.overlay-event.collapsed .relay-full { display: none !important; }
+    .cw-msg.overlay-event.collapsed .relay-preview { display: block !important; }
+    .cw-msg.overlay-event:not(.collapsed) .relay-full { display: block !important; }
+    .cw-msg.overlay-event:not(.collapsed) .relay-preview { display: none !important; }
     /* "You → <coworker>" keeps the user's blue rail so direction stays readable. */
     .cw-msg.user.to-coworker { border-left-color: var(--status-active); }
     .cw-msg.user .cw-msg-bubble { white-space: pre-wrap; }

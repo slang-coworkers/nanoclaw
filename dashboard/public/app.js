@@ -4403,6 +4403,25 @@ function renderCwMessages() {
         <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${esc(text)}</div></div>`;
       }
 
+      // Overlay event: critique-gate REFUSED a delivery marker. Server-
+      // side dispatchResultText (poll-loop.ts) replaces the original
+      // [Fix Report]/[Resolution]/etc. body with this exact prefix when
+      // the gate fires. Yellow border + collapsed-by-default so the
+      // operator immediately sees an enforcement event happened at the
+      // routing layer (not just an agent reply). Same toggle machinery
+      // as the relay path. Future overlay-events (buddy CONCERN injects,
+      // etc.) can match additional prefixes here.
+      const isOverlayEvent = isOutgoing && /^\[critique-gate\] REFUSED/.test(text);
+      if (isOverlayEvent) {
+        const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
+        const headerLabel = `⚠ critique-gate refused ${m.recipientCoworkerName ? '→ @' + esc(m.recipientCoworkerName) : ''}`;
+        return `<div class="cw-msg overlay-event${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}">
+        <div class="cw-msg-avatar" style="background:rgba(250,204,21,0.15);color:#ca8a04">⚠</div>
+        <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author">${headerLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
+        <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);font-style:italic">delivery marker without /codex-critique — click to expand</div>
+        <div class="cw-msg-bubble relay-full" style="display:none">${md(text)}</div></div>`;
+      }
+
       if (m.cardType === 'card') {
         return renderCardBubble(m, {
           cls,
@@ -5231,6 +5250,19 @@ function renderCwThread() {
         <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
         <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${body}</div></div>`;
+      }
+      // Overlay event: critique-gate REFUSED. Mirrors the main-view path
+      // above so threads also render with yellow border + collapsed by
+      // default. See the main-view block for the full rationale.
+      const isOverlayEvent = isOutgoing && /^\[critique-gate\] REFUSED/.test(text);
+      if (isOverlayEvent) {
+        const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
+        const headerLabel = `⚠ critique-gate refused ${m.recipientCoworkerName ? '→ @' + esc(m.recipientCoworkerName) : ''}`;
+        return `<div class="cw-msg overlay-event${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}">
+        <div class="cw-msg-avatar" style="background:rgba(250,204,21,0.15);color:#ca8a04">⚠</div>
+        <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author">${headerLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
+        <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);font-style:italic">delivery marker without /codex-critique — click to expand</div>
+        <div class="cw-msg-bubble relay-full" style="display:none">${body}</div></div>`;
       }
       if (m.cardType === 'card') {
         return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
