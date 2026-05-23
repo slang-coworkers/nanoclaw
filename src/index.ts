@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { backfillAgentsSymlinks } from './agents-symlink-backfill.js';
 import { backfillContainerConfigs } from './backfill-container-configs.js';
 import {
   DASHBOARD_INGRESS_HOST,
@@ -161,6 +162,16 @@ async function main(): Promise<void> {
   // 1c. Backfill container_configs from legacy container.json files.
   // Idempotent — skips groups that already have a config row.
   backfillContainerConfigs();
+
+  // 1c-bis. Backfill AGENTS.md / .agents symlinks for codex-mode skill
+  // discovery. group-init.ts creates these for new groups; this catches
+  // older groups created before that scaffolding existed. Idempotent —
+  // skips groups that already have the symlinks.
+  try {
+    backfillAgentsSymlinks(process.cwd());
+  } catch (err) {
+    log.warn('agents-symlink-backfill threw', { err: String(err) });
+  }
 
   // 1d. Orphan-dir reconciler (task #40). `groups/<folder>/` directories
   // can be left behind when a coworker is deleted via the dashboard API
