@@ -2502,11 +2502,14 @@ export function matchContainerName(
 
   const rivalFolderPrefixes: string[] = [];
   if (knownFolders) {
+    // PR #448 dropped the `_` → `-` normalization on `folder` but left
+    // dangling references to the now-removed `containerFolder` local AND
+    // a `kfNorm` that normalized known-folder names. Both wrong under
+    // verbatim matching: just compare known folders to `folder` directly.
     for (const kf of knownFolders) {
-      const kfNorm = kf.replace(/_/g, '-');
-      if (kfNorm === containerFolder) continue;
-      if (kfNorm.length > containerFolder.length && kfNorm.startsWith(`${containerFolder}-`)) {
-        rivalFolderPrefixes.push(`${prefix}-${kfNorm}-`);
+      if (kf === folder) continue;
+      if (kf.length > folder.length && kf.startsWith(`${folder}-`)) {
+        rivalFolderPrefixes.push(`${prefix}-${kf}-`);
       }
     }
   }
