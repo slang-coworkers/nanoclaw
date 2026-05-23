@@ -56,6 +56,30 @@ if [ -z "$SID" ]; then log_event "no-session-id"; exit 0; fi
 JSONL=$(find /home/node/.claude/projects -name "${SID}*.jsonl" 2>/dev/null | head -1)
 if [ -z "$JSONL" ] || [ ! -f "$JSONL" ]; then log_event "no-jsonl"; exit 0; fi
 
+# SDK-flush race fix (#68): PostToolUse hooks fire BEFORE the Claude
+# Agent SDK flushes the tool_use entry that triggered them. Without this
+# wait, the FIRST buddy fire of a multi-tool burst reads JSONL while it's
+# still mid-write — distill returns empty (no qualifying tool_use yet),
+# cursor advances to the current size, and subsequent fires see "no-new-
+# bytes" because the SDK still hasn't written. By the time the SDK
+# catches up, no more PostToolUse fires happen (agent done) → that whole
+# tool batch escapes buddy review.
+#
+# Wait for JSONL to grow past the recorded cursor, with a short timeout.
+# If it doesn't grow, fall through — the regular "no-new-bytes" / "no-
+# reviewable-tools" path will log it. Owner-of-lock is the only fire
+# blocking; concurrent fires already exited via lock-busy above, so this
+# wait does not stack.
+WAIT_LAST=$(cat "$CURSOR" 2>/dev/null || echo 0)
+WAIT_BUDGET="${BUDDY_FLUSH_WAIT_BUDGET_DECISECONDS:-30}"  # 30 × 100ms = 3s default
+i=0
+while [ $i -lt "$WAIT_BUDGET" ]; do
+  CUR_SIZE=$(stat -c %s "$JSONL" 2>/dev/null || echo 0)
+  [ "$CUR_SIZE" -gt "$WAIT_LAST" ] && break
+  sleep 0.1
+  i=$((i + 1))
+done
+
 # Cursor — read delta since last fire
 LAST=$(cat "$CURSOR" 2>/dev/null || echo 0)
 SIZE=$(stat -c %s "$JSONL" 2>/dev/null || echo 0)
