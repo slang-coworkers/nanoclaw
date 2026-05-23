@@ -116,16 +116,46 @@ Anything to flag? Reply OK or one CONCERN (with required Quote: field per your c
 # fail with empty/error output. We detect that, drop the stale thread-id,
 # and fall through to first-fire init — preserving the cursor so we don't
 # replay or skip batches.
+# NB on codex --json event shape (codex 0.124+):
+#   First event:    {"type":"thread.started","thread_id":"<uuid>"}
+#   Agent reply:    {"type":"item.completed","item":{"type":"agent_message","text":"…"}}
+#   Closing event:  {"type":"turn.completed","usage":{…}}
+# Earlier versions emitted top-level `session_id` and a flat `agent_message`
+# event. Both extraction paths are kept (new-shape first, old-shape fallback)
+# to tolerate version skew across container rebuilds.
+#
+# `codex exec resume` no longer accepts `-s` (sandbox) or `-C` (cwd) — the
+# resumed session inherits both from its persisted state. Passing `-s` makes
+# resume error out with `unexpected argument '-s' found`. Use `-c sandbox_mode=...`
+# (config-key form) instead, which is accepted by both `codex exec` and
+# `codex exec resume` and matches how the codex MCP server is wired in
+# container-runner.ts.
+CODEX_FLAGS="-c sandbox_mode=danger-full-access --skip-git-repo-check"
+
+extract_thread_id() {
+  jq -r '. | (.thread_id // .session_id // empty) | select(. != "")' 2>/dev/null | head -1 || true
+}
+extract_response() {
+  # Prefer item.completed/agent_message (codex 0.124+); fall back to old
+  # top-level agent_message/assistant_message events if seen.
+  jq -r '
+    if (.type == "item.completed" and .item.type == "agent_message") then .item.text
+    elif ((.type == "agent_message" or .type == "assistant_message") and .message != null) then .message
+    else empty end
+  ' 2>/dev/null | tail -1 || true
+}
+
 RESUME_FAILED=false
 if [ -f "$THREAD" ] && [ -s "$THREAD" ]; then
   THREAD_ID=$(cat "$THREAD")
   log_event "calling-codex-resume"
-  RESPONSE=$(printf '%s' "$BATCH_PROMPT" | timeout 120 codex exec resume "$THREAD_ID" \
-    -s danger-full-access --skip-git-repo-check -C /workspace/agent - 2>>"$LOG" || true)
-  # Empty response on resume → session likely gone (container restart).
-  # Codex also writes "session not found" / "thread not found" to stderr,
-  # but the simplest reliable signal is empty stdout despite a successful
-  # exit shape (`|| true` masked any non-zero).
+  RAW=$(printf '%s' "$BATCH_PROMPT" | timeout 120 codex exec resume "$THREAD_ID" \
+    $CODEX_FLAGS --json - 2>>"$LOG" || true)
+  RESPONSE=$(printf '%s' "$RAW" | extract_response)
+  # Empty response on resume → session likely gone (container restart, or
+  # codex pruned old session). Codex writes "session not found" to stderr,
+  # but the simplest reliable signal is empty extracted text despite a
+  # successful exit shape (`|| true` masked any non-zero).
   if [ -z "$(printf '%s' "$RESPONSE" | tr -d '[:space:]')" ]; then
     log_event "resume-empty-fallback-init"
     rm -f "$THREAD"
@@ -148,20 +178,14 @@ I will send a BATCH n payload now and on each subsequent fire. Maintain your led
 
 $BATCH_PROMPT"
   log_event "calling-codex-init"
-  # Capture --json output to extract session_id for future resumes
-  RAW=$(printf '%s' "$FIRST_PROMPT" | timeout 180 codex exec --json \
-    -s danger-full-access --skip-git-repo-check -C /workspace/agent - 2>>"$LOG" || true)
-  # session_id appears in early events as {"session_id": "<uuid>", ...}
-  THREAD_ID=$(printf '%s' "$RAW" | jq -r 'select(.session_id != null) | .session_id' 2>/dev/null | head -1 || true)
+  RAW=$(printf '%s' "$FIRST_PROMPT" | timeout 180 codex exec \
+    $CODEX_FLAGS -C /workspace/agent --json - 2>>"$LOG" || true)
+  THREAD_ID=$(printf '%s' "$RAW" | extract_thread_id)
   if [ -n "$THREAD_ID" ]; then
     echo "$THREAD_ID" > "$THREAD"
     log_event "thread-saved"
   fi
-  # Final assistant message — reconstruct from the JSONL events. Look for
-  # the last "agent_message" / "assistant" event with text payload.
-  RESPONSE=$(printf '%s' "$RAW" | jq -r '
-    select((.type == "agent_message" or .type == "assistant_message") and .message != null) | .message
-  ' 2>/dev/null | tail -1 || true)
+  RESPONSE=$(printf '%s' "$RAW" | extract_response)
   if [ -z "$RESPONSE" ]; then
     # Fallback: last non-empty stdout chunk that isn't JSONL
     RESPONSE=$(printf '%s' "$RAW" | grep -v '^{' | tail -5 | tr -d '\r' || true)
