@@ -10,7 +10,7 @@ export interface AgentGroup {
   container_config: string | null; // JSON: { additionalMounts, timeout }
   coworker_type: string | null; // coworker-types.yaml key, e.g. "slang-reader" or "slang-writer"
   allowed_mcp_tools: string | null; // JSON: string[] of allowed MCP tool names
-  overlays: string | null; // JSON: string[] of overlay names (e.g. ["critique-overlay"])
+  overlays: string | null; // JSON: string[] of overlay names (e.g. ["critique-gate", "buddy-monitor"])
   routing: string; // 'direct' | 'internal'
   disable_overlays: number; // 0 | 1 — when 1, skip overlay hook injection
   created_at: string;

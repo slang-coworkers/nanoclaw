@@ -1101,67 +1101,13 @@ describe('R23: real overlays adopt the auto-attach shape', () => {
     expect(fm).toMatch(/aliases:\s*\[implement,\s*patch\]/);
   });
 
-  it('writer-style workflows pick up critique-overlay via trait union', () => {
-    // Hermetic — proves the new critique-overlay frontmatter works against
-    // a synthetic writer workflow that requires `code.edit`. Doesn't depend
-    // on the slang/slangpy spines.
-    const root = makeTempProject();
-    writeSpineBase(root);
-    writeCapabilitySkill(root, 'editor', 'Edit code.');
-    fs.writeFileSync(
-      path.join(root, 'container', 'skills', 'editor', 'SKILL.md'),
-      [
-        '---',
-        'name: editor',
-        'type: capability',
-        'description: "Edit."',
-        'provides: [code.edit]',
-        '---',
-        '',
-        'Body.',
-      ].join('\n'),
-    );
-    writeWorkflow(
-      root,
-      'project-fix',
-      [
-        '# Project fix',
-        '',
-        '## Steps',
-        '',
-        '1. **Diagnose** {#diagnose} — root cause.',
-        '',
-        '2. **Change** {#change} — apply the fix.',
-        '',
-        '3. **Deliver** {#deliver} — push the artifact.',
-      ].join('\n'),
-      { requires: ['code.edit'] },
-    );
-    // Drop the shipped critique-overlay body into the fixture verbatim.
-    const realCritique = fs.readFileSync(
-      path.join(REPO_ROOT, 'container', 'overlays', 'critique-overlay', 'OVERLAY.md'),
-      'utf-8',
-    );
-    write(path.join(root, 'container', 'overlays', 'critique-overlay', 'OVERLAY.md'), realCritique);
-    writeProjectType(
-      root,
-      [
-        'probe:',
-        '  extends: base-common',
-        '  description: "Probe."',
-        '  workflows: [project-fix]',
-        '  skills: [editor]',
-        '  overlays: [critique-overlay]',
-        '  bindings:',
-        '    code: editor',
-        '',
-      ].join('\n'),
-    );
-    const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
-    // Trait-driven attach: critique-overlay has `traits: [code.edit, ...]`,
-    // project-fix declares `requires: [code.edit]`, so the gates inline.
-    expect(spine).toMatch(/⟐ CRITIQUE OVERLAY GATE/);
-  });
+  // Removed in this PR: "writer-style workflows pick up critique-overlay
+  // via trait union". The critique-overlay file was deleted as part of the
+  // critique-gate refactor — there is no longer a shipped OVERLAY.md to
+  // splice via traits. The trait-union activation pattern itself is still
+  // covered by the next test (buddy-monitor via applies-to.workflows: [base]),
+  // and the marker-based critique-gate is exercised in
+  // src/gate-critique-on-deliver.test.ts.
 
   it('base-extending workflows pick up buddy-monitor at start', () => {
     // Uses the shipped buddy-monitor body against a synthetic base + project

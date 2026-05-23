@@ -69,7 +69,7 @@ export const createAgent: McpToolDefinition = {
           type: 'array',
           items: { type: 'string' },
           description:
-            'Compose-time overlay names (e.g., ["critique-overlay", "buddy-monitor"]). Overlays inject quality gates into workflows. Optional — defaults to none; operators can configure later via dashboard.',
+            'Compose-time overlay names (e.g., ["critique-gate", "buddy-monitor"]). Overlays inject quality gates into workflows. Optional — defaults to none; operators can configure later via dashboard.',
         },
       },
       required: ['name'],

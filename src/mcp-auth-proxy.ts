@@ -211,11 +211,10 @@ export function getDiscoveredToolInventory(): Record<string, string[]> {
 /**
  * Flattened map of all discovered tool annotations, keyed by the same
  * `mcp__<server>__<tool>` prefix scheme used by getDiscoveredToolInventory().
- * Tools without annotations are absent from this map.
- *
- * Consumed by container-runner.resolveCritiqueGatedTools() to identify
- * external-posting tools that should be gated by plan-gate.sh alongside
- * Edit/Write.
+ * Tools without annotations are absent from this map. Reserved for any
+ * future gate that wants to filter on `openWorldHint`; the legacy
+ * resolveCritiqueGatedTools / CRITIQUE_GATED_TOOLS path was removed when
+ * critique enforcement moved to delivery-marker gating.
  */
 export function getDiscoveredToolAnnotations(): Record<string, ToolAnnotations> {
   const result: Record<string, ToolAnnotations> = {};
