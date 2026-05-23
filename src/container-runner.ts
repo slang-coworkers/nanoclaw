@@ -12,6 +12,8 @@ import { OneCLI } from '@onecli-sh/sdk';
 
 import {
   composeCoworkerSpine,
+  getAppliedOverlayNames,
+  materializeOverlayMarkers,
   readCoworkerTypes,
   readSkillCatalog,
   resolveCoworkerManifest,
@@ -195,15 +197,21 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
       }
 
       const overlays = agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined;
-      const composed = composeCoworkerSpine({
+      const composeOpts = {
         coworkerType: 'default',
         extraInstructions,
         disableOverlays: agentGroup.disable_overlays === 1,
         overlays,
         cliScope: (getContainerConfig(agentGroup.id)?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
-      });
+      };
+      const composed = composeCoworkerSpine(composeOpts);
       fs.mkdirSync(groupDir, { recursive: true });
       fs.writeFileSync(claudeMdPath, composed);
+      // Materialize MARKER files for overlays carrying one (e.g. buddy-monitor).
+      // Containers see /workspace/agent/.overlay-<name> via the standard mount;
+      // hooks like spawn-buddy.sh test for these files to gate themselves.
+      const appliedOverlays = getAppliedOverlayNames(process.cwd(), 'default', composeOpts);
+      materializeOverlayMarkers(appliedOverlays, process.cwd(), groupDir);
       log.debug('CLAUDE.md composed for untyped coworker via default type', { folder: agentGroup.folder });
     } catch (err) {
       log.warn('Failed to compose CLAUDE.md for untyped coworker', { folder: agentGroup.folder, err });
@@ -220,16 +228,19 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
     }
 
     const overlays = agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined;
-    const composed = composeCoworkerSpine({
+    const composeOpts = {
       coworkerType: agentGroup.coworker_type,
       extraInstructions,
       disableOverlays: agentGroup.disable_overlays === 1,
       overlays,
       cliScope: (getContainerConfig(agentGroup.id)?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
-    });
+    };
+    const composed = composeCoworkerSpine(composeOpts);
 
     fs.mkdirSync(groupDir, { recursive: true });
     fs.writeFileSync(claudeMdPath, composed);
+    const appliedOverlays = getAppliedOverlayNames(process.cwd(), agentGroup.coworker_type, composeOpts);
+    materializeOverlayMarkers(appliedOverlays, process.cwd(), groupDir);
     log.debug('CLAUDE.md composed from lego spine', { folder: agentGroup.folder });
   } catch (err) {
     log.warn('Failed to compose CLAUDE.md from lego spine', { folder: agentGroup.folder, err });

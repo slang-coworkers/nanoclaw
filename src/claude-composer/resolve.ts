@@ -4,6 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { readCoworkerTypes, readSkillCatalog } from './registry.js';
 import type { CoworkerManifest, CoworkerTypeEntry, OverlayMeta, SkillMeta, WorkflowCustomization } from './types.js';
 
 function normalizeList<T>(v: T | T[] | undefined | null): T[] {
@@ -662,5 +663,62 @@ export function injectOverlays(
     for (const t of overlayMeta.allowedTools) {
       if (!manifest.tools.includes(t)) manifest.tools.push(t);
     }
+  }
+}
+
+/**
+ * Resolve which overlays apply to a coworker — same pipeline as
+ * renderCoworkerSpine, but returning the deduped overlay-name list instead
+ * of a rendered string. Used by container-runner.ts to materialize per-overlay
+ * MARKER files alongside the composed CLAUDE.md.
+ *
+ * Returns [] when disableOverlays is set (matches the renderer's strip behavior).
+ */
+export function getAppliedOverlayNames(
+  projectRoot: string,
+  coworkerType: string,
+  opts: { disableOverlays?: boolean; overlays?: string[]; cliScope?: 'disabled' | 'group' | 'global' } = {},
+): string[] {
+  const cliScope = opts.cliScope ?? 'group';
+  const types = readCoworkerTypes(projectRoot);
+  const catalog = readSkillCatalog(projectRoot);
+  const manifest = resolveCoworkerManifest(types, coworkerType, catalog, projectRoot, { cliScope });
+  if (opts.overlays && opts.overlays.length > 0) {
+    injectOverlays(manifest, opts.overlays, catalog);
+  }
+  if (opts.disableOverlays) return [];
+  const seen = new Set<string>();
+  for (const c of manifest.customizations) {
+    if (c.kind === 'overlay' && c.overlayName) seen.add(c.overlayName);
+  }
+  return [...seen];
+}
+
+/**
+ * For each overlay name with a sibling MARKER file at
+ * container/overlays/<dirname>/MARKER, write its content to
+ * <groupDir>/.overlay-<overlayName>. Containers see this at
+ * /workspace/agent/.overlay-<overlayName> via the standard mount.
+ *
+ * Lookup is by overlay name (frontmatter `name:`), not directory basename —
+ * the catalog stores the OVERLAY.md absolute path, and MARKER lives next to
+ * it. Overlays without a MARKER file are silently skipped (prose-only).
+ *
+ * Idempotent. Safe to call on every spawn.
+ */
+export function materializeOverlayMarkers(
+  overlayNames: string[],
+  projectRoot: string,
+  groupDir: string,
+): void {
+  const catalog = readSkillCatalog(projectRoot);
+  for (const name of overlayNames) {
+    const meta = catalog[name];
+    if (!meta?.path) continue;
+    const markerPath = path.join(path.dirname(meta.path), 'MARKER');
+    if (!fs.existsSync(markerPath)) continue;
+    const content = fs.readFileSync(markerPath, 'utf-8').trim();
+    if (!content) continue;
+    fs.writeFileSync(path.join(groupDir, `.overlay-${name}`), content + '\n');
   }
 }

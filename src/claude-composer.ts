@@ -10,7 +10,13 @@ import { composeLegacyDocument } from './claude-composer/legacy.js';
 import type { ComposeCoworkerSpineOptions, ComposeLegacyPromptOptions } from './claude-composer/types.js';
 
 export { readCoworkerTypes, readSkillCatalog } from './claude-composer/registry.js';
-export { injectOverlays, resolveCoworkerManifest, resolveTypeChain } from './claude-composer/resolve.js';
+export {
+  getAppliedOverlayNames,
+  injectOverlays,
+  materializeOverlayMarkers,
+  resolveCoworkerManifest,
+  resolveTypeChain,
+} from './claude-composer/resolve.js';
 export type {
   ComposeCoworkerSpineOptions,
   ComposeLegacyPromptOptions,
