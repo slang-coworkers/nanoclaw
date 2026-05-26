@@ -44,6 +44,7 @@ nanoclaw-writer:
   workflows:
     - nanoclaw-plan
     - nanoclaw-implement
+  required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
   bindings:
     code: nanoclaw-code-writer
     test: nanoclaw-build
@@ -60,3 +61,4 @@ nanoclaw-reviewer:
     - nanoclaw-pr-review-runner
   workflows:
     - nanoclaw-pr-review
+  required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]

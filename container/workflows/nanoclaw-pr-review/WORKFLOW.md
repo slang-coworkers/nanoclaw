@@ -64,7 +64,7 @@ The Devin scraper (`devin-fetch.sh`) lives in the `nanoclaw-pr-review-runner` sk
 
    ```
    mcp__nanoclaw__send_file(to="parent", path="<RUN_DIR>/devin-flags.md")
-   mcp__nanoclaw__send_message(to="parent", text="[Review Verdict] slang-coworkers/nanoclaw#<N>\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES / SKIPPED>\n• Devin status: <success | auth-wall | timeout>\n• Top flags: <up to 3 flag titles, or 'no flags'>\n• Severity: <bug=N, gap=N, question=N> (or 'n/a' if skipped)\n• Devin URL: https://app.devin.ai/review/slang-coworkers/nanoclaw/pull/<N>")
+   mcp__nanoclaw__send_message(to="parent", text="[Review Verdict] slang-coworkers/nanoclaw#<N>\n\n- **Verdict:** <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES / SKIPPED>\n- **Devin status:** <success | auth-wall | timeout>\n- **Top flags:** <up to 3 flag titles, or 'no flags'>\n- **Severity:** <bug=N, gap=N, question=N> (or 'n/a' if skipped)\n- **Devin URL:** https://app.devin.ai/review/slang-coworkers/nanoclaw/pull/<N>")
    ```
 
    Verdict mapping: `APPROVE` if zero bugs/gaps; `APPROVE_WITH_NITS` if only nits/questions; `REQUEST_CHANGES` if any bug; `SKIPPED` for auth-wall/timeout. The verdict is a recommendation — the operator decides whether to actually post a review on GitHub.
