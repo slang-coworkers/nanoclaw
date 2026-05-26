@@ -5673,24 +5673,37 @@ export async function handleRequest(
                 }
                 let rows: any[];
                 try {
+                  // source_session_id distinguishes a true single-session echo
+                  // (loop) from a cross-session a2a within the same agent
+                  // group — see the isSelfEcho gate below.
                   rows = sdb
                     .prepare(
-                      'SELECT id, kind, content, timestamp, channel_type, platform_id, thread_id FROM messages_in ORDER BY timestamp DESC LIMIT ?',
+                      'SELECT id, kind, content, timestamp, channel_type, platform_id, thread_id, source_session_id FROM messages_in ORDER BY timestamp DESC LIMIT ?',
                     )
                     .all(perGroupLimit) as any[];
                 } catch {
-                  // Older session DBs without thread_id — fall back but keep
-                  // channel_type/platform_id so a2a detection still works.
+                  // Older session DBs without source_session_id — keep
+                  // thread_id so threadMode filtering still works.
                   try {
                     rows = sdb
                       .prepare(
-                        'SELECT id, kind, content, timestamp, channel_type, platform_id FROM messages_in ORDER BY timestamp DESC LIMIT ?',
+                        'SELECT id, kind, content, timestamp, channel_type, platform_id, thread_id FROM messages_in ORDER BY timestamp DESC LIMIT ?',
                       )
                       .all(perGroupLimit) as any[];
                   } catch {
-                    rows = sdb
-                      .prepare('SELECT id, kind, content, timestamp FROM messages_in ORDER BY timestamp DESC LIMIT ?')
-                      .all(perGroupLimit) as any[];
+                    // Older session DBs without thread_id — fall back but keep
+                    // channel_type/platform_id so a2a detection still works.
+                    try {
+                      rows = sdb
+                        .prepare(
+                          'SELECT id, kind, content, timestamp, channel_type, platform_id FROM messages_in ORDER BY timestamp DESC LIMIT ?',
+                        )
+                        .all(perGroupLimit) as any[];
+                    } catch {
+                      rows = sdb
+                        .prepare('SELECT id, kind, content, timestamp FROM messages_in ORDER BY timestamp DESC LIMIT ?')
+                        .all(perGroupLimit) as any[];
+                    }
                   }
                 }
                 for (const r of rows) {
@@ -5722,11 +5735,23 @@ export async function handleRequest(
                   // Hide on the noisy main view; show when the user explicitly
                   // opens the thread (threadMode) or asks for system rows.
                   if (!threadMode && !includeSystem && isSystemId(r.id) && !senderCoworkerName) continue;
-                  // Self-referencing a2a: sender is the same agent group we're
-                  // viewing — routing echo, not a real inbound message.
+                  // Self-referencing a2a: sender is this same agent group AND
+                  // the source session is this same session — routing echo,
+                  // not a real inbound message. A cross-session a2a within the
+                  // same coworker (e.g. one slang-fixer chain handing off to
+                  // another) is NOT echo and must be shown.
+                  //
+                  // source_session_id is NULL on a2a rows written before that
+                  // column existed and on non-a2a rows; treat null as echo to
+                  // preserve the pre-#465 behavior on legacy DBs (where we
+                  // can't tell the two cases apart).
+                  //
                   // Hide on the noisy main view; show when the user explicitly
                   // opens the thread (threadMode) or asks for system rows.
-                  const isSelfEcho = r.channel_type === 'agent' && r.platform_id === agRow.id;
+                  const isSelfEcho =
+                    r.channel_type === 'agent' &&
+                    r.platform_id === agRow.id &&
+                    (r.source_session_id == null || r.source_session_id === sess.id);
                   if (!threadMode && !includeSystem && isSelfEcho) continue;
                   messages.push({
                     ...r,
