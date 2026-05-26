@@ -51,11 +51,6 @@ slangpy-writer:
   workflows:
     - slangpy-plan
     - slangpy-implement
-  # Writers do source edits + delivery. Both gates apply, both opt-in via marker.
-  # Inherited by slangpy-fixer (extends slangpy-writer).
-  overlays:
-    - plan-gate
-    - critique-gate
   bindings:
     code: slangpy-code-writer
     test: slangpy-build
@@ -67,11 +62,6 @@ slangpy-triage:
   extends: slangpy-reader
   workflows:
     - slangpy-triage-issue
-  # Read-only triage: no plan-gate. Critique-gate enforces [Triage] /
-  # [Triage Resolution] reports. DIAGNOSIS_REVIEW vets the diagnosis;
-  # OUTPUT_REVIEW vets the handoff message.
-  overlays:
-    - critique-gate
   required_critique_stages: [DIAGNOSIS_REVIEW, OUTPUT_REVIEW]
 
 slangpy-fixer:
@@ -80,7 +70,6 @@ slangpy-fixer:
   extends: slangpy-writer
   workflows:
     - slangpy-implement
-  # Inherits overlays: [plan-gate, critique-gate] from slangpy-writer.
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
 
 slangpy-reviewer:
@@ -91,7 +80,4 @@ slangpy-reviewer:
     # Reviewers enforce code-change rules during review.
     - container/spines/slangpy/invariants/code-changes.md
   workflows: []
-  # Read-only role. Critique-gate enforces the review verdict before sending.
-  overlays:
-    - critique-gate
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
