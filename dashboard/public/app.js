@@ -3174,9 +3174,47 @@ function loadAdminPanel(name) {
     channels: loadAdminChannels,
     config: loadAdminConfig,
     infra: loadAdminInfra,
+    transcripts: loadAdminTranscripts,
   };
   if (loaders[name]) loaders[name]();
 }
+
+// --- Transcripts ---
+// Embeds the claude-code-transcripts viewer (uvx claude-code-transcripts)
+// served at the same host's TRANSCRIPT_PORT (default :8080). The iframe is
+// loaded lazily on first activation so the viewer's startup cost isn't paid
+// for operators who never click the pill. The "Open in new tab" link is a
+// fallback for users who want full-page width or a deep link.
+//
+// URL is derived from window.location.hostname (so it works for remote
+// dashboards reached over an SSH-tunnelled host) with a hardcoded port.
+// Override via TRANSCRIPT_PORT in .env if 8080 conflicts; the override is
+// surfaced through /api/state's `transcript_port` field (server-side wiring
+// in dashboard/server.ts pulls from process.env).
+const TRANSCRIPT_PORT_DEFAULT = 8080;
+function transcriptUrl() {
+  const port = (window.__nanoclaw_transcript_port || TRANSCRIPT_PORT_DEFAULT);
+  return `${window.location.protocol}//${window.location.hostname}:${port}/`;
+}
+function loadAdminTranscripts() {
+  const iframe = document.getElementById('admin-transcripts-iframe');
+  const popout = document.getElementById('admin-transcripts-popout');
+  const url = transcriptUrl();
+  if (popout) popout.href = url;
+  // Only set src when the panel is opened (lazy load); subsequent reloads
+  // bust whatever cached state the upstream tool has by re-setting src.
+  if (iframe && iframe.src !== url) iframe.src = url;
+  adminState.loaded.add('transcripts');
+}
+document.getElementById('admin-transcripts-refresh')?.addEventListener('click', () => {
+  // Re-set src to force a reload (avoids a cached partial render).
+  const iframe = document.getElementById('admin-transcripts-iframe');
+  if (iframe) {
+    const url = transcriptUrl();
+    iframe.src = 'about:blank';
+    setTimeout(() => { iframe.src = url; }, 50);
+  }
+});
 
 // --- Overview ---
 // Overview is the combined landing panel: summary stat cards on top, then the formerly-

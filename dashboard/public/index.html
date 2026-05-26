@@ -1259,6 +1259,7 @@
       <button class="admin-pill" data-panel="admin-channels">Channels</button>
       <button class="admin-pill" data-panel="admin-config">Config</button>
       <button class="admin-pill" data-panel="admin-infra">Infra</button>
+      <button class="admin-pill" data-panel="admin-transcripts">Transcripts</button>
     </div>
     <div class="admin-panels">
       <div id="admin-overview" class="admin-panel active">
@@ -1335,6 +1336,27 @@
       <div id="admin-infra" class="admin-panel">
         <div class="admin-panel-header"><h3>Infrastructure</h3><button class="admin-refresh-btn" data-load="infra">Refresh</button></div>
         <div id="admin-infra-content" class="admin-panel-body"><div class="admin-loading">Loading...</div></div>
+      </div>
+      <!-- Transcripts panel: embeds the claude-code-transcripts viewer (uvx
+           claude-code-transcripts on TRANSCRIPT_PORT, default 8080). The
+           iframe loads lazily on first activation so the upstream tool's
+           startup cost isn't paid until an operator clicks the pill.
+           If the upstream process isn't running the iframe shows whatever
+           the browser renders for a refused connection — operators have a
+           fallback link below. Native port (eliminate the :8080 dependency)
+           is a planned follow-up. -->
+      <div id="admin-transcripts" class="admin-panel">
+        <div class="admin-panel-header">
+          <h3>Transcripts</h3>
+          <button class="admin-refresh-btn" id="admin-transcripts-refresh">Reload</button>
+          <a class="admin-refresh-btn" id="admin-transcripts-popout" href="#" target="_blank" rel="noopener" style="margin-left:auto">Open in new tab ↗</a>
+        </div>
+        <div id="admin-transcripts-content" class="admin-panel-body" style="padding:0">
+          <iframe id="admin-transcripts-iframe" title="Agent group session transcripts"
+                  style="width:100%;height:calc(100vh - 200px);border:0;display:block;background:var(--bg)"
+                  loading="lazy" src="about:blank"></iframe>
+          <noscript><p style="padding:12px">Transcripts require JavaScript.</p></noscript>
+        </div>
       </div>
     </div>
   </div>
