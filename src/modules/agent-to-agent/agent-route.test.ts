@@ -1962,3 +1962,277 @@ describe('migration 019', () => {
     expect(row.session_mode).toBe('per-thread');
   });
 });
+
+// =============================================================
+// Layer 0: sender-pinned recipient session via `target_session_id`.
+// Verifies the pin lands the message in the named session when valid,
+// silently falls through on validation mismatch, and never bypasses the
+// destination authorization gate.
+// =============================================================
+describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
+  let tempDir: string;
+  beforeEach(() => {
+    tempDir = setupTempDb();
+  });
+  afterEach(() => {
+    closeDb();
+    process.chdir(realCwd);
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  /** Create an extra recipient session belonging to ag-recipient — used as
+   *  the pin target. Returned id matches the convention of the thread-based
+   *  fresh-delegation path so we can assert "pin landed here, not a fresh". */
+  function seedPinnedSession(id: string, threadId: string | null = null): Session {
+    const s: Session = {
+      id,
+      agent_group_id: 'ag-recipient',
+      messaging_group_id: null,
+      thread_id: threadId,
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(s);
+    initSessionFolder('ag-recipient', id);
+    return s;
+  }
+
+  it('valid pin: delivery lands in the named session, no fresh session minted', async () => {
+    const { senderSession } = seedPair();
+    const pinned = seedPinnedSession('sess-pinned-ok');
+
+    await routeAgentMessage(
+      {
+        id: 'out-pin',
+        platform_id: 'ag-recipient',
+        thread_id: 'unrelated-thread',
+        content: JSON.stringify({ text: 'wake up' }),
+        target_session_id: pinned.id,
+      },
+      senderSession,
+    );
+
+    const recipientSessions = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    // Only the pre-seeded session exists — no fresh per-thread mint
+    expect(recipientSessions.map((r) => r.id)).toEqual([pinned.id]);
+  });
+
+  it('pin to closed session: falls through, mints fresh per-thread session', async () => {
+    const { senderSession } = seedPair();
+    const closed = seedPinnedSession('sess-closed');
+    getDb().prepare('UPDATE sessions SET status = ? WHERE id = ?').run('closed', closed.id);
+
+    await routeAgentMessage(
+      {
+        id: 'out-pin-closed',
+        platform_id: 'ag-recipient',
+        thread_id: 'fallback',
+        content: JSON.stringify({ text: 'x' }),
+        target_session_id: closed.id,
+      },
+      senderSession,
+    );
+
+    const fresh = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ? AND status = ? AND thread_id = ?')
+      .all('ag-recipient', 'active', 'fallback') as Array<{ id: string }>;
+    expect(fresh).toHaveLength(1);
+    expect(fresh[0].id).not.toBe(closed.id);
+  });
+
+  it('pin to wrong agent group: falls through (different group not honored)', async () => {
+    const { senderSession } = seedPair();
+    // Make a session under sender's own group — not under recipient.
+    const wrongGroup: Session = {
+      id: 'sess-wrong-group',
+      agent_group_id: 'ag-sender',
+      messaging_group_id: null,
+      thread_id: null,
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(wrongGroup);
+
+    await routeAgentMessage(
+      {
+        id: 'out-pin-wrong',
+        platform_id: 'ag-recipient',
+        thread_id: 'fallback-2',
+        content: JSON.stringify({ text: 'x' }),
+        target_session_id: wrongGroup.id,
+      },
+      senderSession,
+    );
+
+    const recipientSessions = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    // Wrong-group pin ignored, fresh session minted under recipient
+    expect(recipientSessions).toHaveLength(1);
+    expect(recipientSessions[0].id).not.toBe(wrongGroup.id);
+  });
+
+  it('pin to non-existent session: falls through silently', async () => {
+    const { senderSession } = seedPair();
+
+    await routeAgentMessage(
+      {
+        id: 'out-pin-missing',
+        platform_id: 'ag-recipient',
+        thread_id: 'fallback-3',
+        content: JSON.stringify({ text: 'x' }),
+        target_session_id: 'sess-does-not-exist',
+      },
+      senderSession,
+    );
+
+    const recipientSessions = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    expect(recipientSessions).toHaveLength(1);
+  });
+
+  it('pin to self: rejected, falls through to fresh delegation', async () => {
+    const { senderSession } = seedPair();
+
+    await routeAgentMessage(
+      {
+        id: 'out-pin-self',
+        platform_id: 'ag-recipient',
+        thread_id: 'fallback-4',
+        content: JSON.stringify({ text: 'x' }),
+        target_session_id: senderSession.id,
+      },
+      senderSession,
+    );
+
+    const recipientSessions = getDb()
+      .prepare('SELECT id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string }>;
+    expect(recipientSessions).toHaveLength(1);
+    expect(recipientSessions[0].id).not.toBe(senderSession.id);
+  });
+
+  it('pin without destination row: still throws unauthorized (auth not bypassed)', async () => {
+    // Build the recipient + sender groups without a destination row.
+    createAgentGroup({
+      id: 'ag-no-dest',
+      name: 'NoDest',
+      folder: 'no-dest',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+    createAgentGroup({
+      id: 'ag-target-no-dest',
+      name: 'TargetNoDest',
+      folder: 'target-no-dest',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+    const senderSession: Session = {
+      id: 'sess-no-dest',
+      agent_group_id: 'ag-no-dest',
+      messaging_group_id: null,
+      thread_id: null,
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(senderSession);
+    initSessionFolder('ag-no-dest', senderSession.id);
+
+    const pinnedTarget: Session = {
+      id: 'sess-target-no-dest',
+      agent_group_id: 'ag-target-no-dest',
+      messaging_group_id: null,
+      thread_id: null,
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(pinnedTarget);
+    initSessionFolder('ag-target-no-dest', pinnedTarget.id);
+
+    await expect(
+      routeAgentMessage(
+        {
+          id: 'out-pin-unauth',
+          platform_id: 'ag-target-no-dest',
+          thread_id: null,
+          content: JSON.stringify({ text: 'x' }),
+          target_session_id: pinnedTarget.id,
+        },
+        senderSession,
+      ),
+    ).rejects.toThrow(/unauthorized agent-to-agent/);
+  });
+
+  it('pin loses to in_reply_to: explicit reply target wins (Layer 1 over Layer 0)', async () => {
+    // Set up: source has a prior inbound row whose source_session_id points
+    // to a specific recipient session (the reply target). A pin to a
+    // different session of the same recipient must NOT override the reply.
+    const { senderSession } = seedPair();
+    const replyTarget = seedPinnedSession('sess-reply-target');
+    const wrongPin = seedPinnedSession('sess-wrong-pin');
+
+    // Seed an a2a inbound row in the sender's inbound DB whose
+    // source_session_id is the reply target — this is what
+    // resolveExplicitReplyTarget will look up via in_reply_to.
+    const senderInDbPath = path.join(_tempDir, 'data', 'v2-sessions', 'ag-sender', senderSession.id, 'inbound.db');
+    const Database = (await import('better-sqlite3')).default;
+    const inDb = new Database(senderInDbPath);
+    inDb
+      .prepare(
+        `INSERT INTO messages_in (id, seq, kind, timestamp, status, trigger, content, source_session_id)
+         VALUES ('in-1', 1, 'chat', ?, 'pending', 1, '{"text":"hi"}', ?)`,
+      )
+      .run(now(), replyTarget.id);
+    inDb.close();
+
+    await routeAgentMessage(
+      {
+        id: 'out-pin-vs-reply',
+        platform_id: 'ag-recipient',
+        thread_id: null,
+        content: JSON.stringify({ text: 'x' }),
+        in_reply_to: 'in-1',
+        target_session_id: wrongPin.id,
+      },
+      senderSession,
+    );
+
+    // Reply target should have received the message; pin target should not.
+    // Both sessions still exist (we created them above), so we assert via
+    // the inbound DB count for each.
+    const Db2 = (await import('better-sqlite3')).default;
+    const replyInDb = new Db2(path.join(_tempDir, 'data', 'v2-sessions', 'ag-recipient', replyTarget.id, 'inbound.db'));
+    const replyCount = (replyInDb.prepare('SELECT COUNT(*) AS n FROM messages_in').get() as { n: number }).n;
+    replyInDb.close();
+    const pinInDb = new Db2(path.join(_tempDir, 'data', 'v2-sessions', 'ag-recipient', wrongPin.id, 'inbound.db'));
+    const pinCount = (pinInDb.prepare('SELECT COUNT(*) AS n FROM messages_in').get() as { n: number }).n;
+    pinInDb.close();
+
+    expect(replyCount).toBe(1);
+    expect(pinCount).toBe(0);
+  });
+});
