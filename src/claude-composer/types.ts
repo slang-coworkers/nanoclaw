@@ -98,6 +98,17 @@ export interface CoworkerTypeEntry {
   // workflows at compose time. Union-merged across the type chain.
   overlays?: string[];
 
+  // codex-critique STAGE values that gate-critique-on-deliver.sh must see
+  // completed (count >= 1 in workflow-state.json's `critique_stages`) before
+  // allowing delivery markers / `gh pr create`. Inherited via `extends:` —
+  // base types declare the stage set for their workflow shape (plan-style,
+  // implement-style, answer-style); project subtypes inherit. The composer
+  // unions across the type chain and materializes to
+  // <groupDir>/.critique-required-stages so the hook reads it at
+  // /workspace/agent/. Empty / unset = legacy mode (any 1 critique round
+  // suffices). YAML key: `required_critique_stages`.
+  requiredCritiqueStages?: string[];
+
   // MCP servers to inject into containers for this coworker type.
   // Shallow merge across the extends chain (leaf wins per server name).
   // Per-instance container.json overrides type-level config.

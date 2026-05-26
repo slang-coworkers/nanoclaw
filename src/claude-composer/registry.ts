@@ -78,6 +78,13 @@ export function readCoworkerTypes(projectRoot = process.cwd()): Record<string, C
         if (typeof (raw as Record<string, unknown>)['skill-source'] === 'string') {
           entry.skillSource = (raw as Record<string, unknown>)['skill-source'] as string;
         }
+        // YAML uses snake_case → TS camelCase. Filter to STAGE-shaped strings
+        // (UPPER_SNAKE) to keep the materialized JSON clean even if the YAML
+        // accidentally contains lowercase / typos.
+        const rawStages = (raw as Record<string, unknown>)['required_critique_stages'];
+        if (Array.isArray(rawStages)) {
+          entry.requiredCritiqueStages = rawStages.map(String).filter((s) => /^[A-Z_]+$/.test(s));
+        }
         registry[name] = registry[name] ? mergeTypeEntries(registry[name], entry, name) : entry;
       }
     }
@@ -117,6 +124,14 @@ function mergeTypeEntries(base: CoworkerTypeEntry, addon: CoworkerTypeEntry, typ
     skills: [...(base.skills || []), ...(addon.skills || [])],
     skillSource: addon.skillSource ?? base.skillSource,
     overlays: [...(base.overlays || []), ...(addon.overlays || [])],
+    // Union across same-name contributions (e.g. spine + project both
+    // declare stages). Inheritance via `extends:` is composed by
+    // resolveCritiqueRequiredStages walking the chain — that's separate
+    // from this base+addon merge for redeclarations of the same type.
+    requiredCritiqueStages: [
+      ...(base.requiredCritiqueStages || []),
+      ...(addon.requiredCritiqueStages || []),
+    ],
     bindings: { ...(base.bindings || {}), ...(addon.bindings || {}) },
     mcpServers: { ...(base.mcpServers || {}), ...(addon.mcpServers || {}) },
   };

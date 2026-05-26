@@ -47,18 +47,58 @@ esac
 [ -z "$HIT" ] && exit 0
 
 STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
-ROUNDS=$(jq -r '.critique_rounds // 0' "$STATE" 2>/dev/null || echo 0)
 
-if [ "$ROUNDS" -lt 1 ]; then
+# Required-stages enforcement (per-overlay opt-in via .critique-required-stages,
+# materialized by the composer from the matched overlays' frontmatter).
+# Without that file, fall back to the historical "any 1 critique round" check
+# so coworkers using the bare critique-gate overlay keep working unchanged.
+REQUIRED_FILE="$OVERLAY_DIR/.critique-required-stages"
+DENIAL_REASON=""
+
+if [ -f "$REQUIRED_FILE" ] && jq -e 'length > 0' "$REQUIRED_FILE" >/dev/null 2>&1; then
+  DONE=$(jq -c '.critique_stages // {}' "$STATE" 2>/dev/null || echo '{}')
+  MISSING=$(jq -r --argjson done "$DONE" '
+    map(select(($done[.] // 0) < 1)) | join(", ")
+  ' "$REQUIRED_FILE" 2>/dev/null || echo "")
+  if [ -n "$MISSING" ]; then
+    DENIAL_REASON="missing critique stages: $MISSING"
+  fi
+else
+  ROUNDS=$(jq -r '.critique_rounds // 0' "$STATE" 2>/dev/null || echo 0)
+  if [ "$ROUNDS" -lt 1 ]; then
+    DENIAL_REASON="no critique rounds recorded (critique_rounds=$ROUNDS)"
+  fi
+fi
+
+if [ -n "$DENIAL_REASON" ]; then
+  # Soft cap: track gate denials. After 3 denies in a single session, the gate
+  # stops denying and yields with a "stuck" warning. Prevents the 100-deny
+  # pathology where a confused agent never learns to comply and burns turns
+  # retrying. Threshold is intentionally low — the gate's job is to surface
+  # the requirement, not to be an infinite wall.
+  DENIALS=$(jq -r '.critique_gate_denials // 0' "$STATE" 2>/dev/null || echo 0)
+  if [ "$DENIALS" -ge 3 ]; then
+    cat >&2 << EOF
+[critique-gate soft-fail] Allowing $HIT despite unresolved requirement
+($DENIAL_REASON). The gate denied this session 3 times already; further
+denials would just thrash. If the agent is consistently bypassing critique,
+the workflow / overlay setup needs review.
+EOF
+    exit 0
+  fi
+  jq '.critique_gate_denials = ((.critique_gate_denials // 0) + 1)' "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" || true
   cat >&2 << EOF
 CRITIQUE REQUIRED before $HIT.
 
+Reason: $DENIAL_REASON.
+
 Invoke /codex-critique on the work you are about to deliver, then retry.
 Codex will read the artifacts, score them, and either approve or return
-must-fix items. critique_rounds=$ROUNDS in this session.
+must-fix items.
 
-This gate fires once per session — once a critique round is recorded,
-subsequent deliveries within the same session pass through. State file:
+If multiple stages are required, run /codex-critique once per listed
+STAGE value (the codex-critique skill defines DIAGNOSIS_REVIEW,
+PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW, ANSWER_REVIEW). State file:
 $STATE
 EOF
   exit 2
