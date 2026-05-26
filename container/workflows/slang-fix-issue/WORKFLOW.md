@@ -114,15 +114,41 @@ uses:
    git add -A && git commit -m "Fix shader-slang/slang#<number>: <one-line title>"
    ```
 
-   Resolve fork target — `git remote -v` to find a remote with push rights (e.g. nv-slang-bot fork, or one nominated via `--fork-repo <owner>/<repo>` in the inbound). Push cross-fork and open the draft PR:
+   Resolve fork target — `git remote -v` to find a remote with push rights (e.g. nv-slang-bot fork, or one nominated via `--fork-repo <owner>/<repo>` in the inbound). Push cross-fork and open the draft PR with a substantive markdown body (single-line `--body` strings strip badly; use a heredoc):
 
    ```bash
    git push <fork-remote> fix/issue-<number>
+
+   PR_BODY=$(cat <<'MD'
+   ## Summary
+   <2-3 sentences explaining the bug + the fix in plain English>
+
+   ## Diagnosis
+   <one paragraph naming the root cause + relevant file:line pointers>
+
+   ## Approach
+   <one paragraph: which subsystem, what change, why this one — alternatives ruled out>
+
+   ## Files changed
+   - `source/slang/<file>.cpp` — <one-line of what changed>
+   - `tests/<area>/test-<n>.slang` — <one-line of what's asserted>
+
+   ## Tests
+   - **Repro:** `tests/<area>/test-<issue_number>.slang` — PASS / FAIL (was FAIL before fix)
+   - **Broader suite:** `tests/<area>/` — <result, e.g. all pass / N failures unrelated>
+
+   ## Risk
+   <one or two sentences on blast radius and what's deliberately out of scope>
+
+   Closes shader-slang/slang#<issue_number>.
+   MD
+   )
+
    gh pr create \
      --repo shader-slang/slang \
      --base main --head "<fork-owner>:fix/issue-<number>" --draft \
      --title "[draft] Fix #<number>: <one-line title>" \
-     --body "Draft fix for #<number>. ## Summary <2-3 sentences> ## Changes <file: change> ## Tests <test path: PASS/FAIL>"
+     --body "$PR_BODY"
    ```
 
    Capture the PR URL — pass to Step 8.
@@ -162,10 +188,42 @@ uses:
 
    If `slang-reviewer` isn't in destinations, skip to Step 8.
 
-8. **Report + save** {#report} — Send the [Fix Report] to parent and persist a memory file in one step:
+8. **Report + save + refresh PR description** {#report} — Send the [Fix Report] to parent (markdown bullets, per the chain-reporting rule), refresh the PR description with the final state, and persist a memory file. Single integrated step.
+
+   The five-bullet report uses **markdown list syntax with bold field labels** — operators read these in dashboards and chat clients that wrap and render markdown; `•` glyphs degrade to raw bytes:
 
    ```
-   send_message(to="parent", text="[Fix Report] <repo>#<number>: <title>\n\n• Status: <fixed / partial / blocked>\n• Changes: <N files, +X / −Y> — <one-line of what changed>\n• Tests: <repro PASS/FAIL>; broader suite <result>\n• Review: <APPROVE / REQUEST_CHANGES / N findings — top concern>\n• Next: <draft PR <url> / patch attached / human action needed>")
+   send_message(to="parent", text="[Fix Report] <repo>#<number>: <title>\n\n- **Status:** <fixed / partial / blocked>\n- **Changes:** <N files, +X / −Y> — <one-line of what changed>\n- **Tests:** <repro PASS/FAIL>; broader suite <result>\n- **Review:** <APPROVE / REQUEST_CHANGES / N findings — top concern>\n- **Next:** <draft PR <url> / patch attached / human action needed>")
+   ```
+
+   The PR description from Step 7 was a draft template — once the fix is verified and review feedback addressed, refresh it with the final state. `gh pr edit` overwrites the body in place; reuse the same heredoc structure as Step 7 with the actual final values filled in:
+
+   ```bash
+   FINAL_BODY=$(cat <<MD
+   ## Summary
+   <final 2-3 sentence summary of what landed>
+
+   ## Diagnosis
+   <root cause as confirmed by the fix; cite file:line>
+
+   ## Approach
+   <chosen path; what the change actually does>
+
+   ## Files changed
+   $(git diff --stat main..HEAD | sed 's/^/- /')
+
+   ## Tests
+   - **Repro:** \`tests/<area>/test-<issue_number>.slang\` — PASS
+   - **Broader suite:** \`tests/<area>/\` — <result>
+
+   ## Review
+   <APPROVE / N concerns addressed / unresolved feedback if any>
+
+   Closes shader-slang/slang#<issue_number>.
+   MD
+   )
+
+   gh pr edit <pr-number> -R shader-slang/slang --body "$FINAL_BODY"
    ```
 
    Persist the run for the next session that touches this target:
