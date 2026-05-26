@@ -2384,6 +2384,46 @@ describe('/api/messages — Slack-style thread filtering', () => {
     expect(data.threadSummaries.t2.replyCount).toBe(1);
     expect(typeof data.threadSummaries.t1.lastReplyTs).toBe('string');
   });
+
+  it('main view threadSummaries include a2a sibling threads, not Slack/Discord', async () => {
+    seedThreadScenario();
+    const db = new Database(DB_PATH);
+    const now = new Date().toISOString();
+    db.prepare(
+      'INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)',
+    ).run('mg-a2a-thread', 'agent', 'agent:ag-thread:ag-thread', 'A2A self-loop', 'public', now);
+    db.prepare(
+      "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES (?, 'ag-thread', 'mg-a2a-thread', ?, 'active', 'stopped', NULL, ?)",
+    ).run('sess-a2a-self-loop', 'self-loop-thread', now);
+    db.close();
+
+    const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-thread', 'sess-a2a-self-loop');
+    mkdirSync(sessDir, { recursive: true });
+    const inDb = new Database(path.join(sessDir, 'inbound.db'));
+    inDb.exec(
+      `CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, channel_type TEXT, platform_id TEXT, thread_id TEXT);
+       CREATE TABLE delivered (message_out_id TEXT PRIMARY KEY, platform_message_id TEXT, status TEXT);`,
+    );
+    inDb
+      .prepare(
+        "INSERT INTO messages_in (id, kind, content, timestamp, channel_type, platform_id, thread_id) VALUES (?, 'chat', ?, ?, 'agent', 'ag-thread', 'self-loop-thread')",
+      )
+      .run('a2a-self-1', JSON.stringify({ text: 'self-loop prompt' }), now);
+    inDb.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&limit=50`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      threadSummaries: Record<string, { replyCount: number; lastReplyTs: string | null; sessionId: string | null }>;
+    };
+    expect(data.threadSummaries.t1).toBeDefined();
+    expect(data.threadSummaries.t2).toBeDefined();
+    expect(data.threadSummaries['self-loop-thread']).toBeDefined();
+    expect(data.threadSummaries['self-loop-thread'].replyCount).toBe(1);
+    expect(data.threadSummaries['self-loop-thread'].sessionId).toBe('sess-a2a-self-loop');
+    expect(Object.keys(data.threadSummaries)).not.toContain('slack-thread');
+  });
 });
 
 describe('/api/a2a-session — read-only inspector (Option C)', () => {
