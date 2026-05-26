@@ -34,16 +34,41 @@ STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
 mkdir -p "$(dirname "$STATE")"
 [ -f "$STATE" ] || echo '{}' > "$STATE"
 
+# Parse STAGE: marker from the codex prompt — only present on direct
+# `mcp__codex__codex` calls (the entry point of a critique session).
+# `mcp__codex__codex-reply` continuations don't carry STAGE; they inherit the
+# parent thread's stage. We mark a stage as completed (count>=1) on the first
+# call carrying it; iteration rounds bump critique_rounds for back-compat but
+# don't double-count the stage.
+#
+# `|| true` is load-bearing: under `set -euo pipefail`, grep's exit-1 on
+# no-match would propagate through the command substitution and abort the
+# script before the jq update, leaving critique_rounds unincremented for
+# codex-reply calls (which legitimately have no STAGE marker).
+STAGE=$(echo "$PROMPT" | grep -oE 'STAGE:[[:space:]]*[A-Z_]+' | head -1 | sed -E 's/^STAGE:[[:space:]]*//' || true)
+
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-jq --arg ts "$NOW" '
-  .critique_rounds = ((.critique_rounds // 0) + 1)
-  | .edits_since_critique = 0
-  | .last_critique_at = $ts
-' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+if [ -n "$STAGE" ]; then
+  jq --arg ts "$NOW" --arg s "$STAGE" '
+    .critique_rounds = ((.critique_rounds // 0) + 1)
+    | .critique_stages = (.critique_stages // {})
+    | .critique_stages[$s] = ((.critique_stages[$s] // 0) + 1)
+    | .last_critique_stage = $s
+    | .edits_since_critique = 0
+    | .last_critique_at = $ts
+  ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+else
+  jq --arg ts "$NOW" '
+    .critique_rounds = ((.critique_rounds // 0) + 1)
+    | .edits_since_critique = 0
+    | .last_critique_at = $ts
+  ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+fi
 
 # Surface a context reminder so the agent knows the round was recorded.
 ROUNDS=$(jq -r '.critique_rounds' "$STATE")
-jq -n --arg msg "Critique round $ROUNDS recorded. Delivery gates (send_message [Fix Report]/[Resolution]/etc., gh pr create) now permit through this round." \
+STAGE_DONE=$(jq -r '(.critique_stages // {}) | to_entries | map("\(.key)=\(.value)") | join(", ") | if . == "" then "none" else . end' "$STATE" 2>/dev/null || echo "none")
+jq -n --arg msg "Critique round $ROUNDS recorded (stages: $STAGE_DONE). Delivery gates open once every required stage has count >= 1." \
   '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
 
 exit 0

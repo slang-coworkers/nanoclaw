@@ -729,3 +729,50 @@ export function materializeOverlayMarkers(overlayNames: string[], projectRoot: s
     fs.writeFileSync(path.join(groupDir, `.overlay-${name}`), content + '\n');
   }
 }
+
+/**
+ * Read the union of `required_critique_stages` from the coworker-type chain
+ * (rooted at `coworkerType`, walked via `extends:`) and write it to
+ * `<groupDir>/.critique-required-stages` as a JSON list. Containers see
+ * this at `/workspace/agent/.critique-required-stages`, and
+ * `gate-critique-on-deliver.sh` uses it to decide which codex-critique
+ * STAGEs must have completed before allowing a delivery marker / `gh pr
+ * create`.
+ *
+ * Honors two kill switches by skipping (and removing any stale file):
+ *   1. `appliedOverlays` does not contain `critique-gate` — the coworker
+ *      didn't opt into critique enforcement, so the hook will short-circuit
+ *      anyway. Removing the stages file keeps on-disk state honest.
+ *   2. `disableOverlays` (passed indirectly: the caller computes
+ *      appliedOverlays with disableOverlays applied; an empty list trips #1).
+ *
+ * Empty union (overlay opted in but no stages declared) → write `[]`.
+ * The hook treats empty as legacy mode (any 1 critique round suffices),
+ * which preserves behavior for coworkers using the bare `critique-gate`
+ * overlay without per-type stage requirements.
+ *
+ * Idempotent. Safe to call on every spawn alongside materializeOverlayMarkers.
+ */
+export function materializeCritiqueRequiredStages(
+  coworkerType: string,
+  types: Record<string, CoworkerTypeEntry>,
+  appliedOverlays: string[],
+  groupDir: string,
+): void {
+  const filePath = path.join(groupDir, '.critique-required-stages');
+  if (!appliedOverlays.includes('critique-gate')) {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    return;
+  }
+  const stages = new Set<string>();
+  try {
+    for (const entry of resolveTypeChain(types, coworkerType)) {
+      if (entry.requiredCritiqueStages) {
+        for (const s of entry.requiredCritiqueStages) stages.add(s);
+      }
+    }
+  } catch {
+    // Cycle or unknown type — fall through to empty (legacy gate mode).
+  }
+  fs.writeFileSync(filePath, JSON.stringify([...stages]) + '\n');
+}
