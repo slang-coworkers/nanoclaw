@@ -68,6 +68,42 @@ function fanOutWebhook(rawBody: string, headers: { event: string; delivery: stri
   }
 }
 
+/**
+ * Post a 👀 reaction on the triggering comment so the human sees their
+ * @mention was received. Auth is handled by OneCLI proxy path-routing — we
+ * call api.github.com plainly and the gateway injects the App installation
+ * token that has reactions:write on this repo. Opt-in via env var
+ * `GITHUB_WEBHOOK_REACT_ON_RECEIPT=1`; defaults off to keep behavior unchanged
+ * for instances that don't have a token configured for the target host.
+ *
+ * Fire-and-forget — never blocks the 200 OK to GitHub. Errors are logged
+ * once (warn) so a misconfigured token doesn't flood the log.
+ */
+export async function postEyesReaction(repo: string, eventType: string, commentId: number): Promise<void> {
+  if (process.env.GITHUB_WEBHOOK_REACT_ON_RECEIPT !== '1') return;
+  if (!repo || !commentId) return;
+
+  // Endpoint differs by event type — pull_request_review_comment uses /pulls/comments,
+  // every other comment-shaped event uses /issues/comments.
+  const sub = eventType === 'pull_request_review_comment' ? 'pulls' : 'issues';
+  const url = `https://api.github.com/repos/${repo}/${sub}/comments/${commentId}/reactions`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content: 'eyes' }),
+    });
+    if (!res.ok && res.status !== 200 && res.status !== 201) {
+      log.warn('github-webhook: eyes reaction non-OK', { url, status: res.status });
+    }
+  } catch (err) {
+    log.warn('github-webhook: eyes reaction failed', { url, error: String(err) });
+  }
+}
+
 function writeJson(res: ServerResponse, status: number, payload: Record<string, unknown>): void {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));
@@ -212,6 +248,12 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       isPr,
       prBranch,
     });
+
+    // 👀 acknowledgement — once the mention has been queued for delivery,
+    // post an "eyes" reaction on the triggering comment so the human can see
+    // their @mention was received and is being worked on. Fire-and-forget;
+    // failures must never block the 200 OK we owe GitHub.
+    void postEyesReaction(repo, eventType as string, commentId);
 
     writeJson(res, 200, { ok: true });
   });
