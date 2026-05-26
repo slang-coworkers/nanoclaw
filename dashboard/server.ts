@@ -5548,19 +5548,32 @@ export async function handleRequest(
           }
           const sessionsDir = join(getDataDir(), 'v2-sessions', agRow.id);
 
-          // Main-view summaries: scan this coworker's per-thread sessions
-          // scoped to the dashboard messaging group (so Slack/Discord
-          // thread sessions never surface as clickable dashboard summary
-          // stubs). Per-thread session DBs hold replies only — the parent
-          // message lives in the root session. If we ever mirror parents
-          // into thread DBs this count is off-by-one and needs WHERE id
-          // != parentId.
+          // Main-view summaries: scan this coworker's per-thread sessions.
+          // Include both the dashboard messaging group AND any a2a (agent-
+          // to-agent) messaging group on the same coworker so sibling
+          // threads spawned by self-loop or cross-coworker delegation get
+          // clickable tiles in the sidebar. External channels (Slack,
+          // Discord, gmail, telegram, …) stay filtered because their
+          // channel_type is something other than 'dashboard'/'agent', and
+          // their thread_ids (Slack thread_ts, Discord thread id) are
+          // structurally distinct from NanoClaw's msg-* / user-named ids.
+          //
+          // Per-thread session DBs hold replies only — the parent message
+          // lives in the root session. If we ever mirror parents into
+          // thread DBs this count is off-by-one and needs WHERE id !=
+          // parentId.
           if (!threadMode && !sessionDirect && dashMgId) {
             let threadSessions: Array<{ id: string; thread_id: string }> = [];
             try {
               threadSessions = db
                 .prepare(
-                  "SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND messaging_group_id = ? AND status = 'active' AND thread_id IS NOT NULL",
+                  `SELECT s.id, s.thread_id
+                     FROM sessions s
+                     LEFT JOIN messaging_groups mg ON s.messaging_group_id = mg.id
+                    WHERE s.agent_group_id = ?
+                      AND s.status = 'active'
+                      AND s.thread_id IS NOT NULL
+                      AND (s.messaging_group_id = ? OR mg.channel_type = 'agent')`,
                 )
                 .all(agRow.id, dashMgId) as Array<{ id: string; thread_id: string }>;
             } catch {

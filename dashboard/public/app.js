@@ -4398,8 +4398,14 @@ function renderCwMessages() {
           : 'You';
       const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
 
-      // Reply-count stub: only for main-view rows that are thread starters.
-      const summary = cwState.threadSummaries && m.id ? cwState.threadSummaries[m.id] : null;
+      // Reply-count stub: dashboard threads key summaries by parent message id,
+      // while a2a sibling/self-loop threads key by their explicit thread_id.
+      const threadSummaryKey =
+        (m.id && cwState.threadSummaries && cwState.threadSummaries[m.id] ? m.id : null) ||
+        m.a2aSourceThread ||
+        m.parsedContent?._a2a_source_thread ||
+        (m.thread_id && cwState.threadSummaries && cwState.threadSummaries[m.thread_id] ? m.thread_id : null);
+      const summary = threadSummaryKey && cwState.threadSummaries ? cwState.threadSummaries[threadSummaryKey] : null;
       const threadUnread = (() => {
         if (!summary?.sessionId || !summary.lastReplyTs) return 0;
         const cursor = sessionReadCursors.getFor(summary.sessionId);
@@ -4410,7 +4416,7 @@ function renderCwMessages() {
         ? ` <span style="background:#3b82f6;color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;margin-left:4px">new</span>`
         : '';
       const threadStubHtml = summary
-        ? `<div class="cw-thread-stub" data-parent-id="${esc(m.id)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
+        ? `<div class="cw-thread-stub" data-parent-id="${escAttr(threadSummaryKey)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
         : '';
 
       // Same fold as the thread view: outbound cli_request rows are tagged
