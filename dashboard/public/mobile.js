@@ -160,12 +160,34 @@ function timeAgo(v) {
   if (d < 86400000) return `${Math.floor(d / 3600000)}h ago`;
   return `${Math.floor(d / 86400000)}d ago`;
 }
+// Resolve the TZ the operator configured at NanoClaw setup (TZ in .env).
+// The server injects it as <meta name="nanoclaw-tz">; if missing or invalid
+// we fall back to the browser's local TZ so the dashboard still works.
+const NANOCLAW_TZ = (() => {
+  try {
+    const tz = document.querySelector('meta[name="nanoclaw-tz"]')?.getAttribute('content') || '';
+    if (!tz) return undefined;
+    new Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return tz;
+  } catch {
+    return undefined;
+  }
+})();
 function formatTime(v) {
   const d = new Date(typeof v === 'number' ? v : v);
   const now = new Date();
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  if (d.toDateString() === now.toDateString()) return time;
-  return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
+  const timeOpts = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+  const dateOpts = { month: 'short', day: 'numeric' };
+  const dayOpts = { year: 'numeric', month: '2-digit', day: '2-digit' };
+  if (NANOCLAW_TZ) {
+    timeOpts.timeZone = NANOCLAW_TZ;
+    dateOpts.timeZone = NANOCLAW_TZ;
+    dayOpts.timeZone = NANOCLAW_TZ;
+  }
+  const time = d.toLocaleTimeString([], timeOpts);
+  const dayFmt = new Intl.DateTimeFormat('en-CA', dayOpts);
+  if (dayFmt.format(d) === dayFmt.format(now)) return time;
+  return `${d.toLocaleDateString([], dateOpts)} ${time}`;
 }
 function esc(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
