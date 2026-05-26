@@ -44,6 +44,11 @@ nanoclaw-writer:
   workflows:
     - nanoclaw-plan
     - nanoclaw-implement
+  # Writers do source edits + delivery. Both gates apply, both opt-in via marker.
+  overlays:
+    - plan-gate
+    - critique-gate
+  required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
   bindings:
     code: nanoclaw-code-writer
     test: nanoclaw-build
@@ -60,3 +65,7 @@ nanoclaw-reviewer:
     - nanoclaw-pr-review-runner
   workflows:
     - nanoclaw-pr-review
+  # Read-only review role; critique-gate vets the [Review Verdict] before sending.
+  overlays:
+    - critique-gate
+  required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
