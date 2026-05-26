@@ -105,7 +105,7 @@ Read-only on GitHub: never post, label, or modify anything. Output flows via `se
 7. **Report up to parent** {#report} — Send the [Triage] 5-bullet *and* attach the memo file. Bullets are the rollup; the memo is the briefing.
 
    ```
-   send_message(to="parent", text="[Triage] shader-slang/slang#<number>: <title>\n\n• Classification: <cat> / <sev> / <comp> / <pri>\n• Summary: <one-line of the bug>\n• Solution space: <N> candidate approaches in memo (recommended: <name>)\n• Files: <top 3 paths the fix will touch>\n• Routing: forwarding to slang-fixer with full briefing")
+   send_message(to="parent", text="[Triage] shader-slang/slang#<number>: <title>\n\n- **Classification:** <cat> / <sev> / <comp> / <pri>\n- **Summary:** <one-line of the bug>\n- **Solution space:** <N> candidate approaches in memo (recommended: <name>)\n- **Files:** <top 3 paths the fix will touch>\n- **Routing:** forwarding to slang-fixer with full briefing")
    send_file(to="parent", path="/workspace/agent/memory/triage-<number>.md")
    ```
 
@@ -126,7 +126,7 @@ Read-only on GitHub: never post, label, or modify anything. Output flows via `se
 10. **Forward resolution upstream** {#forward-up} — When `[Fix Report]` lands, compile the [Triage Resolution] 5-bullet:
 
     ```
-    send_message(to="parent", in_reply_to=<id-of-fix-report>, text="[Triage Resolution] shader-slang/slang#<number>: <title>\n\n• Outcome: <fixed / partial / blocked / abandoned>\n• Draft PR: <url-or-'patch only, no PR'>\n• Review: <APPROVE / REQUEST_CHANGES / N findings — top concern>\n• Tests: <repro PASS/FAIL>; broader suite <result>\n• Next human action: <merge draft / address review / coordinate / close as wontfix>")
+    send_message(to="parent", in_reply_to=<id-of-fix-report>, text="[Triage Resolution] shader-slang/slang#<number>: <title>\n\n- **Outcome:** <fixed / partial / blocked / abandoned>\n- **Draft PR:** <url-or-'patch only, no PR'>\n- **Review:** <APPROVE / REQUEST_CHANGES / N findings — top concern>\n- **Tests:** <repro PASS/FAIL>; broader suite <result>\n- **Next human action:** <merge draft / address review / coordinate / close as wontfix>")
     ```
 
     For partial/blocked outcomes, still forward — substitute `blocked: <reason>` in the outcome bullet. Per `### Chain communication` in your spine: close every chain explicitly.

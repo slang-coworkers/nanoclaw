@@ -52,6 +52,15 @@ slang-writer:
   workflows:
     - slang-plan
     - slang-implement
+  # Writers do source edits + delivery. Both gates apply, both opt-in via marker.
+  # - plan-gate: gate-plan.sh fires on Edit/Write/Bash-write, denies until a
+  #   plan file lands in /workspace/agent/reports/.
+  # - critique-gate: gate-critique-on-deliver.sh fires on delivery markers /
+  #   `gh pr create`, denies until required_critique_stages have been run.
+  # Inherited by slang-fixer (extends slang-writer).
+  overlays:
+    - plan-gate
+    - critique-gate
   bindings:
     code: slang-code-writer
     test: slang-build
@@ -75,6 +84,10 @@ slang-triage:
   # Triage owns the diagnosis half of the chain — it inspects the issue,
   # classifies, names candidate approaches. OUTPUT_REVIEW is on the handoff
   # message itself. The fixer side carries PLAN/CODE/OUTPUT.
+  # Triage is read-only (no source edits) so plan-gate is not in the overlay
+  # set; only critique-gate enforces the [Triage] / [Triage Resolution] reports.
+  overlays:
+    - critique-gate
   required_critique_stages: [DIAGNOSIS_REVIEW, OUTPUT_REVIEW]
 
 slang-fixer:
@@ -102,6 +115,9 @@ slang-reviewer:
   # Reviewer reads a diff, produces a verdict. CODE_REVIEW is the assessment
   # of the diff under review (codex independent-checks the assessment);
   # OUTPUT_REVIEW vets the final review verdict before sending.
+  # Read-only role; no plan-gate.
+  overlays:
+    - critique-gate
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
 
 slang-discord:
@@ -115,4 +131,7 @@ slang-discord:
   # Answer-style work: codex reads question + sources + draft, verifies
   # factual accuracy, citations, continuation hygiene from the artifacts
   # themselves. OUTPUT_REVIEW subsumes the legacy ANSWER_REVIEW stage.
+  # Read-only role; no plan-gate.
+  overlays:
+    - critique-gate
   required_critique_stages: [OUTPUT_REVIEW]
