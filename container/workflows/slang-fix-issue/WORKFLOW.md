@@ -69,7 +69,9 @@ uses:
    mcp__slang-mcp__github_get_file_contents(owner="shader-slang", repo="slang", path="<relevant file>")
    ```
 
-4. **Reproduce** {#repro} — Write a failing test as a `.slang` file in `tests/<area>/test-<issue_number>.slang`. Use the right directive for the bug:
+4. **Plan** {#plan} — Run `/slang-plan` with `target=slang-<issue_number>`. It writes a structured plan to `/workspace/agent/reports/slang-<issue_number>.md` covering diagnosis, approach, files in scope, test strategy, and risks. Subsequent steps assume the plan exists.
+
+5. **Reproduce** {#repro} — Write a failing test as a `.slang` file in `tests/<area>/test-<issue_number>.slang`. Use the right directive for the bug:
 
    - CPU computation: `//TEST:COMPARE_COMPUTE(filecheck-buffer=CHECK):-cpu -output-using-type`
    - Interpreter: `//TEST:INTERPRET(filecheck=CHECK):`
@@ -83,7 +85,7 @@ uses:
 
    If you can't reproduce, send `[Fix Report]` to parent with status `blocked: cannot reproduce` and stop. Don't guess the fix without a repro.
 
-5. **Fix + verify** {#fix} — Use `/slang-code-writer`. Keep the change minimal, follow existing style, stay in one subsystem (parser / semantic checker / IR pass / emitter). Prefer IR pass fixes over emit-level workarounds. When fixing emitters, check sibling `slang-emit-*.cpp` for consistency.
+6. **Fix + verify** {#fix} — Use `/slang-code-writer`. Keep the change minimal, follow existing style, stay in one subsystem (parser / semantic checker / IR pass / emitter). Prefer IR pass fixes over emit-level workarounds. When fixing emitters, check sibling `slang-emit-*.cpp` for consistency.
 
    After each edit, rebuild and re-run:
 
@@ -106,7 +108,7 @@ uses:
 
    If verify fails after **2 independent fix attempts** without a watchdog event (e.g., test fails but build succeeds), the same blocked-Fix Report rule applies.
 
-6. **Push + draft PR** {#draft-pr} — Once verify is green, commit and open the draft PR:
+7. **Push + draft PR** {#draft-pr} — Once verify is green, commit and open the draft PR:
 
    ```bash
    git add -A && git commit -m "Fix shader-slang/slang#<number>: <one-line title>"
@@ -123,11 +125,11 @@ uses:
      --body "Draft fix for #<number>. ## Summary <2-3 sentences> ## Changes <file: change> ## Tests <test path: PASS/FAIL>"
    ```
 
-   Capture the PR URL — pass to Step 7.
+   Capture the PR URL — pass to Step 8.
 
-   **Patch fallback** (no push rights / no usable fork): `git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 7 dispatches with `--mode patch <path>` instead of the PR URL. Skip Step 6.5 in patch mode (no PR to watch).
+   **Patch fallback** (no push rights / no usable fork): `git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 8 dispatches with `--mode patch <path>` instead of the PR URL. Skip Step 7.5 in patch mode (no PR to watch).
 
-   **6.5 Set the PR watcher [MUST]** {#watcher} — Once the draft PR is open, schedule a recurring task that polls for new review comments + state changes and GCs the worktree when the PR closes or ages out. This replaces passive "wait for inbound" with active polling so a long-running review or a closed PR doesn't strand the fixer.
+   **7.5 Set the PR watcher [MUST]** {#watcher} — Once the draft PR is open, schedule a recurring task that polls for new review comments + state changes and GCs the worktree when the PR closes or ages out. This replaces passive "wait for inbound" with active polling so a long-running review or a closed PR doesn't strand the fixer.
 
    ```
    echo "0" > /workspace/agent/active-work/{{target_slug}}/last-pr-count
@@ -137,7 +139,7 @@ uses:
        "1. `gh pr view <number> -R shader-slang/slang --json state,createdAt,reviewDecision,comments,reviews,reviewThreads` — capture state + total count of comments+reviews+reviewThreads. " +
        "2. If state ∈ {CLOSED, MERGED}: cleanup. `cancel_task(<this taskId>)`; `cd /workspace/agent/slang && git worktree remove --force /workspace/agent/wt-<target_slug>`; `rm -rf /workspace/agent/active-work/<target_slug>`; `send_message(to='parent', text='[Watcher] slang#<number> PR <state>; worktree GC done.')`. End turn. " +
        "3. If `(now - createdAt) > 10 days`: same cleanup as #2, reason='10d-stale'. " +
-       "4. Otherwise: compare current count to `/workspace/agent/active-work/<target_slug>/last-pr-count`. If higher → fetch new comments and address them per Step 7's REQUEST_CHANGES path (apply edits, re-run Step 5 verify, re-push). Update last-pr-count. End turn. " +
+       "4. Otherwise: compare current count to `/workspace/agent/active-work/<target_slug>/last-pr-count`. If higher → fetch new comments and address them per Step 8's REQUEST_CHANGES path (apply edits, re-run Step 6 verify, re-push). Update last-pr-count. End turn. " +
        "5. If unchanged: end turn (no message — silent poll).",
      recurrence="*/30 * * * *",
      new_session=false,
