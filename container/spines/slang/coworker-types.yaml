@@ -72,6 +72,10 @@ slang-triage:
   extends: slang-reader
   workflows:
     - slang-triage-issue
+  # Triage owns the diagnosis half of the chain — it inspects the issue,
+  # classifies, names candidate approaches. OUTPUT_REVIEW is on the handoff
+  # message itself. The fixer side carries PLAN/CODE/OUTPUT.
+  required_critique_stages: [DIAGNOSIS_REVIEW, OUTPUT_REVIEW]
 
 slang-fixer:
   description: "Slang issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
@@ -79,6 +83,10 @@ slang-fixer:
   extends: slang-writer
   workflows:
     - slang-fix-issue
+  # Fixer reads triage's diagnosis, commits to a plan, edits source, ships
+  # a Fix Report. PLAN_REVIEW catches a bad approach before code is written;
+  # CODE_REVIEW catches diff issues; OUTPUT_REVIEW vets the report itself.
+  required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
 
 slang-reviewer:
   description: "Slang PR reviewer — runs the production claude-code-action@v1 + .github/workflows/claude-pr-review.yml protocol locally against a PR, branch, or patch, in parallel with Devin Review. Read-only: produces a final-review.md (Reviewer A) and devin-flags.md (Reviewer B), returned to the caller via send_file. Wraps the same six .claude/agents/* subagents, REVIEW.md protocol, system-prompt append, and deepwiki MCP that production sends; tool allowlist deliberately narrows to read-only. Used for PR review without writing back to GitHub."
@@ -91,6 +99,10 @@ slang-reviewer:
     - slang-pr-review-runner
   workflows:
     - slang-pr-review
+  # Reviewer reads a diff, produces a verdict. CODE_REVIEW is the assessment
+  # of the diff under review (codex independent-checks the assessment);
+  # OUTPUT_REVIEW vets the final review verdict before sending.
+  required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
 
 slang-discord:
   description: "Slang Discord support — read user questions, research via DeepWiki + GitHub, draft verified answers, send to parent for review. Read-only, no posting."
@@ -100,3 +112,7 @@ slang-discord:
     - container/spines/slang/context/discord-scope.md
   workflows:
     - slang-discord-answer
+  # Answer-style work: codex reads question + sources + draft, verifies
+  # factual accuracy, citations, continuation hygiene from the artifacts
+  # themselves. OUTPUT_REVIEW subsumes the legacy ANSWER_REVIEW stage.
+  required_critique_stages: [OUTPUT_REVIEW]
