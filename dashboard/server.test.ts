@@ -2477,6 +2477,108 @@ describe('/api/messages — Slack-style thread filtering', () => {
     expect(ids).toContain('a2a-self-1');
   });
 
+  // Helper: seed a "receiver" session in ag-thread holding ONE inbound a2a
+  // row whose source_session_id points at a DIFFERENT session in the same
+  // agent group. This is the cross-session-within-same-coworker case
+  // (e.g. one slang-fixer chain handing work to another) that the old
+  // platform_id-only isSelfEcho test wrongly conflated with single-session
+  // routing echo.
+  function seedCrossSessionA2a(opts: {
+    sourceSessionId: string | null;
+  }): { receiverSessionId: string; rowId: string } {
+    const db = new Database(DB_PATH);
+    const now = new Date().toISOString();
+    const receiverId = 'sess-a2a-receiver';
+    const rowId = 'a2a-cross-session-1';
+    db.prepare(
+      "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES (?, 'ag-thread', 'mg-dash', NULL, 'active', 'stopped', NULL, ?)",
+    ).run(receiverId, now);
+    if (opts.sourceSessionId) {
+      // Source session is also in ag-thread but distinct from the receiver.
+      db.prepare(
+        "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES (?, 'ag-thread', 'mg-dash', NULL, 'active', 'stopped', NULL, ?)",
+      ).run(opts.sourceSessionId, now);
+    }
+    db.close();
+    const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-thread', receiverId);
+    mkdirSync(sessDir, { recursive: true });
+    const inDb = new Database(path.join(sessDir, 'inbound.db'));
+    inDb.exec(
+      `CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, channel_type TEXT, platform_id TEXT, thread_id TEXT, source_session_id TEXT);
+       CREATE TABLE delivered (message_out_id TEXT PRIMARY KEY, platform_message_id TEXT, status TEXT);`,
+    );
+    inDb
+      .prepare(
+        "INSERT INTO messages_in (id, kind, content, timestamp, channel_type, platform_id, thread_id, source_session_id) VALUES (?, 'chat', ?, ?, 'agent', 'ag-thread', NULL, ?)",
+      )
+      .run(rowId, JSON.stringify({ text: 'cross-session a2a' }), now, opts.sourceSessionId);
+    inDb.close();
+    forceOpenDbForTests();
+    return { receiverSessionId: receiverId, rowId };
+  }
+
+  it('sessionDirect view shows cross-session a2a within same agent group', async () => {
+    seedThreadScenario();
+    const { receiverSessionId, rowId } = seedCrossSessionA2a({
+      sourceSessionId: 'sess-a2a-sender',
+    });
+    const res = await fetch(
+      `${baseUrl}/api/messages?group=thread-agent&session_id=${encodeURIComponent(receiverSessionId)}&limit=50`,
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { messages: any[] };
+    const ids = data.messages.map((m) => m.id);
+    expect(ids).toContain(rowId);
+  });
+
+  it('sessionDirect view still hides true single-session self-echo', async () => {
+    // source_session_id === receiver session id is a routing-loop artifact,
+    // not a substantive a2a — must stay hidden on every non-thread view.
+    seedThreadScenario();
+    const db = new Database(DB_PATH);
+    const now = new Date().toISOString();
+    db.prepare(
+      "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES ('sess-true-echo', 'ag-thread', 'mg-dash', NULL, 'active', 'stopped', NULL, ?)",
+    ).run(now);
+    db.close();
+    const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-thread', 'sess-true-echo');
+    mkdirSync(sessDir, { recursive: true });
+    const inDb = new Database(path.join(sessDir, 'inbound.db'));
+    inDb.exec(
+      `CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, channel_type TEXT, platform_id TEXT, thread_id TEXT, source_session_id TEXT);
+       CREATE TABLE delivered (message_out_id TEXT PRIMARY KEY, platform_message_id TEXT, status TEXT);`,
+    );
+    inDb
+      .prepare(
+        "INSERT INTO messages_in (id, kind, content, timestamp, channel_type, platform_id, thread_id, source_session_id) VALUES ('a2a-true-echo', 'chat', ?, ?, 'agent', 'ag-thread', NULL, 'sess-true-echo')",
+      )
+      .run(JSON.stringify({ text: 'single-session loop' }), now);
+    inDb.close();
+    forceOpenDbForTests();
+    const res = await fetch(
+      `${baseUrl}/api/messages?group=thread-agent&session_id=sess-true-echo&limit=50`,
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { messages: any[] };
+    const ids = data.messages.map((m) => m.id);
+    expect(ids).not.toContain('a2a-true-echo');
+  });
+
+  it('legacy a2a (source_session_id NULL) stays hidden — preserves old behavior', async () => {
+    // a2a rows written before the source_session_id column existed surface
+    // as NULL. Without provenance we cannot tell echo from cross-session,
+    // so keep them hidden so the dashboard does not regress on older DBs.
+    seedThreadScenario();
+    const { receiverSessionId, rowId } = seedCrossSessionA2a({ sourceSessionId: null });
+    const res = await fetch(
+      `${baseUrl}/api/messages?group=thread-agent&session_id=${encodeURIComponent(receiverSessionId)}&limit=50`,
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { messages: any[] };
+    const ids = data.messages.map((m) => m.id);
+    expect(ids).not.toContain(rowId);
+  });
+
   it('thread view surfaces claudemd-refresh / sys plumbing (main view still hides them)', async () => {
     seedThreadScenario();
     // A per-thread session whose inbound contains a claudemd-refresh- row
