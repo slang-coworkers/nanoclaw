@@ -40,7 +40,12 @@ mkdir -p "$(dirname "$STATE")"
 # parent thread's stage. We mark a stage as completed (count>=1) on the first
 # call carrying it; iteration rounds bump critique_rounds for back-compat but
 # don't double-count the stage.
-STAGE=$(echo "$PROMPT" | grep -oE 'STAGE:[[:space:]]*[A-Z_]+' | head -1 | sed -E 's/^STAGE:[[:space:]]*//')
+#
+# `|| true` is load-bearing: under `set -euo pipefail`, grep's exit-1 on
+# no-match would propagate through the command substitution and abort the
+# script before the jq update, leaving critique_rounds unincremented for
+# codex-reply calls (which legitimately have no STAGE marker).
+STAGE=$(echo "$PROMPT" | grep -oE 'STAGE:[[:space:]]*[A-Z_]+' | head -1 | sed -E 's/^STAGE:[[:space:]]*//' || true)
 
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 if [ -n "$STAGE" ]; then
