@@ -78,9 +78,7 @@ describe('postEyesReaction', () => {
     process.env.GITHUB_WEBHOOK_REACT_ON_RECEIPT = '1';
     await postEyesReaction('org/repo', 'pull_request', 7);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      'https://api.github.com/repos/org/repo/issues/comments/7/reactions',
-    );
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.github.com/repos/org/repo/issues/comments/7/reactions');
   });
 
   it('does not throw on fetch network failure', async () => {
