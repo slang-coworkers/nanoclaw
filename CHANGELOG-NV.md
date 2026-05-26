@@ -6,15 +6,40 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 171 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 91 |
-| `nv-slang` | slang project spine, skills, workflows | 56 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 19 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 16 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 176 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 95 |
+| `nv-slang` | slang project spine, skills, workflows | 58 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 20 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 17 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-05-26
+
+### nv-main (5 PRs)
+- **#460** `feat(skill): /show-transcript renders Claude+Codex sessions to HTML on :8080`
+- **#464** `feat(a2a): pin recipient session via target_session_id`
+- **#465** `fix(container-runner,hooks,composer): heal hook bloat + per-stage critique enforcement`
+- **#467** `fix(hooks,overlays,spine): plan-gate becomes per-overlay opt-in (mirrors critique-gate)`
+- **#473** `feat(webhook): post 👀 reaction on receipt to acknowledge @mentions`
+
+### nv-dashboard (4 PRs)
+- **#461** `feat(dashboard): render timestamps in operator-configured TZ`
+- **#462** `feat(dashboard): include a2a/self-loop sibling threads in summaries`
+- **#463** `fix(dashboard): truthful thread view + accurate badge counts`
+- **#472** `fix(dashboard): show cross-session a2a within same agent group`
+
+### nv-slang (2 PRs)
+- **#466** `fix(slang): plan-first slang-fix-issue + per-type critique stages`
+- **#468** `fix(slang): markdown bullets + heredoc PR body + plan-gate / critique-gate opt-in`
+
+### nv-slangpy (1 PRs)
+- **#469** `fix(slangpy): markdown bullets + overlay opt-ins (mirror of #468)`
+
+### nv-nanoclaw (1 PRs)
+- **#470** `fix(nanoclaw): markdown bullets + overlay opt-ins (mirror of #468/#469)`
 
 ## 📅 2026-05-23
 
