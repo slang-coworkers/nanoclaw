@@ -70,6 +70,7 @@ container/overlays/buddy/**
 container/overlays/buddy-monitor/**
 container/overlays/critique-gate/**
 container/overlays/critique-overlay/**
+container/overlays/plan-gate/**
 
 # Removed in this PR (still allowlisted to permit the deletion through path-guard):
 container/workflows/triage-issue/**
