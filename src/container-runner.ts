@@ -799,7 +799,7 @@ function buildMounts(
           const innerHooks = (entry.hooks ?? []).filter((h) => !isStaleRef(h.command ?? ''));
           if (innerHooks.length === 0) continue;
           const matcher = entry.matcher ?? '*';
-          const sig = JSON.stringify([matcher, ...innerHooks.map((h) => h.command ?? "")]);
+          const sig = JSON.stringify([matcher, ...innerHooks.map((h) => h.command ?? '')]);
           if (seen.has(sig)) continue;
           seen.add(sig);
           cleaned.push({ ...entry, hooks: innerHooks });

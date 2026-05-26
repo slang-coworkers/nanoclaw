@@ -128,10 +128,7 @@ function mergeTypeEntries(base: CoworkerTypeEntry, addon: CoworkerTypeEntry, typ
     // declare stages). Inheritance via `extends:` is composed by
     // resolveCritiqueRequiredStages walking the chain — that's separate
     // from this base+addon merge for redeclarations of the same type.
-    requiredCritiqueStages: [
-      ...(base.requiredCritiqueStages || []),
-      ...(addon.requiredCritiqueStages || []),
-    ],
+    requiredCritiqueStages: [...(base.requiredCritiqueStages || []), ...(addon.requiredCritiqueStages || [])],
     bindings: { ...(base.bindings || {}), ...(addon.bindings || {}) },
     mcpServers: { ...(base.mcpServers || {}), ...(addon.mcpServers || {}) },
   };

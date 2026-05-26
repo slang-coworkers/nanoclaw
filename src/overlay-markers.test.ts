@@ -375,8 +375,8 @@ describe('materializeCritiqueRequiredStages', () => {
 
   it('dedupes overlapping stages from parent + child', async () => {
     writeTypesYaml('test6', {
-      'parent': { description: 'parent', required_critique_stages: ['CODE_REVIEW', 'OUTPUT_REVIEW'] },
-      'child': {
+      parent: { description: 'parent', required_critique_stages: ['CODE_REVIEW', 'OUTPUT_REVIEW'] },
+      child: {
         extends: 'parent',
         description: 'child overlaps parent',
         required_critique_stages: ['CODE_REVIEW', 'PLAN_REVIEW'],
