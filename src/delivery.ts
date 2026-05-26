@@ -270,7 +270,15 @@ async function deliverMessage(
       throw new Error(`agent-to-agent module not installed — cannot route message ${msg.id}`);
     }
     const { routeAgentMessage } = await import('./modules/agent-to-agent/agent-route.js');
-    await routeAgentMessage(msg, session);
+    // `target_session_id` rides along inside the content body (no schema
+    // migration needed — the field is read only by the routing layer and
+    // is not surfaced to the recipient agent). Pluck it here so the
+    // routing layer treats it as a first-class field on the message.
+    const targetSessionId =
+      typeof content.target_session_id === 'string' && content.target_session_id.trim() !== ''
+        ? content.target_session_id.trim()
+        : null;
+    await routeAgentMessage({ ...msg, target_session_id: targetSessionId }, session);
     return;
   }
 

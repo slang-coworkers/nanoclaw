@@ -302,6 +302,11 @@ export const sendMessage: McpToolDefinition = {
           description:
             'Optional inbound message id (the integer from `<message id="…">`). When set: routes to that inbound\'s source by default, copies its thread_id, and stamps the host\'s reply-correlation column so multi-hop a2a return paths land in the originating session. Use this whenever you reply to a specific inbound in a batch with several threads.',
         },
+        target_session_id: {
+          type: 'string',
+          description:
+            'Optional recipient session id (e.g. "sess-1779608995355-ltmvni"). When set, routing delivers to that exact session within the resolved destination if it is active and belongs to that destination — useful to wake a specific paused session whose context you want to resume rather than letting routing mint a fresh per-thread session. Falls through to default routing on any mismatch (warning logged host-side). The pin only narrows session selection within an already-authorized recipient; it does NOT bypass destination authorization.',
+        },
       },
       required: ['text'],
     },
@@ -332,6 +337,11 @@ export const sendMessage: McpToolDefinition = {
     const guard = checkPeerThreadGuard(routing, effectiveInReplyRow);
     if (!guard.ok) return err(guard.error);
 
+    const targetSessionId =
+      typeof args.target_session_id === 'string' && args.target_session_id.trim() !== ''
+        ? args.target_session_id.trim()
+        : null;
+
     const id = generateId();
     const seq = writeMessageOut({
       id,
@@ -339,7 +349,7 @@ export const sendMessage: McpToolDefinition = {
       platform_id: routing.platform_id,
       channel_type: routing.channel_type,
       thread_id: routing.thread_id,
-      content: JSON.stringify({ text }),
+      content: JSON.stringify(targetSessionId ? { text, target_session_id: targetSessionId } : { text }),
       in_reply_to: effectiveInReplyRow ? effectiveInReplyRow.id : getCurrentInReplyTo(),
     });
 
@@ -377,6 +387,11 @@ export const sendFile: McpToolDefinition = {
           description:
             'Optional inbound message id (the integer from `<message id="…">`). Routes to that inbound\'s source by default and copies its thread_id; stamps the host\'s reply-correlation column.',
         },
+        target_session_id: {
+          type: 'string',
+          description:
+            'Optional recipient session id (same semantics as send_message). When set, the file delivers to that exact session within the resolved destination if active and owned by it; falls through on mismatch.',
+        },
       },
       required: ['path'],
     },
@@ -410,6 +425,11 @@ export const sendFile: McpToolDefinition = {
     const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve('/workspace/agent', filePath);
     if (!fs.existsSync(resolvedPath)) return err(`File not found: ${filePath}`);
 
+    const targetSessionId =
+      typeof args.target_session_id === 'string' && args.target_session_id.trim() !== ''
+        ? args.target_session_id.trim()
+        : null;
+
     const id = generateId();
     const filename = (args.filename as string) || path.basename(resolvedPath);
 
@@ -417,13 +437,19 @@ export const sendFile: McpToolDefinition = {
     fs.mkdirSync(outboxDir, { recursive: true });
     fs.copyFileSync(resolvedPath, path.join(outboxDir, filename));
 
+    const fileContent: Record<string, unknown> = {
+      text: (args.text as string) || '',
+      files: [filename],
+    };
+    if (targetSessionId) fileContent.target_session_id = targetSessionId;
+
     writeMessageOut({
       id,
       kind: 'chat',
       platform_id: routing.platform_id,
       channel_type: routing.channel_type,
       thread_id: routing.thread_id,
-      content: JSON.stringify({ text: (args.text as string) || '', files: [filename] }),
+      content: JSON.stringify(fileContent),
       in_reply_to: effectiveInReplyRow ? effectiveInReplyRow.id : getCurrentInReplyTo(),
     });
 

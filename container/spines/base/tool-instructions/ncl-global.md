@@ -34,3 +34,34 @@ ncl sessions messages <sid>                           # read any session's trans
 ### Cross-group operations
 
 Unlike group-scoped coworkers, you can act across groups — wire two coworkers together, grant a role on someone else's group, restart a peer's container. Use this only when the user explicitly asks you to act on another group; otherwise default to working inside your own scope.
+
+### Resuming a specific recipient session
+
+When you wake a peer to continue work that *another* chain handed off (e.g. you're lifting a pause on queued work, or following up on a memo you didn't originate), routing keys on `(recipient agent group, messaging group, thread id)`. Your wake-up uses a *different* messaging group than the chain that originally queued the work, so without intervention the recipient gets a brand-new session — no inbox attachments, no prior context, no working state. The agent restarts cold from your message alone.
+
+Use `target_session_id` on `send_message` / `send_file` to pin the wake-up to the recipient's existing working session.
+
+**Discovery flow:**
+
+1. **List the recipient's sessions:**
+   ```bash
+   ncl sessions list --agent-group <recipient-group-id>
+   ```
+   Note all rows with `status=active`.
+
+2. **Identify the session that owns the workstream.** For each candidate:
+   ```bash
+   ncl sessions messages <session-id> --limit 30
+   ```
+   Look for inbound messages that reference the work you're resuming — handoff memos, sentinel claims, queued-inbox references, the issue id. Prefer the **oldest** active candidate when several sessions reference the same workstream; chain handoffs typically land on the existing session, not a fresh one.
+
+3. **Send the wake with the pin:**
+   ```text
+   send_message({ to: "<peer>", text: "...", target_session_id: "sess-..." })
+   ```
+
+4. **Verify the pin took.** Tail host logs for `a2a target pinned: routing to sender-named session`. If you see `a2a target_session_id: ... falling through`, the validation rejected the id (closed, wrong group, not found) and routing minted a fresh session — re-check the id.
+
+**When NOT to pin:** first-time delegation (no session to resume), generic status checks unrelated to a specific in-flight workstream, recipients with only one active session (default routing already lands there).
+
+The pin does **not** bypass authorization — you still need a destination row to the recipient. It only chooses *which* session within an already-authorized destination.
