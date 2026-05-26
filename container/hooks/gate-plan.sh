@@ -3,6 +3,13 @@
 # block source-code edits until a plan exists. Critique enforcement moved
 # to gate-critique-on-deliver.sh — this hook is now plan-only.
 #
+# Symmetric opt-in (Model A, mirrors gate-critique-on-deliver.sh): only
+# fires for coworkers whose overlays include `plan-gate`. The composer
+# materializes the marker file at /workspace/agent/.overlay-plan-gate;
+# this hook checks for it first and exits 0 (no-op) when absent. Coworkers
+# without the overlay (readers, triagers, reviewers, casual chat agents)
+# can still run Edit/Write/Bash without enforcement — opt-in by design.
+#
 # Subagents (CLAUDE_CODE_FORK_SUBAGENT=1) inherit the parent's plan; they
 # pass this gate. Their deliveries are still gated by gate-critique-on-deliver.sh
 # the same as the parent — that's where universal critique enforcement lives.
@@ -10,6 +17,11 @@
 # Stdin: JSON with tool_name, tool_input.file_path or tool_input.command.
 # Exit 0 = allow, exit 2 = deny (stderr shown to agent).
 set -euo pipefail
+
+# Opt-in gate — overlay-marker check (Model A symmetric opt-in).
+# Path is overridable for testing; container default is /workspace/agent/.
+OVERLAY_DIR="${OVERLAY_MARKER_DIR:-/workspace/agent}"
+[ -f "$OVERLAY_DIR/.overlay-plan-gate" ] || exit 0
 
 # Subagents skip plan check
 [ "${CLAUDE_CODE_FORK_SUBAGENT:-0}" = "1" ] && exit 0

@@ -17,7 +17,7 @@ Routing — pick the right destination, not the loudest:
 
 No echoes. No meta-acknowledgements. *"Acknowledged silently"*, *"No echo needed"*, *"Status report stays with the orchestrator"*, *"Ending turn"* are themselves messages — they cost the reader the same tokens the silent-ack rule was meant to save. If you have nothing substantive to add, **send nothing**.
 
-The 5-bullet shape for upstream reports stays: status / link / verdict / next-action / blocker. Reasoning and narrative go in an attached file via `send_file(to="parent")`. Top-of-chain agents (no parent) deliver the same shape via the channel adapter — to the user, not to a peer.
+The 5-bullet shape for upstream reports stays: status / link / verdict / next-action / blocker. **Use markdown list syntax (`- ` at line start), not Unicode bullets (`•`)** — operators view these reports through dashboards and chat clients that wrap and render markdown; Unicode bullets break the list semantically and degrade to raw glyphs in many viewers. Bold the field name (`**Status:**`) so the bullet reads as a labeled fact. Reasoning and narrative go in an attached file via `send_file(to="parent")`. Top-of-chain agents (no parent) deliver the same shape via the channel adapter — to the user, not to a peer.
 
 Inbound rows show `thread="…"` only when the thread differs from your own session's. Treat the attribute as a routing label to copy via `in_reply_to`, not as a value to type back into prose.
 
