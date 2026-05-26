@@ -98,7 +98,7 @@ must-fix items.
 
 If multiple stages are required, run /codex-critique once per listed
 STAGE value (the codex-critique skill defines DIAGNOSIS_REVIEW,
-PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW, ANSWER_REVIEW). State file:
+PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW). State file:
 $STATE
 EOF
   exit 2
