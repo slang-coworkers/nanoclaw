@@ -2424,6 +2424,178 @@ describe('/api/messages — Slack-style thread filtering', () => {
     expect(data.threadSummaries['self-loop-thread'].sessionId).toBe('sess-a2a-self-loop');
     expect(Object.keys(data.threadSummaries)).not.toContain('slack-thread');
   });
+
+  // Helper: extend the base scenario with a self-loop a2a thread under the
+  // same agent group. The inbound row carries channel_type='agent' and
+  // platform_id='ag-thread' (the same agent group id), which trips the
+  // isSelfEcho filter on the main view.
+  function seedSelfLoopThread(): void {
+    const db = new Database(DB_PATH);
+    const now = new Date().toISOString();
+    db.prepare(
+      'INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)',
+    ).run('mg-a2a-thread', 'agent', 'agent:ag-thread:ag-thread', 'A2A self-loop', 'public', now);
+    db.prepare(
+      "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES (?, 'ag-thread', 'mg-a2a-thread', ?, 'active', 'stopped', NULL, ?)",
+    ).run('sess-a2a-self-loop', 'self-loop-thread', now);
+    db.close();
+    const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-thread', 'sess-a2a-self-loop');
+    mkdirSync(sessDir, { recursive: true });
+    const inDb = new Database(path.join(sessDir, 'inbound.db'));
+    inDb.exec(
+      `CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, channel_type TEXT, platform_id TEXT, thread_id TEXT);
+       CREATE TABLE delivered (message_out_id TEXT PRIMARY KEY, platform_message_id TEXT, status TEXT);`,
+    );
+    inDb
+      .prepare(
+        "INSERT INTO messages_in (id, kind, content, timestamp, channel_type, platform_id, thread_id) VALUES (?, 'chat', ?, ?, 'agent', 'ag-thread', 'self-loop-thread')",
+      )
+      .run('a2a-self-1', JSON.stringify({ text: 'self-loop prompt' }), now);
+    inDb.close();
+    forceOpenDbForTests();
+  }
+
+  it('main view hides self-loop a2a rows (self-echo plumbing stays out)', async () => {
+    seedThreadScenario();
+    seedSelfLoopThread();
+    const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&limit=50`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { messages: any[] };
+    const ids = data.messages.map((m) => m.id);
+    expect(ids).not.toContain('a2a-self-1');
+  });
+
+  it('thread view shows self-loop a2a rows (explicit thread defeats the self-echo hide)', async () => {
+    seedThreadScenario();
+    seedSelfLoopThread();
+    const res = await fetch(
+      `${baseUrl}/api/messages?group=thread-agent&thread_id=self-loop-thread&limit=50`,
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { messages: any[] };
+    const ids = data.messages.map((m) => m.id);
+    expect(ids).toContain('a2a-self-1');
+  });
+
+  it('thread view surfaces claudemd-refresh / sys plumbing (main view still hides them)', async () => {
+    seedThreadScenario();
+    // A per-thread session whose inbound contains a claudemd-refresh- row
+    // (a system ping). The current code drops these on the main view; with
+    // the fix, opening the thread should surface them.
+    const db = new Database(DB_PATH);
+    const now = new Date().toISOString();
+    db.prepare(
+      "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES (?, 'ag-thread', 'mg-dash', ?, 'active', 'stopped', NULL, ?)",
+    ).run('sess-claudemd-thread', 'claudemd-thread', now);
+    db.close();
+    const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-thread', 'sess-claudemd-thread');
+    mkdirSync(sessDir, { recursive: true });
+    const inDb = new Database(path.join(sessDir, 'inbound.db'));
+    inDb.exec(
+      `CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, channel_type TEXT, platform_id TEXT, thread_id TEXT);
+       CREATE TABLE delivered (message_out_id TEXT PRIMARY KEY, platform_message_id TEXT, status TEXT);`,
+    );
+    inDb
+      .prepare(
+        "INSERT INTO messages_in (id, kind, content, timestamp, channel_type, platform_id, thread_id) VALUES (?, 'chat', ?, ?, 'host', 'host', 'claudemd-thread')",
+      )
+      .run('claudemd-refresh-1', JSON.stringify({ text: 'CLAUDE.md changed' }), now);
+    inDb.close();
+    forceOpenDbForTests();
+
+    // Main view: still hides the plumbing row.
+    const main = await fetch(`${baseUrl}/api/messages?group=thread-agent&limit=50`);
+    const mainData = (await main.json()) as { messages: any[] };
+    expect(mainData.messages.map((m) => m.id)).not.toContain('claudemd-refresh-1');
+
+    // Thread view: surfaces it.
+    const thr = await fetch(
+      `${baseUrl}/api/messages?group=thread-agent&thread_id=claudemd-thread&limit=50`,
+    );
+    const thrData = (await thr.json()) as { messages: any[] };
+    expect(thrData.messages.map((m) => m.id)).toContain('claudemd-refresh-1');
+  });
+
+  it('threadSummaries sums replyCount across sessions sharing a thread_id', async () => {
+    seedThreadScenario();
+    // Add two extra per-thread sessions for the same thread_id ("multi-sess")
+    // under the same agent group. Each session contributes its own row count;
+    // the badge must reflect the sum, not the last-iterated session.
+    const db = new Database(DB_PATH);
+    const now = new Date().toISOString();
+    db.prepare(
+      'INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)',
+    ).run('mg-a2a-multi', 'agent', 'agent:ag-thread:ag-thread', 'A2A multi', 'public', now);
+    for (const [sid, count] of [
+      ['sess-multi-a', 2],
+      ['sess-multi-b', 3],
+      ['sess-multi-c', 5],
+    ] as Array<[string, number]>) {
+      db.prepare(
+        "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES (?, 'ag-thread', 'mg-a2a-multi', 'multi-sess', 'active', 'stopped', NULL, ?)",
+      ).run(sid, now);
+      const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-thread', sid);
+      mkdirSync(sessDir, { recursive: true });
+      const inDb = new Database(path.join(sessDir, 'inbound.db'));
+      inDb.exec(
+        `CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, channel_type TEXT, platform_id TEXT, thread_id TEXT);
+         CREATE TABLE delivered (message_out_id TEXT PRIMARY KEY, platform_message_id TEXT, status TEXT);`,
+      );
+      const stmt = inDb.prepare(
+        "INSERT INTO messages_in (id, kind, content, timestamp, channel_type, platform_id, thread_id) VALUES (?, 'chat', ?, ?, 'agent', 'ag-other', 'multi-sess')",
+      );
+      for (let i = 0; i < count; i++) {
+        stmt.run(`${sid}-msg-${i}`, JSON.stringify({ text: `msg ${i}` }), now);
+      }
+      inDb.close();
+    }
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&limit=50`);
+    const data = (await res.json()) as {
+      threadSummaries: Record<string, { replyCount: number; sessionId: string | null }>;
+    };
+    expect(data.threadSummaries['multi-sess']).toBeDefined();
+    expect(data.threadSummaries['multi-sess'].replyCount).toBe(10); // 2 + 3 + 5
+  });
+
+  it('threadSummaries replyCount excludes rows whose thread_id does not match the session', async () => {
+    seedThreadScenario();
+    // A per-thread session whose inbound DB contains 3 rows for its own
+    // thread plus 2 rows tagged with a different thread_id (legacy / webhook
+    // collision). Badge should report 3, not 5.
+    const db = new Database(DB_PATH);
+    const now = new Date().toISOString();
+    db.prepare(
+      "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES ('sess-mixed', 'ag-thread', 'mg-dash', 'mixed-thread', 'active', 'stopped', NULL, ?)",
+    ).run(now);
+    db.close();
+    const sessDir = path.join(DATA_DIR, 'v2-sessions', 'ag-thread', 'sess-mixed');
+    mkdirSync(sessDir, { recursive: true });
+    const inDb = new Database(path.join(sessDir, 'inbound.db'));
+    inDb.exec(
+      `CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, channel_type TEXT, platform_id TEXT, thread_id TEXT);
+       CREATE TABLE delivered (message_out_id TEXT PRIMARY KEY, platform_message_id TEXT, status TEXT);`,
+    );
+    const ins = inDb.prepare(
+      "INSERT INTO messages_in (id, kind, content, timestamp, channel_type, platform_id, thread_id) VALUES (?, 'chat', ?, ?, 'dashboard', 'dashboard:thread-agent', ?)",
+    );
+    ins.run('mixed-1', JSON.stringify({ text: 'a' }), now, 'mixed-thread');
+    ins.run('mixed-2', JSON.stringify({ text: 'b' }), now, 'mixed-thread');
+    ins.run('mixed-3', JSON.stringify({ text: 'c' }), now, 'mixed-thread');
+    ins.run('other-1', JSON.stringify({ text: 'x' }), now, 'unrelated-thread');
+    ins.run('other-2', JSON.stringify({ text: 'y' }), now, 'unrelated-thread');
+    inDb.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&limit=50`);
+    const data = (await res.json()) as {
+      threadSummaries: Record<string, { replyCount: number }>;
+    };
+    expect(data.threadSummaries['mixed-thread']).toBeDefined();
+    expect(data.threadSummaries['mixed-thread'].replyCount).toBe(3);
+  });
 });
 
 describe('/api/a2a-session — read-only inspector (Option C)', () => {

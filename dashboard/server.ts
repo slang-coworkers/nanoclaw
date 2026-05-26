@@ -5589,10 +5589,23 @@ export async function handleRequest(
                   const sdb = new Database(p, { readonly: true });
                   try {
                     const table = file === 'inbound.db' ? 'messages_in' : 'messages_out';
-                    const row = sdb.prepare(`SELECT COUNT(*) AS n, MAX(timestamp) AS ts FROM ${table}`).get() as {
-                      n: number;
-                      ts: string | null;
-                    };
+                    // Scope COUNT to rows belonging to this thread (matching
+                    // thread_id, plus NULL — the messages endpoint shows NULL-
+                    // thread rows in threadMode, so badge counts must match).
+                    // Fallback to unscoped COUNT for legacy session DBs that
+                    // pre-date the thread_id column.
+                    let row: { n: number; ts: string | null };
+                    try {
+                      row = sdb
+                        .prepare(
+                          `SELECT COUNT(*) AS n, MAX(timestamp) AS ts FROM ${table} WHERE thread_id = ? OR thread_id IS NULL`,
+                        )
+                        .get(ts.thread_id) as { n: number; ts: string | null };
+                    } catch {
+                      row = sdb
+                        .prepare(`SELECT COUNT(*) AS n, MAX(timestamp) AS ts FROM ${table}`)
+                        .get() as { n: number; ts: string | null };
+                    }
                     count += row.n || 0;
                     if (row.ts && (!lastTs || row.ts > lastTs)) lastTs = row.ts;
                   } catch {
@@ -5604,7 +5617,21 @@ export async function handleRequest(
                 }
               }
               if (count > 0) {
-                threadSummaries[ts.thread_id] = { replyCount: count, lastReplyTs: lastTs, sessionId: ts.id };
+                // Aggregate when multiple sessions share a thread_id (common
+                // for cross-coworker threads or session forks). Without this,
+                // the badge reflects only the last session iterated, which
+                // hides large amounts of activity in plain sight.
+                const existing = threadSummaries[ts.thread_id];
+                if (!existing) {
+                  threadSummaries[ts.thread_id] = { replyCount: count, lastReplyTs: lastTs, sessionId: ts.id };
+                } else {
+                  const newer = !!lastTs && (!existing.lastReplyTs || lastTs > existing.lastReplyTs);
+                  threadSummaries[ts.thread_id] = {
+                    replyCount: existing.replyCount + count,
+                    lastReplyTs: newer ? lastTs : existing.lastReplyTs,
+                    sessionId: newer ? ts.id : existing.sessionId,
+                  };
+                }
               }
             }
           }
@@ -5692,11 +5719,15 @@ export async function handleRequest(
                       ? (coworkerNameById.get(r.platform_id) ??
                         (r.platform_id.startsWith('ag-') ? '(deleted)' : undefined))
                       : undefined;
-                  if (!includeSystem && isSystemId(r.id) && !senderCoworkerName) continue;
+                  // Hide on the noisy main view; show when the user explicitly
+                  // opens the thread (threadMode) or asks for system rows.
+                  if (!threadMode && !includeSystem && isSystemId(r.id) && !senderCoworkerName) continue;
                   // Self-referencing a2a: sender is the same agent group we're
                   // viewing — routing echo, not a real inbound message.
+                  // Hide on the noisy main view; show when the user explicitly
+                  // opens the thread (threadMode) or asks for system rows.
                   const isSelfEcho = r.channel_type === 'agent' && r.platform_id === agRow.id;
-                  if (!includeSystem && isSelfEcho) continue;
+                  if (!threadMode && !includeSystem && isSelfEcho) continue;
                   messages.push({
                     ...r,
                     direction: 'incoming',
@@ -5762,7 +5793,9 @@ export async function handleRequest(
                       : undefined;
                   // Suppress recipient name when it's the same agent group (self-echo)
                   const recipientCoworkerName = r.platform_id === agRow.id ? undefined : rawRecipientName;
-                  if (!includeSystem && isSystemId(r.in_reply_to) && !recipientCoworkerName && !isRelayOut) continue;
+                  // Same gate as the inbound self-echo above: hide on main view,
+                  // show in explicit thread or includeSystem mode.
+                  if (!threadMode && !includeSystem && isSystemId(r.in_reply_to) && !recipientCoworkerName && !isRelayOut) continue;
                   const delivered = deliveredByMessageOutId.get(r.id);
                   messages.push({
                     ...r,
