@@ -87,6 +87,26 @@ function injectAssetVersions(html: Buffer): Buffer {
   );
 }
 
+// Expose the operator-configured TZ to the frontend so message timestamps
+// render in the install's timezone, not the viewing browser's. Read from
+// the same env var the host's TIMEZONE constant resolves from (src/config.ts).
+// Validated against Intl so a typo'd TZ falls back to browser-local instead
+// of throwing in toLocaleTimeString.
+function injectTimezone(html: Buffer): Buffer {
+  const raw = process.env.TZ || '';
+  if (!raw) return html;
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: raw });
+  } catch {
+    return html;
+  }
+  const safe = raw.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const meta = `<meta name="nanoclaw-tz" content="${safe}">`;
+  return Buffer.from(
+    html.toString('utf8').replace(/(<meta\s+charset="[^"]*">)/i, `$1\n  ${meta}`),
+  );
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Session display-title heuristic.
 //
@@ -9856,6 +9876,7 @@ export async function handleRequest(
     const headers: Record<string, string> = { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' };
     if (ext === '.html') {
       content = injectAssetVersions(content);
+      content = injectTimezone(content);
     }
     // Prevent proxy caching of mutable assets (JS, HTML) so code updates are picked up immediately
     if (ext === '.js' || ext === '.html' || ext === '.css') {
