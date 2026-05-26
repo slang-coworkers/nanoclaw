@@ -28,6 +28,7 @@ container/config/**
 .claude/skills/self-customize/**
 .claude/skills/slack-formatting/**
 .claude/skills/welcome/**
+.claude/skills/show-transcript/**
 
 # Base infrastructure spine + skills (NOT project overlays):
 container/skills/spine-base/**
