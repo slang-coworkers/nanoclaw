@@ -93,10 +93,29 @@ for skill in $(jq -r 'keys[]' "$MANIFEST"); do
     echo "  fetch $skill from $repo@$ref"
   fi
 
-  if gh skill install "$repo" "$skill@$ref" --dir "$SKILLS_DIR" --force 2>&1 | grep -q "Installed"; then
+  attempt=1
+  max_attempts=3
+  installed=0
+  while [ $attempt -le $max_attempts ]; do
+    set +e
+    output=$(gh skill install "$repo" "$skill@$ref" --dir "$SKILLS_DIR" --force 2>&1)
+    rc=$?
+    set -e
+    if [ $rc -eq 0 ] && echo "$output" | grep -q "Installed"; then
+      installed=1
+      break
+    fi
+    if [ $attempt -lt $max_attempts ]; then
+      echo "  ⚠ fetch $skill attempt $attempt failed (rc=$rc), retrying..."
+      sleep $((attempt * 2))
+    fi
+    attempt=$((attempt + 1))
+  done
+  if [ $installed -eq 1 ]; then
     FETCHED=$((FETCHED + 1))
   else
-    echo "  ⚠ failed to fetch $skill"
+    echo "  ⚠ failed to fetch $skill after $max_attempts attempts (rc=$rc)"
+    echo "$output" | sed 's/^/    | /'
   fi
 done
 
