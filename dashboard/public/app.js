@@ -5489,7 +5489,9 @@ async function updateCwDetail() {
               const inherited =
                 Array.isArray(o.inheritedFrom) && o.inheritedFrom.length > 0
                   ? ` <span style="font-size:9px;color:var(--text-dim)">via ${esc(o.inheritedFrom.map((w) => '/' + w).join(', '))}</span>`
-                  : '';
+                  : o.optInOnly
+                    ? ` <span style="font-size:9px;color:var(--text-dim)">(opt-in only)</span>`
+                    : '';
               return `<label style="display:block;margin:2px 0;cursor:pointer"><input type="checkbox" value="${esc(o.name)}" ${currentOverlays.includes(o.name) ? 'checked' : ''}> ${esc(o.name)}${inherited}</label>`;
             })
             .join('') +
