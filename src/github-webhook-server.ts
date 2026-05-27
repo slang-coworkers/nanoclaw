@@ -70,18 +70,28 @@ function fanOutWebhook(rawBody: string, headers: { event: string; delivery: stri
 
 /**
  * Post a 👀 reaction on the triggering comment so the human sees their
- * @mention was received. Auth is handled by OneCLI proxy path-routing — we
- * call api.github.com plainly and the gateway injects the App installation
- * token that has reactions:write on this repo. Opt-in via env var
- * `GITHUB_WEBHOOK_REACT_ON_RECEIPT=1`; defaults off to keep behavior unchanged
- * for instances that don't have a token configured for the target host.
+ * @mention was received. Opt-in via env var `GITHUB_WEBHOOK_REACT_ON_RECEIPT=1`,
+ * defaults off.
  *
- * Fire-and-forget — never blocks the 200 OK to GitHub. Errors are logged
- * once (warn) so a misconfigured token doesn't flood the log.
+ * Auth: the host process calls api.github.com directly (not through OneCLI —
+ * that proxy only fires for outbound traffic from agent containers). It uses
+ * `GH_TOKEN` from the environment, which the existing refresh cron writes
+ * every 30 min from a GitHub App installation token. Without that token we
+ * skip with a warn so a missing-credential install doesn't flood logs with
+ * 401s.
+ *
+ * Fire-and-forget — never blocks the 200 OK to GitHub. Failures (network,
+ * non-OK, already-reacted 422) are warn-logged and swallowed.
  */
 export async function postEyesReaction(repo: string, eventType: string, commentId: number): Promise<void> {
   if (process.env.GITHUB_WEBHOOK_REACT_ON_RECEIPT !== '1') return;
   if (!repo || !commentId) return;
+
+  const token = process.env.GH_TOKEN;
+  if (!token) {
+    log.warn('github-webhook: eyes reaction skipped (GH_TOKEN not set)', { repo });
+    return;
+  }
 
   // Endpoint differs by event type — pull_request_review_comment uses /pulls/comments,
   // every other comment-shaped event uses /issues/comments.
@@ -91,6 +101,7 @@ export async function postEyesReaction(repo: string, eventType: string, commentI
     const res = await fetch(url, {
       method: 'POST',
       headers: {
+        Authorization: `token ${token}`,
         Accept: 'application/vnd.github+json',
         'Content-Type': 'application/json',
       },
