@@ -18,10 +18,12 @@ describe('postEyesReaction', () => {
   beforeEach(() => {
     fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201 });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
+    process.env.GH_TOKEN = 'fake-token';
   });
 
   afterEach(() => {
     delete process.env.GITHUB_WEBHOOK_REACT_ON_RECEIPT;
+    delete process.env.GH_TOKEN;
     vi.restoreAllMocks();
   });
 
@@ -63,7 +65,22 @@ describe('postEyesReaction', () => {
     expect(url).toBe('https://api.github.com/repos/org/repo/issues/comments/12345/reactions');
     expect(init.method).toBe('POST');
     expect(init.headers.Accept).toBe('application/vnd.github+json');
+    expect(init.headers.Authorization).toBe('token fake-token');
     expect(JSON.parse(init.body)).toEqual({ content: 'eyes' });
+  });
+
+  it('skips with warn when GH_TOKEN is unset (no fetch — no 401 spam)', async () => {
+    process.env.GITHUB_WEBHOOK_REACT_ON_RECEIPT = '1';
+    delete process.env.GH_TOKEN;
+    await postEyesReaction('org/repo', 'issue_comment', 12345);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('skips when GH_TOKEN is empty string', async () => {
+    process.env.GITHUB_WEBHOOK_REACT_ON_RECEIPT = '1';
+    process.env.GH_TOKEN = '';
+    await postEyesReaction('org/repo', 'issue_comment', 12345);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('POSTs eyes to /pulls/comments/{id}/reactions for pull_request_review_comment events', async () => {
