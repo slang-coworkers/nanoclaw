@@ -1428,7 +1428,7 @@ sandbox_mode = "danger-full-access"
 
 [features]
 use_linux_sandbox_bwrap = false
-codex_hooks = true
+hooks = true
 
 [model_providers.\${CODEX_MODEL_PROVIDER:-nvinference}]
 name = "\${CODEX_MODEL_PROVIDER:-nvinference}"
@@ -1439,6 +1439,27 @@ env_key = "NVIDIA_API_KEY"
 [projects."/workspace/agent"]
 trust_level = "trusted"
 TOML_EOF
+cat > ~/.codex/hooks.json <<'HOOKS_EOF'
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh SessionStart", "timeout": 5 }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh UserPromptSubmit", "timeout": 5 }] }
+    ],
+    "PreToolUse": [
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh PreToolUse", "timeout": 5 }] }
+    ],
+    "PostToolUse": [
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh PostToolUse", "timeout": 5 }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh Stop", "timeout": 5 }] }
+    ]
+  }
+}
+HOOKS_EOF
 exec bun run /app/src/index.ts`,
   );
 
