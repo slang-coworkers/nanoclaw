@@ -325,15 +325,16 @@ function formatSessionEventLine(e) {
   return `${esc(e.event || '')}${t}`;
 }
 
-function activeNanoSessionsForCoworker(cw) {
+function activeNanoSessionsForCoworker(cw, { includeHidden = false } = {}) {
   const agentGroupId = cw.agentGroupId || cw.agent_group_id || agentGroupIdForFolder(cw.folder);
   return (cachedSessions || []).filter((s) => {
     if (!s.nanoclaw_session_id) return false;
     // Hidden sessions are user-suppressed: they don't render in the right-panel
     // session list, so they shouldn't count toward summaries either (Pixel
     // Office "N sessions" badge, hasMultipleActiveSessions, mark-all-read,
-    // etc.). Callers that need the unfiltered view can scan cachedSessions.
-    if (s.hidden_at) return false;
+    // etc.). Pass includeHidden:true when the caller needs to render the
+    // "Hidden Sessions (N)" expander.
+    if (!includeHidden && s.hidden_at) return false;
     if (agentGroupId && s.agent_group_id) return s.agent_group_id === agentGroupId;
     return s.group_folder === cw.folder;
   });
@@ -412,7 +413,7 @@ function sessionTitleHtml(nanoSess, { compact = false } = {}) {
 
 function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
   const groupEvents = (state.hookEvents || []).filter((e) => hookEventBelongsToCoworker(e, cw));
-  const nanoSessions = activeNanoSessionsForCoworker(cw)
+  const nanoSessions = activeNanoSessionsForCoworker(cw, { includeHidden: true })
     .slice()
     .sort((a, b) => {
       // Pinned sessions go first (pinned_at desc — newest pin on top within the group),
