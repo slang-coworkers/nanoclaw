@@ -7,9 +7,21 @@
  * separate end-to-end harness; these unit tests pin the scoped-name contract
  * that the rest of the system relies on.
  */
+import fs from 'fs';
 import net from 'net';
+import os from 'os';
+import path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Tests must NOT clobber the production token at `<repo>/data/.mcp-management-token`
+// (which `startMcpAuthProxy` defaults to writing). Each call passes a
+// per-test tempdir tokenPath; afterAll cleans up.
+const TEST_TOKEN_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-auth-proxy-test-'));
+let testTokenSeq = 0;
+function freshTokenPath(): string {
+  return path.join(TEST_TOKEN_DIR, `.mcp-management-token-${++testTokenSeq}`);
+}
 
 // The registry side-effects (spawning supergateway) must not run during
 // tests. Mock mcp-registry entirely — the proxy only uses it for the
@@ -281,7 +293,7 @@ describe('auth proxy lifecycle', () => {
   beforeEach(async () => {
     setUpstreamPortResolver(() => 45001);
     const port = await pickFreePort();
-    const { stop } = startMcpAuthProxy('127.0.0.1', port);
+    const { stop } = startMcpAuthProxy('127.0.0.1', port, { tokenPath: freshTokenPath() });
     stopProxy = stop;
     await waitForProxy(`http://127.0.0.1:${port}`);
   });
@@ -300,7 +312,7 @@ describe('auth proxy lifecycle', () => {
     expect(getMcpManagementToken()).toBe('');
     // Restart on a fresh port so the afterEach stop is a no-op cleanup.
     const port = await pickFreePort();
-    const restarted = startMcpAuthProxy('127.0.0.1', port);
+    const restarted = startMcpAuthProxy('127.0.0.1', port, { tokenPath: freshTokenPath() });
     stopProxy = restarted.stop;
     await waitForProxy(`http://127.0.0.1:${port}`);
   });
@@ -315,7 +327,7 @@ describe('auth proxy HTTP endpoints', () => {
     setUpstreamPortResolver(() => 45001);
     const port = await pickFreePort();
     proxyUrl = `http://127.0.0.1:${port}`;
-    const { stop } = startMcpAuthProxy('127.0.0.1', port);
+    const { stop } = startMcpAuthProxy('127.0.0.1', port, { tokenPath: freshTokenPath() });
     stopProxy = stop;
     mgmtToken = getMcpManagementToken();
     await waitForProxy(proxyUrl);
@@ -432,14 +444,10 @@ describe('end-to-end container token path (RC-42)', () => {
     setUpstreamPortResolver(() => 45001);
     const port = await pickFreePort();
     proxyUrl = `http://127.0.0.1:${port}`;
-    const { stop } = startMcpAuthProxy('127.0.0.1', port);
+    tokenPath = freshTokenPath();
+    const { stop } = startMcpAuthProxy('127.0.0.1', port, { tokenPath });
     stopProxy = stop;
     await waitForProxy(proxyUrl);
-    // Match the file location the proxy writes — see mcp-auth-proxy.ts's
-    // startMcpAuthProxy: it writes `data/.mcp-management-token` under the
-    // process cwd. Tests run from repo root.
-    const path = await import('path');
-    tokenPath = path.join(process.cwd(), 'data', '.mcp-management-token');
   });
 
   afterEach(() => {
@@ -507,7 +515,7 @@ describe('end-to-end container token path (RC-42)', () => {
     stopProxy();
     const newPort = await pickFreePort();
     const newUrl = `http://127.0.0.1:${newPort}`;
-    const { stop } = startMcpAuthProxy('127.0.0.1', newPort);
+    const { stop } = startMcpAuthProxy('127.0.0.1', newPort, { tokenPath: freshTokenPath() });
     stopProxy = stop;
     await waitForProxy(newUrl);
 
