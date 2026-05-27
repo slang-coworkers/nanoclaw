@@ -1968,46 +1968,25 @@ async function refreshCcusageCache(): Promise<void> {
 
 // Track which client (if any) is actively viewing the Admin > Infra screen
 let ccusageRefreshClient: any = null;
-let ccusageRefreshTimer: any = null;
+let ccusageRefreshInProgress = false;
 
 function startCcusageRefresh(clientSocket: any): void {
-  // Only one client can trigger refreshes at a time
-  if (ccusageRefreshClient === clientSocket) return;
-
-  // Stop previous refresh
-  if (ccusageRefreshTimer) {
-    clearInterval(ccusageRefreshTimer);
-    ccusageRefreshTimer = null;
-  }
-  if (ccusageRefreshClient && ccusageRefreshClient !== clientSocket) {
-    ccusageRefreshClient = null;
-  }
-
-  // Set new client
+  // Only refresh if not already in progress
   ccusageRefreshClient = clientSocket;
-
-  // Initial refresh immediately
-  refreshCcusageCache();
-
-  // Then refresh every 60 seconds only while this client is active
-  ccusageRefreshTimer = setInterval(() => {
-    if (ccusageRefreshClient === clientSocket) {
-      refreshCcusageCache();
-    } else {
-      clearInterval(ccusageRefreshTimer);
-      ccusageRefreshTimer = null;
-    }
-  }, 60000);
-  ccusageRefreshTimer.unref?.();
+  if (!ccusageRefreshInProgress) {
+    ccusageRefreshInProgress = true;
+    refreshCcusageCache()
+      .catch(() => {})
+      .finally(() => {
+        ccusageRefreshInProgress = false;
+      });
+  }
 }
 
 function stopCcusageRefresh(clientSocket: any): void {
   if (ccusageRefreshClient === clientSocket) {
     ccusageRefreshClient = null;
-    if (ccusageRefreshTimer) {
-      clearInterval(ccusageRefreshTimer);
-      ccusageRefreshTimer = null;
-    }
+    // No background timer — refresh only on explicit Infra tab visibility signals
   }
 }
 
@@ -6144,6 +6123,25 @@ export async function handleRequest(
     return;
   }
 
+  // API: 30-day cost history for graph
+  if (url.pathname === '/api/cost-history') {
+    if (!requireAuth(req, res)) return;
+    const data30d = ccusageCache['30d'] || emptyCcusagePeriod;
+    const history = data30d.combined || [];
+    // Return daily costs for the last 30 days, sorted by date
+    const dailyCosts = history
+      .filter((day) => day.date && day.totalCost !== undefined)
+      .map((day) => ({
+        date: day.date,
+        cost: day.totalCost,
+        tokens: day.totalTokens,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ dailyCosts, lastRefresh: ccusageCache.lastRefresh }));
+    return;
+  }
+
   // API: 24h message activity
   if (url.pathname === '/api/activity') {
     if (!requireAuth(req, res)) return;
@@ -10171,6 +10169,10 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
     console.log(`  Tab 2: Timeline (all-time metrics)`);
     if (getDashboardSecret()) console.log(`  Auth: dashboard secret required for browser/admin access`);
     console.log();
+    // Initialize ccusage cache on startup (non-blocking, in background)
+    setImmediate(() => {
+      refreshCcusageCache().catch(() => {});
+    });
   });
 
   return server;

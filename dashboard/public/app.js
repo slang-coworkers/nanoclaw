@@ -3142,6 +3142,8 @@ const adminState = {
   groups: [],
   debug: null,
   overview: null,
+  tokenMetrics: null,
+  costHistory: null,
   loaded: new Set(),
   logs: [],
   channels: [],
@@ -3205,6 +3207,15 @@ function renderAdminOverview() {
   const el = document.getElementById('overview-summary');
   if (!el) return;
   const uptimeStr = formatDuration(d.uptime * 1000);
+  // Display cost from token metrics if available
+  let costHtml = '<div class="admin-stat-card"><div class="num">Loading…</div><div class="label">30d Cost</div></div>';
+  if (adminState.tokenMetrics && adminState.tokenMetrics.daily) {
+    let totalCost = 0;
+    for (const day of adminState.tokenMetrics.daily) {
+      totalCost += day.totalCost || 0;
+    }
+    costHtml = `<div class="admin-stat-card"><div class="num" style="color:#10B981">${fmtUsd(totalCost)}</div><div class="label">30d Cost</div></div>`;
+  }
   el.innerHTML = `
     <div class="admin-stat-grid">
       <div class="admin-stat-card"><div class="num">${uptimeStr}</div><div class="label">Uptime</div></div>
@@ -3213,6 +3224,7 @@ function renderAdminOverview() {
       <div class="admin-stat-card"><div class="num">${d.tasks.paused}</div><div class="label">Paused Tasks</div></div>
       <div class="admin-stat-card"><div class="num">${d.messages.total}</div><div class="label">Messages</div></div>
       <div class="admin-stat-card"><div class="num">${d.sessions}</div><div class="label">Sessions</div></div>
+      ${costHtml}
     </div>`;
 }
 
@@ -7102,7 +7114,9 @@ async function loadMetricsTokens(period) {
     if (!res.ok) throw new Error('fetch failed');
     const data = await res.json();
     metricsState.loaded.add('tokens');
+    adminState.tokenMetrics = data; // Store for overview
     renderMetricsTokens(el, data);
+    renderAdminOverview(); // Update overview with cost
   } catch {
     el.innerHTML = '<div class="admin-empty">Failed to load token metrics</div>';
   }
@@ -7400,6 +7414,60 @@ function loadAllMetrics() {
   loadMetricsActivity();
   loadMetricsUsers();
   loadMetricsChannels();
+  loadCostHistory();
+}
+
+async function loadCostHistory() {
+  try {
+    const res = await fetch('/api/cost-history');
+    if (!res.ok) throw new Error('fetch failed');
+    const data = await res.json();
+    adminState.costHistory = data;
+    renderCostHistory();
+  } catch {
+    // Silent fail — cost history is optional
+  }
+}
+
+function renderCostHistory() {
+  const el = document.getElementById('overview-cost-graph');
+  if (!el || !adminState.costHistory) return;
+  const { dailyCosts } = adminState.costHistory;
+  if (!dailyCosts || dailyCosts.length === 0) {
+    el.innerHTML = '<div style="color:#666;font-size:12px">No cost data available</div>';
+    return;
+  }
+  // ASCII graph: daily costs over 30 days with spacing
+  const maxCost = Math.max(...dailyCosts.map((d) => d.cost || 0));
+  const graphHeight = 6;
+  const rows = [];
+  for (let row = graphHeight; row > 0; row--) {
+    const threshold = (maxCost / graphHeight) * row;
+    let line = '';
+    for (const day of dailyCosts) {
+      const char = (day.cost || 0) >= threshold ? '█' : ' ';
+      line += char + ' '; // Add spacing between bars
+    }
+    rows.push(line);
+  }
+  // X-axis with dates (every 3rd date to avoid crowding)
+  let xaxis = '';
+  for (let i = 0; i < dailyCosts.length; i++) {
+    const d = dailyCosts[i];
+    const label = i % 3 === 0 ? d.date.slice(-2) : '';
+    xaxis += (label || ' ') + ' ';
+  }
+  const minCost = Math.min(...dailyCosts.map((d) => d.cost || 0));
+  const avgCost = dailyCosts.reduce((sum, d) => sum + (d.cost || 0), 0) / dailyCosts.length;
+  const html = `
+    <div style="font-family:monospace;font-size:11px;color:#94A3B8;margin:8px 0">
+      <div style="margin-bottom:2px;white-space:pre">${rows.map((r) => r).join('\n')}</div>
+      <div style="color:#666;white-space:pre">${xaxis}</div>
+      <div style="margin-top:8px;font-size:10px;color:#94A3B8">
+        Max: ${fmtUsd(maxCost)} | Avg: ${fmtUsd(avgCost)} | Min: ${fmtUsd(minCost)} | Total: ${fmtUsd(dailyCosts.reduce((sum, d) => sum + (d.cost || 0), 0))}
+      </div>
+    </div>`;
+  el.innerHTML = html;
 }
 
 // Custom CSS zoom removed — use browser zoom (Ctrl+/- or Cmd+/-) instead.
