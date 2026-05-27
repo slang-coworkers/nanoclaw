@@ -1691,9 +1691,15 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
       }
     }, 35000);
     let proc: any;
+    // Empty CLAUDE_CONFIG_DIR means "use ccusage's host-default discovery"
+    // (single global call covering all detected agents). When set, scopes to
+    // that one coworker's Claude history.
+    const env: Record<string, string | undefined> = { ...process.env };
+    if (claudeConfigDir) env.CLAUDE_CONFIG_DIR = claudeConfigDir;
+    else delete env.CLAUDE_CONFIG_DIR;
     proc = exec(
       `npx ${args.join(' ')}`,
-      { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, CLAUDE_CONFIG_DIR: claudeConfigDir } },
+      { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env },
       (err, stdout) => {
         clearTimeout(timer);
         if (timedOut || err) {
@@ -1703,13 +1709,41 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
         try {
           const parsed = JSON.parse(stdout);
           const daily = Array.isArray(parsed.daily) ? parsed.daily : [];
-          resolve(daily.map(normalizeCcusageEntry));
+          // Global call (no scope) → don't filter by Claude-only; we want
+          // both Claude and Codex agent costs in the unified result.
+          // Per-coworker call → filter to Claude only (Codex is collected
+          // separately per-session via runCodexCcusage).
+          const normalize = claudeConfigDir ? normalizeCcusageEntry : normalizeCcusageEntryUnfiltered;
+          resolve(daily.map(normalize));
         } catch {
           resolve([]);
         }
       },
     );
   });
+}
+
+// Normaliser for the global ccusage call — keeps totals across all detected
+// agents (Claude + Codex + Gemini + …). Used by refreshCcusageCache's single
+// global call. Per-coworker normaliser (normalizeCcusageEntry) still filters
+// to Claude-only because per-coworker scope intentionally separates the
+// Claude side from the per-session-Codex side.
+function normalizeCcusageEntryUnfiltered(raw: Record<string, unknown>): CcusageDayEntry {
+  const date = (raw.date as string) || (raw.period as string) || '';
+  const modelsUsed = Array.isArray(raw.modelsUsed) ? (raw.modelsUsed as string[]) : [];
+  const inputTokens = (raw.inputTokens as number) || 0;
+  const outputTokens = (raw.outputTokens as number) || 0;
+  const cacheCreationTokens = (raw.cacheCreationTokens as number) || 0;
+  const cacheReadTokens = (raw.cacheReadTokens as number) || 0;
+  const totalTokens = (raw.totalTokens as number) || 0;
+  const totalCost = (raw.totalCost as number) || 0;
+  const rawBreakdowns = raw.modelBreakdowns as
+    | { modelName: string; inputTokens: number; outputTokens: number; cacheCreationTokens: number; cacheReadTokens: number; cost: number }[]
+    | undefined;
+  const modelBreakdowns: CcusageDayEntry['modelBreakdowns'] = Array.isArray(rawBreakdowns)
+    ? rawBreakdowns.map((mb) => ({ ...mb }))
+    : [];
+  return { date, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, totalTokens, totalCost, modelsUsed, modelBreakdowns };
 }
 
 /**
@@ -1851,6 +1885,15 @@ function mergeDailyEntries(allDays: CcusageDayEntry[][]): CcusageDayEntry[] {
 }
 
 async function refreshCcusageCache(): Promise<void> {
+  // Per-coworker ccusage refresh, but bounded:
+  //  - One Claude call per coworker (CLAUDE_CONFIG_DIR=<agDir>/.claude-shared, --since 30d)
+  //  - One Codex call per session that actually has rollout-*.jsonl (skip empty codex/ dirs)
+  //  - Concurrency cap = 4 to keep host load bounded
+  //  - Single 30-day window, period buckets derived locally
+  //
+  // Previously: 4 calls × 13 ag-dirs + 4 calls × 70 codex sessions = 332 npx subprocesses
+  // per refresh, never finishing before the next refresh kicked in. New shape on lego:
+  // 13 Claude + 15 Codex sessions-with-rollouts = ~28 sequential ccusage calls.
   const sessionsDir = join(getDataDir(), 'v2-sessions');
   if (!existsSync(sessionsDir)) return;
 
@@ -1871,10 +1914,76 @@ async function refreshCcusageCache(): Promise<void> {
     return;
   }
 
-  const today = ccusageSinceDate(0);
-  const week = ccusageSinceDate(7);
   const month = ccusageSinceDate(30);
+  const today1 = ccusageSinceDate(0);
+  const today7 = ccusageSinceDate(7);
+  const today30 = ccusageSinceDate(30);
+  const within = (entry: CcusageDayEntry, since: string) =>
+    !since || (entry.date && entry.date.replace(/-/g, '') >= since);
 
+  // Build the work list: one task per coworker for Claude, one task per
+  // session-with-codex-rollouts for Codex. We keep them as { agDir, kind, dir }
+  // tuples so concurrency-bounded execution can interleave both providers.
+  type Task = { agDir: string; kind: 'claude'; dir: string } | { agDir: string; kind: 'codex'; dir: string };
+  const tasks: Task[] = [];
+  for (const agDir of agDirs) {
+    const claudeShared = join(sessionsDir, agDir, '.claude-shared');
+    if (existsSync(join(claudeShared, 'projects'))) {
+      tasks.push({ agDir, kind: 'claude', dir: claudeShared });
+    }
+    let sessIds: string[] = [];
+    try {
+      sessIds = readdirSync(join(sessionsDir, agDir)).filter((s) => s.startsWith('sess-'));
+    } catch {
+      continue;
+    }
+    for (const sessId of sessIds) {
+      const cxHome = join(sessionsDir, agDir, sessId, 'codex');
+      // Skip if codex/ is just a scaffold with no rollouts — empty calls
+      // were the bulk of the old fan-out's wasted work.
+      let hasRollouts = false;
+      try {
+        const sessRoot = join(cxHome, 'sessions');
+        if (existsSync(sessRoot)) {
+          const stack = [sessRoot];
+          while (stack.length > 0 && !hasRollouts) {
+            const cur = stack.pop()!;
+            for (const e of readdirSync(cur, { withFileTypes: true })) {
+              if (e.isDirectory()) stack.push(join(cur, e.name));
+              else if (e.isFile() && e.name.startsWith('rollout-') && e.name.endsWith('.jsonl')) {
+                hasRollouts = true;
+                break;
+              }
+            }
+          }
+        }
+      } catch {
+        /* skip on read error */
+      }
+      if (hasRollouts) tasks.push({ agDir, kind: 'codex', dir: cxHome });
+    }
+  }
+
+  // Per-coworker accumulator
+  const perGroup = new Map<string, CcusageDayEntry[][]>();
+  for (const agDir of agDirs) perGroup.set(agDir, []);
+
+  // Bounded-concurrency runner (cap = 4)
+  const CONCURRENCY = 4;
+  let nextIdx = 0;
+  async function worker() {
+    while (true) {
+      const idx = nextIdx++;
+      if (idx >= tasks.length) return;
+      const t = tasks[idx];
+      const rows =
+        t.kind === 'claude' ? await runCcusage(t.dir, month) : await runCodexCcusage(t.dir, month);
+      perGroup.get(t.agDir)!.push(rows);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, tasks.length) }, worker));
+
+  // Build the cache: per-coworker merged daily, then combined.
   const result: CcusageCache = {
     '1d': { combined: [], byGroup: [] },
     '7d': { combined: [], byGroup: [] },
@@ -1882,82 +1991,31 @@ async function refreshCcusageCache(): Promise<void> {
     all: { combined: [], byGroup: [] },
     lastRefresh: Date.now(),
   };
-
-  const allByPeriod: {
-    '1d': CcusageDayEntry[][];
-    '7d': CcusageDayEntry[][];
-    '30d': CcusageDayEntry[][];
-    all: CcusageDayEntry[][];
-  } = { '1d': [], '7d': [], '30d': [], all: [] };
-
+  const allByPeriod: Record<'1d' | '7d' | '30d' | 'all', CcusageDayEntry[][]> = {
+    '1d': [],
+    '7d': [],
+    '30d': [],
+    all: [],
+  };
   for (const agDir of agDirs) {
-    const claudeShared = join(sessionsDir, agDir, '.claude-shared');
-    const hasClaude = existsSync(join(claudeShared, 'projects'));
+    const slices = perGroup.get(agDir)!;
+    if (slices.length === 0) continue;
+    const merged = mergeDailyEntries(slices);
+    if (merged.length === 0) continue;
     const groupName = nameMap.get(agDir) || agDir;
-
-    // --- Claude side (per-group via CLAUDE_CONFIG_DIR) ---
-    const [c1, c7, c30, cAll] = hasClaude
-      ? await Promise.all([
-          runCcusage(claudeShared, today),
-          runCcusage(claudeShared, week),
-          runCcusage(claudeShared, month),
-          runCcusage(claudeShared),
-        ])
-      : ([[], [], [], []] as CcusageDayEntry[][]);
-
-    // --- Codex side (per-session-dir via CODEX_HOME) ---
-    // Every session under this agent-group that used the codex provider has
-    // <agDir>/<sessId>/codex/ — sum across all of them so a coworker that switched
-    // between Claude and Codex, or is Codex-only, gets one merged row.
-    const codexHomes: string[] = [];
-    try {
-      for (const sessId of readdirSync(join(sessionsDir, agDir))) {
-        if (!sessId.startsWith('sess-')) continue;
-        const cxHome = join(sessionsDir, agDir, sessId, 'codex');
-        if (existsSync(cxHome)) codexHomes.push(cxHome);
-      }
-    } catch {
-      /* ag-dir removed mid-scan — ignore */
-    }
-
-    const cxByPeriod: Record<'1d' | '7d' | '30d' | 'all', CcusageDayEntry[][]> = {
-      '1d': [],
-      '7d': [],
-      '30d': [],
-      all: [],
-    };
-    for (const cxHome of codexHomes) {
-      const [cx1, cx7, cx30, cxAll] = await Promise.all([
-        runCodexCcusage(cxHome, today),
-        runCodexCcusage(cxHome, week),
-        runCodexCcusage(cxHome, month),
-        runCodexCcusage(cxHome),
-      ]);
-      cxByPeriod['1d'].push(cx1);
-      cxByPeriod['7d'].push(cx7);
-      cxByPeriod['30d'].push(cx30);
-      cxByPeriod.all.push(cxAll);
-    }
-
-    // --- Merge Claude + Codex into one row per period, drop the group entirely if silent. ---
-    const merged = {
-      '1d': mergeDailyEntries([c1, ...cxByPeriod['1d']]),
-      '7d': mergeDailyEntries([c7, ...cxByPeriod['7d']]),
-      '30d': mergeDailyEntries([c30, ...cxByPeriod['30d']]),
-      all: mergeDailyEntries([cAll, ...cxByPeriod.all]),
-    };
-    if (merged.all.length === 0) continue; // no activity at all — skip silent coworkers
-
-    allByPeriod['1d'].push(merged['1d']);
-    allByPeriod['7d'].push(merged['7d']);
-    allByPeriod['30d'].push(merged['30d']);
-    allByPeriod.all.push(merged.all);
-
-    for (const period of ['1d', '7d', '30d', 'all'] as const) {
-      result[period].byGroup.push({ groupId: agDir, groupName, daily: merged[period] });
-    }
+    const daily30 = merged.filter((e) => within(e, today30));
+    const daily7 = merged.filter((e) => within(e, today7));
+    const daily1 = merged.filter((e) => within(e, today1));
+    const dailyAll = merged.slice();
+    result['1d'].byGroup.push({ groupId: agDir, groupName, daily: daily1 });
+    result['7d'].byGroup.push({ groupId: agDir, groupName, daily: daily7 });
+    result['30d'].byGroup.push({ groupId: agDir, groupName, daily: daily30 });
+    result.all.byGroup.push({ groupId: agDir, groupName, daily: dailyAll });
+    allByPeriod['1d'].push(daily1);
+    allByPeriod['7d'].push(daily7);
+    allByPeriod['30d'].push(daily30);
+    allByPeriod.all.push(dailyAll);
   }
-
   result['1d'].combined = mergeDailyEntries(allByPeriod['1d']);
   result['7d'].combined = mergeDailyEntries(allByPeriod['7d']);
   result['30d'].combined = mergeDailyEntries(allByPeriod['30d']);
@@ -6163,6 +6221,22 @@ export async function handleRequest(
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // API: 30-day cost history (combined across all coworkers, per-day rows).
+  if (url.pathname === '/api/cost-history') {
+    if (!requireAuth(req, res)) return;
+    const dailyCosts = (ccusageCache['30d']?.combined || []).map((d) => ({
+      date: d.date,
+      totalCost: d.totalCost,
+      totalTokens: d.totalTokens,
+    }));
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+    });
+    res.end(JSON.stringify({ dailyCosts, lastRefresh: ccusageCache.lastRefresh }));
     return;
   }
 
