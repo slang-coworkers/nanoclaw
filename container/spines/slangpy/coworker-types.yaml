@@ -2,7 +2,7 @@ slangpy-common:
   description: "SlangPy spine — identity, repo layout."
   project: slangpy
   extends: base-common
-  skill-source: shader-slang/slang-skills@coworkers
+  skill-source: shader-slang/slang-skills@main
   identity: container/spines/slangpy/identity/engineer.md
   invariants: []
   context:
