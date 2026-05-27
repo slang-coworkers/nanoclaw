@@ -250,12 +250,19 @@ export function setUpstreamPortResolver(resolver: PortResolver): void {
  *
  * @param bindHost   Interface to bind on (docker bridge IP or 0.0.0.0)
  * @param listenPort Port containers connect to (MCP_PROXY_PORT)
+ * @param opts.tokenPath  Override path for the management-token file. Tests
+ *                        pass a tempdir path so a `vitest` run cannot clobber
+ *                        the production token at `<repo>/data/.mcp-management-token`.
  */
-export function startMcpAuthProxy(bindHost: string, listenPort: number): { stop: () => void } {
+export function startMcpAuthProxy(
+  bindHost: string,
+  listenPort: number,
+  opts: { tokenPath?: string } = {},
+): { stop: () => void } {
   managementToken = crypto.randomBytes(32).toString('hex');
 
   // Write token to runtime file so the dashboard process can read it.
-  const tokenPath = path.join(process.cwd(), 'data', '.mcp-management-token');
+  const tokenPath = opts.tokenPath ?? path.join(process.cwd(), 'data', '.mcp-management-token');
   try {
     fs.mkdirSync(path.dirname(tokenPath), { recursive: true });
     fs.writeFileSync(tokenPath, managementToken, { mode: 0o600 });
