@@ -6,15 +6,39 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 176 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 95 |
-| `nv-slang` | slang project spine, skills, workflows | 58 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 20 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 182 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 100 |
+| `nv-slang` | slang project spine, skills, workflows | 60 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 21 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 17 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-05-27
+
+### nv-main (6 PRs)
+- **#475** `fix(webhook): authenticate the 👀 reaction with GH_TOKEN`
+- **#477** `show-transcript: sort by last activity + search + activity-window filter + split claude/codex`
+- **#478** `fetch-skills: retry transient gh skill install failures + surface real stderr`
+- **#481** `codex hooks → dashboard parity (5 lifecycle events) + ncl introspection`
+- **#482** `codex hooks: also wire pr-auto-map.sh on PostToolUse(Bash)`
+- **#486** `fix(mcp-auth-proxy): make tokenPath overridable so tests do not clobber prod`
+
+### nv-dashboard (5 PRs)
+- **#476** `fix(dashboard): surface marker-only overlays in coworker editor`
+- **#483** `fix(dashboard): show hidden sessions in the Hidden Sessions expander`
+- **#484** `fix(dashboard): on-demand ccusage refresh + subprocess cleanup`
+- **#488** `fix(dashboard): bound ccusage fan-out — fix Overview $0 + memory bloat`
+- **#489** `fix(dashboard): wire cost refresh to Overview tab, not Infra`
+
+### nv-slang (2 PRs)
+- **#479** `slang spine: pin skill-source to @main (slang-skills coworkers branch merged upstream)`
+- **#485** `feat(slang-fix-issue): add simplify step before commit`
+
+### nv-slangpy (1 PRs)
+- **#480** `slangpy spine: pin skill-source to @main (slang-skills coworkers branch merged upstream)`
 
 ## 📅 2026-05-26
 
