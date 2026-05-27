@@ -62,10 +62,9 @@ const sessionsByGroup = new Map<string, Session[]>();
 for (const g of groups) {
   const rows = db
     .prepare<[string], Session>(
-      'SELECT id, agent_group_id, thread_id, created_at FROM sessions WHERE agent_group_id = ? ORDER BY created_at DESC' +
-        (LIMIT_PER_GROUP > 0 ? ' LIMIT ?' : ''),
+      'SELECT id, agent_group_id, thread_id, created_at FROM sessions WHERE agent_group_id = ? ORDER BY created_at DESC',
     )
-    .all(g.id, ...(LIMIT_PER_GROUP > 0 ? [LIMIT_PER_GROUP as unknown as string] : []));
+    .all(g.id);
   sessionsByGroup.set(g.id, rows);
 }
 const routesBySession = new Map<string, SdkRoute[]>();
@@ -78,6 +77,63 @@ for (const r of db
   routesBySession.get(r.nanoclaw_session_id)!.push(r);
 }
 db.close();
+
+type Activity = { claude: number; codex: number; max: number };
+
+function activityFor(group: Group, sess: Session): Activity {
+  let claude = 0;
+  for (const r of routesBySession.get(sess.id) ?? []) {
+    if (r.last_seen_at > claude) claude = r.last_seen_at;
+  }
+  let codex = 0;
+  const codexDir = path.join(SESSIONS_ROOT, group.id, sess.id, 'codex/sessions');
+  if (fs.existsSync(codexDir)) {
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+          const m = fs.statSync(full).mtimeMs;
+          if (m > codex) codex = m;
+        }
+      }
+    };
+    walk(codexDir);
+  }
+  let max = Math.max(claude, codex);
+  if (max === 0) {
+    const t = Date.parse(sess.created_at);
+    if (!Number.isNaN(t)) max = t;
+  }
+  return { claude, codex, max };
+}
+
+function fmtAbs(ms: number): string {
+  if (!ms) return '';
+  return new Date(ms).toISOString().replace('T', ' ').replace(/\..+$/, 'Z');
+}
+
+function fmtAgo(ms: number): string {
+  if (!ms) return 'never';
+  const diff = Date.now() - ms;
+  if (diff < 0) return 'just now';
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return sec + 's ago';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return min + 'm ago';
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return hr + 'h ago';
+  const day = Math.floor(hr / 24);
+  return day + 'd ago';
+}
+
+for (const g of groups) {
+  const rows = sessionsByGroup.get(g.id) ?? [];
+  const decorated = rows.map((s) => ({ s, t: activityFor(g, s).max }));
+  decorated.sort((a, b) => b.t - a.t);
+  const sorted = decorated.map((d) => d.s);
+  sessionsByGroup.set(g.id, LIMIT_PER_GROUP > 0 ? sorted.slice(0, LIMIT_PER_GROUP) : sorted);
+}
 
 function htmlEscape(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -133,6 +189,10 @@ const PAGE_CSS = `
   .claude { background: #dbeafe; }
   .codex  { background: #fef3c7; }
   .empty  { color: #aaa; font-style: italic; }
+  .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0 8px; }
+  .controls input[type="search"] { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 280px; font-size: 13px; }
+  .controls select { padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+  .controls label { font-size: 13px; color: #555; }
 </style>
 `;
 
@@ -140,18 +200,34 @@ let totalClaude = 0;
 let totalCodex = 0;
 let totalFailed = 0;
 
-const groupSummaries: { group: Group; sessionCount: number; claudeCount: number; codexCount: number }[] = [];
+const groupSummaries: {
+  group: Group;
+  sessionCount: number;
+  claudeCount: number;
+  codexCount: number;
+  claudeActivity: number;
+  codexActivity: number;
+  lastActivity: number;
+}[] = [];
 
 for (const group of groups) {
   const sessions = sessionsByGroup.get(group.id) ?? [];
   if (sessions.length === 0) {
-    groupSummaries.push({ group, sessionCount: 0, claudeCount: 0, codexCount: 0 });
+    groupSummaries.push({
+      group,
+      sessionCount: 0,
+      claudeCount: 0,
+      codexCount: 0,
+      claudeActivity: 0,
+      codexActivity: 0,
+      lastActivity: 0,
+    });
     continue;
   }
   const groupOutDir = path.join(OUT_DIR, group.folder);
   fs.mkdirSync(groupOutDir, { recursive: true });
 
-  const sessionEntries: { sess: Session; claudeIds: string[]; codexFiles: string[] }[] = [];
+  const sessionEntries: { sess: Session; claudeIds: string[]; codexFiles: string[]; activity: Activity }[] = [];
   let groupClaude = 0;
   let groupCodex = 0;
 
@@ -189,7 +265,7 @@ for (const group of groups) {
         console.error(`codex render failed: ${cfile}: ${res.error}`);
       }
     }
-    sessionEntries.push({ sess, claudeIds, codexFiles: codexRendered });
+    sessionEntries.push({ sess, claudeIds, codexFiles: codexRendered, activity: activityFor(group, sess) });
 
     const sessHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${group.name} · ${sess.id}</title>${PAGE_CSS}</head><body>
 <p><a href="../index.html">← ${group.name}</a> · <a href="../../index.html">All groups</a></p>
@@ -224,38 +300,132 @@ ${
   const groupHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${group.name} sessions</title>${PAGE_CSS}</head><body>
 <p><a href="../index.html">← All groups</a></p>
 <h1>${group.name}</h1>
-<p class="meta">${sessions.length} sessions · ${groupClaude} Claude transcripts · ${groupCodex} Codex transcripts</p>
-<ul>
+<p class="meta">${sessions.length} sessions · ${groupClaude} Claude transcripts · ${groupCodex} Codex transcripts · sorted by last activity</p>
+<div class="controls">
+  <input type="search" id="filter" placeholder="filter by session id or thread…" />
+  <label>activity within
+    <select id="window">
+      <option value="0" selected>any time</option>
+      <option value="5">5 min</option>
+      <option value="15">15 min</option>
+      <option value="60">1 hour</option>
+      <option value="360">6 hours</option>
+      <option value="1440">24 hours</option>
+    </select>
+  </label>
+  <span class="meta" id="visible-count"></span>
+</div>
+<ul id="session-list">
 ${sessionEntries
   .map(
-    (e) => `<li><a href="${e.sess.id}/index.html">${e.sess.id}</a>
-  <span class="meta">${e.sess.created_at}${e.sess.thread_id ? ` · ${htmlEscape(e.sess.thread_id)}` : ''}</span>
+    (e) => `<li data-text="${htmlEscape((e.sess.id + ' ' + (e.sess.thread_id ?? '')).toLowerCase())}" data-activity="${e.activity.max}"><a href="${e.sess.id}/index.html">${e.sess.id}</a>
+  <span class="meta">claude ${fmtAgo(e.activity.claude)} · codex ${fmtAgo(e.activity.codex)} · created ${e.sess.created_at}${e.sess.thread_id ? ` · ${htmlEscape(e.sess.thread_id)}` : ''}</span>
   <span class="badge claude">${e.claudeIds.length} claude</span>
   <span class="badge codex">${e.codexFiles.length} codex</span></li>`,
   )
   .join('\n')}
 </ul>
+<script>
+(function(){
+  var filter = document.getElementById('filter');
+  var win = document.getElementById('window');
+  var count = document.getElementById('visible-count');
+  var items = Array.prototype.slice.call(document.querySelectorAll('#session-list li'));
+  function apply(){
+    var q = filter.value.trim().toLowerCase();
+    var minutes = parseInt(win.value, 10) || 0;
+    var cutoff = minutes ? Date.now() - minutes * 60 * 1000 : 0;
+    var shown = 0;
+    items.forEach(function(li){
+      var matchText = !q || li.getAttribute('data-text').indexOf(q) !== -1;
+      var matchTime = !cutoff || parseInt(li.getAttribute('data-activity'), 10) >= cutoff;
+      var on = matchText && matchTime;
+      li.style.display = on ? '' : 'none';
+      if (on) shown++;
+    });
+    count.textContent = shown + ' / ' + items.length + ' shown';
+  }
+  filter.addEventListener('input', apply);
+  win.addEventListener('change', apply);
+  apply();
+})();
+</script>
 </body></html>`;
   fs.writeFileSync(path.join(groupOutDir, 'index.html'), groupHtml);
 
-  groupSummaries.push({ group, sessionCount: sessions.length, claudeCount: groupClaude, codexCount: groupCodex });
+  const groupClaudeActivity = sessionEntries.reduce((m, e) => Math.max(m, e.activity.claude), 0);
+  const groupCodexActivity = sessionEntries.reduce((m, e) => Math.max(m, e.activity.codex), 0);
+  const groupLastActivity = Math.max(groupClaudeActivity, groupCodexActivity);
+  groupSummaries.push({
+    group,
+    sessionCount: sessions.length,
+    claudeCount: groupClaude,
+    codexCount: groupCodex,
+    claudeActivity: groupClaudeActivity,
+    codexActivity: groupCodexActivity,
+    lastActivity: groupLastActivity,
+  });
   console.log(`${group.name}: ${sessions.length} sessions, ${groupClaude} claude, ${groupCodex} codex`);
 }
 
+groupSummaries.sort((a, b) => b.lastActivity - a.lastActivity);
+
 const topHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>NanoClaw transcripts</title>${PAGE_CSS}</head><body>
 <h1>NanoClaw transcripts</h1>
-<p class="meta">${groupSummaries.length} agent groups · ${totalClaude} Claude transcripts · ${totalCodex} Codex transcripts${totalFailed ? ` · ${totalFailed} render failures` : ''}</p>
+<p class="meta">${groupSummaries.length} agent groups · ${totalClaude} Claude transcripts · ${totalCodex} Codex transcripts${totalFailed ? ` · ${totalFailed} render failures` : ''} · sorted by last activity</p>
+<div class="controls">
+  <input type="search" id="filter" placeholder="filter by group name or folder…" />
+  <label>activity within
+    <select id="window">
+      <option value="0" selected>any time</option>
+      <option value="5">5 min</option>
+      <option value="15">15 min</option>
+      <option value="60">1 hour</option>
+      <option value="360">6 hours</option>
+      <option value="1440">24 hours</option>
+    </select>
+  </label>
+  <span class="meta" id="visible-count"></span>
+</div>
+<div id="group-list">
 ${groupSummaries
   .map(
     (s) =>
-      `<a class="group-card" href="${s.group.folder}/index.html">
+      `<a class="group-card" data-text="${htmlEscape((s.group.name + ' ' + s.group.folder).toLowerCase())}" data-activity="${s.lastActivity}" href="${s.group.folder}/index.html">
   <strong>${s.group.name}</strong>
-  <span class="meta">${s.group.folder} · ${s.sessionCount} sessions</span>
+  <span class="meta">${s.group.folder} · ${s.sessionCount} sessions · claude ${fmtAgo(s.claudeActivity)} · codex ${fmtAgo(s.codexActivity)}</span>
   <span class="badge claude">${s.claudeCount} claude</span>
   <span class="badge codex">${s.codexCount} codex</span>
 </a>`,
   )
   .join('\n')}
+</div>
+<script>
+(function(){
+  var filter = document.getElementById('filter');
+  var win = document.getElementById('window');
+  var count = document.getElementById('visible-count');
+  var items = Array.prototype.slice.call(document.querySelectorAll('#group-list .group-card'));
+  function apply(){
+    var q = filter.value.trim().toLowerCase();
+    var minutes = parseInt(win.value, 10) || 0;
+    var cutoff = minutes ? Date.now() - minutes * 60 * 1000 : 0;
+    var shown = 0;
+    items.forEach(function(card){
+      var matchText = !q || card.getAttribute('data-text').indexOf(q) !== -1;
+      var act = parseInt(card.getAttribute('data-activity'), 10) || 0;
+      var matchTime = !cutoff || act >= cutoff;
+      var on = matchText && matchTime;
+      card.style.display = on ? '' : 'none';
+      if (on) shown++;
+    });
+    count.textContent = shown + ' / ' + items.length + ' shown';
+  }
+  filter.addEventListener('input', apply);
+  win.addEventListener('change', apply);
+  apply();
+})();
+</script>
 </body></html>`;
 fs.writeFileSync(path.join(OUT_DIR, 'index.html'), topHtml);
 
