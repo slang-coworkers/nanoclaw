@@ -108,6 +108,8 @@ uses:
 
    If verify fails after **2 independent fix attempts** without a watchdog event (e.g., test fails but build succeeds), the same blocked-Fix Report rule applies.
 
+6b. **Simplify** {#simplify} — Run `/code-review medium`, apply suggestions, re-verify, then proceed to Step 7.
+
 7. **Push + draft PR** {#draft-pr} — Once verify is green, commit and open the draft PR:
 
    ```bash
