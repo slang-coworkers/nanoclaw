@@ -3158,6 +3158,8 @@ document.querySelectorAll('.admin-pill').forEach((pill) => {
     document.getElementById(panelId).classList.add('active');
     const name = panelId.replace('admin-', '');
     adminState.panel = name;
+    // Signal visibility for expensive operations (ccusage refresh)
+    fetch(`/api/admin-infra-visible?visible=${name === 'infra'}`);
     if (!adminState.loaded.has(name)) loadAdminPanel(name);
   });
 });

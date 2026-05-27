@@ -1683,11 +1683,20 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
     // the call to the lowest-common-denominator flags that still work.
     const args = ['ccusage', 'daily', '--json', '--offline'];
     if (since) args.push('--since', since);
-    exec(
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      if (proc) {
+        proc.kill('SIGKILL');
+      }
+    }, 35000);
+    let proc: any;
+    proc = exec(
       `npx ${args.join(' ')}`,
       { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, CLAUDE_CONFIG_DIR: claudeConfigDir } },
       (err, stdout) => {
-        if (err) {
+        clearTimeout(timer);
+        if (timedOut || err) {
           resolve([]);
           return;
         }
@@ -1771,11 +1780,20 @@ function runCodexCcusage(codexHome: string, since?: string): Promise<CcusageDayE
   return new Promise((resolve) => {
     const args = ['ccusage', 'codex', 'daily', '--json', '--offline'];
     if (since) args.push('--since', since);
-    exec(
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      if (proc) {
+        proc.kill('SIGKILL');
+      }
+    }, 35000);
+    let proc: any;
+    proc = exec(
       `npx ${args.join(' ')}`,
       { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, CODEX_HOME: codexHome } },
       (err, stdout) => {
-        if (err) {
+        clearTimeout(timer);
+        if (timedOut || err) {
           resolve([]);
           return;
         }
@@ -1947,13 +1965,51 @@ async function refreshCcusageCache(): Promise<void> {
 
   ccusageCache = result;
 }
-setTimeout(() => {
+
+// Track which client (if any) is actively viewing the Admin > Infra screen
+let ccusageRefreshClient: any = null;
+let ccusageRefreshTimer: any = null;
+
+function startCcusageRefresh(clientSocket: any): void {
+  // Only one client can trigger refreshes at a time
+  if (ccusageRefreshClient === clientSocket) return;
+
+  // Stop previous refresh
+  if (ccusageRefreshTimer) {
+    clearInterval(ccusageRefreshTimer);
+    ccusageRefreshTimer = null;
+  }
+  if (ccusageRefreshClient && ccusageRefreshClient !== clientSocket) {
+    ccusageRefreshClient = null;
+  }
+
+  // Set new client
+  ccusageRefreshClient = clientSocket;
+
+  // Initial refresh immediately
   refreshCcusageCache();
-}, 5000);
-const ccusageTimer = setInterval(() => {
-  refreshCcusageCache();
-}, 120000);
-ccusageTimer.unref?.();
+
+  // Then refresh every 60 seconds only while this client is active
+  ccusageRefreshTimer = setInterval(() => {
+    if (ccusageRefreshClient === clientSocket) {
+      refreshCcusageCache();
+    } else {
+      clearInterval(ccusageRefreshTimer);
+      ccusageRefreshTimer = null;
+    }
+  }, 60000);
+  ccusageRefreshTimer.unref?.();
+}
+
+function stopCcusageRefresh(clientSocket: any): void {
+  if (ccusageRefreshClient === clientSocket) {
+    ccusageRefreshClient = null;
+    if (ccusageRefreshTimer) {
+      clearInterval(ccusageRefreshTimer);
+      ccusageRefreshTimer = null;
+    }
+  }
+}
 
 // ---------- 24h message activity cache ----------
 interface ActivityBucket {
@@ -2312,7 +2368,8 @@ function refreshContainerStatus(): void {
 
 // Initial refresh + periodic update
 refreshContainerStatus();
-setInterval(refreshContainerStatus, 5000);
+const containerStatusTimer = setInterval(refreshContainerStatus, 5000);
+containerStatusTimer.unref?.();
 
 /** Check if a group folder has a running container (from cache). */
 function hasRunningContainer(folder: string): boolean {
@@ -6092,6 +6149,20 @@ export async function handleRequest(
     if (!requireAuth(req, res)) return;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(activityDataCache || []));
+    return;
+  }
+
+  // API: signal Admin > Infra screen visibility (start/stop ccusage refresh)
+  if (url.pathname === '/api/admin-infra-visible') {
+    if (!requireAuth(req, res)) return;
+    const isVisible = url.searchParams.get('visible') === 'true';
+    if (isVisible) {
+      startCcusageRefresh(req.socket);
+    } else {
+      stopCcusageRefresh(req.socket);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
