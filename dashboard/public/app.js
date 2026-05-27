@@ -3158,8 +3158,9 @@ document.querySelectorAll('.admin-pill').forEach((pill) => {
     document.getElementById(panelId).classList.add('active');
     const name = panelId.replace('admin-', '');
     adminState.panel = name;
-    // Signal visibility for expensive operations (ccusage refresh)
-    fetch(`/api/admin-infra-visible?visible=${name === 'infra'}`);
+    // Signal visibility for expensive operations (ccusage refresh).
+    // Cost is shown on Overview, not Infra — gate on Overview being open.
+    fetch(`/api/admin-infra-visible?visible=${name === 'overview'}`);
     if (!adminState.loaded.has(name)) loadAdminPanel(name);
   });
 });
@@ -3186,6 +3187,10 @@ function loadAdminPanel(name) {
 // separate Metrics sections (Token Usage, 24h Activity, Users, Channels) inline below.
 // Loading the Overview panel fires all of them in parallel.
 async function loadAdminOverview() {
+  // Cold-start: Overview is the default landing tab, but the tab-switch
+  // handler hasn't fired yet. Ping visibility so ccusage refresh starts
+  // and the cost panel populates within ~30s instead of staying $0.
+  fetch(`/api/admin-infra-visible?visible=true`);
   const el = document.getElementById('overview-summary');
   try {
     const res = await fetch('/api/overview');
