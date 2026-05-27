@@ -1452,7 +1452,8 @@ cat > ~/.codex/hooks.json <<'HOOKS_EOF'
       { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh PreToolUse", "timeout": 5 }] }
     ],
     "PostToolUse": [
-      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh PostToolUse", "timeout": 5 }] }
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh PostToolUse", "timeout": 5 }] },
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "bash /app/hooks/pr-auto-map.sh", "timeout": 5 }] }
     ],
     "Stop": [
       { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh Stop", "timeout": 5 }] }
