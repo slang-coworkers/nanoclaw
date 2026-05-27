@@ -4509,14 +4509,27 @@ export async function handleRequest(
               const origins = traitOrigin.get(trait);
               if (origins) for (const origin of origins) inheritedFrom.add(origin);
             }
-            return inheritedFrom.size > 0
-              ? {
-                  name: o.name,
-                  description: o.description,
-                  appliesToWorkflows: o.appliesToWorkflows,
-                  inheritedFrom: [...inheritedFrom],
-                }
-              : null;
+            if (inheritedFrom.size > 0) {
+              return {
+                name: o.name,
+                description: o.description,
+                appliesToWorkflows: o.appliesToWorkflows,
+                inheritedFrom: [...inheritedFrom],
+              };
+            }
+            // Marker-only / opt-in overlays (empty applies-to) are activated
+            // by listing them in agent_groups.overlays, not by workflow
+            // matching. Surface them so the editor can toggle them.
+            if (o.appliesToWorkflows.length === 0 && o.appliesToTraits.length === 0) {
+              return {
+                name: o.name,
+                description: o.description,
+                appliesToWorkflows: o.appliesToWorkflows,
+                inheritedFrom: [],
+                optInOnly: true,
+              };
+            }
+            return null;
           })
           .filter((o): o is NonNullable<typeof o> => o !== null);
 
