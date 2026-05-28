@@ -89,12 +89,15 @@ slang-fixer:
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
 
 slang-reviewer:
-  description: "Slang PR reviewer — runs the production claude-code-action@v1 + .github/workflows/claude-pr-review.yml protocol locally against a PR, branch, or patch, in parallel with Devin Review. Read-only: produces a final-review.md (Reviewer A) and devin-flags.md (Reviewer B), returned to the caller via send_file. Wraps the same six .claude/agents/* subagents, REVIEW.md protocol, system-prompt append, and deepwiki MCP that production sends; tool allowlist deliberately narrows to read-only. Used for PR review without writing back to GitHub."
+  description: "Slang PR reviewer — runs the production claude-code-action@v1 + .github/workflows/claude-pr-review.yml protocol locally against a PR, branch, or patch, in parallel with Devin Review. Mirrors production end-to-end: cleanup prior bot reviews → run inner CLI → post merged review as COMMENT-state with prior bot reviews minimized OUTDATED first. The /slang-pr-review workflow gates the post-back step on the orchestrator's <github-post-authorized /> marker (set when a human tagged @nv-slang-bot on the PR). Without that marker — chat invocation, internal coworker handoff, scheduled task — the workflow returns via send_file only. Bot reviews are always event=COMMENT, never APPROVE/CHANGES_REQUESTED; post-review.sh's safety net dismisses any non-COMMENT review the inner CLI accidentally submits. Cleanup targets nv-slang-bot only, so coexists with production's claude-pr-review.yml auto-reviews."
   project: slang
   extends: slang-reader
   invariants:
     # Reviewers enforce code-change rules during PR review.
     - container/spines/slang/invariants/code-changes.md
+    # Review-output rules — only loaded for slang-reviewer (not slang-fixer
+    # or other writers, who don't post reviews).
+    - container/spines/slang/invariants/review-output.md
   skills:
     - slang-pr-review-runner
   workflows:

@@ -150,9 +150,13 @@ If `COWORKER` is non-empty, send a coworker dispatch via the MCP tool (NOT inlin
 ```
 mcp__nanoclaw__send_message(
   to: "{coworker}",
-  text: "GitHub PR mention from @{commenter} on {repo}#{issue_number}.\n\nTask: {task text}\n\nPR: {comment_url}\nBranch: {branch}\n\nWhen you reply on GitHub, edit comment id {COMMENT_ID} (path /workspace/agent/.gh-comments/{repo}-{issue_number}.id) — do not POST a new comment."
+  text: "GitHub PR mention from @{commenter} on {repo}#{issue_number}.\n\nTask: {task text}\n\nPR: {comment_url}\nBranch: {branch}\n\nWhen you reply on GitHub, edit comment id {COMMENT_ID} (path /workspace/agent/.gh-comments/{repo}-{issue_number}.id) — do not POST a new comment.\n\n<github-post-authorized />\nREPO={repo}\nPR={issue_number}\nCOMMENT_ID={comment_id}\nCOMMENTER={commenter}"
 )
 ```
+
+The `<github-post-authorized />` marker authorizes the receiving coworker's workflow to post the result back to GitHub on its own. The marker is **mandatory for `@nv-slang-bot` comment dispatches** because the human explicitly tagged the bot — that's the user's authorization for the bot to reply on the PR. The structured `REPO=` / `PR=` / `COMMENT_ID=` / `COMMENTER=` lines after the marker are parseable by the receiving workflow (`grep -oE` patterns); keep the format byte-exact.
+
+For dispatches that are NOT triggered by an `@nv-slang-bot` mention (e.g. internal coworker handoffs, scheduled tasks, chat invocations) **do not include the marker**. Receiving workflows treat its absence as "return via send_file only, do not post." This preserves the contract: the bot only posts to GitHub when a human invited it.
 
 Then PATCH your TODO comment so the reviewer sees the handoff:
 
