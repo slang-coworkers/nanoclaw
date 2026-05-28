@@ -18,6 +18,12 @@ Two delegation patterns — different lifecycles:
 - `instructions` is written to `groups/<name>/.instructions.md` and appended to its CLAUDE.md after the typed spine on every wake. Cover: role, who it takes tasks from (you, by name), how it reports back. Don't restate base behavior or its typed-spine skills — already loaded.
 - **Fire-and-forget:** call returns immediately. Messages you send queue until the container is up.
 
+### Fan-out: N independent items → N messages
+
+When delegating N items to the same coworker that don't depend on each other (multiple issues, PRs, files, questions), emit **N separate `<message to="<name>">` blocks** in your final response — one per item. Each lands as its own sub-session on the recipient, runs in parallel, and reports back independently.
+
+Pack multiple items into a single message **only when they must be handled together** — same PR, ordered dependency, shared context. Say so explicitly: *"bundle these into one PR"* or *"do A before B."* A single blob of prose listing several tasks defaults to sequential, single-threaded handling on the recipient — almost never what you want for parallelizable work.
+
 ### Build / compile / install — delegate to `Agent`, never run inline
 
 For cmake, make, cargo, pip install, npm install, or any other compilation: use `Agent`. Builds produce large output that pollutes context. Subagent runs synchronously and returns a clean summary:
