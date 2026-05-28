@@ -12,6 +12,8 @@ import {
   GITHUB_WEBHOOK_BOT_MENTION,
   GITHUB_WEBHOOK_PORT,
   GITHUB_WEBHOOK_SECRET,
+  INSTANCE_FORWARD_TARGETS,
+  INSTANCE_SLUG,
   INTERNAL_REGISTER_SECRET,
 } from './config.js';
 import { log } from './log.js';
@@ -25,106 +27,10 @@ import { handleRegisterPr } from './modules/pr-mapping/register-endpoint.js';
 import { deliverGitHubIssueOpened, deliverGitHubMention } from './webhook-github.js';
 
 const MAX_BODY_SIZE = 512 * 1024; // 512 KB
-const FANOUT_HEADER = 'x-webhook-fanout';
 
 export interface GitHubWebhookServerHandle {
   server: Server;
   stop(): Promise<void>;
-}
-
-/**
- * Forward an authenticated webhook delivery to peer instances. Set via env var
- * WEBHOOK_FANOUT_URLS as a comma-separated list of `URL|SECRET` pairs (the
- * peer's GITHUB_WEBHOOK_SECRET, used to re-sign the body so the receiver's
- * existing HMAC check passes). If `|SECRET` is omitted, falls back to this
- * instance's GITHUB_WEBHOOK_SECRET (only useful when peers share a secret).
- *
- * Used to share App-webhook deliveries across instances when only one URL is
- * registered with the App but multiple instances need to react. Fire-and-
- * forget: failures are logged but never block the response to GitHub.
- */
-function fanOutWebhook(rawBody: string, headers: { event: string; delivery: string }): void {
-  const list = (process.env.WEBHOOK_FANOUT_URLS ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-  if (list.length === 0) return;
-
-  for (const entry of list) {
-    const [url, peerSecret] = entry.split('|', 2);
-    const secret = peerSecret || GITHUB_WEBHOOK_SECRET;
-    if (!url || !secret) {
-      log.warn('github-webhook: fan-out entry missing url or secret', { entry: url });
-      continue;
-    }
-    const peerSig = `sha256=${crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')}`;
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-GitHub-Event': headers.event,
-        'X-GitHub-Delivery': headers.delivery,
-        'X-Hub-Signature-256': peerSig,
-        [FANOUT_HEADER]: '1',
-      },
-      body: rawBody,
-    })
-      .then((r) => {
-        if (!r.ok) {
-          log.warn('github-webhook: fan-out non-OK', { url, status: r.status });
-        }
-      })
-      .catch((err: unknown) => {
-        log.warn('github-webhook: fan-out failed', { url, error: String(err) });
-      });
-  }
-}
-
-/**
- * Post a 👀 reaction on the triggering comment so the human sees their
- * @mention was received. Opt-in via env var `GITHUB_WEBHOOK_REACT_ON_RECEIPT=1`,
- * defaults off.
- *
- * Auth: the host process calls api.github.com directly (not through OneCLI —
- * that proxy only fires for outbound traffic from agent containers). It uses
- * `GH_TOKEN` from the environment, which the existing refresh cron writes
- * every 30 min from a GitHub App installation token. Without that token we
- * skip with a warn so a missing-credential install doesn't flood logs with
- * 401s.
- *
- * Fire-and-forget — never blocks the 200 OK to GitHub. Failures (network,
- * non-OK, already-reacted 422) are warn-logged and swallowed.
- */
-export async function postEyesReaction(repo: string, eventType: string, commentId: number): Promise<void> {
-  if (process.env.GITHUB_WEBHOOK_REACT_ON_RECEIPT !== '1') return;
-  if (!repo || !commentId) return;
-
-  const token = process.env.GH_TOKEN;
-  if (!token) {
-    log.warn('github-webhook: eyes reaction skipped (GH_TOKEN not set)', { repo });
-    return;
-  }
-
-  // Endpoint differs by event type — pull_request_review_comment uses /pulls/comments,
-  // every other comment-shaped event uses /issues/comments.
-  const sub = eventType === 'pull_request_review_comment' ? 'pulls' : 'issues';
-  const url = `https://api.github.com/repos/${repo}/${sub}/comments/${commentId}/reactions`;
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `token ${token}`,
-        Accept: 'application/vnd.github+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ content: 'eyes' }),
-    });
-    if (!res.ok && res.status !== 200 && res.status !== 201) {
-      log.warn('github-webhook: eyes reaction non-OK', { url, status: res.status });
-    }
-  } catch (err) {
-    log.warn('github-webhook: eyes reaction failed', { url, error: String(err) });
-  }
 }
 
 function writeJson(res: ServerResponse, status: number, payload: Record<string, unknown>): void {
@@ -174,6 +80,16 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     log.warn('GITHUB_WEBHOOK_SECRET not set — webhook server will reject all requests');
   }
 
+  // Canonical-instance health check: prod is the only entry point for the
+  // App webhook, so an empty INSTANCE_FORWARD_TARGETS means peer instances
+  // (lego, etc.) will never receive any traffic. Loud warn at startup so
+  // a misconfig is visible before someone notices missing 👀 reactions.
+  if (INSTANCE_SLUG === 'prod' && Object.keys(INSTANCE_FORWARD_TARGETS).length === 0) {
+    log.warn(
+      'github-webhook: canonical instance has empty INSTANCE_FORWARD_TARGETS — peer instances will receive no traffic',
+    );
+  }
+
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     if (req.method === 'POST' && req.url === '/internal/register-pr') {
       await handleRegisterPr(req, res, INTERNAL_REGISTER_SECRET);
@@ -221,16 +137,6 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
         writeJson(res, 401, { error: 'invalid signature' });
         return;
       }
-    }
-
-    // Fan-out to peer instances. Skip if this request is itself a fan-out
-    // delivery (avoids loops when peers reciprocate by mistake) or a
-    // peer-forward (those are already targeted, not broadcast).
-    if (!isPeerForward && req.headers[FANOUT_HEADER] !== '1') {
-      fanOutWebhook(rawBody, {
-        event: String(eventType),
-        delivery: String(req.headers['x-github-delivery'] ?? ''),
-      });
     }
 
     let payload: Record<string, unknown>;
@@ -333,17 +239,6 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       eventType: String(eventType),
       deliveryId: String(req.headers['x-github-delivery'] ?? ''),
     });
-
-    // 👀 acknowledgement — once the mention has been queued for local
-    // delivery, post an "eyes" reaction on the triggering comment so the
-    // human can see their @mention was received and is being worked on.
-    // Skipped when we forwarded the event to a peer (the receiving
-    // coworker on the other side will post the eyes itself, per its
-    // github skill's Step 0). Fire-and-forget; failures must never block
-    // the 200 OK we owe GitHub.
-    if (outcome === 'local') {
-      void postEyesReaction(repoFullName, eventType as string, commentId);
-    }
 
     writeJson(res, 200, { ok: true, outcome });
   });
