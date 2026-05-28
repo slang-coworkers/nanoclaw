@@ -239,6 +239,7 @@ This project uses pnpm with `minimumReleaseAge: 4320` (3 days) in `pnpm-workspac
 | [docs/v1-to-v2-changes.md](docs/v1-to-v2-changes.md) | v1→v2 architecture diff |
 | [docs/migration-dev.md](docs/migration-dev.md) | Migration development guide |
 | [docs/lego-coworker-workflows.md](docs/lego-coworker-workflows.md) | Lego coworker architecture and workflow contribution |
+| [docs/cross-instance-routing.md](docs/cross-instance-routing.md) | GitHub webhook routing across multiple NanoClaw instances: canonical router, `pr_session_mappings`, peer forwarding, the `<github-post-authorized />` post-back marker |
 
 ## Container Build Cache
 
