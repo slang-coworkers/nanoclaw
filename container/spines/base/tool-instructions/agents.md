@@ -18,11 +18,23 @@ Two delegation patterns — different lifecycles:
 - `instructions` is written to `groups/<name>/.instructions.md` and appended to its CLAUDE.md after the typed spine on every wake. Cover: role, who it takes tasks from (you, by name), how it reports back. Don't restate base behavior or its typed-spine skills — already loaded.
 - **Fire-and-forget:** call returns immediately. Messages you send queue until the container is up.
 
-### Fan-out: N independent items → N messages
+### Fan-out: N independent items → N messages, N fresh threads
 
-When delegating N items to the same coworker that don't depend on each other (multiple issues, PRs, files, questions), emit **N separate `<message to="<name>">` blocks** in your final response — one per item. Each lands as its own sub-session on the recipient, runs in parallel, and reports back independently.
+When delegating N items to the same coworker that don't depend on each other (multiple issues, PRs, files, questions), emit **N separate `<message to="<name>">` blocks** in your final response — one per item.
+
+**[MUST]** For a fresh delegation that should land in its own sub-session on the recipient, include an explicit `thread_id="<task-key>"` attribute on the `<message>` tag. Without it, the runtime falls back to the thread of the most recent inbound from that peer, and every dispatch piles into the same recipient session — defeating the fan-out.
+
+```
+<message to="<peer-name>" thread_id="<task-key>">
+…task description…
+</message>
+```
+
+Pick a `thread_id` that is unique-per-task and *stable* across retries — derive it from the task identity (issue/PR number, file path, ticket id, …). Don't use random strings: if you re-dispatch the same task, the same `thread_id` keeps it in one session instead of creating a duplicate. Don't reuse last turn's thread_id for a new task.
 
 Pack multiple items into a single message **only when they must be handled together** — same PR, ordered dependency, shared context. Say so explicitly: *"bundle these into one PR"* or *"do A before B."* A single blob of prose listing several tasks defaults to sequential, single-threaded handling on the recipient — almost never what you want for parallelizable work.
+
+When you reply on an existing thread (continuing a peer conversation, status report to parent), do NOT add a new `thread_id` — `in_reply_to="<msg-id>"` is what carries the existing thread context. See [chain-reporting](#chain-reporting) for the routing rules.
 
 ### Build / compile / install — delegate to `Agent`, never run inline
 

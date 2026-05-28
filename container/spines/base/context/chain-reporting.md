@@ -12,7 +12,7 @@ Routing — pick the right destination, not the loudest:
 |---|---|---|
 | Status / result report | `parent` | Always one hop up. Bare `send_message(to="parent")`. |
 | Continue an existing peer thread | the peer | **Requires** `in_reply_to`. Bare writes are refused by the runtime. |
-| Fresh delegation to a peer | the peer | New sub-session is created automatically. |
+| Fresh delegation to a peer | the peer | **Requires** an explicit `thread_id="<task-key>"` on the `<message>` tag — derive the key from the task identity (issue/PR number, file path, ticket id, …). Without one, the runtime reuses the last inbound thread from that peer and the dispatch lands in the existing session instead of a fresh sub-session. See *Fan-out* in `tool-instructions/agents.md`. |
 | Send to a wired ancestor (skip parent) | `<ancestor>` | Only for explicit escalation/rollup. Don't double-send to parent + grandparent — pick one. |
 
 No echoes. No meta-acknowledgements. *"Acknowledged silently"*, *"No echo needed"*, *"Status report stays with the orchestrator"*, *"Ending turn"* are themselves messages — they cost the reader the same tokens the silent-ack rule was meant to save. If you have nothing substantive to add, **send nothing**.
