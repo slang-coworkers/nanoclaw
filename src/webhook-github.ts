@@ -1,20 +1,30 @@
 /**
  * GitHub webhook event types and delivery to agent sessions.
  *
- * Three delivery paths in priority order:
+ * Routing for PR-comment events (issue_comment, pull_request_review_comment):
  *   1. PR mapping hit + owner is *this* instance → write to local session.
  *   2. PR mapping hit + owner is a foreign instance → forward to peer
  *      via INSTANCE_FORWARD_TARGETS (signed with INTERNAL_REGISTER_SECRET,
  *      X-Webhook-Trust=pre-validated). Receiver skips its filters and
  *      delivers locally.
- *   3. No mapping → fall through to legacy admin-group / branch fallback,
- *      gated by WEBHOOK_REQUIRE_MAPPING for non-canonical instances.
+ *   3. No mapping →
+ *        - WEBHOOK_REQUIRE_MAPPING=1 (non-canonical instances): drop, since
+ *          the canonical router would have already forwarded if we owned it.
+ *        - else (canonical / standalone): route to the admin (orchestrator)
+ *          agent group. The orchestrator dispatches to the right coworker
+ *          using its own ncl-aware routing logic — no static rules.
  *
- * The host has no GitHub API token, so branch resolution is deferred to the
- * receiving agent (orchestrator), which has GH_TOKEN injected via OneCLI.
+ * Routing for issues events (action=opened):
+ *   - Always to admin (orchestrator). Issues have no PR number → no mapping
+ *     possible, no forward decision to make. The orchestrator decides which
+ *     coworker triages.
+ *
+ * The host has no GitHub API token, so branch resolution and triage are
+ * deferred to the receiving agent (orchestrator), which has GH_TOKEN
+ * injected via OneCLI.
  */
 import { INSTANCE_FORWARD_TARGETS, INSTANCE_SLUG, INTERNAL_REGISTER_SECRET } from './config.js';
-import { getAdminAgentGroup, getAgentGroupByFolder } from './db/agent-groups.js';
+import { getAdminAgentGroup } from './db/agent-groups.js';
 import { getDb } from './db/connection.js';
 import { openInboundDb, insertMessage } from './db/session-db.js';
 import { findSessionByAgentGroup, getSession } from './db/sessions.js';
@@ -31,8 +41,6 @@ export interface GitHubMentionEvent {
   commenter: string;
   body: string;
   isPr: boolean;
-  /** Head branch from the webhook payload (present in pull_request_review_comment; null for issue_comment). */
-  prBranch: string | null;
   /** Raw webhook body, preserved for forwarding to a peer instance when owner_instance is foreign. */
   rawBody?: string;
   /** GitHub event type header, propagated to peer on forward. */
@@ -41,20 +49,16 @@ export interface GitHubMentionEvent {
   deliveryId?: string;
 }
 
-/**
- * Resolve target agent group from PR branch name.
- * Convention: dev/<folder-name>/... → look up by folder.
- * Falls back to the admin (orchestrator) group.
- */
-export function resolveAgentGroupFromBranch(branch: string | null | undefined): AgentGroup | undefined {
-  if (branch) {
-    const match = /^dev\/([^/]+)\//.exec(branch);
-    if (match) {
-      const group = getAgentGroupByFolder(match[1]);
-      if (group) return group;
-    }
-  }
-  return getAdminAgentGroup();
+export interface GitHubIssueOpenedEvent {
+  repo: string;
+  issueNumber: number;
+  issueUrl: string;
+  title: string;
+  body: string;
+  author: string;
+  labels: string[];
+  /** GitHub delivery id (idempotency tag). */
+  deliveryId?: string;
 }
 
 /**
@@ -65,8 +69,65 @@ export function resolveAgentGroupFromBranch(branch: string | null | undefined): 
 export type DeliveryOutcome = 'local' | 'forwarded' | 'dropped' | 'no-session' | 'no-admin-group';
 
 /**
+ * Internal helper: write an event payload to the admin (orchestrator) agent
+ * group's active session. Used as the unmapped-fallback for PR comments and
+ * the always-target for issues. Returns DeliveryOutcome.
+ */
+function deliverToOrchestrator(args: {
+  repo: string;
+  issueNumber: number;
+  rowId: string;
+  threadId: string;
+  eventContent: string;
+}): DeliveryOutcome {
+  const group: AgentGroup | undefined = getAdminAgentGroup();
+  if (!group) {
+    log.warn('github-webhook: no admin agent group configured — cannot deliver to orchestrator', {
+      repo: args.repo,
+    });
+    return 'no-admin-group';
+  }
+
+  const session = findSessionByAgentGroup(group.id);
+  if (!session) {
+    log.warn('github-webhook: orchestrator agent group has no active session — dropping', {
+      group: group.name,
+      repo: args.repo,
+      issue: args.issueNumber,
+    });
+    return 'no-session';
+  }
+
+  const dbPath = inboundDbPath(group.id, session.id);
+  const db = openInboundDb(dbPath);
+  try {
+    insertMessage(db, {
+      id: args.rowId,
+      kind: 'webhook',
+      timestamp: new Date().toISOString(),
+      platformId: `github:${args.repo}:${args.issueNumber}`,
+      channelType: 'github',
+      threadId: args.threadId,
+      content: args.eventContent,
+      processAfter: null,
+      recurrence: null,
+    });
+    log.info('github-webhook: delivered to orchestrator', {
+      group: group.name,
+      session: session.id,
+      repo: args.repo,
+      issue: args.issueNumber,
+    });
+    return 'local';
+  } finally {
+    db.close();
+  }
+}
+
+/**
  * Write a GitHub mention event into the target agent group's inbound.db,
- * or forward to a peer instance when the PR is foreign-owned.
+ * or forward to a peer instance when the PR is foreign-owned, or hand off
+ * to the orchestrator when no mapping exists.
  */
 export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome {
   const eventContent = JSON.stringify({
@@ -160,9 +221,9 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
     // pr_session_mappings table may not exist yet (pre-migration) — fall through
   }
 
-  // When WEBHOOK_REQUIRE_MAPPING is set, only act on PRs this instance originated
-  // (i.e. has a row in pr_session_mappings). Used by dev instances that share a
-  // webhook target with prod so they don't double-reply on PRs they didn't create.
+  // No mapping. Non-canonical instances (WEBHOOK_REQUIRE_MAPPING=1) drop
+  // here — the canonical router would have already forwarded if we owned
+  // the PR.
   if (process.env.WEBHOOK_REQUIRE_MAPPING === '1') {
     log.info('github-webhook: no PR mapping, dropping (WEBHOOK_REQUIRE_MAPPING=1)', {
       repo: event.repo,
@@ -171,45 +232,51 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
     return 'dropped';
   }
 
-  // Fallback: resolve by branch name or admin group
-  const group = resolveAgentGroupFromBranch(event.prBranch);
-  if (!group) {
-    log.warn('github-webhook: no admin agent group configured — cannot deliver', { repo: event.repo });
-    return 'no-admin-group';
-  }
+  // Canonical instance fallback: hand off to the orchestrator. The
+  // orchestrator inspects the event (repo, body, paths, labels) and uses
+  // ncl to enumerate destinations, then dispatches to the right coworker.
+  // No static rules — the orchestrator's instructions own this routing.
+  return deliverToOrchestrator({
+    repo: event.repo,
+    issueNumber: event.issueNumber,
+    rowId: `gh-${event.commentId}`,
+    threadId: String(event.issueNumber),
+    eventContent,
+  });
+}
 
-  const session = findSessionByAgentGroup(group.id);
-  if (!session) {
-    log.warn('github-webhook: no active session for agent group — dropping', {
-      group: group.name,
+/**
+ * Deliver a GitHub `issues` event (action=opened) to the orchestrator.
+ * Issues have no PR number, so there's no mapping path — they always go
+ * to the admin group for triage. Non-canonical instances drop these
+ * (the canonical router shouldn't be forwarding issues — they aren't
+ * scoped to a PR mapping).
+ */
+export function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): DeliveryOutcome {
+  if (process.env.WEBHOOK_REQUIRE_MAPPING === '1') {
+    log.info('github-webhook: issues event on non-canonical instance, dropping', {
       repo: event.repo,
       issue: event.issueNumber,
     });
-    return 'no-session';
+    return 'dropped';
   }
 
-  const dbPath = inboundDbPath(group.id, session.id);
-  const db = openInboundDb(dbPath);
-  try {
-    insertMessage(db, {
-      id: `gh-${event.commentId}`,
-      kind: 'webhook',
-      timestamp: new Date().toISOString(),
-      platformId: `github:${event.repo}:${event.issueNumber}`,
-      channelType: 'github',
-      threadId: String(event.issueNumber),
-      content: eventContent,
-      processAfter: null,
-      recurrence: null,
-    });
-    log.info('github-webhook: delivered', {
-      group: group.name,
-      session: session.id,
-      repo: event.repo,
-      issue: event.issueNumber,
-    });
-    return 'local';
-  } finally {
-    db.close();
-  }
+  const eventContent = JSON.stringify({
+    event: 'github.issue_opened',
+    repo: event.repo,
+    issue_number: event.issueNumber,
+    issue_url: event.issueUrl,
+    title: event.title,
+    author: event.author,
+    labels: event.labels,
+    body: event.body,
+  });
+
+  return deliverToOrchestrator({
+    repo: event.repo,
+    issueNumber: event.issueNumber,
+    rowId: `gh-issue-${event.repo}-${event.issueNumber}`,
+    threadId: String(event.issueNumber),
+    eventContent,
+  });
 }
