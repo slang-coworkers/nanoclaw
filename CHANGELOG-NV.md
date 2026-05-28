@@ -6,15 +6,45 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 182 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 100 |
-| `nv-slang` | slang project spine, skills, workflows | 60 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 21 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 17 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 195 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 103 |
+| `nv-slang` | slang project spine, skills, workflows | 63 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 22 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 18 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-05-28
+
+### nv-main (13 PRs)
+- **#507** `feat(transcripts): add --since-hours filter to build-transcripts-archive`
+- **#506** `fix(spine): require explicit thread_id on fresh peer dispatch`
+- **#504** `docs: add cross-instance webhook routing doc`
+- **#503** `docs(spine): add fan-out rule to agents.md`
+- **#501** `feat(webhook): ROUTE_ISSUES_TO — dev-route GitHub issues to a peer instance`
+- **#500** `fix(webhook): bring back deterministic host-side 👀 reaction`
+- **#497** `chore(docs): scrub developer-specific paths/usernames from on-call runbook`
+- **#496** `chore(webhook): drop legacy fanout/require-mapping/host-eyes paths`
+- **#495** `feat(webhook): orchestrator routing for unmapped events + issues support`
+_+4 more: #493, #492, #491, #459_
+
+### nv-dashboard (3 PRs)
+- **#498** `chore(dashboard): scrub developer-specific path from V1 import prompt`
+- **#435** `Sync nv-dashboard with upstream/main`
+- **#505** `fix(dashboard): SSE state dedup + per-client backpressure`
+
+### nv-slang (3 PRs)
+- **#494** `feat(slang-github-webhook): add Step 0 — coworker posts 👀 reaction`
+- **#502** `feat(slang-reviewer): post merged review back to GitHub when authorized`
+- **#436** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#437** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#438** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-05-27
 
