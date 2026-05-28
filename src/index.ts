@@ -10,6 +10,7 @@ import path from 'path';
 import { backfillAgentsSymlinks } from './agents-symlink-backfill.js';
 import { backfillContainerConfigs } from './backfill-container-configs.js';
 import {
+  AGENT_RUNTIME,
   DASHBOARD_INGRESS_HOST,
   DASHBOARD_INGRESS_PORT,
   DATA_DIR,
@@ -190,6 +191,7 @@ async function main(): Promise<void> {
   // 2. Container runtime
   ensureContainerRuntimeRunning();
   cleanupOrphans();
+
   // Reset stale container_status from previous host runs
   getDb().prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'").run();
 

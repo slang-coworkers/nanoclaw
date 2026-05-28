@@ -20,6 +20,7 @@
     "setup": "tsx setup/index.ts",
     "setup:auto": "tsx setup/auto.ts",
     "ncl": "tsx src/cli/client.ts",
+    "setup:local": "tsx setup/index.ts --step local",
     "chat": "tsx scripts/chat.ts",
     "auth": "tsx src/whatsapp-auth.ts",
     "validate:templates": "tsx scripts/validate-templates.ts",

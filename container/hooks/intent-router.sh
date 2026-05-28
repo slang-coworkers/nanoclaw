@@ -7,6 +7,11 @@
 # Requires: ANTHROPIC_API_KEY or OneCLI proxy for API access.
 # Falls back gracefully (no-op) if the API call fails.
 set -euo pipefail
+# Env-addressable workspace roots so hooks work both in Docker (where
+# /workspace is mounted) and AGENT_RUNTIME=local (where the bun child carries
+# WORKSPACE_SESSION/WORKSPACE_AGENT pointing at the session and group dirs).
+WS_SESSION="${WORKSPACE_SESSION:-/workspace}"
+WS_AGENT="${WORKSPACE_AGENT:-/workspace/agent}"
 
 INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')
