@@ -26,6 +26,7 @@ const envConfig = readEnvFile([
   'INTERNAL_REGISTER_URL',
   'INTERNAL_REGISTER_SECRET',
   'INSTANCE_FORWARD_TARGETS',
+  'ROUTE_ISSUES_TO',
 ]);
 
 export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
@@ -220,6 +221,23 @@ function parseForwardTargets(raw: string): Record<string, string> {
 export const INSTANCE_FORWARD_TARGETS = parseForwardTargets(
   process.env.INSTANCE_FORWARD_TARGETS || envConfig.INSTANCE_FORWARD_TARGETS || '',
 );
+
+// Dev-routing: forward every `issues` event (action=opened) to a peer
+// instance instead of handling locally. Used while the issue-triage
+// orchestrator path is still being shaped — we want issues to land in
+// the dev install (lego) for testing, not in prod's orchestrator.
+//
+// Set the env var to a slug that ALSO appears in INSTANCE_FORWARD_TARGETS
+// (so the forwarder knows where to send it). Empty/unset = local handling
+// (issues go to this instance's orchestrator). PR-comment events are
+// unaffected — only `issues` flows through this gate.
+//
+// Example on prod:
+//   INSTANCE_FORWARD_TARGETS=lego=http://127.0.0.1:3843/webhook/github
+//   ROUTE_ISSUES_TO=lego
+//
+// On lego (or any non-canonical instance), leave unset.
+export const ROUTE_ISSUES_TO = (process.env.ROUTE_ISSUES_TO || envConfig.ROUTE_ISSUES_TO || '').trim();
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.

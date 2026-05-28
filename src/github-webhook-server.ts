@@ -183,6 +183,8 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
         body,
         author,
         labels,
+        rawBody,
+        eventType: String(eventType),
         deliveryId: String(req.headers['x-github-delivery'] ?? ''),
       });
       writeJson(res, 200, { ok: true, outcome });

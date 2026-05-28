@@ -61,6 +61,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_FORWARD_TARGETS: { lego: peerUrl },
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
@@ -163,6 +164,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_FORWARD_TARGETS: {},
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
@@ -216,6 +218,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_FORWARD_TARGETS: {},
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
@@ -255,12 +258,13 @@ describe('deliverGitHubMention — owner_instance routing', () => {
 });
 
 describe('deliverGitHubIssueOpened', () => {
-  it('routes new issues to orchestrator with github.issue_opened event', async () => {
+  it('routes new issues to orchestrator with github.issue_opened event (default, ROUTE_ISSUES_TO unset)', async () => {
     const insertCalls: unknown[] = [];
     vi.doMock('./config.js', () => ({
       INSTANCE_FORWARD_TARGETS: {},
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
@@ -299,5 +303,127 @@ describe('deliverGitHubIssueOpened', () => {
     expect(parsed.event).toBe('github.issue_opened');
     expect(parsed.title).toBe('Crash on null deref');
     expect(parsed.labels).toEqual(['bug']);
+  });
+
+  it('forwards new issues to peer when ROUTE_ISSUES_TO is set', async () => {
+    const insertCalls: unknown[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: { lego: peerUrl },
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: 'lego',
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+    vi.doMock('./db/sessions.js', () => ({ findSessionByAgentGroup: () => undefined, getSession: () => undefined }));
+    vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({ close: () => undefined }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
+
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    const rawBody = JSON.stringify({ action: 'opened', issue: { number: 5555 } });
+    const outcome = deliverGitHubIssueOpened({
+      repo: 'shader-slang/slang',
+      issueNumber: 5555,
+      issueUrl: 'https://example.com/i/5555',
+      title: 'dev-routed test issue',
+      body: 'body',
+      author: 'reporter',
+      labels: [],
+      rawBody,
+      eventType: 'issues',
+      deliveryId: 'd-issue-fwd',
+    });
+
+    expect(outcome).toBe('forwarded');
+    expect(insertCalls).toHaveLength(0); // never delivered locally
+    await waitForCapture(1);
+    expect(captured).toHaveLength(1);
+    expect(captured[0].headers['x-webhook-trust']).toBe('pre-validated');
+    expect(captured[0].headers['x-internal-signature-256']).toMatch(/^sha256=/);
+    expect(captured[0].headers['x-github-event']).toBe('issues');
+    expect(captured[0].headers['x-github-delivery']).toBe('d-issue-fwd');
+    expect(captured[0].body).toBe(rawBody);
+  });
+
+  it('drops with warn when ROUTE_ISSUES_TO is set but the target is not in INSTANCE_FORWARD_TARGETS', async () => {
+    const insertCalls: unknown[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {}, // no lego URL configured
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: 'lego',
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+    vi.doMock('./db/sessions.js', () => ({ findSessionByAgentGroup: () => undefined, getSession: () => undefined }));
+    vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({ close: () => undefined }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
+
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    const outcome = deliverGitHubIssueOpened({
+      repo: 'shader-slang/slang',
+      issueNumber: 5555,
+      issueUrl: '',
+      title: 't',
+      body: '',
+      author: '',
+      labels: [],
+      rawBody: '{}',
+      eventType: 'issues',
+      deliveryId: 'd-1',
+    });
+
+    expect(outcome).toBe('dropped');
+    expect(insertCalls).toHaveLength(0);
+    expect(captured).toHaveLength(0);
+  });
+
+  it('falls through to local orchestrator when ROUTE_ISSUES_TO equals own INSTANCE_SLUG', async () => {
+    // On lego: INSTANCE_SLUG='lego' and (hypothetically) ROUTE_ISSUES_TO='lego'.
+    // Don't loop-forward to self — handle locally.
+    const insertCalls: unknown[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: { lego: peerUrl },
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: 'lego',
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
+      getSession: () => undefined,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'lego-orchestrator' }),
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({ close: () => undefined }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
+
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    const outcome = deliverGitHubIssueOpened({
+      repo: 'x/y',
+      issueNumber: 1,
+      issueUrl: '',
+      title: 't',
+      body: '',
+      author: '',
+      labels: [],
+      rawBody: '{}',
+      eventType: 'issues',
+      deliveryId: 'd-1',
+    });
+
+    expect(outcome).toBe('local');
+    expect(insertCalls).toHaveLength(1);
+    expect(captured).toHaveLength(0);
   });
 });
