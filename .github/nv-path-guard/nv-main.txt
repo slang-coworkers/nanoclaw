@@ -118,3 +118,6 @@ container/mcp-servers/**
 container/skills/base-nanoclaw/**
 container/skills/buddy/**
 container/skills/codex-critique/**
+
+# Periodic upstream-sync (May 28, 2026): paths added by upstream/main absorbed via Sync PR.
+container/skills/whatsapp-formatting/**

@@ -7,7 +7,7 @@ import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from '
 import { getPendingMessages, markCompleted } from './db/messages-in.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
 import { formatMessages, extractRouting } from './formatter.js';
-import { checkCritiqueGate, dispatchResultText, isNewSessionBatch, taskOptsOutOfNewSession } from './poll-loop.js';
+import { checkCritiqueGate, dispatchResultText, isCorruptionError, isNewSessionBatch, taskOptsOutOfNewSession } from './poll-loop.js';
 import { MockProvider } from './providers/mock.js';
 
 beforeEach(() => {
@@ -41,13 +41,15 @@ describe('formatter', () => {
     expect(prompt).toContain('Hello world');
   });
 
-  it('should format multiple chat messages as XML block', () => {
+  it('should format multiple chat messages as distinct <message> blocks', () => {
     insertMessage('m1', 'chat', { sender: 'John', text: 'Hello' });
     insertMessage('m2', 'chat', { sender: 'Jane', text: 'Hi there' });
     const messages = getPendingMessages();
     const prompt = formatMessages(messages);
-    expect(prompt).toContain('<messages>');
-    expect(prompt).toContain('</messages>');
+    // The <messages> envelope was dropped in fe2e881b (#2556) so the SDK calls
+    // the API; each message is now its own self-contained <message> block.
+    expect(prompt).not.toContain('<messages>');
+    expect(prompt.match(/<message /g) ?? []).toHaveLength(2);
     expect(prompt).toContain('sender="John"');
     expect(prompt).toContain('sender="Jane"');
   });
@@ -812,5 +814,22 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     );
     const out = getUndeliveredMessages();
     expect(out[0].thread_id).toBe('branch-A'); // refusal still flows on the agent's chosen thread
+  });
+});
+
+describe('isCorruptionError', () => {
+  it('matches the Docker Desktop macOS torn-read symptom', () => {
+    expect(isCorruptionError('database disk image is malformed')).toBe(true);
+  });
+
+  it('matches wrapped SQLite corruption codes', () => {
+    expect(isCorruptionError('SqliteError: SQLITE_CORRUPT_VTAB: ...')).toBe(true);
+    expect(isCorruptionError('file is not a database')).toBe(true);
+  });
+
+  it('returns false for unrelated errors', () => {
+    expect(isCorruptionError('database is locked')).toBe(false);
+    expect(isCorruptionError('no such table: messages_in')).toBe(false);
+    expect(isCorruptionError('')).toBe(false);
   });
 });
