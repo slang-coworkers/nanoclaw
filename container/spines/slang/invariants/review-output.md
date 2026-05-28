@@ -1,0 +1,8 @@
+### Review output rules
+
+These apply when posting review output back to GitHub (slang-reviewer only — fixers/writers/triagers don't post reviews).
+
+- **Bot reviews are always `event=COMMENT`.** Never `APPROVE` or `CHANGES_REQUESTED` — bots must not gate human merges. The `slang-pr-review-runner` skill's `post-review.sh` hard-codes the state and runs a safety-net dismissal pass after posting; the inner CLI must not attempt any other state.
+- **Post only when authorized.** The `/slang-pr-review` workflow posts the merged review back to GitHub ONLY when the orchestrator's dispatch carries the `<github-post-authorized />` marker. That marker is set by the `slang-github-webhook` skill when a human tagged `@nv-slang-bot` in the triggering comment — i.e. the user's explicit invitation for the bot to reply. Without the marker, return via `send_file` only.
+- **Round-2 hygiene before post.** Before posting a new review, run the skill's `cleanup.sh` (or use the `post-back.sh` wrapper which calls it for you) to minimize prior bot review bodies as `OUTDATED` and resolve prior bot review threads. The signal "we re-reviewed" must be unambiguous; piling a second review on top of the first is noise. Cleanup targets `nv-slang-bot` only — production's `claude` / `github-actions` auto-reviews are deliberately untouched.
+- **403 = graceful degrade.** If the App installation token lacks `pull_requests:write` on the target repo, `post-review.sh` exits 3. The workflow falls back to `send_file` only — the human still has the review via the parent thread. This affects `slang-coworkers/*` today (App lacks write); `shader-slang/*` repos are write-capable.
