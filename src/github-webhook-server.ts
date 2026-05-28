@@ -75,6 +75,59 @@ function verifySignature(secret: string, rawBody: string, sigHeader: string): bo
   }
 }
 
+/**
+ * Post a 👀 reaction on the triggering comment so the human sees their
+ * @mention was received and is being processed. Fires on the canonical
+ * instance the moment we accept a GitHub-signed webhook — independent
+ * of whether a coworker container is awake. The skill's Step 0 still
+ * fires when the agent runs (idempotent — GitHub returns 422 on dup,
+ * which the skill swallows with `|| echo`).
+ *
+ * Auth: uses GH_TOKEN from the host environment (rotated by cron from
+ * a GitHub App installation token). Without it, skip with a warn so a
+ * misconfigured install doesn't flood logs with 401s.
+ *
+ * Skipped on peer-forward inbound: the canonical router already posted
+ * 👀 before forwarding, so the peer doesn't double-react. Skipped on
+ * `issues` events: GitHub doesn't support reactions on issues themselves
+ * (only on comments inside them).
+ *
+ * Fire-and-forget — never blocks the 200 OK we owe GitHub. Failures
+ * (network, non-OK, already-reacted 422) are warn-logged and swallowed.
+ */
+export async function postEyesReaction(repo: string, eventType: string, commentId: number): Promise<void> {
+  if (!repo || !commentId) return;
+
+  const token = process.env.GH_TOKEN;
+  if (!token) {
+    log.warn('github-webhook: eyes reaction skipped (GH_TOKEN not set)', { repo });
+    return;
+  }
+
+  // Endpoint differs by event type — pull_request_review_comment uses
+  // /pulls/comments/<id>, every other comment-shaped event uses
+  // /issues/comments/<id>.
+  const sub = eventType === 'pull_request_review_comment' ? 'pulls' : 'issues';
+  const url = `https://api.github.com/repos/${repo}/${sub}/comments/${commentId}/reactions`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `token ${token}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content: 'eyes' }),
+    });
+    if (!res.ok && res.status !== 200 && res.status !== 201 && res.status !== 422) {
+      // 422 = already reacted (idempotent); anything else is worth a warn.
+      log.warn('github-webhook: eyes reaction non-OK', { url, status: res.status });
+    }
+  } catch (err) {
+    log.warn('github-webhook: eyes reaction failed', { url, error: String(err) });
+  }
+}
+
 export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
   if (!GITHUB_WEBHOOK_SECRET) {
     log.warn('GITHUB_WEBHOOK_SECRET not set — webhook server will reject all requests');
@@ -239,6 +292,24 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       eventType: String(eventType),
       deliveryId: String(req.headers['x-github-delivery'] ?? ''),
     });
+
+    // Deterministic 👀 ack: fire whenever the webhook lands somewhere
+    // (local session, forwarded to peer, or orchestrator). Skipped on
+    // peer-forward inbound — the canonical router already reacted before
+    // forwarding, so the peer must not double-react. Skipped on
+    // dropped/no-session/no-admin-group outcomes since the user shouldn't
+    // get an ack when nothing actually picked up the work.
+    //
+    // Posted by the host (not the coworker) so the ack is independent of
+    // container wake-state. The skill's Step 0 stays as a backup; GitHub
+    // returns 422 on duplicate reactions, which the skill swallows.
+    //
+    // The `issues` event type takes a separate code path above and never
+    // reaches here (issues themselves don't accept reactions on the body
+    // anyway — only on comments inside them).
+    if (!isPeerForward && (outcome === 'local' || outcome === 'forwarded')) {
+      void postEyesReaction(repoFullName, String(eventType), commentId);
+    }
 
     writeJson(res, 200, { ok: true, outcome });
   });
