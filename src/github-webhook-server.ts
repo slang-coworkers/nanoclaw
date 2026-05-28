@@ -8,8 +8,14 @@
 import crypto from 'crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'http';
 
-import { GITHUB_WEBHOOK_BOT_MENTION, GITHUB_WEBHOOK_PORT, GITHUB_WEBHOOK_SECRET } from './config.js';
+import {
+  GITHUB_WEBHOOK_BOT_MENTION,
+  GITHUB_WEBHOOK_PORT,
+  GITHUB_WEBHOOK_SECRET,
+  INTERNAL_REGISTER_SECRET,
+} from './config.js';
 import { log } from './log.js';
+import { handleRegisterPr } from './modules/pr-mapping/register-endpoint.js';
 import { deliverGitHubMention } from './webhook-github.js';
 
 const MAX_BODY_SIZE = 512 * 1024; // 512 KB
@@ -163,6 +169,11 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
   }
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+    if (req.method === 'POST' && req.url === '/internal/register-pr') {
+      await handleRegisterPr(req, res, INTERNAL_REGISTER_SECRET);
+      return;
+    }
+
     if (req.method !== 'POST' || req.url !== '/webhook/github') {
       writeJson(res, 404, { error: 'not found' });
       return;

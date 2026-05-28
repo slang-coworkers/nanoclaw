@@ -6,11 +6,18 @@
  * records the mapping in the central DB so that subsequent GitHub webhooks
  * for that PR route to the correct session (instead of creating an orphan
  * session with the PR number as thread_id).
+ *
+ * On non-canonical instances (PR_MAPPINGS_LOCAL=0, e.g. lego), the local
+ * write is skipped and the registration is forwarded to the canonical
+ * instance via INTERNAL_REGISTER_URL. See ./store.ts and ./register-client.ts.
  */
-import { registerDeliveryAction } from '../../delivery.js';
+import { INSTANCE_SLUG, INTERNAL_REGISTER_URL, INTERNAL_REGISTER_SECRET, PR_MAPPINGS_LOCAL } from '../../config.js';
 import { getDb } from '../../db/connection.js';
+import { registerDeliveryAction } from '../../delivery.js';
 import { log } from '../../log.js';
 import type { Session } from '../../types.js';
+import { postRegisterPr } from './register-client.js';
+import { upsertPrMapping } from './store.js';
 
 registerDeliveryAction('map_pr_session', async (content: Record<string, unknown>, session: Session) => {
   const repo = typeof content.repo === 'string' ? content.repo : null;
@@ -21,50 +28,41 @@ registerDeliveryAction('map_pr_session', async (content: Record<string, unknown>
     return;
   }
 
-  const db = getDb();
-  // Fix schema if thread_id is NOT NULL (original migration bug — main sessions
-  // have thread_id=NULL and INSERT OR IGNORE silently drops the row).
-  try {
-    const colInfo = db.prepare('PRAGMA table_info(pr_session_mappings)').all() as Array<{
-      name: string;
-      notnull: number;
-    }>;
-    const tidCol = colInfo.find((c) => c.name === 'thread_id');
-    if (tidCol && tidCol.notnull === 1) {
-      db.exec('ALTER TABLE pr_session_mappings RENAME TO _pr_session_mappings_old');
-      db.exec(`CREATE TABLE pr_session_mappings (
-        repo TEXT NOT NULL, pr_number INTEGER NOT NULL, agent_group_id TEXT NOT NULL,
-        session_id TEXT NOT NULL, thread_id TEXT, created_at TEXT NOT NULL,
-        PRIMARY KEY (repo, pr_number)
-      )`);
-      db.exec('INSERT INTO pr_session_mappings SELECT * FROM _pr_session_mappings_old');
-      db.exec('DROP TABLE _pr_session_mappings_old');
-      db.exec('CREATE INDEX IF NOT EXISTS idx_pr_map_lookup ON pr_session_mappings(repo, pr_number)');
-    }
-  } catch {
-    /* already fixed or table doesn't exist */
+  if (!INSTANCE_SLUG) {
+    log.warn('map_pr_session: INSTANCE_SLUG unset — cannot register mapping', { repo, pr: prNumber });
+    return;
   }
 
-  const result = db
-    .prepare(
-      `INSERT OR REPLACE INTO pr_session_mappings
-       (repo, pr_number, agent_group_id, session_id, thread_id, created_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-    )
-    .run(repo, prNumber, session.agent_group_id, session.id, session.thread_id);
+  const write = {
+    repo,
+    prNumber,
+    ownerInstance: INSTANCE_SLUG,
+    agentGroupId: session.agent_group_id,
+    sessionId: session.id,
+    threadId: session.thread_id,
+  };
 
-  if (result.changes > 0) {
-    log.info('PR→session mapping recorded', {
+  if (PR_MAPPINGS_LOCAL) {
+    upsertPrMapping(getDb(), write);
+    log.info('PR→session mapping recorded (local)', {
       repo,
       pr: prNumber,
       session: session.id,
       threadId: session.thread_id,
+      owner: INSTANCE_SLUG,
     });
-  } else {
-    log.warn('PR→session mapping already exists or insert failed', {
-      repo,
-      pr: prNumber,
-      session: session.id,
+  }
+
+  if (INTERNAL_REGISTER_URL && INTERNAL_REGISTER_SECRET) {
+    // Fire-and-forget per the design contract. A failure here just means
+    // future webhooks for this PR will fall through to orchestrator
+    // dispatch — correct, not optimal.
+    void postRegisterPr(INTERNAL_REGISTER_URL, INTERNAL_REGISTER_SECRET, write).catch((err: unknown) => {
+      log.warn('map_pr_session: register POST failed', {
+        repo,
+        pr: prNumber,
+        error: String(err),
+      });
     });
   }
 });

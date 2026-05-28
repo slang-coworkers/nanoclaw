@@ -143,6 +143,48 @@ describe('migration 007 — hook_events table', () => {
   });
 });
 
+describe('migration 027 — pr-mapping owner_instance', () => {
+  it('adds owner_instance column with default prod', () => {
+    const db = initTestDb();
+    runMigrations(db);
+
+    const columns = db.prepare('PRAGMA table_info(pr_session_mappings)').all() as ColumnInfo[];
+    const owner = columns.find((c) => c.name === 'owner_instance');
+
+    expect(owner).toBeDefined();
+    expect(owner!.type.toUpperCase()).toBe('TEXT');
+    expect(owner!.notnull).toBe(1);
+
+    // existing rows (if any) should backfill to 'prod' via the ALTER TABLE default
+    db.prepare(
+      `INSERT INTO pr_session_mappings (repo, pr_number, agent_group_id, session_id, thread_id, created_at)
+       VALUES ('foo/bar', 1, 'g1', 's1', 't1', datetime('now'))`,
+    ).run();
+    const row = db.prepare("SELECT owner_instance FROM pr_session_mappings WHERE repo = 'foo/bar'").get() as
+      | { owner_instance: string }
+      | undefined;
+    expect(row?.owner_instance).toBe('prod');
+  });
+
+  it('creates idx_pr_map_owner index', () => {
+    const db = initTestDb();
+    runMigrations(db);
+
+    const indexes = db.prepare('PRAGMA index_list(pr_session_mappings)').all() as IndexInfo[];
+    expect(indexes.map((i) => i.name)).toContain('idx_pr_map_owner');
+  });
+
+  it('records pr-mapping-owner-instance in schema_version', () => {
+    const db = initTestDb();
+    runMigrations(db);
+
+    const row = db.prepare("SELECT name FROM schema_version WHERE name = 'pr-mapping-owner-instance'").get() as
+      | { name: string }
+      | undefined;
+    expect(row?.name).toBe('pr-mapping-owner-instance');
+  });
+});
+
 describe('runMigrations', () => {
   it('applies migrations in order and is idempotent', () => {
     const db = initTestDb();
