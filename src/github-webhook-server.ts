@@ -15,6 +15,12 @@ import {
   INTERNAL_REGISTER_SECRET,
 } from './config.js';
 import { log } from './log.js';
+import {
+  TRUST_SIGNATURE_HEADER,
+  WEBHOOK_TRUST_HEADER,
+  WEBHOOK_TRUST_VALUE,
+  verifyTrustedSignature,
+} from './modules/pr-mapping/register-client.js';
 import { handleRegisterPr } from './modules/pr-mapping/register-endpoint.js';
 import { deliverGitHubMention } from './webhook-github.js';
 
@@ -189,17 +195,34 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     const rawBody = await readRawBody(req, res);
     if (rawBody === null) return;
 
-    // Validate HMAC before touching the payload
-    const sigHeader = String(req.headers['x-hub-signature-256'] ?? '');
-    if (!GITHUB_WEBHOOK_SECRET || !verifySignature(GITHUB_WEBHOOK_SECRET, rawBody, sigHeader)) {
-      log.warn('github-webhook: invalid or missing signature');
-      writeJson(res, 401, { error: 'invalid signature' });
-      return;
+    // Two trust paths:
+    //   - GitHub-signed (X-Hub-Signature-256): the normal entry. Body is
+    //     unfiltered; we apply the action/mention filters below.
+    //   - Peer-signed (X-Webhook-Trust + X-Internal-Signature-256): a
+    //     foreign-owned forward from the canonical router. The router
+    //     already validated and decided this is for us, so we skip the
+    //     filters and go straight to mapping-based delivery.
+    const isPeerForward = req.headers[WEBHOOK_TRUST_HEADER] === WEBHOOK_TRUST_VALUE;
+    if (isPeerForward) {
+      const trustSig = String(req.headers[TRUST_SIGNATURE_HEADER] ?? '');
+      if (!INTERNAL_REGISTER_SECRET || !verifyTrustedSignature(INTERNAL_REGISTER_SECRET, rawBody, trustSig)) {
+        log.warn('github-webhook: peer-forward with invalid trust signature');
+        writeJson(res, 401, { error: 'invalid trust signature' });
+        return;
+      }
+    } else {
+      const sigHeader = String(req.headers['x-hub-signature-256'] ?? '');
+      if (!GITHUB_WEBHOOK_SECRET || !verifySignature(GITHUB_WEBHOOK_SECRET, rawBody, sigHeader)) {
+        log.warn('github-webhook: invalid or missing signature');
+        writeJson(res, 401, { error: 'invalid signature' });
+        return;
+      }
     }
 
     // Fan-out to peer instances. Skip if this request is itself a fan-out
-    // delivery (avoids loops when peers reciprocate by mistake).
-    if (req.headers[FANOUT_HEADER] !== '1') {
+    // delivery (avoids loops when peers reciprocate by mistake) or a
+    // peer-forward (those are already targeted, not broadcast).
+    if (!isPeerForward && req.headers[FANOUT_HEADER] !== '1') {
       fanOutWebhook(rawBody, {
         event: String(eventType),
         delivery: String(req.headers['x-github-delivery'] ?? ''),
@@ -223,7 +246,8 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     const repository = payload.repository as Record<string, unknown> | undefined;
     const commentBody = typeof comment?.body === 'string' ? comment.body : '';
 
-    if (!commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase())) {
+    // Mention check is a router-side filter — peer-forwards already passed it.
+    if (!isPeerForward && !commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase())) {
       writeJson(res, 200, { ok: true, skipped: true, reason: 'bot not mentioned' });
       return;
     }
@@ -257,7 +281,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       return;
     }
 
-    deliverGitHubMention({
+    const outcome = deliverGitHubMention({
       repo,
       issueNumber,
       commentId,
@@ -269,15 +293,23 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       body: commentBody,
       isPr,
       prBranch,
+      rawBody,
+      eventType: String(eventType),
+      deliveryId: String(req.headers['x-github-delivery'] ?? ''),
     });
 
-    // 👀 acknowledgement — once the mention has been queued for delivery,
-    // post an "eyes" reaction on the triggering comment so the human can see
-    // their @mention was received and is being worked on. Fire-and-forget;
-    // failures must never block the 200 OK we owe GitHub.
-    void postEyesReaction(repo, eventType as string, commentId);
+    // 👀 acknowledgement — once the mention has been queued for local
+    // delivery, post an "eyes" reaction on the triggering comment so the
+    // human can see their @mention was received and is being worked on.
+    // Skipped when we forwarded the event to a peer (the receiving
+    // coworker on the other side will post the eyes itself, per its
+    // github skill's Step 0). Fire-and-forget; failures must never block
+    // the 200 OK we owe GitHub.
+    if (outcome === 'local') {
+      void postEyesReaction(repo, eventType as string, commentId);
+    }
 
-    writeJson(res, 200, { ok: true });
+    writeJson(res, 200, { ok: true, outcome });
   });
 
   server.listen(GITHUB_WEBHOOK_PORT, '0.0.0.0', () => {

@@ -8,13 +8,12 @@
  * the single-purpose webhook handler and this endpoint can grow its own
  * concerns (e.g. eventually a deregister path) without bloating that one.
  */
-import crypto from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
 
 import { VALID_INSTANCE_SLUGS } from '../../config.js';
 import { getDb } from '../../db/connection.js';
 import { log } from '../../log.js';
-import { REGISTER_SIGNATURE_HEADER } from './register-client.js';
+import { TRUST_SIGNATURE_HEADER, verifyTrustedSignature } from './register-client.js';
 import { upsertPrMapping } from './store.js';
 
 const MAX_BODY_SIZE = 64 * 1024; // 64 KB; payload is small JSON
@@ -42,20 +41,6 @@ function readRawBody(req: IncomingMessage, res: ServerResponse): Promise<string 
   });
 }
 
-function verifySignature(secret: string, rawBody: string, sigHeader: string): boolean {
-  const expected = `sha256=${crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')}`;
-  try {
-    const maxLen = Math.max(expected.length, sigHeader.length);
-    const a = Buffer.alloc(maxLen, 0);
-    const b = Buffer.alloc(maxLen, 0);
-    Buffer.from(expected).copy(a);
-    Buffer.from(sigHeader).copy(b);
-    return crypto.timingSafeEqual(a, b) && expected === sigHeader;
-  } catch {
-    return false;
-  }
-}
-
 interface RegisterBody {
   repo: unknown;
   pr_number: unknown;
@@ -80,8 +65,8 @@ export async function handleRegisterPr(req: IncomingMessage, res: ServerResponse
   const rawBody = await readRawBody(req, res);
   if (rawBody === null) return;
 
-  const sigHeader = String(req.headers[REGISTER_SIGNATURE_HEADER] ?? '');
-  if (!verifySignature(secret, rawBody, sigHeader)) {
+  const sigHeader = String(req.headers[TRUST_SIGNATURE_HEADER] ?? '');
+  if (!verifyTrustedSignature(secret, rawBody, sigHeader)) {
     log.warn('register-pr: invalid or missing signature');
     writeJson(res, 401, { error: 'invalid signature' });
     return;
