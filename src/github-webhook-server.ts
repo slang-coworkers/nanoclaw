@@ -22,7 +22,7 @@ import {
   verifyTrustedSignature,
 } from './modules/pr-mapping/register-client.js';
 import { handleRegisterPr } from './modules/pr-mapping/register-endpoint.js';
-import { deliverGitHubMention } from './webhook-github.js';
+import { deliverGitHubIssueOpened, deliverGitHubMention } from './webhook-github.js';
 
 const MAX_BODY_SIZE = 512 * 1024; // 512 KB
 const FANOUT_HEADER = 'x-webhook-fanout';
@@ -186,8 +186,12 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     }
 
     const eventType = req.headers['x-github-event'];
-    if (eventType !== 'issue_comment' && eventType !== 'pull_request_review_comment') {
-      writeJson(res, 200, { ok: true, skipped: true, reason: 'not issue_comment or pull_request_review_comment' });
+    if (eventType !== 'issue_comment' && eventType !== 'pull_request_review_comment' && eventType !== 'issues') {
+      writeJson(res, 200, {
+        ok: true,
+        skipped: true,
+        reason: 'not issue_comment, pull_request_review_comment, or issues',
+      });
       return;
     }
 
@@ -237,52 +241,85 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       return;
     }
 
+    const repository = payload.repository as Record<string, unknown> | undefined;
+    const repoFullName = typeof repository?.full_name === 'string' ? repository.full_name : '';
+
+    // Issues: action must be 'opened'; no mention check (a fresh issue
+    // can't tag the bot — the bot is the audience here, not the actor).
+    if (eventType === 'issues') {
+      if (payload.action !== 'opened') {
+        writeJson(res, 200, { ok: true, skipped: true, reason: 'issues action not opened' });
+        return;
+      }
+      const issue = payload.issue as Record<string, unknown> | undefined;
+      const issueNumber = typeof issue?.number === 'number' ? issue.number : 0;
+      const title = typeof issue?.title === 'string' ? issue.title : '';
+      const body = typeof issue?.body === 'string' ? issue.body : '';
+      const author =
+        typeof (issue?.user as Record<string, unknown> | undefined)?.login === 'string'
+          ? String((issue!.user as Record<string, unknown>).login)
+          : '';
+      const issueUrl = typeof issue?.html_url === 'string' ? issue.html_url : '';
+      const labelsRaw = Array.isArray(issue?.labels) ? (issue!.labels as Record<string, unknown>[]) : [];
+      const labels = labelsRaw.map((l) => (typeof l.name === 'string' ? l.name : '')).filter((s) => s.length > 0);
+
+      if (!repoFullName || !issueNumber) {
+        log.warn('github-webhook: malformed issues payload', { repo: repoFullName, issueNumber });
+        writeJson(res, 400, { error: 'malformed payload' });
+        return;
+      }
+
+      const outcome = deliverGitHubIssueOpened({
+        repo: repoFullName,
+        issueNumber,
+        issueUrl,
+        title,
+        body,
+        author,
+        labels,
+        deliveryId: String(req.headers['x-github-delivery'] ?? ''),
+      });
+      writeJson(res, 200, { ok: true, outcome });
+      return;
+    }
+
+    // Comment events: action filter + mention check (skipped on peer-forward)
     if (payload.action !== 'created') {
       writeJson(res, 200, { ok: true, skipped: true, reason: 'action not created' });
       return;
     }
 
     const comment = payload.comment as Record<string, unknown> | undefined;
-    const repository = payload.repository as Record<string, unknown> | undefined;
     const commentBody = typeof comment?.body === 'string' ? comment.body : '';
 
-    // Mention check is a router-side filter — peer-forwards already passed it.
     if (!isPeerForward && !commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase())) {
       writeJson(res, 200, { ok: true, skipped: true, reason: 'bot not mentioned' });
       return;
     }
 
-    const repo = typeof repository?.full_name === 'string' ? repository.full_name : '';
     const commentId = typeof comment?.id === 'number' ? comment.id : 0;
 
     let issueNumber: number;
     let isPr: boolean;
-    let prBranch: string | null;
 
     if (eventType === 'pull_request_review_comment') {
       const pr = payload.pull_request as Record<string, unknown> | undefined;
       issueNumber = typeof pr?.number === 'number' ? pr.number : 0;
       isPr = true;
-      prBranch =
-        typeof (pr?.head as Record<string, unknown> | undefined)?.ref === 'string'
-          ? String((pr!.head as Record<string, unknown>).ref)
-          : null;
     } else {
       const issue = payload.issue as Record<string, unknown> | undefined;
       issueNumber = typeof issue?.number === 'number' ? issue.number : 0;
       isPr = Boolean(issue?.pull_request);
-      // issue_comment events don't include the branch; orchestrator resolves via gh api
-      prBranch = null;
     }
 
-    if (!repo || !issueNumber || !commentId) {
-      log.warn('github-webhook: malformed payload', { repo, issueNumber, commentId });
+    if (!repoFullName || !issueNumber || !commentId) {
+      log.warn('github-webhook: malformed payload', { repo: repoFullName, issueNumber, commentId });
       writeJson(res, 400, { error: 'malformed payload' });
       return;
     }
 
     const outcome = deliverGitHubMention({
-      repo,
+      repo: repoFullName,
       issueNumber,
       commentId,
       commentUrl: typeof comment?.html_url === 'string' ? comment.html_url : '',
@@ -292,7 +329,6 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
           : '',
       body: commentBody,
       isPr,
-      prBranch,
       rawBody,
       eventType: String(eventType),
       deliveryId: String(req.headers['x-github-delivery'] ?? ''),
@@ -306,7 +342,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     // github skill's Step 0). Fire-and-forget; failures must never block
     // the 200 OK we owe GitHub.
     if (outcome === 'local') {
-      void postEyesReaction(repo, eventType as string, commentId);
+      void postEyesReaction(repoFullName, eventType as string, commentId);
     }
 
     writeJson(res, 200, { ok: true, outcome });

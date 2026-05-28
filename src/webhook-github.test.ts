@@ -96,7 +96,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       commenter: 'a',
       body: '@nv-slang-bot fix this',
       isPr: true,
-      prBranch: null,
+
       rawBody: '{"action":"created"}',
       eventType: 'issue_comment',
       deliveryId: 'd-1',
@@ -147,7 +147,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       commenter: 'a',
       body: '@nv-slang-bot',
       isPr: true,
-      prBranch: null,
+
       rawBody: '{"action":"created"}',
       eventType: 'issue_comment',
       deliveryId: 'd-1',
@@ -199,7 +199,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       commenter: 'a',
       body: '@nv-slang-bot',
       isPr: true,
-      prBranch: null,
+
       rawBody: '{"action":"created"}',
       eventType: 'issue_comment',
       deliveryId: 'd-1',
@@ -208,5 +208,175 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     expect(outcome).toBe('local');
     expect(captured).toHaveLength(0); // no forward
     expect(insertCalls).toHaveLength(1);
+  });
+
+  it('falls through to orchestrator when no mapping exists (canonical instance)', async () => {
+    const insertCalls: unknown[] = [];
+    delete process.env.WEBHOOK_REQUIRE_MAPPING;
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+    }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
+      getSession: () => undefined,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({ close: () => undefined }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
+
+    const { deliverGitHubMention } = await import('./webhook-github.js');
+    const outcome = deliverGitHubMention({
+      repo: 'shader-slang/slang',
+      issueNumber: 99,
+      commentId: 5,
+      commentUrl: '',
+      commenter: 'a',
+      body: '@nv-slang-bot triage this',
+      isPr: true,
+      rawBody: '{"action":"created"}',
+      eventType: 'issue_comment',
+      deliveryId: 'd-1',
+    });
+
+    expect(outcome).toBe('local');
+    expect(insertCalls).toHaveLength(1);
+    const inserted = insertCalls[0] as { content: string };
+    expect(JSON.parse(inserted.content).event).toBe('github.pr_mention');
+  });
+
+  it('drops unmapped events when WEBHOOK_REQUIRE_MAPPING=1 (non-canonical instance)', async () => {
+    const insertCalls: unknown[] = [];
+    process.env.WEBHOOK_REQUIRE_MAPPING = '1';
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+    }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      getSession: () => undefined,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({ close: () => undefined }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
+
+    const { deliverGitHubMention } = await import('./webhook-github.js');
+    const outcome = deliverGitHubMention({
+      repo: 'shader-slang/slang',
+      issueNumber: 99,
+      commentId: 5,
+      commentUrl: '',
+      commenter: 'a',
+      body: '@nv-slang-bot',
+      isPr: true,
+      rawBody: '{"action":"created"}',
+      eventType: 'issue_comment',
+      deliveryId: 'd-1',
+    });
+
+    expect(outcome).toBe('dropped');
+    expect(insertCalls).toHaveLength(0);
+
+    delete process.env.WEBHOOK_REQUIRE_MAPPING;
+  });
+});
+
+describe('deliverGitHubIssueOpened', () => {
+  it('routes new issues to orchestrator with github.issue_opened event', async () => {
+    const insertCalls: unknown[] = [];
+    delete process.env.WEBHOOK_REQUIRE_MAPPING;
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+    }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
+      getSession: () => undefined,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({ close: () => undefined }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
+
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    const outcome = deliverGitHubIssueOpened({
+      repo: 'shader-slang/slang',
+      issueNumber: 1234,
+      issueUrl: 'https://github.com/shader-slang/slang/issues/1234',
+      title: 'Crash on null deref',
+      body: 'Repro: ...',
+      author: 'reporter',
+      labels: ['bug'],
+      deliveryId: 'd-issues-1',
+    });
+
+    expect(outcome).toBe('local');
+    expect(insertCalls).toHaveLength(1);
+    const msg = insertCalls[0] as { id: string; content: string; channelType: string };
+    expect(msg.id).toBe('gh-issue-shader-slang/slang-1234');
+    expect(msg.channelType).toBe('github');
+    const parsed = JSON.parse(msg.content);
+    expect(parsed.event).toBe('github.issue_opened');
+    expect(parsed.title).toBe('Crash on null deref');
+    expect(parsed.labels).toEqual(['bug']);
+  });
+
+  it('drops issues events on non-canonical instances (WEBHOOK_REQUIRE_MAPPING=1)', async () => {
+    const insertCalls: unknown[] = [];
+    process.env.WEBHOOK_REQUIRE_MAPPING = '1';
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+    vi.doMock('./db/sessions.js', () => ({ findSessionByAgentGroup: () => undefined, getSession: () => undefined }));
+    vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({ close: () => undefined }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
+
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    const outcome = deliverGitHubIssueOpened({
+      repo: 'shader-slang/slang',
+      issueNumber: 1234,
+      issueUrl: '',
+      title: 'x',
+      body: '',
+      author: '',
+      labels: [],
+      deliveryId: 'd-1',
+    });
+
+    expect(outcome).toBe('dropped');
+    expect(insertCalls).toHaveLength(0);
+
+    delete process.env.WEBHOOK_REQUIRE_MAPPING;
   });
 });
