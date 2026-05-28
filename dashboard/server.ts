@@ -3228,6 +3228,11 @@ function computeAcceptKey(key: string): string {
 const wsClients = new Set<any>();
 const sseClients = new Set<import('http').ServerResponse>();
 
+let lastBroadcastJson: string | null = null;
+const clientSkipCounts = new WeakMap<any, number>();
+const BACKPRESSURE_THRESHOLD = 2 * 1024 * 1024; // 2MB
+const MAX_CONSECUTIVE_SKIPS = 20; // ~10 seconds at 2 Hz
+
 export function resetTransientDashboardStateForTests(): void {
   hookEvents.length = 0;
   liveHookState.clear();
@@ -3240,6 +3245,7 @@ export function resetTransientDashboardStateForTests(): void {
   cachedTypes = null;
   wsClients.clear();
   sseClients.clear();
+  lastBroadcastJson = null;
   try {
     db?.close();
   } catch {
@@ -3276,9 +3282,39 @@ export function forceOpenDbForTests(): void {
 
 function broadcastState(): void {
   if (wsClients.size === 0 && sseClients.size === 0) return;
-  const state = JSON.stringify({ type: 'state', data: getState() });
+  const data = getState() as Record<string, unknown>;
+  const state = JSON.stringify({ type: 'state', data });
+
+  // Skip if state is identical to last broadcast.
+  // The top-level `data.timestamp` is wall-clock and changes every tick — exclude
+  // it from the dedup key so we don't broadcast 1.7 MB just to advance a clock.
+  // Clients still receive the timestamp in the payload they get on real changes.
+  const { timestamp: _ts, ...rest } = data;
+  const dedupKey = JSON.stringify(rest);
+  if (dedupKey === lastBroadcastJson) return;
+  lastBroadcastJson = dedupKey;
+
   for (const ws of wsClients) {
     try {
+      // Check backpressure: if socket has pending data, skip this round
+      if (ws.writableLength > BACKPRESSURE_THRESHOLD) {
+        const skipCount = (clientSkipCounts.get(ws) ?? 0) + 1;
+        clientSkipCounts.set(ws, skipCount);
+        if (skipCount >= MAX_CONSECUTIVE_SKIPS) {
+          // Close this client after too many skips
+          try {
+            const closeFrame = createWsFrame(Buffer.alloc(0), 0x8);
+            ws.write(closeFrame);
+          } catch {
+            /* ignore */
+          }
+          ws.end();
+          wsClients.delete(ws);
+        }
+        continue;
+      }
+      // Reset skip count on successful send
+      clientSkipCounts.set(ws, 0);
       const buf = Buffer.from(state);
       const frame = createWsFrame(buf);
       ws.write(frame);
@@ -3286,9 +3322,23 @@ function broadcastState(): void {
       wsClients.delete(ws);
     }
   }
+
   const ssePayload = `data: ${state}\n\n`;
   for (const client of sseClients) {
     try {
+      // Check backpressure: if response has pending data, skip this round
+      if (client.writableLength > BACKPRESSURE_THRESHOLD) {
+        const skipCount = (clientSkipCounts.get(client) ?? 0) + 1;
+        clientSkipCounts.set(client, skipCount);
+        if (skipCount >= MAX_CONSECUTIVE_SKIPS) {
+          // Close this client after too many skips
+          client.end();
+          sseClients.delete(client);
+        }
+        continue;
+      }
+      // Reset skip count on successful send
+      clientSkipCounts.set(client, 0);
       client.write(ssePayload);
     } catch {
       sseClients.delete(client);
