@@ -12,12 +12,36 @@ Use this skill when you receive a `kind: webhook` message with `content.event: "
 
 ## Operating principles
 
+- **Acknowledge before anything else.** Step 0 below posts the 👀 reaction on the triggering comment. The human who tagged the bot needs an immediate signal that the mention was received and is being worked on. The host webhook handler does NOT post this reaction — the coworker that picks up the work does, so exactly one 👀 lands per task regardless of which instance ends up handling it.
 - **One comment per webhook task.** Never POST a second comment for the same task — PATCH the first one. A new POST happens only when a fresh `kind: webhook` inbound arrives.
 - **The comment is a live TODO list.** Each step you intend to do becomes a checklist item; you update its status in real time so the human reviewer sees progress without you having to spam.
 - **Use `mcp__nanoclaw__send_message` to route to coworkers.** Do not use inline `<message to="…">` blocks for this skill — the tool call is explicit, auditable, and avoids the mixed-syntax footgun.
 - **Verify rapid follow-up webhooks** before acting on them.
 
 ## Flow
+
+### 0. Acknowledge with 👀 — before parsing
+
+The very first thing you do on a `pr_mention` webhook is post the 👀 reaction on the triggering comment. This is the signal to the human who tagged the bot that their `@nv-slang-bot` was received and is being worked on. The host webhook handler used to do this, but with cross-instance forwarding the only side that knows whether the work was actually picked up is this coworker.
+
+Endpoint differs by comment type. Pick the right one from the `comment_url` in the inbound payload:
+
+- URL contains `#discussion_r` → it's an inline `pull_request_review_comment` → `repos/{repo}/pulls/comments/{comment_id}/reactions`
+- everything else (issue conversation, regular PR comment) → `repos/{repo}/issues/comments/{comment_id}/reactions`
+
+```bash
+SUB=issues
+case "{comment_url}" in
+  *"#discussion_r"*) SUB=pulls ;;
+esac
+
+gh api -X POST -H "Accept: application/vnd.github+json" \
+  "repos/{repo}/$SUB/comments/{comment_id}/reactions" \
+  -f content=eyes \
+  || echo "(eyes already posted or comment gone — ignore)"
+```
+
+The fallback `|| echo` swallows the 422 GitHub returns when a reaction already exists (idempotent on retries). Do not block the rest of the flow on this — if it fails, log and continue.
 
 ### 1. Parse the webhook
 
