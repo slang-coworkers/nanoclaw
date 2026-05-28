@@ -184,6 +184,15 @@ export interface RoutableAgentMessage {
    *  session in the source agent's inbound DB and route the reply there
    *  even when the target has multiple active sessions. */
   in_reply_to?: string | null;
+  /** Sender-pinned recipient session id. When set, routing delivers to
+   *  that exact session if (a) it belongs to the resolved target agent
+   *  group and (b) it is active. Falls through to the existing routing
+   *  layers on any validation mismatch. The pin narrows session selection
+   *  within an authorized recipient — it does NOT bypass the destination
+   *  authorization check. Use to wake a specific paused session whose
+   *  context you want to resume (e.g. orchestrator lifting a pause for
+   *  queued work that was originally handed off by a peer chain). */
+  target_session_id?: string | null;
 }
 
 /**
@@ -247,6 +256,66 @@ function resolveExplicitReplyTarget(
     return candidate;
   }
   return null;
+}
+
+/**
+ * Resolve a sender-pinned recipient session id (`target_session_id`).
+ *
+ * Validates that the pinned session (a) exists, (b) belongs to the resolved
+ * target agent group, (c) is active, and (d) is not the sender's own session
+ * (self-target — caught by the existing main-route guard later, but rejected
+ * here too so we don't silently route a pin to self). Returns null on any
+ * mismatch, with a warning log; caller falls through to the existing routing
+ * layers as if the pin had not been set.
+ *
+ * Authorization: this resolver intentionally does NOT bypass the destination
+ * row check. The pin narrows session selection within an *already-authorized*
+ * recipient — `routeAgentMessage` keeps the regular `hasDestination` gate on
+ * the pin path so a coworker without write access to the target group can't
+ * shortcut to a session via this field.
+ */
+function resolvePinnedTarget(
+  msg: RoutableAgentMessage,
+  sourceSession: Session,
+  targetAgentGroupId: string,
+): Session | null {
+  const pinned = msg.target_session_id?.trim() || null;
+  if (!pinned) return null;
+
+  if (pinned === sourceSession.id) {
+    log.warn('a2a target_session_id: pin to self rejected', {
+      msgId: msg.id,
+      sessionId: sourceSession.id,
+    });
+    return null;
+  }
+  const candidate = getSession(pinned);
+  if (!candidate) {
+    log.warn('a2a target_session_id: session not found, falling through', {
+      msgId: msg.id,
+      pinned,
+      targetAgentGroupId,
+    });
+    return null;
+  }
+  if (candidate.agent_group_id !== targetAgentGroupId) {
+    log.warn('a2a target_session_id: belongs to different agent group, falling through', {
+      msgId: msg.id,
+      pinned,
+      expected: targetAgentGroupId,
+      actual: candidate.agent_group_id,
+    });
+    return null;
+  }
+  if (candidate.status !== 'active') {
+    log.warn('a2a target_session_id: session not active, falling through', {
+      msgId: msg.id,
+      pinned,
+      status: candidate.status,
+    });
+    return null;
+  }
+  return candidate;
 }
 
 /**
@@ -395,6 +464,25 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
     throw new Error(`agent-to-agent message ${msg.id} is missing a target agent group id`);
   }
 
+  // Layer 0: sender-pinned recipient session id.
+  //
+  // When `msg.target_session_id` is set, the sender has explicitly chosen
+  // which session within the recipient agent group to deliver into. Used
+  // for resume-paused-session flows (e.g. orchestrator wakes a peer chain's
+  // existing fixer session by id rather than letting routing mint a fresh
+  // per-thread session that has no inbox attachments / no working context).
+  //
+  // The pin only narrows session selection; the auth gate further down still
+  // requires a destination row. Validation (ownership + active + not-self)
+  // happens in resolvePinnedTarget — invalid pins fall through silently
+  // (with a warning) so a stale or wrong id never blocks delivery.
+  //
+  // Precedence: in_reply_to (Layer 1) wins over the pin because in_reply_to
+  // names a specific inbound, which is more semantic than a structural
+  // session id; if both are set and they disagree, the inbound being
+  // replied-to is the better signal of intent.
+  const pinnedTarget = resolvePinnedTarget(msg, session, targetAgentGroupId);
+
   // Layer 1: explicit in_reply_to / peer-affinity wins.
   //
   // If the agent named the exact inbound it's answering (or peer-affinity
@@ -438,7 +526,11 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
   // The contract is: default communication follows the lineage edge
   // upward; explicit communication may target an ancestor, but never
   // creates a new ancestor session if lineage proves an existing one.
-  if (!explicitTarget) {
+  // The pin (Layer 0) preempts the ancestor walk. A sender that named a
+  // specific session id has overridden the ancestor heuristic — if the pin
+  // happens to be the ancestor session anyway, the result is the same;
+  // if it's a different session, the pin is what the sender meant.
+  if (!explicitTarget && !pinnedTarget) {
     const ancestorRoute = findAncestorRoute(session.id, targetAgentGroupId);
     if (ancestorRoute) {
       await deliverAncestorReply(msg, session, ancestorRoute);
@@ -464,16 +556,29 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
     throw new Error(`target agent group ${targetAgentGroupId} not found for message ${msg.id}`);
   }
 
-  // Layer 3: deliver — using the explicit target resolved at Layer 1, or
-  // a fresh per-thread / per-source session as a final fallback. Both
-  // share the rest of the writeback path below.
+  // Layer 3: deliver — using the explicit target resolved at Layer 1, the
+  // sender-pinned target from Layer 0, or a fresh per-thread / per-source
+  // session as a final fallback. All three share the rest of the writeback
+  // path below.
   let targetSession: Session;
   let threadId: string | null;
   let usedExplicitReplyTarget = false;
+  let usedPinnedTarget = false;
   if (explicitTarget) {
     targetSession = explicitTarget;
     threadId = explicitTarget.thread_id ?? null;
     usedExplicitReplyTarget = true;
+  } else if (pinnedTarget) {
+    // Skip the fresh-mg / per-thread mint path: we already know exactly
+    // which session to deliver into.
+    targetSession = pinnedTarget;
+    threadId = pinnedTarget.thread_id ?? null;
+    usedPinnedTarget = true;
+    log.info('a2a target pinned: routing to sender-named session', {
+      msgId: msg.id,
+      sessionId: pinnedTarget.id,
+      targetAgentGroupId,
+    });
   } else {
     // Fresh-delegation path:
     //  - thread_id present → per-thread session keyed on (recipient,
@@ -553,7 +658,7 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
     threadId,
     a2aMsgId,
     forwardedFileCount: countForwardedFiles(forwardedContent),
-    via: usedExplicitReplyTarget ? 'in_reply_to' : 'fresh',
+    via: usedExplicitReplyTarget ? 'in_reply_to' : usedPinnedTarget ? 'target_session_id' : 'fresh',
   });
   const fresh = getSession(targetSession.id);
   if (fresh) await wakeContainer(fresh);

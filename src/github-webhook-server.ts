@@ -8,64 +8,29 @@
 import crypto from 'crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'http';
 
-import { GITHUB_WEBHOOK_BOT_MENTION, GITHUB_WEBHOOK_PORT, GITHUB_WEBHOOK_SECRET } from './config.js';
+import {
+  GITHUB_WEBHOOK_BOT_MENTION,
+  GITHUB_WEBHOOK_PORT,
+  GITHUB_WEBHOOK_SECRET,
+  INSTANCE_FORWARD_TARGETS,
+  INSTANCE_SLUG,
+  INTERNAL_REGISTER_SECRET,
+} from './config.js';
 import { log } from './log.js';
-import { deliverGitHubMention } from './webhook-github.js';
+import {
+  TRUST_SIGNATURE_HEADER,
+  WEBHOOK_TRUST_HEADER,
+  WEBHOOK_TRUST_VALUE,
+  verifyTrustedSignature,
+} from './modules/pr-mapping/register-client.js';
+import { handleRegisterPr } from './modules/pr-mapping/register-endpoint.js';
+import { deliverGitHubIssueOpened, deliverGitHubMention } from './webhook-github.js';
 
 const MAX_BODY_SIZE = 512 * 1024; // 512 KB
-const FANOUT_HEADER = 'x-webhook-fanout';
 
 export interface GitHubWebhookServerHandle {
   server: Server;
   stop(): Promise<void>;
-}
-
-/**
- * Forward an authenticated webhook delivery to peer instances. Set via env var
- * WEBHOOK_FANOUT_URLS as a comma-separated list of `URL|SECRET` pairs (the
- * peer's GITHUB_WEBHOOK_SECRET, used to re-sign the body so the receiver's
- * existing HMAC check passes). If `|SECRET` is omitted, falls back to this
- * instance's GITHUB_WEBHOOK_SECRET (only useful when peers share a secret).
- *
- * Used to share App-webhook deliveries across instances when only one URL is
- * registered with the App but multiple instances need to react. Fire-and-
- * forget: failures are logged but never block the response to GitHub.
- */
-function fanOutWebhook(rawBody: string, headers: { event: string; delivery: string }): void {
-  const list = (process.env.WEBHOOK_FANOUT_URLS ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-  if (list.length === 0) return;
-
-  for (const entry of list) {
-    const [url, peerSecret] = entry.split('|', 2);
-    const secret = peerSecret || GITHUB_WEBHOOK_SECRET;
-    if (!url || !secret) {
-      log.warn('github-webhook: fan-out entry missing url or secret', { entry: url });
-      continue;
-    }
-    const peerSig = `sha256=${crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')}`;
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-GitHub-Event': headers.event,
-        'X-GitHub-Delivery': headers.delivery,
-        'X-Hub-Signature-256': peerSig,
-        [FANOUT_HEADER]: '1',
-      },
-      body: rawBody,
-    })
-      .then((r) => {
-        if (!r.ok) {
-          log.warn('github-webhook: fan-out non-OK', { url, status: r.status });
-        }
-      })
-      .catch((err: unknown) => {
-        log.warn('github-webhook: fan-out failed', { url, error: String(err) });
-      });
-  }
 }
 
 function writeJson(res: ServerResponse, status: number, payload: Record<string, unknown>): void {
@@ -115,15 +80,34 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     log.warn('GITHUB_WEBHOOK_SECRET not set — webhook server will reject all requests');
   }
 
+  // Canonical-instance health check: prod is the only entry point for the
+  // App webhook, so an empty INSTANCE_FORWARD_TARGETS means peer instances
+  // (lego, etc.) will never receive any traffic. Loud warn at startup so
+  // a misconfig is visible before someone notices missing 👀 reactions.
+  if (INSTANCE_SLUG === 'prod' && Object.keys(INSTANCE_FORWARD_TARGETS).length === 0) {
+    log.warn(
+      'github-webhook: canonical instance has empty INSTANCE_FORWARD_TARGETS — peer instances will receive no traffic',
+    );
+  }
+
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+    if (req.method === 'POST' && req.url === '/internal/register-pr') {
+      await handleRegisterPr(req, res, INTERNAL_REGISTER_SECRET);
+      return;
+    }
+
     if (req.method !== 'POST' || req.url !== '/webhook/github') {
       writeJson(res, 404, { error: 'not found' });
       return;
     }
 
     const eventType = req.headers['x-github-event'];
-    if (eventType !== 'issue_comment' && eventType !== 'pull_request_review_comment') {
-      writeJson(res, 200, { ok: true, skipped: true, reason: 'not issue_comment or pull_request_review_comment' });
+    if (eventType !== 'issue_comment' && eventType !== 'pull_request_review_comment' && eventType !== 'issues') {
+      writeJson(res, 200, {
+        ok: true,
+        skipped: true,
+        reason: 'not issue_comment, pull_request_review_comment, or issues',
+      });
       return;
     }
 
@@ -131,21 +115,28 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     const rawBody = await readRawBody(req, res);
     if (rawBody === null) return;
 
-    // Validate HMAC before touching the payload
-    const sigHeader = String(req.headers['x-hub-signature-256'] ?? '');
-    if (!GITHUB_WEBHOOK_SECRET || !verifySignature(GITHUB_WEBHOOK_SECRET, rawBody, sigHeader)) {
-      log.warn('github-webhook: invalid or missing signature');
-      writeJson(res, 401, { error: 'invalid signature' });
-      return;
-    }
-
-    // Fan-out to peer instances. Skip if this request is itself a fan-out
-    // delivery (avoids loops when peers reciprocate by mistake).
-    if (req.headers[FANOUT_HEADER] !== '1') {
-      fanOutWebhook(rawBody, {
-        event: String(eventType),
-        delivery: String(req.headers['x-github-delivery'] ?? ''),
-      });
+    // Two trust paths:
+    //   - GitHub-signed (X-Hub-Signature-256): the normal entry. Body is
+    //     unfiltered; we apply the action/mention filters below.
+    //   - Peer-signed (X-Webhook-Trust + X-Internal-Signature-256): a
+    //     foreign-owned forward from the canonical router. The router
+    //     already validated and decided this is for us, so we skip the
+    //     filters and go straight to mapping-based delivery.
+    const isPeerForward = req.headers[WEBHOOK_TRUST_HEADER] === WEBHOOK_TRUST_VALUE;
+    if (isPeerForward) {
+      const trustSig = String(req.headers[TRUST_SIGNATURE_HEADER] ?? '');
+      if (!INTERNAL_REGISTER_SECRET || !verifyTrustedSignature(INTERNAL_REGISTER_SECRET, rawBody, trustSig)) {
+        log.warn('github-webhook: peer-forward with invalid trust signature');
+        writeJson(res, 401, { error: 'invalid trust signature' });
+        return;
+      }
+    } else {
+      const sigHeader = String(req.headers['x-hub-signature-256'] ?? '');
+      if (!GITHUB_WEBHOOK_SECRET || !verifySignature(GITHUB_WEBHOOK_SECRET, rawBody, sigHeader)) {
+        log.warn('github-webhook: invalid or missing signature');
+        writeJson(res, 401, { error: 'invalid signature' });
+        return;
+      }
     }
 
     let payload: Record<string, unknown>;
@@ -156,51 +147,85 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       return;
     }
 
+    const repository = payload.repository as Record<string, unknown> | undefined;
+    const repoFullName = typeof repository?.full_name === 'string' ? repository.full_name : '';
+
+    // Issues: action must be 'opened'; no mention check (a fresh issue
+    // can't tag the bot — the bot is the audience here, not the actor).
+    if (eventType === 'issues') {
+      if (payload.action !== 'opened') {
+        writeJson(res, 200, { ok: true, skipped: true, reason: 'issues action not opened' });
+        return;
+      }
+      const issue = payload.issue as Record<string, unknown> | undefined;
+      const issueNumber = typeof issue?.number === 'number' ? issue.number : 0;
+      const title = typeof issue?.title === 'string' ? issue.title : '';
+      const body = typeof issue?.body === 'string' ? issue.body : '';
+      const author =
+        typeof (issue?.user as Record<string, unknown> | undefined)?.login === 'string'
+          ? String((issue!.user as Record<string, unknown>).login)
+          : '';
+      const issueUrl = typeof issue?.html_url === 'string' ? issue.html_url : '';
+      const labelsRaw = Array.isArray(issue?.labels) ? (issue!.labels as Record<string, unknown>[]) : [];
+      const labels = labelsRaw.map((l) => (typeof l.name === 'string' ? l.name : '')).filter((s) => s.length > 0);
+
+      if (!repoFullName || !issueNumber) {
+        log.warn('github-webhook: malformed issues payload', { repo: repoFullName, issueNumber });
+        writeJson(res, 400, { error: 'malformed payload' });
+        return;
+      }
+
+      const outcome = deliverGitHubIssueOpened({
+        repo: repoFullName,
+        issueNumber,
+        issueUrl,
+        title,
+        body,
+        author,
+        labels,
+        deliveryId: String(req.headers['x-github-delivery'] ?? ''),
+      });
+      writeJson(res, 200, { ok: true, outcome });
+      return;
+    }
+
+    // Comment events: action filter + mention check (skipped on peer-forward)
     if (payload.action !== 'created') {
       writeJson(res, 200, { ok: true, skipped: true, reason: 'action not created' });
       return;
     }
 
     const comment = payload.comment as Record<string, unknown> | undefined;
-    const repository = payload.repository as Record<string, unknown> | undefined;
     const commentBody = typeof comment?.body === 'string' ? comment.body : '';
 
-    if (!commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase())) {
+    if (!isPeerForward && !commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase())) {
       writeJson(res, 200, { ok: true, skipped: true, reason: 'bot not mentioned' });
       return;
     }
 
-    const repo = typeof repository?.full_name === 'string' ? repository.full_name : '';
     const commentId = typeof comment?.id === 'number' ? comment.id : 0;
 
     let issueNumber: number;
     let isPr: boolean;
-    let prBranch: string | null;
 
     if (eventType === 'pull_request_review_comment') {
       const pr = payload.pull_request as Record<string, unknown> | undefined;
       issueNumber = typeof pr?.number === 'number' ? pr.number : 0;
       isPr = true;
-      prBranch =
-        typeof (pr?.head as Record<string, unknown> | undefined)?.ref === 'string'
-          ? String((pr!.head as Record<string, unknown>).ref)
-          : null;
     } else {
       const issue = payload.issue as Record<string, unknown> | undefined;
       issueNumber = typeof issue?.number === 'number' ? issue.number : 0;
       isPr = Boolean(issue?.pull_request);
-      // issue_comment events don't include the branch; orchestrator resolves via gh api
-      prBranch = null;
     }
 
-    if (!repo || !issueNumber || !commentId) {
-      log.warn('github-webhook: malformed payload', { repo, issueNumber, commentId });
+    if (!repoFullName || !issueNumber || !commentId) {
+      log.warn('github-webhook: malformed payload', { repo: repoFullName, issueNumber, commentId });
       writeJson(res, 400, { error: 'malformed payload' });
       return;
     }
 
-    deliverGitHubMention({
-      repo,
+    const outcome = deliverGitHubMention({
+      repo: repoFullName,
       issueNumber,
       commentId,
       commentUrl: typeof comment?.html_url === 'string' ? comment.html_url : '',
@@ -210,10 +235,12 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
           : '',
       body: commentBody,
       isPr,
-      prBranch,
+      rawBody,
+      eventType: String(eventType),
+      deliveryId: String(req.headers['x-github-delivery'] ?? ''),
     });
 
-    writeJson(res, 200, { ok: true });
+    writeJson(res, 200, { ok: true, outcome });
   });
 
   server.listen(GITHUB_WEBHOOK_PORT, '0.0.0.0', () => {

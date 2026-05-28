@@ -21,6 +21,8 @@ interface RunResult {
 
 let tmpRoot: string;
 let stateFile: string;
+let overlayDir: string;
+let markerFile: string;
 
 function run(payload: object, env: Record<string, string> = {}): RunResult {
   const proc = spawnSync('bash', [SCRIPT], {
@@ -28,6 +30,7 @@ function run(payload: object, env: Record<string, string> = {}): RunResult {
     env: {
       PATH: process.env.PATH || '',
       WORKFLOW_STATE_FILE: stateFile,
+      OVERLAY_MARKER_DIR: overlayDir,
       ...env,
     },
     encoding: 'utf-8',
@@ -38,6 +41,12 @@ function run(payload: object, env: Record<string, string> = {}): RunResult {
 beforeEach(() => {
   tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-plan-test-'));
   stateFile = path.join(tmpRoot, 'workflow-state.json');
+  overlayDir = tmpRoot;
+  markerFile = path.join(overlayDir, '.overlay-plan-gate');
+  // Default: marker present (most tests assume the gate is opted in via the
+  // plan-gate overlay). The "Marker absent → no-op" describe block deletes
+  // it before running.
+  fs.writeFileSync(markerFile, 'plan-gate\n');
 });
 
 afterEach(() => {
@@ -132,15 +141,45 @@ describe('Per-session isolation', () => {
 
     const a = spawnSync('bash', [SCRIPT], {
       input: JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } }),
-      env: { PATH: process.env.PATH || '', WORKFLOW_STATE_FILE: stateA },
+      env: { PATH: process.env.PATH || '', WORKFLOW_STATE_FILE: stateA, OVERLAY_MARKER_DIR: overlayDir },
       encoding: 'utf-8',
     });
     const b = spawnSync('bash', [SCRIPT], {
       input: JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } }),
-      env: { PATH: process.env.PATH || '', WORKFLOW_STATE_FILE: stateB },
+      env: { PATH: process.env.PATH || '', WORKFLOW_STATE_FILE: stateB, OVERLAY_MARKER_DIR: overlayDir },
       encoding: 'utf-8',
     });
     expect(a.status).toBe(0); // session A had a plan → passes
     expect(b.status).toBe(2); // session B did not → blocked, independent of A
+  });
+});
+
+// Marker-absent path: when the `plan-gate` overlay is NOT in the coworker's
+// resolved overlay set, the composer doesn't materialize the marker and the
+// hook short-circuits (exit 0) on the first line. Mirrors the symmetric
+// opt-in pattern in gate-critique-on-deliver.sh.
+describe('Marker absent → no-op (opt-in via plan-gate overlay)', () => {
+  beforeEach(() => {
+    // Remove the marker that the outer beforeEach planted.
+    fs.unlinkSync(markerFile);
+  });
+
+  it('no marker + Edit + plan_written=false → exit 0 (would normally deny)', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
+    const r = run({ tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } });
+    expect(r.status).toBe(0);
+    expect(r.stderr).not.toContain('PLAN REQUIRED');
+  });
+
+  it('no marker + Bash write + plan_written=false → exit 0', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
+    const r = run({ tool_name: 'Bash', tool_input: { command: 'echo hi > /workspace/src/foo.txt' } });
+    expect(r.status).toBe(0);
+  });
+
+  it('no marker + plan_stale=true → exit 0 (would normally deny)', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: true, plan_stale: true }));
+    const r = run({ tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } });
+    expect(r.status).toBe(0);
   });
 });

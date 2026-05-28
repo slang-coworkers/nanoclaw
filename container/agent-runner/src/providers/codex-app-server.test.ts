@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
 
-import { STALE_THREAD_RE, tomlBasicString } from './codex-app-server.js';
+import { STALE_THREAD_RE, createCodexConfigOverrides, tomlBasicString } from './codex-app-server.js';
 
 describe('tomlBasicString', () => {
   it('leaves safe strings unchanged inside quotes', () => {
@@ -64,6 +64,20 @@ function withTmpHome<T>(fn: () => T): T {
 }
 
 describe('writeCodexMcpConfigToml', () => {
+  it('preserves Codex hook feature enablement from existing config', () => {
+    withTmpHome(() => {
+      const cfg = path.join(process.env.HOME!, '.codex', 'config.toml');
+      fs.mkdirSync(path.dirname(cfg), { recursive: true });
+      fs.writeFileSync(cfg, ['[features]', 'hooks = true', '', '[projects."/workspace/agent"]', 'trust_level = "trusted"', ''].join('\n'));
+
+      writeCodexMcpConfigToml({});
+
+      const toml = fs.readFileSync(cfg, 'utf-8');
+      expect(toml).toContain('[features]');
+      expect(toml).toContain('hooks = true');
+    });
+  });
+
   it('emits url for http MCP (not command) with no type= line', () => {
     withTmpHome(() => {
       writeCodexMcpConfigToml({
@@ -336,6 +350,11 @@ describe('bwrap sandbox regression', () => {
     );
     expect(src).not.toMatch(/sandbox\s*:\s*['"]read-only['"]/);
     expect(src).toContain("'danger-full-access'");
+  });
+
+  it('codex app-server overrides enable hooks with current feature flag', () => {
+    expect(createCodexConfigOverrides()).toContain('features.hooks=true');
+    expect(createCodexConfigOverrides()).not.toContain('features.codex_hooks=true');
   });
 
   it('codex-critique SKILL.md does not instruct read-only sandbox', () => {

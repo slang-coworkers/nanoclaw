@@ -14,7 +14,11 @@ import path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { getAppliedOverlayNames, materializeOverlayMarkers } from './claude-composer.js';
+import {
+  getAppliedOverlayNames,
+  materializeCritiqueRequiredStages,
+  materializeOverlayMarkers,
+} from './claude-composer.js';
 
 let tmpRoot: string;
 
@@ -293,5 +297,122 @@ describe('getAppliedOverlayNames decouples MARKER from anchor placement', () => 
       cliScope: 'group',
     });
     expect(applied).toEqual([]);
+  });
+});
+
+// `required_critique_stages` declared per coworker-type in coworker-types.yaml,
+// inherited via `extends:`. The composer unions across the chain and writes
+// `<groupDir>/.critique-required-stages` (JSON list) — but ONLY when the
+// `critique-gate` overlay is in the active overlay set. If the overlay is
+// disabled (kill switch) or not opted in, the file is skipped (or removed
+// if stale) so the on-disk state matches the active overlay configuration.
+describe('materializeCritiqueRequiredStages', () => {
+  function writeTypesYaml(spineName: string, types: Record<string, Record<string, unknown>>): void {
+    const dir = path.join(tmpRoot, 'container', 'spines', spineName);
+    fs.mkdirSync(dir, { recursive: true });
+    const lines: string[] = [];
+    for (const [name, body] of Object.entries(types)) {
+      lines.push(`${name}:`);
+      for (const [k, v] of Object.entries(body)) {
+        lines.push(`  ${k}: ${typeof v === 'string' ? JSON.stringify(v) : JSON.stringify(v)}`);
+      }
+    }
+    fs.writeFileSync(path.join(dir, 'coworker-types.yaml'), lines.join('\n') + '\n');
+  }
+
+  it('writes [] (no file) when critique-gate is NOT in appliedOverlays — kill switch / not opted in', async () => {
+    writeTypesYaml('test2', {
+      'stage-type': { description: 'has stages', required_critique_stages: ['CODE_REVIEW', 'OUTPUT_REVIEW'] },
+    });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    const types = readCoworkerTypes(tmpRoot);
+    materializeCritiqueRequiredStages('stage-type', types, [], groupDir);
+    expect(fs.existsSync(path.join(groupDir, '.critique-required-stages'))).toBe(false);
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('removes a stale stages file when critique-gate is dropped from the overlay set', async () => {
+    writeTypesYaml('test3', {
+      'stage-type': { description: 'has stages', required_critique_stages: ['CODE_REVIEW'] },
+    });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    fs.writeFileSync(path.join(groupDir, '.critique-required-stages'), '["STALE"]');
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueRequiredStages('stage-type', readCoworkerTypes(tmpRoot), [], groupDir);
+    expect(fs.existsSync(path.join(groupDir, '.critique-required-stages'))).toBe(false);
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('writes the coworker type’s stages when critique-gate is opted in', async () => {
+    writeTypesYaml('test4', {
+      writer: { description: 'writer', required_critique_stages: ['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW'] },
+    });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueRequiredStages('writer', readCoworkerTypes(tmpRoot), ['critique-gate'], groupDir);
+    const written = JSON.parse(fs.readFileSync(path.join(groupDir, '.critique-required-stages'), 'utf8'));
+    expect(new Set(written)).toEqual(new Set(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']));
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('inherits stages from the extends chain (parent → child via `extends:`)', async () => {
+    writeTypesYaml('test5', {
+      'writer-base': { description: 'base writer', required_critique_stages: ['PLAN_REVIEW', 'CODE_REVIEW'] },
+      'project-fixer': {
+        extends: 'writer-base',
+        description: 'project fixer extends base',
+        required_critique_stages: ['OUTPUT_REVIEW'],
+      },
+    });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueRequiredStages('project-fixer', readCoworkerTypes(tmpRoot), ['critique-gate'], groupDir);
+    const written = JSON.parse(fs.readFileSync(path.join(groupDir, '.critique-required-stages'), 'utf8'));
+    expect(new Set(written)).toEqual(new Set(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']));
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('dedupes overlapping stages from parent + child', async () => {
+    writeTypesYaml('test6', {
+      parent: { description: 'parent', required_critique_stages: ['CODE_REVIEW', 'OUTPUT_REVIEW'] },
+      child: {
+        extends: 'parent',
+        description: 'child overlaps parent',
+        required_critique_stages: ['CODE_REVIEW', 'PLAN_REVIEW'],
+      },
+    });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueRequiredStages('child', readCoworkerTypes(tmpRoot), ['critique-gate'], groupDir);
+    const written = JSON.parse(fs.readFileSync(path.join(groupDir, '.critique-required-stages'), 'utf8'));
+    expect(new Set(written)).toEqual(new Set(['CODE_REVIEW', 'OUTPUT_REVIEW', 'PLAN_REVIEW']));
+    expect(written.length).toBe(3);
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('rejects non-uppercase / malformed stage names', async () => {
+    writeTypesYaml('test7', {
+      mixed: {
+        description: 'mixed stages',
+        required_critique_stages: ['CODE_REVIEW', 'lowercase', 'has space', '123', 'OUTPUT_REVIEW'],
+      },
+    });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueRequiredStages('mixed', readCoworkerTypes(tmpRoot), ['critique-gate'], groupDir);
+    const written = JSON.parse(fs.readFileSync(path.join(groupDir, '.critique-required-stages'), 'utf8'));
+    expect(new Set(written)).toEqual(new Set(['CODE_REVIEW', 'OUTPUT_REVIEW']));
+    fs.rmSync(groupDir, { recursive: true, force: true });
+  });
+
+  it('writes [] when coworker has critique-gate but no stages declared (legacy mode passthrough)', async () => {
+    writeTypesYaml('test8', { 'no-stages': { description: 'no stages' } });
+    const groupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'group-'));
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    materializeCritiqueRequiredStages('no-stages', readCoworkerTypes(tmpRoot), ['critique-gate'], groupDir);
+    const written = JSON.parse(fs.readFileSync(path.join(groupDir, '.critique-required-stages'), 'utf8'));
+    expect(written).toEqual([]);
+    fs.rmSync(groupDir, { recursive: true, force: true });
   });
 });

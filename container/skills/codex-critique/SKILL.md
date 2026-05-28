@@ -28,7 +28,7 @@ Capture `threadId` — required for round 2/3 via `mcp__codex__codex-reply`.
 ## Prompt
 
 ```
-STAGE: <DIAGNOSIS_REVIEW | PLAN_REVIEW | CODE_REVIEW | OUTPUT_REVIEW | ANSWER_REVIEW>
+STAGE: <DIAGNOSIS_REVIEW | PLAN_REVIEW | CODE_REVIEW | OUTPUT_REVIEW>
 
 TASK (verbatim — only you have this, codex cannot read it from disk):
 <paste the original user request, no paraphrasing>
@@ -42,6 +42,19 @@ WHY:
 ARTIFACTS (read these yourself):
 <file paths, or "run git diff <base>..HEAD" for code review>
 ```
+
+## When to invoke each STAGE
+
+Run each stage at the natural transition in your workflow. If `critique-gate` is in your overlay set and your coworker type declares required stages, the gate denies delivery markers / `gh pr create` until each required stage has at least one round recorded — the denial message names what's missing, so a forgotten stage costs at most one extra turn.
+
+| Stage | Run after | Pass to codex |
+|---|---|---|
+| `DIAGNOSIS_REVIEW` | You've identified the root cause / what's being asked | The issue/request; your reading of it; relevant file:line pointers |
+| `PLAN_REVIEW` | You've chosen an approach, before editing source | The plan file (`/workspace/agent/reports/<n>.md` or equivalent); the candidate approaches you considered |
+| `CODE_REVIEW` | Your edits + tests pass, before reporting / opening PR | `git diff <base>..HEAD`; the test path + result |
+| `OUTPUT_REVIEW` | Your deliverable (Fix Report, message, answer) is drafted, before sending | The deliverable text or path; the artifacts it references |
+
+A coworker doing answer-style work (responding to a Discord question, drafting a release note, etc.) uses `OUTPUT_REVIEW` — codex reads the question + sources + draft and verifies factual accuracy and source coverage from the artifacts. There is no separate `ANSWER_REVIEW` stage.
 
 ## developer-instructions
 

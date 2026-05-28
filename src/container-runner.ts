@@ -13,6 +13,7 @@ import { OneCLI } from '@onecli-sh/sdk';
 import {
   composeCoworkerSpine,
   getAppliedOverlayNames,
+  materializeCritiqueRequiredStages,
   materializeOverlayMarkers,
   readCoworkerTypes,
   readSkillCatalog,
@@ -212,6 +213,7 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
       // hooks like spawn-buddy.sh test for these files to gate themselves.
       const appliedOverlays = getAppliedOverlayNames(process.cwd(), 'default', composeOpts);
       materializeOverlayMarkers(appliedOverlays, process.cwd(), groupDir);
+      materializeCritiqueRequiredStages('default', readCoworkerTypes(process.cwd()), appliedOverlays, groupDir);
       log.debug('CLAUDE.md composed for untyped coworker via default type', { folder: agentGroup.folder });
     } catch (err) {
       log.warn('Failed to compose CLAUDE.md for untyped coworker', { folder: agentGroup.folder, err });
@@ -241,6 +243,12 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
     fs.writeFileSync(claudeMdPath, composed);
     const appliedOverlays = getAppliedOverlayNames(process.cwd(), agentGroup.coworker_type, composeOpts);
     materializeOverlayMarkers(appliedOverlays, process.cwd(), groupDir);
+    materializeCritiqueRequiredStages(
+      agentGroup.coworker_type,
+      readCoworkerTypes(process.cwd()),
+      appliedOverlays,
+      groupDir,
+    );
     log.debug('CLAUDE.md composed from lego spine', { folder: agentGroup.folder });
   } catch (err) {
     log.warn('Failed to compose CLAUDE.md from lego spine', { folder: agentGroup.folder, err });
@@ -759,6 +767,46 @@ function buildMounts(
     const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
     const hookUrl = `http://host.docker.internal:${dashboardPort}/api/hook-event`;
     if (!settings.hooks) settings.hooks = {};
+    // Dedupe + drop stale-ref pass over every hook event. Two failure modes
+    // it heals:
+    //   1. Old bug in the CLAUDE.md guard's includes() check (escape mismatch
+    //      `CLAUDE\\\\.md` vs stored `CLAUDE\.md`) appended a duplicate every
+    //      restart, accumulating to 11k+ entries on busy installs and burying
+    //      gate-plan / gate-critique-on-deliver so they silently never fired.
+    //   2. Hook scripts get renamed (plan-gate.sh → gate-plan.sh,
+    //      critique-record-gate.sh → gate-critique-on-deliver.sh, etc.) and
+    //      old `/app/hooks/<old>.sh` references get stranded in settings.json
+    //      where they fail at runtime with no diagnostic.
+    // Collapse by (matcher, ordered command tuple); drop any entry whose
+    // command references a `/app/hooks/<X>.sh` that no longer exists in the
+    // build's container/hooks/ directory.
+    {
+      const liveHooksDir = path.join(process.cwd(), 'container', 'hooks');
+      const liveHookSet = new Set(
+        fs.existsSync(liveHooksDir) ? fs.readdirSync(liveHooksDir).filter((f) => f.endsWith('.sh')) : [],
+      );
+      const isStaleRef = (cmd: string): boolean => {
+        for (const m of cmd.matchAll(/\/app\/hooks\/([\w.-]+\.sh)\b/g)) {
+          if (!liveHookSet.has(m[1])) return true;
+        }
+        return false;
+      };
+      for (const ev of Object.keys(settings.hooks)) {
+        const entries: Array<{ matcher?: string; hooks?: Array<{ command?: string }> }> = settings.hooks[ev] ?? [];
+        const seen = new Set<string>();
+        const cleaned: typeof entries = [];
+        for (const entry of entries) {
+          const innerHooks = (entry.hooks ?? []).filter((h) => !isStaleRef(h.command ?? ''));
+          if (innerHooks.length === 0) continue;
+          const matcher = entry.matcher ?? '*';
+          const sig = JSON.stringify([matcher, ...innerHooks.map((h) => h.command ?? '')]);
+          if (seen.has(sig)) continue;
+          seen.add(sig);
+          cleaned.push({ ...entry, hooks: innerHooks });
+        }
+        settings.hooks[ev] = cleaned;
+      }
+    }
     // Use command-type hooks with curl --proxy '' to bypass OneCLI HTTPS_PROXY.
     // The Claude SDK pipes hook event JSON to stdin; curl reads it via $(cat).
     const hookConfig = {
@@ -837,7 +885,14 @@ function buildMounts(
     const hasGuard = settings.hooks.PreToolUse.some(
       (h: { matcher?: string; hooks?: { command?: string }[] }) =>
         h.matcher === 'Edit|Write' &&
-        h.hooks?.some((inner: { command?: string }) => inner.command?.includes('CLAUDE\\\\.md')),
+        // Stored command contains the literal substring `CLAUDE\.md` (the
+        // shell regex anchor for the .md extension) — i.e. one backslash.
+        // The previous check searched for two backslashes and never matched,
+        // so the guard hook was re-appended on every restart, accumulating
+        // tens of thousands of duplicates that buried gate-plan +
+        // gate-critique-on-deliver. The dedup pass at the top is the
+        // belt-and-braces; this is the suspenders.
+        h.hooks?.some((inner: { command?: string }) => inner.command?.includes('CLAUDE\\.md')),
     );
     if (!hasGuard) {
       settings.hooks.PreToolUse.push(guardHookConfig);
@@ -1373,7 +1428,7 @@ sandbox_mode = "danger-full-access"
 
 [features]
 use_linux_sandbox_bwrap = false
-codex_hooks = true
+hooks = true
 
 [model_providers.\${CODEX_MODEL_PROVIDER:-nvinference}]
 name = "\${CODEX_MODEL_PROVIDER:-nvinference}"
@@ -1384,6 +1439,28 @@ env_key = "NVIDIA_API_KEY"
 [projects."/workspace/agent"]
 trust_level = "trusted"
 TOML_EOF
+cat > ~/.codex/hooks.json <<'HOOKS_EOF'
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh SessionStart", "timeout": 5 }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh UserPromptSubmit", "timeout": 5 }] }
+    ],
+    "PreToolUse": [
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh PreToolUse", "timeout": 5 }] }
+    ],
+    "PostToolUse": [
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh PostToolUse", "timeout": 5 }] },
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "bash /app/hooks/pr-auto-map.sh", "timeout": 5 }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh Stop", "timeout": 5 }] }
+    ]
+  }
+}
+HOOKS_EOF
 exec bun run /app/src/index.ts`,
   );
 

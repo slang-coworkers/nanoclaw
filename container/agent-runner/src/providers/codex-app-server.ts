@@ -767,7 +767,11 @@ export function writeCodexMcpConfigToml(
 }
 
 export function createCodexConfigOverrides(): string[] {
-  const overrides = ['features.use_linux_sandbox_bwrap=false', 'sandbox_mode=danger-full-access'];
+  const overrides = [
+    'features.use_linux_sandbox_bwrap=false',
+    'features.hooks=true',
+    'sandbox_mode=danger-full-access',
+  ];
   if (process.env.CODEX_MODEL) overrides.push(`model=${process.env.CODEX_MODEL}`);
   if (process.env.CODEX_MODEL_PROVIDER) {
     const p = process.env.CODEX_MODEL_PROVIDER;

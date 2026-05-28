@@ -28,7 +28,7 @@
 
 ### Coworker not responding to messages
 
-1. Check container is running: `docker ps --filter name=ncdev-haaggarwal-<folder>`
+1. Check container is running: `docker ps --filter name=<container-prefix>-<folder>` (the prefix comes from `CONTAINER_PREFIX` in your `.env`)
 2. If not running, check host log for spawn errors: `grep <folder> logs/nanoclaw.log | tail -20`
 3. If running, check container logs: `docker logs <container-name> 2>&1 | tail -30`
 4. Check inbound DB has the message: `node -e "const D=require('better-sqlite3'); const db=new D('data/v2-sessions/<ag-id>/sessions/<sess-id>/inbound.db',{readonly:true}); console.log(db.prepare('SELECT * FROM messages_in ORDER BY timestamp DESC LIMIT 5').all()); db.close();"`
@@ -89,18 +89,18 @@ Exit code 137 = SIGKILL (OOM or `docker stop`).
 ## Service Management
 
 ```bash
-# Dev services (haaggarwal)
-systemctl --user status nanoclaw-dev
-systemctl --user status nanoclaw-dev-dashboard
-systemctl --user restart nanoclaw-dev
-systemctl --user restart nanoclaw-dev-dashboard
+# Per-developer services (replace <user> with your install slug; see ~/README.md)
+systemctl --user status nanoclaw-<user>
+systemctl --user status nanoclaw-<user>-dashboard
+systemctl --user restart nanoclaw-<user>
+systemctl --user restart nanoclaw-<user>-dashboard
 
 # View logs live
-journalctl --user -u nanoclaw-dev -f
-journalctl --user -u nanoclaw-dev-dashboard -f
+journalctl --user -u nanoclaw-<user> -f
+journalctl --user -u nanoclaw-<user>-dashboard -f
 
 # Rebuild host after src/ changes
-cd /home/ubuntu/haaggarwal/nanoclaw_v2 && npm run build && systemctl --user restart nanoclaw-dev nanoclaw-dev-dashboard
+cd ~/<your-checkout>/nanoclaw && npm run build && systemctl --user restart nanoclaw-<user> nanoclaw-<user>-dashboard
 ```
 
 ## Key DB Queries

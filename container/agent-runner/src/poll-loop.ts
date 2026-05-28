@@ -738,17 +738,19 @@ async function processQuery(
         // at all — either way the turn is finished.
         markCompleted(initialBatchIds);
         if (event.text) {
-          const { hasUnwrapped } = dispatchResultText(event.text, routing);
+          const { hasUnwrapped, danglingOpen } = dispatchResultText(event.text, routing);
           if (hasUnwrapped && !unwrappedNudged) {
             unwrappedNudged = true;
             const destinations = getAllDestinations();
             const names = destinations.map((d) => d.name).join(', ');
-            query.push(
-              `<system>Your response was not delivered — it was not wrapped in <message to="name">...</message> blocks. ` +
+            const reason = danglingOpen
+              ? `Your response was not delivered — you opened a <message to="…"> tag but never emitted the matching </message> close tag. ` +
+                `Each block must be self-contained in the same response: <message to="name">…</message>. ` +
+                `Re-send the full block with both tags.`
+              : `Your response was not delivered — it was not wrapped in <message to="name">...</message> blocks. ` +
                 `All output must be wrapped: use <message to="name"> for content to send, or <internal> for scratchpad. ` +
-                `Your destinations: ${names}. ` +
-                `Please re-send your response with the correct wrapping.</system>`,
-            );
+                `Please re-send your response with the correct wrapping.`;
+            query.push(`<system>${reason} Your destinations: ${names}.</system>`);
           }
         }
       }
@@ -859,7 +861,10 @@ export function checkCritiqueGate(
  * The agent must always wrap output in <message to="name">...</message>
  * blocks, even with a single destination. Bare text is scratchpad only.
  */
-export function dispatchResultText(text: string, routing: RoutingContext): { sent: number; hasUnwrapped: boolean } {
+export function dispatchResultText(
+  text: string,
+  routing: RoutingContext,
+): { sent: number; hasUnwrapped: boolean; danglingOpen?: boolean } {
   // Capture the destination name (group 1), any additional attributes as one
   // string (group 2), and the body (group 3). Extra attributes — `thread_id`,
   // `in_reply_to`, plus unknown ones — are tolerated. Earlier versions of
@@ -926,6 +931,14 @@ export function dispatchResultText(text: string, routing: RoutingContext): { sen
 
   const scratchpad = stripInternalTags(scratchpadParts.join(''));
 
+  // Refuse to deliver when an opening `<message to="…">` was emitted with no
+  // matching close tag — the regex above silently skipped the block, and the
+  // single-destination/auto-route shortcut below would otherwise dump the
+  // entire half-finished payload onto the inbound channel (the case that
+  // mis-routed an a2a "Review Resume" dispatch to the dashboard in May 2026).
+  // Treat it as undelivered so the nudge fires and the agent re-sends.
+  const danglingOpen = /<message\s+to="[^"]+"[^>]*>/.test(scratchpad);
+
   // Single-destination shortcut: plain text is auto-routed.
   // 'system' is blocked — its inbound carries platformId=null, so there's
   // nowhere to send anyway; explicit gate as defense-in-depth.
@@ -933,7 +946,7 @@ export function dispatchResultText(text: string, routing: RoutingContext): { sen
   // protection lives in agent-route.ts's same-session guard, which catches
   // any write that resolves back to the emitting session regardless of how
   // it was emitted (auto-route, <message to=…>, or send_message).
-  if (sent === 0 && scratchpad) {
+  if (sent === 0 && scratchpad && !danglingOpen) {
     const internalChannel = routing.channelType === 'system';
     if (routing.channelType && routing.platformId && !internalChannel) {
       writeMessageOut({
@@ -960,11 +973,15 @@ export function dispatchResultText(text: string, routing: RoutingContext): { sen
     log(`[scratchpad] ${scratchpad.slice(0, 500)}${scratchpad.length > 500 ? '…' : ''}`);
   }
 
-  const hasUnwrapped = sent === 0 && !!scratchpad;
+  const hasUnwrapped = sent === 0 && (!!scratchpad || danglingOpen);
   if (hasUnwrapped) {
-    log(`WARNING: agent output had no <message to="..."> blocks — nothing was sent`);
+    if (danglingOpen) {
+      log(`WARNING: agent emitted <message to="..."> with no closing </message>; nothing was sent`);
+    } else {
+      log(`WARNING: agent output had no <message to="..."> blocks — nothing was sent`);
+    }
   }
-  return { sent, hasUnwrapped };
+  return { sent, hasUnwrapped, danglingOpen };
 }
 
 function sendToDestination(
