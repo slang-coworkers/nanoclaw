@@ -7,17 +7,23 @@
  *      via INSTANCE_FORWARD_TARGETS (signed with INTERNAL_REGISTER_SECRET,
  *      X-Webhook-Trust=pre-validated). Receiver skips its filters and
  *      delivers locally.
- *   3. No mapping →
- *        - WEBHOOK_REQUIRE_MAPPING=1 (non-canonical instances): drop, since
- *          the canonical router would have already forwarded if we owned it.
- *        - else (canonical / standalone): route to the admin (orchestrator)
- *          agent group. The orchestrator dispatches to the right coworker
- *          using its own ncl-aware routing logic — no static rules.
+ *   3. No mapping → route to admin (orchestrator) agent group on this
+ *      instance. The orchestrator inspects the event and dispatches to
+ *      the right coworker via its own ncl-aware logic — no static rules.
  *
  * Routing for issues events (action=opened):
  *   - Always to admin (orchestrator). Issues have no PR number → no mapping
  *     possible, no forward decision to make. The orchestrator decides which
  *     coworker triages.
+ *
+ * Disjoint-ownership invariant: every instance reaches a non-mapped event
+ * via either GitHub directly (this is the canonical router) or a peer
+ * forward (the canonical router resolved the mapping for us). We rely on
+ * the canonical router being the single source of truth for owner_instance,
+ * so a non-canonical instance that receives a GitHub-signed unmapped event
+ * is misconfigured upstream — but routing it to its own orchestrator is
+ * still the right local action; the operator will see whichever instance
+ * picked it up and fix the topology.
  *
  * The host has no GitHub API token, so branch resolution and triage are
  * deferred to the receiving agent (orchestrator), which has GH_TOKEN
@@ -63,8 +69,7 @@ export interface GitHubIssueOpenedEvent {
 
 /**
  * Outcome of a webhook delivery decision. Used by the funnel-entry handler
- * to decide whether to also fire the eyes reaction (only on local delivery)
- * and what the JSON response should say.
+ * for the JSON response shape and ops log filtering.
  */
 export type DeliveryOutcome = 'local' | 'forwarded' | 'dropped' | 'no-session' | 'no-admin-group';
 
@@ -221,21 +226,10 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
     // pr_session_mappings table may not exist yet (pre-migration) — fall through
   }
 
-  // No mapping. Non-canonical instances (WEBHOOK_REQUIRE_MAPPING=1) drop
-  // here — the canonical router would have already forwarded if we owned
-  // the PR.
-  if (process.env.WEBHOOK_REQUIRE_MAPPING === '1') {
-    log.info('github-webhook: no PR mapping, dropping (WEBHOOK_REQUIRE_MAPPING=1)', {
-      repo: event.repo,
-      pr: event.issueNumber,
-    });
-    return 'dropped';
-  }
-
-  // Canonical instance fallback: hand off to the orchestrator. The
-  // orchestrator inspects the event (repo, body, paths, labels) and uses
-  // ncl to enumerate destinations, then dispatches to the right coworker.
-  // No static rules — the orchestrator's instructions own this routing.
+  // No mapping. Hand off to the orchestrator. The orchestrator inspects
+  // the event (repo, body, paths, labels) and uses ncl to enumerate
+  // destinations, then dispatches to the right coworker. No static rules —
+  // the orchestrator's instructions own this routing.
   return deliverToOrchestrator({
     repo: event.repo,
     issueNumber: event.issueNumber,
@@ -248,19 +242,9 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
 /**
  * Deliver a GitHub `issues` event (action=opened) to the orchestrator.
  * Issues have no PR number, so there's no mapping path — they always go
- * to the admin group for triage. Non-canonical instances drop these
- * (the canonical router shouldn't be forwarding issues — they aren't
- * scoped to a PR mapping).
+ * to the admin group for triage.
  */
 export function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): DeliveryOutcome {
-  if (process.env.WEBHOOK_REQUIRE_MAPPING === '1') {
-    log.info('github-webhook: issues event on non-canonical instance, dropping', {
-      repo: event.repo,
-      issue: event.issueNumber,
-    });
-    return 'dropped';
-  }
-
   const eventContent = JSON.stringify({
     event: 'github.issue_opened',
     repo: event.repo,
