@@ -6492,7 +6492,7 @@ document.getElementById('cw-import-btn')?.addEventListener('click', () => {
 
 // Import from V1 instance
 document.getElementById('cw-import-v1-btn')?.addEventListener('click', async () => {
-  const v1Path = prompt('V1 NanoClaw instance path:\n(e.g. /home/ubuntu/jhelferty/nanoclaw)');
+  const v1Path = prompt('V1 NanoClaw instance path:\n(e.g. ~/path/to/v1/nanoclaw)');
   if (!v1Path) return;
   const folder = prompt('Agent folder name:\n(e.g. slang-triage)');
   if (!folder) return;
