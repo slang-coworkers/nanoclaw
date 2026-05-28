@@ -74,7 +74,9 @@ export function upsertPrMapping(db: Database.Database, w: PrMappingWrite): { pri
   ensureThreadIdNullable(db);
 
   const prior = db
-    .prepare('SELECT owner_instance, agent_group_id, session_id, thread_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?')
+    .prepare(
+      'SELECT owner_instance, agent_group_id, session_id, thread_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+    )
     .get(w.repo, w.prNumber) as PrMappingExisting | undefined;
 
   db.prepare(

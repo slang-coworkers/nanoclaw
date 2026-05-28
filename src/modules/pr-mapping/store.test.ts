@@ -29,8 +29,15 @@ describe('upsertPrMapping', () => {
 
     expect(priorOwner).toBeNull();
     const row = db
-      .prepare('SELECT owner_instance, agent_group_id, session_id, thread_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?')
-      .get('shader-slang/slang', 100) as { owner_instance: string; agent_group_id: string; session_id: string; thread_id: string | null };
+      .prepare(
+        'SELECT owner_instance, agent_group_id, session_id, thread_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+      )
+      .get('shader-slang/slang', 100) as {
+      owner_instance: string;
+      agent_group_id: string;
+      session_id: string;
+      thread_id: string | null;
+    };
     expect(row.owner_instance).toBe('prod');
     expect(row.agent_group_id).toBe('g1');
     expect(row.session_id).toBe('s1');
@@ -61,8 +68,15 @@ describe('upsertPrMapping', () => {
 
     expect(priorOwner).toBe('prod');
     const row = db
-      .prepare('SELECT owner_instance, agent_group_id, session_id, thread_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?')
-      .get('shader-slang/slang', 200) as { owner_instance: string; agent_group_id: string; session_id: string; thread_id: string };
+      .prepare(
+        'SELECT owner_instance, agent_group_id, session_id, thread_id FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+      )
+      .get('shader-slang/slang', 200) as {
+      owner_instance: string;
+      agent_group_id: string;
+      session_id: string;
+      thread_id: string;
+    };
     expect(row.owner_instance).toBe('lego');
     expect(row.agent_group_id).toBe('g2');
     expect(row.session_id).toBe('s2');
