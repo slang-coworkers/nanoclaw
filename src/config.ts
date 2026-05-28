@@ -25,6 +25,7 @@ const envConfig = readEnvFile([
   'PR_MAPPINGS_LOCAL',
   'INTERNAL_REGISTER_URL',
   'INTERNAL_REGISTER_SECRET',
+  'INSTANCE_FORWARD_TARGETS',
 ]);
 
 export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
@@ -180,13 +181,45 @@ export const INSTANCE_SLUG = resolveInstanceSlug();
 // we keep the local table to avoid breaking single-instance installs.
 export const PR_MAPPINGS_LOCAL = (process.env.PR_MAPPINGS_LOCAL || envConfig.PR_MAPPINGS_LOCAL || '1') !== '0';
 
-// HMAC-signed cross-instance registration channel. When set, this
-// instance posts every report_pr_created here so the canonical instance
-// (prod) can route incoming webhooks to the right session. Distinct from
-// GITHUB_WEBHOOK_SECRET so a leaked webhook secret can't write mappings.
+// HMAC-signed cross-instance trust channel. INTERNAL_REGISTER_SECRET is
+// shared between peer instances and used for two flows:
+//
+//   1. POST /internal/register-pr  — non-canonical instance writes a
+//                                    mapping into the canonical store.
+//   2. POST /webhook/github        — canonical router forwards a webhook
+//                                    to the owning peer with the
+//                                    X-Webhook-Trust=pre-validated header
+//                                    (the receiver skips its filters).
+//
+// Distinct from GITHUB_WEBHOOK_SECRET so a leaked webhook secret cannot
+// write mappings or impersonate a trusted peer. INTERNAL_REGISTER_URL
+// names the canonical store endpoint when this is a non-canonical
+// instance; empty otherwise.
 export const INTERNAL_REGISTER_URL = process.env.INTERNAL_REGISTER_URL || envConfig.INTERNAL_REGISTER_URL || '';
 export const INTERNAL_REGISTER_SECRET =
   process.env.INTERNAL_REGISTER_SECRET || envConfig.INTERNAL_REGISTER_SECRET || '';
+
+// Map of instance_slug -> forward URL. Set on the canonical router so
+// webhooks for foreign-owned PRs reach the right peer. Format:
+// "lego=https://lego-host/webhook/github,other=https://...".
+// Empty = forwarding disabled.
+function parseForwardTargets(raw: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const entry of raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)) {
+    const eq = entry.indexOf('=');
+    if (eq <= 0) continue;
+    const slug = entry.slice(0, eq).trim();
+    const url = entry.slice(eq + 1).trim();
+    if (slug && url) out[slug] = url;
+  }
+  return out;
+}
+export const INSTANCE_FORWARD_TARGETS = parseForwardTargets(
+  process.env.INSTANCE_FORWARD_TARGETS || envConfig.INSTANCE_FORWARD_TARGETS || '',
+);
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.
