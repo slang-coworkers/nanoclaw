@@ -6,15 +6,31 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 182 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 100 |
-| `nv-slang` | slang project spine, skills, workflows | 60 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 188 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 101 |
+| `nv-slang` | slang project spine, skills, workflows | 61 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 21 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 17 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-05-28
+
+### nv-main (6 PRs)
+- **#491** `feat(pr-mapping): cross-instance schema + register-PR endpoint`
+- **#492** `fix(agent-runner): refuse delivery on dangling <message to=...> open tag`
+- **#493** `feat(pr-mapping): forward webhooks to peer instance when foreign-owned`
+- **#495** `feat(webhook): orchestrator routing for unmapped events + issues support`
+- **#496** `chore(webhook): drop legacy fanout/require-mapping/host-eyes paths`
+- **#497** `chore(docs): scrub developer-specific paths/usernames from on-call runbook`
+
+### nv-dashboard (1 PR)
+- **#498** `chore(dashboard): scrub developer-specific path from V1 import prompt`
+
+### nv-slang (1 PR)
+- **#494** `feat(slang-github-webhook): add Step 0 — coworker posts 👀 reaction`
 
 ## 📅 2026-05-27
 
@@ -108,6 +124,23 @@ _+5 more: #443, #442, #441, #440, #439_
 ### nv-nanoclaw (1 PRs)
 - **#428** `prose(nv-nanoclaw): nanoclaw-plan path tokens`
 
+## 📅 2026-05-21
+
+### nv-main (7 PRs)
+- **#413** `fix(composer): overlays follow workflow extends: chain`
+- **#414** `feat(composer): canonical base workflow + implicit extends`
+- **#415** `feat(composer): trait-based overlay matching + start: true mode`
+- **#416** `refactor(overlays): buddy + critique adopt new auto-attach shape`
+- **#417** `feat(composer): anchor aliases for canonical-stage matching`
+- **#418** `fix(overlays): buddy must not double-spawn`
+- **#421** `feat(webhook): WEBHOOK_REQUIRE_MAPPING + WEBHOOK_FANOUT_URLS for cross-instance delivery`
+
+### nv-dashboard (1 PR)
+- **#419** `fix(dashboard): fold cli_response payloads in main feed`
+
+### nv-slang (1 PR)
+- **#410** `fix(slang): bindings — slang-build provides code.build`
+
 ## 📅 2026-05-20
 
 ### nv-main (9 PRs)
@@ -166,6 +199,23 @@ _+5 more: #443, #442, #441, #440, #439_
 ### nv-nanoclaw (2 PRs)
 - **#374** `Rebase nv-nanoclaw on upstream/main v2.0.64 — base-nanoclaw + nanoclaw-reviewer coworker (Devin PR review #350)`
 - **#381** `Sync nv-nanoclaw with upstream/main (2026-05-19)`
+
+## 📅 2026-05-18
+
+### nv-dashboard (3 PRs)
+- **#349** `fix(dashboard): paginate older messages in coworker chat + thread views`
+- **#363** `fix(dashboard): adapt cost panel to ccusage 19+ schema (period field, no modelBreakdowns)`
+- **#365** `fix(dashboard): filter ccusage output to Claude-only (fix codex global mis-attribution)`
+
+### nv-slang (5 PRs)
+- **#356** `feat(slang-mcp): forum-thread continuation with cap, Resolved stop, OP-only`
+- **#358** `feat(nv-slang): add slang-github-webhook skill — moved from nv-main, rewritten for one-comment-per-task`
+- **#359** `feat(slang-mcp): eager Discord init + restore DISCORD_POST_SUMMON / DISCORD_READ_ONLY gates`
+- **#360** `fix(slang-mcp): gate eager Discord init behind DISCORD_EAGER_INIT (prod-safe default off)`
+- **#361** `docs(slang-discord): modernize WORKFLOW + spine + critique for post-#356 push/continuation architecture`
+
+### nv-nanoclaw (1 PR)
+- **#350** `feat(nv-nanoclaw): add nanoclaw-reviewer coworker (Devin-only PR review)`
 
 ## 📅 2026-05-15
 
