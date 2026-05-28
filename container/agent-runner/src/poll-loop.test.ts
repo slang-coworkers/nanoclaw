@@ -324,6 +324,63 @@ describe('dispatchResultText <message> attribute parsing', () => {
     expect(byDest['ag-peer-b'].thread_id).toBe('tb');
   });
 
+  it('dangling <message to="X"> with no closing tag refuses delivery (triggers nudge)', () => {
+    // A May 2026 incident: slang-fixer emitted `<message to="slang-reviewer">[Review Resume]…`
+    // but never wrote `</message>`. The MESSAGE_RE skipped the block, the
+    // single-destination/auto-route fallback dumped the entire half-finished
+    // markup onto the inbound dashboard channel, and the intended peer
+    // (slang-reviewer) never saw it. The fix: treat dangling-open as
+    // undelivered so the existing nudge fires and the agent re-sends.
+    addDestination('peer');
+    const result = dispatchResultText(
+      '<message to="peer">half a message with no close tag and lots of body text',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(0);
+    expect(result.hasUnwrapped).toBe(true);
+    expect(result.danglingOpen).toBe(true);
+    expect(getUndeliveredMessages()).toHaveLength(0);
+  });
+
+  it('dangling open does NOT trip when block is properly closed', () => {
+    addDestination('peer');
+    const result = dispatchResultText(
+      '<message to="peer">complete block</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(1);
+    expect(result.danglingOpen).toBeFalsy();
+  });
+
+  it('dangling open with thread_id attribute still refuses', () => {
+    addDestination('peer');
+    const result = dispatchResultText(
+      '<message to="peer" thread_id="T">unfinished',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(0);
+    expect(result.danglingOpen).toBe(true);
+  });
+
+  it('one closed + one dangling: closed dispatches; nudge does NOT fire (would double-deliver)', () => {
+    // If we nudged here, the agent would re-emit the full response and the
+    // already-delivered first block would land twice. Better: log the
+    // dangling tail, let the workflow's "close every chain" rule recover.
+    addDestination('peer-a');
+    addDestination('peer-b');
+    const result = dispatchResultText(
+      '<message to="peer-a">first</message>\n<message to="peer-b">second, never closed',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(1);
+    expect(result.danglingOpen).toBe(true);
+    expect(result.hasUnwrapped).toBe(false); // sent>0 — nudge gated off
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(out[0].platform_id).toBe('ag-peer-a');
+    expect(JSON.parse(out[0].content).text).toBe('first');
+  });
+
   it('unknown destination drops the block, preserves attribute parsing path', () => {
     // Unknown name → block goes to scratchpad. With agent-channel source
     // routing, the scratchpad-fallback then auto-routes the dropped text
