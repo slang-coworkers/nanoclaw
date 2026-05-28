@@ -29,7 +29,7 @@
  * deferred to the receiving agent (orchestrator), which has GH_TOKEN
  * injected via OneCLI.
  */
-import { INSTANCE_FORWARD_TARGETS, INSTANCE_SLUG, INTERNAL_REGISTER_SECRET } from './config.js';
+import { INSTANCE_FORWARD_TARGETS, INSTANCE_SLUG, INTERNAL_REGISTER_SECRET, ROUTE_ISSUES_TO } from './config.js';
 import { getAdminAgentGroup } from './db/agent-groups.js';
 import { getDb } from './db/connection.js';
 import { openInboundDb, insertMessage } from './db/session-db.js';
@@ -63,6 +63,10 @@ export interface GitHubIssueOpenedEvent {
   body: string;
   author: string;
   labels: string[];
+  /** Raw webhook body, preserved for forwarding to a peer when ROUTE_ISSUES_TO is set. */
+  rawBody?: string;
+  /** GitHub event type header, propagated to peer on forward. */
+  eventType?: string;
   /** GitHub delivery id (idempotency tag). */
   deliveryId?: string;
 }
@@ -240,11 +244,53 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
 }
 
 /**
- * Deliver a GitHub `issues` event (action=opened) to the orchestrator.
- * Issues have no PR number, so there's no mapping path — they always go
- * to the admin group for triage.
+ * Deliver a GitHub `issues` event (action=opened) to the orchestrator —
+ * or forward to a peer instance when ROUTE_ISSUES_TO is set.
+ *
+ * Issues have no PR number, so there's no mapping path. Default routing
+ * is to the local admin (orchestrator) group for triage. While the
+ * issue-triage path is being shaped, ROUTE_ISSUES_TO=lego on prod
+ * forwards every issue to lego for development testing instead — same
+ * trust-channel mechanism as PR-comment forwards (X-Webhook-Trust=
+ * pre-validated, signed with INTERNAL_REGISTER_SECRET).
  */
 export function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): DeliveryOutcome {
+  // Dev-route every issue to a peer when configured. Fires before the
+  // local-orchestrator branch so prod-side issue triage can be redirected
+  // to lego while we iterate. Off by default; set ROUTE_ISSUES_TO=<slug>
+  // on the canonical instance to enable.
+  if (ROUTE_ISSUES_TO && INSTANCE_SLUG && ROUTE_ISSUES_TO !== INSTANCE_SLUG) {
+    const target = INSTANCE_FORWARD_TARGETS[ROUTE_ISSUES_TO];
+    if (target && event.rawBody && INTERNAL_REGISTER_SECRET) {
+      forwardWebhookToPeer({
+        url: target,
+        secret: INTERNAL_REGISTER_SECRET,
+        rawBody: event.rawBody,
+        event: event.eventType ?? 'issues',
+        delivery: event.deliveryId ?? '',
+      });
+      log.info('github-webhook: dev-routed issue to peer', {
+        repo: event.repo,
+        issue: event.issueNumber,
+        peer: ROUTE_ISSUES_TO,
+        target,
+      });
+      return 'forwarded';
+    }
+    // Configured but missing target/secret/body — drop with warn so the
+    // operator notices a misconfig instead of silently falling through
+    // to local orchestrator (which would defeat the dev-routing intent).
+    log.warn('github-webhook: ROUTE_ISSUES_TO set but cannot forward — dropping', {
+      repo: event.repo,
+      issue: event.issueNumber,
+      peer: ROUTE_ISSUES_TO,
+      haveTarget: Boolean(target),
+      haveSecret: Boolean(INTERNAL_REGISTER_SECRET),
+      haveBody: Boolean(event.rawBody),
+    });
+    return 'dropped';
+  }
+
   const eventContent = JSON.stringify({
     event: 'github.issue_opened',
     repo: event.repo,
