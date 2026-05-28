@@ -25,7 +25,8 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "validate:templates": "echo \"validate:templates: skipped on overlay branch (script lives on nv-main)\" && true"
   },
   "dependencies": {
     "@clack/core": "^1.2.0",
