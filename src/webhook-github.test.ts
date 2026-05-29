@@ -202,7 +202,10 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       openInboundDb: () => ({ close: () => undefined }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
-    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/inbox.db', initSessionFolder: () => undefined }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/inbox.db',
+      initSessionFolder: () => undefined,
+    }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
     const outcome = deliverGitHubMention({
@@ -249,7 +252,10 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       openInboundDb: () => ({ close: () => undefined }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
-    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/orch.db', initSessionFolder: () => undefined }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
     const outcome = deliverGitHubMention({
@@ -298,7 +304,10 @@ describe('deliverGitHubIssueOpened', () => {
       openInboundDb: () => ({ close: () => undefined }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
-    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/orch.db', initSessionFolder: () => undefined }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
 
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
     const outcome = deliverGitHubIssueOpened({
@@ -439,7 +448,10 @@ describe('deliverGitHubIssueOpened', () => {
       openInboundDb: () => ({ close: () => undefined }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
-    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/orch.db', initSessionFolder: () => undefined }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
 
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
     const outcome = deliverGitHubIssueOpened({
