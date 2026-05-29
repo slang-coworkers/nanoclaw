@@ -33,11 +33,17 @@ import { INSTANCE_FORWARD_TARGETS, INSTANCE_SLUG, INTERNAL_REGISTER_SECRET, ROUT
 import { getAdminAgentGroup } from './db/agent-groups.js';
 import { getDb } from './db/connection.js';
 import { openInboundDb, insertMessage } from './db/session-db.js';
-import { findSessionByAgentGroup, getSession } from './db/sessions.js';
+import {
+  createSession,
+  findSessionByAgentGroup,
+  findSessionByAgentThread,
+  getSession,
+  updateSessionTitle,
+} from './db/sessions.js';
 import { log } from './log.js';
 import { forwardWebhookToPeer } from './modules/pr-mapping/forward.js';
-import { inboundDbPath } from './session-manager.js';
-import type { AgentGroup } from './types.js';
+import { inboundDbPath, initSessionFolder } from './session-manager.js';
+import type { AgentGroup, Session } from './types.js';
 
 export interface GitHubMentionEvent {
   repo: string;
@@ -79,8 +85,22 @@ export type DeliveryOutcome = 'local' | 'forwarded' | 'dropped' | 'no-session' |
 
 /**
  * Internal helper: write an event payload to the admin (orchestrator) agent
- * group's active session. Used as the unmapped-fallback for PR comments and
- * the always-target for issues. Returns DeliveryOutcome.
+ * group. Used as the unmapped-fallback for PR comments and the always-target
+ * for issues.
+ *
+ * Session selection:
+ *   - If `mintPerThread` is true and `threadId` is set, mint-or-find a session
+ *     keyed on (agent_group_id, thread_id). Each issue becomes its own
+ *     orchestrator session so the dashboard renders one tile per issue
+ *     instead of collapsing every webhook into the most-recent active
+ *     session (which becomes a junk drawer over time).
+ *   - Otherwise, fall back to "most recently created active session" — used
+ *     by the unmapped-PR-comment path where there's no stable per-event key
+ *     worth minting a session for.
+ *
+ * `displayTitle`, when supplied with a fresh-mint, is stamped onto the new
+ * session so the dashboard timeline label reads "<repo> #<num>: <title>"
+ * rather than inheriting the first inbound message's text.
  */
 function deliverToOrchestrator(args: {
   repo: string;
@@ -88,6 +108,8 @@ function deliverToOrchestrator(args: {
   rowId: string;
   threadId: string;
   eventContent: string;
+  mintPerThread?: boolean;
+  displayTitle?: string;
 }): DeliveryOutcome {
   const group: AgentGroup | undefined = getAdminAgentGroup();
   if (!group) {
@@ -97,7 +119,18 @@ function deliverToOrchestrator(args: {
     return 'no-admin-group';
   }
 
-  const session = findSessionByAgentGroup(group.id);
+  let session: Session | undefined;
+  let minted = false;
+  if (args.mintPerThread && args.threadId) {
+    session = findSessionByAgentThread(group.id, args.threadId);
+    if (!session) {
+      session = mintOrchestratorSession(group.id, args.threadId);
+      minted = true;
+    }
+  } else {
+    session = findSessionByAgentGroup(group.id);
+  }
+
   if (!session) {
     log.warn('github-webhook: orchestrator agent group has no active session — dropping', {
       group: group.name,
@@ -105,6 +138,14 @@ function deliverToOrchestrator(args: {
       issue: args.issueNumber,
     });
     return 'no-session';
+  }
+
+  // Stamp a display title for fresh issue sessions so the dashboard
+  // timeline reads "<repo> #<num>: <title>" instead of inheriting the
+  // first inbound's first 80 chars (which historically left the legacy
+  // √121 self-loop test as the visible label).
+  if (minted && args.displayTitle) {
+    updateSessionTitle(session.id, args.displayTitle, 'auto');
   }
 
   const dbPath = inboundDbPath(group.id, session.id);
@@ -126,11 +167,40 @@ function deliverToOrchestrator(args: {
       session: session.id,
       repo: args.repo,
       issue: args.issueNumber,
+      minted,
     });
     return 'local';
   } finally {
     db.close();
   }
+}
+
+/**
+ * Mint a fresh orchestrator session bound to a thread_id, so subsequent
+ * webhooks on the same thread converge on one session. No messaging-group:
+ * webhooks aren't a chat channel, they're host-injected. The session_routing
+ * row stays empty; the agent's outbound messages route by their explicit
+ * `<message to=...>` destinations, not by the session's default channel.
+ */
+function mintOrchestratorSession(agentGroupId: string, threadId: string): Session {
+  const id = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const session: Session = {
+    id,
+    agent_group_id: agentGroupId,
+    messaging_group_id: null,
+    thread_id: threadId,
+    display_title: null,
+    title_source: null,
+    title_updated_at: null,
+    agent_provider: null,
+    status: 'active',
+    container_status: 'stopped',
+    last_active: null,
+    created_at: new Date().toISOString(),
+  };
+  createSession(session);
+  initSessionFolder(agentGroupId, id);
+  return session;
 }
 
 /**
@@ -306,7 +376,11 @@ export function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): Deliver
     repo: event.repo,
     issueNumber: event.issueNumber,
     rowId: `gh-issue-${event.repo}-${event.issueNumber}`,
-    threadId: String(event.issueNumber),
+    threadId: `gh-issue-${event.repo}-${event.issueNumber}`,
     eventContent,
+    mintPerThread: true,
+    displayTitle: event.title
+      ? `${event.repo} #${event.issueNumber}: ${event.title}`
+      : `${event.repo} #${event.issueNumber}`,
   });
 }

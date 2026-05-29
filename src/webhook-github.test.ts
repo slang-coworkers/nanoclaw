@@ -77,7 +77,10 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
       getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => undefined,
@@ -129,7 +132,13 @@ describe('deliverGitHubMention — owner_instance routing', () => {
         }),
       }),
     }));
-    vi.doMock('./db/sessions.js', () => ({ findSessionByAgentGroup: () => undefined, getSession: () => undefined }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => undefined,
       getAgentGroupByFolder: () => undefined,
@@ -180,7 +189,10 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
       getSession: () => ({ id: 's-prod' }),
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => undefined,
@@ -190,7 +202,10 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       openInboundDb: () => ({ close: () => undefined }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
-    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/inbox.db' }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/inbox.db',
+      initSessionFolder: () => undefined,
+    }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
     const outcome = deliverGitHubMention({
@@ -225,7 +240,10 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
+      findSessionByAgentThread: () => ({ id: 'sess-orch' }),
       getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
@@ -234,7 +252,10 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       openInboundDb: () => ({ close: () => undefined }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
-    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
 
     const { deliverGitHubMention } = await import('./webhook-github.js');
     const outcome = deliverGitHubMention({
@@ -271,7 +292,10 @@ describe('deliverGitHubIssueOpened', () => {
     }));
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
+      findSessionByAgentThread: () => ({ id: 'sess-orch' }),
       getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
@@ -280,7 +304,10 @@ describe('deliverGitHubIssueOpened', () => {
       openInboundDb: () => ({ close: () => undefined }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
-    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
 
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
     const outcome = deliverGitHubIssueOpened({
@@ -314,13 +341,19 @@ describe('deliverGitHubIssueOpened', () => {
       ROUTE_ISSUES_TO: 'lego',
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
-    vi.doMock('./db/sessions.js', () => ({ findSessionByAgentGroup: () => undefined, getSession: () => undefined }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
     vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({ close: () => undefined }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
-    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
+    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db', initSessionFolder: () => undefined }));
 
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
     const rawBody = JSON.stringify({ action: 'opened', issue: { number: 5555 } });
@@ -357,13 +390,19 @@ describe('deliverGitHubIssueOpened', () => {
       ROUTE_ISSUES_TO: 'lego',
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
-    vi.doMock('./db/sessions.js', () => ({ findSessionByAgentGroup: () => undefined, getSession: () => undefined }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
     vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({ close: () => undefined }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
-    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db' }));
+    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db', initSessionFolder: () => undefined }));
 
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
     const outcome = deliverGitHubIssueOpened({
@@ -397,7 +436,10 @@ describe('deliverGitHubIssueOpened', () => {
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
+      findSessionByAgentThread: () => ({ id: 'sess-orch' }),
       getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'lego-orchestrator' }),
@@ -406,7 +448,10 @@ describe('deliverGitHubIssueOpened', () => {
       openInboundDb: () => ({ close: () => undefined }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
-    vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
 
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
     const outcome = deliverGitHubIssueOpened({
