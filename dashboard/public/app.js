@@ -3184,6 +3184,43 @@ document.addEventListener('click', (e) => {
     return;
   }
 
+  // Click "→ <recipient> [open]" dispatch badge: resolve recipient session
+  // via /api/dispatch-targets and open it. Single-pane navigation for v1
+  // (full split-view-tile UX is the next iteration).
+  const dispatchBadge = e.target.closest('.cw-dispatch-badge');
+  if (dispatchBadge && !dispatchBadge.classList.contains('pending')) {
+    const fromSess = dispatchBadge.dataset.dispatchFromSession || '';
+    const tid = dispatchBadge.dataset.dispatchThread || '';
+    if (!fromSess || !tid) return;
+    dispatchBadge.classList.add('pending');
+    dispatchBadge.textContent = '→ resolving…';
+    fetch(`/api/dispatch-targets?fromSessionId=${encodeURIComponent(fromSess)}&threadId=${encodeURIComponent(tid)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data) => {
+        const targets = data?.targets || [];
+        if (!targets.length) {
+          dispatchBadge.textContent = `→ ${dispatchBadge.dataset.dispatchTo} [pending]`;
+          dispatchBadge.title = 'Recipient session has not been minted yet — try again after the dispatch is processed.';
+          return;
+        }
+        const t = targets[0]; // v1 takes first; v2 will render a chooser if multiple
+        // Switch to the recipient group + open its session in the chat view.
+        if (t.recipientGroupFolder && cwState.selected !== t.recipientGroupFolder) {
+          // selectCoworker is the canonical group-switch entry point
+          if (typeof selectCoworker === 'function') selectCoworker(t.recipientGroupFolder);
+        }
+        if (typeof openSessionFlowById === 'function') {
+          setTimeout(() => openSessionFlowById(t.recipientGroupFolder, t.recipientSessionId), 100);
+        }
+      })
+      .catch((err) => {
+        dispatchBadge.textContent = `→ ${dispatchBadge.dataset.dispatchTo} [err]`;
+        dispatchBadge.title = String(err);
+        dispatchBadge.classList.remove('pending');
+      });
+    return;
+  }
+
   // Flow view expand/collapse
   const flowExpand = e.target.closest('.flow-expand-btn');
   if (flowExpand) {
@@ -5395,8 +5432,23 @@ function renderCwThread() {
         return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
       }
       const attachHtml = renderMessageAttachmentsHtml(m.attachments);
+      // Dispatch badge: when an outbound message contains <message to="X"
+      // thread_id="Y">, render a clickable "→ X" link that resolves the
+      // recipient session via /api/dispatch-targets and opens it. The badge
+      // stays inert (gray, no click) when the recipient session hasn't been
+      // minted yet — the host writes the inbound row only after the next
+      // wake of the recipient's group, so a fresh dispatch may show pending
+      // for a few seconds before becoming clickable.
+      let dispatchBadgeHtml = '';
+      if (isOutgoing && text) {
+        const m2 = /<message\s+to="([^"]+)"(?:\s+thread_id="([^"]+)")?[^>]*>/i.exec(text);
+        if (m2 && m2[2]) {
+          const fromSess = sessionIdForSlug || (matchingNano && matchingNano.nanoclaw_session_id) || '';
+          dispatchBadgeHtml = ` <button class="cw-dispatch-badge" data-dispatch-to="${escAttr(m2[1])}" data-dispatch-thread="${escAttr(m2[2])}" data-dispatch-from-session="${escAttr(fromSess)}" title="Open recipient session for thread ${escAttr(m2[2])}">→ ${esc(m2[1])} <span style="opacity:.6">[open]</span></button>`;
+        }
+      }
       return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"><div class="cw-msg-avatar">${monogram}</div>
-      <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span></div>
+      <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span>${dispatchBadgeHtml}</div>
       <div class="cw-msg-bubble">${body}${attachHtml}</div></div>`;
     })
     .join('');

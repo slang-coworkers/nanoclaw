@@ -102,9 +102,7 @@ function injectTimezone(html: Buffer): Buffer {
   }
   const safe = raw.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   const meta = `<meta name="nanoclaw-tz" content="${safe}">`;
-  return Buffer.from(
-    html.toString('utf8').replace(/(<meta\s+charset="[^"]*">)/i, `$1\n  ${meta}`),
-  );
+  return Buffer.from(html.toString('utf8').replace(/(<meta\s+charset="[^"]*">)/i, `$1\n  ${meta}`));
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -1668,7 +1666,14 @@ function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
   // For a single model (the common case), this is exact. For mixed-model days we lose
   // per-model granularity in the UI but keep the totals correct.
   const rawBreakdowns = raw.modelBreakdowns as
-    | { modelName: string; inputTokens: number; outputTokens: number; cacheCreationTokens: number; cacheReadTokens: number; cost: number }[]
+    | {
+        modelName: string;
+        inputTokens: number;
+        outputTokens: number;
+        cacheCreationTokens: number;
+        cacheReadTokens: number;
+        cost: number;
+      }[]
     | undefined;
   let modelBreakdowns: CcusageDayEntry['modelBreakdowns'];
   if (Array.isArray(rawBreakdowns) && rawBreakdowns.length > 0) {
@@ -1721,29 +1726,25 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
     const env: Record<string, string | undefined> = { ...process.env };
     if (claudeConfigDir) env.CLAUDE_CONFIG_DIR = claudeConfigDir;
     else delete env.CLAUDE_CONFIG_DIR;
-    proc = exec(
-      `npx ${args.join(' ')}`,
-      { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env },
-      (err, stdout) => {
-        clearTimeout(timer);
-        if (timedOut || err) {
-          resolve([]);
-          return;
-        }
-        try {
-          const parsed = JSON.parse(stdout);
-          const daily = Array.isArray(parsed.daily) ? parsed.daily : [];
-          // Global call (no scope) → don't filter by Claude-only; we want
-          // both Claude and Codex agent costs in the unified result.
-          // Per-coworker call → filter to Claude only (Codex is collected
-          // separately per-session via runCodexCcusage).
-          const normalize = claudeConfigDir ? normalizeCcusageEntry : normalizeCcusageEntryUnfiltered;
-          resolve(daily.map(normalize));
-        } catch {
-          resolve([]);
-        }
-      },
-    );
+    proc = exec(`npx ${args.join(' ')}`, { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env }, (err, stdout) => {
+      clearTimeout(timer);
+      if (timedOut || err) {
+        resolve([]);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(stdout);
+        const daily = Array.isArray(parsed.daily) ? parsed.daily : [];
+        // Global call (no scope) → don't filter by Claude-only; we want
+        // both Claude and Codex agent costs in the unified result.
+        // Per-coworker call → filter to Claude only (Codex is collected
+        // separately per-session via runCodexCcusage).
+        const normalize = claudeConfigDir ? normalizeCcusageEntry : normalizeCcusageEntryUnfiltered;
+        resolve(daily.map(normalize));
+      } catch {
+        resolve([]);
+      }
+    });
   });
 }
 
@@ -1762,12 +1763,29 @@ function normalizeCcusageEntryUnfiltered(raw: Record<string, unknown>): CcusageD
   const totalTokens = (raw.totalTokens as number) || 0;
   const totalCost = (raw.totalCost as number) || 0;
   const rawBreakdowns = raw.modelBreakdowns as
-    | { modelName: string; inputTokens: number; outputTokens: number; cacheCreationTokens: number; cacheReadTokens: number; cost: number }[]
+    | {
+        modelName: string;
+        inputTokens: number;
+        outputTokens: number;
+        cacheCreationTokens: number;
+        cacheReadTokens: number;
+        cost: number;
+      }[]
     | undefined;
   const modelBreakdowns: CcusageDayEntry['modelBreakdowns'] = Array.isArray(rawBreakdowns)
     ? rawBreakdowns.map((mb) => ({ ...mb }))
     : [];
-  return { date, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, totalTokens, totalCost, modelsUsed, modelBreakdowns };
+  return {
+    date,
+    inputTokens,
+    outputTokens,
+    cacheCreationTokens,
+    cacheReadTokens,
+    totalTokens,
+    totalCost,
+    modelsUsed,
+    modelBreakdowns,
+  };
 }
 
 /**
@@ -2000,8 +2018,7 @@ async function refreshCcusageCache(): Promise<void> {
       const idx = nextIdx++;
       if (idx >= tasks.length) return;
       const t = tasks[idx];
-      const rows =
-        t.kind === 'claude' ? await runCcusage(t.dir, month) : await runCodexCcusage(t.dir, month);
+      const rows = t.kind === 'claude' ? await runCcusage(t.dir, month) : await runCodexCcusage(t.dir, month);
       perGroup.get(t.agDir)!.push(rows);
     }
   }
@@ -5814,9 +5831,10 @@ export async function handleRequest(
                         )
                         .get(ts.thread_id) as { n: number; ts: string | null };
                     } catch {
-                      row = sdb
-                        .prepare(`SELECT COUNT(*) AS n, MAX(timestamp) AS ts FROM ${table}`)
-                        .get() as { n: number; ts: string | null };
+                      row = sdb.prepare(`SELECT COUNT(*) AS n, MAX(timestamp) AS ts FROM ${table}`).get() as {
+                        n: number;
+                        ts: string | null;
+                      };
                     }
                     count += row.n || 0;
                     if (row.ts && (!lastTs || row.ts > lastTs)) lastTs = row.ts;
@@ -6032,7 +6050,14 @@ export async function handleRequest(
                   const recipientCoworkerName = r.platform_id === agRow.id ? undefined : rawRecipientName;
                   // Same gate as the inbound self-echo above: hide on main view,
                   // show in explicit thread or includeSystem mode.
-                  if (!threadMode && !includeSystem && isSystemId(r.in_reply_to) && !recipientCoworkerName && !isRelayOut) continue;
+                  if (
+                    !threadMode &&
+                    !includeSystem &&
+                    isSystemId(r.in_reply_to) &&
+                    !recipientCoworkerName &&
+                    !isRelayOut
+                  )
+                    continue;
                   const delivered = deliveredByMessageOutId.get(r.id);
                   messages.push({
                     ...r,
@@ -6238,6 +6263,107 @@ export async function handleRequest(
           messages: limited,
         }),
       );
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: String((err as Error).message || err) }));
+    }
+    return;
+  }
+
+  // API: dispatch-targets — given a (sessionId, threadId) emitting an outbound
+  // <message to="X" thread_id="Y">, find the recipient session(s) so the
+  // dashboard can open them in a split-view tile.
+  //
+  // Mechanism: when the host routes a fresh dispatch, it writes an inbound row
+  // on the recipient session with `source_session_id = <sender>` and
+  // `thread_id = <Y>`. We scan every agent group's per-session inbound.db for
+  // rows matching (source_session_id=X AND thread_id=Y), dedupe by
+  // recipient_session_id, and return them ordered by first-seen timestamp.
+  //
+  // Schema fallback: older sessions predate `source_session_id`. We probe the
+  // column and skip sessions whose schema lacks it (their dispatches show up
+  // anyway via the matching recipient session — the lookup just won't see them).
+  if (url.pathname === '/api/dispatch-targets') {
+    if (!requireAuth(req, res)) return;
+    const fromSessionId = url.searchParams.get('fromSessionId');
+    const threadId = url.searchParams.get('threadId');
+    if (!fromSessionId || !threadId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'fromSessionId and threadId required' }));
+      return;
+    }
+    if (!db) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'database unavailable' }));
+      return;
+    }
+    try {
+      type Hit = {
+        recipientSessionId: string;
+        recipientAgentGroupId: string;
+        recipientGroupName: string;
+        recipientGroupFolder: string;
+        firstMessageId: string;
+        firstMessageAt: string;
+      };
+      const groups = db
+        .prepare<[], { id: string; name: string; folder: string }>('SELECT id, name, folder FROM agent_groups')
+        .all();
+      const hits: Hit[] = [];
+      const seen = new Set<string>();
+      const sessionsRoot = join(getDataDir(), 'v2-sessions');
+      for (const g of groups) {
+        const groupDir = join(sessionsRoot, g.id);
+        let sessionDirs: string[] = [];
+        try {
+          sessionDirs = readdirSync(groupDir).filter((d) => d.startsWith('sess-'));
+        } catch {
+          continue;
+        }
+        for (const sessId of sessionDirs) {
+          if (sessId === fromSessionId) continue;
+          const inboundPath = join(groupDir, sessId, 'inbound.db');
+          if (!existsSync(inboundPath)) continue;
+          let pdb: Database.Database | null = null;
+          try {
+            pdb = new Database(inboundPath, { readonly: true });
+            // Probe column existence (older schemas may lack source_session_id)
+            const cols = pdb.prepare('PRAGMA table_info(messages_in)').all() as Array<{ name: string }>;
+            if (!cols.some((c) => c.name === 'source_session_id')) {
+              pdb.close();
+              continue;
+            }
+            const row = pdb
+              .prepare<
+                [string, string],
+                { id: string; timestamp: string }
+              >('SELECT id, timestamp FROM messages_in WHERE source_session_id = ? AND thread_id = ? ORDER BY timestamp ASC LIMIT 1')
+              .get(fromSessionId, threadId);
+            pdb.close();
+            if (!row) continue;
+            if (seen.has(sessId)) continue;
+            seen.add(sessId);
+            hits.push({
+              recipientSessionId: sessId,
+              recipientAgentGroupId: g.id,
+              recipientGroupName: g.name,
+              recipientGroupFolder: g.folder,
+              firstMessageId: row.id,
+              firstMessageAt: row.timestamp,
+            });
+          } catch {
+            try {
+              pdb?.close();
+            } catch {
+              /* ignore */
+            }
+            continue;
+          }
+        }
+      }
+      hits.sort((a, b) => (a.firstMessageAt || '').localeCompare(b.firstMessageAt || ''));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ targets: hits }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: String((err as Error).message || err) }));
