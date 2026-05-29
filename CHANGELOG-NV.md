@@ -6,8 +6,8 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 195 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 103 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 198 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 106 |
 | `nv-slang` | slang project spine, skills, workflows | 63 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 22 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 18 |
@@ -15,6 +15,18 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-05-29
+
+### nv-main (3 PRs)
+- **#510** `feat(webhook): mint per-issue orchestrator session for issues opened`
+- **#513** `fix(routing): canonical thread + parent-concept spine + idempotency`
+- **#514** `feat(skill): supervise-issues — periodic supervisor for in-flight issue chains`
+
+### nv-dashboard (3 PRs)
+- **#509** `fix(dashboard): timeline depth + InstructionsLoaded detail rendering`
+- **#512** `fix(dashboard): webhook envelope renderer + responsiveness + clickable session`
+- **#515** `feat(dashboard): clickable dispatch links — open recipient session from outbound message`
 
 ## 📅 2026-05-28
 
