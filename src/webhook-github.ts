@@ -151,6 +151,22 @@ function deliverToOrchestrator(args: {
   const dbPath = inboundDbPath(group.id, session.id);
   const db = openInboundDb(dbPath);
   try {
+    // Idempotency guard: row id is `gh-issue-<repo>-<num>` (or `gh-<commentId>`
+    // for PR mentions). GitHub retries deliveries on 5xx and the peer-forwarder
+    // retries on transport blips, so we will see duplicate deliveries with the
+    // same id. Skip the insert when the row already exists — without this, the
+    // PRIMARY KEY collision throws and breaks the response stream, leaving the
+    // sender to time out and retry (amplifying the storm).
+    const existing = db.prepare('SELECT 1 FROM messages_in WHERE id = ?').get(args.rowId) as { 1: number } | undefined;
+    if (existing) {
+      log.info('github-webhook: duplicate delivery — already seen, skipping', {
+        rowId: args.rowId,
+        session: session.id,
+        repo: args.repo,
+        issue: args.issueNumber,
+      });
+      return 'local';
+    }
     insertMessage(db, {
       id: args.rowId,
       kind: 'webhook',
@@ -272,9 +288,21 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
       if (mappedSession) {
         const dbPath = inboundDbPath(mapping.agent_group_id, mapping.session_id);
         const db = openInboundDb(dbPath);
+        const rowId = `gh-${event.commentId}`;
         try {
+          // Idempotency guard — see deliverToOrchestrator for rationale.
+          const existing = db.prepare('SELECT 1 FROM messages_in WHERE id = ?').get(rowId) as { 1: number } | undefined;
+          if (existing) {
+            log.info('github-webhook: duplicate delivery — already seen, skipping', {
+              rowId,
+              session: mapping.session_id,
+              repo: event.repo,
+              issue: event.issueNumber,
+            });
+            return 'local';
+          }
           insertMessage(db, {
-            id: `gh-${event.commentId}`,
+            id: rowId,
             kind: 'webhook',
             timestamp: new Date().toISOString(),
             platformId: `github:${event.repo}:${event.issueNumber}`,
