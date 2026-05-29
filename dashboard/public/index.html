@@ -357,6 +357,20 @@
     .tl-duration { font-size: 0.6875rem; color: var(--text-muted); margin-left: 6px; }
     .tl-session-link { cursor: pointer; font-size: 0.625rem; color: var(--accent); margin-left: 6px; }
     .tl-session-link:hover { text-decoration: underline; }
+    .cw-dispatch-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 1px 6px; margin-left: 6px;
+      font-size: 0.625rem;
+      background: var(--bg, transparent);
+      border: 1px solid var(--border, rgba(255,255,255,0.14));
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--accent);
+      font-family: inherit;
+    }
+    .cw-dispatch-badge:hover { background: rgba(99,102,241,0.08); border-color: var(--accent); }
+    .cw-dispatch-badge.pending { color: var(--text-muted); cursor: default; opacity: 0.6; }
+    .cw-dispatch-badge.pending:hover { background: var(--bg, transparent); }
 
     /* --- Session Flow View --- */
     .session-selector-bar {
