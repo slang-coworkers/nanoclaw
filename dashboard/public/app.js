@@ -2508,6 +2508,52 @@ function md(s) {
   h = h.replace(/(?<!<\/pre>)\n/g, '<br>');
   return `<p>${h}</p>`;
 }
+/**
+ * Webhook envelopes (github.issue_opened, github.pr_mention) land in messages_in
+ * as raw JSON. Rendering them through md() shows curly braces, escaped quotes,
+ * and \n literals. This helper detects the shape and re-renders as Markdown:
+ * a header line + the body as fenced markdown.
+ *
+ * Returns null if `s` is not a recognized webhook envelope — caller should
+ * fall back to plain md().
+ */
+function tryRenderWebhookEnvelope(s) {
+  if (typeof s !== 'string') return null;
+  const t = s.trimStart();
+  if (!t.startsWith('{') || !t.includes('"event":"github.')) return null;
+  let p;
+  try { p = JSON.parse(t); } catch { return null; }
+  if (!p || typeof p !== 'object') return null;
+  if (p.event === 'github.issue_opened') {
+    const repo = p.repo || '';
+    const num = p.issue_number ?? '';
+    const title = p.title || '';
+    const author = p.author || '';
+    const url = p.issue_url || '';
+    const labels = Array.isArray(p.labels) && p.labels.length ? p.labels.join(', ') : '';
+    const body = p.body || '';
+    const header =
+      `**🐛 Issue opened — [${repo} #${num}](${url})**\n\n` +
+      `**Title:** ${title}\n\n` +
+      (author ? `**Author:** @${author}\n\n` : '') +
+      (labels ? `**Labels:** ${labels}\n\n` : '') +
+      `---\n\n`;
+    return md(header + body);
+  }
+  if (p.event === 'github.pr_mention') {
+    const repo = p.repo || '';
+    const num = p.issue_number ?? '';
+    const url = p.comment_url || '';
+    const commenter = p.commenter || '';
+    const body = p.body || '';
+    const header =
+      `**💬 ${p.is_pr ? 'PR' : 'Issue'} mention — [${repo} #${num}](${url})**\n\n` +
+      (commenter ? `**From:** @${commenter}\n\n` : '') +
+      `---\n\n`;
+    return md(header + body);
+  }
+  return null;
+}
 function escAttr(s) {
   return String(s || '')
     .replace(/&/g, '&amp;')
@@ -3314,7 +3360,11 @@ function renderAdminMessages() {
     html += `<tr>
       <td style="white-space:nowrap">${esc(formatTime(time))}</td>
       <td style="white-space:nowrap">${esc(coworker)}</td>
-      <td style="white-space:nowrap;font-size:0.65rem;color:var(--text-muted)" title="${escAttr(m.session_id || '')}">${esc(sessShort)}</td>
+      <td style="white-space:nowrap;font-size:0.65rem;color:var(--text-muted)" title="${escAttr(m.session_id || '')}">${
+        m.session_id
+          ? `<a class="tl-session-link" data-session-id="${escAttr(m.session_id)}" data-session-group="${escAttr(m.group_folder || '')}" style="cursor:pointer">${esc(sessShort)}</a>`
+          : esc(sessShort)
+      }</td>
       <td style="${dirClass};font-weight:600">${dir}</td>
       <td style="white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">${esc(sender)}</td>
       <td style="max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(content.slice(0, 500))}">${esc(content.slice(0, 200))}</td>
@@ -5267,8 +5317,9 @@ function renderCwThread() {
         : p.senderCoworkerName
           ? `@${esc(p.senderCoworkerName)}`
           : 'You';
+      const pBody = tryRenderWebhookEnvelope(pText) || md(pText);
       parentEl.innerHTML = `<div class="parent-author">${pAuthor} <span style="color:var(--text-muted);font-weight:400">· ${p.timestamp ? formatTime(p.timestamp) : ''}</span></div>
-        <div class="parent-body">${md(pText)}</div>`;
+        <div class="parent-body">${pBody}</div>`;
     } else if (t.sessionDirect) {
       parentEl.innerHTML =
         '<div class="parent-body" style="color:var(--text-muted);font-style:italic">Agent-to-agent session (read-only)</div>';
@@ -5296,7 +5347,10 @@ function renderCwThread() {
       const time = m.timestamp ? formatTime(m.timestamp) : '';
       const text = m.displayContent || m.content || '';
       const renderAsMd = isOutgoing || isFromCoworker;
-      const body = text ? (renderAsMd ? md(text) : esc(text)) : '<span style="color:#9ca3af">(empty message)</span>';
+      const webhookRendered = !renderAsMd ? tryRenderWebhookEnvelope(text) : null;
+      const body = text
+        ? webhookRendered || (renderAsMd ? md(text) : esc(text))
+        : '<span style="color:#9ca3af">(empty message)</span>';
       // direction='outgoing' = agent reply; !outgoing = user or a2a sender.
       const authorName = isOutgoing
         ? esc(cwState.selected || 'agent')

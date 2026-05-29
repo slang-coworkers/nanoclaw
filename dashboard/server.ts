@@ -1254,6 +1254,17 @@ const hookEvents: HookEvent[] = [];
 // (writableLength threshold). Both make the larger ring buffer cheap.
 const MAX_HOOK_EVENTS = 5000;
 
+// Bootstrap-state cap (separate from MAX_HOOK_EVENTS): how many events to
+// include in each SSE state push to clients. Smaller than the ring buffer
+// because the frontend renders one DOM row per event and walks the whole
+// array on each state push — 5000 rows × DOM thrash on every dedup-dirty
+// update spikes the browser's main thread, observed as a 60% CPU pin on
+// the dashboard's Node process and an unresponsive UI tab. Older events
+// reach the UI via the existing "Load older events" button, which calls
+// /api/hook-events/history (capped at 5000) on demand. 500 ≈ 30-45 min of
+// peak activity, plenty for the at-a-glance view.
+const STATE_PUSH_HOOK_EVENTS = 500;
+
 // Hook events DB (write connection, lazy-opened)
 let hookEventsDb: Database.Database | null = null;
 
@@ -3224,7 +3235,7 @@ function getState(): DashboardState {
     tasks: [],
     taskRunLogs: [],
     registeredGroups,
-    hookEvents: hookEvents.slice(-MAX_HOOK_EVENTS),
+    hookEvents: hookEvents.slice(-STATE_PUSH_HOOK_EVENTS),
     timestamp: Date.now(),
     maxConcurrentContainers: MAX_CONCURRENT_CONTAINERS,
   };
@@ -4814,11 +4825,12 @@ export async function handleRequest(
     if (!requireAuth(req, res)) return;
     const group = url.searchParams.get('group');
     const filtered = group ? hookEvents.filter((e) => e.group === group) : hookEvents;
-    // Return the full ring buffer so the timeline UI's bootstrap covers
-    // a useful window during peak activity. The cap is governed by
-    // MAX_HOOK_EVENTS (5000) — see its block comment for rationale.
+    // Return the bootstrap-sized window so the timeline UI's first paint
+    // doesn't pay the cost of rendering thousands of DOM rows. Older events
+    // are reached via /api/hook-events/history (paginated, capped at
+    // MAX_HOOK_EVENTS). See STATE_PUSH_HOOK_EVENTS rationale near the cap.
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(filtered.slice(-MAX_HOOK_EVENTS)));
+    res.end(JSON.stringify(filtered.slice(-STATE_PUSH_HOOK_EVENTS)));
     return;
   }
 
@@ -10203,6 +10215,16 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
     void refreshMcpTools();
   }, 300_000);
   mcpRefreshTimer.unref?.();
+
+  // Warm the ccusage cache once at boot so Admin > Overview has a non-zero
+  // snapshot the moment a user lands on the page. Without this, the first
+  // visit shows $0 until the on-demand refresh (triggered by visibility
+  // signal) finishes its ~30s subprocess fan-out. The boot warm-up is a
+  // one-shot; the on-demand visibility-signal mechanism still drives
+  // ongoing refreshes when the user has the panel open.
+  void refreshCcusageCache().catch(() => {
+    /* swallow — non-fatal; on-demand refresh will retry */
+  });
 
   const server = createServer(handleRequest);
 
