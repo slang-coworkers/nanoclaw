@@ -2009,7 +2009,7 @@ document.getElementById('timeline-list')?.addEventListener('click', async (e) =>
   btn.disabled = true;
   timelineLoadingMore = true;
   try {
-    const params = new URLSearchParams({ before: oldest, limit: '100' });
+    const params = new URLSearchParams({ before: oldest, limit: '500' });
     if (timelineFilter) params.set('group', timelineFilter);
     const res = await fetch(`/api/hook-events/history?${params}`);
     const rows = await res.json();
@@ -2146,13 +2146,43 @@ function updateTimeline() {
       if (preTs) duration = ev.timestamp - preTs;
     }
 
+    // Some hook events (InstructionsLoaded, ConfigChange, FileChanged,
+    // CwdChanged, …) carry their payload in `extra` rather than `message`.
+    // When `message` is empty, fall back to a compact rendering of the
+    // most useful `extra` fields so the row isn't a blank header. Without
+    // this, the timeline shows e.g. 6 consecutive blank "InstructionsLoaded"
+    // rows on every container respawn — historically frustrating to debug.
+    let detail = ev.message || '';
+    if (!detail && ev.extra && typeof ev.extra === 'object') {
+      const x = ev.extra;
+      if (ev.event === 'InstructionsLoaded' && x.file_path) {
+        // file_path + load_reason is the load-trace info worth surfacing.
+        detail = x.load_reason ? `${x.file_path} (${x.load_reason})` : x.file_path;
+      } else if (ev.event === 'CwdChanged' && (x.from || x.to)) {
+        detail = `${x.from || '?'} → ${x.to || '?'}`;
+      } else if (ev.event === 'FileChanged' && x.path) {
+        detail = `${x.action || 'changed'}: ${x.path}`;
+      } else {
+        // Generic fallback: stringify a few interesting top-level keys
+        // (cap to avoid dumping nested objects). Better than blank.
+        const parts = [];
+        for (const k of Object.keys(x).slice(0, 4)) {
+          const v = x[k];
+          if (v == null) continue;
+          if (typeof v === 'object') continue;
+          parts.push(`${k}=${String(v).slice(0, 60)}`);
+        }
+        if (parts.length) detail = parts.join(' · ');
+      }
+    }
+
     timeline.push({
       time: ev.timestamp,
       type: 'hook',
       group: ev.group || '?',
       iconColor,
       title: ev.tool || ev.event || 'event',
-      detail: ev.message || '',
+      detail,
       prompt: '',
       badge,
       badgeClass,

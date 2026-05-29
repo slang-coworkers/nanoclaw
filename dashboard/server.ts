@@ -1239,7 +1239,20 @@ interface HookEvent {
 
 // Ring buffer for recent hook events (live state)
 const hookEvents: HookEvent[] = [];
-const MAX_HOOK_EVENTS = 200;
+// In-memory ring buffer cap raised 200 → 5000 on 2026-05-29: an active
+// install with bursty a2a fan-outs (slang chains during a fix run) emits
+// 700-900 events/hour. The old 200 cap meant the timeline-bootstrap state
+// only spanned ~13 minutes during peaks, so a webhook from 6 hours ago
+// (e.g. issue #11349) wasn't in the bootstrap and required ~70 "Load older"
+// clicks at 100/click to reach. 5000 ≈ 8 h on a busy day.
+//
+// Trade-off: each SSE state-push payload size scales with this cap. Each
+// hook event is ~200-2000 bytes; 5000 events ≈ 2-10 MB of state baseline.
+// The state-dedup + per-client backpressure introduced earlier already
+// guard the wire: identical states aren't re-broadcast (dedup hashes
+// state minus wall-clock data.timestamp), and slow clients drop frames
+// (writableLength threshold). Both make the larger ring buffer cheap.
+const MAX_HOOK_EVENTS = 5000;
 
 // Hook events DB (write connection, lazy-opened)
 let hookEventsDb: Database.Database | null = null;
@@ -4801,8 +4814,11 @@ export async function handleRequest(
     if (!requireAuth(req, res)) return;
     const group = url.searchParams.get('group');
     const filtered = group ? hookEvents.filter((e) => e.group === group) : hookEvents;
+    // Return the full ring buffer so the timeline UI's bootstrap covers
+    // a useful window during peak activity. The cap is governed by
+    // MAX_HOOK_EVENTS (5000) — see its block comment for rationale.
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(filtered.slice(-200)));
+    res.end(JSON.stringify(filtered.slice(-MAX_HOOK_EVENTS)));
     return;
   }
 
@@ -4820,7 +4836,13 @@ export async function handleRequest(
     const eventFilter = url.searchParams.get('event');
     const since = url.searchParams.get('since');
     const before = url.searchParams.get('before');
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '100', 10), 500);
+    // Cap raised from 500 → 5000 on 2026-05-29: an active install with bursty
+    // a2a fan-outs (slang chains during a fix run) emits 700-900 events/hour.
+    // The old 500 cap meant Timeline view truncated to ~30 min of history during
+    // peaks, hiding webhooks that arrived 5+ hours back. 5000 ≈ 8 h on a busy
+    // day at this pace — plenty for inspection. Frontend can paginate further
+    // via `?before=<ts>` if needed.
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '500', 10), 5000);
 
     const conditions: string[] = [];
     const params: any[] = [];
