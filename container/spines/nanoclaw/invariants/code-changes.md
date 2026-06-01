@@ -1,6 +1,6 @@
 ### Code-change rules
 
-These apply when you write or review code (writers and reviewers; readers can ignore).
+Apply when writing or reviewing code (writers/reviewers; readers ignore).
 
 - One thing per PR — never mix unrelated changes.
 - Migrations are additive — never drop tables or columns. Use `IF NOT EXISTS` and `hasCol` checks.
