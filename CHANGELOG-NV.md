@@ -6,15 +6,36 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 199 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 207 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 106 |
-| `nv-slang` | slang project spine, skills, workflows | 63 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 22 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 18 |
+| `nv-slang` | slang project spine, skills, workflows | 64 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 23 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 19 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-01
+
+### nv-main (8 PRs)
+- **#519** `fix(spine): per-edge a2a model + GitHub as primary human-observability surface`
+- **#520** `feat(skill/supervise-issues): verify the GitHub-comment loop is closed`
+- **#521** `feat(webhook): also dev-route issue comments via ROUTE_ISSUES_TO`
+- **#523** `fix(container): rename placeholder auth stub + guard against URL-baked stubs`
+- **#530** `style(container-runner): prettier-format OneCLI-stub guard line (unblocks CI)`
+- **#524** `fix(spine): tighten chain-reporting + github-comment-not-closure + per-issue routing + tabular status`
+- **#525** `fix(webhook): forward issue comments past the mention gate when ROUTE_ISSUES_TO is set`
+- **#526** `docs(spine): tighten base spine/skills/workflows/overlays (instruction-context diet)`
+
+### nv-slang (1 PRs)
+- **#527** `docs(slang): tighten slang spine/skills/workflows (instruction-context diet)`
+
+### nv-slangpy (1 PRs)
+- **#528** `docs(slangpy): tighten slangpy spine + workflows (instruction-context diet)`
+
+### nv-nanoclaw (1 PRs)
+- **#529** `docs(nanoclaw): tighten nanoclaw spine + skill + workflows (instruction-context diet)`
 
 ## 📅 2026-05-31
 
