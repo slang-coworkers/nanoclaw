@@ -1,39 +1,35 @@
 ---
 name: slang-github-webhook
 license: MIT
-description: "Handle @nv-slang-bot PR mention webhooks: post a single editable TODO-list comment, route to coworkers via send_message, edit the comment on every status change."
+description: 'Handle @nv-slang-bot PR mention webhooks: post one editable TODO-list comment, route to coworkers via send_message, edit on every status change.'
 provides: [github.webhook.routing]
 allowed-tools: Bash(gh:*), Bash(jq:*), Bash(date:*), Bash(mkdir:*), Bash(echo:*), Bash(cat:*), mcp__nanoclaw__send_message
 ---
 
 # Slang GitHub webhook routing
 
-Use this skill when you receive a `kind: webhook` message with `content.event: "github.pr_mention"`.
+Use on a `kind: webhook` message with `content.event: "github.pr_mention"`.
 
-## Operating principles
+## Principles
 
-- **Acknowledge before anything else.** Step 0 below posts the 👀 reaction on the triggering comment. The human who tagged the bot needs an immediate signal that the mention was received and is being worked on. The host webhook handler does NOT post this reaction — the coworker that picks up the work does, so exactly one 👀 lands per task regardless of which instance ends up handling it.
-- **One comment per webhook task.** Never POST a second comment for the same task — PATCH the first one. A new POST happens only when a fresh `kind: webhook` inbound arrives.
-- **The comment is a live TODO list.** Each step you intend to do becomes a checklist item; you update its status in real time so the human reviewer sees progress without you having to spam.
-- **Use `mcp__nanoclaw__send_message` to route to coworkers.** Do not use inline `<message to="…">` blocks for this skill — the tool call is explicit, auditable, and avoids the mixed-syntax footgun.
-- **Verify rapid follow-up webhooks** before acting on them.
+- **Acknowledge first** (step 0): the picking coworker posts 👀, not the host — exactly one lands per instance.
+- **One comment per webhook task.** PATCH the first; POST only on a fresh `kind: webhook` inbound.
+- The comment is a **live TODO list** — update in real time, no spam.
+- **Route via `mcp__nanoclaw__send_message`**, never inline `<message to="…">` blocks.
+- Verify rapid follow-up webhooks before acting (step 6).
 
 ## Flow
 
 ### 0. Acknowledge with 👀 — before parsing
 
-The very first thing you do on a `pr_mention` webhook is post the 👀 reaction on the triggering comment. This is the signal to the human who tagged the bot that their `@nv-slang-bot` was received and is being worked on. The host webhook handler used to do this, but with cross-instance forwarding the only side that knows whether the work was actually picked up is this coworker.
+First action on a `pr_mention`: post 👀 on the triggering comment. Pick the endpoint from `comment_url`:
 
-Endpoint differs by comment type. Pick the right one from the `comment_url` in the inbound payload:
-
-- URL contains `#discussion_r` → it's an inline `pull_request_review_comment` → `repos/{repo}/pulls/comments/{comment_id}/reactions`
-- everything else (issue conversation, regular PR comment) → `repos/{repo}/issues/comments/{comment_id}/reactions`
+- contains `#discussion_r` → `repos/{repo}/pulls/comments/{comment_id}/reactions`
+- else → `repos/{repo}/issues/comments/{comment_id}/reactions`
 
 ```bash
 SUB=issues
-case "{comment_url}" in
-  *"#discussion_r"*) SUB=pulls ;;
-esac
+case "{comment_url}" in *"#discussion_r"*) SUB=pulls ;; esac
 
 gh api -X POST -H "Accept: application/vnd.github+json" \
   "repos/{repo}/$SUB/comments/{comment_id}/reactions" \
@@ -41,46 +37,19 @@ gh api -X POST -H "Accept: application/vnd.github+json" \
   || echo "(eyes already posted or comment gone — ignore)"
 ```
 
-The fallback `|| echo` swallows the 422 GitHub returns when a reaction already exists (idempotent on retries). Do not block the rest of the flow on this — if it fails, log and continue.
+The `|| echo` swallows the 422 when a reaction already exists (idempotent). Never block the flow on it.
 
 ### 1. Parse the webhook
 
-```json
-{
-  "event": "github.pr_mention",
-  "repo": "shader-slang/slang",
-  "issue_number": 1234,
-  "is_pr": true,
-  "comment_id": 9876543,
-  "commenter": "some-user",
-  "body": "@nv-slang-bot please fix ..."
-}
-```
+Fields: `repo` (`<owner>/<repo>`), `issue_number`, `is_pr`, `comment_id`, `commenter`, `body`. Task text = everything in `body` after `@nv-slang-bot`.
 
-Task text = everything in `body` after `@nv-slang-bot`.
+### 2. Build a TODO list
 
-### 2. Build a TODO list for this task
-
-Decompose the task into 2–6 concrete steps. Example for a code-fix request:
-
-```
-- [ ] Read PR diff and surrounding files
-- [ ] Identify root cause
-- [ ] Write fix
-- [ ] Run tests / typecheck
-- [ ] Push commit
-```
-
-Or for a question/review:
-
-```
-- [ ] Read the PR
-- [ ] Answer
-```
+Decompose into 2–6 concrete steps. Code-fix: Read diff → Identify root cause → Write fix → Run tests → Push. Question/review: Read PR → Answer.
 
 ### 3. Post the comment ONCE — capture its id
 
-The first POST contains the full TODO list. All future updates PATCH this same comment.
+First POST contains the full TODO list; all future updates PATCH this same comment.
 
 ```bash
 COMMENT_DIR=/workspace/agent/.gh-comments
@@ -91,11 +60,7 @@ INITIAL_BODY=$(cat <<'EOF'
 👋 @{commenter} — on it.
 
 **Working on it:**
-- [ ] Read PR diff and surrounding files
-- [ ] Identify root cause
-- [ ] Write fix
-- [ ] Run tests / typecheck
-- [ ] Push commit
+<the step-2 TODO list, all items unchecked>
 
 _(Last updated: $(date -u +%Y-%m-%dT%H:%MZ))_
 EOF
@@ -108,44 +73,26 @@ echo "$COMMENT_ID" > "$COMMENT_FILE"
 
 ### 4. Edit the comment on every status change
 
-Every time you complete (or start, or block on) a step, PATCH the same comment. Mark items `- [x]` when done; add a one-line status note under the list when something is in progress or blocked.
+On start/complete/block of any step, PATCH the same comment: rebuild the body (toggle `- [ ]`→`- [x]`, add a one-line **Status:** note, bump the timestamp) and PATCH by id:
 
 ```bash
 COMMENT_ID=$(cat "/workspace/agent/.gh-comments/{repo}-{issue_number}.id")
-
-UPDATED_BODY=$(cat <<'EOF'
-👋 @{commenter}
-
-**Status:** pushing fix now
-
-- [x] Read PR diff and surrounding files
-- [x] Identify root cause — `validateInput` was missing the null check at line 47
-- [x] Write fix
-- [x] Run tests / typecheck — all green
-- [ ] Push commit
-
-_(Last updated: $(date -u +%Y-%m-%dT%H:%MZ))_
-EOF
-)
-
 jq -Rsn --arg b "$UPDATED_BODY" '{body: $b}' \
   | gh api "repos/{repo}/issues/comments/$COMMENT_ID" --method PATCH --input -
 ```
 
-(Use `--input -` with `jq -Rsn`; `--field body=` mis-handles bodies starting with `@`.)
-
-When the task is fully done, the final PATCH replaces the in-progress status with the result and a summary.
+(Use `--input -` with `jq -Rsn`; `--field body=` mis-handles bodies starting with `@`.) The final PATCH replaces the in-progress status with the result and a summary.
 
 ### 5. Resolve branch and route to a coworker (PRs only)
 
-If the PR's head branch matches `dev/<folder>/`, the folder names a coworker. Forward the work to them and update your TODO comment to reflect the routing:
+If the PR head branch matches `dev/<folder>/`, the folder names a coworker.
 
 ```bash
 BRANCH=$(gh api repos/{repo}/pulls/{issue_number} --jq '.head.ref')
 COWORKER=$(echo "$BRANCH" | sed -n 's|^dev/\([^/]*\)/.*|\1|p')
 ```
 
-If `COWORKER` is non-empty, send a coworker dispatch via the MCP tool (NOT inline `<message to>`):
+If `COWORKER` is non-empty, dispatch via the MCP tool (NOT inline `<message to>`):
 
 ```
 mcp__nanoclaw__send_message(
@@ -154,61 +101,34 @@ mcp__nanoclaw__send_message(
 )
 ```
 
-The `<github-post-authorized />` marker authorizes the receiving coworker's workflow to post the result back to GitHub on its own. The marker is **mandatory for `@nv-slang-bot` comment dispatches** because the human explicitly tagged the bot — that's the user's authorization for the bot to reply on the PR. The structured `REPO=` / `PR=` / `COMMENT_ID=` / `COMMENTER=` lines after the marker are parseable by the receiving workflow (`grep -oE` patterns); keep the format byte-exact.
+`<github-post-authorized />` authorizes the receiving coworker to post the result back to GitHub. **Mandatory for `@nv-slang-bot` comment dispatches** — the human tagging the bot is the authorization. The `REPO=`/`PR=`/`COMMENT_ID=`/`COMMENTER=` lines are parsed by the receiving workflow (`grep -oE`); keep the format byte-exact.
 
-For dispatches that are NOT triggered by an `@nv-slang-bot` mention (e.g. internal coworker handoffs, scheduled tasks, chat invocations) **do not include the marker**. Receiving workflows treat its absence as "return via send_file only, do not post." This preserves the contract: the bot only posts to GitHub when a human invited it.
+For dispatches NOT from an `@nv-slang-bot` mention (internal handoffs, scheduled tasks, chat) **omit the marker** — receiving workflows treat its absence as "return via send_file only, do not post."
 
-Then PATCH your TODO comment so the reviewer sees the handoff:
-
-```
-👋 @{commenter} — routed to `{coworker}`. Updates will appear here.
-
-- [x] Resolve branch (`{branch}` → `{coworker}`)
-- [ ] Coworker reads PR
-- [ ] Coworker writes fix
-- [ ] Coworker pushes commit
-```
-
-If `COWORKER` is empty (no matching folder, or `is_pr` is false), handle the task directly without a forward.
+Then PATCH your TODO comment to show the handoff (check off "Resolve branch", add coworker-step items). If `COWORKER` is empty (no matching folder, or `is_pr` false), handle the task directly.
 
 ### 6. Verify rapid follow-up webhooks
 
-If a second `pr_mention` arrives on the same PR within ~60 seconds of one you just acknowledged, verify before acting on it:
+If a second `pr_mention` arrives on the same PR within ~60s of one you just acknowledged, verify first:
 
 ```bash
 gh api repos/{repo}/issues/comments/{comment_id} --jq '{user: .user.login, body, created_at}'
 ```
 
-404 or `user.login != commenter` → the webhook is unverified (engine bug, replay, or stale event). Ignore it and log the discrepancy. The first webhook in a task is trustworthy; verification only matters for rapid follow-ups.
+404 or `user.login != commenter` → unverified (replay/stale event). Ignore and log. The first webhook in a task is trustworthy; verification only matters for rapid follow-ups.
 
 ### 7. New webhook → new comment
 
-A fresh `kind: webhook` inbound = a new task = a new POST and a new TODO list. Save the new `comment_id` over the old one in `/workspace/agent/.gh-comments/{repo}-{issue_number}.id`. The previous comment stays untouched as a record of the prior task.
+A fresh `kind: webhook` inbound = new task = new POST + new TODO list. Overwrite `comment_id` in `/workspace/agent/.gh-comments/{repo}-{issue_number}.id`; the previous comment stays as a record.
 
 ## PR → session mapping
 
-Coworkers that create PRs on delegated tasks must report back so future webhook events route to them.
-
-After creating a PR, the implementer sends back via `mcp__nanoclaw__send_message` to the orchestrator:
+Coworkers that create PRs on delegated tasks must report back so future webhook events route to them. After creating a PR, the implementer sends back to the orchestrator via `mcp__nanoclaw__send_message`:
 
 ```
-PR_CREATED: repo=shader-slang/slang pr=456
+PR_CREATED: repo=<owner>/<repo> pr=456
 ```
 
-The orchestrator maintains `/workspace/agent/pr-mappings.json`:
+The orchestrator maintains `/workspace/agent/pr-mappings.json` (array of `{repo, pr_number, implementer, thread_id, created_at}`). On `PR_CREATED:` callbacks, append.
 
-```json
-{
-  "mappings": [
-    {
-      "repo": "shader-slang/slang",
-      "pr_number": 456,
-      "implementer": "implementer-1",
-      "thread_id": "task-xyz",
-      "created_at": "2026-05-08T12:00:00Z"
-    }
-  ]
-}
-```
-
-On webhook arrival, look up `(repo, issue_number)` in the mappings file BEFORE falling through to branch resolution. If found, route with the stored `thread_id` so the message lands in the implementer's existing session. On `PR_CREATED:` callbacks, append to the mappings file.
+On webhook arrival, look up `(repo, issue_number)` in the mappings file BEFORE branch resolution. If found, route with the stored `thread_id` so the message lands in the implementer's existing session.

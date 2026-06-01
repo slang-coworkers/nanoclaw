@@ -1,118 +1,65 @@
-Generate a daily report draft for the Slang project. The report should be concise but comprehensive.
+Generate a daily report draft for the Slang project.
 
-IMPORTANT: Today's date is provided in the system context. Use it to compute "24 hours ago" as an ISO 8601 timestamp (e.g., if today is 2026-02-17, then since = "2026-02-16T00:00:00Z"). Double-check the year is correct.
+Compute "24 hours ago" as ISO 8601 (today 2026-02-17 → since = "2026-02-16T00:00:00Z"). Check the year.
 
----
+## Data Collection
 
-## Data Collection Instructions
+You MUST query ALL sources below. Parallelize where possible.
 
-You MUST query ALL of the following data sources. Make parallel calls where possible.
+### 1. GitHub (owner=shader-slang, repo=slang)
 
-### 1. GitHub (owner: "shader-slang", repo: "slang")
+Issues — paginate each (if `hasNextPage`, re-call with `after=<endCursor>` until false; cap 100):
 
-**Issues — fetch ALL from last 24 hours:**
-- `github_list_issues` with state=OPEN, first=100, since=<24h ago ISO 8601>
-  - If `hasNextPage` is true in the response, call again with `after=<endCursor>` and repeat until `hasNextPage` is false
-- `github_list_issues` with state=CLOSED, first=100, since=<24h ago ISO 8601>
-  - Same pagination logic
+- `github_list_issues` state=OPEN, first=100, since=<24h ago ISO>
+- `github_list_issues` state=CLOSED, first=100, since=<24h ago ISO>
 
-**Pull Requests — fetch recent activity:**
-- `github_list_pull_requests` with state=open, per_page=30, sort=updated, direction=desc
-- `github_list_pull_requests` with state=closed, per_page=30, sort=updated, direction=desc
-- Additionally, use `github_search_issues` with q="repo:shader-slang/slang is:pr updated:>=YYYY-MM-DD" to catch any PRs missed by the list (replace YYYY-MM-DD with yesterday's date)
+PRs:
 
-**Discussions:**
-- `github_get_discussions` with owner=shader-slang, repo=slang, first=10
+- `github_list_pull_requests` state=open / state=closed, per_page=30, sort=updated, direction=desc
+- `github_search_issues` q="repo:shader-slang/slang is:pr updated:>=YYYY-MM-DD" (yesterday) to catch PRs missed by the list
 
-### 2. GitLab (project_id: "6417")
+Discussions: `github_get_discussions` owner=shader-slang, repo=slang, first=10
 
-- `gitlab_list_issues` with project_id="6417", state=opened, per_page=20, order_by=updated_at
-- `gitlab_list_merge_requests` with project_id="6417", state=opened, per_page=20, order_by=updated_at
+### 2. GitLab (project_id="6417")
 
-### 3. Discord (7 channels — fetch ALL in parallel)
+- `gitlab_list_issues` state=opened, per_page=20, order_by=updated_at
+- `gitlab_list_merge_requests` state=opened, per_page=20, order_by=updated_at
 
-Call `discord_read_messages` with limit=50 for each configured Discord channel.
+### 3. Discord (7 channels, parallel)
+
+`discord_read_messages` limit=50 for each configured channel.
 
 ### 4. Slack
 
-- `slack_get_channel_history` with the configured Slack channel_id, limit=100, since=<24h ago ISO 8601>
+`slack_get_channel_history` configured channel_id, limit=100, since=<24h ago ISO>
 
 ### 5. User ID Resolution
 
-After collecting all data, gather all unique Slack user IDs found in messages.
-- Resolve each via `slack_get_user_profile` — call them **sequentially** (not in parallel) to avoid rate limits
-- The tool has built-in retry logic for rate limits, but spacing calls out helps
+Resolve each unique Slack user ID via `slack_get_user_profile` **sequentially** (not parallel) to avoid rate limits.
 
 ---
 
 ## Report Structure
 
-### 1. Urgent Matters (limit to 3, prioritized):
-   - 🚨 Critical issues requiring immediate attention
-   - ⚠️ Blocking issues affecting team/development
-   - 🔄 Time-sensitive updates/changes
-   Include clear action items or owners when available
-
-### 2. GitHub Activity (last 24 hours):
-   - New issues opened: [number] with issue title and URL
-   - Issues/PRs closed: [number] with title and URL
-   - PRs requiring review: [number] with title and URL
-   - Add 🚨 for high-priority items
-   - Don't create tables, use only lists
-
-### 3. GitLab Activity:
-   - Open issues (notable/recent)
-   - Open merge requests
-   - Include links using GitLab base URL
-
-### 4. Key Discussions (limit to 3 most impactful):
-   - From Slack threads, Discord channels, and GitHub Discussions
-   - Technical decisions/changes
-   - Architecture discussions
-   - Team process updates
-   Include relevant context and next steps if any
-
-### 5. Progress Updates:
-   - Active Development:
-     • Major features/changes in progress
-     • Notable achievements/milestones
-   - Infrastructure:
-     • Build/CI status
-     • Test results
-     • System health indicators (nightly statuses from Slack)
-
-### 6. Notes & Reminders:
-   - Important announcements
-   - Upcoming deadlines
-   - Best practices/guidelines to follow
+1. **Urgent Matters** (limit 3, prioritized): 🚨 critical, ⚠️ blocking, 🔄 time-sensitive. Include action items/owners.
+2. **GitHub Activity (24h)**: new issues opened, issues/PRs closed, PRs requiring review — each with title + URL; 🚨 high-priority. Lists, not tables.
+3. **GitLab Activity**: notable open issues + MRs, with GitLab base URL links.
+4. **Key Discussions** (limit 3 most impactful): from Slack/Discord/GitHub Discussions — technical decisions, architecture, process. Include context + next steps.
+5. **Progress Updates**: active development (major features, milestones); infrastructure (build/CI status, nightly statuses from Slack).
+6. **Notes & Reminders**: announcements, deadlines, best practices.
 
 ---
 
 ## Format Requirements
-- Use clear hierarchical headings (##, ###)
-- Use Unicode emoji characters (e.g. 🚨 ✅ ❌ ⚠️ 🔄), NOT Slack/GitHub shortcode style (e.g. :rotating_light: :white_check_mark:) — shortcodes only render on Slack/GitHub, not in markdown viewers or terminals
-- Resolve user ids to names and email addresses when correlating identities across GitHub/Slack/etc.
-- Include direct links to referenced items
-- Keep tone professional but conversational
-- Use bullet points for easy scanning
-- Highlight action items or decisions needed
-- Add timestamp of report generation
 
-Only use full names and usernames which are present in the input data. If both are found, prefer full names.
+- Hierarchical headings (##, ###); bullets for scanning
+- Unicode emoji (🚨 ✅ ❌ ⚠️ 🔄), NOT shortcodes — shortcodes only render on Slack/GitHub
+- Resolve user ids to names + emails when correlating across GitHub/Slack/etc.; use only names/usernames present in the input, prefer full names
+- Direct links to referenced items; highlight action items/decisions; add report-generation timestamp
+- Professional but conversational tone
 
-Save the report as 'daily-report-YYYY-MM-DD.md'. If a report with that name already exists, overwrite it with the new version (append a `_updated` suffix only if you need to preserve both versions).
-
----
+Save as 'daily-report-YYYY-MM-DD.md', overwriting if it exists (append `_updated` only if you need both versions).
 
 ## Completeness Checklist
 
-Before saving the report, verify you queried:
-- [ ] GitHub issues (open + closed, with pagination)
-- [ ] GitHub PRs (open + closed)
-- [ ] GitHub Discussions
-- [ ] GitLab issues and merge requests (project 6417)
-- [ ] All 7 Discord channels
-- [ ] Slack channel history (with since filter)
-- [ ] All Slack user IDs resolved to names
-
-If any source failed or returned an error, note it in the report under "Data Collection Notes" at the bottom.
+Verify you queried: GitHub issues (open + closed, paginated), GitHub PRs (open + closed), GitHub Discussions, GitLab issues + MRs (project 6417), all 7 Discord channels, Slack history (with since filter), all Slack user IDs resolved. Note any failed/errored source under "Data Collection Notes" at the bottom.
