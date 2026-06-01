@@ -330,6 +330,43 @@ For a sub-thread on a _different_ task that happens to be about the same issue (
 
 **Roll up downstream content into your own 5-bullet report.** When you are the parent, peers' `[Report]`s arrive at your inbound. Do not relay them verbatim to your own parent — fold their facts into your own status/link/verdict/next-action/blocker shape and send one consolidated report. The reasoning narrative attaches as a file via `send_file(to="parent")`. The PR description (when one exists) is the persistent executive summary that captures both upstream context and downstream verification — whoever authors the PR keeps it current. This is what "the parent decides what to escalate further" means in practice.
 
+**[MUST]** **GitHub is the primary human-observability surface; the dashboard is secondary.** When work originates from a GitHub issue or PR, humans live on GitHub — they see notifications there, they reply there, they decide there. Whenever a chain reaches a state a human might need to see, the coworker holding that state **MUST** post the 5-bullet markdown comment on the originating issue/PR. The dashboard `ask_user_question` card (see _Routing — stuck_) remains useful as a faster operator-side surface, but it is **secondary**: a chain that updated the dashboard but not GitHub has not been observed by the human. Silence on GitHub for an in-flight chain is a bug.
+
+The four state-change events that REQUIRE a GitHub comment:
+
+1. **Chain complete — PR opened.** The PR description carries the rolled-up 5-bullet ([Report] folded into the executive summary); the PR itself links back to the originating issue via "Fixes #N" or "Closes #N". `report_pr_created({ repo, pr_number })` after opening so the host wires future webhook events back to the chain. No separate comment on the issue is needed when the PR description carries it — but the link from issue → PR must be present.
+2. **Chain complete — resolved without a PR** (refusal, out-of-scope, won't-fix, deduped against an existing issue, answered inline). The deepest tier that holds the verdict posts the 5-bullet on the issue/PR explaining what was done and why nothing landed. `verdict:` and `next-action:` carry the load — say _"closing as duplicate of #N"_ or _"out of scope: requires upstream maintainer input"_, not just _"resolved"_.
+3. **Chain blocked — needs a human decision.** The coworker calling `ask_user_question(timeout: 0)` **MUST** also post a GitHub comment on the originating issue/PR with the same 5-bullet shape, and the question + options rendered as a plain markdown checklist. A human replying on GitHub with the chosen option (free-text or `> answer: <option>`) becomes the next inbound through the webhook → chain path. The dashboard card resolves only when an operator answers via the dashboard; the GitHub comment is what reaches the human who isn't watching the dashboard.
+4. **Chain handed off — won't progress further from this side** (awaiting upstream maintainer, external dependency, vendor escalation). Post the 5-bullet stating the handoff, what was tried, and what triggers resumption.
+
+**Closest-to-the-state principle.** The coworker that holds the state posts. Reviewer posts when the verdict is theirs. Fixer posts when the PR opens. Triage posts on out-of-scope refusal. The orchestrator does not post on others' behalf — it would be relaying second-hand. Each tier is responsible for the GitHub comment for state it owns. Use the existing GitHub-posting skills (per-project `*-github` skills wired by trait binding); the spine does not duplicate the mechanics.
+
+```
+issue gets opened on GitHub
+              │
+              ▼  (webhook → orchestrator)
+        ORCHESTRATOR ── dispatches to TRIAGE ───────────────►
+              ▲                                              │
+              │                                              ▼
+              │                                          TRIAGE
+              │                                              │
+              │                                              ▼
+              │                                          FIXER opens PR
+              │                                              │
+              │                                              │  posts GitHub comment
+              │                                              │  on issue: 5-bullet
+              │                                              │  + "Fixes #N" in PR body
+              │                                              │  + report_pr_created()
+              │                                              │
+              │  ◄────── final [Report] rolls up ────────────┘
+              │
+              ▼
+       supervisor verifies: was a GitHub comment / linked PR posted?
+       if not → nudge the responsible tier to post before closing
+```
+
+For top-of-chain agents (no parent) the rule is unchanged: the channel adapter delivers the same 5-bullet shape to the user. When that user is on GitHub (the originating webhook), the channel adapter IS the GitHub comment.
+
 No echoes. No meta-acknowledgements. _"Acknowledged silently"_, _"No echo needed"_, _"Status report stays with the orchestrator"_, _"Ending turn"_ are themselves messages — they cost the reader the same tokens the silent-ack rule was meant to save. If you have nothing substantive to add, **send nothing**.
 
 **File paths in your reports refer to your own filesystem, not your peer's.** Each coworker has its own `/workspace/agent/` (the agent group's mount); files you write there are not visible to other coworkers' containers. When you reference a file in an upstream report, either (a) it's a file the parent already has (because you sent it via `send_file`, in which case reference it as the `inbox/<msg-id>/<filename>` path the parent sees, not your `/workspace/agent/...` path), or (b) it's a path inside _your_ workspace that the parent should treat as opaque (a local artifact, useful for tracing but not openable from elsewhere). Don't write `at /workspace/agent/reports/foo.md` and expect the parent to read it — they can't reach your filesystem. To make a file shared, attach it.
