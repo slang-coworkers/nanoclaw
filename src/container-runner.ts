@@ -915,7 +915,9 @@ function buildMounts(
     const hasStubGuard = settings.hooks.PreToolUse.some(
       (h: { matcher?: string; hooks?: { command?: string }[] }) =>
         h.matcher === 'Bash' &&
-        h.hooks?.some((inner: { command?: string }) => inner.command?.includes('Refusing to bake the OneCLI proxy stub')),
+        h.hooks?.some((inner: { command?: string }) =>
+          inner.command?.includes('Refusing to bake the OneCLI proxy stub'),
+        ),
     );
     if (!hasStubGuard) {
       settings.hooks.PreToolUse.push(stubGuardHookConfig);
