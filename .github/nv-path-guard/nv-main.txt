@@ -121,3 +121,6 @@ container/skills/codex-critique/**
 
 # Periodic upstream-sync (May 28, 2026): paths added by upstream/main absorbed via Sync PR.
 container/skills/whatsapp-formatting/**
+
+# Supervisor skill — periodic in-flight issue chain monitor (#514).
+container/skills/supervise-issues/**
