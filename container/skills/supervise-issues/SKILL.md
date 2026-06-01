@@ -1,7 +1,7 @@
 ---
 name: supervise-issues
 license: MIT
-description: Periodic supervisor for in-flight GitHub issue chains. Lists active issue sessions, computes stuck-time, nudges silent chains, surfaces blockers to operator via ask_user_question. Designed to be self-scheduled via schedule_task on a 30-minute cron.
+description: Periodic supervisor for in-flight GitHub issue chains. Lists active issue sessions, computes stuck-time, nudges silent chains, verifies the human-observability loop (5-bullet GitHub comment present before chain closes), surfaces blockers to operator via ask_user_question. Designed to be self-scheduled via schedule_task on a 30-minute cron.
 ---
 
 # /supervise-issues — Issue chain supervisor
@@ -24,7 +24,7 @@ ncl sessions list --thread-prefix "gh-issue-" --json
 
 For each session, also pull the most recent activity (last inbound + last outbound timestamp). The session DBs have these directly; ask via `ncl sessions messages --id <sess> --limit 1` if needed.
 
-Build a table of: `repo` / `issue` / `thread_id` / `last_activity_at` / `state` (one of `dispatched` / `triaging` / `fixing` / `reviewing` / `pr_open` / `awaiting_human` / `silent`).
+Build a table of: `repo` / `issue` / `thread_id` / `last_activity_at` / `state` (one of `dispatched` / `triaging` / `fixing` / `reviewing` / `pr_open` / `awaiting_human` / `silent` / `closing` / `closed_no_github_comment`).
 
 ### 2. Classify each row
 
@@ -33,6 +33,8 @@ Build a table of: `repo` / `issue` / `thread_id` / `last_activity_at` / `state` 
 - **`awaiting_human`** (a pending `ask_user_question` exists for this thread) → leave alone, it's blocked on the operator.
 - **`silent` ≥ 60 min** → stuck. Investigate: is the assigned coworker's container running? Did the last message they sent get a response? Did they emit a [Refusal] or [not actionable] outcome? If the chain was dropped without a closing report, that's the bug — re-prompt the deepest tier with a soft nudge.
 - **`silent` ≥ 4 hours** → escalate to operator via `ask_user_question` with options: "extend deadline" / "re-dispatch from triage" / "close chain (out of scope)" / "abandon (won't fix)". Use `timeout: 0` — there is no good fallback.
+- **`closing`** (final `[Report]` emitted, PR opened, or refusal landed) → run **step 5: GitHub-comment verification** before letting the chain drop off the table.
+- **`closed_no_github_comment`** (state from step 5) → nudge the responsible coworker to post; if unmet after 2 nudges, escalate.
 
 ### 3. Nudges
 
@@ -46,7 +48,37 @@ Don't open new threads. Don't escalate to the operator without first nudging —
 
 If you find a chain whose deepest tier emitted `[Resolution] / [Report]` more than 30 min ago but no upstream tier rolled it up, send a peer message to the missing tier asking them to roll up. Do not roll up on their behalf.
 
-### 5. Output
+### 5. GitHub-comment verification (closing the human-observability loop)
+
+Per the `[MUST]` rule in `chain-reporting.md` ("GitHub is the primary human-observability surface"), every chain that reaches a human-visible state — completed, blocked-on-human, refused, handed off — **must** have a 5-bullet markdown comment posted on the originating issue/PR before the chain is treated as closed. The supervisor enforces this.
+
+For each chain you would otherwise classify as `closing` (final `[Report]` emitted, PR opened, refusal, or handoff), check GitHub for the comment **before** allowing the chain to drop off the in-flight table:
+
+```bash
+# Pull recent comments on the originating issue/PR via the gh-app token
+# (use the per-project *-github skill's posting helper if available;
+# otherwise hit the REST API via OneCLI):
+curl -sS -H "Authorization: token $GH_APP_TOKEN" \
+  "https://api.github.com/repos/<owner>/<repo>/issues/<num>/comments?per_page=20" \
+  | jq -r '.[] | select(.body | startswith("- **Status:**") or contains("[Report]")) | .id'
+```
+
+The existence test: a comment authored by the install's bot account (or the maintainer account the chain is using) whose body starts with the 5-bullet shape (`- **Status:**` … `- **Blocker:**`) OR contains a linked PR (`Fixes #N` / `Closes #N`) that itself carries the rolled-up summary in its description.
+
+**If absent**, the chain is `closed_no_github_comment` — a bug. Take the smaller action first:
+
+1. **Identify the responsible coworker.** Per the closest-to-the-state principle: reviewer for verdicts, fixer for "PR opened", triage for out-of-scope refusal, the deepest tier that produced the verdict otherwise.
+2. **Send a nudge to that coworker** (not orchestrator, not parent — the one who holds the state) asking them to post the GitHub comment now. Body shape:
+
+   > [Supervisor — gh-issue-X/Y-N] Chain reached `<state>` but no GitHub comment found on issue/PR. Per the GitHub-as-primary observability rule, post the 5-bullet (status / link / verdict / next-action / blocker) on https://github.com/X/Y/issues/N before this chain closes. Use your `<project>-github` skill or the gh-app token via OneCLI proxy. Reply with the comment URL once posted.
+
+3. **Track in `supervisor-state.json`** under `{threadId: {githubCommentRequestedAt: iso, githubCommentUrl: null}}`. On the next cron tick, re-check; if still missing after 2 nudges, escalate to operator via `ask_user_question(timeout: 0)` with options: "post on coworker's behalf (orchestrator-level retry)" / "close chain anyway (suppress observability)" / "investigate (pause chain)".
+
+**Do NOT post the comment yourself.** The closest-to-the-state principle means the coworker who holds the verdict authors the post — relaying second-hand drops fidelity and recipient ambiguity ("did the supervisor read the actual code, or just the [Report]?"). Supervisor enforces, doesn't substitute.
+
+For chains in `pr_open` state, the PR description IS the comment — verify the PR exists, links back to the issue (`gh pr view <num>` body contains `Fixes #N`/`Closes #N`), and `report_pr_created` was called (check `pr_session_mappings`). If the PR exists but the issue link is missing, nudge the fixer to amend the PR body, not to add a separate issue comment.
+
+### 6. Output
 
 After processing all chains, send a single status report to your parent (the operator if you are top-of-chain) using the standard 5-bullet shape:
 
@@ -93,6 +125,7 @@ The script gates the wake — when no chains are stuck, the cron tick is a no-op
 - **Don't escalate before nudging.** Most stuck chains resume from a single nudge; escalation costs the operator's attention.
 - **Don't multi-cast.** A nudge goes to one coworker (the one currently expected to respond), not the whole chain.
 - **Don't loop.** If a chain has been nudged twice with no response, escalate — don't keep nudging.
+- **Don't post the GitHub comment on a coworker's behalf.** Closest-to-the-state principle: the coworker holding the verdict authors the post. Supervisor enforces, doesn't substitute. (See step 5.)
 
 ## State
 
