@@ -15,6 +15,7 @@ import {
   INSTANCE_FORWARD_TARGETS,
   INSTANCE_SLUG,
   INTERNAL_REGISTER_SECRET,
+  ROUTE_ISSUES_TO,
 } from './config.js';
 import { log } from './log.js';
 import {
@@ -244,7 +245,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       return;
     }
 
-    // Comment events: action filter + mention check (skipped on peer-forward)
+    // Comment events: action filter, then mention check.
     if (payload.action !== 'created') {
       writeJson(res, 200, { ok: true, skipped: true, reason: 'action not created' });
       return;
@@ -252,12 +253,6 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
 
     const comment = payload.comment as Record<string, unknown> | undefined;
     const commentBody = typeof comment?.body === 'string' ? comment.body : '';
-
-    if (!isPeerForward && !commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase())) {
-      writeJson(res, 200, { ok: true, skipped: true, reason: 'bot not mentioned' });
-      return;
-    }
-
     const commentId = typeof comment?.id === 'number' ? comment.id : 0;
 
     let issueNumber: number;
@@ -271,6 +266,27 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       const issue = payload.issue as Record<string, unknown> | undefined;
       issueNumber = typeof issue?.number === 'number' ? issue.number : 0;
       isPr = Boolean(issue?.pull_request);
+    }
+
+    // Mention gate, with one exemption: a follow-up comment on a plain issue
+    // (not a PR) whose OPEN we dev-route to a peer must ALSO be forwarded, even
+    // when it doesn't tag the bot. The peer drives the issue's chain and needs
+    // every human reply, not just @-mentions — same rationale as the `issues`
+    // path above (the bot is the audience here, not the actor). Mirrors the
+    // !isPr + ROUTE_ISSUES_TO condition in deliverGitHubMention, which performs
+    // the actual forward; without this exemption the comment is dropped here
+    // and never reaches that branch. PR comments stay mention-gated: their
+    // ownership is governed by pr_session_mappings, not ROUTE_ISSUES_TO.
+    const willDevRouteToPeer =
+      !isPr && Boolean(ROUTE_ISSUES_TO) && Boolean(INSTANCE_SLUG) && ROUTE_ISSUES_TO !== INSTANCE_SLUG;
+
+    if (
+      !isPeerForward &&
+      !willDevRouteToPeer &&
+      !commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase())
+    ) {
+      writeJson(res, 200, { ok: true, skipped: true, reason: 'bot not mentioned' });
+      return;
     }
 
     if (!repoFullName || !issueNumber || !commentId) {
