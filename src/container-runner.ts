@@ -898,6 +898,29 @@ function buildMounts(
       settings.hooks.PreToolUse.push(guardHookConfig);
     }
 
+    // Guard hook: block git remote URLs that bake in the OneCLI proxy stub
+    // ($GH_TOKEN / ROUTED_VIA_ONECLI_PROXY / "placeholder" — historical name).
+    // Symptom this catches: `git remote set-url origin https://x-access-token:$GH_TOKEN@…`
+    // hardcodes the stub into .git/config; the OneCLI proxy only rewrites
+    // Authorization headers, not URL-embedded creds, so every push then
+    // fails with "Invalid username or token". Witnessed on slang-fixer
+    // 2026-06-01 — see [[project_szihs_pat_path_routing]] for context.
+    // The fix is to drop the auth from the URL entirely and let the proxy
+    // inject by host+path match: `https://github.com/<owner>/<repo>.git`.
+    const stubGuardCmd = `INPUT=$(cat); CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty'); if echo "$CMD" | grep -qE '(git +(remote +set-url|config +remote\\.[^ ]+\\.url)).*(ROUTED_VIA_ONECLI_PROXY|placeholder|\\$GH_TOKEN|\\$\\{GH_TOKEN\\})'; then echo "Refusing to bake the OneCLI proxy stub into a git remote URL. The stub (\\$GH_TOKEN=ROUTED_VIA_ONECLI_PROXY) is not a real credential — the proxy injects auth on the wire by matching host+path, not URL-embedded creds. Drop the auth from the URL: \\\`git remote set-url origin https://github.com/<owner>/<repo>.git\\\` and retry. The proxy will inject the right token for that host+path automatically." >&2; exit 2; fi; exit 0`;
+    const stubGuardHookConfig = {
+      matcher: 'Bash',
+      hooks: [{ type: 'command', command: stubGuardCmd, timeout: 5 }],
+    };
+    const hasStubGuard = settings.hooks.PreToolUse.some(
+      (h: { matcher?: string; hooks?: { command?: string }[] }) =>
+        h.matcher === 'Bash' &&
+        h.hooks?.some((inner: { command?: string }) => inner.command?.includes('Refusing to bake the OneCLI proxy stub')),
+    );
+    if (!hasStubGuard) {
+      settings.hooks.PreToolUse.push(stubGuardHookConfig);
+    }
+
     // Overlay hook injection: enforce plan/critique gates via runtime hooks.
     // Uses resolveOverlayHookFlags() so agent_groups.disable_overlays=1 skips
     // injection entirely — matches the compose-time contract in PR #97.
@@ -1205,8 +1228,16 @@ async function buildContainerArgs(
   ]) {
     if (process.env[key]) args.push('-e', `${key}=${process.env[key]}`);
   }
-  args.push('-e', 'NVIDIA_API_KEY=onecli-placeholder');
-  args.push('-e', 'GH_TOKEN=placeholder');
+  // Stub credentials — load-bearing for SDKs that refuse to send a request
+  // without an env var, but the actual auth is injected by the OneCLI MITM
+  // proxy on the wire (host-pattern-matched secrets). Naming chosen so any
+  // agent inspecting the value sees "this is not a real token, do NOT bake
+  // me into URLs / config / logs". Never use $GH_TOKEN as a Basic-auth
+  // password — the proxy replaces the Authorization header by host+path,
+  // not by URL-embedded creds. The git-remote-url-guard hook (PreToolUse on
+  // Bash) catches the `git remote set-url ...$GH_TOKEN...` footgun.
+  args.push('-e', 'NVIDIA_API_KEY=ROUTED_VIA_ONECLI_PROXY');
+  args.push('-e', 'GH_TOKEN=ROUTED_VIA_ONECLI_PROXY');
   // git doesn't honor SSL_CERT_FILE — needs GIT_SSL_CAINFO to trust
   // the OneCLI MITM CA so `git clone/push` work through the proxy.
   args.push('-e', 'GIT_SSL_CAINFO=/tmp/onecli-combined-ca.pem');
