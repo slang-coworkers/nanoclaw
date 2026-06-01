@@ -38,6 +38,11 @@ export const createAgent: McpToolDefinition = {
       properties: {
         name: { type: 'string', description: 'Human-readable name (also becomes your destination name for this agent)' },
         instructions: { type: 'string', description: 'CLAUDE.md content for the new agent (personality, role, instructions)' },
+        group: {
+          type: 'string',
+          description:
+            'Dashboard sidebar group for this coworker: "prod" for the shared group (default), or a user id (e.g. "dashboard:user1") to scope it under a specific user.',
+        },
       },
       required: ['name'],
     },
@@ -55,6 +60,7 @@ export const createAgent: McpToolDefinition = {
         requestId,
         name,
         instructions: (args.instructions as string) || null,
+        group: (args.group as string) || null,
       }),
     });
 

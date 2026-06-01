@@ -7,6 +7,8 @@ export interface AgentGroup {
   /** @deprecated Use container_configs.provider instead. */
   agent_provider: string | null;
   created_at: string;
+  /** Dashboard sidebar grouping: NULL/'prod' = shared prod group; else a user id. */
+  sidebar_group?: string | null;
 }
 
 /** Per-agent-group container runtime config. Source of truth in the DB;

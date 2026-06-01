@@ -102,6 +102,7 @@ function createDashboardTestDb(): Database.Database {
       routing TEXT NOT NULL DEFAULT 'direct',
       disable_overlays INTEGER NOT NULL DEFAULT 0,
       overlays TEXT,
+      sidebar_group TEXT,
       created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS messaging_groups (
@@ -935,6 +936,40 @@ describe('dashboard server', () => {
     expect(adminMembership!.engage_mode).toBe('pattern');
     expect(adminMembership!.engage_pattern).toBe('@review-bot\\b');
     verifyDb.close();
+  });
+
+  it('persists the sidebar group: a user id is stored, "prod" is normalized to NULL', async () => {
+    createDashboardTestDb().close();
+
+    // Scoped to a specific user → stored verbatim.
+    const scoped = await fetch(`${baseUrl}/api/coworkers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'User One Bot', folder: 'user-one-bot', group: 'dashboard:user1' }),
+    });
+    expect(scoped.status).toBe(201);
+    const scopedCreated = await scoped.json();
+
+    // Shared prod group (and the default) → NULL.
+    const prod = await fetch(`${baseUrl}/api/coworkers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Prod Bot', folder: 'prod-bot', group: 'prod' }),
+    });
+    expect(prod.status).toBe(201);
+    const prodCreated = await prod.json();
+
+    const verifyDb = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+    const scopedRow = verifyDb
+      .prepare('SELECT sidebar_group FROM agent_groups WHERE id = ?')
+      .get(scopedCreated.id) as { sidebar_group: string | null };
+    const prodRow = verifyDb
+      .prepare('SELECT sidebar_group FROM agent_groups WHERE id = ?')
+      .get(prodCreated.id) as { sidebar_group: string | null };
+    verifyDb.close();
+
+    expect(scopedRow.sidebar_group).toBe('dashboard:user1');
+    expect(prodRow.sidebar_group).toBeNull();
   });
 
   it('creates coworker with parent↔child agent wiring when an admin group exists', async () => {
