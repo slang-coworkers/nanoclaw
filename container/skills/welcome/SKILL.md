@@ -8,57 +8,32 @@ description: Introduce yourself to a newly connected channel. Triggered automati
 
 You've just been connected to a new messaging channel. Introduce yourself to the user.
 
-Ground the message in `docs/USAGE.md` and other repo docs when needed. Use documented NanoClaw workflows and capabilities as the source of truth. Do not invent features or tools that are not described in the docs.
+Ground the message in `docs/USAGE.md` and other repo docs. Use documented NanoClaw workflows as the source of truth — do not invent features or tools.
 
 ## What to do
 
-1. Send a short, friendly greeting using `send_message`
-2. Mention your name (from your CLAUDE.md)
-3. Use a mostly fixed onboarding shape rather than inventing a fresh structure each time
-4. Briefly explain the Orchestrator role if applicable: you can handle requests directly, route to coworkers, and synthesize across coworker reports
-5. Mention the most helpful documented features for first-time onboarding. Prefer a compact mix of examples that covers:
-   - creating a new specialist coworker or agent
-   - scheduling a one-time or recurring task
-   - wiring agents/coworkers together so they can share findings directly
-   - messaging a coworker directly with `@CoworkerName`
-   - specifying the agent provider when relevant, for example Codex vs Claude, if that workflow is available in the current environment
-6. Include up to 5 short, concrete examples in natural language, not raw API docs
-7. Keep it to 3-5 sentences — enough to be useful, but still concise
+Send a greeting with `send_message`. Use a mostly fixed onboarding shape, not a fresh structure each time:
+
+1. Greeting + your name (from CLAUDE.md) + Orchestrator role if applicable: you handle requests directly, route to coworkers, and synthesize across coworker reports.
+2. Up to 5 short, concrete examples in natural language (not raw API docs), covering a compact mix of: creating a specialist coworker/agent, scheduling a one-time or recurring task, wiring agents together to share findings directly, messaging a coworker with `@CoworkerName`, and specifying the agent provider (Codex vs Claude) when that workflow is available.
+3. Keep it to 3-5 sentences.
 
 ## Tone
 
-Warm but concise. This is a first impression — be helpful, not verbose. Match the channel's vibe (casual for Telegram/Discord, slightly more professional for Slack/Teams/email).
+Warm but concise — a first impression. Match the channel's vibe (casual for Telegram/Discord, more professional for Slack/Teams/email). Use docs language: Orchestrator, coworkers, agents, direct `@` routing, reports, scheduling, wiring, provider selection. Lead with actions the user can try right away.
 
-Prefer user-facing language from the docs: Orchestrator, coworkers, agents, direct `@` routing, reports, scheduling, wiring, and provider selection.
+If typed coworkers are available, mention new agents can be created from coworker types in the lego registry (e.g. "create a coworker of type `<type>`", "create a `<type>` coworker with the critique overlay", "spin up a triage agent using the right type").
 
-Lead with actions the user can actually try right away.
+Never exceed 5 examples total.
 
-Good example topics:
-- "Create a compiler specialist to investigate generic inference bugs"
-- "Remind me every Monday at 9am to review weekly metrics"
-- "Wire two coworkers so they can share findings directly"
-- "Create a Codex agent for this repo" or "Create a Claude agent for triage" when provider choice is supported
+## Default output pattern
 
-If typed coworkers are available for the current environment, mention that new agents can be created from coworker types in the lego registry. Helpful type-oriented examples include:
-- "Create a coworker of type `<type>` to investigate this issue"
-- "Create a `<type>` coworker with the critique overlay attached"
-- "Spin up a triage agent using the appropriate coworker type"
-
-Do not include more than 5 examples total in the welcome message.
-
-Default output pattern:
 - Sentence 1: greeting + name + Orchestrator role
 - Sentence 2: core capabilities: create agents from templates, schedule tasks, wire agents, route to coworkers
-- Sentence 3: 3-5 example prompts the user can try immediately
+- Sentence 3: 3-5 example prompts to try immediately
 
-Preferred default wording:
-
-> Hey! I'm Andy, the Orchestrator. I can help directly, route work to a coworker, create specialists from coworker types, schedule one-off or recurring tasks, and wire agents together so they can collaborate directly. You can try things like "create a Codex agent for this repo", "create a specialist coworker with the critique overlay", "remind me every Monday at 9am to review metrics", or "wire these two agents so they can share findings".
-
-Stay close to this wording unless the current channel or available docs make part of it inaccurate.
-
-## Example
+Preferred default wording (stay close unless the channel or docs make part of it inaccurate):
 
 > Hey! I'm Andy, the Orchestrator. I can help directly, route work to a coworker, create specialists from coworker types, schedule one-off or recurring tasks, and wire agents together so they can collaborate directly. You can try things like "create a Codex agent for this repo", "create a specialist coworker with the critique overlay", "remind me every Monday at 9am to review metrics", or "wire these two agents so they can share findings".
 
-Adapt based on your actual name and the documented workflow in the repo docs. Prioritize examples about creating agents, scheduling tasks, wiring agents, and choosing Codex vs Claude when that choice is available. Don't list every capability — pick the most useful examples for first-run onboarding.
+Adapt to your actual name and the documented workflow. Prioritize examples about creating agents, scheduling tasks, wiring agents, and choosing Codex vs Claude when available. Don't list every capability — pick the most useful for first-run onboarding.

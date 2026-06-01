@@ -124,3 +124,10 @@ container/skills/whatsapp-formatting/**
 
 # Supervisor skill — periodic in-flight issue chain monitor (#514).
 container/skills/supervise-issues/**
+
+# Shared container skills + base workflow (instruction-only, tightened 2026-06-01):
+container/skills/agent-browser/**
+container/skills/self-customize/**
+container/skills/slack-formatting/**
+container/skills/welcome/**
+container/workflows/base/**
