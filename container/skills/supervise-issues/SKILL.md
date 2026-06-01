@@ -44,6 +44,8 @@ A nudge is a message back into the assigned coworker's session, not a fresh disp
 
 Don't open new threads. Don't escalate to the operator without first nudging — most "silent" cases are containers that exited mid-task and need a wake.
 
+**[MUST]** **One `<message>` per chain, on that chain's canonical thread.** Set `thread_id="gh-issue-<owner>/<repo>-<num>"` and `in_reply_to=<latest>` on each block. Never roll N chains into one consolidated dump from a thread-less chat session — thread-less status falls through to the recipient's catch-all and breaks per-tile observability. See `chain-reporting.md` per-issue routing rule.
+
 ### 4. Closing-report enforcement
 
 If you find a chain whose deepest tier emitted `[Resolution] / [Report]` more than 30 min ago but no upstream tier rolled it up, send a peer message to the missing tier asking them to roll up. Do not roll up on their behalf.
@@ -83,12 +85,22 @@ For chains in `pr_open` state, the PR description IS the comment — verify the 
 After processing all chains, send a single status report to your parent (the operator if you are top-of-chain) using the standard 5-bullet shape:
 
 - **Status:** {n} chains in flight, {nudged} nudged, {escalated} escalated to operator
-- **Link:** dashboard timeline filtered to gh-issue-* threads
+- **Link:** dashboard timeline filtered to gh-issue-\* threads
 - **Verdict:** healthy / degraded / blocked
 - **Next-action:** wait for cron / await operator decisions / re-dispatch chain X
 - **Blocker:** {threads with no clear path forward, list 3 max with one-line reason each}
 
-The narrative table goes in a file via `send_file(to="parent")` — do not embed in the chat bubble. The dashboard renders the file as an attachment.
+**Lead the chat reply with an inline markdown table** of the per-chain status before the 5-bullet summary, so the operator gets the at-a-glance view without opening the attachment. Columns: `# | repo | issue | tier | github | state | last-active | next`. One row per chain. The full narrative still goes in a file via `send_file(to="parent")` — the inline table is a digest, not a replacement.
+
+```
+| #   | repo                       | tier      | github         | state         | last-active   | next                |
+| --- | -------------------------- | --------- | -------------- | ------------- | ------------- | ------------------- |
+| 11339 | shader-slang/slang       | maintainer | 2 cmts (old)   | awaiting-input | 3.5d silent  | escalate to operator |
+| 11367 | shader-slang/slang       | fixer     | 0              | pr_open       | 5m            | watch CI            |
+| 11372 | shader-slang/slang       | maintainer | 2 cmts         | design-decide | 4.8h          | maintainer signoff  |
+```
+
+Per-chain status messages land on each chain's canonical `thread_id` (per the `[MUST]` rule above) — the inline table is the supervisor's own consolidated digest in the supervisor's session.
 
 ## Scheduling
 
@@ -96,8 +108,8 @@ On first run, schedule yourself:
 
 ```js
 schedule_task({
-  prompt: "/supervise-issues",
-  cron: "*/30 9-21 * * *",       // every 30 min, 9am-9pm local
+  prompt: '/supervise-issues',
+  cron: '*/30 9-21 * * *', // every 30 min, 9am-9pm local
   script: `node --input-type=module -e "
     // Skip the wake when no thread_id starting with gh-issue-* has activity
     // older than 60 min. Cheap heuristic — full scan happens in the prompt.
