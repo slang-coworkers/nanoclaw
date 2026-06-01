@@ -236,6 +236,43 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
     body: event.body,
   });
 
+  // Dev-route comments on plain issues (not PRs) to a peer when configured.
+  // Symmetric to deliverGitHubIssueOpened's ROUTE_ISSUES_TO path so a follow-up
+  // comment on an issue whose OPEN was forwarded lands at the same peer
+  // (otherwise the comment falls through to the canonical instance's
+  // pr_session_mappings lookup, misses, and gets dumped into the local
+  // orchestrator's general chat instead of the issue's chain). Restricted to
+  // !isPr because PR review/comment ownership is governed by pr_session_mappings,
+  // which has explicit owner_instance routing already.
+  if (!event.isPr && ROUTE_ISSUES_TO && INSTANCE_SLUG && ROUTE_ISSUES_TO !== INSTANCE_SLUG) {
+    const target = INSTANCE_FORWARD_TARGETS[ROUTE_ISSUES_TO];
+    if (target && event.rawBody && INTERNAL_REGISTER_SECRET) {
+      forwardWebhookToPeer({
+        url: target,
+        secret: INTERNAL_REGISTER_SECRET,
+        rawBody: event.rawBody,
+        event: event.eventType ?? 'issue_comment',
+        delivery: event.deliveryId ?? '',
+      });
+      log.info('github-webhook: dev-routed issue comment to peer', {
+        repo: event.repo,
+        issue: event.issueNumber,
+        peer: ROUTE_ISSUES_TO,
+        target,
+      });
+      return 'forwarded';
+    }
+    log.warn('github-webhook: ROUTE_ISSUES_TO set but cannot forward issue comment — dropping', {
+      repo: event.repo,
+      issue: event.issueNumber,
+      peer: ROUTE_ISSUES_TO,
+      haveTarget: Boolean(target),
+      haveSecret: Boolean(INTERNAL_REGISTER_SECRET),
+      haveBody: Boolean(event.rawBody),
+    });
+    return 'dropped';
+  }
+
   // Check PR→session mapping first — routes webhooks to the session that created the PR.
   // When the owner is a foreign instance, hand off to the forwarder instead of writing locally.
   try {
