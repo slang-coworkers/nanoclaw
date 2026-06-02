@@ -295,6 +295,72 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     expect(JSON.parse(inserted.content).event).toBe('github.pr_mention');
   });
 
+  it('issue (non-PR) comment fall-through rejoins the issue chain via gh-issue-<repo>-<num> thread', async () => {
+    // Regression: a forwarded issue_comment must land in the SAME session +
+    // thread that deliverGitHubIssueOpened minted (mintPerThread, threadId
+    // `gh-issue-<repo>-<num>`). The prior code used a bare String(issueNumber)
+    // thread with no mintPerThread, orphaning the comment into a generic
+    // session with none of the chain's history.
+    const insertCalls: unknown[] = [];
+    const threadLookups: string[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego', // receiver: ROUTE_ISSUES_TO !== own slug guard not triggered
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+    }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => ({ id: 'sess-generic' }),
+      findSessionByAgentThread: (_g: string, thread: string) => {
+        threadLookups.push(thread);
+        return { id: 'sess-issue-chain' };
+      },
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubMention } = await import('./webhook-github.js');
+    const outcome = deliverGitHubMention({
+      repo: 'shader-slang/slang',
+      issueNumber: 11372,
+      commentId: 4593542165,
+      commentUrl: '',
+      commenter: 'andersjel',
+      body: 'follow-up on the void+out-param design',
+      isPr: false, // ← issue comment, not a PR
+      rawBody: '{"action":"created"}',
+      eventType: 'issue_comment',
+      deliveryId: 'd-bf',
+    });
+
+    expect(outcome).toBe('local');
+    // Rejoined the issue's session via the namespaced per-issue thread key.
+    expect(threadLookups).toContain('gh-issue-shader-slang/slang-11372');
+    expect(insertCalls).toHaveLength(1);
+    const inserted = insertCalls[0] as { id: string; threadId: string; content: string };
+    expect(inserted.id).toBe('gh-4593542165');
+    expect(inserted.threadId).toBe('gh-issue-shader-slang/slang-11372');
+    expect(JSON.parse(inserted.content).event).toBe('github.pr_mention');
+  });
+
   it('forwards issue (non-PR) comments to peer when ROUTE_ISSUES_TO is set', async () => {
     vi.doMock('./config.js', () => ({
       INSTANCE_FORWARD_TARGETS: { lego: peerUrl },
