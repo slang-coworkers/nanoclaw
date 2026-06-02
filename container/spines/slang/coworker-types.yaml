@@ -99,7 +99,8 @@ slang-reviewer:
     # or other writers, who don't post reviews).
     - container/spines/slang/invariants/review-output.md
   skills:
-    - slang-pr-review-runner
+    - slang-pr-review-runner       # Reviewer A (correctness) + Reviewer B (Devin)
+    - slang-clarity-review-runner  # Reviewer C (clarity) — local skill
   workflows:
     - slang-pr-review
   # Reviewer reads a diff, produces a verdict. CODE_REVIEW is the assessment
