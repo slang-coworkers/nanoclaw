@@ -5902,37 +5902,48 @@ export async function handleRequest(
                   /* delivered table may not exist in older sessions */
                 }
                 let rows: any[];
+                // Push `before` into SQL so LIMIT applies AFTER the timestamp
+                // cut. Without this the query returns the newest N rows and
+                // post-filter drops them all whenever beforeParam is recent —
+                // which makes "Load older" hit a wall after the first ~N rows
+                // even though the DB has months of history.
+                // messages_in stores ISO (e.g. 2026-05-09T01:03:52.762Z), so
+                // string compare against the ISO cursor is correct.
+                const inWhere = beforeParam ? 'WHERE timestamp < ? ' : '';
+                const inArgs: any[] = beforeParam ? [beforeParam, perGroupLimit] : [perGroupLimit];
                 try {
                   // source_session_id distinguishes a true single-session echo
                   // (loop) from a cross-session a2a within the same agent
                   // group — see the isSelfEcho gate below.
                   rows = sdb
                     .prepare(
-                      'SELECT id, kind, content, timestamp, channel_type, platform_id, thread_id, source_session_id FROM messages_in ORDER BY timestamp DESC LIMIT ?',
+                      `SELECT id, kind, content, timestamp, channel_type, platform_id, thread_id, source_session_id FROM messages_in ${inWhere}ORDER BY timestamp DESC LIMIT ?`,
                     )
-                    .all(perGroupLimit) as any[];
+                    .all(...inArgs) as any[];
                 } catch {
                   // Older session DBs without source_session_id — keep
                   // thread_id so threadMode filtering still works.
                   try {
                     rows = sdb
                       .prepare(
-                        'SELECT id, kind, content, timestamp, channel_type, platform_id, thread_id FROM messages_in ORDER BY timestamp DESC LIMIT ?',
+                        `SELECT id, kind, content, timestamp, channel_type, platform_id, thread_id FROM messages_in ${inWhere}ORDER BY timestamp DESC LIMIT ?`,
                       )
-                      .all(perGroupLimit) as any[];
+                      .all(...inArgs) as any[];
                   } catch {
                     // Older session DBs without thread_id — fall back but keep
                     // channel_type/platform_id so a2a detection still works.
                     try {
                       rows = sdb
                         .prepare(
-                          'SELECT id, kind, content, timestamp, channel_type, platform_id FROM messages_in ORDER BY timestamp DESC LIMIT ?',
+                          `SELECT id, kind, content, timestamp, channel_type, platform_id FROM messages_in ${inWhere}ORDER BY timestamp DESC LIMIT ?`,
                         )
-                        .all(perGroupLimit) as any[];
+                        .all(...inArgs) as any[];
                     } catch {
                       rows = sdb
-                        .prepare('SELECT id, kind, content, timestamp FROM messages_in ORDER BY timestamp DESC LIMIT ?')
-                        .all(perGroupLimit) as any[];
+                        .prepare(
+                          `SELECT id, kind, content, timestamp FROM messages_in ${inWhere}ORDER BY timestamp DESC LIMIT ?`,
+                        )
+                        .all(...inArgs) as any[];
                     }
                   }
                 }
@@ -6000,25 +6011,32 @@ export async function handleRequest(
               if (existsSync(outDbPath)) {
                 const sdb = new Database(outDbPath, { readonly: true });
                 let rows: any[];
+                // messages_out stores SQLite datetime ("2026-06-02 08:28:22"),
+                // NOT ISO — convert the ISO cursor before comparing or string
+                // ordering would put "2026-06-02T..." after "2026-06-02 ..."
+                // and the cutoff would skip a chunk of rows.
+                const outBefore = beforeParam ? toSqliteDatetime(beforeParam) : null;
+                const outWhere = outBefore ? 'WHERE timestamp < ? ' : '';
+                const outArgs: any[] = outBefore ? [outBefore, perGroupLimit] : [perGroupLimit];
                 try {
                   rows = sdb
                     .prepare(
-                      'SELECT id, kind, content, timestamp, in_reply_to, channel_type, platform_id, thread_id FROM messages_out ORDER BY timestamp DESC LIMIT ?',
+                      `SELECT id, kind, content, timestamp, in_reply_to, channel_type, platform_id, thread_id FROM messages_out ${outWhere}ORDER BY timestamp DESC LIMIT ?`,
                     )
-                    .all(perGroupLimit) as any[];
+                    .all(...outArgs) as any[];
                 } catch {
                   try {
                     rows = sdb
                       .prepare(
-                        'SELECT id, kind, content, timestamp, in_reply_to, channel_type, platform_id FROM messages_out ORDER BY timestamp DESC LIMIT ?',
+                        `SELECT id, kind, content, timestamp, in_reply_to, channel_type, platform_id FROM messages_out ${outWhere}ORDER BY timestamp DESC LIMIT ?`,
                       )
-                      .all(perGroupLimit) as any[];
+                      .all(...outArgs) as any[];
                   } catch {
                     rows = sdb
                       .prepare(
-                        'SELECT id, kind, content, timestamp, in_reply_to FROM messages_out ORDER BY timestamp DESC LIMIT ?',
+                        `SELECT id, kind, content, timestamp, in_reply_to FROM messages_out ${outWhere}ORDER BY timestamp DESC LIMIT ?`,
                       )
-                      .all(perGroupLimit) as any[];
+                      .all(...outArgs) as any[];
                   }
                 }
                 for (const r of rows) {

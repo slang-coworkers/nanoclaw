@@ -714,6 +714,18 @@
       text-align: center;
     }
     .admin-load-more:hover { background: var(--bg-hover); color: var(--text); }
+    /* Visible feedback for the load-more click race fix. The button briefly
+       flashes blue when handleLoadMore fires, so the operator can see the
+       click was registered even when the rebuild scrambles surrounding DOM. */
+    .admin-load-more.lm-flash {
+      animation: lm-flash-anim 0.4s ease-out;
+      background: #3B82F6 !important; color: #fff !important; border-color: #2563eb !important;
+    }
+    @keyframes lm-flash-anim {
+      0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(59,130,246,0.7); }
+      40%  { transform: scale(1.04); box-shadow: 0 0 0 6px rgba(59,130,246,0.0); }
+      100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(59,130,246,0.0); }
+    }
 
     /* Admin empty state */
     .admin-empty { color: var(--text-muted); font-size: 0.8125rem; padding: 20px 0; text-align: center; }
