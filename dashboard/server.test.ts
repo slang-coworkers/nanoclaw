@@ -439,6 +439,58 @@ describe('dashboard server', () => {
     }
   });
 
+  it('enriches cli_command approvals with a command line and resolved target label', async () => {
+    const db = createDashboardTestDb();
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS pending_approvals (
+        approval_id TEXT PRIMARY KEY, session_id TEXT, request_id TEXT NOT NULL,
+        action TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL,
+        agent_group_id TEXT, channel_type TEXT, platform_id TEXT,
+        platform_message_id TEXT, expires_at TEXT, status TEXT NOT NULL DEFAULT 'pending',
+        title TEXT, options_json TEXT
+      );
+    `);
+    const now = new Date().toISOString();
+    // Admin group whose folder the dashboard queries against.
+    db.prepare(
+      `INSERT INTO agent_groups (id, name, folder, is_admin, routing, created_at)
+       VALUES ('ag-orch', 'Orchestrator', 'orch-appr-probe', 1, 'direct', ?)`,
+    ).run(now);
+    // Two coworker groups + a self-edge a2a wiring between PerfHound and itself.
+    db.prepare(
+      `INSERT INTO agent_groups (id, name, folder, is_admin, routing, created_at)
+       VALUES ('ag-perf', 'PerfHound', 'perfhound-appr-probe', 0, 'direct', ?)`,
+    ).run(now);
+    db.prepare(
+      `INSERT INTO messaging_groups (id, channel_type, platform_id, created_at)
+       VALUES ('mg-self', 'agent', 'agent:ag-perf:ag-perf', ?)`,
+    ).run(now);
+    db.prepare(
+      `INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, session_mode, created_at)
+       VALUES ('mga-self', 'mg-self', 'ag-perf', 'per-thread', ?)`,
+    ).run(now);
+    // The cli_command approval the Orchestrator raised to delete that self-edge.
+    db.prepare(
+      `INSERT INTO pending_approvals (approval_id, session_id, request_id, action, payload, created_at, agent_group_id, status, title)
+       VALUES ('appr-1', 'sess-1', 'req-1', 'cli_command', ?, ?, 'ag-orch', 'pending', 'CLI: wirings-delete')`,
+    ).run(
+      JSON.stringify({ frame: { id: 'cli-1', command: 'wirings-delete', args: { id: 'mga-self' } } }),
+      now,
+    );
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/approvals?group=orch-appr-probe`);
+    expect(res.status).toBe(200);
+    const approvals = await res.json();
+    expect(approvals).toHaveLength(1);
+    const a = approvals[0];
+    expect(a.action).toBe('cli_command');
+    expect(a.title).toBe('CLI: wirings-delete');
+    expect(a.commandLine).toBe('ncl wirings-delete --id mga-self');
+    expect(a.targetLabel).toBe('Deletes wiring: PerfHound → PerfHound (self-edge)');
+  });
+
   it('rejects sibling-prefix traversal for static files', async () => {
     mkdirSync(PUBLIC_PROBE_DIR, { recursive: true });
     writeFileSync(path.join(PUBLIC_PROBE_DIR, 'secret.txt'), 'probe-public\n', 'utf-8');

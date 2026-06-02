@@ -10113,15 +10113,70 @@ export async function handleRequest(
                LIMIT 50`,
             )
             .all() as any[];
+          // Resolve an agent group id → display name (falls back to the id).
+          const groupName = (id: string | undefined): string => {
+            if (!id) return '';
+            try {
+              const r = db!.prepare('SELECT name FROM agent_groups WHERE id = ?').get(id) as any;
+              return r?.name || id;
+            } catch {
+              return id;
+            }
+          };
+          // Turn an a2a wiring id into a human edge label, e.g.
+          // "PerfHound → PerfHound (self-edge)" or "Orchestrator → PerfHound".
+          const wiringLabel = (wiringId: string | undefined): string | null => {
+            if (!wiringId) return null;
+            try {
+              const w = db!
+                .prepare('SELECT messaging_group_id FROM messaging_group_agents WHERE id = ?')
+                .get(wiringId) as any;
+              if (!w?.messaging_group_id) return null;
+              const mg = db!
+                .prepare('SELECT platform_id FROM messaging_groups WHERE id = ?')
+                .get(w.messaging_group_id) as any;
+              const pid: string = mg?.platform_id || '';
+              const m = pid.match(/^agent:([^:]+):(.+)$/);
+              if (!m) return null;
+              const src = groupName(m[1]);
+              const dst = groupName(m[2]);
+              return m[1] === m[2] ? `${src} → ${dst} (self-edge)` : `${src} → ${dst}`;
+            } catch {
+              return null;
+            }
+          };
           approvals = rows.map((row: any) => {
             let payload: any = {};
             try {
               payload = JSON.parse(row.payload || '{}');
             } catch {}
             const packages = (payload.apt || []).concat(payload.npm || []).filter(Boolean);
+
+            // For cli_command approvals, surface the actual command line and,
+            // where we can, a human label for the target the command acts on.
+            // Without this the card would only show the bare action string
+            // ("cli_command"), giving the admin nothing to decide on.
+            let commandLine: string | null = null;
+            let targetLabel: string | null = null;
+            const frame = payload.frame;
+            if (row.action === 'cli_command' && frame && typeof frame.command === 'string') {
+              const args = frame.args && typeof frame.args === 'object' ? frame.args : {};
+              const argStr = Object.entries(args)
+                .map(([k, v]) => `--${k} ${v}`)
+                .join(' ');
+              commandLine = `ncl ${frame.command}${argStr ? ' ' + argStr : ''}`;
+              if (frame.command === 'wirings-delete') {
+                const label = wiringLabel(args.id);
+                if (label) targetLabel = `Deletes wiring: ${label}`;
+              } else if (frame.command === 'groups-restart') {
+                targetLabel = `Restarts: ${groupName(args.id)}`;
+              }
+            }
+
             return {
               approvalId: row.approval_id,
               action: row.action,
+              title: row.title || null,
               reason: payload.reason || null,
               packages,
               createdAt: row.created_at,
@@ -10131,6 +10186,9 @@ export async function handleRequest(
               host: payload.host || null,
               method: payload.method || null,
               path: payload.path || null,
+              mcpServer: payload.name || payload.server || null,
+              commandLine,
+              targetLabel,
             };
           });
         }

@@ -4410,13 +4410,21 @@ function renderApprovalItem(item) {
   } else if (item.action === 'request_rebuild') {
     desc = `**Rebuild container**${safeReason}`;
   } else if (item.action === 'add_mcp_server') {
-    desc = `**Add MCP server**${safeReason}`;
+    desc = `**Add MCP server**${item.mcpServer ? `: \`${esc(item.mcpServer)}\`` : ''}${safeReason}`;
   } else if (item.action === 'onecli_credential') {
     const endpoint =
       item.method && item.host ? `\n\n\`${esc(item.method)} ${esc(item.host)}${esc(item.path || '')}\`` : '';
     desc = `**Credentials request**${endpoint}`;
+  } else if (item.action === 'cli_command') {
+    // Show the actual command and, when resolved server-side, a plain-English
+    // description of what it acts on — otherwise the card is just "cli_command".
+    const cmd = item.commandLine ? `\n\n\`${esc(item.commandLine)}\`` : '';
+    const target = item.targetLabel ? `\n\n${esc(item.targetLabel)}` : '';
+    desc = `**CLI command**${cmd}${target}${safeReason}`;
   } else {
-    desc = `**${esc(item.action)}**${safeReason}`;
+    // Fall back to the human title (e.g. "CLI: wirings-delete") rather than the
+    // raw action slug so unknown/future action types still degrade gracefully.
+    desc = `**${esc(item.title || item.action)}**${safeReason}`;
   }
   const controls = `<div style="margin-top:8px">
         <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Approve" style="background:#238636;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;cursor:pointer;font-size:10px">Approve</button>
