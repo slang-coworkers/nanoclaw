@@ -6,44 +6,70 @@ description: Format messages for Slack using mrkdwn syntax. Use when responding 
 
 # Slack Message Formatting (mrkdwn)
 
-When responding to Slack channels, use Slack mrkdwn, not standard Markdown. Detect Slack context when the group folder / workspace path starts with `slack_` (e.g. `slack_engineering`).
+When responding to Slack channels, use Slack's mrkdwn syntax instead of standard Markdown.
 
-## Text styles
+## How to detect Slack context
 
-| Style         | Syntax         |
-| ------------- | -------------- |
-| Bold          | `*text*`       |
-| Italic        | `_text_`       |
-| Strikethrough | `~text~`       |
-| Code (inline) | `` `code` ``   |
-| Code block    | ` ```code``` ` |
+Check your group folder name or workspace path:
+- Folder starts with `slack_` (e.g., `slack_engineering`, `slack_general`)
+- Or check `/workspace/agent/` path for `slack_` prefix
 
-## Links and mentions
+## Formatting reference
+
+### Text styles
+
+| Style | Syntax | Example |
+|-------|--------|---------|
+| Bold | `*text*` | *bold text* |
+| Italic | `_text_` | _italic text_ |
+| Strikethrough | `~text~` | ~strikethrough~ |
+| Code (inline) | `` `code` `` | `inline code` |
+| Code block | ` ```code``` ` | Multi-line code |
+
+### Links and mentions
 
 ```
 <https://example.com|Link text>     # Named link
 <https://example.com>                # Auto-linked URL
-<@U1234567890>                       # Mention user
-<#C1234567890>                       # Mention channel
-<!here>  <!channel>                  # @here / @channel
+<@U1234567890>                       # Mention user by ID
+<#C1234567890>                       # Mention channel by ID
+<!here>                              # @here
+<!channel>                           # @channel
 ```
 
-## Lists, quotes, emoji
+### Lists
 
-- Bullets only (no numbered lists): `•`, `- `, or `* `.
-- Block quotes: lines prefixed with `> ` (can span multiple lines).
-- Emoji shortcodes: `:white_check_mark:`, `:x:`, `:rocket:`, `:tada:`.
+Slack supports simple bullet lists but NOT numbered lists:
+
+```
+• First item
+• Second item
+• Third item
+```
+
+Use `•` (bullet character) or `- ` or `* ` for bullets.
+
+### Block quotes
+
+```
+> This is a block quote
+> It can span multiple lines
+```
+
+### Emoji
+
+Use standard emoji shortcodes: `:white_check_mark:`, `:x:`, `:rocket:`, `:tada:`
 
 ## What NOT to use
 
-- `##` headings → use `*Bold text*`.
-- `**double asterisks**` → use `*single*`.
-- `[text](url)` → use `<url|text>`.
-- `1.` numbered lists → bullets, e.g. `• 1. First`.
-- Tables → code blocks or plain text.
-- `---` horizontal rules.
+- **NO** `##` headings (use `*Bold text*` for headers instead)
+- **NO** `**double asterisks**` for bold (use `*single asterisks*`)
+- **NO** `[text](url)` links (use `<url|text>` instead)
+- **NO** `1.` numbered lists (use bullets with numbers: `• 1. First`)
+- **NO** tables (use code blocks or plain text alignment)
+- **NO** `---` horizontal rules
 
-## Example
+## Example message
 
 ```
 *Daily Standup Summary*
@@ -59,8 +85,19 @@ _March 21, 2026_
 :white_check_mark: All tests passing | <https://ci.example.com/builds/123|View Build>
 ```
 
-## Sending messages
+## Sending formatted messages
 
-- `mcp__nanoclaw__send_message` — `text` accepts mrkdwn directly, no conversion.
-- `mcp__nanoclaw__send_card` — structured panels; renders as Slack Block Kit (`title`, `fields`, `color`).
-- `mcp__nanoclaw__send_file({ path, text?, filename? })` — send large outputs as a file, never paste inline.
+Use `mcp__nanoclaw__send_message` to deliver the formatted text. The `text` field accepts mrkdwn directly — no conversion needed.
+
+For structured panels, use `mcp__nanoclaw__send_card` instead: it renders as a Slack Block Kit attachment and supports `title`, `fields`, and `color` properties.
+
+`mcp__nanoclaw__send_file({ path, text?, filename? })` — deliver a file artifact. Do not paste large outputs inline; send as a file instead.
+
+## Quick rules
+
+1. Use `*bold*` not `**bold**`
+2. Use `<url|text>` not `[text](url)`
+3. Use `•` bullets, avoid numbered lists
+4. Use `:emoji:` shortcodes
+5. Quote blocks with `>`
+6. Skip headings — use bold text instead
