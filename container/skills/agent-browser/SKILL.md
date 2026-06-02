@@ -1,38 +1,62 @@
 ---
 name: agent-browser
 license: MIT
-description: Browse the web for any task — research, read articles, interact with web apps, fill forms, screenshot, extract data, test pages. Use whenever a browser would help, not just when explicitly asked.
+description: Browse the web for any task — research topics, read articles, interact with web apps, fill forms, take screenshots, extract data, and test web pages. Use whenever a browser would be useful, not just when the user explicitly asks.
 allowed-tools: Bash(agent-browser:*)
 ---
 
 # Browser Automation with agent-browser
 
-## Browser vs API
+## Quick start
 
-Prefer `curl`/MCP when both exist — faster, cheaper: REST/GraphQL for the same data, JSON-only (no JS), or rate limits matter. Use the browser when no API exists (JS-rendered page, SaaS UI), you need visual confirmation, auth is session-based with no token, or a form/wizard is involved.
+```bash
+agent-browser open <url>        # Navigate to page
+agent-browser snapshot -i       # Get interactive elements with refs
+agent-browser click @e1         # Click element by ref
+agent-browser fill @e2 "text"   # Fill input by ref
+agent-browser close             # Close browser
+```
 
-## Workflow
+## Browser vs API decision
 
-`open <url>` → `snapshot -i` (returns refs `@e1`…) → interact via refs → re-snapshot after navigation or DOM changes.
+Use the browser when:
+- The target resource has no API (public web page, rendered JavaScript content, SaaS UI)
+- The task requires visual confirmation (screenshot, layout check)
+- Authentication is session-based with no API token available
+- Form interaction or multi-step wizard flows are needed
+
+Use a direct API/HTTP call (via Bash `curl` or an MCP tool) when:
+- A REST/GraphQL API exists for the same data (faster, cheaper, more reliable)
+- Only JSON data is needed and no JavaScript rendering is required
+- Rate limits are a concern (browsers consume more resources)
+
+Prefer API over browser when both options are available.
 
 ## Error handling
 
-- `open` timeout/error: retry once, then report — don't loop.
-- Snapshot `[]`: check `get url`; if redirected, re-snapshot.
-- `fill`/`click` "element not found": re-snapshot for fresh refs (navigation/DOM mutations invalidate them).
-- Redirected to login: re-authenticate and `state save`.
-- After 3 failed attempts on the same action, stop and report with the last snapshot.
+- If `agent-browser open` returns a navigation error or timeout, retry once. If it fails again, report the URL and error — do not loop.
+- If a snapshot returns no interactive elements (`[]`), check with `agent-browser get url` that navigation succeeded. If the page redirected, re-snapshot.
+- If a `fill` or `click` on a `@ref` fails with "element not found", re-snapshot to get fresh refs before retrying — refs are invalidated by navigation or DOM mutations.
+- If authentication state is stale (redirected to login page), re-authenticate and save new state with `agent-browser state save`.
+- Do not retry indefinitely — after 3 failed attempts on the same action, stop and report the failure with the last snapshot output.
+
+## Core workflow
+
+1. Navigate: `agent-browser open <url>`
+2. Snapshot: `agent-browser snapshot -i` (returns elements with refs like `@e1`, `@e2`)
+3. Interact using refs from the snapshot
+4. Re-snapshot after navigation or significant DOM changes
 
 ## Commands
 
 ### Navigation
 
 ```bash
-agent-browser open <url>
-agent-browser back
-agent-browser forward
-agent-browser reload
-agent-browser close
+agent-browser open <url>      # Navigate to URL
+agent-browser back            # Go back
+agent-browser forward         # Go forward
+agent-browser reload          # Reload page
+agent-browser close           # Close browser
 ```
 
 ### Snapshot (page analysis)
@@ -48,48 +72,48 @@ agent-browser snapshot -s "#main" # Scope to CSS selector
 ### Interactions (use @refs from snapshot)
 
 ```bash
-agent-browser click @e1
-agent-browser dblclick @e1
+agent-browser click @e1           # Click
+agent-browser dblclick @e1        # Double-click
 agent-browser fill @e2 "text"     # Clear and type
 agent-browser type @e2 "text"     # Type without clearing
-agent-browser press Enter
-agent-browser hover @e1
-agent-browser check @e1
-agent-browser uncheck @e1
+agent-browser press Enter         # Press key
+agent-browser hover @e1           # Hover
+agent-browser check @e1           # Check checkbox
+agent-browser uncheck @e1         # Uncheck checkbox
 agent-browser select @e1 "value"  # Select dropdown option
-agent-browser scroll down 500
-agent-browser upload @e1 file.pdf
+agent-browser scroll down 500     # Scroll page
+agent-browser upload @e1 file.pdf # Upload files
 ```
 
 ### Get information
 
 ```bash
-agent-browser get text @e1
-agent-browser get html @e1        # innerHTML
-agent-browser get value @e1       # input value
-agent-browser get attr @e1 href
-agent-browser get title
-agent-browser get url
-agent-browser get count ".item"   # count matching elements
+agent-browser get text @e1        # Get element text
+agent-browser get html @e1        # Get innerHTML
+agent-browser get value @e1       # Get input value
+agent-browser get attr @e1 href   # Get attribute
+agent-browser get title           # Get page title
+agent-browser get url             # Get current URL
+agent-browser get count ".item"   # Count matching elements
 ```
 
 ### Screenshots & PDF
 
 ```bash
-agent-browser screenshot          # temp dir
-agent-browser screenshot path.png
-agent-browser screenshot --full   # full page
-agent-browser pdf output.pdf
+agent-browser screenshot          # Save to temp directory
+agent-browser screenshot path.png # Save to specific path
+agent-browser screenshot --full   # Full page
+agent-browser pdf output.pdf      # Save as PDF
 ```
 
 ### Wait
 
 ```bash
-agent-browser wait @e1                     # for element
-agent-browser wait 2000                    # ms
-agent-browser wait --text "Success"
-agent-browser wait --url "**/dashboard"    # URL pattern
-agent-browser wait --load networkidle
+agent-browser wait @e1                     # Wait for element
+agent-browser wait 2000                    # Wait milliseconds
+agent-browser wait --text "Success"        # Wait for text
+agent-browser wait --url "**/dashboard"    # Wait for URL pattern
+agent-browser wait --load networkidle      # Wait for network idle
 ```
 
 ### Semantic locators (alternative to refs)
@@ -101,11 +125,59 @@ agent-browser find label "Email" fill "user@test.com"
 agent-browser find placeholder "Search" type "query"
 ```
 
-### Auth, cookies, storage, JS
+### Authentication with saved state
 
 ```bash
-agent-browser state save auth.json        # after login; later: state load auth.json + open
-agent-browser cookies                     # get all; set name value; clear
-agent-browser storage local               # get; set k v
-agent-browser eval "document.title"       # run JavaScript
+# Login once
+agent-browser open https://app.example.com/login
+agent-browser snapshot -i
+agent-browser fill @e1 "username"
+agent-browser fill @e2 "password"
+agent-browser click @e3
+agent-browser wait --url "**/dashboard"
+agent-browser state save auth.json
+
+# Later: load saved state
+agent-browser state load auth.json
+agent-browser open https://app.example.com/dashboard
+```
+
+### Cookies & Storage
+
+```bash
+agent-browser cookies                     # Get all cookies
+agent-browser cookies set name value      # Set cookie
+agent-browser cookies clear               # Clear cookies
+agent-browser storage local               # Get localStorage
+agent-browser storage local set k v       # Set value
+```
+
+### JavaScript
+
+```bash
+agent-browser eval "document.title"   # Run JavaScript
+```
+
+## Example: Form submission
+
+```bash
+agent-browser open https://example.com/form
+agent-browser snapshot -i
+# Output shows: textbox "Email" [ref=e1], textbox "Password" [ref=e2], button "Submit" [ref=e3]
+
+agent-browser fill @e1 "user@example.com"
+agent-browser fill @e2 "password123"
+agent-browser click @e3
+agent-browser wait --load networkidle
+agent-browser snapshot -i  # Check result
+```
+
+## Example: Data extraction
+
+```bash
+agent-browser open https://example.com/products
+agent-browser snapshot -i
+agent-browser get text @e1  # Get product title
+agent-browser get attr @e2 href  # Get link URL
+agent-browser screenshot products.png
 ```

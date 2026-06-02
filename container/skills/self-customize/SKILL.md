@@ -1,70 +1,103 @@
 ---
 name: self-customize
 license: MIT
-description: Customize your own agent — add capabilities, install packages, add MCP servers, edit code or CLAUDE.md. Delegate non-trivial code changes to a builder agent via create_agent.
+description: Customize your own agent — add capabilities, install packages, add MCP servers, edit code or CLAUDE.md. Use when the user asks you to add a feature, install a tool, or modify how you work. For non-trivial code changes, delegate to a builder agent via create_agent.
 ---
 
 # Self-Customization
 
-Change type → workflow:
+You can modify your own environment. Different kinds of changes have different workflows.
 
-| Change                               | Workflow                                                                                                                                                   |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CLAUDE.local.md` or workspace files | Edit directly, no approval. `/workspace/agent/` persists. Composed `CLAUDE.md` is read-only, regenerated every spawn — write to `CLAUDE.local.md` instead. |
-| System (apt) or global npm package   | `install_packages`. Admin approval → image rebuild + restart, automatic.                                                                                   |
-| MCP server                           | `add_mcp_server`. Admin approval → restart with server wired (no rebuild — bun runs TS).                                                                   |
-| Your source code or Dockerfile       | Delegate to a builder via `create_agent` (below).                                                                                                          |
-| A new specialist capability          | `create_agent` for a dedicated agent.                                                                                                                      |
+## Decision Tree
 
-## Code changes via builder agent
+**What needs to change?**
 
-For source-file edits, do not edit directly — delegate, to keep a reviewable boundary.
+- **`CLAUDE.local.md` or files in your workspace** → Edit directly, no approval needed. Your workspace (`/workspace/agent/`) is persisted on the host. (Note: the composed `CLAUDE.md` itself is read-only and regenerated every spawn — write to `CLAUDE.local.md` instead.)
+- **System package (apt) or global npm package** → `install_packages`. Requires admin approval. On approval, image rebuild + container restart happen automatically.
+- **MCP server** → `add_mcp_server`. Requires admin approval. On approval, container restarts with the new server wired up (no rebuild — bun runs TS directly).
+- **Your source code or Dockerfile** → Delegate to a builder agent via `create_agent` (see below).
+- **A new specialist capability** → `create_agent` to spin up a dedicated agent for it.
 
-1. Describe the change concretely (files, behavior, acceptance criteria).
-2. `create_agent({ name: "Builder", instructions: "<builder prompt>" })`.
-3. `send_to_agent({ agentGroupId, text: "<task with specific files and changes>" })`.
-4. Source edits in `/app/src` are picked up on next container start (no rebuild); `install_packages` rebuilds. Notify the orchestrator (below); surface to the user only on failures/blockers.
+## Workflow: Code Changes via Builder Agent
+
+For anything that requires editing source files (your own code, Dockerfile, etc.), **do not edit directly** — delegate to a builder agent. This gives the user a reviewable boundary and keeps your main session focused.
+
+1. Describe what you need changed in concrete terms (files, behavior, acceptance criteria)
+2. Call `create_agent({ name: "Builder", instructions: "<builder prompt>" })` — the returned agent group ID is your builder
+3. Call `send_to_agent({ agentGroupId, text: "<task description with specific files and changes>" })`
+4. The builder works in its own container, makes the changes, and reports back
+5. Review the builder's summary. If the changes look correct and tests pass, proceed. Source-code edits inside `/app/src` are picked up automatically on the next container start — no rebuild step needed (bun runs TS directly). If the builder also installed packages, its own `install_packages` approval will have rebuilt the image. Notify the orchestrator (see below). Only surface to the user if the builder reported failures or blockers.
 
 ### Builder Agent Instructions (use as CLAUDE.md when creating)
 
 ```
-You are a builder agent. Make precise, minimal code changes to NanoClaw source files on request.
+You are a builder agent. Your job is to make precise, minimal code changes to NanoClaw source files when the main agent requests it.
 
-- Minimal scope. Only what was requested; no refactors or extra features.
-- Diff limits per task: reject >200 new or >150 modified lines; push back to split.
-- Read the target file fully before editing.
-- Run relevant tests after the change.
-- Report via send_to_agent: (a) files changed, (b) summary, (c) follow-up (rebuild, tests, migrations).
-- No silent failures — if you can't finish, say why; don't ship unflagged partial work.
-- Never edit outside scope; never commit, push, or touch secrets/credentials/.env.
-- If a change would break existing tests, stop and report.
+## Rules
+
+- **Minimal scope.** Only change what was requested. Do not refactor surrounding code, "improve" unrelated files, or add features not asked for.
+- **Diff size limits.** Reject any change that exceeds 200 new lines or 150 modified lines in a single task. If the change is larger, push back and ask for it to be split into smaller tasks.
+- **Read before writing.** Always read the target file fully before editing. Understand the existing patterns.
+- **Test if possible.** If there are relevant tests, run them after your change.
+- **Report back.** When done, use send_to_agent to tell the requesting agent: (a) what files you changed, (b) a summary of the changes, (c) any follow-up needed (rebuild, tests, migrations).
+- **No silent failures.** If you can't complete the task, explain why — don't produce partial work without flagging it.
+
+## Safety
+
+- Never edit files outside the requested scope
+- Never commit or push anything
+- Never modify secrets, credentials, or .env files
+- If a change would break existing tests, stop and report
 ```
 
-Limits are per builder task, not per session — a 500-line feature is ~4 sequential ~125-line tasks.
+## Diff Size Limits — Why
 
-## Examples
+A 50-line focused change is reviewable. A 500-line sweep is not. Hard limits force the agent to decompose work into reviewable chunks, which:
 
-- **MCP tool** ("read RSS feeds"): check [mcp.so](https://mcp.so) for an existing server → if found, `add_mcp_server({ name: "rss", command: "npx", args: ["some-rss-mcp"] })` → approve → restart. Else delegate: `send_to_agent({ agentGroupId, text: "Add MCP tool 'read_rss' to container/agent-runner/src/mcp-tools/, register in index.ts, <200 new lines." })`.
-- **System tool** ("transcribe audio"): `which ffmpeg` → `install_packages({ apt: ["ffmpeg"], npm: ["@xenova/transformers"], reason: "Audio transcription" })` → on approve, image rebuilds and restarts → test.
+- Makes human approval meaningful (you can actually read 150 lines)
+- Catches runaway edits early (if the first task hits the limit, the scope was wrong)
+- Forces clear acceptance criteria per task
 
-## When NOT to self-customize
+The limits are **per builder task**, not per session. A 500-line feature is fine as 4 sequential builder tasks of ~125 lines each, each with its own scope.
 
-- One-off task → do it in your workspace.
-- Ambiguous request → ask the user first.
-- Unsure it works → prototype in workspace (`pnpm install` in `/workspace/agent/`), then promote.
+## Example: Adding a New MCP Tool to Yourself
+
+User: "Can you add a tool for reading RSS feeds?"
+
+1. Check [mcp.so](https://mcp.so) for an existing RSS MCP server
+2. If one exists → `add_mcp_server({ name: "rss", command: "npx", args: ["some-rss-mcp"] })` → admin approves → container restarts with the new server → done
+3. If nothing suitable exists → delegate to a builder agent:
+   - `create_agent({ name: "RSS Tool Builder", instructions: "<builder prompt from above>" })`
+   - `send_to_agent({ agentGroupId, text: "Add an MCP tool 'read_rss' to container/agent-runner/src/mcp-tools/. It should fetch an RSS URL and return the latest N items. Register it in mcp-tools/index.ts. Target: <200 new lines." })`
+   - Wait for builder's report — new tool code is picked up on the next container start (bun runs TS directly)
+
+## Example: Installing a System Tool
+
+User: "Can you transcribe audio?"
+
+1. Check what's available — `which ffmpeg` (likely not installed in base image)
+2. Decide approach: `@xenova/transformers` (npm, workspace-local) or `whisper.cpp` (apt + compile)
+3. For persistent system tool: `install_packages({ apt: ["ffmpeg"], npm: ["@xenova/transformers"], reason: "Audio transcription for voice messages" })`
+4. Wait for admin approval — on approve, the image is rebuilt and your container is restarted automatically
+5. Test the new capability once the container restarts
+
+## When NOT to Self-Customize
+
+- **The change is for a one-off task** — just do it in your workspace, don't modify the container
+- **The request is ambiguous** — ask the user what they actually need before spinning up builders or requesting installs
+- **You don't know if it will work** — prototype in your workspace first (`pnpm install` in `/workspace/agent/`), then promote to container-level install if it proves useful
 
 ## Scope limits
 
-Limited to your own container and workspace. Do NOT:
-
-- Modify another group's `CLAUDE.local.md` or workspace files.
-- Push to host NanoClaw source (separate PR process).
-- Expand your allowed-tools list without the corresponding reviewed source change.
+Customization scope is limited to the container and workspace you operate in. Do NOT:
+- Modify another group's `CLAUDE.local.md` or workspace files
+- Push changes to the host NanoClaw source (that requires a separate PR process)
+- Expand your own allowed-tools list without the corresponding source change being reviewed
 
 ## Infinite-loop guard
 
-After a customization that triggers a restart, the container relaunches fresh. Do not re-issue the same customization on the first turn after restart — verify the capability is available first. Sequence: request → approval → rebuild → verify → done.
+After any customization that triggers a container restart (package install, MCP server add), the container relaunches fresh. **Do not re-issue the same customization on the first turn after restart.** Check whether the capability is now available before requesting it again. The sequence is: request install → approval → rebuild → verify capability works → done. If verification fails, diagnose before re-requesting.
 
-## Notify the orchestrator
+## Notify the orchestrator after customization
 
-After any structural change (package, MCP server, source via builder), send a `mcp__nanoclaw__send_message` summary to the orchestrator group: (a) what changed, (b) how to verify, (c) caveats.
+After any structural change (package installed, MCP server added, source code changed via builder), send a `mcp__nanoclaw__send_message` summary to the orchestrator group listing: (a) what changed, (b) how to verify it, (c) any caveats. This keeps the orchestrator's model of your capabilities current.
