@@ -5965,9 +5965,8 @@ async function showCreateModal() {
       <option value="internal">Internal — via Orchestrator only</option>
     </select>
     <label>Group (sidebar)</label>
-    <select id="cw-new-group" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)">
-      ${groupOptions}
-    </select>
+    <input id="cw-new-group" list="cw-new-group-options" autocomplete="off" placeholder="Leave blank for prod — or pick/type a user" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)">
+    <datalist id="cw-new-group-options">${groupOptions}</datalist>
     <label>Custom instructions (optional)</label>
     <textarea id="cw-new-instructions" rows="3" placeholder="Additional instructions appended after the selected style..." style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-family:monospace;font-size:11px;resize:vertical"></textarea>
     <label>Trigger pattern</label>
@@ -6040,7 +6039,7 @@ async function showCreateModal() {
           instructionTemplate: instructionStyle || undefined,
           agentProvider: agentProvider || undefined,
           routing: document.getElementById('cw-new-routing')?.value || 'direct',
-          group: document.getElementById('cw-new-group')?.value || 'prod',
+          group: (document.getElementById('cw-new-group')?.value || '').trim() || 'prod',
         }),
       });
       if (!res.ok) {
