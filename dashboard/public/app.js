@@ -1997,9 +1997,19 @@ fetchMessages();
 
 // Delegated handler for "Load older events" — survives timeline rebuilds
 let timelineLoadingMore = false;
-document.getElementById('timeline-list')?.addEventListener('click', async (e) => {
+// Handled on mousedown (NOT click): the timeline updates rebuild the
+// button DOM via container.innerHTML on every state-applied tick, and a
+// rebuild between the user's mousedown and mouseup destroys the button so
+// `click` never fires. The mousedown branch closes that race; the click
+// branch below keeps touch + keyboard parity (timelineLoadingMore guard
+// dedupes against a same-gesture mousedown that already fired the fetch).
+const handleTimelineLoadMore = async (e) => {
   const btn = e.target.closest('.tl-load-more');
   if (!btn || btn.disabled || timelineLoadingMore) return;
+  e.preventDefault();
+  btn.classList.remove('lm-flash');
+  void btn.offsetWidth;
+  btn.classList.add('lm-flash');
   const container = document.getElementById('timeline-list');
   const entries = container.querySelectorAll('.tl-entry');
   const lastEntry = entries[entries.length - 1];
@@ -2049,11 +2059,16 @@ document.getElementById('timeline-list')?.addEventListener('click', async (e) =>
   } finally {
     timelineLoadingMore = false;
   }
-});
+};
+document.getElementById('timeline-list')?.addEventListener('mousedown', handleTimelineLoadMore);
+document.getElementById('timeline-list')?.addEventListener('click', handleTimelineLoadMore);
 
 function updateTimeline() {
   // Don't overwrite when viewing a session flow
   if (sessionFlowMode) return;
+  // Skip rebuilds while a "Load older events" fetch is in flight — the rebuild
+  // destroys the button mid-click and reverts its "Loading…" state.
+  if (timelineLoadingMore) return;
 
   document.getElementById('obs-total-coworkers').textContent = state.coworkers.length;
   document.getElementById('obs-total-tasks').textContent = state.tasks.length;
@@ -4463,6 +4478,9 @@ function renderCardBubble(
 function renderCwMessages() {
   const el = document.getElementById('cw-chat-messages');
   if (!el) return;
+  // Skip rebuilds while a "Load older messages" fetch is in flight — the rebuild
+  // destroys the button mid-click and the click is silently dropped.
+  if (cwState.loadingOlder) return;
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
   const approvalHtml = (cwState.pendingApprovals || []).map(renderApprovalItem).join('');
   const messageHtml = cwState.messages
@@ -4544,16 +4562,19 @@ function renderCwMessages() {
         ? `<div class="cw-thread-stub" data-parent-id="${escAttr(threadSummaryKey)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
         : '';
 
-      // Same fold as the thread view: outbound cli_request rows are tagged
-      // server-side with isRelay; matching cli_response replies arrive via
-      // messages_in untagged, detected here by JSON head. Both are 1+ KiB
-      // payloads that dominate the main feed when expanded by default.
+      // Hard-hide ncl polling chatter: cli_request (outbound, tagged isRelay
+      // server-side) and its cli_response reply (inbound, detected by JSON
+      // head). These are pure host↔container machine traffic — the
+      // orchestrator polling `ncl sessions-messages` etc. — and add nothing
+      // for a human watching the feed. Genuine a2a relays and other system
+      // actions still fold (below).
       const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
-      if (m.isRelay || isCliResponse) {
-        const sysActionLabel = isCliResponse ? 'system response' : 'system action';
+      const isCliRequest = isOutgoing && /^\s*\{\s*"action"\s*:\s*"cli_request"/.test(text);
+      if (isCliRequest || isCliResponse) return '';
+      if (m.isRelay) {
         const relayLabel = m.recipientCoworkerName
           ? `${authorName} → @${esc(m.recipientCoworkerName)}`
-          : `${authorName} · ${sysActionLabel}`;
+          : `${authorName} · system action`;
         const preview = (text || '').replace(/\s+/g, ' ').trim();
         const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
         const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
@@ -4667,26 +4688,47 @@ function renderCwMessages() {
   // Event delegation: attach once on the stable parent, survives innerHTML rebuilds
   if (!el._approvalDelegateAttached) {
     el._approvalDelegateAttached = true;
-    el.addEventListener('click', async (e) => {
-      // ── Load older messages (pagination) ──
+
+    // Load-more pagination — handled on mousedown (NOT click) because the
+    // 3 s polling loop calls `el.innerHTML = ...` and rebuilds the button
+    // node on every tick. If a poll lands between the user's mousedown and
+    // mouseup, the original button DOM node is gone, so the browser never
+    // fires `click` (mousedown/mouseup must hit the same element). Acting on
+    // mousedown sidesteps that contract entirely.
+    const handleLoadMore = async (e) => {
       const loadMoreBtn = e.target.closest('#cw-messages-more');
-      if (loadMoreBtn) {
-        if (cwState.loadingOlder) return;
-        // Anchor scroll on the row that's currently at the top so prepending
-        // older messages keeps the viewport stable instead of jumping.
-        const firstRow = el.querySelector('.cw-msg');
-        const anchorId = firstRow?.dataset.msgId || null;
-        const anchorOffset = firstRow ? firstRow.getBoundingClientRect().top - el.getBoundingClientRect().top : 0;
-        await fetchCwMessages(true);
-        if (anchorId) {
-          const restored = el.querySelector(`.cw-msg[data-msg-id="${CSS.escape(anchorId)}"]`);
-          if (restored) {
-            const newOffset = restored.getBoundingClientRect().top - el.getBoundingClientRect().top;
-            el.scrollTop += newOffset - anchorOffset;
-          }
+      if (!loadMoreBtn) return;
+      if (cwState.loadingOlder) return;
+      e.preventDefault();
+      // Visible feedback: flash the button blue so the operator can confirm
+      // each press registered, even mid-rebuild. Removed before the fetch
+      // resolves so the next render's button starts clean.
+      loadMoreBtn.classList.remove('lm-flash');
+      void loadMoreBtn.offsetWidth; // force reflow so re-adding restarts the animation
+      loadMoreBtn.classList.add('lm-flash');
+      const firstRow = el.querySelector('.cw-msg');
+      const anchorId = firstRow?.dataset.msgId || null;
+      const anchorOffset = firstRow ? firstRow.getBoundingClientRect().top - el.getBoundingClientRect().top : 0;
+      await fetchCwMessages(true);
+      if (anchorId) {
+        const restored = el.querySelector(`.cw-msg[data-msg-id="${CSS.escape(anchorId)}"]`);
+        if (restored) {
+          const newOffset = restored.getBoundingClientRect().top - el.getBoundingClientRect().top;
+          el.scrollTop += newOffset - anchorOffset;
         }
-        return;
       }
+    };
+    el.addEventListener('mousedown', handleLoadMore);
+    // Touch + keyboard parity: tapping on mobile and Enter/Space focus-then-press
+    // both arrive as `click` (no preceding mousedown), so keep a click branch
+    // for those paths. The cwState.loadingOlder guard above dedupes against
+    // a same-gesture mousedown that already fired the fetch.
+    el.addEventListener('click', handleLoadMore);
+
+    el.addEventListener('click', async (e) => {
+      // The load-more branch is handled by handleLoadMore above (mousedown +
+      // click). Skip it here to avoid double-firing.
+      if (e.target.closest('#cw-messages-more')) return;
       // ── Reply-in-thread hover button or reply-count stub ──
       const replyBtn = e.target.closest('.cw-reply-btn, .cw-thread-stub');
       if (replyBtn) {
@@ -5301,6 +5343,10 @@ async function fetchCwThread(parentId, append = false) {
 
 function renderCwThread() {
   if (!cwState.thread) return;
+  // Skip rebuilds while a "Load older messages" fetch is in flight — the rebuild
+  // destroys the button mid-click and the click is silently dropped. Mirrors
+  // the same guard in renderCwMessages above.
+  if (cwState.thread.loadingOlder) return;
   const t = cwState.thread;
   const parentEl = document.getElementById('cw-thread-parent');
   const parentLabel = document.getElementById('cw-thread-parent-label');
@@ -5396,17 +5442,17 @@ function renderCwThread() {
           : 'You';
       const monogramSource = isOutgoing ? cwState.selected || 'A' : m.senderCoworkerName || 'You';
       const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
-      // cli_response is the system-injected reply to a `cli_request` an
-      // agent sent earlier — it arrives via messages_in (so isRelay isn't
-      // set server-side) but should fold the same way as the cli_request
-      // outbound relay above. Match the JSON head; payloads are 1+ KiB
-      // and dominate the thread when expanded by default.
+      // Hard-hide ncl polling chatter in threads too: cli_request (outbound)
+      // and its cli_response reply (inbound). Pure host↔container machine
+      // traffic — see the main-feed path for rationale. Genuine a2a relays
+      // and other system actions still fold (below).
       const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
-      if (m.isRelay || isCliResponse) {
-        const sysActionLabel = isCliResponse ? 'system response' : 'system action';
+      const isCliRequest = isOutgoing && /^\s*\{\s*"action"\s*:\s*"cli_request"/.test(text);
+      if (isCliRequest || isCliResponse) return '';
+      if (m.isRelay) {
         const relayLabel = m.recipientCoworkerName
           ? `${authorName} → @${esc(m.recipientCoworkerName)}`
-          : `${authorName} · ${sysActionLabel}`;
+          : `${authorName} · system action`;
         const preview = (text || '').replace(/\s+/g, ' ').trim();
         const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
         const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
@@ -5461,10 +5507,19 @@ function renderCwThread() {
     loadMoreHtml + (html || (loadMoreHtml ? '' : '<div class="cw-empty" style="padding:12px">No replies yet.</div>'));
   if (!msgsEl._loadMoreDelegateAttached) {
     msgsEl._loadMoreDelegateAttached = true;
-    msgsEl.addEventListener('click', async (e) => {
+    // Handled on mousedown (NOT click) for the same reason as renderCwMessages:
+    // the 3 s polling loop rebuilds msgsEl.innerHTML, and a poll between the
+    // user's mousedown and mouseup destroys the button so `click` never fires.
+    // mousedown sidesteps that contract. Click handler kept for touch +
+    // keyboard parity (Enter/Space arrive only as `click`).
+    const handleThreadLoadMore = async (e) => {
       const btn = e.target.closest('#cw-thread-more');
       if (!btn || !cwState.thread) return;
       if (cwState.thread.loadingOlder) return;
+      e.preventDefault();
+      btn.classList.remove('lm-flash');
+      void btn.offsetWidth;
+      btn.classList.add('lm-flash');
       const firstRow = msgsEl.querySelector('.cw-msg');
       const anchorOffset = firstRow ? firstRow.getBoundingClientRect().top - msgsEl.getBoundingClientRect().top : 0;
       const anchorId = firstRow?.dataset.msgId || firstRow?.dataset.relayId || null;
@@ -5477,7 +5532,9 @@ function renderCwThread() {
           msgsEl.scrollTop += newOffset - anchorOffset;
         }
       }
-    });
+    };
+    msgsEl.addEventListener('mousedown', handleThreadLoadMore);
+    msgsEl.addEventListener('click', handleThreadLoadMore);
   }
   if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
 }
