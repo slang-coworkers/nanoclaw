@@ -4544,16 +4544,19 @@ function renderCwMessages() {
         ? `<div class="cw-thread-stub" data-parent-id="${escAttr(threadSummaryKey)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
         : '';
 
-      // Same fold as the thread view: outbound cli_request rows are tagged
-      // server-side with isRelay; matching cli_response replies arrive via
-      // messages_in untagged, detected here by JSON head. Both are 1+ KiB
-      // payloads that dominate the main feed when expanded by default.
+      // Hard-hide ncl polling chatter: cli_request (outbound, tagged isRelay
+      // server-side) and its cli_response reply (inbound, detected by JSON
+      // head). These are pure host↔container machine traffic — the
+      // orchestrator polling `ncl sessions-messages` etc. — and add nothing
+      // for a human watching the feed. Genuine a2a relays and other system
+      // actions still fold (below).
       const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
-      if (m.isRelay || isCliResponse) {
-        const sysActionLabel = isCliResponse ? 'system response' : 'system action';
+      const isCliRequest = isOutgoing && /^\s*\{\s*"action"\s*:\s*"cli_request"/.test(text);
+      if (isCliRequest || isCliResponse) return '';
+      if (m.isRelay) {
         const relayLabel = m.recipientCoworkerName
           ? `${authorName} → @${esc(m.recipientCoworkerName)}`
-          : `${authorName} · ${sysActionLabel}`;
+          : `${authorName} · system action`;
         const preview = (text || '').replace(/\s+/g, ' ').trim();
         const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
         const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
@@ -5396,17 +5399,17 @@ function renderCwThread() {
           : 'You';
       const monogramSource = isOutgoing ? cwState.selected || 'A' : m.senderCoworkerName || 'You';
       const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
-      // cli_response is the system-injected reply to a `cli_request` an
-      // agent sent earlier — it arrives via messages_in (so isRelay isn't
-      // set server-side) but should fold the same way as the cli_request
-      // outbound relay above. Match the JSON head; payloads are 1+ KiB
-      // and dominate the thread when expanded by default.
+      // Hard-hide ncl polling chatter in threads too: cli_request (outbound)
+      // and its cli_response reply (inbound). Pure host↔container machine
+      // traffic — see the main-feed path for rationale. Genuine a2a relays
+      // and other system actions still fold (below).
       const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
-      if (m.isRelay || isCliResponse) {
-        const sysActionLabel = isCliResponse ? 'system response' : 'system action';
+      const isCliRequest = isOutgoing && /^\s*\{\s*"action"\s*:\s*"cli_request"/.test(text);
+      if (isCliRequest || isCliResponse) return '';
+      if (m.isRelay) {
         const relayLabel = m.recipientCoworkerName
           ? `${authorName} → @${esc(m.recipientCoworkerName)}`
-          : `${authorName} · ${sysActionLabel}`;
+          : `${authorName} · system action`;
         const preview = (text || '').replace(/\s+/g, ' ').trim();
         const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
         const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
