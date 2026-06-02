@@ -6,15 +6,29 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 207 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 106 |
-| `nv-slang` | slang project spine, skills, workflows | 64 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 211 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 107 |
+| `nv-slang` | slang project spine, skills, workflows | 65 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 23 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 19 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-02
+
+### nv-main (4 PRs)
+- **#532** `revert(skills): restore upstream-tracking skills tightened in #526`
+- **#534** `ci: harden nv-* fan-merge (owned-conflict auto-resolve) + fix webhook-github test mocks`
+- **#536** `fix(webhook): issue_comment fall-through rejoins issue chain (not orphan session)`
+- **#539** `fix(spine): substantive human comment re-opens a closed/holding chain`
+
+### nv-dashboard (1 PRs)
+- **#538** `feat(dashboard): hide ncl polling chatter + fix Load-older pagination`
+
+### nv-slang (1 PRs)
+- **#537** `feat(slang-reviewer): add Reviewer C (clarity) — wraps shader-slang/slang#11340 skills`
 
 ## 📅 2026-06-01
 
