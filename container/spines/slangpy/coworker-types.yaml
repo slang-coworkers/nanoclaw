@@ -1,0 +1,83 @@
+slangpy-common:
+  description: "SlangPy spine — identity, repo layout."
+  project: slangpy
+  extends: base-common
+  skill-source: shader-slang/slang-skills@main
+  identity: container/spines/slangpy/identity/engineer.md
+  invariants: []
+  context:
+    - container/spines/slangpy/context/layout.md
+    # skill-discovery moved to slangpy-writer's context — only writers need
+    # to install new skills; readers don't pay for the registry instructions.
+  skills:
+    - slangpy-build
+    - slangpy-code-reader
+    - slangpy-github
+  workflows: []
+  mcpServers:
+    deepwiki:
+      type: http
+      url: https://mcp.deepwiki.com/mcp
+  bindings:
+    repo: slangpy-github
+    issues: slangpy-github
+    code: slangpy-code-reader
+    doc: slangpy-code-reader
+    test: slangpy-build
+    ci: slangpy-build
+    critique: codex-critique
+
+slangpy-reader:
+  description: "Read-only SlangPy coworker — plan, investigate, review, research. Cannot edit code or create PRs."
+  project: slangpy
+  extends: slangpy-common
+  workflows:
+    - slangpy-plan
+
+slangpy-writer:
+  description: "Write-capable SlangPy coworker — plan + implement. Can edit code, write tests, create PRs."
+  project: slangpy
+  extends: slangpy-common
+  invariants:
+    # Writer-only code-style / PR / commit rules.
+    - container/spines/slangpy/invariants/code-changes.md
+  context:
+    # Pulled in here so writers can install additional skills, but readers
+    # don't pay for the registry instructions.
+    - container/spines/slangpy/context/skill-discovery.md
+  skills:
+    - slangpy-code-writer
+    - slangpy-docs
+  workflows:
+    - slangpy-plan
+    - slangpy-implement
+  bindings:
+    code: slangpy-code-writer
+    test: slangpy-build
+    doc: slangpy-docs
+
+slangpy-triage:
+  description: "SlangPy issue triage — specialist first-line investigator. Read issue, fan out research (DeepWiki + local code + gh CLI), map solution space, hand off rich briefing to slangpy-fixer. Always forward; never drop the chain. Read-only."
+  project: slangpy
+  extends: slangpy-reader
+  workflows:
+    - slangpy-triage-issue
+  required_critique_stages: [DIAGNOSIS_REVIEW, OUTPUT_REVIEW]
+
+slangpy-fixer:
+  description: "SlangPy issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
+  project: slangpy
+  extends: slangpy-writer
+  workflows:
+    - slangpy-implement
+  required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
+
+slangpy-reviewer:
+  description: "SlangPy PR reviewer — read-only verdict on a PR / branch / patch. Inherits slangpy-reader's investigation toolkit; no write skills."
+  project: slangpy
+  extends: slangpy-reader
+  invariants:
+    # Reviewers enforce code-change rules during review.
+    - container/spines/slangpy/invariants/code-changes.md
+  workflows: []
+  required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
