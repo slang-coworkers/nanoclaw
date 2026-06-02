@@ -87,7 +87,13 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({ close: () => undefined }),
+      openInboundDb: () => ({
+        // prepare().get() backs the idempotency guard added in #513
+        // (SELECT 1 FROM messages_in WHERE id = ?). Returning undefined means
+        // "not seen before" so delivery proceeds to insertMessage.
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
       insertMessage: () => undefined,
     }));
 
@@ -144,7 +150,13 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({ close: () => undefined }),
+      openInboundDb: () => ({
+        // prepare().get() backs the idempotency guard added in #513
+        // (SELECT 1 FROM messages_in WHERE id = ?). Returning undefined means
+        // "not seen before" so delivery proceeds to insertMessage.
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
       insertMessage: () => undefined,
     }));
 
@@ -199,7 +211,10 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({ close: () => undefined }),
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
     vi.doMock('./session-manager.js', () => ({
@@ -249,7 +264,10 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
     }));
     vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({ close: () => undefined }),
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
     vi.doMock('./session-manager.js', () => ({
@@ -299,7 +317,13 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({ close: () => undefined }),
+      openInboundDb: () => ({
+        // prepare().get() backs the idempotency guard added in #513
+        // (SELECT 1 FROM messages_in WHERE id = ?). Returning undefined means
+        // "not seen before" so delivery proceeds to insertMessage.
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
       insertMessage: () => undefined,
     }));
 
@@ -347,7 +371,10 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
     }));
     vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({ close: () => undefined }),
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
     vi.doMock('./session-manager.js', () => ({
@@ -397,7 +424,10 @@ describe('deliverGitHubIssueOpened', () => {
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
     }));
     vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({ close: () => undefined }),
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
     vi.doMock('./session-manager.js', () => ({
@@ -446,7 +476,10 @@ describe('deliverGitHubIssueOpened', () => {
     }));
     vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
     vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({ close: () => undefined }),
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
     vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db', initSessionFolder: () => undefined }));
@@ -495,7 +528,10 @@ describe('deliverGitHubIssueOpened', () => {
     }));
     vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
     vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({ close: () => undefined }),
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
     vi.doMock('./session-manager.js', () => ({ inboundDbPath: () => '/tmp/x.db', initSessionFolder: () => undefined }));
@@ -541,7 +577,10 @@ describe('deliverGitHubIssueOpened', () => {
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'lego-orchestrator' }),
     }));
     vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({ close: () => undefined }),
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
       insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
     }));
     vi.doMock('./session-manager.js', () => ({
