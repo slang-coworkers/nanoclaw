@@ -4,7 +4,7 @@ The two tools here solve different problems: `ask_user_question` forces a decisi
 
 ### Asking a multiple-choice question (`ask_user_question`)
 
-`mcp__nanoclaw__ask_user_question({ title, question, options, timeout? })` presents the user with a set of choices and **blocks your turn** until they tap one or the timeout expires (default: 300 seconds). Returns their chosen value.
+`mcp__nanoclaw__ask_user_question({ title, question, options, timeout? })` presents the user with a set of choices and **blocks your turn** until they tap one or the timeout expires (default: 300 seconds; pass `timeout: 0` to wait indefinitely — use this for human-decision escalations where there is no acceptable fallback). Returns their chosen value. While the question is open, the dashboard sidebar shows a pending/amber indicator on this coworker — same UX as `install_packages` approvals.
 
 `options` can be plain strings or `{ label, selectedLabel?, value? }` objects:
 - `label` — the button text shown before selection

@@ -1,0 +1,35 @@
+{
+  "_comment": "Setup-time permissions seed referenced by .claude/skills/setup/SKILL.md (RC-M8). The skill reads this file and merges entries into the project's .claude/settings.json permissions.allow[] so the operator isn't prompted for every boilerplate setup command. Keep entries narrow: read-only probes + explicit install/build/service commands we expect to run during /setup.",
+  "permissions": {
+    "allow": [
+      "Bash(bash setup.sh)",
+      "Bash(bash setup.sh:*)",
+      "Bash(npx tsx setup/index.ts:*)",
+      "Bash(npx tsx setup/auto.ts:*)",
+      "Bash(npm ci)",
+      "Bash(npm install:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm run build)",
+      "Bash(pnpm run build:*)",
+      "Bash(./container/build.sh)",
+      "Bash(./container/build.sh:*)",
+      "Bash(systemctl --user daemon-reload)",
+      "Bash(systemctl --user enable:*)",
+      "Bash(systemctl --user disable:*)",
+      "Bash(systemctl --user start:*)",
+      "Bash(systemctl --user stop:*)",
+      "Bash(systemctl --user restart:*)",
+      "Bash(systemctl --user is-active:*)",
+      "Bash(systemctl --user status:*)",
+      "Bash(launchctl load:*)",
+      "Bash(launchctl unload:*)",
+      "Bash(launchctl kickstart:*)",
+      "Bash(docker images)",
+      "Bash(docker ps:*)",
+      "Bash(docker inspect:*)",
+      "Bash(mkdir -p:*)",
+      "Bash(tail -n:*)",
+      "Bash(tail --lines:*)"
+    ]
+  }
+}

@@ -482,6 +482,8 @@ async function handleChannelApprovalResponse(payload: ResponsePayload): Promise<
     ignored_message_policy: 'accumulate',
     session_mode: 'shared',
     priority: 0,
+    trigger_rules: null,
+    response_scope: 'all',
     created_at: new Date().toISOString(),
   });
   log.info('Channel registration approved — wiring created', {
@@ -582,6 +584,8 @@ setMessageInterceptor(async (event: InboundEvent): Promise<boolean> => {
     ignored_message_policy: 'accumulate',
     session_mode: 'shared',
     priority: 0,
+    trigger_rules: null,
+    response_scope: 'all',
     created_at: new Date().toISOString(),
   });
   log.info('Channel registration approved — wiring created', {
