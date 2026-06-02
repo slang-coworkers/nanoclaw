@@ -120,9 +120,11 @@ The four state-change events that REQUIRE a GitHub comment:
 
 **[MUST]** **A new GitHub comment on an in-flight chain is an inbound to act on, never a default reason to close.** When `issue_comment` arrives on a thread you have an active session for, it must be processed through the chain — same edges, same parent/child rules. Your bot's prior comment does **not** satisfy a human's later reply that introduces new content.
 
+**[MUST]** **A substantive human comment re-opens a closed or holding chain.** A chain you already drove to a terminal state — `[Resolution]`, "holding", "chain closed", "awaiting maintainer" — is **not** immune to new input. When an `issue_comment` lands on such a chain, your own prior `[Resolution]`/"holding" note is a past position, not grounds to no-op. Re-evaluate the comment on its merits exactly as you would on a live chain: if it's a thanks/ack, close again explicitly; if it introduces anything substantive (counter-proposal, gap, scope question, new repro), **re-open** — dispatch to the responsible coworker on the canonical thread, or reply via closest-to-the-state. Reading the comment, recognizing the chain "looks done", and emitting no inbound/outbound is the failure mode this rule exists to kill (observed: forwarded comments landing on resolved chains sat `completed` with zero dispatch until a human nudged).
+
 - A non-bot author writing in is a **new chain input**. If the body is a thanks / OK / restatement, acknowledge with no further routing. If it introduces anything substantive (counter-proposal, gap, scope question, refusal), make a routing decision: forward to the responsible coworker, hold for maintainer input, or close explicitly with a 5-bullet `[Resolution]` whose `next-action:` names what their input changed (or didn't).
 - Bot-authored comments (yours or another tier's) are **not** routing inbounds. Ignore them; your past position is a position, not a reply.
-- "We already commented" is **not** an answer to a human's later reply. Silent close on a substantive reply is the bug.
+- "We already commented" / "the chain is closed" / "we're holding" are **not** answers to a human's later substantive reply. Silent close — or silent no-op on a closed chain — is the bug.
 
 ```
 inbound: { event: "github.issue_comment", commenter: "<human>",
