@@ -110,7 +110,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    ```
    send_file(to="slang-fixer", path="<run_dir_A>/combined-review.md")
    send_file(to="parent",      path="<run_dir_A>/combined-review.md")
-   send_message(to="parent", text="[Review Verdict] <repo>#<number> (<mode>)\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n• Findings: <X bugs, Y gaps, Z questions> (A: <counts>; B: <counts or skipped>; C clarity: <counts or skipped>)\n• Top concern: <one-line of the highest-severity finding, or 'no bugs'>\n• Test gaps: <one-line of recommended tests, or 'none'>\n• Disagreements: <N A/B/C disagreements — see combined-review.md, or 'none'>\n• Sent to: slang-fixer (combined-review.md)")
+   send_message(to="parent", in_reply_to=<id-of-review-request>, text="[Review Verdict] <repo>#<number> (<mode>)\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n• Findings: <X bugs, Y gaps, Z questions> (A: <counts>; B: <counts or skipped>; C clarity: <counts or skipped>)\n• Top concern: <one-line of the highest-severity finding, or 'no bugs'>\n• Test gaps: <one-line of recommended tests, or 'none'>\n• Disagreements: <N A/B/C disagreements — see combined-review.md, or 'none'>\n• Sent to: slang-fixer (combined-review.md)")
    ```
 
    Notes:
