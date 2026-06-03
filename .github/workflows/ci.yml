@@ -33,11 +33,30 @@ jobs:
           # which hid the base-nanoclaw / validate:templates breakage for weeks.
           #
           # OWNED = files git-owned by nv-main that are safe to take from the
-          # integration side on conflict. Keep in sync with nv-main.txt.
+          # integration side on conflict. Mirrors .github/nv-path-guard/nv-main.txt:
+          # nv-main canonically owns host TS (src/**), agent-runner code, base
+          # spine/skills, and shared config. Overlay branches carry stale copies
+          # of these (they lag nv-main's lego columns etc.), so a conflict here is
+          # the sibling being behind — take nv-main's (integration) side. A genuine
+          # overlay-owned content conflict lands OUTSIDE these paths and still fails
+          # loudly. Keep in sync with nv-main.txt.
           is_owned() {
             case "$1" in
               package.json|package-lock.json|pnpm-lock.yaml) return 0 ;;
+              tsconfig.json|vitest.config.ts|vitest.setup.ts) return 0 ;;
               .github/*) return 0 ;;
+              src/*) return 0 ;;
+              scripts/*) return 0 ;;
+              setup/*) return 0 ;;
+              docs/*) return 0 ;;
+              container/agent-runner/*) return 0 ;;
+              container/hooks/*) return 0 ;;
+              container/config/*) return 0 ;;
+              container/spines/base/*) return 0 ;;
+              container/skills/spine-base/*) return 0 ;;
+              container/skills/base/*) return 0 ;;
+              container/Dockerfile|container/build.sh|container/entrypoint.sh) return 0 ;;
+              CLAUDE.md|README.md|CONTRIBUTING.md|LICENSE|.gitignore) return 0 ;;
               *) return 1 ;;
             esac
           }
@@ -105,6 +124,11 @@ jobs:
 
       - name: Fetch external skills
         if: hashFiles('scripts/fetch-skills.sh') != ''
+        # Authenticate `gh skill` blob fetches — unauthenticated fetches hit
+        # GitHub's anonymous rate limit (HTTP 403) and silently drop skills,
+        # which then fail validate:templates with "references unknown skill".
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/fetch-skills.sh
 
       - name: Format check

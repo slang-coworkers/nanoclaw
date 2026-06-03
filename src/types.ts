@@ -14,6 +14,8 @@ export interface AgentGroup {
   routing: string; // 'direct' | 'internal'
   disable_overlays: number; // 0 | 1 — when 1, skip overlay hook injection
   created_at: string;
+  /** Dashboard sidebar grouping: NULL/'prod' = shared prod group; else a user id. */
+  sidebar_group?: string | null;
 }
 
 /** Per-agent-group container runtime config. Source of truth in the DB;
