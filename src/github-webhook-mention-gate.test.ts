@@ -102,6 +102,7 @@ async function startServer(
   close: () => Promise<void>;
   deliverGitHubMention: ReturnType<typeof vi.fn>;
   deliverGitHubIssueOpened: ReturnType<typeof vi.fn>;
+  deliverGitHubPrEvent: ReturnType<typeof vi.fn>;
 }> {
   vi.doMock('./config.js', () => ({
     GITHUB_WEBHOOK_SECRET: SECRET,
@@ -115,7 +116,12 @@ async function startServer(
   }));
   const deliverGitHubMention = vi.fn(() => 'forwarded');
   const deliverGitHubIssueOpened = vi.fn(() => 'local');
-  vi.doMock('./webhook-github.js', () => ({ deliverGitHubMention, deliverGitHubIssueOpened }));
+  const deliverGitHubPrEvent = vi.fn(() => 'local');
+  vi.doMock('./webhook-github.js', () => ({
+    deliverGitHubMention,
+    deliverGitHubIssueOpened,
+    deliverGitHubPrEvent,
+  }));
   commonMocks(opts);
 
   const { startGitHubWebhookServer } = await import('./github-webhook-server.js');
@@ -128,7 +134,7 @@ async function startServer(
   });
   const addr = handle.server.address();
   const port = addr && typeof addr === 'object' ? addr.port : 0;
-  return { port, close: () => handle.stop(), deliverGitHubMention, deliverGitHubIssueOpened };
+  return { port, close: () => handle.stop(), deliverGitHubMention, deliverGitHubIssueOpened, deliverGitHubPrEvent };
 }
 
 describe('issue_comment mention gate — ROUTE_ISSUES_TO exemption', () => {
@@ -263,6 +269,208 @@ describe('issue_comment mention gate — ROUTE_ISSUES_TO exemption', () => {
       expect(srv.deliverGitHubMention).toHaveBeenCalledTimes(1);
       expect(srv.deliverGitHubMention.mock.calls[0][0]).toMatchObject({ isPr: true, issueNumber: 11372 });
       expect(res.json.skipped).toBeUndefined();
+    } finally {
+      srv.close();
+    }
+  });
+});
+
+// ── PR activity events: review verdict, review thread, CI failure ──
+// These route to the owning fixer session via deliverGitHubPrEvent (no mention
+// gate, no orchestrator fallback). The mapping IS the ownership signal; the
+// delivery decision lives in deliverGitHubPrEvent (unit-tested separately) —
+// here we assert the SERVER's accept/filter/dispatch logic only.
+
+function reviewBody(opts: { state: string; body?: string; reviewer?: string; action?: string }): string {
+  return JSON.stringify({
+    action: opts.action ?? 'submitted',
+    repository: { full_name: 'shader-slang/slang' },
+    pull_request: { number: 11372 },
+    review: {
+      id: 555001,
+      state: opts.state,
+      body: opts.body ?? '',
+      html_url: 'https://github.com/shader-slang/slang/pull/11372#pullrequestreview-555001',
+      user: { login: opts.reviewer ?? 'andersjel' },
+    },
+  });
+}
+
+function reviewThreadBody(opts: { action: string; sender?: string }): string {
+  return JSON.stringify({
+    action: opts.action,
+    repository: { full_name: 'shader-slang/slang' },
+    pull_request: { number: 11372 },
+    sender: { login: opts.sender ?? 'andersjel' },
+    thread: { comments: [{ id: 777002, path: 'source/foo.cpp' }] },
+  });
+}
+
+function checkSuiteBody(opts: { action?: string; conclusion: string; withPr?: boolean }): string {
+  return JSON.stringify({
+    action: opts.action ?? 'completed',
+    repository: { full_name: 'shader-slang/slang' },
+    check_suite: {
+      id: 888003,
+      conclusion: opts.conclusion,
+      head_sha: 'abc123',
+      url: 'https://api.github.com/repos/shader-slang/slang/check-suites/888003',
+      pull_requests: opts.withPr === false ? [] : [{ number: 11372 }],
+    },
+  });
+}
+
+describe('PR review / CI events → fixer routing', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('routes a changes_requested review to deliverGitHubPrEvent', async () => {
+    const srv = await startServer({});
+    try {
+      const body = reviewBody({ state: 'changes_requested', body: 'Please fix the ABI handling.' });
+      const res = await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'pull_request_review',
+        'x-github-delivery': 'r1',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubPrEvent).toHaveBeenCalledTimes(1);
+      expect(srv.deliverGitHubPrEvent.mock.calls[0][0]).toMatchObject({
+        prNumber: 11372,
+        event: 'github.pr_review',
+        rowId: 'gh-review-555001',
+      });
+      expect(res.json.skipped).toBeUndefined();
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('routes an approved review even with empty body', async () => {
+    const srv = await startServer({});
+    try {
+      const body = reviewBody({ state: 'approved', body: '' });
+      await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'pull_request_review',
+        'x-github-delivery': 'r2',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubPrEvent).toHaveBeenCalledTimes(1);
+      expect(srv.deliverGitHubPrEvent.mock.calls[0][0]).toMatchObject({ event: 'github.pr_review' });
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('skips an empty "commented" review (inline-only wrapper — no double-wake)', async () => {
+    const srv = await startServer({});
+    try {
+      const body = reviewBody({ state: 'commented', body: '' });
+      const res = await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'pull_request_review',
+        'x-github-delivery': 'r3',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubPrEvent).not.toHaveBeenCalled();
+      expect(res.json).toMatchObject({ skipped: true });
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('skips our own bot review (echo, not feedback)', async () => {
+    const srv = await startServer({});
+    try {
+      const body = reviewBody({ state: 'approved', reviewer: 'nv-slang-bot[bot]' });
+      const res = await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'pull_request_review',
+        'x-github-delivery': 'r4',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubPrEvent).not.toHaveBeenCalled();
+      expect(res.json).toMatchObject({ skipped: true, reason: 'own-bot review' });
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('routes a resolved review thread', async () => {
+    const srv = await startServer({});
+    try {
+      const body = reviewThreadBody({ action: 'resolved' });
+      await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'pull_request_review_thread',
+        'x-github-delivery': 't1',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubPrEvent).toHaveBeenCalledTimes(1);
+      expect(srv.deliverGitHubPrEvent.mock.calls[0][0]).toMatchObject({
+        event: 'github.pr_review_thread',
+        rowId: 'gh-revthread-777002-resolved',
+      });
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('routes a failed check_suite to deliverGitHubPrEvent', async () => {
+    const srv = await startServer({});
+    try {
+      const body = checkSuiteBody({ conclusion: 'failure' });
+      await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'check_suite',
+        'x-github-delivery': 'c1',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubPrEvent).toHaveBeenCalledTimes(1);
+      expect(srv.deliverGitHubPrEvent.mock.calls[0][0]).toMatchObject({
+        event: 'github.ci_failed',
+        rowId: 'gh-checks-888003',
+      });
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('skips a successful check_suite (only failures are work)', async () => {
+    const srv = await startServer({});
+    try {
+      const body = checkSuiteBody({ conclusion: 'success' });
+      const res = await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'check_suite',
+        'x-github-delivery': 'c2',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubPrEvent).not.toHaveBeenCalled();
+      expect(res.json).toMatchObject({ skipped: true });
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('skips a failed check_suite with no associated PR', async () => {
+    const srv = await startServer({});
+    try {
+      const body = checkSuiteBody({ conclusion: 'failure', withPr: false });
+      const res = await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'check_suite',
+        'x-github-delivery': 'c3',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubPrEvent).not.toHaveBeenCalled();
+      expect(res.json).toMatchObject({ skipped: true, reason: 'check_suite has no associated PR' });
     } finally {
       srv.close();
     }

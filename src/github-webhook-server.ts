@@ -28,9 +28,33 @@ import {
 } from './modules/pr-mapping/register-client.js';
 import { handleRegisterPr } from './modules/pr-mapping/register-endpoint.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
-import { deliverGitHubIssueOpened, deliverGitHubMention } from './webhook-github.js';
+import { deliverGitHubIssueOpened, deliverGitHubMention, deliverGitHubPrEvent } from './webhook-github.js';
 
 const MAX_BODY_SIZE = 512 * 1024; // 512 KB
+
+/**
+ * GitHub event types this server processes. The App is subscribed to these
+ * (Settings → Permissions & events → Subscribe to events). check_suite stays
+ * here so the handler is live the moment the event is subscribed + the Checks
+ * permission is re-approved per org — until then GitHub simply never delivers
+ * it, and an accepted-but-undelivered event is harmless.
+ */
+const ACCEPTED_EVENTS = new Set<string>([
+  'issue_comment',
+  'pull_request_review_comment',
+  'issues',
+  'pull_request_review',
+  'pull_request_review_thread',
+  'check_suite',
+]);
+
+/** Our bot's GitHub login — events it authored are echoes, not feedback to act on. */
+const BOT_LOGIN = 'nv-slang-bot[bot]';
+
+function loginOf(obj: unknown): string {
+  const user = (obj as Record<string, unknown> | undefined)?.user as Record<string, unknown> | undefined;
+  return typeof user?.login === 'string' ? user.login : '';
+}
 
 export interface GitHubWebhookServerHandle {
   server: Server;
@@ -165,11 +189,11 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     }
 
     const eventType = req.headers['x-github-event'];
-    if (eventType !== 'issue_comment' && eventType !== 'pull_request_review_comment' && eventType !== 'issues') {
+    if (typeof eventType !== 'string' || !ACCEPTED_EVENTS.has(eventType)) {
       writeJson(res, 200, {
         ok: true,
         skipped: true,
-        reason: 'not issue_comment, pull_request_review_comment, or issues',
+        reason: 'unhandled event type',
       });
       return;
     }
@@ -246,6 +270,149 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
         body,
         author,
         labels,
+        rawBody,
+        eventType: String(eventType),
+        deliveryId: String(req.headers['x-github-delivery'] ?? ''),
+      });
+      writeJson(res, 200, { ok: true, outcome });
+      return;
+    }
+
+    // PR review verdict (Approve / Request changes / Comment + summary body).
+    // Routed to the owning fixer session via pr_session_mappings. We skip the
+    // bare "commented" review that wraps inline comments (each already routed
+    // as its own pull_request_review_comment) — delivering it too would wake
+    // the fixer an extra time per review with no new signal. A review is worth
+    // delivering when it carries a verdict (approved/changes_requested) or a
+    // non-empty summary body.
+    if (eventType === 'pull_request_review') {
+      if (payload.action !== 'submitted') {
+        writeJson(res, 200, { ok: true, skipped: true, reason: 'review action not submitted' });
+        return;
+      }
+      const review = payload.review as Record<string, unknown> | undefined;
+      const pr = payload.pull_request as Record<string, unknown> | undefined;
+      const prNumber = typeof pr?.number === 'number' ? pr.number : 0;
+      const state = typeof review?.state === 'string' ? review.state.toLowerCase() : '';
+      const reviewBody = typeof review?.body === 'string' ? review.body : '';
+      const reviewId = typeof review?.id === 'number' ? review.id : 0;
+      const reviewer = loginOf(review);
+
+      if (reviewer === BOT_LOGIN) {
+        writeJson(res, 200, { ok: true, skipped: true, reason: 'own-bot review' });
+        return;
+      }
+      if (state === 'commented' && !reviewBody.trim()) {
+        // Pure inline-comment wrapper — the comments routed individually.
+        writeJson(res, 200, { ok: true, skipped: true, reason: 'empty commented review (inline-only)' });
+        return;
+      }
+      if (!repoFullName || !prNumber || !reviewId) {
+        log.warn('github-webhook: malformed pull_request_review payload', { repo: repoFullName, prNumber });
+        writeJson(res, 400, { error: 'malformed payload' });
+        return;
+      }
+      const outcome = deliverGitHubPrEvent({
+        repo: repoFullName,
+        prNumber,
+        event: 'github.pr_review',
+        rowId: `gh-review-${reviewId}`,
+        payload: {
+          review_state: state,
+          body: reviewBody,
+          reviewer,
+          review_url: typeof review?.html_url === 'string' ? review.html_url : '',
+        },
+        rawBody,
+        eventType: String(eventType),
+        deliveryId: String(req.headers['x-github-delivery'] ?? ''),
+      });
+      writeJson(res, 200, { ok: true, outcome });
+      return;
+    }
+
+    // PR review thread resolved / unresolved — a deliberate reviewer action
+    // ("I accept this fix" / "re-opening this"). Routed to the owning fixer.
+    if (eventType === 'pull_request_review_thread') {
+      if (payload.action !== 'resolved' && payload.action !== 'unresolved') {
+        writeJson(res, 200, { ok: true, skipped: true, reason: 'review_thread action not resolved/unresolved' });
+        return;
+      }
+      const thread = payload.thread as Record<string, unknown> | undefined;
+      const pr = payload.pull_request as Record<string, unknown> | undefined;
+      const prNumber = typeof pr?.number === 'number' ? pr.number : 0;
+      const sender =
+        typeof (payload.sender as Record<string, unknown> | undefined)?.login === 'string'
+          ? String((payload.sender as Record<string, unknown>).login)
+          : '';
+      // Identify the thread by its first comment id (threads have no stable id
+      // in the payload; the first comment is stable for idempotency).
+      const comments = Array.isArray(thread?.comments) ? (thread!.comments as Record<string, unknown>[]) : [];
+      const firstCommentId = typeof comments[0]?.id === 'number' ? (comments[0].id as number) : 0;
+      const path = typeof comments[0]?.path === 'string' ? (comments[0].path as string) : '';
+
+      if (sender === BOT_LOGIN) {
+        writeJson(res, 200, { ok: true, skipped: true, reason: 'own-bot review thread' });
+        return;
+      }
+      if (!repoFullName || !prNumber || !firstCommentId) {
+        log.warn('github-webhook: malformed pull_request_review_thread payload', { repo: repoFullName, prNumber });
+        writeJson(res, 400, { error: 'malformed payload' });
+        return;
+      }
+      const outcome = deliverGitHubPrEvent({
+        repo: repoFullName,
+        prNumber,
+        event: 'github.pr_review_thread',
+        rowId: `gh-revthread-${firstCommentId}-${String(payload.action)}`,
+        payload: {
+          thread_action: String(payload.action),
+          path,
+          sender,
+        },
+        rawBody,
+        eventType: String(eventType),
+        deliveryId: String(req.headers['x-github-delivery'] ?? ''),
+      });
+      writeJson(res, 200, { ok: true, outcome });
+      return;
+    }
+
+    // check_suite — CI run completed. We only act on failures (the "CI fail"
+    // signal); a green run is not work for the fixer. DORMANT until the App is
+    // subscribed to check_suite AND the Checks permission is re-approved per
+    // org — until then GitHub never delivers this event.
+    if (eventType === 'check_suite') {
+      if (payload.action !== 'completed') {
+        writeJson(res, 200, { ok: true, skipped: true, reason: 'check_suite action not completed' });
+        return;
+      }
+      const suite = payload.check_suite as Record<string, unknown> | undefined;
+      const conclusion = typeof suite?.conclusion === 'string' ? suite.conclusion.toLowerCase() : '';
+      if (conclusion !== 'failure' && conclusion !== 'timed_out') {
+        writeJson(res, 200, { ok: true, skipped: true, reason: `check_suite conclusion ${conclusion || 'none'}` });
+        return;
+      }
+      const suiteId = typeof suite?.id === 'number' ? suite.id : 0;
+      const headSha = typeof suite?.head_sha === 'string' ? suite.head_sha : '';
+      const prs = Array.isArray(suite?.pull_requests) ? (suite!.pull_requests as Record<string, unknown>[]) : [];
+      const prNumber = prs.length && typeof prs[0]?.number === 'number' ? (prs[0].number as number) : 0;
+      if (!repoFullName || !prNumber || !suiteId) {
+        // A check_suite with no associated PR (push to a branch with no PR) —
+        // nothing to route. Not malformed, just not for us.
+        writeJson(res, 200, { ok: true, skipped: true, reason: 'check_suite has no associated PR' });
+        return;
+      }
+      const outcome = deliverGitHubPrEvent({
+        repo: repoFullName,
+        prNumber,
+        event: 'github.ci_failed',
+        rowId: `gh-checks-${suiteId}`,
+        payload: {
+          conclusion,
+          head_sha: headSha,
+          check_suite_url: typeof suite?.url === 'string' ? suite.url : '',
+        },
         rawBody,
         eventType: String(eventType),
         deliveryId: String(req.headers['x-github-delivery'] ?? ''),

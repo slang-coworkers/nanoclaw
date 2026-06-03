@@ -467,6 +467,180 @@ describe('deliverGitHubMention — owner_instance routing', () => {
   });
 });
 
+describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)', () => {
+  it('delivers locally to the mapped fixer session', async () => {
+    const insertCalls: unknown[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+    }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({
+        prepare: () => ({
+          get: () => ({
+            agent_group_id: 'g-fixer',
+            session_id: 's-fixer',
+            thread_id: 't-pr',
+            owner_instance: 'lego',
+          }),
+        }),
+      }),
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => ({ id: 's-fixer' }),
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/fixer.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubPrEvent } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrEvent({
+      repo: 'shader-slang/slang',
+      prNumber: 11372,
+      event: 'github.pr_review',
+      rowId: 'gh-review-555001',
+      payload: { review_state: 'changes_requested', body: 'fix this', reviewer: 'andersjel' },
+      rawBody: '{"action":"submitted"}',
+      eventType: 'pull_request_review',
+      deliveryId: 'r-1',
+    });
+
+    expect(outcome).toBe('local');
+    expect(insertCalls).toHaveLength(1);
+    const inserted = insertCalls[0] as { id: string; threadId: string; content: string };
+    expect(inserted.id).toBe('gh-review-555001');
+    expect(inserted.threadId).toBe('t-pr');
+    const parsed = JSON.parse(inserted.content);
+    expect(parsed.event).toBe('github.pr_review');
+    expect(parsed.is_pr).toBe(true);
+    expect(parsed.review_state).toBe('changes_requested');
+  });
+
+  it('forwards to the foreign owner instance', async () => {
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: { lego: peerUrl },
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+    }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({
+        prepare: () => ({
+          get: () => ({
+            agent_group_id: 'g-lego',
+            session_id: 's-lego',
+            thread_id: 't',
+            owner_instance: 'lego',
+          }),
+        }),
+      }),
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/x.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubPrEvent } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrEvent({
+      repo: 'shader-slang/slang',
+      prNumber: 11372,
+      event: 'github.ci_failed',
+      rowId: 'gh-checks-888003',
+      payload: { conclusion: 'failure' },
+      rawBody: '{"action":"completed"}',
+      eventType: 'check_suite',
+      deliveryId: 'c-1',
+    });
+
+    expect(outcome).toBe('forwarded');
+    await waitForCapture(1);
+    expect(captured).toHaveLength(1);
+    expect(captured[0].headers['x-github-event']).toBe('check_suite');
+    expect(captured[0].body).toBe('{"action":"completed"}');
+  });
+
+  it('DROPS (no orchestrator fallback) when there is no mapping', async () => {
+    const insertCalls: unknown[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+    }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      // Even if an orchestrator session exists, a PR event must NOT use it.
+      findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
+      findSessionByAgentThread: () => ({ id: 'sess-orch' }),
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubPrEvent } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrEvent({
+      repo: 'shader-slang/slang',
+      prNumber: 99999,
+      event: 'github.pr_review',
+      rowId: 'gh-review-1',
+      payload: { review_state: 'approved' },
+      rawBody: '{}',
+      eventType: 'pull_request_review',
+      deliveryId: 'r-x',
+    });
+
+    expect(outcome).toBe('dropped');
+    expect(insertCalls).toHaveLength(0); // never touched the orchestrator
+    expect(captured).toHaveLength(0);
+  });
+});
+
 describe('deliverGitHubIssueOpened', () => {
   it('routes new issues to orchestrator with github.issue_opened event (default, ROUTE_ISSUES_TO unset)', async () => {
     const insertCalls: unknown[] = [];
