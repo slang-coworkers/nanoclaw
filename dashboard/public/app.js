@@ -275,16 +275,14 @@ function switchToTab(tabId) {
   document.querySelectorAll('.tab-content').forEach((t) => t.classList.remove('active'));
   document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
   document.getElementById(tabId)?.classList.add('active');
-  if (tabId === 'funnel') loadFunnel();
 }
 
 // Issue funnel panel — reads the cached snapshot from /api/funnel (written by
 // `scripts/funnel.ts --out reports/funnel.json`). The dashboard never recomputes
 // the funnel; if no snapshot exists the endpoint 404s with a refresh hint.
-let _funnelLoaded = false;
-async function loadFunnel(force) {
-  if (_funnelLoaded && !force) return;
-  _funnelLoaded = true;
+// Loaded under Admin > Funnel; loadAdminPanel() guards first-load via
+// adminState.loaded and the Refresh button clears that entry to force a reload.
+async function loadFunnel() {
   const board = document.getElementById('funnel-board');
   const detail = document.getElementById('funnel-detail');
   const stamp = document.getElementById('funnel-stamp');
@@ -1781,7 +1779,6 @@ document.getElementById('legend-toggle')?.addEventListener('click', () => {
   if (legend) legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
 });
 
-document.getElementById('funnel-refresh')?.addEventListener('click', () => loadFunnel(true));
 
 document.getElementById('office-show-all')?.addEventListener('click', () => {
   officeShowAll = !officeShowAll;
@@ -3385,6 +3382,7 @@ function loadAdminPanel(name) {
     channels: loadAdminChannels,
     config: loadAdminConfig,
     infra: loadAdminInfra,
+    funnel: loadFunnel,
   };
   if (loaders[name]) loaders[name]();
 }

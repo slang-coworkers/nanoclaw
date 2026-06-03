@@ -1014,7 +1014,6 @@
       <button class="tab active" data-tab="pixel-office">Pixel Office</button>
       <button class="tab" data-tab="coworkers">Coworkers</button>
       <button class="tab" data-tab="observability">Timeline</button>
-      <button class="tab" data-tab="funnel">Funnel</button>
       <button class="tab" data-tab="admin">Admin</button>
     </div>
     <div class="header-right">
@@ -1278,16 +1277,6 @@
   </div>
 
   <!-- Tab 3: Admin Panel -->
-  <div id="funnel" class="tab-content" style="flex-direction:column;overflow:auto;padding:12px;gap:12px">
-    <div style="display:flex;align-items:center;gap:12px">
-      <h2 style="margin:0;font-size:14px">Issue Funnel</h2>
-      <button id="funnel-refresh" class="admin-action-btn" style="font-size:9px;padding:2px 8px">Reload</button>
-      <span id="funnel-stamp" style="font-size:9px;color:var(--text-muted)"></span>
-    </div>
-    <div id="funnel-board" style="font-size:11px"></div>
-    <div id="funnel-detail" style="font-size:10px;overflow:auto"></div>
-  </div>
-
   <div id="admin" class="tab-content">
     <div class="admin-nav">
       <button class="admin-pill active" data-panel="admin-overview">Overview</button>
@@ -1301,6 +1290,7 @@
       <button class="admin-pill" data-panel="admin-channels">Channels</button>
       <button class="admin-pill" data-panel="admin-config">Config</button>
       <button class="admin-pill" data-panel="admin-infra">Infra</button>
+      <button class="admin-pill" data-panel="admin-funnel">Funnel</button>
     </div>
     <div class="admin-panels">
       <div id="admin-overview" class="admin-panel active">
@@ -1377,6 +1367,13 @@
       <div id="admin-infra" class="admin-panel">
         <div class="admin-panel-header"><h3>Infrastructure</h3><button class="admin-refresh-btn" data-load="infra">Refresh</button></div>
         <div id="admin-infra-content" class="admin-panel-body"><div class="admin-loading">Loading...</div></div>
+      </div>
+      <div id="admin-funnel" class="admin-panel">
+        <div class="admin-panel-header"><h3>Issue Funnel</h3><span id="funnel-stamp" style="font-size:9px;color:var(--text-muted);margin-left:8px"></span><button class="admin-refresh-btn" data-load="funnel">Refresh</button></div>
+        <div class="admin-panel-body">
+          <div id="funnel-board" style="font-size:11px"></div>
+          <div id="funnel-detail" style="font-size:10px;overflow:auto;margin-top:12px"></div>
+        </div>
       </div>
     </div>
   </div>
