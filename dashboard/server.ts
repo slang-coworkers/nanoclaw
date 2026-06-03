@@ -5705,7 +5705,14 @@ export async function handleRequest(
     // whether earlier rows exist beyond the returned page.
     const beforeParam = url.searchParams.get('before');
     const OVERSAMPLE = 3;
-    const SYSTEM_ID_PREFIXES = ['claudemd-refresh-', 'a2a-', 'sys-'];
+    // `cli-` / `cli-resp-` are ncl polling chatter (cli_request / cli_response,
+    // kind=system) — pure host↔container machine traffic. The client already
+    // hard-hides them, but only AFTER the fetch, so they consumed the LIMIT
+    // window and pushed real messages (e.g. a large /supervise-issues table)
+    // off the fetched page. Filtering them server-side here means the LIMIT
+    // fills with messages a human actually sees. Still surfaced with
+    // ?includeSystem=1 (timeline/debug).
+    const SYSTEM_ID_PREFIXES = ['claudemd-refresh-', 'a2a-', 'sys-', 'cli-'];
     const isSystemId = (id: unknown) => typeof id === 'string' && SYSTEM_ID_PREFIXES.some((p) => id.startsWith(p));
     // Index all agent_groups by id so we can recognise when an a2a-* message is
     // a legit inter-coworker send (platform_id matches a real agent_group.id)
@@ -5934,7 +5941,14 @@ export async function handleRequest(
                 // even though the DB has months of history.
                 // messages_in stores ISO (e.g. 2026-05-09T01:03:52.762Z), so
                 // string compare against the ISO cursor is correct.
-                const inWhere = beforeParam ? 'WHERE timestamp < ? ' : '';
+                // Exclude ncl polling chatter (cli_request id `cli-…`) at the
+                // SQL level on the main view so it never consumes the LIMIT
+                // window (the post-fetch client/JS filter alone leaves the page
+                // mostly empty — e.g. 36/50 chatter — pushing real messages off
+                // the fetched page). ?includeSystem=1 keeps the full history.
+                const hideChatterSql = !includeSystem ? "id NOT LIKE 'cli-%' AND id NOT LIKE 'claudemd-refresh-%'" : '';
+                const inConds = [beforeParam ? 'timestamp < ?' : '', hideChatterSql].filter(Boolean);
+                const inWhere = inConds.length ? `WHERE ${inConds.join(' AND ')} ` : '';
                 const inArgs: any[] = beforeParam ? [beforeParam, perGroupLimit] : [perGroupLimit];
                 try {
                   // source_session_id distinguishes a true single-session echo
@@ -6041,7 +6055,8 @@ export async function handleRequest(
                 // ordering would put "2026-06-02T..." after "2026-06-02 ..."
                 // and the cutoff would skip a chunk of rows.
                 const outBefore = beforeParam ? toSqliteDatetime(beforeParam) : null;
-                const outWhere = outBefore ? 'WHERE timestamp < ? ' : '';
+                const outConds = [outBefore ? 'timestamp < ?' : '', hideChatterSql].filter(Boolean);
+                const outWhere = outConds.length ? `WHERE ${outConds.join(' AND ')} ` : '';
                 const outArgs: any[] = outBefore ? [outBefore, perGroupLimit] : [perGroupLimit];
                 try {
                   rows = sdb
@@ -6065,6 +6080,10 @@ export async function handleRequest(
                   }
                 }
                 for (const r of rows) {
+                  // Hide ncl polling chatter (cli_request, id `cli-`) on the
+                  // main view so it doesn't consume the LIMIT window — mirrors
+                  // the inbound isSystemId guard. Surfaced with ?includeSystem=1.
+                  if (!threadMode && !includeSystem && isSystemId(r.id)) continue;
                   // Relay detection: outbound messages targeting the agent
                   // channel with thread_id=NULL are relay commands to another
                   // coworker. Tag (not filter) so the client can collapse them.
