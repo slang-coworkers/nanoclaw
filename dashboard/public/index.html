@@ -1014,6 +1014,7 @@
       <button class="tab active" data-tab="pixel-office">Pixel Office</button>
       <button class="tab" data-tab="coworkers">Coworkers</button>
       <button class="tab" data-tab="observability">Timeline</button>
+      <button class="tab" data-tab="funnel">Funnel</button>
       <button class="tab" data-tab="admin">Admin</button>
     </div>
     <div class="header-right">
@@ -1277,6 +1278,16 @@
   </div>
 
   <!-- Tab 3: Admin Panel -->
+  <div id="funnel" class="tab-content" style="flex-direction:column;overflow:auto;padding:12px;gap:12px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <h2 style="margin:0;font-size:14px">Issue Funnel</h2>
+      <button id="funnel-refresh" class="admin-action-btn" style="font-size:9px;padding:2px 8px">Reload</button>
+      <span id="funnel-stamp" style="font-size:9px;color:var(--text-muted)"></span>
+    </div>
+    <div id="funnel-board" style="font-size:11px"></div>
+    <div id="funnel-detail" style="font-size:10px;overflow:auto"></div>
+  </div>
+
   <div id="admin" class="tab-content">
     <div class="admin-nav">
       <button class="admin-pill active" data-panel="admin-overview">Overview</button>

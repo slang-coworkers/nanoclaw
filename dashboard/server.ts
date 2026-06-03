@@ -4581,6 +4581,29 @@ export async function handleRequest(
     return;
   }
 
+  // API: issue funnel — serves the cached snapshot written by
+  // `scripts/funnel.ts --out reports/funnel.json` (host cron/manual refresh).
+  // We never recompute here: the funnel makes ~180 GitHub calls and must stay
+  // out of the request path. Returns 404 with a hint if no snapshot exists yet.
+  if (url.pathname === '/api/funnel') {
+    if (!requireAuth(req, res)) return;
+    const funnelPath = join(getProjectRoot(), 'reports', 'funnel.json');
+    if (!existsSync(funnelPath)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'no funnel snapshot', hint: 'run: pnpm exec tsx scripts/funnel.ts --out reports/funnel.json' }));
+      return;
+    }
+    try {
+      const snap = JSON.parse(readFileSync(funnelPath, 'utf-8'));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(snap));
+    } catch {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'funnel snapshot unreadable' }));
+    }
+    return;
+  }
+
   if (url.pathname === '/api/events') {
     if (!requireAuth(req, res)) return;
     res.writeHead(200, {
