@@ -576,6 +576,17 @@ function getWriteDb(): Database.Database | null {
   if (writeDb) return writeDb;
   try {
     writeDb = new Database(getDbPath(), { fileMustExist: true });
+    // Self-heal the sidebar_group column so coworker creation works even on a
+    // dashboard-only deploy where the host migration (023-sidebar-group) hasn't
+    // run yet. Idempotent and additive — mirrors the host migration's ALTER.
+    try {
+      const cols = writeDb.prepare('PRAGMA table_info(agent_groups)').all() as Array<{ name: string }>;
+      if (!cols.some((c) => c.name === 'sidebar_group')) {
+        writeDb.exec('ALTER TABLE agent_groups ADD COLUMN sidebar_group TEXT');
+      }
+    } catch {
+      /* column ensure is best-effort; INSERT will surface a real failure */
+    }
     return writeDb;
   } catch {
     return null;
@@ -7019,8 +7030,13 @@ export async function handleRequest(
         agentProvider,
         routing: routingParam,
         overlays: overlaysParam,
+        group: groupParam,
       } = JSON.parse(body);
       const routing: 'direct' | 'internal' = routingParam === 'internal' ? 'internal' : 'direct';
+      // Sidebar group: 'prod' (or empty) → shared prod group (stored as null);
+      // any other value is a user id the coworker is grouped under.
+      const sidebarGroup: string | null =
+        typeof groupParam === 'string' && groupParam && groupParam !== 'prod' ? groupParam : null;
       if (!name || !folder) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end('{"error":"name and folder required"}');
@@ -7114,7 +7130,7 @@ export async function handleRequest(
       }
       wdb
         .prepare(
-          'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, overlays, routing, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)',
+          'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, overlays, routing, created_at, sidebar_group) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)',
         )
         .run(
           agId,
@@ -7127,6 +7143,7 @@ export async function handleRequest(
           resolvedOverlays,
           routing,
           now,
+          sidebarGroup,
         );
 
       // Look up admin's dashboard messaging group up-front (no insert yet —

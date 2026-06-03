@@ -4099,6 +4099,7 @@ function getCwCoworkers() {
         return raw;
       })(),
       routing: g.routing || 'direct',
+      sidebarGroup: g.sidebar_group || null,
       taskCount: live?.taskCount || 0,
       isAutoUpdate: live?.isAutoUpdate || false,
       allowedMcpTools: live?.allowedMcpTools || (g.allowed_mcp_tools ? JSON.parse(g.allowed_mcp_tools) : []),
@@ -4134,7 +4135,8 @@ function renderCwSidebar() {
     return;
   }
   const statusPriority = { working: 0, active: 1, thinking: 2, error: 3, idle: 4 };
-  coworkers.sort((a, b) => {
+  // Within a group: main first, then status, then most-recent activity, then name.
+  const intraSort = (a, b) => {
     if (a.isMain && !b.isMain) return -1;
     if (!a.isMain && b.isMain) return 1;
     const sa = statusPriority[a.status] ?? 5;
@@ -4144,9 +4146,31 @@ function renderCwSidebar() {
     const tb = b.lastActivity || '';
     if (ta !== tb) return tb.localeCompare(ta);
     return a.name.localeCompare(b.name);
+  };
+  // Bucket coworkers by sidebar group. NULL/'prod' -> the shared "prod" group.
+  const buckets = new Map();
+  for (const cw of coworkers) {
+    const gkey = cw.sidebarGroup && cw.sidebarGroup !== 'prod' ? cw.sidebarGroup : 'prod';
+    if (!buckets.has(gkey)) buckets.set(gkey, []);
+    buckets.get(gkey).push(cw);
+  }
+  // Stable group order: prod pinned first, then user groups by label.
+  const orderedGroups = [...buckets.keys()].sort((a, b) => {
+    if (a === 'prod') return -1;
+    if (b === 'prod') return 1;
+    return cwGroupLabel(a).localeCompare(cwGroupLabel(b));
   });
-  list.innerHTML = coworkers
-    .map((cw) => {
+  const collapsedGroups = loadCollapsedGroups();
+  list.innerHTML = orderedGroups
+    .map((gkey) => {
+      const groupItems = buckets.get(gkey).sort(intraSort);
+      const isCollapsed = collapsedGroups.has(gkey);
+      const caret = isCollapsed ? '▸' : '▾';
+      const groupHeader = `<div class="cw-group-header${isCollapsed ? ' collapsed' : ''}" data-group="${esc(gkey)}"><span class="cw-group-caret">${caret}</span><span class="cw-group-label">${esc(cwGroupLabel(gkey))}</span><span class="cw-group-count">${groupItems.length}</span></div>`;
+      const itemsHtml = isCollapsed
+        ? ''
+        : groupItems
+            .map((cw) => {
       const selected = cwState.selected === cw.folder ? ' selected' : '';
       const label = cw.isMain ? `${cw.name} (main)` : cw.name;
       const meta = cw.lastActivity ? timeAgo(cw.lastActivity) : '';
@@ -4166,12 +4190,49 @@ function renderCwSidebar() {
       ${approvalCount > 0 ? `<div class="cw-approval-dot" title="Pending approval \u2014 ${approvalCount} action${approvalCount > 1 ? 's' : ''} waiting for admin review"></div>` : ''}
       ${unread ? '<div class="cw-unread-badge" title="Unread messages">\u25CF</div>' : ''}
     </div>`;
+            })
+            .join('');
+      return `<div class="cw-group" data-group="${esc(gkey)}">${groupHeader}${itemsHtml}</div>`;
     })
     .join('');
   // Click handlers — use onclick for Playwright/agent-browser compatibility
   list.querySelectorAll('.cw-item').forEach((el) => {
     el.onclick = () => selectCoworker(el.dataset.folder);
   });
+  list.querySelectorAll('.cw-group-header').forEach((el) => {
+    el.onclick = () => {
+      toggleGroupCollapsed(el.dataset.group);
+      renderCwSidebar();
+    };
+  });
+}
+
+// Sidebar group label: the shared group is "prod"; a user-id group strips the
+// channel prefix (e.g. "dashboard:user1" -> "user1") for a readable header.
+function cwGroupLabel(key) {
+  if (!key || key === 'prod') return 'prod';
+  const i = key.indexOf(':');
+  return i >= 0 ? key.slice(i + 1) : key;
+}
+
+// Collapsed sidebar groups persist client-side (honors the issue's
+// cookie/localStorage suggestion for user-controlled, stable sidebar state).
+function loadCollapsedGroups() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem('cwCollapsedGroups') || '[]'));
+  } catch {
+    return new Set();
+  }
+}
+function toggleGroupCollapsed(key) {
+  const s = loadCollapsedGroups();
+  if (s.has(key)) s.delete(key);
+  else s.add(key);
+  try {
+    localStorage.setItem('cwCollapsedGroups', JSON.stringify([...s]));
+  } catch {
+    /* localStorage unavailable - collapse is best-effort */
+  }
 }
 
 function selectCoworker(folder) {
@@ -5894,6 +5955,20 @@ async function showCreateModal() {
   } catch {
     /* none available */
   }
+  // Users for the sidebar-group selector (besides the shared "prod" group).
+  // Skip the synthetic 'system' user; everything else can own a group.
+  let groupUsers = [];
+  try {
+    const res = await fetch('/api/users');
+    if (res.ok) groupUsers = (await res.json()).filter((u) => u.id && u.id !== 'system');
+  } catch {
+    /* selector falls back to prod-only */
+  }
+  const groupOptions =
+    '<option value="prod">prod (shared)</option>' +
+    groupUsers
+      .map((u) => `<option value="${esc(u.id)}">${esc(u.display_name || u.id)}</option>`)
+      .join('');
 
   const overlay = document.createElement('div');
   overlay.className = 'cw-modal-overlay';
@@ -5946,6 +6021,9 @@ async function showCreateModal() {
       <option value="direct">Direct — own channel (default)</option>
       <option value="internal">Internal — via Orchestrator only</option>
     </select>
+    <label>Group (sidebar)</label>
+    <input id="cw-new-group" list="cw-new-group-options" autocomplete="off" placeholder="Leave blank for prod — or pick/type a user" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)">
+    <datalist id="cw-new-group-options">${groupOptions}</datalist>
     <label>Custom instructions (optional)</label>
     <textarea id="cw-new-instructions" rows="3" placeholder="Additional instructions appended after the selected style..." style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-family:monospace;font-size:11px;resize:vertical"></textarea>
     <label>Trigger pattern</label>
@@ -6018,6 +6096,7 @@ async function showCreateModal() {
           instructionTemplate: instructionStyle || undefined,
           agentProvider: agentProvider || undefined,
           routing: document.getElementById('cw-new-routing')?.value || 'direct',
+          group: (document.getElementById('cw-new-group')?.value || '').trim() || 'prod',
         }),
       });
       if (!res.ok) {

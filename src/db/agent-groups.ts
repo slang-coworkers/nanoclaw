@@ -4,10 +4,17 @@ import { getDb } from './connection.js';
 export function createAgentGroup(group: AgentGroup): void {
   getDb()
     .prepare(
-      `INSERT INTO agent_groups (id, name, folder, agent_provider, created_at)
-       VALUES (@id, @name, @folder, @agent_provider, @created_at)`,
+      `INSERT INTO agent_groups (id, name, folder, agent_provider, created_at, sidebar_group)
+       VALUES (@id, @name, @folder, @agent_provider, @created_at, @sidebar_group)`,
     )
-    .run(group);
+    .run({
+      id: group.id,
+      name: group.name,
+      folder: group.folder,
+      agent_provider: group.agent_provider,
+      created_at: group.created_at,
+      sidebar_group: group.sidebar_group ?? null,
+    });
 }
 
 export function getAgentGroup(id: string): AgentGroup | undefined {

@@ -837,6 +837,11 @@
     .cw-create-btn { background: var(--green); color: #fff; border: none; border-radius: 3px; padding: 2px 8px; font-size: 0.75rem; cursor: pointer; font-family: var(--font); }
     .cw-create-btn:hover { opacity: 0.85; }
     .cw-list { flex: 1; overflow-y: auto; }
+    .cw-group-header { display: flex; align-items: center; gap: 6px; padding: 5px 10px; cursor: pointer; user-select: none; background: var(--bg-hover); border-bottom: 1px solid var(--border); font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); position: sticky; top: 0; z-index: 1; }
+    .cw-group-header:hover { color: var(--text); }
+    .cw-group-caret { width: 10px; flex-shrink: 0; }
+    .cw-group-label { flex: 1; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cw-group-count { font-size: 0.625rem; opacity: 0.7; }
     .cw-item { padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
     .cw-item:hover { background: var(--bg-hover); }
     .cw-item.selected { background: var(--bg-hover); border-left: 2px solid var(--green); }
