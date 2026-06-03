@@ -21,5 +21,5 @@ overrides:
     - `validate:templates` failure from missing template files: restore from git before retrying.
     - Test/lint failure after **2 independent fix attempts**: commit failing state with `wip:` prefix, write a failure summary to the implementation log, escalate to the orchestrator — do not loop further.
 
-    Builds >5min (rare): notify parent via `send_message` with `⚙️ [step] — [branch] — [status/ETA]` and schedule a `*/30 * * * *` watchdog that self-cancels when the build finishes. On restart, always re-run `pnpm run build` (<30s) to confirm state.
+    Builds >5min (rare): notify parent via `send_message` with `⚙️ [step] — [branch] — [status/ETA]` and delegate the build to an `Agent` subagent (it blocks until completion — no polling task). On restart, always re-run `pnpm run build` (<30s) to confirm state.
 ---
