@@ -12,6 +12,17 @@ You are the orchestrator (or a coworker the orchestrator delegated supervision t
 
 An issue chain is in-flight if you (the orchestrator) have a session whose `thread_id` matches `gh-issue-<owner>/<repo>-<num>` and the issue is still open on GitHub with no merged PR.
 
+**[MUST] `thread_id` names the chain, not the work product.** A coworker session is sometimes reused across issues — a session threaded `gh-issue-…-11367` may have shipped the PR for `#11356`. So `thread_id` is reliable for "which chain is this," but **never** infer a chain's PR (or which issue a PR fixes) from `thread_id` alone.
+
+**How to resolve a chain's real PR from inside the orchestrator container.** You do **not** have the central DB here — there is no `v2.db` mount, and `ncl` exposes no PR resource (verified: `ncl` has only approvals/destinations/dropped-messages/groups/members/messaging-groups/roles/sessions/user-dms/users/wirings). So `pr_session_mappings` is **not queryable from the container** — it's the host-side source of truth the *fixer* writes via `report_pr_created`, not something you can read here. Instead use **`gh` (which works via the OneCLI proxy)** plus the fixer branch convention:
+- Fixers branch as `fix/issue-<num>` (per `/slang-fix-issue` Step 3/7). Find the chain's PR by head branch: `gh pr list --repo <owner>/<repo> --head fix/issue-<num> --state all --json number,isDraft,state,title,headRefName`.
+- Confirm which issue it actually fixes from the **PR body**: `gh pr view <pr> --repo <owner>/<repo> --json body --jq '.body' | grep -ioE '(fixes|closes|resolves) #[0-9]+'`.
+- The PR body's `Fixes #N` is the authoritative PR↔issue link. When it names a different issue than the `thread_id` suggests, trust the PR body, record the chain under the issue the PR actually fixes, and flag the mismatch in your report rather than silently labeling by thread number.
+
+## The prime directive — a resumable GitHub artifact for every chain
+
+**[MUST] Every in-flight chain must, at all times, have a GitHub artifact a human can land on and resume from:** an open PR, a comment on the PR, or a comment on the issue. GitHub — not the dashboard, not chat, not the session DB — is the durable human-observability surface; the operator must be able to open the issue/PR and see where the chain stands without asking you. This directive subsumes step 5 (comment verification) and drives the new behaviors below: the weekend CI window (§7) exists to keep that artifact *progressing*, and the superseded-PR postmortem (§8) exists to keep it *honest* when our work is overtaken. If a chain has no artifact and you cannot produce one, that is the single most important thing to surface in your report — louder than any silent/stuck classification.
+
 ## Procedure
 
 ### 1. Build the status table
@@ -24,7 +35,20 @@ ncl sessions list --thread-prefix "gh-issue-" --json
 
 For each session, also pull the most recent activity (last inbound + last outbound timestamp). The session DBs have these directly; ask via `ncl sessions messages --id <sess> --limit 1` if needed.
 
-Build a table of: `repo` / `issue` / `thread_id` / `last_activity_at` / `state` (one of `dispatched` / `triaging` / `fixing` / `reviewing` / `pr_open` / `awaiting_human` / `silent` / `closing` / `closed_no_github_comment`).
+**Resolve each chain's PR with `gh` (the container can't read `pr_session_mappings` — see the `[MUST]` above).** For every in-flight chain, find its PR by the fixer branch convention and confirm the target issue from the PR body:
+
+```bash
+# Find the chain's PR by head branch (fixers use fix/issue-<num>):
+gh pr list --repo <owner>/<repo> --head fix/issue-<num> --state all \
+  --json number,isDraft,state,title,headRefName
+# Confirm which issue it actually fixes (authoritative PR↔issue link):
+gh pr view <pr> --repo <owner>/<repo> --json body --jq '.body' \
+  | grep -ioE '(fixes|closes|resolves) #[0-9]+'
+```
+
+If a chain's PR `Fixes` a *different* issue than its `thread_id` suggests, the chain is **mis-threaded** (a reused session). Record it under the issue the PR actually fixes, and add a `mis-threaded` note to that row's `next` column so the operator can see the reuse. (If `gh pr list --head` returns nothing, the chain has no PR yet — that's a normal pre-PR state, not a mismatch.)
+
+Build a table of: `repo` / `issue` (the issue the PR actually fixes, per above) / `thread_id` / `pr` (PR number from `gh`) / `last_activity_at` / `state` (one of `dispatched` / `triaging` / `fixing` / `reviewing` / `pr_open` / `awaiting_human` / `silent` / `closing` / `closed_no_github_comment`).
 
 ### 2. Classify each row
 
@@ -78,7 +102,7 @@ The existence test: a comment authored by the install's bot account (or the main
 
 **Do NOT post the comment yourself.** The closest-to-the-state principle means the coworker who holds the verdict authors the post — relaying second-hand drops fidelity and recipient ambiguity ("did the supervisor read the actual code, or just the [Report]?"). Supervisor enforces, doesn't substitute.
 
-For chains in `pr_open` state, the PR description IS the comment — verify the PR exists, links back to the issue (`gh pr view <num>` body contains `Fixes #N`/`Closes #N`), and `report_pr_created` was called (check `pr_session_mappings`). If the PR exists but the issue link is missing, nudge the fixer to amend the PR body, not to add a separate issue comment.
+For chains in `pr_open` state, the PR description IS the comment — verify the PR exists and links back to the issue (`gh pr view <pr> --repo <owner>/<repo> --json body` contains `Fixes #N`/`Closes #N`). If the PR exists but the issue link is missing, nudge the fixer to amend the PR body, not to add a separate issue comment. (You can't read `pr_session_mappings` from the container to confirm `report_pr_created` ran — but a PR discoverable via `gh pr list --head fix/issue-<num>` that webhooks route back to the chain is sufficient evidence the mapping exists; if review comments are NOT reaching the chain's session, that's the signal `report_pr_created` was missed — nudge the fixer to call it.)
 
 ### 6. Output
 
@@ -101,6 +125,83 @@ After processing all chains, send a single status report to your parent (the ope
 ```
 
 Per-chain status messages land on each chain's canonical `thread_id` (per the `[MUST]` rule above) — the inline table is the supervisor's own consolidated digest in the supervisor's session.
+
+### 7. Weekend CI window — exercise draft PRs to catch failures early
+
+Our fixers open PRs as **draft**. A draft PR runs a reduced (or zero) CI set on most repos, so latent build/test failures sit undiscovered until a human flips it. The weekend is the cheap window to surface them: flip our draft PRs to **ready-for-review** so full CI runs, capture the result, revive the pipeline on failure, then flip back. Three rules govern this, and they are stateful — **track everything in `supervisor-state.json` under the chain's `prCi` key** (shape below).
+
+**[MUST] Only ever revert a flip *we* performed.** The whole window is gated on a `flippedByUs` flag we set when (and only when) we do the flip. If a PR was already `ready` when we found it (a human or another process flipped it), we touch nothing — no flip, no CI revive on our initiative beyond normal webhook handling, and **never** a flip back to draft. Reverting someone else's deliberate ready-state would silently undo human intent. This is the single most important guard in this section.
+
+Per chain with a draft PR (resolve the PR via `gh pr list --head fix/issue-<num>`, never the thread — see the `[MUST]` at the top):
+
+**a. Saturday / Sunday — flip to ready (once per PR).**
+   - Skip unless today is Sat or Sun (`date +%u` → 6 or 7) in the orchestrator's local TZ.
+   - Skip if `prCi.flippedByUs` is already set for this PR (one flip per PR, ever — idempotent across ticks and across weekends).
+   - Confirm the PR is currently `isDraft: true`: `gh pr view <pr> --repo <owner>/<repo> --json isDraft,state,mergeable,mergeStateStatus`. If it is **not** a draft, it was flipped by someone else → record `prCi.alreadyReady=true` and **do not touch it**.
+   - **Rebase to pristine first (so CI is meaningful).** A draft branch can be stale or conflicting with `main`; flipping it ready as-is makes CI fail on the merge state, not the fix. Before flipping, check `mergeable`/`mergeStateStatus` — if `CONFLICTING`/`DIRTY` (or `BEHIND`), this is **fixer work, not supervisor work**: do NOT rebase from the supervisor session (you don't hold the worktree). Instead send ONE a2a to the chain's **fixer** on its canonical thread: *"[Supervisor — weekend CI prep — gh-issue-X/Y-N] Draft PR #<pr> is `<mergeStateStatus>` against main. Rebase your worktree onto `origin/main`, resolve conflicts, force-push so the branch is pristine, then reply 'rebased'. I'll flip it to ready for full CI once clean."* Set `prCi.rebaseRequestedAt=<iso>` and skip the flip this tick; re-evaluate next tick once the branch is `MERGEABLE`/`CLEAN`. (Per [no-restart-to-refresh], rebasing happens in the live fixer session — never reconstruct the worktree from the supervisor.)
+   - Flip once mergeable: `gh pr ready <pr> --repo <owner>/<repo>`. On success, set `prCi = {flippedByUs: true, flippedAt: <iso>, prNumber: <n>, repo: <r>, ciObserved: false}`.
+
+**b. Next tick(s) — capture CI and revive the pipeline.**
+   - For any PR with `prCi.flippedByUs && !prCi.ciObserved`, read CI: `gh pr checks <pr> --repo <owner>/<repo> --json name,bucket,state,link`.
+   - While any check is `pending`, leave it — re-check next tick.
+   - Once all checks are terminal, set `prCi.ciObserved=true`, `prCi.ciBucket=<pass|fail|...>`, `prCi.ciCapturedAt=<iso>`, and:
+     - **All `pass`** → record it; the chain is healthier than we knew. No revive needed.
+     - **Any `fail`** → **revive the pipeline**: send ONE a2a message to **triage** on the chain's canonical `thread_id` (closest-to-the-entry tier; triage re-dispatches to fixer per the normal chain). Include the failing check names + their `link` URLs and the PR number. Body shape:
+       > [Supervisor — CI revive — gh-issue-X/Y-N] Weekend CI on draft PR #<pr> (flipped to ready to exercise full CI) reports failures: `<check>` → <link>; `<check>` → <link>. Re-engage the chain: triage → fixer to address, re-verify, re-push. The PR stays ready until CI is green or the window closes.
+     - Record `prCi.revivedAt=<iso>` so we don't double-dispatch on the next tick.
+
+**c. After the weekend (Mon, or >2 days since flip) — flip back, but ONLY if we flipped it.**
+   - For any PR with `prCi.flippedByUs === true`: if today is Monday (or `now - prCi.flippedAt > 48h`), flip back to draft: `gh pr ready <pr> --repo <owner>/<repo> --undo`. Then clear the flip: set `prCi.flippedByUs=false`, `prCi.revertedAt=<iso>` (keep the captured `ciBucket` for history).
+   - **Exception — don't revert if the chain is mid-revive.** If CI failed and the revive is in progress (`prCi.revivedAt` set but the fixer hasn't re-pushed / chain not back to green), leave it ready so the fixer's CI keeps running; revert on a later tick once the chain settles. A failing chain forced back to draft would re-hide the very failure we surfaced.
+   - **Never** `--undo` a PR where `prCi.flippedByUs` is not `true` (covers `alreadyReady` PRs and anything a human readied). When in doubt, leave it ready and note it in the report.
+
+`prCi` state shape (per chain in `supervisor-state.json`):
+```json
+"gh-issue-shader-slang/slang-11367": {
+  "prCi": { "prNumber": 11386, "repo": "shader-slang/slang",
+            "flippedByUs": true, "flippedAt": "2026-06-06T09:30:00Z",
+            "ciObserved": true, "ciBucket": "fail", "ciCapturedAt": "...",
+            "revivedAt": "2026-06-06T10:00:00Z", "revertedAt": null,
+            "alreadyReady": false }
+}
+```
+
+### 8. Superseded-PR postmortem — learn when our work is overtaken
+
+A chain can be resolved by a PR that **isn't ours** — a maintainer or contributor opens and merges a different fix, or merges a different PR that `Closes #N`. When that happens our draft is dead weight, but more importantly it's a **learning signal**: someone solved what we were working on, possibly better or faster. Capture it.
+
+Detect it: for each chain with an open PR of ours, check whether the issue is being closed by some *other* PR. The container-proven field is `closedByPullRequestsReferences` (lists the PRs GitHub links as closing the issue — `timelineItems` is NOT a valid `gh issue view` field, don't use it):
+```bash
+gh issue view <num> --repo <owner>/<repo> \
+  --json state,stateReason,closedByPullRequestsReferences \
+  --jq '{state, stateReason, closers: [.closedByPullRequestsReferences[].number]}'
+# Compare .closers against OUR PR number (from `gh pr list --head fix/issue-<num>`):
+#   - closers contains a PR != ours, OR our PR is CLOSED-unmerged while another merged → postmortem.
+#   - closers == [ours] or empty → no postmortem.
+```
+If the issue is **closed by a PR that is not our chain's PR** (the one on `fix/issue-<num>`) — or our PR was closed un-merged while a sibling PR merged — trigger the postmortem — **once per chain**, gated on `supervisor-state.json` `postmortem.done`:
+
+1. **Analyze the gap.** Pull both diffs/approaches: our draft PR (`gh pr diff <ours>`) and the merged PR (`gh pr view <theirs> --json title,body,files` / `gh pr diff <theirs>`). Ask: what did the merged fix do that ours didn't — different root-cause, smaller/cleaner patch, a test we missed, a faster turnaround, a constraint we got wrong? Be specific and honest; "they were faster" is not a learning, "they fixed it at the IR level where we patched the parser, avoiding the regression in X" is.
+   - **If the merged PR looks very similar to ours (same root-cause / overlapping diff), engage the author** rather than guessing the delta in private. Post a brief, respectful comment on *their* PR @-mentioning the author: *"@<author> we'd independently drafted a similar fix in #<ours> (auto-generated by our agent pipeline). Yours merged — nice. Quick question for our own learning: was there a gap or rough edge in what we'd have shipped (test coverage, an edge case, the approach itself)? Trying to improve the pipeline."* Capture their reply (next tick / webhook) into the learning's takeaway. If the approaches genuinely **don't** overlap, skip the @-mention — just write the learning from the diff comparison.
+2. **`append_learning`.** Write a learning so future chains improve. Title: `postmortem: slang#<num> superseded by PR #<theirs>`. Content (markdown): the issue, our approach + PR link, their merged approach + PR link, the concrete delta, the author's feedback if you asked, and the **actionable takeaway** for triage/fixer next time (e.g. "for diff-related crashes, check IR-level fixes before parser-level"). This goes to `/workspace/shared/learnings/` for all coworkers.
+3. **Close our draft with a pointer.** Comment on our draft PR linking the learning and the superseding PR, then close it:
+   > Superseded by #<theirs>, which merged and resolves #<num>. Closing this draft. Postmortem captured as a shared learning (`postmortem: slang#<num>`) so we improve next time. Approach delta: <one line>.
+
+   `gh pr close <ours> --repo <owner>/<repo> --comment "<above>"`. (Use the `<project>-github` skill's posting helper if available; otherwise the gh-app token via OneCLI.) This keeps the **resumable-artifact** directive satisfied — anyone landing on our PR sees why it closed and where the resolution lives.
+4. **Record** `postmortem = {done: true, supersededByPr: <theirs>, learningTitle: "...", at: <iso>}` and drop the chain from the in-flight table (it's genuinely closed).
+
+Do **not** run the postmortem for our own merged PRs, for issues closed as `not_planned` without a PR (that's a maintainer wontfix — note it and close normally), or more than once per chain.
+
+### 9. Worktree GC sweep — reclaim abandoned fixer worktrees
+
+The fixer workflow (`/slang-fix-issue` Step 7.5) GCs its worktree when a `CLOSED`/`MERGED` webhook arrives. But a PR that never reaches a terminal state — abandoned, draft-forever, or silently superseded without a close event — leaks its `wt-*` / `active-work/` dirs on the shared `/workspace` indefinitely (there is no other reaper). The supervisor is the recurring cron that now owns this backstop.
+
+**[MUST NOT] Never `git worktree remove` from the supervisor session.** Worktrees live in each *fixer's* filesystem, not yours, and cross-deletes have killed active builds (per the worktree-isolation rule in `/slang-fix-issue`). The supervisor *detects and dispatches*, it does not delete.
+
+Once per tick, for each in-flight chain whose PR (resolved via `gh pr list --head fix/issue-<num>`) is in a terminal-but-uncleaned state — `MERGED`/`CLOSED` for > 24h, or no PR activity for > 10 days while the chain still shows a `wt-` worktree — send ONE a2a to that chain's **fixer** on its canonical thread:
+> [Supervisor — worktree GC — gh-issue-X/Y-N] PR #<pr> is `<state>` (<age>); your worktree `wt-<slug>` looks abandoned. If you're done, GC it: `cd /workspace/agent/slang && git worktree remove --force /workspace/agent/wt-<slug>; rm -rf /workspace/agent/active-work/<slug>`, then reply 'gc done'. If you're still working it, reply 'active' and I'll leave it.
+
+Track `gcRequestedAt` per chain in `supervisor-state.json`; if a chain is still flagged after 2 GC nudges with no `gc done`/`active` reply, escalate to the operator with `df -h /workspace` so they can decide (the fixer's container may be permanently gone, in which case the operator reclaims). Do not escalate disk pressure silently — a filling `/workspace` blocks every fixer.
 
 ## Scheduling
 
@@ -138,10 +239,21 @@ The script gates the wake — when no chains are stuck, the cron tick is a no-op
 - **Don't multi-cast.** A nudge goes to one coworker (the one currently expected to respond), not the whole chain.
 - **Don't loop.** If a chain has been nudged twice with no response, escalate — don't keep nudging.
 - **Don't post the GitHub comment on a coworker's behalf.** Closest-to-the-state principle: the coworker holding the verdict authors the post. Supervisor enforces, doesn't substitute. (See step 5.)
+- **Don't flip a PR back to draft unless `prCi.flippedByUs === true`.** Reverting a ready-state a human set silently undoes their intent. (§7c)
+- **Don't rebase a conflicting branch from the supervisor session.** You don't hold the fixer's worktree; dispatch the rebase to the fixer and wait. (§7a)
+- **Don't force a mid-revive PR back to draft on Monday.** A chain whose CI failed and is being re-fixed stays ready until it settles — flipping it back re-hides the failure. (§7c exception)
+- **Don't postmortem twice, or for our own merged PRs / `not_planned` closes.** The postmortem fires once per chain, only when a *different* PR resolved the issue. (§8)
+- **Don't `git worktree remove` from the supervisor session.** Worktrees belong to the fixers; dispatch the GC to the owning fixer and let it delete its own. (§9)
 
 ## State
 
-Track which chains you've nudged and how many times in `/workspace/agent/memory/supervisor-state.json` (load at start, save at end). Same key per chain: `{threadId: {nudgedAt: [iso, iso, ...], escalatedAt: iso, lastObservedActivity: iso}}`.
+Track which chains you've nudged and how many times in `/workspace/agent/memory/supervisor-state.json` (load at start, save at end). Per chain (`threadId` key), persist:
+- `nudgedAt: [iso, ...]`, `escalatedAt: iso`, `lastObservedActivity: iso` — nudge/escalation bookkeeping.
+- `githubCommentRequestedAt`, `githubCommentUrl` — step 5 observability enforcement.
+- `prCi: {...}` — the weekend CI window (§7): `flippedByUs`, `flippedAt`, `prNumber`, `repo`, `ciObserved`, `ciBucket`, `ciCapturedAt`, `revivedAt`, `revertedAt`, `alreadyReady`, `rebaseRequestedAt`. **`flippedByUs` is the gate for the Monday revert — never `--undo` without it.**
+- `postmortem: {done, supersededByPr, learningTitle, at}` — §8, fires once per chain.
+
+Load this file at the start of every tick and write it back at the end; the §7/§8 idempotency (one flip per PR, one postmortem per chain, no double-revive) depends entirely on it surviving across ticks.
 
 ## When called manually
 
