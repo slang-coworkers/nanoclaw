@@ -2945,6 +2945,10 @@ function renderFlowEntry(entry, idx, depth) {
 
 // Open session flow from a session_id link
 function openSessionFlowById(group, sessionId) {
+  // Session-flow renders into the Observability tab's #timeline-list. When the
+  // link is clicked from another tab (e.g. Admin → Messages) we must switch
+  // there first, otherwise the click looks dead.
+  switchToTab('observability');
   const sel = document.getElementById('session-select');
   // Try to select the option, or just enter flow directly
   for (const opt of sel.options) {
