@@ -92,14 +92,14 @@ uses:
    ./extras/formatting.sh
    ```
 
-   Build is 15-25 min; use the watchdog pattern (`/slang-implement` Step 5 template): notify parent + `schedule_task` every 30 min, cancel on completion.
+   Build is 15-25 min; delegate it to an `Agent` subagent (`/slang-implement` Step 5 template): notify parent, then run the build inside the subagent which blocks until completion. No polling task.
 
-   **[MUST] React to build failure on the same turn it surfaces.** When the watchdog (or `Monitor` tail) reports `BUILD_EXIT=<non-zero>`, build-failure stderr, ninja `FAILED:` lines, or "command failed", do NOT end the turn silently. Next turn:
+   **[MUST] React to build failure on the same turn it surfaces.** When the build subagent (or `Monitor` tail) reports `BUILD_EXIT=<non-zero>`, build-failure stderr, ninja `FAILED:` lines, or "command failed", do NOT end the turn silently. Next turn:
    1. Read the tail: `tail -n 30 /workspace/agent/wt-{{target_slug}}/build/build.log`.
    2. If recoverable (compile error in your patch, missing dep, environment glitch): fix and re-run — counts as 1 of 2 allowed attempts.
-   3. If unrecoverable OR both attempts used: commit current state with `wip:` prefix, **send `[Fix Report]` to parent with `Status: blocked`** + first 30 lines of the error tail + what was tried + worktree path. Then `cancel_task(<watchdog-id>)` and end the turn.
+   3. If unrecoverable OR both attempts used: commit current state with `wip:` prefix, **send `[Fix Report]` to parent with `Status: blocked`** + first 30 lines of the error tail + what was tried + worktree path. End the turn.
 
-   Escalate every failure explicitly. The same blocked-Fix Report rule applies if verify fails after **2 independent fix attempts** with no watchdog event (e.g. test fails but build succeeds).
+   Escalate every failure explicitly. The same blocked-Fix Report rule applies if verify fails after **2 independent fix attempts** (e.g. test fails but build succeeds).
 
 6b. **Simplify** {#simplify} — Run `/code-review medium`, apply suggestions, re-verify, then proceed to Step 7.
 
@@ -132,24 +132,13 @@ uses:
 
    Capture the PR URL — pass to Step 8.
 
-   **Patch fallback** (no push rights / no usable fork): `git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 8 dispatches with `--mode patch <path>` instead of the PR URL. Skip Step 7.5 in patch mode.
+   **Patch fallback** (no push rights / no usable fork): `git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 8 dispatches with `--mode patch <path>` instead of the PR URL.
 
-   **7.5 Set the PR watcher [MUST]** {#watcher} — Once the draft PR is open, schedule a recurring task that polls for review comments + state changes and GCs the worktree when the PR closes or ages out (active polling replaces passive "wait for inbound"):
+   **7.5 PR follow-up is webhook-driven [MUST]** {#watcher} — Do **not** schedule a recurring poll. Once the draft PR is open, review comments and state changes arrive as inbound messages (the GitHub webhook routes them back to this session via `pr_session_mappings`). When such an inbound arrives:
+   - New review comments / `REQUEST_CHANGES` → handle them per Step 8's REQUEST_CHANGES path (apply edits, re-run Step 6 verify, re-push). End the turn.
+   - PR `CLOSED`/`MERGED` → GC the worktree: `cd /workspace/agent/slang && git worktree remove --force /workspace/agent/wt-{{target_slug}}`; `rm -rf /workspace/agent/active-work/{{target_slug}}`; `send_message(to="parent", text="[Fix] slang#<number> PR <state>; worktree GC done.")`. End the turn.
 
-   ```
-   echo "0" > /workspace/agent/active-work/{{target_slug}}/last-pr-count
-
-   schedule_task(
-     prompt="[PR watcher slang#<number>] " +
-       "1. `gh pr view <number> -R shader-slang/slang --json state,createdAt,reviewDecision,comments,reviews,reviewThreads` — capture state + total count of comments+reviews+reviewThreads. " +
-       "2. If state ∈ {CLOSED, MERGED}: cleanup. `cancel_task(<this taskId>)`; `cd /workspace/agent/slang && git worktree remove --force /workspace/agent/wt-<target_slug>`; `rm -rf /workspace/agent/active-work/<target_slug>`; `send_message(to='parent', text='[Watcher] slang#<number> PR <state>; worktree GC done.')`. End turn. " +
-       "3. If `(now - createdAt) > 10 days`: same cleanup as #2, reason='10d-stale'. " +
-       "4. Otherwise: compare current count to `/workspace/agent/active-work/<target_slug>/last-pr-count`. If higher → fetch new comments and address them per Step 8's REQUEST_CHANGES path (apply edits, re-run Step 6 verify, re-push). Update last-pr-count. End turn. " +
-       "5. If unchanged: end turn (silent poll).",
-     recurrence="*/30 * * * *",
-     new_session=false,
-   )
-   ```
+   No PR URL / patch mode: nothing to watch — skip this step.
 
 8. **Peer review** {#peer-review} — When `slang-reviewer` is in your destinations, dispatch with the artifact + test summary:
 
