@@ -17,6 +17,8 @@ import {
   INTERNAL_REGISTER_SECRET,
   ROUTE_ISSUES_TO,
 } from './config.js';
+import { getDb } from './db/connection.js';
+import { readEnvFile } from './env.js';
 import { log } from './log.js';
 import {
   TRUST_SIGNATURE_HEADER,
@@ -25,6 +27,7 @@ import {
   verifyTrustedSignature,
 } from './modules/pr-mapping/register-client.js';
 import { handleRegisterPr } from './modules/pr-mapping/register-endpoint.js';
+import { prMappingExists } from './modules/pr-mapping/store.js';
 import { deliverGitHubIssueOpened, deliverGitHubMention } from './webhook-github.js';
 
 const MAX_BODY_SIZE = 512 * 1024; // 512 KB
@@ -84,9 +87,13 @@ function verifySignature(secret: string, rawBody: string, sigHeader: string): bo
  * fires when the agent runs (idempotent — GitHub returns 422 on dup,
  * which the skill swallows with `|| echo`).
  *
- * Auth: uses GH_TOKEN from the host environment (rotated by cron from
- * a GitHub App installation token). Without it, skip with a warn so a
- * misconfigured install doesn't flood logs with 401s.
+ * Auth: GH_TOKEN is a GitHub App installation token (~1h TTL) rotated
+ * hourly by cron into the `.env` file. systemd reads EnvironmentFile only
+ * at process start, so `process.env.GH_TOKEN` is frozen at boot and goes
+ * stale within the hour — every reaction then 401s silently. We therefore
+ * re-read GH_TOKEN from `.env` at CALL time (falling back to process.env),
+ * consuming the refresh the cron already writes. Without it, skip with a
+ * warn so a misconfigured install doesn't flood logs with 401s.
  *
  * Skipped on peer-forward inbound: the canonical router already posted
  * 👀 before forwarding, so the peer doesn't double-react. Skipped on
@@ -99,7 +106,9 @@ function verifySignature(secret: string, rawBody: string, sigHeader: string): bo
 export async function postEyesReaction(repo: string, eventType: string, commentId: number): Promise<void> {
   if (!repo || !commentId) return;
 
-  const token = process.env.GH_TOKEN;
+  // Re-read at call time: the cron-rotated .env holds the current token,
+  // while process.env.GH_TOKEN is frozen at process start (see doc above).
+  const token = readEnvFile(['GH_TOKEN']).GH_TOKEN || process.env.GH_TOKEN;
   if (!token) {
     log.warn('github-webhook: eyes reaction skipped (GH_TOKEN not set)', { repo });
     return;
@@ -268,21 +277,41 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       isPr = Boolean(issue?.pull_request);
     }
 
-    // Mention gate, with one exemption: a follow-up comment on a plain issue
-    // (not a PR) whose OPEN we dev-route to a peer must ALSO be forwarded, even
-    // when it doesn't tag the bot. The peer drives the issue's chain and needs
-    // every human reply, not just @-mentions — same rationale as the `issues`
-    // path above (the bot is the audience here, not the actor). Mirrors the
-    // !isPr + ROUTE_ISSUES_TO condition in deliverGitHubMention, which performs
-    // the actual forward; without this exemption the comment is dropped here
-    // and never reaches that branch. PR comments stay mention-gated: their
-    // ownership is governed by pr_session_mappings, not ROUTE_ISSUES_TO.
+    // Mention gate, with two ownership-based exemptions. The default is to
+    // drop a comment that doesn't @-mention the bot (otherwise we'd react to
+    // every human comment on every public issue/PR — noise). But when we have
+    // an explicit ownership signal, the bot IS the audience and a reply must
+    // be processed even without an @-mention:
+    //
+    //   (a) willDevRouteToPeer — a follow-up comment on a plain ISSUE (not a
+    //       PR) whose OPEN we dev-route to a peer. The peer drives the chain
+    //       and needs every human reply. Mirrors the !isPr + ROUTE_ISSUES_TO
+    //       branch in deliverGitHubMention; without this the comment is dropped
+    //       here and never reaches that forward.
+    //   (b) isOwnedPr — a comment on a PR that exists in pr_session_mappings
+    //       (any owner). The mapping is the "this PR is ours" signal; a review
+    //       reply on our bot's own PR is for us. deliverGitHubMention already
+    //       routes it correctly (local-owner → mapped session; foreign-owner →
+    //       forward) — the gate just must not drop it first.
+    //
+    // A comment on an un-mapped public PR (no mapping row) stays gated — no
+    // ownership signal, no noise.
     const willDevRouteToPeer =
       !isPr && Boolean(ROUTE_ISSUES_TO) && Boolean(INSTANCE_SLUG) && ROUTE_ISSUES_TO !== INSTANCE_SLUG;
+
+    let isOwnedPr = false;
+    if (isPr && repoFullName && issueNumber) {
+      try {
+        isOwnedPr = prMappingExists(getDb(), repoFullName, issueNumber);
+      } catch {
+        /* DB unavailable — fall back to mention-gated (safe default) */
+      }
+    }
 
     if (
       !isPeerForward &&
       !willDevRouteToPeer &&
+      !isOwnedPr &&
       !commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase())
     ) {
       writeJson(res, 200, { ok: true, skipped: true, reason: 'bot not mentioned' });

@@ -34,6 +34,23 @@ function issueCommentBody(commentBody: string, opts?: { isPr?: boolean }): strin
   });
 }
 
+// pull_request_review_comment payloads carry `pull_request` (not `issue`) and
+// enter the same gate via the eventType === 'pull_request_review_comment'
+// branch. isPr is true.
+function reviewCommentBody(commentBody: string): string {
+  return JSON.stringify({
+    action: 'created',
+    repository: { full_name: 'shader-slang/slang' },
+    pull_request: { number: 11372 },
+    comment: {
+      id: 4591326400,
+      body: commentBody,
+      html_url: 'https://github.com/shader-slang/slang/pull/11372#discussion_r4591326400',
+      user: { login: 'andersjel' },
+    },
+  });
+}
+
 async function postWebhook(
   port: number,
   body: string,
@@ -59,7 +76,7 @@ async function postWebhook(
   });
 }
 
-function commonMocks(): void {
+function commonMocks(opts?: { prMappingExists?: boolean }): void {
   vi.doMock('./modules/pr-mapping/register-endpoint.js', () => ({ handleRegisterPr: vi.fn() }));
   vi.doMock('./modules/pr-mapping/register-client.js', () => ({
     WEBHOOK_TRUST_HEADER: 'x-webhook-trust',
@@ -67,10 +84,20 @@ function commonMocks(): void {
     TRUST_SIGNATURE_HEADER: 'x-internal-signature-256',
     verifyTrustedSignature: () => true,
   }));
+  // The gate calls getDb() then prMappingExists(db, repo, pr). Mock both so
+  // the test never touches an uninitialized central DB. prMappingExists
+  // returns the configured ownership signal.
+  vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+  vi.doMock('./modules/pr-mapping/store.js', () => ({
+    prMappingExists: vi.fn(() => Boolean(opts?.prMappingExists)),
+  }));
   vi.doMock('./log.js', () => ({ log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 }
 
-async function startServer(config: Record<string, unknown>): Promise<{
+async function startServer(
+  config: Record<string, unknown>,
+  opts?: { prMappingExists?: boolean },
+): Promise<{
   port: number;
   close: () => Promise<void>;
   deliverGitHubMention: ReturnType<typeof vi.fn>;
@@ -89,7 +116,7 @@ async function startServer(config: Record<string, unknown>): Promise<{
   const deliverGitHubMention = vi.fn(() => 'forwarded');
   const deliverGitHubIssueOpened = vi.fn(() => 'local');
   vi.doMock('./webhook-github.js', () => ({ deliverGitHubMention, deliverGitHubIssueOpened }));
-  commonMocks();
+  commonMocks(opts);
 
   const { startGitHubWebhookServer } = await import('./github-webhook-server.js');
   const handle = startGitHubWebhookServer();
@@ -166,8 +193,12 @@ describe('issue_comment mention gate — ROUTE_ISSUES_TO exemption', () => {
     }
   });
 
-  it('does NOT exempt PR comments from the mention gate even when ROUTE_ISSUES_TO is set', async () => {
-    const srv = await startServer({ ROUTE_ISSUES_TO: 'lego', INSTANCE_FORWARD_TARGETS: { lego: 'http://x/y' } });
+  it('ROUTE_ISSUES_TO does not exempt PR comments (that path is !isPr only)', async () => {
+    // PR comment, no mention, no mapping → stays gated even with ROUTE_ISSUES_TO.
+    const srv = await startServer(
+      { ROUTE_ISSUES_TO: 'lego', INSTANCE_FORWARD_TARGETS: { lego: 'http://x/y' } },
+      { prMappingExists: false },
+    );
     try {
       const body = issueCommentBody('LGTM, no bot tag here', { isPr: true });
       const res = await postWebhook(srv.port, body, {
@@ -176,10 +207,62 @@ describe('issue_comment mention gate — ROUTE_ISSUES_TO exemption', () => {
         'x-github-delivery': 'd4',
         'x-hub-signature-256': sign(body),
       });
-      // PR comment ownership is governed by pr_session_mappings, not
-      // ROUTE_ISSUES_TO — a non-@mention PR comment stays gated.
       expect(srv.deliverGitHubMention).not.toHaveBeenCalled();
       expect(res.json).toMatchObject({ skipped: true, reason: 'bot not mentioned' });
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('processes a non-@mention PR comment when the PR is in pr_session_mappings (ours)', async () => {
+    const srv = await startServer({ ROUTE_ISSUES_TO: '' }, { prMappingExists: true });
+    try {
+      const body = issueCommentBody('Please rebase and re-run CI', { isPr: true });
+      const res = await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'issue_comment',
+        'x-github-delivery': 'd5',
+        'x-hub-signature-256': sign(body),
+      });
+      // Mapping is the ownership signal — gate must let it reach deliverGitHubMention.
+      expect(srv.deliverGitHubMention).toHaveBeenCalledTimes(1);
+      expect(srv.deliverGitHubMention.mock.calls[0][0]).toMatchObject({ isPr: true, issueNumber: 11372 });
+      expect(res.json.skipped).toBeUndefined();
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('drops a non-@mention PR comment when the PR is NOT mapped (no-noise guard)', async () => {
+    const srv = await startServer({ ROUTE_ISSUES_TO: '' }, { prMappingExists: false });
+    try {
+      const body = issueCommentBody('drive-by comment on an unrelated public PR', { isPr: true });
+      const res = await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'issue_comment',
+        'x-github-delivery': 'd6',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubMention).not.toHaveBeenCalled();
+      expect(res.json).toMatchObject({ skipped: true, reason: 'bot not mentioned' });
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('processes a non-@mention pull_request_review_comment on a mapped PR', async () => {
+    const srv = await startServer({ ROUTE_ISSUES_TO: '' }, { prMappingExists: true });
+    try {
+      const body = reviewCommentBody('nit: rename this variable');
+      const res = await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'pull_request_review_comment',
+        'x-github-delivery': 'd7',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubMention).toHaveBeenCalledTimes(1);
+      expect(srv.deliverGitHubMention.mock.calls[0][0]).toMatchObject({ isPr: true, issueNumber: 11372 });
+      expect(res.json.skipped).toBeUndefined();
     } finally {
       srv.close();
     }
