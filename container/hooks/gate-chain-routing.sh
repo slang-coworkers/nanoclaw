@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# PreToolUse hook (matcher: mcp__nanoclaw__send_message): refuse marked
+# chain handoff / delivery messages unless they carry an explicit in_reply_to
+# tool arg. The text-output dispatcher has a sibling in-process check for
+# <message ...> blocks (checkRoutingGate in poll-loop.ts).
+#
+# Why in_reply_to alone (thread_id optional): in_reply_to resolves the inbound
+# row → source_session_id → the exact edge, and the runtime auto-derives
+# thread_id from it (applyInReplyToDefaults in mcp-tools/core.ts). Requiring
+# both would reject the spec's canonical upstream report form
+# (send_message(to="parent", in_reply_to=<id>, ...)).
+#
+# Soft-cap: after 3 denials on a session the gate yields (mirrors
+# gate-critique-on-deliver.sh) so a step that genuinely can't satisfy the
+# precondition can't thrash the agent's whole turn budget.
+set -euo pipefail
+
+OVERLAY_DIR="${OVERLAY_MARKER_DIR:-/workspace/agent}"
+[ -f "$OVERLAY_DIR/.overlay-chain-routing-gate" ] || exit 0
+
+INPUT=$(cat)
+TOOL=$(echo "$INPUT" | jq -r '.tool_name // ""')
+[ "$TOOL" = "mcp__nanoclaw__send_message" ] || exit 0
+
+TEXT=$(echo "$INPUT" | jq -r '.tool_input.text // ""')
+if ! echo "$TEXT" | grep -qE '\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]'; then
+  exit 0
+fi
+
+IN_REPLY_TO=$(echo "$INPUT" | jq -r '.tool_input.in_reply_to // ""')
+[ -n "$IN_REPLY_TO" ] && exit 0
+
+STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
+DENIALS=$(jq -r '.routing_gate_denials // 0' "$STATE" 2>/dev/null || echo 0)
+if [ "$DENIALS" -ge 3 ]; then
+  cat >&2 << EOF2
+[chain-routing-gate soft-fail] Allowing delivery despite missing in_reply_to.
+The gate denied this session 3 times already; further denials would just
+thrash. If the agent consistently can't link to an inbound, the workflow step
+needs review.
+EOF2
+  exit 0
+fi
+mkdir -p "$(dirname "$STATE")" 2>/dev/null || true
+jq '.routing_gate_denials = ((.routing_gate_denials // 0) + 1)' "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" \
+  || echo '{"routing_gate_denials":1}' > "$STATE" 2>/dev/null || true
+
+cat >&2 << EOF2
+CHAIN ROUTING REQUIRED before delivery/handoff message.
+
+Your send_message text contains a chain delivery marker, but the tool call is
+missing in_reply_to. Re-send naming the inbound you are answering:
+
+  in_reply_to=<inbound message id you are answering>
+
+thread_id is optional — the runtime derives it from in_reply_to. Do not
+describe the routing in prose; set the field on the tool call.
+EOF2
+exit 2

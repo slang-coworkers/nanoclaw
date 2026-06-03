@@ -821,6 +821,76 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
  * Paths overridable for tests via the optional opts.
  */
 const DELIVERY_MARKER_RE = /\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]/;
+const ROUTING_HANDOFF_MARKER_RE = DELIVERY_MARKER_RE;
+
+// Soft-cap shared by the in-process gates, mirroring the bash hooks
+// (gate-critique-on-deliver.sh:73-89). After GATE_DENIAL_CAP refusals on a
+// single session the gate stops denying and yields — without this, a gate
+// whose precondition the agent can't satisfy (e.g. a workflow step that
+// genuinely has no inbound to reply to, or a misconfigured critique-less
+// orchestrator) would thrash the agent's entire turn budget retrying. The
+// counter is persisted in workflow-state.json under `<key>`; the file is
+// CREATED if absent, so a coworker that never runs critique still escapes.
+const GATE_DENIAL_CAP = 3;
+
+// Returns true if the gate should yield (soft-cap reached) rather than deny.
+// Mirrors gate-critique-on-deliver.sh: check the persisted count BEFORE
+// incrementing, so after GATE_DENIAL_CAP denials the counter stays pinned at
+// the cap and the gate yields without bumping further. Best-effort persistence
+// — a state-write failure never blocks delivery, it just disables the cap.
+function gateShouldYield(statePath: string, key: string): boolean {
+  const fs = require('fs') as typeof import('fs');
+  let state: Record<string, unknown> = {};
+  try {
+    state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
+  } catch {
+    state = {};
+  }
+  const current = typeof state[key] === 'number' ? (state[key] as number) : 0;
+  if (current >= GATE_DENIAL_CAP) return true;
+  state[key] = current + 1;
+  try {
+    const path = require('path') as typeof import('path');
+    fs.mkdirSync(path.dirname(statePath), { recursive: true });
+    fs.writeFileSync(statePath, JSON.stringify(state));
+  } catch {
+    // Best-effort; see note above.
+  }
+  return false;
+}
+
+export function checkRoutingGate(
+  body: string,
+  attrs: { threadIdOverride?: string; inReplyToOverride?: string },
+  opts: { overlayMarkerPath?: string; workflowStatePath?: string } = {},
+): { blocked: boolean; reason?: string } {
+  const fs = require('fs') as typeof import('fs');
+  const markerPath =
+    opts.overlayMarkerPath ?? process.env.ROUTING_GATE_OVERLAY_PATH ?? '/workspace/agent/.overlay-chain-routing-gate';
+  if (!fs.existsSync(markerPath)) return { blocked: false };
+  if (!ROUTING_HANDOFF_MARKER_RE.test(body)) return { blocked: false };
+  // in_reply_to is the canonical routing primitive: it resolves the inbound
+  // row → source_session_id → the exact edge, and the runtime auto-derives
+  // thread_id from it (see applyInReplyToDefaults in mcp-tools/core.ts). So
+  // in_reply_to alone is sufficient; thread_id is optional. Requiring both
+  // would reject the spec's canonical upstream report form
+  // (send_message(to="parent", in_reply_to=<id>, ...)).
+  if (attrs.inReplyToOverride) return { blocked: false };
+  const statePath =
+    opts.workflowStatePath ?? process.env.ROUTING_GATE_STATE_PATH ?? '/workspace/.claude/workflow-state.json';
+  if (gateShouldYield(statePath, 'routing_gate_denials')) {
+    return { blocked: false };
+  }
+  const marker = body.match(ROUTING_HANDOFF_MARKER_RE)?.[1] ?? '<handoff>';
+  return {
+    blocked: true,
+    reason:
+      `[chain-routing-gate] REFUSED — your message contained a [${marker}] handoff/delivery marker but the <message> tag omitted in_reply_to. ` +
+      `Re-send the original body in a <message to="..." in_reply_to="...">...</message> block linked to the inbound message you are answering ` +
+      `(thread_id is optional — the runtime derives it from in_reply_to). ` +
+      `Do not describe the routing in prose; set the attribute on the tag. The original body was retained in the container scratchpad log only — it was not delivered to the destination.`,
+  };
+}
 
 export function checkCritiqueGate(
   body: string,
@@ -844,6 +914,13 @@ export function checkCritiqueGate(
     rounds = 0;
   }
   if (rounds >= 1) return { blocked: false };
+  // Soft-cap parity with gate-critique-on-deliver.sh:73-89 — the bash hook
+  // (send_message/Bash tool path) caps denials but this text-output path
+  // previously refused indefinitely, so an agent that couldn't run critique
+  // (e.g. an orchestrator with no codex wired) thrashed forever.
+  if (gateShouldYield(statePath, 'critique_gate_denials')) {
+    return { blocked: false };
+  }
   const marker = body.match(DELIVERY_MARKER_RE)?.[1] ?? '<delivery>';
   return {
     blocked: true,
@@ -907,6 +984,16 @@ export function dispatchResultText(
       scratchpadParts.push(`[dropped: unknown destination "${toName}"] ${body}`);
       continue;
     }
+    const routingGate = checkRoutingGate(body, { threadIdOverride, inReplyToOverride });
+    if (routingGate.blocked) {
+      log(`Chain-routing gate refused delivery to "${toName}": handoff marker missing thread_id/in_reply_to`);
+      scratchpadParts.push(`[chain-routing-gate refused delivery to "${toName}"] ${body}`);
+      postOverlayEvent('chain-routing-gate.refused', { destination: toName, reason: routingGate.reason });
+      sendToDestination(dest, routingGate.reason!, routing, { threadIdOverride, inReplyToOverride });
+      sent++;
+      continue;
+    }
+
     // Critique-gate scope extension (#67): the bash PreToolUse hook only
     // catches send_message/Bash invocations; this text-output path is
     // where most delivery markers actually land. Same gate, same state,

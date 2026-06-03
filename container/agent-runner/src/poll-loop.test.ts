@@ -7,7 +7,7 @@ import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from '
 import { getPendingMessages, markCompleted } from './db/messages-in.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
 import { formatMessages, extractRouting } from './formatter.js';
-import { checkCritiqueGate, dispatchResultText, isCorruptionError, isNewSessionBatch, taskOptsOutOfNewSession } from './poll-loop.js';
+import { checkCritiqueGate, checkRoutingGate, dispatchResultText, isCorruptionError, isNewSessionBatch, taskOptsOutOfNewSession } from './poll-loop.js';
 import { MockProvider } from './providers/mock.js';
 
 beforeEach(() => {
@@ -702,6 +702,138 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
   );
 });
 
+
+describe('dispatchResultText — chain-routing-gate text-output integration', () => {
+  let tmp: string;
+  let markerPath: string;
+  let statePath: string;
+  let originalRoutingGateOverlayPath: string | undefined;
+  let originalRoutingGateStatePath: string | undefined;
+
+  function addDestination(name: string) {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO destinations (name, display_name, type, channel_type, platform_id, agent_group_id)
+         VALUES (?, ?, 'agent', NULL, NULL, ?)`,
+      )
+      .run(name, name, `ag-${name}`);
+  }
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'routing-dispatch-test-'));
+    markerPath = path.join(tmp, '.overlay-chain-routing-gate');
+    // Isolate the denial-counter state per test so the soft-cap doesn't leak
+    // across cases (and so we never touch the real /workspace default).
+    statePath = path.join(tmp, 'workflow-state.json');
+    originalRoutingGateOverlayPath = process.env.ROUTING_GATE_OVERLAY_PATH;
+    originalRoutingGateStatePath = process.env.ROUTING_GATE_STATE_PATH;
+    process.env.ROUTING_GATE_OVERLAY_PATH = markerPath;
+    process.env.ROUTING_GATE_STATE_PATH = statePath;
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    if (originalRoutingGateOverlayPath === undefined) delete process.env.ROUTING_GATE_OVERLAY_PATH;
+    else process.env.ROUTING_GATE_OVERLAY_PATH = originalRoutingGateOverlayPath;
+    if (originalRoutingGateStatePath === undefined) delete process.env.ROUTING_GATE_STATE_PATH;
+    else process.env.ROUTING_GATE_STATE_PATH = originalRoutingGateStatePath;
+  });
+
+  const sourceRouting = {
+    platformId: 'ag-source',
+    channelType: 'agent',
+    threadId: 'src-thread',
+    inReplyTo: 'src-msg',
+  };
+
+  it('marker absent → marked handoff passes through unchanged', () => {
+    addDestination('peer');
+    const result = dispatchResultText('<message to="peer">[handoff] proceed</message>', sourceRouting);
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(JSON.parse(out[0].content).text).toBe('[handoff] proceed');
+  });
+
+  it('marker present → marked handoff without in_reply_to is replaced by refusal note', () => {
+    fs.writeFileSync(markerPath, 'chain-routing-gate\n');
+    addDestination('peer');
+    const result = dispatchResultText('<message to="peer">[Fix Report] done</message>', sourceRouting);
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    const text = JSON.parse(out[0].content).text;
+    expect(text).toContain('[chain-routing-gate] REFUSED');
+    expect(text).toContain('in_reply_to');
+    expect(text).not.toContain('[Fix Report] done');
+  });
+
+  it('marker present → marked handoff with in_reply_to alone passes (thread_id derived)', () => {
+    // Canonical upstream report form from the workflows:
+    // send_message(to="parent", in_reply_to=<id>, ...). thread_id is derived
+    // by the runtime, so the gate must NOT demand it.
+    fs.writeFileSync(markerPath, 'chain-routing-gate\n');
+    addDestination('peer');
+    const result = dispatchResultText(
+      '<message to="peer" in_reply_to="42">[Triage Resolution] done</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out[0].in_reply_to).toBe('42');
+    expect(JSON.parse(out[0].content).text).toBe('[Triage Resolution] done');
+  });
+
+  it('marker present → marked handoff with thread_id and in_reply_to passes', () => {
+    fs.writeFileSync(markerPath, 'chain-routing-gate\n');
+    addDestination('peer');
+    const result = dispatchResultText(
+      '<message to="peer" thread_id="t1" in_reply_to="42">[Review Verdict] approved</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out[0].thread_id).toBe('t1');
+    expect(out[0].in_reply_to).toBe('42');
+    expect(JSON.parse(out[0].content).text).toBe('[Review Verdict] approved');
+  });
+
+  it('checkRoutingGate can be unit-tested with explicit marker path', () => {
+    fs.writeFileSync(markerPath, 'chain-routing-gate\n');
+    // No in_reply_to → blocked.
+    expect(
+      checkRoutingGate('[Resolution] x', {}, { overlayMarkerPath: markerPath, workflowStatePath: statePath }).blocked,
+    ).toBe(true);
+    // in_reply_to alone → allowed (thread_id optional).
+    expect(
+      checkRoutingGate(
+        '[Resolution] x',
+        { inReplyToOverride: '1' },
+        { overlayMarkerPath: markerPath, workflowStatePath: statePath },
+      ).blocked,
+    ).toBe(false);
+    // thread_id alone (no in_reply_to) → still blocked: in_reply_to is the primitive.
+    expect(
+      checkRoutingGate(
+        '[Resolution] x',
+        { threadIdOverride: 't1' },
+        { overlayMarkerPath: markerPath, workflowStatePath: statePath },
+      ).blocked,
+    ).toBe(true);
+  });
+
+  it('routing gate soft-caps after 3 denials so it cannot thrash', () => {
+    fs.writeFileSync(markerPath, 'chain-routing-gate\n');
+    const call = () =>
+      checkRoutingGate('[Fix Report] x', {}, { overlayMarkerPath: markerPath, workflowStatePath: statePath }).blocked;
+    expect(call()).toBe(true); // denial 1
+    expect(call()).toBe(true); // denial 2
+    expect(call()).toBe(true); // denial 3
+    expect(call()).toBe(false); // soft-cap: yields
+    const persisted = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as { routing_gate_denials?: number };
+    expect(persisted.routing_gate_denials).toBe(3);
+  });
+});
+
 describe('dispatchResultText — critique-gate text-output integration (#67)', () => {
   let tmp: string;
   let markerPath: string;
@@ -814,6 +946,19 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     );
     const out = getUndeliveredMessages();
     expect(out[0].thread_id).toBe('branch-A'); // refusal still flows on the agent's chosen thread
+  });
+
+  it('critique gate soft-caps after 3 denials (parity with the bash hook)', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    const call = () =>
+      checkCritiqueGate('[Fix Report] x', { overlayMarkerPath: markerPath, workflowStatePath: statePath }).blocked;
+    expect(call()).toBe(true); // denial 1
+    expect(call()).toBe(true); // denial 2
+    expect(call()).toBe(true); // denial 3
+    expect(call()).toBe(false); // soft-cap: yields instead of thrashing
+    const persisted = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as { critique_gate_denials?: number };
+    expect(persisted.critique_gate_denials).toBe(3);
   });
 });
 
