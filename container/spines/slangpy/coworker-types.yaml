@@ -62,7 +62,6 @@ slangpy-triage:
   extends: slangpy-reader
   workflows:
     - slangpy-triage-issue
-  overlays: [chain-routing-gate]
   required_critique_stages: [DIAGNOSIS_REVIEW, OUTPUT_REVIEW]
 
 slangpy-fixer:
@@ -71,7 +70,6 @@ slangpy-fixer:
   extends: slangpy-writer
   workflows:
     - slangpy-implement
-  overlays: [chain-routing-gate, critique-gate]
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
 
 slangpy-reviewer:
@@ -82,5 +80,4 @@ slangpy-reviewer:
     # Reviewers enforce code-change rules during review.
     - container/spines/slangpy/invariants/code-changes.md
   workflows: []
-  overlays: [chain-routing-gate, critique-gate]
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
