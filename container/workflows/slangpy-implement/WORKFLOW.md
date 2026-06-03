@@ -16,7 +16,7 @@ overrides:
 
     Updating an existing PR: address every reviewer comment before re-running build/tests, so the run reflects the resolved state.
 
-    Builds over ~5 min (full-rebuild after dep change): notify parent via `send_message` with `⚙️ Build started — <branch>, ETA <minutes>` and schedule a `*/30 * * * *` watchdog that cancels itself when the build finishes.
+    Builds over ~5 min (full-rebuild after dep change): notify parent via `send_message` with `⚙️ Build started — <branch>, ETA <minutes>` and delegate the build to an `Agent` subagent (it blocks until completion — no polling task).
 
     Autonomy: check prerequisites (libgl-dev etc.) before the first build subagent call — if missing, file one `install_packages` request with ALL missing packages first. On restart: if `/workspace/agent/slangpy/` exists with build artifacts, skip Clone → Verify; if tests already passed, go to Ship. If pytest fails after 2 fix cycles, commit `wip:` branch and escalate.
 ---
