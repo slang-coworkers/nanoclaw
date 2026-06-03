@@ -44,7 +44,6 @@ nanoclaw-writer:
   workflows:
     - nanoclaw-plan
     - nanoclaw-implement
-  overlays: [chain-routing-gate, critique-gate]
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
   bindings:
     code: nanoclaw-code-writer
@@ -62,5 +61,4 @@ nanoclaw-reviewer:
     - nanoclaw-pr-review-runner
   workflows:
     - nanoclaw-pr-review
-  overlays: [chain-routing-gate, critique-gate]
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
