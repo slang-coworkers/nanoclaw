@@ -1,27 +1,31 @@
 ---
 name: supervise-issues
 license: MIT
-description: Periodic supervisor for in-flight GitHub issue chains. Lists active issue sessions, computes stuck-time, nudges silent chains, verifies the human-observability loop (5-bullet GitHub comment present before chain closes), surfaces blockers to operator via ask_user_question. Designed to be self-scheduled via schedule_task on a 30-minute cron.
+description: Periodic supervisor for in-flight GitHub issue chains. Lists active issue sessions, computes stuck-time, nudges silent chains, verifies the human-observability loop (5-bullet GitHub comment present before chain closes), surfaces blockers to operator via ask_user_question. Designed to be self-scheduled via schedule_task on a 6-hour cron.
 ---
 
 # /supervise-issues — Issue chain supervisor
 
-You are the orchestrator (or a coworker the orchestrator delegated supervision to). Walk all in-flight issue chains, identify stuck ones, and nudge or escalate as appropriate. Designed to run on a recurring `schedule_task` (suggested cron: `*/30 * * * *` — every 30 minutes during work hours).
+You are the orchestrator (or a coworker the orchestrator delegated supervision to). Walk all in-flight issue chains, identify stuck ones, and nudge or escalate as appropriate. Designed to run on a recurring `schedule_task` (suggested cron: `0 */6 * * *` — every 6 hours).
+
+**Be cost-considerate.** Each tick costs tokens. Keep ticks cheap: run on a 6-hour cadence (not every 30 min), start each tick in a fresh session (`new_session: true`) so context doesn't accumulate across ticks, gate the wake so a tick with nothing stuck is a no-op, and in the report **highlight only what changed since the last tick** — don't re-narrate chains whose state is identical (see §1 delta detection and §6).
 
 ## What "in-flight" means
 
 An issue chain is in-flight if you (the orchestrator) have a session whose `thread_id` matches `gh-issue-<owner>/<repo>-<num>` and the issue is still open on GitHub with no merged PR.
 
-**[MUST] `thread_id` names the chain, not the work product.** A coworker session is sometimes reused across issues — a session threaded `gh-issue-…-11367` may have shipped the PR for `#11356`. So `thread_id` is reliable for "which chain is this," but **never** infer a chain's PR (or which issue a PR fixes) from `thread_id` alone.
+**[MUST] `thread_id` names the chain, not the work product.** A coworker session is sometimes reused across issues — a session threaded `gh-issue-…-N` may have shipped the PR for a *different* issue M. So `thread_id` is reliable for "which chain is this," but **never** infer a chain's PR (or which issue a PR fixes) from `thread_id` alone.
 
-**How to resolve a chain's real PR from inside the orchestrator container.** You do **not** have the central DB here — there is no `v2.db` mount, and `ncl` exposes no PR resource (verified: `ncl` has only approvals/destinations/dropped-messages/groups/members/messaging-groups/roles/sessions/user-dms/users/wirings). So `pr_session_mappings` is **not queryable from the container** — it's the host-side source of truth the *fixer* writes via `report_pr_created`, not something you can read here. Instead use **`gh` (which works via the OneCLI proxy)** plus the fixer branch convention:
-- Fixers branch as `fix/issue-<num>` (per `/slang-fix-issue` Step 3/7). Find the chain's PR by head branch: `gh pr list --repo <owner>/<repo> --head fix/issue-<num> --state all --json number,isDraft,state,title,headRefName`.
+**Resolve a chain's real PR with `gh`** (the fixer branches as `fix/issue-<num>`):
+- Find the chain's PR by head branch: `gh pr list --repo <owner>/<repo> --head fix/issue-<num> --state all --json number,isDraft,state,title,headRefName`.
 - Confirm which issue it actually fixes from the **PR body**: `gh pr view <pr> --repo <owner>/<repo> --json body --jq '.body' | grep -ioE '(fixes|closes|resolves) #[0-9]+'`.
-- The PR body's `Fixes #N` is the authoritative PR↔issue link. When it names a different issue than the `thread_id` suggests, trust the PR body, record the chain under the issue the PR actually fixes, and flag the mismatch in your report rather than silently labeling by thread number.
+- The PR body's `Fixes #N` is the authoritative PR↔issue link. When it names a different issue than the `thread_id` suggests, trust the PR body, record the chain under the issue the PR actually fixes, and flag the mismatch in your report.
 
 ## The prime directive — a resumable GitHub artifact for every chain
 
-**[MUST] Every in-flight chain must, at all times, have a GitHub artifact a human can land on and resume from:** an open PR, a comment on the PR, or a comment on the issue. GitHub — not the dashboard, not chat, not the session DB — is the durable human-observability surface; the operator must be able to open the issue/PR and see where the chain stands without asking you. This directive subsumes step 5 (comment verification) and drives the new behaviors below: the weekend CI window (§7) exists to keep that artifact *progressing*, and the superseded-PR postmortem (§8) exists to keep it *honest* when our work is overtaken. If a chain has no artifact and you cannot produce one, that is the single most important thing to surface in your report — louder than any silent/stuck classification.
+**[MUST] Every in-flight chain must, at all times, have a GitHub artifact a human can land on and resume from:** an open PR, a comment on the PR, or a comment on the issue. This applies whether the chain is **still in progress** or **parked** — the test is not "is it done?" but "if a human opened the issue/PR right now, would they see where it stands and be able to pick it up?" An in-progress chain satisfies it with a comment stating what's underway and what's next; a parked chain with a comment naming the blocker; a shipped chain with the PR itself. GitHub — not the dashboard, not chat, not the session DB — is the durable human-observability surface.
+
+This directive subsumes step 5 (comment verification) and drives the behaviors below: the weekend CI window (§7) keeps that artifact *progressing*, and the superseded-PR postmortem (§8) keeps it *honest* when our work is overtaken. If a chain has no artifact and you cannot produce one, that is the single most important thing to surface in your report — louder than any silent/stuck classification.
 
 ## Procedure
 
@@ -35,20 +39,25 @@ ncl sessions list --thread-prefix "gh-issue-" --json
 
 For each session, also pull the most recent activity (last inbound + last outbound timestamp). The session DBs have these directly; ask via `ncl sessions messages --id <sess> --limit 1` if needed.
 
-**Resolve each chain's PR with `gh` (the container can't read `pr_session_mappings` — see the `[MUST]` above).** For every in-flight chain, find its PR by the fixer branch convention and confirm the target issue from the PR body:
+**Resolve each chain's PR with `gh`** (see the `[MUST]` above). Find its PR by the fixer branch convention and confirm the target issue from the PR body:
 
 ```bash
-# Find the chain's PR by head branch (fixers use fix/issue-<num>):
 gh pr list --repo <owner>/<repo> --head fix/issue-<num> --state all \
   --json number,isDraft,state,title,headRefName
-# Confirm which issue it actually fixes (authoritative PR↔issue link):
 gh pr view <pr> --repo <owner>/<repo> --json body --jq '.body' \
   | grep -ioE '(fixes|closes|resolves) #[0-9]+'
 ```
 
-If a chain's PR `Fixes` a *different* issue than its `thread_id` suggests, the chain is **mis-threaded** (a reused session). Record it under the issue the PR actually fixes, and add a `mis-threaded` note to that row's `next` column so the operator can see the reuse. (If `gh pr list --head` returns nothing, the chain has no PR yet — that's a normal pre-PR state, not a mismatch.)
+If a chain's PR `Fixes` a *different* issue than its `thread_id` suggests, the chain is **mis-threaded** (a reused session). Record it under the issue the PR actually fixes and flag it. (If `gh pr list --head` returns nothing, the chain has no PR yet — normal pre-PR state, not a mismatch.)
 
-Build a table of: `repo` / `issue` (the issue the PR actually fixes, per above) / `thread_id` / `pr` (PR number from `gh`) / `last_activity_at` / `state` (one of `dispatched` / `triaging` / `fixing` / `reviewing` / `pr_open` / `awaiting_human` / `silent` / `closing` / `closed_no_github_comment`).
+Build a table of: `repo` / `issue` (the issue the PR actually fixes) / `thread_id` / `pr` / `last_activity_at` / `state` (one of `dispatched` / `triaging` / `fixing` / `reviewing` / `pr_open` / `awaiting_human` / `silent` / `closing` / `closed_no_github_comment`).
+
+**Compute a delta vs. the last tick (cost-considerate reporting).** `supervisor-state.json` holds each chain's last-seen snapshot (`lastState`, `lastActivityAt`, `lastPrState`, and the last comment id/timestamp seen on the issue/PR). For each chain this tick, fetch the latest comment via `ncl sessions messages --id <sess> --limit 1` (and/or `gh issue view <num> --json comments --jq '.comments[-1]'` for the GitHub side) and compare to the stored snapshot. Tag each row:
+- **🆕 NEW** — a chain not present last tick.
+- **🔼 UPDATED** — state changed, or a new comment/activity since the stored snapshot (cite what changed: "reviewer posted APPROVE", "CI went red", "human replied").
+- **• same** — no change since last tick.
+
+Write the fresh snapshots back to `supervisor-state.json` at the end. The report (§6) leads with NEW + UPDATED and collapses the `same` rows — the operator scans only what moved.
 
 ### 2. Classify each row
 
@@ -114,14 +123,14 @@ After processing all chains, send a single status report to your parent (the ope
 - **Next-action:** wait for cron / await operator decisions / re-dispatch chain X
 - **Blocker:** {threads with no clear path forward, list 3 max with one-line reason each}
 
-**Lead the chat reply with an inline markdown table** of the per-chain status before the 5-bullet summary, so the operator gets the at-a-glance view without opening the attachment. Columns: `# | repo | issue | tier | github | state | last-active | next`. One row per chain. The full narrative still goes in a file via `send_file(to="parent")` — the inline table is a digest, not a replacement.
+**Lead the chat reply with an inline markdown table** of the per-chain status before the 5-bullet summary, so the operator gets the at-a-glance view without opening the attachment. Columns: `# | repo | issue | tier | github | state | last-active | next`. One row per chain, **prefixed with its delta tag (🆕 / 🔼 / •) from §1** — sort 🆕 and 🔼 rows to the top, and collapse the unchanged `•` rows into a single trailing line (`• 7 chains unchanged since last tick: #1372, #1380, …`) unless the operator invoked the skill manually. The full narrative still goes in a file via `send_file(to="parent")` — the inline table is a digest, not a replacement. **If nothing changed since the last tick, say so in one line and skip the table** — don't spend tokens re-rendering a static board.
 
 ```
 | #   | repo                       | tier      | github         | state         | last-active   | next                |
 | --- | -------------------------- | --------- | -------------- | ------------- | ------------- | ------------------- |
-| 11339 | shader-slang/slang       | maintainer | 2 cmts (old)   | awaiting-input | 3.5d silent  | escalate to operator |
-| 11367 | shader-slang/slang       | fixer     | 0              | pr_open       | 5m            | watch CI            |
-| 11372 | shader-slang/slang       | maintainer | 2 cmts         | design-decide | 4.8h          | maintainer signoff  |
+| 1339 | acme/widget   | maintainer | 2 cmts (old)   | awaiting-input | 3.5d silent  | 🔼 escalate to operator |
+| 1367 | acme/widget   | fixer      | 0              | pr_open        | 5m           | • watch CI              |
+| 1372 | acme/widget   | maintainer | 2 cmts         | design-decide  | 4.8h         | • maintainer signoff    |
 ```
 
 Per-chain status messages land on each chain's canonical `thread_id` (per the `[MUST]` rule above) — the inline table is the supervisor's own consolidated digest in the supervisor's session.
@@ -157,8 +166,8 @@ Per chain with a draft PR (resolve the PR via `gh pr list --head fix/issue-<num>
 
 `prCi` state shape (per chain in `supervisor-state.json`):
 ```json
-"gh-issue-shader-slang/slang-11367": {
-  "prCi": { "prNumber": 11386, "repo": "shader-slang/slang",
+"gh-issue-acme/widget-1367": {
+  "prCi": { "prNumber": 1386, "repo": "acme/widget",
             "flippedByUs": true, "flippedAt": "2026-06-06T09:30:00Z",
             "ciObserved": true, "ciBucket": "fail", "ciCapturedAt": "...",
             "revivedAt": "2026-06-06T10:00:00Z", "revertedAt": null,
@@ -183,9 +192,9 @@ If the issue is **closed by a PR that is not our chain's PR** (the one on `fix/i
 
 1. **Analyze the gap.** Pull both diffs/approaches: our draft PR (`gh pr diff <ours>`) and the merged PR (`gh pr view <theirs> --json title,body,files` / `gh pr diff <theirs>`). Ask: what did the merged fix do that ours didn't — different root-cause, smaller/cleaner patch, a test we missed, a faster turnaround, a constraint we got wrong? Be specific and honest; "they were faster" is not a learning, "they fixed it at the IR level where we patched the parser, avoiding the regression in X" is.
    - **If the merged PR looks very similar to ours (same root-cause / overlapping diff), engage the author** rather than guessing the delta in private. Post a brief, respectful comment on *their* PR @-mentioning the author: *"@<author> we'd independently drafted a similar fix in #<ours> (auto-generated by our agent pipeline). Yours merged — nice. Quick question for our own learning: was there a gap or rough edge in what we'd have shipped (test coverage, an edge case, the approach itself)? Trying to improve the pipeline."* Capture their reply (next tick / webhook) into the learning's takeaway. If the approaches genuinely **don't** overlap, skip the @-mention — just write the learning from the diff comparison.
-2. **`append_learning`.** Write a learning so future chains improve. Title: `postmortem: slang#<num> superseded by PR #<theirs>`. Content (markdown): the issue, our approach + PR link, their merged approach + PR link, the concrete delta, the author's feedback if you asked, and the **actionable takeaway** for triage/fixer next time (e.g. "for diff-related crashes, check IR-level fixes before parser-level"). This goes to `/workspace/shared/learnings/` for all coworkers.
+2. **`append_learning`.** Write a learning so future chains improve. Title: `postmortem: <repo>#<num> superseded by PR #<theirs>`. Content (markdown): the issue, our approach + PR link, their merged approach + PR link, the concrete delta, the author's feedback if you asked, and the **actionable takeaway** for triage/fixer next time (a specific, transferable rule — not "they were faster"). This goes to `/workspace/shared/learnings/` for all coworkers.
 3. **Close our draft with a pointer.** Comment on our draft PR linking the learning and the superseding PR, then close it:
-   > Superseded by #<theirs>, which merged and resolves #<num>. Closing this draft. Postmortem captured as a shared learning (`postmortem: slang#<num>`) so we improve next time. Approach delta: <one line>.
+   > Superseded by #<theirs>, which merged and resolves #<num>. Closing this draft. Postmortem captured as a shared learning (`postmortem: <repo>#<num>`) so we improve next time. Approach delta: <one line>.
 
    `gh pr close <ours> --repo <owner>/<repo> --comment "<above>"`. (Use the `<project>-github` skill's posting helper if available; otherwise the gh-app token via OneCLI.) This keeps the **resumable-artifact** directive satisfied — anyone landing on our PR sees why it closed and where the resolution lives.
 4. **Record** `postmortem = {done: true, supersededByPr: <theirs>, learningTitle: "...", at: <iso>}` and drop the chain from the in-flight table (it's genuinely closed).
@@ -194,12 +203,12 @@ Do **not** run the postmortem for our own merged PRs, for issues closed as `not_
 
 ### 9. Worktree GC sweep — reclaim abandoned fixer worktrees
 
-The fixer workflow (`/slang-fix-issue` Step 7.5) GCs its worktree when a `CLOSED`/`MERGED` webhook arrives. But a PR that never reaches a terminal state — abandoned, draft-forever, or silently superseded without a close event — leaks its `wt-*` / `active-work/` dirs on the shared `/workspace` indefinitely (there is no other reaper). The supervisor is the recurring cron that now owns this backstop.
+The fixer workflow GCs its worktree when a `CLOSED`/`MERGED` webhook arrives. But a PR that never reaches a terminal state — abandoned, draft-forever, or silently superseded without a close event — leaks its `wt-*` / `active-work/` dirs on the shared `/workspace` indefinitely (there is no other reaper). The supervisor is the recurring cron that now owns this backstop.
 
-**[MUST NOT] Never `git worktree remove` from the supervisor session.** Worktrees live in each *fixer's* filesystem, not yours, and cross-deletes have killed active builds (per the worktree-isolation rule in `/slang-fix-issue`). The supervisor *detects and dispatches*, it does not delete.
+**[MUST NOT] Never `git worktree remove` from the supervisor session.** Worktrees live in each *fixer's* filesystem, not yours, and cross-deletes have killed active builds. The supervisor *detects and dispatches*, it does not delete.
 
 Once per tick, for each in-flight chain whose PR (resolved via `gh pr list --head fix/issue-<num>`) is in a terminal-but-uncleaned state — `MERGED`/`CLOSED` for > 24h, or no PR activity for > 10 days while the chain still shows a `wt-` worktree — send ONE a2a to that chain's **fixer** on its canonical thread:
-> [Supervisor — worktree GC — gh-issue-X/Y-N] PR #<pr> is `<state>` (<age>); your worktree `wt-<slug>` looks abandoned. If you're done, GC it: `cd /workspace/agent/slang && git worktree remove --force /workspace/agent/wt-<slug>; rm -rf /workspace/agent/active-work/<slug>`, then reply 'gc done'. If you're still working it, reply 'active' and I'll leave it.
+> [Supervisor — worktree GC — gh-issue-X/Y-N] PR #<pr> is `<state>` (<age>); your worktree `wt-<slug>` looks abandoned. If you're done, GC it (remove the worktree + its `active-work/<slug>` dir per your workflow), then reply 'gc done'. If you're still working it, reply 'active' and I'll leave it.
 
 Track `gcRequestedAt` per chain in `supervisor-state.json`; if a chain is still flagged after 2 GC nudges with no `gc done`/`active` reply, escalate to the operator with `df -h /workspace` so they can decide (the fixer's container may be permanently gone, in which case the operator reclaims). Do not escalate disk pressure silently — a filling `/workspace` blocks every fixer.
 
@@ -210,10 +219,11 @@ On first run, schedule yourself:
 ```js
 schedule_task({
   prompt: '/supervise-issues',
-  cron: '*/30 9-21 * * *', // every 30 min, 9am-9pm local
+  cron: '0 */6 * * *',   // every 6 hours — cost-considerate cadence
+  new_session: true,     // fresh context each tick; all durable state is in supervisor-state.json
   script: `node --input-type=module -e "
-    // Skip the wake when no thread_id starting with gh-issue-* has activity
-    // older than 60 min. Cheap heuristic — full scan happens in the prompt.
+    // Gate the wake: only run a full tick when something is actually stuck.
+    // All real state lives in supervisor-state.json — the prompt reads it.
     const r = await fetch('http://172.17.0.1:3000/api/sessions/in-flight', {
       headers: { 'X-Internal': '1' },
     }).catch(() => null);
@@ -229,7 +239,11 @@ schedule_task({
 });
 ```
 
-The script gates the wake — when no chains are stuck, the cron tick is a no-op (no API credits burned).
+Three cost levers, all already wired above:
+1. **6-hour cadence** (`0 */6 * * *`) — not every 30 min. Issue chains move on the scale of hours, not minutes.
+2. **`new_session: true`** — each tick starts clean. The supervisor needs **no** conversation memory; everything it must remember (nudge counts, `flippedByUs`, `postmortem.done`, last-tick snapshots) is persisted in `supervisor-state.json`. Without this, the session transcript grows every 6h forever and each tick costs more than the last.
+3. **Wake gate** — when nothing is stuck, the tick is a no-op (zero model tokens).
+4. **Delta reporting** (§1, §6) — a tick that does wake reports only what changed, so even active periods stay cheap.
 
 ## Anti-patterns
 
