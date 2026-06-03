@@ -71,13 +71,22 @@ Write the fresh snapshots back to `supervisor-state.json` at the end. The report
 
 ### 3. Nudges
 
-A nudge is a message back into the assigned coworker's session, not a fresh dispatch. Use `in_reply_to` of the LAST inbound the coworker received. Body shape:
+A nudge is a message back into the assigned coworker's session, not a fresh dispatch.
 
-> [Supervisor nudge — gh-issue-X/Y-N] No outbound for {duration}. Are you blocked? Reply with: status, blocker, ETA. If your container restarted and you lost context, re-read your `/workspace/agent/memory/triage-{N}.md` (or analogous) and resume.
+**[MUST] Route the nudge by `thread_id`, NOT by `in_reply_to`.** Set `thread_id="gh-issue-<owner>/<repo>-<num>"` (the chain's canonical key) and let the runtime resolve to the recipient's session for *that issue*. Do **not** reach for `in_reply_to` of the coworker's last inbound: a coworker session is sometimes reused across issues (see the `[MUST]` under "What in-flight means"), so its most recent inbound may belong to a *different* issue's thread. `in_reply_to` (routing Layer 1) **overrides** `thread_id`, so using it sends your nudge for issue N into whatever session the coworker last spoke from — which then does N's work under the wrong thread and stamps any resulting PR with the wrong issue (a real mis-attribution: a nudge routed via `in_reply_to` into a reused fixer session for a *different* issue produced a duplicate, wrong-threaded draft PR). Thread-keyed routing finds/mints the correct per-issue session every time, matching the base-spine invariant in `agents.md` ("a fresh delegation needing its own sub-session must carry an explicit `thread_id`").
+
+Body shape:
+
+> [Supervisor nudge — gh-issue-X/Y-N] No outbound for {duration}. Are you blocked? Reply with: status, blocker, ETA. If your container restarted and you lost context, re-read your task memory and resume.
+
+```
+<message to="<coworker>" thread_id="gh-issue-<owner>/<repo>-<num>">[Supervisor nudge …]</message>   ✓ thread-keyed
+<message in_reply_to="<their-last-msg-id>">[Supervisor nudge …]</message>                            ✗ may hit a reused session
+```
 
 Don't open new threads. Don't escalate to the operator without first nudging — most "silent" cases are containers that exited mid-task and need a wake.
 
-**[MUST]** **One `<message>` per chain, on that chain's canonical thread.** Set `thread_id="gh-issue-<owner>/<repo>-<num>"` and `in_reply_to=<latest>` on each block. Never roll N chains into one consolidated dump from a thread-less chat session — thread-less status falls through to the recipient's catch-all and breaks per-tile observability. See `chain-reporting.md` per-issue routing rule.
+**[MUST]** **One `<message>` per chain, keyed on that chain's canonical `thread_id`.** Set `thread_id="gh-issue-<owner>/<repo>-<num>"` on each block (and do NOT add `in_reply_to` — per the routing `[MUST]` above, it overrides `thread_id` and can land the message in a reused session). Never roll N chains into one consolidated dump from a thread-less chat session — thread-less status falls through to the recipient's catch-all and breaks per-tile observability. See `chain-reporting.md` per-issue routing rule.
 
 ### 4. Closing-report enforcement
 
@@ -252,6 +261,7 @@ Three cost levers, all already wired above:
 - **Don't summarize history.** The supervisor reports CURRENT state. Past activity is in the dashboard / JSONLs.
 - **Don't open new chains.** You only nudge existing ones. New chains come from webhooks.
 - **Don't escalate before nudging.** Most stuck chains resume from a single nudge; escalation costs the operator's attention.
+- **Don't route a nudge by `in_reply_to`.** It overrides `thread_id` and can land in a reused session for a different issue, mis-attributing any resulting PR. Always key nudges/dispatches by `thread_id`. (§3)
 - **Don't multi-cast.** A nudge goes to one coworker (the one currently expected to respond), not the whole chain.
 - **Don't loop.** If a chain has been nudged twice with no response, escalate — don't keep nudging.
 - **Don't post the GitHub comment on a coworker's behalf.** Closest-to-the-state principle: the coworker holding the verdict authors the post. Supervisor enforces, doesn't substitute. (See step 5.)
