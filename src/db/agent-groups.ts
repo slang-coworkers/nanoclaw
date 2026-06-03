@@ -6,8 +6,8 @@ export function createAgentGroup(
 ): void {
   getDb()
     .prepare(
-      `INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, overlays, routing, created_at)
-       VALUES (@id, @name, @folder, @is_admin, @agent_provider, @container_config, @coworker_type, @allowed_mcp_tools, @overlays, @routing, @created_at)`,
+      `INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, overlays, routing, sidebar_group, created_at)
+       VALUES (@id, @name, @folder, @is_admin, @agent_provider, @container_config, @coworker_type, @allowed_mcp_tools, @overlays, @routing, @sidebar_group, @created_at)`,
     )
     .run({
       is_admin: 0,
@@ -17,6 +17,7 @@ export function createAgentGroup(
       allowed_mcp_tools: null,
       overlays: null,
       routing: 'direct',
+      sidebar_group: null,
       ...group,
     });
 }
