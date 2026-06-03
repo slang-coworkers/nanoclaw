@@ -1,14 +1,21 @@
 ---
 name: slang-github-webhook
 license: MIT
-description: 'Handle @nv-slang-bot PR mention webhooks: post one editable TODO-list comment, route to coworkers via send_message, edit on every status change.'
+description: 'Handle GitHub PR webhooks: @nv-slang-bot mentions (route via send_message + one editable TODO comment), and on a PR you own — review verdicts, inline comments, review-thread resolves, and CI failures (reply, resolve LLM threads, infra-vs-code CI triage).'
 provides: [github.webhook.routing]
 allowed-tools: Bash(gh:*), Bash(jq:*), Bash(date:*), Bash(mkdir:*), Bash(echo:*), Bash(cat:*), mcp__nanoclaw__send_message
 ---
 
-# Slang GitHub webhook routing
+# Slang GitHub webhook handling
 
-Use on a `kind: webhook` message with `content.event: "github.pr_mention"`.
+Run on a `kind: webhook` message whose `content.event` starts `github.`:
+
+- `github.pr_mention` → **route** to the owning coworker (the orchestrator's job — see below).
+- `github.pr_review` / `github.pr_review_comment` / `github.pr_review_thread` / `github.ci_failed` → **handle on the PR you own** (a coworker's job — see "PR activity events").
+
+A PR routed to **your** session via `pr_session_mappings` is yours: handle the
+event directly, don't re-route. The `pr_mention` routing flow below is the
+orchestrator path for events with no owning session yet.
 
 ## Principles
 
@@ -120,6 +127,81 @@ gh api repos/{repo}/issues/comments/{comment_id} --jq '{user: .user.login, body,
 ### 7. New webhook → new comment
 
 A fresh `kind: webhook` inbound = new task = new POST + new TODO list. Overwrite `comment_id` in `/workspace/agent/.gh-comments/{repo}-{issue_number}.id`; the previous comment stays as a record.
+
+## PR activity events (review verdict, review thread, CI failure)
+
+Beyond `github.pr_mention`, four more `content.event` types arrive on a PR you
+**own** (the host routed them here via `pr_session_mappings`, so the PR is
+yours — handle directly, do not re-route). Everything below goes through `gh`
+(already authed as the bot in-container — no DB, no host access needed):
+
+- `github.pr_review_comment` — an inline diff comment.
+- `github.pr_review` — a submitted review (`review_state`: `approved` / `changes_requested` / `commented`, plus `body`).
+- `github.pr_review_thread` — a thread marked `resolved` / `unresolved` (`thread_action`).
+- `github.ci_failed` — a CI run finished failing (`conclusion`: `failure` / `timed_out`, `head_sha`).
+
+**Reuse the existing TODO comment** (`/workspace/agent/.gh-comments/{repo}-{pr}.id`)
+— PATCH it on each step, never POST a new one.
+
+### Review verdict / inline comment (`github.pr_review`, `github.pr_review_comment`)
+
+1. List open threads (skip resolved/outdated):
+
+```bash
+gh api graphql -f owner={owner} -f repo={repo} -F pr={pr} -f query='
+query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){
+pullRequest(number:$pr){reviewThreads(first:100){nodes{id isResolved isOutdated
+path line comments(last:1){nodes{body author{login}}}}}}}}' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[]
+        | select(.isResolved==false and .isOutdated==false)'
+```
+
+2. Address each actionable thread (edit code → re-run verify → push).
+3. Reply on the thread with what changed / why no change (the reply posts as the
+   bot — no prefix needed, the author already says who it is):
+
+```bash
+gh api graphql -f thread="<threadId>" -f body="<note>" -f query='
+mutation($thread:ID!,$body:String!){addPullRequestReviewThreadReply(
+input:{pullRequestReviewThreadId:$thread,body:$body}){comment{url}}}'
+```
+
+4. **Resolve only LLM/bot-owned threads** you addressed (thread's comment author
+   login is a bot — `coderabbitai`, `Copilot`, `gemini-code-assist`,
+   `nv-slang-bot`). **Leave human threads unresolved** for the human to close:
+
+```bash
+gh api graphql -f thread="<threadId>" -f query='
+mutation($thread:ID!){resolveReviewThread(input:{threadId:$thread}){thread{isResolved}}}'
+```
+
+5. **Convergence guard:** after **2 consecutive rounds** of nitpick-only
+   feedback (no behavior/API/logic change requested), stop — report to parent
+   that the PR is review-ready and end the turn.
+
+Skip our own echoes: ignore a `github.pr_review` whose reviewer is
+`nv-slang-bot[bot]`, and an empty `commented` review (it only wraps inline
+comments already handled).
+
+### CI failure (`github.ci_failed`)
+
+Classify before fixing:
+- **Infra / flaky** (network timeout, OOM, runner eviction, transient): retry
+  rather than edit — `gh run rerun <run-id> --failed`, up to **3×** for the same
+  signature, then report to parent.
+- **Real code failure**: reproduce in the worktree, fix, re-run verify, push.
+  The push re-triggers CI; the next `github.ci_failed`/green arrives by webhook.
+
+```bash
+gh run list --repo {repo} --branch <head-ref> --status failure --limit 1 \
+  --json databaseId --jq '.[0].databaseId'        # → run-id
+gh run view <run-id> --repo {repo} --log-failed | tail -50
+```
+
+### Review thread resolved/unresolved (`github.pr_review_thread`)
+
+PATCH the TODO comment to reflect it. If `thread_action: unresolved`, re-open
+that item and address it as a fresh review comment (above).
 
 ## PR → session mapping
 
