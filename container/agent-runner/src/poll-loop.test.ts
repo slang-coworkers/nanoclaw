@@ -703,11 +703,9 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
 });
 
 
-describe('dispatchResultText — chain-routing-gate text-output integration', () => {
+describe('dispatchResultText — chain-routing check (always on, not an overlay)', () => {
   let tmp: string;
-  let markerPath: string;
   let statePath: string;
-  let originalRoutingGateOverlayPath: string | undefined;
   let originalRoutingGateStatePath: string | undefined;
 
   function addDestination(name: string) {
@@ -721,20 +719,15 @@ describe('dispatchResultText — chain-routing-gate text-output integration', ()
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'routing-dispatch-test-'));
-    markerPath = path.join(tmp, '.overlay-chain-routing-gate');
     // Isolate the denial-counter state per test so the soft-cap doesn't leak
     // across cases (and so we never touch the real /workspace default).
     statePath = path.join(tmp, 'workflow-state.json');
-    originalRoutingGateOverlayPath = process.env.ROUTING_GATE_OVERLAY_PATH;
     originalRoutingGateStatePath = process.env.ROUTING_GATE_STATE_PATH;
-    process.env.ROUTING_GATE_OVERLAY_PATH = markerPath;
     process.env.ROUTING_GATE_STATE_PATH = statePath;
   });
 
   afterEach(() => {
     fs.rmSync(tmp, { recursive: true, force: true });
-    if (originalRoutingGateOverlayPath === undefined) delete process.env.ROUTING_GATE_OVERLAY_PATH;
-    else process.env.ROUTING_GATE_OVERLAY_PATH = originalRoutingGateOverlayPath;
     if (originalRoutingGateStatePath === undefined) delete process.env.ROUTING_GATE_STATE_PATH;
     else process.env.ROUTING_GATE_STATE_PATH = originalRoutingGateStatePath;
   });
@@ -746,16 +739,15 @@ describe('dispatchResultText — chain-routing-gate text-output integration', ()
     inReplyTo: 'src-msg',
   };
 
-  it('marker absent → marked handoff passes through unchanged', () => {
+  it('non-marker message passes through unchanged (self-scoping on the marker)', () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer">[handoff] proceed</message>', sourceRouting);
+    const result = dispatchResultText('<message to="peer">just a status update</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
-    expect(JSON.parse(out[0].content).text).toBe('[handoff] proceed');
+    expect(JSON.parse(out[0].content).text).toBe('just a status update');
   });
 
-  it('marker present → marked handoff without in_reply_to is replaced by refusal note', () => {
-    fs.writeFileSync(markerPath, 'chain-routing-gate\n');
+  it('marked handoff without in_reply_to is replaced by refusal note (no opt-in needed)', () => {
     addDestination('peer');
     const result = dispatchResultText('<message to="peer">[Fix Report] done</message>', sourceRouting);
     expect(result.sent).toBe(1);
@@ -767,11 +759,10 @@ describe('dispatchResultText — chain-routing-gate text-output integration', ()
     expect(text).not.toContain('[Fix Report] done');
   });
 
-  it('marker present → marked handoff with in_reply_to alone passes (thread_id derived)', () => {
+  it('marked handoff with in_reply_to alone passes (thread_id derived)', () => {
     // Canonical upstream report form from the workflows:
     // send_message(to="parent", in_reply_to=<id>, ...). thread_id is derived
-    // by the runtime, so the gate must NOT demand it.
-    fs.writeFileSync(markerPath, 'chain-routing-gate\n');
+    // by the runtime, so the check must NOT demand it.
     addDestination('peer');
     const result = dispatchResultText(
       '<message to="peer" in_reply_to="42">[Triage Resolution] done</message>',
@@ -783,8 +774,7 @@ describe('dispatchResultText — chain-routing-gate text-output integration', ()
     expect(JSON.parse(out[0].content).text).toBe('[Triage Resolution] done');
   });
 
-  it('marker present → marked handoff with thread_id and in_reply_to passes', () => {
-    fs.writeFileSync(markerPath, 'chain-routing-gate\n');
+  it('marked handoff with thread_id and in_reply_to passes', () => {
     addDestination('peer');
     const result = dispatchResultText(
       '<message to="peer" thread_id="t1" in_reply_to="42">[Review Verdict] approved</message>',
@@ -797,34 +787,21 @@ describe('dispatchResultText — chain-routing-gate text-output integration', ()
     expect(JSON.parse(out[0].content).text).toBe('[Review Verdict] approved');
   });
 
-  it('checkRoutingGate can be unit-tested with explicit marker path', () => {
-    fs.writeFileSync(markerPath, 'chain-routing-gate\n');
+  it('checkRoutingGate enforces in_reply_to regardless of any marker file', () => {
     // No in_reply_to → blocked.
-    expect(
-      checkRoutingGate('[Resolution] x', {}, { overlayMarkerPath: markerPath, workflowStatePath: statePath }).blocked,
-    ).toBe(true);
+    expect(checkRoutingGate('[Resolution] x', {}, { workflowStatePath: statePath }).blocked).toBe(true);
     // in_reply_to alone → allowed (thread_id optional).
-    expect(
-      checkRoutingGate(
-        '[Resolution] x',
-        { inReplyToOverride: '1' },
-        { overlayMarkerPath: markerPath, workflowStatePath: statePath },
-      ).blocked,
-    ).toBe(false);
+    expect(checkRoutingGate('[Resolution] x', { inReplyToOverride: '1' }, { workflowStatePath: statePath }).blocked).toBe(
+      false,
+    );
     // thread_id alone (no in_reply_to) → still blocked: in_reply_to is the primitive.
-    expect(
-      checkRoutingGate(
-        '[Resolution] x',
-        { threadIdOverride: 't1' },
-        { overlayMarkerPath: markerPath, workflowStatePath: statePath },
-      ).blocked,
-    ).toBe(true);
+    expect(checkRoutingGate('[Resolution] x', { threadIdOverride: 't1' }, { workflowStatePath: statePath }).blocked).toBe(
+      true,
+    );
   });
 
-  it('routing gate soft-caps after 3 denials so it cannot thrash', () => {
-    fs.writeFileSync(markerPath, 'chain-routing-gate\n');
-    const call = () =>
-      checkRoutingGate('[Fix Report] x', {}, { overlayMarkerPath: markerPath, workflowStatePath: statePath }).blocked;
+  it('routing check soft-caps after 3 denials so it cannot thrash', () => {
+    const call = () => checkRoutingGate('[Fix Report] x', {}, { workflowStatePath: statePath }).blocked;
     expect(call()).toBe(true); // denial 1
     expect(call()).toBe(true); // denial 2
     expect(call()).toBe(true); // denial 3
@@ -874,7 +851,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
 
   it('marker absent → [Fix Report] passes through unchanged (R1: no opt-in, no gating)', () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer">[Fix Report] hello</message>', sourceRouting);
+    const result = dispatchResultText('<message to="peer" in_reply_to="1">[Fix Report] hello</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out).toHaveLength(1);
@@ -886,7 +863,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer');
     const result = dispatchResultText(
-      '<message to="peer">[Fix Report] all done — please ship</message>',
+      '<message to="peer" in_reply_to="1">[Fix Report] all done — please ship</message>',
       sourceRouting,
     );
     expect(result.sent).toBe(1);
@@ -903,7 +880,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer">[Fix Report] shipped</message>', sourceRouting);
+    const result = dispatchResultText('<message to="peer" in_reply_to="1">[Fix Report] shipped</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(JSON.parse(out[0].content).text).toBe('[Fix Report] shipped');
@@ -925,7 +902,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     addDestination('peer-a');
     addDestination('peer-b');
     const result = dispatchResultText(
-      '<message to="peer-a">[Fix Report] blocked</message>\n<message to="peer-b">passes through</message>',
+      '<message to="peer-a" in_reply_to="1">[Fix Report] blocked</message>\n<message to="peer-b">passes through</message>',
       sourceRouting,
     );
     expect(result.sent).toBe(2);
@@ -941,7 +918,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer');
     dispatchResultText(
-      '<message to="peer" thread_id="branch-A">[Fix Report] body</message>',
+      '<message to="peer" thread_id="branch-A" in_reply_to="1">[Fix Report] body</message>',
       sourceRouting,
     );
     const out = getUndeliveredMessages();

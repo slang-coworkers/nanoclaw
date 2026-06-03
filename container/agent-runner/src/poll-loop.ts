@@ -859,15 +859,17 @@ function gateShouldYield(statePath: string, key: string): boolean {
   return false;
 }
 
+// The chain-routing check is ALWAYS ON — not an overlay. It enforces a pure
+// structural invariant ("a chain handoff must name the inbound it answers",
+// the [MUST] in chain-reporting.md), and it is self-scoping: it only fires on
+// bodies carrying a chain delivery marker, which is the chain protocol's own
+// vocabulary — non-chain coworkers never emit those markers, so they never
+// trip it. There is nothing to select and nothing to opt into.
 export function checkRoutingGate(
   body: string,
   attrs: { threadIdOverride?: string; inReplyToOverride?: string },
-  opts: { overlayMarkerPath?: string; workflowStatePath?: string } = {},
+  opts: { workflowStatePath?: string } = {},
 ): { blocked: boolean; reason?: string } {
-  const fs = require('fs') as typeof import('fs');
-  const markerPath =
-    opts.overlayMarkerPath ?? process.env.ROUTING_GATE_OVERLAY_PATH ?? '/workspace/agent/.overlay-chain-routing-gate';
-  if (!fs.existsSync(markerPath)) return { blocked: false };
   if (!ROUTING_HANDOFF_MARKER_RE.test(body)) return { blocked: false };
   // in_reply_to is the canonical routing primitive: it resolves the inbound
   // row → source_session_id → the exact edge, and the runtime auto-derives

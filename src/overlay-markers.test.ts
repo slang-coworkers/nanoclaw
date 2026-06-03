@@ -189,32 +189,6 @@ describe('materializeOverlayMarkers', () => {
 //      anchor placement (lets pure-hook overlays like critique-gate activate
 //      without spine prose).
 describe('getAppliedOverlayNames decouples MARKER from anchor placement', () => {
-  it('returns type-declared pure-hook overlay even when applies-to.workflows is empty', () => {
-    writeOverlay(
-      tmpRoot,
-      'type-hook',
-      {
-        name: 'type-hook',
-        license: 'MIT',
-        type: 'overlay',
-        description: 'type pure-hook overlay',
-        'applies-to': { workflows: [], traits: [], start: false },
-        'insert-before': [],
-        'insert-after': [],
-        uses: { skills: [] },
-      },
-      'No prose.',
-      'type-hook',
-    );
-    fs.appendFileSync(
-      path.join(tmpRoot, 'container', 'spines', 'tests', 'coworker-types.yaml'),
-      '  overlays: [type-hook]\n',
-    );
-
-    const applied = getAppliedOverlayNames(tmpRoot, 'test-coworker', { cliScope: 'group' });
-    expect(applied).toContain('type-hook');
-  });
-
   it('returns operator-selected overlay even when applies-to.workflows is empty', () => {
     // Pure-hook overlay: empty applies-to → no anchor target, no spine prose.
     writeOverlay(

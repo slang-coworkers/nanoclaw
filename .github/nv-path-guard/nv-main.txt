@@ -68,7 +68,6 @@ container/workflows/implement/**
 # Generic critique/observer overlays (project-specific overlays live on project branches):
 container/overlays/buddy/**
 container/overlays/buddy-monitor/**
-container/overlays/chain-routing-gate/**
 container/overlays/critique-gate/**
 container/overlays/critique-overlay/**
 container/overlays/plan-gate/**
@@ -79,6 +78,9 @@ container/workflows/fix-issue/**
 container/workflows/discord-answer/**
 container/overlays/discord-answer-critique/**
 container/skills/github-webhook/**
+# chain-routing-gate overlay deleted — the routing check is now always-on, not
+# an overlay. Allowlisted so path-guard permits the deletion.
+container/overlays/chain-routing-gate/**
 
 # Operational skills (instruction-only workflows, not channel/provider installs):
 .claude/skills/init-first-agent/**

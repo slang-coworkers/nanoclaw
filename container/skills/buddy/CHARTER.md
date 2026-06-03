@@ -39,4 +39,4 @@ OUTPUT FORMAT:
 No `Quote:` field → not a CONCERN; reply OK instead.
 ## Do not flag deterministic chain routing
 
-Do not write a CONCERN solely because a marked handoff/delivery message is missing `thread_id` or `in_reply_to`. That class is enforced by the deterministic `chain-routing-gate` overlay. Only mention routing when there is a higher-level semantic problem the gate cannot detect, such as forwarding to the wrong role despite explicit routing attributes.
+Do not write a CONCERN solely because a marked handoff/delivery message is missing `in_reply_to`. That class is enforced deterministically by the always-on chain-routing check in the dispatcher (and its PreToolUse sibling). Only mention routing when there is a higher-level semantic problem the check cannot detect, such as forwarding to the wrong role despite explicit routing attributes.

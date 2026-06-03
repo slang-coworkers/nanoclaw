@@ -4,6 +4,11 @@
 # tool arg. The text-output dispatcher has a sibling in-process check for
 # <message ...> blocks (checkRoutingGate in poll-loop.ts).
 #
+# ALWAYS ON — not an overlay. This enforces a structural invariant ("a chain
+# handoff must name the inbound it answers", the [MUST] in chain-reporting.md)
+# and is self-scoping: it only fires on a chain delivery marker, which only
+# chain coworkers ever emit. Nothing to select, nothing to opt into.
+#
 # Why in_reply_to alone (thread_id optional): in_reply_to resolves the inbound
 # row → source_session_id → the exact edge, and the runtime auto-derives
 # thread_id from it (applyInReplyToDefaults in mcp-tools/core.ts). Requiring
@@ -14,9 +19,6 @@
 # gate-critique-on-deliver.sh) so a step that genuinely can't satisfy the
 # precondition can't thrash the agent's whole turn budget.
 set -euo pipefail
-
-OVERLAY_DIR="${OVERLAY_MARKER_DIR:-/workspace/agent}"
-[ -f "$OVERLAY_DIR/.overlay-chain-routing-gate" ] || exit 0
 
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // ""')
