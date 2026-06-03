@@ -4987,13 +4987,16 @@ export async function handleRequest(
         return;
       }
 
-      // Look up ALL active nanoclaw sessions per group_folder, not just the
-      // most recent. With per-thread dashboards a single coworker owns N
-      // sessions (one root + one per thread); the older latest-wins logic
-      // silently dropped everything but the newest session. Keep sessions
-      // per folder ordered ascending by created_at so the query-time
-      // fallback can bracket unrouted SDK UUIDs correctly.
-      const folderSet = new Set<string>(flatRows.map((r) => r.group_folder).filter(Boolean));
+      // The session list is sourced from the `sessions` table, NOT from the
+      // capped hook_events scan above. hook_events is bounded for event-volume
+      // reasons (LIMIT 200 / 5000-event ring); deriving the session list from
+      // it silently truncated low-volume coworkers (e.g. slang-reviewer: 36
+      // active sessions but only ~2 survived once high-volume folders crowded
+      // the global top-200). Sessions are cheap metadata — load ALL active ones
+      // and treat hook_events purely as activity enrichment layered on top.
+      //
+      // Keep sessions per folder ordered ascending by created_at so the
+      // query-time heuristic fallback can bracket unrouted SDK UUIDs correctly.
       type NanoSess = {
         id: string;
         agent_group_id: string;
@@ -5010,9 +5013,7 @@ export async function handleRequest(
         created_at: string;
       };
       const nanoSessionsByFolder = new Map<string, NanoSess[]>();
-      if (folderSet.size > 0) {
-        const folders = Array.from(folderSet);
-        const placeholders = folders.map(() => '?').join(',');
+      {
         let nanoRows: any[] = [];
         try {
           const sessionCols = new Set(
@@ -5023,6 +5024,9 @@ export async function handleRequest(
             : 'NULL AS display_title, NULL AS title_source,';
           const stateSelect = `${sessionCols.has('hidden_at') ? 's.hidden_at' : 'NULL'} AS hidden_at,
                       ${sessionCols.has('pinned_at') ? 's.pinned_at' : 'NULL'} AS pinned_at,`;
+          // When `group` is set the list is folder-scoped; otherwise return every
+          // active session across all folders. No global LIMIT — the frontend
+          // renders the full list inside scroll containers.
           nanoRows = heDb
             .prepare(
               `SELECT s.id AS id, s.agent_group_id AS agent_group_id, ag.folder AS folder,
@@ -5033,10 +5037,10 @@ export async function handleRequest(
                       s.last_active AS last_active, s.created_at AS created_at
                  FROM sessions s
                  JOIN agent_groups ag ON ag.id = s.agent_group_id
-                 WHERE s.status = 'active' AND ag.folder IN (${placeholders})
-                 ORDER BY s.created_at ASC`,
+                 WHERE s.status = 'active'${group ? ' AND ag.folder = ?' : ''}
+                 ORDER BY ag.folder ASC, s.created_at ASC`,
             )
-            .all(...folders) as any[];
+            .all(...(group ? [group] : [])) as any[];
         } catch {
           // sessions or agent_groups table may be missing in some environments — fall through with no nanoclaw data.
           nanoRows = [];
@@ -5184,6 +5188,17 @@ export async function handleRequest(
         for (const n of list) nanoById.set(n.id, n);
       }
 
+      // Seed a parent for EVERY active nanoclaw session up front. The flatRows
+      // pass below then only attaches SDK subsessions to these pre-seeded
+      // parents (or creates synthetic __orphan__ parents for unattributable
+      // SDK UUIDs). This guarantees every active session appears in the list,
+      // including ones with no hook events yet (idle, empty recent_events).
+      for (const [folder, list] of nanoSessionsByFolder) {
+        for (const n of list) {
+          if (!parentByKey.has(n.id)) parentByKey.set(n.id, makeParent(n, folder));
+        }
+      }
+
       for (const r of flatRows) {
         const folderSessions = nanoSessionsByFolder.get(r.group_folder) ?? [];
         let pickedNano: NanoSess | null = null;
@@ -5241,17 +5256,8 @@ export async function handleRequest(
         });
       }
 
-      // Include active nanoclaw sessions that currently have NO SDK
-      // events yet (new session, container never woken). Without this,
-      // a freshly-created thread doesn't appear in Timeline until its
-      // first hook event arrives.
-      for (const [folder, list] of nanoSessionsByFolder) {
-        for (const n of list) {
-          if (!parentByKey.has(n.id)) {
-            parentByKey.set(n.id, makeParent(n, folder));
-          }
-        }
-      }
+      // (Active nanoclaw sessions with no SDK events yet are already present —
+      // they were seeded into parentByKey before the flatRows pass above.)
 
       // Sort sub-sessions DESC by last_ts, then sort parents DESC by last_active (fall back to _last_ts_num).
       const parents = Array.from(parentByKey.values());
@@ -5269,45 +5275,52 @@ export async function handleRequest(
       // Pixel Office character per session.
       for (const p of parents) {
         const sdkIds = p.sdk_subsessions.map((s) => s.session_id).filter(Boolean);
-        if (sdkIds.length === 0) continue;
-        try {
-          const ph = sdkIds.map(() => '?').join(',');
-          const recent = heDb
-            .prepare(
-              `SELECT event, tool, message, timestamp, session_id
-                 FROM hook_events
-                WHERE session_id IN (${ph})
-                ORDER BY timestamp DESC
-                LIMIT 5`,
-            )
-            .all(...sdkIds) as Array<{
-            event: string;
-            tool: string | null;
-            message: string | null;
-            timestamp: number;
-            session_id: string;
-          }>;
-          p.recent_events = recent.map((r) => ({
-            event: r.event,
-            tool: r.tool,
-            timestamp: r.timestamp,
-            session_id: r.session_id,
-          }));
-          // Status rule: if container isn't running, force 'idle'. Otherwise
-          // derive from the most-recent event via classifyEventStatus.
-          if (p.container_status !== 'running') {
-            p.activity_status = 'idle';
-          } else if (recent.length > 0) {
-            p.activity_status = classifyEventStatus({
-              event: recent[0].event,
-              tool: recent[0].tool,
-              message: recent[0].message,
-            });
-          } else {
-            p.activity_status = 'active';
+        // Zero-event seeded sessions (no SDK UUIDs yet) skip the event lookup
+        // but still emit a sensible status + title below — they must remain
+        // visible in the list, just idle with an empty recent_events feed.
+        if (sdkIds.length > 0) {
+          try {
+            const ph = sdkIds.map(() => '?').join(',');
+            const recent = heDb
+              .prepare(
+                `SELECT event, tool, message, timestamp, session_id
+                   FROM hook_events
+                  WHERE session_id IN (${ph})
+                  ORDER BY timestamp DESC
+                  LIMIT 5`,
+              )
+              .all(...sdkIds) as Array<{
+              event: string;
+              tool: string | null;
+              message: string | null;
+              timestamp: number;
+              session_id: string;
+            }>;
+            p.recent_events = recent.map((r) => ({
+              event: r.event,
+              tool: r.tool,
+              timestamp: r.timestamp,
+              session_id: r.session_id,
+            }));
+            // Status rule: if container isn't running, force 'idle'. Otherwise
+            // derive from the most-recent event via classifyEventStatus.
+            if (p.container_status !== 'running') {
+              p.activity_status = 'idle';
+            } else if (recent.length > 0) {
+              p.activity_status = classifyEventStatus({
+                event: recent[0].event,
+                tool: recent[0].tool,
+                message: recent[0].message,
+              });
+            } else {
+              p.activity_status = 'active';
+            }
+          } catch {
+            /* hook_events may be unavailable in degraded fixtures */
           }
-        } catch {
-          /* hook_events may be unavailable in degraded fixtures */
+        } else {
+          // No events: idle unless the container is currently running.
+          p.activity_status = p.container_status === 'running' ? 'active' : 'idle';
         }
 
         // Read-only fallback for UI display. The authoritative title is
@@ -5346,8 +5359,9 @@ export async function handleRequest(
         const bt = b.last_active ? new Date(b.last_active).getTime() : b._last_ts_num;
         return bt - at;
       });
-      // Strip the sort-helper field before emitting.
-      const out = parents.slice(0, 50).map(({ _last_ts_num, ...rest }) => rest);
+      // Strip the sort-helper field before emitting. No slice — every active
+      // session is returned so the frontend can list and scroll them all.
+      const out = parents.map(({ _last_ts_num, ...rest }) => rest);
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(out));
