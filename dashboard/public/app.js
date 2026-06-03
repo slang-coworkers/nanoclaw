@@ -275,6 +275,79 @@ function switchToTab(tabId) {
   document.querySelectorAll('.tab-content').forEach((t) => t.classList.remove('active'));
   document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
   document.getElementById(tabId)?.classList.add('active');
+  if (tabId === 'funnel') loadFunnel();
+}
+
+// Issue funnel panel — reads the cached snapshot from /api/funnel (written by
+// `scripts/funnel.ts --out reports/funnel.json`). The dashboard never recomputes
+// the funnel; if no snapshot exists the endpoint 404s with a refresh hint.
+let _funnelLoaded = false;
+async function loadFunnel(force) {
+  if (_funnelLoaded && !force) return;
+  _funnelLoaded = true;
+  const board = document.getElementById('funnel-board');
+  const detail = document.getElementById('funnel-detail');
+  const stamp = document.getElementById('funnel-stamp');
+  if (board) board.innerHTML = 'Loading…';
+  let snap;
+  try {
+    const res = await fetch('/api/funnel');
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      if (board) board.innerHTML = `<span style="color:var(--text-muted)">No funnel snapshot yet. ${esc(j.hint || '')}</span>`;
+      if (detail) detail.innerHTML = '';
+      return;
+    }
+    snap = await res.json();
+  } catch (e) {
+    if (board) board.innerHTML = 'Failed to load funnel.';
+    return;
+  }
+  if (stamp) stamp.textContent = snap.generatedAt ? `snapshot: ${formatTime(snap.generatedAt)}` : '';
+  const b = snap.board || {};
+  const row = (label, cell, base) => {
+    const c = cell || { prod: 0, lego: 0, total: 0 };
+    const conv = base && base.total ? Math.round((c.total / base.total) * 100) + '%' : '';
+    return `<tr><td>${esc(label)}</td><td style="text-align:right">${c.prod}</td><td style="text-align:right">${c.lego}</td><td style="text-align:right"><b>${c.total}</b></td><td style="text-align:right;color:var(--text-muted)">${conv}</td></tr>`;
+  };
+  if (board)
+    board.innerHTML =
+      `<table style="border-collapse:collapse" cellpadding="3">
+        <tr style="border-bottom:1px solid var(--border)"><th style="text-align:left">stage</th><th>prod</th><th>lego</th><th>total</th><th>conv</th></tr>
+        ${snap.routedWindowed != null ? `<tr><td>Routed (win-bound)</td><td></td><td></td><td><b>${snap.routedWindowed}</b></td><td style="color:var(--text-muted)">top</td></tr>` : ''}
+        ${row('PR opened', b.pr_opened, b.pr_opened)}
+        ${row('PR ready (¬draft)', b.pr_ready, b.pr_opened)}
+        ${row('Merged', b.merged, b.pr_opened)}
+        <tr><td colspan="5" style="color:var(--text-muted);padding-top:6px">terminals / side-exits</td></tr>
+        ${row('shipped-draft', b.shipped_draft)}
+        ${row('PR closed-unmerged', b.pr_closed_unmerged)}
+        ${row('CI red (open)', b.ci_red)}
+        ${row('CI green (open)', b.ci_green)}
+      </table>
+      <div style="margin-top:6px;color:var(--text-muted)">routed→no-PR yet: ${(snap.routedNoPr || []).length}${(snap.routedNoPr || []).length ? ' — ' + snap.routedNoPr.slice(0, 10).map(esc).join(', ') : ''}</div>`;
+  // Detail: one row per PR with links.
+  const rows = snap.rows || [];
+  const stageColor = (s) =>
+    s === 'merged' ? '#3fb950' : s === 'shipped-draft' ? '#58a6ff' : s === 'pr-ready' ? '#79c0ff' : s.startsWith('pr-closed') || s === 'superseded' ? '#8b949e' : 'var(--text)';
+  if (detail)
+    detail.innerHTML =
+      `<table style="border-collapse:collapse;width:100%" cellpadding="3">
+        <tr style="border-bottom:1px solid var(--border);text-align:left"><th>inst</th><th>issue</th><th>PR</th><th>state</th><th>CI</th><th>stage</th><th>note</th></tr>
+        ${rows
+          .map(
+            (r) =>
+              `<tr style="border-bottom:1px solid var(--border)">
+                <td>${esc(r.instance)}</td>
+                <td>${r.issueUrl ? `<a href="${escAttr(r.issueUrl)}" target="_blank" rel="noopener">#${r.issue ?? '?'}</a>` : (r.repo ? esc(r.repo) : '?')}</td>
+                <td>${r.prUrl ? `<a href="${escAttr(r.prUrl)}" target="_blank" rel="noopener">#${r.pr}</a>` : '#' + r.pr}</td>
+                <td>${esc(r.prState || '?')}</td>
+                <td>${esc(r.ciBucket || '-')}</td>
+                <td style="color:${stageColor(r.stage || '')}">${esc(r.stage || '')}</td>
+                <td style="color:var(--text-muted)">${esc(r.note || '')}</td>
+              </tr>`,
+          )
+          .join('')}
+      </table>`;
 }
 
 // Shared "Active Session" block — two-layer (nanoclaw session id + container_status +
@@ -1707,6 +1780,8 @@ document.getElementById('legend-toggle')?.addEventListener('click', () => {
   const legend = document.getElementById('office-legend');
   if (legend) legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
 });
+
+document.getElementById('funnel-refresh')?.addEventListener('click', () => loadFunnel(true));
 
 document.getElementById('office-show-all')?.addEventListener('click', () => {
   officeShowAll = !officeShowAll;
