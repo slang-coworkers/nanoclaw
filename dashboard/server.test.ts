@@ -2249,6 +2249,9 @@ describe('/api/messages system-id filter', () => {
     inIns.run('dash-real-1', 'chat', '{"text":"real user message"}', now);
     inIns.run('claudemd-refresh-1', 'chat', '{"text":"Your instructions were updated"}', now);
     inIns.run('a2a-noise-1', 'chat', '{"text":"No response requested"}', now);
+    // ncl polling chatter (cli_response, id cli-resp-…) — must be hidden so it
+    // doesn't consume the LIMIT window.
+    inIns.run('cli-resp-1', 'system', '{"type":"cli_response","ok":true}', now);
     inDb.close();
 
     const outDb = new Database(path.join(sessDir, 'outbound.db'));
@@ -2259,17 +2262,21 @@ describe('/api/messages system-id filter', () => {
     outIns.run('msg-real-reply', 'chat', '{"text":"real agent reply"}', now, 'dash-real-1');
     outIns.run('msg-ack-claudemd', 'chat', '{"text":"ack"}', now, 'claudemd-refresh-1');
     outIns.run('msg-ack-a2a', 'chat', '{"text":"ack a2a"}', now, 'a2a-noise-1');
+    // ncl polling chatter (cli_request, id cli-…) — must be hidden by default.
+    outIns.run('cli-1', 'system', '{"action":"cli_request","command":"sessions-list"}', now, null);
     outDb.close();
 
     forceOpenDbForTests();
   }
 
-  it('hides claudemd-refresh and a2a messages by default', async () => {
+  it('hides claudemd-refresh, a2a, and cli- chatter by default', async () => {
     seedFilterTestSession();
     const res = await fetch(`${baseUrl}/api/messages?group=filter-test&limit=50`);
     expect(res.status).toBe(200);
     const data = (await res.json()) as { messages: any[] };
     const ids = data.messages.map((m) => m.id).sort();
+    // cli-1 / cli-resp-1 (ncl polling chatter) excluded server-side so they
+    // never consume the LIMIT window.
     expect(ids).toEqual(['dash-real-1', 'msg-real-reply']);
   });
 
@@ -2281,6 +2288,8 @@ describe('/api/messages system-id filter', () => {
     expect(ids).toEqual([
       'a2a-noise-1',
       'claudemd-refresh-1',
+      'cli-1',
+      'cli-resp-1',
       'dash-real-1',
       'msg-ack-a2a',
       'msg-ack-claudemd',
