@@ -688,15 +688,19 @@ export function getAppliedOverlayNames(
   }
   if (opts.disableOverlays) return [];
   const seen = new Set<string>();
+  for (const entry of resolveTypeChain(types, coworkerType)) {
+    for (const name of entry.overlays ?? []) {
+      if (catalog[name]?.type === 'overlay') seen.add(name);
+    }
+  }
   // Anchor-spliced overlays (applies-to matches → CLAUDE.md text).
   for (const c of manifest.customizations) {
     if (c.kind === 'overlay' && c.overlayName) seen.add(c.overlayName);
   }
-  // Operator-selected overlays (R2). The MARKER file is the activation
-  // primitive for hooks; CLAUDE.md splicing is a separate concern
-  // (anchor-driven). An overlay with empty applies-to (e.g. critique-gate)
-  // has no spine prose but must still materialize its MARKER so the hook
-  // first-line gate passes.
+  // Type-declared and operator-selected overlays materialize MARKER files
+  // even when they have empty applies-to and no spine prose. The marker is
+  // the activation primitive for pure runtime gates such as critique-gate
+  // and chain-routing-gate; CLAUDE.md splicing is anchor-driven separately.
   if (opts.overlays) {
     for (const name of opts.overlays) {
       if (catalog[name]?.type === 'overlay') seen.add(name);

@@ -1019,6 +1019,16 @@ function buildMounts(
             ],
           });
         }
+        // gate-chain-routing.sh refuses marked handoff/delivery direct
+        // send_message calls unless in_reply_to is set (thread_id is derived
+        // from it by the runtime). The hook itself first-line checks
+        // .overlay-chain-routing-gate, so universal wiring is safe.
+        if (!hasCmd('PreToolUse', 'gate-chain-routing.sh')) {
+          settings.hooks.PreToolUse.push({
+            matcher: 'mcp__nanoclaw__send_message',
+            hooks: [{ type: 'command', command: 'bash /app/hooks/gate-chain-routing.sh', timeout: 5 }],
+          });
+        }
         // gate-critique-on-deliver.sh refuses delivery markers
         // ([Fix Report]/[Resolution]/[Triage Resolution]/[Review Verdict]/[handoff])
         // and PR-create commands until /codex-critique has run at least once.

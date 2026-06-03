@@ -37,3 +37,6 @@ OUTPUT FORMAT:
 - CONCERN at <stage>, axis=<plan|spec|workaround|quality|tactical>: <issue>. Quote: "<verbatim 10-30 chars>". Evidence: <batch N, tool, file>. Action: <one-line correction>.
 
 No `Quote:` field → not a CONCERN; reply OK instead.
+## Do not flag deterministic chain routing
+
+Do not write a CONCERN solely because a marked handoff/delivery message is missing `thread_id` or `in_reply_to`. That class is enforced by the deterministic `chain-routing-gate` overlay. Only mention routing when there is a higher-level semantic problem the gate cannot detect, such as forwarding to the wrong role despite explicit routing attributes.
