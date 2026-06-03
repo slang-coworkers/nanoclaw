@@ -159,8 +159,10 @@ uses:
    The five-bullet report uses **markdown list syntax with bold field labels** (`•` glyphs degrade to raw bytes in dashboards):
 
    ```
-   send_message(to="parent", text="[Fix Report] <repo>#<number>: <title>\n\n- **Status:** <fixed / partial / blocked>\n- **Changes:** <N files, +X / −Y> — <what changed>\n- **Tests:** <repro PASS/FAIL>; broader suite <result>\n- **Review:** <APPROVE / REQUEST_CHANGES / N findings — top concern>\n- **Next:** <draft PR <url> / patch attached / human action needed>")
+   send_message(to="parent", in_reply_to=<id-of-triage-handoff>, text="[Fix Report] <repo>#<number>: <title>\n\n- **Status:** <fixed / partial / blocked>\n- **Changes:** <N files, +X / −Y> — <what changed>\n- **Tests:** <repro PASS/FAIL>; broader suite <result>\n- **Review:** <APPROVE / REQUEST_CHANGES / N findings — top concern>\n- **Next:** <draft PR <url> / patch attached / human action needed>")
    ```
+
+   `in_reply_to` names the inbound that dispatched this fix (the triage handoff) so the report routes back up the exact edge — it is **required** on `[Fix Report]` under the chain-routing-gate (`thread_id` is derived from it).
 
    Refresh the draft PR body with final values — rebuild `$FINAL_BODY` from the Step 7 heredoc sections (Risk → renamed Review; `## Files changed` from `$(git diff --stat main..HEAD | sed 's/^/- /')`), then `gh pr edit <pr-number> -R shader-slang/slang --body "$FINAL_BODY"`.
 

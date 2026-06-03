@@ -75,6 +75,7 @@ slang-triage:
   # Triage owns the diagnosis half of the chain — it inspects the issue,
   # classifies, names candidate approaches. OUTPUT_REVIEW is on the handoff
   # message itself. The fixer side carries PLAN/CODE/OUTPUT.
+  overlays: [chain-routing-gate]
   required_critique_stages: [DIAGNOSIS_REVIEW, OUTPUT_REVIEW]
 
 slang-fixer:
@@ -86,6 +87,7 @@ slang-fixer:
   # Fixer reads triage's diagnosis, commits to a plan, edits source, ships
   # a Fix Report. PLAN_REVIEW catches a bad approach before code is written;
   # CODE_REVIEW catches diff issues; OUTPUT_REVIEW vets the report itself.
+  overlays: [chain-routing-gate, critique-gate]
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
 
 slang-reviewer:
@@ -106,6 +108,7 @@ slang-reviewer:
   # Reviewer reads a diff, produces a verdict. CODE_REVIEW is the assessment
   # of the diff under review (codex independent-checks the assessment);
   # OUTPUT_REVIEW vets the final review verdict before sending.
+  overlays: [chain-routing-gate, critique-gate]
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
 
 slang-discord:
