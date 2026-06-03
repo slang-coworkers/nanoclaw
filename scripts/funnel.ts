@@ -50,6 +50,12 @@ const JSON_OUT = args.includes('--json');
 const SKIP_ROUTED = args.includes('--no-routed');
 const REPO_FILTER = args.includes('--repo') ? args[args.indexOf('--repo') + 1] : null;
 const OUT_PATH = args.includes('--out') ? args[args.indexOf('--out') + 1] : null;
+// The funnel measures upstream issue resolution, so it scopes to the
+// shader-slang org by default. slang-coworkers/nanoclaw PRs are our OWN tooling
+// (the agent platform itself), not issues the pipeline resolves — they'd inflate
+// the "merged" count with self-development noise. Pass --all-orgs to include them.
+const ALL_ORGS = args.includes('--all-orgs');
+const orgAllowed = (repo: string) => ALL_ORGS || repo.startsWith('shader-slang/');
 const STAMP = new Date().toISOString();
 
 // ── token cache (one installation token per org, ~1h TTL; we run well under) ──
@@ -140,6 +146,7 @@ async function main() {
     )
     .all() as Array<{ repo: string; pr: number; instance: string; thread_id: string | null }>;
   if (REPO_FILTER) mappings = mappings.filter((m) => m.repo === REPO_FILTER);
+  mappings = mappings.filter((m) => orgAllowed(m.repo));
 
   // ── Routed head (window-bound): distinct (repo, issue#) from prod dev-route log ──
   const routedSet = new Set<string>(); // `${repo}#${issue}`
@@ -236,6 +243,7 @@ async function main() {
   for (const key of routedSet) {
     if (REPO_FILTER && !key.startsWith(REPO_FILTER + '#')) continue;
     if (key.startsWith('test-org/')) continue; // synthetic webhook tests
+    if (!orgAllowed(key.split('#')[0])) continue; // shader-slang only by default
     if (!seenIssues.has(key)) routedNoPr.push(key);
   }
 
