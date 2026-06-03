@@ -5897,6 +5897,17 @@ export async function handleRequest(
               }
             }
           }
+          // Exclude ncl polling chatter (cli_request/response id `cli-…`,
+          // claudemd-refresh-…) at the SQL level on the MAIN view only, so it
+          // never consumes the LIMIT window. Declared at per-session scope so
+          // BOTH the inbound and outbound query blocks below can see it —
+          // declaring it inside the inbound block left it undefined in the
+          // outbound query, which threw ReferenceError (swallowed by the
+          // per-session catch) and silently dropped ALL outbound messages.
+          // Gated on !threadMode too: the thread/debug view (and
+          // ?includeSystem=1) must still surface plumbing rows.
+          const hideChatterSql =
+            !threadMode && !includeSystem ? "id NOT LIKE 'cli-%' AND id NOT LIKE 'claudemd-refresh-%'" : '';
           for (const sess of sessions) {
             const inDbPath = join(sessionsDir, sess.id, 'inbound.db');
             const outDbPath = join(sessionsDir, sess.id, 'outbound.db');
@@ -5941,12 +5952,6 @@ export async function handleRequest(
                 // even though the DB has months of history.
                 // messages_in stores ISO (e.g. 2026-05-09T01:03:52.762Z), so
                 // string compare against the ISO cursor is correct.
-                // Exclude ncl polling chatter (cli_request id `cli-…`) at the
-                // SQL level on the main view so it never consumes the LIMIT
-                // window (the post-fetch client/JS filter alone leaves the page
-                // mostly empty — e.g. 36/50 chatter — pushing real messages off
-                // the fetched page). ?includeSystem=1 keeps the full history.
-                const hideChatterSql = !includeSystem ? "id NOT LIKE 'cli-%' AND id NOT LIKE 'claudemd-refresh-%'" : '';
                 const inConds = [beforeParam ? 'timestamp < ?' : '', hideChatterSql].filter(Boolean);
                 const inWhere = inConds.length ? `WHERE ${inConds.join(' AND ')} ` : '';
                 const inArgs: any[] = beforeParam ? [beforeParam, perGroupLimit] : [perGroupLimit];
