@@ -124,6 +124,11 @@ jobs:
 
       - name: Fetch external skills
         if: hashFiles('scripts/fetch-skills.sh') != ''
+        # Authenticate `gh skill` blob fetches — unauthenticated fetches hit
+        # GitHub's anonymous rate limit (HTTP 403) and silently drop skills,
+        # which then fail validate:templates with "references unknown skill".
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/fetch-skills.sh
 
       - name: Format check
