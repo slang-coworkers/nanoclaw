@@ -1021,8 +1021,8 @@ function buildMounts(
         }
         // gate-chain-routing.sh refuses marked handoff/delivery direct
         // send_message calls unless in_reply_to is set (thread_id is derived
-        // from it by the runtime). The hook itself first-line checks
-        // .overlay-chain-routing-gate, so universal wiring is safe.
+        // from it by the runtime). Always on — the hook is self-scoping (only
+        // acts on a chain delivery marker), so universal wiring is correct.
         if (!hasCmd('PreToolUse', 'gate-chain-routing.sh')) {
           settings.hooks.PreToolUse.push({
             matcher: 'mcp__nanoclaw__send_message',

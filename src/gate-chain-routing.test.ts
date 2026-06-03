@@ -14,9 +14,6 @@ interface RunResult {
 }
 
 let tmpRoot: string;
-let overlayDir: string;
-let markerFile: string;
-
 let stateFile: string;
 
 function run(payload: object): RunResult {
@@ -24,7 +21,6 @@ function run(payload: object): RunResult {
     input: JSON.stringify(payload),
     env: {
       PATH: process.env.PATH || '',
-      OVERLAY_MARKER_DIR: overlayDir,
       WORKFLOW_STATE_FILE: stateFile,
     },
     encoding: 'utf-8',
@@ -32,15 +28,8 @@ function run(payload: object): RunResult {
   return { status: proc.status ?? -1, stdout: proc.stdout ?? '', stderr: proc.stderr ?? '' };
 }
 
-function activateOverlay(): void {
-  fs.writeFileSync(markerFile, 'chain-routing-gate\n');
-}
-
 beforeEach(() => {
   tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-chain-routing-test-'));
-  overlayDir = path.join(tmpRoot, 'overlay');
-  fs.mkdirSync(overlayDir, { recursive: true });
-  markerFile = path.join(overlayDir, '.overlay-chain-routing-gate');
   stateFile = path.join(tmpRoot, 'workflow-state.json');
 });
 
@@ -48,18 +37,10 @@ afterEach(() => {
   fs.rmSync(tmpRoot, { recursive: true, force: true });
 });
 
+// The hook is ALWAYS ON (not gated by an overlay marker). It is self-scoping:
+// it only acts on send_message bodies carrying a chain delivery marker.
 describe('gate-chain-routing.sh', () => {
-  it('marker absent → delivery message passes', () => {
-    const result = run({
-      tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { to: 'peer', text: '[Fix Report] done' },
-    });
-    expect(result.status).toBe(0);
-    expect(result.stderr).toBe('');
-  });
-
-  it('marker present → blocks marked send_message without in_reply_to', () => {
-    activateOverlay();
+  it('blocks marked send_message without in_reply_to', () => {
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
       tool_input: { to: 'peer', text: '[Resolution] done' },
@@ -69,9 +50,8 @@ describe('gate-chain-routing.sh', () => {
     expect(result.stderr).toContain('in_reply_to');
   });
 
-  it('marker present → allows marked send_message with in_reply_to alone (thread_id derived)', () => {
+  it('allows marked send_message with in_reply_to alone (thread_id derived)', () => {
     // Canonical upstream report form: send_message(to="parent", in_reply_to=<id>, ...).
-    activateOverlay();
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
       tool_input: { to: 'parent', text: '[Triage Resolution] done', in_reply_to: 12 },
@@ -79,8 +59,7 @@ describe('gate-chain-routing.sh', () => {
     expect(result.status).toBe(0);
   });
 
-  it('marker present → allows marked send_message with both routing fields', () => {
-    activateOverlay();
+  it('allows marked send_message with both routing fields', () => {
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
       tool_input: { to: 'peer', text: '[handoff] done', thread_id: 't1', in_reply_to: 12 },
@@ -88,8 +67,7 @@ describe('gate-chain-routing.sh', () => {
     expect(result.status).toBe(0);
   });
 
-  it('marker present → thread_id alone (no in_reply_to) is still blocked', () => {
-    activateOverlay();
+  it('thread_id alone (no in_reply_to) is still blocked', () => {
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
       tool_input: { to: 'peer', text: '[Fix Report] done', thread_id: 't1' },
@@ -98,8 +76,7 @@ describe('gate-chain-routing.sh', () => {
     expect(result.stderr).toContain('in_reply_to');
   });
 
-  it('marker present → non-delivery message passes', () => {
-    activateOverlay();
+  it('non-delivery message passes (self-scoping on the marker)', () => {
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
       tool_input: { to: 'peer', text: 'normal update' },
@@ -107,8 +84,15 @@ describe('gate-chain-routing.sh', () => {
     expect(result.status).toBe(0);
   });
 
-  it('marker present → soft-caps after 3 denials so it cannot thrash', () => {
-    activateOverlay();
+  it('non-send_message tool passes', () => {
+    const result = run({
+      tool_name: 'Bash',
+      tool_input: { command: 'echo [Fix Report]' },
+    });
+    expect(result.status).toBe(0);
+  });
+
+  it('soft-caps after 3 denials so it cannot thrash', () => {
     const payload = {
       tool_name: 'mcp__nanoclaw__send_message',
       tool_input: { to: 'parent', text: '[Fix Report] done' },
