@@ -18,6 +18,22 @@ vi.mock('./modules/pr-mapping/register-endpoint.js', () => ({
   handleRegisterPr: vi.fn(),
 }));
 
+vi.mock('./modules/pr-mapping/store.js', () => ({
+  prMappingExists: vi.fn(() => false),
+}));
+
+vi.mock('./db/connection.js', () => ({
+  getDb: () => ({}),
+}));
+
+// postEyesReaction re-reads GH_TOKEN from .env at call time (the cron-rotated
+// value), falling back to process.env. Mock readEnvFile so tests control the
+// file token without touching the real repo .env.
+const readEnvFileMock = vi.fn((_keys: string[]) => ({}) as Record<string, string>);
+vi.mock('./env.js', () => ({
+  readEnvFile: (keys: string[]) => readEnvFileMock(keys),
+}));
+
 import { postEyesReaction } from './github-webhook-server.js';
 
 describe('postEyesReaction', () => {
@@ -26,6 +42,7 @@ describe('postEyesReaction', () => {
   beforeEach(() => {
     fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201 });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
+    readEnvFileMock.mockReturnValue({}); // default: no file token → fall back to process.env
     process.env.GH_TOKEN = 'fake-token';
   });
 
@@ -58,6 +75,23 @@ describe('postEyesReaction', () => {
     expect(init.method).toBe('POST');
     expect(init.headers.Authorization).toBe('token fake-token');
     expect(JSON.parse(init.body)).toEqual({ content: 'eyes' });
+  });
+
+  it('uses the .env (cron-rotated) token over a stale process.env.GH_TOKEN', async () => {
+    // Simulates the real failure mode: process.env holds the boot-frozen
+    // expired token; .env was refreshed by cron with the current one.
+    process.env.GH_TOKEN = 'stale-boot-token';
+    readEnvFileMock.mockReturnValue({ GH_TOKEN: 'fresh-cron-token' });
+    await postEyesReaction('org/repo', 'issue_comment', 12345);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('token fresh-cron-token');
+  });
+
+  it('falls back to process.env.GH_TOKEN when .env has none', async () => {
+    readEnvFileMock.mockReturnValue({});
+    process.env.GH_TOKEN = 'env-fallback-token';
+    await postEyesReaction('org/repo', 'issue_comment', 12345);
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('token env-fallback-token');
   });
 
   it('POSTs eyes to /pulls/comments/{id}/reactions for pull_request_review_comment', async () => {

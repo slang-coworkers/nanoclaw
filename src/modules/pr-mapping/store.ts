@@ -66,6 +66,24 @@ function ensureThreadIdNullable(db: Database.Database): void {
 }
 
 /**
+ * Cheap existence check: does a PR→session mapping row exist for this
+ * (repo, pr_number), regardless of owner? Used by the webhook comment gate
+ * to recognize "this PR is ours" — a comment on a mapped PR is processed
+ * even without an @-mention (the mapping IS the ownership signal). Returns
+ * false (never throws) if the table doesn't exist yet (pre-migration).
+ */
+export function prMappingExists(db: Database.Database, repo: string, prNumber: number): boolean {
+  try {
+    const row = db.prepare('SELECT 1 FROM pr_session_mappings WHERE repo = ? AND pr_number = ?').get(repo, prNumber) as
+      | { 1: number }
+      | undefined;
+    return Boolean(row);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Upsert a PR→session mapping. Returns the prior owner_instance if the
  * row existed (caller can decide whether the change is a transfer or a
  * no-op refresh).
