@@ -14,6 +14,7 @@ slang-common:
     - slang-build
     - slang-code-reader
     - slang-github
+    - slang-github-webhook
   workflows: []
   mcpServers:
     deepwiki:
