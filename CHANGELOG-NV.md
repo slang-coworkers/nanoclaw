@@ -6,15 +6,56 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 211 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 107 |
-| `nv-slang` | slang project spine, skills, workflows | 65 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 23 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 19 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 220 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 115 |
+| `nv-slang` | slang project spine, skills, workflows | 71 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 26 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 22 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-03
+
+### nv-main (9 PRs)
+- **#546** `fix(db): land sidebar_group union on nv-main + renumber migration 028 (fixes composed-tree CI)`
+- **#542** `feat(supervise-issues): resumable-artifact directive, weekend CI window, superseded-PR postmortem + worktree GC`
+- **#547** `docs(supervise-issues): cost-aware cadence + delta reporting + generic examples`
+- **#548** `fix(webhook): process PR comments on mapped PRs + re-read GH_TOKEN at call time`
+- **#554** `fix(routing-gate): require in_reply_to only, add soft-cap, backfill critique-gate`
+- **#558** `refactor(routing): chain-routing check always-on, not an overlay`
+- **#562** `feat(funnel): host-side issue funnel report (script + design doc)`
+- **#565** `feat(funnel): scope to shader-slang org by default`
+- **#566** `feat(webhook): route PR review verdicts, review threads, and CI failures to the owning fixer`
+
+### nv-dashboard (8 PRs)
+- **#522** `feat(dashboard): group coworkers in the sidebar by prod / specific user`
+- **#549** `fix(dashboard): show all active sessions in coworker list (untruncate low-volume coworkers)`
+- **#540** `fix(dashboard): show command + target detail on cli_command approval cards`
+- **#550** `fix(dashboard): filter ncl chatter server-side so large replies are not pushed off the message window`
+- **#552** `fix(db): remove orphaned 023-sidebar-group migration (collided at v23, crashed prod)`
+- **#553** `fix(dashboard): hoist hideChatterSql scope — restores outbound messages dropped by #550`
+- **#563** `feat(dashboard): Funnel tab + /api/funnel (serves cached snapshot)`
+- **#564** `refactor(dashboard): move Funnel into Admin > Funnel`
+
+### nv-slang (6 PRs)
+- **#543** `refactor(slang-workflows): replace PR-watcher/build-watchdog polling with webhook + subagent`
+- **#551** `chore(slang): remove orphaned slang-templates/ dir`
+- **#555** `feat(slang): opt chain coworkers into chain-routing-gate`
+- **#559** `fix(slang): remove type-declared overlays (dashboard-selected instead)`
+- **#568** `ci(slang): propagate nv-main hardened ci.yml (is_owned auto-resolve)`
+- **#567** `feat(slang): handle review verdicts, review threads, and CI failures in slang-github-webhook`
+
+### nv-slangpy (3 PRs)
+- **#545** `refactor(slangpy-implement): blocking Agent subagent for long builds, drop schedule_task watchdog`
+- **#556** `feat(slangpy): opt chain coworkers into chain-routing-gate`
+- **#560** `fix(slangpy): remove type-declared overlays (dashboard-selected instead)`
+
+### nv-nanoclaw (3 PRs)
+- **#544** `refactor(nanoclaw-implement): blocking Agent subagent for long builds, drop schedule_task watchdog`
+- **#557** `feat(nanoclaw): opt chain coworkers into chain-routing-gate`
+- **#561** `fix(nanoclaw): remove type-declared overlays (dashboard-selected instead)`
 
 ## 📅 2026-06-02
 
