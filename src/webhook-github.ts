@@ -61,6 +61,29 @@ export interface GitHubMentionEvent {
   deliveryId?: string;
 }
 
+/**
+ * A non-comment PR activity event (review verdict, resolved review thread,
+ * failed CI run) destined for the fixer session that owns the PR. Unlike
+ * GitHubMentionEvent there is no orchestrator fallback — these events only
+ * make sense on a PR we own, so an unmapped PR is silently dropped.
+ */
+export interface GitHubPrEvent {
+  repo: string;
+  prNumber: number;
+  /** Logical event name written into the payload: github.pr_review | github.pr_review_thread | github.ci_failed */
+  event: string;
+  /** Stable idempotency id for the messages_in row, e.g. gh-review-<id>. */
+  rowId: string;
+  /** Event-specific fields merged into the delivered JSON payload (verdict, body, urls, conclusion, etc.). */
+  payload: Record<string, unknown>;
+  /** Raw webhook body, preserved for forwarding when the PR is foreign-owned. */
+  rawBody?: string;
+  /** GitHub event type header, propagated to peer on forward. */
+  eventType?: string;
+  /** GitHub delivery id (idempotency tag). */
+  deliveryId?: string;
+}
+
 export interface GitHubIssueOpenedEvent {
   repo: string;
   issueNumber: number;
@@ -220,6 +243,119 @@ function mintOrchestratorSession(agentGroupId: string, threadId: string): Sessio
 }
 
 /**
+ * Shared PR-event delivery core: resolve (repo, pr_number) in
+ * pr_session_mappings, then either forward to the foreign owner or write to
+ * the local mapped session. Returns the DeliveryOutcome when the mapping was
+ * resolved (delivered/forwarded/dropped), or `null` when there is NO mapping
+ * row — letting the caller pick its own fallback (orchestrator hand-off for
+ * mentions; plain drop for review/CI events that only make sense on our PRs).
+ *
+ * This is the single line PR webhooks travel: an inline comment, a review
+ * verdict, a resolved review thread, and a failed CI run on the same PR all
+ * land in the same fixer session via this function.
+ */
+function deliverMappedPrEvent(args: {
+  repo: string;
+  prNumber: number;
+  rowId: string;
+  eventContent: string;
+  rawBody?: string;
+  eventType?: string;
+  deliveryId?: string;
+}): DeliveryOutcome | null {
+  try {
+    const centralDb = getDb();
+    const mapping = centralDb
+      .prepare(
+        'SELECT agent_group_id, session_id, thread_id, owner_instance FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
+      )
+      .get(args.repo, args.prNumber) as
+      | { agent_group_id: string; session_id: string; thread_id: string | null; owner_instance: string }
+      | undefined;
+
+    if (!mapping) return null;
+
+    // Foreign owner — forward the raw webhook to the owning peer.
+    if (INSTANCE_SLUG && mapping.owner_instance !== INSTANCE_SLUG) {
+      const target = INSTANCE_FORWARD_TARGETS[mapping.owner_instance];
+      if (target && args.rawBody && INTERNAL_REGISTER_SECRET) {
+        forwardWebhookToPeer({
+          url: target,
+          secret: INTERNAL_REGISTER_SECRET,
+          rawBody: args.rawBody,
+          event: args.eventType ?? '',
+          delivery: args.deliveryId ?? '',
+        });
+        log.info('github-webhook: forwarded to foreign owner', {
+          repo: args.repo,
+          pr: args.prNumber,
+          owner: mapping.owner_instance,
+          target,
+        });
+        return 'forwarded';
+      }
+      log.warn('github-webhook: foreign-owner PR but no forward target — dropping', {
+        repo: args.repo,
+        pr: args.prNumber,
+        owner: mapping.owner_instance,
+        haveTarget: Boolean(target),
+        haveSecret: Boolean(INTERNAL_REGISTER_SECRET),
+        haveBody: Boolean(args.rawBody),
+      });
+      return 'dropped';
+    }
+
+    // Local owner — deliver to the mapped session.
+    const mappedSession = getSession(mapping.session_id);
+    if (mappedSession) {
+      const dbPath = inboundDbPath(mapping.agent_group_id, mapping.session_id);
+      const db = openInboundDb(dbPath);
+      try {
+        // Idempotency guard — see deliverToOrchestrator for rationale.
+        const existing = db.prepare('SELECT 1 FROM messages_in WHERE id = ?').get(args.rowId) as
+          | { 1: number }
+          | undefined;
+        if (existing) {
+          log.info('github-webhook: duplicate delivery — already seen, skipping', {
+            rowId: args.rowId,
+            session: mapping.session_id,
+            repo: args.repo,
+            issue: args.prNumber,
+          });
+          return 'local';
+        }
+        insertMessage(db, {
+          id: args.rowId,
+          kind: 'webhook',
+          timestamp: new Date().toISOString(),
+          platformId: `github:${args.repo}:${args.prNumber}`,
+          channelType: 'github',
+          threadId: mapping.thread_id,
+          content: args.eventContent,
+          processAfter: null,
+          recurrence: null,
+        });
+        log.info('github-webhook: delivered via PR mapping', {
+          repo: args.repo,
+          pr: args.prNumber,
+          session: mapping.session_id,
+          threadId: mapping.thread_id,
+        });
+        return 'local';
+      } finally {
+        db.close();
+      }
+    }
+    // Mapping row exists but its session is gone — treat as no mapping so the
+    // caller's fallback runs (orchestrator for mentions; drop for PR events).
+    return null;
+  } catch {
+    // pr_session_mappings table may not exist yet (pre-migration) — no mapping.
+    return null;
+  }
+}
+
+/**
  * Write a GitHub mention event into the target agent group's inbound.db,
  * or forward to a peer instance when the PR is foreign-owned, or hand off
  * to the orchestrator when no mapping exists.
@@ -273,97 +409,20 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
     return 'dropped';
   }
 
-  // Check PR→session mapping first — routes webhooks to the session that created the PR.
-  // When the owner is a foreign instance, hand off to the forwarder instead of writing locally.
-  try {
-    const centralDb = getDb();
-    const mapping = centralDb
-      .prepare(
-        'SELECT agent_group_id, session_id, thread_id, owner_instance FROM pr_session_mappings WHERE repo = ? AND pr_number = ?',
-      )
-      .get(event.repo, event.issueNumber) as
-      | { agent_group_id: string; session_id: string; thread_id: string | null; owner_instance: string }
-      | undefined;
-
-    if (mapping) {
-      // Foreign owner — forward.
-      if (INSTANCE_SLUG && mapping.owner_instance !== INSTANCE_SLUG) {
-        const target = INSTANCE_FORWARD_TARGETS[mapping.owner_instance];
-        if (target && event.rawBody && INTERNAL_REGISTER_SECRET) {
-          forwardWebhookToPeer({
-            url: target,
-            secret: INTERNAL_REGISTER_SECRET,
-            rawBody: event.rawBody,
-            event: event.eventType ?? '',
-            delivery: event.deliveryId ?? '',
-          });
-          log.info('github-webhook: forwarded to foreign owner', {
-            repo: event.repo,
-            pr: event.issueNumber,
-            owner: mapping.owner_instance,
-            target,
-          });
-          return 'forwarded';
-        }
-        // Owner is foreign but we have no forward target / no secret /
-        // missing body. Drop with a warn so the operator notices a
-        // misconfig — silent fall-through would deliver a foreign PR to
-        // our own session, breaking the disjoint-ownership invariant.
-        log.warn('github-webhook: foreign-owner PR but no forward target — dropping', {
-          repo: event.repo,
-          pr: event.issueNumber,
-          owner: mapping.owner_instance,
-          haveTarget: Boolean(target),
-          haveSecret: Boolean(INTERNAL_REGISTER_SECRET),
-          haveBody: Boolean(event.rawBody),
-        });
-        return 'dropped';
-      }
-
-      // Local owner — deliver to the mapped session.
-      const mappedSession = getSession(mapping.session_id);
-      if (mappedSession) {
-        const dbPath = inboundDbPath(mapping.agent_group_id, mapping.session_id);
-        const db = openInboundDb(dbPath);
-        const rowId = `gh-${event.commentId}`;
-        try {
-          // Idempotency guard — see deliverToOrchestrator for rationale.
-          const existing = db.prepare('SELECT 1 FROM messages_in WHERE id = ?').get(rowId) as { 1: number } | undefined;
-          if (existing) {
-            log.info('github-webhook: duplicate delivery — already seen, skipping', {
-              rowId,
-              session: mapping.session_id,
-              repo: event.repo,
-              issue: event.issueNumber,
-            });
-            return 'local';
-          }
-          insertMessage(db, {
-            id: rowId,
-            kind: 'webhook',
-            timestamp: new Date().toISOString(),
-            platformId: `github:${event.repo}:${event.issueNumber}`,
-            channelType: 'github',
-            threadId: mapping.thread_id,
-            content: eventContent,
-            processAfter: null,
-            recurrence: null,
-          });
-          log.info('github-webhook: delivered via PR mapping', {
-            repo: event.repo,
-            pr: event.issueNumber,
-            session: mapping.session_id,
-            threadId: mapping.thread_id,
-          });
-          return 'local';
-        } finally {
-          db.close();
-        }
-      }
-    }
-  } catch {
-    // pr_session_mappings table may not exist yet (pre-migration) — fall through
-  }
+  // Check PR→session mapping first — routes webhooks to the session that
+  // created the PR (foreign owner → forward; local owner → mapped session).
+  // Returns null only when there's no usable mapping, in which case we fall
+  // through to the orchestrator hand-off below.
+  const mapped = deliverMappedPrEvent({
+    repo: event.repo,
+    prNumber: event.issueNumber,
+    rowId: `gh-${event.commentId}`,
+    eventContent,
+    rawBody: event.rawBody,
+    eventType: event.eventType,
+    deliveryId: event.deliveryId,
+  });
+  if (mapped) return mapped;
 
   // No mapping. Hand off to the orchestrator. The orchestrator inspects
   // the event (repo, body, paths, labels) and uses ncl to enumerate
@@ -460,4 +519,47 @@ export function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): Deliver
       ? `${event.repo} #${event.issueNumber}: ${event.title}`
       : `${event.repo} #${event.issueNumber}`,
   });
+}
+
+/**
+ * Deliver a non-comment PR activity event (review verdict, resolved review
+ * thread, failed CI run) to the fixer session that owns the PR — the same
+ * pr_session_mappings path that inline review comments already travel, so all
+ * PR feedback converges on one session.
+ *
+ * Unlike deliverGitHubMention there is NO orchestrator fallback: a review or
+ * CI event is only meaningful on a PR we own. If there's no mapping (a review
+ * on some unrelated public PR, or our session was reaped), we drop it rather
+ * than dumping it into the orchestrator's general chat as noise. The webhook
+ * server's gate already ensures these events arrive only for real PRs; the
+ * mapping is the "this PR is ours" predicate.
+ */
+export function deliverGitHubPrEvent(event: GitHubPrEvent): DeliveryOutcome {
+  const eventContent = JSON.stringify({
+    event: event.event,
+    repo: event.repo,
+    issue_number: event.prNumber,
+    is_pr: true,
+    ...event.payload,
+  });
+
+  const mapped = deliverMappedPrEvent({
+    repo: event.repo,
+    prNumber: event.prNumber,
+    rowId: event.rowId,
+    eventContent,
+    rawBody: event.rawBody,
+    eventType: event.eventType,
+    deliveryId: event.deliveryId,
+  });
+  if (mapped) return mapped;
+
+  // No mapping (unmapped PR or reaped session) — drop. No orchestrator
+  // fallback: a review/CI event off our PRs is noise, not work.
+  log.info('github-webhook: PR event with no mapping — dropping', {
+    repo: event.repo,
+    pr: event.prNumber,
+    event: event.event,
+  });
+  return 'dropped';
 }
