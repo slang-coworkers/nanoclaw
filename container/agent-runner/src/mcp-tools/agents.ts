@@ -71,6 +71,11 @@ export const createAgent: McpToolDefinition = {
           description:
             'Compose-time overlay names (e.g., ["critique-gate", "buddy-monitor"]). Overlays inject quality gates into workflows. Optional — defaults to none; operators can configure later via dashboard.',
         },
+        group: {
+          type: 'string',
+          description:
+            'Dashboard sidebar group for this coworker: "prod" for the shared group (default), or a user id (e.g. "dashboard:user1") to scope it under a specific user.',
+        },
       },
       required: ['name'],
     },
@@ -93,6 +98,7 @@ export const createAgent: McpToolDefinition = {
         instructionOverlay: (args.instructionOverlay as string) || null,
         agentProvider: (args.agentProvider as string) || null,
         overlays: (args.overlays as string[]) || null,
+        group: (args.group as string) || null,
       }),
     });
 
