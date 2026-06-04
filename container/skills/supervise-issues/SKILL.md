@@ -14,6 +14,8 @@ You are the orchestrator (or a coworker the orchestrator delegated supervision t
 
 An issue chain is in-flight if you (the orchestrator) have a session whose `thread_id` matches `gh-issue-<owner>/<repo>-<num>` and the issue is still open on GitHub with no merged PR.
 
+**[MUST] A chain is trackable whether or not it produced a PR of ours.** Not every routed issue yields a draft PR — many resolve at triage: we post a triage report and the issue is then driven by an **external contributor**, a **maintainer**, an ongoing **human design debate**, or we **self-close** it (e.g. an audit that concludes "no change needed"). These chains have **no PR of ours**, but they DO have a GitHub artifact — **our triage / review / audit comment** — and they are exactly as real as PR-bearing chains. The old failure mode was equating "trackable" with "has a `fix/issue-<num>` PR": a triaged-then-handed-off chain then silently vanished from the board AND from `supervisor-state.json` (neither in-flight nor journaled), so if the external/maintainer PR later stalled, nobody resurfaced it (observed: `#11441` triaged → external `romeoahmed` owns the PR → dropped off entirely; `#11349` live maintainer debate → invisible; `rhi#767` audited-and-self-closed → no record). **Build the table from the routed/triaged universe, not just from chains with a PR.** For a no-PR chain, the GitHub artifact is its **triage comment URL** and its disposition lives in the `next` field (see §1a).
+
 **[MUST] `thread_id` names the chain, not the work product.** A coworker session is sometimes reused across issues — a session threaded `gh-issue-…-N` may have shipped the PR for a *different* issue M. So `thread_id` is reliable for "which chain is this," but **never** infer a chain's PR (or which issue a PR fixes) from `thread_id` alone.
 
 **Resolve a chain's real PR with `gh`** (the fixer branches as `fix/issue-<num>`):
@@ -58,6 +60,22 @@ Build a table of: `repo` / `issue` (the issue the PR actually fixes) / `thread_i
 - **• same** — no change since last tick.
 
 Write the fresh snapshots back to `supervisor-state.json` at the end. The report (§6) leads with NEW + UPDATED and collapses the `same` rows — the operator scans only what moved.
+
+### 1a. No-PR chains — the artifact is the comment, the `next` field carries the disposition
+
+A chain with no `fix/issue-<num>` PR is **not** dropped — it is journaled like any other, with two differences: its **GitHub cell links the triage/review comment** (resolve via the bot's most recent comment on the issue — see §5's comment-fetch), and its **`next` field states the disposition** so the operator can see at a glance whether it's live or parked-and-why. Use this disposition vocabulary for the `next`/state cell:
+
+| Disposition | Meaning | `next` field shows | Board behavior |
+|---|---|---|---|
+| `active: human-debate` | maintainers/reporters actively discussing our triage | "live debate — @user1/@user2, watching" | **lead row (never collapse)** — a live chain must be visible |
+| `stood-down: external-PR` | we triaged; an external contributor owns the implementation | "external @author writing PR — watch for it" | tracked-parked; surface if their PR stalls > N days |
+| `advisory: maintainer-driving` | we advised; a maintainer is driving their own fix | "maintainer @user on #M — no action" | tracked-parked |
+| `triaged: awaiting-pickup` | triage posted, nobody has picked it up yet | "triaged <date>; no owner yet" | tracked-parked; nudge-worthy if very old |
+| `closed-by-us` | we self-resolved (audit "no change", wontfix-after-analysis) | "audit/analysis terminal — closed by us" | **terminal → `_archived`** |
+
+The artifact + disposition together satisfy the **prime directive**: a no-PR chain is "parked WITH a resumable GitHub artifact" exactly when its triage comment is journaled and its `next` says why it's parked. A chain you can neither give an artifact nor a disposition is the real leak — surface it loudly (per the prime directive).
+
+**[MUST] Journal every no-PR chain too.** Persist it in `supervisor-state.json` under its `gh-issue-…` key with `{disposition, githubArtifactUrl, lastObservedActivity}` — terminal ones (`closed-by-us`) move to `_archived` with a one-line reason + the comment URL, exactly like superseded/closed PR chains. The invariant: **every routed+triaged issue appears either in the in-flight set or in `_archived` — never absent from both.** On each tick, reconcile: any `gh-issue-` session whose issue you triaged but which is in neither set is a journaling miss — add it.
 
 ### 2. Classify each row
 
@@ -132,17 +150,27 @@ After processing all chains, send a single status report to your parent (the ope
 - **Next-action:** wait for cron / await operator decisions / re-dispatch chain X
 - **Blocker:** {threads with no clear path forward, list 3 max with one-line reason each}
 
-**Lead the chat reply with an inline markdown table** of the per-chain status before the 5-bullet summary, so the operator gets the at-a-glance view without opening the attachment. Columns: `# | repo | issue | tier | github | state | last-active | next`. One row per chain, **prefixed with its delta tag (🆕 / 🔼 / •) from §1** — sort 🆕 and 🔼 rows to the top, and collapse the unchanged `•` rows into a single trailing line (`• 7 chains unchanged since last tick: #1372, #1380, …`) unless the operator invoked the skill manually. The full narrative still goes in a file via `send_file(to="parent")` — the inline table is a digest, not a replacement. **If nothing changed since the last tick, say so in one line and skip the table** — don't spend tokens re-rendering a static board. After the table, add a one-liner pointing at the full board (the on-disk tracker / dashboard) so the operator can drill down without you re-posting every row.
+**Lead the chat reply with an inline markdown table** of the per-chain status before the 5-bullet summary, so the operator gets the at-a-glance view without opening the attachment. Columns: `# | repo | issue | tier | github | state | last-active | next`. One row per chain, **prefixed with its delta tag (🆕 / 🔼 / •) from §1** — sort 🆕 and 🔼 rows to the top, and collapse the unchanged `•` rows into a single trailing line (`• 7 chains unchanged since last tick: #1372, #1380, …`) unless the operator invoked the skill manually.
+
+**[MUST] The `github` cell is always a live hyperlink to the chain's artifact** — the PR for PR-bearing chains, or the **triage/review comment URL** for no-PR chains (§1a). Never show a bare count or "—" when an artifact exists; the operator must be one click from the actual GitHub surface. **No-PR chains with `active: human-debate` (§1a) sort to the top alongside 🔼 rows and are NEVER collapsed** — a live discussion of our triage is exactly what must stay visible. `stood-down` / `advisory` / `triaged` no-PR chains may collapse into the `•` line like any other unchanged row, but their disposition (not a bare "•") rides in the trailing summary so a parked-handed-off chain reads as parked-with-reason, not vanished. The full narrative still goes in a file via `send_file(to="parent")` — the inline table is a digest, not a replacement. **If nothing changed since the last tick, say so in one line and skip the table** — don't spend tokens re-rendering a static board. After the table, add a one-liner pointing at the full board (the on-disk tracker / dashboard) so the operator can drill down without you re-posting every row.
 
 **[MUST] Build tier deep-links from the session's REAL folder — never assume it from the coworker-type name.** A coworker's dashboard link is `<dashboard-base>/#/cw/<folder>/s/<sessionId>`, and `<folder>` must be the **actual `agent_groups.folder`** for that session, resolved live (`ncl sessions list` exposes it, or `ncl groups get --id <agentGroupId>`). Do **not** derive the folder from the logical type — folders and type names can diverge (e.g. a group whose type/local-name is `slangpy-triage` may have been created with the folder `slangy-triage`). A link built from the assumed name 404s; a link built from the resolved folder always works, whatever the folder happens to be called.
 
 ```
-| #   | repo                       | tier      | github         | state         | last-active   | next                |
-| --- | -------------------------- | --------- | -------------- | ------------- | ------------- | ------------------- |
-| 1339 | acme/widget   | maintainer | 2 cmts (old)   | awaiting-input | 3.5d silent  | 🔼 escalate to operator |
-| 1367 | acme/widget   | fixer      | 0              | pr_open        | 5m           | • watch CI              |
-| 1372 | acme/widget   | maintainer | 2 cmts         | design-decide  | 4.8h         | • maintainer signoff    |
+| #    | repo        | tier       | github                | state            | last-active  | next                              |
+| ---- | ----------- | ---------- | --------------------- | ---------------- | ------------ | --------------------------------- |
+| 1349 | acme/widget | triage     | [triage cmt][c1349]   | active:debate    | 1.2h         | 🔼 live — @userA/@userB, watching |
+| 1367 | acme/widget | fixer      | [PR #1386][p1386]     | pr_open          | 5m           | • watch CI                        |
+| 1441 | acme/widget | triage     | [triage cmt][c1441]   | stood-down:ext   | 6h           | • external @author writing PR     |
+| 1339 | acme/widget | maintainer | [proposal cmt][c1339] | advisory:maint   | 3.5d         | • maintainer @user on #1355       |
+
+[c1349]: https://github.com/acme/widget/issues/1349#issuecomment-...
+[p1386]: https://github.com/acme/widget/pull/1386
+[c1441]: https://github.com/acme/widget/issues/1441#issuecomment-...
+[c1339]: https://github.com/acme/widget/issues/1339#issuecomment-...
 ```
+
+Note every `github` cell is a link (PR *or* triage comment), and the no-PR chains (#1349, #1441, #1339) carry an explicit disposition in `next` — the live-debate one (#1349) is a 🔼 lead row, the parked ones collapse but keep their reason.
 
 Per-chain status messages land on each chain's canonical `thread_id` (per the `[MUST]` rule above) — the inline table is the supervisor's own consolidated digest in the supervisor's session.
 
@@ -270,6 +298,9 @@ Three cost levers, all already wired above:
 - **Don't force a mid-revive PR back to draft on Monday.** A chain whose CI failed and is being re-fixed stays ready until it settles — flipping it back re-hides the failure. (§7c exception)
 - **Don't postmortem twice, or for our own merged PRs / `not_planned` closes.** The postmortem fires once per chain, only when a *different* PR resolved the issue. (§8)
 - **Don't `git worktree remove` from the supervisor session.** Worktrees belong to the fixers; dispatch the GC to the owning fixer and let it delete its own. (§9)
+- **Don't drop a chain just because it has no PR.** A triaged-then-handed-off issue (external contributor, maintainer-driving, live human debate, self-closed audit) is a real chain — journal it with its triage-comment artifact + disposition (§1a). Equating "trackable" with "has a `fix/issue-<num>` PR" is what made #11441 / #11349 / rhi#767 silently vanish from both the board and `supervisor-state.json`.
+- **Don't show a bare count or "—" in the `github` cell when an artifact exists.** Always link the actual PR or triage comment — the operator must be one click from GitHub. (§6)
+- **Don't collapse an `active: human-debate` no-PR chain.** A live discussion of our triage is a lead row, never folded into the `•` summary. (§1a, §6)
 
 ## State
 
@@ -278,6 +309,7 @@ Track which chains you've nudged and how many times in `/workspace/agent/memory/
 - `githubCommentRequestedAt`, `githubCommentUrl` — step 5 observability enforcement.
 - `prCi: {...}` — the weekend CI window (§7): `flippedByUs`, `flippedAt`, `prNumber`, `repo`, `ciObserved`, `ciBucket`, `ciCapturedAt`, `revivedAt`, `revertedAt`, `alreadyReady`, `rebaseRequestedAt`. **`flippedByUs` is the gate for the Monday revert — never `--undo` without it.**
 - `postmortem: {done, supersededByPr, learningTitle, at}` — §8, fires once per chain.
+- `disposition`, `githubArtifactUrl` — §1a, for **no-PR chains**: the disposition (`active:human-debate` / `stood-down:external-PR` / `advisory:maintainer-driving` / `triaged:awaiting-pickup` / `closed-by-us`) and the triage/review comment URL that serves as the chain's GitHub artifact. Terminal (`closed-by-us`) chains move to `_archived` with the URL + reason. **Invariant: every routed+triaged `gh-issue-` chain is in the in-flight set OR `_archived`, never absent from both** (§1a reconciliation).
 
 Load this file at the start of every tick and write it back at the end; the §7/§8 idempotency (one flip per PR, one postmortem per chain, no double-revive) depends entirely on it surviving across ticks.
 
