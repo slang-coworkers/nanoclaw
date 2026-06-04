@@ -27,7 +27,7 @@ An issue chain is in-flight if you (the orchestrator) have a session whose `thre
 
 **[MUST] Every in-flight chain must, at all times, have a GitHub artifact a human can land on and resume from:** an open PR, a comment on the PR, or a comment on the issue. This applies whether the chain is **still in progress** or **parked** — the test is not "is it done?" but "if a human opened the issue/PR right now, would they see where it stands and be able to pick it up?" An in-progress chain satisfies it with a comment stating what's underway and what's next; a parked chain with a comment naming the blocker; a shipped chain with the PR itself. GitHub — not the dashboard, not chat, not the session DB — is the durable human-observability surface.
 
-This directive subsumes step 5 (comment verification) and drives the behaviors below: the weekend CI window (§7) keeps that artifact *progressing*, and the superseded-PR postmortem (§8) keeps it *honest* when our work is overtaken. If a chain has no artifact and you cannot produce one, that is the single most important thing to surface in your report — louder than any silent/stuck classification.
+This directive subsumes step 5 (comment verification): the superseded-PR postmortem (§7) keeps that artifact *honest* when our work is overtaken, and the worktree GC sweep (§8) keeps the workspace clean. If a chain has no artifact and you cannot produce one, that is the single most important thing to surface in your report — louder than any silent/stuck classification.
 
 ## Procedure
 
@@ -174,47 +174,7 @@ Note every `github` cell is a link (PR *or* triage comment), and the no-PR chain
 
 Per-chain status messages land on each chain's canonical `thread_id` (per the `[MUST]` rule above) — the inline table is the supervisor's own consolidated digest in the supervisor's session.
 
-### 7. Weekend CI window — exercise draft PRs to catch failures early
-
-Our fixers open PRs as **draft**. A draft PR runs a reduced (or zero) CI set on most repos, so latent build/test failures sit undiscovered until a human flips it. The weekend is the cheap window to surface them: flip our draft PRs to **ready-for-review** so full CI runs, capture the result, revive the pipeline on failure, then flip back. Three rules govern this, and they are stateful — **track everything in `supervisor-state.json` under the chain's `prCi` key** (shape below).
-
-**[MUST] Only ever revert a flip *we* performed.** The whole window is gated on a `flippedByUs` flag we set when (and only when) we do the flip. If a PR was already `ready` when we found it (a human or another process flipped it), we touch nothing — no flip, no CI revive on our initiative beyond normal webhook handling, and **never** a flip back to draft. Reverting someone else's deliberate ready-state would silently undo human intent. This is the single most important guard in this section.
-
-Per chain with a draft PR (resolve the PR via `gh pr list --head fix/issue-<num>`, never the thread — see the `[MUST]` at the top):
-
-**a. Saturday / Sunday — flip to ready (once per PR).**
-   - Skip unless today is Sat or Sun (`date +%u` → 6 or 7) in the orchestrator's local TZ.
-   - Skip if `prCi.flippedByUs` is already set for this PR (one flip per PR, ever — idempotent across ticks and across weekends).
-   - Confirm the PR is currently `isDraft: true`: `gh pr view <pr> --repo <owner>/<repo> --json isDraft,state,mergeable,mergeStateStatus`. If it is **not** a draft, it was flipped by someone else → record `prCi.alreadyReady=true` and **do not touch it**.
-   - **Rebase to pristine first (so CI is meaningful).** A draft branch can be stale or conflicting with `main`; flipping it ready as-is makes CI fail on the merge state, not the fix. Before flipping, check `mergeable`/`mergeStateStatus` — if `CONFLICTING`/`DIRTY` (or `BEHIND`), this is **fixer work, not supervisor work**: do NOT rebase from the supervisor session (you don't hold the worktree). Instead send ONE a2a to the chain's **fixer** on its canonical thread: *"[Supervisor — weekend CI prep — gh-issue-X/Y-N] Draft PR #<pr> is `<mergeStateStatus>` against main. Rebase your worktree onto `origin/main`, resolve conflicts, force-push so the branch is pristine, then reply 'rebased'. I'll flip it to ready for full CI once clean."* Set `prCi.rebaseRequestedAt=<iso>` and skip the flip this tick; re-evaluate next tick once the branch is `MERGEABLE`/`CLEAN`. (Per [no-restart-to-refresh], rebasing happens in the live fixer session — never reconstruct the worktree from the supervisor.)
-   - Flip once mergeable: `gh pr ready <pr> --repo <owner>/<repo>`. On success, set `prCi = {flippedByUs: true, flippedAt: <iso>, prNumber: <n>, repo: <r>, ciObserved: false}`.
-
-**b. Next tick(s) — capture CI and revive the pipeline.**
-   - For any PR with `prCi.flippedByUs && !prCi.ciObserved`, read CI: `gh pr checks <pr> --repo <owner>/<repo> --json name,bucket,state,link`.
-   - While any check is `pending`, leave it — re-check next tick.
-   - Once all checks are terminal, set `prCi.ciObserved=true`, `prCi.ciBucket=<pass|fail|...>`, `prCi.ciCapturedAt=<iso>`, and:
-     - **All `pass`** → record it; the chain is healthier than we knew. No revive needed.
-     - **Any `fail`** → **revive the pipeline**: send ONE a2a message to **triage** on the chain's canonical `thread_id` (closest-to-the-entry tier; triage re-dispatches to fixer per the normal chain). Include the failing check names + their `link` URLs and the PR number. Body shape:
-       > [Supervisor — CI revive — gh-issue-X/Y-N] Weekend CI on draft PR #<pr> (flipped to ready to exercise full CI) reports failures: `<check>` → <link>; `<check>` → <link>. Re-engage the chain: triage → fixer to address, re-verify, re-push. The PR stays ready until CI is green or the window closes.
-     - Record `prCi.revivedAt=<iso>` so we don't double-dispatch on the next tick.
-
-**c. After the weekend (Mon, or >2 days since flip) — flip back, but ONLY if we flipped it.**
-   - For any PR with `prCi.flippedByUs === true`: if today is Monday (or `now - prCi.flippedAt > 48h`), flip back to draft: `gh pr ready <pr> --repo <owner>/<repo> --undo`. Then clear the flip: set `prCi.flippedByUs=false`, `prCi.revertedAt=<iso>` (keep the captured `ciBucket` for history).
-   - **Exception — don't revert if the chain is mid-revive.** If CI failed and the revive is in progress (`prCi.revivedAt` set but the fixer hasn't re-pushed / chain not back to green), leave it ready so the fixer's CI keeps running; revert on a later tick once the chain settles. A failing chain forced back to draft would re-hide the very failure we surfaced.
-   - **Never** `--undo` a PR where `prCi.flippedByUs` is not `true` (covers `alreadyReady` PRs and anything a human readied). When in doubt, leave it ready and note it in the report.
-
-`prCi` state shape (per chain in `supervisor-state.json`):
-```json
-"gh-issue-acme/widget-1367": {
-  "prCi": { "prNumber": 1386, "repo": "acme/widget",
-            "flippedByUs": true, "flippedAt": "2026-06-06T09:30:00Z",
-            "ciObserved": true, "ciBucket": "fail", "ciCapturedAt": "...",
-            "revivedAt": "2026-06-06T10:00:00Z", "revertedAt": null,
-            "alreadyReady": false }
-}
-```
-
-### 8. Superseded-PR postmortem — learn when our work is overtaken
+### 7. Superseded-PR postmortem — learn when our work is overtaken
 
 A chain can be resolved by a PR that **isn't ours** — a maintainer or contributor opens and merges a different fix, or merges a different PR that `Closes #N`. When that happens our draft is dead weight, but more importantly it's a **learning signal**: someone solved what we were working on, possibly better or faster. Capture it.
 
@@ -240,7 +200,7 @@ If the issue is **closed by a PR that is not our chain's PR** (the one on `fix/i
 
 Do **not** run the postmortem for our own merged PRs, for issues closed as `not_planned` without a PR (that's a maintainer wontfix — note it and close normally), or more than once per chain.
 
-### 9. Worktree GC sweep — reclaim abandoned fixer worktrees
+### 8. Worktree GC sweep — reclaim abandoned fixer worktrees
 
 The fixer workflow GCs its worktree when a `CLOSED`/`MERGED` webhook arrives. But a PR that never reaches a terminal state — abandoned, draft-forever, or silently superseded without a close event — leaks its `wt-*` / `active-work/` dirs on the shared `/workspace` indefinitely (there is no other reaper). The supervisor is the recurring cron that now owns this backstop.
 
@@ -280,7 +240,7 @@ schedule_task({
 
 Three cost levers, all already wired above:
 1. **6-hour cadence** (`0 */6 * * *`) — not every 30 min. Issue chains move on the scale of hours, not minutes.
-2. **`new_session: true`** — each tick starts clean. The supervisor needs **no** conversation memory; everything it must remember (nudge counts, `flippedByUs`, `postmortem.done`, last-tick snapshots) is persisted in `supervisor-state.json`. Without this, the session transcript grows every 6h forever and each tick costs more than the last.
+2. **`new_session: true`** — each tick starts clean. The supervisor needs **no** conversation memory; everything it must remember (nudge counts, `postmortem.done`, last-tick snapshots) is persisted in `supervisor-state.json`. Without this, the session transcript grows every 6h forever and each tick costs more than the last.
 3. **Wake gate** — when nothing is stuck, the tick is a no-op (zero model tokens).
 4. **Delta reporting** (§1, §6) — a tick that does wake reports only what changed, so even active periods stay cheap.
 
@@ -293,11 +253,8 @@ Three cost levers, all already wired above:
 - **Don't multi-cast.** A nudge goes to one coworker (the one currently expected to respond), not the whole chain.
 - **Don't loop.** If a chain has been nudged twice with no response, escalate — don't keep nudging.
 - **Don't post the GitHub comment on a coworker's behalf.** Closest-to-the-state principle: the coworker holding the verdict authors the post. Supervisor enforces, doesn't substitute. (See step 5.)
-- **Don't flip a PR back to draft unless `prCi.flippedByUs === true`.** Reverting a ready-state a human set silently undoes their intent. (§7c)
-- **Don't rebase a conflicting branch from the supervisor session.** You don't hold the fixer's worktree; dispatch the rebase to the fixer and wait. (§7a)
-- **Don't force a mid-revive PR back to draft on Monday.** A chain whose CI failed and is being re-fixed stays ready until it settles — flipping it back re-hides the failure. (§7c exception)
-- **Don't postmortem twice, or for our own merged PRs / `not_planned` closes.** The postmortem fires once per chain, only when a *different* PR resolved the issue. (§8)
-- **Don't `git worktree remove` from the supervisor session.** Worktrees belong to the fixers; dispatch the GC to the owning fixer and let it delete its own. (§9)
+- **Don't postmortem twice, or for our own merged PRs / `not_planned` closes.** The postmortem fires once per chain, only when a *different* PR resolved the issue. (§7)
+- **Don't `git worktree remove` from the supervisor session.** Worktrees belong to the fixers; dispatch the GC to the owning fixer and let it delete its own. (§8)
 - **Don't drop a chain just because it has no PR.** A triaged-then-handed-off issue (external contributor, maintainer-driving, live human debate, self-closed audit) is a real chain — journal it with its triage-comment artifact + disposition (§1a). Equating "trackable" with "has a `fix/issue-<num>` PR" is what made #11441 / #11349 / rhi#767 silently vanish from both the board and `supervisor-state.json`.
 - **Don't show a bare count or "—" in the `github` cell when an artifact exists.** Always link the actual PR or triage comment — the operator must be one click from GitHub. (§6)
 - **Don't collapse an `active: human-debate` no-PR chain.** A live discussion of our triage is a lead row, never folded into the `•` summary. (§1a, §6)
@@ -307,11 +264,10 @@ Three cost levers, all already wired above:
 Track which chains you've nudged and how many times in `/workspace/agent/memory/supervisor-state.json` (load at start, save at end). Per chain (`threadId` key), persist:
 - `nudgedAt: [iso, ...]`, `escalatedAt: iso`, `lastObservedActivity: iso` — nudge/escalation bookkeeping.
 - `githubCommentRequestedAt`, `githubCommentUrl` — step 5 observability enforcement.
-- `prCi: {...}` — the weekend CI window (§7): `flippedByUs`, `flippedAt`, `prNumber`, `repo`, `ciObserved`, `ciBucket`, `ciCapturedAt`, `revivedAt`, `revertedAt`, `alreadyReady`, `rebaseRequestedAt`. **`flippedByUs` is the gate for the Monday revert — never `--undo` without it.**
-- `postmortem: {done, supersededByPr, learningTitle, at}` — §8, fires once per chain.
+- `postmortem: {done, supersededByPr, learningTitle, at}` — §7, fires once per chain.
 - `disposition`, `githubArtifactUrl` — §1a, for **no-PR chains**: the disposition (`active:human-debate` / `stood-down:external-PR` / `advisory:maintainer-driving` / `triaged:awaiting-pickup` / `closed-by-us`) and the triage/review comment URL that serves as the chain's GitHub artifact. Terminal (`closed-by-us`) chains move to `_archived` with the URL + reason. **Invariant: every routed+triaged `gh-issue-` chain is in the in-flight set OR `_archived`, never absent from both** (§1a reconciliation).
 
-Load this file at the start of every tick and write it back at the end; the §7/§8 idempotency (one flip per PR, one postmortem per chain, no double-revive) depends entirely on it surviving across ticks.
+Load this file at the start of every tick and write it back at the end; the §7 idempotency (one postmortem per chain) depends entirely on it surviving across ticks.
 
 ## When called manually
 
