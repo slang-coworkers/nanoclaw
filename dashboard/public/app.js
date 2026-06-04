@@ -4708,15 +4708,19 @@ function renderCwMessages() {
         ? `<div class="cw-thread-stub" data-parent-id="${escAttr(threadSummaryKey)}" title="Open thread"><span class="cw-thread-stub-count">${summary.replyCount} repl${summary.replyCount === 1 ? 'y' : 'ies'}</span>${summary.lastReplyTs ? ` <span class="cw-thread-stub-time">· ${formatTime(summary.lastReplyTs)}</span>` : ''}${unreadBadge}</div>`
         : '';
 
-      // Hard-hide ncl polling chatter: cli_request (outbound, tagged isRelay
-      // server-side) and its cli_response reply (inbound, detected by JSON
-      // head). These are pure host↔container machine traffic — the
-      // orchestrator polling `ncl sessions-messages` etc. — and add nothing
-      // for a human watching the feed. Genuine a2a relays and other system
-      // actions still fold (below).
+      // Hard-hide host↔container machine traffic: cli_request and any other
+      // bare system-action outbound (update_task, append_learning,
+      // create_agent, schedule_task, request_restart, …) plus the cli_response
+      // reply. These are JSON action envelopes the agent emits to drive the
+      // host — not human-readable chat — and they flood the orchestrator feed
+      // (e.g. a supervise tick emits dozens of cli_request + update_task +
+      // append_learning rows). A genuine chat message carries a "text" field;
+      // an action envelope is `{"action":"…"}` (or `{"type":"cli_response"…}`)
+      // with no text. Hide those; keep everything with real text.
       const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
-      const isCliRequest = isOutgoing && /^\s*\{\s*"action"\s*:\s*"cli_request"/.test(text);
-      if (isCliRequest || isCliResponse) return '';
+      const isActionEnvelope =
+        isOutgoing && /^\s*\{\s*"action"\s*:\s*"[a-z_]+"/.test(text) && !/"text"\s*:/.test(text);
+      if (isActionEnvelope || isCliResponse) return '';
       if (m.isRelay) {
         const relayLabel = m.recipientCoworkerName
           ? `${authorName} → @${esc(m.recipientCoworkerName)}`
@@ -5588,13 +5592,15 @@ function renderCwThread() {
           : 'You';
       const monogramSource = isOutgoing ? cwState.selected || 'A' : m.senderCoworkerName || 'You';
       const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
-      // Hard-hide ncl polling chatter in threads too: cli_request (outbound)
-      // and its cli_response reply (inbound). Pure host↔container machine
-      // traffic — see the main-feed path for rationale. Genuine a2a relays
-      // and other system actions still fold (below).
+      // Hard-hide host↔container machine traffic in threads too: cli_request
+      // and any other bare system-action envelope (update_task, append_learning,
+      // create_agent, …) plus the cli_response reply. Action envelopes are
+      // `{"action":"…"}` with no "text" field; chat carries "text". See the
+      // main-feed path for rationale.
       const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
-      const isCliRequest = isOutgoing && /^\s*\{\s*"action"\s*:\s*"cli_request"/.test(text);
-      if (isCliRequest || isCliResponse) return '';
+      const isActionEnvelope =
+        isOutgoing && /^\s*\{\s*"action"\s*:\s*"[a-z_]+"/.test(text) && !/"text"\s*:/.test(text);
+      if (isActionEnvelope || isCliResponse) return '';
       if (m.isRelay) {
         const relayLabel = m.recipientCoworkerName
           ? `${authorName} → @${esc(m.recipientCoworkerName)}`
