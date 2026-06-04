@@ -444,6 +444,22 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       isPr = Boolean(issue?.pull_request);
     }
 
+    // Own-bot guard: drop our own comment events outright (mirrors the
+    // BOT_LOGIN returns on the pull_request_review / _review_thread paths
+    // above). The bot's own comments are never work for the bot — without
+    // this, a comment we post on a dev-routed issue (willDevRouteToPeer) or
+    // on a PR we own (isOwnedPr) passes the mention gate below, gets
+    // forwarded/processed, and the host self-reacts with 👀 on our own
+    // comment. Skip the whole path: no forward, no session wake, no react.
+    if (loginOf(comment) === BOT_LOGIN) {
+      writeJson(res, 200, { ok: true, skipped: true, reason: 'own-bot comment' });
+      return;
+    }
+
+    // Does this comment address the bot directly? Computed once and reused
+    // by both the mention gate and the 👀-reaction decision below.
+    const mentionsBot = commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase());
+
     // Mention gate, with two ownership-based exemptions. The default is to
     // drop a comment that doesn't @-mention the bot (otherwise we'd react to
     // every human comment on every public issue/PR — noise). But when we have
@@ -475,12 +491,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       }
     }
 
-    if (
-      !isPeerForward &&
-      !willDevRouteToPeer &&
-      !isOwnedPr &&
-      !commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase())
-    ) {
+    if (!isPeerForward && !willDevRouteToPeer && !isOwnedPr && !mentionsBot) {
       writeJson(res, 200, { ok: true, skipped: true, reason: 'bot not mentioned' });
       return;
     }
@@ -507,12 +518,16 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       deliveryId: String(req.headers['x-github-delivery'] ?? ''),
     });
 
-    // Deterministic 👀 ack: fire whenever the webhook lands somewhere
-    // (local session, forwarded to peer, or orchestrator). Skipped on
-    // peer-forward inbound — the canonical router already reacted before
-    // forwarding, so the peer must not double-react. Skipped on
-    // dropped/no-session/no-admin-group outcomes since the user shouldn't
-    // get an ack when nothing actually picked up the work.
+    // 👀 ack — only on comments the bot is actually going to work on, i.e.
+    // ones addressed to us: an @-mention, or a reply on a PR we own. We may
+    // ALSO forward a dev-routed issue's follow-up comments (willDevRouteToPeer)
+    // for chain context even when they don't mention us — those get processed
+    // but earn no 👀, since the human wasn't talking to the bot. The own-bot
+    // guard above already removed our own comments from this path entirely.
+    //
+    // Still skipped on peer-forward inbound (the canonical router reacted
+    // before forwarding, so the peer must not double-react) and on
+    // dropped/no-session outcomes (nothing picked up the work).
     //
     // Posted by the host (not the coworker) so the ack is independent of
     // container wake-state. The skill's Step 0 stays as a backup; GitHub
@@ -521,7 +536,8 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     // The `issues` event type takes a separate code path above and never
     // reaches here (issues themselves don't accept reactions on the body
     // anyway — only on comments inside them).
-    if (!isPeerForward && (outcome === 'local' || outcome === 'forwarded')) {
+    const addressedToBot = mentionsBot || isOwnedPr;
+    if (!isPeerForward && addressedToBot && (outcome === 'local' || outcome === 'forwarded')) {
       void postEyesReaction(repoFullName, String(eventType), commentId);
     }
 
