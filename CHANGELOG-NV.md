@@ -6,15 +6,31 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 220 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 115 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 226 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 116 |
 | `nv-slang` | slang project spine, skills, workflows | 71 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 26 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 22 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 23 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-04
+
+### nv-main (6 PRs)
+- **#570** `fix(nv-main): own base-nanoclaw skill where base-common references it`
+- **#573** `feat(supervise-issues): track no-PR chains — triage comment as artifact + disposition`
+- **#574** `feat(supervise-issues): remove weekend draft→ready CI flip (§7)`
+- **#575** `fix(supervise-issues): board delivery MUST specify to= (multi-destination supervisor)`
+- **#577** `fix(github-webhook): only 👀 comments addressed to the bot; never self-react`
+- **#578** `fix(supervise-issues): board destination = literal to="orchestrator", verbatim, one session`
+
+### nv-dashboard (1 PRs)
+- **#576** `fix(dashboard): hide all machine action-envelopes from chat (not just cli_request)`
+
+### nv-nanoclaw (1 PRs)
+- **#572** `fix(nv-nanoclaw): drop base-nanoclaw (moved to nv-main #570) + harden ci.yml`
 
 ## 📅 2026-06-03
 
