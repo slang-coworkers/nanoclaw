@@ -1383,9 +1383,18 @@ async function buildContainerArgs(
     log.warn('OneCLI gateway error — container will have no credentials', { containerName, err });
   }
 
-  // Bypass proxy for host-local traffic (dashboard hooks, MCP proxy)
-  args.push('-e', 'NO_PROXY=host.docker.internal,localhost,127.0.0.1,discord.com');
-  args.push('-e', 'no_proxy=host.docker.internal,localhost,127.0.0.1,discord.com');
+  // Bypass proxy for host-local traffic (dashboard hooks, MCP proxy) only.
+  // NOTE: discord.com must NOT be bypassed. The container-side slang-mcp
+  // Discord tools never receive DISCORD_BOT_TOKEN via env (it's not in the
+  // slang-mcp envInherit allowlist), so they authenticate exclusively via
+  // the REST-over-OneCLI-proxy path, which depends on the proxy injecting
+  // `Authorization: Bot {token}` on the wire (host-pattern discord.com).
+  // Listing discord.com here routes that traffic around the proxy → no
+  // token is injected → Discord returns 401 credential_not_found. The
+  // host-side Discord channel adapter is unaffected (it runs on the host
+  // with the token from .env, not through this container env).
+  args.push('-e', 'NO_PROXY=host.docker.internal,localhost,127.0.0.1');
+  args.push('-e', 'no_proxy=host.docker.internal,localhost,127.0.0.1');
 
   // Host gateway
   args.push(...hostGatewayArgs());
