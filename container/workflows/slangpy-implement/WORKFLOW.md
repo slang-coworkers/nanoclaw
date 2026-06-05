@@ -19,4 +19,14 @@ overrides:
     Builds over ~5 min (full-rebuild after dep change): notify parent via `send_message` with `⚙️ Build started — <branch>, ETA <minutes>` and delegate the build to an `Agent` subagent (it blocks until completion — no polling task).
 
     Autonomy: check prerequisites (libgl-dev etc.) before the first build subagent call — if missing, file one `install_packages` request with ALL missing packages first. On restart: if `/workspace/agent/slangpy/` exists with build artifacts, skip Clone → Verify; if tests already passed, go to Ship. If pytest fails after 2 fix cycles, commit `wip:` branch and escalate.
+  ship: |
+    Descriptive commit linking the issue, push the branch, open/update the PR via `/slangpy-github` (`gh pr create`). Don't wait for human confirmation.
+
+    **The PR body is the chain's GitHub observability artifact** (spine `### GitHub as primary observability`), so it MUST carry:
+    - the rolled-up 5-bullet summary (Status / Link / Verdict / Next-action / Blocker), and
+    - a `Fixes shader-slang/slangpy#<number>` (or `Closes #<number>`) line so GitHub back-links the PR to the issue and the supervisor's comment-verification (`supervise-issues` §5) passes.
+
+    **Immediately after the PR exists, call `report_pr_created(repo="shader-slang/slangpy", pr_number=<n>)`** — this registers the `pr_session_mappings` row so future webhook events (review comments, CI results) route back to your session instead of orphaning. Without it, every follow-up review comment looks orphaned.
+
+    Then notify parent: 'PR opened: <url>'.
 ---
