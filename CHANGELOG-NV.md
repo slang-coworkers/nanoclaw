@@ -6,15 +6,42 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 226 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 116 |
-| `nv-slang` | slang project spine, skills, workflows | 71 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 26 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 23 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 231 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 117 |
+| `nv-slang` | slang project spine, skills, workflows | 75 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 30 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 24 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-05
+
+### nv-main (5 PRs)
+- **#580** `fix(gates): route chain-routing/critique refusals to the sender, not the peer`
+- **#581** `fix(supervise-issues): rediscover chain universe live every tick`
+- **#585** `refactor(implement): add {#ship} anchor to the Ship step`
+- **#593** `fix(ci): canonical-resolution merge step (composed-state schema + lockfile)`
+- **#595** `fix(container): don't bypass proxy for discord.com so OneCLI injects the Bot token`
+
+### nv-dashboard (1 PRs)
+- **#594** `fix(ci): canonical-resolution merge step (composed-state schema + lockfile)`
+
+### nv-slang (4 PRs)
+- **#582** `fix(slang-triage): codify issue-comment posting; drop contradictory "never post"`
+- **#584** `fix(slang-github-webhook): replace deprecated PR_CREATED/pr-mappings.json with report_pr_created`
+- **#588** `feat(slang-spine): bot-disclaimer in slang-common context`
+- **#591** `fix(ci): canonical-resolution merge step (composed-state schema + lockfile)`
+
+### nv-slangpy (4 PRs)
+- **#583** `fix(slangpy-triage): codify issue-comment posting; drop contradictory "never post"`
+- **#586** `fix(slangpy-implement): ship override — report_pr_created + Fixes #N in PR body`
+- **#587** `feat(slangpy-reviewer): add /slangpy-pr-review workflow + review-output invariant`
+- **#590** `fix(ci): canonical-resolution merge step (fixes sidebar_group schema failure)`
+
+### nv-nanoclaw (1 PRs)
+- **#592** `fix(ci): canonical-resolution merge step (composed-state schema + lockfile)`
 
 ## 📅 2026-06-04
 
