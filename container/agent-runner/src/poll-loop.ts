@@ -738,7 +738,14 @@ async function processQuery(
         // at all — either way the turn is finished.
         markCompleted(initialBatchIds);
         if (event.text) {
-          const { hasUnwrapped, danglingOpen } = dispatchResultText(event.text, routing);
+          const { hasUnwrapped, danglingOpen, gateRefusals } = dispatchResultText(event.text, routing);
+          // Gate refusals are sender feedback — push them back to the emitting
+          // agent so it re-sends correctly (parity with the bash-hook gates).
+          // The gates' own 3-denial soft-cap bounds the re-send loop, so no
+          // one-shot guard is needed here.
+          if (gateRefusals?.length) {
+            query.push(`<system>${gateRefusals.join('\n\n')}</system>`);
+          }
           if (hasUnwrapped && !unwrappedNudged) {
             unwrappedNudged = true;
             const destinations = getAllDestinations();
@@ -943,7 +950,7 @@ export function checkCritiqueGate(
 export function dispatchResultText(
   text: string,
   routing: RoutingContext,
-): { sent: number; hasUnwrapped: boolean; danglingOpen?: boolean } {
+): { sent: number; hasUnwrapped: boolean; danglingOpen?: boolean; gateRefusals?: string[] } {
   // Capture the destination name (group 1), any additional attributes as one
   // string (group 2), and the body (group 3). Extra attributes — `thread_id`,
   // `in_reply_to`, plus unknown ones — are tolerated. Earlier versions of
@@ -959,8 +966,13 @@ export function dispatchResultText(
 
   let match: RegExpExecArray | null;
   let sent = 0;
+  let blocked = 0;
   let lastIndex = 0;
   const scratchpadParts: string[] = [];
+  // Gate refusals are feedback for the SENDER, not the peer destination — the
+  // caller pushes these back to the emitting agent as a <system> nudge (parity
+  // with the bash-hook gates, which exit 2 and surface the error to the sender).
+  const gateRefusals: string[] = [];
 
   while ((match = MESSAGE_RE.exec(text)) !== null) {
     if (match.index > lastIndex) {
@@ -989,26 +1001,30 @@ export function dispatchResultText(
     const routingGate = checkRoutingGate(body, { threadIdOverride, inReplyToOverride });
     if (routingGate.blocked) {
       log(`Chain-routing gate refused delivery to "${toName}": handoff marker missing thread_id/in_reply_to`);
+      // Keep the body in the scratchpad log (the refusal text claims it's
+      // "retained in the container scratchpad log only") and emit the overlay
+      // event for measurement, but do NOT deliver the refusal to the peer —
+      // collect it for the sender-directed nudge instead.
       scratchpadParts.push(`[chain-routing-gate refused delivery to "${toName}"] ${body}`);
       postOverlayEvent('chain-routing-gate.refused', { destination: toName, reason: routingGate.reason });
-      sendToDestination(dest, routingGate.reason!, routing, { threadIdOverride, inReplyToOverride });
-      sent++;
+      gateRefusals.push(routingGate.reason!);
+      blocked++;
       continue;
     }
 
     // Critique-gate scope extension (#67): the bash PreToolUse hook only
     // catches send_message/Bash invocations; this text-output path is
     // where most delivery markers actually land. Same gate, same state,
-    // re-applied here. When gated, we substitute a refusal note for the
-    // body so the destination sees explicit feedback instead of silently
-    // dropping (which the user would mistake for an agent crash).
+    // re-applied here. When gated, the body is withheld from the peer and the
+    // refusal is routed back to the SENDER (see the routing-gate block above) —
+    // delivering it to the peer mis-routed gate feedback into the chain.
     const gate = checkCritiqueGate(body);
     if (gate.blocked) {
       log(`Critique-gate refused delivery to "${toName}": body contained delivery marker, critique_rounds=0`);
       scratchpadParts.push(`[critique-gate refused delivery to "${toName}"] ${body}`);
       postOverlayEvent('critique-gate.refused', { destination: toName, reason: gate.reason });
-      sendToDestination(dest, gate.reason!, routing, { threadIdOverride, inReplyToOverride });
-      sent++;
+      gateRefusals.push(gate.reason!);
+      blocked++;
       continue;
     }
     sendToDestination(dest, body, routing, { threadIdOverride, inReplyToOverride });
@@ -1035,7 +1051,7 @@ export function dispatchResultText(
   // protection lives in agent-route.ts's same-session guard, which catches
   // any write that resolves back to the emitting session regardless of how
   // it was emitted (auto-route, <message to=…>, or send_message).
-  if (sent === 0 && scratchpad && !danglingOpen) {
+  if (sent === 0 && blocked === 0 && scratchpad && !danglingOpen) {
     const internalChannel = routing.channelType === 'system';
     if (routing.channelType && routing.platformId && !internalChannel) {
       writeMessageOut({
@@ -1062,7 +1078,10 @@ export function dispatchResultText(
     log(`[scratchpad] ${scratchpad.slice(0, 500)}${scratchpad.length > 500 ? '…' : ''}`);
   }
 
-  const hasUnwrapped = sent === 0 && (!!scratchpad || danglingOpen);
+  // A purely-gated batch (blocked > 0, sent === 0) is NOT "unwrapped" — the
+  // agent wrapped its output correctly; the gate withheld it. It gets the
+  // gate-specific refusal nudge instead of the generic "wrap your output" one.
+  const hasUnwrapped = sent === 0 && blocked === 0 && (!!scratchpad || danglingOpen);
   if (hasUnwrapped) {
     if (danglingOpen) {
       log(`WARNING: agent emitted <message to="..."> with no closing </message>; nothing was sent`);
@@ -1070,7 +1089,7 @@ export function dispatchResultText(
       log(`WARNING: agent output had no <message to="..."> blocks — nothing was sent`);
     }
   }
-  return { sent, hasUnwrapped, danglingOpen };
+  return { sent, hasUnwrapped, danglingOpen, gateRefusals: gateRefusals.length ? gateRefusals : undefined };
 }
 
 function sendToDestination(
