@@ -33,6 +33,10 @@ This directive subsumes step 5 (comment verification): the superseded-PR postmor
 
 ### 1. Build the status table
 
+**[MUST] DISCOVER the chain universe live, every tick — never inherit it from the tracker.** The set of chains to report is `ncl sessions list --thread-prefix "gh-issue-"` (the live, authoritative session list) **unioned with** the journaled chains in `supervisor-state.json`. The tracker and state JSON are the *prior snapshot* — they exist to compute deltas (§1) and to gate §7 idempotency, **not** to define which chains exist. Enumerate sessions FIRST, then reconcile: any `gh-issue-` session not already in the state JSON is a **🆕 NEW** chain that must be journaled and added this tick (§1a). A cron prompt that says "source of truth = tracker, refresh changed rows" means *refresh the prior snapshot's values*, **not** *limit the universe to the tracker's existing rows* — the universe is always rediscovered live.
+
+> **Why this is a [MUST], not a nicety (observed failure, 2026-06-05):** a tick read the tracker + state JSON and only "refreshed the rows it already had" via `gh` — and silently dropped **~16 newly-minted chains** (incl. slang#11472 / #11473 / #11474 / #11479 / #11482 / #11483, slangpy#977 / #1014). Each had a live `gh-issue-` session but was never in the tracker, so refreshing-known-rows never saw it. Inheriting the universe from the tracker is the bug; live session enumeration (this step) is the fix. `new_session: true` is correct and is *not* the cause — it merely exposes a discovery step that was skipped.
+
 Query your inbound for every active issue thread:
 
 ```bash
@@ -249,9 +253,23 @@ schedule_task({
 
 Three cost levers, all already wired above:
 1. **6-hour cadence** (`0 */6 * * *`) — not every 30 min. Issue chains move on the scale of hours, not minutes.
-2. **`new_session: true`** — each tick starts clean. The supervisor needs **no** conversation memory; everything it must remember (nudge counts, `postmortem.done`, last-tick snapshots) is persisted in `supervisor-state.json`. Without this, the session transcript grows every 6h forever and each tick costs more than the last.
+2. **`new_session: true`** — each tick starts clean. The supervisor needs **no** conversation memory; everything it must remember (nudge counts, `postmortem.done`, last-tick snapshots) is persisted in `supervisor-state.json`. Without this, the session transcript grows every 6h forever and each tick costs more than the last. **Because the tick has no memory, it MUST rediscover the chain universe live every time (§1) — `new_session: true` makes live `ncl sessions list` discovery mandatory, not optional.**
 3. **Wake gate** — when nothing is stuck, the tick is a no-op (zero model tokens).
 4. **Delta reporting** (§1, §6) — a tick that does wake reports only what changed, so even active periods stay cheap.
+
+**[MUST] The cron prompt must mandate live discovery and must NOT frame the tracker as the universe.** Any custom prompt attached to the scheduled task (delivery/format directives etc.) must keep a `DISCOVER` step ahead of the refresh step. Use this skeleton — note `DISCOVER` precedes `SOURCE OF TRUTH`, and `SOURCE OF TRUTH` is explicitly scoped to "prior snapshot for deltas," never "the list of chains":
+
+```
+/supervise-issues
+
+DISCOVER (do this FIRST, every tick): `ncl sessions list --thread-prefix "gh-issue-"` to enumerate ALL live chains, then UNION with supervisor-state.json. Any gh-issue session not already journaled is a 🆕 NEW chain — add + journal it this tick. NEVER take the chain universe from the tracker's existing rows; the tracker is the prior snapshot, not the chain list.
+
+SOURCE OF TRUTH (for DELTAS only, not for the universe): read reports/issue-chain-tracker.md + memory/supervisor-state.json to compute what changed; refresh each discovered chain's row via live gh. If another session is mid-write, reconcile, don't clobber.
+
+DELIVERY: post the board with send_message(to="orchestrator", text=<board>) or an inline <message to="orchestrator">…</message> block in the FINAL response. NEVER omit to=. NO send_file. Retry to="orchestrator" on "multiple destinations".
+
+FINAL FORMAT … <the operator-locked 10-column sectioned board; see §6>
+```
 
 ## Anti-patterns
 
@@ -266,6 +284,7 @@ Three cost levers, all already wired above:
 - **Don't re-derive the board in-context or fan out across sessions.** Post the COMPLETE board verbatim from the on-disk `reports/issue-chain-tracker.md` (re-deriving yields incomplete/stale lists), in ONE session (no parallel supervise sub-sessions — fan-out produces many partial boards), exactly once, as the last step. (§6)
 - **Don't postmortem twice, or for our own merged PRs / `not_planned` closes.** The postmortem fires once per chain, only when a *different* PR resolved the issue. (§7)
 - **Don't `git worktree remove` from the supervisor session.** Worktrees belong to the fixers; dispatch the GC to the owning fixer and let it delete its own. (§8)
+- **Don't build the chain universe from the tracker — discover it live.** The tracker/state JSON is the *prior snapshot* for delta computation, not the list of chains that exist. Every tick must `ncl sessions list --thread-prefix "gh-issue-"` and union with the state JSON; "refresh changed rows via live gh" means refresh the snapshot's values, NOT limit the universe to rows already in the tracker. Skipping live discovery is what silently dropped ~16 minted chains on 2026-06-05 (§1). This is independent of `new_session: true` (which is correct).
 - **Don't drop a chain just because it has no PR.** A triaged-then-handed-off issue (external contributor, maintainer-driving, live human debate, self-closed audit) is a real chain — journal it with its triage-comment artifact + disposition (§1a). Equating "trackable" with "has a `fix/issue-<num>` PR" is what made #11441 / #11349 / rhi#767 silently vanish from both the board and `supervisor-state.json`.
 - **Don't show a bare count or "—" in the `github` cell when an artifact exists.** Always link the actual PR or triage comment — the operator must be one click from GitHub. (§6)
 - **Don't collapse an `active: human-debate` no-PR chain.** A live discussion of our triage is a lead row, never folded into the `•` summary. (§1a, §6)
@@ -278,7 +297,9 @@ Track which chains you've nudged and how many times in `/workspace/agent/memory/
 - `postmortem: {done, supersededByPr, learningTitle, at}` — §7, fires once per chain.
 - `disposition`, `githubArtifactUrl` — §1a, for **no-PR chains**: the disposition (`active:human-debate` / `stood-down:external-PR` / `advisory:maintainer-driving` / `triaged:awaiting-pickup` / `closed-by-us`) and the triage/review comment URL that serves as the chain's GitHub artifact. Terminal (`closed-by-us`) chains move to `_archived` with the URL + reason. **Invariant: every routed+triaged `gh-issue-` chain is in the in-flight set OR `_archived`, never absent from both** (§1a reconciliation).
 
-Load this file at the start of every tick and write it back at the end; the §7 idempotency (one postmortem per chain) depends entirely on it surviving across ticks.
+**[MUST] One canonical path: `/workspace/agent/memory/supervisor-state.json`.** Do not also write a copy at the workspace root (`/workspace/agent/supervisor-state.json`) — a stale duplicate there caused a tick to nearly reconcile against day-old state (2026-06-05). If a root-level copy exists from an older tick, ignore it and treat `memory/supervisor-state.json` as authoritative; the human-facing board file stays at `reports/issue-chain-tracker.md`.
+
+Load this file at the start of every tick and write it back at the end; the §7 idempotency (one postmortem per chain) depends entirely on it surviving across ticks. **Writing it back is not optional and is not enough on its own — it must contain the live-discovered universe (§1), not just the rows you inherited.** A faithfully-written state file that was never expanded with live session discovery is exactly the 2026-06-05 failure.
 
 ## When called manually
 
