@@ -19,6 +19,16 @@ jobs:
           git config user.email "ci@nanoclaw"
           BASE="${{ github.base_ref }}"
 
+          # nv-main is the canonical source for every owned infra file, so
+          # conflicts in that set are resolved to ITS content (not HEAD's).
+          # When BASE is a leaf, HEAD starts as the leaf and `--ours` would
+          # keep the leaf's stale package.json while the lockfile auto-merges
+          # nv-main's added deps — a spec/lock mismatch that breaks
+          # `pnpm install --frozen-lockfile`. Fetch nv-main up front so
+          # `git checkout origin/nv-main -- <f>` has the ref even when nv-main
+          # is the BASE (and thus skipped by the merge loop below).
+          git fetch origin nv-main || { echo "::error::failed to fetch nv-main"; exit 1; }
+
           # nv-main canonically owns the shared infra files (package.json,
           # lockfiles, .github/**) per .github/nv-path-guard/nv-main.txt.
           # Sibling overlay branches carry their own stale copies of these that
@@ -86,10 +96,15 @@ jobs:
             fi
 
             # All conflicts are owned infra (package.json / lockfiles /
-            # .github/**) — take the integration side (nv-main is canonical).
+            # .github/**) — take nv-main's content. nv-main is canonical for
+            # the owned set, so resolve to `origin/nv-main` rather than `--ours`:
+            # `--ours` keeps whichever side HEAD happens to be (the leaf, when
+            # BASE is a leaf), which leaves package.json out of sync with the
+            # auto-merged lockfile. `origin/nv-main` keeps the pair consistent
+            # regardless of merge direction.
             for f in $CONFLICTS; do
-              echo "::notice::$branch: $f conflict — taking integration (nv-main-owned) version"
-              git checkout --ours -- "$f"
+              echo "::notice::$branch: $f conflict — taking nv-main (canonical) version"
+              git checkout origin/nv-main -- "$f"
               git add -- "$f"
             done
             git commit --no-edit
