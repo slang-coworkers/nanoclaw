@@ -41,4 +41,4 @@ Pure execution of a plan; diagnosis lives in `/plan`.
 3. **Reproduce** {#reproduce} — Bug fixes: failing test. Features: skeleton showing the gap. Commit separately so CI shows the delta.
 4. **Change** {#change} — Minimum edit matching the plan; one subsystem, existing style. Doc-only: edit existing files before creating new.
 5. **Verify** {#verify} — Build >5 min: notify parent via `send_message` ("⚙️ [step] — [branch] — [status/ETA]") and delegate the build to an `Agent` subagent (it blocks until completion — no polling task). Run full test suite + format + lint + typecheck. PR update: address review feedback first. Fails after **2 independent fix attempts** → commit failing state with `wip:` prefix, write failure summary to `{{implementation_log.path}}`, escalate — don't loop.
-6. **Ship** — Descriptive commit linking the issue, push branch, open/update PR with summary + test plan. Don't wait for human confirmation. Notify parent: 'PR opened: <url>'.
+6. **Ship** {#ship} — Descriptive commit linking the issue, push branch, open/update PR with summary + test plan. Don't wait for human confirmation. Notify parent: 'PR opened: <url>'.
