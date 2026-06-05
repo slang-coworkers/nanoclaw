@@ -747,16 +747,18 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     expect(JSON.parse(out[0].content).text).toBe('just a status update');
   });
 
-  it('marked handoff without in_reply_to is replaced by refusal note (no opt-in needed)', () => {
+  it('marked handoff without in_reply_to is refused to the SENDER, not delivered to the peer', () => {
     addDestination('peer');
     const result = dispatchResultText('<message to="peer">[Fix Report] done</message>', sourceRouting);
-    expect(result.sent).toBe(1);
-    const out = getUndeliveredMessages();
-    expect(out).toHaveLength(1);
-    const text = JSON.parse(out[0].content).text;
-    expect(text).toContain('[chain-routing-gate] REFUSED');
-    expect(text).toContain('in_reply_to');
-    expect(text).not.toContain('[Fix Report] done');
+    // Nothing reaches the peer — the gated body is withheld.
+    expect(result.sent).toBe(0);
+    expect(getUndeliveredMessages()).toHaveLength(0);
+    // The refusal is surfaced to the sender via gateRefusals.
+    expect(result.gateRefusals).toHaveLength(1);
+    const refusal = result.gateRefusals![0];
+    expect(refusal).toContain('[chain-routing-gate] REFUSED');
+    expect(refusal).toContain('in_reply_to');
+    expect(refusal).not.toContain('[Fix Report] done');
   });
 
   it('marked handoff with in_reply_to alone passes (thread_id derived)', () => {
@@ -858,7 +860,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     expect(JSON.parse(out[0].content).text).toBe('[Fix Report] hello');
   });
 
-  it('marker present + critique_rounds=0 → original [Fix Report] is REPLACED by refusal note', () => {
+  it('marker present + critique_rounds=0 → [Fix Report] refused to the SENDER, not delivered to the peer', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer');
@@ -866,14 +868,16 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
       '<message to="peer" in_reply_to="1">[Fix Report] all done — please ship</message>',
       sourceRouting,
     );
-    expect(result.sent).toBe(1);
-    const out = getUndeliveredMessages();
-    expect(out).toHaveLength(1);
-    const text = JSON.parse(out[0].content).text;
-    expect(text).toContain('[critique-gate] REFUSED');
-    expect(text).toContain('Fix Report');
-    expect(text).toContain('/codex-critique');
-    expect(text).not.toContain('please ship'); // original body NOT delivered
+    // Nothing reaches the peer.
+    expect(result.sent).toBe(0);
+    expect(getUndeliveredMessages()).toHaveLength(0);
+    // The refusal goes back to the sender.
+    expect(result.gateRefusals).toHaveLength(1);
+    const refusal = result.gateRefusals![0];
+    expect(refusal).toContain('[critique-gate] REFUSED');
+    expect(refusal).toContain('Fix Report');
+    expect(refusal).toContain('/codex-critique');
+    expect(refusal).not.toContain('please ship'); // original body NOT delivered
   });
 
   it('marker present + critique_rounds=1 → original [Fix Report] passes through (gate satisfied)', () => {
@@ -896,7 +900,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     expect(JSON.parse(out[0].content).text).toBe('just a regular reply');
   });
 
-  it('mixed batch: one [Fix Report] block + one normal block → first refused, second delivered', () => {
+  it('mixed batch: gated [Fix Report] block is withheld + refused to sender, normal block still delivered', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer-a');
@@ -905,24 +909,31 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
       '<message to="peer-a" in_reply_to="1">[Fix Report] blocked</message>\n<message to="peer-b">passes through</message>',
       sourceRouting,
     );
-    expect(result.sent).toBe(2);
+    // Only the non-gated block is delivered; peer-a receives nothing.
+    expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
-    expect(out).toHaveLength(2);
-    const byDest = Object.fromEntries(out.map((r) => [r.platform_id, JSON.parse(r.content).text]));
-    expect(byDest['ag-peer-a']).toContain('[critique-gate] REFUSED');
-    expect(byDest['ag-peer-b']).toBe('passes through');
+    expect(out).toHaveLength(1);
+    expect(out[0].platform_id).toBe('ag-peer-b');
+    expect(JSON.parse(out[0].content).text).toBe('passes through');
+    // The gated block's refusal goes back to the sender.
+    expect(result.gateRefusals).toHaveLength(1);
+    expect(result.gateRefusals![0]).toContain('[critique-gate] REFUSED');
   });
 
-  it('thread_id override is preserved even when the body is gate-replaced', () => {
+  it('gated block (with thread_id/in_reply_to overrides) delivers nothing to the peer', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer');
-    dispatchResultText(
+    const result = dispatchResultText(
       '<message to="peer" thread_id="branch-A" in_reply_to="1">[Fix Report] body</message>',
       sourceRouting,
     );
-    const out = getUndeliveredMessages();
-    expect(out[0].thread_id).toBe('branch-A'); // refusal still flows on the agent's chosen thread
+    // No peer delivery regardless of the agent's chosen thread/reply overrides;
+    // the refusal is sender-directed.
+    expect(result.sent).toBe(0);
+    expect(getUndeliveredMessages()).toHaveLength(0);
+    expect(result.gateRefusals).toHaveLength(1);
+    expect(result.gateRefusals![0]).toContain('[critique-gate] REFUSED');
   });
 
   it('critique gate soft-caps after 3 denials (parity with the bash hook)', () => {
