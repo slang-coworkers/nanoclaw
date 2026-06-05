@@ -205,12 +205,8 @@ that item and address it as a fresh review comment (above).
 
 ## PR → session mapping
 
-Coworkers that create PRs on delegated tasks must report back so future webhook events route to them. After creating a PR, the implementer sends back to the orchestrator via `mcp__nanoclaw__send_message`:
+Coworkers that create PRs on delegated tasks must report back so future webhook events route to them. **After creating a PR, the implementer calls the `report_pr_created({ repo, pr_number })` MCP tool** — that writes the `(repo, pr_number) → session` row to the `pr_session_mappings` table so future webhook events route to its session automatically. Without it, every follow-up review comment looks orphaned and falls through to branch resolution.
 
-```
-PR_CREATED: repo=<owner>/<repo> pr=456
-```
+On webhook arrival, the host looks up `(repo, issue_number)` in `pr_session_mappings` BEFORE branch resolution; a hit routes the event to the mapped session directly. This lookup is host-side — you don't query it from the webhook flow.
 
-The orchestrator maintains `/workspace/agent/pr-mappings.json` (array of `{repo, pr_number, implementer, thread_id, created_at}`). On `PR_CREATED:` callbacks, append.
-
-On webhook arrival, look up `(repo, issue_number)` in the mappings file BEFORE branch resolution. If found, route with the stored `thread_id` so the message lands in the implementer's existing session.
+> **Note:** there is no `PR_CREATED:` text callback and no `/workspace/agent/pr-mappings.json` file — both were deprecated in favor of `report_pr_created` (see `context/routing.md`, "How PR ownership is established"). Don't reintroduce them.
