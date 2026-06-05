@@ -14,17 +14,100 @@ jobs:
       - name: Merge nv-* branches (test the composed state, not standalone)
         if: github.base_ref != 'main'
         run: |
+          set -e
           git config user.name "CI"
           git config user.email "ci@nanoclaw"
           BASE="${{ github.base_ref }}"
+
+          # nv-main is the canonical source for every owned infra file, so
+          # conflicts in that set are resolved to ITS content (not HEAD's).
+          # When BASE is a leaf, HEAD starts as the leaf and `--ours` would
+          # keep the leaf's stale package.json while the lockfile auto-merges
+          # nv-main's added deps — a spec/lock mismatch that breaks
+          # `pnpm install --frozen-lockfile`. Fetch nv-main up front so
+          # `git checkout origin/nv-main -- <f>` has the ref even when nv-main
+          # is the BASE (and thus skipped by the merge loop below).
+          git fetch origin nv-main || { echo "::error::failed to fetch nv-main"; exit 1; }
+
+          # nv-main canonically owns the shared infra files (package.json,
+          # lockfiles, .github/**) per .github/nv-path-guard/nv-main.txt.
+          # Sibling overlay branches carry their own stale copies of these that
+          # always conflict during the composed-state merge — package.json
+          # version bumps, and a lagging .github/workflows/ci.yml whenever this
+          # very workflow is updated. Auto-resolve conflicts in that owned set
+          # by taking the integration side; any conflict OUTSIDE the owned set
+          # is a real content regression and must fail loudly.
+          #
+          # The previous `git merge 2>/dev/null || merge --abort` silently
+          # dropped an entire branch's content on a trivial package.json clash,
+          # which hid the base-nanoclaw / validate:templates breakage for weeks.
+          #
+          # OWNED = files git-owned by nv-main that are safe to take from the
+          # integration side on conflict. Mirrors .github/nv-path-guard/nv-main.txt:
+          # nv-main canonically owns host TS (src/**), agent-runner code, base
+          # spine/skills, and shared config. Overlay branches carry stale copies
+          # of these (they lag nv-main's lego columns etc.), so a conflict here is
+          # the sibling being behind — take nv-main's (integration) side. A genuine
+          # overlay-owned content conflict lands OUTSIDE these paths and still fails
+          # loudly. Keep in sync with nv-main.txt.
+          is_owned() {
+            case "$1" in
+              package.json|package-lock.json|pnpm-lock.yaml) return 0 ;;
+              tsconfig.json|vitest.config.ts|vitest.setup.ts) return 0 ;;
+              .github/*) return 0 ;;
+              src/*) return 0 ;;
+              scripts/*) return 0 ;;
+              setup/*) return 0 ;;
+              docs/*) return 0 ;;
+              container/agent-runner/*) return 0 ;;
+              container/hooks/*) return 0 ;;
+              container/config/*) return 0 ;;
+              container/spines/base/*) return 0 ;;
+              container/skills/spine-base/*) return 0 ;;
+              container/skills/base/*) return 0 ;;
+              container/Dockerfile|container/build.sh|container/entrypoint.sh) return 0 ;;
+              CLAUDE.md|README.md|CONTRIBUTING.md|LICENSE|.gitignore) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
           for branch in nv-main nv-dashboard nv-slang nv-slangpy nv-nanoclaw; do
             [ "$branch" = "$BASE" ] && continue
-            if git fetch origin "$branch" 2>/dev/null; then
-              git merge "origin/$branch" --no-edit 2>/dev/null || {
-                echo "::warning::$branch merge conflict — skipping"
-                git merge --abort
-              }
+            git fetch origin "$branch" || { echo "::error::failed to fetch $branch"; exit 1; }
+
+            # Plain merge — do NOT use -X ours: a genuine overlay content
+            # conflict must surface, not be silently resolved toward HEAD
+            # (that would drop a leaf's newer content). Only owned infra files
+            # are auto-resolved, below.
+            if git merge "origin/$branch" --no-edit; then
+              continue
             fi
+
+            CONFLICTS=$(git diff --name-only --diff-filter=U)
+            UNEXPECTED=""
+            for f in $CONFLICTS; do
+              is_owned "$f" || UNEXPECTED="$UNEXPECTED $f"
+            done
+            if [ -n "$UNEXPECTED" ]; then
+              echo "::error::$branch merge produced conflicts outside nv-main's owned set:"
+              printf '  %s\n' $UNEXPECTED
+              git merge --abort
+              exit 1
+            fi
+
+            # All conflicts are owned infra (package.json / lockfiles /
+            # .github/**) — take nv-main's content. nv-main is canonical for
+            # the owned set, so resolve to `origin/nv-main` rather than `--ours`:
+            # `--ours` keeps whichever side HEAD happens to be (the leaf, when
+            # BASE is a leaf), which leaves package.json out of sync with the
+            # auto-merged lockfile. `origin/nv-main` keeps the pair consistent
+            # regardless of merge direction.
+            for f in $CONFLICTS; do
+              echo "::notice::$branch: $f conflict — taking nv-main (canonical) version"
+              git checkout origin/nv-main -- "$f"
+              git add -- "$f"
+            done
+            git commit --no-edit
           done
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -56,6 +139,11 @@ jobs:
 
       - name: Fetch external skills
         if: hashFiles('scripts/fetch-skills.sh') != ''
+        # Authenticate `gh skill` blob fetches — unauthenticated fetches hit
+        # GitHub's anonymous rate limit (HTTP 403) and silently drop skills,
+        # which then fail validate:templates with "references unknown skill".
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/fetch-skills.sh
 
       - name: Format check
