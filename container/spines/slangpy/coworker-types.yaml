@@ -73,11 +73,15 @@ slangpy-fixer:
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
 
 slangpy-reviewer:
-  description: "SlangPy PR reviewer — read-only verdict on a PR / branch / patch. Inherits slangpy-reader's investigation toolkit; no write skills."
+  description: "SlangPy PR reviewer — correctness + clarity verdict on a PR / branch / patch via /slangpy-pr-review. Inherits slangpy-reader's investigation toolkit. Returns the review via send_file; posts back to GitHub as a COMMENT-state review ONLY when the dispatch carries the <github-post-authorized /> marker (a human tagged @nv-slang-bot)."
   project: slangpy
   extends: slangpy-reader
   invariants:
     # Reviewers enforce code-change rules during review.
     - container/spines/slangpy/invariants/code-changes.md
-  workflows: []
+    # Review-output rules — only loaded for slangpy-reviewer (not the fixer or
+    # other writers, who don't post reviews).
+    - container/spines/slangpy/invariants/review-output.md
+  workflows:
+    - slangpy-pr-review
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
