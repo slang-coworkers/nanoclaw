@@ -7,6 +7,7 @@ slangpy-common:
   invariants: []
   context:
     - container/spines/slangpy/context/layout.md
+    - container/spines/slangpy/context/bot-disclaimer.md
     # skill-discovery moved to slangpy-writer's context — only writers need
     # to install new skills; readers don't pay for the registry instructions.
   skills:
