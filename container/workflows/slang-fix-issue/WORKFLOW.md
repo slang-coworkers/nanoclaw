@@ -126,7 +126,7 @@ uses:
    gh pr create \
      --repo shader-slang/slang \
      --base main --head <fix/issue-number-or-fork-owner:branch> --draft \
-     --title "[draft] Fix #<number>: <one-line title>" \
+     --title "Fix #<number>: <one-line title>" \
      --body "$PR_BODY"
    ```
 
