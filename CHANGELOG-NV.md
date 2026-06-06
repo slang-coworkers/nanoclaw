@@ -8,13 +8,23 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 |---|---|---:|
 | `nv-main` | Host process, composer, base spines/workflows, CI | 231 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 117 |
-| `nv-slang` | slang project spine, skills, workflows | 75 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 30 |
+| `nv-slang` | slang project spine, skills, workflows | 78 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 31 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 24 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-06
+
+### nv-slang (3 PRs)
+- **#597** `fix(slang): generic push-remote in fix-issue + correct bot identity name`
+- **#598** `fix(slang): drop redundant [draft] title prefix from fix-issue PR template`
+- **#599** `fix(slang): target master, not main, in fix-issue workflow`
+
+### nv-slangpy (1 PRs)
+- **#589** `feat(slangpy-spine): bot-disclaimer in slangpy-common context`
 
 ## 📅 2026-06-05
 
