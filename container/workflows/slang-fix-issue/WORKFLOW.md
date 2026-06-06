@@ -15,9 +15,9 @@ uses:
 > [!IMPORTANT]
 > A triage handoff means _fix it_, not "ask how." Find root cause and resolve; propose the fix as a draft PR. The human reviews the artifact, not the plan.
 
-**Draft PR mode.** You MAY push to a fork you can write to and open a **draft PR** against `shader-slang/slang:main`. You MAY NOT merge, mark ready-for-review, post on user-facing issues/PRs, or push to upstream.
+**Draft PR mode.** Push your `fix/issue-<n>` branch to whichever remote the bot can write to — a fork, or `origin` directly when the bot has push rights on the upstream repo — and open a **draft PR** against `shader-slang/slang:main`. You MAY NOT merge, mark ready-for-review, post on user-facing issues/PRs, or push to protected branches (`main`/`master`/release).
 
-**Patch fallback.** No fork with push rights → attach the `.patch` to the reviewer message; Reviewer A still runs, Reviewer B (Devin) is skipped.
+**Patch fallback.** Only when the push is genuinely *rejected* (no writable remote, branch protection, revoked token) → attach the `.patch` to the reviewer message; Reviewer A still runs, Reviewer B (Devin) is skipped (no PR to review).
 
 ## Steps
 
@@ -109,10 +109,10 @@ uses:
    git add -A && git commit -m "Fix shader-slang/slang#<number>: <one-line title>"
    ```
 
-   Resolve fork target via `git remote -v` (a remote with push rights, e.g. nv-slang-bot fork, or one nominated via `--fork-repo <owner>/<repo>` in the inbound). Push cross-fork and open the draft PR with a heredoc body (single-line `--body` strips badly):
+   Resolve the push target via `git remote -v`: a remote the bot can write to — `origin` when the bot has upstream push rights, else a fork (one nominated via `--fork-repo <owner>/<repo>` in the inbound). Push the branch and open the draft PR with a heredoc body (single-line `--body` strips badly); use `--head fix/issue-<number>` for a same-repo push or `--head <fork-owner>:fix/issue-<number>` for a cross-fork push:
 
    ```bash
-   git push <fork-remote> fix/issue-<number>
+   git push <push-remote> fix/issue-<number>
 
    # PR_BODY heredoc with sections: ## Summary (bug + fix) / ## Diagnosis (root cause + file:line) /
    # ## Approach (subsystem, change, alternatives ruled out) / ## Files changed (bullets) /
@@ -125,14 +125,14 @@ uses:
 
    gh pr create \
      --repo shader-slang/slang \
-     --base main --head "<fork-owner>:fix/issue-<number>" --draft \
+     --base main --head <fix/issue-number-or-fork-owner:branch> --draft \
      --title "[draft] Fix #<number>: <one-line title>" \
      --body "$PR_BODY"
    ```
 
    Capture the PR URL — pass to Step 8.
 
-   **Patch fallback** (no push rights / no usable fork): `git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 8 dispatches with `--mode patch <path>` instead of the PR URL.
+   **Patch fallback** (only on a genuine push *rejection* — no writable remote / branch protection / revoked token): `git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 8 dispatches with `--mode patch <path>` instead of the PR URL.
 
    **7.5 PR follow-up is webhook-driven [MUST]** {#watcher} — Do **not** schedule a recurring poll. Once the draft PR is open, review comments, review verdicts, and CI results arrive as inbound `kind: webhook` messages (the GitHub webhook routes them back to this session via `pr_session_mappings`). On any such inbound whose `content.event` starts `github.pr_review`, `github.ci_failed`, or `github.pr_mention`, **run `/slang-github-webhook`** — it carries the per-event handling (reply on the thread, resolve LLM threads not human, infra-vs-code CI triage, the 2-round convergence guard). In brief:
    - `github.pr_review` / `github.pr_review_comment` / `REQUEST_CHANGES` → apply edits per Step 8's REQUEST_CHANGES path, re-run Step 6 verify, re-push. End the turn.
