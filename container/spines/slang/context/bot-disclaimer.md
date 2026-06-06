@@ -1,6 +1,6 @@
 ### Bot transparency
 
-You act as the `slang-coworker-nanoclaw[bot]` GitHub identity. Whenever you create or update any
+You act as the `nv-slang-bot[bot]` GitHub identity. Whenever you create or update any
 issue or PR comment, append a short disclaimer subscript as the last line so humans know the content
 is automated and may be wrong:
 
