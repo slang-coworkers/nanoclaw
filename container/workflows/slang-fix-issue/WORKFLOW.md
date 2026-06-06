@@ -15,7 +15,7 @@ uses:
 > [!IMPORTANT]
 > A triage handoff means _fix it_, not "ask how." Find root cause and resolve; propose the fix as a draft PR. The human reviews the artifact, not the plan.
 
-**Draft PR mode.** Push your `fix/issue-<n>` branch to whichever remote the bot can write to — a fork, or `origin` directly when the bot has push rights on the upstream repo — and open a **draft PR** against `shader-slang/slang:main`. You MAY NOT merge, mark ready-for-review, post on user-facing issues/PRs, or push to protected branches (`main`/`master`/release).
+**Draft PR mode.** Push your `fix/issue-<n>` branch to whichever remote the bot can write to — a fork, or `origin` directly when the bot has push rights on the upstream repo — and open a **draft PR** against `shader-slang/slang:master` (the repo's default branch is `master`, not `main`). You MAY NOT merge, mark ready-for-review, post on user-facing issues/PRs, or push to protected branches (`master`/release).
 
 **Patch fallback.** Only when the push is genuinely *rejected* (no writable remote, branch protection, revoked token) → attach the `.patch` to the reviewer message; Reviewer A still runs, Reviewer B (Devin) is skipped (no PR to review).
 
@@ -44,7 +44,7 @@ uses:
 
    ```bash
    [ -d /workspace/agent/slang/.git ] || git clone --depth 50 https://github.com/shader-slang/slang.git /workspace/agent/slang
-   cd /workspace/agent/slang && git fetch origin main && git checkout main && git pull
+   cd /workspace/agent/slang && git fetch origin master && git checkout master && git pull
    git worktree add /workspace/agent/wt-{{target_slug}} -b fix/issue-<number>
    cd /workspace/agent/wt-{{target_slug}}
    ```
@@ -125,14 +125,14 @@ uses:
 
    gh pr create \
      --repo shader-slang/slang \
-     --base main --head <fix/issue-number-or-fork-owner:branch> --draft \
+     --base master --head <fix/issue-number-or-fork-owner:branch> --draft \
      --title "Fix #<number>: <one-line title>" \
      --body "$PR_BODY"
    ```
 
    Capture the PR URL — pass to Step 8.
 
-   **Patch fallback** (only on a genuine push *rejection* — no writable remote / branch protection / revoked token): `git diff main HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 8 dispatches with `--mode patch <path>` instead of the PR URL.
+   **Patch fallback** (only on a genuine push *rejection* — no writable remote / branch protection / revoked token): `git diff master HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 8 dispatches with `--mode patch <path>` instead of the PR URL.
 
    **7.5 PR follow-up is webhook-driven [MUST]** {#watcher} — Do **not** schedule a recurring poll. Once the draft PR is open, review comments, review verdicts, and CI results arrive as inbound `kind: webhook` messages (the GitHub webhook routes them back to this session via `pr_session_mappings`). On any such inbound whose `content.event` starts `github.pr_review`, `github.ci_failed`, or `github.pr_mention`, **run `/slang-github-webhook`** — it carries the per-event handling (reply on the thread, resolve LLM threads not human, infra-vs-code CI triage, the 2-round convergence guard). In brief:
    - `github.pr_review` / `github.pr_review_comment` / `REQUEST_CHANGES` → apply edits per Step 8's REQUEST_CHANGES path, re-run Step 6 verify, re-push. End the turn.
@@ -145,7 +145,7 @@ uses:
 8. **Peer review** {#peer-review} — When `slang-reviewer` is in your destinations, dispatch with the artifact + test summary:
 
    ```
-   send_message(to="slang-reviewer", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: pr (or patch)\nPR / Patch: <url-or-path>\nBase: shader-slang/slang@main\nTests added: tests/<area>/test-<issue_number>.slang\nTest results: <PASS / X failures>")
+   send_message(to="slang-reviewer", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: pr (or patch)\nPR / Patch: <url-or-path>\nBase: shader-slang/slang@master\nTests added: tests/<area>/test-<issue_number>.slang\nTest results: <PASS / X failures>")
    ```
 
    End your turn after sending. Reviewer A's pipeline runs ~20-30 min; **don't reply to status echoes** — apply the quietness protocol from `### Reporting upstream`.
