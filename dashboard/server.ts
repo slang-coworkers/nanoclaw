@@ -1401,6 +1401,10 @@ interface ContextWindowInfo {
   model: string;
 }
 function modelMaxContext(model: string): number {
+  // The 1M-context variants carry a [1m] marker in the model id
+  // (e.g. bedrock-claude-opus-4-8[1m]); that suffix is the authoritative signal.
+  if (model.includes('[1m]')) return 1000000;
+  if (model.includes('opus-4-8')) return 1000000;
   if (model.includes('opus-4-7')) return 1000000;
   if (model.includes('opus-4-6')) return 200000;
   if (model.includes('sonnet-4')) return 200000;
