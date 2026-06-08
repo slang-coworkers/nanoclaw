@@ -18,6 +18,7 @@ import {
   ROUTE_ISSUES_TO,
 } from './config.js';
 import { getDb } from './db/connection.js';
+import { issueSessionExists } from './db/sessions.js';
 import { readEnvFile } from './env.js';
 import { log } from './log.js';
 import {
@@ -460,7 +461,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     // by both the mention gate and the 👀-reaction decision below.
     const mentionsBot = commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase());
 
-    // Mention gate, with two ownership-based exemptions. The default is to
+    // Mention gate, with three ownership-based exemptions. The default is to
     // drop a comment that doesn't @-mention the bot (otherwise we'd react to
     // every human comment on every public issue/PR — noise). But when we have
     // an explicit ownership signal, the bot IS the audience and a reply must
@@ -476,9 +477,19 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     //       reply on our bot's own PR is for us. deliverGitHubMention already
     //       routes it correctly (local-owner → mapped session; foreign-owner →
     //       forward) — the gate just must not drop it first.
+    //   (c) isParticipantIssue — a follow-up comment on a plain ISSUE we are
+    //       already driving (an active session keyed on the canonical
+    //       `gh-issue-<repo>-<num>` thread exists). This is the issue-side
+    //       mirror of isOwnedPr: a reply to our own triage comment is for us
+    //       even without an @-mention. Without it, an author answering a
+    //       maintainer-decision question we posted is silently dropped and the
+    //       chain stalls forever waiting on a webhook that was filtered.
+    //       deliverGitHubMention already rejoins the existing chain (same
+    //       `gh-issue-` thread + mintPerThread), so the gate just must not drop
+    //       it first. Only consulted when (a) doesn't already forward the issue.
     //
-    // A comment on an un-mapped public PR (no mapping row) stays gated — no
-    // ownership signal, no noise.
+    // A comment on an un-mapped public PR or an issue we've never touched stays
+    // gated — no ownership signal, no noise.
     const willDevRouteToPeer =
       !isPr && Boolean(ROUTE_ISSUES_TO) && Boolean(INSTANCE_SLUG) && ROUTE_ISSUES_TO !== INSTANCE_SLUG;
 
@@ -491,7 +502,12 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       }
     }
 
-    if (!isPeerForward && !willDevRouteToPeer && !isOwnedPr && !mentionsBot) {
+    let isParticipantIssue = false;
+    if (!isPr && !willDevRouteToPeer && repoFullName && issueNumber) {
+      isParticipantIssue = issueSessionExists(repoFullName, issueNumber);
+    }
+
+    if (!isPeerForward && !willDevRouteToPeer && !isOwnedPr && !isParticipantIssue && !mentionsBot) {
       writeJson(res, 200, { ok: true, skipped: true, reason: 'bot not mentioned' });
       return;
     }
@@ -536,7 +552,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     // The `issues` event type takes a separate code path above and never
     // reaches here (issues themselves don't accept reactions on the body
     // anyway — only on comments inside them).
-    const addressedToBot = mentionsBot || isOwnedPr;
+    const addressedToBot = mentionsBot || isOwnedPr || isParticipantIssue;
     if (!isPeerForward && addressedToBot && (outcome === 'local' || outcome === 'forwarded')) {
       void postEyesReaction(repoFullName, String(eventType), commentId);
     }
