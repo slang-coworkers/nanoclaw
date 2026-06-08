@@ -90,6 +90,25 @@ export function findSessionByAgentThread(agentGroupId: string, threadId: string)
     .get(agentGroupId, threadId) as Session | undefined;
 }
 
+/**
+ * Does any active session exist for this issue's chain, keyed on its canonical
+ * `gh-issue-<repo>-<num>` thread_id (any agent group)? Used by the webhook
+ * comment gate to recognize "this issue is ours" — a follow-up comment on an
+ * issue we're already driving is processed even without an @-mention (the live
+ * chain IS the ownership signal, mirroring isOwnedPr/prMappingExists for PRs).
+ * Returns false (never throws) if the sessions table is unavailable.
+ */
+export function issueSessionExists(repo: string, issueNumber: number): boolean {
+  try {
+    const row = getDb()
+      .prepare("SELECT 1 FROM sessions WHERE thread_id = ? AND status = 'active' LIMIT 1")
+      .get(`gh-issue-${repo}-${issueNumber}`) as { 1: number } | undefined;
+    return Boolean(row);
+  } catch {
+    return false;
+  }
+}
+
 /** Find an active session scoped to an agent group (ignoring messaging group). */
 export function findSessionByAgentGroup(agentGroupId: string): Session | undefined {
   return getDb()
