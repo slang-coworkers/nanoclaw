@@ -374,7 +374,7 @@ function funnelFlowHtml(ip) {
 
   // A stat card: big number + label + optional sub.
   const card = (n, label, color, sub) =>
-    `<div style="flex:1;min-width:84px;background:var(--bg-elevated,#161b22);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+    `<div style="flex:1;min-width:84px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
        <div style="font-size:26px;font-weight:700;line-height:1;color:${color || 'var(--text)'}">${n}</div>
        <div style="font-size:11px;color:var(--text-muted);margin-top:3px">${esc(label)}</div>
        ${sub ? `<div style="font-size:10px;color:var(--text-muted);margin-top:1px">${esc(sub)}</div>` : ''}
@@ -445,7 +445,7 @@ function funnelFlowHtml(ip) {
       ${card(bp.total, 'Bot PR opened', C.shipped, `${Math.round((bp.total / (c.actionable || 1)) * 100)}% of actionable`)}
       <div style="display:flex;align-items:center;color:var(--text-muted);font-size:20px">→</div>
       ${card(bp.merged, 'Merged ★', C.merged, 'the WIN')}
-      <div style="flex:1.3;min-width:120px;background:var(--bg-elevated,#161b22);border:1px solid ${winColor};border-radius:8px;padding:10px 12px">
+      <div style="flex:1.3;min-width:120px;background:var(--bg-card);border:1px solid ${winColor};border-radius:8px;padding:10px 12px">
         <div style="font-size:26px;font-weight:700;line-height:1;color:${winColor}">${wr}%</div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:3px">WIN-RATE</div>
         <div style="font-size:10px;color:var(--text-muted)">merged ÷ actionable (${bp.merged}/${c.actionable})</div>
@@ -526,7 +526,7 @@ function funnelWeeklyTrendSvg(weekly) {
       <span style="font-size:10px;color:var(--text-muted)">● raw &nbsp;<span style="color:#3fb950">●</span> rolling 4wk</span>
       <span style="margin-left:auto;font-size:12px;color:${trendColor}">${trend}</span>
     </div>
-    <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:var(--bg-elevated,transparent)">
+    <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
       ${grid}
       <polyline points="${rollPts}" fill="none" stroke="#3fb950" stroke-width="2"/>
       ${rawDots}${rollDots}${rollLabels}${xlabels}
