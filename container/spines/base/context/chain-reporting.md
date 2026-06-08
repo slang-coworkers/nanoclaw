@@ -111,7 +111,7 @@ If you're initiating (no `in_reply_to` available — supervisor cron, fresh disp
 
 The four state-change events that REQUIRE a GitHub comment:
 
-1. **PR opened.** PR description carries the rolled-up 5-bullet + `Fixes #N` / `Closes #N` link to the issue. Call `report_pr_created({ repo, pr_number })`. No separate issue comment needed when the PR description carries it.
+1. **PR opened.** PR description carries the rolled-up 5-bullet + `Fixes #N` / `Closes #N` link to the issue. Call `report_pr_created({ repo, pr_number })`. No separate issue comment needed when the PR description carries it — **but only once the PR is a public artifact (non-draft).** A **draft-held** PR is NOT a substitute for an issue comment: a draft doesn't auto-close the issue and its `Fixes #N` link doesn't surface prominently, so the issue is left with zero public footprint. When the PR that would carry the trail is held as a draft, the triaging/owning tier **MUST** still post the 5-bullet on the issue (verdict = "triaged → fix in draft PR #N, held pending review/approval"), so a human landing on the issue can see where it stands.
 2. **Resolved without a PR** (refusal, out-of-scope, won't-fix, dedup, answered inline). Deepest tier holding the verdict posts the 5-bullet — `verdict:` and `next-action:` carry the load.
 3. **Blocked — needs a human decision.** `ask_user_question(timeout: 0)` **and** post a GitHub comment with the 5-bullet + question + options (markdown checklist). A human replying on GitHub becomes the next chain inbound via webhook.
 4. **Handed off** — awaiting upstream maintainer / external dependency. Post the 5-bullet stating the handoff and what triggers resumption.
