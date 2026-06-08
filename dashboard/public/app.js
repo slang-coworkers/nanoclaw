@@ -303,26 +303,38 @@ async function loadFunnel() {
   }
   if (stamp) stamp.textContent = snap.generatedAt ? `snapshot: ${formatTime(snap.generatedAt)}` : '';
   const b = snap.board || {};
+  // Shared cell padding so columns don't collapse into "prodlegototalconv".
+  const TH = (label, left) => `<th style="text-align:${left ? 'left' : 'right'};padding:2px 12px;border-bottom:1px solid var(--border)">${label}</th>`;
+  const TD = (html, left, bold) =>
+    `<td style="text-align:${left ? 'left' : 'right'};padding:2px 12px">${bold ? '<b>' + html + '</b>' : html}</td>`;
   const row = (label, cell, base) => {
     const c = cell || { prod: 0, lego: 0, total: 0 };
     const conv = base && base.total ? Math.round((c.total / base.total) * 100) + '%' : '';
-    return `<tr><td>${esc(label)}</td><td style="text-align:right">${c.prod}</td><td style="text-align:right">${c.lego}</td><td style="text-align:right"><b>${c.total}</b></td><td style="text-align:right;color:var(--text-muted)">${conv}</td></tr>`;
+    return `<tr>${TD(esc(label), true)}${TD(c.prod)}${TD(c.lego)}${TD(c.total, false, true)}<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">${conv}</td></tr>`;
   };
+
+  // ── Issue partition: the per-issue funnel (denominator = ALL filed issues) ──
+  const ip = snap.issuePartition;
+  const partHtml = ip && ip.counts ? funnelFlowHtml(ip) : '';
+
   if (board)
     board.innerHTML =
-      `<table style="border-collapse:collapse" cellpadding="3">
-        <tr style="border-bottom:1px solid var(--border)"><th style="text-align:left">stage</th><th>prod</th><th>lego</th><th>total</th><th>conv</th></tr>
-        ${snap.routedWindowed != null ? `<tr><td>Routed (win-bound)</td><td></td><td></td><td><b>${snap.routedWindowed}</b></td><td style="color:var(--text-muted)">top</td></tr>` : ''}
+      partHtml +
+      `<details style="margin-top:14px"><summary style="cursor:pointer;color:var(--text-muted);font-size:12px">PR spine (per-mapping detail)</summary>
+      <table style="border-collapse:collapse;margin-top:6px">
+        <tr>${TH('stage', true)}${TH('prod')}${TH('lego')}${TH('total')}${TH('conv')}</tr>
+        ${snap.routedWindowed != null ? `<tr>${TD('Routed (win-bound)', true)}<td></td><td></td>${TD(snap.routedWindowed, false, true)}<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">top</td></tr>` : ''}
         ${row('PR opened', b.pr_opened, b.pr_opened)}
         ${row('PR ready (¬draft)', b.pr_ready, b.pr_opened)}
         ${row('Merged', b.merged, b.pr_opened)}
-        <tr><td colspan="5" style="color:var(--text-muted);padding-top:6px">terminals / side-exits</td></tr>
+        <tr><td colspan="5" style="color:var(--text-muted);padding:6px 12px 2px">terminals / side-exits</td></tr>
         ${row('shipped-draft', b.shipped_draft)}
         ${row('PR closed-unmerged', b.pr_closed_unmerged)}
         ${row('CI red (open)', b.ci_red)}
         ${row('CI green (open)', b.ci_green)}
       </table>
-      <div style="margin-top:6px;color:var(--text-muted)">routed→no-PR yet: ${(snap.routedNoPr || []).length}${(snap.routedNoPr || []).length ? ' — ' + snap.routedNoPr.slice(0, 10).map(esc).join(', ') : ''}</div>`;
+      <div style="margin-top:6px;color:var(--text-muted)">engaged, no live bot PR: ${(snap.engagedNoPr || []).length}${(snap.engagedNoPr || []).length ? ' — ' + snap.engagedNoPr.slice(0, 10).map(esc).join(', ') : ''}</div>
+      </details>`;
   // Detail: one row per PR with links.
   const rows = snap.rows || [];
   const stageColor = (s) =>
@@ -346,6 +358,179 @@ async function loadFunnel() {
           )
           .join('')}
       </table>`;
+}
+
+// Visual funnel for the issue partition — renders the mental model:
+//   FILED → (drop not-our-problem) → ACTIONABLE → {never-engaged, triage-only,
+//   resolved-elsewhere, BOT-PR} → BOT-PR splits into merged★/shipped/ready/closed.
+// Big stat cards + proportional stacked bars so "where do 117 issues go" reads
+// at a glance, no table-squinting. Returns an HTML string.
+function funnelFlowHtml(ip) {
+  const c = ip.counts;
+  const bp = c.bot_pr || {};
+  const wr = Math.round((ip.winRate || 0) * 100);
+  const winColor = wr >= 15 ? '#3fb950' : wr >= 5 ? '#d29922' : '#f85149';
+  const winStart = (ip.window?.start || '').slice(0, 10);
+
+  // A stat card: big number + label + optional sub.
+  const card = (n, label, color, sub) =>
+    `<div style="flex:1;min-width:84px;background:var(--bg-elevated,#161b22);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+       <div style="font-size:26px;font-weight:700;line-height:1;color:${color || 'var(--text)'}">${n}</div>
+       <div style="font-size:11px;color:var(--text-muted);margin-top:3px">${esc(label)}</div>
+       ${sub ? `<div style="font-size:10px;color:var(--text-muted);margin-top:1px">${esc(sub)}</div>` : ''}
+     </div>`;
+
+  // Pick black or white text for a #rrggbb background so the in-bar number is
+  // readable on any segment color (and in any theme — these colors are fixed).
+  const textOn = (hex) => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+    if (!m) return '#fff';
+    const r = parseInt(m[1].slice(0, 2), 16),
+      g = parseInt(m[1].slice(2, 4), 16),
+      bl = parseInt(m[1].slice(4, 6), 16);
+    // perceived luminance
+    return 0.299 * r + 0.587 * g + 0.114 * bl > 150 ? '#0d1117' : '#ffffff';
+  };
+  // A proportional stacked bar from [{n,label,color}] segments over `total`.
+  const stacked = (total, segs) => {
+    if (!total) return '';
+    const cells = segs
+      .filter((s) => s.n > 0)
+      .map((s) => {
+        const pct = (s.n / total) * 100;
+        return `<div title="${esc(s.label)}: ${s.n} (${Math.round(pct)}%)" style="width:${pct}%;background:${s.color};height:26px;display:flex;align-items:center;justify-content:center;overflow:hidden;color:${textOn(s.color)};font-size:11px;font-weight:700;white-space:nowrap">${pct >= 6 ? s.n : ''}</div>`;
+      })
+      .join('');
+    return `<div style="display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--border)">${cells}</div>`;
+  };
+  // A legend chip.
+  const chip = (color, label, n) =>
+    `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:11px">
+       <span style="width:10px;height:10px;border-radius:2px;background:${color};display:inline-block"></span>
+       ${esc(label)} <b>${n}</b></span>`;
+
+  const C = {
+    merged: '#3fb950',
+    shipped: '#58a6ff',
+    ready: '#79c0ff',
+    open: '#1f6feb',
+    closed: '#6e7681',
+    triage: '#d29922',
+    never: '#484f58',
+    resolved: '#8b949e',
+  };
+
+  const actSegs = [
+    { n: bp.merged, label: 'merged ★ WIN', color: C.merged },
+    { n: bp.shipped_draft, label: 'shipped-draft', color: C.shipped },
+    { n: bp.pr_ready, label: 'pr-ready', color: C.ready },
+    { n: bp.pr_open, label: 'pr-open', color: C.open },
+    { n: bp.pr_closed, label: 'pr-closed/superseded', color: C.closed },
+    { n: c.triage_only, label: 'triage-only', color: C.triage },
+    { n: c.resolved_elsewhere, label: 'resolved-elsewhere', color: C.resolved },
+    { n: c.never_engaged, label: 'never-engaged', color: C.never },
+  ];
+
+  return `<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px">
+      <span style="font-size:15px;font-weight:700">Issue Funnel</span>
+      <span style="font-size:11px;color:var(--text-muted)">${esc(winStart)} → now</span>
+    </div>
+
+    <!-- top-line flow: Filed → Actionable → Bot PR → Merged -->
+    <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:14px;flex-wrap:wrap">
+      ${card(c.filed, 'Filed', null, 'all issues in window')}
+      <div style="display:flex;align-items:center;color:var(--text-muted);font-size:20px">→</div>
+      ${card(c.actionable, 'Actionable', null, `−${c.not_our_problem} not-a-bug`)}
+      <div style="display:flex;align-items:center;color:var(--text-muted);font-size:20px">→</div>
+      ${card(bp.total, 'Bot PR opened', C.shipped, `${Math.round((bp.total / (c.actionable || 1)) * 100)}% of actionable`)}
+      <div style="display:flex;align-items:center;color:var(--text-muted);font-size:20px">→</div>
+      ${card(bp.merged, 'Merged ★', C.merged, 'the WIN')}
+      <div style="flex:1.3;min-width:120px;background:var(--bg-elevated,#161b22);border:1px solid ${winColor};border-radius:8px;padding:10px 12px">
+        <div style="font-size:26px;font-weight:700;line-height:1;color:${winColor}">${wr}%</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px">WIN-RATE</div>
+        <div style="font-size:10px;color:var(--text-muted)">merged ÷ actionable (${bp.merged}/${c.actionable})</div>
+      </div>
+    </div>
+
+    <!-- where every actionable issue goes -->
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Where the ${c.actionable} actionable issues went:</div>
+    ${stacked(c.actionable, actSegs)}
+    <div style="margin-top:8px;line-height:1.9">
+      ${chip(C.merged, 'merged ★', bp.merged)}
+      ${chip(C.shipped, 'shipped-draft', bp.shipped_draft)}
+      ${chip(C.ready, 'pr-ready', bp.pr_ready)}
+      ${bp.pr_open ? chip(C.open, 'pr-open', bp.pr_open) : ''}
+      ${chip(C.closed, 'pr-closed/superseded', bp.pr_closed)}
+      ${chip(C.triage, 'triage-only', c.triage_only)}
+      ${chip(C.resolved, 'resolved-elsewhere', c.resolved_elsewhere)}
+      ${chip(C.never, 'never-engaged', c.never_engaged)}
+    </div>
+
+    <div style="margin-top:16px">${funnelWeeklyTrendSvg(ip.weekly || [])}</div>`;
+}
+
+// Inline-SVG line chart of the weekly WIN trend (issuePartition.weekly).
+// Two series: per-week win-rate (faint dots) and the trailing-4wk rolling
+// win-rate (solid line) so you can read "are we doing better or worse" at a
+// glance. Returns '' when there's nothing to plot.
+function funnelWeeklyTrendSvg(weekly) {
+  if (!Array.isArray(weekly) || weekly.length === 0) return '';
+  const W = 520,
+    H = 130,
+    padL = 34,
+    padR = 10,
+    padT = 14,
+    padB = 24;
+  const innerW = W - padL - padR,
+    innerH = H - padT - padB;
+  const n = weekly.length;
+  // Y axis fixed 0..max(40%, observed) so small win-rates are still visible.
+  const maxPct = Math.max(0.4, ...weekly.map((w) => Math.max(w.winRate || 0, w.rollingWinRate || 0)));
+  const x = (i) => padL + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const y = (v) => padT + innerH - (v / maxPct) * innerH;
+  const gridVals = [0, maxPct / 2, maxPct];
+  const grid = gridVals
+    .map(
+      (v) =>
+        `<line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W - padR}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>` +
+        `<text x="${padL - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-muted)">${Math.round(v * 100)}%</text>`,
+    )
+    .join('');
+  const rollPts = weekly.map((w, i) => `${x(i).toFixed(1)},${y(w.rollingWinRate || 0).toFixed(1)}`).join(' ');
+  const rawDots = weekly
+    .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${w.merged}/${w.actionable})</title></circle>`)
+    .join('');
+  const rollDots = weekly
+    .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.rollingWinRate || 0).toFixed(1)}" r="3" fill="#3fb950"><title>${esc(w.week)} rolling: ${Math.round((w.rollingWinRate || 0) * 100)}%</title></circle>`)
+    .join('');
+  // Value labels on each rolling point (the win-rates are small, so the line
+  // hugs the axis — the number must be spelled out). Placed just above each dot.
+  const rollLabels = weekly
+    .map((w, i) => {
+      const pct = Math.round((w.rollingWinRate || 0) * 100);
+      const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+      return `<text x="${x(i).toFixed(1)}" y="${(y(w.rollingWinRate || 0) - 7).toFixed(1)}" text-anchor="${anchor}" font-size="11" font-weight="700" fill="#3fb950">${pct}%</text>`;
+    })
+    .join('');
+  const xlabels = weekly
+    .map((w, i) => (i % Math.ceil(n / 6 || 1) === 0 ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(w.week.slice(5))}</text>` : ''))
+    .join('');
+  // Direction hint: last rolling vs first rolling.
+  const first = weekly[0].rollingWinRate || 0,
+    last = weekly[n - 1].rollingWinRate || 0;
+  const delta = Math.round((last - first) * 100);
+  const trend = delta > 0 ? `▲ +${delta}pp` : delta < 0 ? `▼ ${delta}pp` : '→ flat';
+  const trendColor = delta > 0 ? '#3fb950' : delta < 0 ? '#f85149' : 'var(--text-muted)';
+  return `<div style="margin:6px 0 2px;display:flex;align-items:baseline;gap:10px">
+      <span style="font-weight:600">Weekly WIN trend</span>
+      <span style="font-size:10px;color:var(--text-muted)">● raw &nbsp;<span style="color:#3fb950">●</span> rolling 4wk</span>
+      <span style="margin-left:auto;font-size:12px;color:${trendColor}">${trend}</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:var(--bg-elevated,transparent)">
+      ${grid}
+      <polyline points="${rollPts}" fill="none" stroke="#3fb950" stroke-width="2"/>
+      ${rawDots}${rollDots}${rollLabels}${xlabels}
+    </svg>`;
 }
 
 // Shared "Active Session" block — two-layer (nanoclaw session id + container_status +
