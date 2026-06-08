@@ -2,7 +2,44 @@
 
 Measure how issues move from "routed to an instance" through to "merged", per instance (prod / lego), so we can see where chains drop off and distinguish legitimate exits from real leaks.
 
-Status: **design only** (not built). Decisions locked: top-of-funnel = **Routed**; success = **split Shipped-draft vs Merged**.
+Status: **built** (`scripts/funnel.ts` + dashboard Admin → Funnel panel). The original PR-spine design (below) is the *detail* layer; a per-issue **partition** (v2, see next section) is the headline.
+
+## v2 — per-issue partition (the headline funnel)
+
+The PR spine (below) starts at "Routed" and its denominator is *PRs in `pr_session_mappings`*. That can't answer **"of ALL issues filed, how many did the bot merge (a WIN), how many got partial work, how many were not-a-bug, and where did the rest go?"** — because it never sees issues the bot didn't open a PR for, and it over-counts the "no-PR" tail (issues already closed, resolved by a human PR, or whose bot PR isn't in our mapping table).
+
+v2 adds an independent **per-issue pass** in `scripts/funnel.ts` that enumerates ALL issues filed in the window and partitions them into mutually-exclusive buckets.
+
+**Window:** the PR-mapping era — `MIN(pr_session_mappings.created_at)` → now. (`issues?since=` is *updated*-time, so the pass also filters `created_at >= windowStart` client-side; a safe superset.)
+
+**Denominator:** `actionable = filed − not_our_problem`. **Win-rate = bot_pr.merged ÷ actionable.**
+
+**Buckets** (first match wins), per `TRACKED_REPOS` (slang, slangpy, slang-rhi):
+
+| Bucket | Definition |
+|--------|-----------|
+| `not_our_problem` | `state_reason==='not_planned'` OR a not-a-bug label (`NOT_A_BUG_LABELS`: "Not a Slang Bug", duplicate, invalid, wontfix, question, by design, …). **Excluded from the denominator.** |
+| `bot_pr` | A **nv-slang-bot**-authored PR is cross-referenced to the issue (via the issue *timeline*). Sub-classified by `classifyPrStage()`: `merged ★` / `shipped-draft` / `pr-ready` / `pr-open` / `pr-closed`+`superseded`. |
+| `resolved_elsewhere` | Issue closed-completed, only **human** PR(s) linked (or no bot artifact at all). Neutral exit — not our win, not our failure. |
+| `triage_only` | Bot left a comment but opened no PR. This is the corrected `engagedNoPr` residue (replaces the old log-derived `routedNoPr`). |
+| `never_engaged` | No bot comment, no bot PR. Top-of-funnel leak. |
+
+**Signals & traps that matter here:**
+- "Bot PR" is detected from the **timeline cross-references**, not `pr_session_mappings` — this catches bot PRs linked to a *sibling* issue or whose body lacks `Fixes #N` (the old funnel's blind spot).
+- The `/issues` endpoint mixes PRs into its output — drop items with a `pull_request` key.
+- PR-author check uses `BOT_LOGIN` (`nv-slang-bot[bot]`).
+
+**Weekly WIN trend:** issues are cohorted by the Monday of the week they were *filed*; per week we report `winRate = merged/actionable` and a **trailing 4-week rolling** win-rate, so the dashboard graph shows whether we're trending up or down. Emitted as `issuePartition.weekly[]`.
+
+**Snapshot shape** (`reports/funnel.json`): adds `issuePartition: { window, counts, winRate, weekly[], issues[] }` and `engagedNoPr[]` alongside the existing `board`, `rows`, `routedWindowed`, `routedNoPr` (legacy, kept for back-compat).
+
+**Dashboard** (`dashboard/public/app.js` `loadFunnel` → `funnelFlowHtml` + `funnelWeeklyTrendSvg`): renders the partition as flow stat-cards (Filed → Actionable → Bot PR → Merged → win-rate), a proportional stacked bar of where actionable issues go, and the weekly trend line with per-point rolling-% labels. The PR spine is collapsed into a `<details>`.
+
+---
+
+## Original PR-spine design (the detail layer)
+
+Decisions locked: top-of-funnel = **Routed**; success = **split Shipped-draft vs Merged**.
 
 ## Why this shape (the two things that would make a naive funnel lie)
 

@@ -45,6 +45,44 @@ const INSTALL_BY_OWNER: Record<string, string> = {
 };
 const BOT_LOGIN = 'nv-slang-bot[bot]';
 
+// Repos whose issues form the denominator of the issue partition (the per-issue
+// pass below). The PR spine discovers repos from pr_session_mappings, but the
+// "ALL issues filed" denominator must be enumerated directly — so we list them.
+const TRACKED_REPOS = ['shader-slang/slang', 'shader-slang/slangpy', 'shader-slang/slang-rhi'];
+
+// "Not our problem" — issues that should NOT count against the bot's win-rate.
+// state_reason==='not_planned' OR any label here (case-insensitive substring).
+// Seeded from labels observed on shader-slang/slang; tune freely.
+const NOT_A_BUG_LABELS = [
+  'not a slang bug',
+  'not reproduced',
+  'duplicate',
+  'invalid',
+  'wontfix',
+  "won't fix",
+  'question',
+  'by design',
+];
+function isNotOurProblem(stateReason: string | null, labels: string[]): boolean {
+  if (stateReason === 'not_planned') return true;
+  const lc = labels.map((l) => l.toLowerCase());
+  return lc.some((l) => NOT_A_BUG_LABELS.some((bad) => l.includes(bad)));
+}
+
+// Terminal stage of a PR, given its state/draft and the linked issue's state.
+// Factored out so the PR spine (rows[]) and the issue partition agree.
+function classifyPrStage(
+  prState: string | null,
+  isDraft: boolean | null,
+  issueState: string | null,
+): string {
+  if (prState === 'merged') return 'merged';
+  if (prState === 'closed') return issueState === 'closed' ? 'superseded' : 'pr-closed';
+  if (isDraft === false) return 'pr-ready';
+  if (isDraft === true) return 'shipped-draft';
+  return 'pr-open';
+}
+
 const args = process.argv.slice(2);
 const JSON_OUT = args.includes('--json');
 const SKIP_ROUTED = args.includes('--no-routed');
@@ -106,6 +144,21 @@ function gh(repo: string, apiPath: string): any {
   } catch {
     return null;
   }
+}
+
+// Paginated GET: follows ?page=N until a short page (< per_page) is returned.
+// Used for listing all issues in a repo (the denominator). Returns the
+// concatenated array, or [] on any failure.
+function ghPaged(repo: string, apiPathNoPage: string, perPage = 100): any[] {
+  const out: any[] = [];
+  for (let page = 1; page <= 50; page++) {
+    const sep = apiPathNoPage.includes('?') ? '&' : '?';
+    const chunk = gh(repo, `${apiPathNoPage}${sep}per_page=${perPage}&page=${page}`);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    out.push(...chunk);
+    if (chunk.length < perPage) break;
+  }
+  return out;
 }
 
 function stripAnsi(s: string): string {
@@ -206,18 +259,11 @@ async function main() {
       }
     }
 
-    // Terminal classification
-    let stage: string;
+    // Terminal classification (shared with the issue partition below).
+    const stage = classifyPrStage(prState, isDraft, issueState);
     let note = '';
-    if (prState === 'merged') stage = 'merged';
-    else if (prState === 'closed') {
-      // Our PR closed un-merged. If the issue itself is closed, another fix
-      // likely superseded ours; otherwise it was abandoned/rejected.
-      stage = issueState === 'closed' ? 'superseded' : 'pr-closed';
-      note = issueState === 'closed' ? 'PR closed un-merged; issue resolved elsewhere' : 'PR closed un-merged';
-    } else if (isDraft === false) stage = 'pr-ready';
-    else if (isDraft === true) stage = 'shipped-draft';
-    else stage = 'pr-open';
+    if (stage === 'superseded') note = 'PR closed un-merged; issue resolved elsewhere';
+    else if (stage === 'pr-closed') note = 'PR closed un-merged';
     if (ciBucket === 'fail' && stage !== 'merged') note = (note ? note + '; ' : '') + 'CI red';
     if (closedReason && closedReason !== 'completed') note = (note ? note + '; ' : '') + `issue:${closedReason}`;
 
@@ -247,6 +293,181 @@ async function main() {
     if (!seenIssues.has(key)) routedNoPr.push(key);
   }
 
+  // ── Issue partition (the per-issue funnel) ──────────────────────────────
+  // Answers "of ALL issues filed in the window, where did each go?" — the
+  // denominator the PR spine above can't see. Buckets are mutually exclusive:
+  //   not_our_problem  — not_planned / not-a-bug label (excluded from win-rate)
+  //   bot_pr.*         — a nv-slang-bot PR is linked (sub-classified by stage)
+  //   resolved_elsewhere — closed-completed, only human PR(s) linked
+  //   triage_only      — bot commented, no bot PR
+  //   never_engaged    — no bot comment, no bot PR
+  // win-rate = bot_pr.merged / actionable, where actionable = filed − not_our_problem.
+  const WINDOW_END = STAMP;
+  let windowStart = '2026-05-01T00:00:00Z';
+  try {
+    const r = db.prepare('SELECT MIN(created_at) AS m FROM pr_session_mappings').get() as { m: string | null };
+    if (r?.m) windowStart = new Date(r.m.replace(' ', 'T') + 'Z').toISOString();
+  } catch {
+    /* keep fallback */
+  }
+
+  interface IssuePart {
+    repo: string;
+    number: number;
+    url: string;
+    bucket: string; // not_our_problem | never_engaged | triage_only | resolved_elsewhere | bot_pr
+    stage?: string; // bot-PR sub-stage (merged|shipped-draft|pr-ready|pr-closed|superseded|pr-open)
+    prNumber?: number;
+    prUrl?: string;
+    note?: string;
+    createdAt?: string; // issue created_at — used for the weekly WIN trend
+  }
+  const issueParts: IssuePart[] = [];
+  const partRepos = (REPO_FILTER ? [REPO_FILTER] : TRACKED_REPOS).filter(orgAllowed);
+
+  for (const repo of partRepos) {
+    // since= is *updated*-time → superset; we filter created_at >= windowStart below.
+    const listed = ghPaged(repo, `issues?state=all&since=${encodeURIComponent(windowStart)}`);
+    for (const it of listed) {
+      if (it?.pull_request) continue; // the /issues endpoint mixes PRs in — drop them
+      if (!it?.created_at || it.created_at < windowStart) continue; // window guard
+      const num = it.number as number;
+      const labels: string[] = Array.isArray(it.labels)
+        ? it.labels.map((l: any) => (typeof l === 'string' ? l : l?.name)).filter(Boolean)
+        : [];
+      const issueState: string = it.state ?? 'open';
+      const stateReason: string | null = it.state_reason ?? null;
+      const url: string = it.html_url ?? `https://github.com/${repo}/issues/${num}`;
+
+      if (isNotOurProblem(stateReason, labels)) {
+        issueParts.push({ repo, number: num, url, createdAt: it.created_at, bucket: 'not_our_problem', note: stateReason || 'not-a-bug label' });
+        continue;
+      }
+
+      // Linked PRs via timeline cross-references (catches bot PRs not in our
+      // mapping table, and tells bot-authored from human-authored apart).
+      const timeline = gh(repo, `issues/${num}/timeline?per_page=100`);
+      const linkedPrs: Array<{ number: number; author: string; isBot: boolean }> = [];
+      if (Array.isArray(timeline)) {
+        for (const e of timeline) {
+          if (e?.event !== 'cross-referenced') continue;
+          const src = e?.source?.issue;
+          if (!src?.pull_request) continue;
+          const author = src?.user?.login ?? '';
+          linkedPrs.push({ number: src.number, author, isBot: author === BOT_LOGIN });
+        }
+      }
+      const botPr = linkedPrs.find((p) => p.isBot);
+
+      if (botPr) {
+        const pr = gh(repo, `pulls/${botPr.number}`);
+        const prState = pr ? (pr.merged ? 'merged' : pr.state) : 'open';
+        const isDraft = pr ? Boolean(pr.draft) : null;
+        const stage = classifyPrStage(prState, isDraft, issueState);
+        issueParts.push({
+          repo,
+          number: num,
+          url,
+          createdAt: it.created_at,
+          bucket: 'bot_pr',
+          stage,
+          prNumber: botPr.number,
+          prUrl: pr?.html_url ?? `https://github.com/${repo}/pull/${botPr.number}`,
+        });
+        continue;
+      }
+
+      // No bot PR. If closed-completed with a human PR linked, it's resolved
+      // elsewhere (neutral exit, not our win, not our failure).
+      if (issueState === 'closed' && (stateReason === 'completed' || stateReason == null) && linkedPrs.length > 0) {
+        issueParts.push({ repo, number: num, url, createdAt: it.created_at, bucket: 'resolved_elsewhere', prNumber: linkedPrs[0].number });
+        continue;
+      }
+
+      // Did the bot at least comment? (triage)
+      const comments = gh(repo, `issues/${num}/comments?per_page=100`);
+      const botCommented = Array.isArray(comments) && comments.some((c: any) => c?.user?.login === BOT_LOGIN);
+      // A closed-completed issue with no bot artifact at all is also resolved elsewhere.
+      if (issueState === 'closed' && (stateReason === 'completed' || stateReason == null) && !botCommented) {
+        issueParts.push({ repo, number: num, url, createdAt: it.created_at, bucket: 'resolved_elsewhere', note: 'closed; no bot artifact' });
+        continue;
+      }
+      issueParts.push({ repo, number: num, url, createdAt: it.created_at, bucket: botCommented ? 'triage_only' : 'never_engaged' });
+    }
+  }
+
+  const partCount = (pred: (p: IssuePart) => boolean) => issueParts.filter(pred).length;
+  const botPrParts = issueParts.filter((p) => p.bucket === 'bot_pr');
+  const botPrBy = (stage: string) => botPrParts.filter((p) => p.stage === stage).length;
+  const filed = issueParts.length;
+  const notOurProblem = partCount((p) => p.bucket === 'not_our_problem');
+  const actionable = filed - notOurProblem;
+  const counts = {
+    filed,
+    not_our_problem: notOurProblem,
+    actionable,
+    never_engaged: partCount((p) => p.bucket === 'never_engaged'),
+    triage_only: partCount((p) => p.bucket === 'triage_only'),
+    resolved_elsewhere: partCount((p) => p.bucket === 'resolved_elsewhere'),
+    bot_pr: {
+      total: botPrParts.length,
+      merged: botPrBy('merged'),
+      shipped_draft: botPrBy('shipped-draft'),
+      pr_ready: botPrBy('pr-ready'),
+      pr_closed: botPrBy('pr-closed') + botPrBy('superseded'),
+      pr_open: botPrBy('pr-open'),
+    },
+  };
+  const winRate = actionable > 0 ? counts.bot_pr.merged / actionable : 0;
+
+  // ── Weekly WIN trend (rolling) ──────────────────────────────────────────
+  // Cohort issues by the Monday of the week they were FILED, then per week:
+  //   actionable = filed − not_our_problem;  merged = bot_pr stage 'merged';
+  //   winRate = merged / actionable. Plus a trailing 4-week rolling win-rate
+  //   so the dashboard can show whether we're trending up or down.
+  function weekStart(iso: string): string {
+    const d = new Date(iso);
+    const day = (d.getUTCDay() + 6) % 7; // Mon=0
+    d.setUTCDate(d.getUTCDate() - day);
+    d.setUTCHours(0, 0, 0, 0);
+    return d.toISOString().slice(0, 10);
+  }
+  const weekMap = new Map<string, { filed: number; notOur: number; merged: number }>();
+  for (const p of issueParts) {
+    if (!p.createdAt) continue;
+    const wk = weekStart(p.createdAt);
+    const w = weekMap.get(wk) ?? { filed: 0, notOur: 0, merged: 0 };
+    w.filed++;
+    if (p.bucket === 'not_our_problem') w.notOur++;
+    if (p.bucket === 'bot_pr' && p.stage === 'merged') w.merged++;
+    weekMap.set(wk, w);
+  }
+  const weekly = [...weekMap.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([week, w]) => {
+      const act = w.filed - w.notOur;
+      return { week, filed: w.filed, actionable: act, merged: w.merged, winRate: act > 0 ? w.merged / act : 0 };
+    });
+  // Trailing 4-week rolling win-rate (sum merged / sum actionable over the window).
+  const ROLL = 4;
+  for (let i = 0; i < weekly.length; i++) {
+    let m = 0;
+    let a = 0;
+    for (let j = Math.max(0, i - ROLL + 1); j <= i; j++) {
+      m += weekly[j].merged;
+      a += weekly[j].actionable;
+    }
+    (weekly[i] as any).rollingWinRate = a > 0 ? m / a : 0;
+  }
+
+  const issuePartition = { window: { start: windowStart, end: WINDOW_END }, counts, winRate, weekly, issues: issueParts };
+
+  // The genuine "we engaged but produced no live bot PR" residue — replaces the
+  // old log-derived routedNoPr (which over-counted closed/human-resolved/untracked).
+  const engagedNoPr = issueParts
+    .filter((p) => p.bucket === 'triage_only')
+    .map((p) => `${p.repo}#${p.number}`);
+
   // ── Aggregate the board ──
   const instances = ['prod', 'lego'];
   const count = (pred: (r: Row) => boolean, inst?: string) =>
@@ -266,7 +487,15 @@ async function main() {
     return { prod: count(pred, 'prod'), lego: count(pred, 'lego'), total: count(pred) };
   }
 
-  const snapshot = { generatedAt: STAMP, routedWindowed: routedSet.size, board, routedNoPr, rows };
+  const snapshot = {
+    generatedAt: STAMP,
+    routedWindowed: routedSet.size,
+    board,
+    routedNoPr, // legacy (PR-mapping-derived); kept for back-compat
+    engagedNoPr, // corrected residue: bot triaged but produced no live bot PR
+    issuePartition, // per-issue funnel (denominator = ALL filed issues in window)
+    rows,
+  };
 
   // --out <path>: write the snapshot to a file for the dashboard panel to serve
   // (Phase 2). Kept out of the dashboard request path on purpose — this makes
@@ -274,7 +503,10 @@ async function main() {
   if (OUT_PATH) {
     fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
     fs.writeFileSync(OUT_PATH, JSON.stringify(snapshot, null, 2));
-    if (!JSON_OUT) console.log(`funnel snapshot written: ${OUT_PATH} (${rows.length} PRs, ${routedNoPr.length} routed-no-PR)`);
+    if (!JSON_OUT)
+      console.log(
+        `funnel snapshot written: ${OUT_PATH} (${rows.length} PRs; ${counts.filed} issues filed, ${counts.actionable} actionable, ${counts.bot_pr.merged} merged → win-rate ${Math.round(winRate * 100)}%)`,
+      );
   }
 
   if (JSON_OUT) {
@@ -285,6 +517,44 @@ async function main() {
 
   // ── Text board ──
   const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) + '%' : '—');
+
+  // Issue partition (denominator = ALL issues filed in window).
+  console.log(`\nISSUE PARTITION  (filed ${counts.filed} in window ${windowStart.slice(0, 10)}→now)\n`);
+  const ipart = (label: string, n: number, base = actionable) =>
+    console.log(label.padEnd(22) + String(n).padStart(5) + '   ' + pct(n, base));
+  console.log('  (denominator for win-rate = ACTIONABLE = filed − not-our-problem)');
+  console.log('────────────────────────────────────────────');
+  console.log('Filed'.padEnd(22) + String(counts.filed).padStart(5));
+  console.log('Not-our-problem'.padEnd(22) + String(counts.not_our_problem).padStart(5) + '   (excluded)');
+  console.log('Actionable'.padEnd(22) + String(actionable).padStart(5) + '   100%');
+  ipart('  never-engaged', counts.never_engaged);
+  ipart('  triage-only', counts.triage_only);
+  ipart('  resolved-elsewhere', counts.resolved_elsewhere);
+  ipart('  bot-PR (any)', counts.bot_pr.total);
+  ipart('    ↳ merged ★ WIN', counts.bot_pr.merged);
+  ipart('    ↳ shipped-draft', counts.bot_pr.shipped_draft);
+  ipart('    ↳ pr-ready', counts.bot_pr.pr_ready);
+  ipart('    ↳ pr-open', counts.bot_pr.pr_open);
+  ipart('    ↳ pr-closed/superseded', counts.bot_pr.pr_closed);
+  console.log('────────────────────────────────────────────');
+  console.log(`WIN-RATE  (merged ÷ actionable) = ${Math.round(winRate * 100)}%`);
+  if (weekly.length) {
+    console.log('\nWEEKLY WIN TREND  (by issue file-week; rolling = trailing 4wk)\n');
+    console.log('week        filed  act  merged  win%   roll%');
+    for (const w of weekly) {
+      console.log(
+        w.week.padEnd(12) +
+          String(w.filed).padStart(4) +
+          String(w.actionable).padStart(5) +
+          String(w.merged).padStart(7) +
+          (Math.round(w.winRate * 100) + '%').padStart(7) +
+          (Math.round(((w as any).rollingWinRate ?? 0) * 100) + '%').padStart(7),
+      );
+    }
+  }
+  if (engagedNoPr.length)
+    console.log(`\nengaged, no live bot PR: ${engagedNoPr.length}  (${engagedNoPr.slice(0, 10).join(', ')}${engagedNoPr.length > 10 ? ', …' : ''})`);
+
   console.log('\nISSUE FUNNEL  (PR spine = pr_session_mappings; GitHub-enriched)\n');
   console.log('STAGE              prod   lego  total   conv');
   console.log('────────────────────────────────────────────');
