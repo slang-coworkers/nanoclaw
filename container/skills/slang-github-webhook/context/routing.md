@@ -19,7 +19,9 @@ You receive `kind: webhook` messages with `content.event: "github.pr_mention"` w
    case "$BRANCH" in fix/issue-*) COWORKER=slang-fixer ;; *) COWORKER= ;; esac
    ```
 
-   c. **No match** → handle it yourself, or escalate to the user if you can't.
+   c. **No `fix/issue-` match but `is_pr: true`** (human/fork PR) → dispatch to `slang-fixer` with `MODE=pr-review-fix` and `in_reply_to: <webhook inbound row id>` (required — derives the thread). Add `<github-post-authorized />` only for a real `@nv-slang-bot` mention (omit for manual/internal). Include `REPO`/`PR`/`COMMENT_ID`/`COMMENT_URL`/`COMMENTER` byte-exact.
+
+   d. **Not a PR** → handle it yourself, or escalate to the user if you can't.
 
 3. **Forward** with `mcp__nanoclaw__send_message(to: "<coworker-name>", text: …)`. Include `repo`, `pr_number`, `comment_url`, and the original comment body. The coworker — not you — owns posting/editing GitHub comments.
 
