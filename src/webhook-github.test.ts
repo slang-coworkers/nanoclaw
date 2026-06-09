@@ -242,8 +242,13 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     expect(insertCalls).toHaveLength(1);
   });
 
-  it('falls through to orchestrator when no mapping exists', async () => {
+  it('falls through to orchestrator on an unmapped PR mention, minting a gh-pr-<repo>-<num> thread', async () => {
+    // A PR mention with no pr_session_mapping mints its own per-PR orchestrator
+    // session (threadId `gh-pr-<repo>-<num>`, mintPerThread) so the foreign PR
+    // gets a resumable tile instead of landing in the most-recent active
+    // session (a junk drawer). Symmetric to the issue path's gh-issue-<...>.
     const insertCalls: unknown[] = [];
+    const threadLookups: string[] = [];
     vi.doMock('./config.js', () => ({
       INSTANCE_FORWARD_TARGETS: {},
       INSTANCE_SLUG: 'prod',
@@ -254,8 +259,11 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
     }));
     vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
-      findSessionByAgentThread: () => ({ id: 'sess-orch' }),
+      findSessionByAgentGroup: () => ({ id: 'sess-generic' }),
+      findSessionByAgentThread: (_g: string, thread: string) => {
+        threadLookups.push(thread);
+        return { id: 'sess-pr-chain' };
+      },
       getSession: () => undefined,
       createSession: () => undefined,
       updateSessionTitle: () => true,
@@ -290,8 +298,12 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     });
 
     expect(outcome).toBe('local');
+    // Minted/found the per-PR thread, not the generic most-recent session.
+    expect(threadLookups).toContain('gh-pr-shader-slang/slang-99');
     expect(insertCalls).toHaveLength(1);
-    const inserted = insertCalls[0] as { content: string };
+    const inserted = insertCalls[0] as { id: string; threadId: string; content: string };
+    expect(inserted.id).toBe('gh-5');
+    expect(inserted.threadId).toBe('gh-pr-shader-slang/slang-99');
     expect(JSON.parse(inserted.content).event).toBe('github.pr_mention');
   });
 

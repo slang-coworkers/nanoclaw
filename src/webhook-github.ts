@@ -429,23 +429,25 @@ export function deliverGitHubMention(event: GitHubMentionEvent): DeliveryOutcome
   // destinations, then dispatches to the right coworker. No static rules —
   // the orchestrator's instructions own this routing.
   //
-  // Thread/session identity MUST match deliverGitHubIssueOpened so a follow-up
-  // comment rejoins the issue's existing chain instead of orphaning into a
-  // fresh session. For an issue, deliverGitHubIssueOpened minted the chain
-  // under threadId `gh-issue-<repo>-<num>` with mintPerThread:true; a bare
-  // `String(issueNumber)` thread with no mintPerThread lands the comment in a
-  // generic session that holds none of the chain's history (the row is marked
-  // completed but the orchestrator never sees it as a continuation). PR
-  // comments that reach here have no pr_session_mapping yet, so there is no
-  // chain to rejoin — keep the legacy bare-number thread for them.
-  const isIssue = !event.isPr;
+  // Thread/session identity MUST match the open-event handlers so a follow-up
+  // comment rejoins the existing chain instead of orphaning into a fresh
+  // session. An issue uses `gh-issue-<repo>-<num>` (deliverGitHubIssueOpened);
+  // a PR mention with no mapping uses `gh-pr-<repo>-<num>` so every foreign PR
+  // gets its own resumable orchestrator session/tile. Both mint-per-thread; a
+  // bare `String(num)` thread with no mintPerThread would land the comment in
+  // the most-recent active session (a junk drawer that holds none of the
+  // chain's history).
+  const threadId = event.isPr
+    ? `gh-pr-${event.repo}-${event.issueNumber}`
+    : `gh-issue-${event.repo}-${event.issueNumber}`;
   return deliverToOrchestrator({
     repo: event.repo,
     issueNumber: event.issueNumber,
     rowId: `gh-${event.commentId}`,
-    threadId: isIssue ? `gh-issue-${event.repo}-${event.issueNumber}` : String(event.issueNumber),
+    threadId,
     eventContent,
-    mintPerThread: isIssue,
+    mintPerThread: true,
+    displayTitle: `${event.repo} #${event.issueNumber}`,
   });
 }
 
