@@ -19,6 +19,8 @@ uses:
 
 **Patch fallback.** Only when the push is genuinely *rejected* (no writable remote, branch protection, revoked token) → attach the `.patch` to the reviewer message; Reviewer A still runs, Reviewer B (Devin) is skipped (no PR to review).
 
+**PR-review-fix mode** (inbound carries `MODE=pr-review-fix`, `PR=<n>` — a human asked the bot to fix a reviewer's finding on a PR it didn't create). Same steps, three deltas: (1) Step 1 — `report_pr_created({repo, pr_number})` to claim it, then branch off the **PR head** (`git fetch origin pull/<n>/head` → worktree on `FETCH_HEAD`), not `master`. (2) Step 7 — open the draft PR `--base` = the PR's head ref if same-repo (`.head.repo.full_name == .base.repo.full_name`), else `master` (the bot can't push contributor forks; note the cherry-pick in the body); `report_pr_created` the new PR too. (3) Post back on the review thread only if the inbound carried `<github-post-authorized />`.
+
 ## Steps
 
 1. **Setup** {#setup} — Claim, worktree, repo in one pass.

@@ -15,7 +15,11 @@ Run on a `kind: webhook` message whose `content.event` starts `github.`:
 
 A PR routed to **your** session via `pr_session_mappings` is yours: handle the
 event directly, don't re-route. The `pr_mention` routing flow below is the
-orchestrator path for events with no owning session yet.
+orchestrator path for events with no owning session yet. A `pr_mention` the host
+delivered **directly** to you (it hit `pr_session_mappings`) is self-authorizing
+to post back — treat it as if it carried `<github-post-authorized />` (you
+already own the PR; the human just tagged it). Orchestrator-routed events still
+need the explicit marker.
 
 ## Principles
 
@@ -112,7 +116,7 @@ mcp__nanoclaw__send_message(
 
 For dispatches NOT from an `@nv-slang-bot` mention (internal handoffs, scheduled tasks, chat) **omit the marker** — receiving workflows treat its absence as "return via send_file only, do not post."
 
-Then PATCH your TODO comment to show the handoff (check off "Resolve branch", add coworker-step items). If `COWORKER` is empty, handle the task directly.
+Then PATCH your TODO comment to show the handoff (check off "Resolve branch", add coworker-step items). If `COWORKER` is empty, follow routing 2c/2d (a PR → dispatch to `slang-fixer` in `MODE=pr-review-fix`; a non-PR → handle directly).
 
 ### 6. Verify rapid follow-up webhooks
 
