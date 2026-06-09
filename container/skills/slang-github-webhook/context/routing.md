@@ -12,10 +12,11 @@ You receive `kind: webhook` messages with `content.event: "github.pr_mention"` w
 
    a. **PR → session map** (most precise): the host queries `pr_session_mappings` and routes to the owning session automatically. If you got this webhook directly, the lookup missed — fall through.
 
-   b. **Branch convention** (when `is_pr: true`): branches matching `dev/<coworker-folder>/...` belong to that coworker.
+   b. **Branch convention** (when `is_pr: true`): a coworker's PR head branch is `fix/issue-<number>` (set by `/slang-fix-issue`); it no longer encodes the folder, so route a `fix/issue-` head to `slang-fixer`.
 
    ```bash
-   gh api repos/{repo}/pulls/{issue_number} --jq '.head.ref'
+   BRANCH=$(gh api repos/{repo}/pulls/{issue_number} --jq '.head.ref')
+   case "$BRANCH" in fix/issue-*) COWORKER=slang-fixer ;; *) COWORKER= ;; esac
    ```
 
    c. **No match** → handle it yourself, or escalate to the user if you can't.

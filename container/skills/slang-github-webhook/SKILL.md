@@ -92,11 +92,11 @@ jq -Rsn --arg b "$UPDATED_BODY" '{body: $b}' \
 
 ### 5. Resolve branch and route to a coworker (PRs only)
 
-If the PR head branch matches `dev/<folder>/`, the folder names a coworker.
+A coworker's PR head branch is `fix/issue-<number>` (set by `/slang-fix-issue`); it no longer encodes the folder, so route a `fix/issue-` head to `slang-fixer`.
 
 ```bash
 BRANCH=$(gh api repos/{repo}/pulls/{issue_number} --jq '.head.ref')
-COWORKER=$(echo "$BRANCH" | sed -n 's|^dev/\([^/]*\)/.*|\1|p')
+case "$BRANCH" in fix/issue-*) COWORKER=slang-fixer ;; *) COWORKER= ;; esac
 ```
 
 If `COWORKER` is non-empty, dispatch via the MCP tool (NOT inline `<message to>`):
@@ -112,7 +112,7 @@ mcp__nanoclaw__send_message(
 
 For dispatches NOT from an `@nv-slang-bot` mention (internal handoffs, scheduled tasks, chat) **omit the marker** — receiving workflows treat its absence as "return via send_file only, do not post."
 
-Then PATCH your TODO comment to show the handoff (check off "Resolve branch", add coworker-step items). If `COWORKER` is empty (no matching folder, or `is_pr` false), handle the task directly.
+Then PATCH your TODO comment to show the handoff (check off "Resolve branch", add coworker-step items). If `COWORKER` is empty, handle the task directly.
 
 ### 6. Verify rapid follow-up webhooks
 
