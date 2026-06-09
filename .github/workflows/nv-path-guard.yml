@@ -1,0 +1,38 @@
+name: nv-* path guard
+
+# Reject PRs that touch files outside the target branch's owned-path allowlist.
+# Prevents cross-branch leakage (the kind that caused 13 merge conflicts on 2026-05-12).
+#
+# Config per branch: .github/nv-path-guard/<branch>.txt — one gitwildmatch pattern per line.
+# If the config file is missing, the check is skipped with a warning.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - nv-main
+      - nv-dashboard
+      - nv-slang
+      - nv-slangpy
+      - nv-nanoclaw
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pathspec
+        run: pip install pathspec
+
+      - name: Validate paths against allowlist
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 .github/nv-path-guard/check.py "$BASE" "$HEAD_SHA"

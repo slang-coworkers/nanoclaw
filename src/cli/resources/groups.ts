@@ -2,6 +2,7 @@ import type { McpServerConfig } from '../../container-config.js';
 import { buildAgentGroupImage, killContainer, wakeContainer } from '../../container-runner.js';
 import { restartAgentGroupContainers } from '../../container-restart.js';
 import { getDb, hasTable } from '../../db/connection.js';
+import { getAgentGroup } from '../../db/agent-groups.js';
 import { getSession } from '../../db/sessions.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import {
@@ -57,6 +58,13 @@ registerResource({
       required: true,
     },
     { name: 'created_at', type: 'string', description: 'Auto-set.', generated: true },
+    {
+      name: 'agent_provider',
+      type: 'string',
+      description:
+        'Agent runtime provider (e.g. "claude", "codex", "opencode"). Set via the dashboard UI or `update`. Takes precedence over container_configs.provider in the resolution chain (session → agent_group → container_config → "claude").',
+      updatable: true,
+    },
   ],
   // `delete` is intentionally not in `operations` — the generic single-table
   // DELETE violates FK constraints (see #2525). The cascading handler is
@@ -200,13 +208,40 @@ registerResource({
     },
     'config get': {
       access: 'open',
-      description: 'Show the container config for a group. Use --id <group-id>.',
+      description:
+        'Show the container config for a group. Use --id <group-id>. Also surfaces ' +
+        'agent_provider (from agent_groups) and effective_model (derived from CODEX_MODEL ' +
+        'env when provider=codex and container_configs.model is null) so the agent can ' +
+        'introspect what runtime it is actually running on.',
       handler: async (args) => {
         const id = args.id as string;
         if (!id) throw new Error('--id is required');
         const row = getContainerConfig(id);
         if (!row) throw new Error(`No container config for group: ${id}`);
-        return presentConfig(row);
+        const presented = presentConfig(row);
+
+        // Enrich with agent_provider from agent_groups (the runtime provider:
+        // claude/codex/opencode), distinct from container_configs.provider
+        // (the model provider, e.g. "nvinference"). Default is "claude"
+        // when no explicit override is set on the group.
+        const agentGroup = getAgentGroup(id);
+        const agentProvider = agentGroup?.agent_provider ?? 'claude';
+
+        // Derive effective_model when container_configs.model is null. For Codex,
+        // the model is set via CODEX_MODEL env var on the host process and baked
+        // into the per-container config.toml at spawn time, so the DB row is
+        // null but the container is in fact running a specific model. Surface
+        // it so introspection ("what model am I?") gets a useful answer.
+        let effectiveModel = presented.model as string | null;
+        if (!effectiveModel && agentProvider === 'codex') {
+          effectiveModel = process.env.CODEX_MODEL ?? 'openai/openai/gpt-5.5';
+        }
+
+        return {
+          ...presented,
+          agent_provider: agentProvider,
+          effective_model: effectiveModel,
+        };
       },
     },
     'config update': {

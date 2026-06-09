@@ -98,6 +98,16 @@ export async function dispatch(req: RequestFrame, ctx: CallerContext): Promise<R
           return err(req.id, 'handler-error', `session not found: ${req.args.id}`);
         }
       }
+
+      // Same oracle-safe guard for sessions-messages. Custom ops bypass the
+      // post-handler scopeField filter, so this pre-check is the only thing
+      // keeping a group-scoped agent from reading another group's transcript.
+      if (cmd.resource === 'sessions' && req.command === 'sessions-messages' && req.args.id) {
+        const s = getSession(req.args.id as string);
+        if (!s || s.agent_group_id !== ctx.agentGroupId) {
+          return err(req.id, 'handler-error', `session not found: ${req.args.id}`);
+        }
+      }
     }
   }
 
