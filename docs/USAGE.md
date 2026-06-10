@@ -169,6 +169,49 @@ Messages flow directly — no routing through the Orchestrator.
 | Broadcast | Orchestrator sends to multiple children |
 | Pipeline | Wire A→B→C for sequential handoffs |
 
+### Current Wirings (prod)
+
+The Orchestrator can reach all active agents. Peer wirings between specialists:
+
+| Source | Can message | Purpose |
+|--------|-------------|---------|
+| slang-triager | slang-fixer | Hand off triaged issues for fixing |
+| slang-fixer | slang-triager, slang-reviewer | Request triage context; request review |
+| slang-reviewer | slang-fixer | Send review feedback back to fixer |
+| slangpy-triager | slangpy-fixer | Hand off triaged issues for fixing |
+| slangpy-fixer | slangpy-triager, slangpy-reviewer | Request triage context; request review |
+| slangpy-reviewer | slangpy-fixer | Send review feedback back to fixer |
+| Slang Maintainer | slang-fixer (as "slang-writer") | Delegate implementation tasks |
+| Slang Discord Support | Orchestrator | Escalate questions |
+
+Every agent also has a dashboard channel destination (for the Pixel Office UI) and an `agent-mg-a2a` channel (the GitHub webhook routing channel).
+
+## Issue Supervision (`/supervise-issues`)
+
+The `supervise-issues` container skill provides automated oversight of in-flight GitHub issue chains. It tracks every issue that has been routed to a coworker (triager/fixer) and ensures nothing falls through the cracks.
+
+### What it does
+
+- **Builds a live status table** from `ncl sessions list --thread-prefix "gh-issue-"` — discovers all active issue chains every tick
+- **Classifies** each chain: dispatched → triaging → fixing → reviewing → pr_open → awaiting_human → silent → closed
+- **Nudges** silent chains (no activity for N hours) by messaging the responsible coworker
+- **Enforces the prime directive**: every chain must have a resumable GitHub artifact (open PR, issue comment, or triage report) so a human can land on it and pick up
+- **Tracks no-PR chains** — issues that were triaged but handed off to external contributors or maintainers
+- **Detects superseded PRs** — when a maintainer ships their own fix while our PR was in progress
+- **GC sweep** — reclaims abandoned fixer worktrees
+
+### Scheduling
+
+Designed for `schedule_task` with a 6-hour cron (`0 */6 * * *`). Each tick runs in a fresh session (`new_session: true`) and is gated by a delta check — if nothing changed since the last tick, it's a no-op.
+
+### State
+
+Persists to `memory/supervisor-state.json` in the orchestrator's workspace. Tracks per-chain: `lastState`, `lastActivityAt`, `lastPrState`, last comment seen.
+
+### Output
+
+Reports lead with **NEW** and **UPDATED** chains (what moved since last tick), then collapse unchanged rows. Surfaces blockers and missing-artifact chains prominently.
+
 ## Repos & Channels Monitored
 
 **GitHub**: shader-slang/slang, shader-slang/slang-rhi, shader-slang/slangpy
