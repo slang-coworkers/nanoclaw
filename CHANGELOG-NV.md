@@ -6,15 +6,33 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 235 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 119 |
-| `nv-slang` | slang project spine, skills, workflows | 83 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 32 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 24 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 236 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 121 |
+| `nv-slang` | slang project spine, skills, workflows | 84 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 33 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 25 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-10
+
+### nv-main (1 PRs)
+- **#621** `fix(spine): require reading current source before drafting code claims`
+
+### nv-dashboard (2 PRs)
+- **#617** `fix(dashboard): guard ccusage refresh re-entrancy + cap concurrency to CPU threads`
+- **#608** `fix(dashboard): prevent XSS via md() link-href attribute injection`
+
+### nv-slang (1 PRs)
+- **#622** `fix(slang): work from current checkout + read source before review replies`
+
+### nv-slangpy (1 PRs)
+- **#623** `fix(slangpy): work from current checkout before editing code`
+
+### nv-nanoclaw (1 PRs)
+- **#618** `fix(agent-runner): reclaim disk on transcript rotation (re-land on nv-nanoclaw)`
 
 ## 📅 2026-06-09
 
