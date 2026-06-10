@@ -379,13 +379,21 @@ export class ClaudeProvider implements AgentProvider {
     }
     if (!reason) return null;
 
-    // Preserve a readable summary, then move the heavy .jsonl out of the
-    // resume path so the SDK starts a fresh session and the disk is reclaimed.
-    archiveTranscriptFile(transcriptPath, continuation, this.assistantName);
+    // Preserve a readable summary, then drop the heavy .jsonl out of the
+    // resume path so the SDK starts a fresh session. Once the summary is
+    // archived the raw transcript is deleted so the disk is actually reclaimed
+    // (a plain rename only hides it — the bytes pile up across rotations). If
+    // archiving fails we keep the raw file (renamed aside) rather than lose
+    // unrecoverable history.
+    const archived = archiveTranscriptFile(transcriptPath, continuation, this.assistantName);
     try {
-      fs.renameSync(transcriptPath, `${transcriptPath}.rotated-${Date.now()}`);
+      if (archived) {
+        fs.rmSync(transcriptPath);
+      } else {
+        fs.renameSync(transcriptPath, `${transcriptPath}.rotated-${Date.now()}`);
+      }
     } catch (err) {
-      log(`Failed to move rotated transcript aside: ${err instanceof Error ? err.message : String(err)}`);
+      log(`Failed to drop rotated transcript: ${err instanceof Error ? err.message : String(err)}`);
     }
     return reason;
   }
