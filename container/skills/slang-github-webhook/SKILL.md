@@ -160,7 +160,11 @@ path line comments(last:1){nodes{body author{login}}}}}}}}' \
         | select(.isResolved==false and .isOutdated==false)'
 ```
 
-2. Address each actionable thread (edit code → re-run verify → push).
+2. Address each actionable thread (edit code → re-run verify → push). **Before
+   drafting any reply or code claim, open the cited file:line at the PR's current
+   HEAD and read it** — never answer a reviewer from memory. A reply that
+   describes what the code *was* (or what you recall) rather than what it *is*
+   will be caught by the maintainer and costs a correction round.
 3. Reply on the thread with what changed / why no change (the reply posts as the
    bot — no prefix needed, the author already says who it is):
 
