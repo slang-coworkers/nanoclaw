@@ -2744,8 +2744,11 @@ function md(s) {
   h = h.replace(/(?<!\w)\*([^*\n]+)\*(?!\w)/g, '<strong>$1</strong>');
   // Italic: _text_
   h = h.replace(/(?<!\w)_([^_\n]+)_(?!\w)/g, '<em>$1</em>');
-  // Links: [text](url)
-  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  // Links: [text](url). Exclude `"` from the URL (like the bare-URL pattern
+  // below) so a crafted href can't break out of the attribute — md() escapes
+  // <>& via esc() but not quotes, and webhook envelopes route attacker-
+  // controlled GitHub markdown through here.
+  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^)"]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   // Bare URLs
   h = h.replace(/(?<!")(?<!=)(https?:\/\/[^\s<)"]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
   // Tables: detect | header | ... | pattern and convert
