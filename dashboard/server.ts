@@ -17,6 +17,7 @@ import { createHash } from 'crypto';
 import { createGzip, createGunzip } from 'zlib';
 import { pipeline } from 'stream/promises';
 import { exec, execSync } from 'child_process';
+import { cpus } from 'os';
 import {
   readFileSync,
   readdirSync,
@@ -1941,7 +1942,27 @@ function mergeDailyEntries(allDays: CcusageDayEntry[][]): CcusageDayEntry[] {
   return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
 }
 
+// Re-entrancy guard: refreshCcusageCache is driven by a 60s setInterval AND a
+// boot warm-up. Each refresh fans out a batch of `npx ccusage` subprocesses
+// that, under host load, can take far longer than 60s. Without this guard the
+// timer stacks a fresh batch on top of every still-running one, the process
+// count grows without bound, and load spirals (observed: 5 dashboards × stacked
+// batches → load 79 on 8 cores). When a refresh is already in flight we SKIP
+// the new tick rather than queue it — a stale-by-60s cache is fine; a fork bomb
+// is not.
+let ccusageRefreshInFlight = false;
+
 async function refreshCcusageCache(): Promise<void> {
+  if (ccusageRefreshInFlight) return;
+  ccusageRefreshInFlight = true;
+  try {
+    await refreshCcusageCacheInner();
+  } finally {
+    ccusageRefreshInFlight = false;
+  }
+}
+
+async function refreshCcusageCacheInner(): Promise<void> {
   // Per-coworker ccusage refresh, but bounded:
   //  - One Claude call per coworker (CLAUDE_CONFIG_DIR=<agDir>/.claude-shared, --since 30d)
   //  - One Codex call per session that actually has rollout-*.jsonl (skip empty codex/ dirs)
@@ -2025,8 +2046,13 @@ async function refreshCcusageCache(): Promise<void> {
   const perGroup = new Map<string, CcusageDayEntry[][]>();
   for (const agDir of agDirs) perGroup.set(agDir, []);
 
-  // Bounded-concurrency runner (cap = 4)
-  const CONCURRENCY = 4;
+  // Bounded-concurrency runner. Cap to CPU threads (minus a couple reserved for
+  // the event loop + other work), floored at 2 and ceilinged at 8 — a single
+  // `npx ccusage` is CPU-light but the npm-exec resolution it does per call is
+  // not free, so we never want this fan-out to saturate the box. Multiple
+  // dashboards may run on one host, so staying well under nproc per dashboard
+  // keeps the aggregate sane.
+  const CONCURRENCY = Math.max(2, Math.min(8, (cpus().length || 4) - 2));
   let nextIdx = 0;
   async function worker() {
     while (true) {
