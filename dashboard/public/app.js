@@ -4992,9 +4992,15 @@ function renderCwMessages() {
       // persisted message id (not optimistic) and it's not an approval/
       // credential/question card (those have their own buttons).
       const canReply = !!m.id && !m.optimistic;
-      const actionsHtml = canReply
-        ? `<div class="cw-msg-actions"><button class="cw-msg-action-btn cw-reply-btn" data-parent-id="${esc(m.id)}" title="Reply in thread">↳ Reply</button></div>`
+      // Copy-to-clipboard (#632): offered on any message with text, beside Reply.
+      const copyBtnHtml = text
+        ? `<button class="cw-msg-action-btn cw-copy-btn" data-copy-text="${escAttr(text)}" title="Copy message">⧉ Copy</button>`
         : '';
+      const replyBtnHtml = canReply
+        ? `<button class="cw-msg-action-btn cw-reply-btn" data-parent-id="${esc(m.id)}" title="Reply in thread">↳ Reply</button>`
+        : '';
+      const actionsHtml =
+        copyBtnHtml || replyBtnHtml ? `<div class="cw-msg-actions">${copyBtnHtml}${replyBtnHtml}</div>` : '';
       return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"${systemStyle}>
       <div class="cw-msg-avatar">${monogram}</div>
       ${actionsHtml}
@@ -5067,6 +5073,38 @@ function renderCwMessages() {
       // The load-more branch is handled by handleLoadMore above (mousedown +
       // click). Skip it here to avoid double-firing.
       if (e.target.closest('#cw-messages-more')) return;
+      // ── Copy message to clipboard (#632) ──
+      const copyBtn = e.target.closest('.cw-copy-btn');
+      if (copyBtn) {
+        const txt = copyBtn.dataset.copyText || '';
+        const flash = (label) => {
+          copyBtn.textContent = label;
+          setTimeout(() => {
+            copyBtn.textContent = '⧉ Copy';
+          }, 1200);
+        };
+        try {
+          await navigator.clipboard.writeText(txt);
+          flash('✓ Copied');
+        } catch {
+          // navigator.clipboard requires a secure context (https/localhost) and
+          // permission; fall back to a hidden-textarea execCommand copy.
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = txt;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            flash('✓ Copied');
+          } catch {
+            flash('✗ Failed');
+          }
+        }
+        return;
+      }
       // ── Reply-in-thread hover button or reply-count stub ──
       const replyBtn = e.target.closest('.cw-reply-btn, .cw-thread-stub');
       if (replyBtn) {
