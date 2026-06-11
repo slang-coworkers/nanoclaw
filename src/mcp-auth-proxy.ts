@@ -485,7 +485,7 @@ export function startMcpAuthProxy(
               // hit this deadline. Logged at INFO so it's traceable but not
               // alarming. A real problem (Python MCP genuinely hung mid-call)
               // would manifest as repeated firings on a NEW session each time.
-              log.info('MCP auth proxy: response stream deadline (5m)', {
+              log.debug('MCP auth proxy: response stream deadline (5m)', {
                 server: serverName,
                 path: upstreamPath,
               });
@@ -503,7 +503,7 @@ export function startMcpAuthProxy(
 
       proxyReq.on('timeout', () => {
         // See response-stream deadline above — same expected-behavior story.
-        log.info('MCP auth proxy: upstream request timeout (5m)', { server: serverName, path: upstreamPath });
+        log.debug('MCP auth proxy: upstream request timeout (5m)', { server: serverName, path: upstreamPath });
         proxyReq.destroy();
         if (!res.headersSent) {
           res.writeHead(504, { 'Content-Type': 'application/json' });
