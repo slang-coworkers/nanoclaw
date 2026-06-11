@@ -27,7 +27,7 @@ if echo "$DEV_INST" | grep -q "You are Buddy" 2>/dev/null; then exit 0; fi
 if echo "$PROMPT"   | grep -qE "^BATCH [0-9]+ \(" 2>/dev/null; then exit 0; fi
 
 # Skip error / timeout responses
-RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty' 2>/dev/null | head -c 300)
+RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty' 2>/dev/null | head -c 2000)
 if echo "$RESPONSE" | grep -qE '"error":|"is_error":\s*true|"timed[_ ]out"|^Error\b' 2>/dev/null; then exit 0; fi
 
 STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
@@ -48,27 +48,38 @@ mkdir -p "$(dirname "$STATE")"
 STAGE=$(echo "$PROMPT" | grep -oE 'STAGE:[[:space:]]*[A-Z_]+' | head -1 | sed -E 's/^STAGE:[[:space:]]*//' || true)
 
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# Extract verdict from codex response content ("### Verdict\napprove" or "### Verdict\nmust-fix")
+VERDICT=""
+CONTENT=$(echo "$RESPONSE" | jq -r '.content // empty' 2>/dev/null || true)
+if [ -n "$CONTENT" ]; then
+  VERDICT=$(echo "$CONTENT" | sed -n '/^### *Verdict/{n;p;}' 2>/dev/null | tr -d '[:space:]' | head -c 20 || true)
+fi
+
 if [ -n "$STAGE" ]; then
-  jq --arg ts "$NOW" --arg s "$STAGE" '
+  jq --arg ts "$NOW" --arg s "$STAGE" --arg v "$VERDICT" '
     .critique_rounds = ((.critique_rounds // 0) + 1)
     | .critique_stages = (.critique_stages // {})
     | .critique_stages[$s] = ((.critique_stages[$s] // 0) + 1)
     | .last_critique_stage = $s
     | .edits_since_critique = 0
     | .last_critique_at = $ts
+    | if $v != "" then .critique_verdicts = (.critique_verdicts // {}) | .critique_verdicts[$s] = $v else . end
   ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
 else
-  jq --arg ts "$NOW" '
+  jq --arg ts "$NOW" --arg v "$VERDICT" '
     .critique_rounds = ((.critique_rounds // 0) + 1)
     | .edits_since_critique = 0
     | .last_critique_at = $ts
+    | if $v != "" then .last_critique_verdict = $v else . end
   ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
 fi
 
 # Surface a context reminder so the agent knows the round was recorded.
 ROUNDS=$(jq -r '.critique_rounds' "$STATE")
 STAGE_DONE=$(jq -r '(.critique_stages // {}) | to_entries | map("\(.key)=\(.value)") | join(", ") | if . == "" then "none" else . end' "$STATE" 2>/dev/null || echo "none")
-jq -n --arg msg "Critique round $ROUNDS recorded (stages: $STAGE_DONE). Delivery gates open once every required stage has count >= 1." \
+VERDICT_INFO=$(jq -r '(.critique_verdicts // {}) | to_entries | map("\(.key)=\(.value)") | join(", ") | if . == "" then "none" else . end' "$STATE" 2>/dev/null || echo "none")
+jq -n --arg msg "Critique round $ROUNDS recorded (stages: $STAGE_DONE; verdicts: $VERDICT_INFO). Delivery gate requires every required stage count >= 1 AND OUTPUT_REVIEW verdict = approve." \
   '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
 
 exit 0
