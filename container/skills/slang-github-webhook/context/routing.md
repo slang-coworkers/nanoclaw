@@ -8,22 +8,26 @@ You receive `kind: webhook` messages with `content.event: "github.pr_mention"` w
 
 1. **Extract** from `content`: `repo`, `issue_number`, `commenter`, `body`, `comment_url`, `is_pr`.
 
-2. **Resolve owner — three lookups in order:**
+2. **Pick the project's coworkers by repo.** The `{fixer}`, `{reviewer}`, `{triager}` below are the ones in your destinations for that repo's project:
 
-   a. **PR → session map** (most precise): the host queries `pr_session_mappings` and routes to the owning session automatically. If you got this webhook directly, the lookup missed — fall through.
+   | repo | fixer / triager / reviewer |
+   |------|----------------------------|
+   | `shader-slang/slang`, `shader-slang/slang-rhi` | `slang-fixer` · `slang-triager` · `slang-reviewer` |
+   | `shader-slang/slangpy` | `slangpy-fixer` · `slangpy-triager` · `slangpy-reviewer` |
 
-   b. **Branch convention** (when `is_pr: true`): a coworker's PR head branch is `fix/issue-<number>` (set by `/slang-fix-issue`); it no longer encodes the folder, so route a `fix/issue-` head to `slang-fixer`.
+   If a repo isn't listed or its coworkers aren't in your destinations, handle it yourself or escalate.
 
-   ```bash
-   BRANCH=$(gh api repos/{repo}/pulls/{issue_number} --jq '.head.ref')
-   case "$BRANCH" in fix/issue-*) COWORKER=slang-fixer ;; *) COWORKER= ;; esac
-   ```
+3. **Resolve owner — in order:**
 
-   c. **No `fix/issue-` match but `is_pr: true`** (human/fork PR) → dispatch to `slang-fixer` with `MODE=pr-review-fix` and `in_reply_to: <webhook inbound row id>` (required — derives the thread). Add `<github-post-authorized />` only for a real `@nv-slang-bot` mention (omit for manual/internal). Include `REPO`/`PR`/`COMMENT_ID`/`COMMENT_URL`/`COMMENTER` byte-exact.
+   a. **PR → session map** (most precise): the host routes mapped PRs automatically. If this webhook reached you, the lookup missed — fall through.
 
-   d. **Not a PR** → handle it yourself, or escalate to the user if you can't.
+   b. **Branch convention** (`is_pr: true`): a head branch of `fix/issue-<number>` is a coworker PR → `{fixer}`.
 
-3. **Forward** with `mcp__nanoclaw__send_message(to: "<coworker-name>", text: …)`. Include `repo`, `pr_number`, `comment_url`, and the original comment body. The coworker — not you — owns posting/editing GitHub comments.
+   c. **No `fix/issue-` match but `is_pr: true`** (human/fork PR) → `{fixer}` with `MODE=pr-review-fix` and `in_reply_to: <webhook inbound row id>` (required — derives the thread). Add `<github-post-authorized />` only for a real `@nv-slang-bot` mention. Include `REPO`/`PR`/`COMMENT_ID`/`COMMENT_URL`/`COMMENTER` byte-exact.
+
+   d. **Issue (not a PR)** → `{triager}`.
+
+4. **Forward** with `mcp__nanoclaw__send_message(to: "<coworker-name>", text: …)`. Include `repo`, `pr_number`, `comment_url`, and the original comment body. The coworker — not you — owns posting/editing GitHub comments.
 
 ### How PR ownership is established
 

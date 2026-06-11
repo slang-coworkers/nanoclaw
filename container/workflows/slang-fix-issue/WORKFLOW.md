@@ -15,11 +15,24 @@ uses:
 > [!IMPORTANT]
 > A triage handoff means _fix it_, not "ask how." Find root cause and resolve; propose the fix as a draft PR. The human reviews the artifact, not the plan.
 
-**Draft PR mode.** Push your `fix/issue-<n>` branch to whichever remote the bot can write to — a fork, or `origin` directly when the bot has push rights on the upstream repo — and open a **draft PR** against `shader-slang/slang:master` (the repo's default branch is `master`, not `main`). You MAY NOT merge, mark ready-for-review, post on user-facing issues/PRs, or push to protected branches (`master`/release).
+**Draft PR mode.** Push your `fix/issue-<n>` branch to a remote the bot can write to — `origin` when it has upstream push rights, else the `slang-coworkers/slang` fork — and open a **draft PR** against `shader-slang/slang:master`. Hard limits: never merge, mark ready-for-review, or push to protected branches (`master`/release). Post on a public issue/PR thread only when the inbound carried `<github-post-authorized />`.
 
-**Patch fallback.** Only when the push is genuinely *rejected* (no writable remote, branch protection, revoked token) → attach the `.patch` to the reviewer message; Reviewer A still runs, Reviewer B (Devin) is skipped (no PR to review).
+**Patch fallback.** Only when the push is genuinely *rejected* (no writable remote, branch protection, revoked token) → attach the `.patch` to the reviewer message; Reviewer A still runs, the second reviewer is skipped (no PR to review).
 
-**PR-review-fix mode** (inbound carries `MODE=pr-review-fix`, `PR=<n>` — a human asked the bot to fix a reviewer's finding on a PR it didn't create). Same steps, three deltas: (1) Step 1 — `report_pr_created({repo, pr_number})` to claim it, then branch off the **PR head** (`git fetch origin pull/<n>/head` → worktree on `FETCH_HEAD`), not `master`. (2) Step 7 — open the draft PR `--base` = the PR's head ref if same-repo (`.head.repo.full_name == .base.repo.full_name`), else `master` (the bot can't push contributor forks; note the cherry-pick in the body); `report_pr_created` the new PR too. (3) Post back on the review thread only if the inbound carried `<github-post-authorized />`. **What to fix** is whatever the request names — CI failures, a reviewer's finding, or open bot review threads; don't reinvent the recipe — reuse `/slang-github-webhook`'s "CI failure (`github.ci_failed`)" section (classify infra-vs-code, `gh run rerun --failed` ≤3×, else reproduce→fix→push) and its "Review verdict / inline comment" sweep (address each open actionable thread; resolve LLM/bot threads — coderabbitai/Copilot/gemini — not human ones; 2-round convergence guard). If the request is unscoped ("help with this PR"), default to: fix failing CI first, then sweep open bot review threads.
+**PR-review-fix mode** (inbound carries `MODE=pr-review-fix`, `PR=<n>` — a human asked the bot to fix a reviewer's finding on a PR it didn't create). Same steps, three deltas:
+1. **Step 1** — `report_pr_created({repo, pr_number})` to claim it, then branch off the **PR head** (`git fetch origin pull/<n>/head`, worktree on `FETCH_HEAD`), not `master`.
+2. **Step 7** — deliver the fix as a **reviewable PR into the author's PR branch** (the slangbot model — never push commits onto their branch unsolicited). Two tiers:
+   - **Slangbot-style cross-fork PR** (preferred): push the branch to the `slang-coworkers/slang` fork, then open a PR **into the author's PR branch** using the **`nv-slang-bot` user PAT** (a *user* token — the GitHub App cannot open a PR into a contributor fork; that returns `Resource not accessible by integration`). The author reviews and one-click merges:
+     ```bash
+     # push branch to our fork, then (user-PAT auth) open the PR into the author's head ref
+     gh pr create --repo <author-owner>/slang --base <author-head-ref> \
+       --head slang-coworkers:fix/issue-<n> --title "Fix for #<n>: <title>" --body "$PR_BODY"
+     ```
+     `report_pr_created` the new PR, and comment its link on the original PR. (Same-repo PR → push to `origin`, `--base <author-head-ref>` directly.)
+   - **Patch-comment fallback** (until the `nv-slang-bot` user PAT is provisioned, or if the PR open is rejected): post the diff + a `git apply` one-liner as a comment on the original PR (authorized by `<github-post-authorized />`). Do **not** push to the author's branch, and do **not** open a master-based carrier PR.
+3. Post back on the review thread only if the inbound carried `<github-post-authorized />`.
+
+**What to fix** is whatever the request names — CI failures, a reviewer's finding, or open bot review threads. Reuse `/slang-github-webhook`'s "CI failure" and "Review verdict / inline comment" handling rather than reinventing it. Unscoped ("help with this PR") → fix failing CI first, then sweep open bot review threads.
 
 ## Steps
 
@@ -51,7 +64,7 @@ uses:
    cd /workspace/agent/wt-{{target_slug}}
    ```
 
-   **[MUST NOT] Worktree isolation.** Sibling fixers' `wt-<other-target>/` dirs share this filesystem; you can SEE them but **never read, write, mv, rm, or `git worktree remove`** them (cross-reads → wrong-source confusion; cross-deletes have killed active builds). On disk-full, **report `blocked` to parent** with `df -h /workspace` — never reclaim space from sibling dirs.
+   **[MUST NOT] Worktree isolation.** Sibling fixers' `wt-<other-target>/` dirs share this filesystem; you can SEE them but **never read, write, mv, rm, or `git worktree remove`** them. On disk-full, **report `blocked` to parent** with `df -h /workspace` — never reclaim space from sibling dirs.
    - **YOU own (rw):** `wt-{{target_slug}}/`, `active-work/{{target_slug}}/`, `memory/fix-<number>.md`, `patches/fix-<number>.patch`.
    - **Shared (read-only):** `/workspace/agent/slang/` base clone — `git fetch` only.
 
@@ -111,36 +124,19 @@ uses:
    git add -A && git commit -m "Fix shader-slang/slang#<number>: <one-line title>"
    ```
 
-   Resolve the push target via `git remote -v`: a remote the bot can write to — `origin` when the bot has upstream push rights, else a fork (one nominated via `--fork-repo <owner>/<repo>` in the inbound). Push the branch and open the draft PR with a heredoc body (single-line `--body` strips badly); use `--head fix/issue-<number>` for a same-repo push or `--head <fork-owner>:fix/issue-<number>` for a cross-fork push:
+   Push the branch, then open the PR. Target depends on mode:
+   - **Triaged-issue mode (default):** push to a writable remote (`origin`, else the `slang-coworkers/slang` fork) and open a **draft PR** against `--repo shader-slang/slang --base master`.
+   - **PR-review-fix mode:** deliver into the author's PR per the deltas above (slangbot-style cross-fork PR via the `nv-slang-bot` user PAT, else patch-comment).
 
-   ```bash
-   git push <push-remote> fix/issue-<number>
+   Use a heredoc body (single-line `--body` strips badly) with sections: **Summary** (bug + fix), **Diagnosis** (root cause + file:line), **Approach** (subsystem, change, alternatives ruled out), **Files changed**, **Tests** (repro + broader suite), **Risk** (blast radius + out-of-scope), and `Closes #<n>.` Capture the PR URL for Step 8.
 
-   # PR_BODY heredoc with sections: ## Summary (bug + fix) / ## Diagnosis (root cause + file:line) /
-   # ## Approach (subsystem, change, alternatives ruled out) / ## Files changed (bullets) /
-   # ## Tests (Repro + Broader suite results) / ## Risk (blast radius + out-of-scope) / "Closes shader-slang/slang#<n>."
-   PR_BODY=$(cat <<'MD'
-   ## Summary
-   ...
-   MD
-   )
-
-   gh pr create \
-     --repo shader-slang/slang \
-     --base master --head <fix/issue-number-or-fork-owner:branch> --draft \
-     --title "Fix #<number>: <one-line title>" \
-     --body "$PR_BODY"
-   ```
-
-   Capture the PR URL — pass to Step 8.
-
-   **Patch fallback** (only on a genuine push *rejection* — no writable remote / branch protection / revoked token): `git diff master HEAD > /workspace/agent/patches/fix-<issue_number>.patch`. Step 8 dispatches with `--mode patch <path>` instead of the PR URL.
+   **Patch fallback** (push rejected, or PR open not yet available): `git diff master HEAD > /workspace/agent/patches/fix-<issue_number>.patch`; Step 8 dispatches the patch instead of a PR URL.
 
    **7.5 PR follow-up is webhook-driven [MUST]** {#watcher} — Do **not** schedule a recurring poll. Once the draft PR is open, review comments, review verdicts, and CI results arrive as inbound `kind: webhook` messages (the GitHub webhook routes them back to this session via `pr_session_mappings`). On any such inbound whose `content.event` starts `github.pr_review`, `github.ci_failed`, or `github.pr_mention`, **run `/slang-github-webhook`** — it carries the per-event handling (reply on the thread, resolve LLM threads not human, infra-vs-code CI triage, the 2-round convergence guard). In brief:
    - `github.pr_review` / `github.pr_review_comment` / `REQUEST_CHANGES` → apply edits per Step 8's REQUEST_CHANGES path, re-run Step 6 verify, re-push. End the turn.
    - `github.ci_failed` → classify infra/flaky (`gh run rerun --failed`, ≤3×) vs real failure (reproduce → fix → re-push). End the turn.
    - `github.pr_review_thread` → update the PR's TODO comment; reopen the item if `unresolved`. End the turn.
-   - PR `CLOSED`/`MERGED` → GC the worktree: `cd /workspace/agent/slang && git worktree remove --force /workspace/agent/wt-{{target_slug}}`; `rm -rf /workspace/agent/active-work/{{target_slug}}`; `send_message(to="parent", text="[Fix] slang#<number> PR <state>; worktree GC done.")`. End the turn.
+   - PR `CLOSED`/`MERGED` → clean up the worktree: `cd /workspace/agent/slang && git worktree remove --force /workspace/agent/wt-{{target_slug}}`; `rm -rf /workspace/agent/active-work/{{target_slug}}`; `send_message(to="parent", text="[Fix] slang#<number> PR <state>; worktree cleaned up.")`. End the turn.
 
    No PR URL / patch mode: nothing to watch — skip this step.
 
