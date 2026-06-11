@@ -212,3 +212,96 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     expect(result.status).toBe(0);
   });
 });
+
+describe('OUTPUT_REVIEW verdict gate', () => {
+  function activateWithStages(stages: string[]): void {
+    fs.writeFileSync(markerFile, 'critique-gate\n');
+    fs.writeFileSync(path.join(overlayDir, '.critique-required-stages'), JSON.stringify(stages));
+  }
+
+  it('blocks delivery when OUTPUT_REVIEW verdict is must-fix', () => {
+    activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 3,
+        critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1, OUTPUT_REVIEW: 1 },
+        critique_verdicts: { PLAN_REVIEW: 'approve', CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'must-fix' },
+      }),
+    );
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] PR #123 ready' },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('OUTPUT_REVIEW last verdict is "must-fix"');
+  });
+
+  it('passes delivery when OUTPUT_REVIEW verdict is approve', () => {
+    activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 4,
+        critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1, OUTPUT_REVIEW: 2 },
+        critique_verdicts: { PLAN_REVIEW: 'approve', CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' },
+      }),
+    );
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] PR #123 ready' },
+    });
+    expect(result.status).toBe(0);
+  });
+
+  it('falls through (count-only) when critique_verdicts has no OUTPUT_REVIEW entry', () => {
+    activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 3,
+        critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1, OUTPUT_REVIEW: 1 },
+      }),
+    );
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] PR #123 ready' },
+    });
+    expect(result.status).toBe(0);
+  });
+
+  it('blocks gh pr create when OUTPUT_REVIEW verdict is must-fix', () => {
+    activateWithStages(['OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
+      }),
+    );
+    const result = run({
+      tool_name: 'Bash',
+      tool_input: { command: 'gh pr create --title foo' },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('OUTPUT_REVIEW');
+  });
+
+  it('does not enforce verdict for stages other than OUTPUT_REVIEW', () => {
+    activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 2,
+        critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1 },
+        critique_verdicts: { PLAN_REVIEW: 'must-fix', CODE_REVIEW: 'must-fix' },
+      }),
+    );
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] PR #123 ready' },
+    });
+    expect(result.status).toBe(0);
+  });
+});
