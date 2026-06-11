@@ -96,11 +96,11 @@ jq -Rsn --arg b "$UPDATED_BODY" '{body: $b}' \
 
 ### 5. Resolve branch and route to a coworker (PRs only)
 
-A coworker's PR head branch is `fix/issue-<number>` (set by `/slang-fix-issue`); it no longer encodes the folder, so route a `fix/issue-` head to `slang-fixer`.
+Pick the project's `{fixer}` / `{triager}` / `{reviewer}` by repo (see `routing.md`): `shader-slang/slang` and `shader-slang/slang-rhi` → `slang-*`; `shader-slang/slangpy` → `slangpy-*`. Route a PR whose head branch is `fix/issue-<number>` to `{fixer}`.
 
 ```bash
 BRANCH=$(gh api repos/{repo}/pulls/{issue_number} --jq '.head.ref')
-case "$BRANCH" in fix/issue-*) COWORKER=slang-fixer ;; *) COWORKER= ;; esac
+case "$BRANCH" in fix/issue-*) COWORKER={fixer} ;; *) COWORKER= ;; esac
 ```
 
 If `COWORKER` is non-empty, dispatch via the MCP tool (NOT inline `<message to>`):
@@ -116,7 +116,7 @@ mcp__nanoclaw__send_message(
 
 For dispatches NOT from an `@nv-slang-bot` mention (internal handoffs, scheduled tasks, chat) **omit the marker** — receiving workflows treat its absence as "return via send_file only, do not post."
 
-Then PATCH your TODO comment to show the handoff (check off "Resolve branch", add coworker-step items). If `COWORKER` is empty, follow routing 2c/2d (a PR → dispatch to `slang-fixer` in `MODE=pr-review-fix`; a non-PR → handle directly).
+Then PATCH your TODO comment to show the handoff (check off "Resolve branch", add coworker-step items). If `COWORKER` is empty, follow routing 2c/2d (a PR → dispatch to `{fixer}` in `MODE=pr-review-fix`; an issue → dispatch to `{triager}`).
 
 ### 6. Verify rapid follow-up webhooks
 
