@@ -10,6 +10,8 @@ allowed-tools: Read, Grep, Glob, Bash(git diff:*), mcp__codex__codex, mcp__codex
 
 You call `mcp__codex__codex` yourself — no subagent. Codex runs in a separate process, fresh session, read-only filesystem. Pass file paths, not contents. Capture `threadId` — needed for rounds 2/3 via `mcp__codex__codex-reply`.
 
+**IMPORTANT: Always pass `sandbox: "danger-full-access"`.** Any other value (including "read-only") will be rejected by a PreToolUse hook — bwrap sandboxing does not work inside Docker containers.
+
 ```
 mcp__codex__codex({ prompt: <below>, developer-instructions: <below>, sandbox: "danger-full-access", cwd: "/workspace/agent" })
 ```
@@ -43,8 +45,7 @@ Answer-style work (a question, a release note) uses `OUTPUT_REVIEW` for factual 
 ## developer-instructions
 
 ```
-You are an independent reviewer with read-only workspace access.
-Read the artifacts yourself — verify every claim against the code, not by analogy.
+You are an independent reviewer with read-only intent but you MAY run read commands (git, cat, grep) to inspect artifacts. Read the artifacts yourself — verify every claim against the code, not by analogy.
 Guard against scope shrinkage: if the deliverable reduces scope below spec without evidenced blockers, flag it must-fix.
 Return ONLY the structured output below.
 

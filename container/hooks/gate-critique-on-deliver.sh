@@ -57,11 +57,24 @@ DENIAL_REASON=""
 
 if [ -f "$REQUIRED_FILE" ] && jq -e 'length > 0' "$REQUIRED_FILE" >/dev/null 2>&1; then
   DONE=$(jq -c '.critique_stages // {}' "$STATE" 2>/dev/null || echo '{}')
+  VERDICTS=$(jq -c '.critique_verdicts // {}' "$STATE" 2>/dev/null || echo '{}')
   MISSING=$(jq -r --argjson done "$DONE" '
     map(select(($done[.] // 0) < 1)) | join(", ")
   ' "$REQUIRED_FILE" 2>/dev/null || echo "")
   if [ -n "$MISSING" ]; then
     DENIAL_REASON="missing critique stages: $MISSING"
+  fi
+  # OUTPUT_REVIEW verdict gate: count>=1 is not enough — last verdict must be "approve".
+  # This prevents delivering with an un-reverified must-fix output.
+  # Backwards-compat: if critique_verdicts has no OUTPUT_REVIEW entry (old hook),
+  # we fall through (count-only). Only enforce when the verdict was actually recorded.
+  if [ -z "$DENIAL_REASON" ]; then
+    OUTPUT_VERDICT=$(echo "$VERDICTS" | jq -r '.OUTPUT_REVIEW // empty' 2>/dev/null || true)
+    if [ -n "$OUTPUT_VERDICT" ] && [ "$OUTPUT_VERDICT" != "approve" ]; then
+      if jq -e 'index("OUTPUT_REVIEW")' "$REQUIRED_FILE" >/dev/null 2>&1; then
+        DENIAL_REASON="OUTPUT_REVIEW last verdict is \"$OUTPUT_VERDICT\" (must be \"approve\"). Re-run /codex-critique with STAGE: OUTPUT_REVIEW after fixing the issues"
+      fi
+    fi
   fi
 else
   ROUNDS=$(jq -r '.critique_rounds // 0' "$STATE" 2>/dev/null || echo 0)

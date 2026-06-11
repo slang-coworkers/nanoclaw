@@ -139,6 +139,76 @@ describe('track-critique skips error responses', () => {
   });
 });
 
+describe('track-critique records verdicts', () => {
+  it('records approve verdict for a stage', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix\nWHAT I DID: wrote report',
+        sandbox: 'danger-full-access',
+      },
+      tool_response: '{"threadId":"t1","content":"### Verdict\\napprove\\n\\n### Must-fix (blocks merge)\\n- None."}',
+    });
+    const state = readState() as any;
+    expect(state.critique_verdicts?.OUTPUT_REVIEW).toBe('approve');
+  });
+
+  it('records must-fix verdict for a stage', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix\nWHAT I DID: wrote report',
+        sandbox: 'danger-full-access',
+      },
+      tool_response:
+        '{"threadId":"t1","content":"### Verdict\\nmust-fix\\n\\n### Must-fix (blocks merge)\\n- file.ts:10 — wrong claim"}',
+    });
+    const state = readState() as any;
+    expect(state.critique_verdicts?.OUTPUT_REVIEW).toBe('must-fix');
+  });
+
+  it('overwrites previous verdict on re-run', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: '{"threadId":"t1","content":"### Verdict\\nmust-fix\\n\\n### Must-fix\\n- bad"}',
+    });
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: '{"threadId":"t1","content":"### Verdict\\napprove\\n\\n### Must-fix\\n- None."}',
+    });
+    const state = readState() as any;
+    expect(state.critique_verdicts?.OUTPUT_REVIEW).toBe('approve');
+  });
+
+  it('tracks verdicts per stage independently', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: PLAN_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: '{"threadId":"t1","content":"### Verdict\\napprove\\n\\n### Must-fix\\n- None."}',
+    });
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: CODE_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: '{"threadId":"t2","content":"### Verdict\\nmust-fix\\n\\n### Must-fix\\n- bug"}',
+    });
+    const state = readState() as any;
+    expect(state.critique_verdicts?.PLAN_REVIEW).toBe('approve');
+    expect(state.critique_verdicts?.CODE_REVIEW).toBe('must-fix');
+  });
+
+  it('does not record verdict when response has no Verdict header', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: CODE_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: '{"threadId":"t1","content":"some random response without structured output"}',
+    });
+    const state = readState() as any;
+    expect(state.critique_verdicts).toBeUndefined();
+  });
+});
+
 describe('track-critique ignores non-codex tools', () => {
   it('exits 0 silently for Edit', () => {
     const res = run({
