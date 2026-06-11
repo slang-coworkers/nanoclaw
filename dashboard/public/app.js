@@ -4996,11 +4996,17 @@ function renderCwMessages() {
       const copyBtnHtml = text
         ? `<button class="cw-msg-action-btn cw-copy-btn" data-copy-text="${escAttr(text)}" title="Copy message">⧉ Copy</button>`
         : '';
+      // Shareable permalink to this message (#/cw/<folder>[/t|s/<parent>]/m/<id>).
+      const linkBtnHtml = m.id
+        ? `<button class="cw-msg-action-btn cw-link-btn" data-msg-id="${esc(m.id)}" title="Copy link to this message">🔗 Link</button>`
+        : '';
       const replyBtnHtml = canReply
         ? `<button class="cw-msg-action-btn cw-reply-btn" data-parent-id="${esc(m.id)}" title="Reply in thread">↳ Reply</button>`
         : '';
       const actionsHtml =
-        copyBtnHtml || replyBtnHtml ? `<div class="cw-msg-actions">${copyBtnHtml}${replyBtnHtml}</div>` : '';
+        copyBtnHtml || linkBtnHtml || replyBtnHtml
+          ? `<div class="cw-msg-actions">${copyBtnHtml}${linkBtnHtml}${replyBtnHtml}</div>`
+          : '';
       return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"${systemStyle}>
       <div class="cw-msg-avatar">${monogram}</div>
       ${actionsHtml}
@@ -5099,6 +5105,46 @@ function renderCwMessages() {
             document.execCommand('copy');
             document.body.removeChild(ta);
             flash('✓ Copied');
+          } catch {
+            flash('✗ Failed');
+          }
+        }
+        return;
+      }
+      // ── Copy a shareable permalink to this message ──
+      const linkBtn = e.target.closest('.cw-link-btn');
+      if (linkBtn) {
+        const msgId = linkBtn.dataset.msgId || '';
+        // Append /m/<id> to the current coworker/thread hash base (mirrors
+        // syncCwUrl). msgId has no slashes, so the load-time parser can strip
+        // it without colliding with slash-bearing thread/parent ids.
+        let base = '';
+        if (cwState.selected) {
+          base = `#/cw/${encodeURIComponent(cwState.selected)}`;
+          if (cwState.thread?.sessionDirect) base += `/s/${encodeURIComponent(cwState.thread.parentId)}`;
+          else if (cwState.thread) base += `/t/${encodeURIComponent(cwState.thread.parentId)}`;
+        }
+        const url = `${location.origin}${location.pathname}${base}/m/${encodeURIComponent(msgId)}`;
+        const flash = (label) => {
+          linkBtn.textContent = label;
+          setTimeout(() => {
+            linkBtn.textContent = '🔗 Link';
+          }, 1200);
+        };
+        try {
+          await navigator.clipboard.writeText(url);
+          flash('✓ Link copied');
+        } catch {
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            flash('✓ Link copied');
           } catch {
             flash('✗ Failed');
           }
@@ -5942,7 +5988,17 @@ function syncCwUrl() {
 }
 
 function applyCwUrl(retries = 8) {
-  const m = /^#\/cw\/([^/]+)(?:\/(t|s)\/(.+))?$/.exec(location.hash || '');
+  let hashStr = location.hash || '';
+  // Strip a trailing /m/<msgId> permalink anchor first. msgId has no slashes,
+  // so this never collides with the slash-bearing thread/parent id captured by
+  // the /t/ or /s/ segment below.
+  let msgId = null;
+  const mm = /\/m\/([^/]+)$/.exec(hashStr);
+  if (mm) {
+    msgId = decodeURIComponent(mm[1]);
+    hashStr = hashStr.slice(0, mm.index);
+  }
+  const m = /^#\/cw\/([^/]+)(?:\/(t|s)\/(.+))?$/.exec(hashStr);
   if (!m) return;
   switchToTab('coworkers');
   const folder = decodeURIComponent(m[1]);
@@ -5958,6 +6014,23 @@ function applyCwUrl(retries = 8) {
     const opts = mode === 's' ? { sessionDirect: true } : {};
     setTimeout(() => openThread(parentId, opts), 600);
   }
+  if (msgId) highlightCwMessage(msgId);
+}
+
+// Scroll to + briefly highlight a message by id, retrying while the list loads.
+// Note: the ~3s message-list re-render can cut the highlight short — acceptable
+// for v1; the scroll has already landed. Deep-linking to a message outside the
+// loaded window (pagination) is not yet handled (no "fetch around id" path).
+function highlightCwMessage(msgId, tries = 12) {
+  const safe = window.CSS && CSS.escape ? CSS.escape(msgId) : msgId;
+  const el = document.querySelector(`.cw-msg[data-msg-id="${safe}"]`);
+  if (!el) {
+    if (tries > 0) setTimeout(() => highlightCwMessage(msgId, tries - 1), 400);
+    return;
+  }
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  el.classList.add('cw-msg-highlight');
+  setTimeout(() => el.classList.remove('cw-msg-highlight'), 2500);
 }
 
 function renderOtherSessionLinks(cw, currentSession) {
