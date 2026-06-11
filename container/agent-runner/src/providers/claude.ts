@@ -381,12 +381,14 @@ export class ClaudeProvider implements AgentProvider {
   private blockedTools?: string[];
   private model?: string;
   private effort?: string;
+  private fallbackModel?: string;
 
   constructor(options: ProviderOptions = {}) {
     this.assistantName = options.assistantName;
     this.additionalDirectories = options.additionalDirectories;
     this.model = options.model;
     this.effort = options.effort;
+    this.fallbackModel = options.fallbackModel;
     this.env = {
       ...(options.env ?? {}),
       CLAUDE_CODE_AUTO_COMPACT_WINDOW,
@@ -474,6 +476,7 @@ export class ClaudeProvider implements AgentProvider {
         disallowedTools: [...SDK_DISALLOWED_TOOLS, ...(this.blockedTools ?? [])],
         env: this.env,
         model: this.model,
+        fallbackModel: this.fallbackModel,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         effort: this.effort as any,
         permissionMode: 'bypassPermissions',

@@ -50,6 +50,11 @@ export interface ProviderOptions {
    * through to the underlying SDK. If omitted, the SDK default is used.
    */
   effort?: string;
+  /**
+   * Fallback model to use when the primary model is unavailable (429/503).
+   * Passed through to the underlying SDK.
+   */
+  fallbackModel?: string;
 }
 
 export interface QueryInput {

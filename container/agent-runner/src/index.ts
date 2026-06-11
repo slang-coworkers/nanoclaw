@@ -222,6 +222,7 @@ async function main(): Promise<void> {
     additionalDirectories: additionalDirectories.length > 0 ? additionalDirectories : undefined,
     model: config.model,
     effort: config.effort,
+    fallbackModel: config.fallbackModel,
   });
 
   await runPollLoop({
