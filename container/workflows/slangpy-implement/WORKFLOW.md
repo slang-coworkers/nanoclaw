@@ -28,5 +28,28 @@ overrides:
 
     **Immediately after the PR exists, call `report_pr_created(repo="shader-slang/slangpy", pr_number=<n>)`** — this registers the `pr_session_mappings` row so future webhook events (review comments, CI results) route back to your session instead of orphaning. Without it, every follow-up review comment looks orphaned.
 
-    Then notify parent: 'PR opened: <url>'.
+    Then notify parent: 'PR opened: <url>'. Continue to **Peer review** and **PR follow-up** below.
 ---
+
+## PR-review-fix mode
+
+Inbound carries `MODE=pr-review-fix`, `PR=<n>` — a human asked the bot to fix a finding on a PR it didn't create. Same steps, three deltas:
+1. **Reproduce/Setup** — `report_pr_created({repo, pr_number})` to claim it, then branch off the **PR head** (`git fetch origin pull/<n>/head`, worktree on `FETCH_HEAD`), not `main`.
+2. **Ship** — deliver the fix as a **reviewable PR into the author's PR branch** (the slangbot model — never push onto their branch unsolicited). Push the branch to the `slang-coworkers/slangpy` fork, then open a PR **into the author's branch** using the **`nv-slang-bot` user PAT** (a *user* token — the GitHub App cannot open a PR into a contributor fork): `gh pr create --repo <author-owner>/slangpy --base <author-head-ref> --head slang-coworkers:fix/issue-<n>`. The author reviews and one-click merges; `report_pr_created` the new PR, comment its link on the original. (Same-repo PR → push to `origin`, `--base <author-head-ref>` directly.) Until the `nv-slang-bot` user PAT is live, or if the PR open is rejected, fall back to a **patch-comment** (diff + `git apply` one-liner, `<github-post-authorized />` only) — do not push to the author's branch or open a carrier PR.
+3. Post back on the review thread only if the inbound carried `<github-post-authorized />`.
+
+**What to fix** is whatever the request names — CI failures, a reviewer's finding, or open bot review threads. Reuse `/slang-github-webhook`'s "CI failure" and "Review verdict / inline comment" handling. Unscoped ("help with this PR") → fix failing CI first, then sweep open bot review threads.
+
+## Peer review
+
+When `slangpy-reviewer` is in your destinations, dispatch the artifact for review and end your turn:
+
+```
+send_message(to="slangpy-reviewer", text="[Fix Review Request] shader-slang/slangpy#<number>: <title>\n\nMode: pr (or patch)\nPR / Patch: <url-or-path>\nTests added: slangpy/tests/<test>\nTest results: <PASS / X failures>")
+```
+
+Don't reply to status echoes. On the reviewer's substantive reply: APPROVE / 0 critical-high → report. REQUEST_CHANGES → apply edits, re-run Verify, re-push, re-send — **max 2 rounds**, then take the better diff and note unresolved feedback. If `slangpy-reviewer` isn't in destinations, skip.
+
+## PR follow-up is webhook-driven [MUST]
+
+Do **not** poll. Once the PR is open, review comments / verdicts / CI results arrive as inbound `kind: webhook` messages routed here via `pr_session_mappings`. On any inbound whose `content.event` starts `github.pr_review`, `github.ci_failed`, or `github.pr_mention`, **run `/slang-github-webhook`** (the generic handler — it routes by repo, so it treats slangpy correctly). Apply its per-event handling, then end the turn. On PR `CLOSED`/`MERGED`, clean up the worktree and report to parent.
