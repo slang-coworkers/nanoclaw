@@ -324,6 +324,10 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
           reviewer,
           review_url: typeof review?.html_url === 'string' ? review.html_url : '',
         },
+        // A review whose body @-mentions the bot is first contact even on a PR
+        // with no mapping yet — let deliverGitHubPrEvent fall back to the
+        // orchestrator instead of dropping.
+        mentionsBot: reviewBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase()),
         rawBody,
         eventType: String(eventType),
         deliveryId: String(req.headers['x-github-delivery'] ?? ''),

@@ -42,6 +42,7 @@ import {
 } from './db/sessions.js';
 import { log } from './log.js';
 import { forwardWebhookToPeer } from './modules/pr-mapping/forward.js';
+import { prMappingExists } from './modules/pr-mapping/store.js';
 import { inboundDbPath, initSessionFolder } from './session-manager.js';
 import type { AgentGroup, Session } from './types.js';
 
@@ -82,6 +83,14 @@ export interface GitHubPrEvent {
   eventType?: string;
   /** GitHub delivery id (idempotency tag). */
   deliveryId?: string;
+  /**
+   * True when this event itself addresses the bot (e.g. a review whose body
+   * @-mentions it). On an unmapped PR this is first contact — treat it like a
+   * mention and fall back to the orchestrator instead of dropping. Events with
+   * no addressable text (check_suite, review_thread) leave this false and rely
+   * solely on the mapping row.
+   */
+  mentionsBot?: boolean;
 }
 
 export interface GitHubIssueOpenedEvent {
@@ -556,8 +565,43 @@ export function deliverGitHubPrEvent(event: GitHubPrEvent): DeliveryOutcome {
   });
   if (mapped) return mapped;
 
-  // No mapping (unmapped PR or reaped session) — drop. No orchestrator
-  // fallback: a review/CI event off our PRs is noise, not work.
+  // No live mapped session. Two sub-cases, distinguished by whether a
+  // pr_session_mappings ROW exists (the row persists even after its session is
+  // reaped):
+  //
+  //   • Row exists → the bot was pulled into this PR (a coworker created it, or
+  //     an @-mention routed it through report_pr_created). The session was just
+  //     reaped. Fall back to the orchestrator on the PR's canonical thread —
+  //     it re-mints the session and re-runs /slang-github-webhook, which owns
+  //     the PR and handles the review/CI event directly. Mirrors the mention
+  //     fallback so a CI/review event on a PR we own never silently drops.
+  //
+  //   • No row → the bot was never involved (a stranger PR we weren't mentioned
+  //     on). A review/CI event there is repo-wide noise, not work — drop it.
+  //
+  // The mapping row is the "@nv-slang-bot was pulled in" predicate: it is the
+  // only way a non-bot PR ever acquires one, and bot-authored PRs always have
+  // one — so both follow the same path. `mentionsBot` covers first contact via
+  // an event whose own text addresses the bot (a review @-mention) before any
+  // mapping row exists.
+  if (event.mentionsBot || prMappingExists(getDb(), event.repo, event.prNumber)) {
+    log.info('github-webhook: PR event addressed to bot or owned but unrouted — orchestrator fallback', {
+      repo: event.repo,
+      pr: event.prNumber,
+      event: event.event,
+      mentionsBot: Boolean(event.mentionsBot),
+    });
+    return deliverToOrchestrator({
+      repo: event.repo,
+      issueNumber: event.prNumber,
+      rowId: event.rowId,
+      threadId: `gh-pr-${event.repo}-${event.prNumber}`,
+      eventContent,
+      mintPerThread: true,
+      displayTitle: `${event.repo} #${event.prNumber}`,
+    });
+  }
+
   log.info('github-webhook: PR event with no mapping — dropping', {
     repo: event.repo,
     pr: event.prNumber,
