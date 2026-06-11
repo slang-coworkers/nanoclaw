@@ -14,6 +14,7 @@ slangpy-common:
     - slangpy-build
     - slangpy-code-reader
     - slangpy-github
+    - slang-github-webhook  # generic webhook handling; routes by repo to slangpy-* coworkers
   workflows: []
   mcpServers:
     deepwiki:
