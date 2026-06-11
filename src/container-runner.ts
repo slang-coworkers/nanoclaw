@@ -1051,6 +1051,16 @@ function buildMounts(
         }
       }
       if (hasCritique) {
+        // force-codex-sandbox.sh — PreToolUse on mcp__codex__codex: reject
+        // calls that pass sandbox != "danger-full-access". bwrap doesn't work
+        // inside Docker, so read-only/standard sandbox always fails; this
+        // prevents a wasted round-trip.
+        if (!hasCmd('PreToolUse', 'force-codex-sandbox.sh')) {
+          settings.hooks.PreToolUse.push({
+            matcher: 'mcp__codex__codex',
+            hooks: [{ type: 'command', command: 'bash /app/hooks/force-codex-sandbox.sh', timeout: 5 }],
+          });
+        }
         // track-critique.sh — PostToolUse on every successful mcp__codex__codex
         // call increments critique_rounds. Filters out buddy invocations by
         // signature (the codex-CLI thread also used by buddy carries
@@ -1213,6 +1223,8 @@ async function buildContainerArgs(
   // SDK inside the container talks to the right endpoint with the right model.
   for (const key of [
     'ANTHROPIC_MODEL',
+    'ANTHROPIC_FALLBACK_MODEL',
+    'FALLBACK_FOR_ALL_PRIMARY_MODELS',
     'ANTHROPIC_BASE_URL',
     'ANTHROPIC_DEFAULT_OPUS_MODEL',
     'ANTHROPIC_DEFAULT_SONNET_MODEL',
