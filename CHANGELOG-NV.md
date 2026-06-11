@@ -6,15 +6,33 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 236 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 121 |
-| `nv-slang` | slang project spine, skills, workflows | 84 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 33 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 240 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 123 |
+| `nv-slang` | slang project spine, skills, workflows | 85 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 34 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 25 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-11
+
+### nv-main (4 PRs)
+- **#620** `docs: update USAGE.md to reflect current coworker state`
+- **#627** `fix: add fallback model support and reduce MCP timeout noise`
+- **#628** `feat(critique): verdict gate for OUTPUT_REVIEW + sandbox enforcement`
+- **#629** `fix(webhook): fall back to orchestrator for CI/review events on PRs the bot was pulled into`
+
+### nv-dashboard (2 PRs)
+- **#633** `feat(dashboard): copy-message-to-clipboard button (#632)`
+- **#635** `feat(dashboard): shareable permalink to a specific message`
+
+### nv-slang (1 PRs)
+- **#630** `feat(slang-github-webhook): repo-keyed generic routing + tighten fix-issue workflow`
+
+### nv-slangpy (1 PRs)
+- **#631** `feat(slangpy): webhook handling + PR-review-fix + peer-review parity with slang`
 
 ## 📅 2026-06-10
 
