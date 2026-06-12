@@ -6,8 +6,8 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 240 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 123 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 242 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 125 |
 | `nv-slang` | slang project spine, skills, workflows | 85 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 34 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 25 |
@@ -15,6 +15,16 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-12
+
+### nv-main (2 PRs)
+- **#637** `fix(build): skip local skills + fix dir tree-sha check in fetch-skills.sh`
+- **#639** `chore(container): bump codex 0.124.0 → 0.139.0 + drop dead CODEX_PROFILE passthrough`
+
+### nv-dashboard (2 PRs)
+- **#638** `fix(dashboard): deep-link to a message outside the loaded window`
+- **#641** `feat(dashboard): Copy + Link buttons in the thread/a2a side panel`
 
 ## 📅 2026-06-11
 
