@@ -7,9 +7,26 @@
  * ('group', the default and the prompt-injection victim) must get admin
  * approval. These tests pin that branch decision.
  */
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Session } from '../../types.js';
+
+// performCreateAgent writes .instructions.md directly under GROUPS_DIR/<folder>,
+// so point GROUPS_DIR at a temp dir (lazy getter — read at call time, after the
+// beforeEach sets _tmp). Mirrors the agent-route.test.ts config mock pattern.
+let _tmp = '';
+vi.mock('../../config.js', () => ({
+  get GROUPS_DIR() {
+    return path.join(_tmp, 'groups');
+  },
+  get DATA_DIR() {
+    return path.join(_tmp, 'data');
+  },
+}));
 
 // Mocks for the collaborators the branch decides between / depends on.
 const mockRequestApproval = vi.fn().mockResolvedValue(undefined);
@@ -51,6 +68,19 @@ vi.mock('../../container-runner.js', () => ({
 vi.mock('../../db/sessions.js', () => ({
   getSession: (id: string) => ({ id, agent_group_id: 'ag-1' }),
 }));
+// performCreateAgent wires the new coworker's own dashboard channel; stub the
+// messaging-groups DB layer so it doesn't reach the (uninitialized) real DB.
+vi.mock('../../db/messaging-groups.js', () => ({
+  getMessagingGroupByPlatform: () => undefined,
+  createMessagingGroup: vi.fn(),
+  getMessagingGroupAgents: () => [],
+  createMessagingGroupAgent: vi.fn(),
+}));
+// performCreateAgent dynamically imports the host entry point to refresh adapter
+// conversations; stub it so the test never loads the real process graph.
+vi.mock('../../index.js', () => ({
+  refreshAdapterConversations: vi.fn(),
+}));
 
 import { handleCreateAgent } from './create-agent.js';
 
@@ -58,10 +88,18 @@ const SESSION = { id: 'sess-1', agent_group_id: 'ag-1' } as Session;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  _tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'create-agent-test-'));
+  fs.mkdirSync(path.join(_tmp, 'groups'), { recursive: true });
+  // The real initGroupFilesystem creates GROUPS_DIR/<folder>; mirror that so the
+  // subsequent direct .instructions.md write in performCreateAgent finds the dir.
+  mockInitGroupFilesystem.mockImplementation((group: { folder: string }) => {
+    fs.mkdirSync(path.join(_tmp, 'groups', group.folder), { recursive: true });
+  });
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  if (_tmp) fs.rmSync(_tmp, { recursive: true, force: true });
 });
 
 describe('handleCreateAgent — scope-based authorization', () => {

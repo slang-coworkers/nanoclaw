@@ -22,7 +22,7 @@ vi.mock('../../log.js', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { isSafeAttachmentName, ensureA2aWiring, routeAgentMessage } from './agent-route.js';
+import { isSafeAttachmentName, ensureA2aWiring, routeAgentMessage, forwardAttachedFiles } from './agent-route.js';
 import { initTestDb, closeDb, getDb } from '../../db/connection.js';
 import { runMigrations } from '../../db/migrations/index.js';
 import { migration019 } from '../../db/migrations/019-a2a-session-mode-per-thread.js';
@@ -36,7 +36,7 @@ import {
 } from '../../db/messaging-groups.js';
 import { createDestination } from './db/agent-destinations.js';
 import { getSourceFor, recordSource } from '../../db/a2a-session-sources.js';
-import { initSessionFolder, writeSessionRouting } from '../../session-manager.js';
+import { initSessionFolder, writeSessionRouting, sessionDir } from '../../session-manager.js';
 import type { Session } from '../../types.js';
 
 /**
@@ -2234,5 +2234,80 @@ describe('routeAgentMessage — target_session_id (Layer 0 pin)', () => {
 
     expect(replyCount).toBe(1);
     expect(pinCount).toBe(0);
+  });
+});
+
+// =============================================================
+// forwardAttachedFiles — file-forwarding security guard.
+// Restores coverage for the symlink/realpath guard in agent-route.ts
+// (a confined agent must not exfiltrate host files by symlinking them
+// into its outbox under a safe-looking name). forwardAttachedFiles is
+// pure-FS, keyed on sessionDir(), so we exercise it directly.
+// =============================================================
+describe('forwardAttachedFiles — file-forwarding security guard', () => {
+  let tempDir: string;
+  beforeEach(() => {
+    tempDir = setupTempDb();
+  });
+  afterEach(() => {
+    closeDb();
+    process.chdir(realCwd);
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  function makeOutbox(msgId: string): string {
+    const dir = path.join(sessionDir('ag-src', 'sess-src'), 'outbox', msgId);
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  }
+
+  it('copies a real file from source outbox to target inbox (positive control)', () => {
+    const outboxDir = makeOutbox('msg-real');
+    fs.writeFileSync(path.join(outboxDir, 'report.pdf'), 'fake-pdf-bytes');
+
+    const attachments = forwardAttachedFiles(
+      { agentGroupId: 'ag-src', sessionId: 'sess-src', messageId: 'msg-real', filenames: ['report.pdf'] },
+      { agentGroupId: 'ag-tgt', sessionId: 'sess-tgt', messageId: 'in-real' },
+    );
+
+    expect(attachments).toHaveLength(1);
+    expect(attachments[0].name).toBe('report.pdf');
+    expect(attachments[0].type).toBe('file');
+    const targetPath = path.join(sessionDir('ag-tgt', 'sess-tgt'), attachments[0].localPath);
+    expect(fs.existsSync(targetPath)).toBe(true);
+    expect(fs.readFileSync(targetPath, 'utf-8')).toBe('fake-pdf-bytes');
+  });
+
+  it('SECURITY: skips a symlinked source file — no host-file exfiltration', () => {
+    const secretPath = path.join(tempDir, 'host-secret.txt');
+    fs.writeFileSync(secretPath, 'host-secret-bytes');
+
+    const outboxDir = makeOutbox('msg-symlink');
+    fs.symlinkSync(secretPath, path.join(outboxDir, 'safe-name.txt'));
+
+    const attachments = forwardAttachedFiles(
+      { agentGroupId: 'ag-src', sessionId: 'sess-src', messageId: 'msg-symlink', filenames: ['safe-name.txt'] },
+      { agentGroupId: 'ag-tgt', sessionId: 'sess-tgt', messageId: 'in-symlink' },
+    );
+
+    expect(attachments).toHaveLength(0);
+    const leaked = path.join(sessionDir('ag-tgt', 'sess-tgt'), 'inbox', 'in-symlink', 'safe-name.txt');
+    expect(fs.existsSync(leaked)).toBe(false);
+  });
+
+  it('SECURITY: skips a symlinked source outbox directory', () => {
+    const realSecretDir = path.join(tempDir, 'secret-dir');
+    fs.mkdirSync(realSecretDir, { recursive: true });
+    fs.writeFileSync(path.join(realSecretDir, 'x.txt'), 'bytes');
+
+    const outboxParent = path.join(sessionDir('ag-src', 'sess-src'), 'outbox');
+    fs.mkdirSync(outboxParent, { recursive: true });
+    fs.symlinkSync(realSecretDir, path.join(outboxParent, 'msg-dirlink'));
+
+    const attachments = forwardAttachedFiles(
+      { agentGroupId: 'ag-src', sessionId: 'sess-src', messageId: 'msg-dirlink', filenames: ['x.txt'] },
+      { agentGroupId: 'ag-tgt', sessionId: 'sess-tgt', messageId: 'in-dirlink' },
+    );
+    expect(attachments).toHaveLength(0);
   });
 });
