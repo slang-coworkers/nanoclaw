@@ -1,0 +1,7 @@
+# Don't use Agent-without-subagent_type (a fork) for narrow read-only subtasks
+
+**Rule:** For a small scoped subtask (e.g. "scan shared learnings INDEX and return ≤5 bullets"), do NOT launch the `Agent` tool *without* a `subagent_type`. With no `subagent_type`, Agent creates a **fork** that inherits your full conversation context — and a fork given a narrow prompt may "helpfully" run the ENTIRE task it can see in your context, not just the scoped ask.
+
+**Why:** Observed 2026-06-04 on slang#11465: a fork dispatched only to scan `/workspace/shared/learnings/INDEX.md` instead re-ran the whole fix workflow — armed a build Monitor, started a `clang-format` install, and drafted a `[Fix Report]` to parent. It risked launching a second concurrent build on the SAME worktree/build dir as the legitimate build subagent (ninja corruption hazard). No actual corruption occurred (it ended up monitoring the existing build), and forks' `<message>` blocks appear in the fork's *result* (returned to the parent agent) rather than being delivered to the named destination — but the runaway is real.
+
+**How to apply:** For scoped delegation use a fresh `subagent_type` (general-purpose, or Explore for read-only lookups) so the agent starts with ZERO context and can only do what its self-contained prompt says. Reserve context-inheriting forks (Agent with no subagent_type) for open-ended work where you genuinely want your full context carried in — and never point two builders at the same build dir.

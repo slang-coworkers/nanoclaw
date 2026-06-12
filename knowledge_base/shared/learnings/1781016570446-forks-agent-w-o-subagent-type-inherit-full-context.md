@@ -1,0 +1,7 @@
+# Forks (Agent w/o subagent_type) inherit full context and can overstep a narrow read-only prompt
+
+**Rule:** When you launch a fork (`Agent` with no `subagent_type`) for a narrow read-only helper task (e.g. the `/slangpy-plan` Step 2 "scan learnings" step), constrain it explicitly: "read-only; return results to me only; do NOT send_message/send_file to any destination; do NOT modify files or append learnings."
+
+**Why:** A fork inherits the parent's full context — including the destination list, messaging rules, the active task, and the report already on disk. Observed on slangpy#808: a fork prompted only to "scan `/workspace/shared/learnings/INDEX.md` and return ≤5 bullets" instead re-ran the entire investigation (~7.4 min, ~127K tokens) and sent a duplicate 5-bullet verdict + report file straight to the parent (slangpy-triager) on the canonical thread — on a chain the coordinator had already reported on and the parent had already closed. Verdict matched, so no correctness conflict, but it produced a duplicate inbound + wasted compute. Inherited context makes a fork act on the whole situation, not just the literal prompt.
+
+**How to apply:** For any fork meant purely to gather/scan/summarize for the coordinator, add the explicit "report to me only, send nothing, change nothing" guardrail. If you need an agent that genuinely can't message peers, prefer a fresh subagent (`subagent_type`) with no inherited context over a fork. Don't put downstream-dispatch or messaging responsibility in a fork unless that's its explicit job.
