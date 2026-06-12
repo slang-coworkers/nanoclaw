@@ -4809,6 +4809,67 @@ function renderCardBubble(
   </div>`;
 }
 
+// Copy `text` to the clipboard, flashing the button label on success/failure.
+// navigator.clipboard needs a secure context (https/localhost) + permission;
+// fall back to a hidden-textarea execCommand copy otherwise. Shared by the main
+// feed (renderCwMessages) and the thread panel (renderCwThread).
+async function copyToClipboardWithFlash(btn, text, restLabel, okLabel) {
+  const flash = (label) => {
+    btn.textContent = label;
+    setTimeout(() => {
+      btn.textContent = restLabel;
+    }, 1200);
+  };
+  try {
+    await navigator.clipboard.writeText(text);
+    flash(okLabel);
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      flash(okLabel);
+    } catch {
+      flash('✗ Failed');
+    }
+  }
+}
+
+// Build a shareable permalink to a message id off the current coworker/thread
+// selection (mirrors syncCwUrl). msgId has no slashes, so the load-time parser
+// can strip the /m/<id> anchor without colliding with slash-bearing thread ids.
+function buildCwMessagePermalink(msgId) {
+  let base = '';
+  if (cwState.selected) {
+    base = `#/cw/${encodeURIComponent(cwState.selected)}`;
+    if (cwState.thread?.sessionDirect) base += `/s/${encodeURIComponent(cwState.thread.parentId)}`;
+    else if (cwState.thread) base += `/t/${encodeURIComponent(cwState.thread.parentId)}`;
+  }
+  return `${location.origin}${location.pathname}${base}/m/${encodeURIComponent(msgId)}`;
+}
+
+// Shared click handler for the Copy / Link hover toolbar buttons. Returns true
+// if it handled the event (caller should stop), false otherwise. Used by both
+// the main feed and thread-panel click delegates.
+function handleCwMsgActionClick(e) {
+  const copyBtn = e.target.closest('.cw-copy-btn');
+  if (copyBtn) {
+    copyToClipboardWithFlash(copyBtn, copyBtn.dataset.copyText || '', '⧉ Copy', '✓ Copied');
+    return true;
+  }
+  const linkBtn = e.target.closest('.cw-link-btn');
+  if (linkBtn) {
+    copyToClipboardWithFlash(linkBtn, buildCwMessagePermalink(linkBtn.dataset.msgId || ''), '🔗 Link', '✓ Link copied');
+    return true;
+  }
+  return false;
+}
+
 function renderCwMessages() {
   const el = document.getElementById('cw-chat-messages');
   if (!el) return;
@@ -5079,78 +5140,8 @@ function renderCwMessages() {
       // The load-more branch is handled by handleLoadMore above (mousedown +
       // click). Skip it here to avoid double-firing.
       if (e.target.closest('#cw-messages-more')) return;
-      // ── Copy message to clipboard (#632) ──
-      const copyBtn = e.target.closest('.cw-copy-btn');
-      if (copyBtn) {
-        const txt = copyBtn.dataset.copyText || '';
-        const flash = (label) => {
-          copyBtn.textContent = label;
-          setTimeout(() => {
-            copyBtn.textContent = '⧉ Copy';
-          }, 1200);
-        };
-        try {
-          await navigator.clipboard.writeText(txt);
-          flash('✓ Copied');
-        } catch {
-          // navigator.clipboard requires a secure context (https/localhost) and
-          // permission; fall back to a hidden-textarea execCommand copy.
-          try {
-            const ta = document.createElement('textarea');
-            ta.value = txt;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            flash('✓ Copied');
-          } catch {
-            flash('✗ Failed');
-          }
-        }
-        return;
-      }
-      // ── Copy a shareable permalink to this message ──
-      const linkBtn = e.target.closest('.cw-link-btn');
-      if (linkBtn) {
-        const msgId = linkBtn.dataset.msgId || '';
-        // Append /m/<id> to the current coworker/thread hash base (mirrors
-        // syncCwUrl). msgId has no slashes, so the load-time parser can strip
-        // it without colliding with slash-bearing thread/parent ids.
-        let base = '';
-        if (cwState.selected) {
-          base = `#/cw/${encodeURIComponent(cwState.selected)}`;
-          if (cwState.thread?.sessionDirect) base += `/s/${encodeURIComponent(cwState.thread.parentId)}`;
-          else if (cwState.thread) base += `/t/${encodeURIComponent(cwState.thread.parentId)}`;
-        }
-        const url = `${location.origin}${location.pathname}${base}/m/${encodeURIComponent(msgId)}`;
-        const flash = (label) => {
-          linkBtn.textContent = label;
-          setTimeout(() => {
-            linkBtn.textContent = '🔗 Link';
-          }, 1200);
-        };
-        try {
-          await navigator.clipboard.writeText(url);
-          flash('✓ Link copied');
-        } catch {
-          try {
-            const ta = document.createElement('textarea');
-            ta.value = url;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            flash('✓ Link copied');
-          } catch {
-            flash('✗ Failed');
-          }
-        }
-        return;
-      }
+      // ── Copy message (#632) / shareable permalink (#635) ──
+      if (handleCwMsgActionClick(e)) return;
       // ── Reply-in-thread hover button or reply-count stub ──
       const replyBtn = e.target.closest('.cw-reply-btn, .cw-thread-stub');
       if (replyBtn) {
@@ -5917,7 +5908,22 @@ function renderCwThread() {
           dispatchBadgeHtml = ` <button class="cw-dispatch-badge" data-dispatch-to="${escAttr(m2[1])}" data-dispatch-thread="${escAttr(m2[2])}" data-dispatch-from-session="${escAttr(fromSess)}" title="Open recipient session for thread ${escAttr(m2[2])}">→ ${esc(m2[1])} <span style="opacity:.6">[open]</span></button>`;
         }
       }
+      // Hover action toolbar — Copy + Link, mirroring the main feed
+      // (renderCwMessages). Reply is intentionally omitted: rows here are
+      // already inside the thread. Link reuses the same builder, which appends
+      // /m/<id> onto the current /t/ or /s/ thread base. The shared cw-copy-btn
+      // / cw-link-btn click handlers live on the main feed's delegate, so we
+      // attach a parallel delegate on msgsEl below.
+      const copyBtnHtml = text
+        ? `<button class="cw-msg-action-btn cw-copy-btn" data-copy-text="${escAttr(text)}" title="Copy message">⧉ Copy</button>`
+        : '';
+      const linkBtnHtml = m.id
+        ? `<button class="cw-msg-action-btn cw-link-btn" data-msg-id="${esc(m.id)}" title="Copy link to this message">🔗 Link</button>`
+        : '';
+      const actionsHtml =
+        copyBtnHtml || linkBtnHtml ? `<div class="cw-msg-actions">${copyBtnHtml}${linkBtnHtml}</div>` : '';
       return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"><div class="cw-msg-avatar">${monogram}</div>
+      ${actionsHtml}
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span>${dispatchBadgeHtml}</div>
       <div class="cw-msg-bubble">${body}${attachHtml}</div></div>`;
     })
@@ -5959,6 +5965,12 @@ function renderCwThread() {
     };
     msgsEl.addEventListener('mousedown', handleThreadLoadMore);
     msgsEl.addEventListener('click', handleThreadLoadMore);
+    // Copy / Link hover-toolbar buttons on thread rows — same handler as the
+    // main feed. (Reply isn't offered in-thread, so no reply branch here.)
+    msgsEl.addEventListener('click', (e) => {
+      if (e.target.closest('#cw-thread-more')) return; // handled above
+      handleCwMsgActionClick(e);
+    });
   }
   if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
 }
