@@ -18,6 +18,7 @@ import type { ResponsePayload } from '../../response-registry.js';
 import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import type { PendingApproval } from '../../types.js';
+import { hasAdminPrivilege, isGlobalAdmin, isOwner } from '../permissions/db/user-roles.js';
 import { ONECLI_ACTION, resolveOneCLIApproval } from './onecli-approvals.js';
 import { getApprovalHandler, pickApprover } from './primitive.js';
 
@@ -56,16 +57,23 @@ function fireAndForgetWake(session: Parameters<typeof wakeContainer>[0], approva
 }
 
 export async function handleApprovalsResponse(payload: ResponsePayload): Promise<boolean> {
-  // OneCLI credential approvals — resolved via in-memory Promise first.
-  if (resolveOneCLIApproval(payload.questionId, payload.value)) {
-    return true;
-  }
-
-  // DB-backed pending_approvals.
   const approval = getPendingApproval(payload.questionId);
   if (!approval) return false;
 
+  if (!isAuthorizedApprovalClick(approval, payload)) {
+    log.warn('Ignoring unauthorized approval response', {
+      approvalId: approval.approval_id,
+      action: approval.action,
+      userId: payload.userId,
+      channelType: payload.channelType,
+    });
+    return true;
+  }
+
   if (approval.action === ONECLI_ACTION) {
+    if (resolveOneCLIApproval(payload.questionId, payload.value)) {
+      return true;
+    }
     // Row exists but the in-memory resolver is gone (timer fired or the process
     // was in a weird state). Nothing to do — just drop the row.
     deletePendingApproval(payload.questionId);
@@ -151,4 +159,23 @@ async function handleRegisteredApproval(
 
   deletePendingApproval(approval.approval_id);
   fireAndForgetWake(session, approval.approval_id);
+}
+
+function namespacedUserId(payload: ResponsePayload): string | null {
+  if (!payload.userId) return null;
+  return payload.userId.includes(':') ? payload.userId : `${payload.channelType}:${payload.userId}`;
+}
+
+function isAuthorizedApprovalClick(approval: PendingApproval, payload: ResponsePayload): boolean {
+  const userId = namespacedUserId(payload);
+  if (!userId) return false;
+
+  const agentGroupId =
+    approval.agent_group_id ?? (approval.session_id ? getSession(approval.session_id)?.agent_group_id : null);
+
+  if (!agentGroupId) {
+    return isOwner(userId) || isGlobalAdmin(userId);
+  }
+
+  return hasAdminPrivilege(userId, agentGroupId);
 }

@@ -29,6 +29,7 @@
 import type Database from 'better-sqlite3';
 import fs from 'fs';
 
+import { ensureEgressNetwork } from './egress-lockdown.js';
 import { getActiveSessions, getSession } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import {
@@ -156,6 +157,16 @@ export function stopHostSweep(): void {
 
 async function sweep(): Promise<void> {
   if (!running) return;
+
+  // Re-heal the egress network so already-running agents keep their gateway hop
+  // if it was detached out-of-band. Best-effort here: a heal failure isn't a
+  // leak (agents stay on the internal net), so log and continue. No-op when
+  // lockdown is disabled.
+  try {
+    ensureEgressNetwork();
+  } catch (err) {
+    log.error('Egress lockdown re-heal failed', { err });
+  }
 
   try {
     const sessions = getActiveSessions();

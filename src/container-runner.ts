@@ -38,6 +38,7 @@ import {
 import { materializeContainerJson } from './container-config.js';
 import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
+import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
 import { getSession } from './db/sessions.js';
@@ -1395,8 +1396,14 @@ async function buildContainerArgs(
   args.push('-e', 'NO_PROXY=host.docker.internal,localhost,127.0.0.1');
   args.push('-e', 'no_proxy=host.docker.internal,localhost,127.0.0.1');
 
-  // Host gateway
-  args.push(...hostGatewayArgs());
+  // Egress lockdown when enabled — throws if it can't be established, aborting
+  // the spawn rather than running with open egress. Otherwise the host gateway.
+  if (ensureEgressNetwork()) {
+    args.push(...egressNetworkArgs());
+    log.info('Egress lockdown active', { containerName, network: EGRESS_NETWORK });
+  } else {
+    args.push(...hostGatewayArgs());
+  }
 
   // User mapping
   const hostUid = process.getuid?.();
