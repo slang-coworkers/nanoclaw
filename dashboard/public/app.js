@@ -5988,7 +5988,8 @@ function syncCwUrl() {
 }
 
 function applyCwUrl(retries = 8) {
-  let hashStr = location.hash || '';
+  const fullHash = location.hash || ''; // permalink incl. /m/<id>, for one-shot restore
+  let hashStr = fullHash;
   // Strip a trailing /m/<msgId> permalink anchor first. msgId has no slashes,
   // so this never collides with the slash-bearing thread/parent id captured by
   // the /t/ or /s/ segment below.
@@ -6009,21 +6010,135 @@ function applyCwUrl(retries = 8) {
     setTimeout(() => applyCwUrl(retries - 1), 250);
     return;
   }
+  // selectCoworker/openThread call syncCwUrl(), which rewrites the hash to the
+  // base (without /m/<id>). Restore the full permalink after each sync fires so
+  // the address bar keeps reflecting the shared message and a refresh re-targets
+  // it. No-op when there's no anchor to preserve.
+  const restorePermalink = () => {
+    if (msgId && fullHash && location.hash !== fullHash) history.replaceState(null, '', fullHash);
+  };
+
   if (cwState.selected !== folder) selectCoworker(folder);
-  if (parentId && (!cwState.thread || cwState.thread.parentId !== parentId)) {
-    const opts = mode === 's' ? { sessionDirect: true } : {};
-    setTimeout(() => openThread(parentId, opts), 600);
+  if (parentId) {
+    if (!cwState.thread || cwState.thread.parentId !== parentId) {
+      const opts = mode === 's' ? { sessionDirect: true } : {};
+      setTimeout(() => openThread(parentId, opts), 600);
+    }
+    // Thread permalink: openThread's first fetch is async, so wait until the
+    // thread is established AND settled before paginating it to find the target.
+    // openThread's own syncCwUrl runs at +600ms, so restore the anchor here too.
+    if (msgId) {
+      waitForThreadThen(parentId, () => {
+        restorePermalink();
+        ensureCwMessageLoaded(msgId, { thread: parentId });
+      });
+    }
+  } else if (msgId) {
+    // Main-list permalink: paginate the main message list to find the target.
+    ensureCwMessageLoaded(msgId, { thread: null });
   }
-  if (msgId) highlightCwMessage(msgId);
+  restorePermalink(); // covers the synchronous selectCoworker sync (main-list case)
+}
+
+// CSS selector for a rendered message row by id — single source of truth for
+// the CSS.escape dance, shared by ensureCwMessageLoaded and highlightCwMessage.
+function cwMessageSelector(msgId) {
+  const safe = window.CSS && CSS.escape ? CSS.escape(msgId) : msgId;
+  return `.cw-msg[data-msg-id="${safe}"]`;
+}
+
+// Wait (bounded) until the thread for parentId is open AND its first fetch has
+// settled, then run fn once. openThread is fired via setTimeout(600), sets
+// cwState.thread synchronously with hasMore=false, then updates hasMore async in
+// fetchCwThread — so we wait for the first persisted rows (or the floor flag to
+// have been authored) before paginating, not merely for cwState.thread to exist.
+function waitForThreadThen(parentId, fn, tries = 25) {
+  const open = cwState.thread && cwState.thread.parentId === parentId;
+  const settled = open && ((cwState.thread.messages || []).length > 0 || cwState.thread.hasMore);
+  if (settled) {
+    fn();
+    return;
+  }
+  if (tries <= 0) {
+    if (open) fn(); // thread opened but stayed empty — let the helper no-op
+    return; // thread never opened (e.g. bad parentId) — give up
+  }
+  setTimeout(() => waitForThreadThen(parentId, fn, tries - 1), 200);
+}
+
+// Auto-paginate older pages until msgId is in the DOM or the loader hits its
+// floor, then hand off to highlightCwMessage. Resolves the original permalink
+// limitation: deep-linking to a message older than the loaded window.
+//   opts.thread = parentId  → paginate the thread view (fetchCwThread)
+//   opts.thread = null      → paginate the main list (fetchCwMessages)
+async function ensureCwMessageLoaded(msgId, opts = {}) {
+  const threadParent = opts.thread || null;
+  const inDom = () => document.querySelector(cwMessageSelector(msgId));
+
+  // Fast path: already loaded → highlight immediately, no fetching.
+  if (inDom()) {
+    highlightCwMessage(msgId);
+    return;
+  }
+
+  // Snapshot the context this load is bound to. If the user switches coworker
+  // (or closes/switches the thread) mid-loop, bail — a stale loop must not keep
+  // paging a context the user has left.
+  const selectedAtStart = cwState.selected;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Settle-wait: on a fresh deep link, selectCoworker resets messagesHasMore to
+  // false and the authoritative value only lands after the first non-append
+  // fetch. Without this wait the loop would read the default `false` and stop
+  // before paging. Wait (bounded) until the first load has populated rows or set
+  // the floor flag. (Thread links are already gated by waitForThreadThen, but
+  // the same wait is cheap and harmless there.)
+  for (let s = 0; s < 30; s++) {
+    if (cwState.selected !== selectedAtStart) return;
+    const loaded = threadParent ? (cwState.thread?.messages || []) : cwState.messages;
+    const hasMore = threadParent ? cwState.thread?.hasMore : cwState.messagesHasMore;
+    if ((loaded && loaded.length > 0) || hasMore) break;
+    await sleep(100);
+  }
+
+  const MAX_PAGES = 40; // hard cap so a bad/absent msgId can't loop forever
+  for (let i = 0; i < MAX_PAGES; i++) {
+    if (cwState.selected !== selectedAtStart) return;
+    if (threadParent && (!cwState.thread || cwState.thread.parentId !== threadParent)) return;
+
+    if (inDom()) break; // a poll-refresh may have rendered it between iterations
+
+    // Floor reached → give up gracefully (msg older than the DB window, or absent).
+    const hasMore = threadParent ? cwState.thread.hasMore : cwState.messagesHasMore;
+    if (!hasMore) break;
+
+    // Respect the re-entrancy guard. While a poll or prior append is mid-flight,
+    // loadingOlder is true and an append call early-returns loading nothing — so
+    // wait for the guard to clear rather than assume each call loaded a page.
+    const loadingOlder = threadParent ? cwState.thread.loadingOlder : cwState.loadingOlder;
+    if (loadingOlder) {
+      await sleep(150);
+      continue;
+    }
+
+    if (threadParent) await fetchCwThread(threadParent, true);
+    else await fetchCwMessages(true);
+
+    if (inDom()) break;
+    await sleep(50); // small yield so we don't spin against an imminent poll
+  }
+
+  // Either it's in the DOM now, or we hit the floor / page cap. highlightCwMessage
+  // no-ops gracefully (retries then gives up) if the row genuinely isn't there.
+  highlightCwMessage(msgId);
 }
 
 // Scroll to + briefly highlight a message by id, retrying while the list loads.
-// Note: the ~3s message-list re-render can cut the highlight short — acceptable
-// for v1; the scroll has already landed. Deep-linking to a message outside the
-// loaded window (pagination) is not yet handled (no "fetch around id" path).
+// Note: the ~3s message-list re-render can cut the highlight short — acceptable;
+// the scroll has already landed. Messages outside the loaded window are paged in
+// by ensureCwMessageLoaded before this runs, so by here the row should be present.
 function highlightCwMessage(msgId, tries = 12) {
-  const safe = window.CSS && CSS.escape ? CSS.escape(msgId) : msgId;
-  const el = document.querySelector(`.cw-msg[data-msg-id="${safe}"]`);
+  const el = document.querySelector(cwMessageSelector(msgId));
   if (!el) {
     if (tries > 0) setTimeout(() => highlightCwMessage(msgId, tries - 1), 400);
     return;
