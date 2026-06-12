@@ -64,6 +64,21 @@ for skill in $(jq -r 'keys[]' "$MANIFEST"); do
 
   [ "$repo" = "null" ] && continue
 
+  # Local skills: a skill listed under a type that declares a skill-source but
+  # which lives in-repo and is NOT published upstream (e.g. webhook routers,
+  # local-only review runners). The signal is an on-disk SKILL.md with no
+  # `github-ref:` frontmatter — external installs always stamp that line; a
+  # hand-authored local skill never has it. Without this guard such skills get
+  # swept into the fetch list and 404 three times on every build (the upstream
+  # repo has no `skills/<name>` path), and worse, would be clobbered if upstream
+  # ever added a same-named skill. Skip them entirely.
+  if [ -f "$SKILLS_DIR/$skill/SKILL.md" ] && \
+     ! grep -q 'github-ref:' "$SKILLS_DIR/$skill/SKILL.md" 2>/dev/null; then
+    echo "  skip $skill (local skill — no upstream sync)"
+    SKIPPED=$((SKIPPED + 1))
+    continue
+  fi
+
   # Compare cached tree-sha against upstream tree-sha at the path. Branch-name
   # comparison alone (the previous behavior) is wrong: every skill on a tracked
   # branch (e.g. "coworkers") shows existing_ref == ref even after upstream
@@ -74,11 +89,15 @@ for skill in $(jq -r 'keys[]' "$MANIFEST"); do
   existing_ref=$(grep -oP 'github-ref: refs/heads/\K.*' "$SKILLS_DIR/$skill/SKILL.md" 2>/dev/null || echo "")
 
   if [ -n "$cached_sha" ] && [ "$existing_ref" = "$ref" ]; then
-    # Query upstream contents API for the current tree-sha at skills/<skill>
-    # on <ref>. If the API call fails (rate limit, network), keep the cache
-    # rather than re-fetching everything.
+    # Query upstream for the current tree-sha of the skills/<skill> directory on
+    # <ref>. The contents API returns an ARRAY for a directory (its entries),
+    # not an object — so `--jq '.sha'` on the dir path always fails ("expected
+    # an object but got: array"), the sha-check silently degrades to
+    # cache-assumed-current, and skills never refresh. The directory's own sha
+    # lives in the PARENT listing; select the matching entry from there.
     upstream_repo_owner_name=$(echo "$repo" | sed 's|^https://github.com/||')
-    upstream_sha=$(gh api "repos/$upstream_repo_owner_name/contents/skills/$skill?ref=$ref" --jq '.sha' 2>/dev/null || echo "")
+    upstream_sha=$(gh api "repos/$upstream_repo_owner_name/contents/skills?ref=$ref" \
+      --jq ".[] | select(.name == \"$skill\") | .sha" 2>/dev/null || echo "")
     if [ -n "$upstream_sha" ] && [ "$cached_sha" = "$upstream_sha" ]; then
       echo "  skip $skill (already at $ref @ ${upstream_sha:0:8})"
       SKIPPED=$((SKIPPED + 1))
