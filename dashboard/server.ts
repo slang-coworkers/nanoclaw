@@ -5272,18 +5272,45 @@ export async function handleRequest(
           pickedNano = folderSessions[0];
           attributionSource = 'single-candidate';
         }
-        // 3. heuristic bracket (multi-candidate, unrouted)
+        // 3. heuristic bracket (multi-candidate, unrouted). Prefer sessions
+        //    that were plausibly ALIVE when the event fired: created before
+        //    it, AND either still running or last-active at/after it. This
+        //    avoids the failure where a stopped, stale session — the most
+        //    recently created one before the event, but idle for hours —
+        //    captures live events. That mislabel is exactly what put live
+        //    events under a "container: stopped · 13h ago" separator in the
+        //    timeline. folderSessions is sorted by created_at ASC, so the
+        //    last candidate satisfying the predicate is the most-recently-
+        //    created session that bracketed the event. Falls back to the
+        //    original created_at-only bracket only when nothing was
+        //    demonstrably alive, so unrouted events still attribute rather
+        //    than orphan.
         if (!pickedNano && folderSessions.length > 1) {
           const firstTsNum = Number(r.first_ts) || 0;
-          for (let i = 0; i < folderSessions.length; i++) {
-            const cur = folderSessions[i];
-            const curMs = Date.parse(cur.created_at);
-            if (curMs > firstTsNum) break;
-            const next = folderSessions[i + 1];
-            if (!next || Date.parse(next.created_at) > firstTsNum) {
-              pickedNano = cur;
-              attributionSource = 'heuristic';
-              break;
+          const aliveAt = (s: NanoSess): boolean => {
+            if (Date.parse(s.created_at) > firstTsNum) return false;
+            if (s.container_status === 'running') return true;
+            const la = s.last_active ? Date.parse(s.last_active) : NaN;
+            return Number.isFinite(la) && la >= firstTsNum;
+          };
+          let alive: NanoSess | null = null;
+          for (const s of folderSessions) {
+            if (Date.parse(s.created_at) > firstTsNum) break;
+            if (aliveAt(s)) alive = s;
+          }
+          if (alive) {
+            pickedNano = alive;
+            attributionSource = 'heuristic';
+          } else {
+            for (let i = 0; i < folderSessions.length; i++) {
+              const cur = folderSessions[i];
+              if (Date.parse(cur.created_at) > firstTsNum) break;
+              const next = folderSessions[i + 1];
+              if (!next || Date.parse(next.created_at) > firstTsNum) {
+                pickedNano = cur;
+                attributionSource = 'heuristic';
+                break;
+              }
             }
           }
         }
