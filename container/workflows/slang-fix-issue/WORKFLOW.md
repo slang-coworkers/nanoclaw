@@ -130,6 +130,13 @@ uses:
 
    Use a heredoc body (single-line `--body` strips badly) with sections: **Summary** (bug + fix), **Diagnosis** (root cause + file:line), **Approach** (subsystem, change, alternatives ruled out), **Files changed**, **Tests** (repro + broader suite), **Risk** (blast radius + out-of-scope), and `Closes #<n>.` Capture the PR URL for Step 8.
 
+   Apply the required `pr:` label and trigger CI (a draft PR does not auto-run `ci.yml`); re-dispatch after each push:
+
+   ```bash
+   gh pr edit <pr-number> -R shader-slang/slang --add-label "pr: non-breaking"   # or "pr: breaking" for ABI/language changes
+   gh workflow run ci.yml -R shader-slang/slang --ref fix/issue-<number>
+   ```
+
    **Patch fallback** (push rejected, or PR open not yet available): `git diff master HEAD > /workspace/agent/patches/fix-<issue_number>.patch`; Step 8 dispatches the patch instead of a PR URL.
 
    **7.5 PR follow-up is webhook-driven [MUST]** {#watcher} — Do **not** schedule a recurring poll. Once the draft PR is open, review comments, review verdicts, and CI results arrive as inbound `kind: webhook` messages (the GitHub webhook routes them back to this session via `pr_session_mappings`). On any such inbound whose `content.event` starts `github.pr_review`, `github.ci_failed`, or `github.pr_mention`, **run `/slang-github-webhook`** — it carries the per-event handling (reply on the thread, resolve LLM threads not human, infra-vs-code CI triage, the 2-round convergence guard). In brief:
