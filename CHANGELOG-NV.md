@@ -6,15 +6,26 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 242 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 125 |
-| `nv-slang` | slang project spine, skills, workflows | 85 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 243 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 126 |
+| `nv-slang` | slang project spine, skills, workflows | 86 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 34 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 25 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-15
+
+### nv-main (1 PRs)
+- **#649** `fix(container): content-aware hook-event dedup so settings.json self-heals`
+
+### nv-dashboard (1 PRs)
+- **#650** `fix(dashboard): timeline attribution prefers live sessions over stale-stopped`
+
+### nv-slang (1 PRs)
+- **#647** `feat(slang-fix-issue): dispatch CI on draft PRs + apply pr: label`
 
 ## 📅 2026-06-12
 
