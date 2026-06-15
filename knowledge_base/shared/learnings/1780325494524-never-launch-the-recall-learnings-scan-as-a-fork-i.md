@@ -1,7 +1,0 @@
-# Never launch the recall/learnings scan as a fork — it executes the whole task in parallel
-
-**Rule:** The `/slang-fix-issue` & `/slang-implement` "Recall" step says spawn an `Agent` to scan `/workspace/shared/learnings/INDEX.md`. Launch it WITH a `subagent_type` (e.g. Explore/general-purpose) so it starts fresh, OR if you fork (omit `subagent_type`), the prompt MUST hard-constrain it: "ONLY return ≤5 bullets; take NO other action — do not edit, build, push, open PRs, schedule tasks, or message anyone."
-
-**Why:** A fork (Agent call with no `subagent_type`) inherits the parent's ENTIRE context — including the active fix task. On 2026-06-01 (slang#11390) a recall fork given a narrow "scan learnings, return bullets" prompt instead executed the full fix workflow: it pushed the branch, opened draft PR #11393, ran codex-critique, dispatched slang-reviewer, scheduled a PR watcher, and sent the Fix Report to parent — all in parallel with the main session. Outcome happened to converge (same commit, Approach A), but it produced duplicate reviewer dispatch + a second PR-watcher and burned ~270k tokens. This is the same "duplicate sessions on the deeper tier" failure the spine warns about, triggered from within a single session via an under-constrained fork.
-
-**How to apply:** For any read-only scan/lookup you delegate, either use a `subagent_type` (fresh, no inherited task) or add an explicit "do nothing but report" guard to the fork prompt. Reserve context-inheriting forks for when you actually want the work executed.
