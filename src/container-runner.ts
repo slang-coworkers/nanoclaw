@@ -865,13 +865,21 @@ function buildMounts(
         (h: { transport?: string; type?: string; url?: string }) =>
           !((h.transport || h.type === 'http') && h.url?.includes(hookUrl)),
       );
-      // Dedup: check if a command hook for this URL already exists
-      const hasHook = settings.hooks[event].some((h: { hooks?: { command?: string }[] }) =>
-        h.hooks?.some((inner: { command?: string }) => inner.command?.includes(hookUrl)),
+      // Drop ANY existing command hook for this URL, then push the current
+      // hookConfig. Dedup MUST be content-aware: the previous version keyed
+      // only on hookUrl presence, so when the command string changed (e.g.
+      // the X-NanoClaw-Session-Id header was added) the stale command was
+      // never replaced — it matched the URL and `!hasHook` stayed false
+      // forever. Long-lived groups (e.g. `main`) were stranded on the old
+      // headerless command, so the dashboard never stamped sdk_session_routes
+      // for them and session attribution fell back to a stale heuristic.
+      // Stripping + re-pushing keeps a single up-to-date hook per event and
+      // self-heals any group whose settings.json predates a command change.
+      settings.hooks[event] = settings.hooks[event].filter(
+        (h: { hooks?: { command?: string }[] }) =>
+          !h.hooks?.some((inner: { command?: string }) => inner.command?.includes(hookUrl)),
       );
-      if (!hasHook) {
-        settings.hooks[event].push(hookConfig);
-      }
+      settings.hooks[event].push(hookConfig);
     }
     // Guard hook: block direct edits to CLAUDE.md — agents must edit .instructions.md instead.
     // CLAUDE.md is auto-composed from templates + .instructions.md on every container wake,
