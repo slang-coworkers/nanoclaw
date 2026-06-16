@@ -6,15 +6,27 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 243 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 244 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 126 |
-| `nv-slang` | slang project spine, skills, workflows | 86 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 34 |
+| `nv-slang` | slang project spine, skills, workflows | 88 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 35 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 25 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-16
+
+### nv-main (1 PRs)
+- **#654** `feat(cost): echo-drop coworker no-ops + non-blocking runaway card`
+
+### nv-slang (2 PRs)
+- **#653** `docs(slang-fixer): classify priority-yield CI failures as non-failures`
+- **#655** `fix(slang-triage): make posting the issue comment the default`
+
+### nv-slangpy (1 PRs)
+- **#656** `fix(slangpy-triage): make posting the issue comment the default`
 
 ## 📅 2026-06-15
 
