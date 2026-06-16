@@ -370,6 +370,16 @@ export function wakeContainer(session: Session): Promise<void> {
     log.debug('Container already running', { sessionId: session.id });
     return Promise.resolve();
   }
+  // Never respawn a session that has been closed (e.g. admin clicked Stop on a
+  // runaway card). The approval response-handler fires wakeContainer after
+  // every card response, and the sweep can race; re-read the authoritative
+  // status here so a Stop is final. getActiveSessions already filters the
+  // sweep, but this guards the direct-wake paths too.
+  const current = getSession(session.id);
+  if (current && current.status === 'closed') {
+    log.debug('Skipping wake of closed session', { sessionId: session.id });
+    return Promise.resolve();
+  }
   const existing = wakePromises.get(session.id);
   if (existing) {
     log.debug('Container wake already in-flight — joining existing promise', { sessionId: session.id });

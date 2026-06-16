@@ -228,6 +228,25 @@ async function sweepSession(session: Session): Promise<void> {
       syncProcessingAcks(inDb, outDb);
     }
 
+    // 1b. Runaway detection (non-blocking). Runs after ack-sync so the
+    // turn/output counts reflect synced state. NEVER stops the session — on a
+    // fresh runaway episode it only surfaces an admin card; a human clicking
+    // Stop is the only thing that ends the session. Module-gated: no-op when
+    // the runaway module isn't installed.
+    // MODULE-HOOK:runaway-detect:start
+    if (outDb) {
+      try {
+        const [{ checkRunaway }, { runawayCardDeps }] = await Promise.all([
+          import('./modules/runaway/detect.js'),
+          import('./modules/runaway/index.js'),
+        ]);
+        await checkRunaway(session, outDb, runawayCardDeps);
+      } catch (err) {
+        log.debug('runaway detect skipped', { sessionId: session.id, err });
+      }
+    }
+    // MODULE-HOOK:runaway-detect:end
+
     // 2. Wake a container if work is due and nothing is running. Ordered
     // before the crashed-container cleanup so a fresh container gets a chance
     // to clean its own orphan processing_ack rows on startup (see
