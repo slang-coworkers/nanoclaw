@@ -194,6 +194,14 @@ comments already handled).
 ### CI failure (`github.ci_failed`)
 
 Classify before fixing:
+- **Priority yield — NOT a failure** (check this first): a bot `workflow_dispatch`
+  CI run that yielded to higher-priority CI fails the `wait-for-human-priority`
+  gate on purpose. **Do not rerun, do not edit, do not hunt for a bug.**
+  `retry-yielded-bot-ci` reruns it automatically once CI is quiet, and aging
+  force-runs it after ~8h. Just end the turn; the rerun's `github.ci_failed`/green
+  arrives by webhook. Detect it: if the run's *only* failed/cancelled jobs are
+  `wait-for-human-priority` (its "Stop yielded bot CI" step) and the downstream
+  `check-ci`, it's a yield.
 - **Infra / flaky** (network timeout, OOM, runner eviction, transient): retry
   rather than edit — `gh run rerun <run-id> --failed`, up to **3×** for the same
   signature, then report to parent.
@@ -203,7 +211,11 @@ Classify before fixing:
 ```bash
 gh run list --repo {repo} --branch <head-ref> --status failure --limit 1 \
   --json databaseId --jq '.[0].databaseId'        # → run-id
-gh run view <run-id> --repo {repo} --log-failed | tail -50
+# Yield check: are the failed jobs ONLY the priority gate (+ check-ci)?
+gh run view <run-id> --repo {repo} --json jobs \
+  --jq '[.jobs[] | select(.conclusion=="failure" or .conclusion=="cancelled") | .name]'
+# → ["wait-for-human-priority","check-ci"] means yield: do nothing.
+gh run view <run-id> --repo {repo} --log-failed | tail -50   # else inspect the real failure
 ```
 
 ### Review thread resolved/unresolved (`github.pr_review_thread`)

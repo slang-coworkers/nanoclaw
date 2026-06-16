@@ -141,7 +141,7 @@ uses:
 
    **7.5 PR follow-up is webhook-driven [MUST]** {#watcher} — Do **not** schedule a recurring poll. Once the draft PR is open, review comments, review verdicts, and CI results arrive as inbound `kind: webhook` messages (the GitHub webhook routes them back to this session via `pr_session_mappings`). On any such inbound whose `content.event` starts `github.pr_review`, `github.ci_failed`, or `github.pr_mention`, **run `/slang-github-webhook`** — it carries the per-event handling (reply on the thread, resolve LLM threads not human, infra-vs-code CI triage, the 2-round convergence guard). In brief:
    - `github.pr_review` / `github.pr_review_comment` / `REQUEST_CHANGES` → apply edits per Step 8's REQUEST_CHANGES path, re-run Step 6 verify, re-push. End the turn.
-   - `github.ci_failed` → classify infra/flaky (`gh run rerun --failed`, ≤3×) vs real failure (reproduce → fix → re-push). End the turn.
+   - `github.ci_failed` → classify **priority-yield** (only failed jobs are `wait-for-human-priority` + `check-ci`: do nothing — `retry-yielded-bot-ci` reruns it, aging force-runs it ≤~8h) vs infra/flaky (`gh run rerun --failed`, ≤3×) vs real failure (reproduce → fix → re-push). End the turn.
    - `github.pr_review_thread` → update the PR's TODO comment; reopen the item if `unresolved`. End the turn.
    - PR `CLOSED`/`MERGED` → clean up the worktree: `cd /workspace/agent/slang && git worktree remove --force /workspace/agent/wt-{{target_slug}}`; `rm -rf /workspace/agent/active-work/{{target_slug}}`; `send_message(to="parent", text="[Fix] slang#<number> PR <state>; worktree cleaned up.")`. End the turn.
 
