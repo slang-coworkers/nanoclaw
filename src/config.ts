@@ -61,6 +61,20 @@ export const CONTAINER_MAX_OUTPUT_SIZE = parseInt(process.env.CONTAINER_MAX_OUTP
 export const ONECLI_URL = process.env.ONECLI_URL || envConfig.ONECLI_URL;
 export const ONECLI_API_KEY = process.env.ONECLI_API_KEY || envConfig.ONECLI_API_KEY;
 export const MAX_MESSAGES_PER_PROMPT = Math.max(1, parseInt(process.env.MAX_MESSAGES_PER_PROMPT || '10', 10) || 10);
+
+// Runaway detector (non-blocking): surface an admin card when a session
+// processes many turns in a window while producing almost no output — the
+// "stuck in an echo loop emitting 'Ignored.'" signature. NEVER auto-stops;
+// only a human clicking the card's Stop button kills the session.
+export const RUNAWAY_WINDOW_S = Math.max(60, parseInt(process.env.RUNAWAY_WINDOW_S || '600', 10) || 600);
+export const RUNAWAY_TURNS = Math.max(2, parseInt(process.env.RUNAWAY_TURNS || '40', 10) || 40);
+// Total new messages_out content (bytes) over the window below which output is
+// considered "near-zero". A genuinely busy session easily clears this.
+export const RUNAWAY_MAX_OUTPUT_BYTES = Math.max(
+  0,
+  parseInt(process.env.RUNAWAY_MAX_OUTPUT_BYTES || '2000', 10) || 2000,
+);
+
 export const IPC_POLL_INTERVAL = 1000;
 // Idle grace period. Default is 25% below CONTAINER_TIMEOUT so the idle
 // sweeper always has a window before the hard kill, even when operators

@@ -1,0 +1,129 @@
+/**
+ * Non-blocking runaway detector.
+ *
+ * Surfaces an admin card when a session looks stuck in a runaway loop:
+ * MANY processed turns in a rolling window while producing NEAR-ZERO output.
+ * That is the signature of the incident this whole feature targets — a triage
+ * session that woke ~17,000 times emitting "Ignored." to echo pings, replaying
+ * ~442k tokens each time (~21% of a month's spend).
+ *
+ * HARD CONSTRAINT: this NEVER blocks. It does not pause, kill, or throttle the
+ * session. It only emits one card per runaway "episode". The session keeps
+ * running normally; the ONLY thing that stops it is a human (maintainer/owner)
+ * clicking Stop on the card — handled in ./index.ts.
+ *
+ * The signal is computed entirely from the session's outbound.db (already open
+ * in the sweep), so it is cheap and never touches the multi-MB JSONL transcript:
+ *   - turns   = processing_ack rows marked completed within the window
+ *   - output  = total bytes of messages_out content within the window
+ * Trip requires BOTH high turns AND low output — a genuinely busy session
+ * produces output and so never trips (keeps false positives near zero).
+ */
+import type Database from 'better-sqlite3';
+
+import { RUNAWAY_MAX_OUTPUT_BYTES, RUNAWAY_TURNS, RUNAWAY_WINDOW_S } from '../../config.js';
+import { log } from '../../log.js';
+import type { Session } from '../../types.js';
+
+export interface RunawayMetrics {
+  turns: number;
+  outputBytes: number;
+}
+
+/**
+ * Count completed turns and sum output bytes within the trailing window.
+ * Read-only against outbound.db. `nowIso`/`windowS` are injectable for tests.
+ */
+export function measureRunaway(
+  outDb: Database.Database,
+  nowMs = Date.now(),
+  windowS = RUNAWAY_WINDOW_S,
+): RunawayMetrics {
+  const cutoffIso = new Date(nowMs - windowS * 1000).toISOString();
+
+  const turns =
+    (
+      outDb
+        .prepare(
+          `SELECT COUNT(*) AS c FROM processing_ack
+           WHERE status = 'completed' AND status_changed >= ?`,
+        )
+        .get(cutoffIso) as { c: number } | undefined
+    )?.c ?? 0;
+
+  const outputBytes =
+    (
+      outDb
+        .prepare(
+          `SELECT COALESCE(SUM(LENGTH(content)), 0) AS b FROM messages_out
+           WHERE timestamp >= ?`,
+        )
+        .get(cutoffIso) as { b: number } | undefined
+    )?.b ?? 0;
+
+  return { turns, outputBytes };
+}
+
+export function isRunaway(m: RunawayMetrics): boolean {
+  return m.turns >= RUNAWAY_TURNS && m.outputBytes <= RUNAWAY_MAX_OUTPUT_BYTES;
+}
+
+// ── Episode de-dup ──
+// One card per runaway episode. A session stays "carded" until it recovers
+// (drops below the trip condition), then re-arms so a later distinct episode
+// can card again. Purely in-memory — a card lost to a host restart simply
+// re-fires next time the condition holds, which is fine.
+const cardedSessions = new Set<string>();
+
+/** Test/maintenance hook. */
+export function _resetRunawayState(): void {
+  cardedSessions.clear();
+}
+
+export interface RunawayCardDeps {
+  /** Emit the admin card. Injected so the sweep wires the real approval flow. */
+  emitCard: (session: Session, metrics: RunawayMetrics, windowS: number) => Promise<void>;
+}
+
+/**
+ * Per-session sweep hook. Measures the window, and on a fresh trip emits one
+ * card. Recovery clears the carded flag so the session can card again later.
+ * Returns the decision for logging/tests. NEVER stops the session.
+ */
+export async function checkRunaway(
+  session: Session,
+  outDb: Database.Database,
+  deps: RunawayCardDeps,
+  nowMs = Date.now(),
+): Promise<{ tripped: boolean; carded: boolean; metrics: RunawayMetrics }> {
+  const metrics = measureRunaway(outDb, nowMs);
+  const tripped = isRunaway(metrics);
+
+  if (!tripped) {
+    // Recovered (or never tripped) — re-arm.
+    cardedSessions.delete(session.id);
+    return { tripped: false, carded: false, metrics };
+  }
+
+  if (cardedSessions.has(session.id)) {
+    // Same ongoing episode — already carded, don't re-card every 60s.
+    return { tripped: true, carded: false, metrics };
+  }
+
+  cardedSessions.add(session.id);
+  log.warn('Runaway suspected — surfacing non-blocking admin card', {
+    sessionId: session.id,
+    agentGroupId: session.agent_group_id,
+    turns: metrics.turns,
+    outputBytes: metrics.outputBytes,
+    windowS: RUNAWAY_WINDOW_S,
+  });
+  try {
+    await deps.emitCard(session, metrics, RUNAWAY_WINDOW_S);
+  } catch (err) {
+    // If the card failed to send, re-arm so the next sweep retries.
+    cardedSessions.delete(session.id);
+    log.error('Failed to emit runaway card', { sessionId: session.id, err });
+  }
+  return { tripped: true, carded: true, metrics };
+}
