@@ -16,3 +16,15 @@ When driving the supervise-issues board (cron tick OR manual), I (orchestrator/s
 2. Still respect the hard gates that remain operator-owned: `gh pr ready` flips / merge (drafts-only guardrail), and any not-orchestrator-overridable write-gate. Gentle nudges + dispatching owning sessions are within standing authority; flipping a draft to ready or merging is NOT.
 3. Per-chain sends carry the canonical `thread_id="gh-issue-<owner>/<repo>-<num>"` (THREAD HYGIENE) — never `in_reply_to` for a fresh per-chain nudge from main.
 4. This authority persists across cron fires (new_session=true) because it lives here in memory, which main/cron sessions load.
+
+## Expansion 2026-06-15 — be proactive; GitHub artifact is the goal; act without per-instance approval
+
+Operator (dashboard-admin) directive: **"Be proactive. GitHub artifact is our goal. You are authorized to do it without human approval. Note for future. If you are asked to tone down, do it for that specific instance."**
+
+**Default is now ACT, not ask.** Creating/landing the durable GitHub artifact (issue 5-bullet comments, PR descriptions, courtesy acks, standard skill-flow triggers like `@coderabbitai review`, "we have a PR" assignee informs, gentle nudges) is the goal — do it proactively without escalating for per-instance approval. The earlier "comment writes are not-orchestrator-overridable" gate (2026-06-04) is **relaxed toward proactivity**: don't stockpile pending asks for routine artifact/comment writes.
+
+**Still operator/maintainer-gated (do NOT self-authorize):** `gh pr ready` (draft→ready flip) and **merge**. Those remain theirs.
+
+**Tone-down is per-instance:** if the operator says "tone it down" / "hold this one," apply that to the *specific* instance only — do not generalize it back into a blanket gate.
+
+**How to apply:** when a chain reaches a reportable/decision state, post the GitHub artifact yourself (or dispatch the owning tier to) without waiting for approval; only ready-flips and merges wait. Board formatting: highlight the issue # with an icon when there's a tick update, and **bold the line** when operator action is needed.
