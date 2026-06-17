@@ -15,7 +15,7 @@ uses:
 > [!IMPORTANT]
 > A triage handoff means _fix it_, not "ask how." Find root cause and resolve; propose the fix as a draft PR. The human reviews the artifact, not the plan.
 
-**Draft PR mode.** Push your `fix/issue-<n>` branch to a remote the bot can write to — `origin` when it has upstream push rights, else the `slang-coworkers/slang` fork — and open a **draft PR** against `shader-slang/slang:master`. Hard limits: never merge, mark ready-for-review, or push to protected branches (`master`/release). Post on a public issue/PR thread only when the inbound carried `<github-post-authorized />`.
+**Draft PR mode.** Push your `fix/issue-<n>` branch to a remote the bot can write to — `origin` when it has upstream push rights, else the `slang-coworkers/slang` fork — and open a **draft PR** against `shader-slang/slang:master`. Hard limits: never merge, mark ready-for-review, or push to protected branches (`master`/release). Post on the issue/PR thread once verified at HEAD.
 
 **Patch fallback.** Only when the push is genuinely *rejected* (no writable remote, branch protection, revoked token) → attach the `.patch` to the reviewer message; Reviewer A still runs, the second reviewer is skipped (no PR to review).
 
@@ -31,8 +31,8 @@ uses:
        -f base="<author-head-ref>" -f body="$PR_BODY" --jq '.html_url'
      ```
      `report_pr_created` the new PR, and comment its link on the original PR. (Same-repo PR → push to `origin`, then the same `gh api .../pulls` with `head="fix/issue-<n>"` and `base="<author-head-ref>"`.)
-   - **Patch-comment fallback** (until the `nv-slang-bot` user PAT is provisioned, or if the PR open is rejected): post the diff + a `git apply` one-liner as a comment on the original PR (authorized by `<github-post-authorized />`). Do **not** push to the author's branch, and do **not** open a master-based carrier PR.
-3. Post back on the review thread only if the inbound carried `<github-post-authorized />`.
+   - **Patch-comment fallback** (until the `nv-slang-bot` user PAT is provisioned, or if the PR open is rejected): post the diff + a `git apply` one-liner as a comment on the original PR. Do **not** push to the author's branch, and do **not** open a master-based carrier PR.
+3. Post back on the review thread once verified at HEAD.
 
 **What to fix** is whatever the request names — CI failures, a reviewer's finding, or open bot review threads. Reuse `/slang-github-webhook`'s "CI failure" and "Review verdict / inline comment" handling rather than reinventing it. Unscoped ("help with this PR") → fix failing CI first, then sweep open bot review threads.
 
