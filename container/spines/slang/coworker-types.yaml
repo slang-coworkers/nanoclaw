@@ -65,6 +65,7 @@ slang-maintainer:
   extends: slang-reader
   skills:
     - slang-maintainer-tools
+    - slang-pr-report
   workflows:
     - slang-maintain
 
