@@ -1,0 +1,30 @@
+---
+name: nv-slang-bot read-only incident (write access lost)
+description: nv-slang-bot App write perms — partial outage ~2026-06-15; as of 2026-06-16 ~20:41Z push/PR-create/comments WORK again, only actions:write (workflow_dispatch/rerun/merge-queue) still blocked. Fast-changing; re-verify.
+type: project
+originSessionId: 79b38293-7648-4320-8e2b-0c2a196cea57
+---
+**Incident (verified 2026-06-16 ~18:00Z):** the `nv-slang-bot` GitHub App installation lost **write access** to all three repos. Org-scoped `gh api repos/<repo> --jq '.permissions'` returns `{admin:false, maintain:false, pull:true, push:false, triage:false}` for **shader-slang/slang, shader-slang/slang-rhi, AND shader-slang/slangpy** — the bot is read-only everywhere.
+
+**Why:** A regression/downgrade, not a permanent wall — the bot successfully reran job run 27525520359 (#11579) on 2026-06-15 06:43Z (`run_attempt:2, conclusion:success`), so write worked ~35h prior. The CI-babysitter's earlier "fork-perms" attributions (#11589/#11615/#11607/#11554/#11570/#11623) were partly a MISATTRIBUTION — same-repo PRs (#11602/#11605) hit the identical "Must have admin rights" error, so the loss is repo-wide, not fork-specific.
+
+**Consequences (CONFIRMED):** CI-babysitter can't `gh run rerun` or `gh pr merge --merge-queue`; any API write (comment, label, ready-flip, merge) by any coworker fails.
+**Consequence (LIKELY, UNVERIFIED):** fixer `git push` / PR-create likely also blocked IF they use the same App token — **verify a fixer's push capability before dispatching any new fix; don't dispatch blind (the push would fail).**
+
+**Operator action needed:** restore `contents:write` + `actions:write` (and PR/merge perms) on the `nv-slang-bot` App installation for the shader-slang org repos. **Until restored:** the babysitter can classify/track but not rerun/requeue; don't dispatch new fix work that requires a push.
+
+**UPDATE 2026-06-16 ~20:14Z — the read-only state is PARTIAL, not total.** Confirmed against a real artifact: `nv-slang-bot[bot]` successfully **created issue #11632** on shader-slang/slang, **assigned** it to a user, and **posted a PR comment** — all while the org-scoped collaborator probe still showed `push:false`. So the App installation retains **`issues:write`** (issue create/assign + issue/PR comments) even though **contents/push** is blocked. The `push:false` probe is the *collaborator* permission and does NOT predict `issues:write`. Practical split:
+- **Works on bot authority:** create/comment/assign issues, PR comments, labels (App `issues:write`).
+- **Still blocked (verify before dispatch):** `git push`, PR-create-from-branch, `gh run rerun`/requeue, `gh pr merge` (need `contents:write`/`actions:write`).
+- **Don't pre-bail on the collaborator `push:false` probe for issue/comment work** — attempt the write; it likely succeeds.
+
+**UPDATE 2026-06-16 ~20:41Z — push/contents write is BACK. Outage now narrowed to actions:write only.** Direct receipt: `nv-slang-bot[bot]` **created draft PR #11633** on shader-slang/slang (head branch `fix/issue-11631` → master, `created_at 2026-06-16T20:41:48Z`, verified via `github_get_pull_request`) — i.e. a `git push` + PR-create-from-branch both succeeded, contradicting the "still blocked" line above. The fixer also posted two issue comments (4722630629, 4723518426). Current confirmed split:
+- **Works on bot authority (CONFIRMED 06-16 20:41Z):** `git push` to fix/issue-* branches, PR-create-from-branch, issue/PR comments, labels, issue create/assign. The contents/push regression appears RESOLVED.
+- **Still blocked (CONFIRMED 06-16 ~20:40Z):** `gh workflow run` (workflow_dispatch) → HTTP 403 "Must have admin rights to Repository." So the App lacks **actions:write** (and the separate **workflows** perm for pushing .github/workflows/*.yml — see project_bot_workflows_permission). `gh run rerun`/requeue and `gh pr merge --merge-queue` likely also need actions:write — UNVERIFIED at this timestamp, re-check.
+- **Practical impact:** the standing "always dispatch CI" directive is un-executable via workflow_dispatch. NON-BLOCKING for draft fixer PRs: draft CI auto-skips, and CI runs automatically when the PR is flipped ready-for-review (operator-gated). Operator action item (low priority): grant `actions:write` if manual CI dispatch / rerun / merge-queue is wanted.
+
+**UPDATE 2026-06-16 ~23:11Z — re-confirmed, no change.** slang-fixer pushed 3 commits to `fix/issue-11496` (PR #11499), `6330f6c45..ee8a2e4ff..57ae17138`, all landed, **no 403** — contents/push write still works. Same session: `gh workflow run ci.yml --ref fix/issue-11496` → HTTP 403 "Must have admin rights" — actions:write still blocked. CI auto-ran via the normal `pull_request` trigger on the push (CI / Verify-PR-Labels / Falcor queued), so the missing workflow_dispatch is cosmetic. The org-scoped `push:false` probe STILL returned read-only at this same timestamp while the actual push succeeded — definitive proof the collaborator probe is misleading; trust real push attempts, not the probe.
+
+**UPDATE 2026-06-17 ~00:08Z — actions:write gap CONFIRMED blocking the merge-queue (upgrade from "cosmetic").** Babysitter hit `enqueuePullRequest` → `UNPROCESSABLE: not authorized to push to this branch` on **#11628** (bot's own `fix/issue-6747`, APPROVED + head-checks-green), which was evicted from the merge queue by an intermittent cmd-query flake. So actions:write doesn't just block manual CI dispatch/rerun — it blocks **re-queuing approved bot fixes after a flaky merge-queue eviction**, leaving ready-to-merge fixes stuck (#11628, #11535). NOT enabling auto-merge as a workaround (that's a gated merge action). Until actions:write is restored, a maintainer must manually requeue flake-evicted PRs. **Raises the actions:write grant from "low priority" → "blocks fix-loop merge completion."**
+
+**Re-verify before relying on this** — fast-changing. Org-scoped `gh api repos/shader-slang/slang --jq '.permissions'` reflects push/contents only (not issues:write or actions:write); for actions:write the only real probe is attempting a `gh workflow run` / `gh run rerun`.
