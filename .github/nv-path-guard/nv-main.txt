@@ -110,6 +110,11 @@ assets/**
 bin/**
 migrate-v2*.sh
 nanoclaw.sh
+uninstall.sh
+
+# Upstream-tracking utility + migration skills (absorbed via sync; not overlay-owned):
+.claude/skills/claw/**
+.claude/skills/migrate-from-openclaw/**
 
 # Repo tooling (action.yml + badge for repo-tokens):
 repo-tokens/**
