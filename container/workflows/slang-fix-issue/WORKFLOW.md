@@ -15,7 +15,7 @@ uses:
 > [!IMPORTANT]
 > A triage handoff means _fix it_, not "ask how." Find root cause and resolve; propose the fix as a draft PR. The human reviews the artifact, not the plan.
 
-**Draft PR mode.** Push your `fix/issue-<n>` branch to a remote the bot can write to — `origin` when it has upstream push rights, else the `slang-coworkers/slang` fork — and open a **draft PR** against `shader-slang/slang:master`. Hard limits: never merge, mark ready-for-review, or push to protected branches (`master`/release). Post on a public issue/PR thread only when the inbound carried `<github-post-authorized />`.
+**Draft PR mode.** Push your `fix/issue-<n>` branch to a remote the bot can write to — `origin` when it has upstream push rights, else the `slang-coworkers/slang` fork — and open a **draft PR** against `shader-slang/slang:master`. Hard limits: never merge, mark ready-for-review, or push to protected branches (`master`/release). Post on the issue/PR thread once verified at HEAD.
 
 **Patch fallback.** Only when the push is genuinely *rejected* (no writable remote, branch protection, revoked token) → attach the `.patch` to the reviewer message; Reviewer A still runs, the second reviewer is skipped (no PR to review).
 
@@ -24,13 +24,15 @@ uses:
 2. **Step 7** — deliver the fix as a **reviewable PR into the author's PR branch** (the slangbot model — never push commits onto their branch unsolicited). Two tiers:
    - **Slangbot-style cross-fork PR** (preferred): push the branch to the `slang-coworkers/slang` fork, then open a PR **into the author's PR branch** using the **`nv-slang-bot` user PAT** (a *user* token — the GitHub App cannot open a PR into a contributor fork; that returns `Resource not accessible by integration`). The author reviews and one-click merges:
      ```bash
-     # push branch to our fork, then (user-PAT auth) open the PR into the author's head ref
-     gh pr create --repo <author-owner>/slang --base <author-head-ref> \
-       --head slang-coworkers:fix/issue-<n> --title "Fix for #<n>: <title>" --body "$PR_BODY"
+     # Use the REST API, NOT `gh pr create` — the latter goes via GraphQL, which gets the
+     # App token (403 cross-fork); REST `/repos/*/pulls` gets the user PAT that can open it.
+     gh api -X POST repos/<author-owner>/slang/pulls \
+       -f title="Fix for #<n>: <title>" -f head="slang-coworkers:fix/issue-<n>" \
+       -f base="<author-head-ref>" -f body="$PR_BODY" --jq '.html_url'
      ```
-     `report_pr_created` the new PR, and comment its link on the original PR. (Same-repo PR → push to `origin`, `--base <author-head-ref>` directly.)
-   - **Patch-comment fallback** (until the `nv-slang-bot` user PAT is provisioned, or if the PR open is rejected): post the diff + a `git apply` one-liner as a comment on the original PR (authorized by `<github-post-authorized />`). Do **not** push to the author's branch, and do **not** open a master-based carrier PR.
-3. Post back on the review thread only if the inbound carried `<github-post-authorized />`.
+     `report_pr_created` the new PR, and comment its link on the original PR. (Same-repo PR → push to `origin` and use `gh pr create --repo shader-slang/slang --base <author-head-ref> --head fix/issue-<n>` — REST is only for the cross-fork case.)
+   - **Patch-comment fallback** (until the `nv-slang-bot` user PAT is provisioned, or if the PR open is rejected): post the diff + a `git apply` one-liner as a comment on the original PR. Do **not** push to the author's branch, and do **not** open a master-based carrier PR.
+3. Post back on the review thread once verified at HEAD.
 
 **What to fix** is whatever the request names — CI failures, a reviewer's finding, or open bot review threads. Reuse `/slang-github-webhook`'s "CI failure" and "Review verdict / inline comment" handling rather than reinventing it. Unscoped ("help with this PR") → fix failing CI first, then sweep open bot review threads.
 
