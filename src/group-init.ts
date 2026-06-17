@@ -179,61 +179,61 @@ export function initGroupFilesystem(
       ensurePreCompactHook(settingsFile, initialized);
     }
 
-  // mtime-based mirror: re-copy any skill whose source tree is newer than
-  // the destination. This fixes silent skill-mirror staleness — prior
-  // copy-once-at-init left existing groups stuck on old skill versions
-  // indefinitely after upstream changes.
-  const skillsDst = path.join(claudeDir, 'skills');
-  const skillsSrc = path.join(projectRoot, 'container', 'skills');
-  if (fs.existsSync(skillsSrc)) {
-    fs.mkdirSync(skillsDst, { recursive: true });
-    for (const skill of fs.readdirSync(skillsSrc)) {
-      const src = path.join(skillsSrc, skill);
-      const dst = path.join(skillsDst, skill);
-      const existed = fs.existsSync(dst);
-      if (refreshMirror(src, dst)) {
-        initialized.push(existed ? `skills/${skill} (refreshed)` : `skills/${skill}`);
-      }
-    }
-  }
-
-  // 2b. data/v2-sessions/<id>/.claude-shared/agents/ — subagent definitions.
-  // A sibling `agent.md` inside any skill or overlay dir is copied as a
-  // subagent definition. Overlays like `codex-critique` ship both an
-  // OVERLAY.md (compose-time body) and an agent.md (runtime subagent).
-  // mtime-refreshed on each wake for the same reason as skills/.
-  const agentsDst = path.join(claudeDir, 'agents');
-  fs.mkdirSync(agentsDst, { recursive: true });
-  for (const subdir of ['skills', 'overlays']) {
-    const srcRoot = path.join(projectRoot, 'container', subdir);
-    if (!fs.existsSync(srcRoot)) continue;
-    for (const entry of fs.readdirSync(srcRoot)) {
-      const agentFile = path.join(srcRoot, entry, 'agent.md');
-      if (fs.existsSync(agentFile)) {
-        const dst = path.join(agentsDst, `${entry}.md`);
+    // mtime-based mirror: re-copy any skill whose source tree is newer than
+    // the destination. This fixes silent skill-mirror staleness — prior
+    // copy-once-at-init left existing groups stuck on old skill versions
+    // indefinitely after upstream changes.
+    const skillsDst = path.join(claudeDir, 'skills');
+    const skillsSrc = path.join(projectRoot, 'container', 'skills');
+    if (fs.existsSync(skillsSrc)) {
+      fs.mkdirSync(skillsDst, { recursive: true });
+      for (const skill of fs.readdirSync(skillsSrc)) {
+        const src = path.join(skillsSrc, skill);
+        const dst = path.join(skillsDst, skill);
         const existed = fs.existsSync(dst);
-        const srcMtime = latestMtimeMs(agentFile);
-        const dstMtime = latestMtimeMs(dst);
-        if (dstMtime < srcMtime) {
-          fs.copyFileSync(agentFile, dst);
-          initialized.push(existed ? `agents/${entry}.md (refreshed)` : `agents/${entry}.md`);
+        if (refreshMirror(src, dst)) {
+          initialized.push(existed ? `skills/${skill} (refreshed)` : `skills/${skill}`);
         }
       }
     }
-  }
 
-  // Prune mirrors for agent.md files removed upstream so stale definitions
-  // (e.g. sandbox:'read-only' from an old codex-critique) can't persist.
-  for (const existing of fs.readdirSync(agentsDst)) {
-    const name = existing.replace(/\.md$/, '');
-    const stillExists = ['skills', 'overlays'].some((sub) =>
-      fs.existsSync(path.join(projectRoot, 'container', sub, name, 'agent.md')),
-    );
-    if (!stillExists) {
-      fs.rmSync(path.join(agentsDst, existing));
-      initialized.push(`agents/${existing} (pruned orphan)`);
+    // 2b. data/v2-sessions/<id>/.claude-shared/agents/ — subagent definitions.
+    // A sibling `agent.md` inside any skill or overlay dir is copied as a
+    // subagent definition. Overlays like `codex-critique` ship both an
+    // OVERLAY.md (compose-time body) and an agent.md (runtime subagent).
+    // mtime-refreshed on each wake for the same reason as skills/.
+    const agentsDst = path.join(claudeDir, 'agents');
+    fs.mkdirSync(agentsDst, { recursive: true });
+    for (const subdir of ['skills', 'overlays']) {
+      const srcRoot = path.join(projectRoot, 'container', subdir);
+      if (!fs.existsSync(srcRoot)) continue;
+      for (const entry of fs.readdirSync(srcRoot)) {
+        const agentFile = path.join(srcRoot, entry, 'agent.md');
+        if (fs.existsSync(agentFile)) {
+          const dst = path.join(agentsDst, `${entry}.md`);
+          const existed = fs.existsSync(dst);
+          const srcMtime = latestMtimeMs(agentFile);
+          const dstMtime = latestMtimeMs(dst);
+          if (dstMtime < srcMtime) {
+            fs.copyFileSync(agentFile, dst);
+            initialized.push(existed ? `agents/${entry}.md (refreshed)` : `agents/${entry}.md`);
+          }
+        }
+      }
     }
-  }
+
+    // Prune mirrors for agent.md files removed upstream so stale definitions
+    // (e.g. sandbox:'read-only' from an old codex-critique) can't persist.
+    for (const existing of fs.readdirSync(agentsDst)) {
+      const name = existing.replace(/\.md$/, '');
+      const stillExists = ['skills', 'overlays'].some((sub) =>
+        fs.existsSync(path.join(projectRoot, 'container', sub, name, 'agent.md')),
+      );
+      if (!stillExists) {
+        fs.rmSync(path.join(agentsDst, existing));
+        initialized.push(`agents/${existing} (pruned orphan)`);
+      }
+    }
   } // end if (defaultSurfaces) — claude-shared skill/agent mirrors
 
   // 3. data/v2-sessions/<id>/agent-runner-src/ — per-group source copy (provider-agnostic — all surfaces)

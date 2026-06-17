@@ -1141,7 +1141,6 @@ export function buildMounts(
     mounts.push({ hostPath: sharedClaudeMd, containerPath: '/app/CLAUDE.md', readonly: true });
   }
 
-
   // Per-session codex state at /home/node/.codex (sessions/, memories/, etc.).
   //
   // Mounted UNIVERSALLY — not just for the codex agent provider. Two reasons:
