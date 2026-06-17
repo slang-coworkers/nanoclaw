@@ -111,6 +111,15 @@ jobs:
                 git rm -f -- "$f" >/dev/null  # nv-main deleted it - take the deletion
               fi
             done
+            # Keep dependency spec+lock paired: a resolved-to-nv-main package.json
+            # whose lockfile didn't conflict would stay at HEAD's version and break
+            # `pnpm install --frozen-lockfile`. Take nv-main's lockfile to match.
+            case " $CONFLICTS " in
+              *" package.json "*) git checkout origin/nv-main -- pnpm-lock.yaml 2>/dev/null && git add -- pnpm-lock.yaml || true ;;
+            esac
+            case " $CONFLICTS " in
+              *" container/agent-runner/package.json "*) git checkout origin/nv-main -- container/agent-runner/bun.lock 2>/dev/null && git add -- container/agent-runner/bun.lock || true ;;
+            esac
             git commit --no-edit
           done
       - uses: pnpm/action-setup@v4
