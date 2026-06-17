@@ -139,3 +139,13 @@ container/skills/welcome/**
 
 # NV-only generic workflow (not upstream):
 container/workflows/base/**
+
+# Upstream sync (ee7f8916): new infra absorbed onto nv-main.
+# Operational skill — carry agent memory across a provider switch.
+.claude/skills/migrate-memory/**
+# Container CLI-tools manifest + installer (pinned Node CLIs for the image).
+container/cli-tools.json
+container/cli-tools.test.ts
+container/install-cli-tools.sh
+# Top-level version manifest.
+versions.json

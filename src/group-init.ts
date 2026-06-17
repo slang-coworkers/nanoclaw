@@ -4,6 +4,7 @@ import path from 'path';
 import { DATA_DIR, GROUPS_DIR } from './config.js';
 import { ensureContainerConfig } from './db/container-configs.js';
 import { log } from './log.js';
+import { providerProvidesAgentSurfaces } from './providers/provider-container-registry.js';
 import type { AgentGroup } from './types.js';
 
 const DEFAULT_SETTINGS_JSON =
@@ -88,9 +89,18 @@ export function refreshMirror(src: string, dst: string): boolean {
  * agent.md siblings are kept current automatically so upstream skill
  * changes propagate without a manual refresh tool.
  */
-export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: string }): void {
+export function initGroupFilesystem(
+  group: AgentGroup,
+  opts?: { instructions?: string; provider?: string | null },
+): void {
   const projectRoot = process.cwd();
   const initialized: string[] = [];
+
+  // Default agent surfaces apply unless the group's provider declares (at
+  // registration) that it provides its own. Callers that don't know the
+  // provider omit it — unregistered/unknown names report no capabilities,
+  // so the default surfaces are written, exactly as before this seam.
+  const defaultSurfaces = !providerProvidesAgentSurfaces(opts?.provider);
 
   // 1. groups/<folder>/ — group memory + working dir
   const groupDir = path.resolve(GROUPS_DIR, group.folder);
@@ -112,16 +122,40 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
   // groups/<folder>/CLAUDE.md is composed by composeCoworkerClaudeMd in
   // container-runner.ts on every wake — for both 'main' (flat body +
   // additive fragments) and typed coworkers (full spine). The host never
-  // hand-writes the file here. The pre-lego '.claude-global.md' symlink
-  // and '@./.claude-global.md' @-import are retired; if any install still
-  // has them, scripts/migrate-global-to-shared.ts cleans them up.
+  // hand-writes the file here.
 
-  // groups/<folder>/.instructions.md — user-owned instructions.
-  // CLAUDE.md is system-composed from templates + .instructions.md on every wake.
+  // Seed/instructions. The fork composes CLAUDE.md from templates +
+  // .instructions.md on every wake, so user instructions live in
+  // .instructions.md (the fork's surface). A creator may instead drop a
+  // provider-agnostic neutral `.seed.md`; consume it here (placement deferred
+  // to first spawn, where the DB-resolved provider is known). `opts.instructions`
+  // wins if passed inline. For a surfaces-owning (non-default, e.g. codex)
+  // provider, ALSO land the seed in the memory scaffold's conventional file so
+  // that agent reads it on its first turn (it doesn't compose .instructions.md).
+  const neutralSeedFile = path.join(groupDir, '.seed.md');
+  const seed =
+    opts?.instructions ??
+    (fs.existsSync(neutralSeedFile) ? fs.readFileSync(neutralSeedFile, 'utf-8').trimEnd() : undefined);
+
   const instructionsFile = path.join(groupDir, '.instructions.md');
-  if (!fs.existsSync(instructionsFile) && opts?.instructions) {
-    fs.writeFileSync(instructionsFile, opts.instructions + '\n');
+  if (!fs.existsSync(instructionsFile) && seed) {
+    fs.writeFileSync(instructionsFile, seed + '\n');
     initialized.push('.instructions.md');
+  }
+
+  if (!defaultSurfaces && seed) {
+    const seedFile = path.join(groupDir, 'memory', 'memories', 'imported-agent-memory.md');
+    if (!fs.existsSync(seedFile)) {
+      fs.mkdirSync(path.dirname(seedFile), { recursive: true });
+      fs.writeFileSync(seedFile, seed + '\n');
+      initialized.push('memory/memories/imported-agent-memory.md');
+    }
+  }
+
+  // The neutral seed is single-use — drop it once placed.
+  if (fs.existsSync(neutralSeedFile)) {
+    fs.rmSync(neutralSeedFile);
+    initialized.push('.seed.md consumed');
   }
 
   // Ensure container_configs row exists in the DB. Idempotent — no-op if
@@ -130,19 +164,20 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
   initialized.push('container_configs');
 
   // 2. data/v2-sessions/<id>/.claude-shared/ — Claude state + per-group skills
-  const claudeDir = path.join(DATA_DIR, 'v2-sessions', group.id, '.claude-shared');
-  if (!fs.existsSync(claudeDir)) {
-    fs.mkdirSync(claudeDir, { recursive: true });
-    initialized.push('.claude-shared');
-  }
+  if (defaultSurfaces) {
+    const claudeDir = path.join(DATA_DIR, 'v2-sessions', group.id, '.claude-shared');
+    if (!fs.existsSync(claudeDir)) {
+      fs.mkdirSync(claudeDir, { recursive: true });
+      initialized.push('.claude-shared');
+    }
 
-  const settingsFile = path.join(claudeDir, 'settings.json');
-  if (!fs.existsSync(settingsFile)) {
-    fs.writeFileSync(settingsFile, DEFAULT_SETTINGS_JSON);
-    initialized.push('settings.json');
-  } else {
-    ensurePreCompactHook(settingsFile, initialized);
-  }
+    const settingsFile = path.join(claudeDir, 'settings.json');
+    if (!fs.existsSync(settingsFile)) {
+      fs.writeFileSync(settingsFile, DEFAULT_SETTINGS_JSON);
+      initialized.push('settings.json');
+    } else {
+      ensurePreCompactHook(settingsFile, initialized);
+    }
 
   // mtime-based mirror: re-copy any skill whose source tree is newer than
   // the destination. This fixes silent skill-mirror staleness — prior
@@ -199,8 +234,9 @@ export function initGroupFilesystem(group: AgentGroup, opts?: { instructions?: s
       initialized.push(`agents/${existing} (pruned orphan)`);
     }
   }
+  } // end if (defaultSurfaces) — claude-shared skill/agent mirrors
 
-  // 3. data/v2-sessions/<id>/agent-runner-src/ — per-group source copy
+  // 3. data/v2-sessions/<id>/agent-runner-src/ — per-group source copy (provider-agnostic — all surfaces)
   const groupRunnerDir = path.join(DATA_DIR, 'v2-sessions', group.id, 'agent-runner-src');
   if (!fs.existsSync(groupRunnerDir)) {
     const agentRunnerSrc = path.join(projectRoot, 'container', 'agent-runner', 'src');

@@ -31,7 +31,7 @@ import {
   getMessagingGroupByPlatform,
   createMessagingGroupAgent,
 } from '../../db/messaging-groups.js';
-import { getContainerConfig } from '../../db/container-configs.js';
+import { getContainerConfig, updateContainerConfigScalars } from '../../db/container-configs.js';
 import { getSession } from '../../db/sessions.js';
 import { wakeContainer } from '../../container-runner.js';
 import { initGroupFilesystem } from '../../group-init.js';
@@ -279,9 +279,23 @@ async function performCreateAgent(
   };
   createAgentGroup(newGroup);
 
-  initGroupFilesystem(newGroup, {});
+  // A subagent inherits its creator's provider. Provider is a DB property; the
+  // child is created provider-agnostic, then stamped with the parent's runtime
+  // so a single-provider install (e.g. codex-only, where claude isn't
+  // authenticated) doesn't spawn a child on a runtime it can't reach. The
+  // operator can still flip a child later with `ncl groups config update
+  // --provider`. claude (the built-in default) leaves the column unset.
+  const parentProvider = getContainerConfig(sourceGroup.id)?.provider ?? undefined;
+  // Pass provider (for the provider-aware scaffold) but NOT instructions — the
+  // fork writes .instructions.md itself below, so passing instructions here too
+  // would double-write the seed.
+  initGroupFilesystem(newGroup, { provider: parentProvider });
+  if (parentProvider) {
+    updateContainerConfigScalars(newGroup.id, { provider: parentProvider });
+  }
 
-  // Resolve instruction overlay — prepended to .instructions.md
+  // Resolve instruction overlay — prepended to .instructions.md (the fork's
+  // instruction surface; CLAUDE.md is system-composed from templates + it).
   const overlayName = (content.instructionOverlay as string) || 'thorough-analyst';
   const overlayDir = path.join(GROUPS_DIR, 'templates', 'instructions');
   const overlayPath = path.join(overlayDir, `${overlayName}.md`);
@@ -297,7 +311,7 @@ async function performCreateAgent(
   }
 
   // Always write to .instructions.md — CLAUDE.md is system-composed from
-  // templates + .instructions.md on every container wake
+  // templates + .instructions.md on every container wake.
   const parts: string[] = [];
   if (overlayContent) parts.push(overlayContent);
   if (instructions) parts.push(instructions);
