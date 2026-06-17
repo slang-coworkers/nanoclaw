@@ -2157,6 +2157,44 @@ interface ActivityBucket {
   inbound: number;
   outbound: number;
 }
+// Funnel recompute state. The funnel makes ~180 GitHub calls and takes ~3 min,
+// so the dashboard "Refresh" button kicks off an async recompute rather than
+// holding the request. `funnelRefresh.running` guards against concurrent runs
+// (button spam, or a click that overlaps the 6-hourly cron). We shell out to
+// scripts/funnel-cron.sh — the single source of truth for the proxy-stripping
+// env and logging the cron already relies on — instead of duplicating it here.
+let funnelRefresh: {
+  running: boolean;
+  startedAt: number | null;
+  finishedAt: number | null;
+  lastError: string | null;
+} = { running: false, startedAt: null, finishedAt: null, lastError: null };
+
+function startFunnelRefresh(): { started: boolean } {
+  if (funnelRefresh.running) return { started: false };
+  funnelRefresh = {
+    running: true,
+    startedAt: Date.now(),
+    finishedAt: null,
+    lastError: null,
+  };
+  const script = join(getProjectRoot(), 'scripts', 'funnel-cron.sh');
+  // The script sets PATH, HOME, strips proxy vars, cds to the repo, and writes
+  // reports/funnel.json + logs/funnel-cron.log. We just launch it detached.
+  const child = exec(
+    `bash ${JSON.stringify(script)}`,
+    { timeout: 8 * 60 * 1000, maxBuffer: 16 * 1024 * 1024 },
+    (err) => {
+      funnelRefresh.running = false;
+      funnelRefresh.finishedAt = Date.now();
+      funnelRefresh.lastError = err ? String(err.message || err) : null;
+    },
+  );
+  // Don't let a slow refresh keep the event loop / process alive on shutdown.
+  child.unref?.();
+  return { started: true };
+}
+
 let activityDataCache: ActivityBucket[] | null = null;
 
 function refreshActivityData(): void {
@@ -4631,6 +4669,33 @@ export async function handleRequest(
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'funnel snapshot unreadable' }));
     }
+    return;
+  }
+
+  // API: kick off a funnel recompute. The recompute is ~180 GitHub calls / ~3
+  // min, so this returns 202 immediately and the work runs in the background;
+  // the client polls GET /api/funnel/status and re-fetches /api/funnel when it
+  // sees running flip back to false. Re-entrant clicks are no-ops (409).
+  if (req.method === 'POST' && url.pathname === '/api/funnel/refresh') {
+    if (!requireAuth(req, res)) return;
+    const { started } = startFunnelRefresh();
+    res.writeHead(started ? 202 : 409, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ running: funnelRefresh.running, started }));
+    return;
+  }
+
+  // API: funnel recompute status — polled by the client while a refresh runs.
+  if (url.pathname === '/api/funnel/status') {
+    if (!requireAuth(req, res)) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        running: funnelRefresh.running,
+        startedAt: funnelRefresh.startedAt,
+        finishedAt: funnelRefresh.finishedAt,
+        lastError: funnelRefresh.lastError,
+      }),
+    );
     return;
   }
 

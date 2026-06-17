@@ -282,6 +282,63 @@ function switchToTab(tabId) {
 // the funnel; if no snapshot exists the endpoint 404s with a refresh hint.
 // Loaded under Admin > Funnel; loadAdminPanel() guards first-load via
 // adminState.loaded and the Refresh button clears that entry to force a reload.
+// Kick off a server-side funnel recompute (~3 min, ~180 GitHub calls), poll for
+// completion, then reload the panel from the freshly-written snapshot. The
+// button shows progress and is disabled while the recompute runs.
+async function triggerFunnelRefresh(btn) {
+  const stamp = document.getElementById('funnel-stamp');
+  const label = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Refreshing…';
+  }
+  try {
+    const res = await fetch('/api/funnel/refresh', { method: 'POST' });
+    // 409 = a recompute (or the cron) is already running; just poll it.
+    if (!res.ok && res.status !== 409) throw new Error('refresh failed');
+  } catch {
+    if (stamp) stamp.textContent = 'refresh failed to start';
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+    return;
+  }
+  // Poll status until the run finishes (or we give up after ~8 min).
+  const deadline = Date.now() + 8 * 60 * 1000;
+  const poll = async () => {
+    let st;
+    try {
+      st = await (await fetch('/api/funnel/status')).json();
+    } catch {
+      st = null;
+    }
+    if (st && !st.running) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = label;
+      }
+      if (st.lastError) {
+        if (stamp) stamp.textContent = 'refresh failed — see logs/funnel-cron.log';
+      } else {
+        adminState.loaded.delete('funnel');
+        loadFunnel();
+      }
+      return;
+    }
+    if (Date.now() > deadline) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = label;
+      }
+      if (stamp) stamp.textContent = 'refresh still running — reload shortly';
+      return;
+    }
+    setTimeout(poll, 4000);
+  };
+  setTimeout(poll, 4000);
+}
+
 async function loadFunnel() {
   const board = document.getElementById('funnel-board');
   const detail = document.getElementById('funnel-detail');
@@ -4035,6 +4092,13 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
     const refreshBtn = e.target.closest('.admin-refresh-btn');
     if (refreshBtn) {
       const name = refreshBtn.dataset.load;
+      // The funnel snapshot is a cached file (~180 GitHub calls to rebuild), so
+      // a plain reload only re-reads the cache. Trigger a real recompute, then
+      // reload once it finishes. Other panels reload from their live source.
+      if (name === 'funnel') {
+        triggerFunnelRefresh(refreshBtn);
+        return;
+      }
       adminState.loaded.delete(name);
       loadAdminPanel(name);
     }
