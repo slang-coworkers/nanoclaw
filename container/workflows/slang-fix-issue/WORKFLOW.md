@@ -30,7 +30,7 @@ uses:
        -f title="Fix for #<n>: <title>" -f head="slang-coworkers:fix/issue-<n>" \
        -f base="<author-head-ref>" -f body="$PR_BODY" --jq '.html_url'
      ```
-     `report_pr_created` the new PR, and comment its link on the original PR. (Same-repo PR → push to `origin`, then the same `gh api .../pulls` with `head="fix/issue-<n>"` and `base="<author-head-ref>"`.)
+     `report_pr_created` the new PR, and comment its link on the original PR. (Same-repo PR → push to `origin` and use `gh pr create --repo shader-slang/slang --base <author-head-ref> --head fix/issue-<n>` — REST is only for the cross-fork case.)
    - **Patch-comment fallback** (until the `nv-slang-bot` user PAT is provisioned, or if the PR open is rejected): post the diff + a `git apply` one-liner as a comment on the original PR. Do **not** push to the author's branch, and do **not** open a master-based carrier PR.
 3. Post back on the review thread once verified at HEAD.
 
