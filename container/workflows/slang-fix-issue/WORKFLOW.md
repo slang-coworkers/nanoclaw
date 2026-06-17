@@ -24,11 +24,13 @@ uses:
 2. **Step 7** — deliver the fix as a **reviewable PR into the author's PR branch** (the slangbot model — never push commits onto their branch unsolicited). Two tiers:
    - **Slangbot-style cross-fork PR** (preferred): push the branch to the `slang-coworkers/slang` fork, then open a PR **into the author's PR branch** using the **`nv-slang-bot` user PAT** (a *user* token — the GitHub App cannot open a PR into a contributor fork; that returns `Resource not accessible by integration`). The author reviews and one-click merges:
      ```bash
-     # push branch to our fork, then (user-PAT auth) open the PR into the author's head ref
-     gh pr create --repo <author-owner>/slang --base <author-head-ref> \
-       --head slang-coworkers:fix/issue-<n> --title "Fix for #<n>: <title>" --body "$PR_BODY"
+     # Use the REST API, NOT `gh pr create` — the latter goes via GraphQL, which gets the
+     # App token (403 cross-fork); REST `/repos/*/pulls` gets the user PAT that can open it.
+     gh api -X POST repos/<author-owner>/slang/pulls \
+       -f title="Fix for #<n>: <title>" -f head="slang-coworkers:fix/issue-<n>" \
+       -f base="<author-head-ref>" -f body="$PR_BODY" --jq '.html_url'
      ```
-     `report_pr_created` the new PR, and comment its link on the original PR. (Same-repo PR → push to `origin`, `--base <author-head-ref>` directly.)
+     `report_pr_created` the new PR, and comment its link on the original PR. (Same-repo PR → push to `origin`, then the same `gh api .../pulls` with `head="fix/issue-<n>"` and `base="<author-head-ref>"`.)
    - **Patch-comment fallback** (until the `nv-slang-bot` user PAT is provisioned, or if the PR open is rejected): post the diff + a `git apply` one-liner as a comment on the original PR (authorized by `<github-post-authorized />`). Do **not** push to the author's branch, and do **not** open a master-based carrier PR.
 3. Post back on the review thread only if the inbound carried `<github-post-authorized />`.
 
