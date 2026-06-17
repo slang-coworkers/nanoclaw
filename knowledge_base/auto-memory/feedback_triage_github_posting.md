@@ -1,9 +1,24 @@
 ---
-name: Don't instruct triage to post its verdict to GitHub
-description: On a fresh triage dispatch, omit any "post to GitHub" instruction; the triage role is read-only by default and interim verdicts can be wrong
+name: Post VERIFIED triage verdicts to GitHub (verified ⇒ post; only unverified/interim are held)
+description: Verified triage verdicts (HEAD-checked + repro/claims-confirmed) SHOULD be posted to GitHub as the durable artifact — general policy per operator 2026-06-16. Hold ONLY genuinely-unverified/interim verdicts or a maintainer design-call where an artifact already exists.
 type: feedback
 originSessionId: b547691e-3292-49b1-87fe-5f5c17f4a532
 ---
+
+## [SUPERSEDING DEFAULT] 2026-06-16 operator directive — verified verdicts POST, generally
+
+dashboard-admin, after catching me holding 7 verified lego-orch triage verdicts off GitHub: **"Yes [post them], and that remains true for all other issues as well in general. Update your standing memory to allow that."**
+
+**New default: a VERIFIED triage verdict is posted to GitHub as the durable artifact — proactively, no per-instance authorization needed** (consistent with the Jun-8 GitHub-is-primary + Jun-15 be-proactive-artifact directives). "Verified" = repro reproduced OR claims checked against actual repo HEAD (git merge-base). This applies even to **maintainer-assigned** issues and **relayed/triage-input** issues — the root-cause + fix-recommendation is useful to the owner; don't withhold it as mere internal relay.
+
+**HOLD only in two cases:** (1) the verdict is genuinely **unverified / interim / speculative** (the #11483 failure mode — a classification on a stale checkout) — verify first, then post; (2) a **maintainer design-call** where an artifact already exists and a fresh bot interim reply would pre-empt the human decision (e.g. #11505's A/B/C options already posted).
+
+**Still gated (unchanged):** `gh pr ready` flips and **merges** — those remain operator/maintainer-only. Comment hygiene still governs HOW (edit-if-self when nv-slang-bot was last poster; new comment otherwise).
+
+Everything below is the PRIOR, more-conservative framing — retained for the #11483 / token-gate history, but the default above wins: verified ⇒ post.
+
+---
+
 When dispatching a fresh issue to a triage-role coworker (slang-triager, slangpy-triage, etc.), do **not** add an instruction to post the triage verdict/classification to GitHub. The triage role is read-only on GitHub by default.
 
 **Why:** On shader-slang/slang#11483 my dispatch included "Post the triage outcome to GitHub per the usual observability rule." Triage posted a P1 SIGSEGV-crash-on-HEAD classification that turned out to be a phantom — its checkout (b305a4df4) and tested binary (built 5377f3e02) both predated PR #11211's fix commit aaa5f89dd, which already fixed the crash on master. A public retraction comment was then required on the upstream issue. The observability rule's GitHub-comment-required events are *terminal* states (PR opened, resolved-without-PR, blocked, external-handoff). An interim triage classification forwarded internally to fixer is none of those, so the post was premature.
