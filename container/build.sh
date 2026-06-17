@@ -1,10 +1,11 @@
 #!/bin/bash
 # Build the NanoClaw agent container image.
 #
-# Reads one optional build flag from ../.env:
+# Reads optional build flags from ../.env:
 #   INSTALL_CJK_FONTS=true   — add Chinese/Japanese/Korean fonts (~200MB)
+#   ENABLE_GPU=1             — add CUDA toolkit + Vulkan loader + GLVND (~multi-GB)
 # setup/container.ts reads the same file, so both build paths stay in sync.
-# Callers can also override by exporting INSTALL_CJK_FONTS directly.
+# Callers can also override by exporting either var directly.
 
 set -e
 
@@ -24,6 +25,9 @@ CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-docker}"
 # Caller's env takes precedence; fall back to .env.
 if [ -z "${INSTALL_CJK_FONTS:-}" ] && [ -f "../.env" ]; then
     INSTALL_CJK_FONTS="$(grep '^INSTALL_CJK_FONTS=' ../.env | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')"
+fi
+if [ -z "${ENABLE_GPU:-}" ] && [ -f "../.env" ]; then
+    ENABLE_GPU="$(grep '^ENABLE_GPU=' ../.env | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')"
 fi
 
 BUILD_ARGS=()
