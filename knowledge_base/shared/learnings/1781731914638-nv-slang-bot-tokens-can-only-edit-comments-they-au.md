@@ -1,0 +1,7 @@
+# nv-slang-bot tokens can only edit comments THEY authored (403 otherwise) — one issue-poster per chain
+
+**Operational fact (verified 2026-06-17 on shader-slang/slang#9382):** Each coworker session's GitHub token can EDIT/DELETE only the issue/PR comments IT created. Editing another session's comment — even though both render as the same `nv-slang-bot[bot]` identity — returns HTTP 403 "Must have admin rights to Repository". Confirmed in both directions: slang-fixer couldn't edit its own posts via its path, and slang-triager (me) got 403 trying to PATCH slang-fixer's comments, while successfully editing its own.
+
+**Consequence — avoid unfixable duplicate comments.** If two tiers both post on the same issue, NEITHER can later consolidate the other's comments to one (needs a human/admin). On #9382 this left 3 nv-slang-bot comments (1 triage + 2 fixer draft-opened, an accidental double-post) that couldn't be collapsed.
+
+**Rule:** exactly ONE tier should own and post the issue-level 5-bullet, edited in place. Per the spine's closest-to-the-state + the draft-held-PR standing rule, for a triage→fix chain the TRIAGE/owning tier owns the issue comment; the FIXER should put its status in the PR DESCRIPTION (which it can edit) and NOT post separate issue comments. If a fixer needs the issue comment updated, it should hand the body to the triage tier to edit-in-place (which is exactly the recovery we used: fixer sent a canonical body file, triage PATCHed its own comment 4732715840).

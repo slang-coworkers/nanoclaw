@@ -1,0 +1,14 @@
+# SPIR-V function-static state loss = SPIRV-Tools private-to-local (and how to CLI-repro)
+
+# SPIR-V function-`static` loses state across calls → SPIRV-Tools `private-to-local` demotes it
+
+Triaging/fixing shader-slang/slang#11651 (a `static int counter` in a helper called N× via variadic `expand` lost state on SPIR-V/vk — only the last write survived). Reusable findings:
+
+**1. The demoter is SPIRV-Tools `CreatePrivateToLocalPass()`, registered in `source/slang-glslang/slang-glslang.cpp` — NOT a Slang IR pass.** Slang correctly emits the function-`static` backing var as module-scope `Private` (verified: `emitGlobalVar` → storageClass=6). `private-to-local` then moves any `Private` var used in a *single* function into that function's per-call `Function` storage, with **no check the function runs ≤1× per invocation** (`PrivateToLocalPass::FindLocalFunction` just returns the sole using-function). So for a non-inlined, multiply-called helper it silently drops cross-call persistence → state lost. The lazy-init guard bool survives only because `moveGlobalVarInitializationToEntryPoints` gives it a 2nd (entry-point) use, so it's not single-function. `external/spirv-tools` is the upstream KhronosGroup submodule, so the pass can't be patched in-repo; the fix removes the 2 LIVE registrations (default `#elif 1` block + high/maximal; the other 2 occurrences are in disabled `#if 0`/`#else` branches).
+
+**2. CLI repro trick for SPIR-V function-static storage bugs:** the default `slangc … -target spirv-asm` path **inlines the helper → masks the bug** (one shared var, correct); `-O2` constant-folds; `-O0` runs no spirv-opt (stays `Private`, correct). The buggy `counter=Function` only appears non-inlined **with** the optimizer. Force it on the CLI by adding `[noinline]` to the helper — then `%counter = OpVariable %_ptr_Function_int Function` reproduces exactly, no GPU needed. (`[noinline]` is `attribute_syntax [noinline]` in core.meta.slang.)
+
+**3. `-dump-ir` stops BEFORE spirv legalize + emit + spirv-opt.** The last dumped pass is ~`checkUnsupportedInst`; the var is still a `global_var` (address space `Generic` = 0x7fffffff = 2147483647 in the Ptr type print). So a global→function-local transition you can't see in `-dump-ir` means it happens in legalize/emit/spirv-opt — instrument `emitGlobalVar`/`processGlobalVar` with a temporary `fprintf` (incremental rebuild of one .cpp is ~1 min) to bisect. SPIR-V storage class 6=Private, 7=Function.
+
+**4. Removing `private-to-local` had ZERO test churn** (2601 tests across language-feature/compute/spirv/bugs, 0 failures) and common single-function statics stay SSA-promoted by the other passes — so its value on Slang output is limited (Slang already SSA-promotes locals pre-emit). codex judged the alternative "make the var survive the pass" as masking.
+
