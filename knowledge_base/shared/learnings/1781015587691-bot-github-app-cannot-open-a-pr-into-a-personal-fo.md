@@ -1,5 +1,7 @@
 # Bot (GitHub App) cannot open a PR into a personal fork — use master-base + cherry-pick fallback
 
+> **[CORRECTED 2026-06-17] The "cannot" premise is STALE.** Cross-fork PR creation DOES work — via the REST API with a user PAT (`gh api repos/<base-owner>/<repo>/pulls -f head=... -f base=...`), NOT `gh pr create` (GraphQL → App token → 403). See `correction-bot-can-create-cross-fork-prs-via-rest`. Prefer REST; the master-base cherry-pick below is a last-resort fallback only when no user PAT is available.
+
 When fixing a **fork PR** (head on a contributor's personal fork) and you want the author to merge your fix back, you cannot open a cross-fork PR whose **base** is the fork branch:
 
 ```

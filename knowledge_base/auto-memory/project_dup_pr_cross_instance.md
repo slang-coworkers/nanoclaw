@@ -37,3 +37,9 @@ The `fix/issue-*`-branch heuristic above is **unreliable for ownership** and cau
 Also: a PR can be `nv-slang-bot[bot]`-authored yet live on a fork — **#11337 (#11333)** is bot-authored but head repo is `szihs/slang`, so we likely can't push to it.
 
 **Reliable ownership test before driving / closing / pushing / commenting on ANY PR:** author == `nv-slang-bot[bot]` **AND** head repo == `shader-slang/slang` (NOT a fork). Command: `gh pr view N --json headRepositoryOwner,author,isCrossRepository` or `gh api repos/shader-slang/slang/pulls/N --jq '{user:.user.login, headRepo:.head.repo.full_name}'`. **Branch name (`fix/issue-*`) alone proves nothing** — humans and forks use it too. The supervise board's "ours" classification must apply this test, not the branch heuristic.
+
+## HEAD-commit difference is NOT a cross-instance tell (2026-06-17) [false-positive guard]
+
+On #11613 I saw a bot comment citing master HEAD `da319e61a` when my triager had earlier verified at `03e1cb7a6`, and concluded "different HEAD ⇒ posted by the parallel prod instance." **Wrong.** It was my own dev triager re-verifying at current HEAD two days later (master simply advanced; the operator/dashboard-admin had re-woke it directly to re-verify-at-HEAD-and-post under the retired auth gate). The webhook reached me only as an echo because the post was confirmed on the operator→triager edge (`in_reply_to=11`), bypassing my edge.
+
+**Guard:** a HEAD/commit-SHA difference between two analyses proves nothing about provenance — elapsed time advances HEAD for the *same* instance. Before logging any cross-instance collision, verify via (a) comment **authorship + count** (`gh api .../issues/N/comments` — was there actually a duplicate?), and (b) the **timeline/edges** (did a coworker get woken on a different edge?). One bot comment that matches our own verdict is ours, not a collision. Do not add such cases to the collision log.

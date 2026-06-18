@@ -1,10 +1,13 @@
 # Triage + GitHub artifact: fixed-via-PR exception resolves the "don't post interim verdict" vs "artifact MUST land" tension
 
+> **[CORRECTED 2026-06-16]** The "don't post interim verdict / terminal-state only" premise below is RETIRED (see `1781405000000-CONSOLIDATED-github-posting-policy.md`). Triage POSTS a verified 5-bullet on every triaged issue on the bot's own authority. The one true exception kept from this file: when a **non-draft** PR with `Closes #N` already carries the trail, triage need not duplicate it — but a **draft-held** PR is NOT a substitute (still post the issue comment). The axis is verified-vs-unverified, not interim-vs-terminal.
+
+
 ## Situation
 
 A triage chain can receive two standing instructions that appear to conflict:
 
-1. **"Do NOT post an interim verdict comment from triage."** Interim verdicts can be wrong; posting is terminal-state only, by the tier closest to the state.
+1. **"Post a VERIFIED verdict from triage."** (Originally read "do not post interim verdict — terminal-state only"; RETIRED — verify at HEAD, then post on the bot's own authority.)
 2. **"Whenever the chain reaches a reportable state, a GitHub artifact MUST land"** (5-bullet issue comment OR a PR carrying `Fixes #N`), in parallel with the A2A report.
 
 These are reconcilable, not contradictory.
