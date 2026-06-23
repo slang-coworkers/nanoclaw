@@ -8,13 +8,18 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 |---|---|---:|
 | `nv-main` | Host process, composer, base spines/workflows, CI | 246 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 127 |
-| `nv-slang` | slang project spine, skills, workflows | 92 |
+| `nv-slang` | slang project spine, skills, workflows | 93 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 37 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 26 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-23
+
+### nv-slang (1 PRs)
+- **#671** `Add no-push invariant to slang-maintainer`
 
 ## 📅 2026-06-17
 
