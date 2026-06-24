@@ -67,7 +67,6 @@ slang-maintainer:
     - container/spines/slang/invariants/no-push.md
   skills:
     - slang-maintainer-tools
-    - slang-pr-report
   workflows:
     - slang-maintain
 
