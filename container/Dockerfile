@@ -89,11 +89,19 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/*
 
 # GPU packages: CUDA toolkit, Vulkan, X11/GL (only when ENABLE_GPU=1)
+# libglvnd0 is load-bearing for Vulkan: the nvidia container runtime injects
+# the driver (nvidia_icd.json + libGLX_nvidia.so.0) at runtime, but that ICD's
+# vk_icdGetInstanceProcAddr returns NULL for vkCreateInstance unless the GLVND
+# dispatch libs (libGLdispatch.so.0) are present — yielding a confusing
+# ERROR_INCOMPATIBLE_DRIVER / "found no drivers". It's pulled in transitively
+# by libgl1-mesa-dev today; list it explicitly so a future dep change can't
+# silently break GPU Vulkan.
 RUN if [ "$ENABLE_GPU" = "1" ]; then \
       apt-get update && apt-get install -y \
         cuda-toolkit-12-6 \
         libvulkan1 \
         libvulkan-dev \
+        libglvnd0 \
         libx11-dev \
         libxrandr-dev \
         libgl1-mesa-dev \
