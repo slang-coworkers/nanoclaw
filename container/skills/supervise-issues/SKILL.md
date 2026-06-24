@@ -243,10 +243,20 @@ The fixer workflow GCs its worktree when a `CLOSED`/`MERGED` webhook arrives. Bu
 
 **[MUST NOT] Never `git worktree remove` from the supervisor session.** Worktrees live in each *fixer's* filesystem, not yours, and cross-deletes have killed active builds. The supervisor *detects and dispatches*, it does not delete.
 
+**[MUST] Disk-pressure check — EVERY tick, BEFORE the per-chain GC pass below.** The worktree volume is mounted read-only into your container at `/workspace/extra/ephemeral` (host `/ephemeral`, where every fixer's `wt-*` lives). **Do NOT trust `df -h /workspace`** — your own `/workspace` is on a separate small disk (`/dev/vda1`) that always looks healthy; the fixers' worktree volume (`/dev/vdb`) is the one that fills and blocks every fixer. Read the real one:
+```bash
+df -BG --output=avail /workspace/extra/ephemeral | tail -1 | tr -dc '0-9'   # GB free on the worktree volume
+```
+- **Always** surface `worktree-vol: <N>GB free` in the board rollup (one number, every tick).
+- **When free < 10 GB → DISK PRESSURE.** This is a first-class trigger, independent of the per-chain MERGED/idle rules below:
+  1. **Escalate to the operator NOW** (`to="orchestrator-dashboard"`): `⚠️ worktree volume /ephemeral at <N>GB free (<10GB) — dispatching GC to fixers with terminal/idle worktrees.` Never let disk pressure pass silently.
+  2. **Widen this tick's GC sweep**: run the per-chain pass below for EVERY chain whose worktree is reclaimable (PR `MERGED`/`CLOSED` for >24h, OR no PR activity >10d) and dispatch the GC a2a immediately — do **not** wait for the usual MERGED-for-24h-then-2-nudges cadence. Disk-full means nudge now.
+  3. Still **detect-and-dispatch only** — you ask each owning fixer to GC its own worktree via a2a (below). You never delete from this session, even under pressure. To see *which* `wt-*` dirs are largest/oldest (so you can name them in the nudge), read the mount: `du -sh /workspace/extra/ephemeral/prod-groups/*/wt-* 2>/dev/null | sort -rh | head`.
+
 Once per tick, for each in-flight chain whose PR (resolved via `gh pr list --head fix/issue-<num>`) is in a terminal-but-uncleaned state — `MERGED`/`CLOSED` for > 24h, or no PR activity for > 10 days while the chain still shows a `wt-` worktree — send ONE a2a to that chain's **fixer** on its canonical thread:
 > [Supervisor — worktree GC — gh-issue-X/Y-N] PR #<pr> is `<state>` (<age>); your worktree `wt-<slug>` looks abandoned. If you're done, GC it (remove the worktree + its `active-work/<slug>` dir per your workflow), then reply 'gc done'. If you're still working it, reply 'active' and I'll leave it.
 
-Track `gcRequestedAt` per chain in `supervisor-state.json`; if a chain is still flagged after 2 GC nudges with no `gc done`/`active` reply, escalate to the operator with `df -h /workspace` so they can decide (the fixer's container may be permanently gone, in which case the operator reclaims). Do not escalate disk pressure silently — a filling `/workspace` blocks every fixer.
+Track `gcRequestedAt` per chain in `supervisor-state.json`; if a chain is still flagged after 2 GC nudges with no `gc done`/`active` reply, escalate to the operator with `df -h /workspace/extra/ephemeral` (the real worktree volume — NOT `/workspace`, which is a separate always-healthy disk) so they can decide (the fixer's container may be permanently gone, in which case the operator reclaims). Do not escalate disk pressure silently — a filling worktree volume blocks every fixer.
 
 ## Scheduling
 
