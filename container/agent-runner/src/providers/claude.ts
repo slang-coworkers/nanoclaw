@@ -189,6 +189,39 @@ function formatTranscriptMarkdown(messages: ParsedMessage[], title?: string | nu
 }
 
 /**
+ * Detect a Bash command that would CLOSE a GitHub issue. Closing a
+ * contributor's issue (even a genuine duplicate of a maintainer-owned issue)
+ * is a maintainer privilege — coworkers triage and comment, they do not close.
+ * This is a deterministic backstop for the instruction-level guardrail: the
+ * #11719 regression closed an issue as a duplicate after the prose guardrail
+ * (scoped to "PRs", not issues) let it through and the orchestrator authorized
+ * it. We block the command's *content* because the close rides inside a Bash
+ * `gh` / GraphQL call, which the SDK's tool-name `disallowedTools` can't see.
+ *
+ * Covers the two paths observed in the wild:
+ *   - REST:    gh issue close … / gh api … issues/<n> -f state=closed / state_reason=…
+ *   - GraphQL: a `closeIssue(` mutation (used because REST state_reason 403s for the App token)
+ *
+ * Deliberately does NOT match `gh pr close` or `closePullRequest` — PR close is
+ * a separate surface the fixer/reviewer legitimately use. Returns the matched
+ * fragment (for the block message) or null.
+ */
+export function detectIssueClose(command: string | undefined): string | null {
+  if (!command || typeof command !== 'string') return null;
+  // GraphQL mutation: closeIssue( … ). PR equivalent is closePullRequest, which
+  // won't match this because of the trailing `(` boundary after "Issue".
+  if (/\bcloseIssue\s*\(/i.test(command)) return 'GraphQL closeIssue mutation';
+  // REST via gh CLI: `gh issue close <n>` (allow flags/`-R` between).
+  if (/\bgh\s+issue\s+close\b/i.test(command)) return 'gh issue close';
+  // REST via gh api: a PATCH to issues/<n> that sets state=closed or any
+  // state_reason. Require an issues path so we don't catch PR endpoints.
+  if (/\bgh\s+api\b/i.test(command) && /\/issues\/\d+/i.test(command) && /\bstate(_reason)?=/i.test(command)) {
+    return 'gh api issues state change';
+  }
+  return null;
+}
+
+/**
  * PreToolUse hook: record the current tool + its declared timeout so the host
  * sweep can widen its stuck tolerance while Bash is running a long-declared
  * script. Defense-in-depth: if SDK_DISALLOWED_TOOLS slips through somehow,
@@ -202,6 +235,21 @@ const preToolUseHook: HookCallback = async (input) => {
       decision: 'block',
       stopReason: `Tool '${toolName}' is not available in this environment — use the nanoclaw equivalent.`,
     } as unknown as ReturnType<HookCallback>;
+  }
+  // Backstop: no coworker closes GitHub issues. Block the close at the tool
+  // boundary regardless of what the model was told or authorized. Opt-out is a
+  // per-group env flag (unset everywhere today) so a future maintainer-grade
+  // group can be granted the capability via container config, not a code change.
+  if (toolName === 'Bash' && process.env.NANOCLAW_ALLOW_ISSUE_CLOSE !== '1') {
+    const match = detectIssueClose(i.tool_input?.command as string | undefined);
+    if (match) {
+      return {
+        decision: 'block',
+        stopReason:
+          `Closing a GitHub issue (${match}) is a maintainer-only action — coworkers triage and comment, they do not close. ` +
+          `Post your duplicate/wontfix verdict as an issue comment and leave the close to a human maintainer.`,
+      } as unknown as ReturnType<HookCallback>;
+    }
   }
   // Bash exposes its timeout via the tool_input.timeout field (ms). Any other
   // tool: no declared timeout.
