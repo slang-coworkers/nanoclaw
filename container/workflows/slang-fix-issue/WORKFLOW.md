@@ -66,7 +66,7 @@ uses:
    cd /workspace/agent/wt-{{target_slug}}
    ```
 
-   **[MUST NOT] Worktree isolation.** Sibling fixers' `wt-<other-target>/` dirs share this filesystem; you can SEE them but **never read, write, mv, rm, or `git worktree remove`** them. On disk-full, **report `blocked` to parent** with `df -h /workspace` — never reclaim space from sibling dirs.
+   **[MUST NOT] Worktree isolation.** Sibling fixers' `wt-<other-target>/` dirs share this filesystem; you can SEE them but **never read, write, mv, rm, or `git worktree remove`** them. On disk-full, **report `blocked` to parent** with `df -h /workspace/agent` (the worktree volume — a separate, larger disk than the always-healthy root mount) — never reclaim space from sibling dirs.
    - **YOU own (rw):** `wt-{{target_slug}}/`, `active-work/{{target_slug}}/`, `memory/fix-<number>.md`, `patches/fix-<number>.patch`.
    - **Shared (read-only):** `/workspace/agent/slang/` base clone — `git fetch` only.
 
