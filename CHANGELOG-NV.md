@@ -6,15 +6,26 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 246 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 250 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 127 |
-| `nv-slang` | slang project spine, skills, workflows | 93 |
+| `nv-slang` | slang project spine, skills, workflows | 94 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 37 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 26 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-24
+
+### nv-main (4 PRs)
+- **#682** `feat(agent-runner): block coworkers from closing GitHub issues`
+- **#683** `fix(supervise): proactive worktree-volume disk check via RO /ephemeral mount`
+- **#673** `fix(nv-main): honor ENABLE_GPU=1 from .env on setup/update rebuilds`
+- **#686** `fix(supervise): §8 worktree GC reaps dead-session orphans (wake + save-then-remove)`
+
+### nv-slang (1 PRs)
+- **#684** `fix(slang-fixer): report real worktree volume on disk-full (df /workspace/agent)`
 
 ## 📅 2026-06-23
 
