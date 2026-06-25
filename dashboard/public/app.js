@@ -5001,7 +5001,12 @@ function renderCwMessages() {
   if (cwState.loadingOlder) return;
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
   const approvalHtml = (cwState.pendingApprovals || []).map(renderApprovalItem).join('');
+  // Hide scheduled-task fires (kind='task', e.g. the recurring /supervise-issues
+  // tick) and other system rows by default — they repeat on every cron tick and
+  // crowd the feed. The "⚙ system" toggle in the header brings them back.
+  const systemHidden = (cwState.messages || []).filter((m) => m.kind === 'task' || m.kind === 'system').length;
   const messageHtml = cwState.messages
+    .filter((m) => cwState.showSystem || !(m.kind === 'task' || m.kind === 'system'))
     .map((m) => {
       const isOutgoing = m.direction === 'outgoing';
       // Agent-to-agent styling: inbound from another coworker gets its own class
@@ -5200,8 +5205,16 @@ function renderCwMessages() {
     </div>`;
     })
     .join('');
+  // System-row toggle: shown whenever there are hidden task/system rows (or
+  // they're currently visible), so the operator can flip them on/off. Click is
+  // handled by the delegate below.
+  const systemToggleHtml =
+    systemHidden > 0 || cwState.showSystem
+      ? `<div style="text-align:center;padding:4px"><button id="cw-system-toggle" class="admin-load-more" style="font-size:9px;opacity:0.7">${cwState.showSystem ? `⚙ hide system (${systemHidden})` : `⚙ show system (${systemHidden})`}</button></div>`
+      : '';
   if (!approvalHtml && !messageHtml) {
-    el.innerHTML = '<div class="cw-empty">No messages yet. Send a message to start.</div>';
+    el.innerHTML =
+      systemToggleHtml || '<div class="cw-empty">No messages yet. Send a message to start.</div>';
     return;
   }
   const approvalCount = (cwState.pendingApprovals || []).length;
@@ -5216,7 +5229,7 @@ function renderCwMessages() {
     cwState.messagesHasMore && cwState.messages.length > 0
       ? `<button class="admin-load-more" id="cw-messages-more"${cwState.loadingOlder ? ' disabled' : ''}>${cwState.loadingOlder ? 'Loading…' : 'Load older messages'}</button>`
       : '';
-  el.innerHTML = loadMoreHtml + messageHtml + bannerHtml;
+  el.innerHTML = loadMoreHtml + systemToggleHtml + messageHtml + bannerHtml;
 
   if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
   // Event delegation: attach once on the stable parent, survives innerHTML rebuilds
@@ -5263,6 +5276,12 @@ function renderCwMessages() {
       // The load-more branch is handled by handleLoadMore above (mousedown +
       // click). Skip it here to avoid double-firing.
       if (e.target.closest('#cw-messages-more')) return;
+      // ── System-row toggle (hide/show scheduled-task + system messages) ──
+      if (e.target.closest('#cw-system-toggle')) {
+        cwState.showSystem = !cwState.showSystem;
+        renderCwMessages();
+        return;
+      }
       // ── Copy message (#632) / shareable permalink (#635) ──
       if (handleCwMsgActionClick(e)) return;
       // ── Reply-in-thread hover button or reply-count stub ──
@@ -5943,9 +5962,10 @@ function renderCwThread() {
     // lane across all coworkers on this thread.
     if (isGhThread) {
       const tid = escAttr(anchorThreadId);
+      // Icon-only to save header space; the title tooltip carries the meaning.
       actionsHtml += t.lane
-        ? `<button class="session-icon-btn active" title="Showing all coworkers — click for single session" data-thread-lane-off="${tid}">⇄ shared</button>`
-        : `<button class="session-icon-btn" title="Show this thread across all coworkers (swim-lane)" data-thread-lane-on="${tid}">⇄ shared</button>`;
+        ? `<button class="session-icon-btn active" title="Showing all coworkers (swim-lane) — click for single session" data-thread-lane-off="${tid}">⇄</button>`
+        : `<button class="session-icon-btn" title="Show this thread across all coworkers (swim-lane)" data-thread-lane-on="${tid}">⇄</button>`;
     }
     if (!t.lane && matchingNano && matchingNano.nanoclaw_session_id) {
       const sid = escAttr(matchingNano.nanoclaw_session_id);
@@ -6090,11 +6110,17 @@ function renderCwThread() {
   // gh-issue chain reads as "orch | triager | fixer | reviewer" instead of an
   // ambiguous interleave. Each message already carries group_folder; lanes (if
   // the server sent them) fix the order and surface empty participants.
+  // Same system-row filter as the main feed: hide scheduled-task / system rows
+  // unless the toggle is on. Applies to both the lane view and the normal
+  // thread view.
+  const threadMsgs = (t.messages || []).filter(
+    (m) => cwState.showSystem || !(m.kind === 'task' || m.kind === 'system'),
+  );
   let html;
   if (t.lane) {
     const order = (t.lanes || []).map((l) => l.folder);
     const byFolder = new Map();
-    for (const m of t.messages || []) {
+    for (const m of threadMsgs) {
       const f = m.group_folder || '(unknown)';
       if (!byFolder.has(f)) byFolder.set(f, []);
       byFolder.get(f).push(m);
@@ -6119,7 +6145,7 @@ function renderCwThread() {
       })
       .join('');
   } else {
-    html = (t.messages || []).map(renderThreadMsg).join('');
+    html = threadMsgs.map(renderThreadMsg).join('');
   }
   const persistedCount = (t.messages || []).filter((m) => !m.optimistic).length;
   const loadMoreHtml =
