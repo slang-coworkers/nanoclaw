@@ -1,6 +1,6 @@
 ---
 name: Only gh pr ready + merge are operator-gated; verified comments/labels post freely
-description: SUPERSEDING (operator dashboard-admin, 2026-06-16). Verified GitHub writes (5-bullet verdicts, issue/PR comments, labels, Issue Type, replies, reactions) post on nv-slang-bot's own authority once claims are checked at repo HEAD — no `<github-post-authorized />` token needed. The ONLY operator-gated GitHub actions are `gh pr ready` (un-draft) and `gh pr merge`. The earlier "ALL user-facing writes operator-gated" framing is RETIRED.
+description: SUPERSEDING (operator dashboard-admin, 2026-06-16). Verified GitHub writes (5-bullet verdicts, issue/PR comments, labels, Issue Type, replies, reactions) post on nv-slang-bot's own authority once claims are checked at repo HEAD — no `<github-post-authorized />` token needed. Operator-gated actions: `gh pr ready` (un-draft) and `gh pr merge`. ALSO do-not-auto-execute: CLOSING issues/PRs (surface to a human maintainer — szihs correction on #11719, 2026-06-24). The earlier "ALL user-facing writes operator-gated" framing is RETIRED.
 type: feedback
 originSessionId: 7f75499a-f25d-4a2f-bcb5-6d5abebf453f
 ---
@@ -9,6 +9,8 @@ originSessionId: 7f75499a-f25d-4a2f-bcb5-6d5abebf453f
 **What posts freely (once verified at HEAD):** the triage/resolution 5-bullet, issue/PR comments, labels, Issue Type, replies, reactions. nv-slang-bot holds posting authority; the orchestrator does not need to escalate these to the operator, and the closest-to-the-state tier posts them directly. "Verified" = repro reproduced OR load-bearing claims checked against actual repo HEAD (`git merge-base`).
 
 **The ONLY operator-gated GitHub actions:** `gh pr ready` (flip a draft to ready-for-review) and `gh pr merge`. These write to the maintainer's review queue / default branch and remain operator-only — escalate via `ask_user_question` and wait; never self-authorize; if the operator times out, HOLD the flip/merge (not the comments).
+
+**ALSO do-not-auto-execute — CLOSING issues/PRs (added 2026-06-24).** Maintainer **szihs** objected on #11719 (*"You should NOT be closing issues/PR's yourself. You should always surface such requests to a human maintainer."*) after we closed it as a duplicate. The duplicate *verdict/comment* was fine — the *close* was the overreach. So: post verdicts/cross-links/labels/Type freely, but **never call `closeIssue` / `gh issue close` / close a PR.** Frame the disposition as a recommendation ("appears to be a duplicate of #X — suggest closing in favor of it"). If you already closed and a human objects, **re-open** (reversible courteous correction) and acknowledge; do not re-close or argue. See [[Do NOT autonomously close issues/PRs — surface to a human maintainer]] shared learning.
 
 **The one remaining guard — verify before posting.** Interim verdicts on a stale checkout have been wrong (#11483 retraction; #11492 mislabel). So the guard is *verify-at-HEAD*, not *ask-the-operator*: confirm file:line / API / repro / label-applicability against current HEAD, then post. A verified verdict is not held.
 
