@@ -18,6 +18,7 @@
  *   pnpm exec tsx scripts/funnel.ts --no-routed              # skip the window-bound log scan
  *   pnpm exec tsx scripts/funnel.ts --repo shader-slang/slang   # filter one repo
  *   pnpm exec tsx scripts/funnel.ts --out reports/funnel.json   # write cached snapshot
+ *   pnpm exec tsx scripts/funnel.ts --since 2026-04-10          # override window start
  *       (Phase 2: a cron/manual refresh writes the snapshot; the dashboard
  *        /api/funnel endpoint serves this cached file and never recomputes —
  *        keeps the ~180 GitHub calls out of the request path.)
@@ -88,6 +89,17 @@ const JSON_OUT = args.includes('--json');
 const SKIP_ROUTED = args.includes('--no-routed');
 const REPO_FILTER = args.includes('--repo') ? args[args.indexOf('--repo') + 1] : null;
 const OUT_PATH = args.includes('--out') ? args[args.indexOf('--out') + 1] : null;
+// --since <YYYY-MM-DD | ISO> overrides the auto-derived window start (which
+// otherwise = earliest pr_session_mappings.created_at). Accepts a bare date.
+const SINCE_OVERRIDE = (() => {
+  if (!args.includes('--since')) return null;
+  const raw = args[args.indexOf('--since') + 1];
+  if (!raw) return null;
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T00:00:00Z` : raw;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) throw new Error(`--since: unparseable date "${raw}"`);
+  return d.toISOString();
+})();
 // The funnel measures upstream issue resolution, so it scopes to the
 // shader-slang org by default. slang-coworkers/nanoclaw PRs are our OWN tooling
 // (the agent platform itself), not issues the pipeline resolves — they'd inflate
@@ -303,12 +315,16 @@ async function main() {
   //   never_engaged    — no bot comment, no bot PR
   // win-rate = bot_pr.merged / actionable, where actionable = filed − not_our_problem.
   const WINDOW_END = STAMP;
-  let windowStart = '2026-05-01T00:00:00Z';
-  try {
-    const r = db.prepare('SELECT MIN(created_at) AS m FROM pr_session_mappings').get() as { m: string | null };
-    if (r?.m) windowStart = new Date(r.m.replace(' ', 'T') + 'Z').toISOString();
-  } catch {
-    /* keep fallback */
+  // --since wins; otherwise auto-derive from the earliest tracked PR mapping,
+  // falling back to a fixed default.
+  let windowStart = SINCE_OVERRIDE ?? '2026-05-01T00:00:00Z';
+  if (!SINCE_OVERRIDE) {
+    try {
+      const r = db.prepare('SELECT MIN(created_at) AS m FROM pr_session_mappings').get() as { m: string | null };
+      if (r?.m) windowStart = new Date(r.m.replace(' ', 'T') + 'Z').toISOString();
+    } catch {
+      /* keep fallback */
+    }
   }
 
   interface IssuePart {
