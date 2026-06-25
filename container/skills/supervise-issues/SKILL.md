@@ -255,6 +255,8 @@ Once per tick, discover the reap set **from disk, not the chain list** (orphan w
 
 Save-then-remove is mandatory: even *merged*-PR worktrees often hold untracked files (observed: 9) that `remove --force` would destroy. The `wip/reap/<branch>` namespace never collides with live `fix/issue-*` nor the `gh --head` lookups. Track `gcRequestedAt` per worktree in `supervisor-state.json`; if still on disk after 2 dispatches with no `gc done`, escalate to the operator with the `du`/`df` numbers + the `wt-*` list for host-side reclaim. Never escalate disk pressure silently — a filling volume blocks every fixer.
 
+A woken long-idle fixer may reply `Error: No conversation found with session ID …` on its **first** turn — its SDK transcript was rotated away (>14d/>12MB). This is **self-healing, not a reap failure**: the runner clears the stale continuation and the host re-delivers, so the *next* turn runs the GC fresh-context (the dispatch carries the full recipe — it needs no memory). Treat a single such error as "in progress, recheck next tick," not as `gc done`; only the worktree still being on disk after 2 *clean* dispatches counts as stuck.
+
 ## Scheduling
 
 On first run, schedule yourself:
