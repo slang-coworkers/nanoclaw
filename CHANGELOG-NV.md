@@ -6,8 +6,8 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 250 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 127 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 254 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 131 |
 | `nv-slang` | slang project spine, skills, workflows | 94 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 37 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 26 |
@@ -15,6 +15,20 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-25
+
+### nv-main (4 PRs)
+- **#690** `docs(supervise): self-healing reaping guide + transcript-rotation note`
+- **#691** `fix(a2a): collapse split gh-issue/pr coworker sessions into one canonical`
+- **#693** `fix(startup): clear stale container_status before the gh-session reconcile`
+- **#695** `feat(funnel): add --since flag to override the window start`
+
+### nv-dashboard (4 PRs)
+- **#688** `feat(dashboard): add host disk usage to Admin Infrastructure panel`
+- **#692** `feat(dashboard): swim-lane shared-thread view + honor clicked session`
+- **#694** `feat(dashboard): hide scheduled-task/system rows by default + slim lane toggle`
+- **#696** `feat(dashboard): offer swim-lane on any multi-coworker thread, not just gh-*`
 
 ## 📅 2026-06-24
 
