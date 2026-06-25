@@ -501,6 +501,78 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(sources).toEqual(new Set(['sess-sender', 'sess-other']));
   });
 
+  it('two distinct sources on the same gh-issue thread COLLAPSE into one recipient session (per-message attribution preserved)', async () => {
+    const { senderSession } = seedPair();
+    createAgentGroup({
+      id: 'ag-other',
+      name: 'Other',
+      folder: 'other',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+    createDestination({
+      agent_group_id: 'ag-other',
+      local_name: 'recipient',
+      target_type: 'agent',
+      target_id: 'ag-recipient',
+      created_at: now(),
+    });
+    const otherSession: Session = {
+      id: 'sess-other',
+      agent_group_id: 'ag-other',
+      messaging_group_id: null,
+      thread_id: null,
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(otherSession);
+
+    // Both sources delegate to the recipient on the SAME canonical issue thread
+    // (e.g. triager handoff + main follow-up on shader-slang/slang#9999). Unlike
+    // the generic-thread case above, these MUST land in one session so the
+    // recipient holds one coherent chain for the issue.
+    const tid = 'gh-issue-shader-slang/slang-9999';
+    await routeAgentMessage(
+      { id: 'out-1', platform_id: 'ag-recipient', thread_id: tid, content: JSON.stringify({ text: 'from A' }) },
+      senderSession,
+    );
+    await routeAgentMessage(
+      { id: 'out-2', platform_id: 'ag-recipient', thread_id: tid, content: JSON.stringify({ text: 'from Other' }) },
+      otherSession,
+    );
+
+    const rows = getDb()
+      .prepare('SELECT id, thread_id FROM sessions WHERE agent_group_id = ?')
+      .all('ag-recipient') as Array<{ id: string; thread_id: string | null }>;
+    const threaded = rows.filter((r) => r.thread_id === tid);
+    expect(threaded).toHaveLength(1);
+
+    // The single recipient session still records WHO sent each message, via the
+    // per-message source_session_id column — this is what keeps reply routing
+    // correct (per-message, not per-session) after the collapse.
+    const recipientId = threaded[0].id;
+    const { openInboundDb } = await import('../../session-manager.js');
+    const recipientDb = openInboundDb('ag-recipient', recipientId);
+    const inbound = recipientDb
+      .prepare(
+        "SELECT source_session_id FROM messages_in WHERE channel_type = 'agent' AND thread_id = ? ORDER BY seq ASC",
+      )
+      .all(tid) as Array<{ source_session_id: string | null }>;
+    recipientDb.close();
+    expect(new Set(inbound.map((r) => r.source_session_id))).toEqual(new Set(['sess-sender', 'sess-other']));
+    // And the reply-routing source map points at this one collapsed session.
+    expect(getMessagingGroupByPlatform('agent', 'agent:ag-sender:ag-recipient')).toBeDefined();
+    expect(getMessagingGroupByPlatform('agent', 'agent:ag-other:ag-recipient')).toBeDefined();
+    expect(recipientId).toBeTruthy();
+  });
+
   it('writeSessionRouting on an a2a recipient emits platform_id=<source_ag>, not the synthetic mg', async () => {
     const { senderSession } = seedPair();
     await routeAgentMessage(
@@ -630,6 +702,161 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(allSessions).toHaveLength(1);
     expect(allSessions[0].id).toBe(session.id);
     expect(getSourceFor(session.id)).toBeUndefined();
+  });
+
+  it('gh-thread self-send: collapse resolves to the emitter session → L2 drops it (no split, no self-inbox)', async () => {
+    // On a gh-issue thread, the ^gh-(issue|pr)- collapse makes resolveSession
+    // return the canonical (here, the only) session for (agent, thread). A
+    // self-targeted a2a from that session therefore resolves to the emitter
+    // itself — L2 must drop it rather than deliver the agent's own outbound
+    // back into its own inbox or mint a split.
+    createAgentGroup({
+      id: 'ag-ghself',
+      name: 'GhSelf',
+      folder: 'ghself',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+    const ghThread = 'gh-issue-r/repo-77';
+    // Webhook-style canonical session: messaging_group_id null, on the gh thread.
+    const session: Session = {
+      id: 'sess-ghself',
+      agent_group_id: 'ag-ghself',
+      messaging_group_id: null,
+      thread_id: ghThread,
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(session);
+    initSessionFolder('ag-ghself', session.id);
+
+    await routeAgentMessage(
+      { id: 'gh-self-a2a', platform_id: 'ag-ghself', thread_id: ghThread, content: JSON.stringify({ text: 'echo' }) },
+      session,
+    );
+
+    // No split minted, no self source-mapping, and the agent's own inbox did
+    // not receive the self-targeted message.
+    const allSessions = getDb().prepare('SELECT id FROM sessions WHERE agent_group_id = ?').all('ag-ghself') as Array<{
+      id: string;
+    }>;
+    expect(allSessions).toHaveLength(1);
+    expect(getSourceFor(session.id)).toBeUndefined();
+    const { openInboundDb } = await import('../../session-manager.js');
+    const inbox = openInboundDb('ag-ghself', session.id);
+    const selfRows = inbox.prepare("SELECT COUNT(*) AS n FROM messages_in WHERE channel_type = 'agent'").get() as {
+      n: number;
+    };
+    inbox.close();
+    expect(selfRows.n).toBe(0);
+  });
+
+  it('reply routing after gh-collapse: in_reply_to lands at the correct origin even with two senders in one session', async () => {
+    // Two distinct senders deliver to the same recipient on a gh-issue thread;
+    // the collapse puts both inbounds in ONE recipient session. A reply that
+    // names a specific inbound (in_reply_to) must still route home to THAT
+    // inbound's source, proving routing is per-message, not per-session.
+    const { openInboundDb } = await import('../../session-manager.js');
+    const { senderSession } = seedPair(); // ag-sender → ag-recipient
+    createAgentGroup({
+      id: 'ag-other',
+      name: 'Other',
+      folder: 'other',
+      is_admin: 0,
+      agent_provider: null,
+      container_config: null,
+      coworker_type: null,
+      allowed_mcp_tools: null,
+      created_at: now(),
+    });
+    createDestination({
+      agent_group_id: 'ag-other',
+      local_name: 'recipient',
+      target_type: 'agent',
+      target_id: 'ag-recipient',
+      created_at: now(),
+    });
+    // ag-recipient needs a destination back to ag-sender so its reply can route.
+    createDestination({
+      agent_group_id: 'ag-recipient',
+      local_name: 'sender',
+      target_type: 'agent',
+      target_id: 'ag-sender',
+      created_at: now(),
+    });
+    const otherSession: Session = {
+      id: 'sess-other',
+      agent_group_id: 'ag-other',
+      messaging_group_id: null,
+      thread_id: null,
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(otherSession);
+    initSessionFolder('ag-other', otherSession.id);
+
+    const tid = 'gh-issue-r/repo-88';
+    await routeAgentMessage(
+      { id: 'out-A', platform_id: 'ag-recipient', thread_id: tid, content: JSON.stringify({ text: 'from sender' }) },
+      senderSession,
+    );
+    await routeAgentMessage(
+      { id: 'out-B', platform_id: 'ag-recipient', thread_id: tid, content: JSON.stringify({ text: 'from other' }) },
+      otherSession,
+    );
+
+    // One collapsed recipient session holding both inbounds.
+    const recRows = getDb()
+      .prepare("SELECT id FROM sessions WHERE agent_group_id = 'ag-recipient' AND thread_id = ?")
+      .all(tid) as Array<{ id: string }>;
+    expect(recRows).toHaveLength(1);
+    const recSession = getSession(recRows[0].id)!;
+
+    // Find the inbound row from ag-sender (out-A became an a2a-* inbound with
+    // source_session_id = sess-sender). Reply to THAT specific inbound.
+    const recInbox = openInboundDb('ag-recipient', recSession.id);
+    const senderInbound = recInbox
+      .prepare(
+        "SELECT id FROM messages_in WHERE channel_type = 'agent' AND source_session_id = 'sess-sender' ORDER BY seq ASC LIMIT 1",
+      )
+      .get() as { id: string } | undefined;
+    recInbox.close();
+    expect(senderInbound).toBeDefined();
+
+    await routeAgentMessage(
+      {
+        id: 'reply-to-sender',
+        platform_id: 'ag-sender',
+        in_reply_to: senderInbound!.id,
+        thread_id: tid,
+        content: JSON.stringify({ text: 'reply home' }),
+      },
+      recSession,
+    );
+
+    // The reply landed in sess-sender (the in_reply_to origin), NOT sess-other.
+    const senderInbox = openInboundDb('ag-sender', senderSession.id);
+    const landed = senderInbox.prepare("SELECT COUNT(*) AS n FROM messages_in WHERE channel_type = 'agent'").get() as {
+      n: number;
+    };
+    senderInbox.close();
+    const otherInbox = openInboundDb('ag-other', otherSession.id);
+    const otherLanded = otherInbox
+      .prepare("SELECT COUNT(*) AS n FROM messages_in WHERE channel_type = 'agent'")
+      .get() as { n: number };
+    otherInbox.close();
+    expect(landed.n).toBeGreaterThan(0);
+    expect(otherLanded.n).toBe(0);
   });
 
   it('reply self-loop: sourceHint pointing at recipient itself is dropped (defense-in-depth)', async () => {
