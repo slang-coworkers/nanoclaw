@@ -264,4 +264,24 @@ describe('reconcile-gh-sessions migration', () => {
     check.close();
     expect(active.n).toBe(3);
   });
+
+  it('clearing stale running/idle status (as startup does) lets the reconcile proceed', () => {
+    // Simulate an unclean shutdown: a split session left at container_status
+    // 'running' with no real container alive. The reconcile would abort...
+    const db = initDb(path.join(dataDir, 'v2.db'));
+    db.prepare("UPDATE sessions SET container_status = 'running' WHERE id = 'sess-late'").run();
+    db.prepare("UPDATE sessions SET container_status = 'idle' WHERE id = 'sess-mid'").run();
+    closeDb();
+    expect(reconcileGhSessions({ dataDir, apply: false }).abortedLive).toBe(true);
+
+    // ...but the startup stale-status reset (src/index.ts, run BEFORE the
+    // reconcile) clears running/idle → stopped, after which it proceeds.
+    const db2 = initDb(path.join(dataDir, 'v2.db'));
+    db2.prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status IN ('running', 'idle')").run();
+    closeDb();
+
+    const res = reconcileGhSessions({ dataDir, apply: true });
+    expect(res.abortedLive).toBe(false);
+    expect(res.merged).toBe(2);
+  });
 });
