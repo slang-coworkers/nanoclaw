@@ -5940,8 +5940,20 @@ function renderCwThread() {
   // The thread_id this view is anchored to: in lane mode it's parentId; for a
   // session-direct open the carried-through tile thread; else parentId.
   const anchorThreadId = t.lane ? t.parentId : t.threadId || (t.sessionDirect ? matchingNano?.thread_id || null : t.parentId);
-  // gh-issue/pr threads can span multiple coworkers — offer the swim-lane.
-  const isGhThread = typeof anchorThreadId === 'string' && /^gh-(issue|pr)-/.test(anchorThreadId);
+  // Offer the swim-lane on any thread spanning ≥2 coworkers (not just gh-*).
+  // The server's lane=1 union is thread-agnostic; the only gate is presentational.
+  // Count distinct coworkers (group_folder) with an active session on this exact
+  // thread_id from the already-loaded session list. gh-issue/pr chains are the
+  // common multi-coworker case, but worktree-cleanup / reinforcement / dashboard
+  // a2a threads fan out across coworkers too and benefit identically.
+  const laneEligible =
+    typeof anchorThreadId === 'string' &&
+    anchorThreadId.length > 0 &&
+    new Set(
+      (cachedSessions || [])
+        .filter((s) => s.thread_id === anchorThreadId && s.group_folder)
+        .map((s) => s.group_folder),
+    ).size > 1;
   if (parentLabel) {
     const labelText = t.lane ? anchorThreadId : sessionLabelWithTitle(sessionIdForSlug, anchorThreadId || t.parentId);
     const badge = isA2aThread
@@ -5957,10 +5969,12 @@ function renderCwThread() {
   const actionsEl = document.getElementById('cw-thread-actions');
   if (actionsEl) {
     let actionsHtml = '';
-    // Swim-lane toggle: shown on any gh-issue/pr thread. In lane mode → switch
-    // back to the single-session view; in single view → open the shared swim-
-    // lane across all coworkers on this thread.
-    if (isGhThread) {
+    // Swim-lane toggle: shown on any thread that spans ≥2 coworkers. In lane
+    // mode → switch back to the single-session view; in single view → open the
+    // shared swim-lane across all coworkers on this thread. Always show it in
+    // lane mode itself (so the toggle-off control is reachable even if the
+    // session list momentarily lags).
+    if (laneEligible || t.lane) {
       const tid = escAttr(anchorThreadId);
       // Icon-only to save header space; the title tooltip carries the meaning.
       actionsHtml += t.lane
