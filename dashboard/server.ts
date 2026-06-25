@@ -5833,6 +5833,12 @@ export async function handleRequest(
     const threadIdParam = url.searchParams.get('thread_id');
     const threadMode = threadIdParam !== null && threadIdParam.length > 0;
     const threadFilter = threadMode ? threadIdParam : null;
+    // Swim-lane mode: a shared-thread view across EVERY coworker that has a
+    // session on this thread_id (orch + triager + fixer + reviewer on one
+    // gh-issue chain), not just the `group` in the URL. Each returned row is
+    // already stamped with group_folder + session_id, so the client renders
+    // one lane per coworker. Only meaningful together with thread_id.
+    const laneMode = threadMode && url.searchParams.get('lane') === '1';
     // Session-direct mode: fetch messages from a specific session by ID,
     // bypassing messaging_group scoping. Used to view a2a-spawned sessions
     // that have messaging_group_id = NULL and thread_id = NULL.
@@ -5889,14 +5895,33 @@ export async function handleRequest(
         } catch {
           /* table may not exist in degraded test fixtures */
         }
+        // Swim-lane: every coworker holding an active session on this thread_id
+        // (not just the `group` in the URL). Falls back to the normal single-
+        // group selection if the lookup turns up nothing.
+        const laneAgRows = laneMode
+          ? (db
+              .prepare(
+                `SELECT DISTINCT ag.id, ag.folder, ag.name
+                   FROM sessions s JOIN agent_groups ag ON ag.id = s.agent_group_id
+                  WHERE s.thread_id = ? AND s.status = 'active'`,
+              )
+              .all(threadFilter) as any[])
+          : [];
         // When group is specified, load messages for that group only; otherwise load all groups
-        const agRows = group
-          ? [db.prepare('SELECT id, folder, name FROM agent_groups WHERE folder = ?').get(group) as any].filter(Boolean)
-          : (db.prepare('SELECT id, folder, name FROM agent_groups').all() as any[]);
+        const agRows =
+          laneMode && laneAgRows.length
+            ? laneAgRows
+            : group
+              ? [db.prepare('SELECT id, folder, name FROM agent_groups WHERE folder = ?').get(group) as any].filter(
+                  Boolean,
+                )
+              : (db.prepare('SELECT id, folder, name FROM agent_groups').all() as any[]);
         // Oversample when the caller paginates via `before`. Admin →
         // Messages in particular depends on getting non-trivial coverage
         // below the cutoff so hasMore accurately reflects the DB state.
-        const baseLimit = group ? limit : Math.ceil(limit / Math.max(agRows.length, 1));
+        // Lane mode gives each coworker the full limit (few participants, all
+        // wanted) rather than dividing it across the whole install.
+        const baseLimit = group || laneMode ? limit : Math.ceil(limit / Math.max(agRows.length, 1));
         const perGroupLimit = beforeParam ? baseLimit * OVERSAMPLE : baseLimit;
         for (const agRow of agRows) {
           // Scope all dashboard /api/messages queries to this coworker's
@@ -6334,8 +6359,36 @@ export async function handleRequest(
         /* ignore */
       }
     }
+    // Swim-lane participants: stable, ordered list of the coworkers on this
+    // thread so the client renders lanes deterministically (and can show an
+    // empty lane for a participant whose rows fell outside the page). Ordered
+    // by each coworker's earliest session on the thread — roughly the order
+    // they joined the chain (orch first, then triager, fixer, reviewer…).
+    let lanes: Array<{ folder: string; name: string; sessionIds: string[] }> | undefined;
+    if (laneMode && db) {
+      try {
+        const rows = db
+          .prepare(
+            `SELECT ag.folder AS folder, COALESCE(ag.name, ag.folder) AS name, s.id AS session_id,
+                    MIN(s.created_at) OVER (PARTITION BY ag.id) AS first_created
+               FROM sessions s JOIN agent_groups ag ON ag.id = s.agent_group_id
+              WHERE s.thread_id = ? AND s.status = 'active'
+              ORDER BY first_created ASC, ag.folder ASC, s.created_at ASC`,
+          )
+          .all(threadFilter) as Array<{ folder: string; name: string; session_id: string }>;
+        const byFolder = new Map<string, { folder: string; name: string; sessionIds: string[] }>();
+        for (const r of rows) {
+          const e = byFolder.get(r.folder) ?? { folder: r.folder, name: r.name, sessionIds: [] };
+          e.sessionIds.push(r.session_id);
+          byFolder.set(r.folder, e);
+        }
+        lanes = [...byFolder.values()];
+      } catch {
+        /* lanes optional */
+      }
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ messages, hasMore, threadSummaries }));
+    res.end(JSON.stringify({ messages, hasMore, threadSummaries, ...(lanes ? { lanes } : {}) }));
     return;
   }
 

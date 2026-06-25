@@ -661,6 +661,38 @@ function isA2aSession(nanoSess) {
   return !nanoSess?.messaging_group_id;
 }
 
+// Stable per-coworker lane color in the swim-lane thread view. Hash the folder
+// name to a hue so the same coworker keeps its color across renders.
+function laneColor(folder) {
+  let h = 0;
+  const s = String(folder || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffff;
+  return `hsl(${h % 360}, 60%, 55%)`;
+}
+
+// A thread_id can map to multiple sessions (a GitHub issue/PR has a webhook
+// session plus a2a-delegation sessions). The canonical one — what a /t/ deep
+// link should open and what the host's findSessionByAgentThread collapses to —
+// is the non-a2a (webhook) session, earliest-created, with id as a stable
+// tie-break (mirrors src/db/sessions.ts findSessionByAgentThread). Returns the
+// cachedSessions row, or null if none are loaded yet.
+function resolveCanonicalSessionForThread(folder, threadId) {
+  const matches = (cachedSessions || []).filter(
+    (s) => s.group_folder === folder && s.thread_id === threadId && s.nanoclaw_session_id,
+  );
+  if (!matches.length) return null;
+  matches.sort((a, b) => {
+    const aA2a = isA2aSession(a) ? 1 : 0;
+    const bA2a = isA2aSession(b) ? 1 : 0;
+    if (aA2a !== bA2a) return aA2a - bA2a; // non-a2a (webhook) first
+    const at = a.created_at || '';
+    const bt = b.created_at || '';
+    if (at !== bt) return at < bt ? -1 : 1; // earliest-created
+    return String(a.nanoclaw_session_id) < String(b.nanoclaw_session_id) ? -1 : 1; // id tie-break
+  });
+  return matches[0];
+}
+
 function sessionSlugOnly(nanoSess) {
   // Bare 3-word slug (e.g. "tender-fell-rests"), no "main · " / "thread · "
   // kind prefix. Used in the one-line display format per user feedback.
@@ -3446,6 +3478,24 @@ document.addEventListener('click', (e) => {
     return;
   }
 
+  // Swim-lane toggle in the thread header: switch the open thread between the
+  // single-session view and the shared cross-coworker swim-lane.
+  const laneOnBtn = e.target.closest('[data-thread-lane-on]');
+  if (laneOnBtn) {
+    const tid = laneOnBtn.dataset.threadLaneOn;
+    if (tid) openThread(tid, { lane: true });
+    return;
+  }
+  const laneOffBtn = e.target.closest('[data-thread-lane-off]');
+  if (laneOffBtn) {
+    const tid = laneOffBtn.dataset.threadLaneOff;
+    // Back to the canonical single session for this thread.
+    const canonical = resolveCanonicalSessionForThread(cwState.selected, tid);
+    if (canonical) openThread(canonical.nanoclaw_session_id, { sessionDirect: true, threadId: tid });
+    else openThread(tid);
+    return;
+  }
+
   // Click "Chat" button in Other Sessions — opens the Coworkers chat for that coworker,
   // and if the session has a thread_id, opens its thread panel (Slack-style). Main-session
   // clicks fall through to the root chat view and scroll it into view.
@@ -3465,7 +3515,16 @@ document.addEventListener('click', (e) => {
       if (cwState.selected !== grp) selectCoworker(grp);
       if (sessionDirect) {
         setTimeout(() => openThread(sessionDirect, { sessionDirect: true }), 400);
+      } else if (tid && sid) {
+        // Open the SPECIFIC clicked session, not every session sharing this
+        // thread_id. A GitHub issue/PR thread can have multiple coworker
+        // sessions (webhook + a2a delegations); re-broadening by thread_id
+        // interleaves them into one mixed transcript. The tile already knows
+        // exactly which session it represents (sid) — honor it. threadId is
+        // carried through for the header label and URL deep-link.
+        setTimeout(() => openThread(sid, { sessionDirect: true, threadId: tid }), 400);
       } else if (tid) {
+        // Legacy tile with no session id — fall back to the thread-union view.
         setTimeout(() => openThread(tid), 400);
       } else {
         closeThread({ silent: true });
@@ -5542,6 +5601,14 @@ function openThread(parentId, opts = {}) {
     messages: [],
     polling: null,
     sessionDirect: isSessionDirect,
+    // When a session-direct view was opened from a thread tile, remember the
+    // originating thread_id so the header can show the thread title (not a2a
+    // chrome) and the URL can keep a stable /t/ deep-link.
+    threadId: opts.threadId || null,
+    // Swim-lane mode: render the shared-thread union across all coworkers.
+    // parentId is the thread_id in this mode.
+    lane: !!opts.lane,
+    lanes: [],
     hasMore: false,
     loadingOlder: false,
   };
@@ -5717,9 +5784,14 @@ async function fetchCwThread(parentId, append = false) {
   const selectedAtStart = cwState.selected;
   try {
     if (append) cwState.thread.loadingOlder = true;
-    const queryParam = cwState.thread.sessionDirect
-      ? `session_id=${encodeURIComponent(parentId)}`
-      : `thread_id=${encodeURIComponent(parentId)}`;
+    // Swim-lane (shared-thread) view: request the cross-coworker union for this
+    // thread_id with lane=1 so the server returns every participant's rows plus
+    // the ordered `lanes` list. Otherwise the normal session/thread query.
+    const queryParam = cwState.thread.lane
+      ? `thread_id=${encodeURIComponent(parentId)}&lane=1`
+      : cwState.thread.sessionDirect
+        ? `session_id=${encodeURIComponent(parentId)}`
+        : `thread_id=${encodeURIComponent(parentId)}`;
     // Polling-refresh limit covers the currently-loaded persisted row count
     // (capped at the server's 500 ceiling). See fetchCwMessages above for
     // the S1/S2 rationale — same trade-off, capped window covers backfills
@@ -5742,6 +5814,9 @@ async function fetchCwThread(parentId, append = false) {
     // Re-check identity after the parse-await — same race protection as the
     // pre-parse guard above, repeated because res.json() is also async.
     if (!cwState.thread || cwState.thread.parentId !== parentId || cwState.selected !== selectedAtStart) return;
+    // Capture the ordered lane list for the swim-lane renderer (server only
+    // emits it in lane mode).
+    if (cwState.thread.lane && Array.isArray(data.lanes)) cwState.thread.lanes = data.lanes;
     const incoming = (data.messages || []).slice().reverse();
     // Preserve locally-pushed optimistic messages UNTIL their persisted
     // twin arrives. Heuristic: drop an optimistic row once the server
@@ -5838,32 +5913,52 @@ function renderCwThread() {
     : (cachedSessions || []).find((s) => s.thread_id === t.parentId && s.group_folder === cwState.selected);
   const sessionIdForSlug =
     matchingNano?.nanoclaw_session_id || (t.messages || []).find((m) => m.session_id)?.session_id || t.parentId;
+  // A session opened from a thread tile is sessionDirect (scoped to one exact
+  // session) but is NOT necessarily an a2a peer session — a GitHub webhook
+  // session is a normal thread. Gate a2a chrome on the real signal (a2a_peer),
+  // or a genuine peer-inspector open (sessionDirect with no originating thread).
+  const isA2aThread = !t.lane && (!!matchingNano?.a2a_peer || (t.sessionDirect && !t.threadId));
+  // The thread_id this view is anchored to: in lane mode it's parentId; for a
+  // session-direct open the carried-through tile thread; else parentId.
+  const anchorThreadId = t.lane ? t.parentId : t.threadId || (t.sessionDirect ? matchingNano?.thread_id || null : t.parentId);
+  // gh-issue/pr threads can span multiple coworkers — offer the swim-lane.
+  const isGhThread = typeof anchorThreadId === 'string' && /^gh-(issue|pr)-/.test(anchorThreadId);
   if (parentLabel) {
-    const labelText = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
-    const isA2aThread = t.sessionDirect || matchingNano?.a2a_peer;
+    const labelText = t.lane ? anchorThreadId : sessionLabelWithTitle(sessionIdForSlug, anchorThreadId || t.parentId);
     const badge = isA2aThread
       ? '<span style="font-size:7px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;margin-right:4px;vertical-align:middle;letter-spacing:.03em">a2a</span>'
-      : '';
+      : t.lane
+        ? '<span style="font-size:7px;background:#0ea5e9;color:#fff;padding:1px 4px;border-radius:3px;margin-right:4px;vertical-align:middle;letter-spacing:.03em">shared</span>'
+        : '';
     parentLabel.innerHTML = `${badge}${esc(labelText)}`;
-    parentLabel.title = `session=${sessionIdForSlug}${t.sessionDirect ? ' (a2a read-only)' : `\nthread_id=${t.parentId}`}`;
+    parentLabel.title = `${t.lane ? 'shared thread across coworkers\n' : ''}session=${sessionIdForSlug}${isA2aThread ? ' (a2a read-only)' : anchorThreadId ? `\nthread_id=${anchorThreadId}` : ''}`;
   }
   const titleEl = document.querySelector('#cw-thread-panel .cw-thread-title strong');
-  if (titleEl) titleEl.textContent = t.sessionDirect ? 'A2A Session' : 'Thread';
+  if (titleEl) titleEl.textContent = t.lane ? 'Shared thread' : isA2aThread ? 'A2A Session' : 'Thread';
   const actionsEl = document.getElementById('cw-thread-actions');
   if (actionsEl) {
-    if (matchingNano && matchingNano.nanoclaw_session_id) {
+    let actionsHtml = '';
+    // Swim-lane toggle: shown on any gh-issue/pr thread. In lane mode → switch
+    // back to the single-session view; in single view → open the shared swim-
+    // lane across all coworkers on this thread.
+    if (isGhThread) {
+      const tid = escAttr(anchorThreadId);
+      actionsHtml += t.lane
+        ? `<button class="session-icon-btn active" title="Showing all coworkers — click for single session" data-thread-lane-off="${tid}">⇄ shared</button>`
+        : `<button class="session-icon-btn" title="Show this thread across all coworkers (swim-lane)" data-thread-lane-on="${tid}">⇄ shared</button>`;
+    }
+    if (!t.lane && matchingNano && matchingNano.nanoclaw_session_id) {
       const sid = escAttr(matchingNano.nanoclaw_session_id);
       const agid = escAttr(matchingNano.agent_group_id || '');
       const tgrp = escAttr(cwState.selected || '');
       const currentTitle = matchingNano.display_title || '';
       const isPinned = !!matchingNano.pinned_at;
-      actionsEl.innerHTML =
+      actionsHtml +=
         `<button class="session-icon-btn${isPinned ? ' active' : ''}" title="${isPinned ? 'Unpin session' : 'Pin session'}" data-pin-session="${sid}" data-pin-on="${isPinned ? '0' : '1'}">📌</button>` +
         `<button class="session-icon-btn" title="Rename this session" data-rename-session="${sid}" data-rename-current="${escAttr(currentTitle)}">✎</button>` +
         `<button class="session-icon-btn" title="Open in Timeline" data-view-nanoclaw-session="${sid}" data-view-nanoclaw-agid="${agid}" data-view-session-group="${tgrp}">≡</button>`;
-    } else {
-      actionsEl.innerHTML = '';
     }
+    actionsEl.innerHTML = actionsHtml;
   }
   if (parentEl) {
     if (t.parentSnapshot) {
@@ -5880,7 +5975,7 @@ function renderCwThread() {
       const pBody = tryRenderWebhookEnvelope(pText) || md(pText);
       parentEl.innerHTML = `<div class="parent-author">${pAuthor} <span style="color:var(--text-muted);font-weight:400">· ${p.timestamp ? formatTime(p.timestamp) : ''}</span></div>
         <div class="parent-body">${pBody}</div>`;
-    } else if (t.sessionDirect) {
+    } else if (isA2aThread) {
       parentEl.innerHTML =
         '<div class="parent-body" style="color:var(--text-muted);font-style:italic">Agent-to-agent session (read-only)</div>';
     } else {
@@ -5889,8 +5984,7 @@ function renderCwThread() {
   }
   if (!msgsEl) return;
   const wasAtBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 60;
-  const html = (t.messages || [])
-    .map((m) => {
+  const renderThreadMsg = (m) => {
       // Seed rows (written by router.ts into inbound.db when a new per-thread
       // session is minted) carry a `direction` inside their parsed content to
       // override the table-based default. Without this override, an agent's
@@ -5990,8 +6084,43 @@ function renderCwThread() {
       ${actionsHtml}
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span>${dispatchBadgeHtml}</div>
       <div class="cw-msg-bubble">${body}${attachHtml}</div></div>`;
-    })
-    .join('');
+  };
+  // Swim-lane view: when a shared-thread (lane) view is active, group the
+  // chronological message stream into one labeled lane per coworker, so a
+  // gh-issue chain reads as "orch | triager | fixer | reviewer" instead of an
+  // ambiguous interleave. Each message already carries group_folder; lanes (if
+  // the server sent them) fix the order and surface empty participants.
+  let html;
+  if (t.lane) {
+    const order = (t.lanes || []).map((l) => l.folder);
+    const byFolder = new Map();
+    for (const m of t.messages || []) {
+      const f = m.group_folder || '(unknown)';
+      if (!byFolder.has(f)) byFolder.set(f, []);
+      byFolder.get(f).push(m);
+    }
+    // Folders the server listed first (joined-order), then any stragglers.
+    const folders = [...new Set([...order, ...byFolder.keys()])];
+    const laneNameByFolder = new Map((t.lanes || []).map((l) => [l.folder, l.name]));
+    html = folders
+      .map((f) => {
+        const msgs = byFolder.get(f) || [];
+        const laneLabel = esc(laneNameByFolder.get(f) || f);
+        const body = msgs.length
+          ? msgs.map(renderThreadMsg).join('')
+          : '<div class="cw-empty" style="padding:6px 10px;color:var(--text-muted);font-size:10px">(no messages on this page)</div>';
+        return `<div class="cw-lane" data-lane-folder="${escAttr(f)}">
+          <div class="cw-lane-header" style="position:sticky;top:0;z-index:1;background:var(--bg);padding:4px 8px;border-bottom:1px solid var(--border);font-size:10px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${laneColor(f)}"></span>${laneLabel}
+            <span style="color:var(--text-muted);font-weight:400">· ${msgs.length} msg</span>
+          </div>
+          <div class="cw-lane-body" style="border-left:2px solid ${laneColor(f)};margin-left:7px;padding-left:6px">${body}</div>
+        </div>`;
+      })
+      .join('');
+  } else {
+    html = (t.messages || []).map(renderThreadMsg).join('');
+  }
   const persistedCount = (t.messages || []).filter((m) => !m.optimistic).length;
   const loadMoreHtml =
     t.hasMore && persistedCount > 0
@@ -6054,7 +6183,14 @@ function syncCwUrl() {
     let hash = '';
     if (cwState.selected) {
       hash = `#/cw/${encodeURIComponent(cwState.selected)}`;
-      if (cwState.thread?.sessionDirect) hash += `/s/${encodeURIComponent(cwState.thread.parentId)}`;
+      if (cwState.thread?.lane) hash += `/l/${encodeURIComponent(cwState.thread.parentId)}`;
+      else if (cwState.thread?.sessionDirect && cwState.thread.threadId)
+        // Opened a specific session FROM a thread tile: keep the stable
+        // /t/<threadId> URL (survives the canonical session changing / bookmarks)
+        // even though we render it session-direct. Only a bare a2a/peer-inspector
+        // open (no originating thread) uses /s/<sessionId>.
+        hash += `/t/${encodeURIComponent(cwState.thread.threadId)}`;
+      else if (cwState.thread?.sessionDirect) hash += `/s/${encodeURIComponent(cwState.thread.parentId)}`;
       else if (cwState.thread) hash += `/t/${encodeURIComponent(cwState.thread.parentId)}`;
     }
     if (location.hash !== hash) history.replaceState(null, '', hash || location.pathname);
@@ -6075,7 +6211,7 @@ function applyCwUrl(retries = 8) {
     msgId = decodeURIComponent(mm[1]);
     hashStr = hashStr.slice(0, mm.index);
   }
-  const m = /^#\/cw\/([^/]+)(?:\/(t|s)\/(.+))?$/.exec(hashStr);
+  const m = /^#\/cw\/([^/]+)(?:\/(t|s|l)\/(.+))?$/.exec(hashStr);
   if (!m) return;
   switchToTab('coworkers');
   const folder = decodeURIComponent(m[1]);
@@ -6085,6 +6221,19 @@ function applyCwUrl(retries = 8) {
   if (!known && retries > 0) {
     setTimeout(() => applyCwUrl(retries - 1), 250);
     return;
+  }
+  // For a /t/<thread> deep-link we resolve the canonical session from
+  // cachedSessions. If the coworker is known but its sessions haven't loaded
+  // yet, retry rather than fall through to the thread-union open — otherwise a
+  // cold page-load on a /t/ link would land on the interleaved view. Only the
+  // /t/ path needs this; /s/ and /l/ open by id/thread directly.
+  if (mode === 't' && parentId && retries > 0) {
+    const folderForRetry = decodeURIComponent(m[1]);
+    const sessionsLoaded = (cachedSessions || []).some((s) => s.group_folder === folderForRetry);
+    if (!sessionsLoaded) {
+      setTimeout(() => applyCwUrl(retries - 1), 250);
+      return;
+    }
   }
   // selectCoworker/openThread call syncCwUrl(), which rewrites the hash to the
   // base (without /m/<id>). Restore the full permalink after each sync fires so
@@ -6096,17 +6245,35 @@ function applyCwUrl(retries = 8) {
 
   if (cwState.selected !== folder) selectCoworker(folder);
   if (parentId) {
-    if (!cwState.thread || cwState.thread.parentId !== parentId) {
-      const opts = mode === 's' ? { sessionDirect: true } : {};
-      setTimeout(() => openThread(parentId, opts), 600);
+    // A /t/<threadId> deep-link names a thread, which can map to multiple
+    // sessions (webhook + a2a). Resolve to the canonical session (prefer the
+    // non-a2a, earliest-created one) and open it session-direct so the view
+    // is one clean conversation, matching a tile click. The retry guard above
+    // waits for cachedSessions to load before we get here; only after retries
+    // are exhausted (sessions never loaded) do we fall through to the legacy
+    // thread-union open rather than blocking forever.
+    let openId = parentId;
+    let opts = mode === 's' ? { sessionDirect: true } : {};
+    if (mode === 'l') {
+      // Swim-lane deep-link: open the shared cross-coworker view directly.
+      opts = { lane: true };
+    } else if (mode === 't') {
+      const canonical = resolveCanonicalSessionForThread(folder, parentId);
+      if (canonical) {
+        openId = canonical.nanoclaw_session_id;
+        opts = { sessionDirect: true, threadId: parentId };
+      }
+    }
+    if (!cwState.thread || cwState.thread.parentId !== openId) {
+      setTimeout(() => openThread(openId, opts), 600);
     }
     // Thread permalink: openThread's first fetch is async, so wait until the
     // thread is established AND settled before paginating it to find the target.
     // openThread's own syncCwUrl runs at +600ms, so restore the anchor here too.
     if (msgId) {
-      waitForThreadThen(parentId, () => {
+      waitForThreadThen(openId, () => {
         restorePermalink();
-        ensureCwMessageLoaded(msgId, { thread: parentId });
+        ensureCwMessageLoaded(msgId, { thread: openId });
       });
     }
   } else if (msgId) {
