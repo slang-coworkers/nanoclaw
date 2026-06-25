@@ -7764,6 +7764,40 @@ function renderAdminInfra() {
       )
       .join('') || '<tr><td colspan="3" style="color:var(--text-muted)">No containers running</td></tr>';
 
+  // Host disk usage. Snapshot from /api/infrastructure (computed via statfsSync);
+  // the "Refresh" button below re-fetches the whole infra payload. >=90% used is
+  // flagged red (the /ephemeral docker disk filling breaks image rebuilds), >=75%
+  // amber, else green.
+  const fmtBytes = (n) => {
+    if (n == null || isNaN(n)) return '—';
+    const u = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    let i = 0;
+    let v = n;
+    while (v >= 1024 && i < u.length - 1) {
+      v /= 1024;
+      i++;
+    }
+    return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${u[i]}`;
+  };
+  const diskRows =
+    (d.disk || [])
+      .map((x) => {
+        const color = x.usedPercent >= 90 ? 'var(--red)' : x.usedPercent >= 75 ? 'var(--yellow)' : 'var(--green)';
+        return `
+    <tr><td>${esc(x.mount)}</td>
+    <td>${fmtBytes(x.used)} / ${fmtBytes(x.total)}</td>
+    <td>${fmtBytes(x.avail)} free</td>
+    <td style="min-width:120px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="flex:1;height:8px;background:var(--bg-hover);border-radius:4px;overflow:hidden">
+          <div style="width:${x.usedPercent}%;height:100%;background:${color}"></div>
+        </div>
+        <span style="color:${color};font-weight:600;min-width:34px;text-align:right">${x.usedPercent}%</span>
+      </div>
+    </td></tr>`;
+      })
+      .join('') || '<tr><td colspan="4" style="color:var(--text-muted)">No disk data</td></tr>';
+
   el.innerHTML = `
     <div class="admin-stat-grid">
       <div class="admin-stat-card"><div class="num">${dot(mcpOk)} ${mcpOk ? 'Up' : 'Down'}</div><div class="label">MCP Auth Proxy</div></div>
@@ -7772,6 +7806,12 @@ function renderAdminInfra() {
       <div class="admin-stat-card"><div class="num">${dot(netOk)} ${netOk ? 'On' : 'Off'}</div><div class="label">Network Isolation</div></div>
       <div class="admin-stat-card"><div class="num">${d.containers?.count || 0}</div><div class="label">Containers</div></div>
       <div class="admin-stat-card"><div class="num">${(d.remoteMcpServers || []).length}</div><div class="label">Remote Servers</div></div>
+      ${(d.disk || [])
+        .map((x) => {
+          const c = x.usedPercent >= 90 ? 'var(--red)' : x.usedPercent >= 75 ? 'var(--yellow)' : 'var(--green)';
+          return `<div class="admin-stat-card"><div class="num" style="color:${c}">${x.usedPercent}%</div><div class="label">Disk ${esc(x.mount)}</div></div>`;
+        })
+        .join('')}
     </div>
 
     <h4 style="font-size:11px;margin:10px 0 6px">MCP Servers</h4>
@@ -7805,6 +7845,15 @@ function renderAdminInfra() {
       ${containers}
     </table>
 
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 6px">
+      <h4 style="font-size:11px;margin:0">Host Disk</h4>
+      <button class="admin-action-btn" style="font-size:9px;padding:1px 8px" onclick="refreshAdminInfra()">Refresh</button>
+    </div>
+    <table class="admin-table">
+      <tr><th>Mount</th><th>Used / Total</th><th>Available</th><th>Usage</th></tr>
+      ${diskRows}
+    </table>
+
     <h4 style="font-size:11px;margin:14px 0 6px">Security Layers</h4>
     <table class="admin-table">
       <tr><th>Layer</th><th>Status</th><th>Details</th></tr>
@@ -7817,6 +7866,13 @@ function renderAdminInfra() {
 }
 
 // --- Infra panel actions ---
+// Force a fresh /api/infrastructure fetch (used by the Host Disk "Refresh"
+// button — disk usage is a point-in-time snapshot, so this re-reads statfs).
+window.refreshAdminInfra = function () {
+  adminState.loaded.delete('infra');
+  loadAdminInfra();
+};
+
 window.authorizeOAuth = function (serverName) {
   window.open('/oauth/authorize?server=' + encodeURIComponent(serverName), '_blank');
 };

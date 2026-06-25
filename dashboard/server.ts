@@ -23,6 +23,7 @@ import {
   readdirSync,
   existsSync,
   statSync,
+  statfsSync,
   lstatSync,
   symlinkSync,
   cpSync,
@@ -9798,6 +9799,34 @@ export async function handleRequest(
             } catch {
               checks.containers = { count: 0, list: [] };
             }
+
+            // Host disk usage. We report the root FS and /ephemeral (the docker
+            // data-root disk, a separate device that has filled before and broken
+            // per-group image rebuilds). statfsSync is a cheap in-process syscall —
+            // no df shell-out — so it's safe to compute on every infra fetch.
+            // bsize*blocks = total, bsize*bfree = free-to-root, bsize*bavail =
+            // free-to-unprivileged; we use bavail for "available" to match df.
+            const DISK_MOUNTS = ['/', '/ephemeral'];
+            checks.disk = DISK_MOUNTS.flatMap((mount) => {
+              try {
+                if (!existsSync(mount)) return [];
+                const s = statfsSync(mount);
+                const total = s.blocks * s.bsize;
+                const avail = s.bavail * s.bsize;
+                const used = total - s.bfree * s.bsize;
+                return [
+                  {
+                    mount,
+                    total,
+                    used,
+                    avail,
+                    usedPercent: total > 0 ? Math.round((used / total) * 100) : 0,
+                  },
+                ];
+              } catch {
+                return [];
+              }
+            });
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(checks, null, 2));
