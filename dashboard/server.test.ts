@@ -3025,3 +3025,139 @@ describe('matchContainerName', () => {
     expect(matchContainerName([`${PREFIX}-other-folder-abc-1762512225123`], 'orchestrator', null, PREFIX)).toBeNull();
   });
 });
+
+// ── /api/messages: session scoping + swim-lane (thread-vs-session work) ──
+
+describe('/api/messages session scoping + swim-lane', () => {
+  // Seed a session row + its inbound.db with one chat message.
+  function seedSession(
+    db: Database.Database,
+    s: { id: string; ag: string; folder: string; mg: string | null; thread: string | null },
+    msg: { id: string; text: string; ts: string },
+  ) {
+    const now = new Date().toISOString();
+    const agExists = db.prepare('SELECT 1 FROM agent_groups WHERE id = ?').get(s.ag);
+    if (!agExists) {
+      db.prepare('INSERT INTO agent_groups (id, name, folder, is_admin, created_at) VALUES (?, ?, ?, 0, ?)').run(
+        s.ag,
+        s.folder,
+        s.folder,
+        now,
+      );
+    }
+    db.prepare(
+      'INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(s.id, s.ag, s.mg, s.thread, 'active', msg.ts);
+    const sessDir = path.join(DATA_DIR, 'v2-sessions', s.ag, s.id);
+    mkdirSync(sessDir, { recursive: true });
+    const inDb = new Database(path.join(sessDir, 'inbound.db'));
+    inDb.exec('CREATE TABLE messages_in (id TEXT PRIMARY KEY, kind TEXT, content TEXT, timestamp TEXT, thread_id TEXT)');
+    inDb
+      .prepare('INSERT INTO messages_in (id, kind, content, timestamp, thread_id) VALUES (?, ?, ?, ?, ?)')
+      .run(msg.id, 'chat', JSON.stringify({ text: msg.text }), msg.ts, s.thread);
+    inDb.close();
+  }
+
+  it('session_id scoping returns only the named session (not siblings on the same thread)', async () => {
+    const db = createTestDbWithSessions();
+    const thread = 'gh-issue-r/repo-501';
+    seedSession(
+      db,
+      { id: 'sess-webhook', ag: 'ag-main', folder: 'main', mg: null, thread },
+      { id: 'm-webhook', text: 'webhook msg', ts: '2026-06-20T00:00:00.000Z' },
+    );
+    seedSession(
+      db,
+      { id: 'sess-a2a', ag: 'ag-main', folder: 'main', mg: 'mg-a2a-1', thread },
+      { id: 'm-a2a', text: 'a2a msg', ts: '2026-06-20T00:01:00.000Z' },
+    );
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/messages?session_id=sess-webhook&limit=50`);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const ids = data.messages.map((m: any) => m.id);
+    expect(ids).toContain('m-webhook');
+    expect(ids).not.toContain('m-a2a');
+    // Every returned row carries its origin session_id.
+    expect(data.messages.every((m: any) => m.session_id === 'sess-webhook')).toBe(true);
+  });
+
+  it('thread_id union returns both sessions on the thread, each row stamped with its session_id', async () => {
+    const db = createTestDbWithSessions();
+    const thread = 'gh-issue-r/repo-502';
+    seedSession(
+      db,
+      { id: 'sess-wh2', ag: 'ag-main', folder: 'main', mg: null, thread },
+      { id: 'm-wh2', text: 'webhook', ts: '2026-06-20T00:00:00.000Z' },
+    );
+    seedSession(
+      db,
+      { id: 'sess-a2a2', ag: 'ag-main', folder: 'main', mg: 'mg-a2a-2', thread },
+      { id: 'm-a2a2', text: 'a2a', ts: '2026-06-20T00:01:00.000Z' },
+    );
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/messages?group=main&thread_id=${encodeURIComponent(thread)}&limit=50`);
+    const data = await res.json();
+    const bySession = new Set(data.messages.map((m: any) => m.session_id));
+    expect(bySession.has('sess-wh2')).toBe(true);
+    expect(bySession.has('sess-a2a2')).toBe(true);
+  });
+
+  it('lane mode unions every coworker on the thread and returns an ordered lanes[] list', async () => {
+    const db = createTestDbWithSessions();
+    const thread = 'gh-issue-r/repo-503';
+    // Three different coworkers, each with a session on the same thread.
+    seedSession(
+      db,
+      { id: 'sess-orch', ag: 'ag-orch', folder: 'orch', mg: null, thread },
+      { id: 'm-orch', text: 'orch', ts: '2026-06-20T00:00:00.000Z' },
+    );
+    seedSession(
+      db,
+      { id: 'sess-tri', ag: 'ag-tri', folder: 'triager', mg: 'mg-a2a-x', thread },
+      { id: 'm-tri', text: 'triager', ts: '2026-06-20T00:01:00.000Z' },
+    );
+    seedSession(
+      db,
+      { id: 'sess-fix', ag: 'ag-fix', folder: 'fixer', mg: 'mg-a2a-y', thread },
+      { id: 'm-fix', text: 'fixer', ts: '2026-06-20T00:02:00.000Z' },
+    );
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/messages?thread_id=${encodeURIComponent(thread)}&lane=1&limit=50`);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    // Messages from all three coworkers present.
+    const folders = new Set(data.messages.map((m: any) => m.group_folder));
+    expect(folders.has('orch')).toBe(true);
+    expect(folders.has('triager')).toBe(true);
+    expect(folders.has('fixer')).toBe(true);
+    // Ordered lanes[] with one entry per coworker, orch first (earliest session).
+    expect(Array.isArray(data.lanes)).toBe(true);
+    const laneFolders = data.lanes.map((l: any) => l.folder);
+    expect(laneFolders).toContain('orch');
+    expect(laneFolders).toContain('triager');
+    expect(laneFolders).toContain('fixer');
+    expect(laneFolders[0]).toBe('orch');
+  });
+
+  it('non-lane request omits the lanes key', async () => {
+    const db = createTestDbWithSessions();
+    seedSession(
+      db,
+      { id: 'sess-nl', ag: 'ag-nl', folder: 'nl', mg: null, thread: 'gh-issue-r/repo-504' },
+      { id: 'm-nl', text: 'x', ts: '2026-06-20T00:00:00.000Z' },
+    );
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/messages?group=nl&thread_id=gh-issue-r/repo-504&limit=10`);
+    const data = await res.json();
+    expect('lanes' in data).toBe(false);
+  });
+});
