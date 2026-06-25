@@ -21,7 +21,6 @@ import { getSourceFor as getA2aSourceFor } from './db/a2a-session-sources.js';
 import { getMessagingGroup } from './db/messaging-groups.js';
 import {
   createSession,
-  findSession,
   findSessionByAgentGroup,
   findSessionByAgentThread,
   findSessionForAgent,
@@ -92,6 +91,38 @@ export function resolveSession(
   threadId: string | null,
   sessionMode: 'shared' | 'per-thread' | 'agent-shared',
 ): { session: Session; created: boolean } {
+  // Canonical GitHub issue/PR chains: exactly one real conversation per
+  // (agent, gh-issue/pr thread) globally. Collapse all a2a senders + the
+  // webhook session into ONE canonical session, so a handoff from the triager
+  // and a follow-up from main on the same issue share one container memory
+  // instead of fragmenting into a session per (sender→recipient) pair.
+  //
+  // Hoisted ABOVE the messaging-group branch and run regardless of whether
+  // messagingGroupId is set: a webhook-origin caller (messagingGroupId=null)
+  // must reuse an existing canonical session too, otherwise it could mint a
+  // split when an a2a delegation created the gh session first. (Today the
+  // webhook path resolves sessions directly via findSessionByAgentThread, not
+  // resolveSession — but this guards any future null-mg gh caller.)
+  //
+  // Scoped to ^gh-(issue|pr)- ONLY, and only when this is a per-thread lookup
+  // (sessionMode !== 'shared'). Generic a2a threads (named threads, Slack
+  // thread_ts, msg-* ids) keep their per-source isolation — broadening this to
+  // all a2a threads was tried and reverted in #301 because it merged unrelated
+  // sources that happened to collide on a thread_id. GitHub issue/PR ids are
+  // globally canonical (one repo+number = one conversation everywhere), so the
+  // collision concern doesn't apply.
+  //
+  // Reply routing stays correct after the collapse: it is per-message via
+  // messages_in.source_session_id + in_reply_to (resolveExplicitReplyTarget),
+  // not per-session — each inbound row still records who sent it, so the merged
+  // session routes every reply home to the right peer.
+  if (sessionMode !== 'shared' && sessionMode !== 'agent-shared' && threadId && /^gh-(issue|pr)-/.test(threadId)) {
+    const canonical = findSessionByAgentThread(agentGroupId, threadId);
+    if (canonical) {
+      return { session: canonical, created: false };
+    }
+  }
+
   // agent-shared: single session per agent group, regardless of messaging group
   if (sessionMode === 'agent-shared') {
     const existing = findSessionByAgentGroup(agentGroupId);

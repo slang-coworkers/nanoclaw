@@ -85,7 +85,11 @@ export function findSessionForAgent(
 export function findSessionByAgentThread(agentGroupId: string, threadId: string): Session | undefined {
   return getDb()
     .prepare(
-      "SELECT * FROM sessions WHERE agent_group_id = ? AND thread_id = ? AND status = 'active' ORDER BY created_at ASC LIMIT 1",
+      // created_at ASC picks the earliest (canonical) session for a thread; id ASC
+      // is a deterministic tie-break so a created_at collision can't make the
+      // canonical choice nondeterministic (the gh-issue/pr collapse in
+      // resolveSession depends on a stable winner).
+      "SELECT * FROM sessions WHERE agent_group_id = ? AND thread_id = ? AND status = 'active' ORDER BY created_at ASC, id ASC LIMIT 1",
     )
     .get(agentGroupId, threadId) as Session | undefined;
 }

@@ -173,6 +173,33 @@ async function main(): Promise<void> {
     log.warn('agents-symlink-backfill threw', { err: String(err) });
   }
 
+  // 1c-ter. Reconcile split gh-issue/gh-pr coworker sessions. Older installs
+  // accumulated multiple sessions per coworker for one GitHub issue/PR (a
+  // webhook session + one a2a session per sender); the `resolveSession`
+  // `^gh-(issue|pr)-` collapse stops new splits, this merges the existing ones
+  // into the canonical session. Idempotent (a no-op once collapsed) and safe to
+  // run at startup: containers haven't spawned yet, so the live-session
+  // preflight passes; it backs up v2.db + mutated session DBs before writing.
+  // Never blocks startup — a failure is logged and swallowed.
+  try {
+    const { reconcileGhSessions } = await import('./reconcile-gh-sessions.js');
+    const res = reconcileGhSessions({
+      dataDir: DATA_DIR,
+      apply: true,
+      log: (line) => log.info('reconcile-gh-sessions', { line }),
+    });
+    if (res.merged > 0) {
+      log.info('Reconciled split gh sessions', {
+        groups: res.groups,
+        merged: res.merged,
+        inRows: res.inRows,
+        outRows: res.outRows,
+      });
+    }
+  } catch (err) {
+    log.warn('reconcile-gh-sessions threw', { err: String(err) });
+  }
+
   // 1d. Orphan-dir reconciler (task #40). `groups/<folder>/` directories
   // can be left behind when a coworker is deleted via the dashboard API
   // with `deleteData=false` (the default — the delete path preserves WIP
