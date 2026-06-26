@@ -19,7 +19,41 @@ import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import type { PendingApproval } from '../../types.js';
 import { ONECLI_ACTION, resolveOneCLIApproval } from './onecli-approvals.js';
-import { getApprovalHandler } from './primitive.js';
+import { getApprovalHandler, pickApprover } from './primitive.js';
+
+// Sentinels used when the response originates from the local dashboard or CLI
+// rather than a messaging-platform user. They bypass approver validation
+// because they're already gated by dashboard auth / host-local access.
+const LOCAL_APPROVER_SENDERS = new Set(['dashboard-admin', 'cli-admin', 'system']);
+
+function isAuthorizedApprover(approval: PendingApproval, userId: string): boolean {
+  if (!userId) return false;
+  if (LOCAL_APPROVER_SENDERS.has(userId)) return true;
+  const eligible = pickApprover(approval.session_id ? (approval.agent_group_id ?? null) : null);
+  return eligible.includes(userId);
+}
+
+/**
+ * Fire wakeContainer without blocking the caller. Approval acceptance is a
+ * fast DB state transition; the subsequent container wake is an independent
+ * follow-up that can take seconds to tens of seconds (image pull, migration
+ * check, MCP discovery). Blocking the HTTP chain on it caused AP03 —
+ * dashboard's 5s AbortSignal would fire while the ingress waited, returning
+ * a 500 to the client even though the approval had already been applied.
+ *
+ * Errors during the async wake are logged (never swallowed) and surface in
+ * the usual delivery-failure path; they do NOT re-queue the approval, which
+ * is already settled in the DB.
+ */
+function fireAndForgetWake(session: Parameters<typeof wakeContainer>[0], approvalId: string): void {
+  void wakeContainer(session).catch((err) => {
+    log.warn('Post-approval wakeContainer failed — state is already settled', {
+      approvalId,
+      sessionId: session.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  });
+}
 
 export async function handleApprovalsResponse(payload: ResponsePayload): Promise<boolean> {
   // OneCLI credential approvals — resolved via in-memory Promise first.
@@ -38,7 +72,18 @@ export async function handleApprovalsResponse(payload: ResponsePayload): Promise
     return true;
   }
 
-  await handleRegisteredApproval(approval, payload.value, payload.userId ?? '');
+  const userId = payload.userId ?? '';
+  if (!isAuthorizedApprover(approval, userId)) {
+    log.warn('Approval response rejected — responder not an eligible approver', {
+      approvalId: approval.approval_id,
+      action: approval.action,
+      userId,
+    });
+    // Do not consume the approval; let it remain pending for a valid approver.
+    return true;
+  }
+
+  await handleRegisteredApproval(approval, payload.value, userId);
   return true;
 }
 
@@ -62,18 +107,21 @@ async function handleRegisteredApproval(
       id: `appr-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       kind: 'chat',
       timestamp: new Date().toISOString(),
-      platformId: session.agent_group_id,
-      channelType: 'agent',
+      // System notification — channelType='system' / platformId=null so the
+      // formatter renders <system-notification> and the routing layer can
+      // never resolve self as an a2a destination.
+      platformId: null,
+      channelType: 'system',
       threadId: null,
       content: JSON.stringify({ text, sender: 'system', senderId: 'system' }),
     });
   };
 
-  if (selectedOption !== 'approve') {
+  if (selectedOption.toLowerCase() !== 'approve') {
     notify(`Your ${approval.action} request was rejected by admin.`);
     log.info('Approval rejected', { approvalId: approval.approval_id, action: approval.action, userId });
     deletePendingApproval(approval.approval_id);
-    await wakeContainer(session);
+    fireAndForgetWake(session, approval.approval_id);
     return;
   }
 
@@ -86,7 +134,7 @@ async function handleRegisteredApproval(
     });
     notify(`Your ${approval.action} was approved, but no handler is installed to apply it.`);
     deletePendingApproval(approval.approval_id);
-    await wakeContainer(session);
+    fireAndForgetWake(session, approval.approval_id);
     return;
   }
 
@@ -102,5 +150,5 @@ async function handleRegisteredApproval(
   }
 
   deletePendingApproval(approval.approval_id);
-  await wakeContainer(session);
+  fireAndForgetWake(session, approval.approval_id);
 }

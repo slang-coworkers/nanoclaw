@@ -4,12 +4,41 @@ import { getDb, hasTable } from './connection.js';
 // ── Sessions ──
 
 export function createSession(session: Session): void {
+  // Migration 021 guarantees display_title / title_source / title_updated_at
+  // exist — runMigrations() runs at host startup before any createSession
+  // call. No defensive column probe here; trust the migration.
   getDb()
     .prepare(
-      `INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, agent_provider, status, container_status, last_active, created_at)
-       VALUES (@id, @agent_group_id, @messaging_group_id, @thread_id, @agent_provider, @status, @container_status, @last_active, @created_at)`,
+      `INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id,
+                             display_title, title_source, title_updated_at,
+                             agent_provider, status, container_status, last_active, created_at)
+       VALUES (@id, @agent_group_id, @messaging_group_id, @thread_id,
+               @display_title, @title_source, @title_updated_at,
+               @agent_provider, @status, @container_status, @last_active, @created_at)`,
     )
-    .run(session);
+    .run({ display_title: null, title_source: null, title_updated_at: null, ...session });
+}
+
+/**
+ * Update the session's display title. `source='manual'` marks it
+ * operator-set so the heuristic titler won't re-derive on top of it.
+ * Returns true if a row was updated (i.e. the session still exists).
+ */
+export function updateSessionTitle(
+  sessionId: string,
+  displayTitle: string,
+  source: 'auto' | 'heuristic' | 'manual',
+  now: string = new Date().toISOString(),
+): boolean {
+  // Never overwrite a manual title unless the new write is also manual.
+  const clause =
+    source === 'manual'
+      ? 'WHERE id = ?'
+      : "WHERE id = ? AND (display_title IS NULL OR COALESCE(title_source, '') != 'manual')";
+  const res = getDb()
+    .prepare(`UPDATE sessions SET display_title = ?, title_source = ?, title_updated_at = ? ${clause}`)
+    .run(displayTitle, source, now, sessionId);
+  return res.changes > 0;
 }
 
 export function getSession(id: string): Session | undefined {
@@ -50,6 +79,38 @@ export function findSessionForAgent(
       "SELECT * FROM sessions WHERE agent_group_id = ? AND messaging_group_id = ? AND thread_id IS NULL AND status = 'active'",
     )
     .get(agentGroupId, messagingGroupId) as Session | undefined;
+}
+
+/** Find an active session for an agent + thread, ignoring messaging group. */
+export function findSessionByAgentThread(agentGroupId: string, threadId: string): Session | undefined {
+  return getDb()
+    .prepare(
+      // created_at ASC picks the earliest (canonical) session for a thread; id ASC
+      // is a deterministic tie-break so a created_at collision can't make the
+      // canonical choice nondeterministic (the gh-issue/pr collapse in
+      // resolveSession depends on a stable winner).
+      "SELECT * FROM sessions WHERE agent_group_id = ? AND thread_id = ? AND status = 'active' ORDER BY created_at ASC, id ASC LIMIT 1",
+    )
+    .get(agentGroupId, threadId) as Session | undefined;
+}
+
+/**
+ * Does any active session exist for this issue's chain, keyed on its canonical
+ * `gh-issue-<repo>-<num>` thread_id (any agent group)? Used by the webhook
+ * comment gate to recognize "this issue is ours" — a follow-up comment on an
+ * issue we're already driving is processed even without an @-mention (the live
+ * chain IS the ownership signal, mirroring isOwnedPr/prMappingExists for PRs).
+ * Returns false (never throws) if the sessions table is unavailable.
+ */
+export function issueSessionExists(repo: string, issueNumber: number): boolean {
+  try {
+    const row = getDb()
+      .prepare("SELECT 1 FROM sessions WHERE thread_id = ? AND status = 'active' LIMIT 1")
+      .get(`gh-issue-${repo}-${issueNumber}`) as { 1: number } | undefined;
+    return Boolean(row);
+  } catch {
+    return false;
+  }
 }
 
 /** Find an active session scoped to an agent group (ignoring messaging group). */
@@ -182,6 +243,19 @@ export function getPendingApproval(approvalId: string): PendingApproval | undefi
 
 export function updatePendingApprovalStatus(approvalId: string, status: PendingApproval['status']): void {
   getDb().prepare('UPDATE pending_approvals SET status = ? WHERE approval_id = ?').run(status, approvalId);
+}
+
+export function updatePendingApprovalDelivery(
+  approvalId: string,
+  updates: Pick<PendingApproval, 'channel_type' | 'platform_id' | 'platform_message_id'>,
+): void {
+  getDb()
+    .prepare(
+      `UPDATE pending_approvals
+       SET channel_type = ?, platform_id = ?, platform_message_id = ?
+       WHERE approval_id = ?`,
+    )
+    .run(updates.channel_type, updates.platform_id, updates.platform_message_id, approvalId);
 }
 
 export function deletePendingApproval(approvalId: string): void {

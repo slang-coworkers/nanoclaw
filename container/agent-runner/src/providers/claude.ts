@@ -5,6 +5,7 @@ import path from 'path';
 import { query as sdkQuery, type HookCallback, type PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 
 import { clearContainerToolInFlight, setContainerToolInFlight } from '../db/connection.js';
+import { resolveEnvInherit } from './codex-app-server.js';
 import { registerProvider } from './provider-registry.js';
 import type { AgentProvider, AgentQuery, McpServerConfig, ProviderEvent, ProviderOptions, QueryInput } from './types.js';
 
@@ -35,12 +36,13 @@ const SDK_DISALLOWED_TOOLS = [
   'ExitWorktree',
 ];
 
-// Tool allowlist for NanoClaw agent containers. MCP-tool entries are derived
-// at the call site from the registered `mcpServers` map so that any server
-// added via `add_mcp_server` (or wired in container.json directly) is
-// reachable to the agent — without this, the SDK's allowedTools filter
-// silently drops every MCP namespace not listed here.
-const TOOL_ALLOWLIST = [
+// Base tool allowlist for NanoClaw agent containers (always included).
+// MCP-tool entries are derived at the call site from the registered
+// `mcpServers` map so that any server added via `add_mcp_server` (or wired
+// in container.json directly) is reachable to the agent — without this,
+// the SDK's allowedTools filter silently drops every MCP namespace not
+// listed here.
+const BASE_TOOL_ALLOWLIST = [
   'Bash',
   'Read',
   'Write',
@@ -60,6 +62,40 @@ const TOOL_ALLOWLIST = [
   'Skill',
   'NotebookEdit',
 ];
+
+export function parseAllowedMcpTools(env?: Record<string, string | undefined>): string[] {
+  if (!env?.NANOCLAW_ALLOWED_MCP_TOOLS) return [];
+  try {
+    return (JSON.parse(env.NANOCLAW_ALLOWED_MCP_TOOLS) as string[]).filter((tool) => tool.startsWith('mcp__'));
+  } catch {
+    log('Failed to parse NANOCLAW_ALLOWED_MCP_TOOLS');
+    return [];
+  }
+}
+
+function computeBlockedTools(
+  env: Record<string, string | undefined> | undefined,
+  allowed: string[],
+): string[] | undefined {
+  if (allowed.length === 0 || !env?.NANOCLAW_MCP_TOOL_INVENTORY) return undefined;
+  try {
+    const inventory = JSON.parse(env.NANOCLAW_MCP_TOOL_INVENTORY) as Record<string, string[]>;
+    const allowSet = new Set(allowed);
+    const blocked: string[] = [];
+    for (const tools of Object.values(inventory)) {
+      for (const tool of tools) {
+        if (!allowSet.has(tool)) blocked.push(tool);
+      }
+    }
+    if (blocked.length > 0) {
+      log(`Blocking ${blocked.length} MCP tools not in allowed list`);
+      return blocked;
+    }
+  } catch {
+    log('Failed to parse NANOCLAW_MCP_TOOL_INVENTORY');
+  }
+  return undefined;
+}
 
 // MCP server names are sanitized by the SDK when forming tool prefixes:
 // any character outside [A-Za-z0-9_-] becomes '_'. Mirror that here so our
@@ -153,6 +189,39 @@ function formatTranscriptMarkdown(messages: ParsedMessage[], title?: string | nu
 }
 
 /**
+ * Detect a Bash command that would CLOSE a GitHub issue. Closing a
+ * contributor's issue (even a genuine duplicate of a maintainer-owned issue)
+ * is a maintainer privilege — coworkers triage and comment, they do not close.
+ * This is a deterministic backstop for the instruction-level guardrail: the
+ * #11719 regression closed an issue as a duplicate after the prose guardrail
+ * (scoped to "PRs", not issues) let it through and the orchestrator authorized
+ * it. We block the command's *content* because the close rides inside a Bash
+ * `gh` / GraphQL call, which the SDK's tool-name `disallowedTools` can't see.
+ *
+ * Covers the two paths observed in the wild:
+ *   - REST:    gh issue close … / gh api … issues/<n> -f state=closed / state_reason=…
+ *   - GraphQL: a `closeIssue(` mutation (used because REST state_reason 403s for the App token)
+ *
+ * Deliberately does NOT match `gh pr close` or `closePullRequest` — PR close is
+ * a separate surface the fixer/reviewer legitimately use. Returns the matched
+ * fragment (for the block message) or null.
+ */
+export function detectIssueClose(command: string | undefined): string | null {
+  if (!command || typeof command !== 'string') return null;
+  // GraphQL mutation: closeIssue( … ). PR equivalent is closePullRequest, which
+  // won't match this because of the trailing `(` boundary after "Issue".
+  if (/\bcloseIssue\s*\(/i.test(command)) return 'GraphQL closeIssue mutation';
+  // REST via gh CLI: `gh issue close <n>` (allow flags/`-R` between).
+  if (/\bgh\s+issue\s+close\b/i.test(command)) return 'gh issue close';
+  // REST via gh api: a PATCH to issues/<n> that sets state=closed or any
+  // state_reason. Require an issues path so we don't catch PR endpoints.
+  if (/\bgh\s+api\b/i.test(command) && /\/issues\/\d+/i.test(command) && /\bstate(_reason)?=/i.test(command)) {
+    return 'gh api issues state change';
+  }
+  return null;
+}
+
+/**
  * PreToolUse hook: record the current tool + its declared timeout so the host
  * sweep can widen its stuck tolerance while Bash is running a long-declared
  * script. Defense-in-depth: if SDK_DISALLOWED_TOOLS slips through somehow,
@@ -166,6 +235,21 @@ const preToolUseHook: HookCallback = async (input) => {
       decision: 'block',
       stopReason: `Tool '${toolName}' is not available in this environment — use the nanoclaw equivalent.`,
     } as unknown as ReturnType<HookCallback>;
+  }
+  // Backstop: no coworker closes GitHub issues. Block the close at the tool
+  // boundary regardless of what the model was told or authorized. Opt-out is a
+  // per-group env flag (unset everywhere today) so a future maintainer-grade
+  // group can be granted the capability via container config, not a code change.
+  if (toolName === 'Bash' && process.env.NANOCLAW_ALLOW_ISSUE_CLOSE !== '1') {
+    const match = detectIssueClose(i.tool_input?.command as string | undefined);
+    if (match) {
+      return {
+        decision: 'block',
+        stopReason:
+          `Closing a GitHub issue (${match}) is a maintainer-only action — coworkers triage and comment, they do not close. ` +
+          `Post your duplicate/wontfix verdict as an issue comment and leave the close to a human maintainer.`,
+      } as unknown as ReturnType<HookCallback>;
+    }
   }
   // Bash exposes its timeout via the tool_input.timeout field (ms). Any other
   // tool: no declared timeout.
@@ -312,14 +396,20 @@ function transcriptStartMs(transcriptPath: string): number | null {
 // ── Provider ──
 
 /**
- * Claude Code auto-compacts context at this window (tokens). Kept here so
- * the generic bootstrap doesn't need to know about Claude-specific env vars.
- *
- * Operator override: set CLAUDE_CODE_AUTO_COMPACT_WINDOW in the host env to
- * raise or lower the threshold without editing source — useful when running
- * with a 1M-context model variant or when emergency-tuning a deployment.
+ * Claude Code auto-compacts context at this window (tokens). Default is
+ * tuned for a 200K context model (~80% fill). For 1M models (model ID
+ * contains "[1m]"), we raise the window to 900K so the agent can use the
+ * full context before compacting. Operator override: set
+ * CLAUDE_CODE_AUTO_COMPACT_WINDOW in the host env to raise or lower the
+ * threshold without editing source.
  */
-const CLAUDE_CODE_AUTO_COMPACT_WINDOW = process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW || '165000';
+function getAutoCompactWindow(): string {
+  if (process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW) return process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW;
+  const model = process.env.ANTHROPIC_MODEL || '';
+  if (model.includes('[1m]')) return '900000';
+  return '165000';
+}
+const CLAUDE_CODE_AUTO_COMPACT_WINDOW = getAutoCompactWindow();
 
 /**
  * Stale-session detection. Matches Claude Code's error text when a
@@ -335,19 +425,41 @@ export class ClaudeProvider implements AgentProvider {
   private mcpServers: Record<string, McpServerConfig>;
   private env: Record<string, string | undefined>;
   private additionalDirectories?: string[];
+  private extraAllowedTools: string[];
+  private blockedTools?: string[];
   private model?: string;
   private effort?: string;
+  private fallbackModel?: string;
 
   constructor(options: ProviderOptions = {}) {
     this.assistantName = options.assistantName;
-    this.mcpServers = options.mcpServers ?? {};
     this.additionalDirectories = options.additionalDirectories;
     this.model = options.model;
     this.effort = options.effort;
+    this.fallbackModel = options.fallbackModel;
     this.env = {
       ...(options.env ?? {}),
       CLAUDE_CODE_AUTO_COMPACT_WINDOW,
     };
+    // Resolve `envInherit` names → values from process env for every stdio
+    // MCP entry. Claude Agent SDK spawns MCP children with a literal env
+    // map and has no name-indirection; we resolve in-memory and drop the
+    // envInherit field. Resolved values live only in this record and are
+    // handed straight to the SDK (which uses them for child_process.spawn
+    // env); they MUST NOT be written anywhere on disk.
+    const src = options.mcpServers ?? {};
+    const resolved: Record<string, McpServerConfig> = {};
+    for (const [name, cfg] of Object.entries(src)) {
+      if ('url' in cfg) {
+        resolved[name] = cfg;
+        continue;
+      }
+      const mergedEnv = resolveEnvInherit(cfg, process.env, name);
+      resolved[name] = { command: cfg.command, args: cfg.args, env: mergedEnv };
+    }
+    this.mcpServers = resolved;
+    this.extraAllowedTools = parseAllowedMcpTools(this.env);
+    this.blockedTools = computeBlockedTools(this.env, this.extraAllowedTools);
   }
 
   isSessionInvalid(err: unknown): boolean {
@@ -399,18 +511,20 @@ export class ClaudeProvider implements AgentProvider {
     const sdkResult = sdkQuery({
       prompt: stream,
       options: {
+        pathToClaudeCodeExecutable: '/app/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude',
         cwd: input.cwd,
         additionalDirectories: this.additionalDirectories,
         resume: input.continuation,
-        pathToClaudeCodeExecutable: '/pnpm/claude',
         systemPrompt: instructions ? { type: 'preset' as const, preset: 'claude_code' as const, append: instructions } : undefined,
         allowedTools: [
-          ...TOOL_ALLOWLIST,
+          ...BASE_TOOL_ALLOWLIST,
           ...Object.keys(this.mcpServers).map(mcpAllowPattern),
+          ...this.extraAllowedTools,
         ],
-        disallowedTools: SDK_DISALLOWED_TOOLS,
+        disallowedTools: [...SDK_DISALLOWED_TOOLS, ...(this.blockedTools ?? [])],
         env: this.env,
         model: this.model,
+        fallbackModel: this.fallbackModel,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         effort: this.effort as any,
         permissionMode: 'bypassPermissions',
@@ -442,6 +556,42 @@ export class ClaudeProvider implements AgentProvider {
         } else if (message.type === 'result') {
           const text = 'result' in message ? (message as { result?: string }).result ?? null : null;
           yield { type: 'result', text };
+          // Emit structured per-turn usage so the poll-loop can log
+          // a grep-friendly line. Fields come from the SDK's result
+          // message (shape: { usage: { input_tokens, cache_*_input_tokens,
+          // output_tokens, cache_creation: { ephemeral_*_input_tokens } },
+          // duration_ms, total_cost_usd, num_turns, session_id }).
+          const r = message as {
+            session_id?: string;
+            duration_ms?: number;
+            total_cost_usd?: number;
+            num_turns?: number;
+            usage?: {
+              input_tokens?: number;
+              output_tokens?: number;
+              cache_creation_input_tokens?: number;
+              cache_read_input_tokens?: number;
+              cache_creation?: {
+                ephemeral_1h_input_tokens?: number;
+                ephemeral_5m_input_tokens?: number;
+              };
+            };
+          };
+          if (r.usage) {
+            yield {
+              type: 'usage',
+              inputTokens: r.usage.input_tokens ?? 0,
+              outputTokens: r.usage.output_tokens ?? 0,
+              cacheCreationInputTokens: r.usage.cache_creation_input_tokens ?? 0,
+              cacheReadInputTokens: r.usage.cache_read_input_tokens ?? 0,
+              ephemeral1hInputTokens: r.usage.cache_creation?.ephemeral_1h_input_tokens ?? 0,
+              ephemeral5mInputTokens: r.usage.cache_creation?.ephemeral_5m_input_tokens ?? 0,
+              durationMs: r.duration_ms ?? 0,
+              totalCostUsd: r.total_cost_usd ?? 0,
+              numTurns: r.num_turns ?? 0,
+              sessionId: r.session_id ?? null,
+            };
+          }
         } else if (message.type === 'system' && (message as { subtype?: string }).subtype === 'api_retry') {
           yield { type: 'error', message: 'API retry', retryable: true };
         } else if (message.type === 'system' && (message as { subtype?: string }).subtype === 'rate_limit_event') {

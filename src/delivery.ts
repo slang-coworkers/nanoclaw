@@ -9,7 +9,7 @@
  */
 import type Database from 'better-sqlite3';
 
-import { getRunningSessions, getActiveSessions, createPendingQuestion } from './db/sessions.js';
+import { getRunningSessions, getActiveSessions, getSession, createPendingQuestion } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
 import { getMessagingGroupByPlatform } from './db/messaging-groups.js';
@@ -48,6 +48,10 @@ const deliveryAttempts = new Map<string, number>();
  * second caller skips will be picked up on the next poll tick (~1s).
  */
 const inflightDeliveries = new Set<string>();
+
+export function shouldRetainOutboxFiles(channelType: string | null, files?: OutboundFile[]): boolean {
+  return channelType === 'dashboard' && Boolean(files?.length);
+}
 
 export interface ChannelDeliveryAdapter {
   deliver(
@@ -266,7 +270,15 @@ async function deliverMessage(
       throw new Error(`agent-to-agent module not installed — cannot route message ${msg.id}`);
     }
     const { routeAgentMessage } = await import('./modules/agent-to-agent/agent-route.js');
-    await routeAgentMessage(msg, session);
+    // `target_session_id` rides along inside the content body (no schema
+    // migration needed — the field is read only by the routing layer and
+    // is not surfaced to the recipient agent). Pluck it here so the
+    // routing layer treats it as a first-class field on the message.
+    const targetSessionId =
+      typeof content.target_session_id === 'string' && content.target_session_id.trim() !== ''
+        ? content.target_session_id.trim()
+        : null;
+    await routeAgentMessage({ ...msg, target_session_id: targetSessionId }, session);
     return;
   }
 
@@ -369,7 +381,108 @@ async function deliverMessage(
     fileCount: files?.length,
   });
 
-  clearOutbox(session.agent_group_id, session.id, msg.id);
+  // Dashboard reads attachment files directly from the session outbox, so those
+  // files must persist after delivery instead of being treated as transport-only.
+  if (!shouldRetainOutboxFiles(msg.channel_type, files)) {
+    clearOutbox(session.agent_group_id, session.id, msg.id);
+  }
+
+  // Cross-coworker dashboard message: the sender routed to another agent's
+  // dashboard messaging group (e.g. NeuralGraphics → dashboard:orchestrator).
+  // The adapter delivered it (marks the outbound as delivered), but the
+  // recipient agent never sees it because the dashboard adapter is outbound-only.
+  // Write the message into the recipient's session inbound so (a) the agent
+  // can process it and (b) the dashboard shows it in the recipient's chat.
+  // File attachments are copied from sender's outbox to recipient's inbox.
+  if (msg.channel_type === 'dashboard' && msg.platform_id) {
+    const mg = getMessagingGroupByPlatform(msg.channel_type, msg.platform_id);
+    if (mg) {
+      // The dashboard MG platform_id is "dashboard:<folder>". The owner is the
+      // agent group whose folder matches. Only forward to the owner — other
+      // agents wired to this MG (e.g. via shared admin group) are bystanders.
+      const ownerFolder = mg.platform_id.replace(/^dashboard:/, '');
+      const { getAgentGroupByFolder } = await import('./db/agent-groups.js');
+      const ownerAg = ownerFolder ? getAgentGroupByFolder(ownerFolder) : null;
+      if (ownerAg && ownerAg.id !== session.agent_group_id) {
+        try {
+          // Find the recipient session that originally delegated TO the
+          // sender. a2a_session_sources maps (source_session → recipient_session)
+          // where source is the delegator and recipient is the delegate.
+          // We want the reverse: sender (delegate) → find the source session
+          // (delegator) so the reply lands in the same thread.
+          const { resolveSession } = await import('./session-manager.js');
+          let crossThreadId = msg.thread_id || null;
+          if (!crossThreadId && hasTable(getDb(), 'a2a_session_sources')) {
+            const sourceRow = getDb()
+              .prepare(
+                `SELECT ssr.source_session_id, s.thread_id
+                 FROM a2a_session_sources ssr
+                 JOIN sessions s ON s.id = ssr.source_session_id
+                 WHERE ssr.source_agent_group_id = ? AND ssr.recipient_agent_group_id = ?
+                   AND s.thread_id IS NOT NULL AND s.status = 'active'
+                 ORDER BY ssr.created_at DESC LIMIT 1`,
+              )
+              .get(ownerAg.id, session.agent_group_id) as
+              | { source_session_id: string; thread_id: string | null }
+              | undefined;
+            if (sourceRow?.thread_id) crossThreadId = sourceRow.thread_id;
+          }
+          const { session: recipientSession } = resolveSession(
+            ownerAg.id,
+            mg.id,
+            crossThreadId,
+            crossThreadId ? 'per-thread' : 'shared',
+          );
+          const crossId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          const forwardedContent = msg.content;
+          if (Array.isArray(content.files) && content.files.length > 0) {
+            try {
+              const { forwardAttachedFiles } = await import('./modules/agent-to-agent/agent-route.js');
+              forwardAttachedFiles(
+                {
+                  agentGroupId: session.agent_group_id,
+                  sessionId: session.id,
+                  messageId: msg.id,
+                  filenames: content.files as string[],
+                },
+                { agentGroupId: ownerAg.id, sessionId: recipientSession.id, messageId: crossId },
+              );
+            } catch {
+              /* a2a module may not be installed */
+            }
+          }
+          const { writeSessionMessage } = await import('./session-manager.js');
+          writeSessionMessage(ownerAg.id, recipientSession.id, {
+            id: crossId,
+            kind: 'chat',
+            timestamp: new Date().toISOString(),
+            platformId: session.agent_group_id,
+            channelType: 'agent',
+            threadId: crossThreadId,
+            content: forwardedContent,
+          });
+          const recipientFresh = getSession(recipientSession.id);
+          if (recipientFresh) {
+            const { wakeContainer } = await import('./container-runner.js');
+            wakeContainer(recipientFresh).catch(() => {});
+          }
+          log.info('Cross-coworker dashboard message forwarded', {
+            from: session.agent_group_id,
+            to: ownerAg.id,
+            recipientSession: recipientSession.id,
+            crossThreadId,
+            crossId,
+          });
+        } catch (err) {
+          log.warn('Failed to forward cross-coworker dashboard message', {
+            from: session.agent_group_id,
+            to: ownerAg.id,
+            err,
+          });
+        }
+      }
+    }
+  }
 
   return platformMsgId;
 }
@@ -428,3 +541,7 @@ export function stopDeliveryPolls(): void {
   activePolling = false;
   sweepPolling = false;
 }
+
+export const __testHooks = {
+  handleSystemAction,
+};

@@ -1,0 +1,142 @@
+# nv-main — core NanoClaw infrastructure.
+# Owns everything that is NOT a project-specific overlay.
+#
+# This allowlist is intentionally broad — nv-main is where infrastructure,
+# agent-runner code, setup wizards, tests, and shared skills live.
+
+# Host-side TypeScript:
+src/**
+scripts/**
+setup/**
+
+# Agent-runner + container-side:
+container/agent-runner/**
+container/hooks/**
+container/Dockerfile
+container/build.sh
+container/entrypoint.sh
+container/config/**
+
+# Shared container skills (NOT overlay-specific ones):
+.claude/skills/*.md
+.claude/skills/add-*/SKILL.md
+.claude/skills/debug/**
+.claude/skills/setup/**
+.claude/skills/customize/**
+.claude/skills/update-nanoclaw/**
+.claude/skills/agent-browser/**
+.claude/skills/self-customize/**
+.claude/skills/slack-formatting/**
+.claude/skills/welcome/**
+.claude/skills/show-transcript/**
+
+# Base infrastructure spine + skills (NOT project overlays):
+container/skills/spine-base/**
+container/spines/base/**
+
+# Upstream-originated skills (on main but not overlay-owned):
+container/skills/base/**
+container/skills/frontend-engineer/**
+container/skills/vercel-cli/**
+
+# Agent-runner mcp-tool instruction docs:
+container/agent-runner/src/mcp-tools/**.md
+
+# Top-level config / docs / tooling:
+package.json
+package-lock.json
+pnpm-lock.yaml
+tsconfig.json
+vitest.config.ts
+vitest.setup.ts
+.github/**
+docs/**
+CLAUDE.md
+README.md
+CONTRIBUTING.md
+LICENSE
+.gitignore
+.env.example
+.prettierrc*
+.eslintrc*
+.husky/**
+groups/main/CLAUDE.md
+
+# Generic workflow templates (project-specific workflows live on project branches):
+container/workflows/plan/**
+container/workflows/implement/**
+
+# Generic critique/observer overlays (project-specific overlays live on project branches):
+container/overlays/buddy/**
+container/overlays/buddy-monitor/**
+container/overlays/critique-gate/**
+container/overlays/critique-overlay/**
+container/overlays/plan-gate/**
+
+# Removed in this PR (still allowlisted to permit the deletion through path-guard):
+container/workflows/triage-issue/**
+container/workflows/fix-issue/**
+container/workflows/discord-answer/**
+container/overlays/discord-answer-critique/**
+container/skills/github-webhook/**
+# chain-routing-gate overlay deleted — the routing check is now always-on, not
+# an overlay. Allowlisted so path-guard permits the deletion.
+container/overlays/chain-routing-gate/**
+
+# Operational skills (instruction-only workflows, not channel/provider installs):
+.claude/skills/init-first-agent/**
+.claude/skills/init-onecli/**
+.claude/skills/manage-channels/**
+.claude/skills/manage-mounts/**
+.claude/skills/migrate-from-v1/**
+.claude/skills/migrate-nanoclaw/**
+.claude/skills/update-skills/**
+.claude/skills/use-native-credential-proxy/**
+.claude/skills/convert-to-apple-container/**
+.claude/skills/x-integration/**
+.claude/skills/lego-system-tour/**
+
+# Channel install skills carry resources beyond SKILL.md (e.g. add-dashboard/resources/):
+.claude/skills/add-*/**
+
+# Top-level repo files:
+CHANGELOG.md
+CONTRIBUTORS.md
+README_ja.md
+README_zh.md
+RELEASING.md
+
+# Setup assets + launchers:
+assets/**
+bin/**
+migrate-v2*.sh
+nanoclaw.sh
+
+# Repo tooling (action.yml + badge for repo-tokens):
+repo-tokens/**
+
+# Removed in this PR — Python bytecode that should never have been committed:
+container/mcp-servers/**
+
+# Removed in this PR — base-nanoclaw moves to nv-nanoclaw's territory:
+container/skills/base-nanoclaw/**
+container/skills/buddy/**
+container/skills/codex-critique/**
+
+# Periodic upstream-sync (May 28, 2026): paths added by upstream/main absorbed via Sync PR.
+container/skills/whatsapp-formatting/**
+
+# Supervisor skill — periodic in-flight issue chain monitor (#514).
+container/skills/supervise-issues/**
+
+# Upstream-tracking shared skills — allowlisted so upstream-sync PRs can update
+# them on nv-main (same pattern as whatsapp-formatting above). DO NOT hand-edit
+# the prose of these on nv-*: they originate from origin/main/upstream and any
+# local divergence conflicts on every /update-nanoclaw sync.
+container/skills/agent-browser/**
+container/skills/self-customize/**
+container/skills/slack-formatting/**
+container/skills/welcome/**
+
+# NV-only generic workflow (not upstream):
+container/workflows/base/**

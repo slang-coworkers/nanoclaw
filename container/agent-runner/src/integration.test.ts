@@ -113,10 +113,14 @@ describe('poll loop integration', () => {
     await loopPromise.catch(() => {});
   });
 
-  it('bare text produces no outbound messages (scratchpad only)', async () => {
-    insertMessage('m1', { sender: 'Alice', text: 'hello' }, { platformId: 'chan-1', channelType: 'discord' });
+  it('bare text on system channel produces no outbound messages (scratchpad only)', async () => {
+    // System-channel inbound carries platformId=null; the auto-route gate in
+    // dispatchResultText (PR #366) is restricted to channelType !== 'system',
+    // so bare scratchpad here stays scratchpad. (External channels DO
+    // auto-route bare text — covered by `dispatchResultText auto-route gate`
+    // in poll-loop.test.ts.)
+    insertMessage('m1', { sender: 'Alice', text: 'hello' }, { platformId: null, channelType: 'system' });
 
-    // Agent responds with bare text — no <message to="..."> wrapping
     const provider = new MockProvider({}, () => 'I am thinking about this...');
     const controller = new AbortController();
     const loopPromise = runPollLoopWithTimeout(provider, controller.signal, 2000);

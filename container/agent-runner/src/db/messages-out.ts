@@ -38,9 +38,9 @@ export interface WriteMessageOut {
  *
  * The disjoint namespace is load-bearing, not just collision avoidance:
  * seq is the agent-facing message ID returned by send_message and accepted
- * by edit_message / add_reaction, and getMessageIdBySeq() below looks up
- * by seq across BOTH tables. If inbound and outbound could share a seq,
- * the agent's "edit message #5" could resolve to the wrong row.
+ * by add_reaction, and getMessageIdBySeq() below looks up by seq across
+ * BOTH tables. If inbound and outbound could share a seq, the agent's
+ * "react to message #5" could resolve to the wrong row.
  */
 export function writeMessageOut(msg: WriteMessageOut): number {
   const outbound = getOutboundDb();
@@ -129,6 +129,28 @@ export function getRoutingBySeq(
     .prepare('SELECT channel_type, platform_id, thread_id FROM messages_out WHERE seq = ?')
     .get(seq) as { channel_type: string | null; platform_id: string | null; thread_id: string | null } | undefined;
   return outRow ?? null;
+}
+
+/**
+ * True if this session has previously written an outbound row to the same
+ * (channel_type, platform_id, thread_id) tuple — i.e. we originated /
+ * already dispatched on this thread to this destination. Used by the a2a
+ * runtime guard in send_message to distinguish "I'm continuing my own
+ * thread" from "I'm writing into a thread the peer owns" (the latter
+ * should require in_reply_to to prove the link).
+ */
+export function hasOutboundToThread(
+  channelType: string,
+  platformId: string,
+  threadId: string,
+): boolean {
+  const result = getOutboundDb()
+    .prepare(
+      `SELECT COUNT(*) AS n FROM messages_out
+        WHERE channel_type = ? AND platform_id = ? AND thread_id = ?`,
+    )
+    .get(channelType, platformId, threadId) as { n: number } | undefined;
+  return (result?.n ?? 0) > 0;
 }
 
 /** Get undelivered messages (for host polling — reads from outbound.db). */
