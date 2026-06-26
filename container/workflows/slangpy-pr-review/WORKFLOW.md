@@ -11,7 +11,7 @@ uses:
 
 # /slangpy-pr-review — Review a SlangPy PR
 
-Use when asked to review a SlangPy PR, branch, or patch. Produce one correctness-focused verdict and return it to the requester. Posting back to GitHub is **gated** on an explicit human authorization marker (see step 5 and the `review-output.md` invariant).
+Use when asked to review a SlangPy PR, branch, or patch. Produce one correctness-focused verdict and return it to the requester. Posting back to GitHub is **gated** on an explicit human authorization marker (see **Post review back to GitHub** ({#post-review-to-github}) and the `review-output.md` invariant).
 
 This is the SlangPy counterpart to the slang `slang-pr-review` workflow. It is **single-reviewer and `gh`-based** — SlangPy has no `slangpy-pr-review-runner` / Devin / clarity-pipeline skills, so this workflow does the review directly with subagents over the mounted checkout rather than orchestrating external reviewer runners. If those runner skills are added later, widen this workflow to mirror the slang three-reviewer shape.
 
@@ -42,7 +42,7 @@ This is the SlangPy counterpart to the slang `slang-pr-review` workflow. It is *
 
    If a `slangpy-fixer` destination is wired and this review was a fixer handoff, also `send_file(to="slangpy-fixer", …)` so the fixer can act on findings.
 
-5. **Post review back to GitHub (authorized only)** {#post-review-to-github} — only when the dispatch carries the `<github-post-authorized />` marker (set when a human tagged `@nv-slang-bot` on the PR); else a no-op (the verdict already went out via step 4). The dispatch also carries `REPO=<owner>/<name>` and `PR=<number>` lines for grep. Post the review body as an `event=COMMENT` review per the `review-output.md` invariant — never `APPROVE`/`CHANGES_REQUESTED`. Round-2 hygiene first: if you posted a prior bot review on this PR, minimize it (`OUTDATED`) and resolve its threads before posting the new one (target `nv-slang-bot` only).
+5. **Post review back to GitHub (authorized only)** {#post-review-to-github} — only when the dispatch carries the `<github-post-authorized />` marker (set when a human tagged `@nv-slang-bot` on the PR); else a no-op (the verdict already went out via **Write + report the verdict** ({#report})). The dispatch also carries `REPO=<owner>/<name>` and `PR=<number>` lines for grep. Post the review body as an `event=COMMENT` review per the `review-output.md` invariant — never `APPROVE`/`CHANGES_REQUESTED`. Round-2 hygiene first: if you posted a prior bot review on this PR, minimize it (`OUTDATED`) and resolve its threads before posting the new one (target `nv-slang-bot` only).
 
    ```bash
    DISPATCH="$(cat /workspace/agent/.dispatch.txt 2>/dev/null || true)"
@@ -56,11 +56,11 @@ This is the SlangPy counterpart to the slang `slang-pr-review` workflow. It is *
    fi
    ```
 
-   Report result to parent: posted (with URL) / 403 → no `pull_requests:write`, fell back to `send_file` / any other failure (review already sent via step 4).
+   Report result to parent: posted (with URL) / 403 → no `pull_requests:write`, fell back to `send_file` / any other failure (review already sent via **Write + report the verdict** ({#report})).
 
 ## Mode invariants
 
-- **Produce, then gate the post.** Step 4 always writes + sends the review; step 5 decides GitHub posting from the marker. No marker ⇒ `send_file` only.
+- **Produce, then gate the post.** **Write + report the verdict** ({#report}) always writes + sends the review; **Post review back to GitHub** ({#post-review-to-github}) decides GitHub posting from the marker. No marker ⇒ `send_file` only.
 - **Bot reviews are always `event=COMMENT`** — never APPROVE / CHANGES_REQUESTED (see `review-output.md`). Bots don't gate human merges.
 - **Round-2 hygiene.** Re-reviewing a PR minimizes the prior `nv-slang-bot` review `OUTDATED` and resolves its threads BEFORE posting the new one. Never touch human / other-bot reviews.
 - **403 = graceful degrade.** No `pull_requests:write` → post fails → fall back to `send_file`. Affects `slang-coworkers/*`; `shader-slang/*` are write-capable.
