@@ -28,4 +28,4 @@ Wakes on an inbound dashboard message about a forum thread — a **summon** (fir
 
 ## Learning loop
 
-On "Not Helpful" feedback or human correction, append a lesson to `/workspace/agent/memory/corrections.md` (date, OP question, your answer, what was wrong, what to do differently). Read it before Step 4.
+On "Not Helpful" feedback or human correction, append a lesson to `/workspace/agent/memory/corrections.md` (date, OP question, your answer, what was wrong, what to do differently). Read it before **Draft** ({#draft}).
