@@ -62,15 +62,36 @@ describe('ClaudeProvider.maybeRotateContinuation', () => {
     expect(fs.existsSync(p)).toBe(true);
   });
 
-  it('rotates an oversized transcript (returns reason, moves the .jsonl aside)', () => {
+  it('rotates an oversized transcript (returns reason, deletes the .jsonl after archiving)', () => {
     process.env.CLAUDE_TRANSCRIPT_ROTATE_BYTES = String(64 * 1024);
     const p = writeTranscript('sess-big', 200 * 1024);
     const provider = new ClaudeProvider();
     const reason = provider.maybeRotateContinuation('sess-big', CWD);
     expect(reason).toContain('MB');
-    expect(fs.existsSync(p)).toBe(false); // original moved out of the resume path
+    expect(fs.existsSync(p)).toBe(false); // original removed from the resume path
     const dir = path.dirname(p);
-    expect(fs.readdirSync(dir).some((f) => f.startsWith('sess-big.jsonl.rotated-'))).toBe(true);
+    // Disk is reclaimed: the raw .jsonl is deleted, not left behind as a .rotated- copy.
+    expect(fs.readdirSync(dir).some((f) => f.startsWith('sess-big.jsonl.rotated-'))).toBe(false);
+    // The readable summary is preserved in the conversations dir.
+    const convDir = process.env.NANOCLAW_CONVERSATIONS_DIR as string;
+    expect(fs.existsSync(convDir) && fs.readdirSync(convDir).some((f) => f.endsWith('.md'))).toBe(true);
+  });
+
+  it('keeps the raw transcript (renamed aside) when archiving fails', () => {
+    process.env.CLAUDE_TRANSCRIPT_ROTATE_BYTES = String(64 * 1024);
+    const p = writeTranscript('sess-noarchive', 200 * 1024);
+    // Point the conversations dir at an existing *file* so mkdirSync (and thus
+    // archiving) fails — the rotation must then fall back to renaming aside
+    // rather than deleting unrecoverable history.
+    const blocker = path.join(tmp, 'conv-blocker');
+    fs.writeFileSync(blocker, 'x');
+    process.env.NANOCLAW_CONVERSATIONS_DIR = blocker;
+    const provider = new ClaudeProvider();
+    const reason = provider.maybeRotateContinuation('sess-noarchive', CWD);
+    expect(reason).toContain('MB');
+    expect(fs.existsSync(p)).toBe(false);
+    const dir = path.dirname(p);
+    expect(fs.readdirSync(dir).some((f) => f.startsWith('sess-noarchive.jsonl.rotated-'))).toBe(true);
   });
 
   it('rotates an aged transcript even when small', () => {
