@@ -37,7 +37,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 
    **Devin URL:**
    - `pr` mode → `https://github.com/<owner>/<repo>/pull/<n>`.
-   - `branch` mode → reuse open PR if any (`gh pr list --head <branch> --repo <repo>`); else _may_ open a **draft PR** on a fork with bot push rights, title prefixed `[devin-review-only]` (fork from `--devin-fork-repo <owner>/<repo>` or the existing remote at `/workspace/agent/slang`). Mark for cleanup in Step 6.
+   - `branch` mode → reuse open PR if any (`gh pr list --head <branch> --repo <repo>`); else _may_ open a **draft PR** on a fork with bot push rights, title prefixed `[devin-review-only]` (fork from `--devin-fork-repo <owner>/<repo>` or the existing remote at `/workspace/agent/slang`). Mark for cleanup in **Cleanup**.
    - `patch` mode → **never opens a PR**; Reviewer B skipped.
 
    If `branch` mode has no usable fork OR the bot lacks `pull_requests: write`, set `DEVIN_URL=""` and run Reviewer A only (skill exposes a helper).
@@ -68,7 +68,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    slang-pr-review-runner devin-fetch --url <DEVIN_URL> --out <run_dir>
    ```
 
-   **Reviewer C** (background, no polling), ~15–25 min — skip only if Step 3 found the clarity skills absent. Runs in all three modes:
+   **Reviewer C** (background, no polling), ~15–25 min — skip only if **Setup** found the clarity skills absent. Runs in all three modes:
 
    ```
    slang-clarity-review-runner run-clarity \
@@ -132,7 +132,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 
    Report result to parent: exit 0 = posted; exit 3 = no `pull_requests:write` (fall back to `send_file`); any nonzero = failure (final-review.md already sent). `post-back.sh` = `cleanup.sh` (minimize prior bot reviews/comments, resolve threads) + `post-review.sh` (POST event=COMMENT, dismiss any non-COMMENT bot review). Inline per-line comments are optional (`<run_dir_A>/inline-comments.json`, same POST); default posts body only.
 
-7. **Cleanup** {#cleanup} — If Step 3 created a draft PR solely for a Devin URL, close it (skip if `--keep-draft-pr`; never close the requester's PR in `pr` mode):
+7. **Cleanup** {#cleanup} — If **Setup** created a draft PR solely for a Devin URL, close it (skip if `--keep-draft-pr`; never close the requester's PR in `pr` mode):
 
    ```bash
    gh pr close <draft-pr-number> -R <fork-repo> --delete-branch \
@@ -141,7 +141,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 
 ## Mode invariants
 
-- **Inner CLI produces, outer workflow posts.** Inner `claude` CLI always writes `final-review.md` and stops; posting is decided by Step 6's marker.
+- **Inner CLI produces, outer workflow posts.** Inner `claude` CLI always writes `final-review.md` and stops; posting is decided by **Post review back to GitHub**'s marker.
 - **Bot reviews are always `event=COMMENT`** — never APPROVE / CHANGES_REQUESTED. `post-review.sh` hardcodes the state and dismisses any non-COMMENT bot review.
 - **Cleanup targets `nv-slang-bot` only** — production `claude` / `github-actions` auto-reviews untouched; we coexist with `claude-pr-review.yml`.
 - **Round-2 hygiene.** Re-running on a PR minimizes the prior bot review OUTDATED and resolves its threads BEFORE posting the new one.
