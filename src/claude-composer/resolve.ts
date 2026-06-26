@@ -366,8 +366,13 @@ export function resolveCoworkerManifest(
         const parent = catalog[meta.extendsWorkflow];
         steps = parent.steps;
         stepBodies = { ...parent.stepBodies };
-        if (!prologue) prologue = parent.prologue;
-        if (!epilogue) epilogue = parent.epilogue;
+        // Combine parent + child framing rather than letting the child shadow
+        // the parent. A child that authors its own body (e.g. `slangpy-implement`'s
+        // `## PR-review-fix mode` mode-deltas, captured as the child's epilogue)
+        // must NOT drop the parent's epilogue (`## Mode invariants` etc.). Parent
+        // framing comes first, then the child's specialization.
+        prologue = [parent.prologue, prologue].filter(Boolean).join('\n\n') || undefined;
+        epilogue = [parent.epilogue, epilogue].filter(Boolean).join('\n\n') || undefined;
       }
       workflowEntries.push({
         name: meta.name,

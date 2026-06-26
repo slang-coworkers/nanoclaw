@@ -250,7 +250,12 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
     // or synthesize one from the title. Synthesized ids let workflows
     // skip anchors when no overlay/override needs to target the step,
     // without losing the step's prose from the rendered output.
-    const stepHeaderRe = /^(\s*\d+\.\s+\*\*([^*]+)\*\*)(?:\s*\{#([a-z0-9-]+)\})?/gm;
+    //
+    // The step header MUST start at column 0 (no leading whitespace). Top-level
+    // workflow steps are always col-0; an INDENTED `N. **Bold**` line is a
+    // sub-list inside a step body (e.g. enumerated sub-steps) and must NOT be
+    // promoted to a step — otherwise it would phantom-split the parent step.
+    const stepHeaderRe = /^(\d+\.\s+\*\*([^*]+)\*\*)(?:\s*\{#([a-z0-9-]+)\})?/gm;
     const positions: { id: string; index: number }[] = [];
     const usedIds = new Set<string>();
     // Gate the step-header scan to the `## Steps` region. Numbered-bold
@@ -273,7 +278,16 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
     const rawSteps: RawStep[] = [];
     if (stepsHeadingMatch) {
       const stepsRegionStart = stepsHeadingMatch.index ?? 0;
-      for (const m of body.slice(stepsRegionStart).matchAll(stepHeaderRe)) {
+      // Bound the scan to the `## Steps` SECTION — from the heading to the next
+      // H2 (`## Mode invariants`, `## Notes`, etc.) or EOF. A numbered-bold list
+      // in a trailing H2 block (e.g. an enumerated invariant) must NOT be parsed
+      // as steps. The text after the region is handled as epilogue below.
+      const afterHeading = body.slice(stepsRegionStart + stepsHeadingMatch[0].length);
+      const nextH2 = afterHeading.match(/\n##\s+(?!#)/);
+      const stepsRegionEnd =
+        nextH2 != null ? stepsRegionStart + stepsHeadingMatch[0].length + (nextH2.index ?? 0) : body.length;
+      const stepsRegion = body.slice(stepsRegionStart, stepsRegionEnd);
+      for (const m of stepsRegion.matchAll(stepHeaderRe)) {
         rawSteps.push({ id: m[3], title: m[2].trim(), index: (m.index ?? 0) + stepsRegionStart });
       }
     }
