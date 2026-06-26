@@ -1462,10 +1462,7 @@ describe('R25: prologue numbered-bold bullets never parse as steps', () => {
       ].join('\n'),
       { extends: 'parent-proc' },
     );
-    writeProjectType(
-      root,
-      'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [child-proc]\n',
-    );
+    writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [child-proc]\n');
     const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
 
     // The child section must show the PARENT's six step headers, contiguously.
@@ -1515,10 +1512,7 @@ describe('R25: prologue numbered-bold bullets never parse as steps', () => {
       ].join('\n'),
       { extends: 'parent-proc' },
     );
-    writeProjectType(
-      root,
-      'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [child-proc]\n',
-    );
+    writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [child-proc]\n');
     const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
 
     const childStart = spine.indexOf('### /child-proc');
@@ -1590,10 +1584,7 @@ describe('R25: prologue numbered-bold bullets never parse as steps', () => {
         '',
       ].join('\n'),
     );
-    writeProjectType(
-      root,
-      'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [flow-proc]\n',
-    );
+    writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [flow-proc]\n');
     const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
 
     const flowStart = spine.indexOf('### /flow-proc');
