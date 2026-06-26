@@ -60,6 +60,10 @@ export async function handleCreateAgent(content: Record<string, unknown>, sessio
   const requestId = content.requestId as string;
   const name = content.name as string;
   const instructions = content.instructions as string | null;
+  // Dashboard sidebar group: 'prod' (or empty) → shared prod group (stored as null);
+  // any other value is a user id the coworker is scoped under.
+  const rawGroup = (content.group as string | null) ?? null;
+  const sidebarGroup = rawGroup && rawGroup !== 'prod' ? rawGroup : null;
 
   const sourceGroup = getAgentGroup(session.agent_group_id);
   if (!sourceGroup) {
@@ -188,6 +192,7 @@ export async function handleCreateAgent(content: Record<string, unknown>, sessio
     routing: (content.routing as string) || (directChannel ? 'direct' : 'internal'),
     disable_overlays: 0,
     created_at: now,
+    sidebar_group: sidebarGroup,
   };
   createAgentGroup(newGroup);
 

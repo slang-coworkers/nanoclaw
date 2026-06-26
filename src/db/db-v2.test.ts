@@ -106,32 +106,6 @@ describe('agent groups', () => {
     expect(() => createAgentGroup({ ...ag(), id: 'ag-dup' })).toThrow();
   });
 
-  it('stores null coworker_type for admin when not set by caller', () => {
-    createAgentGroup({ ...ag(), id: 'ag-admin', folder: 'admin-agent', is_admin: 1, coworker_type: null });
-    const result = getAgentGroup('ag-admin');
-    expect(result?.is_admin).toBe(1);
-    expect(result?.coworker_type).toBeNull();
-  });
-
-  it('preserves explicit coworker_type for admin groups', () => {
-    createAgentGroup({
-      ...ag(),
-      id: 'ag-admin-explicit',
-      folder: 'admin-explicit',
-      is_admin: 1,
-      coworker_type: 'main',
-    });
-    const result = getAgentGroup('ag-admin-explicit');
-    expect(result?.coworker_type).toBe('main');
-  });
-
-  it('leaves non-admin coworker_type null when omitted', () => {
-    createAgentGroup({ ...ag(), id: 'ag-nonadmin', folder: 'nonadmin-agent', is_admin: 0, coworker_type: null });
-    const result = getAgentGroup('ag-nonadmin');
-    expect(result?.is_admin).toBe(0);
-    expect(result?.coworker_type).toBeNull();
-  });
-
   it('defaults sidebar_group to null when not provided', () => {
     createAgentGroup(ag());
     expect(getAgentGroup('ag-1')!.sidebar_group ?? null).toBeNull();
@@ -152,7 +126,6 @@ describe('messaging groups', () => {
     platform_id: 'chan-123',
     name: 'General',
     is_group: 1,
-    admin_user_id: null,
     unknown_sender_policy: 'strict' as const,
     created_at: now(),
   });
@@ -206,7 +179,6 @@ describe('messaging group agents', () => {
       platform_id: 'chan-1',
       name: 'Gen',
       is_group: 1,
-      admin_user_id: null,
       unknown_sender_policy: 'strict',
       created_at: now(),
     });
@@ -216,8 +188,6 @@ describe('messaging group agents', () => {
     id: 'mga-1',
     messaging_group_id: 'mg-1',
     agent_group_id: 'ag-1',
-    trigger_rules: null,
-    response_scope: 'all' as const,
     engage_mode: 'pattern' as const,
     engage_pattern: '.',
     sender_scope: 'all' as const,
@@ -303,7 +273,6 @@ describe('messaging group agents', () => {
       platform_id: 'chan-2',
       name: 'Gen',
       is_group: 1,
-      admin_user_id: null,
       unknown_sender_policy: 'strict',
       created_at: now(),
     });
@@ -333,7 +302,6 @@ describe('sessions', () => {
       platform_id: 'chan-1',
       name: 'Gen',
       is_group: 1,
-      admin_user_id: null,
       unknown_sender_policy: 'strict',
       created_at: now(),
     });
