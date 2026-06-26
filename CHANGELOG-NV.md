@@ -6,15 +6,29 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 254 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 258 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 131 |
-| `nv-slang` | slang project spine, skills, workflows | 94 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 37 |
+| `nv-slang` | slang project spine, skills, workflows | 95 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 38 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 26 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-26
+
+### nv-main (4 PRs)
+- **#699** `refactor(supervise): split skill + add CI column & rebase-master nudge`
+- **#700** ``fix(composer): gate workflow step parsing to the `## Steps` region``
+- **#703** `fix(webhook): recognize both bot identities in the own-bot guard (stop self-👀)`
+- **#704** `fix(supervise): deterministic scan.py + fix broken wake-gate & --thread-prefix`
+
+### nv-slang (1 PRs)
+- **#701** `fix(slang-workflows): correct step formatting for clean composer rendering`
+
+### nv-slangpy (1 PRs)
+- **#702** `fix(slangpy-workflows): restore inherited steps in slangpy-implement`
 
 ## 📅 2026-06-25
 
