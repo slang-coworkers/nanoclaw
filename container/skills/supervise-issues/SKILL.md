@@ -26,10 +26,15 @@ from `thread_id`. Resolve the real PR with `gh` (see reference.md → *Resolving
 
 These hold across every step below; the steps reference them by number rather than restating them.
 
-- **R1 — Discover live every tick.** The chain universe is `ncl sessions list --thread-prefix
-  "gh-issue-"` unioned with the keys in `supervisor-state.json`. The tracker and state JSON are the
-  *prior snapshot* (for deltas), never the list of chains. Any `gh-issue-` session not already
-  journaled is a 🆕 NEW chain to add this tick.
+- **R1 — Discover live every tick.** The chain universe is `ncl sessions list --json` filtered
+  client-side to `thread_id` starting `gh-issue-` (there is **no** `--thread-prefix` flag — `ncl`
+  silently ignores unknown flags and returns *all* sessions, so the prefix filter MUST happen in
+  your pipe; see reference.md → *Live discovery + the scan script*), unioned with the keys in
+  `supervisor-state.json`. The tracker and state JSON are the *prior snapshot* (for deltas), never
+  the list of chains. Any `gh-issue-` session not already journaled is a 🆕 NEW chain to add this
+  tick. Hand the per-chain payload to `scripts/scan.py` for the deterministic classification
+  (NEW-set math, the by-us activity clock, ball-direction, PR↔issue resolution) — the rules that
+  kept getting re-derived wrong are now tested code.
 - **R2 — Dedup on keys, not prose.** "Already journaled" means a top-level or `_archived` *key*
   exists for the chain. An issue number appearing somewhere in narrative text does not count.
   Compute novelty as a set operation on keys: `NEW = {live gh-issue threads} − {top-level keys} −
@@ -167,26 +172,40 @@ state is in `supervisor-state.json`, which is exactly why live rediscovery per R
 and the **wake gate** (a tick with nothing stuck is a no-op). A tick that does wake reports only
 the delta (Step 1).
 
+The gate runs as **bash inside your container** (the agent-runner runs the task `script` via
+`bash`, reads the last stdout line as JSON, and wakes the agent only when `wakeAgent` is `true`).
+So it uses **`ncl`** (on `PATH` at `/usr/local/bin/ncl`), not a dashboard HTTP endpoint. Do **not**
+fetch `http://…:3000/api/sessions/in-flight`: that endpoint does not exist and `:3000` is not the
+dashboard port (it varies per instance via `DASHBOARD_PORT`), so the old fetch always failed → the
+gate degraded to "wake every tick" (no saving). `ncl sessions list --json` needs no port and no auth.
+
 ```js
 schedule_task({
   prompt: '/supervise-issues',
   cron: '0 */12 * * *',
   new_session: true,
-  script: `node --input-type=module -e "
-    const r = await fetch('http://172.17.0.1:3000/api/sessions/in-flight', {
-      headers: { 'X-Internal': '1' },
-    }).catch(() => null);
-    if (!r || !r.ok) { console.log(JSON.stringify({wakeAgent: true})); process.exit(0); }
-    const sessions = await r.json();
-    const now = Date.now();
-    const stale = sessions.filter(s =>
-      s.threadId?.startsWith('gh-issue-') &&
-      now - new Date(s.lastActiveAt || 0).getTime() > 60 * 60 * 1000
-    );
-    console.log(JSON.stringify({ wakeAgent: stale.length > 0, data: { stale: stale.length } }));
-  "`,
+  script: `
+    # Wake only when a gh-issue chain has been silent (by us) for >60 min.
+    # ncl is in-container; --json returns {id,ok,data:[...]}. ncl ignores unknown
+    # flags silently — there is NO --thread-prefix; filter client-side.
+    ncl sessions list --json 2>/dev/null | python3 -c "
+import json, sys, datetime
+now = datetime.datetime.now(datetime.timezone.utc)
+data = json.load(sys.stdin).get('data', [])
+def stale(s):
+    la = s.get('last_active')
+    if not la: return True
+    t = datetime.datetime.fromisoformat(la.replace('Z', '+00:00'))
+    return (now - t).total_seconds() > 3600
+gh = [s for s in data if (s.get('thread_id') or '').startswith('gh-issue-')]
+st = [s for s in gh if stale(s)]
+print(json.dumps({'wakeAgent': len(st) > 0, 'data': {'gh_chains': len(gh), 'stale': len(st)}}))
+"`,
 });
 ```
+
+(On a `ncl`/`python3` error the script exits non-zero → the agent-runner fail-closes and skips the
+tick rather than burning a model tick on a broken gate; the next cron fire retries.)
 
 Any custom prompt attached to the scheduled task must keep a `DISCOVER` step (live `ncl sessions
 list`, per R1) *ahead* of any "refresh from tracker" step, and must scope the tracker to "prior

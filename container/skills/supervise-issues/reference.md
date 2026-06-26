@@ -3,6 +3,48 @@
 Lookup tables, command snippets, and rationale for `/supervise-issues`. The SKILL.md body
 states the rules and the procedure; this file holds the detail each step points to.
 
+## Live discovery + the scan script
+
+**`ncl` silently ignores unknown flags** — there is **no** `--thread-prefix`; passing it returns
+*all* sessions, unfiltered. List with `--json` and filter the `gh-issue-` prefix **client-side**:
+
+```bash
+ncl sessions list --json \
+  | python3 -c 'import json,sys; print(json.dumps([s for s in json.load(sys.stdin)["data"] if (s.get("thread_id") or "").startswith("gh-issue-")]))'
+```
+
+`ncl sessions list --json` returns `{"id":…,"ok":true,"data":[…]}`; each session row has `id`,
+`thread_id`, `container_status`, `last_active`, `agent_group_id`. Exact-column filters DO work
+(`--container_status running`); only prefix matching is unsupported. Per-session last activity:
+`ncl sessions messages --id <sess> --limit 1 --json`.
+
+**Deterministic classification → `scripts/scan.py`.** Don't re-derive the set math and the activity
+clock by hand each tick (that re-derivation is what produced the documented silent-2-days,
+dark-for-days, and ~16-dropped-chains failures — see *Why these rules exist*). Assemble one JSON
+payload and pipe it through the bundled script:
+
+```bash
+python3 scripts/scan.py < payload.json > scan-out.json   # python3 scripts/test_scan.py to validate
+```
+
+`scan.py` is **pure** (no network/subprocess; an `--now` override exists for tests). Input (stdin) —
+its module docstring carries the full contract:
+
+| field | what |
+| --- | --- |
+| `now` | ISO-8601 (with `Z`) tick time |
+| `bot_logins` | optional; default `["nv-slang-bot[bot]", "nv-slang-bot"]` (App + user PAT — both are "us") |
+| `state` | prior `supervisor-state.json` (`{}` on first run) |
+| `sessions` | the `gh-issue-`-filtered `ncl sessions list` rows |
+| `chains` | per `gh-issue-…` thread: `{repo, issue, sessions[], our_last_outbound, our_last_push, pr:{number,state,isDraft,fixes_issue}, comments:[{author,at,is_bot,kind}], pending_ask_user, disposition?}` |
+
+Output: `{rows, summary, state}`. Each row → `state` (`awaiting_us`/`awaiting_human`/`silent`/
+`pr_open`/…), `ball` (`ours`/`human`/`none`), `delta` (`new`/`updated`/`same`),
+`last_activity_by_us`, `needs_nudge` + `nudge_reason`, `escalate`, `github_artifact`,
+`mis_threaded`. Write `state` back to `supervisor-state.json`. The script decides *which* rows need
+a nudge and *why* — **you** still compose and thread-key each nudge (Step 3) and make every
+judgment call (substantive-comment decisions, escalation wording).
+
 ## Resolving a chain's real PR
 
 The fixer branches as `fix/issue-<num>`. Find the PR by head branch, then confirm which issue it
