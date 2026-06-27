@@ -12,6 +12,8 @@ vi.mock('../../config.js', () => ({
   get DATA_DIR() {
     return path.join(_tempDir, 'data');
   },
+  ONECLI_URL: 'http://127.0.0.1:10254',
+  ONECLI_API_KEY: '',
 }));
 
 vi.mock('../../container-runner.js', () => ({
