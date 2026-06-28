@@ -2,7 +2,7 @@
  "_meta": {
   "lastTick": 62,
   "lastTickAt": "2026-06-21T00:05:00Z",
-  "prevTickAt": "2026-06-20T12:02:00+00:00",
+  "prevTickAt": "2026-06-27T00:18:00Z",
   "tick36": "2026-06-14T06:07:00Z \u2014 STATIC tick, fired ~6min after tick35. Live ncl: 42 gh-issue threads, all journaled, 0 NEW. GitHub updated:>=2026-06-14T06:00 across slang/slangpy/slang-rhi returned ZERO touched items. 0 tracked-chain deltas vs tick35. 0 nudges/postmortems/GC/escalations/stale-pings. Postmortem watches #11473\u2192#11554 & #11395\u2192#11523 both still OPEN/unmerged (no activity). #11483 re-ping HELD (edit-in-place, bot last commenter). #11476 re-ping window opens ~06-14 12:04 (not due, ~6h away). 4 operator decisions carry-over (NOT re-firing ask): #11519 ~120h artifact-gap loudest, #11505 ~107h, master-CI cpu-shader-llvm PENDING since 06-09 ~4.8d, #11487 drafts-flip ~84h. Health healthy.",
   "tick35": "2026-06-14T06:01:00Z \u2014 static tick. Live ncl: 43 gh-issue threads, identical to tick34, 0 NEW. GitHub updated:>=2026-06-14T00:00 across slang/slangpy/slang-rhi returned ONLY #11604 (untracked: @jkwak-work opened+closed COMPLETED a Falcor CI-machine regression in ~1h, bot participated, no gh-issue session \u2014 CI-babysitter/maintainer territory). 0 tracked-chain deltas. 0 nudges/postmortems/GC/escalations. #11483 re-ping HELD (edit-in-place, bot last commenter). #11476 re-ping window opens ~06-14 12:04 (not due). 4 operator decisions carry-over (NOT re-firing ask): #11519 ~120h artifact-gap loudest, #11505 ~107h, master-CI cpu-shader-llvm PENDING since 06-09 12:31 ~4.7d, #11487 drafts-flip ~84h. Health healthy.",
   "tick37": "2026-06-14T12:05:00Z \u2014 STATIC tick, ~6h after tick36. Live ncl: 42 unique gh-issue threads (all journaled in-flight or _archived; 0 NEW). GitHub-wide updated>=06-14T06:00 across slang/slangpy/slang-rhi = ZERO touched items (last activity #11604 02:58, pre-tick36). 0 tracked-chain moves. Postmortem watches #11554(#11473)/#11523(#11395) both OPEN/unmerged=0 fired. Stale-ping: #11476(#11474) re-ping window OPENED 12:04:46 but HELD (bot still last commenter @saipraveenb25, 0 human reply -> edit-in-place hygiene + anti-loop); #11484(#11483) HELD same reason. 0 nudges/0 GC/0 archived. Carry-over operator decisions aged ~6h: #11519 artifact-gap ~126h (loudest), #11505 ~113h, master-CI cpu-shader-llvm infra ~119h, #11487 drafts-flip ~90h. Not re-firing asks (anti-loop).",
@@ -69,7 +69,9 @@
    ],
    "ballSweep": "0 awaiting_us. #11568 csyonghe maintainer-led design (session running/processed); #11573 jkwak maintainer-decided Unplanned; #11474 ready-stale but re-ping HELD (hygiene). No #11594-style dark-session trap.",
    "notes": "#11541 & #11555 both flipped non-draft -> #11555 clearly maintainer-driven (kaizhang APPROVED, jhelferty shepherded); #11541 in skiminki review loop/released. Surface as watch signal, not violation. worktree-vol 17GB (18->17 in 12h, drop flattened, >10GB)."
-  }
+  },
+  "tick63": "2026-06-28T12:15:00Z \u2014 RESUMED after 7-day gap (prev tick62 06-21). Live ncl: 42 unique gh-issue sessions; 0 NEW (all live threads already top-level or _archived keys). GitHub reconcile: #11540 CLOSED COMPLETED (maintainer, no PR)\u2192archived; #11573 advisory Unplanned quiet 78h\u2192archived. Already-archived w/ recent session wind-down: #11528/#11552/#11550 all now CLOSED COMPLETED (consistent). CI: #11538 \u2705 / #11563 \u2705\u2935\ufe0fBEHIND(held, no nudge) / #11551 \u2705 / #11509 \u2705 / #11545 \u274c real-stale 9d\u2192NUDGED fixer. 1 nudge (#11545), 0 escalations, 0 postmortems (#11540 no-PR close). worktree-vol 16GB free, GC deferred (no pressure). 13 older state-key draft PRs all OPEN (parked drafts-only, consistent). Coverage note: orchestrator MEMORY tracks ~10 recent issues (#11746/11759/11771/11780/11786/11790/11778/11732/11759-archived) with NO supervisor session \u2014 outside mechanical scope.",
+  "tick64_followup": "2026-06-28T12:20:00Z \u2014 slang-fixer replied on #11545 (msg 2616). #11564 superseded\u2192recommend close; #11596 stale dup\u2192recommend close; [3/3] #11593 BLOCKED on disk (container overlay 0 avail, ~290G stale sibling builds). NOTE: this overlay is DISTINCT from /workspace/extra/ephemeral (16G free) \u2014 skill df check misses fixer overlay pressure. Escalated BOTH asks to operator (closes are operator-gated 'never auto-close'; disk needs admin prune). Held fixer pending operator."
  },
  "_ci_health_alert": {
   "id": "master-wide-slangpy-tests-shader-o-2026-06-09",
@@ -784,6 +786,26 @@
     "at": "2026-06-27T00:05:00Z"
    },
    "at": "2026-06-27T00:05:00Z"
+  },
+  "gh-issue-shader-slang/slang-11552": {
+   "reason": "MERGED \u2014 our PR #11556 (fix/issue-11552) merged by jkwak-work 2026-06-26; issue CLOSED/COMPLETED",
+   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11556",
+   "pr": 11556,
+   "archivedAt": "2026-06-27T00:18:00Z",
+   "postmortem": {
+    "done": false,
+    "reason": "skip \u2014 our own merged PR"
+   }
+  },
+  "gh-issue-shader-slang/slang-11540": {
+   "archivedAt": "2026-06-28T12:15:00Z",
+   "reason": "maintainer jhelferty-nv closed COMPLETED 06-26; design/tracking issue, no PR (deferred to csyonghe, resolved upstream)",
+   "url": "https://github.com/shader-slang/slang/issues/11540"
+  },
+  "gh-issue-shader-slang/slang-11573": {
+   "archivedAt": "2026-06-28T12:15:00Z",
+   "reason": "advisory: jkwak-work set Unplanned 06-25 21:40Z after csyonghe discussion; -zero-initialize RFC deprioritized; quiet 78h; RFC is artifact",
+   "url": "https://github.com/shader-slang/slang/issues/11573#issuecomment-..."
   }
  },
  "gh-issue-shader-slang/slang-11519": {
@@ -848,7 +870,11 @@
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11511",
   "nudgedAt": [],
   "firstSeenTick": 13,
-  "note": "\ud83d\udd3c tick14: maintainer @jvepsalainen-nv opened OWN WIP draft PR #11510 'wave-aggregated counter increments (WIP)' (head feature/coverage-wave-aggregated-counters on jvepsalainen-nv fork, upd 13:32) for the SAME issue -> A/B: A=#11510 (maintainer WIP) / B=#11511 (ours, draft, upd 18:04). Both draft, issue OPEN, nothing merged -> no postmortem yet. WATCH which lands; if maintainer's #11510 merges, trigger \u00a77 postmortem on B=#11511. tick13: NEW chain, issue opened 13:10 'Shader coverage: wave/subgroup-aggregate counter increments to cut atomic contention'. | tick17: maintainer A-side #11510 pushed WIP 12:03; still draft. A/B both draft, nothing merged."
+  "note": "\ud83d\udd3c tick14: maintainer @jvepsalainen-nv opened OWN WIP draft PR #11510 'wave-aggregated counter increments (WIP)' (head feature/coverage-wave-aggregated-counters on jvepsalainen-nv fork, upd 13:32) for the SAME issue -> A/B: A=#11510 (maintainer WIP) / B=#11511 (ours, draft, upd 18:04). Both draft, issue OPEN, nothing merged -> no postmortem yet. WATCH which lands; if maintainer's #11510 merges, trigger \u00a77 postmortem on B=#11511. tick13: NEW chain, issue opened 13:10 'Shader coverage: wave/subgroup-aggregate counter increments to cut atomic contention'. | tick17: maintainer A-side #11510 pushed WIP 12:03; still draft. A/B both draft, nothing merged.",
+  "ci": {
+   "cell": "green",
+   "latestRunId": 27740023913
+  }
  },
  "gh-issue-shader-slang/slang-11505": {
   "tick21": "2026-06-10T18:01:00+00:00 \u2014 \u2022 same: still no new GitHub activity since tick20 (last comment still maxime-modulopi 18:39:07 06-09, now ~23.4h ago; no maintainer reply). Reporter remains UNANSWERED ~23h on a substantive spec-refinement. Decision maintainer-gated (@jkwak-work/@jhelferty-nv/@skiminki-nv); standing A/B/C-options artifact (18:26 06-08) valid + resumable. Continuing escalate-in-board (per tick20). Did NOT push an interim triage post (feedback_triage_github_posting). Operator question stands: ping the tagged maintainers on-issue, or keep holding?",
@@ -1372,36 +1398,8 @@
   "state": "pr_open",
   "ci": {
    "cell": "green",
-   "latestRunId": 28250853749,
-   "note": "workflow_dispatch success 06-26 16:21; mss=BLOCKED = REVIEW_REQUIRED (csyonghe pending)"
+   "latestRunId": 28250853749
   }
- },
- "gh-issue-shader-slang/slang-11540": {
-  "lastObservedActivity": "2026-06-11T00:24:09+00:00",
-  "lastPrState": null,
-  "lastIssueState": "OPEN",
-  "lastCloserList": [],
-  "lastCommentSeenUrl": "https://github.com/shader-slang/slang/issues/11540#issuecomment-4675986130",
-  "lastCommentAt": "2026-06-11T00:24:09+00:00",
-  "pr": null,
-  "ourPr": null,
-  "issue": 11540,
-  "repo": "shader-slang/slang",
-  "category": "no_pr",
-  "ownership": "ours",
-  "firstSeenTick": 22,
-  "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11540#issuecomment-4675986130",
-  "artifactGap": false,
-  "disposition": "triaged: design/feature (Metal), deferred \u2014 NUDGE WORKED. slang-triager posted 5-bullet artifact 00:24 (issuecomment-4675986130); the 4.8h gap was a missing artifact only (triage complete in memory, container had exited). Combined texture+sampler DescriptorHandle bindless = design/tracking child split off parent #10842 (open), NOT a dup of the DescriptorHandle cluster. Crux: param-vs-buffer encoding contract (opaque texture/sampler cannot be a Metal device-buffer member); A/B/C solution space in comment. Set Issue Type=Feature. Routed to design-owner @csyonghe (Yong He) via Office-Yong label. NOT forwarded to fixer (tracking issue = no actionable fix). Blocked on encoding design + depends on #10842 Metal bindless RHI enablement landing first.",
-  "githubCommentRequestedAt": "2026-06-11T00:02:00+00:00",
-  "githubCommentUrl": "https://github.com/shader-slang/slang/issues/11540#issuecomment-4675986130",
-  "nudgedAt": [
-   "2026-06-11T00:02:00+00:00"
-  ],
-  "note": "\ud83d\udd27\u2705 tick22 NUDGE WORKED + RESOLVED same tick. Artifact-gap+container-exited-post-triage -> nudged slang-triager 00:02 -> triager posted terminal triage 00:24 (msg1490) + reported upstream. Gap CLEARED. Parked at design-owner-decision (Yong He). Triager noted it captured a shared learning: the dev-authored-design A2A-only/skip-post rule is SUPERSEDED by the observability reinforcements (post the artifact). NEXT TICK: watch for design-owner decision; tracking-issue rest state, a substantive design reply re-opens via webhook.",
-  "lastCommentAuthor": "nv-slang-bot",
-  "nudgeActioned": "2026-06-11T00:24:09+00:00",
-  "resolvedThisTick": true
  },
  "gh-issue-shader-slang/slang-11545": {
   "lastObservedActivity": "2026-06-13T03:14:24Z",
@@ -1427,7 +1425,8 @@
   "githubCommentRequestedAt": "2026-06-11T06:01:00+00:00",
   "githubCommentUrl": "https://github.com/shader-slang/slang/issues/11545#issuecomment-4677708410",
   "nudgedAt": [
-   "2026-06-11T06:01:00+00:00"
+   "2026-06-11T06:01:00+00:00",
+   "2026-06-28T12:15:00Z"
   ],
   "resolvedThisTick": true,
   "tick24": "2026-06-11T12:01 \u2014 UPDATED: reporter @maxime-modulopi confirmed triage points 08:54 ('all points match how I would expect such a feature to work'). Positive ack, no action. maintainer-driving (jkwak-work on fork); #11505 coupling stands. Watch.",
@@ -1438,7 +1437,20 @@
    11592,
    11593
   ],
-  "tick31": "\ud83d\udd3c split into 4 sub-issues #11590-93 + registered per jkwak request; maintainer-driving umbrella."
+  "tick31": "\ud83d\udd3c split into 4 sub-issues #11590-93 + registered per jkwak request; maintainer-driving umbrella.",
+  "ci": {
+   "cell": "failed-stale",
+   "latestRunId": 27796816045
+  },
+  "next": "ESCALATED to operator (tick64): (1) close #11564+#11596 decision; (2) disk prune. [3/3] #11593 blocked on ENOSPC. #11594 approved, #11595 non-draft (jkwak readied). Drafts/merge gate intact.",
+  "fixerReply": {
+   "at": "2026-06-28T12:20:00Z",
+   "summary": "#11564 SUPERSEDED (recommend close Option A, do NOT rebase stale red run 27796816045/04fa47788). Live series: [1/3] #11594 (closes #11590, jkwak approved+readied); [2/3] #11595 (consistency #11591 + validation #11592 folded via parent-approved Y-merge, force-pushed eda63ff9b, jkwak readied non-draft 06-27, CI run 27968087965); [3/3] #11593 chunked codegen code-complete but BLOCKED on disk. #11596 = stale DUPLICATE (pre-Y-merge standalone #11592 PR, now CONFLICTING) \u2014 recommend close as superseded by #11595.",
+   "asks": [
+    "operator green-light to close #11564 (Option A) + #11596 (superseded) \u2014 bot-authored, close-rule",
+    "free disk: fixer container overlay 100% full (251G used, 0 avail); ~40 sibling wt-slang-*/build @7.3G (~290G), many merged/closed PRs; blocks [3/3] push + builds"
+   ]
+  }
  },
  "gh-issue-shader-slang/slang-11551": {
   "lastObservedActivity": "2026-06-11T18:01:00+00:00",
@@ -1460,34 +1472,11 @@
   "artifactGap": false,
   "note": "NEW tick24. Reporter expipiplus1. Triage 09:14 confirmed+routed; fixer in-progress, no PR yet. Watch for fix/issue-11551 PR next tick.",
   "lastPrIsDraft": true,
-  "tick25": "\ud83d\udd3c fixing -> pr_open draft #11558."
- },
- "gh-issue-shader-slang/slang-11552": {
-  "lastObservedActivity": "2026-06-26T20:02:52Z",
-  "lastPrState": "OPEN",
-  "lastPrIsDraft": true,
-  "lastIssueState": "OPEN",
-  "lastCloserList": [],
-  "lastCommentSeenUrl": "https://github.com/shader-slang/slang/issues/11552#issuecomment-4680125116",
-  "lastCommentAt": "2026-06-11T11:38:53+00:00",
-  "lastCommentAuthor": "nv-slang-bot",
-  "pr": 11556,
-  "ourPr": 11556,
-  "issue": 11552,
-  "repo": "shader-slang/slang",
-  "category": "pr_bearing",
-  "ownership": "ours",
-  "firstSeenTick": 24,
-  "disposition": "pr_open: ADVANCED. Maintainer jkwak-work flipped PR #11556 ready_for_review 06-26 20:01 AND APPROVED it. Near-merge; bot merge operator-gated, maintainer may self-merge. Maintainer-initiated ready-flip = NOT a drafts-only breach.",
-  "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11556",
-  "artifactGap": false,
-  "note": "NEW tick24. Triage resolution 11:38 -> draft PR #11556 opened 11:34. drafts-only hold. Watch CI + review.",
-  "state": "APPROVED",
+  "tick25": "\ud83d\udd3c fixing -> pr_open draft #11558.",
   "ci": {
-   "cell": "unknown",
-   "note": "non-draft + APPROVED; CI not separately re-checked this tick"
-  },
-  "next": "maintainer jkwak-work APPROVED + readied #11556 \u2014 ready to merge; maintainer may self-merge, bot merge operator-gated"
+   "cell": "green",
+   "latestRunId": 27779286840
+  }
  },
  "gh-issue-shader-slang/slang-11563": {
   "lastObservedActivity": "2026-06-26T14:57:12Z",
@@ -1519,8 +1508,7 @@
   "lastPrUpdate": "2026-06-19T03:58:38Z",
   "ci": {
    "cell": "green-behind",
-   "latestRunId": 28246116654,
-   "note": "workflow_dispatch success 06-26 14:57; mss=BEHIND (master moved). Held draft \u2014 no churn-rebase."
+   "latestRunId": 28246116654
   },
   "next": "CI GREEN (run 28246116654); PR #11581 BEHIND but held drafts-only awaiting review \u2014 reviewer pending, no nudge (rebase right before review/merge, not on every master advance)",
   "readyFlipHeld": true
@@ -1566,32 +1554,8 @@
   "lastActivityAt": "2026-06-24T23:29:56Z",
   "next": "active: human-debate (maintainer-led). tick60: nv-slang-bot posted HEAD-verified (153538228) neutral-facts confirmation of @jkwak-work's DescriptorHandle<T>(index) dynamic-construction workaround (issuecomment 23:29Z). Bot-last, awaiting @ivirtex test. Related #11718 open / #11719 CLOSED 06-24. Watch."
  },
- "gh-issue-shader-slang/slang-11573": {
-  "lastObservedActivity": "2026-06-25T21:40:54Z",
-  "lastPrState": null,
-  "lastPrIsDraft": null,
-  "lastIssueState": "OPEN",
-  "lastCloserList": [],
-  "lastCommentSeenUrl": null,
-  "lastCommentAt": "2026-06-22T16:01:18Z",
-  "pr": null,
-  "ourPr": null,
-  "issue": 11573,
-  "repo": "shader-slang/slang",
-  "category": "no_pr",
-  "ownership": "ours",
-  "firstSeenTick": 27,
-  "disposition": "advisory: maintainer-DECIDED. jhelferty asked priority 06-25 18:42Z; jkwak-work set Unplanned 06-25 21:40Z after discussing w/ csyonghe. -zero-initialize roadmap RFC deprioritized to Unplanned by maintainers. Issue still OPEN; RFC is the artifact. Watch; candidate for awareness/archive if it goes quiet.",
-  "githubArtifactUrl": null,
-  "artifactGap": false,
-  "nudgedAt": [
-   "2026-06-12T12:02:00Z"
-  ],
-  "lastState": "advisory:maintainer-parked",
-  "next": "advisory: maintainer set Unplanned 06-25 21:40; quiet ~26h. RFC is the artifact. CANDIDATE-ARCHIVE next tick if still quiet."
- },
- "lastTick": 62,
- "lastTickAt": "2026-06-27T00:05:00Z",
+ "lastTick": 64,
+ "lastTickAt": "2026-06-28T12:15:00Z",
  "operatorRulings": [
   {
    "at": "2026-06-15T12:23:00+00:00",
@@ -1622,8 +1586,7 @@
   ],
   "ci": {
    "cell": "stale-held",
-   "latestRunId": 27808512176,
-   "note": "real cross-platform failure 06-19; diagnosis deferred until base #11591 lands"
+   "latestRunId": 27808512176
   },
   "next": "HOLD until base #11591/PR #11595 resolves; do not rebase (would flatten unmerged S1+S2); stable-name 863\u2192867 + breaking .meta.slang surface + maintainer coord deferred to B/C operator call",
   "state": "held: base-dependency",
