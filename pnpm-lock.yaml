@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@chat-adapter/telegram':
-        specifier: 4.27.0
-        version: 4.27.0
+        specifier: 4.29.0
+        version: 4.29.0(zod@3.25.76)
       '@clack/core':
         specifier: ^1.2.0
         version: 1.2.0
@@ -24,8 +24,8 @@ importers:
         specifier: 11.10.0
         version: 11.10.0
       chat:
-        specifier: ^4.27.0
-        version: 4.27.0
+        specifier: 4.29.0
+        version: 4.29.0(zod@3.25.76)
       cron-parser:
         specifier: 5.5.0
         version: 5.5.0
@@ -84,11 +84,13 @@ importers:
 
 packages:
 
-  '@chat-adapter/shared@4.27.0':
-    resolution: {integrity: sha512-Wz+YZ8Mp2/qcxxJ+rU0ofZQSEtOF/4toEh7wbA+q+uLlPrLue+7hImWluJpQUZqGjSwsUoXhjSNwgFv3hz20aQ==}
+  '@chat-adapter/shared@4.29.0':
+    resolution: {integrity: sha512-ARqTDoHJHKN9rpytbFPJbNmqqx3fOg5xwsTZdlingQPAssOSeHDBdqrFJkgDhyCRGbmDtG09cuS0FkVzeoh2qg==}
+    engines: {node: '>=20'}
 
-  '@chat-adapter/telegram@4.27.0':
-    resolution: {integrity: sha512-taRZAPw5Sw7G4BtsGCIV5QqaXrKUlmLWoX04NZxGUC0Gn7MuYPwh7P7wMk04LvQ2lZfhjVCr22UlvayloUPSfg==}
+  '@chat-adapter/telegram@4.29.0':
+    resolution: {integrity: sha512-015tU3HEjFQWw7DgebXWkDeQA6lTdTVEO4btAV3f6U1kEnOfjLVJq98latcsM1WkEvv+3LIFKpsz9pG53aamBw==}
+    engines: {node: '>=20'}
 
   '@clack/core@1.2.0':
     resolution: {integrity: sha512-qfxof/3T3t9DPU/Rj3OmcFyZInceqj/NVtO9rwIuJqCUgh32gwPjpFQQp/ben07qKlhpwq7GzfWpST4qdJ5Drg==}
@@ -744,8 +746,17 @@ packages:
   character-entities@2.0.2:
     resolution: {integrity: sha512-shx7oQ0Awen/BRIdkjkvz54PnEEI/EjwXDSIZp86/KKdbafHh1Df/RYGBhn4hbe2+uKC9FnT5UCEdyPz3ai9hQ==}
 
-  chat@4.27.0:
-    resolution: {integrity: sha512-PrL4k263DSIlckhX8eHLT84RdTSznOBxCCfaDc5JVJtWaS0lJkCNctm/g3gIrI41AcDHcpc/3WDoUHVrbh0W4w==}
+  chat@4.29.0:
+    resolution: {integrity: sha512-KdPfzaie5ivYytyRICTERg5xT+LeCbYefokvNAqTHe92eqkFaoTMXXkSitikxJVWhZIb2YoXF1b9UZHyzSzKzw==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      ai: ^6.0.182
+      zod: ^3.0.0 || ^4.0.0
+    peerDependenciesMeta:
+      ai:
+        optional: true
+      zod:
+        optional: true
 
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
@@ -2077,18 +2088,22 @@ packages:
 
 snapshots:
 
-  '@chat-adapter/shared@4.27.0':
+  '@chat-adapter/shared@4.29.0(zod@3.25.76)':
     dependencies:
-      chat: 4.27.0
+      chat: 4.29.0(zod@3.25.76)
     transitivePeerDependencies:
+      - ai
       - supports-color
+      - zod
 
-  '@chat-adapter/telegram@4.27.0':
+  '@chat-adapter/telegram@4.29.0(zod@3.25.76)':
     dependencies:
-      '@chat-adapter/shared': 4.27.0
-      chat: 4.27.0
+      '@chat-adapter/shared': 4.29.0(zod@3.25.76)
+      chat: 4.29.0(zod@3.25.76)
     transitivePeerDependencies:
+      - ai
       - supports-color
+      - zod
 
   '@clack/core@1.2.0':
     dependencies:
@@ -2690,7 +2705,7 @@ snapshots:
 
   character-entities@2.0.2: {}
 
-  chat@4.27.0:
+  chat@4.29.0(zod@3.25.76):
     dependencies:
       '@workflow/serde': 4.1.0-beta.2
       mdast-util-to-string: 4.0.0
@@ -2699,6 +2714,8 @@ snapshots:
       remark-stringify: 11.0.0
       remend: 1.3.0
       unified: 11.0.5
+    optionalDependencies:
+      zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
 
