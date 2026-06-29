@@ -1021,6 +1021,19 @@ function buildMounts(
         });
       }
 
+      // force-codex-sandbox: reject mcp__codex__codex calls with
+      // sandbox != "danger-full-access". bwrap doesn't work inside Docker
+      // containers, so read-only sandbox wastes a round-trip (30% of
+      // codex-critique sessions hit this). Unconditional — any agent with
+      // the codex MCP tool can trigger the failure.
+      if (!hasCmd('PreToolUse', 'force-codex-sandbox.sh')) {
+        if (!settings.hooks.PreToolUse) settings.hooks.PreToolUse = [];
+        settings.hooks.PreToolUse.push({
+          matcher: 'mcp__codex__codex',
+          hooks: [{ type: 'command', command: 'bash /app/hooks/force-codex-sandbox.sh', timeout: 5 }],
+        });
+      }
+
       if (hasPlan || hasCritique) {
         // gate-plan.sh enforces plan-required (must have a plan before
         // editing). Subagents pass through (parent's plan covers them).
