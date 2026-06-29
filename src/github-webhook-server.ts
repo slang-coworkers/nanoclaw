@@ -44,6 +44,7 @@ const ACCEPTED_EVENTS = new Set<string>([
   'issue_comment',
   'pull_request_review_comment',
   'issues',
+  'pull_request',
   'pull_request_review',
   'pull_request_review_thread',
   'check_suite',
@@ -282,6 +283,56 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
         body,
         author,
         labels,
+        rawBody,
+        eventType: String(eventType),
+        deliveryId: String(req.headers['x-github-delivery'] ?? ''),
+      });
+      writeJson(res, 200, { ok: true, outcome });
+      return;
+    }
+
+    // PR closed / merged — the terminal signal for a PR-bearing fix chain.
+    // Routed to the owning fixer session via pr_session_mappings so it runs
+    // the cleanup step (slang-fix-issue WORKFLOW §7.5: save-then-remove its own
+    // worktree). This is the PRIMARY worktree-GC path: the mapping resolves to
+    // the EXACT creating session, so the reap happens in the session that owns
+    // the worktree (no cross-isolation violation, no disk-pressure batch needed).
+    // The supervise-issues §8 sweep stays as a fallback for orphans whose
+    // session is gone (deliverGitHubPrEvent then falls back to the orchestrator).
+    //
+    // Only `closed` matters — opened/synchronize/edited/etc. carry no cleanup
+    // signal and would just wake the fixer needlessly. `merged: true` on the PR
+    // object distinguishes a merge from a plain close (closed without merging).
+    if (eventType === 'pull_request') {
+      if (payload.action !== 'closed') {
+        writeJson(res, 200, { ok: true, skipped: true, reason: `pull_request action ${String(payload.action)}` });
+        return;
+      }
+      const pr = payload.pull_request as Record<string, unknown> | undefined;
+      const prNumber = typeof pr?.number === 'number' ? pr.number : 0;
+      const merged = pr?.merged === true;
+      const mergedBy =
+        typeof (pr?.merged_by as Record<string, unknown> | undefined)?.login === 'string'
+          ? String((pr!.merged_by as Record<string, unknown>).login)
+          : '';
+      if (!repoFullName || !prNumber) {
+        log.warn('github-webhook: malformed pull_request payload', { repo: repoFullName, prNumber });
+        writeJson(res, 400, { error: 'malformed payload' });
+        return;
+      }
+      const outcome = deliverGitHubPrEvent({
+        repo: repoFullName,
+        prNumber,
+        event: merged ? 'github.pr_merged' : 'github.pr_closed',
+        // One terminal event per PR — keyed on the PR number so a duplicate
+        // close delivery (GitHub retries) is idempotent.
+        rowId: `gh-pr-${merged ? 'merged' : 'closed'}-${prNumber}`,
+        payload: {
+          state: merged ? 'merged' : 'closed',
+          merged,
+          pr_url: typeof pr?.html_url === 'string' ? pr.html_url : '',
+          merged_by: mergedBy,
+        },
         rawBody,
         eventType: String(eventType),
         deliveryId: String(req.headers['x-github-delivery'] ?? ''),
