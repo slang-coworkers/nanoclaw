@@ -44,13 +44,25 @@ const ACCEPTED_EVENTS = new Set<string>([
   'issue_comment',
   'pull_request_review_comment',
   'issues',
+  'pull_request',
   'pull_request_review',
   'pull_request_review_thread',
   'check_suite',
 ]);
 
-/** Our bot's GitHub login — events it authored are echoes, not feedback to act on. */
-const BOT_LOGIN = 'nv-slang-bot[bot]';
+/**
+ * Our bot's GitHub logins — events it authored are echoes, not feedback to act
+ * on. The bot comments under TWO identities: the GitHub App (`nv-slang-bot[bot]`,
+ * the common case via the installation token) and the user PAT (`nv-slang-bot`,
+ * no `[bot]` suffix — used for cross-fork PRs into contributor branches). Both
+ * must be recognized as self, or the host self-reacts (👀) on a comment the bot
+ * posted under the user identity.
+ */
+const BOT_LOGINS = new Set(['nv-slang-bot[bot]', 'nv-slang-bot']);
+
+function isBotLogin(login: string): boolean {
+  return BOT_LOGINS.has(login);
+}
 
 function loginOf(obj: unknown): string {
   const user = (obj as Record<string, unknown> | undefined)?.user as Record<string, unknown> | undefined;
@@ -279,6 +291,46 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       return;
     }
 
+    // PR closed / merged — the terminal signal for a PR-bearing fix chain.
+    // Routes to the owning fixer session via pr_session_mappings so it can run
+    // its cleanup step (worktree remove). Only `closed` matters — other actions
+    // (opened/synchronize/edited) carry no cleanup signal.
+    if (eventType === 'pull_request') {
+      if (payload.action !== 'closed') {
+        writeJson(res, 200, { ok: true, skipped: true, reason: `pull_request action ${String(payload.action)}` });
+        return;
+      }
+      const pr = payload.pull_request as Record<string, unknown> | undefined;
+      const prNumber = typeof pr?.number === 'number' ? pr.number : 0;
+      const merged = pr?.merged === true;
+      const mergedBy =
+        typeof (pr?.merged_by as Record<string, unknown> | undefined)?.login === 'string'
+          ? String((pr!.merged_by as Record<string, unknown>).login)
+          : '';
+      if (!repoFullName || !prNumber) {
+        log.warn('github-webhook: malformed pull_request payload', { repo: repoFullName, prNumber });
+        writeJson(res, 400, { error: 'malformed payload' });
+        return;
+      }
+      const outcome = deliverGitHubPrEvent({
+        repo: repoFullName,
+        prNumber,
+        event: merged ? 'github.pr_merged' : 'github.pr_closed',
+        rowId: `gh-pr-${merged ? 'merged' : 'closed'}-${prNumber}`,
+        payload: {
+          state: merged ? 'merged' : 'closed',
+          merged,
+          pr_url: typeof pr?.html_url === 'string' ? pr.html_url : '',
+          merged_by: mergedBy,
+        },
+        rawBody,
+        eventType: String(eventType),
+        deliveryId: String(req.headers['x-github-delivery'] ?? ''),
+      });
+      writeJson(res, 200, { ok: true, outcome });
+      return;
+    }
+
     // PR review verdict (Approve / Request changes / Comment + summary body).
     // Routed to the owning fixer session via pr_session_mappings. We skip the
     // bare "commented" review that wraps inline comments (each already routed
@@ -299,7 +351,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       const reviewId = typeof review?.id === 'number' ? review.id : 0;
       const reviewer = loginOf(review);
 
-      if (reviewer === BOT_LOGIN) {
+      if (isBotLogin(reviewer)) {
         writeJson(res, 200, { ok: true, skipped: true, reason: 'own-bot review' });
         return;
       }
@@ -356,7 +408,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       const firstCommentId = typeof comments[0]?.id === 'number' ? (comments[0].id as number) : 0;
       const path = typeof comments[0]?.path === 'string' ? (comments[0].path as string) : '';
 
-      if (sender === BOT_LOGIN) {
+      if (isBotLogin(sender)) {
         writeJson(res, 200, { ok: true, skipped: true, reason: 'own-bot review thread' });
         return;
       }
@@ -450,13 +502,14 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     }
 
     // Own-bot guard: drop our own comment events outright (mirrors the
-    // BOT_LOGIN returns on the pull_request_review / _review_thread paths
+    // isBotLogin returns on the pull_request_review / _review_thread paths
     // above). The bot's own comments are never work for the bot — without
     // this, a comment we post on a dev-routed issue (willDevRouteToPeer) or
     // on a PR we own (isOwnedPr) passes the mention gate below, gets
     // forwarded/processed, and the host self-reacts with 👀 on our own
-    // comment. Skip the whole path: no forward, no session wake, no react.
-    if (loginOf(comment) === BOT_LOGIN) {
+    // comment. Matches BOTH bot identities (App + user PAT). Skip the whole
+    // path: no forward, no session wake, no react.
+    if (isBotLogin(loginOf(comment))) {
       writeJson(res, 200, { ok: true, skipped: true, reason: 'own-bot comment' });
       return;
     }

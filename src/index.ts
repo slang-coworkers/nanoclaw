@@ -178,6 +178,46 @@ async function main(): Promise<void> {
     log.warn('agents-symlink-backfill threw', { err: String(err) });
   }
 
+  // Reset stale container_status from a previous host run BEFORE the reconcile
+  // below. On an unclean shutdown, sessions are left at container_status
+  // 'running'/'idle'; no container is actually alive this early in startup
+  // (the runtime + spawns happen in section 2), so the rows are stale. The
+  // reconcile's live-session preflight keys on this column, so without the
+  // reset it would spuriously abort on every first restart after a crash.
+  // Idempotent and safe to run here — duplicated cheaply below is harmless,
+  // but doing it first is what makes the auto-reconcile reliable.
+  getDb()
+    .prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status IN ('running', 'idle')")
+    .run();
+
+  // 1c-ter. Reconcile split gh-issue/gh-pr coworker sessions. Older installs
+  // accumulated multiple sessions per coworker for one GitHub issue/PR (a
+  // webhook session + one a2a session per sender); the `resolveSession`
+  // `^gh-(issue|pr)-` collapse stops new splits, this merges the existing ones
+  // into the canonical session. Idempotent (a no-op once collapsed) and safe to
+  // run at startup: containers haven't spawned yet AND stale running-status was
+  // just cleared above, so the live-session preflight passes; it backs up
+  // v2.db + mutated session DBs before writing. Never blocks startup — a
+  // failure is logged and swallowed.
+  try {
+    const { reconcileGhSessions } = await import('./reconcile-gh-sessions.js');
+    const res = reconcileGhSessions({
+      dataDir: DATA_DIR,
+      apply: true,
+      log: (line) => log.info('reconcile-gh-sessions', { line }),
+    });
+    if (res.merged > 0) {
+      log.info('Reconciled split gh sessions', {
+        groups: res.groups,
+        merged: res.merged,
+        inRows: res.inRows,
+        outRows: res.outRows,
+      });
+    }
+  } catch (err) {
+    log.warn('reconcile-gh-sessions threw', { err: String(err) });
+  }
+
   // 1d. Orphan-dir reconciler (task #40). `groups/<folder>/` directories
   // can be left behind when a coworker is deleted via the dashboard API
   // with `deleteData=false` (the default — the delete path preserves WIP
@@ -195,7 +235,9 @@ async function main(): Promise<void> {
   // 2. Container runtime
   ensureContainerRuntimeRunning();
   cleanupOrphans();
-  // Reset stale container_status from previous host runs
+  // Reset stale container_status from previous host runs. Also done earlier
+  // (before the gh-session reconcile) so its live-session preflight sees clean
+  // status; repeated here as the canonical post-runtime reset — idempotent.
   getDb().prepare("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'").run();
 
   // 2b. MCP server stack (registry + auth proxy)

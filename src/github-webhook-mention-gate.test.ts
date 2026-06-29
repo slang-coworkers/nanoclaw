@@ -18,7 +18,7 @@ function sign(body: string): string {
   return 'sha256=' + crypto.createHmac('sha256', SECRET).update(body).digest('hex');
 }
 
-function issueCommentBody(commentBody: string, opts?: { isPr?: boolean }): string {
+function issueCommentBody(commentBody: string, opts?: { isPr?: boolean; commenter?: string }): string {
   const issue: Record<string, unknown> = { number: 11372 };
   if (opts?.isPr) issue.pull_request = { url: 'https://api.github.com/...' };
   return JSON.stringify({
@@ -29,7 +29,7 @@ function issueCommentBody(commentBody: string, opts?: { isPr?: boolean }): strin
       id: 4591326399,
       body: commentBody,
       html_url: 'https://github.com/shader-slang/slang/issues/11372#issuecomment-4591326399',
-      user: { login: 'andersjel' },
+      user: { login: opts?.commenter ?? 'andersjel' },
     },
   });
 }
@@ -198,6 +198,32 @@ describe('issue_comment mention gate — ROUTE_ISSUES_TO exemption', () => {
       srv.close();
     }
   });
+
+  // The own-bot guard must drop the bot's own comments before the mention gate
+  // and the 👀-reaction path — under BOTH identities. The App posts as
+  // `nv-slang-bot[bot]`; cross-fork work posts under the `nv-slang-bot` user
+  // PAT (no `[bot]` suffix). Either slipping through means the host self-reacts
+  // 👀 on the bot's own reply and may re-forward it as if it were feedback.
+  for (const botIdentity of ['nv-slang-bot[bot]', 'nv-slang-bot']) {
+    it(`drops the bot's own issue comment (identity: ${botIdentity}) — no forward, no self-react`, async () => {
+      // ROUTE_ISSUES_TO set so the comment would otherwise be forwarded (and
+      // earn a 👀) — the own-bot guard must short-circuit before that.
+      const srv = await startServer({ ROUTE_ISSUES_TO: 'lego', INSTANCE_FORWARD_TARGETS: { lego: 'http://x/y' } });
+      try {
+        const body = issueCommentBody('Posting the triage 5-bullet…', { commenter: botIdentity });
+        const res = await postWebhook(srv.port, body, {
+          'content-type': 'application/json',
+          'x-github-event': 'issue_comment',
+          'x-github-delivery': `own-${botIdentity}`,
+          'x-hub-signature-256': sign(body),
+        });
+        expect(srv.deliverGitHubMention).not.toHaveBeenCalled();
+        expect(res.json).toMatchObject({ skipped: true, reason: 'own-bot comment' });
+      } finally {
+        srv.close();
+      }
+    });
+  }
 
   it('ROUTE_ISSUES_TO does not exempt PR comments (that path is !isPr only)', async () => {
     // PR comment, no mention, no mapping → stays gated even with ROUTE_ISSUES_TO.
@@ -393,6 +419,27 @@ describe('PR review / CI events → fixer routing', () => {
         'content-type': 'application/json',
         'x-github-event': 'pull_request_review',
         'x-github-delivery': 'r4',
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubPrEvent).not.toHaveBeenCalled();
+      expect(res.json).toMatchObject({ skipped: true, reason: 'own-bot review' });
+    } finally {
+      srv.close();
+    }
+  });
+
+  it('skips our own bot review posted under the user PAT identity (no [bot] suffix)', async () => {
+    // Cross-fork PRs are opened/commented under the `nv-slang-bot` user PAT,
+    // whose review author login lacks the `[bot]` suffix. The own-bot guard
+    // must recognize this identity too, or the host treats the bot's own
+    // review as feedback (and self-reacts).
+    const srv = await startServer({});
+    try {
+      const body = reviewBody({ state: 'approved', reviewer: 'nv-slang-bot' });
+      const res = await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'pull_request_review',
+        'x-github-delivery': 'r4b',
         'x-hub-signature-256': sign(body),
       });
       expect(srv.deliverGitHubPrEvent).not.toHaveBeenCalled();

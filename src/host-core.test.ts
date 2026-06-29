@@ -276,6 +276,85 @@ describe('session manager', () => {
     expect(s2.id).toBe(s1.id);
   });
 
+  describe('canonical gh-issue/gh-pr session collapse', () => {
+    // A second a2a messaging group standing in for an agent-to-agent
+    // delegation source (channel_type 'agent'), distinct from mg-1.
+    beforeEach(() => {
+      createMessagingGroup({
+        id: 'mg-a2a-X',
+        channel_type: 'agent',
+        platform_id: 'agent:ag-2:ag-1',
+        name: null,
+        is_group: 1,
+        admin_user_id: null,
+        unknown_sender_policy: 'strict',
+        created_at: now(),
+      });
+    });
+
+    it('collapses different messaging groups on the same gh-issue thread into one session', () => {
+      // Webhook session: messaging_group_id null (mirrors deliverGitHubIssueOpened).
+      const { session: webhook, created: c1 } = resolveSession(
+        'ag-1',
+        null,
+        'gh-issue-shader-slang/slang-9999',
+        'per-thread',
+      );
+      expect(c1).toBe(true);
+
+      // A later a2a delegation on the SAME issue thread but a different
+      // messaging group must reuse the webhook session, not mint a new one.
+      const { session: a2a, created: c2 } = resolveSession(
+        'ag-1',
+        'mg-a2a-X',
+        'gh-issue-shader-slang/slang-9999',
+        'per-thread',
+      );
+      expect(c2).toBe(false);
+      expect(a2a.id).toBe(webhook.id);
+    });
+
+    it('collapses gh-pr threads too', () => {
+      const { session: first } = resolveSession('ag-1', null, 'gh-pr-shader-slang/slang-1234', 'per-thread');
+      const { session: second, created } = resolveSession(
+        'ag-1',
+        'mg-a2a-X',
+        'gh-pr-shader-slang/slang-1234',
+        'per-thread',
+      );
+      expect(created).toBe(false);
+      expect(second.id).toBe(first.id);
+    });
+
+    it('does NOT collapse generic (non-gh) a2a threads — per-source isolation preserved', () => {
+      // Per #301: two different a2a sources sharing a plain thread_id must stay
+      // isolated. Only the gh-issue/gh-pr namespace collapses.
+      const { session: s1 } = resolveSession('ag-1', 'mg-1', 'review-PR-A', 'per-thread');
+      const { session: s2, created } = resolveSession('ag-1', 'mg-a2a-X', 'review-PR-A', 'per-thread');
+      expect(created).toBe(true);
+      expect(s2.id).not.toBe(s1.id);
+    });
+
+    it('does NOT collapse a gh thread across different agent groups', () => {
+      createAgentGroup({
+        id: 'ag-2',
+        name: 'Other Agent',
+        folder: 'other-agent',
+        agent_provider: null,
+        created_at: now(),
+      });
+      const { session: s1 } = resolveSession('ag-1', null, 'gh-issue-shader-slang/slang-7777', 'per-thread');
+      const { session: s2, created } = resolveSession(
+        'ag-2',
+        'mg-a2a-X',
+        'gh-issue-shader-slang/slang-7777',
+        'per-thread',
+      );
+      expect(created).toBe(true);
+      expect(s2.id).not.toBe(s1.id);
+    });
+  });
+
   it('should write message to inbound DB', () => {
     const { session } = resolveSession('ag-1', 'mg-1', null, 'shared');
 

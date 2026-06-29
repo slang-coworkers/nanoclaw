@@ -374,6 +374,16 @@ export function wakeContainer(session: Session): Promise<void> {
     log.debug('Container already running', { sessionId: session.id });
     return Promise.resolve();
   }
+  // Never respawn a session that has been closed (e.g. admin clicked Stop on a
+  // runaway card). The approval response-handler fires wakeContainer after
+  // every card response, and the sweep can race; re-read the authoritative
+  // status here so a Stop is final. getActiveSessions already filters the
+  // sweep, but this guards the direct-wake paths too.
+  const current = getSession(session.id);
+  if (current && current.status === 'closed') {
+    log.debug('Skipping wake of closed session', { sessionId: session.id });
+    return Promise.resolve();
+  }
   const existing = wakePromises.get(session.id);
   if (existing) {
     log.debug('Container wake already in-flight — joining existing promise', { sessionId: session.id });
@@ -888,13 +898,21 @@ export function buildMounts(
         (h: { transport?: string; type?: string; url?: string }) =>
           !((h.transport || h.type === 'http') && h.url?.includes(hookUrl)),
       );
-      // Dedup: check if a command hook for this URL already exists
-      const hasHook = settings.hooks[event].some((h: { hooks?: { command?: string }[] }) =>
-        h.hooks?.some((inner: { command?: string }) => inner.command?.includes(hookUrl)),
+      // Drop ANY existing command hook for this URL, then push the current
+      // hookConfig. Dedup MUST be content-aware: the previous version keyed
+      // only on hookUrl presence, so when the command string changed (e.g.
+      // the X-NanoClaw-Session-Id header was added) the stale command was
+      // never replaced — it matched the URL and `!hasHook` stayed false
+      // forever. Long-lived groups (e.g. `main`) were stranded on the old
+      // headerless command, so the dashboard never stamped sdk_session_routes
+      // for them and session attribution fell back to a stale heuristic.
+      // Stripping + re-pushing keeps a single up-to-date hook per event and
+      // self-heals any group whose settings.json predates a command change.
+      settings.hooks[event] = settings.hooks[event].filter(
+        (h: { hooks?: { command?: string }[] }) =>
+          !h.hooks?.some((inner: { command?: string }) => inner.command?.includes(hookUrl)),
       );
-      if (!hasHook) {
-        settings.hooks[event].push(hookConfig);
-      }
+      settings.hooks[event].push(hookConfig);
     }
     // Guard hook: block direct edits to CLAUDE.md — agents must edit .instructions.md instead.
     // CLAUDE.md is auto-composed from templates + .instructions.md on every container wake,
@@ -1023,6 +1041,19 @@ export function buildMounts(
         settings.hooks.PostToolUse.push({
           matcher: 'Bash',
           hooks: [{ type: 'command', command: 'bash /app/hooks/pr-auto-map.sh', timeout: 5 }],
+        });
+      }
+
+      // force-codex-sandbox: reject mcp__codex__codex calls with
+      // sandbox != "danger-full-access". bwrap doesn't work inside Docker
+      // containers, so read-only sandbox wastes a round-trip (30% of
+      // codex-critique sessions hit this). Unconditional — any agent with
+      // the codex MCP tool can trigger the failure.
+      if (!hasCmd('PreToolUse', 'force-codex-sandbox.sh')) {
+        if (!settings.hooks.PreToolUse) settings.hooks.PreToolUse = [];
+        settings.hooks.PreToolUse.push({
+          matcher: 'mcp__codex__codex',
+          hooks: [{ type: 'command', command: 'bash /app/hooks/force-codex-sandbox.sh', timeout: 5 }],
         });
       }
 

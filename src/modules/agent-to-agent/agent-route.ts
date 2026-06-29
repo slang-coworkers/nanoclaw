@@ -24,6 +24,7 @@ import path from 'path';
 import { isSafeAttachmentName } from '../../attachment-safety.js';
 import { getSourceFor, recordSource, type A2aSessionSource } from '../../db/a2a-session-sources.js';
 import { getAgentGroup } from '../../db/agent-groups.js';
+import { recordDroppedMessage } from '../../db/dropped-messages.js';
 import {
   createMessagingGroup,
   createMessagingGroupAgent,
@@ -37,6 +38,7 @@ import { log } from '../../log.js';
 import { openInboundDb, resolveSession, sessionDir, writeSessionMessage } from '../../session-manager.js';
 import type { Session } from '../../types.js';
 import { requestApproval } from '../approvals/index.js';
+import { evaluateEchoDrop, extractText } from '../runaway/echo-drop.js';
 import { hasDestination } from './db/agent-destinations.js';
 import { getMessagePolicy } from './db/agent-message-policies.js';
 
@@ -775,6 +777,13 @@ export async function performAgentRoute(
   // read the bytes — they live in a session dir it doesn't mount.
   const forwardedContent = forwardFileAttachments(msg, a2aMsgId, session, targetAgentGroupId, targetSession.id);
 
+  // Echo-drop: a no-op coworker message (a bare ack, or the same text looping)
+  // is persisted as context-only and does NOT wake the recipient — skipping the
+  // expensive full-context replay that a wake triggers. Sibling guard to the L2
+  // self-loop drop above; see modules/runaway/echo-drop.ts for the rationale
+  // (a runaway "Ignored." echo loop was ~21% of a month's spend).
+  const echo = evaluateEchoDrop(targetSession.id, extractText(msg.content));
+
   writeSessionMessage(targetAgentGroupId, targetSession.id, {
     id: a2aMsgId,
     kind: 'chat',
@@ -784,6 +793,9 @@ export async function performAgentRoute(
     threadId,
     content: injectA2aSourceThread(forwardedContent, session.thread_id),
     sourceSessionId: session.id,
+    // Dropped echoes accumulate as context (trigger:0) but never wake. NOTE:
+    // writeSessionMessage defaults trigger to 1, so this MUST be explicit.
+    trigger: echo.drop ? 0 : 1,
   });
   log.info('Agent message routed', {
     from: session.agent_group_id,
@@ -793,7 +805,23 @@ export async function performAgentRoute(
     a2aMsgId,
     forwardedFileCount: countForwardedFiles(forwardedContent),
     via: usedExplicitReplyTarget ? 'in_reply_to' : usedPinnedTarget ? 'target_session_id' : 'fresh',
+    echoDropped: echo.drop ? echo.reason : undefined,
   });
+
+  if (echo.drop) {
+    // Audit the drop (mirrors the no_agent_engaged drop path) and skip the wake.
+    recordDroppedMessage({
+      channel_type: 'agent',
+      platform_id: session.agent_group_id,
+      user_id: null,
+      sender_name: session.agent_group_id,
+      reason: `echo_drop:${echo.reason}`,
+      messaging_group_id: null,
+      agent_group_id: targetAgentGroupId,
+    });
+    return;
+  }
+
   const fresh = getSession(targetSession.id);
   if (fresh) await wakeContainer(fresh);
 }
