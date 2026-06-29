@@ -50,3 +50,10 @@ coworkers/*.yaml.bak
 coworkers/*.tar.gz
 .codex
 .claude/projects/*/memory/
+.agents
+AGENTS.md
+
+# Internal working docs, never committed
+docs/maintainer-guide.md
+docs/drafts/
+forks.md

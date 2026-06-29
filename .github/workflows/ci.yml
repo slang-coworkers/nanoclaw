@@ -54,7 +54,9 @@ jobs:
             case "$1" in
               package.json|package-lock.json|pnpm-lock.yaml) return 0 ;;
               tsconfig.json|vitest.config.ts|vitest.setup.ts) return 0 ;;
+              versions.json) return 0 ;;
               .github/*) return 0 ;;
+              .claude/skills/*) return 0 ;;
               src/*) return 0 ;;
               scripts/*) return 0 ;;
               setup/*) return 0 ;;
@@ -62,6 +64,7 @@ jobs:
               container/agent-runner/*) return 0 ;;
               container/hooks/*) return 0 ;;
               container/config/*) return 0 ;;
+              container/cli-tools.json|container/cli-tools.test.ts|container/install-cli-tools.sh) return 0 ;;
               container/spines/base/*) return 0 ;;
               container/skills/spine-base/*) return 0 ;;
               container/skills/base/*) return 0 ;;
@@ -104,8 +107,16 @@ jobs:
             # regardless of merge direction.
             for f in $CONFLICTS; do
               echo "::notice::$branch: $f conflict — taking nv-main (canonical) version"
-              git checkout origin/nv-main -- "$f"
-              git add -- "$f"
+              # A delete/modify conflict (file removed on nv-main, edited on the
+              # leaf) has no nv-main blob to check out — honor the deletion so
+              # the composed merge doesn't strand a half-resolved path.
+              if git checkout origin/nv-main -- "$f" 2>/dev/null; then
+                git add -- "$f"
+              else
+                echo "::notice::$branch: $f absent on nv-main — taking the deletion"
+                git rm -f -- "$f" >/dev/null 2>&1 || rm -f "$f"
+                git add -A -- "$f"
+              fi
             done
             git commit --no-edit
           done

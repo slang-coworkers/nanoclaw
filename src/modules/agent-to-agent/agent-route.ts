@@ -37,8 +37,10 @@ import { wakeContainer } from '../../container-runner.js';
 import { log } from '../../log.js';
 import { openInboundDb, resolveSession, sessionDir, writeSessionMessage } from '../../session-manager.js';
 import type { Session } from '../../types.js';
+import { requestApproval } from '../approvals/index.js';
 import { evaluateEchoDrop, extractText } from '../runaway/echo-drop.js';
 import { hasDestination } from './db/agent-destinations.js';
+import { getMessagePolicy } from './db/agent-message-policies.js';
 
 /**
  * Ensure a per-(source, recipient) messaging_group exists with a per-thread
@@ -114,6 +116,11 @@ export interface ForwardedAttachment {
   localPath: string;
 }
 
+function isPathInside(parent: string, child: string): boolean {
+  const relative = path.relative(parent, child);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
 /**
  * Copy file attachments from the source agent's outbox into the target
  * agent's inbox. Returns attachments using the formatter's existing
@@ -131,11 +138,36 @@ export function forwardAttachedFiles(
 ): ForwardedAttachment[] {
   if (source.filenames.length === 0) return [];
 
+  if (!isSafeAttachmentName(source.messageId)) {
+    log.warn('agent-route: rejecting unsafe source outbox message id', { sourceMsgId: source.messageId });
+    return [];
+  }
+
   const sourceDir = path.join(sessionDir(source.agentGroupId, source.sessionId), 'outbox', source.messageId);
   if (!fs.existsSync(sourceDir)) {
     log.warn('agent-route: source outbox dir missing, no files forwarded', {
       sourceMsgId: source.messageId,
       sourceDir,
+    });
+    return [];
+  }
+
+  let realSourceDir: string;
+  try {
+    const sourceDirStat = fs.lstatSync(sourceDir);
+    if (!sourceDirStat.isDirectory() || sourceDirStat.isSymbolicLink()) {
+      log.warn('agent-route: rejecting unsafe source outbox dir', {
+        sourceMsgId: source.messageId,
+        sourceDir,
+      });
+      return [];
+    }
+    realSourceDir = fs.realpathSync(sourceDir);
+  } catch (err) {
+    log.warn('agent-route: failed to inspect source outbox dir', {
+      sourceMsgId: source.messageId,
+      sourceDir,
+      err,
     });
     return [];
   }
@@ -153,15 +185,33 @@ export function forwardAttachedFiles(
       continue;
     }
     const src = path.join(sourceDir, filename);
-    if (!fs.existsSync(src)) {
+    let realSrc: string;
+    try {
+      const srcStat = fs.lstatSync(src);
+      if (!srcStat.isFile() || srcStat.isSymbolicLink()) {
+        log.warn('agent-route: rejecting unsafe source outbox file', {
+          sourceMsgId: source.messageId,
+          filename,
+        });
+        continue;
+      }
+      realSrc = fs.realpathSync(src);
+    } catch {
       log.warn('agent-route: referenced file missing in source outbox, skipped', {
         sourceMsgId: source.messageId,
         filename,
       });
       continue;
     }
+    if (!isPathInside(realSourceDir, realSrc)) {
+      log.warn('agent-route: rejecting source file outside source outbox dir', {
+        sourceMsgId: source.messageId,
+        filename,
+      });
+      continue;
+    }
     const dst = path.join(targetInboxDir, filename);
-    fs.copyFileSync(src, dst);
+    fs.copyFileSync(realSrc, dst);
     attachments.push({
       name: filename,
       filename,
@@ -465,7 +515,54 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
   if (!targetAgentGroupId) {
     throw new Error(`agent-to-agent message ${msg.id} is missing a target agent group id`);
   }
+  // Initial delivery enforces the per-edge message gate; the gate's own
+  // approve-handler (applyA2aMessageGate) re-enters performAgentRoute directly
+  // with the gate disabled so an approved message is delivered, not re-held.
+  await performAgentRoute(msg, session, targetAgentGroupId, true);
+}
 
+export const A2A_MESSAGE_GATE_ACTION = 'a2a_message_gate';
+
+const GATE_CARD_BODY_MAX = 1500;
+
+function parseMessageContent(contentStr: string): { text: string; files: string[] } {
+  try {
+    const parsed = JSON.parse(contentStr) as { text?: unknown; files?: unknown };
+    return {
+      text: typeof parsed.text === 'string' ? parsed.text : '',
+      files: Array.isArray(parsed.files) ? parsed.files.filter((f): f is string => typeof f === 'string') : [],
+    };
+  } catch {
+    return { text: contentStr, files: [] };
+  }
+}
+
+function buildGateQuestion(sourceName: string, targetName: string, contentStr: string): string {
+  const { text, files } = parseMessageContent(contentStr);
+  const body = text.length > GATE_CARD_BODY_MAX ? `${text.slice(0, GATE_CARD_BODY_MAX)}… (truncated)` : text;
+  const lines = [`Agent "${sourceName}" wants to send a message to "${targetName}":`, '', body];
+  if (files.length > 0) lines.push('', `Attachments: ${files.join(', ')}`);
+  lines.push(
+    '',
+    `Approve, Reject, or "Reject with reason…" to decline and then type a short reason I'll relay to "${sourceName}".`,
+  );
+  return lines.join('\n');
+}
+
+/**
+ * Cross-session route: pick the target session via the fork's layered routing
+ * (Layer 0 sender-pinned, Layer 1 explicit in_reply_to / peer-affinity, Layer 2
+ * ancestor walk, Layer 3 fresh per-thread/per-source), enforce the destination
+ * auth + the optional per-edge message gate, forward files, write to the target
+ * inbox, and wake it. The gate approve-handler re-enters here with
+ * `enforceGate=false` so an approved message is delivered rather than re-held.
+ */
+export async function performAgentRoute(
+  msg: RoutableAgentMessage,
+  session: Session,
+  targetAgentGroupId: string,
+  enforceGate = false,
+): Promise<void> {
   // Layer 0: sender-pinned recipient session id.
   //
   // When `msg.target_session_id` is set, the sender has explicitly chosen
@@ -556,6 +653,43 @@ export async function routeAgentMessage(msg: RoutableAgentMessage, session: Sess
   }
   if (!getAgentGroup(targetAgentGroupId)) {
     throw new Error(`target agent group ${targetAgentGroupId} not found for message ${msg.id}`);
+  }
+
+  // Message gate: a fresh authorized peer send may still require per-edge
+  // approval (the a2a message-gate feature). Hold the message and return (not
+  // throw) so the delivery loop consumes the outbound row; applyA2aMessageGate
+  // re-enters performAgentRoute with enforceGate=false on approve. Exempt
+  // explicit replies — same reasoning as the destination check above: a reply
+  // within an established edge is implicitly authorized, and gating it would
+  // stall the chain mid-conversation. (A gate only ever fires here when the
+  // destination check above already passed, so an approved re-delivery re-auths
+  // cleanly.)
+  if (enforceGate && !explicitTarget && targetAgentGroupId !== session.agent_group_id) {
+    const policy = getMessagePolicy(session.agent_group_id, targetAgentGroupId);
+    if (policy) {
+      const sourceName = getAgentGroup(session.agent_group_id)?.name ?? session.agent_group_id;
+      const targetName = getAgentGroup(targetAgentGroupId)?.name ?? targetAgentGroupId;
+      await requestApproval({
+        session,
+        agentName: sourceName,
+        action: A2A_MESSAGE_GATE_ACTION,
+        approverUserId: policy.approver,
+        title: 'Message approval',
+        question: buildGateQuestion(sourceName, targetName, msg.content),
+        payload: {
+          id: msg.id,
+          platform_id: targetAgentGroupId,
+          content: msg.content,
+          in_reply_to: msg.in_reply_to,
+        },
+      });
+      log.info('Agent message held for approval', {
+        from: session.agent_group_id,
+        to: targetAgentGroupId,
+        msgId: msg.id,
+      });
+      return;
+    }
   }
 
   // Layer 3: deliver — using the explicit target resolved at Layer 1, the

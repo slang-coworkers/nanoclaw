@@ -216,11 +216,11 @@ export function createPendingApproval(
       `INSERT OR IGNORE INTO pending_approvals
          (approval_id, session_id, request_id, action, payload, created_at,
           agent_group_id, channel_type, platform_id, platform_message_id, expires_at, status,
-          title, options_json)
+          title, options_json, approver_user_id)
        VALUES
          (@approval_id, @session_id, @request_id, @action, @payload, @created_at,
           @agent_group_id, @channel_type, @platform_id, @platform_message_id, @expires_at, @status,
-          @title, @options_json)`,
+          @title, @options_json, @approver_user_id)`,
     )
     .run({
       session_id: null,
@@ -230,6 +230,7 @@ export function createPendingApproval(
       platform_message_id: null,
       expires_at: null,
       status: 'pending',
+      approver_user_id: null,
       ...pa,
     });
   return result.changes > 0;
@@ -256,6 +257,28 @@ export function updatePendingApprovalDelivery(
        WHERE approval_id = ?`,
     )
     .run(updates.channel_type, updates.platform_id, updates.platform_message_id, approvalId);
+}
+
+/**
+ * Park an approval in the "rejected, awaiting reason" hold: the admin clicked
+ * "Reject with reason…" and we're waiting for their one-line reply. `expiresAt`
+ * is the deadline after which the host sweep finalizes a plain reject (so a
+ * ghosted hold never strands the requesting agent). Reuses the otherwise-unused
+ * `expires_at` column on module-initiated rows.
+ */
+export function markApprovalAwaitingReason(approvalId: string, expiresAt: string): void {
+  getDb()
+    .prepare("UPDATE pending_approvals SET status = 'awaiting_reason', expires_at = ? WHERE approval_id = ?")
+    .run(expiresAt, approvalId);
+}
+
+/** Awaiting-reason approvals whose reply window has elapsed — the sweep's ghost set. */
+export function getExpiredAwaitingReasonApprovals(nowIso: string): PendingApproval[] {
+  return getDb()
+    .prepare(
+      "SELECT * FROM pending_approvals WHERE status = 'awaiting_reason' AND expires_at IS NOT NULL AND expires_at <= ?",
+    )
+    .all(nowIso) as PendingApproval[];
 }
 
 export function deletePendingApproval(approvalId: string): void {

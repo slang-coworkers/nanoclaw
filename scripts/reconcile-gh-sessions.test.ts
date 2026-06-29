@@ -89,7 +89,7 @@ beforeEach(() => {
   // a2a messaging groups referenced by the split sessions (sessions.messaging_group_id FK).
   for (const mg of ['mg-a2a-A', 'mg-a2a-B', 'mg-a2a-C']) {
     db.prepare(
-      `INSERT INTO messaging_groups (id, channel_type, platform_id, created_at) VALUES (?, 'agent', ?, '2026-06-01T00:00:00.000Z')`,
+      `INSERT INTO messaging_groups (id, channel_type, platform_id, instance, created_at) VALUES (?, 'agent', ?, 'agent', '2026-06-01T00:00:00.000Z')`,
     ).run(mg, `agent:ag-src:ag-fixer:${mg}`);
   }
 

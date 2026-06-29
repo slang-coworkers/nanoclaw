@@ -31,6 +31,7 @@ import { startMcpServers, getRunningServerNames, getServerUpstreamPort } from '.
 import { startMcpAuthProxy, setUpstreamPortResolver, discoverTools } from './mcp-auth-proxy.js';
 import { startDashboardIngress } from './dashboard-ingress.js';
 import { startGitHubWebhookServer, type GitHubWebhookServerHandle } from './github-webhook-server.js';
+import { enforceUpgradeTripwire } from './upgrade-state.js';
 
 // Response + shutdown registries live in response-registry.ts to break the
 // circular import cycle: src/index.ts imports src/modules/index.js for side
@@ -142,6 +143,10 @@ async function main(): Promise<void> {
 
   // 0b. Circuit breaker — backoff on rapid restarts
   await enforceStartupBackoff();
+
+  // 0.5 Upgrade tripwire — refuse to start if this install was updated
+  // outside the sanctioned path (raw `git pull` instead of /update-nanoclaw).
+  enforceUpgradeTripwire();
 
   // 1. Init central DB
   const dbPath = path.join(DATA_DIR, 'v2.db');
@@ -261,6 +266,9 @@ async function main(): Promise<void> {
       onInbound(platformId, threadId, message) {
         routeInbound({
           channelType: adapter.channelType,
+          // The one host-side stamping seam: adapters stay instance-blind,
+          // the host stamps the receiving instance on every inbound event.
+          instance: adapter.instance ?? adapter.channelType,
           platformId,
           threadId,
           message: {

@@ -22,9 +22,11 @@ import {
   type SkillMeta,
 } from './claude-composer.js';
 import {
+  CONTAINER_CPU_LIMIT,
   CONTAINER_IMAGE,
   CONTAINER_IMAGE_BASE,
   CONTAINER_INSTALL_LABEL,
+  CONTAINER_MEMORY_LIMIT,
   CONTAINER_PREFIX,
   DASHBOARD_PORT,
   DATA_DIR,
@@ -38,6 +40,7 @@ import {
 import { materializeContainerJson } from './container-config.js';
 import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
+import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
 import { getSession } from './db/sessions.js';
@@ -56,6 +59,7 @@ import { validateAdditionalMounts } from './modules/mount-security/index.js';
 import './providers/index.js';
 import {
   getProviderContainerConfig,
+  providerProvidesAgentSurfaces,
   type ProviderContainerContribution,
   type VolumeMount,
 } from './providers/provider-container-registry.js';
@@ -434,22 +438,29 @@ async function spawnContainer(session: Session): Promise<void> {
   }
   writeSessionRouting(agentGroup.id, session.id);
 
+  // Materialize container.json from DB — writes fresh file and returns
+  // the config object, threaded through provider resolution, buildMounts,
+  // and buildContainerArgs so we don't re-read.
+  const containerConfig = materializeContainerJson(agentGroup.id);
+
+  // Per-group filesystem state lives forever after first creation. Init is
+  // idempotent: it only writes paths that don't already exist, so this call
+  // is a no-op for groups that have spawned before. Runs before the provider
+  // contribution so a surfaces-providing provider finds the group dir ready.
+  const providerName = resolveProviderName(session.agent_provider, containerConfig.provider);
+  initGroupFilesystem(agentGroup, { provider: providerName });
+
   // Resolve the effective provider + any host-side contribution it declares
   // (extra mounts, env passthrough). Computed once and threaded through both
   // buildMounts and buildContainerArgs so side effects (mkdir, etc.) fire once.
   const { provider, contribution } = resolveProviderContribution(session, agentGroup);
 
-  const mounts = buildMounts(agentGroup, session, contribution);
+  const mounts = buildMounts(agentGroup, session, containerConfig, provider, contribution);
   // Container name embeds the NanoClaw session id tail so the dashboard can
   // route shell-exec requests to the right container when a coworker has
-  // multiple live sessions (root + Slack-style threads). Before this, every
-  // container for a folder collapsed into one `<prefix>-<folder>-<ts>`
-  // namespace and `findRunningContainer(folder)` returned whichever was
-  // first in the Set — shell landed in an arbitrary session.
-  //
-  // Format: `<prefix>-<folder>-<session-tail>-<ts>`. Timestamp is kept so
-  // rapid respawns of the same session still get unique names (docker --rm
-  // reclaims, but there's a race window when stopping).
+  // multiple live sessions (root + thread sessions). Without the tail, every
+  // container for a folder collapsed into one namespace and shell-exec landed
+  // in an arbitrary session. Timestamp keeps rapid respawns unique.
   const containerName = `${CONTAINER_PREFIX}-${agentGroup.folder}-${containerSessionTail(session.id)}-${Date.now()}`;
   // OneCLI agent identifier is always the agent group id — stable across
   // sessions and reversible via getAgentGroup() for approval routing.
@@ -508,15 +519,18 @@ async function spawnContainer(session: Session): Promise<void> {
     log.warn('Failed to open container log file', { folder: agentGroup.folder, err });
   }
 
-  // Log stderr — warn level so container errors appear in the error log.
-  // Keep the last line for the exit handler to include in diagnostics.
-  let lastStderrLine = '';
+  // Log stderr. A container that dies at boot (unknown provider, missing
+  // binary, bad config) explains itself only here — and debug is below the
+  // default log level — so keep a tail to surface on a non-zero exit. Every
+  // line is also teed to the per-group container log (containerLogStream
+  // above), so debug level here doesn't lose the data for the dashboard panel.
+  const stderrTail: string[] = [];
   container.stderr?.on('data', (data) => {
     for (const line of data.toString().trim().split('\n')) {
-      if (line) {
-        log.warn(line, { container: agentGroup.folder });
-        lastStderrLine = line;
-      }
+      if (!line) continue;
+      log.debug(line, { container: agentGroup.folder });
+      stderrTail.push(line);
+      if (stderrTail.length > 10) stderrTail.shift();
     }
   });
 
@@ -535,13 +549,9 @@ async function spawnContainer(session: Session): Promise<void> {
     stopTypingRefresh(session.id);
     revokeContainerToken(proxyToken);
     containerLogStream?.end();
-    if (code !== 0 && code !== null) {
-      log.warn('Container exited with error', {
-        sessionId: session.id,
-        code,
-        containerName,
-        lastStderr: lastStderrLine || undefined,
-      });
+    // code null = killed by signal (normal shutdown path), not a boot failure.
+    if (code !== 0 && code !== null && stderrTail.length > 0) {
+      log.warn('Container exited non-zero', { sessionId: session.id, code, containerName, stderrTail });
     } else {
       log.info('Container exited', { sessionId: session.id, code, containerName });
     }
@@ -703,27 +713,36 @@ function resolveProviderContribution(
   // Precedence: session provider > agent_group provider > container.json > default.
   // Previously passed undefined for container-config, making `provider:` in
   // groups/<folder>/container.json dead config.
-  const containerConfigProvider = materializeContainerJson(agentGroup.id).provider ?? null;
+  const containerConfig = materializeContainerJson(agentGroup.id);
+  const containerConfigProvider = containerConfig.provider ?? null;
   const provider = resolveProviderName(session.agent_provider, agentGroup.agent_provider, containerConfigProvider);
   const fn = getProviderContainerConfig(provider);
   const contribution = fn
     ? fn({
         sessionDir: sessionDir(agentGroup.id, session.id),
         agentGroupId: agentGroup.id,
+        groupDir: path.resolve(GROUPS_DIR, agentGroup.folder),
+        selectedSkills: selectedSkillNames(containerConfig),
         hostEnv: process.env,
       })
     : {};
   return { provider, contribution };
 }
 
-function buildMounts(
+export function buildMounts(
   agentGroup: AgentGroup,
   session: Session,
+  containerConfig: import('./container-config.js').ContainerConfig,
+  provider: string,
   providerContribution: ProviderContainerContribution,
 ): VolumeMount[] {
-  // Per-group filesystem + container_configs row are initialized at the top
-  // of spawnContainer, before composeCoworkerClaudeMd / resolveProviderContribution
-  // touch container config. By the time we get here both are guaranteed.
+  // Default agent surfaces (composed project doc, skill links, provider state
+  // dir) apply unless the provider declares it provides its own — a capability,
+  // never a provider name. See provider-container-registry. (Fork composes
+  // CLAUDE.md via composeCoworkerClaudeMd in spawnContainer, so the upstream
+  // syncSkillSymlinks/composeGroupClaudeMd path is not used here.)
+  const defaultSurfaces = !providerProvidesAgentSurfaces(provider);
+
   const mounts: VolumeMount[] = [];
   const sessDir = sessionDir(agentGroup.id, session.id);
   const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
@@ -771,9 +790,13 @@ function buildMounts(
   const claudeDir = path.join(DATA_DIR, 'v2-sessions', agentGroup.id, '.claude-shared');
   const settingsFile = path.join(claudeDir, 'settings.json');
 
-  // Dashboard hook injection (port comes from config/.env)
+  // Dashboard hook injection (port comes from config/.env). Gated on
+  // defaultSurfaces: a surfaces-owning provider (e.g. codex) has no
+  // .claude-shared/settings.json, so reading it here would ENOENT-crash the
+  // spawn. Claude hooks are only meaningful when the agent runs on Claude
+  // surfaces in the first place.
   const dashboardPort = DASHBOARD_PORT ? String(DASHBOARD_PORT) : '';
-  if (dashboardPort) {
+  if (defaultSurfaces && dashboardPort) {
     const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
     const hookUrl = `http://host.docker.internal:${dashboardPort}/api/hook-event`;
     if (!settings.hooks) settings.hooks = {};
@@ -1111,7 +1134,45 @@ function buildMounts(
 
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
   }
-  mounts.push({ hostPath: claudeDir, containerPath: '/home/node/.claude', readonly: false });
+  // Claude state dir — only for providers using the default Claude surfaces.
+  if (defaultSurfaces) {
+    mounts.push({ hostPath: claudeDir, containerPath: '/home/node/.claude', readonly: false });
+  }
+  // container.json — nested RO mount on top of RW group dir so the agent
+  // can read its config but cannot modify it.
+  const containerJsonPath = path.join(groupDir, 'container.json');
+  if (fs.existsSync(containerJsonPath)) {
+    mounts.push({ hostPath: containerJsonPath, containerPath: '/workspace/agent/container.json', readonly: true });
+  }
+
+  // Composer-managed CLAUDE.md artifacts — nested RO mounts. These are
+  // regenerated from the shared base + fragments on every spawn; any
+  // agent-side writes would be clobbered, so enforce read-only. Only
+  // CLAUDE.local.md (per-group memory) remains RW via the group-dir mount.
+  // `.claude-shared.md` is a symlink whose target (`/app/CLAUDE.md`) is
+  // already RO-mounted, so writes through it fail regardless — no need for
+  // a nested mount there.
+  const composedClaudeMd = path.join(groupDir, 'CLAUDE.md');
+  if (defaultSurfaces && fs.existsSync(composedClaudeMd)) {
+    mounts.push({ hostPath: composedClaudeMd, containerPath: '/workspace/agent/CLAUDE.md', readonly: true });
+  }
+  const fragmentsDir = path.join(groupDir, '.claude-fragments');
+  if (defaultSurfaces && fs.existsSync(fragmentsDir)) {
+    mounts.push({ hostPath: fragmentsDir, containerPath: '/workspace/agent/.claude-fragments', readonly: true });
+  }
+
+  // Global memory directory — always read-only.
+  const globalDir = path.join(GROUPS_DIR, 'global');
+  if (fs.existsSync(globalDir)) {
+    mounts.push({ hostPath: globalDir, containerPath: '/workspace/global', readonly: true });
+  }
+
+  // Shared CLAUDE.md — read-only, imported by the composed entry point via
+  // the `.claude-shared.md` symlink inside the group dir.
+  const sharedClaudeMd = path.join(process.cwd(), 'container', 'CLAUDE.md');
+  if (defaultSurfaces && fs.existsSync(sharedClaudeMd)) {
+    mounts.push({ hostPath: sharedClaudeMd, containerPath: '/app/CLAUDE.md', readonly: true });
+  }
 
   // Per-session codex state at /home/node/.codex (sessions/, memories/, etc.).
   //
@@ -1172,8 +1233,8 @@ function buildMounts(
   const groupRunnerDir = path.join(DATA_DIR, 'v2-sessions', agentGroup.id, 'agent-runner-src');
   mounts.push({ hostPath: groupRunnerDir, containerPath: '/app/src', readonly: false });
 
-  // Additional mounts from container config (groups/<folder>/container.json)
-  const containerConfig = materializeContainerJson(agentGroup.id);
+  // Additional mounts from container config (groups/<folder>/container.json) —
+  // threaded in via the param (materialized once in spawnContainer).
   if (containerConfig.additionalMounts && containerConfig.additionalMounts.length > 0) {
     const validated = validateAdditionalMounts(containerConfig.additionalMounts, agentGroup.name);
     mounts.push(...validated);
@@ -1185,6 +1246,24 @@ function buildMounts(
   }
 
   return mounts;
+}
+
+/**
+ * Resolve the group's skill selection to concrete names — `'all'` recomputes
+ * from `container/skills/` so newly-added upstream skills appear automatically.
+ */
+function selectedSkillNames(containerConfig: import('./container-config.js').ContainerConfig): string[] {
+  if (containerConfig.skills !== 'all') return containerConfig.skills;
+  const sharedSkillsDir = path.join(process.cwd(), 'container', 'skills');
+  return fs.existsSync(sharedSkillsDir)
+    ? fs.readdirSync(sharedSkillsDir).filter((e) => {
+        try {
+          return fs.statSync(path.join(sharedSkillsDir, e)).isDirectory();
+        } catch {
+          return false;
+        }
+      })
+    : [];
 }
 
 async function buildContainerArgs(
@@ -1212,7 +1291,15 @@ async function buildContainerArgs(
     }
   }
 
-  // Environment
+  // Per-container resource caps (opt-in; empty = unbounded, today's behavior).
+  // Only --memory is set. Whether that's a hard cap depends on the host having no
+  // swap (a deployment concern) — on a swapless host --memory is hard and a runaway
+  // is OOM-killed; we don't manage swap from here.
+  if (CONTAINER_CPU_LIMIT) args.push('--cpus', CONTAINER_CPU_LIMIT);
+  if (CONTAINER_MEMORY_LIMIT) args.push('--memory', CONTAINER_MEMORY_LIMIT);
+
+  // Environment — only vars read by code we don't own.
+  // Everything NanoClaw-specific is in container.json (read by runner at startup).
   args.push('-e', `TZ=${TIMEZONE}`);
   args.push('-e', `AGENT_PROVIDER=${provider}`);
   // Two-DB split: container reads inbound.db, writes outbound.db
@@ -1358,10 +1445,56 @@ async function buildContainerArgs(
     args.push('-e', `NANOCLAW_ADMIN_USER_IDS=${Array.from(adminUserIds).join(',')}`);
   }
 
+  // Bypass proxy for host-local traffic (dashboard hooks, MCP proxy) only.
+  // NOTE: discord.com must NOT be bypassed. The container-side slang-mcp
+  // Discord tools never receive DISCORD_BOT_TOKEN via env (it's not in the
+  // slang-mcp envInherit allowlist), so they authenticate exclusively via
+  // the REST-over-OneCLI-proxy path, which depends on the proxy injecting
+  // `Authorization: Bot {token}` on the wire (host-pattern discord.com).
+  // Listing discord.com here routes that traffic around the proxy → no
+  // token is injected → Discord returns 401 credential_not_found. The
+  // host-side Discord channel adapter is unaffected (it runs on the host
+  // with the token from .env, not through this container env).
+  args.push('-e', 'NO_PROXY=host.docker.internal,localhost,127.0.0.1');
+  args.push('-e', 'no_proxy=host.docker.internal,localhost,127.0.0.1');
+
+  // Egress lockdown when enabled — throws if it can't be established, aborting
+  // the spawn rather than running with open egress. Otherwise the host gateway.
+  if (ensureEgressNetwork()) {
+    args.push(...egressNetworkArgs());
+    log.info('Egress lockdown active', { containerName, network: EGRESS_NETWORK });
+  } else {
+    args.push(...hostGatewayArgs());
+  }
+
+  // User mapping
+  const hostUid = process.getuid?.();
+  const hostGid = process.getgid?.();
+  if (hostUid != null && hostUid !== 0 && hostUid !== 1000) {
+    args.push('--user', `${hostUid}:${hostGid}`);
+    args.push('-e', 'HOME=/home/node');
+  }
+
+  // Volume mounts
+  for (const mount of mounts) {
+    if (mount.readonly) {
+      args.push(...readonlyMountArgs(mount.hostPath, mount.containerPath));
+    } else {
+      args.push('-v', `${mount.hostPath}:${mount.containerPath}`);
+    }
+  }
+
   // OneCLI gateway — injects HTTPS_PROXY + certs so container API calls
   // are routed through the agent vault for credential injection.
   // Must ensureAgent first for non-admin groups, otherwise applyContainerConfig
   // rejects the unknown agent identifier and returns false.
+  //
+  // MUST run AFTER the volume-mounts loop: applyContainerConfig appends
+  // credential-stub mounts (e.g. the codex auth.json sentinel nested INSIDE
+  // our RW /home/node/.codex mount). Docker applies binds in argument order,
+  // so the stub must land after its parent mount or the parent shadows it and
+  // the agent silently degrades to loginless auth. Guarded structurally by the
+  // ordering-invariant test in container-runner.test.ts.
   try {
     if (agentIdentifier) {
       await onecli.ensureAgent({ name: agentGroup.name, identifier: agentIdentifier });
@@ -1411,39 +1544,6 @@ async function buildContainerArgs(
     }
   } catch (err) {
     log.warn('OneCLI gateway error — container will have no credentials', { containerName, err });
-  }
-
-  // Bypass proxy for host-local traffic (dashboard hooks, MCP proxy) only.
-  // NOTE: discord.com must NOT be bypassed. The container-side slang-mcp
-  // Discord tools never receive DISCORD_BOT_TOKEN via env (it's not in the
-  // slang-mcp envInherit allowlist), so they authenticate exclusively via
-  // the REST-over-OneCLI-proxy path, which depends on the proxy injecting
-  // `Authorization: Bot {token}` on the wire (host-pattern discord.com).
-  // Listing discord.com here routes that traffic around the proxy → no
-  // token is injected → Discord returns 401 credential_not_found. The
-  // host-side Discord channel adapter is unaffected (it runs on the host
-  // with the token from .env, not through this container env).
-  args.push('-e', 'NO_PROXY=host.docker.internal,localhost,127.0.0.1');
-  args.push('-e', 'no_proxy=host.docker.internal,localhost,127.0.0.1');
-
-  // Host gateway
-  args.push(...hostGatewayArgs());
-
-  // User mapping
-  const hostUid = process.getuid?.();
-  const hostGid = process.getgid?.();
-  if (hostUid != null && hostUid !== 0 && hostUid !== 1000) {
-    args.push('--user', `${hostUid}:${hostGid}`);
-    args.push('-e', 'HOME=/home/node');
-  }
-
-  // Volume mounts
-  for (const mount of mounts) {
-    if (mount.readonly) {
-      args.push(...readonlyMountArgs(mount.hostPath, mount.containerPath));
-    } else {
-      args.push('-v', `${mount.hostPath}:${mount.containerPath}`);
-    }
   }
 
   // MCP servers: type-level (from coworker registry) + per-instance (from container.json).
