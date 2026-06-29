@@ -11,6 +11,7 @@
     workflow `.github/workflows/<f>.yml` without `workflows` permission)
   ```
 - **Only the orchestrator holds a personal PAT with `workflow` scope.** Every other container asks the orchestrator when it needs an elevated permission for a PR. For a workflow change a coworker must **NOT** silently self-block, and must **NOT** fall back to "leave the diff as a maintainer to-do in the PR body" (that was the pre-PAT guidance — now stale).
+- **Distinguish pushing workflow FILES from DISPATCHING workflows.** This permanent block is only about *pushing/editing* `.github/workflows/*` files. *Running* workflows via API (`gh workflow run`, `gh run rerun --failed`) is a separate surface that was transiently 403-blocked by a gateway routing bug and is **RESTORED as of 2026-06-17** — see the auth-&-ops CONSOLIDATED's "Workflow DISPATCH … RESOLVED" section. Don't conflate the two.
 
 ## The handoff — workflow patches only
 

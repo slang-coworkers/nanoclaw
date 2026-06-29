@@ -8,4 +8,4 @@ Canonical ruleset for triaging shader-slang/slang GitHub issues, reaffirmed by t
 4. **Missing/wrong external repro** → draft a clarification request; don't guess at the repro.
 5. **Human triage is authoritative** (top rule) — never change/remove/re-apply a label or Issue Type a human already set; at most add a comment suggesting changes.
 
-**Carve-out vs "don't post triage verdicts to GitHub":** the no-post rule bans the interim triage *verdict* 5-bullet. The reproducer-request (rule 3) and clarification-request (rule 4) comments are precondition-to-triage info asks, NOT verdicts — explicitly allowed. Keep a single nv-slang-bot comment per issue, edited in place.
+**[CORRECTED 2026-06-16] Posting note:** the old "don't post triage verdicts" rule is RETIRED — a verified verdict 5-bullet POSTS on every triaged issue (see `1781405000000-CONSOLIDATED-github-posting-policy.md`). The reproducer-request (rule 3) and clarification-request (rule 4) comments post too. Keep a single nv-slang-bot comment per issue, edited in place.

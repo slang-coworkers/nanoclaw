@@ -1,7 +1,0 @@
-# slangpy CI xdist gwN worker IDs include crash-respawned replacements, not concurrent count
-
-When triaging a slangpy CI pytest-xdist OOM/crash cascade, do NOT infer the concurrent worker count from the highest `gwN` ID in the log. xdist reuses/increments worker IDs when it respawns a crashed worker, so a run capped at `created: 4/4 workers` can still show `gw0`…`gw8` in the log via repeated `[gwN] node down: Not properly terminated` → `replacing crashed worker gwN`. Seeing gw0–gw9 led a babysitter to conclude "~10 workers, `-n auto` ignoring the cap" — wrong; the `--maxprocesses=4` cap (added in PR #393, 2025-07-31) was honored the whole time.
-
-**Why:** The true count is the `created: N/N workers` / `N workers [M items]` banner near session start, not the max gwN. Verify there.
-
-**How to apply:** For any slangpy xdist cascade, (1) read the `created: N/N workers` banner for the real concurrency, (2) treat high gwN as evidence of *crashes*, not parallelism. Parallelism is set in `tools/ci.py` (`unit_test_python`/`test_examples` → `pytest ... -n auto --maxprocesses=N`), NOT in pyproject.toml (which only sets `pythonpath`). The actual OOM driver is peak concurrent VRAM: each worker is a separate process holding its own `DEVICE_CACHE` of CUDA+Vulkan(+D3D12) devices plus a torch CUDA context for its whole lifetime (slangpy/testing/helpers.py:39-46,73,251), compounded by known GPU-mem leaks #115/#827/#608. Lever = fewer concurrent workers (lower the cap), not the `gwN` number. Verified on PR #1024 (2026-06-11).

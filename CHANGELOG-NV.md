@@ -6,15 +6,81 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 244 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 126 |
-| `nv-slang` | slang project spine, skills, workflows | 88 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 35 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 25 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 258 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 131 |
+| `nv-slang` | slang project spine, skills, workflows | 95 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 38 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 26 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-26
+
+### nv-main (4 PRs)
+- **#699** `refactor(supervise): split skill + add CI column & rebase-master nudge`
+- **#700** ``fix(composer): gate workflow step parsing to the `## Steps` region``
+- **#703** `fix(webhook): recognize both bot identities in the own-bot guard (stop self-👀)`
+- **#704** `fix(supervise): deterministic scan.py + fix broken wake-gate & --thread-prefix`
+
+### nv-slang (1 PRs)
+- **#701** `fix(slang-workflows): correct step formatting for clean composer rendering`
+
+### nv-slangpy (1 PRs)
+- **#702** `fix(slangpy-workflows): restore inherited steps in slangpy-implement`
+
+## 📅 2026-06-25
+
+### nv-main (4 PRs)
+- **#690** `docs(supervise): self-healing reaping guide + transcript-rotation note`
+- **#691** `fix(a2a): collapse split gh-issue/pr coworker sessions into one canonical`
+- **#693** `fix(startup): clear stale container_status before the gh-session reconcile`
+- **#695** `feat(funnel): add --since flag to override the window start`
+
+### nv-dashboard (4 PRs)
+- **#688** `feat(dashboard): add host disk usage to Admin Infrastructure panel`
+- **#692** `feat(dashboard): swim-lane shared-thread view + honor clicked session`
+- **#694** `feat(dashboard): hide scheduled-task/system rows by default + slim lane toggle`
+- **#696** `feat(dashboard): offer swim-lane on any multi-coworker thread, not just gh-*`
+
+## 📅 2026-06-24
+
+### nv-main (4 PRs)
+- **#682** `feat(agent-runner): block coworkers from closing GitHub issues`
+- **#683** `fix(supervise): proactive worktree-volume disk check via RO /ephemeral mount`
+- **#673** `fix(nv-main): honor ENABLE_GPU=1 from .env on setup/update rebuilds`
+- **#686** `fix(supervise): §8 worktree GC reaps dead-session orphans (wake + save-then-remove)`
+
+### nv-slang (1 PRs)
+- **#684** `fix(slang-fixer): report real worktree volume on disk-full (df /workspace/agent)`
+
+## 📅 2026-06-23
+
+### nv-slang (1 PRs)
+- **#671** `Add no-push invariant to slang-maintainer`
+
+## 📅 2026-06-17
+
+### nv-main (2 PRs)
+- **#662** `fix(supervise-issues): key-based dedup + awareness re-promotion + 10-col board`
+- **#664** `fix(supervise-issues): awaiting_us trigger + by-us activity clock (#11594 autonomy gap)`
+
+### nv-dashboard (1 PRs)
+- **#663** `feat(dashboard): make funnel Refresh button recompute the snapshot`
+
+### nv-slang (4 PRs)
+- **#659** `fix(slang-fix-issue): use REST gh api for cross-fork PR create`
+- **#665** `fix(slang-fix-issue): never gate an authorized human-facing reply on a build`
+- **#668** `fix(slang-implement): check for a GPU before declaring a defect hardware-gated`
+- **#669** `Add slang-pr-report skill to slang-maintainer coworker type`
+
+### nv-slangpy (2 PRs)
+- **#660** `fix(slangpy-implement): use REST gh api for cross-fork PR create`
+- **#666** `fix(slangpy-implement): never gate an authorized human-facing reply on a build`
+
+### nv-nanoclaw (1 PRs)
+- **#661** `docs(nanoclaw-github): clarify REST-not-gh-pr-create for this fork repo`
 
 ## 📅 2026-06-16
 
