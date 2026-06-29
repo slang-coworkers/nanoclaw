@@ -65,6 +65,7 @@ jobs:
               container/spines/base/*) return 0 ;;
               container/skills/spine-base/*) return 0 ;;
               container/skills/base/*) return 0 ;;
+              .claude/skills/*) return 0 ;;
               container/Dockerfile|container/build.sh|container/entrypoint.sh) return 0 ;;
               CLAUDE.md|README.md|CONTRIBUTING.md|LICENSE|.gitignore) return 0 ;;
               *) return 1 ;;
@@ -104,9 +105,21 @@ jobs:
             # regardless of merge direction.
             for f in $CONFLICTS; do
               echo "::notice::$branch: $f conflict — taking nv-main (canonical) version"
-              git checkout origin/nv-main -- "$f"
-              git add -- "$f"
+              if git checkout origin/nv-main -- "$f" 2>/dev/null; then
+                git add -- "$f"
+              else
+                git rm -f -- "$f" >/dev/null  # nv-main deleted it - take the deletion
+              fi
             done
+            # Keep dependency spec+lock paired: a resolved-to-nv-main package.json
+            # whose lockfile didn't conflict would stay at HEAD's version and break
+            # `pnpm install --frozen-lockfile`. Take nv-main's lockfile to match.
+            case " $CONFLICTS " in
+              *" package.json "*) git checkout origin/nv-main -- pnpm-lock.yaml 2>/dev/null && git add -- pnpm-lock.yaml || true ;;
+            esac
+            case " $CONFLICTS " in
+              *" container/agent-runner/package.json "*) git checkout origin/nv-main -- container/agent-runner/bun.lock 2>/dev/null && git add -- container/agent-runner/bun.lock || true ;;
+            esac
             git commit --no-edit
           done
       - uses: pnpm/action-setup@v4
