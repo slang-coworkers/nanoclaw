@@ -35,7 +35,9 @@ allowed-tools: Bash(git:*), Bash(gh:*), Read, Grep, Glob
 3. `pnpm exec vitest run` + `npm run validate:templates` must pass
 4. Squash merge
 
-**Autonomous PR creation:** Create PRs without asking for confirmation. If tests pass and changes are minimal, open the PR immediately via `gh pr create`. Include: what changed, why, and test results in the PR body. Only stop and notify the user if CI fails after 2 rerun attempts.
+**Autonomous PR creation:** Create PRs without asking for confirmation. If tests pass and changes are minimal, open the PR. Include: what changed, why, and test results in the PR body. Only stop and notify the user if CI fails after 2 rerun attempts.
+
+> **Use REST here, not `gh pr create`.** This repo's PRs target `slang-coworkers/nanoclaw` (the fork org), where the GraphQL/App token has no write — so `gh pr create` / `gh pr merge` 403 (`Resource not accessible by integration`). Open via REST `gh api -X POST repos/slang-coworkers/nanoclaw/pulls -f head="<branch>" -f base="nv-coworkers" …` and merge via `gh api -X PUT …/pulls/<n>/merge -f merge_method=squash`; REST `/repos/*` gets the `nv-slang-bot` user PAT. (`gh pr create` only works when the PR's _base_ is `shader-slang/*`, which this repo never is.)
 
 ## Conflict handling
 
