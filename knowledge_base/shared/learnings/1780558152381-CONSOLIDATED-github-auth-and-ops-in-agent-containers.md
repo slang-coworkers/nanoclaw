@@ -53,5 +53,20 @@ The bot **cannot** requeue PRs to the `shader-slang/slang` merge queue, even for
 - REST `PATCH /repos/<o>/<r>/issues/comments/{id}` can 403 `"Must have admin rights to Repository"` even on the bot's own comment (permissions vary across container resets). **Workaround:** GraphQL `updateIssueComment` — resolve node id (`gh api .../issues/comments/<id> --jq .node_id` → `IC_...`), then `gh api graphql -f query='mutation($id:ID!,$b:String!){updateIssueComment(input:{id:$id,body:$b}){issueComment{updatedAt}}}' -f id=<node_id> -f b="$(cat body.md)"`. General rule: if a REST mutation 403s with an admin-rights message, try the GraphQL equivalent before concluding write is blocked.
 - A session can edit/delete **only the comments it itself created** — editing another session's comment 403s even though both render as the same bot. Consequence: two tiers posting on one issue produce comments neither can later consolidate (needs a human). Rule: exactly ONE tier owns the issue-level 5-bullet (edited in place); the other tier puts status in artifacts it controls (e.g. the fixer uses the PR description).
 
+---
+
+## Update 2026-06-28 (folds 5 later per-incident gh-auth notes into this consolidation)
+
+Re-verified live 2026-06-28: `gh auth status` → "token in GH_TOKEN is invalid"; `gh api user` → 403; `gh api repos/shader-slang/slang --jq .full_name` → `shader-slang/slang`. The false-negative pattern is unchanged. Three additional nuances from 2026-06-26 incidents:
+
+### Degraded-session matrix — REST labels can 403 independently while everything else works
+In a *partially* degraded gateway session (`gh auth status` invalid + `gh issue view` returns **empty** + `gh api rate_limit` → `app_not_connected` 401), the working REST/GraphQL paths still succeed: `gh api repos/.../issues/<n>` (read), `PATCH .../issues/comments/{id}` (edit own comment), and GraphQL `updateIssue(... issueTypeId ...)` (set Issue **Type**). But `POST .../issues/<n>/labels` can return **403 "Must have admin rights to Repository"** — this is the proxy's REST-labels path degrading, **NOT** a permission loss (the bot labels fine in healthy sessions; the label exists). Don't thrash: set Issue **Type** via GraphQL (works), then defer the label to a healthy session / the normal triage flow. A label is rarely load-bearing once Type is set. (Observed #11782/#11784, 2026-06-26.)
+
+### Read-only fallback: WebFetch the public HTML when `gh` is dark
+When the token is invalid every `gh` call can silently return **empty** (not an error) — easy to mistake for "no result"; confirm with `gh auth status` first. For READ-ONLY needs on public repos, `WebFetch("https://github.com/<owner>/<repo>/issues/<N>")` retrieves title, body, author, state, labels, assignee with no token (unblocked triage of #11719 fully offline). WebFetch cannot post/label/set-type, and may miss long/collapsed comment threads — for a definitive comment-history/dup sweep you still need `gh` once the path is back.
+
+### Don't abort the `/slang-pr-review` pipeline on an auth-status warning
+Reviewer preflight (`install.sh` "gh auth not configured" / `gh auth status` non-zero) is **not** a reason to abort — Reviewer A's `gh pr diff` / `gh api repos/.../pulls/N` work for public `shader-slang/slang`. Verify the real read endpoint before deciding gh is broken. Posting back is separately gated by the `<github-post-authorized />` marker.
+
 ### Comment-author login is `nv-slang-bot` (User), not `nv-slang-bot[bot]`
 The bot's comment `.user.login` is `nv-slang-bot` with `.user.type == "User"` — **no `[bot]` suffix** (the `[bot]` form only appears as the `gh auth status` actor). Edit-in-place guards that compare `$LOGIN` against the literal `"nv-slang-bot[bot]"` never match → they always POST a fresh duplicate instead of PATCHing. Fix: match `nv-slang-bot` (or accept both: `case "$LOGIN" in nv-slang-bot|nv-slang-bot\[bot\]) PATCH ;; *) POST ;; esac`). More robust: persist the comment id in the `.gh-comments/<repo>-<num>.id` cache and PATCH it directly; only post fresh when a non-bot author has commented since.
