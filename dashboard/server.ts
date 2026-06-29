@@ -23,6 +23,7 @@ import {
   readdirSync,
   existsSync,
   statSync,
+  statfsSync,
   lstatSync,
   symlinkSync,
   cpSync,
@@ -2157,6 +2158,44 @@ interface ActivityBucket {
   inbound: number;
   outbound: number;
 }
+// Funnel recompute state. The funnel makes ~180 GitHub calls and takes ~3 min,
+// so the dashboard "Refresh" button kicks off an async recompute rather than
+// holding the request. `funnelRefresh.running` guards against concurrent runs
+// (button spam, or a click that overlaps the 6-hourly cron). We shell out to
+// scripts/funnel-cron.sh — the single source of truth for the proxy-stripping
+// env and logging the cron already relies on — instead of duplicating it here.
+let funnelRefresh: {
+  running: boolean;
+  startedAt: number | null;
+  finishedAt: number | null;
+  lastError: string | null;
+} = { running: false, startedAt: null, finishedAt: null, lastError: null };
+
+function startFunnelRefresh(): { started: boolean } {
+  if (funnelRefresh.running) return { started: false };
+  funnelRefresh = {
+    running: true,
+    startedAt: Date.now(),
+    finishedAt: null,
+    lastError: null,
+  };
+  const script = join(getProjectRoot(), 'scripts', 'funnel-cron.sh');
+  // The script sets PATH, HOME, strips proxy vars, cds to the repo, and writes
+  // reports/funnel.json + logs/funnel-cron.log. We just launch it detached.
+  const child = exec(
+    `bash ${JSON.stringify(script)}`,
+    { timeout: 8 * 60 * 1000, maxBuffer: 16 * 1024 * 1024 },
+    (err) => {
+      funnelRefresh.running = false;
+      funnelRefresh.finishedAt = Date.now();
+      funnelRefresh.lastError = err ? String(err.message || err) : null;
+    },
+  );
+  // Don't let a slow refresh keep the event loop / process alive on shutdown.
+  child.unref?.();
+  return { started: true };
+}
+
 let activityDataCache: ActivityBucket[] | null = null;
 
 function refreshActivityData(): void {
@@ -4634,6 +4673,33 @@ export async function handleRequest(
     return;
   }
 
+  // API: kick off a funnel recompute. The recompute is ~180 GitHub calls / ~3
+  // min, so this returns 202 immediately and the work runs in the background;
+  // the client polls GET /api/funnel/status and re-fetches /api/funnel when it
+  // sees running flip back to false. Re-entrant clicks are no-ops (409).
+  if (req.method === 'POST' && url.pathname === '/api/funnel/refresh') {
+    if (!requireAuth(req, res)) return;
+    const { started } = startFunnelRefresh();
+    res.writeHead(started ? 202 : 409, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ running: funnelRefresh.running, started }));
+    return;
+  }
+
+  // API: funnel recompute status — polled by the client while a refresh runs.
+  if (url.pathname === '/api/funnel/status') {
+    if (!requireAuth(req, res)) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        running: funnelRefresh.running,
+        startedAt: funnelRefresh.startedAt,
+        finishedAt: funnelRefresh.finishedAt,
+        lastError: funnelRefresh.lastError,
+      }),
+    );
+    return;
+  }
+
   if (url.pathname === '/api/events') {
     if (!requireAuth(req, res)) return;
     res.writeHead(200, {
@@ -5767,6 +5833,12 @@ export async function handleRequest(
     const threadIdParam = url.searchParams.get('thread_id');
     const threadMode = threadIdParam !== null && threadIdParam.length > 0;
     const threadFilter = threadMode ? threadIdParam : null;
+    // Swim-lane mode: a shared-thread view across EVERY coworker that has a
+    // session on this thread_id (orch + triager + fixer + reviewer on one
+    // gh-issue chain), not just the `group` in the URL. Each returned row is
+    // already stamped with group_folder + session_id, so the client renders
+    // one lane per coworker. Only meaningful together with thread_id.
+    const laneMode = threadMode && url.searchParams.get('lane') === '1';
     // Session-direct mode: fetch messages from a specific session by ID,
     // bypassing messaging_group scoping. Used to view a2a-spawned sessions
     // that have messaging_group_id = NULL and thread_id = NULL.
@@ -5823,14 +5895,33 @@ export async function handleRequest(
         } catch {
           /* table may not exist in degraded test fixtures */
         }
+        // Swim-lane: every coworker holding an active session on this thread_id
+        // (not just the `group` in the URL). Falls back to the normal single-
+        // group selection if the lookup turns up nothing.
+        const laneAgRows = laneMode
+          ? (db
+              .prepare(
+                `SELECT DISTINCT ag.id, ag.folder, ag.name
+                   FROM sessions s JOIN agent_groups ag ON ag.id = s.agent_group_id
+                  WHERE s.thread_id = ? AND s.status = 'active'`,
+              )
+              .all(threadFilter) as any[])
+          : [];
         // When group is specified, load messages for that group only; otherwise load all groups
-        const agRows = group
-          ? [db.prepare('SELECT id, folder, name FROM agent_groups WHERE folder = ?').get(group) as any].filter(Boolean)
-          : (db.prepare('SELECT id, folder, name FROM agent_groups').all() as any[]);
+        const agRows =
+          laneMode && laneAgRows.length
+            ? laneAgRows
+            : group
+              ? [db.prepare('SELECT id, folder, name FROM agent_groups WHERE folder = ?').get(group) as any].filter(
+                  Boolean,
+                )
+              : (db.prepare('SELECT id, folder, name FROM agent_groups').all() as any[]);
         // Oversample when the caller paginates via `before`. Admin →
         // Messages in particular depends on getting non-trivial coverage
         // below the cutoff so hasMore accurately reflects the DB state.
-        const baseLimit = group ? limit : Math.ceil(limit / Math.max(agRows.length, 1));
+        // Lane mode gives each coworker the full limit (few participants, all
+        // wanted) rather than dividing it across the whole install.
+        const baseLimit = group || laneMode ? limit : Math.ceil(limit / Math.max(agRows.length, 1));
         const perGroupLimit = beforeParam ? baseLimit * OVERSAMPLE : baseLimit;
         for (const agRow of agRows) {
           // Scope all dashboard /api/messages queries to this coworker's
@@ -6268,8 +6359,36 @@ export async function handleRequest(
         /* ignore */
       }
     }
+    // Swim-lane participants: stable, ordered list of the coworkers on this
+    // thread so the client renders lanes deterministically (and can show an
+    // empty lane for a participant whose rows fell outside the page). Ordered
+    // by each coworker's earliest session on the thread — roughly the order
+    // they joined the chain (orch first, then triager, fixer, reviewer…).
+    let lanes: Array<{ folder: string; name: string; sessionIds: string[] }> | undefined;
+    if (laneMode && db) {
+      try {
+        const rows = db
+          .prepare(
+            `SELECT ag.folder AS folder, COALESCE(ag.name, ag.folder) AS name, s.id AS session_id,
+                    MIN(s.created_at) OVER (PARTITION BY ag.id) AS first_created
+               FROM sessions s JOIN agent_groups ag ON ag.id = s.agent_group_id
+              WHERE s.thread_id = ? AND s.status = 'active'
+              ORDER BY first_created ASC, ag.folder ASC, s.created_at ASC`,
+          )
+          .all(threadFilter) as Array<{ folder: string; name: string; session_id: string }>;
+        const byFolder = new Map<string, { folder: string; name: string; sessionIds: string[] }>();
+        for (const r of rows) {
+          const e = byFolder.get(r.folder) ?? { folder: r.folder, name: r.name, sessionIds: [] };
+          e.sessionIds.push(r.session_id);
+          byFolder.set(r.folder, e);
+        }
+        lanes = [...byFolder.values()];
+      } catch {
+        /* lanes optional */
+      }
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ messages, hasMore, threadSummaries }));
+    res.end(JSON.stringify({ messages, hasMore, threadSummaries, ...(lanes ? { lanes } : {}) }));
     return;
   }
 
@@ -9733,6 +9852,34 @@ export async function handleRequest(
             } catch {
               checks.containers = { count: 0, list: [] };
             }
+
+            // Host disk usage. We report the root FS and /ephemeral (the docker
+            // data-root disk, a separate device that has filled before and broken
+            // per-group image rebuilds). statfsSync is a cheap in-process syscall —
+            // no df shell-out — so it's safe to compute on every infra fetch.
+            // bsize*blocks = total, bsize*bfree = free-to-root, bsize*bavail =
+            // free-to-unprivileged; we use bavail for "available" to match df.
+            const DISK_MOUNTS = ['/', '/ephemeral'];
+            checks.disk = DISK_MOUNTS.flatMap((mount) => {
+              try {
+                if (!existsSync(mount)) return [];
+                const s = statfsSync(mount);
+                const total = s.blocks * s.bsize;
+                const avail = s.bavail * s.bsize;
+                const used = total - s.bfree * s.bsize;
+                return [
+                  {
+                    mount,
+                    total,
+                    used,
+                    avail,
+                    usedPercent: total > 0 ? Math.round((used / total) * 100) : 0,
+                  },
+                ];
+              } catch {
+                return [];
+              }
+            });
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(checks, null, 2));

@@ -282,6 +282,63 @@ function switchToTab(tabId) {
 // the funnel; if no snapshot exists the endpoint 404s with a refresh hint.
 // Loaded under Admin > Funnel; loadAdminPanel() guards first-load via
 // adminState.loaded and the Refresh button clears that entry to force a reload.
+// Kick off a server-side funnel recompute (~3 min, ~180 GitHub calls), poll for
+// completion, then reload the panel from the freshly-written snapshot. The
+// button shows progress and is disabled while the recompute runs.
+async function triggerFunnelRefresh(btn) {
+  const stamp = document.getElementById('funnel-stamp');
+  const label = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Refreshing…';
+  }
+  try {
+    const res = await fetch('/api/funnel/refresh', { method: 'POST' });
+    // 409 = a recompute (or the cron) is already running; just poll it.
+    if (!res.ok && res.status !== 409) throw new Error('refresh failed');
+  } catch {
+    if (stamp) stamp.textContent = 'refresh failed to start';
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+    return;
+  }
+  // Poll status until the run finishes (or we give up after ~8 min).
+  const deadline = Date.now() + 8 * 60 * 1000;
+  const poll = async () => {
+    let st;
+    try {
+      st = await (await fetch('/api/funnel/status')).json();
+    } catch {
+      st = null;
+    }
+    if (st && !st.running) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = label;
+      }
+      if (st.lastError) {
+        if (stamp) stamp.textContent = 'refresh failed — see logs/funnel-cron.log';
+      } else {
+        adminState.loaded.delete('funnel');
+        loadFunnel();
+      }
+      return;
+    }
+    if (Date.now() > deadline) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = label;
+      }
+      if (stamp) stamp.textContent = 'refresh still running — reload shortly';
+      return;
+    }
+    setTimeout(poll, 4000);
+  };
+  setTimeout(poll, 4000);
+}
+
 async function loadFunnel() {
   const board = document.getElementById('funnel-board');
   const detail = document.getElementById('funnel-detail');
@@ -602,6 +659,38 @@ function isA2aSession(nanoSess) {
   if (typeof nanoSess?.messaging_group_id === 'string' && nanoSess.messaging_group_id.startsWith('mg-a2a-'))
     return true;
   return !nanoSess?.messaging_group_id;
+}
+
+// Stable per-coworker lane color in the swim-lane thread view. Hash the folder
+// name to a hue so the same coworker keeps its color across renders.
+function laneColor(folder) {
+  let h = 0;
+  const s = String(folder || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffff;
+  return `hsl(${h % 360}, 60%, 55%)`;
+}
+
+// A thread_id can map to multiple sessions (a GitHub issue/PR has a webhook
+// session plus a2a-delegation sessions). The canonical one — what a /t/ deep
+// link should open and what the host's findSessionByAgentThread collapses to —
+// is the non-a2a (webhook) session, earliest-created, with id as a stable
+// tie-break (mirrors src/db/sessions.ts findSessionByAgentThread). Returns the
+// cachedSessions row, or null if none are loaded yet.
+function resolveCanonicalSessionForThread(folder, threadId) {
+  const matches = (cachedSessions || []).filter(
+    (s) => s.group_folder === folder && s.thread_id === threadId && s.nanoclaw_session_id,
+  );
+  if (!matches.length) return null;
+  matches.sort((a, b) => {
+    const aA2a = isA2aSession(a) ? 1 : 0;
+    const bA2a = isA2aSession(b) ? 1 : 0;
+    if (aA2a !== bA2a) return aA2a - bA2a; // non-a2a (webhook) first
+    const at = a.created_at || '';
+    const bt = b.created_at || '';
+    if (at !== bt) return at < bt ? -1 : 1; // earliest-created
+    return String(a.nanoclaw_session_id) < String(b.nanoclaw_session_id) ? -1 : 1; // id tie-break
+  });
+  return matches[0];
 }
 
 function sessionSlugOnly(nanoSess) {
@@ -3389,6 +3478,24 @@ document.addEventListener('click', (e) => {
     return;
   }
 
+  // Swim-lane toggle in the thread header: switch the open thread between the
+  // single-session view and the shared cross-coworker swim-lane.
+  const laneOnBtn = e.target.closest('[data-thread-lane-on]');
+  if (laneOnBtn) {
+    const tid = laneOnBtn.dataset.threadLaneOn;
+    if (tid) openThread(tid, { lane: true });
+    return;
+  }
+  const laneOffBtn = e.target.closest('[data-thread-lane-off]');
+  if (laneOffBtn) {
+    const tid = laneOffBtn.dataset.threadLaneOff;
+    // Back to the canonical single session for this thread.
+    const canonical = resolveCanonicalSessionForThread(cwState.selected, tid);
+    if (canonical) openThread(canonical.nanoclaw_session_id, { sessionDirect: true, threadId: tid });
+    else openThread(tid);
+    return;
+  }
+
   // Click "Chat" button in Other Sessions — opens the Coworkers chat for that coworker,
   // and if the session has a thread_id, opens its thread panel (Slack-style). Main-session
   // clicks fall through to the root chat view and scroll it into view.
@@ -3408,7 +3515,16 @@ document.addEventListener('click', (e) => {
       if (cwState.selected !== grp) selectCoworker(grp);
       if (sessionDirect) {
         setTimeout(() => openThread(sessionDirect, { sessionDirect: true }), 400);
+      } else if (tid && sid) {
+        // Open the SPECIFIC clicked session, not every session sharing this
+        // thread_id. A GitHub issue/PR thread can have multiple coworker
+        // sessions (webhook + a2a delegations); re-broadening by thread_id
+        // interleaves them into one mixed transcript. The tile already knows
+        // exactly which session it represents (sid) — honor it. threadId is
+        // carried through for the header label and URL deep-link.
+        setTimeout(() => openThread(sid, { sessionDirect: true, threadId: tid }), 400);
       } else if (tid) {
+        // Legacy tile with no session id — fall back to the thread-union view.
         setTimeout(() => openThread(tid), 400);
       } else {
         closeThread({ silent: true });
@@ -4035,6 +4151,13 @@ document.getElementById('admin')?.addEventListener('click', async (e) => {
     const refreshBtn = e.target.closest('.admin-refresh-btn');
     if (refreshBtn) {
       const name = refreshBtn.dataset.load;
+      // The funnel snapshot is a cached file (~180 GitHub calls to rebuild), so
+      // a plain reload only re-reads the cache. Trigger a real recompute, then
+      // reload once it finishes. Other panels reload from their live source.
+      if (name === 'funnel') {
+        triggerFunnelRefresh(refreshBtn);
+        return;
+      }
       adminState.loaded.delete(name);
       loadAdminPanel(name);
     }
@@ -4878,7 +5001,12 @@ function renderCwMessages() {
   if (cwState.loadingOlder) return;
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
   const approvalHtml = (cwState.pendingApprovals || []).map(renderApprovalItem).join('');
+  // Hide scheduled-task fires (kind='task', e.g. the recurring /supervise-issues
+  // tick) and other system rows by default — they repeat on every cron tick and
+  // crowd the feed. The "⚙ system" toggle in the header brings them back.
+  const systemHidden = (cwState.messages || []).filter((m) => m.kind === 'task' || m.kind === 'system').length;
   const messageHtml = cwState.messages
+    .filter((m) => cwState.showSystem || !(m.kind === 'task' || m.kind === 'system'))
     .map((m) => {
       const isOutgoing = m.direction === 'outgoing';
       // Agent-to-agent styling: inbound from another coworker gets its own class
@@ -5077,8 +5205,16 @@ function renderCwMessages() {
     </div>`;
     })
     .join('');
+  // System-row toggle: shown whenever there are hidden task/system rows (or
+  // they're currently visible), so the operator can flip them on/off. Click is
+  // handled by the delegate below.
+  const systemToggleHtml =
+    systemHidden > 0 || cwState.showSystem
+      ? `<div style="text-align:center;padding:4px"><button id="cw-system-toggle" class="admin-load-more" style="font-size:9px;opacity:0.7">${cwState.showSystem ? `⚙ hide system (${systemHidden})` : `⚙ show system (${systemHidden})`}</button></div>`
+      : '';
   if (!approvalHtml && !messageHtml) {
-    el.innerHTML = '<div class="cw-empty">No messages yet. Send a message to start.</div>';
+    el.innerHTML =
+      systemToggleHtml || '<div class="cw-empty">No messages yet. Send a message to start.</div>';
     return;
   }
   const approvalCount = (cwState.pendingApprovals || []).length;
@@ -5093,7 +5229,7 @@ function renderCwMessages() {
     cwState.messagesHasMore && cwState.messages.length > 0
       ? `<button class="admin-load-more" id="cw-messages-more"${cwState.loadingOlder ? ' disabled' : ''}>${cwState.loadingOlder ? 'Loading…' : 'Load older messages'}</button>`
       : '';
-  el.innerHTML = loadMoreHtml + messageHtml + bannerHtml;
+  el.innerHTML = loadMoreHtml + systemToggleHtml + messageHtml + bannerHtml;
 
   if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
   // Event delegation: attach once on the stable parent, survives innerHTML rebuilds
@@ -5140,6 +5276,12 @@ function renderCwMessages() {
       // The load-more branch is handled by handleLoadMore above (mousedown +
       // click). Skip it here to avoid double-firing.
       if (e.target.closest('#cw-messages-more')) return;
+      // ── System-row toggle (hide/show scheduled-task + system messages) ──
+      if (e.target.closest('#cw-system-toggle')) {
+        cwState.showSystem = !cwState.showSystem;
+        renderCwMessages();
+        return;
+      }
       // ── Copy message (#632) / shareable permalink (#635) ──
       if (handleCwMsgActionClick(e)) return;
       // ── Reply-in-thread hover button or reply-count stub ──
@@ -5478,6 +5620,14 @@ function openThread(parentId, opts = {}) {
     messages: [],
     polling: null,
     sessionDirect: isSessionDirect,
+    // When a session-direct view was opened from a thread tile, remember the
+    // originating thread_id so the header can show the thread title (not a2a
+    // chrome) and the URL can keep a stable /t/ deep-link.
+    threadId: opts.threadId || null,
+    // Swim-lane mode: render the shared-thread union across all coworkers.
+    // parentId is the thread_id in this mode.
+    lane: !!opts.lane,
+    lanes: [],
     hasMore: false,
     loadingOlder: false,
   };
@@ -5653,9 +5803,14 @@ async function fetchCwThread(parentId, append = false) {
   const selectedAtStart = cwState.selected;
   try {
     if (append) cwState.thread.loadingOlder = true;
-    const queryParam = cwState.thread.sessionDirect
-      ? `session_id=${encodeURIComponent(parentId)}`
-      : `thread_id=${encodeURIComponent(parentId)}`;
+    // Swim-lane (shared-thread) view: request the cross-coworker union for this
+    // thread_id with lane=1 so the server returns every participant's rows plus
+    // the ordered `lanes` list. Otherwise the normal session/thread query.
+    const queryParam = cwState.thread.lane
+      ? `thread_id=${encodeURIComponent(parentId)}&lane=1`
+      : cwState.thread.sessionDirect
+        ? `session_id=${encodeURIComponent(parentId)}`
+        : `thread_id=${encodeURIComponent(parentId)}`;
     // Polling-refresh limit covers the currently-loaded persisted row count
     // (capped at the server's 500 ceiling). See fetchCwMessages above for
     // the S1/S2 rationale — same trade-off, capped window covers backfills
@@ -5678,6 +5833,9 @@ async function fetchCwThread(parentId, append = false) {
     // Re-check identity after the parse-await — same race protection as the
     // pre-parse guard above, repeated because res.json() is also async.
     if (!cwState.thread || cwState.thread.parentId !== parentId || cwState.selected !== selectedAtStart) return;
+    // Capture the ordered lane list for the swim-lane renderer (server only
+    // emits it in lane mode).
+    if (cwState.thread.lane && Array.isArray(data.lanes)) cwState.thread.lanes = data.lanes;
     const incoming = (data.messages || []).slice().reverse();
     // Preserve locally-pushed optimistic messages UNTIL their persisted
     // twin arrives. Heuristic: drop an optimistic row once the server
@@ -5774,32 +5932,67 @@ function renderCwThread() {
     : (cachedSessions || []).find((s) => s.thread_id === t.parentId && s.group_folder === cwState.selected);
   const sessionIdForSlug =
     matchingNano?.nanoclaw_session_id || (t.messages || []).find((m) => m.session_id)?.session_id || t.parentId;
+  // A session opened from a thread tile is sessionDirect (scoped to one exact
+  // session) but is NOT necessarily an a2a peer session — a GitHub webhook
+  // session is a normal thread. Gate a2a chrome on the real signal (a2a_peer),
+  // or a genuine peer-inspector open (sessionDirect with no originating thread).
+  const isA2aThread = !t.lane && (!!matchingNano?.a2a_peer || (t.sessionDirect && !t.threadId));
+  // The thread_id this view is anchored to: in lane mode it's parentId; for a
+  // session-direct open the carried-through tile thread; else parentId.
+  const anchorThreadId = t.lane ? t.parentId : t.threadId || (t.sessionDirect ? matchingNano?.thread_id || null : t.parentId);
+  // Offer the swim-lane on any thread spanning ≥2 coworkers (not just gh-*).
+  // The server's lane=1 union is thread-agnostic; the only gate is presentational.
+  // Count distinct coworkers (group_folder) with an active session on this exact
+  // thread_id from the already-loaded session list. gh-issue/pr chains are the
+  // common multi-coworker case, but worktree-cleanup / reinforcement / dashboard
+  // a2a threads fan out across coworkers too and benefit identically.
+  const laneEligible =
+    typeof anchorThreadId === 'string' &&
+    anchorThreadId.length > 0 &&
+    new Set(
+      (cachedSessions || [])
+        .filter((s) => s.thread_id === anchorThreadId && s.group_folder)
+        .map((s) => s.group_folder),
+    ).size > 1;
   if (parentLabel) {
-    const labelText = sessionLabelWithTitle(sessionIdForSlug, t.parentId);
-    const isA2aThread = t.sessionDirect || matchingNano?.a2a_peer;
+    const labelText = t.lane ? anchorThreadId : sessionLabelWithTitle(sessionIdForSlug, anchorThreadId || t.parentId);
     const badge = isA2aThread
       ? '<span style="font-size:7px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;margin-right:4px;vertical-align:middle;letter-spacing:.03em">a2a</span>'
-      : '';
+      : t.lane
+        ? '<span style="font-size:7px;background:#0ea5e9;color:#fff;padding:1px 4px;border-radius:3px;margin-right:4px;vertical-align:middle;letter-spacing:.03em">shared</span>'
+        : '';
     parentLabel.innerHTML = `${badge}${esc(labelText)}`;
-    parentLabel.title = `session=${sessionIdForSlug}${t.sessionDirect ? ' (a2a read-only)' : `\nthread_id=${t.parentId}`}`;
+    parentLabel.title = `${t.lane ? 'shared thread across coworkers\n' : ''}session=${sessionIdForSlug}${isA2aThread ? ' (a2a read-only)' : anchorThreadId ? `\nthread_id=${anchorThreadId}` : ''}`;
   }
   const titleEl = document.querySelector('#cw-thread-panel .cw-thread-title strong');
-  if (titleEl) titleEl.textContent = t.sessionDirect ? 'A2A Session' : 'Thread';
+  if (titleEl) titleEl.textContent = t.lane ? 'Shared thread' : isA2aThread ? 'A2A Session' : 'Thread';
   const actionsEl = document.getElementById('cw-thread-actions');
   if (actionsEl) {
-    if (matchingNano && matchingNano.nanoclaw_session_id) {
+    let actionsHtml = '';
+    // Swim-lane toggle: shown on any thread that spans ≥2 coworkers. In lane
+    // mode → switch back to the single-session view; in single view → open the
+    // shared swim-lane across all coworkers on this thread. Always show it in
+    // lane mode itself (so the toggle-off control is reachable even if the
+    // session list momentarily lags).
+    if (laneEligible || t.lane) {
+      const tid = escAttr(anchorThreadId);
+      // Icon-only to save header space; the title tooltip carries the meaning.
+      actionsHtml += t.lane
+        ? `<button class="session-icon-btn active" title="Showing all coworkers (swim-lane) — click for single session" data-thread-lane-off="${tid}">⇄</button>`
+        : `<button class="session-icon-btn" title="Show this thread across all coworkers (swim-lane)" data-thread-lane-on="${tid}">⇄</button>`;
+    }
+    if (!t.lane && matchingNano && matchingNano.nanoclaw_session_id) {
       const sid = escAttr(matchingNano.nanoclaw_session_id);
       const agid = escAttr(matchingNano.agent_group_id || '');
       const tgrp = escAttr(cwState.selected || '');
       const currentTitle = matchingNano.display_title || '';
       const isPinned = !!matchingNano.pinned_at;
-      actionsEl.innerHTML =
+      actionsHtml +=
         `<button class="session-icon-btn${isPinned ? ' active' : ''}" title="${isPinned ? 'Unpin session' : 'Pin session'}" data-pin-session="${sid}" data-pin-on="${isPinned ? '0' : '1'}">📌</button>` +
         `<button class="session-icon-btn" title="Rename this session" data-rename-session="${sid}" data-rename-current="${escAttr(currentTitle)}">✎</button>` +
         `<button class="session-icon-btn" title="Open in Timeline" data-view-nanoclaw-session="${sid}" data-view-nanoclaw-agid="${agid}" data-view-session-group="${tgrp}">≡</button>`;
-    } else {
-      actionsEl.innerHTML = '';
     }
+    actionsEl.innerHTML = actionsHtml;
   }
   if (parentEl) {
     if (t.parentSnapshot) {
@@ -5816,7 +6009,7 @@ function renderCwThread() {
       const pBody = tryRenderWebhookEnvelope(pText) || md(pText);
       parentEl.innerHTML = `<div class="parent-author">${pAuthor} <span style="color:var(--text-muted);font-weight:400">· ${p.timestamp ? formatTime(p.timestamp) : ''}</span></div>
         <div class="parent-body">${pBody}</div>`;
-    } else if (t.sessionDirect) {
+    } else if (isA2aThread) {
       parentEl.innerHTML =
         '<div class="parent-body" style="color:var(--text-muted);font-style:italic">Agent-to-agent session (read-only)</div>';
     } else {
@@ -5825,8 +6018,7 @@ function renderCwThread() {
   }
   if (!msgsEl) return;
   const wasAtBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 60;
-  const html = (t.messages || [])
-    .map((m) => {
+  const renderThreadMsg = (m) => {
       // Seed rows (written by router.ts into inbound.db when a new per-thread
       // session is minted) carry a `direction` inside their parsed content to
       // override the table-based default. Without this override, an agent's
@@ -5926,8 +6118,49 @@ function renderCwThread() {
       ${actionsHtml}
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span>${dispatchBadgeHtml}</div>
       <div class="cw-msg-bubble">${body}${attachHtml}</div></div>`;
-    })
-    .join('');
+  };
+  // Swim-lane view: when a shared-thread (lane) view is active, group the
+  // chronological message stream into one labeled lane per coworker, so a
+  // gh-issue chain reads as "orch | triager | fixer | reviewer" instead of an
+  // ambiguous interleave. Each message already carries group_folder; lanes (if
+  // the server sent them) fix the order and surface empty participants.
+  // Same system-row filter as the main feed: hide scheduled-task / system rows
+  // unless the toggle is on. Applies to both the lane view and the normal
+  // thread view.
+  const threadMsgs = (t.messages || []).filter(
+    (m) => cwState.showSystem || !(m.kind === 'task' || m.kind === 'system'),
+  );
+  let html;
+  if (t.lane) {
+    const order = (t.lanes || []).map((l) => l.folder);
+    const byFolder = new Map();
+    for (const m of threadMsgs) {
+      const f = m.group_folder || '(unknown)';
+      if (!byFolder.has(f)) byFolder.set(f, []);
+      byFolder.get(f).push(m);
+    }
+    // Folders the server listed first (joined-order), then any stragglers.
+    const folders = [...new Set([...order, ...byFolder.keys()])];
+    const laneNameByFolder = new Map((t.lanes || []).map((l) => [l.folder, l.name]));
+    html = folders
+      .map((f) => {
+        const msgs = byFolder.get(f) || [];
+        const laneLabel = esc(laneNameByFolder.get(f) || f);
+        const body = msgs.length
+          ? msgs.map(renderThreadMsg).join('')
+          : '<div class="cw-empty" style="padding:6px 10px;color:var(--text-muted);font-size:10px">(no messages on this page)</div>';
+        return `<div class="cw-lane" data-lane-folder="${escAttr(f)}">
+          <div class="cw-lane-header" style="position:sticky;top:0;z-index:1;background:var(--bg);padding:4px 8px;border-bottom:1px solid var(--border);font-size:10px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${laneColor(f)}"></span>${laneLabel}
+            <span style="color:var(--text-muted);font-weight:400">· ${msgs.length} msg</span>
+          </div>
+          <div class="cw-lane-body" style="border-left:2px solid ${laneColor(f)};margin-left:7px;padding-left:6px">${body}</div>
+        </div>`;
+      })
+      .join('');
+  } else {
+    html = threadMsgs.map(renderThreadMsg).join('');
+  }
   const persistedCount = (t.messages || []).filter((m) => !m.optimistic).length;
   const loadMoreHtml =
     t.hasMore && persistedCount > 0
@@ -5990,7 +6223,14 @@ function syncCwUrl() {
     let hash = '';
     if (cwState.selected) {
       hash = `#/cw/${encodeURIComponent(cwState.selected)}`;
-      if (cwState.thread?.sessionDirect) hash += `/s/${encodeURIComponent(cwState.thread.parentId)}`;
+      if (cwState.thread?.lane) hash += `/l/${encodeURIComponent(cwState.thread.parentId)}`;
+      else if (cwState.thread?.sessionDirect && cwState.thread.threadId)
+        // Opened a specific session FROM a thread tile: keep the stable
+        // /t/<threadId> URL (survives the canonical session changing / bookmarks)
+        // even though we render it session-direct. Only a bare a2a/peer-inspector
+        // open (no originating thread) uses /s/<sessionId>.
+        hash += `/t/${encodeURIComponent(cwState.thread.threadId)}`;
+      else if (cwState.thread?.sessionDirect) hash += `/s/${encodeURIComponent(cwState.thread.parentId)}`;
       else if (cwState.thread) hash += `/t/${encodeURIComponent(cwState.thread.parentId)}`;
     }
     if (location.hash !== hash) history.replaceState(null, '', hash || location.pathname);
@@ -6011,7 +6251,7 @@ function applyCwUrl(retries = 8) {
     msgId = decodeURIComponent(mm[1]);
     hashStr = hashStr.slice(0, mm.index);
   }
-  const m = /^#\/cw\/([^/]+)(?:\/(t|s)\/(.+))?$/.exec(hashStr);
+  const m = /^#\/cw\/([^/]+)(?:\/(t|s|l)\/(.+))?$/.exec(hashStr);
   if (!m) return;
   switchToTab('coworkers');
   const folder = decodeURIComponent(m[1]);
@@ -6021,6 +6261,19 @@ function applyCwUrl(retries = 8) {
   if (!known && retries > 0) {
     setTimeout(() => applyCwUrl(retries - 1), 250);
     return;
+  }
+  // For a /t/<thread> deep-link we resolve the canonical session from
+  // cachedSessions. If the coworker is known but its sessions haven't loaded
+  // yet, retry rather than fall through to the thread-union open — otherwise a
+  // cold page-load on a /t/ link would land on the interleaved view. Only the
+  // /t/ path needs this; /s/ and /l/ open by id/thread directly.
+  if (mode === 't' && parentId && retries > 0) {
+    const folderForRetry = decodeURIComponent(m[1]);
+    const sessionsLoaded = (cachedSessions || []).some((s) => s.group_folder === folderForRetry);
+    if (!sessionsLoaded) {
+      setTimeout(() => applyCwUrl(retries - 1), 250);
+      return;
+    }
   }
   // selectCoworker/openThread call syncCwUrl(), which rewrites the hash to the
   // base (without /m/<id>). Restore the full permalink after each sync fires so
@@ -6032,17 +6285,35 @@ function applyCwUrl(retries = 8) {
 
   if (cwState.selected !== folder) selectCoworker(folder);
   if (parentId) {
-    if (!cwState.thread || cwState.thread.parentId !== parentId) {
-      const opts = mode === 's' ? { sessionDirect: true } : {};
-      setTimeout(() => openThread(parentId, opts), 600);
+    // A /t/<threadId> deep-link names a thread, which can map to multiple
+    // sessions (webhook + a2a). Resolve to the canonical session (prefer the
+    // non-a2a, earliest-created one) and open it session-direct so the view
+    // is one clean conversation, matching a tile click. The retry guard above
+    // waits for cachedSessions to load before we get here; only after retries
+    // are exhausted (sessions never loaded) do we fall through to the legacy
+    // thread-union open rather than blocking forever.
+    let openId = parentId;
+    let opts = mode === 's' ? { sessionDirect: true } : {};
+    if (mode === 'l') {
+      // Swim-lane deep-link: open the shared cross-coworker view directly.
+      opts = { lane: true };
+    } else if (mode === 't') {
+      const canonical = resolveCanonicalSessionForThread(folder, parentId);
+      if (canonical) {
+        openId = canonical.nanoclaw_session_id;
+        opts = { sessionDirect: true, threadId: parentId };
+      }
+    }
+    if (!cwState.thread || cwState.thread.parentId !== openId) {
+      setTimeout(() => openThread(openId, opts), 600);
     }
     // Thread permalink: openThread's first fetch is async, so wait until the
     // thread is established AND settled before paginating it to find the target.
     // openThread's own syncCwUrl runs at +600ms, so restore the anchor here too.
     if (msgId) {
-      waitForThreadThen(parentId, () => {
+      waitForThreadThen(openId, () => {
         restorePermalink();
-        ensureCwMessageLoaded(msgId, { thread: parentId });
+        ensureCwMessageLoaded(msgId, { thread: openId });
       });
     }
   } else if (msgId) {
@@ -7700,6 +7971,40 @@ function renderAdminInfra() {
       )
       .join('') || '<tr><td colspan="3" style="color:var(--text-muted)">No containers running</td></tr>';
 
+  // Host disk usage. Snapshot from /api/infrastructure (computed via statfsSync);
+  // the "Refresh" button below re-fetches the whole infra payload. >=90% used is
+  // flagged red (the /ephemeral docker disk filling breaks image rebuilds), >=75%
+  // amber, else green.
+  const fmtBytes = (n) => {
+    if (n == null || isNaN(n)) return '—';
+    const u = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    let i = 0;
+    let v = n;
+    while (v >= 1024 && i < u.length - 1) {
+      v /= 1024;
+      i++;
+    }
+    return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${u[i]}`;
+  };
+  const diskRows =
+    (d.disk || [])
+      .map((x) => {
+        const color = x.usedPercent >= 90 ? 'var(--red)' : x.usedPercent >= 75 ? 'var(--yellow)' : 'var(--green)';
+        return `
+    <tr><td>${esc(x.mount)}</td>
+    <td>${fmtBytes(x.used)} / ${fmtBytes(x.total)}</td>
+    <td>${fmtBytes(x.avail)} free</td>
+    <td style="min-width:120px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="flex:1;height:8px;background:var(--bg-hover);border-radius:4px;overflow:hidden">
+          <div style="width:${x.usedPercent}%;height:100%;background:${color}"></div>
+        </div>
+        <span style="color:${color};font-weight:600;min-width:34px;text-align:right">${x.usedPercent}%</span>
+      </div>
+    </td></tr>`;
+      })
+      .join('') || '<tr><td colspan="4" style="color:var(--text-muted)">No disk data</td></tr>';
+
   el.innerHTML = `
     <div class="admin-stat-grid">
       <div class="admin-stat-card"><div class="num">${dot(mcpOk)} ${mcpOk ? 'Up' : 'Down'}</div><div class="label">MCP Auth Proxy</div></div>
@@ -7708,6 +8013,12 @@ function renderAdminInfra() {
       <div class="admin-stat-card"><div class="num">${dot(netOk)} ${netOk ? 'On' : 'Off'}</div><div class="label">Network Isolation</div></div>
       <div class="admin-stat-card"><div class="num">${d.containers?.count || 0}</div><div class="label">Containers</div></div>
       <div class="admin-stat-card"><div class="num">${(d.remoteMcpServers || []).length}</div><div class="label">Remote Servers</div></div>
+      ${(d.disk || [])
+        .map((x) => {
+          const c = x.usedPercent >= 90 ? 'var(--red)' : x.usedPercent >= 75 ? 'var(--yellow)' : 'var(--green)';
+          return `<div class="admin-stat-card"><div class="num" style="color:${c}">${x.usedPercent}%</div><div class="label">Disk ${esc(x.mount)}</div></div>`;
+        })
+        .join('')}
     </div>
 
     <h4 style="font-size:11px;margin:10px 0 6px">MCP Servers</h4>
@@ -7741,6 +8052,15 @@ function renderAdminInfra() {
       ${containers}
     </table>
 
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 6px">
+      <h4 style="font-size:11px;margin:0">Host Disk</h4>
+      <button class="admin-action-btn" style="font-size:9px;padding:1px 8px" onclick="refreshAdminInfra()">Refresh</button>
+    </div>
+    <table class="admin-table">
+      <tr><th>Mount</th><th>Used / Total</th><th>Available</th><th>Usage</th></tr>
+      ${diskRows}
+    </table>
+
     <h4 style="font-size:11px;margin:14px 0 6px">Security Layers</h4>
     <table class="admin-table">
       <tr><th>Layer</th><th>Status</th><th>Details</th></tr>
@@ -7753,6 +8073,13 @@ function renderAdminInfra() {
 }
 
 // --- Infra panel actions ---
+// Force a fresh /api/infrastructure fetch (used by the Host Disk "Refresh"
+// button — disk usage is a point-in-time snapshot, so this re-reads statfs).
+window.refreshAdminInfra = function () {
+  adminState.loaded.delete('infra');
+  loadAdminInfra();
+};
+
 window.authorizeOAuth = function (serverName) {
   window.open('/oauth/authorize?server=' + encodeURIComponent(serverName), '_blank');
 };
