@@ -63,8 +63,11 @@ slang-maintainer:
   description: "Read-only Slang maintainer — recurring sweeps via /slang-maintain (daily report, release notes, issue prioritization, maintainer personnel). No code changes."
   project: slang
   extends: slang-reader
+  invariants:
+    - container/spines/slang/invariants/no-push.md
   skills:
     - slang-maintainer-tools
+    - slang-pr-report
   workflows:
     - slang-maintain
 

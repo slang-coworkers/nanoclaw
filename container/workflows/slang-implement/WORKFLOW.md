@@ -9,7 +9,7 @@ uses:
   skills: [slang-build, slang-code-reader, slang-github, slang-code-writer]
   workflows: []
 overrides:
-  reproduce: 'Commit a failing `.slang` test under `tests/` first. CPU: `//TEST:COMPARE_COMPUTE(filecheck-buffer=CHECK):-cpu -output-using-type`. Interpreter: `//TEST:INTERPRET(filecheck=CHECK):`. Diagnostics: `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):`. No GPU available.'
+  reproduce: 'Commit a failing `.slang` test under `tests/` first. CPU: `//TEST:COMPARE_COMPUTE(filecheck-buffer=CHECK):-cpu -output-using-type`. Interpreter: `//TEST:INTERPRET(filecheck=CHECK):`. Diagnostics: `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):`. Don''t assume "no GPU": before punting to a hardware retest, run `nvidia-smi`. If a GPU is present, attempt the repro (`-vk`/`-cuda`/`-dx12`) — `install_packages` the backend toolchain if missing. Only if no device is found is the case hardware-gated; say so explicitly.'
   change: 'Use /slang-code-writer. Minimal changes, existing file style, one subsystem (parser, semantic checker, IR pass, or emitter). Emitter fixes: check all sibling slang-emit-*.cpp for consistency; prefer IR pass fixes over emit-level workarounds. New IR instructions: update slang-ir-insts.lua.'
   verify: |
     Build takes 15-25 min. Always delegate it to an `Agent` subagent, never inline — the subagent blocks until the build completes, so no polling task is needed. Before starting:
