@@ -15,5 +15,11 @@ export default defineConfig({
     ],
     setupFiles: ['./vitest.setup.ts'],
     testTimeout: 15000,
+    // In CI the `ci` workflow merges all nv-* branches into one tree, so the
+    // composed suite boots dashboard servers, runs ~200 migrations, and spawns
+    // MCP servers. Parallel forks (one per CPU) then exceed the ~7GB runner and
+    // the test process is OOM-killed (exit 137). Serialize files in CI so only
+    // one file's footprint is resident at a time. Local dev stays parallel.
+    fileParallelism: process.env.CI ? false : undefined,
   },
 });
