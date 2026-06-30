@@ -3761,7 +3761,6 @@ function extractScheduledTasks(
   processAfter: string | null;
   content: string;
   status: string;
-  lastRun: string | null;
 }[] {
   const tasks: {
     origId: string;
@@ -3770,7 +3769,6 @@ function extractScheduledTasks(
     processAfter: string | null;
     content: string;
     status: string;
-    lastRun: string | null;
   }[] = [];
   for (const sessId of sessionIds) {
     const dbPath = join(getDataDir(), 'v2-sessions', agentGroupId, sessId, 'inbound.db');
@@ -3781,19 +3779,10 @@ function extractScheduledTasks(
       sdb.pragma('busy_timeout = 3000');
       const rows = sdb
         .prepare(
-          "SELECT id, series_id, recurrence, process_after, content, status FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
+          "SELECT id, recurrence, process_after, content, status FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
         )
         .all() as any[];
       for (const r of rows) {
-        let lastRun: string | null = null;
-        if (r.recurrence && r.series_id) {
-          const completed = sdb!
-            .prepare(
-              "SELECT process_after FROM messages_in WHERE kind = 'task' AND series_id = ? AND status = 'completed' ORDER BY process_after DESC LIMIT 1",
-            )
-            .get(r.series_id) as any;
-          if (completed) lastRun = completed.process_after;
-        }
         tasks.push({
           origId: r.id,
           sessionId: sessId,
@@ -3801,7 +3790,6 @@ function extractScheduledTasks(
           processAfter: r.process_after || null,
           content: r.content,
           status: r.status,
-          lastRun,
         });
       }
     } catch {
@@ -6786,7 +6774,7 @@ export async function handleRequest(
               schedule_type: t.recurrence ? 'cron' : 'once',
               schedule_value: t.recurrence || t.processAfter || '',
               status,
-              last_run: t.lastRun || null,
+              last_run: null,
               sessionId: t.sessionId,
               agentGroupId: g.id,
             });

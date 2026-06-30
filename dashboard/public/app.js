@@ -402,7 +402,7 @@ async function loadFunnel() {
 
   // ── Issue partition: the per-issue funnel (denominator = ALL filed issues) ──
   const ip = snap.issuePartition;
-  const partHtml = ip && ip.counts ? funnelFlowHtml(ip) : '';
+  const partHtml = ip && ip.counts ? funnelFlowHtml(ip, snap.rows || []) : '';
 
   if (board)
     board.innerHTML =
@@ -452,7 +452,7 @@ async function loadFunnel() {
 //   resolved-elsewhere, BOT-PR} → BOT-PR splits into merged★/shipped/ready/closed.
 // Big stat cards + proportional stacked bars so "where do 117 issues go" reads
 // at a glance, no table-squinting. Returns an HTML string.
-function funnelFlowHtml(ip) {
+function funnelFlowHtml(ip, funnelRows) {
   const c = ip.counts;
   const bp = c.bot_pr || {};
   const wr = Math.round((ip.winRate || 0) * 100);
@@ -535,14 +535,14 @@ function funnelFlowHtml(ip) {
       <div style="flex:1.3;min-width:120px;background:var(--bg-card);border:1px solid ${winColor};border-radius:8px;padding:10px 12px">
         <div style="font-size:26px;font-weight:700;line-height:1;color:${winColor}">${wr}%</div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:3px">WIN-RATE</div>
-        <div style="font-size:10px;color:var(--text-muted)">merged ÷ actionable (${bp.merged}/${c.actionable})</div>
+        <div style="font-size:10px;color:var(--text-muted)">merged ÷ PRs authored (${bp.merged}/${bp.total})</div>
       </div>
     </div>
 
     <!-- where every actionable issue goes -->
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Where the ${c.actionable} actionable issues went:</div>
     ${stacked(c.actionable, actSegs)}
-    <table style="margin-top:10px;border-collapse:collapse;width:100%;font-size:12px">
+    <table style="margin-top:10px;border-collapse:collapse;width:100%;font-size:10px">
       <tr><td style="padding:4px 8px 4px 0">${chip(C.merged, 'merged ★', bp.merged)}</td><td style="padding:4px 0;color:var(--text-muted)">Fix shipped to main — fully done</td></tr>
       <tr><td style="padding:4px 8px 4px 0">${chip(C.shipped, 'shipped-draft', bp.shipped_draft)}</td><td style="padding:4px 0;color:var(--text-muted)">Fix written &amp; CI passes, held as draft — needs human to review and promote</td></tr>
       <tr><td style="padding:4px 8px 4px 0">${chip(C.ready, 'pr-ready', bp.pr_ready)}</td><td style="padding:4px 0;color:var(--text-muted)">PR open &amp; CI passes, marked ready — waiting for maintainer to approve and merge</td></tr>
@@ -552,8 +552,51 @@ function funnelFlowHtml(ip) {
       <tr><td style="padding:4px 8px 4px 0">${chip(C.resolved, 'resolved-elsewhere', c.resolved_elsewhere)}</td><td style="padding:4px 0;color:var(--text-muted)">Human developers fixed the issue independently</td></tr>
       <tr><td style="padding:4px 8px 4px 0">${chip(C.never, 'never-engaged', c.never_engaged)}</td><td style="padding:4px 0;color:var(--text-muted)">Issue was not picked up by the bot</td></tr>
     </table>
+    <div style="margin-top:16px">${funnelWeeklyTrendSvg(ip.weekly || [])}</div>
 
-    <div style="margin-top:16px">${funnelWeeklyTrendSvg(ip.weekly || [])}</div>`;
+    ${funnelIssueTableHtml(ip.issues || [], funnelRows || [], C)}`;
+}
+
+// Unified issue table: all actionable issues in one table with inst, issue, PR, state, CI, stage.
+function funnelIssueTableHtml(issues, rows, statusColors) {
+  if (!issues || issues.length === 0) return '';
+  const actionable = issues.filter(i => i.bucket !== 'not_our_problem');
+  if (actionable.length === 0) return '';
+  const rowByIssue = {};
+  for (const r of (rows || [])) {
+    const key = `${r.repo}#${r.issue}`;
+    if (!rowByIssue[key]) rowByIssue[key] = r;
+  }
+  const bucketLabel = { bot_pr: '', triage_only: 'triage-only', never_engaged: 'never-engaged', resolved_elsewhere: 'resolved-elsewhere' };
+  const bucketColor = { bot_pr: null, triage_only: statusColors.triage, never_engaged: statusColors.never, resolved_elsewhere: statusColors.resolved };
+  let html = `<div style="margin-top:14px;font-size:12px;font-weight:700;color:var(--text)">All ${actionable.length} actionable issues</div>`;
+  html += `<table class="admin-table" style="margin-top:4px;font-size:11px"><thead><tr><th>Inst</th><th>Issue</th><th>PR</th><th>State</th><th>CI</th><th>Stage</th><th>Note</th></tr></thead><tbody>`;
+  for (const i of actionable) {
+    const repo = (i.repo || '').split('/').pop();
+    const key = `${i.repo}#${i.number}`;
+    const r = rowByIssue[key];
+    const inst = r ? r.instance : '';
+    const issueLink = `<a href="${esc(i.url)}" target="_blank" rel="noopener" style="color:var(--accent)">#${i.number}</a>`;
+    let prCell = '', stateCell = '', ciCell = '', stageCell = '', noteCell = '';
+    if (i.bucket === 'bot_pr' && r) {
+      prCell = r.prUrl ? `<a href="${esc(r.prUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">#${r.pr}</a>` : `#${r.pr}`;
+      stateCell = r.prState || '';
+      ciCell = r.ciBucket || '';
+      stageCell = i.stage || r.stage || '';
+      noteCell = r.note || '';
+    } else if (i.bucket === 'bot_pr') {
+      prCell = i.prUrl ? `<a href="${esc(i.prUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">#${i.prNumber}</a>` : '';
+      stageCell = i.stage || '';
+    } else {
+      stageCell = bucketLabel[i.bucket] || i.bucket;
+      noteCell = i.note || '';
+    }
+    const color = bucketColor[i.bucket] || (i.stage === 'merged' ? statusColors.merged : i.stage === 'shipped-draft' ? statusColors.shipped : i.stage === 'pr-ready' ? statusColors.ready : '');
+    const style = color ? ` style="color:${color}"` : '';
+    html += `<tr><td>${esc(inst)}</td><td>${esc(repo)} ${issueLink}</td><td>${prCell}</td><td>${esc(stateCell)}</td><td>${esc(ciCell)}</td><td${style}>${esc(stageCell)}</td><td style="color:var(--text-muted)">${esc(noteCell)}</td></tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
 }
 
 // Inline-SVG line chart of the weekly WIN trend (issuePartition.weekly).
@@ -585,7 +628,7 @@ function funnelWeeklyTrendSvg(weekly) {
     .join('');
   const rollPts = weekly.map((w, i) => `${x(i).toFixed(1)},${y(w.rollingWinRate || 0).toFixed(1)}`).join(' ');
   const rawDots = weekly
-    .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${w.merged}/${w.actionable})</title></circle>`)
+    .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${w.merged}/${w.botPr || w.actionable})</title></circle>`)
     .join('');
   const rollDots = weekly
     .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.rollingWinRate || 0).toFixed(1)}" r="3" fill="#3fb950"><title>${esc(w.week)} rolling: ${Math.round((w.rollingWinRate || 0) * 100)}%</title></circle>`)
