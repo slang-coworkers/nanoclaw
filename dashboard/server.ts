@@ -1388,8 +1388,10 @@ refreshMessageTimestamps();
 // verdicts) write to outbound.db inside container subprocesses; the dashboard has no
 // direct hook, so we rely on this poll to surface new activity to the unread badge.
 // 3s is the balance between dashboard responsiveness and disk I/O across all sessions.
-const msgTsTimer = setInterval(refreshMessageTimestamps, 3000);
-msgTsTimer.unref?.();
+if (!process.env.VITEST) {
+  const msgTsTimer = setInterval(refreshMessageTimestamps, 3000);
+  msgTsTimer.unref?.();
+}
 
 // ---------- Context window cache (token usage per coworker) ----------
 interface ContextWindowInfo {
@@ -1486,8 +1488,10 @@ function refreshContextWindowCache(): void {
   }
 }
 refreshContextWindowCache();
-const ctxTimer = setInterval(refreshContextWindowCache, 10000);
-ctxTimer.unref?.();
+if (!process.env.VITEST) {
+  const ctxTimer = setInterval(refreshContextWindowCache, 10000);
+  ctxTimer.unref?.();
+}
 
 // ---------- Per-group token aggregation (JSONL scanning) ----------
 interface GroupTokenBucket {
@@ -1579,8 +1583,10 @@ function refreshGroupTokens(): void {
   groupTokenCache = byGroup;
 }
 refreshGroupTokens();
-const groupTokenTimer = setInterval(refreshGroupTokens, 30000);
-groupTokenTimer.unref?.();
+if (!process.env.VITEST) {
+  const groupTokenTimer = setInterval(refreshGroupTokens, 30000);
+  groupTokenTimer.unref?.();
+}
 
 // ---------- Token metrics via ccusage (container data only) ----------
 interface CcusageDayEntry {
@@ -10690,25 +10696,31 @@ export async function handleRequest(
 
 /** Start the dashboard server (binds port, sets up WebSocket, timers). */
 export function startServer(port = getDashboardPort(), host = getDashboardHost()): import('http').Server {
-  // Load MCP tool inventory eagerly and refresh when the auth proxy rotates the token.
-  void refreshMcpTools();
-  const stopWatchingMcpToken = watchMcpManagementToken(() => {
+  // Background boot side effects — the eager MCP inventory scan + 5-min refresh
+  // timer, and the one-shot ccusage warm-up — spawn subprocesses and add memory.
+  // Skip them under VITEST: the composed CI boots this server per test, and the
+  // parallel MCP/ccusage spawns push the ~7GB runner toward OOM. The express
+  // routes below still serve, so endpoint tests are unaffected.
+  let stopWatchingMcpToken: (() => void) | null = null;
+  let mcpRefreshTimer: ReturnType<typeof setInterval> | undefined;
+  if (!process.env.VITEST) {
+    // Load MCP tool inventory eagerly and refresh when the auth proxy rotates the token.
     void refreshMcpTools();
-  });
-  const mcpRefreshTimer = setInterval(() => {
-    void refreshMcpTools();
-  }, 300_000);
-  mcpRefreshTimer.unref?.();
+    stopWatchingMcpToken = watchMcpManagementToken(() => {
+      void refreshMcpTools();
+    });
+    mcpRefreshTimer = setInterval(() => {
+      void refreshMcpTools();
+    }, 300_000);
+    mcpRefreshTimer.unref?.();
 
-  // Warm the ccusage cache once at boot so Admin > Overview has a non-zero
-  // snapshot the moment a user lands on the page. Without this, the first
-  // visit shows $0 until the on-demand refresh (triggered by visibility
-  // signal) finishes its ~30s subprocess fan-out. The boot warm-up is a
-  // one-shot; the on-demand visibility-signal mechanism still drives
-  // ongoing refreshes when the user has the panel open.
-  void refreshCcusageCache().catch(() => {
-    /* swallow — non-fatal; on-demand refresh will retry */
-  });
+    // Warm the ccusage cache once at boot so Admin > Overview has a non-zero
+    // snapshot the moment a user lands on the page (one-shot; the on-demand
+    // visibility-signal refresh continues while the panel is open).
+    void refreshCcusageCache().catch(() => {
+      /* swallow — non-fatal; on-demand refresh will retry */
+    });
+  }
 
   const server = createServer(handleRequest);
 
