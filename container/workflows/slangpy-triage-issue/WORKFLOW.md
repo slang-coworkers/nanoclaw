@@ -19,10 +19,10 @@ Posture: three research pillars — DeepWiki (architecture), local code via suba
 
 1. **Read the issue** {#read} — `gh issue view <number> -R shader-slang/slangpy --comments`. Extract: what's broken/requested, error + repro, SlangPy + Python version + GPU backend (CUDA / Vulkan / D3D12 / Metal), affected layer (Python `slangpy/` / C++ `src/slangpy_ext/` / SGL `src/sgl/` / native torch `src/slangpy_torch/`), other-user confirmations. Dedicated instruction files (read via `slang-mcp`): Torch — `.github/instructions/torchintegration.instructions.md`; Benchmarks — `.github/instructions/benchmarks.instructions.md`.
 
-2. **Recall** {#recall} — Spawn an `Agent` subagent to scan prior triage learnings first:
+2. **Recall** {#recall} — Spawn an `Agent` subagent to scan prior triage learnings; wiki-first, raw fallback:
 
    ```
-   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to slangpy issue #<number>'s topic, prior triage patterns, or duplicate-resolution heuristics. Read at most 3 individual learning files if INDEX entries look directly applicable. Return: ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits' and stop.")
+   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it, identify concept pages relevant to slangpy issue #<number>'s topic, prior triage patterns, or duplicate-resolution heuristics, read up to 2 concept pages and follow their [[wiki/...]] links to cited learnings if needed. IF NO wiki/ dir: fall back to scanning /workspace/shared/learnings/INDEX.md and reading at most 3 learning files. Return ≤5 bullets — title, 1-line summary, file path (wiki concept or raw learning). No hits → 'no prior hits'.")
    ```
 
 3. **Research — three pillars in parallel** {#research} — Fan out via subagents (cost is context, not wall clock).
