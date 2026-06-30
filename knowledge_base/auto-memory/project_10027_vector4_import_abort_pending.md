@@ -1,0 +1,15 @@
+---
+name: PENDING maintainer design call — #10027 vector<T,4> import abort
+description: shader-slang/slang#10027 parked awaiting @jkwak-work's reconciliation-point decision; corrected diagnosis posted + re-verified + nudged; fix held as maintainer-domain
+type: project
+originSessionId: 881df667-5ce9-415e-8be7-10cdc2de6df5
+---
+shader-slang/slang#10027 — a `static const int4` (any `vector<T,4>`) declared in a module precompiled to `.slang-module`, then accessed from another module via `import`, aborts the importer with `InternalError: ... Generic type/value shouldn't be handled here!`. `int3`/`vector<T,3>` compiles clean; single-file round-trip does NOT repro (the serialize→import boundary is required).
+
+**Why held / what's true:**
+- Triager's initial root cause (round-tripped vector *count* returns as unsubstituted `DeclRefIntVal(N)`) was REFUTED by the fixer (codex-verified + instrumented build): the count is a correct `ConstantIntVal`. Real cause = a cross-module **synthesized-`$init` extension decl-identity / dedup gap** — the deserialized initializer's `MemberDeclRef` carries a base `GenericAppDeclRef` on a *different* `GenericDecl` copy of the synthesized `vector<T,4>` extension than the copy lexically owning `T`, so `T` is never bound and lowering the bare `T` hits the generic-param guard (`slang-lower-to-ir.cpp:14513/:14515`). Size-4-specific because 4 is `vector`'s default `N` (`core.meta.slang:2267`), so the synthesized ctor surfaces as an extension generic over only `T`. Empirical sweep: int1/int2/int3 clean, only int4 aborts.
+- Diagnosis is the durable artifact on GitHub: corrected verdict at [comment 4732730516](https://github.com/shader-slang/slang/issues/10027#issuecomment-4732730516) (edit-in-place 2026-06-17). Re-verified STILL reproduces at master `51959e21ff` on 2026-06-29; #11696 (`c491e34939`, "reject default on extension generic param") ruled out — it only rejects user-written extension-generic defaults in the checker, doesn't touch the synthesized-`$init` serialize→import path. Maintainer nudge at [comment 4831841688](https://github.com/shader-slang/slang/issues/10027#issuecomment-4831841688) (2026-06-29).
+
+**Why:** Fix is maintainer-domain — high blast radius (synthesized-ctor synthesis and/or module-AST serialization); a lowering-site guard would be a mask (no-mask methodology, codex concurred). The load-bearing open question is the intended reconciliation/dedup point where the imported synthesized extension+ctor should be canonicalized so the `MemberDeclRef` base generic-app and the member's lexically-owning generic resolve to the same node.
+
+**How to apply:** Fix HELD pending @jkwak-work confirming the reconciliation/dedup point. 2-file precompiled-module regression test is designed/ready to land with the fix. Do NOT dispatch the fixer to implement until the maintainer answers. Chain re-opens via webhook on thread `gh-issue-shader-slang/slang-10027`; slang-fixer owns implementation once released. As of 2026-06-29 no maintainer reply in 12 days (1 reaction on the corrected comment); one nudge already sent — don't re-nudge without a new trigger.
