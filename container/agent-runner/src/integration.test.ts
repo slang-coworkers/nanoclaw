@@ -114,10 +114,14 @@ describe('poll loop integration', () => {
     await loopPromise.catch(() => {});
   });
 
-  it('bare text produces no outbound messages (scratchpad only)', async () => {
-    insertMessage('m1', { sender: 'Alice', text: 'hello' }, { platformId: 'chan-1', channelType: 'discord' });
+  it('bare text on system channel produces no outbound messages (scratchpad only)', async () => {
+    // System-channel inbound carries platformId=null; the auto-route gate in
+    // dispatchResultText (PR #366) is restricted to channelType !== 'system',
+    // so bare scratchpad here stays scratchpad. (External channels DO
+    // auto-route bare text — covered by `dispatchResultText auto-route gate`
+    // in poll-loop.test.ts.)
+    insertMessage('m1', { sender: 'Alice', text: 'hello' }, { platformId: null, channelType: 'system' });
 
-    // Agent responds with bare text — no <message to="..."> wrapping
     const provider = new MockProvider({}, () => 'I am thinking about this...');
     const controller = new AbortController();
     const loopPromise = runPollLoopWithTimeout(provider, controller.signal, 2000);
@@ -364,8 +368,13 @@ describe('poll loop — exchange hook (onExchangeComplete)', () => {
     let calls = 0;
     const provider = new HookedMockProvider({}, () => {
       calls += 1;
-      // First result is unwrapped (triggers the retry nudge), second is wrapped.
-      return calls === 1 ? 'unwrapped text' : '<message to="discord-test">wrapped now</message>';
+      // First result is a dangling-open <message> (no close tag) → triggers the
+      // fork's wrapping-retry nudge (plain text would auto-route instead); the
+      // second is a well-formed block. The nudge must never surface as a user
+      // prompt to the exchange hook.
+      return calls === 1
+        ? '<message to="discord-test">half a message with no closing tag'
+        : '<message to="discord-test">wrapped now</message>';
     });
     const controller = new AbortController();
     const loopPromise = runPollLoopWithTimeout(provider, controller.signal, 3000);

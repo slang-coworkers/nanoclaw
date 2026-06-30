@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 
-import { routeAgentMessage } from './agent-route.js';
+import { ensureA2aWiring, routeAgentMessage } from './agent-route.js';
 import { createDestination, deleteDestination, deleteAllDestinationsTouching } from './db/agent-destinations.js';
 import { getMessagePolicy, removeMessagePolicy, setMessagePolicy } from './db/agent-message-policies.js';
 import { applyA2aMessageGate } from './message-gate.js';
@@ -10,7 +10,7 @@ import { initTestDb, closeDb, runMigrations, createAgentGroup } from '../../db/i
 import { getDb } from '../../db/connection.js';
 import { createSession } from '../../db/sessions.js';
 import { requestApproval } from '../approvals/index.js';
-import { initSessionFolder, inboundDbPath } from '../../session-manager.js';
+import { initSessionFolder, inboundDbPath, resolveSession } from '../../session-manager.js';
 import type { Session } from '../../types.js';
 
 vi.mock('../../container-runner.js', () => ({
@@ -51,6 +51,16 @@ function readInbound(agentGroupId: string, sessionId: string) {
   }>;
   db.close();
   return rows;
+}
+
+// The fork's Layer-3 routing delivers a fresh peer send to a per-source a2a
+// session (ensureA2aWiring(target, source) → resolveSession), not into an
+// arbitrary pre-existing session of the target. Both calls are idempotent, so
+// this returns the exact session routeAgentMessage/performAgentRoute delivered
+// into. (threadId is null here: no msg.thread_id and the sender session's is null.)
+function deliveredSessionId(target: string, source: string): string {
+  const mgId = ensureA2aWiring(target, source);
+  return resolveSession(target, mgId, null, 'shared').session.id;
 }
 
 function makeSession(id: string, agentGroupId: string): Session {
@@ -125,7 +135,7 @@ describe('agent message policies', () => {
       { id: 'm1', platform_id: B, content: JSON.stringify({ text: 'hi B' }), in_reply_to: null },
       SA,
     );
-    expect(readInbound(B, SB.id)).toHaveLength(1);
+    expect(readInbound(B, deliveredSessionId(B, A))).toHaveLength(1);
     expect(requestApproval).not.toHaveBeenCalled();
   });
 
@@ -155,7 +165,7 @@ describe('agent message policies', () => {
       SA,
     );
     expect(requestApproval).not.toHaveBeenCalled();
-    expect(readInbound(A, SA.id)).toHaveLength(1);
+    expect(readInbound(A, deliveredSessionId(A, A))).toHaveLength(1);
   });
 
   // ── approve handler re-routes the held message ──
@@ -169,7 +179,7 @@ describe('agent message policies', () => {
       payload: { id: 'held-1', platform_id: B, content: JSON.stringify({ text: 'approved!' }), in_reply_to: null },
     });
 
-    const bRows = readInbound(B, SB.id);
+    const bRows = readInbound(B, deliveredSessionId(B, A));
     expect(bRows).toHaveLength(1);
     expect(JSON.parse(bRows[0].content).text).toBe('approved!');
     expect(notify).not.toHaveBeenCalled();

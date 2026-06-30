@@ -246,7 +246,7 @@ async function handleSenderApprovalResponse(payload: ResponsePayload): Promise<b
     return true; // claim the response so it's not unclaimed-logged, but do nothing
   }
   const approverId = clickerId;
-  const approved = payload.value === 'approve';
+  const approved = payload.value.toLowerCase() === 'approve';
 
   if (approved) {
     addMember({
@@ -482,6 +482,8 @@ async function handleChannelApprovalResponse(payload: ResponsePayload): Promise<
     ignored_message_policy: 'accumulate',
     session_mode: 'shared',
     priority: 0,
+    trigger_rules: null,
+    response_scope: 'all',
     created_at: new Date().toISOString(),
   });
   log.info('Channel registration approved — wiring created', {
@@ -582,6 +584,8 @@ registerMessageInterceptor(async (event: InboundEvent): Promise<boolean> => {
     ignored_message_policy: 'accumulate',
     session_mode: 'shared',
     priority: 0,
+    trigger_rules: null,
+    response_scope: 'all',
     created_at: new Date().toISOString(),
   });
   log.info('Channel registration approved — wiring created', {

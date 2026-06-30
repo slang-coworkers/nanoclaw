@@ -66,7 +66,10 @@ describe('initGroupFilesystem agent surfaces', () => {
 
     const groupDir = path.join(GROUPS_DIR, ag.folder);
     const claudeDir = path.join(DATA_DIR, 'v2-sessions', ag.id, '.claude-shared');
-    expect(fs.readFileSync(path.join(groupDir, 'CLAUDE.local.md'), 'utf-8')).toBe('hello\n');
+    // This fork seeds the instruction surface as `.instructions.md` (the lego
+    // spine composes CLAUDE.md from templates + .instructions.md on each wake);
+    // CLAUDE.local.md is the agent's own per-group memory, never host-seeded.
+    expect(fs.readFileSync(path.join(groupDir, '.instructions.md'), 'utf-8')).toBe('hello\n');
     expect(fs.existsSync(path.join(claudeDir, 'settings.json'))).toBe(true);
     expect(fs.existsSync(path.join(claudeDir, 'skills'))).toBe(true);
   });
@@ -98,7 +101,10 @@ describe('initGroupFilesystem agent surfaces', () => {
 
     const groupDir = path.join(GROUPS_DIR, ag.folder);
     expect(fs.existsSync(path.join(groupDir, 'CLAUDE.local.md'))).toBe(false);
-    expect(fs.existsSync(path.join(groupDir, 'memory'))).toBe(false);
+    expect(fs.existsSync(path.join(groupDir, '.instructions.md'))).toBe(false);
+    // No seed landed anywhere. (The empty memory/ dir is always scaffolded for
+    // workflow writes regardless of provider; only the seed FILE matters here.)
+    expect(fs.existsSync(path.join(groupDir, 'memory', 'memories', 'imported-agent-memory.md'))).toBe(false);
   });
 
   it('treats an unregistered provider name as default surfaces', () => {
@@ -107,7 +113,11 @@ describe('initGroupFilesystem agent surfaces', () => {
 
     initGroupFilesystem(ag, { provider: 'not-registered' });
 
-    expect(fs.existsSync(path.join(GROUPS_DIR, ag.folder, 'CLAUDE.local.md'))).toBe(true);
+    // Unregistered name → treated as default (Claude) surfaces: the per-group
+    // Claude state dir is scaffolded. (No seed supplied, so the fork writes no
+    // instruction file — "default surfaces taken" is observed via .claude-shared.)
+    const claudeDir = path.join(DATA_DIR, 'v2-sessions', ag.id, '.claude-shared');
+    expect(fs.existsSync(path.join(claudeDir, 'settings.json'))).toBe(true);
   });
 });
 
@@ -116,7 +126,7 @@ describe('initGroupFilesystem deferred seed (.seed.md)', () => {
   // `.seed.md` and defer placement to the first spawn, where the DB-resolved
   // provider is known. group-init places it into the right surface and
   // consumes it. Red-on-delete: if that placement is removed, these fail.
-  it('places .seed.md into CLAUDE.local.md for the default provider, then consumes it', () => {
+  it('places .seed.md into .instructions.md for the default provider, then consumes it', () => {
     const ag = group('ag-seed-default', 'seed-default');
     createAgentGroup(ag);
     const groupDir = path.join(GROUPS_DIR, ag.folder);
@@ -125,7 +135,8 @@ describe('initGroupFilesystem deferred seed (.seed.md)', () => {
 
     initGroupFilesystem(ag, {}); // no inline instructions — must read .seed.md
 
-    expect(fs.readFileSync(path.join(groupDir, 'CLAUDE.local.md'), 'utf-8')).toBe('seeded identity\n');
+    // Default provider → seed lands in .instructions.md (the fork's instruction surface).
+    expect(fs.readFileSync(path.join(groupDir, '.instructions.md'), 'utf-8')).toBe('seeded identity\n');
     expect(fs.existsSync(path.join(groupDir, '.seed.md'))).toBe(false);
   });
 
@@ -152,15 +163,19 @@ describe('buildMounts agent surfaces', () => {
     createAgentGroup(ag);
     ensureContainerConfig(ag.id);
     initGroupFilesystem(ag, {});
+    // This fork composes the project doc in spawnContainer (composeCoworkerClaudeMd),
+    // not inside buildMounts. Simulate that spawn-time output on disk so buildMounts
+    // has a composed CLAUDE.md to surface.
+    fs.writeFileSync(path.join(GROUPS_DIR, ag.folder, 'CLAUDE.md'), '# composed\n');
 
     const mounts = buildMounts(ag, session('s1', ag.id), containerConfig(), 'claude', {});
 
     const byContainerPath = new Map(mounts.map((m) => [m.containerPath, m]));
     expect(byContainerPath.has('/home/node/.claude')).toBe(true);
     expect(byContainerPath.has('/app/CLAUDE.md')).toBe(true);
+    // The composed project doc is surfaced read-only at the agent workspace.
     expect(byContainerPath.has('/workspace/agent/CLAUDE.md')).toBe(true);
-    // Composer ran: the generated project doc exists on disk.
-    expect(fs.existsSync(path.join(GROUPS_DIR, ag.folder, 'CLAUDE.md'))).toBe(true);
+    expect(byContainerPath.get('/workspace/agent/CLAUDE.md')?.readonly).toBe(true);
   });
 
   it('suppresses the default surfaces and keeps contributed mounts for a surfaces-providing provider', () => {

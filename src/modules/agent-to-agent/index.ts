@@ -23,10 +23,14 @@
 import { registerDeliveryAction } from '../../delivery.js';
 import { registerApprovalHandler } from '../approvals/index.js';
 import { A2A_MESSAGE_GATE_ACTION } from './agent-route.js';
+import { handleAppendLearning } from './append-learning.js';
 import { applyCreateAgent, handleCreateAgent } from './create-agent.js';
 import { applyA2aMessageGate } from './message-gate.js';
+import { handleWireAgents } from './wire-agents.js';
 
 registerDeliveryAction('create_agent', handleCreateAgent);
+registerDeliveryAction('wire_agents', handleWireAgents);
+registerDeliveryAction('append_learning', handleAppendLearning);
 registerApprovalHandler('create_agent', applyCreateAgent);
 
 registerApprovalHandler(A2A_MESSAGE_GATE_ACTION, applyA2aMessageGate);

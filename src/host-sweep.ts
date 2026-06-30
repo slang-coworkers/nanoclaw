@@ -30,9 +30,10 @@ import type Database from 'better-sqlite3';
 import fs from 'fs';
 
 import { ensureEgressNetwork } from './egress-lockdown.js';
-import { getActiveSessions } from './db/sessions.js';
+import { getActiveSessions, getSession } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import {
+  clearOrphanProcessingAcks,
   countDueMessages,
   deleteOrphanProcessingClaims,
   getContainerState,
@@ -44,31 +45,55 @@ import {
   type ContainerState,
 } from './db/session-db.js';
 import { log } from './log.js';
-import { openInboundDb, openOutboundDb, openOutboundDbRw, inboundDbPath, heartbeatPath } from './session-manager.js';
-import { isContainerRunning, killContainer, wakeContainer } from './container-runner.js';
+import {
+  openInboundDb,
+  openOutboundDb,
+  openOutboundDbRw,
+  inboundDbPath,
+  outboundDbPath,
+  heartbeatPath,
+  writeSessionMessage,
+} from './session-manager.js';
+import {
+  detectStaleContainers,
+  isContainerRunning,
+  killContainer,
+  recomposeAndUpdateHash,
+  wakeContainer,
+} from './container-runner.js';
 import type { Session } from './types.js';
-
-/**
- * SQLite TIMESTAMP columns store UTC without a timezone marker. Date.parse
- * treats timezoneless ISO strings as local time, so on non-UTC hosts every
- * timestamp looks (TZ offset) hours stale — leading to spurious kill-claim
- * decisions on freshly-claimed messages. Append "Z" when no zone marker is
- * present so Date.parse interprets the string as UTC.
- */
-export function parseSqliteUtc(s: string): number {
-  return Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(s) ? s : s + 'Z');
-}
 
 const SWEEP_INTERVAL_MS = 60_000;
 // Absolute idle ceiling for a running container. If the heartbeat file hasn't
 // been touched in this long, the container is either stuck or doing genuinely
 // nothing — kill and restart on the next inbound.
-export const ABSOLUTE_CEILING_MS = 30 * 60 * 1000;
+// Respects CONTAINER_TIMEOUT from .env (default 30 min).
+export const ABSOLUTE_CEILING_MS = parseInt(process.env.CONTAINER_TIMEOUT || '1800000', 10);
 // Stuck tolerance window applied per 'processing' claim — "did we see any
 // signs of life since this message was claimed?"
 export const CLAIM_STUCK_MS = 60 * 1000;
+// Service start time — claims older than this are orphans from a prior run.
+const SERVICE_START_MS = Date.now();
 const MAX_TRIES = 5;
 const BACKOFF_BASE_MS = 5000;
+
+/**
+ * Parse a timestamp that may be in SQLite datetime('now') format
+ * ("YYYY-MM-DD HH:MM:SS", always UTC but missing indicator) or
+ * ISO 8601 ("...T...Z"). Date.parse treats space-separated strings
+ * as local time — this normalises to UTC first.
+ */
+export function parseSqliteUtc(s: string): number {
+  // SQLite TIMESTAMP columns store UTC without a timezone marker.
+  // Date.parse treats timezoneless ISO strings as local time, so on non-UTC
+  // hosts every timestamp looks (TZ offset) hours stale — leading to
+  // spurious kill-claim decisions on freshly-claimed messages. Append "Z"
+  // when no zone marker is present so Date.parse interprets as UTC.
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+    return Date.parse(s.replace(' ', 'T') + 'Z');
+  }
+  return Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(s) ? s : s + 'Z');
+}
 
 export type StuckDecision =
   | { action: 'ok' }
@@ -148,6 +173,38 @@ async function sweep(): Promise<void> {
     for (const session of sessions) {
       await sweepSession(session);
     }
+
+    // CLAUDE.md staleness: detect containers whose composed CLAUDE.md
+    // has changed since spawn (skills/overlays/instructions edited).
+    //
+    // Strategy: kill the container so it respawns with fresh CLAUDE.md.
+    // Session history is preserved in the inbound/outbound DBs — the
+    // agent picks up where it left off with updated instructions.
+    // No /clear: that wipes conversation context and causes amnesia.
+    const stale = detectStaleContainers();
+    for (const { sessionId, agentGroupId, folder } of stale) {
+      log.warn('CLAUDE.md stale — killing container for respawn', { sessionId, folder });
+      recomposeAndUpdateHash(sessionId);
+      killContainer(sessionId, 'claude-md-stale');
+      const staleSession = getSession(sessionId);
+      writeSessionMessage(agentGroupId, sessionId, {
+        id: `claudemd-refresh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        kind: 'chat',
+        timestamp: new Date().toISOString(),
+        platformId: agentGroupId,
+        channelType: 'agent',
+        threadId: staleSession?.thread_id ?? null,
+        content: JSON.stringify({
+          text: 'Your instructions were updated. Container restarted to apply them. If you have work in progress, resume it — otherwise no response needed.',
+          sender: 'system',
+          senderId: 'system',
+        }),
+        processAfter: new Date(Date.now() + 5000)
+          .toISOString()
+          .replace('T', ' ')
+          .replace(/\.\d+Z$/, ''),
+      });
+    }
   } catch (err) {
     log.error('Host sweep error', { err });
   }
@@ -194,30 +251,49 @@ async function sweepSession(session: Session): Promise<void> {
       syncProcessingAcks(inDb, outDb);
     }
 
+    // 1b. Runaway detection (non-blocking). Runs after ack-sync so the
+    // turn/output counts reflect synced state. NEVER stops the session — on a
+    // fresh runaway episode it only surfaces an admin card; a human clicking
+    // Stop is the only thing that ends the session. Module-gated: no-op when
+    // the runaway module isn't installed.
+    // MODULE-HOOK:runaway-detect:start
+    if (outDb) {
+      try {
+        const [{ checkRunaway }, { runawayCardDeps }] = await Promise.all([
+          import('./modules/runaway/detect.js'),
+          import('./modules/runaway/index.js'),
+        ]);
+        await checkRunaway(session, outDb, runawayCardDeps);
+      } catch (err) {
+        log.debug('runaway detect skipped', { sessionId: session.id, err });
+      }
+    }
+    // MODULE-HOOK:runaway-detect:end
+
     // 2. Wake a container if work is due and nothing is running. Ordered
     // before the crashed-container cleanup so a fresh container gets a chance
     // to clean its own orphan processing_ack rows on startup (see
     // container/agent-runner/src/db/connection.ts). Otherwise the reset path
     // would keep bumping process_after into the future, dueCount would stay 0,
     // and the wake would never fire.
+    let justSpawned = false;
     const dueCount = countDueMessages(inDb);
-    let justWoke = false;
     if (dueCount > 0 && !isContainerRunning(session.id)) {
       log.info('Waking container for due messages', { sessionId: session.id, count: dueCount });
       // wakeContainer never throws — transient spawn failures (OneCLI down,
       // etc.) return false and leave messages pending for the next tick.
       await wakeContainer(session);
-      justWoke = true;
+      justSpawned = true;
     }
 
     const alive = isContainerRunning(session.id);
 
     // 3. Running-container SLA: absolute ceiling + per-claim stuck rules.
-    // Skip on the same iteration that just woke the container — it hasn't
-    // had a chance to clear stale processing_ack rows from a previous crash
-    // yet. Without this grace period, stale claims cause an immediate
-    // spawn-kill loop.
-    if (alive && outDb && !justWoke) {
+    // Skip on the same tick that spawned the container — give it time to
+    // start up and clear orphan processing_ack rows from a prior crash.
+    // Without this gate, stale claims from the crashed container cause an
+    // immediate kill (spawn-kill loop).
+    if (alive && outDb && !justSpawned) {
       enforceRunningContainerSla(inDb, outDb, session, agentGroup.id);
     }
 
@@ -260,11 +336,20 @@ function enforceRunningContainerSla(
   session: Session,
   agentGroupId: string,
 ): void {
+  // Filter out orphan claims from before this service started — they're
+  // leftovers from a prior run. The container cleans its own processing_ack
+  // on startup; killing it before that cleanup runs causes a respawn loop.
+  const allClaims = getProcessingClaims(outDb);
+  const claims = allClaims.filter((c) => {
+    const ts = parseSqliteUtc(c.status_changed);
+    return !Number.isNaN(ts) && ts >= SERVICE_START_MS;
+  });
+
   const decision = decideStuckAction({
     now: Date.now(),
     heartbeatMtimeMs: heartbeatMtimeMs(agentGroupId, session.id),
     containerState: getContainerState(outDb),
-    claims: getProcessingClaims(outDb),
+    claims,
   });
 
   if (decision.action === 'ok') return;
@@ -341,17 +426,21 @@ function resetStuckProcessingRows(
   // would re-read them, see the old status_changed timestamp, conclude the
   // freshly respawned container is stuck, and SIGKILL it before its
   // agent-runner has a chance to run clearStaleProcessingAcks() on startup.
-  const ownsDb = !writableOutDb;
-  let useDb: Database.Database | null = writableOutDb ?? null;
-  try {
-    if (!useDb) useDb = openOutboundDbRw(session.agent_group_id, session.id);
-    const cleared = deleteOrphanProcessingClaims(useDb);
-    if (cleared > 0) {
-      log.info('Cleared orphan processing claims', { sessionId: session.id, cleared, reason });
+  // Safe because this only runs when the container is dead (step 4) or just
+  // killed (step 3 kill path).
+  if (claims.length > 0) {
+    const ownsDb = !writableOutDb;
+    let useDb: Database.Database | null = writableOutDb ?? null;
+    try {
+      if (!useDb) useDb = openOutboundDbRw(session.agent_group_id, session.id);
+      const cleared = deleteOrphanProcessingClaims(useDb);
+      if (cleared > 0) {
+        log.info('Cleared orphan processing claims', { sessionId: session.id, cleared, reason });
+      }
+    } catch (err) {
+      log.warn('Failed to clear orphan processing claims', { sessionId: session.id, err });
+    } finally {
+      if (ownsDb) useDb?.close();
     }
-  } catch (err) {
-    log.warn('Failed to clear orphan processing claims', { sessionId: session.id, err });
-  } finally {
-    if (ownsDb) useDb?.close();
   }
 }

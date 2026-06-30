@@ -131,8 +131,8 @@ Lockdown is **off by default**; opt in with `NANOCLAW_EGRESS_LOCKDOWN=true`.
 |------------|------------|----------------|
 | Project root access | `/workspace/project` (ro) | None |
 | Store (SQLite DB) | `/workspace/project/store` (rw) | None |
-| Group folder | `/workspace/group` (rw) | `/workspace/group` (rw) |
-| Global memory | Implicit via project | `/workspace/global` (ro) |
+| Group folder | `/workspace/agent` (rw) | `/workspace/agent` (rw) |
+| Shared memory | `/workspace/shared` (rw) — Main is the only writer | `/workspace/shared` (ro) |
 | Additional mounts | Configurable | Read-only unless allowed |
 | Network access | Unrestricted | Unrestricted |
 | MCP tools | All | All |
