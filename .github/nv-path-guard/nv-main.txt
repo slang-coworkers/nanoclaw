@@ -155,3 +155,9 @@ container/cli-tools.test.ts
 container/install-cli-tools.sh
 # Top-level version manifest.
 versions.json
+
+# Upstream sync (8be5be93): new upstream root files + learn skill absorbed onto nv-main.
+AGENTS.md
+README_ko.md
+.agents/**
+.claude/skills/learn/**
