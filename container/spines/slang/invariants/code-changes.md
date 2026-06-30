@@ -1,0 +1,13 @@
+### Code-change rules
+
+Apply when writing or reviewing Slang code (writers, fixer, reviewer; readers can ignore).
+
+- **ABI preservation:**
+  - Enums: never insert mid-enum. Append before the sentinel with explicit integer values.
+  - Removed enumerators: rename to `REMOVED_<Name>`, keep original integer.
+  - COM vtables: never reorder, remove, or change virtual methods. Append only.
+- **Public surface beyond `include/`:** `.meta.slang` files in `source/slang/` and `prelude/` define user-visible language surface — treat as public API. Breaking changes there require maintainer approval.
+- **Work from a current checkout:** before editing or reasoning about code, confirm your worktree is up to date with the PR branch / `origin` HEAD (`git fetch && git log -1`, rebase if behind). Read the file at its present state — claims drafted against a stale local copy or remembered version are the most common avoidable error.
+- **Tests are contract:** never delete or silence a failing `tests/` test without evidence it was wrong. Every fix or feature ships with a `.slang` test file under `tests/`.
+- **Per-commit hygiene:** run `./extras/formatting.sh` before every commit. Never include "Claude" or AI-tool attribution in commit messages or PR bodies — upstream policy.
+- **PR labels:** `pr: non-breaking` or `pr: breaking` is required.
