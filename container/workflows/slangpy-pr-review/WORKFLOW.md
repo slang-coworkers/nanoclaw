@@ -25,10 +25,10 @@ This is the SlangPy counterpart to the slang `slang-pr-review` workflow. It is *
    | `branch` | Branch name (optional repo)            | Diff between branch and its base          |
    | `patch`  | Patch / diff / `.md` with unified diff | The provided diff, reviewed as-is         |
 
-2. **Recall** {#recall} — Spawn an `Agent` subagent for prior reviewer flags / recurring patterns:
+2. **Recall** {#recall} — Spawn an `Agent` subagent for prior reviewer flags / recurring patterns; wiki-first, raw fallback:
 
    ```
-   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to SlangPy PR review or recurring reviewer flags. Read at most 3 learning files if directly applicable. Return ≤5 bullets — title, 1-line summary, path. No hits → 'no prior hits'.")
+   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it, identify concept pages relevant to SlangPy PR review or recurring reviewer flags, read up to 2 concept pages and follow their [[wiki/...]] links to cited learnings if needed. IF NO wiki/ dir: fall back to scanning /workspace/shared/learnings/INDEX.md and reading at most 3 learning files. Return ≤5 bullets — title, 1-line summary, file path (wiki concept or raw learning). No hits → 'no prior hits'.")
    ```
 
 3. **Read the diff + investigate** {#review} — Pull the diff (`gh pr diff` / `git diff` / the patch). For each non-trivial hunk, spawn an `Agent` subagent (via `/slangpy-code-reader`) to read the touched layer in the mounted checkout and judge the change — never read large files inline. Layer paths: Python API `slangpy/core/*`, marshalling `slangpy/bindings/*` + `slangpy/builtin/*`, reflection `slangpy/reflection/typeresolution.py`, C++ `src/slangpy_ext/*`, GPU `src/sgl/*`, torch `slangpy/torchintegration/` + `src/slangpy_torch/`. Check: correctness (does it do what it claims, edge cases, cross-backend CUDA/Vulkan/D3D12/Metal), test coverage (is there a test exercising the change?), and clarity (is anything unclear / internally inconsistent / unexplained). Enforce the `code-changes.md` invariant.
