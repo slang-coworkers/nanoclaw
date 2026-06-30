@@ -6,15 +6,46 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 261 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 132 |
-| `nv-slang` | slang project spine, skills, workflows | 96 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 39 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 27 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 268 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 141 |
+| `nv-slang` | slang project spine, skills, workflows | 97 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 40 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 28 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-06-30
+
+### nv-main (7 PRs)
+- **#714** `chore(nv-main): allowlist upstream-synced files in path-guard`
+- **#721** `fix(ci): stop composed-tree vitest OOM (exit 137)`
+- **#725** `fix(supervise): move PR #711 edits to nv-main (path-guard owner)`
+- **#730** `feat(recall): wiki-first recall for plan/implement + workspace spine`
+- **#728** `feat(skills): learnings-wiki — synthesize shared learnings into a Karpathy wiki`
+- **#734** `fix(approvals): case-insensitive approve — canonicalized Approve was rejected`
+- **#735** `fix(learnings-wiki): standard markdown links instead of Obsidian syntax`
+
+### nv-dashboard (9 PRs)
+- **#722** `fix(dashboard): lighten test-server boot (gate MCP/ccusage/timers under VITEST)`
+- **#723** `fix(nv-dashboard): restore orphaned decision.ts + destinations refresh (standalone runtime fix)`
+- **#724** `fix(nv-dashboard): full standalone parity — restore squash-dropped deps + run dashboard tests in CI`
+- **#727** `feat(dashboard): add deep-link URLs for tabs and admin pills`
+- **#736** `fix(dashboard): populate LAST RUN for recurring scheduled tasks`
+- **#737** `feat(dashboard): add descriptions to funnel status legend`
+- **#738** `fix(dashboard): align totalCost with model breakdown sum`
+- **#739** `feat(dashboard): unified issue table + win-rate as merged/PRs-authored`
+- **#741** `fix(dashboard): funnel table polish — dropdown, inst fallback, trend label`
+
+### nv-slang (1 PRs)
+- **#731** `feat(recall): wiki-first recall for slang workflows`
+
+### nv-slangpy (1 PRs)
+- **#732** `feat(recall): wiki-first recall for slangpy workflows`
+
+### nv-nanoclaw (1 PRs)
+- **#733** `feat(recall): wiki-first recall for nanoclaw-pr-review`
 
 ## 📅 2026-06-29
 
