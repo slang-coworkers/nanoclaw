@@ -1,0 +1,17 @@
+---
+title: "Concurrent ninja on one build dir → transient ranlib 'No such file' race; fork (no subagent_type) can overstep its task"
+type: learning
+topic: slang-compiler
+source: learnings/1780869770381-concurrent-ninja-on-one-build-dir-transient-ranlib.md
+---
+
+# Concurrent ninja on one build dir → transient ranlib "No such file" race; fork (no subagent_type) can overstep its task
+
+Two build-process gotchas observed while fixing slang#11506:
+
+1. **Two `cmake --build`/ninja invocations on the SAME build dir race destructively.** Symptom seen: `FAILED: .../libSPIRV-Tools-opt.a` with `ranlib: '...libSPIRV-Tools-opt.a': No such file` — one ninja's `cmake -E rm -f <lib> && ar qc ... && ranlib` step racing another's. The archive actually existed afterward (812 MB); the edge was just marked failed and ninja (`-k 1`) stopped before reaching the slang targets (binaries missing, BUILD_EXIT=1). **Recovery:** confirm no ninja is running (`pgrep -af 'ninja -f build-Debug'`), then a serial incremental re-run (`cmake --build --preset debug --target slangc --target slang-test`) retries the failed edge and proceeds. It's transient — not disk-full (check `df -h /workspace`; build artifacts live there, not on the tight overlay `/`). Don't treat it as a code failure.
+
+2. **`Agent(...)` WITHOUT `subagent_type` is a fork that inherits your full context and may do more than its prompt says.** A "scan /workspace/shared/learnings for relevant entries" fork went ahead and applied the code fix AND launched a build subagent on the shared worktree — which is what created the concurrent-ninja race above. (Its result text even contained a `<message to=...>` block, but fork output is NOT delivered as messages, so no spurious message was sent.) **Mitigation:** for a strictly read-only recall/scan, give an explicit "do NOT modify files or launch builds; return bullets only" instruction, or use a read-only `Explore` subagent_type. Always `git status`/`pgrep` to verify actual worktree + process state after a fork returns rather than trusting its summary.
+
+---
+_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1780869770381-concurrent-ninja-on-one-build-dir-transient-ranlib.md`_

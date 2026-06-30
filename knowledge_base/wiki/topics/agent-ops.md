@@ -1,0 +1,133 @@
+---
+title: "NanoClaw / agent operations"
+type: topic
+---
+
+# NanoClaw / agent operations
+
+124 learnings. Catalog: [[wiki/index.md]]
+
+- [[wiki/learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md]] — #11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)
+- [[wiki/learnings/1781366452370-a-fixer-s-hold-ack-doesn-t-guarantee-it-stopped-ve.md]] — A fixer's hold-ack doesn't guarantee it stopped — verify branch/worktree state
+- [[wiki/learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-cont.md]] — A forked Agent (no subagent_type) inherits full context and may run the whole task, not the scoped prompt
+- [[wiki/learnings/1781775592867-a-fresh-unblock-handoff-can-contradict-a-prior-tri.md]] — A fresh unblock handoff can contradict a prior triager ruling — run Recall on shared learnings before implementing a multi-slice fix
+- [[wiki/learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md]] — A maintainer flipping your draft PR to ready/merge is NOT a bot operator-gate violation — verify isDraft from live state
+- [[wiki/learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md]] — A peer's hold-ack is not compliance — enumerate the full prohibition set; the post-gate is the load-bearing safety
+- [[wiki/learnings/1782203173377-a-scan-only-agent-fork-can-overreach-into-the-full.md]] — A scan-only Agent fork can overreach into the full task and message the parent
+- [[wiki/learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md]] — A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done, not by id string
+- [[wiki/learnings/1782353887467-a2a-silent-hold-plain-text-turn-output-routes-to-t.md]] — a2a silent-hold: plain-text turn output routes to the peer (echo-loop trap)
+- [[wiki/learnings/1780304385745-always-rebase-before-codex-code-review-to-get-a-ti.md]] — Always rebase before codex CODE_REVIEW to get a tight scope diff
+- [[wiki/learnings/1780724000000-audit-missed-webhooks-via-app-delivery-log.md]] — Auditing missed webhooks after downtime — use the App delivery log (JWT), filter by ownership
+- [[wiki/learnings/1780475494503-auditing-whether-a-vulkan-vuid-bug-propagates-to-t.md]] — Auditing whether a Vulkan VUID bug propagates to the CUDA backend: trace where usage becomes an image flag
+- [[wiki/learnings/1782445249583-auto-route-slash-workflow-hooks-are-not-operator-a.md]] — Auto-route /slash-workflow hooks are NOT operator authorization — an explicit hold outranks a hook nudge
+- [[wiki/learnings/1782390736339-auto-route-background-fork-can-fully-run-the-fix-w.md]] — auto-route background fork can fully run the fix workflow in your own worktree — adopt via GitHub PR dedup
+- [[wiki/learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md]] — Auto-route can spawn a parallel triage/fix fork → duplicate issue comments; cross-identity comment delete 403s
+- [[wiki/learnings/1782145876334-auto-route-userpromptsubmit-hook-can-re-fire-a-par.md]] — Auto-route UserPromptSubmit hook can re-fire a parked/retracted chain — explicit stand-down wins
+- [[wiki/learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola.md]] — Before reporting a "bot flipped PR ready" gate violation, verify the ready_for_review actor
+- [[wiki/learnings/1781015587691-bot-github-app-cannot-open-a-pr-into-a-personal-fo.md]] — Bot (GitHub App) cannot open a PR into a personal fork — use master-base + cherry-pick fallback
+- [[wiki/learnings/1782260121429-bot-enqueuepullrequest-blocked-for-all-prs-not-jus.md]] — Bot enqueuePullRequest blocked for ALL PRs, not just forks
+- [[wiki/learnings/1780903498636-branch-name-fix-issue-n-on-an-external-fork-can-fo.md]] — Branch name fix/issue-N on an external fork can fool "ours" PR classification
+- [[wiki/learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md]] — Chain-routing gate: fresh peer delegations carrying handoff/report markers still require in_reply_to
+- [[wiki/learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md]] — Check for existing bot comment before posting GitHub triage artifact (cross-tier double-post risk)
+- [[wiki/learnings/1778085879531-claude-vs-codex-provider-parity.md]] — claude-vs-codex-provider-parity
+- [[wiki/learnings/1782439747524-codex-critique-gate-tracks-fresh-call-verdicts-not.md]] — codex critique-gate tracks FRESH-call verdicts, not codex-reply re-verifications
+- [[wiki/learnings/1781222707210-codex-critique-critique-gate-workspace-not-tmp-and.md]] — codex-critique + critique-gate: /workspace not /tmp, and the gate denies the whole bash block
+- [[wiki/learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md]] — codex-critique artifacts must live under /workspace, not /tmp (ephemeral + invisible to codex)
+- [[wiki/learnings/1781775272408-codex-critique-gate-records-stage-verdicts-only-fr.md]] — codex-critique gate records stage verdicts only from a fresh staged codex call, not from codex-reply
+- [[wiki/learnings/1780325263478-codex-critique-gate-open-the-pr-before-claiming-it.md]] — codex-critique gate: open the PR before claiming it in OUTPUT_REVIEW deliverable
+- [[wiki/learnings/1781386154716-codex-critique-gate-start-a-fresh-codex-session-pe.md]] — codex-critique gate: start a fresh codex session per deliverable, don't codex-reply past a must-fix
+- [[wiki/learnings/1781129788679-codex-critique-needs-danger-full-access-ai-disclai.md]] — codex-critique needs danger-full-access; AI-disclaimer goes on comments not PR bodies
+- [[wiki/learnings/1781405000000-CONSOLIDATED-github-posting-policy.md]] — CONSOLIDATED — GitHub posting policy (verified ⇒ post; only ready+merge gated)
+- [[wiki/learnings/1780558152383-CONSOLIDATED-supervisor-operations.md]] — CONSOLIDATED: /supervise-issues operations (nudge, deliver, format, concurrency)
+- [[wiki/learnings/1781404361687-CONSOLIDATED-fork-no-subagent-type-reruns-workflow.md]] — CONSOLIDATED: a bare `Agent` (no subagent_type) is a context-inheriting FORK — never use it for Recall/scan steps
+- [[wiki/learnings/1780558160000-CONSOLIDATED-a2a-messaging-routing-and-self-edge-loop.md]] — CONSOLIDATED: a2a messaging — reply routing rules + self-edge/empty-ack loop incident
+- [[wiki/learnings/1781405911100-CONSOLIDATED-falcor-ci-regression-triage.md]] — CONSOLIDATED: Falcor CI regression triage (topology, ULP fingerprint, merge-queue bisect, emit-diff arbiter)
+- [[wiki/learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md]] — CONSOLIDATED: GitHub auth & ops in agent containers (gh probes lie; use org-scoped REST / raw token)
+- [[wiki/learnings/1782224927601-context-inheriting-agent-forks-can-no-op-on-long-b.md]] — Context-inheriting Agent forks can no-op on long build/verify work — use a detached script + Monitor
+- [[wiki/learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md]] — Correction: installing libvulkan1 does NOT enable NVIDIA-GPU Vulkan in these containers — only software llvmpipe; NVIDIA Vulkan ICD fails (ERROR_INCOMPATIBLE_DRIVER, NVIDIA_VISIBLE_DEVICES=void)
+- [[wiki/learnings/1781366652185-correction-the-11600-hold-deviation-was-an-in-flig.md]] — Correction: the #11600 hold-deviation was an in-flight fork, not a peer ignoring the hold
+- [[wiki/learnings/legoop-feedback_codex_symlinks_for_skills.md]] — Create symlinks (AGENTS.md→CLAUDE.md, .agents→.claude) in group folders for Codex agents so the Codex CLI natively discovers our skills. Prefer letting the harness pick them up over overriding developer instructions.
+- [[wiki/learnings/1781386183865-critique-gate-output-review-is-sticky-within-a-reu.md]] — Critique-gate OUTPUT_REVIEW is sticky within a reused codex thread
+- [[wiki/learnings/1781661845733-critique-gate-records-verdict-from-fresh-codex-cal.md]] — Critique-gate records verdict from fresh codex calls, not codex-reply rounds
+- [[wiki/learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md]] — critique-gate stage detector keys on the FIRST stage-keyword in the codex prompt — lead with the bare STAGE: line
+- [[wiki/learnings/1781321980304-critique-gate-stage-marker-in-codex-prompt-verdict.md]] — critique-gate: STAGE marker in codex PROMPT + "### Verdict" block in codex RESPONSE, one call per stage
+- [[wiki/learnings/1782026325950-curating-shared-learnings-serialize-directory-edit.md]] — Curating shared learnings: serialize directory edits, never parallel forks
+- [[wiki/learnings/1781511232421-daily-report-check-for-a-linked-fix-pr-before-flag.md]] — Daily report: check for a linked fix PR before flagging an issue as untriaged
+- [[wiki/learnings/1778835191236-dashboard-channels-render-markdown-always-include-.md]] — Dashboard channels render markdown — always include hyperlinks for issue/PR/discussion refs
+- [[wiki/learnings/1782244083021-dependency-bump-pr-triage-cross-platform-check-pro.md]] — Dependency-bump PR triage: cross-platform check proves innocence
+- [[wiki/learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md]] — Don't fork (omit subagent_type) for read-only recall/scan steps — the fork inherits full triage context and may run the entire workflow
+- [[wiki/learnings/1781724956224-don-t-promote-a-hedged-hypothesis-to-root-cause-tr.md]] — Don't promote a hedged hypothesis to "root cause (traced)" in a public triage verdict
+- [[wiki/learnings/1781072934865-don-t-re-dispatch-to-fixer-after-triage-already-ha.md]] — Don't re-dispatch to fixer after triage already handed off (tier-skip dup)
+- [[wiki/learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md]] — Don't use a context-inheriting Agent fork for narrow recall while a fix workflow is auto-routed
+- [[wiki/learnings/1781598359787-escalations-route-up-the-chain-bot-never-self-post.md]] — escalations route up the chain, bot never self-posts to gated channels
+- [[wiki/learnings/1781653325417-execute-maintainer-directed-non-gated-actions-with.md]] — Execute maintainer-directed non-gated actions without round-tripping
+- [[wiki/learnings/1781685016229-fabricated-parent-edge-dispatch-contained-by-draft.md]] — Fabricated parent-edge dispatch contained by drafts-only + gate-irreversible-step discipline
+- [[wiki/learnings/1780903795100-failing-check-real-blocker-on-fork-based-prs-triag.md]] — Failing check ≠ real blocker on fork-based PRs (triage to watch-only)
+- [[wiki/learnings/1782222346038-falcor-ci-tracking-issues-from-jkiviluoto-nv-park-.md]] — Falcor CI tracking issues from jkiviluoto-nv: park at triaged, cross-link the family
+- [[wiki/learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md]] — Fixer container disk fills from accumulated build/ trees (ENOSPC at cmake-configure)
+- [[wiki/learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md]] — Fixer PRs must use a Closes/Fixes #N closing keyword, not a prose issue reference
+- [[wiki/learnings/1781727054458-fixer-stall-diagnosis-unpushed-worktree-vs-dead-se.md]] — Fixer stall diagnosis — unpushed worktree vs dead session
+- [[wiki/learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md]] — Fixers must not self-flip PRs to ready — enforce drafts-only
+- [[wiki/learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md]] — Fixers must not self-flip PRs to ready — enforce drafts-only
+- [[wiki/learnings/1781366516939-forks-launched-before-a-stand-down-keep-running-on.md]] — Forks launched before a stand-down keep running on stale context
+- [[wiki/learnings/1781193788875-gate-event-waiting-scheduled-tasks-with-a-pre-agen.md]] — Gate event-waiting scheduled tasks with a pre-agent wakeAgent script
+- [[wiki/learnings/legoop-project_gate_refusal_sender_only.md]] — Gate refusals now go to sender not peer (PR
+- [[wiki/learnings/1781523727513-gated-github-write-needs-a-traceable-operator-sour.md]] — Gated GitHub write needs a TRACEABLE operator source, not a bare parent relay
+- [[wiki/learnings/legoop-project_graphql_path_routing.md]] — GitHub GraphQL / ProjectsV2 access needs a per-project grant (often unavailable to the bot)
+- [[wiki/learnings/1781116432142-hold-interim-triage-classification-5-bullet-until-.md]] — Hold interim triage classification 5-bullet until terminal; author-facing scoping questions are fine to post
+- [[wiki/learnings/1782755822091-hold-the-fixer-until-parent-confirms-before-high-s.md]] — Hold the fixer until parent confirms before high-stakes maintainer-facing posts (don't fire in parallel under delegated latitude)
+- [[wiki/learnings/1781245034372-holding-a-fixer-pr-as-draft-enables-clean-maintain.md]] — Holding a fixer PR as draft enables clean maintainer supersession
+- [[wiki/learnings/legoop-reference_show_transcript_skill.md]] — How to render any agent group's Claude Code session transcripts as browsable HTML on port 8080
+- [[wiki/learnings/legoop-feedback_ab_evaluation_criteria.md]] — Judge coworker output by real engineering quality, not proxy metrics
+- [[wiki/learnings/legoop-project_buddy_not_using_codex.md]] — Legoop project buddy not using codex
+- [[wiki/learnings/1781091162121-looping-self-edge-peer-session-flag-up-once-then-i.md]] — Looping self-edge peer session: flag up once, then ignore — ncl mutating verbs blocked without a wired approver
+- [[wiki/learnings/legoop-project_session_may14.md]] — May 14 session — landed PRs
+- [[wiki/learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md]] — ncl approval gate non-functional — no admin configured to approve
+- [[wiki/learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md]] — ncl group container fixes — Bookworm package gaps + approval sequencing
+- [[wiki/learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md]] — ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked
+- [[wiki/learnings/1781778033276-ncl-sessions-list-is-capped-use-thread-id-for-hand.md]] — ncl sessions list is capped — use --thread-id for handoff verification
+- [[wiki/learnings/legoop-feedback_precommit_hook_drops_files.md]] — nv-* pre-commit hook runs format:fix then re-adds only src/**/*.ts — silently drops other staged files from the commit
+- [[wiki/learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md]] — Orchestrator double-dispatch spawns duplicate fixer sessions on one branch
+- [[wiki/learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md]] — Propagating orchestrator reinforcements to group-locked per-issue sessions
+- [[wiki/learnings/1781713625746-re-triage-rescan-live-cross-ref-timeline-for-newer.md]] — Re-triage: rescan live cross-ref timeline for newer maintainer PRs touching the issue's files
+- [[wiki/learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md]] — Read-only recall forks must be scoped Explore or explicitly constrained — bare Agent forks inherit ALL tools and can post/dispatch
+- [[wiki/learnings/1782152715724-read-only-recall-scan-steps-must-be-explore-typed-.md]] — Read-only recall/scan steps must be Explore-typed, never bare forks
+- [[wiki/learnings/legoop-feedback_no_external_post_ab_tests.md]] — Read-only/eval coworkers must be blocked from external posting at BOTH layers
+- [[wiki/learnings/1781823486955-recall-step-spawn-a-read-only-explore-subagent-nev.md]] — Recall step: spawn a read-only Explore subagent, never a bare Agent fork
+- [[wiki/learnings/1782216127466-recall-scan-fork-can-misread-the-parent-s-own-edit.md]] — Recall-scan fork can misread the parent's own edits as a peer collision
+- [[wiki/learnings/1782215264522-recall-research-fan-out-must-use-explore-subagent-.md]] — Recall/research fan-out must use Explore subagent, never a bare Agent() fork
+- [[wiki/learnings/1782215337634-recall-research-fan-out-must-use-explore-never-a-b.md]] — Recall/research fan-out must use Explore, never a bare Agent() fork
+- [[wiki/learnings/1782223714002-recall-scan-forks-can-phantom-overstep-into-worktr.md]] — Recall/scan forks can phantom-overstep into worktree inspection, faking a peer-collision
+- [[wiki/learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md]] — report_pr_created binds the CALLING session — open the PR from the fix thread, not a chat
+- [[wiki/learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md]] — report_pr_created remaps the PR to the CALLING session
+- [[wiki/learnings/1780488405089-resolving-reviewer-split-brain-after-a-container-r.md]] — Resolving reviewer split-brain after a container restart (recovery fork vs. original)
+- [[wiki/learnings/legoop-feedback_service_restart_kills_containers.md]] — Restarting nanoclaw main service triggers initGroupFilesystem → skill refresh → CLAUDE.md recompose → claude-md-stale kills all running containers. Avoid restarts during active sessions.
+- [[wiki/learnings/legoop-feedback_no_service_restart_for_mcp.md]] — Restarting nanoclaw service kills all running containers and their in-progress work; restart only the specific MCP subprocess instead
+- [[wiki/learnings/1781084626230-resuming-a-paused-peer-session-from-a-fresh-retry-.md]] — Resuming a paused peer session from a fresh retry-check: must in_reply_to an unresponded inbound
+- [[wiki/learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md]] — Reviewer combined-review fan-out can trigger a taskless-fixer echo loop via always-engage a2a wiring
+- [[wiki/learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md]] — Reviewer: gate the verdict on full-suite CI for broad-blast-radius changes, not static review alone
+- [[wiki/learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md]] — Routing a decl through shared declarator machinery silently broadens accepted grammar — review the whole declarator surface, not the target form
+- [[wiki/learnings/legoop-project_rtk_evaluated_rejected.md]] — rtk token-compression proxy evaluated 2026-06-03 and rejected for all groups; not enabled anywhere
+- [[wiki/learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md]] — Scheduled diagnostic tasks re-diagnose persistent state inconsistently across fresh sessions
+- [[wiki/learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-t-.md]] — Spurious chain-routing-gate REFUSED inbound — don't fabricate, verify then escalate
+- [[wiki/learnings/1780769195650-standing-order-reinforcements-inherit-via-claude-m.md]] — Standing-order reinforcements inherit via CLAUDE.md, not per-session relay
+- [[wiki/learnings/legoop-feedback_chain_shape_strict.md]] — Strict reply-routing in 4-tier issue chain — replies hop back along the dispatch path, never bypass to the orchestrator
+- [[wiki/learnings/1781137483321-superseded-skip-github-post-on-dev-authored-design.md]] — SUPERSEDED: "skip GitHub post on dev-authored design placeholder" — post a deferential triage artifact anyway
+- [[wiki/learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md]] — supervisor artifact-enforcement nudge yields to the operator comment-gate (no-PR blocked chains)
+- [[wiki/learnings/1780769170857-triage-github-artifact-fixed-via-pr-exception-reso.md]] — Triage + GitHub artifact: fixed-via-PR exception resolves the "don't post interim verdict" vs "artifact MUST land" tension
+- [[wiki/learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md]] — Triage routing: deferring a fix to the maintainer flips triage into closest-to-the-state (triage posts)
+- [[wiki/learnings/1780414455913-triage-workflow-read-only-github-yields-to-spine-o.md]] — Triage workflow read-only-GitHub yields to spine observability MUST + explicit parent authorization
+- [[wiki/learnings/1782408832985-triage-deepwiki-concurrency-premises-can-lag-head-.md]] — Triage/DeepWiki concurrency premises can lag HEAD — verify mutex sites in source before accepting "X is unsynchronized"
+- [[wiki/learnings/1782700143228-triage-maintainer-opens-own-fix-pr-same-time-as-is.md]] — Triage: maintainer opens own fix PR ~same time as issue → verify + post + PARK, don't dispatch fixer
+- [[wiki/learnings/1781266520028-triage-when-to-post-a-5-bullet-vs-stand-down-on-a-.md]] — Triage: when to POST a 5-bullet vs STAND DOWN on a maintainer-authored design/RFC issue
+- [[wiki/learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated-w.md]] — Untraceable from-parent mandate for costly/gated work — analyze cheaply and surface, don't execute
+- [[wiki/learnings/1782329772659-use-explore-subagent-not-a-bare-fork-for-the-learn.md]] — Use Explore subagent (not a bare fork) for the learnings-scan step
+- [[wiki/learnings/1780064743810-verify-discovery-and-resolution-separately-in-pars.md]] — Verify Discovery and Resolution Separately in Parser-Ambiguity Triage
+- [[wiki/learnings/1780073122582-verify-maintainer-attributions-in-triage-handoffs-.md]] — Verify maintainer attributions in triage handoffs against gh PR data
+- [[wiki/learnings/1782390307922-verify-triage-memo-file-line-claims-about-adjacent.md]] — Verify triage-memo file:line claims about adjacent code before quoting in a PR
+- [[wiki/learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md]] — Verifying GitHub webhook payloads before acting
+- [[wiki/learnings/1782225149459-vk-location-on-non-varying-warning-6216-the-param-.md]] — vk::location-on-non-varying warning (#6216): the param-binding gate placement and the "double-emission matches precedent" trap
+- [[wiki/learnings/1781110850059-waking-your-own-agent-s-stopped-per-issue-sessions.md]] — Waking your own agent's stopped per-issue sessions via send_message-to-self does not resume them
+- [[wiki/learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md]] — Webhook chains can be silently dropped by API 502 on the routing turn
+- [[wiki/learnings/legoop-project_ab_test_discord_workflow.md]] — Workflows enforce tool usage that prose instructions don't
+- [[wiki/learnings/1782692523381-worktree-gc-reap-is-operator-gated-sibling-isolati.md]] — Worktree GC reap is operator-gated (sibling-isolation [MUST NOT])

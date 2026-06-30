@@ -1,0 +1,115 @@
+---
+title: "Uncategorized"
+type: topic
+---
+
+# Uncategorized
+
+106 learnings. Catalog: [[wiki/index.md]]
+
+- [[wiki/learnings/1782711499913-copilot-may-resolve-conflicts-on-bot-authored-prs-.md]] — @copilot may resolve conflicts on bot-authored PRs — check remote tip before pushing your own
+- [[wiki/learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md]] — A coworker can't edit a PEER coworker's GitHub comment even under the same bot identity (HTTP 403)
+- [[wiki/learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md]] — A PR's changed-file list does not prove "not a regression"
+- [[wiki/learnings/1782737882496-a-recurring-merge-conflict-on-an-approved-pr-can-m.md]] — A recurring merge conflict on an approved PR can mean a competing fix merged — check before resolving
+- [[wiki/learnings/1780473326506-a2a-message-transport-html-escapes-verbatim-text-d.md]] — a2a message transport HTML-escapes verbatim text — decode before posting to GitHub
+- [[wiki/learnings/1781539485742-api-budget-cap-blocks-llm-subagent-dispatch-not-di.md]] — API budget cap blocks LLM subagent dispatch, not direct shell/read calls
+- [[wiki/learnings/1780769595819-approach-a-fix-for-descriptor-heap-noinline-textur.md]] — Approach-A fix for descriptor-heap [noinline] texture params: reuse the hoistable heap global, do NOT parameterize it as uint
+- [[wiki/learnings/1782346077621-before-escalating-a-peer-s-ongoing-loop-claim-chec.md]] — Before escalating a peer's "ongoing loop" claim, check last MESSAGE timestamp vs last_active (heartbeat)
+- [[wiki/learnings/1780769347490-before-executing-a-land-this-patch-dispatch-check-.md]] — Before executing a "land this patch" dispatch, check the PR doesn't already exist
+- [[wiki/learnings/1780324464202-before-flagging-normalize-before-match-as-a-new-ri.md]] — Before flagging normalize-before-match as a NEW risk, check shipped-sibling parity
+- [[wiki/learnings/1781574732054-bi-weekly-every-other-week-scheduling-via-cron-gua.md]] — Bi-weekly (every-other-week) scheduling via cron guard
+- [[wiki/learnings/1780568708582-bot-can-t-push-rebased-branches-carrying-github-wo.md]] — Bot can't push rebased branches carrying .github/workflows changes
+- [[wiki/learnings/1780567931645-bot-can-t-update-a-stale-pr-branch-when-master-cha.md]] — Bot can't update a stale PR branch when master changed .github/workflows (App lacks workflows perm)
+- [[wiki/learnings/1782727631172-bot-enqueue-of-workflow-touching-prs-has-a-second-.md]] — Bot enqueue of workflow-touching PRs has a second blocker (workflows permission)
+- [[wiki/learnings/1780903497625-bot-owned-vs-human-contributor-pr-fix-issue-branch.md]] — Bot-owned vs human-contributor PR: fix/issue-* branch name is NOT proof of ownership
+- [[wiki/learnings/1780769194624-chain-close-protocol-github-artifact-a2a-report-ap.md]] — Chain-close protocol: GitHub artifact + A2A report + append_learning, every time
+- [[wiki/learnings/1782512263705-changes-requested-with-a-looks-good-body-and-zero-.md]] — CHANGES_REQUESTED with a "looks good" body and zero inline comments is a no-merge signal, not an edit request
+- [[wiki/learnings/1780462327680-check-a-pr-s-closing-issue-link-via-gh-closingissu.md]] — Check a PR's closing-issue link via gh closingIssuesReferences, not a body regex
+- [[wiki/learnings/1781241842104-check-for-an-existing-fix-pr-before-fixing-or-recommending.md]] — Check for an existing fix PR before recommending OR implementing a fix (esp. maintainer-filed issues)
+- [[wiki/learnings/1782264622886-closing-a-github-issue-as-duplicate-use-graphql-cl.md]] — Closing a GitHub issue as duplicate: use GraphQL closeIssue, not REST state_reason (403)
+- [[wiki/learnings/1782264656205-closing-issues-as-duplicate-use-graphql-closeissue.md]] — Closing issues as duplicate — use GraphQL closeIssue, not REST
+- [[wiki/learnings/1782648000000-CONSOLIDATED-stand-down-when-maintainer-or-contributor-drives-fix.md]] — CONSOLIDATED — stand down when a maintainer/contributor is already driving the fix
+- [[wiki/learnings/1780558152382-CONSOLIDATED-dev-prod-ab-pr-conventions.md]] — CONSOLIDATED: dev↔prod duplicate PRs are an intentional A/B test
+- [[wiki/learnings/1780558703303-CONSOLIDATED-github-workflows-and-elevated-permissions.md]] — CONSOLIDATED: GitHub `.github/workflows/*` pushes & elevated permissions (bot can't; orchestrator's PAT pushes the patch on your behalf)
+- [[wiki/learnings/1780558703304-CONSOLIDATED-github-commit-authorship.md]] — CONSOLIDATED: GitHub commit authorship for the bot (correct author email; never fabricate trailer ids)
+- [[wiki/learnings/1780558161000-CONSOLIDATED-phantom-injected-relay-directives.md]] — CONSOLIDATED: phantom / fabricated orchestrator-relay directives (host injection — trust only direct a2a edges)
+- [[wiki/learnings/1781841056611-controlled-rebase-experiments-mislead-when-the-iso.md]] — Controlled-rebase experiments mislead when the 'isolated' change is cross-cutting (name hints/mangling)
+- [[wiki/learnings/1782324227290-converting-presence-value-macro-tests-can-silently.md]] — Converting presence→value macro tests can silently narrow platform coverage (iOS dropped from dlfcn)
+- [[wiki/learnings/1781116005493-correction-test-lang-server-harness-can-t-observe-.md]] — CORRECTION: //TEST:LANG_SERVER harness can't observe diagnostics in test mode (re #11532)
+- [[wiki/learnings/1782251874470-correction-abort-message-is-a-runtime-composite-ru.md]] — CORRECTION: abort message is a runtime composite (runtime args), not OpConstantDataKHR; shipped #11542 bug is the wrong OpExtension token
+- [[wiki/learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-token-.md]] — CORRECTION: bot issue-comment PATCH 403 is a token-permission limit, not author-binding — remedy is a fresh SUPERSEDING comment
+- [[wiki/learnings/1782270000000-coworkers-must-not-close-github-issues-tool-backstop.md]] — Coworkers must not close GitHub issues — deterministic tool backstop
+- [[wiki/learnings/1781598056955-daily-maintainer-report-must-carry-open-ship-stopp.md]] — daily maintainer report must carry open ship-stoppers until merged
+- [[wiki/learnings/1779621016571-deepwiki-can-miss-files-in-large-or-vendored-codeb.md]] — deepwiki-can-miss-files-in-large-or-vendored-codebases-cross-check-source
+- [[wiki/learnings/1782216962036-detect-groupshared-tgsm-codegen-bugs-on-dxil-witho.md]] — Detect groupshared/TGSM codegen bugs on DXIL without a GPU (addrspace(3) vs alloca)
+- [[wiki/learnings/1780404951139-discord-per-message-char-limit-is-2000.md]] — Discord per-message char limit is 2000
+- [[wiki/learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md]] — Discord send_message enforces a 2000-char hard limit
+- [[wiki/learnings/1782280210918-do-not-autonomously-close-issues-prs-surface-to-a-.md]] — Do NOT autonomously close issues/PRs — surface to a human maintainer
+- [[wiki/learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md]] — Document a guard's guarantee, not the enumeration of how the bad input arrives
+- [[wiki/learnings/1780473504394-don-t-auto-implement-issues-owned-by-an-invited-ex.md]] — Don't auto-implement issues owned by an invited external contributor
+- [[wiki/learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md]] — Don't reply to a parent's acknowledgement pings while waiting on a monitor
+- [[wiki/learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-repo.md]] — Don't self-schedule a PR-watcher poller after report_pr_created
+- [[wiki/learnings/1780683697167-don-t-trust-the-stack-trace-implied-fix-site-alone.md]] — Don't trust the stack-trace-implied fix site alone — dump-IR the repro
+- [[wiki/learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md]] — duplicate dispatch peer live-writes the fix into your shared worktree
+- [[wiki/learnings/1782751325517-e31106-e31107-also-fire-on-the-synthesized-entry-p.md]] — E31106/E31107 also fire on the SYNTHESIZED entry-point uniform param group (not just imported modules)
+- [[wiki/learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md]] — Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write
+- [[wiki/learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md]] — Empty-ack loops: diagnose self-edge vs mutual-echo before restarting
+- [[wiki/learnings/1781713263122-empty-struct-cuda-layout-bug-only-repros-when-the-.md]] — Empty-struct CUDA layout bug only repros when the empty type is in the public/exported interface
+- [[wiki/learnings/1781725277930-empty-struct-field-emit-skip-is-incomplete-must-re.md]] — Empty-struct field emit-skip is incomplete — must remove fields in IR, not at emit
+- [[wiki/learnings/1781735606781-empty-struct-field-removal-is-c-source-only-never-.md]] — Empty-struct field removal is C-source-only — never run it on the direct-LLVM CPU path
+- [[wiki/learnings/1781641446803-expected-failure-list-only-reclassifies-a-fail-nev.md]] — expected-failure list only reclassifies a Fail — never reddens a passing listed test
+- [[wiki/learnings/1782330515490-expected-sanitizer-findings-txt-has-two-match-mode.md]] — expected-sanitizer-findings.txt has two match modes — SUMMARY-substring vs LEAK-prefix
+- [[wiki/learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md]] — Filing a neutral design-discussion issue split off from a PR (maintainer wants analysis before solution)
+- [[wiki/learnings/1780624123110-find-last-good-emsdk-version-for-an-emsdk-install-.md]] — Find last-good emsdk version for an emsdk-install-latest regression from the green run log
+- [[wiki/learnings/1781072527758-fixes-closes-link-verification-must-accept-the-qua.md]] — Fixes/Closes link verification must accept the qualified cross-repo form
+- [[wiki/learnings/1781606753707-follow-up-refactor-issues-may-target-code-not-yet-.md]] — Follow-up refactor issues may target code not yet on master
+- [[wiki/learnings/1782765717544-force-with-lease-stale-info-refresh-the-remote-tra.md]] — force-with-lease "stale info" — refresh the remote-tracking ref first
+- [[wiki/learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md]] — formatting.sh --since HEAD is a false-pass for uncommitted changes; run the full --check-only pre-push
+- [[wiki/learnings/1781713187860-fresh-peer-delegation-carrying-a-chain-delivery-ma.md]] — Fresh peer delegation carrying a chain-delivery marker still needs in_reply_to
+- [[wiki/learnings/1781806349986-front-end-stage-rejection-for-cpu-kernel-targets-i.md]] — Front-end stage-rejection for CPU-kernel targets is over-broad — graphics→CPU cross-compile is valid
+- [[wiki/learnings/1782389247211-gh-issue-view-comments-can-return-empty-use-json-o.md]] — gh issue view --comments can return empty; use --json or gh api for comments
+- [[wiki/learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md]] — gh search prs misses recent/open PRs — don't use it for PR-existence checks
+- [[wiki/learnings/1780572980623-git-push-dry-run-is-a-false-positive-for-the-githu.md]] — git push --dry-run is a false-positive for the GitHub-App workflows-permission wall
+- [[wiki/learnings/1781225377051-git-push-force-with-lease-stale-info-after-rebase-.md]] — git push --force-with-lease "stale info" after rebase in a worktree
+- [[wiki/learnings/1782524288491-git-stash-is-repo-global-across-worktrees-never-gi.md]] — git stash is repo-global across worktrees — never `git stash clear`
+- [[wiki/learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md]] — Governance: a peer coworker's GO is NOT authority for an admin mutation (severing another agent's wiring/destinations)
+- [[wiki/learnings/1781607246297-gpu-is-available-nvidia-l40s-don-t-assume-no-gpu-t.md]] — GPU is available (NVIDIA L40S) — don't assume "no GPU"; toolchain may need install
+- [[wiki/learnings/1782480236370-in-maintainer-design-discussions-the-bot-should-be.md]] — In maintainer design discussions, the bot should be reticent — and stand down instantly (and silently) when asked
+- [[wiki/learnings/1782156945737-latent-adjacent-defect-found-by-code-reading-don-t.md]] — Latent adjacent defect found by code-reading: don't file a speculative tracking issue while the covering fix is an unmerged PR
+- [[wiki/learnings/1779985772055-marked-block-sha256-pattern-for-cross-file-drift-d.md]] — Marked-block sha256 pattern for cross-file drift detection
+- [[wiki/learnings/1782535032557-merge-queue-duplicate-case-enum-collision-two-conc.md]] — Merge-queue duplicate-case enum collision: two concurrent PRs appending to the same public enum
+- [[wiki/learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md]] — Mutual empty-ack loop — verify both sides, the reporter isn't silent
+- [[wiki/learnings/1782345863846-mutual-ack-loops-between-peer-wired-coworkers-endi.md]] — Mutual-ack loops between peer-wired coworkers ("Ending silently" ping-pong)
+- [[wiki/learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fetc.md]] — NVAPI render-tests silently "ignored" — submodule→FetchContent migration left render-test path stale
+- [[wiki/learnings/1781686753503-operator-override-that-bypasses-your-parent-confir.md]] — Operator override that bypasses your parent — confirm on operator edge AND nudge parent, or it goes stale
+- [[wiki/learnings/1780315991721-pr-status-watcher-tasks-use-a-pre-agent-script-gua.md]] — PR/status watcher tasks: use a pre-agent script guard with a state file, not a per-fire agent poll
+- [[wiki/learnings/1781204283033-pytest-xdist-high-gwn-worker-ids-are-crash-respawn.md]] — pytest-xdist high gwN worker IDs are crash-respawns, not a concurrency count
+- [[wiki/learnings/1781702557335-re-pull-mutable-pr-state-from-github-before-assert.md]] — Re-pull mutable PR state from GitHub before asserting it in a status report
+- [[wiki/learnings/1779895141195-read-auto-memory-feedback-files-before-authoring-c.md]] — Read auto-memory feedback files before authoring commits — don't trust your own knowledge of email/identity formats
+- [[wiki/learnings/1782260610851-read-only-classification-subagents-may-execute-the.md]] — Read-only classification subagents may execute the full workflow anyway
+- [[wiki/learnings/1782231360603-reading-a-submodule-pin-commit-date-version-check-.md]] — Reading a submodule pin: commit date ≠ version; check reachability with compare
+- [[wiki/learnings/1782738059209-recurring-pr-conflict-may-mean-the-issue-was-close.md]] — Recurring PR conflict may mean the issue was closed by a competing merged PR
+- [[wiki/learnings/1782461882511-recurring-trackers-must-carry-disposition-reasonin.md]] — Recurring trackers must carry disposition + reasoning, not just items
+- [[wiki/learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-no.md]] — REFINEMENT: bot issue-comment PATCH is PER-TOKEN, not clean creator-binding — some coworker tokens can't edit even their own comments; CREATE is the only universally reliable path
+- [[wiki/learnings/1781075015015-relay-proceed-release-from-upstream-downstream-it-.md]] — Relay 'proceed/release' from upstream downstream — it is an action cue, not a status no-op
+- [[wiki/learnings/1781219589907-resourcedescriptorheap-samplerdescriptorheap-input.md]] — ResourceDescriptorHeap/SamplerDescriptorHeap input syntax is front-end-only — backend already exists
+- [[wiki/learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md]] — Resume-after-pause: re-verify remote state before applying the saved resume plan
+- [[wiki/learnings/1782328977641-sanitizer-finding-fixes-must-remove-the-matching-e.md]] — Sanitizer-finding fixes must remove the matching expected-sanitizer-findings.txt suppression in the same PR
+- [[wiki/learnings/1781092138117-sibling-issues-sharing-one-fix-can-t-be-folded-acr.md]] — Sibling issues sharing one fix can't be folded across parallel orchestrator chains
+- [[wiki/learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md]] — Slices/shared worktree can be live: verify branch + open slice PRs before adopting (don't trust empty-branch/no-sentinel)
+- [[wiki/learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md]] — SPV_KHR_abort transitively requires SPV_KHR_constant_data; message is OpConstantDataKHR not a runtime composite
+- [[wiki/learnings/1779962007180-spvdescriptorheapext-stride-is-opaque-for-as-load-.md]] — spvDescriptorHeapEXT stride is opaque for AS — load-type must drive runtime-array base type
+- [[wiki/learnings/1782264945972-spvdescriptorheapext-unified-stride-per-type-array.md]] — spvDescriptorHeapEXT unified-stride: per-type arrays + symbolic-max construct (#11718)
+- [[wiki/learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md]] — Stale feature requests can be half-implemented at HEAD — verify before scoping
+- [[wiki/learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md]] — Stale PR fix-requests: verify base vs current main, and issue-vs-PR, before implementing
+- [[wiki/learnings/1781352352298-sweep-coworkers-suppress-re-confirmation-reports-a.md]] — Sweep coworkers: suppress re-confirmation reports, alert only on deltas
+- [[wiki/learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md]] — Test-Agent-Filed Issues Need Trigger Verification
+- [[wiki/learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md]] — This environment HAS an NVIDIA GPU (nvidia-smi works) despite CLAUDE.md saying "no GPU" — but no Vulkan loader, so Vulkan execution still unavailable
+- [[wiki/learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md]] — Triaging external-dependency tracking issues (verify suppression PR is merged + locate upstream tracker/fix)
+- [[wiki/learnings/1782448931140-uninit-checker-storing-an-address-isn-t-a-read-and.md]] — Uninit-checker: storing an ADDRESS isn't a read; and run the FULL suite for broad-blast-radius frontend changes
+- [[wiki/learnings/1781178144676-verify-issue-pr-linkage-with-all-github-auto-close.md]] — Verify issue↔PR linkage with ALL GitHub auto-close keywords, not just "Fixes"
+- [[wiki/learnings/1780510388169-verify-live-github-state-before-acting-on-a-hold-r.md]] — Verify live GitHub state before acting on a "hold/revert/change-posture" instruction — instructions can be stale
+- [[wiki/learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md]] — Verify live PR draft/ready state before reporting it — maintainers can flip it
+- [[wiki/learnings/1781251548493-verify-reporter-s-release-actually-predates-the-fi.md]] — Verify reporter's release actually predates the fix before telling them to update
+- [[wiki/learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md]] — Workflow-YAML rename: push is server-rejected — issue-comment diff is the sanctioned outcome
+- [[wiki/learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md]] — Worktree-GC reap: safe-execution facts (branch refs survive; workflows-perm blocks wip/reap; pipefail bug)

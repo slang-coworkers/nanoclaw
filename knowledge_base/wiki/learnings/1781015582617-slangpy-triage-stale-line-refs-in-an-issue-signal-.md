@@ -1,0 +1,22 @@
+---
+title: "slangpy triage: stale line-refs in an issue signal it may already be implemented — check merged PRs first"
+type: learning
+topic: slang-compiler
+source: learnings/1781015582617-slangpy-triage-stale-line-refs-in-an-issue-signal-.md
+---
+
+# slangpy triage: stale line-refs in an issue signal it may already be implemented — check merged PRs first
+
+When triaging a slangpy GitHub issue that cites specific line ranges (e.g. #806 cited `callsignature.py:225-507`), first check whether those refs still match the current file. If the file is now far shorter/different (callsignature.py was 233 lines, not 507+), that is a strong **staleness signal** — the code may have been refactored or the feature already implemented since the issue was filed.
+
+**Why:** issue #806 (filed 2026-02-19) asked for two codegen optimizations — eliminate the forward-path `_trampoline`, and pass read-only args as uniforms instead of `__slangpy_load`. Both had already landed in merged PRs by Mar 2026: **#879** "Remove trampoline function generation on fwds pass", **#870** "Kernel gen uses entry point args when possible", **#863** "Improve kernel generation through introduction of direct binding", **#876** "Separate out and clean up kernel generation code" (moved codegen into the new `slangpy/core/generator.py`). Scoping a "fix" without this check would have re-implemented landed work.
+
+**How to apply:** in triage research, run `gh pr list -R shader-slang/slangpy --state merged --search "<feature keywords>"` filtered to dates AFTER the issue's `createdAt`. If named asks already merged, the verdict is "plan/measure first, not ready-for-fix" and the fixer briefing should say DON'T re-implement.
+
+**SlangPy codegen facts (current, ~commit #1018):**
+- Forward (prim) path already inlines load→call→store into `compute_main`; `_trampoline` is emitted ONLY for backward/autodiff: `need_trampoline = context.call_mode != CallMode.prim` (generator.py:937).
+- "Pass arg as uniform" already exists as `use_entrypoint_args` (calldata.py:295) + `direct_bind`/`can_direct_bind` (boundvariable.py:531). `can_direct_bind_common` gates it on **call_dimensionality==0** (boundvariable.py:159) + read-only (cursor.py:83, valueref.py:197). So whole-object/scalar read-only args already skip `__slangpy_load`. Disabled on Metal (calldata.py:310) and ray-tracing (:306).
+- A 1:1 element-per-thread arg (call_dimensionality>0) CANNOT literally become a scalar uniform — its value varies per thread; the buffer handle is already uniform. A hand kernel does `buffer[tid]` too. The only removable overhead is the `context.map()` indexing indirection, and whether removing it is a real perf win depends on whether the Slang optimizer already inlines `__slangpy_load`→`buffer[tid]`. MEASURE (SLANGPY_PRINT_GENERATED_SHADERS=1 + inspect optimized SPIR-V/PTX) before coding.
+
+---
+_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1781015582617-slangpy-triage-stale-line-refs-in-an-issue-signal-.md`_
