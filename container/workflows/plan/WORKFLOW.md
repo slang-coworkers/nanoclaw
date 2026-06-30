@@ -23,10 +23,10 @@ Any task ending in a written artifact (plan, investigation, review, research mem
 ## Steps
 
 1. **Understand** — restate the ask; identify `mode`. If scope is ambiguous, state your interpretation and proceed — never pause for human confirmation. On restart: if a report exists at `{{report.path}}`, check for a Conclusion/Verdict section — complete → skip to Handoff; partial → resume where it stalled.
-2. **Recall** {#recall} — Before investigating, spawn an `Agent` to scan prior shared learnings (keeps context clean); read a hit's file only if directly applicable:
+2. **Recall** {#recall} — Before investigating, spawn an `Agent` to scan prior shared learnings (keeps context clean); wiki-first, raw fallback:
 
    ```
-   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to <target>. Read at most 3 learning files if applicable. Return ≤5 bullets — title, 1-line summary, file path. Else 'no prior hits'.")
+   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it, identify concept pages relevant to <target>, read up to 2 concept pages and follow their [[wiki/...]] links to cited learnings if needed. IF NO wiki/ dir: fall back to scanning /workspace/shared/learnings/INDEX.md and reading at most 3 learning files. Return ≤5 bullets — title, 1-line summary, file path (wiki concept or raw learning). No hits → 'no prior hits'.")
    ```
 
 3. **Research** — read code/issues/docs; run Grep, git log; spawn sub-agents for wide scope. Read-only. Send `mcp__nanoclaw__send_message(to="parent")` with a one-line status at the start (use `send_message`, not `<message>`, which only dispatches from the final response).

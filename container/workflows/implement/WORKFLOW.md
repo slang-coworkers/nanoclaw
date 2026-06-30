@@ -34,9 +34,9 @@ Pure execution of a plan; diagnosis lives in `/plan`.
    cd /workspace/agent/wt-{{target_slug}}
    ```
    All editing/building/committing happens there. **[MUST NOT] Worktree isolation.** You can SEE sibling `wt-<other-target>/` dirs but **never read, write, mv, rm, or `git worktree remove`** them (wrong-source confusion, mid-build failures). `/workspace/agent/` full → **report `blocked` to parent** with `df -h /workspace/agent` (the worktree volume — a separate, larger disk than the always-healthy root mount); don't delete sibling worktrees. Never ask permission between steps; log judgment calls. Loop back to plan at most **2 times**; third failure → escalate. On restart: read `{{implementation_log.path}}` + `git log --oneline -10`, `cd` into your worktree, resume.
-2. **Recall** {#recall} — Before changing anything, spawn an `Agent` subagent to scan prior learnings (keeps context clean); read a hit file directly only if applicable:
+2. **Recall** {#recall} — Before changing anything, spawn an `Agent` subagent to scan prior learnings (keeps context clean); wiki-first, raw fallback:
    ```
-   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to <target>. Read at most 3 learning files if directly applicable. Return ≤5 bullets — title, 1-line summary, path. No hits → 'no prior hits'.")
+   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it, identify concept pages relevant to <target>, read up to 2 concept pages and follow their [[wiki/...]] links to cited learnings if needed. IF NO wiki/ dir: fall back to scanning /workspace/shared/learnings/INDEX.md and reading at most 3 learning files. Return ≤5 bullets — title, 1-line summary, file path (wiki concept or raw learning). No hits → 'no prior hits'.")
    ```
 3. **Reproduce** {#reproduce} — Bug fixes: failing test. Features: skeleton showing the gap. Commit separately so CI shows the delta.
 4. **Change** {#change} — Minimum edit matching the plan; one subsystem, existing style. Doc-only: edit existing files before creating new.
