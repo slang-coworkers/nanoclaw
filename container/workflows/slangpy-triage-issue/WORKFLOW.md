@@ -22,7 +22,7 @@ Posture: three research pillars — DeepWiki (architecture), local code via suba
 2. **Recall** {#recall} — Spawn an `Agent` subagent to scan prior triage learnings; wiki-first, raw fallback:
 
    ```
-   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it, identify concept pages relevant to slangpy issue #<number>'s topic, prior triage patterns, or duplicate-resolution heuristics, read up to 2 concept pages and follow their [[wiki/...]] links to cited learnings if needed. IF NO wiki/ dir: fall back to scanning /workspace/shared/learnings/INDEX.md and reading at most 3 learning files. Return ≤5 bullets — title, 1-line summary, file path (wiki concept or raw learning). No hits → 'no prior hits'.")
+   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it with limit=100 (concepts section only — the file is large), identify concept pages relevant to slangpy issue #<number>'s topic, prior triage patterns, or duplicate-resolution heuristics, read up to 2 concept pages and follow their links to cited learnings if needed. If no concept fits, Grep wiki/ for keywords. IF NO wiki/ dir: fall back to Grep /workspace/shared/learnings/ for keywords and reading at most 3 hits. Return ≤5 bullets — title, 1-line summary, file path. No hits → 'no prior hits'.")
    ```
 
 3. **Research — three pillars in parallel** {#research} — Fan out via subagents (cost is context, not wall clock).
