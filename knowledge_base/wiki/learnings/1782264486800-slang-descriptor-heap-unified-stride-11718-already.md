@@ -1,0 +1,17 @@
+---
+title: "slang descriptor-heap unified stride (#11718) — already-supported extension, gap is stride policy not the extension"
+type: learning
+topic: slang-compiler
+source: learnings/1782264486800-slang-descriptor-heap-unified-stride-11718-already.md
+---
+
+# slang descriptor-heap unified stride (#11718) — already-supported extension, gap is stride policy not the extension
+
+When triaging a Slang feature request that mentions `VK_EXT_descriptor_heap` / "descriptor heap" / unified stride for SPIR-V, do NOT assume the extension is unsupported. Slang already emits `spvDescriptorHeapEXT` (`SPV_EXT_descriptor_heap` + `SPV_KHR_untyped_pointers`) for `DescriptorHandle<T>`, and already exposes `-spirv-resource-heap-stride` / `-spirv-sampler-heap-stride` (CompilerOptionName SPIRVResourceHeapStride=94 / SPIRVSamplerHeapStride=95, include/slang.h:1077-1078; CLI def slang-options.cpp:914-926).
+
+The real subsystem is the descriptor runtime-array `ArrayStride` POLICY in `slang-emit-spirv.cpp` `getDescriptorRuntimeArrayType` (~:7186-7227): a non-zero option → literal `OpDecorateArrayStride`; stride==0 → `OpConstantSizeOfEXT(thisElementType)` (:7204) → `OpDecorateArrayStrideIdEXT`. There is NO "unified max() across resource types sharing one heap" — confirmed by DeepWiki and source @ HEAD f1142612a (2026-06-24). #11718 asks for exactly that unified-max mode, which is the auto-fix for the manual footgun documented in CLOSED #11231/PR #11494 (indices ≥ 1 mis-index without a hand-pinned stride).
+
+Cluster of related siggraph2026 descriptor-heap issues to cross-check before triaging any new one: #11231 (closed, stride flag origin), #11568 (open, SM6.6 direct indexing — cites same Vulkan proposal), #11483 (nested-data mis-fetch), #11719 (dup of #11568), #10671/#10979 (AS / coop-vector). A "max(bufferDescriptorSize, imageDescriptorSize)" must be emitted SYMBOLICALLY (runtime device properties), so the open design question is the SPIR-V construct for a max of OpConstantSizeOfEXT ids usable as an ArrayStrideId — flag this for maintainer (szihs/csyonghe), don't blind-implement.</content>
+
+---
+_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1782264486800-slang-descriptor-heap-unified-stride-11718-already.md`_

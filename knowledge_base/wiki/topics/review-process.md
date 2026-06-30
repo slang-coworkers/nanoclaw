@@ -1,0 +1,32 @@
+---
+title: "Review & process"
+type: topic
+---
+
+# Review & process
+
+23 learnings. Catalog: [[wiki/index.md]]
+
+- [[wiki/learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md]] — A maintainer's literal review suggestion can be locally unsafe — verify all read sites of a reused predicate
+- [[wiki/learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md]] — Always use markdown links for issues and reviews
+- [[wiki/learnings/1782175276058-depth-sv-semantics-are-output-only-e30702-a-review.md]] — Depth SV semantics are output-only (E30702) — a reviewer-traced 'inout duplicate' gap can be unreachable
+- [[wiki/learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md]] — Devin Review done-detector races AI-analysis text render
+- [[wiki/learnings/1781731413287-devin-reviewer-b-can-exit-rc-0-while-analysis-is-s.md]] — Devin reviewer (B) can exit rc=0 while analysis is still "Generating" — a false all-clear
+- [[wiki/learnings/1781192458084-devin-reviewer-devin-fetch-can-exit-0-while-analys.md]] — Devin reviewer (devin-fetch) can exit 0 while analysis still "Generating" — treat empty Bugs/Flags as low-confidence
+- [[wiki/learnings/devin-reviewer-scrape-reliability.md]] — Devin reviewer scrape reliability
+- [[wiki/learnings/1781179189519-devin-reviewer-unknown-commit-status-generating-we.md]] — Devin reviewer: 'unknown' commit-status + 'Generating...' = weak signal, not a clean bill
+- [[wiki/learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md]] — Don't instruct coworkers to mark PRs ready-for-review (drafts-only is admin-set)
+- [[wiki/learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md]] — Empirical "I tested it" probes can miss the wrong sub-case — Devin's persistent flags deserve scrutiny even when initial reading says misread
+- [[wiki/learnings/1782465097683-internal-agent-review-approve-is-not-a-github-main.md]] — Internal agent-review APPROVE is not a GitHub maintainer approval
+- [[wiki/learnings/1780769199724-multi-round-pr-review-converges-scope-down-to-targ.md]] — Multi-round PR review converges; scope down to targeted verify when delta is comment-only
+- [[wiki/learnings/1780690000002-never-add-a-reviewer-to-a-draft-pr-it-spams-the-human.md]] — Never add a reviewer to a draft PR — it spams the human
+- [[wiki/learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md]] — PDF transcript extraction: pymupdf blocks beats llama-index
+- [[wiki/learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md]] — PR-review heuristic: when a fix adds a null-possible invariant + helper, audit ALL structurally-identical sites
+- [[wiki/learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md]] — PR-review lenses: extracted-matcher integration gap + normalize-before-match blind spot
+- [[wiki/learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md]] — Reading arXiv/HF papers end-to-end with the Read tool
+- [[wiki/learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md]] — Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round
+- [[wiki/learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md]] — Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run
+- [[wiki/learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md]] — Reviewer-disagreement: "match canonical precedent" vs "precedent is itself wrong"
+- [[wiki/learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md]] — Triaging an issue that already has a community fix PR — review, don't duplicate
+- [[wiki/learnings/1780487356786-verify-not-constructible-defensive-only-claims-tha.md]] — Verify "not constructible / defensive-only" claims that waive reviewer artifacts
+- [[wiki/learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md]] — Verifying detached background PR-reviewer completion (Monitor + pgrep gotchas)

@@ -1,0 +1,19 @@
+---
+title: "Slang autodiff: gate derivative→primal capability propagation on explicit [require], and verify 'registers an association' claims"
+type: learning
+topic: slang-compiler
+source: learnings/1781186036448-slang-autodiff-gate-derivative-primal-capability-p.md
+---
+
+# Slang autodiff: gate derivative→primal capability propagation on explicit [require], and verify "registers an association" claims
+
+When propagating a user-defined derivative's capability requirements onto its primal (slang#11551, PR #11558, `SemanticsDeclCapabilityVisitor::visitFunctionDeclBase`):
+
+**1. Gate propagation on an explicit `[require]` — never propagate body-inferred caps unconditionally.** The core module (`source/slang/diff.meta.slang`) attaches *target-specialized derivative families* to all-targets builtins (`[ForwardDerivativeOf(transpose)]`, `mul`, `dot`, math intrinsics — ~64 inverse-placed derivatives) whose bodies use target-specific intrinsics. If you join those derivatives' `inferredCapabilityRequirements` onto the builtin primal, you impose conflicting target requirements on an all-targets builtin → **core-module compilation ABORTS** (`slang-bootstrap` exit 134, `AbortCompilationException`, and the diagnostic is SILENT because the core-module-compile sink has no writer). Gating on `derivativeFuncDecl->findModifier<RequireCapabilityAttribute>()` makes the loop inert for all core derivatives (verified: 0 carry `[require]`) while still honoring deliberate user `[require]` declarations. The `[require]` is the GATE (presence test), not a payload filter — the propagated payload stays the full `inferredCapabilityRequirements`.
+
+**2. Forward vs inverse placement use DIFFERENT mechanisms — verify before trusting a "both register an association" claim.** Forward placement (`[ForwardDerivative]`/`[BackwardDerivative]` ON THE PRIMAL) is a `UserDefinedDerivativeAttribute` MODIFIER. Inverse placement (`[ForwardDerivativeOf]`/`[BackwardDerivativeOf]` ON THE DERIVATIVE) registers a derivative ASSOCIATION on the primal (`registerAssociatedDecl`, read via `getAssociatedDeclsForDecl`). A second-opinion claimed forward placement *also* registers an association (which would make a single unified association loop viable) — FALSE: `grep -rn registerAssociatedDecl source/` shows it is called EXACTLY ONCE, in the inverse path (`checkDerivativeOfAttributeImpl`). A unified association loop would miss forward placements entirely. Lesson: a one-line grep settles "is X registered/produced here?" — do it before adopting an approach that depends on the answer.
+
+**3. Don't stack on a fork PR head that's massively diverged from master.** A triage handoff said "stacks on PR #11524 (fork branch fix-8144-derivative-capabilities)". `git log --oneline origin/master..<that-head>` + `git diff --stat` revealed the fork head was **3745 files / +12k−46k diverged from master** (a base=master PR off it is unreviewable; the auto-review bot would review the whole fork diff; and a fork branch can't be a GitHub PR base). Because the fix used only pre-existing APIs (independent of #11524), the right move was to `git reset --hard origin/master`, re-apply the change at the correct insertion point on master, rebuild+re-verify, and ship a clean STANDALONE PR. Always `git rev-list --count origin/master..<branch>` before deciding to stack; if the fix is independent, prefer current master.
+
+---
+_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1781186036448-slang-autodiff-gate-derivative-primal-capability-p.md`_

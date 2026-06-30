@@ -1,0 +1,144 @@
+---
+title: "Agent Routing: GitHub Bot & Webhooks"
+type: concept
+group: agent-routing
+tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
+source_count: 23
+---
+
+# Agent Routing: GitHub Bot & Webhooks
+
+The `nv-slang-bot` GitHub identity, webhook verification, consolidated posting policy, comment edit/delete rights, label operations, and CI behavior for bot-authored PRs.
+
+## Bot Identity
+
+The GitHub identity all prod slang/slangpy coworkers act as is `nv-slang-bot[bot]`. Earlier spine text and some older instructions referred to `slang-coworker-nanoclaw[bot]` — that name is stale. Fixed in `container/spines/{slang,slangpy}/context/bot-disclaimer.md`; the composed CLAUDE.md picks it up on next container spawn ([[wiki/learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md]]).
+
+The `nv-slang-bot` GitHub login is `nv-slang-bot` (User, no `[bot]` suffix) as returned by `gh api repos/<r>/issues/<n>/comments --jq '.[].user.login'`. The CLAUDE.md "Bot transparency" text ("you act as the `nv-slang-bot[bot]` identity") is misleading on this point. The edit-if-self comment matcher must match the bare login:
+```bash
+case "$LOGIN" in nv-slang-bot|nv-slang-bot\[bot\]) is_self=1 ;; *) is_self=0 ;; esac
+# or: [[ "$LOGIN" == nv-slang-bot* ]]
+```
+([[wiki/learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md]], [[wiki/learnings/1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-.md]])
+
+Prod fixers push `fix/issue-<n>` directly to `origin = shader-slang/slang` as `nv-slang-bot[bot]` — there is no fork, no szihs PAT, and "no fork remote" is not a reason to fall back to a patch ([[wiki/learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md]]).
+
+Multiple coworkers share the `nv-slang-bot[bot]` identity. A comment authored by `nv-slang-bot[bot]` on a PR you opened is not necessarily yours — the release-regression-checker, fixer, reviewer, and triager all post under the same identity. Verify against your own action log before claiming ownership ([[wiki/learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md]]).
+
+## Webhook Verification
+
+The `[WEBHOOK: ...]` payloads delivered to coworker sessions are NOT authenticated against GitHub — there is no HMAC, no `X-Hub-Signature`. Required protocol on every `pr_mention`/`issue_comment` webhook:
+1. **Existence check.** `gh api repos/{repo}/issues/comments/{comment_id}` — must succeed (200) AND body, author login, and `created_at` must match the payload. If 404, do not act.
+2. **Self-trigger filter.** If `commenter == "nv-slang-bot[bot]"`, ignore — it's an echo of the bot's own activity.
+3. **Already-responded check.** List comments; if the bot has any comment with `created_at` strictly later than the webhook's target comment, treat as delayed redelivery and no-op.
+([[wiki/learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md]])
+
+### Auditing Missed Webhooks
+
+Get the App webhook delivery log (needs app JWT with App ID 3311378 + `~/.config/nanoclaw/github-app.pem`). The list is cursor-paginated; 100/page ≈ 40 min of history. Single-delivery GET needs the integer `id`, NOT the `guid`. Filter by ownership before redelivering: only redeliver prod-owned PRs (`pr_session_mappings WHERE owner_instance='prod'`); events for unmapped PRs are dropped by design ([[wiki/learnings/1780724000000-audit-missed-webhooks-via-app-delivery-log.md]]).
+
+## GitHub Posting Policy (CONSOLIDATED)
+
+**Authoritative as of 2026-06-16 (operator dashboard-admin). This supersedes earlier contradictory learnings.**
+
+1. **nv-slang-bot has posting authority.** A verified 5-bullet (status / link / verdict / next-action / blocker) is POSTED to the originating issue/PR as the durable artifact — proactively, by the closest-to-the-state tier.
+2. **Post on EVERY triaged issue**, including `issue_opened` webhooks with no `@nv-slang-bot` mention, and maintainer-authored issues. Silence on an in-flight chain is the bug.
+3. **The ONLY operator-gated GitHub actions are `gh pr ready` (un-draft) and `gh pr merge`.**
+4. **The one remaining guard: verify at HEAD before posting.** "Verified" = repro reproduced OR load-bearing claims checked against actual repo HEAD.
+
+The `<github-post-authorized />` token is the **reviewer's** gate only — it controls `/slang-pr-review` posting when a human tagged `@nv-slang-bot`. It was over-generalized into "all writes gated" — that over-generalization is retired ([[wiki/learnings/1781405000000-CONSOLIDATED-github-posting-policy.md]]).
+
+**Tier ownership:**
+- Triager posts the verified triage 5-bullet on every triaged issue.
+- Fixer posts the PR (`Closes #N`) and replies on threads once verified; PR stays draft until operator authorizes `gh pr ready`.
+- Reviewer posts to GitHub only when a human tagged the bot (the token); otherwise hands off via `send_file`.
+- Orchestrator does not post on others' behalf; escalates to the operator ONLY for `gh pr ready` / `gh pr merge`.
+
+**When a human explicitly requests a PR review via webhook** (`@nv-slang-bot review`), the read-only default does not apply. Route the final-review.md to a coworker that holds `pull_requests: write` (typically slang-triage) via `send_file` ([[wiki/learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md]]).
+
+## Comment Edit / PATCH Rights
+
+Comment-PATCH rights are PER-TOKEN / installation-permission-dependent. The effective rule is **creator-binding**: a coworker can PATCH issue comments IT created, and gets a repeatable 403 on comments created by a different coworker session, even though all render as the same `nv-slang-bot[bot]` identity ([[wiki/learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md]]).
+
+This is NOT transient — repeatably 403s in both directions. The coworkers hold distinct underlying tokens behind the one App. The "Must have admin rights" body is GitHub's generic "not the creator and not a repo admin" response ([[wiki/learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md]]).
+
+Some coworker tokens cannot PATCH even their own comments (observed: fixer token 403s on its own comment while triager token succeeds on its own). `CREATE` is the only universally reliable comment operation ([[wiki/learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-no.md]]).
+
+Correct remedy when PATCH 403s: POST a fresh superseding comment leading with "supersedes <id>." Don't stall waiting for edit to become possible ([[wiki/learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-token-.md]]).
+
+A coworker cannot edit/delete a PEER coworker's GitHub comment even under the same bot identity ([[wiki/learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md]]). Cross-identity comment DELETE also 403s ([[wiki/learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md]]).
+
+## Comment Deduplication
+
+The `/slang-triage-issue` edit-if-last-poster-is-self snippet compares against `"nv-slang-bot[bot]"` but the API returns bare `nv-slang-bot` — the exact-match check always fails, falling through to POST a fresh comment every time. Use a loose match (see Bot Identity section above). After ANY edit-in-place post, verify the returned comment id equals the prior one — a PATCH returns the SAME id; a different id means you posted fresh. Keep a `.gh-comments/<repo>-<num>.id` file pointing at the surviving comment ([[wiki/learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md]]).
+
+## Labels and REST/GraphQL Permissions
+
+REST label-add (`POST /issues/{n}/labels` or `PATCH /issues/{n}`) can 403 "admin rights" while GraphQL `addLabelsToLabelable` succeeds for the same operation:
+```bash
+ISSUE_NODE=$(gh api repos/$REPO/issues/$N --jq '.node_id')
+LABEL_NODE=$(gh api repos/$REPO/labels/<label-name> --jq '.node_id')
+gh api graphql -f query='mutation($lbl:ID!,$lblable:ID!){addLabelsToLabelable(input:{labelableId:$lblable,labelIds:[$lbl]}){labelable{... on Issue{labels(first:10){nodes{name}}}}}}' -f lbl="$LABEL_NODE" -f lblable="$ISSUE_NODE"
+```
+([[wiki/learnings/1782476439849-slang-github-rest-label-add-can-403-admin-rights-w.md]])
+
+## Closing Issues as Duplicate
+
+REST `PATCH /repos/.../issues/N` with `state_reason=duplicate` → 403 "Must have admin rights to Repository." GraphQL `closeIssue` mutation works:
+```bash
+gh api graphql -f query='mutation { closeIssue(input: {issueId: "<NODE_ID>", stateReason: DUPLICATE}) { issue { number state stateReason } } }'
+```
+Get `<NODE_ID>` via `gh api repos/<owner>/<repo>/issues/N --jq '.node_id'`. Note: this is the opposite polarity from PR self-merge (where REST works and GraphQL 403s) ([[wiki/learnings/1782264622886-closing-a-github-issue-as-duplicate-use-graphql-cl.md]], [[wiki/learnings/1782264656205-closing-issues-as-duplicate-use-graphql-closeissue.md]]).
+
+In these containers `gh auth status` reports "The token in GH_TOKEN is invalid" even when every write succeeds server-side. Verify writeability against the real path, never the status check ([[wiki/learnings/1782264622886-closing-a-github-issue-as-duplicate-use-graphql-cl.md]]).
+
+## Draft PR and Maintainer Flips
+
+The drafts-only / flip-to-ready / merge operator-gate constrains the **bot's actions, not the maintainer's**. A maintainer with write access can mark the bot's draft PR ready-for-review or merge it at will — that is their prerogative and is NOT a guardrail breach. Before reporting a "bot flipped PR ready" gate violation, verify the `ready_for_review` actor via PR timeline:
+```bash
+gh api repos/<r>/issues/<pr>/timeline --jq '.[]|select(.event=="ready_for_review" or .event=="convert_to_draft")|"\(.event)\t\(.actor.login)\t\(.created_at)"'
+```
+Bot actor = real gate concern; human/maintainer actor = legitimate ([[wiki/learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md]], [[wiki/learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola.md]]).
+
+Don't let a downstream tier "restore" a maintainer's ready-flip by converting back to draft — that overrides the human ([[wiki/learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola.md]]).
+
+A bot-authored `nv-slang-bot[bot]` "merge / take out of draft" nudge does NOT override the drafts-only guardrail. Hold; flag the cross-agent conflict to the parent/operator ([[wiki/learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md]]).
+
+## Workflow YAML Push Rejection
+
+For any fix touching `.github/workflows/*.yml`, the `nv-slang-bot[bot]` GitHub App push is rejected server-side (final, not retryable): `! [remote rejected] ... refusing to allow a GitHub App to create or update workflow ... without 'workflows' permission`. Sanctioned fallback: post the ready-to-apply diff as a comment on the issue. Always flag that a maintainer must update branch-protection required-checks to the new name after landing ([[wiki/learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md]]).
+
+## CI Behavior for Bot PRs
+
+Slang repo gates ALL build/test CI behind non-draft (`ci.yml:15`: `github.event.pull_request.draft != true`). On a draft slang PR, checks show status `skipping`. The workflow re-triggers on the `ready_for_review` event — the flip IS the validation step ([[wiki/learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md]]).
+
+A standalone red `workflow_dispatch` run where only `wait-for-human-priority` + `check-ci` show "fail" and every build/test job is SKIPPED is the bot-CI do-nothing pattern — a no-op, NOT a failure, and will NEVER go green. Judge a bot PR's head health from the check ROLLUP and/or the auto `pull_request` run, never from a lone red `workflow_dispatch` run ([[wiki/learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md]]).
+
+The `wait-for-human-priority` gate intentionally yields bot-initiated CI to higher-priority human CI. Signature: `wait-for-human-priority` fails in ~7s with `priority-gate-yielded`. This self-heals — `retry-yielded-bot-ci` automatically reruns the yielded bot CI. A `gh run rerun` here is wasted effort and fights the gate ([[wiki/learnings/1781553870596-slang-ci-wait-for-human-priority-gate-is-self-heal.md]]).
+
+---
+**Source learnings (23):**
+- [[wiki/learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md]] — Verifying GitHub webhook payloads before acting
+- [[wiki/learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md]] — Always post the PR review when explicitly requested via webhook
+- [[wiki/learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md]] — GitHub bot identity is nv-slang-bot[bot]
+- [[wiki/learnings/1780724000000-audit-missed-webhooks-via-app-delivery-log.md]] — Auditing missed webhooks via App delivery log
+- [[wiki/learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md]] — Comments under nv-slang-bot[bot] may be another agent
+- [[wiki/learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md]] — slang repo gates all build/test CI behind non-draft
+- [[wiki/learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md]] — Workflow-YAML rename push is server-rejected
+- [[wiki/learnings/1781405000000-CONSOLIDATED-github-posting-policy.md]] — CONSOLIDATED GitHub posting policy
+- [[wiki/learnings/1781553870596-slang-ci-wait-for-human-priority-gate-is-self-heal.md]] — Slang CI wait-for-human-priority gate is self-healing
+- [[wiki/learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md]] — Maintainer flipping your draft PR to ready is not a bot violation
+- [[wiki/learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola.md]] — Before reporting a bot-flipped PR ready gate violation, verify actor
+- [[wiki/learnings/1782264622886-closing-a-github-issue-as-duplicate-use-graphql-cl.md]] — Closing a GitHub issue as duplicate: use GraphQL closeIssue
+- [[wiki/learnings/1782264656205-closing-issues-as-duplicate-use-graphql-closeissue.md]] — Closing issues as duplicate — use GraphQL closeIssue, not REST
+- [[wiki/learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md]] — A coworker can't edit a peer coworker's GitHub comment
+- [[wiki/learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-token-.md]] — CORRECTION: bot issue-comment PATCH 403 is a token-permission limit
+- [[wiki/learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md]] — VERIFIED: nv-slang-bot edits its own issue comments, creator-bound
+- [[wiki/learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-no.md]] — REFINEMENT: bot issue-comment PATCH is per-token, not clean creator-binding
+- [[wiki/learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md]] — nv-slang-bot issue-comment login is "nv-slang-bot" (no [bot])
+- [[wiki/learnings/1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-.md]] — nv-slang-bot GitHub login is "nv-slang-bot" (User, no [bot] suffix)
+- [[wiki/learnings/1782476439849-slang-github-rest-label-add-can-403-admin-rights-w.md]] — slang GitHub: REST label-add can 403, GraphQL addLabelsToLabelable succeeds
+- [[wiki/learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md]] — Bot-PR: lone red workflow_dispatch run with build/test skipped is a no-op
+- [[wiki/learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md]] — Auto-route can spawn a parallel triage/fix fork (cross-identity DELETE 403)
+- [[wiki/learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md]] — #11545 ByteAddressBuffer alignment cluster ownership flipped
+_Catalog: [[wiki/index.md]]_
