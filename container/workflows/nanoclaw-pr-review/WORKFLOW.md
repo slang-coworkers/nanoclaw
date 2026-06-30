@@ -22,10 +22,10 @@ Review a PR in `slang-coworkers/nanoclaw`: drive `agent-browser` to Devin's revi
    gh pr view <N> -R slang-coworkers/nanoclaw --json number,title,state,baseRefName,headRefName,isDraft
    ```
 
-2. **Recall** {#recall} — spawn an `Agent` subagent to scan prior learnings (keeps context clean); read a hit's file only if directly applicable.
+2. **Recall** {#recall} — spawn an `Agent` subagent (keeps context clean); wiki-first, raw fallback:
 
    ```
-   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to slang-coworkers/nanoclaw PR review or recurring Devin flags. Read at most 3 learning files if directly applicable. Return ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits' and stop.")
+   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it, identify concept pages relevant to slang-coworkers/nanoclaw PR review or recurring Devin flags, read up to 2 concept pages and follow their [[wiki/...]] links to cited learnings if needed. IF NO wiki/ dir: fall back to scanning /workspace/shared/learnings/INDEX.md and reading at most 3 learning files. Return ≤5 bullets — title, 1-line summary, file path (wiki concept or raw learning). No hits → 'no prior hits'.")
    ```
 
 3. **Preflight** {#preflight} — confirm `agent-browser` is installed; failure = misconfigured container, report and stop.
