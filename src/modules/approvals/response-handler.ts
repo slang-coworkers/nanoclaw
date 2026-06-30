@@ -103,7 +103,7 @@ async function handleRegisteredApproval(
   }
 
   // Plain Reject (or any other non-approve value) — instant fast path.
-  if (selectedOption !== 'approve') {
+  if (selectedOption.toLowerCase() !== 'approve') {
     await finalizeReject(approval, session, userId);
     return;
   }
