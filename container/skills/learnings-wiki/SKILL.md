@@ -35,7 +35,7 @@ coworker groups mount it read-only and cannot build the wiki.
 ## Query (navigate, don't vector-search)
 
 1. Read `wiki/index.md` → pick the relevant **concept** page (the synthesized answer).
-2. Open it; follow its inline `[[wiki/...]]` links by reading those files.
+2. Open it; follow its inline markdown links (`[title](wiki/...)`) by reading the linked files.
 3. No page fits? `Grep` `sources/learnings/` for keywords, read the top hits, answer **with citations**.
 Use `wiki/glossary.md` for a quick term → page jump.
 
@@ -57,7 +57,7 @@ spawn a sub-agent (Task tool) that reads that group's source files and writes on
 `wiki/concepts/<group>-<subtopic>.md` pages. Each concept page MUST:
 - merge the related learnings into one coherent explanation (don't just concatenate);
 - flag contradictions / supersessions in a dedicated section;
-- cite inline with the exact form `[[wiki/learnings/<stem>.md]]` (stem = source filename
+- cite inline with standard markdown links `[title](wiki/learnings/<stem>.md)` (stem = source filename
   minus the `sources/learnings/` prefix and `.md`);
 - end with a `**Source learnings (N):**` list covering every learning it used.
 Big or `misc` groups: sub-cluster into several pages by topical affinity. Process thoroughly,
@@ -130,7 +130,7 @@ ROOT = os.environ.get("WIKI_KB_ROOT") or os.getcwd()
 L1   = os.path.join(ROOT, "learnings")
 SRC  = os.path.join(ROOT, "sources", "learnings")
 WIKI = os.path.join(ROOT, "wiki")
-LINK = re.compile(r"\[\[(wiki/[^\]]+\.md)\]\]")
+LINK = re.compile(r"\[(?:[^\]]*)\]\((wiki/[^)]+\.md)\)")
 
 PATTERNS = [
     (re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"), "GITHUB_TOKEN"),
@@ -224,7 +224,7 @@ def build():
         body = re.sub(r"^\s*#\s+.*\n", "", text, count=1).lstrip("\n").rstrip()
         page = ["---", f'title: "{yesc(title)}"', "type: learning", f"topic: {topic}",
                 f"source: learnings/{fn}", "---", "", f"# {title}", "", body, "",
-                "---", f"_Topic: [[wiki/topics/{topic}.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/{stem}.md`_", ""]
+                "---", f"_Topic: [{TOPIC_LABEL.get(topic, topic)}](wiki/topics/{topic}.md) · [catalog](wiki/index.md) · source: `sources/learnings/{stem}.md`_", ""]
         open(os.path.join(WIKI, "learnings", stem + ".md"), "w", encoding="utf-8").write("\n".join(page))
         entries.append({"stem": stem, "title": title, "topic": topic, "ts": ts})
         clusters.setdefault(group, []).append(stem)
@@ -235,8 +235,8 @@ def build():
         items = sorted(by_topic.get(key, []), key=lambda e: e["title"].lower())
         if not items: continue
         lines = ["---", f'title: "{TOPIC_LABEL[key]}"', "type: topic", "---", "",
-                 f"# {TOPIC_LABEL[key]}", "", f"{len(items)} learnings. Catalog: [[wiki/index.md]]", ""]
-        lines += [f"- [[wiki/learnings/{e['stem']}.md]] — {e['title']}" for e in items] + [""]
+                 f"# {TOPIC_LABEL[key]}", "", f"{len(items)} learnings. [Catalog](wiki/index.md)", ""]
+        lines += [f"- [{e['title']}](wiki/learnings/{e['stem']}.md)" for e in items] + [""]
         open(os.path.join(WIKI, "topics", key + ".md"), "w", encoding="utf-8").write("\n".join(lines))
 
     _write_index(entries, by_topic)
@@ -266,13 +266,13 @@ def _write_index(entries, by_topic, concepts=None):
         idx += ["## Concepts (synthesized)", ""]
         for g, items in by_group.items():
             idx.append(f"### {GROUP_LABEL.get(g, g)}")
-            idx += [f"- [[{c['rel']}]] — {c['title']}" for c in items] + [""]
+            idx += [f"- [{c['title']}]({c['rel']})" for c in items] + [""]
     idx += ["## Topics", ""]
     for key in TOPIC_ORDER:
-        if by_topic.get(key): idx.append(f"- [[wiki/topics/{key}.md]] — {TOPIC_LABEL[key]} ({len(by_topic[key])})")
+        if by_topic.get(key): idx.append(f"- [{TOPIC_LABEL[key]}](wiki/topics/{key}.md) ({len(by_topic[key])})")
     idx += ["", "## All learnings (chronological)", ""]
     for e in sorted(entries, key=lambda e: e["ts"]):
-        idx.append(f"- [[wiki/learnings/{e['stem']}.md]] — {e['title']}")
+        idx.append(f"- [{e['title']}](wiki/learnings/{e['stem']}.md)")
     open(os.path.join(WIKI, "index.md"), "w", encoding="utf-8").write("\n".join(idx) + "\n")
 
 def finalize():
@@ -305,7 +305,7 @@ def finalize():
     gl = ["---", 'title: "Glossary / Concepts"', "type: nav", "---", "", "# Concepts", ""]
     for g, items in bg.items():
         gl.append(f"**{GROUP_LABEL.get(g, g)}**")
-        gl += [f"- [[{c['rel']}]] — {c['title']}" for c in items] + [""]
+        gl += [f"- [{c['title']}]({c['rel']})" for c in items] + [""]
     open(os.path.join(WIKI, "glossary.md"), "w", encoding="utf-8").write("\n".join(gl))
     # validate
     pages = glob.glob(os.path.join(WIKI, "**", "*.md"), recursive=True)
