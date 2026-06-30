@@ -9,14 +9,30 @@ states the rules and the procedure; this file holds the detail each step points 
 *all* sessions, unfiltered. List with `--json` and filter the `gh-issue-` prefix **client-side**:
 
 ```bash
-ncl sessions list --json \
+ncl sessions list --limit 10000 --json \
   | python3 -c 'import json,sys; print(json.dumps([s for s in json.load(sys.stdin)["data"] if (s.get("thread_id") or "").startswith("gh-issue-")]))'
 ```
+
+**`--limit 10000` is mandatory** — the default is 200, which silently truncates and drops chains
+from the universe (the #11802 incident: invisible for days because its session was beyond the
+200-row default window).
 
 `ncl sessions list --json` returns `{"id":…,"ok":true,"data":[…]}`; each session row has `id`,
 `thread_id`, `container_status`, `last_active`, `agent_group_id`. Exact-column filters DO work
 (`--container_status running`); only prefix matching is unsupported. Per-session last activity:
 `ncl sessions messages --id <sess> --limit 1 --json`.
+
+**Exhaustive pull (preferred).** Instead of assembling the chains payload by hand, pipe through the
+bundled `scripts/pull-universe.sh` which calls `ncl` + `gh` for every chain deterministically:
+
+```bash
+bash scripts/pull-universe.sh --state memory/supervisor-state.json \
+  | python3 scripts/scan.py > scan-out.json
+```
+
+This eliminates the sampling gap — every `gh-issue-*` session is fetched and classified. Closed
+issues are filtered out automatically (the script reads `issue_open` from `gh issue view`). Use
+this as the default path; fall back to manual assembly only if the script fails (e.g. `gh` auth).
 
 **Deterministic classification → `scripts/scan.py`.** Don't re-derive the set math and the activity
 clock by hand each tick (that re-derivation is what produced the documented silent-2-days,
