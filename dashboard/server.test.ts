@@ -105,6 +105,19 @@ function createDashboardTestDb(): Database.Database {
       sidebar_group TEXT,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      agent_group_id TEXT NOT NULL,
+      messaging_group_id TEXT,
+      thread_id TEXT,
+      agent_provider TEXT,
+      status TEXT DEFAULT 'active',
+      container_status TEXT DEFAULT 'stopped',
+      last_active TEXT,
+      created_at TEXT NOT NULL,
+      hidden_at TEXT,
+      pinned_at TEXT
+    );
     CREATE TABLE IF NOT EXISTS messaging_groups (
       id TEXT PRIMARY KEY,
       channel_type TEXT NOT NULL,
