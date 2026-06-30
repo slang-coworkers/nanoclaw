@@ -542,16 +542,16 @@ function funnelFlowHtml(ip) {
     <!-- where every actionable issue goes -->
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Where the ${c.actionable} actionable issues went:</div>
     ${stacked(c.actionable, actSegs)}
-    <div style="margin-top:8px;line-height:1.9">
-      ${chip(C.merged, 'merged ★', bp.merged)}
-      ${chip(C.shipped, 'shipped-draft', bp.shipped_draft)}
-      ${chip(C.ready, 'pr-ready', bp.pr_ready)}
-      ${bp.pr_open ? chip(C.open, 'pr-open', bp.pr_open) : ''}
-      ${chip(C.closed, 'pr-closed/superseded', bp.pr_closed)}
-      ${chip(C.triage, 'triage-only', c.triage_only)}
-      ${chip(C.resolved, 'resolved-elsewhere', c.resolved_elsewhere)}
-      ${chip(C.never, 'never-engaged', c.never_engaged)}
-    </div>
+    <table style="margin-top:10px;border-collapse:collapse;width:100%;font-size:12px">
+      <tr><td style="padding:4px 8px 4px 0">${chip(C.merged, 'merged ★', bp.merged)}</td><td style="padding:4px 0;color:var(--text-muted)">Fix shipped to main — fully done</td></tr>
+      <tr><td style="padding:4px 8px 4px 0">${chip(C.shipped, 'shipped-draft', bp.shipped_draft)}</td><td style="padding:4px 0;color:var(--text-muted)">Fix written &amp; CI passes, held as draft — needs human to review and promote</td></tr>
+      <tr><td style="padding:4px 8px 4px 0">${chip(C.ready, 'pr-ready', bp.pr_ready)}</td><td style="padding:4px 0;color:var(--text-muted)">PR open &amp; CI passes, marked ready — waiting for maintainer to approve and merge</td></tr>
+      ${bp.pr_open ? `<tr><td style="padding:4px 8px 4px 0">${chip(C.open, 'pr-open', bp.pr_open)}</td><td style="padding:4px 0;color:var(--text-muted)">PR open, CI still running or pending review</td></tr>` : ''}
+      <tr><td style="padding:4px 8px 4px 0">${chip(C.closed, 'pr-closed/superseded', bp.pr_closed)}</td><td style="padding:4px 0;color:var(--text-muted)">Bot's fix wasn't good enough — PR closed without merging</td></tr>
+      <tr><td style="padding:4px 8px 4px 0">${chip(C.triage, 'triage-only', c.triage_only)}</td><td style="padding:4px 0;color:var(--text-muted)">Bot analyzed the issue but didn't produce a PR</td></tr>
+      <tr><td style="padding:4px 8px 4px 0">${chip(C.resolved, 'resolved-elsewhere', c.resolved_elsewhere)}</td><td style="padding:4px 0;color:var(--text-muted)">Human developers fixed the issue independently</td></tr>
+      <tr><td style="padding:4px 8px 4px 0">${chip(C.never, 'never-engaged', c.never_engaged)}</td><td style="padding:4px 0;color:var(--text-muted)">Issue was not picked up by the bot</td></tr>
+    </table>
 
     <div style="margin-top:16px">${funnelWeeklyTrendSvg(ip.weekly || [])}</div>`;
 }
