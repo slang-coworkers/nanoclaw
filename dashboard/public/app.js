@@ -270,11 +270,41 @@ function setLiveStatus(label, colorVar) {
 }
 
 // --- WebSocket ---
-function switchToTab(tabId) {
+const TAB_HASH_MAP = { 'pixel-office': 'pixel-office', coworkers: 'cw', observability: 'timeline', admin: 'admin' };
+const HASH_TAB_MAP = Object.fromEntries(Object.entries(TAB_HASH_MAP).map(([k, v]) => [v, k]));
+
+function switchToTab(tabId, { syncHash = true } = {}) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach((t) => t.classList.remove('active'));
   document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
   document.getElementById(tabId)?.classList.add('active');
+  if (syncHash && tabId !== 'coworkers') syncTabHash(tabId);
+}
+
+function syncTabHash(tabId) {
+  const slug = TAB_HASH_MAP[tabId];
+  if (!slug) return;
+  let hash = `#/${slug}`;
+  if (tabId === 'admin' && adminState.panel && adminState.panel !== 'overview') {
+    hash += `/${adminState.panel}`;
+  }
+  if (location.hash !== hash) history.replaceState(null, '', hash);
+}
+
+function applyTabHash() {
+  const hash = location.hash || '';
+  if (hash.startsWith('#/cw')) return false;
+  const m = /^#\/([^/]+)(?:\/(.+))?$/.exec(hash);
+  if (!m) return false;
+  const tabId = HASH_TAB_MAP[m[1]];
+  if (!tabId) return false;
+  switchToTab(tabId, { syncHash: false });
+  if (tabId === 'admin' && m[2]) {
+    const panel = m[2];
+    const pill = document.querySelector(`.admin-pill[data-panel="admin-${panel}"]`);
+    if (pill) pill.click();
+  }
+  return true;
 }
 
 // Issue funnel panel — reads the cached snapshot from /api/funnel (written by
@@ -3666,6 +3696,7 @@ document.querySelectorAll('.admin-pill').forEach((pill) => {
     document.getElementById(panelId).classList.add('active');
     const name = panelId.replace('admin-', '');
     adminState.panel = name;
+    syncTabHash('admin');
     // Signal visibility for expensive operations (ccusage refresh).
     // Cost is shown on Overview, not Infra — gate on Overview being open.
     fetch(`/api/admin-infra-visible?visible=${name === 'overview'}`);
@@ -6964,11 +6995,11 @@ function normalizePathRouteToHash() {
 
 // Hash-routing: restore state on load, reconcile on history navigation.
 normalizePathRouteToHash();
-window.addEventListener('hashchange', () => applyCwUrl());
+window.addEventListener('hashchange', () => { if (!applyTabHash()) applyCwUrl(); });
 // Apply initial URL after the coworker list has been populated. The first
 // applyState() call fills state.registeredGroups; this listener fires after
 // that the first time via a short deferral.
-setTimeout(() => applyCwUrl(), 500);
+setTimeout(() => { if (!applyTabHash()) applyCwUrl(); }, 500);
 
 // Memory editor is read-only (CLAUDE.md re-composed at container startup from coworkerType)
 
