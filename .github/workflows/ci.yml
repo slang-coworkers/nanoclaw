@@ -170,6 +170,8 @@ jobs:
         run: pnpm run validate:templates
 
       - name: Host tests
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: pnpm exec vitest run
 
       - name: Container tests
