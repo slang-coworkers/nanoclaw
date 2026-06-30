@@ -1674,20 +1674,8 @@ function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
     };
   }
   // ccusage gives totals across ALL models (claude+codex). To get the
-  // Claude-only slice, prefer per-model breakdown if present; otherwise
-  // proportionally split (claudeCount / totalModelCount).
-  const allCount = allModels.length || 1;
-  const claudeCount = modelsUsed.length;
-  const claudeShare = claudeCount / allCount;
-  const inputTokens = Math.round(((raw.inputTokens as number) || 0) * claudeShare);
-  const outputTokens = Math.round(((raw.outputTokens as number) || 0) * claudeShare);
-  const cacheCreationTokens = Math.round(((raw.cacheCreationTokens as number) || 0) * claudeShare);
-  const cacheReadTokens = Math.round(((raw.cacheReadTokens as number) || 0) * claudeShare);
-  const totalTokens = Math.round(((raw.totalTokens as number) || 0) * claudeShare);
-  const totalCost = ((raw.totalCost as number) || 0) * claudeShare;
-  // Synthesize modelBreakdowns if absent: split totals proportionally across modelsUsed.
-  // For a single model (the common case), this is exact. For mixed-model days we lose
-  // per-model granularity in the UI but keep the totals correct.
+  // Claude-only slice, prefer per-model breakdown if present (sum the
+  // Claude-only entries); otherwise proportionally split.
   const rawBreakdowns = raw.modelBreakdowns as
     | {
         modelName: string;
@@ -1699,22 +1687,42 @@ function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
       }[]
     | undefined;
   let modelBreakdowns: CcusageDayEntry['modelBreakdowns'];
+  let inputTokens: number;
+  let outputTokens: number;
+  let cacheCreationTokens: number;
+  let cacheReadTokens: number;
+  let totalTokens: number;
+  let totalCost: number;
   if (Array.isArray(rawBreakdowns) && rawBreakdowns.length > 0) {
-    // Filter rawBreakdowns to Claude-only models too (defense-in-depth if a
-    // future ccusage version restores breakdowns including codex entries).
     modelBreakdowns = rawBreakdowns.filter((mb) => isClaudeModel(mb.modelName)).map((mb) => ({ ...mb }));
-  } else if (modelsUsed.length > 0) {
-    const share = 1 / modelsUsed.length;
-    modelBreakdowns = modelsUsed.map((modelName) => ({
-      modelName,
-      inputTokens: Math.round(inputTokens * share),
-      outputTokens: Math.round(outputTokens * share),
-      cacheCreationTokens: Math.round(cacheCreationTokens * share),
-      cacheReadTokens: Math.round(cacheReadTokens * share),
-      cost: totalCost * share,
-    }));
+    inputTokens = modelBreakdowns.reduce((s, mb) => s + (mb.inputTokens || 0), 0);
+    outputTokens = modelBreakdowns.reduce((s, mb) => s + (mb.outputTokens || 0), 0);
+    cacheCreationTokens = modelBreakdowns.reduce((s, mb) => s + (mb.cacheCreationTokens || 0), 0);
+    cacheReadTokens = modelBreakdowns.reduce((s, mb) => s + (mb.cacheReadTokens || 0), 0);
+    totalTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
+    totalCost = modelBreakdowns.reduce((s, mb) => s + (mb.cost || 0), 0);
   } else {
-    modelBreakdowns = [];
+    const allCount = allModels.length || 1;
+    const claudeShare = modelsUsed.length / allCount;
+    inputTokens = Math.round(((raw.inputTokens as number) || 0) * claudeShare);
+    outputTokens = Math.round(((raw.outputTokens as number) || 0) * claudeShare);
+    cacheCreationTokens = Math.round(((raw.cacheCreationTokens as number) || 0) * claudeShare);
+    cacheReadTokens = Math.round(((raw.cacheReadTokens as number) || 0) * claudeShare);
+    totalTokens = Math.round(((raw.totalTokens as number) || 0) * claudeShare);
+    totalCost = ((raw.totalCost as number) || 0) * claudeShare;
+    if (modelsUsed.length > 0) {
+      const share = 1 / modelsUsed.length;
+      modelBreakdowns = modelsUsed.map((modelName) => ({
+        modelName,
+        inputTokens: Math.round(inputTokens * share),
+        outputTokens: Math.round(outputTokens * share),
+        cacheCreationTokens: Math.round(cacheCreationTokens * share),
+        cacheReadTokens: Math.round(cacheReadTokens * share),
+        cost: totalCost * share,
+      }));
+    } else {
+      modelBreakdowns = [];
+    }
   }
   return {
     date,
