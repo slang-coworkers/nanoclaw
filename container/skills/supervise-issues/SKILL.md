@@ -26,10 +26,11 @@ from `thread_id`. Resolve the real PR with `gh` (see reference.md → *Resolving
 
 These hold across every step below; the steps reference them by number rather than restating them.
 
-- **R1 — Discover live every tick.** The chain universe is `ncl sessions list --json` filtered
-  client-side to `thread_id` starting `gh-issue-` (there is **no** `--thread-prefix` flag — `ncl`
-  silently ignores unknown flags and returns *all* sessions, so the prefix filter MUST happen in
-  your pipe; see reference.md → *Live discovery + the scan script*), unioned with the keys in
+- **R1 — Discover live every tick.** The chain universe is `ncl sessions list --limit 10000 --json`
+  filtered client-side to `thread_id` starting `gh-issue-` (the default limit is 200 which silently
+  truncates — `--limit 10000` is mandatory; there is **no** `--thread-prefix` flag — `ncl` silently
+  ignores unknown flags and returns *all* sessions, so the prefix filter MUST happen in your pipe;
+  see reference.md → *Live discovery + the scan script*), unioned with the keys in
   `supervisor-state.json`. The tracker and state JSON are the *prior snapshot* (for deltas), never
   the list of chains. Any `gh-issue-` session not already journaled is a 🆕 NEW chain to add this
   tick. Hand the per-chain payload to `scripts/scan.py` for the deterministic classification
@@ -74,13 +75,28 @@ These hold across every step below; the steps reference them by number rather th
 
 ### 1. Build the status table
 
-Discover the universe live (R1) and dedup against journal keys (R2). For each chain, resolve its
-real PR with `gh` and confirm the target issue from the PR body (reference.md → *Resolving a
-chain's real PR*); if the PR `Fixes` a different issue than the `thread_id` suggests, record it
-under the issue the PR actually fixes and flag the mismatch. Journal no-PR chains too, with their
-disposition and triage-comment artifact (R3). For PR-bearing chains, also read the CI cell (R9)
-and record the latest `workflow_dispatch` run id (reference.md → *CI status + rebase nudge*). Build
-one row per chain: `repo / issue / thread_id / pr / ci / last_activity_by_us / state`.
+**Use `scripts/pull-universe.sh` (preferred).** It exhaustively enumerates all `gh-issue-*` sessions
+via `ncl --limit 10000`, fetches PR/comments/outbound for each chain via `gh`/`ncl`, filters out
+closed issues (skips expensive fetches), and pipes the result directly into `scan.py`:
+
+```bash
+bash scripts/pull-universe.sh --state memory/supervisor-state.json \
+  | python3 scripts/scan.py > scan-out.json
+```
+
+The output `scan-out.json` contains `{rows, summary, state}` — read `rows` for the board, write
+`state` back to `memory/supervisor-state.json`. Closed issues appear with minimal data
+(`issue_open: false`) so scan.py can archive them; active issues get full PR/comments/outbound.
+Report **total** (all chains) and **active** (open issues) counts in the board header.
+
+**Fallback (manual assembly):** if the script fails, discover the universe live (R1) and dedup
+against journal keys (R2). For each chain, resolve its real PR with `gh` and confirm the target
+issue from the PR body (reference.md → *Resolving a chain's real PR*); if the PR `Fixes` a
+different issue than the `thread_id` suggests, record it under the issue the PR actually fixes and
+flag the mismatch. Journal no-PR chains too, with their disposition and triage-comment artifact (R3).
+For PR-bearing chains, also read the CI cell (R9) and record the latest `workflow_dispatch` run id
+(reference.md → *CI status + rebase nudge*). Build one row per chain:
+`repo / issue / thread_id / pr / ci / last_activity_by_us / state`.
 
 Compute a delta vs. the snapshot in `supervisor-state.json` and tag each row **🆕 NEW** /
 **🔼 UPDATED** (cite what changed) / **• same**. Write fresh snapshots back at the end of the tick.
