@@ -404,47 +404,8 @@ async function loadFunnel() {
   const ip = snap.issuePartition;
   const partHtml = ip && ip.counts ? funnelFlowHtml(ip, snap.rows || []) : '';
 
-  if (board)
-    board.innerHTML =
-      partHtml +
-      `<details style="margin-top:14px"><summary style="cursor:pointer;color:var(--text-muted);font-size:12px">PR spine (per-mapping detail)</summary>
-      <table style="border-collapse:collapse;margin-top:6px">
-        <tr>${TH('stage', true)}${TH('prod')}${TH('lego')}${TH('total')}${TH('conv')}</tr>
-        ${snap.routedWindowed != null ? `<tr>${TD('Routed (win-bound)', true)}<td></td><td></td>${TD(snap.routedWindowed, false, true)}<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">top</td></tr>` : ''}
-        ${row('PR opened', b.pr_opened, b.pr_opened)}
-        ${row('PR ready (¬draft)', b.pr_ready, b.pr_opened)}
-        ${row('Merged', b.merged, b.pr_opened)}
-        <tr><td colspan="5" style="color:var(--text-muted);padding:6px 12px 2px">terminals / side-exits</td></tr>
-        ${row('shipped-draft', b.shipped_draft)}
-        ${row('PR closed-unmerged', b.pr_closed_unmerged)}
-        ${row('CI red (open)', b.ci_red)}
-        ${row('CI green (open)', b.ci_green)}
-      </table>
-      <div style="margin-top:6px;color:var(--text-muted)">engaged, no live bot PR: ${(snap.engagedNoPr || []).length}${(snap.engagedNoPr || []).length ? ' — ' + snap.engagedNoPr.slice(0, 10).map(esc).join(', ') : ''}</div>
-      </details>`;
-  // Detail: one row per PR with links.
-  const rows = snap.rows || [];
-  const stageColor = (s) =>
-    s === 'merged' ? '#3fb950' : s === 'shipped-draft' ? '#58a6ff' : s === 'pr-ready' ? '#79c0ff' : s.startsWith('pr-closed') || s === 'superseded' ? '#8b949e' : 'var(--text)';
-  if (detail)
-    detail.innerHTML =
-      `<table style="border-collapse:collapse;width:100%" cellpadding="3">
-        <tr style="border-bottom:1px solid var(--border);text-align:left"><th>inst</th><th>issue</th><th>PR</th><th>state</th><th>CI</th><th>stage</th><th>note</th></tr>
-        ${rows
-          .map(
-            (r) =>
-              `<tr style="border-bottom:1px solid var(--border)">
-                <td>${esc(r.instance)}</td>
-                <td>${r.issueUrl ? `<a href="${escAttr(r.issueUrl)}" target="_blank" rel="noopener">#${r.issue ?? '?'}</a>` : (r.repo ? esc(r.repo) : '?')}</td>
-                <td>${r.prUrl ? `<a href="${escAttr(r.prUrl)}" target="_blank" rel="noopener">#${r.pr}</a>` : '#' + r.pr}</td>
-                <td>${esc(r.prState || '?')}</td>
-                <td>${esc(r.ciBucket || '-')}</td>
-                <td style="color:${stageColor(r.stage || '')}">${esc(r.stage || '')}</td>
-                <td style="color:var(--text-muted)">${esc(r.note || '')}</td>
-              </tr>`,
-          )
-          .join('')}
-      </table>`;
+  if (board) board.innerHTML = partHtml;
+  if (detail) detail.innerHTML = '';
 }
 
 // Visual funnel for the issue partition — renders the mental model:
@@ -563,39 +524,32 @@ function funnelIssueTableHtml(issues, rows, statusColors) {
   const actionable = issues.filter(i => i.bucket !== 'not_our_problem');
   if (actionable.length === 0) return '';
   const rowByIssue = {};
+  const rowByPr = {};
   for (const r of (rows || [])) {
-    const key = `${r.repo}#${r.issue}`;
-    if (!rowByIssue[key]) rowByIssue[key] = r;
+    if (r.issue) rowByIssue[`${r.repo}#${r.issue}`] = r;
+    if (r.pr) rowByPr[`${r.repo}#${r.pr}`] = r;
   }
   const bucketLabel = { bot_pr: '', triage_only: 'triage-only', never_engaged: 'never-engaged', resolved_elsewhere: 'resolved-elsewhere' };
   const bucketColor = { bot_pr: null, triage_only: statusColors.triage, never_engaged: statusColors.never, resolved_elsewhere: statusColors.resolved };
-  let html = `<div style="margin-top:14px;font-size:12px;font-weight:700;color:var(--text)">All ${actionable.length} actionable issues</div>`;
+  let html = `<details style="margin-top:14px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--text)">All ${actionable.length} actionable issues</summary>`;
   html += `<table class="admin-table" style="margin-top:4px;font-size:11px"><thead><tr><th>Inst</th><th>Issue</th><th>PR</th><th>State</th><th>CI</th><th>Stage</th><th>Note</th></tr></thead><tbody>`;
   for (const i of actionable) {
     const repo = (i.repo || '').split('/').pop();
-    const key = `${i.repo}#${i.number}`;
-    const r = rowByIssue[key];
+    const r = rowByIssue[`${i.repo}#${i.number}`] || (i.prNumber ? rowByPr[`${i.repo}#${i.prNumber}`] : null);
     const inst = r ? r.instance : '';
     const issueLink = `<a href="${esc(i.url)}" target="_blank" rel="noopener" style="color:var(--accent)">#${i.number}</a>`;
-    let prCell = '', stateCell = '', ciCell = '', stageCell = '', noteCell = '';
-    if (i.bucket === 'bot_pr' && r) {
-      prCell = r.prUrl ? `<a href="${esc(r.prUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">#${r.pr}</a>` : `#${r.pr}`;
-      stateCell = r.prState || '';
-      ciCell = r.ciBucket || '';
-      stageCell = i.stage || r.stage || '';
-      noteCell = r.note || '';
-    } else if (i.bucket === 'bot_pr') {
-      prCell = i.prUrl ? `<a href="${esc(i.prUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">#${i.prNumber}</a>` : '';
-      stageCell = i.stage || '';
-    } else {
-      stageCell = bucketLabel[i.bucket] || i.bucket;
-      noteCell = i.note || '';
-    }
-    const color = bucketColor[i.bucket] || (i.stage === 'merged' ? statusColors.merged : i.stage === 'shipped-draft' ? statusColors.shipped : i.stage === 'pr-ready' ? statusColors.ready : '');
+    const stageVal = i.stage || (r ? r.stage : '') || bucketLabel[i.bucket] || i.bucket;
+    const prNum = r ? r.pr : i.prNumber;
+    const prUrl = r ? r.prUrl : i.prUrl;
+    const prCell = prNum ? (prUrl ? `<a href="${esc(prUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">#${prNum}</a>` : `#${prNum}`) : '';
+    const stateCell = r ? (r.prState || '') : (i.bucket === 'bot_pr' && i.stage ? (i.stage === 'merged' ? 'merged' : i.stage === 'pr-closed' || i.stage === 'superseded' ? 'closed' : 'open') : '');
+    const ciCell = r ? (r.ciBucket || '') : '';
+    const noteCell = r ? (r.note || '') : (i.note || '');
+    const color = bucketColor[i.bucket] || (stageVal === 'merged' ? statusColors.merged : stageVal === 'shipped-draft' ? statusColors.shipped : stageVal === 'pr-ready' ? statusColors.ready : '');
     const style = color ? ` style="color:${color}"` : '';
-    html += `<tr><td>${esc(inst)}</td><td>${esc(repo)} ${issueLink}</td><td>${prCell}</td><td>${esc(stateCell)}</td><td>${esc(ciCell)}</td><td${style}>${esc(stageCell)}</td><td style="color:var(--text-muted)">${esc(noteCell)}</td></tr>`;
+    html += `<tr><td>${esc(inst)}</td><td>${esc(repo)} ${issueLink}</td><td>${prCell}</td><td>${esc(stateCell)}</td><td>${esc(ciCell)}</td><td${style}>${esc(stageVal)}</td><td style="color:var(--text-muted)">${esc(noteCell)}</td></tr>`;
   }
-  html += '</tbody></table>';
+  html += '</tbody></table></details>';
   return html;
 }
 
@@ -628,7 +582,7 @@ function funnelWeeklyTrendSvg(weekly) {
     .join('');
   const rollPts = weekly.map((w, i) => `${x(i).toFixed(1)},${y(w.rollingWinRate || 0).toFixed(1)}`).join(' ');
   const rawDots = weekly
-    .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${w.merged}/${w.botPr || w.actionable})</title></circle>`)
+    .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${w.merged}/${w.actionable})</title></circle>`)
     .join('');
   const rollDots = weekly
     .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.rollingWinRate || 0).toFixed(1)}" r="3" fill="#3fb950"><title>${esc(w.week)} rolling: ${Math.round((w.rollingWinRate || 0) * 100)}%</title></circle>`)
@@ -653,7 +607,7 @@ function funnelWeeklyTrendSvg(weekly) {
   const trendColor = delta > 0 ? '#3fb950' : delta < 0 ? '#f85149' : 'var(--text-muted)';
   return `<div style="margin:6px 0 2px;display:flex;align-items:baseline;gap:10px">
       <span style="font-weight:600">Weekly WIN trend</span>
-      <span style="font-size:10px;color:var(--text-muted)">● raw &nbsp;<span style="color:#3fb950">●</span> rolling 4wk</span>
+      <span style="font-size:10px;color:var(--text-muted)">merged ÷ actionable &nbsp;● raw &nbsp;<span style="color:#3fb950">●</span> rolling 4wk</span>
       <span style="margin-left:auto;font-size:12px;color:${trendColor}">${trend}</span>
     </div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
