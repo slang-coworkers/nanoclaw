@@ -27,10 +27,10 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    | `branch` | Branch name (optional repo)            | Diff between branch and its base                  |
    | `patch`  | Patch / diff / `.md` with unified diff | Patch applied to a temp branch off `slang/master` |
 
-2. **Recall** {#recall} — Subagent for prior reviewer flags / patterns:
+2. **Recall** {#recall} — Subagent for prior reviewer flags / patterns; wiki-first, raw fallback:
 
    ```
-   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to slang PR review or recurring reviewer flags. Read at most 3 individual learning files if INDEX entries look directly applicable. Return: ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits' and stop.")
+   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it, identify concept pages relevant to slang PR review or recurring reviewer flags, read up to 2 concept pages and follow their [[wiki/...]] links to cited learnings if needed. IF NO wiki/ dir: fall back to scanning /workspace/shared/learnings/INDEX.md and reading at most 3 learning files. Return ≤5 bullets — title, 1-line summary, file path (wiki concept or raw learning). No hits → 'no prior hits'.")
    ```
 
 3. **Setup** {#setup} — Resolve the Devin URL + verify both reviewers' tooling.

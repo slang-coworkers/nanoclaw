@@ -32,10 +32,10 @@ Read-only maintainer sweeps. Produce a written artifact; never change source. If
 ## Steps
 
 1. **Confirm** {#confirm} — restate the `task` and `time_range`. Proceed immediately without asking; run all steps without pausing. If the `slang-maintainer-tools` skill is not loaded, invoke `/slang-maintainer-tools` and proceed. On restart: if a report for today's `{{task}}` already exists and is complete, skip to Handoff; if partial, resume where it stalled.
-2. **Recall** {#recall} — Before collecting, spawn an `Agent` subagent to scan prior learnings for this `{{task}}` (recurring patterns, known issues, prior reports); keeps your context clean. If a prior pattern applies, factor it into the report.
+2. **Recall** {#recall} — Before collecting, spawn an `Agent` subagent (keeps context clean); wiki-first, raw fallback. If a prior pattern applies, factor it into the report.
 
    ```
-   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to slang maintainer task '{{task}}'. Read at most 3 individual learning files if INDEX entries look directly applicable. Return: ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits' and stop.")
+   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it, identify concept pages relevant to slang maintainer task '{{task}}', read up to 2 concept pages and follow their [[wiki/...]] links to cited learnings if needed. IF NO wiki/ dir: fall back to scanning /workspace/shared/learnings/INDEX.md and reading at most 3 learning files. Return ≤5 bullets — title, 1-line summary, file path (wiki concept or raw learning). No hits → 'no prior hits'.")
    ```
 
 3. **Collect** {#collect} — invoke `slang-maintainer-tools` to gather the data the task requires. For long-running fetches, `send_message(to="parent")` with a one-line status at the start.

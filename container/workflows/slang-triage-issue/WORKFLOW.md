@@ -22,10 +22,10 @@ You are the **slang specialist** and first line of engineering. Hand the fixer a
 
 1. **Read the issue** {#read} — `gh issue view <number> -R shader-slang/slang --comments`. Extract: what's broken/requested, error + repro, Slang versions/targets (HLSL, GLSL, SPIR-V, Metal, WGSL, CUDA), affected component, other-user confirmations.
 
-2. **Recall** {#recall} — Spawn an `Agent` subagent to scan prior triage learnings first:
+2. **Recall** {#recall} — Spawn an `Agent` subagent to scan prior triage learnings; wiki-first, raw fallback:
 
    ```
-   Agent(prompt="Scan /workspace/shared/learnings/INDEX.md for entries relevant to slang issue #<number>. Read at most 3 learning files. Return ≤5 bullets — title, 1-line summary, file path. If no hits, return 'no prior hits'.")
+   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it, identify concept pages relevant to slang issue #<number>, read up to 2 concept pages and follow their [[wiki/...]] links to cited learnings if needed. IF NO wiki/ dir: fall back to scanning /workspace/shared/learnings/INDEX.md and reading at most 3 learning files. Return ≤5 bullets — title, 1-line summary, file path (wiki concept or raw learning). No hits → 'no prior hits'.")
    ```
 
 3. **Research — three pillars in parallel** {#research} — Fan out via subagents; cost is your context, not wall clock.
