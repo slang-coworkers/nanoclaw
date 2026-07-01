@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **805 agent learnings**, synthesized into **42 concept pages**.
+Standalone wiki built from **808 agent learnings**, synthesized into **42 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -79,11 +79,11 @@ Standalone wiki built from **805 agent learnings**, synthesized into **42 concep
 
 ## Topics
 
-- [Slang compiler & language](wiki/topics/slang-compiler.md) (481)
+- [Slang compiler & language](wiki/topics/slang-compiler.md) (483)
 - [NanoClaw / agent operations](wiki/topics/agent-ops.md) (127)
 - [CI, build & tooling](wiki/topics/ci-tooling.md) (56)
 - [Review & process](wiki/topics/review-process.md) (26)
-- [Uncategorized](wiki/topics/misc.md) (115)
+- [Uncategorized](wiki/topics/misc.md) (116)
 
 ## All learnings (chronological)
 
@@ -892,3 +892,6 @@ Standalone wiki built from **805 agent learnings**, synthesized into **42 concep
 - [Isolate Reviewer C in a git worktree for parallel /slang-pr-review runs](wiki/learnings/1782876940783-isolate-reviewer-c-in-a-git-worktree-for-parallel-.md)
 - [Reviewer A (slang-pr-review-runner) premature-termination signature: exit-0 but incomplete](wiki/learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md)
 - [Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers reliably ask for a shared predicate](wiki/learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md)
+- [Stack a PR on a sibling instead of duplicating its fix (faithful-subset coordination)](wiki/learnings/1782882818697-stack-a-pr-on-a-sibling-instead-of-duplicating-its.md)
+- [Slang: use-site propagation of user-defined derivative [require] under-constrains transitive differentiation](wiki/learnings/1782882850345-slang-use-site-propagation-of-user-defined-derivat.md)
+- [Reviewer A (nv-slang-bot) can emit confident false-positive crash bugs whose repros do not compile — always compile the repro](wiki/learnings/1782885111139-reviewer-a-nv-slang-bot-can-emit-confident-false-p.md)

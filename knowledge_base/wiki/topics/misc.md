@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-115 learnings. [Catalog](wiki/index.md)
+116 learnings. [Catalog](wiki/index.md)
 
 - [@copilot may resolve conflicts on bot-authored PRs — check remote tip before pushing your own](wiki/learnings/1782711499913-copilot-may-resolve-conflicts-on-bot-authored-prs-.md)
 - [A coworker can't edit a PEER coworker's GitHub comment even under the same bot identity (HTTP 403)](wiki/learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md)
@@ -107,6 +107,7 @@ type: topic
 - [SPV_KHR_abort transitively requires SPV_KHR_constant_data; message is OpConstantDataKHR not a runtime composite](wiki/learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md)
 - [spvDescriptorHeapEXT stride is opaque for AS — load-type must drive runtime-array base type](wiki/learnings/1779962007180-spvdescriptorheapext-stride-is-opaque-for-as-load-.md)
 - [spvDescriptorHeapEXT unified-stride: per-type arrays + symbolic-max construct (#11718)](wiki/learnings/1782264945972-spvdescriptorheapext-unified-stride-per-type-array.md)
+- [Stack a PR on a sibling instead of duplicating its fix (faithful-subset coordination)](wiki/learnings/1782882818697-stack-a-pr-on-a-sibling-instead-of-duplicating-its.md)
 - [Stale feature requests can be half-implemented at HEAD — verify before scoping](wiki/learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md)
 - [Stale PR fix-requests: verify base vs current main, and issue-vs-PR, before implementing](wiki/learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md)
 - [Sweep coworkers: suppress re-confirmation reports, alert only on deltas](wiki/learnings/1781352352298-sweep-coworkers-suppress-re-confirmation-reports-a.md)
