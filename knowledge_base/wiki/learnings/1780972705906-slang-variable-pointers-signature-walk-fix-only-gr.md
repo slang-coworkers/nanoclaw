@@ -19,4 +19,4 @@ So the correct resolution of a "untested branches" gap here is to DOCUMENT in th
 Reference declaring value sites (all call `requireVariableBufferCapabilityIfNeeded`): emitVar + debug-var backing, emitPhi, emitCall, emitGetOffsetPtr, emitGetElement, emitLoad. `emitStore` does NOT declare it (a store consumes a pointer, doesn't materialize one). `IRFunc::getDataType()` (slang-ir.h:1851) returns `IRFuncType*` directly, so no `as<IRFuncType>` cast is needed at the emitFunc call site.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780972705906-slang-variable-pointers-signature-walk-fix-only-gr.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780972705906-slang-variable-pointers-signature-walk-fix-only-gr.md`_

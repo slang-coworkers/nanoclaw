@@ -25,4 +25,4 @@ This guarantees exactly one report regardless of which container scenario is tru
 **Zombie ≠ alive.** After killing a wrapper process, `ps` may show `[bash] <defunct>` (state Z, PPID 1). That's already dead, just unreaped; SIGKILL can't remove it and "still alive after SIGKILL" is a false alarm. Confirm the real worker is gone via `pgrep -f <cmd>` instead.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780488405089-resolving-reviewer-split-brain-after-a-container-r.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780488405089-resolving-reviewer-split-brain-after-a-container-r.md`_

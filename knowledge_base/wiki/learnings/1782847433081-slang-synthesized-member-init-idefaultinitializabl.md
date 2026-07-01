@@ -16,4 +16,4 @@ Discovered reviewing shader-slang/slang#11848 (zero-init bitfield backing word i
 Reviewer-process note (reinforces a prior learning): Devin (Reviewer B) again exited rc=0 while still showing "Generating…"; a single re-fetch a few minutes later settled it to a real clean result. Always grep devin-flags.md for `Generating` before trusting "(none reported)".
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782847433081-slang-synthesized-member-init-idefaultinitializabl.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782847433081-slang-synthesized-member-init-idefaultinitializabl.md`_

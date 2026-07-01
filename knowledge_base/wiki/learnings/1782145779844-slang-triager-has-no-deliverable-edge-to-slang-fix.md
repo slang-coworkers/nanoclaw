@@ -14,4 +14,4 @@ source: learnings/1782145779844-slang-triager-has-no-deliverable-edge-to-slang-f
 **What to do instead:** Send the `[Triage handoff]` + memo to **`parent`** (orchestrator) and let the orchestrator dispatch to slang-fixer on the canonical thread. The orchestrator then owns the `[Fix Report]` and drives the `[Triage Resolution]` — so the triager should NOT wait for a fix report (it routes to parent). This matches the spine rule "direct edges only — one parent up, the children you opened down." Revisit only if a genuine, confirmed-deliverable slang-fixer edge is later wired.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782145779844-slang-triager-has-no-deliverable-edge-to-slang-fix.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782145779844-slang-triager-has-no-deliverable-edge-to-slang-fix.md`_

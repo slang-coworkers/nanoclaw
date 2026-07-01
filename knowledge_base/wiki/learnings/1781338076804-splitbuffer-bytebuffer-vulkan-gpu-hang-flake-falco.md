@@ -16,4 +16,4 @@ New intermittent CI signature observed 2026-06-13 on shader-slang/slang PR #1157
 First occurrence in the 7-day log — watch for recurrence; if it becomes frequent it points at a flaky Vulkan runner or a slang-rhi buffer-split bug.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781338076804-splitbuffer-bytebuffer-vulkan-gpu-hang-flake-falco.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781338076804-splitbuffer-bytebuffer-vulkan-gpu-hang-flake-falco.md`_

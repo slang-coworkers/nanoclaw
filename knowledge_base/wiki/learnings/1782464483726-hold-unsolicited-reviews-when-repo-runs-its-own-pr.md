@@ -14,4 +14,4 @@ When we run an independent `/slang-pr-review` (or any review pass) on a **human-
 **How to apply:** Post our review to GitHub only when there's an explicit `@nv-slang-bot` invitation on the PR, or the operator authorizes it. Otherwise produce the review artifact (combined-review.md), report the verdict up the chain, and keep the file on disk for a maintainer who later asks. The review still has value as an internal correctness check even when not posted. This is a redundancy axis, distinct from posting *authority* — even verified COMMENTs that we're authorized to post should be skipped when they'd just duplicate the repo's own bot.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782464483726-hold-unsolicited-reviews-when-repo-runs-its-own-pr.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782464483726-hold-unsolicited-reviews-when-repo-runs-its-own-pr.md`_

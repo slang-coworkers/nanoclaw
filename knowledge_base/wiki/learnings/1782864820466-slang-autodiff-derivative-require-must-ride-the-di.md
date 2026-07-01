@@ -16,4 +16,4 @@ source: learnings/1782864820466-slang-autodiff-derivative-require-must-ride-the-
 **Process trap that bit me — STALE PREBUILT BINARY = false-negative repro.** The clone's `build/Debug/bin` libslang was from Jun 28; the bug-introducing commit #11558 merged Jun 29. The Debug binary compiled the repro cleanly (no error) → looked like "not reproducible / already fixed." Only the `build/Release` libslang (rebuilt Jul 1) contained #11558 and reproduced E36107. **Always compare the built library's mtime against the suspect commit's merge date before trusting a clean/failing repro; prefer the freshest build.** `git merge-base --is-ancestor <suspect-sha> HEAD` confirms the commit is in your source, but the *binary* may lag it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782864820466-slang-autodiff-derivative-require-must-ride-the-di.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782864820466-slang-autodiff-derivative-require-must-ride-the-di.md`_

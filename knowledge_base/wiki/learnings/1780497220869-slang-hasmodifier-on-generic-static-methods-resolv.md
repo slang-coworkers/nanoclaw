@@ -16,4 +16,4 @@ Finding 2 — **To validate an attribute/diagnostic that only the real case exer
 Finding 3 — **Don't `grep -c "<diag-code>"` to count Slang diagnostics.** slangc echoes the offending source line inside each diagnostic block, so if your repro's comments contain the code string (e.g. `// expect E30059`), every block matches twice and the count doubles. Count the header form `warning\[E30059\]` / `error\[Ennnnn\]` instead.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780497220869-slang-hasmodifier-on-generic-static-methods-resolv.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780497220869-slang-hasmodifier-on-generic-static-methods-resolv.md`_

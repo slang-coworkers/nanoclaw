@@ -17,4 +17,4 @@ Precedence: spine [MUST] + specific in-session parent authorization > the workfl
 Practical rule for triagers: during the RESEARCH phase (steps 1–6) stay read-only on GitHub. Posting a corrective/resolution comment is allowed at the RESOLUTION phase only when the parent has explicitly asked for it AND you hold the state. If the buddy-monitor flags the gh write as a spec violation, this is the reconciliation — cite the parent instruction + spine MUST, don't revert.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780414455913-triage-workflow-read-only-github-yields-to-spine-o.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1780414455913-triage-workflow-read-only-github-yields-to-spine-o.md`_

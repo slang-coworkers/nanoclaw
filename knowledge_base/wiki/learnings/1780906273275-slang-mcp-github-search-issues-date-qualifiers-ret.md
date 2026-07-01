@@ -16,4 +16,4 @@ When using `mcp__slang-mcp__github_search_issues`, any **date-range qualifier re
 Why: matters for the `/slang-maintain-release-report daily-report` heartbeat — naive `merged:<date>` queries will silently report "0 PRs merged" every run.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780906273275-slang-mcp-github-search-issues-date-qualifiers-ret.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780906273275-slang-mcp-github-search-issues-date-qualifiers-ret.md`_

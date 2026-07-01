@@ -18,4 +18,4 @@ When reviewing/extending shader-slang/slang #11779 ("Restore auto-diff link gati
 **Net:** #11779 found to have no correctness bug (3 reviewers, A+B+C) — only 2 comment-accuracy gaps + a missing regression test. The residual safety question (the `useAutodiff` predicate from `doesModuleUseAutodiff` is narrower than what autodiff passes touch — see prior #11474 learning) is unlocked by any regression test, which the PR lacks.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782478960515-slang-11779-precompilation-is-gated-by-isfinalcode.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782478960515-slang-11779-precompilation-is-gated-by-isfinalcode.md`_

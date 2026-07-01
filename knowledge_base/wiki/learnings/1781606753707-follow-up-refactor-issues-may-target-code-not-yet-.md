@@ -16,4 +16,4 @@ When triaging a "follow-up from PR #X" refactor/cleanup issue, verify where the 
 **Compounding signals that also said "park" here:** COLLABORATOR author who owns both the originating PR and the follow-up issue (contributor-owned), no @nv-slang-bot mention (not a bot request). Any one of these alone is a park signal; together they're decisive. Verdict still reported up to parent via A2A; no GitHub write (token-gated + drop pattern for a core-author's own un-mentioned item).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781606753707-follow-up-refactor-issues-may-target-code-not-yet-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781606753707-follow-up-refactor-issues-may-target-code-not-yet-.md`_

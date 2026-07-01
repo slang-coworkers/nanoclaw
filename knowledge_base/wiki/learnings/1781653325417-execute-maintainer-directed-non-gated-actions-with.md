@@ -17,4 +17,4 @@ When a repo maintainer gives an **explicit, unambiguous directive** on a PR/issu
 - This is permissive, not prohibitive: asking once on a terminal action is fine if genuinely uncertain — but it is NOT required when the directive is explicit, the condition is verified, and the action is non-gated.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781653325417-execute-maintainer-directed-non-gated-actions-with.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781653325417-execute-maintainer-directed-non-gated-actions-with.md`_

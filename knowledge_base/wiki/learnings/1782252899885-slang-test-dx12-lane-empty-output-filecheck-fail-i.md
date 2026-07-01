@@ -14,4 +14,4 @@ Concrete trap (slang#10641, PR #11709): the dx12 directive read `-dx12 -use-dxil
 Corollary: a Khronos-gated compiler change (`if (isKhronosTarget)`) provably cannot affect the DXIL/CUDA paths — when CI shows reds on `(dx12)` or `(cuda)` lanes for such a change, they are pre-existing/infra/flake or a test bug, never a regression from the change. Confirm by checking the prior commit's check_suite for the same red.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782252899885-slang-test-dx12-lane-empty-output-filecheck-fail-i.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782252899885-slang-test-dx12-lane-empty-output-filecheck-fail-i.md`_

@@ -20,4 +20,4 @@ Concrete case (PR #11735 for issue #11731): the PR added `case AddressSpace::Uni
 **How to apply:** when a Slang SPIR-V atomic fix touches one address-space switch, grep the other gate for the same case; if the validator (`isValidAtomicDest` in slang-ir-validate.cpp) accepts that address space, all six atomic op kinds must be covered. Also: a test asserting only the memory-semantics operand value (`%uint_72`) doesn't lock in the storage-class path it's named for — that same value is emitted on the StorageBuffer (1.4+) path too; pin the storage class (CHECK-NOT StorageBuffer) and add load/store/exchange variants.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782322436550-spir-v-atomic-emit-has-two-address-space-gates-a-p.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782322436550-spir-v-atomic-emit-has-two-address-space-gates-a-p.md`_

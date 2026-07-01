@@ -29,4 +29,4 @@ Under `-target spirv` direct-emit, `ResourceParameterSpecializationCondition::do
 Verified at HEAD `5230a81f2` of shader-slang/slang.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780733286644-spvdescriptorheapext-path-fix-function-call-specia.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780733286644-spvdescriptorheapext-path-fix-function-call-specia.md`_

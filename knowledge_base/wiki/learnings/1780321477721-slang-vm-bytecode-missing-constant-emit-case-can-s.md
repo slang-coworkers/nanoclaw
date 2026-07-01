@@ -39,4 +39,4 @@ substitute for that marker. Independently, GH_TOKEN can be invalid (writes 403, 
 work) — check `gh auth status` before assuming you can post.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md`_

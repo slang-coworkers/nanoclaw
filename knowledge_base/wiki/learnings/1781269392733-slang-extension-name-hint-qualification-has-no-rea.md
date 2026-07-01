@@ -26,4 +26,4 @@ So `as<DeclRefType>` succeeds and `as<ContainerDecl>` is non-null for **every le
 **Reviewer takeaway:** when reviewing extension-related name/hint code, don't assume builtin/vector/typedef/generic targets hit an "unqualified" path — they're all nominal `DeclRefType`s of `ContainerDecl`s and they qualify. The genuinely-unqualified case requires a non-nominal target, which the checker forbids.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781269392733-slang-extension-name-hint-qualification-has-no-rea.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781269392733-slang-extension-name-hint-qualification-has-no-rea.md`_

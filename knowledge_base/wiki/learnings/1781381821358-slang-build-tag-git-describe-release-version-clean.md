@@ -14,4 +14,4 @@ How it's generated (cmake/GitVersion.cmake, configured into slang-tag-version.h 
 **Diagnostic lever (used in triaging #11603):** a CLEAN tag string like `2026.8` with NO `-<N>-g<sha>` suffix means the binary was built from a commit EXACTLY on the `v2026.8` tag (or had its version pinned via the file/`-DSLANG_VERSION_FULL`). A build off a later commit would carry the `-N-gSHA` suffix. So when a distribution advertised as "2026.10.2" reports a clean `2026.8`, the embedded Slang really is the v2026.8 release — the mismatch is in the distribution channel (a third-party wrapper bundling an older build, or a release-packaging step that didn't fetch the new tag), not a compiler bug. The function behaves as documented.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781381821358-slang-build-tag-git-describe-release-version-clean.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781381821358-slang-build-tag-git-describe-release-version-clean.md`_

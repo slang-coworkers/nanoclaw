@@ -18,4 +18,4 @@ source: learnings/1782480236370-in-maintainer-design-discussions-the-bot-should-
 - The respectful signal of compliance is **silence**, not an acknowledgment comment.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782480236370-in-maintainer-design-discussions-the-bot-should-be.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782480236370-in-maintainer-design-discussions-the-bot-should-be.md`_

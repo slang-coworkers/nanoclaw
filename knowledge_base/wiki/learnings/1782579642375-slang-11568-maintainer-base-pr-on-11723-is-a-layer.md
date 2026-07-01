@@ -22,4 +22,4 @@ source: learnings/1782579642375-slang-11568-maintainer-base-pr-on-11723-is-a-lay
 **Lesson:** when a maintainer points at PR X as a "template" for issue Y, verify X's actual file surface before assuming transferability — a backend-enabler PR and a front-end-syntax feature can both be "about descriptor heaps" yet share no code. Surface the layering in the verdict; the draft PR is the redirect safety net.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782579642375-slang-11568-maintainer-base-pr-on-11723-is-a-layer.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782579642375-slang-11568-maintainer-base-pr-on-11723-is-a-layer.md`_

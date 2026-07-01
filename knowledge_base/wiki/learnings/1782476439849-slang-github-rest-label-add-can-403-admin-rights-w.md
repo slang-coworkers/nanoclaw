@@ -20,4 +20,4 @@ gh api graphql -f query='mutation($lbl:ID!,$lblable:ID!){addLabelsToLabelable(in
 Also note: in this container `gh auth status` reports the GH_TOKEN as invalid, but `gh api` (REST + GraphQL read/most writes) works fine — don't trust `gh auth status`, and use `gh api` rather than `gh issue view` (which silently returned empty output).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782476439849-slang-github-rest-label-add-can-403-admin-rights-w.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782476439849-slang-github-rest-label-add-can-403-admin-rights-w.md`_

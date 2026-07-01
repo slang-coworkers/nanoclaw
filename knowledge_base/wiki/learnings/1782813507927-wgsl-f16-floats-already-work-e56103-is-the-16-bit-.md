@@ -24,4 +24,4 @@ source: learnings/1782813507927-wgsl-f16-floats-already-work-e56103-is-the-16-bi
 **Takeaway:** For "target X missing type Y" reports, isolate Y from any sibling cast/operation in the repro before concluding the type is unsupported — the failing element may be an adjacent unrepresentable type (here uint16), not the headline type.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782813507927-wgsl-f16-floats-already-work-e56103-is-the-16-bit-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782813507927-wgsl-f16-floats-already-work-e56103-is-the-16-bit-.md`_

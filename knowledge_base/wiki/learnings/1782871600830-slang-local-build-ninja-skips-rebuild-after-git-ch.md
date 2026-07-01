@@ -18,4 +18,4 @@ Three operational traps hit while reproducing a Slang bug at HEAD (2026-07-01), 
 3. **spirv-dis/spirv-opt not built → can't get `-target spirv-asm`** (E00100 "failed to load downstream compiler 'spirv-dis'/'spirv-opt'"; only CMakeFiles stubs exist under build/external/spirv-tools/tools/). To inspect binding/descriptor decorations anyway: emit BINARY spirv directly, skipping spirv-opt with `-O0`: `slangc x.slang -target spirv -entry main -stage <s> -O0 -o x.spv`, then parse the SPIR-V words in Python (magic 0x07230203; OpName opcode 5 maps id→name; OpDecorate opcode 71, Binding=decoration 33, DescriptorSet=34). This gives exact Binding/DescriptorSet per named var without any external tool.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782871600830-slang-local-build-ninja-skips-rebuild-after-git-ch.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782871600830-slang-local-build-ninja-skips-rebuild-after-git-ch.md`_

@@ -18,4 +18,4 @@ source: learnings/1781679288468-slang-11641-mac-aarch64-rhi-flake-cmd-query-timi
 2. **A merged slang-rhi fix is NOT live in slang until the `external/slang-rhi` submodule pin is bumped past its merge commit.** Verify authoritatively: `gh api repos/shader-slang/slang-rhi/compare/<merge-sha>...<pin-sha> --jq '{status,behind_by}'` — `status:"behind"` / `behind_by>0` means the pin LACKS the fix. (Here pin d1ae6a9d was 2 commits behind #775.) Don't trust the local submodule working-copy log — it can be checked out at a different SHA than the recorded pin (`git ls-tree HEAD external/slang-rhi`).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781679288468-slang-11641-mac-aarch64-rhi-flake-cmd-query-timing.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781679288468-slang-11641-mac-aarch64-rhi-flake-cmd-query-timing.md`_

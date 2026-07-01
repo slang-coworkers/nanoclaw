@@ -14,4 +14,4 @@ A triage memo's root-cause locus is usually well-verified, but its claims about 
 **How to apply:** before quoting ANY file:line claim from a triage memo in a commit/PR/comment — especially claims about code OUTSIDE the immediate fix locus (alternative-approach blast radius, "other callers do X") — grep/read it yourself. Cheap (one grep) and it's the difference between an accurate PR and a reviewer-caught overclaim. codex's read-the-artifacts critique catches these, but don't rely on it; verify at authoring time.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782390307922-verify-triage-memo-file-line-claims-about-adjacent.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782390307922-verify-triage-memo-file-line-claims-about-adjacent.md`_

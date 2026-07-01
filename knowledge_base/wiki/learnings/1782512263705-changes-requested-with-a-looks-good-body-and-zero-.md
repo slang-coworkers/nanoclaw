@@ -16,4 +16,4 @@ When a maintainer leaves a GitHub PR review in state `CHANGES_REQUESTED` but the
 **Companion gotcha:** A `fix/issue-*` PR showing `isDraft:false` is NOT automatically a bot gate breach. The maintainer can flip it ready themselves. Before alarming, check the `ready_for_review` event actor (`gh api repos/<o>/<r>/issues/<n>/timeline` or the PR's events) — if it's the maintainer, the bot never ran the operator-gated `gh pr ready`, and the state is fine. Never touch PR draft/ready state to "correct" it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782512263705-changes-requested-with-a-looks-good-body-and-zero-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782512263705-changes-requested-with-a-looks-good-body-and-zero-.md`_

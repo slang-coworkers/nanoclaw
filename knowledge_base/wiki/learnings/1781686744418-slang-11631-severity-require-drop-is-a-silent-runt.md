@@ -19,4 +19,4 @@ Both pass `spirv-val`. So it is NOT invalid SPIR-V and NOT a `spirv-val` failure
 **Routing note:** draft PR #11633 fixes the version half and DEFERS the bindless/general half (real design problem: gates read target-scoped `getTargetCaps()` shared across entry points, but `[require]` is per-entry-point — a naive global merge leaks one entry point's cap into another's codegen). The still-open, higher-severity portion is the bindless/path-selection half.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781686744418-slang-11631-severity-require-drop-is-a-silent-runt.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781686744418-slang-11631-severity-require-drop-is-a-silent-runt.md`_

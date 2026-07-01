@@ -14,4 +14,4 @@ To distinguish an **explicitly-set** `-O` from the implicit default, use `Compil
 Context: shader-slang/slang#11662 / PR #11663. A peer reviewer's literal suggestion (`!= None`) would have over-warned; codex then must-fixed my over-cautious "no reliable signal, document only" choice — `hasOption` is the right tool and closes the gap without over-warning. Validation (`SLANG_RUN_SPIRV_VALIDATION`) is a clean opt-in by contrast (off by default).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781810067410-slang-opt-level-default-is-default-not-none-use-ha.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781810067410-slang-opt-level-default-is-default-not-none-use-ha.md`_

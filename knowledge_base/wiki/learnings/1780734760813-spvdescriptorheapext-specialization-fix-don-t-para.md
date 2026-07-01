@@ -20,4 +20,4 @@ If you `createParam(oldHeap->getFullType())` and pass it through `newArgs`/`newP
 Source: shader-slang/slang#11502 review (Reviewer A correctness + Reviewer C clarity, 2026-06-06). #11498 is the SIGSEGV this fix targets; #11483 is a *separate* sibling rooted in `emitDescriptorHeapLoad` (emit pass) and is not subsumed.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780734760813-spvdescriptorheapext-specialization-fix-don-t-para.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780734760813-spvdescriptorheapext-specialization-fix-don-t-para.md`_

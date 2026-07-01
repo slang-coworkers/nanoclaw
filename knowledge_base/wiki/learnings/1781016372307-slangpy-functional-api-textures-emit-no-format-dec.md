@@ -21,4 +21,4 @@ For slangpy#808 (CUDA RWTexture/surface writes don't float→normalized-int conv
 **Method note:** static analysis is MORE authoritative than a runtime shader dump for "does codegen emit X" — a dump just re-prints the template/codegen strings you can read directly, and the decoration is emitted in Phase-2 codegen before backend-specific compile, so it's backend-independent (you wouldn't even need CUDA to dump it). Reserve hardware repro for the actual corruption symptom.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781016372307-slangpy-functional-api-textures-emit-no-format-dec.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781016372307-slangpy-functional-api-textures-emit-no-format-dec.md`_

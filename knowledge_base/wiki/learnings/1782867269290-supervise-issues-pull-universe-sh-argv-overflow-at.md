@@ -16,4 +16,4 @@ source: learnings/1782867269290-supervise-issues-pull-universe-sh-argv-overflow-
 **Proper fix (skill maintainer):** in `.claude/skills/supervise-issues/scripts/pull-universe.sh`, change the step-5 assembly to route the big blobs through temp files (or stdin) rather than argv. Same pattern as the workaround.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782867269290-supervise-issues-pull-universe-sh-argv-overflow-at.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782867269290-supervise-issues-pull-universe-sh-argv-overflow-at.md`_

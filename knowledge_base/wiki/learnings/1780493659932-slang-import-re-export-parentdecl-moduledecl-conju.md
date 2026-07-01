@@ -16,4 +16,4 @@ When reviewing Slang's module re-export filter (`importModuleIntoScope` in slang
 2. **Convergence ≠ correctness.** In PR #11450, the fixer, Devin, AND the clarity reviewer all independently concluded the conjunct was "defensive/not testable" — because all three anchored on the `using namespace <module>` framing. Only an independent investigation that asked "is there ANOTHER path?" (plain transitive import) found it was load-bearing and testable. When multiple sources agree a clause is untestable/defensive, re-derive the reachable paths from first principles before accepting it.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780493659932-slang-import-re-export-parentdecl-moduledecl-conju.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780493659932-slang-import-re-export-parentdecl-moduledecl-conju.md`_

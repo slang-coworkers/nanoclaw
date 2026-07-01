@@ -19,4 +19,4 @@ Subtest **0** edge case: its stem has no `.0` (code only appends `.idx` when `id
 Verification needs no GPU: default `synthesizedTestApis = AllOf & ~(Vulkan|CPU)` (options.h) masked by `-api`, so `-api cpu+llvm -dry-run` emits the `syn (llvm)` variant and shows the skip. Landed in PR #11385.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md`_

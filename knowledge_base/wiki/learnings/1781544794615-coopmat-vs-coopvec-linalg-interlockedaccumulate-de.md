@@ -18,4 +18,4 @@ When triaging Slang cooperative-matrix (`CoopMat`) coverage vs HLSL SM 6.10 `lin
 **How to apply:** For "does Slang support linalg function X" triage, the verdict hinges on (a) reading the `CoopMat` struct in hlsl.meta.slang, not DeepWiki, and (b) checking whether X has a portable SPIR-V/CUDA/Metal analogue before recommending anything beyond a HLSL-gated intrinsic. PR #10711 ("Support CoopMat for SM 6.10") body documents exactly which CoopMat methods were intentionally implemented vs deferred.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781544794615-coopmat-vs-coopvec-linalg-interlockedaccumulate-de.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781544794615-coopmat-vs-coopvec-linalg-interlockedaccumulate-de.md`_

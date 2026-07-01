@@ -24,4 +24,4 @@ gh pr list -R <owner>/<repo> --state open --search "Fixes #<num>"
 - Distinct from the external-contributor case (where the contributor *announces* the PR): here the PR silently exists with no announcement — the `gh pr list --search` (not `gh search prs`) check is what catches it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781241842104-check-for-an-existing-fix-pr-before-fixing-or-recommending.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781241842104-check-for-an-existing-fix-pr-before-fixing-or-recommending.md`_

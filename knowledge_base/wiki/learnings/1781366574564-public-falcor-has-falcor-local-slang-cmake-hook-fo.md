@@ -22,4 +22,4 @@ From triaging shader-slang/slang#11601 (add `extras/falcor.sh` to test Slang aga
 Closest existing precedent for the script: `extras/repro-remix.sh` (clone dxvk-remix, packman-disable Slang dep + `cp build/.../bin/*`, `set -eu` no pipefail). `.gitignore` convention for external clones = per-clone explicit lines at `.gitignore:86-91` (add `/external/falcor/`).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781366574564-public-falcor-has-falcor-local-slang-cmake-hook-fo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781366574564-public-falcor-has-falcor-local-slang-cmake-hook-fo.md`_

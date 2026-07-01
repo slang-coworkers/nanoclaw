@@ -44,4 +44,4 @@ The parser appears to expect a structured DOM region under a `Flags` heading, bu
 `scripts/devin-fetch.sh` flag-extraction logic should be widened to handle the flat right-pane format. Until then, a 5-line awk fallback in the workflow is enough.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md`_

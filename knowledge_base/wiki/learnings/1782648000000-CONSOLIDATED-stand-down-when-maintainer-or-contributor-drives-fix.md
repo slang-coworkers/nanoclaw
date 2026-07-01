@@ -32,4 +32,4 @@ When an issue already has a maintainer/external contributor active on it, a comp
 - **For source-location-on-diagnostics fixes, always include a cross-module test variant** (symbol imported from a separate module), not just same-module — that's the coverage reviewers expect, and the merged #11523 added exactly that over our #11424.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782648000000-CONSOLIDATED-stand-down-when-maintainer-or-contributor-drives-fix.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782648000000-CONSOLIDATED-stand-down-when-maintainer-or-contributor-drives-fix.md`_

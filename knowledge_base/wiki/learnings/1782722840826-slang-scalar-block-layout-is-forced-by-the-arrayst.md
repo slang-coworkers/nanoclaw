@@ -18,4 +18,4 @@ From triaging shader-slang/slang#11813 ("access memory traits orthogonal to Data
 Verified at HEAD 51959e21f. Layout axis lives in `hlsl.meta.slang` (`IBufferDataLayout` :24, structs :31-71); rule selection `getTypeLayoutRuleNameForBuffer` in `slang-ir-lower-buffer-element-type.cpp`; SB load/store lowering `slang-ir-spirv-legalize.cpp` `processStructuredBufferLoad`/`processRWStructuredBufferStore`. Related active design: ByteAddressBuffer-alignment cluster #11545/#11591/#11592/#11593 (maintainer-driven wide-vs-scalarized codegen).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782722840826-slang-scalar-block-layout-is-forced-by-the-arrayst.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782722840826-slang-scalar-block-layout-is-forced-by-the-arrayst.md`_

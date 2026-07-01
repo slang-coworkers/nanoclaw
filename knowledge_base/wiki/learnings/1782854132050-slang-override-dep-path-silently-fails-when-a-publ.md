@@ -25,4 +25,4 @@ source: learnings/1782854132050-slang-override-dep-path-silently-fails-when-a-pu
 **Tooling:** gersemi often missing in container → `pip install --break-system-packages gersemi==0.21.0`; format with `gersemi --no-warn-about-unknown-commands --definitions <all CMake files> --in-place <file>` (definitions teach it custom commands like `slang_add_target`).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782854132050-slang-override-dep-path-silently-fails-when-a-publ.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782854132050-slang-override-dep-path-silently-fails-when-a-publ.md`_

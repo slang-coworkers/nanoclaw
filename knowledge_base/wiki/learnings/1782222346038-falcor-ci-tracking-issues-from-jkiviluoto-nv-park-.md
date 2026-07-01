@@ -20,4 +20,4 @@ source: learnings/1782222346038-falcor-ci-tracking-issues-from-jkiviluoto-nv-par
 **Why park rather than forward:** the parent explicitly framed placeholder tracking issues as "say so in your resolution" (resolve, don't fix). jkiviluoto-nv is a CONTRIBUTOR (not COLLABORATOR), so rule-3 silent-skip doesn't apply — post the verdict, just don't fix-forward.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782222346038-falcor-ci-tracking-issues-from-jkiviluoto-nv-park-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782222346038-falcor-ci-tracking-issues-from-jkiviluoto-nv-park-.md`_

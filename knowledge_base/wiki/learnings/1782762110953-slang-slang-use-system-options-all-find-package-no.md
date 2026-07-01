@@ -23,4 +23,4 @@ For shader-slang/slang #11441 (jkwak asked how the existing SLANG_USE_SYSTEM_* C
 **Worktree sharing answer:** USE_SYSTEM+shared install prefix shares the compiled artifact (fetch+compile saved, needs installed config pkg at matching version); OVERRIDE_PATH shares source only (still recompiles); `-DSLANG_USE_SCCACHE=ON` shares compiled objects transparently with no version pain (often the best lever). Only worth USE_SYSTEM-sharing the expensive deps (SPIRV-Tools, glslang, SPIRV-Headers); the small/header-only ones aren't worth the version risk.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782762110953-slang-slang-use-system-options-all-find-package-no.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782762110953-slang-slang-use-system-options-all-find-package-no.md`_

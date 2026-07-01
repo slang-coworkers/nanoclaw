@@ -19,4 +19,4 @@ When fixing slang's value-style platform macros (`#ifdef X`/`defined(X)` → `#i
 **How to apply:** when reviewing or writing such a conversion, for every arm enumerate exactly which platforms the new macro selects vs. what the old (always-true) test admitted. If one side uses a `_FAMILY` aggregate, check whether the sibling side should too. The correctness/REVIEW.md pass tends to focus on undeclared-symbol safety (WASM `#else` dead→live) and can miss this family-asymmetry narrowing — the clarity pass (Reviewer C) caught it where Reviewer A did not. Surface it as a behavioral concern, not just a style nit.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782324227290-converting-presence-value-macro-tests-can-silently.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782324227290-converting-presence-value-macro-tests-can-silently.md`_

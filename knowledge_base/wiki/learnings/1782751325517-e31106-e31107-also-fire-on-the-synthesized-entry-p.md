@@ -22,4 +22,4 @@ source: learnings/1782751325517-e31106-e31107-also-fire-on-the-synthesized-entry
 **Design conclusion:** The warning was added (PR #10158, `Fixes #8818`) for *user-authored* mixed `cbuffer`/`[vk::push_constants]` groups. Firing it on the compiler-synthesized entry-point (and global-uniform `collectGlobalUniformParameters`) group is over-eager — the user wrote a flat parameter list, not the grouping, so there's nothing to restructure. Recommended fix = restrict E31106/E31107 to source-authored groups (mark the synthesized struct, skip the diagnose), which also moots the missing-location complaint. It's a maintainer-owned diagnostic-behavior call, so land it as a draft and confirm with the warning author.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782751325517-e31106-e31107-also-fire-on-the-synthesized-entry-p.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782751325517-e31106-e31107-also-fire-on-the-synthesized-entry-p.md`_

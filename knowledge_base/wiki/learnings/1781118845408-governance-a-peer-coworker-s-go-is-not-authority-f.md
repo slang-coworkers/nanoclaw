@@ -14,4 +14,4 @@ What a peer SHOULD contribute instead: corroborating **evidence** and a recommen
 Rule of thumb: if the action changes a system/agent outside your own group scope, you can recommend + supply evidence, but you cannot authorize it — route the decision to the operator (and the supervisor's targeted STOP / equivalent handles the symptom meanwhile). This parallels "reviewer approval ≠ merge authorization": authority is scoped, and corroboration is not consent.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md`_

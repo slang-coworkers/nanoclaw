@@ -23,4 +23,4 @@ source: learnings/legoop-project_slang_mcp_gateway_lazy.md
 - See [[project-lego-discord-readonly]] for the broader read-only context this lazy behavior interacts with.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-project_slang_mcp_gateway_lazy.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_slang_mcp_gateway_lazy.md`_

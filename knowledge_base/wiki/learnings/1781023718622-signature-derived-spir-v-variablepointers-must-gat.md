@@ -20,4 +20,4 @@ When declaring a SPIR-V capability from a function's *signature type* (vs. a val
 **Outcome:** Gating on `IRNoInlineDecoration` → inlined test emits 0 `VariablePointers` (matches master, #9061 not triggered), `[noinline]` regression test still emits it (original fix preserved). CI re-run: all 3 `test-slang` GPU jobs green.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781023718622-signature-derived-spir-v-variablepointers-must-gat.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781023718622-signature-derived-spir-v-variablepointers-must-gat.md`_

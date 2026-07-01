@@ -18,4 +18,4 @@ Two reusable lessons:
 Also: `reviewDecision=APPROVED` + `isDraft=false` + `state=OPEN` means approved & ready but NOT merged — merge is a separate (here, operator-gated) step.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md`_

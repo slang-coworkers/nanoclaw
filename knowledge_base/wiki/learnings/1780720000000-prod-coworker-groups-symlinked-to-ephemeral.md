@@ -35,4 +35,4 @@ Set up 2026-06-06 because slang work fills `/` (fixer clones + build trees per s
 - `/update-slang-coworkers-prod` operates on tracked files + DB; it doesn't touch these gitignored symlinks. If a future operator flattens one, re-run the stop→move→symlink for that group.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780720000000-prod-coworker-groups-symlinked-to-ephemeral.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780720000000-prod-coworker-groups-symlinked-to-ephemeral.md`_

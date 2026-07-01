@@ -16,4 +16,4 @@ Also confirmed (source-read, slang-ir-byte-address-legalize.cpp): a real latent 
 Routing note: #11545 is authored by a core-team maintainer (jkwak-work) who is already implementing the foundational fix on their own fork — do NOT open a competing fixer PR; triage value is the coupling flag + consistency-bug confirmation, posted as deferential input.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781158312869-slang-byte-address-a-naive-pow2-alignment-check-br.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781158312869-slang-byte-address-a-naive-pow2-alignment-check-br.md`_

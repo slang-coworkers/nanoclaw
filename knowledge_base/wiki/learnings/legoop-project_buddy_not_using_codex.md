@@ -28,4 +28,4 @@ Evidence: Discord D transcript shows 2 codex prompts (both the setup), 0 codex-r
 **How to apply:** Update `container/skills/buddy/SKILL.md` spawn instructions to make the codex-reply loop explicit and mandatory, with the original task context included.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-project_buddy_not_using_codex.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-project_buddy_not_using_codex.md`_

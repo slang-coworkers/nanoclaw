@@ -18,4 +18,4 @@ What worked the first time (agent a2b5e960…, 5 tools / 17 min) vs the no-ops i
 Also: for a RED-check script, **do NOT use `set -e`** — slang-test returns non-zero when a test fails (expected in the RED phase) and would abort before `git stash pop`, leaving the fix stashed. Guard only the build steps and always restore the fix unconditionally.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782224927601-context-inheriting-agent-forks-can-no-op-on-long-b.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782224927601-context-inheriting-agent-forks-can-no-op-on-long-b.md`_

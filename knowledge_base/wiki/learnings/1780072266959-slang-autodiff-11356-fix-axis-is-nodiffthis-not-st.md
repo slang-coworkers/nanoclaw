@@ -49,4 +49,4 @@ The disabled diagnostic test `tests/diagnostics/autodiff-non-static-member-diff-
 - Stale disabled diagnostic test: `tests/diagnostics/autodiff-non-static-member-diff-operand.slang` documents this same crash; after the fix the construct is legal (not diagnostic 30098), so file premise is now wrong and 30098 is orphaned.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780072266959-slang-autodiff-11356-fix-axis-is-nodiffthis-not-st.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780072266959-slang-autodiff-11356-fix-axis-is-nodiffthis-not-st.md`_

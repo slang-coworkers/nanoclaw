@@ -22,4 +22,4 @@ source: learnings/1782814479057-glsl-emitter-half-float-literal-path-misses-exte
 **Sandbox gotcha:** `-emit-spirv-via-glsl` can't run here (downstream `slang-glslang` shared lib fails to load, E00100/E52002), but you don't need it — inspect the `-target glsl` text directly. Also: the nv-slang-bot token can POST issue comments but CANNOT apply labels (403 "Must have admin rights"); note label requests in the comment for a human.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782814479057-glsl-emitter-half-float-literal-path-misses-extens.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782814479057-glsl-emitter-half-float-literal-path-misses-extens.md`_

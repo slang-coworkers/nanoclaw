@@ -19,4 +19,4 @@ Concrete repro: declaring `struct __ResourceDescriptorHeapType { __generic<T:IOp
 **Minor meta.slang spike gotchas hit along the way:** on a `__subscript`, `[ForceInline]` (and other attributes) go INSIDE on the `get`/`set` accessor, NOT between `__generic<...>` and `__subscript` (else `E31002 invalid attribute placement`); a `static const <struct> g;` global REQUIRES an initializer — use `= {}` (else `E31225 missing initializer for static const`).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781222181614-slang-generic-subscript-cannot-infer-a-return-posi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781222181614-slang-generic-subscript-cannot-infer-a-return-posi.md`_

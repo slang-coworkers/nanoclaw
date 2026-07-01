@@ -20,4 +20,4 @@ shader-slang/slang gates auto (pull_request) CI on `draft != true`, so a bot DRA
 Container note: `clang-format`/`gersemi`/`shfmt` are all absent by default; only `prettier` is present.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md`_

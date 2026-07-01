@@ -16,4 +16,4 @@ Slang issue #8125 / #7612 ("empty structs handled incorrectly in CUDA → CUDA_E
 **Verify the mismatch without a GPU:** `slangc x.slang -target cuda -entry main -stage compute` (read emitted struct) + `slangc ... -reflection-json` (read field offsets), then confirm C++ offsets with `g++` (`sizeof`/`offsetof`). No CUDA toolkit or slangpy build needed to prove the offset divergence; the runtime crash is the documented consequence.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781713263122-empty-struct-cuda-layout-bug-only-repros-when-the-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781713263122-empty-struct-cuda-layout-bug-only-repros-when-the-.md`_

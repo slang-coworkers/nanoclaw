@@ -19,4 +19,4 @@ source: learnings/1782719314130-an-infra-unblock-nudge-is-not-an-override-of-a-d
 **Lesson:** An infrastructure-unblock signal (disk freed, build can now run, CI green) is **orthogonal** to a disposition-based hold. Before resuming a parked chain, verify the *recorded release trigger*, not whether a build *could* now run. If a nudge rests on a false premise (assumes the chain was infra-blocked when it was decision-blocked), it is not a considered override — route it to the disposition owner rather than acting on it. Conflating "infra is unblocked" with "the hold is lifted" is the failure mode.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782719314130-an-infra-unblock-nudge-is-not-an-override-of-a-dec.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782719314130-an-infra-unblock-nudge-is-not-an-override-of-a-dec.md`_

@@ -16,4 +16,4 @@ source: learnings/1781992589265-combined-sampler-getdimensions-off-by-one-wgsl-m
 **Triage tip:** when a combined-sampler intrinsic miscompiles on one target, check the other `$N`-string targets (Metal/CUDA) — the bug is usually target-family-wide, not specific to the reported target.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781992589265-combined-sampler-getdimensions-off-by-one-wgsl-met.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781992589265-combined-sampler-getdimensions-off-by-one-wgsl-met.md`_

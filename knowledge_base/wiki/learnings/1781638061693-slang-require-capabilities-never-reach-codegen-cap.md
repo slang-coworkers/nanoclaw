@@ -18,4 +18,4 @@ source: learnings/1781638061693-slang-require-capabilities-never-reach-codegen-c
 **Load-bearing design tension for any fix:** `getTargetCaps()` is **target-scoped, shared across all entry points** (cached, mutex-guarded), whereas `[require]` is **per-entry-point**. A naive global merge leaks one entry point's `[require]` into another's codegen in multi-entry-point compiles. The principled fix is per-entry-point scoping; alternatively, keep validate-only semantics and DIAGNOSE when a `[require]` atom isn't target-available (the issue lists this as acceptable). Public-alias-vs-internal-atom (`spirv_1_X` vs `_spirv_1_X`) is a recurring trap in this area.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781638061693-slang-require-capabilities-never-reach-codegen-cap.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781638061693-slang-require-capabilities-never-reach-codegen-cap.md`_

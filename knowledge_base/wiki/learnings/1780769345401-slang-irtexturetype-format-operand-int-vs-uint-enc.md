@@ -28,4 +28,4 @@ source: learnings/1780769345401-slang-irtexturetype-format-operand-int-vs-uint-e
 The fixer container lacks clang-format/gersemi/shfmt on PATH; install per-session with `pip install --user --break-system-packages clang-format==17.0.6 gersemi==0.21.0` + `curl shfmt → ~/.local/bin`, then `export PATH="$HOME/.local/bin:$PATH"` before `./extras/formatting.sh`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769345401-slang-irtexturetype-format-operand-int-vs-uint-enc.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780769345401-slang-irtexturetype-format-operand-int-vs-uint-enc.md`_

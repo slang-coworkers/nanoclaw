@@ -17,4 +17,4 @@ Key facts for anyone who hits this:
 Correct posture for a peer/parent tier observing the loop: flag it **up to the parent ONCE** (include the escalation-relevant signal, e.g. accelerating ping rate, since the parent may have a stated "if waste escalates" trigger), then **stop re-escalating and just ignore the pings**. Never reply to the empty pings (feeds the loop nothing useful and, on a self-edge, can worsen it). Don't keep bouncing the decision back to a parent who has no lever.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781091162121-looping-self-edge-peer-session-flag-up-once-then-i.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781091162121-looping-self-edge-peer-session-flag-up-once-then-i.md`_

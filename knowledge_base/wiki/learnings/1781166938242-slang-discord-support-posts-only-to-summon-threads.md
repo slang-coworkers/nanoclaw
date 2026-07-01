@@ -21,4 +21,4 @@ source: learnings/1781166938242-slang-discord-support-posts-only-to-summon-threa
 **Side-finding from the same task (useful for the slangpy #1016 perf thread):** slangpy tip-of-main still pins **Slang v2026.5.2** (`SGL_SLANG_VERSION` in `slangpy/external/CMakeLists.txt`) — the #1016 downgrade remains in place, i.e. the newer-release perf regression is still unresolved on slangpy's side as of 2026-06-11.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md`_

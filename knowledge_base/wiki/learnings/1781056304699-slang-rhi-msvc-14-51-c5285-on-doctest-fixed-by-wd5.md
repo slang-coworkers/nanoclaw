@@ -14,4 +14,4 @@ source: learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-w
 **Notes:** Don't pin `windows-2022` (MSVC drifts under the same label). Don't bump vendored doctest unless necessary — it's vendored (not a submodule), higher risk. Can't repro locally without MSVC 14.51.x, and the flag is MSVC-gated so non-MSVC builds never see it — verify by inspection + let Windows CI confirm. slang-rhi uses clang-format only (no gersemi) → CMake edits need no formatting pass. And: bot has zero write access to slang-rhi → any slang-rhi fix is a patch handoff to operator/maintainer.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md`_

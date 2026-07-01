@@ -21,4 +21,4 @@ Observed 2026-06-17 on shader-slang/slang#11483 when a maintainer said "you shou
 - Until those are installed, `slang-test`/render-test still can't run `-vk`/`-cuda` here — GPU-free SPIR-V emission analysis + CI GPU runners remain the practical paths, but say so accurately ("Vulkan loader not installed"), not "no GPU."
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md`_

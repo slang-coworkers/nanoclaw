@@ -15,4 +15,4 @@ From slang #11691 (closed 2026-06-27). A reporter filed a SPIR-V depth-mode bug 
 - **Respect an informed maintainer "drop it" disposition.** When a found-during-investigation low-priority bug's only tracker is the reporter's issue and the maintainer — explicitly told closing drops the tracker and offered a spin-fresh-issue alternative — chooses to close anyway, that's a legitimate call. Don't re-open or re-litigate; preserve the mechanism in shared learnings so it's re-fileable if it resurfaces. (The dual-depth mechanism is in the companion learning "Slang direct-SPIR-V depth mode ALSO dropped via conflict-branch".)
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782521104183-slang-triage-vcpkg-can-silently-pin-a-stale-2024-b.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782521104183-slang-triage-vcpkg-can-silently-pin-a-stale-2024-b.md`_

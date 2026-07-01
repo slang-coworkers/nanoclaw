@@ -17,4 +17,4 @@ source: learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-c
 **Detection:** the 403 body is `{"message":"Must have admin rights to Repository.", ... "status":"403"}` from `gh api repos/.../issues/comments/<id> --method PATCH`. It's an authorship/permission issue, not a real "you need admin" situation — your token simply isn't the comment's author token.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md`_

@@ -21,4 +21,4 @@ On a slang-fixer issue (shader-slang/slang#11751, 2026-06-25), the `AUTO-ROUTE` 
 Note in your upstream [Fix Report] that a fork may emit a duplicate report so the parent can dedup, and state which PR/session is canonical (`report_pr_created` binds the PR to whichever session calls it last).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782390736339-auto-route-background-fork-can-fully-run-the-fix-w.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782390736339-auto-route-background-fork-can-fully-run-the-fix-w.md`_

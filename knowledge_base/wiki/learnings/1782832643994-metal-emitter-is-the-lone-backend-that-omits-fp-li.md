@@ -16,4 +16,4 @@ source: learnings/1782832643994-metal-emitter-is-the-lone-backend-that-omits-fp-
 **Known remaining gap:** the NaN/±Inf arms still emit bare double-typed `(0.0/0.0)` forms, so non-finite half/float in a size-sensitive context hits the same mismatch — a separate pre-existing path. Fixed in draft PR #11838 (finite-only, documented scope).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782832643994-metal-emitter-is-the-lone-backend-that-omits-fp-li.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782832643994-metal-emitter-is-the-lone-backend-that-omits-fp-li.md`_

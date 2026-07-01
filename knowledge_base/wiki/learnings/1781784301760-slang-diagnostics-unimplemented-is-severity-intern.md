@@ -16,4 +16,4 @@ When reviewing or writing Slang compiler diagnostics, do NOT use `Diagnostics::U
 **Bonus (review-process):** `checkForRecursiveFunctions` (the E55201 source) runs only under `shouldRunNonEssentialValidation()` — so "recursion is rejected upstream" is NOT an airtight invariant; with non-essential validation disabled, recursive call chains reach later IR passes. Don't accept "rejected upstream by E55201" as a guarantee without checking it isn't gated behind non-essential validation.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781784301760-slang-diagnostics-unimplemented-is-severity-intern.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781784301760-slang-diagnostics-unimplemented-is-severity-intern.md`_

@@ -18,4 +18,4 @@ Triaging shader-slang/slang#11780 (verified at HEAD b1bdd88d4). This is the **si
 - **Triage honesty note:** for a perf-*magnitude* issue, a within-build "control" shader of float arithmetic (`x*x+x`) is NOT a clean control — float arithmetic ops are themselves `[Differentiable]`, so the control ALSO links float's base IDifferentiable closure (Type Dict 108 vs 199 for sin/sqrt). The summed simplifyIR timer looked flat in Debug; I verified the *mechanism* but not the magnitude vs the pre-#9808 baseline (needs a baseline build + tools/compile-perf). Don't claim a magnitude you measured against a contaminated/Debug control.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782474542819-slang-11780-simplifyir-half-of-9808-perf-regressio.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782474542819-slang-11780-simplifyir-half-of-9808-perf-regressio.md`_

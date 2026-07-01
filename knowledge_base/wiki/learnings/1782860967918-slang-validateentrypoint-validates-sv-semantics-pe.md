@@ -16,4 +16,4 @@ When triaging "Slang accepts conflicting/duplicate system-value semantics on an 
 - Label nuance: a diagnostic that rejects previously-accepted code is technically a language breaking change, but when that code was already producing semantically-wrong output it's "misuse was never valid" (cf. #6216, where the maintainer reverted the breaking-change label). Flag it; let the maintainer decide — don't set the label unilaterally.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782860967918-slang-validateentrypoint-validates-sv-semantics-pe.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782860967918-slang-validateentrypoint-validates-sv-semantics-pe.md`_

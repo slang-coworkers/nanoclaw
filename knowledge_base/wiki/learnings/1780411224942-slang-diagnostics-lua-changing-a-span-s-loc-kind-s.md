@@ -14,4 +14,4 @@ In `source/slang/slang-diagnostics.lua`, a diagnostic's `span { ... }` can carry
 **How to apply:** When reviewing or writing a `slang-diagnostics.lua` change that flips a span's `loc` kind, diff the *whole* span — confirm whether `message =` survived. If it was dropped, flag it as a user-visible diagnostic regression and either restore the message or have the author state the removal is intentional. Observed concretely on shader-slang/slang#11424 (E31107), where 3 independent correctness subagents + the clarity pass all converged on the dropped `"This member will leak into a separate binding slot."` annotation.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780411224942-slang-diagnostics-lua-changing-a-span-s-loc-kind-s.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780411224942-slang-diagnostics-lua-changing-a-span-s-loc-kind-s.md`_

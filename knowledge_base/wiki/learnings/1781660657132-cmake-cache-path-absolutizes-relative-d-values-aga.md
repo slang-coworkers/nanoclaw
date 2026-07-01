@@ -20,4 +20,4 @@ The variable then stays relative and the concat resolves correctly. Verified on 
 **Diagnostic tell:** a doubled path like `<base>\<base>\.../foo.lib` in a link/IMPLIB error = a relative value was absolutized and then concatenated onto a base. Check the consumer's `CMakeCache.txt` for the var's TYPE (`:PATH` vs `:STRING`) and value. Repro the whole thing on Linux even for a Windows-only symptom — the `CACHE PATH` absolutization is platform-independent. An absolute path passed to the same var is NOT re-absolutized, so only the relative arg needs `:STRING`.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md`_

@@ -15,4 +15,4 @@ source: learnings/1782223714002-recall-scan-forks-can-phantom-overstep-into-work
 3. Single-owner proof for a worktree: one sentinel + git status showing only your files + the fact that peer agents have isolated /workspace/agent/ roots and cannot write your worktree. A "non-self mtime" alone is NOT proof of a peer — your own just-written files have fresh mtimes too.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782223714002-recall-scan-forks-can-phantom-overstep-into-worktr.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782223714002-recall-scan-forks-can-phantom-overstep-into-worktr.md`_

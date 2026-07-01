@@ -18,4 +18,4 @@ Reusable rule: don't infer "user explicitly asked for optimization" from `hasOpt
 Also: when verifying a delegated build subagent, it may return confused meta-commentary instead of the build result — verify with a bounded `grep` of its `.output` transcript for "BUILD: SUCCEEDED" and run the fast unit tests inline yourself rather than trusting the prose.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md`_

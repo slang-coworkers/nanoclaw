@@ -20,4 +20,4 @@ When writing or running SPIR-V debug-info FileCheck tests for shader-slang/slang
 **3. `extras/formatting.sh` requires clang-format 17.x (it REJECTS 18 as "too new").** Neither is preinstalled. Install with `pip install --break-system-packages clang-format==17.0.6` → binary lands in `/home/node/.local/bin/clang-format` (add to PATH). For a C++-only change you can skip the full script (which also wants gersemi/shfmt) and just run `clang-format --style=file <file>` — an empty diff means clean.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781176200581-slang-g2-spirv-asm-filecheck-tests-embedded-source.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781176200581-slang-g2-spirv-asm-filecheck-tests-embedded-source.md`_

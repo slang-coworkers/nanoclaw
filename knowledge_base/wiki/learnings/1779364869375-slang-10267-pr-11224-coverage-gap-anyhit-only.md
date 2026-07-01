@@ -52,4 +52,4 @@ PR #11218's dedicated pass `legalizeRayPayloadAccessQualifiersForHLSL` walks **e
 When evaluating fixes that attach defaults to ray-payload field decorations: check that the fix runs over **all** `IRRayPayloadDecoration` structs, not just structs reached via the `__forceVarIntoRayPayloadStructTemporarily` legalize path. The latter misses separately-compiled hit shaders and is a real bug class for shader libraries.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779364869375-slang-10267-pr-11224-coverage-gap-anyhit-only.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779364869375-slang-10267-pr-11224-coverage-gap-anyhit-only.md`_

@@ -24,4 +24,4 @@ Two formatting gotchas that bite when preparing a shader-slang/slang PR in this 
 **3. `extras/formatting.sh` with no args prints USAGE and does nothing** — use `--modified` (changed-from-HEAD) and/or `--cpp`/`--md`. It also ABORTS EARLY if a required tool (clang-format/gersemi/shfmt) is missing, so a bare `--modified` can exit before reaching prettier (leaving md untouched). Scope explicitly to the file types whose tools you actually have.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md`_

@@ -18,4 +18,4 @@ From triage of shader-slang/slangpy#1014 (Metal vs Vulkan execution discrepancy 
 **Why it matters for triage:** when a SlangPy issue is "same program, different result across backends" involving a manually-sized structured buffer, the host/device stride mismatch is a prime suspect, and the fix may be as simple as switching to `resource_type_layout=` (no code change) rather than a compiler fix.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780598190908-slangpy-create-buffer-struct-size-is-a-silent-back.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780598190908-slangpy-create-buffer-struct-size-is-a-silent-back.md`_

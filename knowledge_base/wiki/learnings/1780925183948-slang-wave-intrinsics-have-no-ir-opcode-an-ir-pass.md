@@ -33,4 +33,4 @@ Precedent that a pass CAN inject wave/active-mask IR: `slang-ir-synthesize-activ
 - Capability gating from a pass: query `targetRequest` with `isKhronosTarget`/`isCPUTarget`/`isCUDATarget`/`isWGPUTarget`/`isCPUTargetViaLLVM`; stdlib gates wave funcs via `[require(cuda_glsl_hlsl_spirv, subgroup_basic|_ballot|_partitioned)]`. There is no ready-made "supports wave ops" predicate — you add one.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780925183948-slang-wave-intrinsics-have-no-ir-opcode-an-ir-pass.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780925183948-slang-wave-intrinsics-have-no-ir-opcode-an-ir-pass.md`_

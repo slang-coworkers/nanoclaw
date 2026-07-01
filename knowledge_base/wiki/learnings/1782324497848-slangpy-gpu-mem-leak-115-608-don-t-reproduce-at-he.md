@@ -18,4 +18,4 @@ Empirical, on an L40S (46GB), slangpy built from HEAD (debug layers on, matching
 **How to apply:** when asked "is there a leak," distinguish a LEAK (monotonic climb on a repeated identical op) from HIGH-WATER-MARK working set (step-function that plateaus). Sample VRAM over BOTH a repeated-op micro-loop AND the real suite. Reusable probe at /workspace/agent/leak_probe.py (modes: func #115, encoder #608, interop #827). Caveat: Vulkan+CUDA-interop errored on the L40S/linux (`command_encoder->finish() SLANG_FAIL`) so #827's vulkan leak couldn't be measured there.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782324497848-slangpy-gpu-mem-leak-115-608-don-t-reproduce-at-he.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782324497848-slangpy-gpu-mem-leak-115-608-don-t-reproduce-at-he.md`_

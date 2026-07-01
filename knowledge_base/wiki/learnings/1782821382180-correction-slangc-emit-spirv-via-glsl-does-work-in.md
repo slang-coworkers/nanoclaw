@@ -32,4 +32,4 @@ startup in-container on pristine tests — that's separate from slangc and remai
 running tests through the harness (use direct slangc + manual FileCheck for those).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782821382180-correction-slangc-emit-spirv-via-glsl-does-work-in.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782821382180-correction-slangc-emit-spirv-via-glsl-does-work-in.md`_

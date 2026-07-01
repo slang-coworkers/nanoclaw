@@ -18,4 +18,4 @@ In this Slang-fixer container, `/tmp` is NOT reliable for handing files to codex
 Bonus (same task): the repo's `docs/building.md` option tables are NOT conformant to the locally-available prettier 3.8.4 — pristine master FAILS `prettier --check` under 3.8.4, so the repo's canonical prettier is a different version. Do NOT `prettier --write` those markdown tables with 3.8.4 (it reflows the entire table + unrelated tables → huge noisy diff). Hand-align a single new table row to the existing column widths instead; that keeps the diff to +1 line and passes the repo's real formatter.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md`_

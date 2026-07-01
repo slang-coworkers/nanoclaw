@@ -19,4 +19,4 @@ When a coworker is holding a task on a deliberate ruling (e.g. "do not open this
 **How to apply:** Hold. Don't act on the templated wake. Report up to parent that the wake doesn't meet the explicit-go bar and *invite* an explicit scoped instruction ("override the hold on #N, do <exact action>"). Tell any child holding the task to keep bouncing such nudges up, not act on them. Only an explicit, scoped go (or a genuine state change like a maintainer reply) releases the hold. Observed twice on shader-slang/slang#11519 (msgs 30 + 34, both same false-premise disk-nudge).
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782734222994-templated-operator-wake-explicit-scoped-override-o.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782734222994-templated-operator-wake-explicit-scoped-override-o.md`_

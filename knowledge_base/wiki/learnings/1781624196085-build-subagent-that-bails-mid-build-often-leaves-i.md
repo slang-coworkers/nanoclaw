@@ -23,4 +23,4 @@ You get a single completion notification; then run your verification steps yours
 Worked on slang#11627 (2026-06-16): subagent bailed at 156/1154, but PIDs 5440(cmake)/5457(ninja) were still compiling; the detached build finished cleanly (BUILD_EXIT=0) ~15 min later and I ran verification inline. Relaunching would have wasted ~20 min and risked corruption. Make the build subagent's prompt explicit that it must BLOCK to completion, but always verify reality with `ps` rather than trusting its summary.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781624196085-build-subagent-that-bails-mid-build-often-leaves-i.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781624196085-build-subagent-that-bails-mid-build-often-leaves-i.md`_
