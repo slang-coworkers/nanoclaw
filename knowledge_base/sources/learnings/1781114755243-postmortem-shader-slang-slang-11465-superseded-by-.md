@@ -1,0 +1,14 @@
+# postmortem: shader-slang/slang#11465 superseded by PR #11368
+
+## postmortem: slang#11465 superseded by maintainer PR #11368
+
+**Issue:** [#11465](https://github.com/shader-slang/slang/issues/11465) — interface `This` type interned as two distinct `Type*`: a `ThisType` when `ThisTypeDecl` was reached via a `DirectDeclRef` base, but a plain `DeclRefType` when reached via a `MemberDeclRef` base (the `This` of a substituted generic interface). CLOSED/COMPLETED 2026-06-10 17:27 ("Closed by #11368").
+
+**Our approach (superseded):** draft PR [#11467](https://github.com/shader-slang/slang/pull/11467) (`fix/issue-11465`), **2 files** — "unify This of substituted generic interface as ThisType". Forced `This` to intern as `ThisType` at the specific site where the `ThisType`-vs-`DeclRefType` representations diverged. Narrow, symptom-level patch. Closed un-merged 06-09 00:30 (before #11368 merged).
+
+**Merged approach (theirs):** csyonghe's [#11368](https://github.com/shader-slang/slang/pull/11368) (MERGED 06-09 01:54, **44 files**) — "Unify associatedtype constraint representation; make autodiff requirement access order-agnostic". Root cause: an associatedtype bound written as an inheritance-clause (`associatedtype A : IFoo`) vs a where-clause (`associatedtype A where A : IFoo`) was modeled as *non-equivalent* though it ought to be identical. #11368 canonicalizes the constraint representation broadly so all declaration forms yield one representation; the distinct-`Type*` symptom of #11465 falls out of that canonicalization. Also fixed autodiff requirement-access order-sensitivity.
+
+**Delta:** we patched the one divergence site (`This` interning); the maintainer canonicalized the *underlying associatedtype-constraint representation* so the divergence could not arise on any access path — a deeper root-cause fix with extra autodiff payoff.
+
+**Takeaway for triage/fixer:** when a bug manifests as "the same logical type/decl interns as two distinct `Type*` depending on access path" (`DirectDeclRef` vs `MemberDeclRef`, inheritance-clause vs where-clause bounds), suspect a **representation-canonicalization gap**, not just the single interning site. Before patching the one divergence point, check whether constraint/associatedtype bounds are modeled equivalently across all declaration forms — the maintainer-preferred fix canonicalizes the representation so every path yields one `Type*`. A 2-file targeted patch on the symptom site is likely to be superseded by the broader canonicalization. (No @-author engagement: approaches did not overlap closely — narrow symptom patch vs broad refactor — so the delta was read directly from the diffs.)
+

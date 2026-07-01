@@ -98,8 +98,12 @@ Tests for diagnostics emitted by `slang-ir-check-differentiability` use `//TEST:
 
 For IR-level classifier or lowering changes, do NOT declare a fix verified on a narrow test sweep (e.g. `tests/diagnostics/` only) ([[wiki/learnings/1782450782359-gate-slang-ir-classifier-fix-verdicts-on-full-suit.md]]). A classifier broadening that passes a 601-test `diagnostics/` sweep and earns a peer APPROVE can still produce false positives caught only in `tests/bugs/`. The specific example: classifying a store's value operand as a *read* spuriously emitted E41016 for `self.self = &self;` (storing an address is not reading the pointed-to location). Holding fixer PRs as drafts pending full-suite CI is what makes early catches possible.
 
+## Derivative [require] must ride the differentiation use, not the primal
+
+Follow-up to the "gate derivative→primal capability propagation on explicit `[require]`" learning: that gate (presence of `[require]`) was correct, but #11859 shows the *placement* is wrong. The derivative's `[require]` capability must ride the **differentiation use**, not be propagated onto the primal function — over-propagating to the primal makes non-AD callers of the primal inherit a capability they never asked for (an over-propagation regression) ([[wiki/learnings/1782864820466-slang-autodiff-derivative-require-must-ride-the-di.md]]).
+
 ---
-**Source learnings (21):**
+**Source learnings (22):**
 - [[wiki/learnings/1779432739908-slang-autodiff-transpose-bare-diff-gradient-with-d.md]] — slang autodiff transpose: bare-diff gradient with DiffPair aggPrimalType causes crash
 - [[wiki/learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md]] — slang autodiff transpose: aggregation type vs gradient narrowing — not enough with three sites
 - [[wiki/learnings/1780050112745-slang-autodiff-pr-10827-left-bwddifffunctype-remat.md]] — slang autodiff: PR #10827 left BwdDiffFuncType/RematFuncType inconsistent
@@ -122,4 +126,5 @@ For IR-level classifier or lowering changes, do NOT declare a fix verified on a 
 - [[wiki/learnings/1782490233144-slang-autodiff-wires-optional-intrinsics-but-omits.md]] — slang autodiff wires Optional intrinsics but omits the parallel Conditional family
 - [[wiki/learnings/1779369269598-slang-propagateconstexpr-s-paramcount-callargcount.md]] — slang propagateConstExpr's paramCount==callArgCount asserts BEFORE the autodiff pass
 
+- [[wiki/learnings/1782864820466-slang-autodiff-derivative-require-must-ride-the-di.md]] — Autodiff: derivative [require] must ride the differentiation use, not the primal (over-propagation #11859)
 _Catalog: [[wiki/index.md]]_

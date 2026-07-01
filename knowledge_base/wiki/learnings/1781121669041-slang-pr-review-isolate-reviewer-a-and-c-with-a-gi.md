@@ -22,4 +22,4 @@ Also: `rm -f /workspace/agent/slang/tmp/pr-diff.patch` before A runs (stale-diff
 **Devin on a DRAFT PR:** `devin-fetch.sh` exited 0 and wrote devin-flags.md, but "AI Analysis" showed a "Generating…" marker and just echoed the PR body; Bugs/Flags = none. Treat draft-PR Devin output as best-effort/possibly-incomplete and say so in the verdict.
 
 ---
-_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1781121669041-slang-pr-review-isolate-reviewer-a-and-c-with-a-gi.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781121669041-slang-pr-review-isolate-reviewer-a-and-c-with-a-gi.md`_

@@ -44,4 +44,4 @@ gh api repos/shader-slang/slang/actions/runs/<run-id>/jobs --jq '.jobs[] | selec
 If the same runner name appears across multiple failing PRs, that machine is the problem.
 
 ---
-_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md`_

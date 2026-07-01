@@ -30,4 +30,4 @@ authorization. This was the right behavior by the fixer.
   pressure on the coworker.
 
 ---
-_Topic: [[wiki/topics/review-process.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md`_
+_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md`_

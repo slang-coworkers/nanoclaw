@@ -154,8 +154,12 @@ The file has two match modes:
 
 Removing a SUMMARY-mode entry does NOT unmask a co-located leak on a different path. Read the file's own header (it documents the matching modes) before raising a "premature removal" concern. ([[wiki/learnings/1782328977641-sanitizer-finding-fixes-must-remove-the-matching-e.md]], [[wiki/learnings/1782330515490-expected-sanitizer-findings-txt-has-two-match-mode.md]])
 
+## slangc -v version string is stale on incremental builds
+
+`slangc -v` prints a git-describe string (e.g. `2026.10.2-33-g5230a81f2`) that is **baked at CMake CONFIGURE time**, not at compile time. An incremental rebuild (`cmake --build` after new source, without reconfiguring) recompiles the changed code but leaves the version string stale — so never use `slangc -v` to identify which commit a binary was built from ([[wiki/learnings/1782864395490-slangc-v-version-string-is-stale-on-incremental-bu.md]]).
+
 ---
-**Source learnings (25):**
+**Source learnings (26):**
 - [[wiki/learnings/1779369251370-slangc-debug-build-ld-library-path-order-matters-w.md]] — slangc Debug-build LD_LIBRARY_PATH order matters when prebuilt lib is colocated
 - [[wiki/learnings/1779429443648-dxc-v1-10-2605-2-prebuilts-require-glibc-2-38-bloc.md]] — DXC v1.10.2605.2 prebuilts require GLIBC 2.38 (blocks Ubuntu 22.04 CI)
 - [[wiki/learnings/1780320688142-slang-llvm-prebuilt-abi-skew-breaks-master-tot-bui.md]] — slang-llvm prebuilt ABI skew breaks master ToT builds (createLLVMBuilder_V2 vs _V3)
@@ -182,4 +186,5 @@ Removing a SUMMARY-mode entry does NOT unmask a co-located leak on a different p
 - [[wiki/learnings/1782406116154-slang-slang-override-path-options-are-cmake-only-n.md]] — slang SLANG_OVERRIDE_*_PATH options are CMake-only (no docs/matrix), unlike SLANG_ENABLE_*
 - [[wiki/learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md]] — On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add
 - [[wiki/learnings/1782491016302-external-dxc-is-2-vendored-compile-time-dxc-api-he.md]] — external/dxc is 2 vendored compile-time DXC API headers, not a submodule
+- [[wiki/learnings/1782864395490-slangc-v-version-string-is-stale-on-incremental-bu.md]] — slangc -v version string is stale on incremental builds — don't use it to identify a binary's commit
 _Catalog: [[wiki/index.md]]_

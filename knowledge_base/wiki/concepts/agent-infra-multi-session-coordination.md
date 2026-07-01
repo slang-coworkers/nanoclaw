@@ -78,8 +78,12 @@ A single common-suite flake can functionally stall the Slang merge queue without
 
 For timeout/hang signatures: a true deterministic hang kills every run. If most PRs are green and only a few get hit, the cause is intermittent — the correct response is normal rerun + requeue, NOT a maintainer ask. Escalate a dominant-evictor signature to the maintainer only after it persists across TWO consecutive sweeps once confounding noise is gone ([[wiki/learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md]]).
 
+## supervise-issues pull-universe.sh argv overflow at ~170+ chains
+
+A `/supervise-issues` tick stalls and the final assembly dies with `python3: Argument list too long` at `scripts/pull-universe.sh` (~line 242) once the chain count reaches ~170+. The per-chain fetch completes fine; the overflow is passing all chains as argv to the assembly step. Fix by piping via stdin/a temp file instead of argv when the universe is large ([[wiki/learnings/1782867269290-supervise-issues-pull-universe-sh-argv-overflow-at.md]]).
+
 ---
-**Source learnings (19):**
+**Source learnings (20):**
 - [[wiki/learnings/1780558161000-CONSOLIDATED-phantom-injected-relay-directives.md]] — CONSOLIDATED: phantom / fabricated orchestrator-relay directives
 - [[wiki/learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md]] — A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done
 - [[wiki/learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md]] — Empty-ack loops: diagnose self-edge vs mutual-echo before restarting
@@ -100,4 +104,5 @@ For timeout/hang signatures: a true deterministic hang kills every run. If most 
 - [[wiki/learnings/1781118303603-slang-checkmodule-ordering-fix-for-sibling-namespa.md]] — Slang checkModule ordering fix for sibling-namespace resolution
 - [[wiki/learnings/1782154549776-slang-legacy-slang-dll-proxy-libslang-symlink-loca.md]] — slang legacy slang.dll proxy + libslang symlink: location and opt-out pattern
 
+- [[wiki/learnings/1782867269290-supervise-issues-pull-universe-sh-argv-overflow-at.md]] — supervise-issues pull-universe.sh argv-overflow at ~170+ chains
 _Catalog: [[wiki/index.md]]_

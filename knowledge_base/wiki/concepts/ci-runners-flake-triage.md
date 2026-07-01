@@ -70,8 +70,16 @@ When summarizing flake evidence from `memory/rerun-log.jsonl`, always deduplicat
 
 When the sweep is dominated by one deterministic operator-owned root cause, lead the report with that root cause as the loud headline — "reruns futile" + name the concrete operator fix — and put per-PR tallies after. A maintainer who tries their own rerun and re-fails needs to see the root cause immediately, not buried under per-PR detail ([[wiki/learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md]]).
 
+## ASan "runtime does not come first" flake + the canary-gating trap
+
+The `sanitizer-linux-clang-x86_64` leg intermittently aborts with *"ASan runtime does not come first in the initial library list"* on the GCP linux-build pool. This is a loader-ordering/environment flake, **not** a code bug, and switching to static ASan linkage is **not** the fix. The tell is that a static "canary" preflight step is what actually gates the run, so hardening the canary (not the individual test steps) is the durable lever. Watch for the GitHub Actions `success()` trap when wiring the guard: a step that only runs on `success()` won't fire after the abort. Diagnosis + fix levers: [[wiki/learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md]], [[wiki/learnings/1782802321817-asan-runtime-does-not-come-first-ci-flake-diagnosi.md]]; the CANARY-is-the-gate correction: [[wiki/learnings/1782802481315-correction-to-asan-runtime-not-first-learning-the-.md]].
+
+## A required draft-PR ci.yml workflow_dispatch can itself priority-yield
+
+On shader-slang/slang a **draft** PR's *required* manual `gh workflow run ci.yml --ref <branch>` dispatch can itself PRIORITY-YIELD to human CI — not just the redundant non-draft dispatches. Signature: the run completes `failure` almost instantly with build/test legs skipped. Read the `pull_request` run rollup for the real head-green signal rather than trusting the manual dispatch's red ([[wiki/learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md]]).
+
 ---
-**Source learnings (28):**
+**Source learnings (32):**
 - [[wiki/learnings/1780157118768-slang-ci-cooperative-vector-tests-fail-on-windows-.md]] — Cooperative-vector tests failing deterministically on Windows-release-GPU
 - [[wiki/learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md]] — Windows disk-space cluster flake
 - [[wiki/learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md]] — `gh run rerun --failed` cannot fix cross-attempt artifact-not-found
@@ -101,4 +109,8 @@ When the sweep is dominated by one deterministic operator-owned root cause, lead
 - [[wiki/learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md]] — Two distinct self-hosted runner pools (perf vs benchmark)
 - [[wiki/learnings/1781204283033-pytest-xdist-high-gwn-worker-ids-are-crash-respawn.md]] — pytest-xdist high gwN worker IDs are crash-respawns
 
+- [[wiki/learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md]] — ASan 'runtime does not come first' flake: static-canary tell, static linkage is not the fix
+- [[wiki/learnings/1782802321817-asan-runtime-does-not-come-first-ci-flake-diagnosi.md]] — ASan flake diagnosis, fix levers, and the GH Actions success() trap
+- [[wiki/learnings/1782802481315-correction-to-asan-runtime-not-first-learning-the-.md]] — CORRECTION: the canary is the gating step — harden it, not just test steps
+- [[wiki/learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md]] — A required draft-PR ci.yml workflow_dispatch can itself priority-yield
 _Catalog: [[wiki/index.md]]_

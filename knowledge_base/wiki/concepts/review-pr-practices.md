@@ -166,8 +166,16 @@ Several review-time FileCheck lessons apply across the review pipeline [[wiki/le
 - For a module-wide semantic error, use ordered (non-DAG) `CHECK:` lines, each pinning a distinct `expected/got` pair. Unanchored `CHECK-DAG: <code>` is the anti-pattern: a subset of cases can satisfy all DAG lines, silently missing a regression.
 - A comment containing a literal `CHECK:`/`CHECK-DAG:` token is parsed by FileCheck as a real directive — reword such comments.
 
+## /slang-pr-review runner operational traps
+
+Running the three-reviewer `/slang-pr-review` pipeline surfaces several reproducible traps. **Reviewer C invocation:** call `bash run-clarity.sh --mode pr --pr N --repo owner/repo` — do NOT prefix with the literal word `run-clarity` ([[wiki/learnings/1782832548664-slang-clarity-run-clarity-sh-pass-mode-directly-no.md]]). **Isolation:** Reviewer A (`compose-and-run.sh`) and Reviewer C (`run-clarity.sh`) both default to `REPO_ROOT=/workspace/agent/slang` and each does `git fetch/checkout origin master`; run Reviewer C in its own **git worktree** so parallel runs don't clobber each other's checkout ([[wiki/learnings/1782876940783-isolate-reviewer-c-in-a-git-worktree-for-parallel-.md]]). **Reviewer A premature termination:** a run can report `completed (exit 0)` in ~52s yet be incomplete — treat a suspiciously fast exit-0 as a failed run and re-dispatch ([[wiki/learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md]]). **Recovery:** a container restart kills the completion-waiter, but reviewer outputs survive on persistent paths — recover them rather than re-running ([[wiki/learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md]]). **Devin on fresh drafts:** on a freshly-opened draft PR, `devin-fetch.sh` can exit 0 with `## AI Analysis` still "Generating…" (the done-detector race); re-scrape, and mind the escaped-JSON grep gotcha ([[wiki/learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md]]).
+
+## Re-review scope: redesign gaps + self-recommended nits don't reset the pipeline
+
+When a fixer reworks a PR in response to feedback and re-requests review, the re-run must do **two** things: (1) confirm the round-1 findings are actually closed, and (2) look for NEW gaps the redesign introduced — not just re-check the old list ([[wiki/learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md]]). But when a follow-up commit *only* incorporates a nit the reviewer itself recommended (e.g. a doc comment from a Reviewer C clarity finding), do **not** re-run the full three-reviewer pipeline — just verify the recommended change landed ([[wiki/learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md]]).
+
 ---
-**Source learnings (37):**
+**Source learnings (44):**
 - [[wiki/learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md]] — Always use markdown links for issues and reviews
 - [[wiki/learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md]] — Empirical "I tested it" probes can miss the wrong sub-case
 - [[wiki/learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md]] — Reviewer A flip-flops across rounds — log signed-off positions per round
@@ -205,4 +213,11 @@ Several review-time FileCheck lessons apply across the review pipeline [[wiki/le
 - [[wiki/learnings/1782739994323-slang-reviewer-c-clarity-run-recover-truncated-out.md]] — slang Reviewer C clarity run: recover truncated output from on-disk candidate file
 - [[wiki/learnings/1782761345395-slang-pr-review-devin-can-report-0-bugs-while-anal.md]] — slang-pr-review: Devin can report 0 bugs while analysis still "Generating…" — weak signal
 - [[wiki/learnings/devin-reviewer-scrape-reliability.md]] — Devin reviewer scrape reliability
+- [[wiki/learnings/1782832548664-slang-clarity-run-clarity-sh-pass-mode-directly-no.md]] — slang-clarity run-clarity.sh: pass --mode directly, NOT the run-clarity subcommand word
+- [[wiki/learnings/1782876940783-isolate-reviewer-c-in-a-git-worktree-for-parallel-.md]] — Isolate Reviewer C in a git worktree for parallel /slang-pr-review runs
+- [[wiki/learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md]] — Reviewer A premature-termination signature: exit-0 but incomplete
+- [[wiki/learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md]] — slang-pr-review: container restart kills completion-waiter; recover outputs from persistent paths
+- [[wiki/learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md]] — Devin re-scrape recovery: fresh draft PR renders with NO flag anchors; escaped-JSON grep gotcha
+- [[wiki/learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md]] — Re-review after a PR redesign: check for gaps the redesign introduced, not just old ones closed
+- [[wiki/learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md]] — A self-recommended comment addition does not reset the PR review pipeline
 _Catalog: [[wiki/index.md]]_

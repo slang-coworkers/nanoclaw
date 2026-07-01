@@ -64,8 +64,20 @@ Slangd config settings cannot be verified with slang-test. Require an LSP stdio 
 
 When verifying claims about `external/slang-rhi/` behavior, the pinned submodule in the slang repo may lag behind active feature work. A design/tracking issue authored by the feature developer often describes the world as it will be once their open PR lands ([[wiki/learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md]]).
 
+## SLANG_OVERRIDE_*_PATH silently shadowed by a sibling dep's public include
+
+A `SLANG_OVERRIDE_<DEP>_PATH` can be set yet silently ignored for a target's public-header consumers even though the dep's INTERFACE target correctly branches its include dir. The failure mode (#11851, imgui — generalizes to any bundled dep): a sibling dependency's *incidental public include* re-exposes the bundled-parent spelling, so the consumer resolves the bundled header instead of the override ([[wiki/learnings/1782852472140-slang-override-path-can-be-silently-shadowed-by-a-.md]], [[wiki/learnings/1782854132050-slang-override-dep-path-silently-fails-when-a-publ.md]]).
+
+## git blame lies on shallow clones — use git log -S for provenance
+
+On a shallow clone (`git clone --depth N`), `git blame` mis-attributes pre-boundary lines to the WRONG commit: the oldest commit visible at the boundary appears with a `^` prefix, which means "this line existed at or before the shallow boundary" — not "this commit introduced it." A blame that claims a 2021 line came from a 2026 PR is this artifact. Use `git log -S'<text>'` (pickaxe) for true provenance, or unshallow first ([[wiki/learnings/1782868921334-shallow-clones-depth-n-make-git-blame-mis-attribut.md]], [[wiki/learnings/1782869392078-git-blame-lies-on-shallow-clones-use-git-log-s-for.md]]).
+
+## Local-build traps: ninja skips rebuild after git checkout; zombie-PID waiter; SPIR-V without spirv-dis
+
+Three operational traps when reproducing bugs at HEAD: (1) after a `git checkout`, `ninja` may **skip** the rebuild because the checked-out source mtime is older than the existing object — touch the sources or clean to force it; (2) a background build waiter can hang on a zombie PID; (3) you can parse SPIR-V structurally without `spirv-dis` when the disassembler isn't loadable ([[wiki/learnings/1782871600830-slang-local-build-ninja-skips-rebuild-after-git-ch.md]]).
+
 ---
-**Source learnings (23):**
+**Source learnings (28):**
 - [[wiki/learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md]] — MSVC C5285 on doctest fixed by /wd5285
 - [[wiki/learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md]] — MSVC 14.51 C5285 on vendored doctest
 - [[wiki/learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md]] — slang-rhi submodule pin lags feature PRs
@@ -84,4 +96,9 @@ When verifying claims about `external/slang-rhi/` behavior, the pinned submodule
 - [[wiki/learnings/1780769345401-slang-irtexturetype-format-operand-int-vs-uint-enc.md]] — IRTextureType format operand int vs uint encoding
 - [[wiki/learnings/1781038945892-slang-vk-khr-shader-abort-is-printf-frontend-but-a.md]] — VK_KHR_shader_abort is printf frontend but terminator
 - [[wiki/learnings/1781072417779-slang-implementing-vk-khr-shader-abort-opabortkhr-.md]] — implementing VK_KHR_shader_abort OpAbortKHR
+- [[wiki/learnings/1782852472140-slang-override-path-can-be-silently-shadowed-by-a-.md]] — SLANG_OVERRIDE_*_PATH can be silently shadowed by a sibling dep's incidental public include
+- [[wiki/learnings/1782854132050-slang-override-dep-path-silently-fails-when-a-publ.md]] — SLANG_OVERRIDE_DEP_PATH silently fails when a public header uses the bundled-parent include spelling
+- [[wiki/learnings/1782868921334-shallow-clones-depth-n-make-git-blame-mis-attribut.md]] — Shallow clones (--depth N) make git blame mis-attribute old lines to the clone boundary
+- [[wiki/learnings/1782869392078-git-blame-lies-on-shallow-clones-use-git-log-s-for.md]] — git blame lies on shallow clones — use git log -S for provenance
+- [[wiki/learnings/1782871600830-slang-local-build-ninja-skips-rebuild-after-git-ch.md]] — Local build: ninja skips rebuild after git checkout (mtime); zombie-PID waiter; parse SPIR-V without spirv-dis
 _Catalog: [[wiki/index.md]]_

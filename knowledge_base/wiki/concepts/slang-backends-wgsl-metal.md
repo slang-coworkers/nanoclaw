@@ -40,12 +40,19 @@ When reviewing coverage/wave-aggregation PRs, a FileCheck `//CHECK-DAG: WaveActi
 
 WGSL is the "other constructor-syntax, no brace-init" textual target alongside GLSL. When a `-target glsl` text-output codegen bug appears (e.g. array brace init), check whether the WGSL emitter already solved the same shape — the override often exists in `slang-emit-wgsl.cpp` and just needs porting ([[wiki/learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md]]).
 
+## FP literal type suffixes (Metal outlier) + WGSL f16 already works
+
+The Metal source emitter is the **lone** C-like backend that prints floating-point literals with **no** type suffix. `MetalSourceEmitter::emitSimpleValueImpl` (`slang-emit-metal.cpp:1128-1164`) omits the MSL `h`/`f` suffix, so a `half` literal like `61440.hf` degrades to a bare double — the fix mirrors the WGSL/HLSL path by appending the suffix ([[wiki/learnings/1782814984950-slang-metal-backend-emits-fp-literals-with-no-type.md]], [[wiki/learnings/1782832643994-metal-emitter-is-the-lone-backend-that-omits-fp-li.md]]). Separately, do **not** treat WGSL as missing 16-bit float support: verified at HEAD, the WGSL/WebGPU backend already fully supports `half`/`f16`; a "WGSL missing f16" report is almost always the 16-bit **integer** (`bit_cast<uint16_t>`) path surfacing E56103, a different gap ([[wiki/learnings/1782813507927-wgsl-f16-floats-already-work-e56103-is-the-16-bit-.md]]).
+
 ---
-**Source learnings (6):**
+**Source learnings (9):**
 - [[wiki/learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md]] — Slang per-target stride for `StructuredBuffer<float3, ScalarDataLayout>` — WGSL is the outlier
 - [[wiki/learnings/1780935575501-coverage-wave-aggregate-tests-cuda-metal-filecheck.md]] — Coverage wave-aggregate tests — CUDA/Metal FileCheck asserting `WaveActiveCountBits` passes for the wrong reason
 - [[wiki/learnings/1781624737396-wgsl-emit-static-const-arrays-must-be-var-private-.md]] — WGSL emit: static-const arrays must be var<private> (not const) for runtime indexing
 - [[wiki/learnings/1781639050403-wgsl-static-const-array-review-replaceglobalconsta.md]] — WGSL static-const-array review: replaceGlobalConstants false-positive + value-indexability rule
 - [[wiki/learnings/1781663682498-wgsl-location-return-0-fallback-branch-can-t-be-un.md]] — WGSL @location return-0 fallback branch can't be unit-tested in one struct
 - [[wiki/learnings/1781992589265-combined-sampler-getdimensions-off-by-one-wgsl-met.md]] — Combined-sampler GetDimensions off-by-one (WGSL/Metal/CUDA) — shared root with HLSL #10522
+- [[wiki/learnings/1782814984950-slang-metal-backend-emits-fp-literals-with-no-type.md]] — Slang Metal backend emits FP literals with NO type suffix (#11837)
+- [[wiki/learnings/1782832643994-metal-emitter-is-the-lone-backend-that-omits-fp-li.md]] — Metal emitter is the lone backend that omits FP literal type suffixes
+- [[wiki/learnings/1782813507927-wgsl-f16-floats-already-work-e56103-is-the-16-bit-.md]] — WGSL f16 floats already work; E56103 is the 16-bit-INTEGER path (#11835)
 _Catalog: [[wiki/index.md]]_

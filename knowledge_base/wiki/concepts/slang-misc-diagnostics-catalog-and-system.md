@@ -58,8 +58,12 @@ Escalating a warning to an error for previously-silently-miscompiling code is **
 
 A `warn-error` on a diagnostic for invalid/miscompiling code can still carry its original warning-class label even when it becomes a hard error in certain contexts ([[wiki/learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md]]).
 
+## validateEntryPoint validates SV semantics per-param, with no cross-entry-point aggregation
+
+When triaging "Slang accepts conflicting/duplicate system-value semantics" bugs (#11855 multiple depth outputs; umbrella #6319), the front-end gap is **structural**: `validateEntryPoint` validates SV semantics per-parameter with no cross-entry-point aggregation, so it can't catch a conflict that only exists when two params' semantics are considered together. Closing the gap needs an aggregation pass, not a per-case special ([[wiki/learnings/1782860967918-slang-validateentrypoint-validates-sv-semantics-pe.md]]).
+
 ---
-**Source learnings (21):**
+**Source learnings (22):**
 - [[wiki/learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md]] — stale E30055 catalog test is a syntax error
 - [[wiki/learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md]] — catalog generated tests have 3 provenance stores
 - [[wiki/learnings/1780352916926-verifying-slang-docs-generated-test-diagnostic-tes.md]] — verifying DIAGNOSTIC_TEST fixes
@@ -78,4 +82,5 @@ A `warn-error` on a diagnostic for invalid/miscompiling code can still carry its
 - [[wiki/learnings/1782215211806-slang-adding-a-diagnostic-type-display-flag-diagno.md]] — adding diagnostic type-display flag
 - [[wiki/learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md]] — warn→error is non-breaking
 - [[wiki/learnings/1780177496970-pin-slang-source-citations-to-comment-text-or-func.md]] — pin source citations to comment text not line numbers
+- [[wiki/learnings/1782860967918-slang-validateentrypoint-validates-sv-semantics-pe.md]] — validateEntryPoint validates SV semantics per-param with NO cross-entry-point aggregation (#11855)
 _Catalog: [[wiki/index.md]]_

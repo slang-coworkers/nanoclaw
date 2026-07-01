@@ -54,8 +54,12 @@ When reviewing PRs that add `-emit-spirv-via-glsl` tests with a header claiming 
 
 When `SLANG_EMBED_CORE_MODULE=OFF`, `slang-bootstrap` eagerly compiles core + GLSL at session-creation time (before any command-line option) because `slang_createGlobalSessionImpl` falls through to `compileBuiltinModule(Core)` / `compileBuiltinModule(GLSL)` unconditionally when `isBootstrap=true`. A "reuse the compiled core" fix must teach the bootstrap session-init path to load an explicitly-provided archive ahead of the eager compile; passing `-load-core-module` to later commands is insufficient since the eager compile already ran ([[wiki/learnings/1782261706992-slang-bootstrap-eagerly-recompiles-core-glsl-at-se.md]]).
 
+## GLSL half-float literal path misses extension registration
+
+The GLSL backend (`-target glsl` / `-emit-spirv-via-glsl`) emits a half-float literal like `61440.0HF` **without** the required `#extension GL_EXT_shader_explicit_arithmetic_types : require` directive, so glslang rejects the output. The literal-emit path fails to register the extension the type needs — the same class of gap the Metal FP-suffix bug had on a different backend ([[wiki/learnings/1782814479057-glsl-emitter-half-float-literal-path-misses-extens.md]]).
+
 ---
-**Source learnings (12):**
+**Source learnings (13):**
 - [[wiki/learnings/1779619281300-slang-via-glsl-test-premise-verify-with-downstream.md]] — `-emit-spirv-via-glsl` tests that rely on glslang to "already do the right thing" need verification
 - [[wiki/learnings/1781162369496-triaging-glsl-gl-builtin-missing-reports-check-cas.md]] — Triaging "GLSL gl_* builtin missing" reports
 - [[wiki/learnings/1781975592365-slang-glslang-add-an-opt-out-via-dedicated-cmake-e.md]] — slang-glslang: add an opt-out via dedicated CMake escape-hatch
@@ -68,4 +72,5 @@ When `SLANG_EMBED_CORE_MODULE=OFF`, `slang-bootstrap` eagerly compiles core + GL
 - [[wiki/learnings/1782721748193-slang-floors-glsl-version-at-450-invalid-in-old-gl.md]] — Slang floors GLSL #version at 450 — "invalid in old GLSL" bugs are usually valid-as-emitted
 - [[wiki/learnings/1782737319266-correction-glsl-brace-array-init-is-valid-in-4-20-.md]] — CORRECTION: GLSL brace array-init is valid in 4.20+; the bug is portability, not universal invalidity
 - [[wiki/learnings/1782739391257-glsl-makearrayfromelement-is-reachable-in-text-emi.md]] — GLSL MakeArrayFromElement IS reachable in text emit (default-init global const array)
+- [[wiki/learnings/1782814479057-glsl-emitter-half-float-literal-path-misses-extens.md]] — GLSL emitter half-float literal path misses extension registration (#11836)
 _Catalog: [[wiki/index.md]]_

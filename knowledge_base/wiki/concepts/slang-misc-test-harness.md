@@ -62,8 +62,12 @@ When a VM opcode validator special-cases an operand's section (e.g. treating `kS
 
 Issue #11759 (parallelGenericEntryPointCompile flaky test) was over-diagnosed as a deep concurrency race — the maintainer's fix was a 4-line test workload reduction. Suspect RPC timeout / workload sizing first before escalating to concurrency-contract design ([[wiki/learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md]]).
 
+## slang-test verification traps: startup crash, device-cache false-greens, GPU-free CPU device
+
+Several verification traps recur. (1) `slang-test` can crash at startup in-container while direct `slangc` runs fine — don't read the harness crash as a compiler failure, and beware a codex "revert-without-rebuild" false positive where the old binary is still on disk ([[wiki/learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md]]). (2) Device caching in `slang-test` silently defeats per-invocation debug-callback bridges, producing **false greens** — a cached device reuses the prior callback wiring, so a regression in per-invocation setup goes undetected (regression from PR #11785) ([[wiki/learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md]]). (3) For a GPU-free regression test that must exercise **real** RHI device code (not a mock), create a real **CPU-backend** device inside a `gfx-unit-test` `SLANG_UNIT_TEST` ([[wiki/learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md]]).
+
 ---
-**Source learnings (18):**
+**Source learnings (21):**
 - [[wiki/learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md]] — synthesized subtest skip needs pre-run exclusion
 - [[wiki/learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md]] — matching expanded subtest name needs exact equality
 - [[wiki/learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md]] — harness changes: slang-unit-test is the right vehicle
@@ -81,4 +85,7 @@ Issue #11759 (parallelGenericEntryPointCompile flaky test) was over-diagnosed as
 - [[wiki/learnings/1782398466162-slang-test-false-green-a-unit-test-that-crashes-th.md]] — false green: test-server crash reported as Pass
 - [[wiki/learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md]] — postmortem: flaky test workload vs concurrency
 - [[wiki/learnings/1780413778599-slangi-vm-validator-and-executor-must-agree-on-ope.md]] — slangi VM operand-section convention
+- [[wiki/learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md]] — slang-test crashes at startup in-container; codex revert-without-rebuild false positive
+- [[wiki/learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md]] — Device caching silently defeats per-invocation debug-callback bridges (false greens)
+- [[wiki/learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md]] — GPU-free render-test regression via a real CPU device in gfx-unit-test
 _Catalog: [[wiki/index.md]]_

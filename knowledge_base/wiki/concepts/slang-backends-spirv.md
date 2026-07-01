@@ -120,8 +120,12 @@ The SPIR-V atomic emit has FOUR cross-layer gates keyed on address space. When a
 - [[wiki/learnings/1781643037138-correction-to-11631-version-root-cause-require-ato.md]] supersedes an earlier root-cause analysis of `[require(spirv_1_5)]` not raising the SPIR-V version, identifying the primary cause as the decoration only reaching the layout IR module.
 - [[wiki/learnings/1782175454099-glsl-legalize-per-entry-point-system-value-decorat.md]] corrects [[wiki/learnings/1782173862922-glsl-legalize-per-entry-point-system-value-decorat.md]]: the inout double-attach is unreachable for depth specifically because depth semantics are output-only; both still recommend VaryingOutput gating as defense-in-depth.
 
+## Capability/validation fixes: declare OpCapability inline, test with -target spirv
+
+A `[require]` capability atom does **not** auto-emit `OpCapability` for `spirv_asm` builtin-loads — e.g. `RayCurrentTime()` emitted `BuiltIn CurrentRayTimeNV` but no `OpCapability RayTracingMotionBlurNV`, so spirv-val rejected the module (VUID-...-pCode-08737). Declare the capability **inline** in the `spirv_asm` block ([[wiki/learnings/1782828754941-require-capability-atom-does-not-auto-emit-opcapab.md]]). When writing the regression test for a SPIR-V *validation* fix (missing `OpCapability`/`OpExtension` that spirv-val or `vkCreateShaderModule` rejects), the test must use a real **`-target spirv`** directive so the module is actually validated — a `spirv_asm`-only or `-target spirv-asm` check can pass without exercising validation ([[wiki/learnings/1782833127380-spir-v-capability-validation-fixes-need-a-target-s.md]]).
+
 ---
-**Source learnings (70):**
+**Source learnings (72):**
 - [[wiki/learnings/1779612967874-slang-emit-spirv-builtin-var-cache-and-the-volatil.md]] — slang-emit-spirv builtin-var cache and the volatile-set cache-hit trap
 - [[wiki/learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-co.md]] — IRSPIRVAsmOperandBuiltinVar is hoistable — cross-stage builtin refs always collapse to one inst
 - [[wiki/learnings/1779617068760-slang-emit-spirv-extra-memoryaccess-word-grammar-b.md]] — emitOperand(extraMask) after a user-supplied MemoryAccess word emits invalid SPIR-V
@@ -192,4 +196,6 @@ The SPIR-V atomic emit has FOUR cross-layer gates keyed on address space. When a
 - [[wiki/learnings/1782515089370-runtime-slang-test-for-a-new-vulkan-extension-is-g.md]] — Runtime slang-test for a new Vulkan extension is gated on slang-rhi harness support
 - [[wiki/learnings/1782733787106-slang-local-spirv-asm-verify-put-build-debug-lib-f.md]] — slang local spirv-asm verify: put build/Debug/lib FIRST in LD_LIBRARY_PATH
 - [[wiki/learnings/dashboard_slang-triage-1776263007885.md]] — SPIR-V issues require spirv-val, not just slangc exit code
+- [[wiki/learnings/1782828754941-require-capability-atom-does-not-auto-emit-opcapab.md]] — [require] capability atom does NOT auto-emit OpCapability for spirv_asm builtin-loads — declare inline
+- [[wiki/learnings/1782833127380-spir-v-capability-validation-fixes-need-a-target-s.md]] — SPIR-V capability/validation fixes need a -target spirv test directive, not just spirv-asm
 _Catalog: [[wiki/index.md]]_
