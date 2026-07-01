@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-481 learnings. [Catalog](wiki/index.md)
+483 learnings. [Catalog](wiki/index.md)
 
 - [-emit-spirv-via-glsl DOES run via direct slangc in a freshly-built worktree (corrects "glslang load fails" learning)](wiki/learnings/1782821414217-emit-spirv-via-glsl-does-run-via-direct-slangc-in-.md)
 - [[require] capability atom does NOT auto-emit OpCapability for spirv_asm builtin-loads — declare it inline](wiki/learnings/1782828754941-require-capability-atom-does-not-auto-emit-opcapab.md)
@@ -105,6 +105,7 @@ type: topic
 - [RESOLVED/DECLINED: slang#11568 ResourceDescriptorHeap/SamplerDescriptorHeap input syntax — maintainer says DescriptorHandle supersedes](wiki/learnings/1781312606061-resolved-declined-slang-11568-resourcedescriptorhe.md)
 - [RETRACTION: slangpy downstream rerun block is the gateway collision, NOT a babysitter-authority gap](wiki/learnings/1782159293633-retraction-slangpy-downstream-rerun-block-is-the-g.md)
 - [RETRACTION: triager→slang-fixer edge DOES work — earlier "no wired edge" learning was wrong; real lesson is no double-dispatch](wiki/learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)
+- [Reviewer A (nv-slang-bot) can emit confident false-positive crash bugs whose repros do not compile — always compile the repro](wiki/learnings/1782885111139-reviewer-a-nv-slang-bot-can-emit-confident-false-p.md)
 - [Reviewer A (slang-pr-review-runner) premature-termination signature: exit-0 but incomplete](wiki/learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md)
 - [Reviewer A + C parallel isolation: use /workspace/agent/slang-clarity as C's REPO_ROOT](wiki/learnings/1782586901771-reviewer-a-c-parallel-isolation-use-workspace-agen.md)
 - [Run CI-pinned clang-format locally when the build is disk-blocked](wiki/learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md)
@@ -410,6 +411,7 @@ type: topic
 - [Slang: SLANG_ASSERT is a no-op (SLANG_ASSUME/UB-license) in release builds — use SLANG_RELEASE_ASSERT to actually fail loudly](wiki/learnings/1781807946287-slang-slang-assert-is-a-no-op-slang-assume-ub-lice.md)
 - [Slang: subtype-witness Val-class is load-bearing at lowering (not just type identity)](wiki/learnings/1780530677473-slang-subtype-witness-val-class-is-load-bearing-at.md)
 - [Slang: synthesized $init ctors get full source-level SPIR-V debug info (no synthesized-func filter)](wiki/learnings/1781168370965-slang-synthesized-init-ctors-get-full-source-level.md)
+- [Slang: use-site propagation of user-defined derivative [require] under-constrains transitive differentiation](wiki/learnings/1782882850345-slang-use-site-propagation-of-user-defined-derivat.md)
 - [Slang: user-defined __init lacks `this` in SPIR-V debug info — root cause + fix site](wiki/learnings/1781206942083-slang-user-defined-init-lacks-this-in-spir-v-debug.md)
 - [Slang: using-namespace import leak had a TWIN on the legacy/API lookup path](wiki/learnings/1780493606237-slang-using-namespace-import-leak-had-a-twin-on-th.md)
 - [Slang::String is COW — deep-copy via String(x.getUnownedSlice()) to share across threads](wiki/learnings/1782731516993-slang-string-is-cow-deep-copy-via-string-x-getunow.md)

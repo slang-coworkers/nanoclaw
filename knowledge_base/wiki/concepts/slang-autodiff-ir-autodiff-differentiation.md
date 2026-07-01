@@ -102,8 +102,10 @@ For IR-level classifier or lowering changes, do NOT declare a fix verified on a 
 
 Follow-up to the "gate derivative→primal capability propagation on explicit `[require]`" learning: that gate (presence of `[require]`) was correct, but #11859 shows the *placement* is wrong. The derivative's `[require]` capability must ride the **differentiation use**, not be propagated onto the primal function — over-propagating to the primal makes non-AD callers of the primal inherit a capability they never asked for (an over-propagation regression) ([[wiki/learnings/1782864820466-slang-autodiff-derivative-require-must-ride-the-di.md]]).
 
+But the *layer* the use-site hook lives at has a soundness gap. Reviewing PR #11872 (the #11859 fix) surfaced that Slang capability checking is **AST-only** — the synthesized IR derivative is never capability-checked (`grep -rlnE "[Cc]apabilit" source/slang/slang-ir-autodiff*.cpp` is empty; `slang-ir-late-require-capability.cpp` only handles explicit `__requireCapability`). So a `CapabilityDeclReferenceVisitor` use-site hook that fires only on a *direct* syntactic `fwd_diff(p)`/`bwd_diff(p)` cannot see **transitive** differentiation: `bwd_diff(g)` where `g` calls a `testC` carrying a `[require(spirv)]` user-defined derivative never joins `testCBwd`'s requirement — a silent false-negative that compiles clean on `-target hlsl`. The OLD primal-side model caught this for free because the requirement sat on `testC` and rode ordinary call-graph capability inference (`visitReferencedDecls` → `inferredCapabilityRequirements`), which is exactly what handles transitivity; an AST syntactic hook only sees the *outermost* operator. Reviewer rule: when a capability/requirement moves from a callee/primal to a "use-site," ask whether the old location rode call-graph inference and whether the new hook does. Note also DeepWiki claimed transitive propagation works and the IR derivative is capability-checked — it conflated *differentiability* checking (`CheckDifferentiabilityPassContext`) with *capability* checking (`SemanticsDeclCapabilityVisitor` / E36107); verify pipeline claims against source ([[wiki/learnings/1782882850345-slang-use-site-propagation-of-user-defined-derivat.md]]).
+
 ---
-**Source learnings (22):**
+**Source learnings (23):**
 - [[wiki/learnings/1779432739908-slang-autodiff-transpose-bare-diff-gradient-with-d.md]] — slang autodiff transpose: bare-diff gradient with DiffPair aggPrimalType causes crash
 - [[wiki/learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md]] — slang autodiff transpose: aggregation type vs gradient narrowing — not enough with three sites
 - [[wiki/learnings/1780050112745-slang-autodiff-pr-10827-left-bwddifffunctype-remat.md]] — slang autodiff: PR #10827 left BwdDiffFuncType/RematFuncType inconsistent
@@ -127,4 +129,5 @@ Follow-up to the "gate derivative→primal capability propagation on explicit `[
 - [[wiki/learnings/1779369269598-slang-propagateconstexpr-s-paramcount-callargcount.md]] — slang propagateConstExpr's paramCount==callArgCount asserts BEFORE the autodiff pass
 
 - [[wiki/learnings/1782864820466-slang-autodiff-derivative-require-must-ride-the-di.md]] — Autodiff: derivative [require] must ride the differentiation use, not the primal (over-propagation #11859)
+- [[wiki/learnings/1782882850345-slang-use-site-propagation-of-user-defined-derivat.md]] — Use-site [require] propagation is AST-only, so misses transitive differentiation (#11872 review gap)
 _Catalog: [[wiki/index.md]]_
