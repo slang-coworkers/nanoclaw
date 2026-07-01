@@ -191,15 +191,25 @@ du -sh /workspace/extra/ephemeral/prod-groups/*/wt-* | sort -rh             # re
 ```
 
 - Surface `worktree-vol: <N>GB free` in every board rollup.
-- Free < 10 GB → disk pressure: escalate to the operator now and run the GC pass immediately,
-  dispatching to every owning session at once.
+- **Every tick**: run the GC scan. Resolve worktree issue+PR states and dispatch save-then-remove
+  for any in the REAP set. This is lightweight (a few `gh` calls) and prevents closed-issue
+  worktrees from accumulating between pressure events.
+- **Free < 10 GB** → disk pressure: escalate to the operator immediately in addition to the
+  routine GC.
 
-Discover the reap set from disk (orphans outlive their session). Resolve each `wt-<slug>` to a PR
-via `gh pr list --head fix/issue-<num>` (slang) or the dir's branch `dev/<coworker>/<slug>`
-(slangpy). REAP = PR `MERGED`/`CLOSED`; KEEP = PR `OPEN` or a `running` session; NO-PR = wake to
-confirm, never blind-delete. Dispatch one a2a per worktree on its canonical thread (R5, R8):
+Discover the reap set from disk (orphans outlive their session). Resolve each `wt-<slug>` to
+**both** its issue state (`gh issue view <num> --json state`) and PR state (`gh pr list --head
+fix/issue-<num>` for slang, or the dir's branch `dev/<coworker>/<slug>` for slangpy). The reap
+decision combines both signals:
 
-> [Supervisor — worktree GC — gh-issue-X/Y-N] PR #<pr> is `<state>`; reclaim `wt-<slug>` (~<size>G).
+- **REAP** = PR `MERGED` or `CLOSED`; OR issue `CLOSED` (regardless of PR state — a closed issue
+  means the work is done or abandoned, even if a draft PR lingers).
+- **KEEP** = issue `OPEN` AND (PR `OPEN` or a `running` session).
+- **NO-PR** = issue `OPEN` with no PR found → wake to confirm, never blind-delete.
+
+Dispatch one a2a per worktree on its canonical thread (R5, R8):
+
+> [Supervisor — worktree GC — gh-issue-X/Y-N] Issue #<num> is `<issue_state>`; PR #<pr> is `<pr_state>`; reclaim `wt-<slug>` (~<size>G).
 > **Save-then-remove:** `cd /workspace/agent/wt-<slug>`; if `git status --porcelain` non-empty or
 > ahead of upstream → `git add -A && git commit -m "wip(reap): <branch> @ <sha>" && git push -u origin HEAD:wip/reap/<branch>`
 > (resume via `git worktree add wt-<slug> wip/reap/<branch>`). THEN
@@ -383,4 +393,4 @@ incidents live in operator memory.
   the supervisor); a cross-namespace `git worktree remove` has killed active builds. From the RO
   mount nearly every worktree shows `prunable` — a wrong-namespace artifact, not a reap signal.
   Decide and dispatch to the owning fixer (a `stopped` session wakes on the inbound); reap by `gh`
-  PR state only.
+  issue state + PR state (issue CLOSED → reap regardless of PR state).
