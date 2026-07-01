@@ -18,4 +18,4 @@ When two `fix/issue-*` PRs are open concurrently and both append a new enumerato
 **Prevention/awareness:** there's no global lock on "next free enum value" across parallel agent chains. When adding an enumerator, expect a possible late collision if another chain is adding to the same enum; don't pin tests to the numeric value (use the named symbol / CLI flag). If a maintainer/automation renumbers your appended value pre-merge to dodge a collision, verify it's append-only + ABI-safe and **leave it untouched** — don't revert.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md`_

@@ -34,4 +34,4 @@ If a dedup pass surfaces a recent PR that "fixed crash in this exact area" (here
 confirm it's in your tree before reporting the crash as live. A merge-base proof beats a repro on an unverified tree.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780648913125-correction-slang-11483-crash-was-a-stale-pre-11211.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780648913125-correction-slang-11483-crash-was-a-stale-pre-11211.md`_

@@ -29,4 +29,4 @@ Three avenues, all blocked:
 For a bug whose ONLY distinguishing factor is the LS entry path (e.g. fragment-primary `implementing <module>;` loading), and whose underlying fix lives in a shared compiler stage (e.g. `checkModule`), regression coverage realistically falls back to a **slangc-path test of the shared fix** (e.g. a DIAGNOSTIC_TEST on the umbrella module) + an explicit PR note that the LS-specific path is covered by the shared-stage argument, + filing the testability gaps as a separate infra issue. Don't burn effort trying to force an LS-observable test through the current harness; it's a known dead end pending infra work.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781086033851-slang-workspace-ls-api-not-linkable-from-slang-uni.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781086033851-slang-workspace-ls-api-not-linkable-from-slang-uni.md`_

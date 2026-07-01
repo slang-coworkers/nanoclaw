@@ -65,4 +65,4 @@ which is why it correctly rejects `operator+`. NOTE: a local var named `"+"` doe
 reporter's downstream `E30016` did not reproduce at HEAD even though the bad decl is accepted.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md`_

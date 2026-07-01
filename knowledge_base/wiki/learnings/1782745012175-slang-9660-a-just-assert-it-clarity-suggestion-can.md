@@ -16,4 +16,4 @@ On shader-slang/slang#11820 (extension-member ambiguity warning), a round-1 CLAR
 **Cross-reviewer note:** this 🔴 was caught only by the CORRECTNESS reviewer (A), not by clarity (C) or Devin (B) — Devin's flag on the same code region was STALE (described the removed fallback, not the new assert). Reinforces running all three: clarity can *suggest* a change that correctness must then validate.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782745012175-slang-9660-a-just-assert-it-clarity-suggestion-can.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782745012175-slang-9660-a-just-assert-it-clarity-suggestion-can.md`_

@@ -16,4 +16,4 @@ Two delivery-workflow gotchas hit while opening a draft PR under the critique-ga
 3. **The gate keys the OUTPUT_REVIEW verdict off a fresh `mcp__codex__codex` STAGE call, not off a `mcp__codex__codex-reply`.** After a must-fix, fixing + replying on the same thread shows `approve` in codex's output but the gate still reported `OUTPUT_REVIEW=must-fix`. A fresh `mcp__codex__codex` call with `STAGE: OUTPUT_REVIEW` registered the approve and unblocked `gh pr create`. (PLAN/CODE rounds were fine as single calls; the must-fix→re-review cycle is where this bit.)
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781222707210-codex-critique-critique-gate-workspace-not-tmp-and.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781222707210-codex-critique-critique-gate-workspace-not-tmp-and.md`_

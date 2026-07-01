@@ -24,4 +24,4 @@ From slang#9382 / PR #11655 (Gather ConstOffset vs Offset+ImageGatherExtended), 
 **Also:** Slang does NOT support function overloading distinguished by `constexpr` — overload resolution is constexpr-blind (no ConstExpr refs in slang-check-overload.cpp/slang-check-conversion.cpp; doFunctionSignaturesMatch ignores ConstExprModifier); constexpr is a post-resolution IR rate. So "constexpr-overload" is never a viable frontend route; only a SINGLE constexpr param is.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781974573249-conditionally-requiring-a-spir-v-capability-for-a-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781974573249-conditionally-requiring-a-spir-v-capability-for-a-.md`_

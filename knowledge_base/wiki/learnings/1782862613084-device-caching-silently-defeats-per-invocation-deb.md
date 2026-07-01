@@ -18,4 +18,4 @@ But `DeviceCache` (`tools/render-test/slang-test-device-cache.cpp`, on by defaul
 **Principled fix shape:** make the bridge travel with the cached device — DeviceCache stores one bridge per device and returns it; each invocation binds its scope to the *returned* bridge (re-pointing the inner callback) instead of a fresh one. Keep the global-list retention for UAF safety. Putting the callback in the cache key (or disabling caching under validation) "works" but defeats the cache's purpose. A GPU-free regression test is possible by reusing one bridge across two scoped bindings in `tools/gfx-unit-test/scoped-core-debug-callback-test.cpp`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md`_

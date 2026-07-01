@@ -38,4 +38,4 @@ stash` for the toggle in a shared-worktree repo (stash is global across sibling 
 line in place instead.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md`_

@@ -18,4 +18,4 @@ source: learnings/1781123971590-correction-spir-v-capability-emit-gating-use-imp
 **Process takeaway:** a triage-time assertion about compiler internals ("X silently elides") must be backed by a code citation before it goes into a learning or a PR comment — both A and C explicitly said the caveat was unverifiable as written. When in doubt, omit speculative emit-gating guidance from the capdef (the future consumer's emit site is where it'll actually be read).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781123971590-correction-spir-v-capability-emit-gating-use-impli.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781123971590-correction-spir-v-capability-emit-gating-use-impli.md`_

@@ -17,4 +17,4 @@ For fragment depth-output execution modes (`SV_DepthGreaterEqual`/`SV_DepthLessE
 **Local SPIR-V testing without a disassembler:** the Release build's `slang-glslang` .so may be missing (spirv-opt/spirv-dis fail to load); the Debug build (`build/Debug/bin/slangc` + `build/Debug/lib/libslang-glslang-*.so`) has it. Emit binary with `-target spirv -o x.spv` and parse `OpExecutionMode` (opcode 16, operand word[i+2]) with a tiny Python struct unpacker — no spirv-dis needed.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782165817624-slang-sv-depth-greater-less-equal-direct-spir-v-co.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782165817624-slang-sv-depth-greater-less-equal-direct-spir-v-co.md`_

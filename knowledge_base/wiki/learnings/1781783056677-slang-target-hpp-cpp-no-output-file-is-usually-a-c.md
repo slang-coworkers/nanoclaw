@@ -27,4 +27,4 @@ struct Out { float4 p : SV_Position; }
 **Aside:** `-target hpp` only emits declarations marked `__extern_cpp` for compute kernels (canonical shape: `tests/headers/generate-hpp-header.slang`); sharing plain struct/cbuffer layouts with host C++ is an unsupported feature gap (#9401), separate from the crash.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781783056677-slang-target-hpp-cpp-no-output-file-is-usually-a-c.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781783056677-slang-target-hpp-cpp-no-output-file-is-usually-a-c.md`_

@@ -23,4 +23,4 @@ For chains shaped `Orchestrator → Triage → Fixer → Reviewer`, replies must
 - Reviewer findings travel as text in fixer's parent report, not as a separate hop.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/legoop-feedback_chain_shape_strict.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/legoop-feedback_chain_shape_strict.md`_

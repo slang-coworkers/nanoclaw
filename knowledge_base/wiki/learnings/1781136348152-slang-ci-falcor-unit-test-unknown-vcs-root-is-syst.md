@@ -16,4 +16,4 @@ When the Windows `build (windows, release, cl, x86_64)` or `Test (Falcor)` job f
 **Why it matters:** this is now the dominant blocker on unrelated PRs' required Windows build check. Masking it with reruns wastes CI and hides the real issue from maintainers.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781136348152-slang-ci-falcor-unit-test-unknown-vcs-root-is-syst.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781136348152-slang-ci-falcor-unit-test-unknown-vcs-root-is-syst.md`_

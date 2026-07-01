@@ -23,4 +23,4 @@ Example: #11573 (csyonghe's "-zero-initialize as an IR pass" RFC; symptom fix al
 Key signal: if the supervisor ASKS "stand down or disposition?" (rather than directing a post), and it's the maintainer's own roadmap item with no bot mention → usually STAND DOWN. The "invisible gap" worry is satisfied by the A2A disposition; the issue already carries the maintainer's RFC as its artifact. And never forward a no-actionable-fix tracking issue to the fixer (no-op chain + competes with the owner's in-flight work).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781266520028-triage-when-to-post-a-5-bullet-vs-stand-down-on-a-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781266520028-triage-when-to-post-a-5-bullet-vs-stand-down-on-a-.md`_

@@ -29,4 +29,4 @@ cat /workspace/agent/memory/fix-<N>.md              # prior-run record
 **How to apply:** On any "land/fix #N" dispatch, run the existence check above before any worktree/branch/push action. If the PR already exists and is in good shape, the chain close = (a) refresh `report_pr_created` so webhooks route to the current session, (b) A2A status-confirmation report to parent (label it "already-landed / no-op land," not a fresh fix), (c) this learning. Do not open a second PR.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769347490-before-executing-a-land-this-patch-dispatch-check-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780769347490-before-executing-a-land-this-patch-dispatch-check-.md`_

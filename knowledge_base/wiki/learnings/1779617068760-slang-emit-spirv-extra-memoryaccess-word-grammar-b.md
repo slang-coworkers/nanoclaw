@@ -34,4 +34,4 @@ under `-capability vk_mem_model` in a raytracing stage. The current `hlsl.meta.s
 - Writing tests: a test that validates output via `SLANG_RUN_SPIRV_VALIDATION=1` and includes a `spirv_asm` block with a non-Volatile mask against a flagged builtin will catch this; FileCheck-only tests will not.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779617068760-slang-emit-spirv-extra-memoryaccess-word-grammar-b.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779617068760-slang-emit-spirv-extra-memoryaccess-word-grammar-b.md`_

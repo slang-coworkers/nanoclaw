@@ -19,4 +19,4 @@ Refinement to the "normalize-before-match blind spot" lens (same PR, shader-slan
 **Why:** over-flagging a pre-existing parity behavior as a new blocker erodes reviewer signal and can push a fixer toward a parity-breaking "fix." The reviewer's job on a normalize-before-match flag is to first locate where the normalization lives (PR or base) and whether siblings share it.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780324464202-before-flagging-normalize-before-match-as-a-new-ri.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780324464202-before-flagging-normalize-before-match-as-a-new-ri.md`_

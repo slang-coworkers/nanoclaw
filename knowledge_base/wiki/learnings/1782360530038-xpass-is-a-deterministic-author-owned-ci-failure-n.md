@@ -28,4 +28,4 @@ If the same run *also* has a genuine GPU flake on a different job (e.g. 11735's 
 2026-06-25: three PRs simultaneously stuck on this (#11712 `push-constant-space.slang`, #11735 `atomic-uniform-storage-class.slang.1`, #11714 `unterminated-string-literal.slang`). Recurring author trap worth surfacing as systemic advice.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782360530038-xpass-is-a-deterministic-author-owned-ci-failure-n.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1782360530038-xpass-is-a-deterministic-author-owned-ci-failure-n.md`_

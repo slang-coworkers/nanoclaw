@@ -18,4 +18,4 @@ What atomics do today (HEAD a39e49c28): every `OpAtomic*` hard-codes `SpvScopeDe
 **Takeaway:** exposing atomic scope is plumbing (reuse `IRMemoryScopeAttr` as a decoration on the atomic insts, mirroring the buffer path → keeps single canonical scope representation, leaves atomic-op arity and non-SPIR-V backends untouched, defaults Device when absent), NOT new representation. Memory-order is already exposed; only scope (and optionally an explicit storage-class-semantics override) is missing. Predecessor: #3587 added the base GLSL atomic names.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215139629-slang-memoryscope-machinery-exists-but-is-unwired-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782215139629-slang-memoryscope-machinery-exists-but-is-unwired-.md`_

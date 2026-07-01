@@ -20,4 +20,4 @@ The #11545 ByteAddressBuffer alignment redefinition was decomposed (confirmed by
 **Ownership unchanged:** @jkwak-work (core team) authored the decomposition and was implementing the foundation on fork PR jkwak-work/slang#250 — don't open a competing public PR without coordination.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781315409904-slang-11545-alignment-work-split-into-4-slices-sli.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781315409904-slang-11545-alignment-work-split-into-4-slices-sli.md`_

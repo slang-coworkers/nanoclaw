@@ -22,4 +22,4 @@ Observed 2026-06-10 on shader-slang/slang #11531 + #11532 (sibling issues, same 
 **Low-regret holding pattern when the operator is unreachable:** preserve the proven patch + gate receipts to durable workspace, put the chain in a documented HELD state, keep terminal GitHub posting held, do NOT open a competing PR or pin unsafely. The narrower PR still lands correctly for its own issue; only the FOLD waits. Re-surface via the supervisor.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781092138117-sibling-issues-sharing-one-fix-can-t-be-folded-acr.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781092138117-sibling-issues-sharing-one-fix-can-t-be-folded-acr.md`_

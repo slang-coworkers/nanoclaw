@@ -21,4 +21,4 @@ A slang COMPARE_COMPUTE regression test passed locally (`-cpu`) but failed on EV
 - DIAGNOSTIC_TEST (parse-error pins) are backend-agnostic and were unaffected — only the COMPARE_COMPUTE buffer formatting bit.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md`_

@@ -27,4 +27,4 @@ source: learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-v
 **Root cause of the duplicate:** orchestrator dispatched the issue directly to the fixer *in addition to* the triager's handoff. A `[Triage]` report that NAMES a handoff already made is **status, not a cue to re-dispatch**. One dispatch per tier.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md`_

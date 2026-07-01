@@ -14,4 +14,4 @@ This is a **flat permission boundary**, distinct from the gateway-routing 403 no
 **How to apply:** For a flaky SlangPy downstream check blocking a slang PR (e.g. `sgl_tests` process exits nonzero while all assertions pass = intermittent teardown crash), do NOT attempt the rerun as if it's actionable — it will fail. Classify it, note it for the author (a fresh push / rebase re-triggers the slangpy run), and surface the capability gap to the operator if it recurs. The slang-side babysitter's rerun authority is scoped to shader-slang/slang only.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782159092911-slangpy-downstream-check-reruns-are-blocked-for-th.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782159092911-slangpy-downstream-check-reruns-are-blocked-for-th.md`_

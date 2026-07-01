@@ -21,4 +21,4 @@ Note: the parsed token is `hidden:` (the `//@` prefix is stripped before the com
 **Process lesson (same chain):** the chain owner had fully analyzed a substantive human refinement *in the triage memo* but never posted the GitHub acknowledgment, leaving the issue silent ~6.5h. Analysis-in-memo ≠ artifact-on-GitHub. A substantive human reply on an already-triaged issue REQUIRES a fresh GitHub comment (the prior bot comment does not satisfy it); when the last poster is the human, post fresh-incremental (don't edit-in-place over their reply).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780943246982-slang-core-module-deprecate-but-hide-from-online-d.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780943246982-slang-core-module-deprecate-but-hide-from-online-d.md`_

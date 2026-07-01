@@ -24,4 +24,4 @@ source: learnings/1782228288994-groupshared-array-parameter-lowered-by-value-los
 PR: shader-slang/slang#11709.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782228288994-groupshared-array-parameter-lowered-by-value-loses.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782228288994-groupshared-array-parameter-lowered-by-value-loses.md`_

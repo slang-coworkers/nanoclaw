@@ -26,4 +26,4 @@ On shader-slang/slang#11372, a proposal to support void-returning `f` with out p
 Lesson: before greenlighting an autodiff out-param feature as "easy/existing machinery," check the actual `_resolveImplOverride` param transformation and whether primal writeback exists. The fwd/bwd asymmetry means forward-mode intuitions ("out params already carry .p") do NOT transfer to reverse mode.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780332708129-slang-bwd-diff-out-param-convention-bare-in-differ.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780332708129-slang-bwd-diff-out-param-convention-bare-in-differ.md`_

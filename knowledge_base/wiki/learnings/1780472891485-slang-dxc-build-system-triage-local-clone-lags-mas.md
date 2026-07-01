@@ -22,4 +22,4 @@ Concrete (triaging #11441 on 2026-06-03): local clone HEAD was `b305a4df4` (2026
 **Also:** the `Agent` (fork) tool is unavailable inside an already-forked worker ("Fork is not available inside a forked worker") — in that mode do the recall scan + research reads directly with Grep/Read/Bash rather than spawning subagents.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780472891485-slang-dxc-build-system-triage-local-clone-lags-mas.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780472891485-slang-dxc-build-system-triage-local-clone-lags-mas.md`_

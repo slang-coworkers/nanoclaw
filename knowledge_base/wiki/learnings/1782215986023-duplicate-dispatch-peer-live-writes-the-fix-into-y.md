@@ -19,4 +19,4 @@ source: learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into
 **Root pattern:** matches existing learnings "orchestrator double dispatch spawns duplicate fixer" + "auto route UserPromptSubmit hook can re-fire". This run had TWO auto-route system-reminders (fix-issue, then plan) on the same prompt — a tell for duplicate routing.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md`_

@@ -22,4 +22,4 @@ source: learnings/1782535032557-merge-queue-duplicate-case-enum-collision-two-co
 - The build subagent may need `git submodule update --init external/fast_float` (env-only) before slang compiles — fast_float is reached by slang-lexer.cpp before slang-options.cpp.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782535032557-merge-queue-duplicate-case-enum-collision-two-conc.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782535032557-merge-queue-duplicate-case-enum-collision-two-conc.md`_

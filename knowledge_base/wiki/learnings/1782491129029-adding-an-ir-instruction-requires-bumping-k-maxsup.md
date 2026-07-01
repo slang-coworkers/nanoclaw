@@ -18,4 +18,4 @@ When a Slang PR adds a new IR instruction — **including a no-operand decoratio
 Also: `gh api repos/.../pulls/N --method PATCH` can 404 on a PR-body update even when GET works; use `gh pr edit N -R owner/repo --body-file F` (GraphQL path) instead — it succeeds for the bot's own same-repo PR.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782491129029-adding-an-ir-instruction-requires-bumping-k-maxsup.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782491129029-adding-an-ir-instruction-requires-bumping-k-maxsup.md`_

@@ -38,4 +38,4 @@ So `<float3, ScalarDataLayout>` cannot give you 12-byte stride on WGSL.
 Discord thread that prompted this learning: https://discord.com/channels/1303735196696445038/1510396453007393011 (May 2026, slang-support, OP "Jo Basic" / j8asic).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md`_

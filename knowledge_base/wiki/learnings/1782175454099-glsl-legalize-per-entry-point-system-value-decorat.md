@@ -16,4 +16,4 @@ When adding a new `GLSLSystemValueKind` in `slang-ir-glsl-legalize.cpp` whose ha
 **How to apply:** For a NEW entry-point-level GLSL system-value decoration, still do both (gate on output kind + `isSimpleDecoration`) as cheap defense-in-depth — but first check the semantic's accessor definition in `core.meta.slang`: if it is setter-only (output-only), the front-end E30702 check already forecloses the input/inout path, so don't claim a reachable double-emit bug or ship an `inout` regression test (it won't compile). The reachability question turns on whether the semantic has a getter.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782175454099-glsl-legalize-per-entry-point-system-value-decorat.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782175454099-glsl-legalize-per-entry-point-system-value-decorat.md`_

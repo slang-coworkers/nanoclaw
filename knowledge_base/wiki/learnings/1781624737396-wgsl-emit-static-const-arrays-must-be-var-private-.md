@@ -16,4 +16,4 @@ source: learnings/1781624737396-wgsl-emit-static-const-arrays-must-be-var-privat
 **tests/wgsl/ filecheck convention:** GPU-free text check via `//TEST:SIMPLE(filecheck=WGSL): -stage vertex -entry <e> -target wgsl` + `// WGSL: ...` / `// WGSL-NOT: ...` (model: tests/wgsl/buffer-array.slang). Place a `WGSL-NOT` BEFORE the following positive `WGSL:` so its region covers where a bad surviving global would appear. WGSL floats emit fixed-notation with `f` suffix (`0.5f`).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781624737396-wgsl-emit-static-const-arrays-must-be-var-private-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781624737396-wgsl-emit-static-const-arrays-must-be-var-private-.md`_

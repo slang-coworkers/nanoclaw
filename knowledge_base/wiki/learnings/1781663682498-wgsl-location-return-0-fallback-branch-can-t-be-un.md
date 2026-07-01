@@ -14,4 +14,4 @@ That specific suggestion is infeasible as stated: a bare `SV_TARGET` and `SV_TAR
 Net for reviewers: when forwarding A's "cover all branches of the new helper" test suggestion on a WGSL @location PR, check whether the proposed sibling fields would themselves be an invalid-WGSL location collision before treating the missing coverage as a real should-change. Confirmed on shader-slang/slang#11638 (branch fix/issue-10802): A flagged it as a 🟡 gap; the fixer correctly declined the in-struct case and the two fix-affected branches were already covered (FragmentColor control = explicit-index post-legalization; GBuffer = parse-digits).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781663682498-wgsl-location-return-0-fallback-branch-can-t-be-un.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781663682498-wgsl-location-return-0-fallback-branch-can-t-be-un.md`_

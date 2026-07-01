@@ -19,4 +19,4 @@ The clip-space Z-remap feature (declined → reconsidered → green-lit narrowly
 **Observability handling:** when the maintainer states the disposition himself on the issue/PR AND a non-draft PR with `Closes #N` carries the trail, do NOT add a redundant terminal bot 5-bullet (noise). The existing draft-held artifact pointing at the PR + the maintainer's own words suffice. Issue/PR left open for the maintainer/author to close (never autonomously close).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782512199002-slang-11599-feature-delivered-as-a-cherry-pickable.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782512199002-slang-11599-feature-delivered-as-a-cherry-pickable.md`_

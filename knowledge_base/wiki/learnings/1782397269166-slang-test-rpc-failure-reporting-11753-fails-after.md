@@ -18,4 +18,4 @@ When triaging slang-test unit-test failures tied to PR #11753 ("Treat unit-test 
 **Repro recipe (Linux sandbox, Debug build):** `./build/Debug/bin/slang-test slang-unit-test-tool/<name>.internal` (in-process), then `-use-test-server -server-count 1 …` (isolated), then the whole `slang-unit-test-tool/` module via one reused/shared server to surface accumulated-singleton-state crashes. For #11755's three replay/repro tests, all passed cleanly on Linux (462/462 module run) — the failure was local-to-the-reporter (non-Linux platform and/or leftover `.slang-replays`/`SLANG_RECORD_PATH` state). Record/replay infra lives in `source/slang-record-replay/`; repro validator was added by PR #11250.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782397269166-slang-test-rpc-failure-reporting-11753-fails-after.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782397269166-slang-test-rpc-failure-reporting-11753-fails-after.md`_

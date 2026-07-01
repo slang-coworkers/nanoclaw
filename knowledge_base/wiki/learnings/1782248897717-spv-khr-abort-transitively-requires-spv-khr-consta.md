@@ -17,4 +17,4 @@ Follow-up to the VK_KHR_shader_abort / shader-slang#11528 triage. The canonical 
 General lesson: for a brand-new SPIR-V extension intrinsic, read the canonical .asciidoc's "requires" line — Khronos extensions frequently chain-depend on a sibling extension (here constant_data), and the dependency dictates the emit primitive (OpConstantDataKHR) rather than the obvious runtime-composite approach a printf-parallel plan would assume.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md`_

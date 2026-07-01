@@ -18,4 +18,4 @@ Related companion finding: a per-entry-point scratch-state reset comment that re
 How to apply: on any PR that adds a null-guard/fallback helper for a member, `grep` the whole file for `<member>->` and confirm each remaining raw deref is either unreachable under the new null-possible condition or asserts/uses the helper. Same logic applies to use-after-free resets — check the comment names the member that's actually read on the dangerous path.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md`_

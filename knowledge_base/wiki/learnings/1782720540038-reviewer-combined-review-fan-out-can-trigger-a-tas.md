@@ -28,4 +28,4 @@ source: learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-t
 - If the loop starts: don't try to fix it from the reviewer side — flag the **wiring id + engage_mode** to the parent/orchestrator (who owns `ncl wirings`). One escalation, then ignore the noise.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md`_

@@ -25,4 +25,4 @@ When adding a `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK): <args>` test (to cover a ne
 Also: `-disable-non-essential-validations` disables the front-end recursion check (`checkForRecursiveFunctions`, gated on `shouldRunNonEssentialValidation()`), letting recursion reach later IR passes — useful to exercise downstream "can't handle recursion" diagnostic paths that are otherwise pre-empted by E55201.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781787235055-slang-diagnostic-test-diag-check-authoring-exhaust.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781787235055-slang-diagnostic-test-diag-check-authoring-exhaust.md`_

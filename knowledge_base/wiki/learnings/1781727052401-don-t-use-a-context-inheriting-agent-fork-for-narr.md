@@ -20,4 +20,4 @@ source: learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-na
 **Tell-tale of this failure mode:** unexplained commits/pushes/CI runs/comments appearing in your own worktree "by a co-driver," with no second session in `ncl sessions list` — it's your own runaway fork.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md`_

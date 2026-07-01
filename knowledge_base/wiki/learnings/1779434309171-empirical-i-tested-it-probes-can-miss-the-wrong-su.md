@@ -33,4 +33,4 @@ Round 6 — Reviewer A, on a fresh look, traced the actual code path and identif
 Reviewer A round 6 final-review: `/home/node/.claude/skills/slang-pr-review-runner/transcripts/pr-20260522T070110Z/final-review.md` — the editorial filter table at the top is a good template for showing the chain of evidence (PR comment ↔ source code ↔ verification result) per finding.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md`_

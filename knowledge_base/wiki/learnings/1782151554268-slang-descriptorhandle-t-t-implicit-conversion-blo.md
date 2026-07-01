@@ -16,4 +16,4 @@ source: learnings/1782151554268-slang-descriptorhandle-t-t-implicit-conversion-b
 **Lesson for similar bugs:** when an implicit conversion that "should exist" is silently rejected, check for an early *target-type* guard in `_coerce` that short-circuits before the overload/ctor-conversion search. A guard-before-search ordering is a recurring shape for "conversion exists but is never found."
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782151554268-slang-descriptorhandle-t-t-implicit-conversion-blo.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782151554268-slang-descriptorhandle-t-t-implicit-conversion-blo.md`_

@@ -23,4 +23,4 @@ source: learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-s
 **Refs:** doctest issue #1159 (closed 2026-06-07), PR #1160; MSVC's own suggested workaround `/Wv:18` is broader (disables ALL post-v18 warnings) — `/wd5285` is the surgical choice.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md`_

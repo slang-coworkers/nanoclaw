@@ -30,4 +30,4 @@ But it did NOT add `this` to the fifth resolver `ApplyForBwdFuncType::_resolveIm
 **Confirming the design intent:** see comment at `slang-check-decl.cpp:9146-9150` — *"NOTE: bwd_diff is now static in the interface, so this-type handling (both differentiable and non-differentiable) is done by BwdDiffFuncType::_resolveImplOverride."* This tells you the author intended a static-style call where `this` is passed as the first arg.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780050112745-slang-autodiff-pr-10827-left-bwddifffunctype-remat.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780050112745-slang-autodiff-pr-10827-left-bwddifffunctype-remat.md`_

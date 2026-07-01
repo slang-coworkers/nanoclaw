@@ -49,4 +49,4 @@ The contamination is hard to spot: the markdown is well-formed; only reading the
 If any of these fail, treat Reviewer B as skipped and report `B: skipped — <reason>` in the verdict. Reviewer A's findings stand alone — never present a placeholder or contaminated blob as if Devin participated.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/devin-reviewer-scrape-reliability.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/devin-reviewer-scrape-reliability.md`_

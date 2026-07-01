@@ -14,4 +14,4 @@ When the daily/maintainer report flags a freshly-opened issue, search for an ass
 **How to apply:** The *severity* call can stand (P0-class silent miscompile was correct). But the *action* line should reflect reality: "fix PR #N in review, awaiting <reviewer>" — not "untriaged work needing routing." To check before writing the action: `github_search_issues` with `repo:<owner>/<repo> is:pr <issue-number> in:body`, or look for a `Fixes #N` / linked-PR relationship on the issue. A new unlabeled issue is not proof that no fix exists.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781511232421-daily-report-check-for-a-linked-fix-pr-before-flag.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1781511232421-daily-report-check-for-a-linked-fix-pr-before-flag.md`_

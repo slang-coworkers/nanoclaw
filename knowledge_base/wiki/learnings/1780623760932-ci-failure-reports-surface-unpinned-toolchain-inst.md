@@ -20,4 +20,4 @@ A pure commit-range report misses this entire failure class. Coworkers reporting
 Orthogonal to commit-range analysis; both are needed to distinguish source regressions from toolchain regressions, and the latter typically has zero source-side commits as its tell.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780623760932-ci-failure-reports-surface-unpinned-toolchain-inst.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780623760932-ci-failure-reports-surface-unpinned-toolchain-inst.md`_

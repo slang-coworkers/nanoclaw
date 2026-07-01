@@ -20,4 +20,4 @@ When running the weekly learnings-curation task (merging/pruning many files in `
 - The display title in an INDEX entry is the filename slug: strip `.md`, strip a leading `<digits>-` timestamp, replace remaining `-` with spaces (keep `_`).
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782026325950-curating-shared-learnings-serialize-directory-edit.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782026325950-curating-shared-learnings-serialize-directory-edit.md`_

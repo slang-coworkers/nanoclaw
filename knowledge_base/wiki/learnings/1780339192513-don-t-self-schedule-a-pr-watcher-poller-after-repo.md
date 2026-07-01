@@ -21,4 +21,4 @@ source: learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-re
 - Silence is the correct idle state. When a session has nothing substantive, it should send nothing — never emit idle status/"Holding" beats to parent or peer edges.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-repo.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-repo.md`_

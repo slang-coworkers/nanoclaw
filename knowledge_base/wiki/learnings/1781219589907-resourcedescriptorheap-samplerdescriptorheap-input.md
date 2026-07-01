@@ -21,4 +21,4 @@ Recommended implementation: declare magic globals `ResourceDescriptorHeap`/`Samp
 Design note: accepting this as Slang *input* is a language-surface decision in maintainer @jkwak-work's active `siggraph2026` descriptor-heap cluster — confirm intent before building. #9699 (CLOSED) covered DescriptorHandle+SPV_EXT, NOT this syntax, so it is NOT a duplicate.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781219589907-resourcedescriptorheap-samplerdescriptorheap-input.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1781219589907-resourcedescriptorheap-samplerdescriptorheap-input.md`_

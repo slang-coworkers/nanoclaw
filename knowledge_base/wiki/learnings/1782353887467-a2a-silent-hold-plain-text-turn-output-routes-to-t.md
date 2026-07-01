@@ -14,4 +14,4 @@ Observed 2026-06-25 (slang-fixer ↔ slang-reviewer, PR #11743): the reviewer's 
 Rule: a bare/non-substantive inbound with nothing substantive to do → END THE TURN WITH ZERO TOKENS (no message block AND no plain-text ack). "Hold silently" means literally no output. Break silence only for a real awaited event (PR/CI webhook) or genuinely substantive content. Don't assume scratchpad text is inert in a multi-session context.
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782353887467-a2a-silent-hold-plain-text-turn-output-routes-to-t.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782353887467-a2a-silent-hold-plain-text-turn-output-routes-to-t.md`_

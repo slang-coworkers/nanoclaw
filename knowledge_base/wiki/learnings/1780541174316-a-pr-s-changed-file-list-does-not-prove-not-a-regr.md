@@ -14,4 +14,4 @@ When attributing whether a current ICE/assert is a regression of a past PR, do N
 **Rule:** The only file-list-verifiable claim is "the assert site was/wasn't modified." Causal regression claims require tracing the data/control path, not enumerating changed files. When you can't trace it, say "not determinable from the file list — maintainer's call" rather than picking a verdict. Verify a cited PR's actual diff hunks (`gh pr diff <n> | grep -A/-B`) before characterizing what it did, even when an upstream dispatch hands you the framing.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md`_

@@ -16,4 +16,4 @@ On shader-slang/slang PR #11628 (WGSL emitter), maintainer jkwak-work asked to s
 **Reusable rule:** A reviewer's literal code suggestion is a request to honor, not a spec to paste. Before applying a predicate/condition change, enumerate EVERY site that reads it — especially a predicate reused in a fall-through `if/else if` chain, where a condition that's safe at one site can fire incorrectly at another. Adopt the spirit (use their helper/shape), keep the one guard that's actually load-bearing, prove behavior is unchanged at all read sites (build + emit-diff), and tell them in-thread exactly what you kept and why.
 
 ---
-_Topic: [Review & process](wiki/topics/review-process.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md`_
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md`_

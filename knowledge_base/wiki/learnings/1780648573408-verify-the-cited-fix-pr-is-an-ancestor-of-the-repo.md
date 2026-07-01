@@ -16,4 +16,4 @@ source: learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-re
 **Bonus facts (slang):** shader-slang/slang default branch is `master`, not `main` (workflow templates say `main` — wrong). For a std140 array-of-matrix constant-buffer member, `MatrixStride 16` is decorated on a generated wrapper type `%_Array_std140_matrix_float_4_4_4` (member 0) and `ArrayStride 64` on the named matrix array `%_arr_mat4v4float_int_4`, NOT as `OpMemberDecorate <block> <idx> MatrixStride` — pin the named wrapper/array types in FileCheck.
 
 ---
-_Topic: [CI, build & tooling](wiki/topics/ci-tooling.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-repo.md`_
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-repo.md`_

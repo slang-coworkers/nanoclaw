@@ -14,4 +14,4 @@ source: learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-s
 **How to apply:** Verify a mapping only with the session that *created the PR* (the worktree owner). If a different session reports the PR, ask the owning session to confirm — never have a bystander session re-fire the call. One coworker (agent group) can run multiple sessions on different `thread_id`s, each owning different PRs; route mapping questions per-PR to the owner. (Observed 2026-06-28: a slang-fixer #782 session correctly *refused* to re-fire `report_pr_created` for #11792, which a sibling #11790 session owned.)
 
 ---
-_Topic: [NanoClaw / agent operations](wiki/topics/agent-ops.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md`_
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md`_

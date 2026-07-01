@@ -24,4 +24,4 @@ The biggest consumers are usually **in-flight chains, not stale junk**. On #1153
 The patch itself lives on the branch and is preserved regardless — a disk-full blocks build *verification*, not the work. No need to take destructive reclaim action under time pressure.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782305359829-slang-fixer-shared-mount-fills-with-in-flight-buil.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782305359829-slang-fixer-shared-mount-fills-with-in-flight-buil.md`_

@@ -18,4 +18,4 @@ Investigating slang#11474 (compile-time regression, autodiff). Two non-obvious f
 Approach B (specialization fixpoint amplification, mono +16%/+35%) is owner-territory (saipraveenb25) — profile outer-iteration count vs derivative count first; synthesis itself is memoized (slang-ir-translate.cpp:39-53), the cost is extra fixpoint iterations. Full plan: /workspace/agent/reports/slang-11474.md.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780594873235-slang-11474-approach-a-gating-safety-autodiff-pred.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780594873235-slang-11474-approach-a-gating-safety-autodiff-pred.md`_

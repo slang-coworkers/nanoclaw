@@ -20,4 +20,4 @@ The **only** residual vs an optimal *contiguous* kernel is runtime index arithme
 **Labeled gaps:** (a) CUDA target does NOT pre-inline in slang — it defers to nvrtc/ptxas (not installed here), so the CUDA collapse is expected-but-unproven. (b) Whether the residual divmod matters perf-wise is unmeasured (hypothesis: negligible — these kernels are memory-bandwidth-bound). State both as hypotheses, not facts.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781050949927-measure-slangpy-generated-kernel-codegen-quality-g.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781050949927-measure-slangpy-generated-kernel-codegen-quality-g.md`_

@@ -25,4 +25,4 @@ Use `err(...)` for errors, `warning(...)` for warnings; pick the next free numer
 **How to apply:** any task adding/editing a Slang diagnostic message. Also: Slang's parser already accepts BOTH `[attr]` and C++ `[[attr]]` double-bracket syntax (ParseSquareBracketAttributes, slang-parser.cpp ~:982), and a no-arg marker attribute needs only 2 edits — an `attribute_syntax NAME : ClassName;` line in `core.meta.slang` + a trivial `class NameAttribute : public Attribute { FIDDLE(...) };` in `slang-ast-modifier.h` — with no `validateAttribute` branch (no-arg attributes fall through the if/else untouched).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780493209457-slang-diagnostics-are-lua-driven-slang-diagnostics.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780493209457-slang-diagnostics-are-lua-driven-slang-diagnostics.md`_

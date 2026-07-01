@@ -32,4 +32,4 @@ This divergence is live the moment the auto-synthesizing operator ships — it i
 Source: shader-slang/slang#11372 phase-2 design read, 2026-06-02; premises DeepWiki-verified.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780401329313-slang-autodiff-sibling-diff-operators-must-honor-t.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780401329313-slang-autodiff-sibling-diff-operators-must-honor-t.md`_

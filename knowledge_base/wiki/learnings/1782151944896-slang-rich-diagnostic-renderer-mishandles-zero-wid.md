@@ -26,4 +26,4 @@ From triaging shader-slang/slang#11684 ("unexpectedEndOfFile duplicates the last
 The rich renderer was added in PR #9503; this class of bug (zero-width/EOL spans + codepoint vs byte) is latent there, not a recent regression.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782151944896-slang-rich-diagnostic-renderer-mishandles-zero-wid.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782151944896-slang-rich-diagnostic-renderer-mishandles-zero-wid.md`_

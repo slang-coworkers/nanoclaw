@@ -14,4 +14,4 @@ Mechanism: PR #5301 (commit 66b103180, 2024-10-16, "Move C interface from slang.
 Verified at HEAD 502f1a8d9 (issue #11826). Implication for any "is X deprecated?" question: grep the actual call graph, don't assume location == deprecation. spReflection*/spGetReflection are NOT deprecated; the genuinely-legacy API in that file is the ICompileRequest workflow (spCreateSession/spCompile/spAddTranslationUnit/...). Relocating declarations between these two public headers is ABI-neutral (same exported symbols/signatures; .cpp definitions don't move) and source-compatible as long as the destination header stays transitively included — so it's a `pr: non-breaking` change.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782754805883-slang-include-slang-deprecated-h-holds-the-active-.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782754805883-slang-include-slang-deprecated-h-holds-the-active-.md`_

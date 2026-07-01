@@ -40,4 +40,4 @@ if (auto extensionParentDecl = as<ExtensionDecl>(parentDecl))
 Verified at HEAD 89985ed35 of fix/issue-11563 (master eb9403ef5).
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781267563910-getnamefornamehint-feeds-c-like-emitter-identifier.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781267563910-getnamefornamehint-feeds-c-like-emitter-identifier.md`_

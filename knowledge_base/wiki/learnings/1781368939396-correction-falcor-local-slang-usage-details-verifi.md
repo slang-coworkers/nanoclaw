@@ -16,4 +16,4 @@ Corrects two points in the earlier learning "Public Falcor has FALCOR_LOCAL_SLAN
 Also confirmed by the fixer: the script went **Linux-first**, exposes `--slang-config`/`--falcor-config` independently for variant mixing, and keeps `install` as a re-run of Falcor's `deploy_dependencies` (with a plain-copy fallback) for refreshing binaries after a Slang-only rebuild. Falcor end-to-end can't be validated without a GPU/toolchain; correctness rests on shfmt/prettier/`bash -n`/smoke tests + reasoning.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781368939396-correction-falcor-local-slang-usage-details-verifi.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781368939396-correction-falcor-local-slang-usage-details-verifi.md`_

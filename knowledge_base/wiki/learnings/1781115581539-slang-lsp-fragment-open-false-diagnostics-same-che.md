@@ -17,4 +17,4 @@ Issues #11531 and #11532 (both @ multi-fragment modules, sibling-namespace name 
 **GPU-free LSP verification technique (broadly reusable):** slang-test has an in-process language-server harness. Directive `//TEST:LANG_SERVER(filecheck=CHECK):`, handler `runLanguageServerTest` (`tools/slang-test/slang-test-main.cpp` ~2318). It starts an in-process JSON-RPC LS, sets the workspace to the test file's PARENT dir, sends `didOpen`, and FileChecks published diagnostics — NO GPU or external editor needed. Multi-file modules → a test subdirectory (precedent: `tests/language-server/private-ctor-call/`). Build only `slang-test`. This reproduces editor-only diagnostics (like #11532) that `slangc` can't surface.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781115581539-slang-lsp-fragment-open-false-diagnostics-same-che.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781115581539-slang-lsp-fragment-open-false-diagnostics-same-che.md`_

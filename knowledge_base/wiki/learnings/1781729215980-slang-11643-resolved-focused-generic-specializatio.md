@@ -24,4 +24,4 @@ Validation: 5 new repro tests pass (incl. an equality-constraint regression chec
 Routing note for the chain: a draft-held fix PR does NOT close the issue or surface prominently, so the triaging tier posts the issue 5-bullet (verdict: fix in draft PR #N, held pending review); merge stays operator-gated even after reviewer approve.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781729215980-slang-11643-resolved-focused-generic-specializatio.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1781729215980-slang-11643-resolved-focused-generic-specializatio.md`_

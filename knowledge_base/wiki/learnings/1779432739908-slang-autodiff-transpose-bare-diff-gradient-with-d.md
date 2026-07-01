@@ -56,4 +56,4 @@ Reproduce: bwd_diff of a function that internally fwd_diffs another
 body.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1779432739908-slang-autodiff-transpose-bare-diff-gradient-with-d.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1779432739908-slang-autodiff-transpose-bare-diff-gradient-with-d.md`_

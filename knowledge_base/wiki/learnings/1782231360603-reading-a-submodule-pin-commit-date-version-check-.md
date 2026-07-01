@@ -14,4 +14,4 @@ Concrete gotcha (2026-06-23, slang #11711): `external/imgui` was pinned at `4c90
 **How to apply:** to state a pin's true version, read the version header (`IMGUI_VERSION`, etc.) *at the pinned commit*, not the commit date. To check whether a pin is reachable from the tracked branch, use `gh api repos/OWNER/REPO/compare/<pin>...master --jq '{status,ahead_by,behind_by}'` — `status: "diverged"` with `behind_by >= 1` means the pin carries commits not on master (exactly what slang PR #11063's submodule-pin-reachability CI flags).
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782231360603-reading-a-submodule-pin-commit-date-version-check-.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782231360603-reading-a-submodule-pin-commit-date-version-check-.md`_

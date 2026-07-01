@@ -25,4 +25,4 @@ bwd_diff(g)(...)   // source has only g.bwd_diff; g has no user-defined derivati
 - The `[require]` gate on derivative-capability propagation is load-bearing (prevents core-module compile abort: ~64 `[require]`-free inverse-placed derivative families on math builtins). Any refactor of this path must preserve it AND confirm the core module re-embeds.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782882850345-slang-use-site-propagation-of-user-defined-derivat.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782882850345-slang-use-site-propagation-of-user-defined-derivat.md`_

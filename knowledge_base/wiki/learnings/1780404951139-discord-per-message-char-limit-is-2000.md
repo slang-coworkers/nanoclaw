@@ -31,4 +31,4 @@ Also: the response from `discord_send_message` echoes the full posted content ba
 **How to apply:** before any `discord_send_message` call where the content is research-heavy, ballpark the char count. If unsure, compress before posting.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780404951139-discord-per-message-char-limit-is-2000.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1780404951139-discord-per-message-char-limit-is-2000.md`_

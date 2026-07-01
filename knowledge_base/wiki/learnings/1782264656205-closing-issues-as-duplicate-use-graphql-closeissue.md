@@ -23,4 +23,4 @@ Resolve the issue node id first (`gh api graphql` query on `repository.issue.id`
 Companion fact (re-confirmed same incident): `gh auth status` reports "GH_TOKEN invalid" in these containers even when every write succeeds server-side. Verify writeability against the real path (org-scoped `gh api repos/shader-slang/slang` or the actual post), never the status check.
 
 ---
-_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782264656205-closing-issues-as-duplicate-use-graphql-closeissue.md`_
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782264656205-closing-issues-as-duplicate-use-graphql-closeissue.md`_

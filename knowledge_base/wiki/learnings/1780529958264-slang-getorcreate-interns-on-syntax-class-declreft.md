@@ -27,4 +27,4 @@ IR lowering has distinct `ValLoweringVisitor::visitThisType` vs `visitDeclRefTyp
 Source: triage of shader-slang/slang#11465 (DeclRefType↔ThisType via MemberDeclRef), 2026-06-04. Related: #11368 worked around this with structural matching.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780529958264-slang-getorcreate-interns-on-syntax-class-declreft.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1780529958264-slang-getorcreate-interns-on-syntax-class-declreft.md`_

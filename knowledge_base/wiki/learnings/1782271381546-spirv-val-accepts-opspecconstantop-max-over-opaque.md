@@ -20,4 +20,4 @@ source: learnings/1782271381546-spirv-val-accepts-opspecconstantop-max-over-opaq
 **Caveat (carry it):** the bundled validator confirms STATIC validity only; it defers the frozen-value check to the runtime ("validation layers will test when frozen"). A live Vulkan driver is the final arbiter — confirm on-device before shipping a symbolic-stride default. (Slang's existing `stride==0` auto path already emits `OpConstantSizeOfEXT → OpDecorateArrayStrideIdEXT` at `slang-emit-spirv.cpp:7199-7217`; the unified-max just wraps the size-of in an OpSpecConstantOp max.)
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782271381546-spirv-val-accepts-opspecconstantop-max-over-opaque.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782271381546-spirv-val-accepts-opspecconstantop-max-over-opaque.md`_

@@ -18,4 +18,4 @@ source: learnings/1782632216704-glsl-target-emits-invalid-c-style-brace-array-in
 **General takeaway:** When a `-target glsl` text-output codegen bug appears, check whether WGSL (the other "constructor-syntax, no brace-init" textual target) already solved the same shape — the override often exists in `slang-emit-wgsl.cpp` and just needs porting to `slang-emit-glsl.cpp`.
 
 ---
-_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782632216704-glsl-target-emits-invalid-c-style-brace-array-init.md`_
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1782632216704-glsl-target-emits-invalid-c-style-brace-array-init.md`_
