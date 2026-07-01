@@ -60,9 +60,9 @@ These hold across every step below; the steps reference them by number rather th
   session, one complete board, posted as the last step. Inline board first, file second. (A
   delegated supervisor uses `to="parent"`.) See reference.md → *Delivery*.
 - **R8 — Never `git worktree remove` from the supervisor session.** Worktrees belong to the
-  fixers. Decide the reap set by `gh` PR state and dispatch the deletion to the owning fixer (a
-  `stopped` session wakes on the inbound). Never reap on the `prunable` flag your read-only mount
-  shows.
+  fixers. Decide the reap set by `gh` issue state + PR state (issue CLOSED → reap regardless of
+  PR state) and dispatch the deletion to the owning fixer (a `stopped` session wakes on the
+  inbound). Never reap on the `prunable` flag your read-only mount shows.
 - **R9 — Read CI yourself; nudge the fixer to rebase, never re-dispatch CI.** The orchestrator
   computes each PR-bearing chain's CI from its own container (`gh` works there) — no dependency on
   the babysitter, which keeps its own separate rerun/eviction job. Our PRs sit in draft and drive
@@ -175,10 +175,12 @@ and for `not_planned` closes without a PR.
 
 ### 8. Worktree GC sweep
 
-Reclaim abandoned fixer worktrees. Run the disk-pressure check every tick *before* the per-chain
-pass, and surface `worktree-vol: <N>GB free` in the rollup. Discover the reap set from disk,
-resolve each to a PR state, and dispatch a save-then-remove to the owning fixer (R8) — never delete
-from this session. Commands and the dispatch body are in reference.md → *Worktree GC*.
+Reclaim abandoned fixer worktrees. Run the GC scan every tick *before* the per-chain pass, and
+surface `worktree-vol: <N>GB free` in the rollup. Discover the reap set from disk, resolve each to
+**both** issue state and PR state (`REAP` = PR merged/closed OR issue closed; `KEEP` = issue open +
+PR open/running), and dispatch a save-then-remove to the owning fixer (R8) — never delete from this
+session. Escalate to operator when free < 10 GB. Commands and the dispatch body are in
+reference.md → *Worktree GC*.
 
 ## Scheduling
 
