@@ -16,4 +16,4 @@ Two traps when merging `/slang-pr-review` Reviewer C (clarity) output at Step 5.
 Both reduce to: trust the script's own emitted paths and the structured tool name/command, not mtime ordering or substring matches against file content.
 
 ---
-_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1782738058115-slang-pr-review-merge-step-find-reviewer-c-run-dir.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782738058115-slang-pr-review-merge-step-find-reviewer-c-run-dir.md`_

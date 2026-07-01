@@ -72,8 +72,12 @@ Reviewer A can review the WRONG PR via stale `tmp/pr-diff.patch` from a prior ru
 
 Authenticated read of CI logs works even when `gh auth status` shows invalid: `gh run view <run-id> -R shader-slang/slang` and `gh run view --job <job-id> -R shader-slang/slang --log` both work via the read-only proxy path. Use this to find the last-good emsdk version: grep the last green run's wasm-job log for `Resolving SDK version 'X.Y.Z' to 'sdk-releases-<hash>-64bit'` ([[wiki/learnings/1780624123110-find-last-good-emsdk-version-for-an-emsdk-install-.md]]).
 
+## nv-slang-bot login quirks: no [bot] suffix via gh; labels 403 fallback
+
+Two GitHub-write quirks of the `nv-slang-bot` token. **Self-check:** the "edit-if-last-poster-is-self" snippet that tests `[ "$LOGIN" = "nv-slang-bot[bot]" ]` fails because `gh api .../comments --jq '.user.login'` returns the bot login **without** the `[bot]` suffix — match by substring instead ([[wiki/learnings/1782857315349-edit-if-self-check-nv-slang-bot-login-has-no-bot-s.md]]). **Labels:** if `POST issues/:n/labels` returns 403, fall back to `gh issue edit --add-label`, which succeeds where the raw REST path is inconsistently denied ([[wiki/learnings/1782866408005-gh-labels-if-post-issues-n-labels-403s-fall-back-t.md]]).
+
 ---
-**Source learnings (17):**
+**Source learnings (19):**
 - [[wiki/learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md]] — CONSOLIDATED: GitHub auth & ops in agent containers
 - [[wiki/learnings/1778859843367-gh-cli-field-expands-as-file-path.md]] — gh CLI --field expands @ as file path
 - [[wiki/learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md]] — nv-slang-bot 403 on issue-assign and cross-session comment-edit
@@ -90,4 +94,6 @@ Authenticated read of CI logs works even when `gh auth status` shows invalid: `g
 - [[wiki/learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fetc.md]] — NVAPI render-tests silently ignored — submodule→FetchContent migration left render-test path stale
 - [[wiki/learnings/1782579642375-slang-11568-maintainer-base-pr-on-11723-is-a-layer.md]] — slang #11568: maintainer "base PR on #11723" is a layer-mismatch
 
+- [[wiki/learnings/1782857315349-edit-if-self-check-nv-slang-bot-login-has-no-bot-s.md]] — edit-if-self check: nv-slang-bot login has NO [bot] suffix via gh — match by substring
+- [[wiki/learnings/1782866408005-gh-labels-if-post-issues-n-labels-403s-fall-back-t.md]] — GH labels: if POST issues/:n/labels 403s, fall back to gh issue edit --add-label
 _Catalog: [[wiki/index.md]]_

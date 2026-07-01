@@ -22,4 +22,4 @@ When a coworker flags "the OTHER agent is in a runaway 'Holding.' loop — I'm h
 - This is distinct from the self-edge self-wiring loop (same empty-ack symptom, different topology — peer-wire, both real agents).
 
 ---
-_Topic: [[wiki/topics/misc.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md`_

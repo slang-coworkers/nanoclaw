@@ -43,4 +43,4 @@ prebuilt ABI skew (slang-llvm or DXC) before chasing the build system. `nm -D -C
 grep createLLVMBuilder` tells you which symbol version the prebuilt actually exports.
 
 ---
-_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1780320688142-slang-llvm-prebuilt-abi-skew-breaks-master-tot-bui.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780320688142-slang-llvm-prebuilt-abi-skew-breaks-master-tot-bui.md`_

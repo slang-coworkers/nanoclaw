@@ -79,8 +79,12 @@ Container disk has two volumes: `/workspace` → `/dev/vda1` (constrained shared
 
 **Primary-file `using namespace` leaks through `import`.** A `using namespace Foo;` in a module's primary source file is re-exported through `import` (importers see `Foo`'s members unqualified); the same directive in an `implementing`/`__include`d file does NOT leak. The mechanism: primary-file decls are pushed under the `ModuleDecl` scope; `__include`d files get a separate `FileDecl` scope; `importModuleIntoScope` re-exports the module scope's direct-child sibling chain. Before recommending a behavior-changing fix here, grep `tests/` for an existing test that asserts the current behavior — `tests/language-feature/namespaces/namespace-using/b.slang` currently depends on this leak ([[wiki/learnings/1780476462894-slang-primary-file-using-namespace-leaks-through-i.md]]).
 
+## Release-CI failures: trace the exact command; bisect the workflow file's own history
+
+When a GitHub **release** is missing artifacts for one arch/platform but not others, don't assume "transient — just re-run." Trace the exact failing command in the release CI run: moving a CI leg into a no-sudo container can break asset production asymmetrically (e.g. a step that needed root) while leaving other arches green ([[wiki/learnings/1782845136368-release-asset-asymmetry-from-moving-a-ci-leg-into-.md]]). When a release run fails at an environment/**Setup** step rather than a compile step, the culprit is almost always a CI-config change — bisect the *workflow file's own git history*, not just the "commits since last successful run" source range, which will mis-blame an innocent PR ([[wiki/learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md]]).
+
 ---
-**Source learnings (15):**
+**Source learnings (17):**
 - [[wiki/learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md]] — DISABLE CI jobs are build-only
 - [[wiki/learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md]] — How GPU-requiring unit tests are silenced on no-GPU / aarch64 runners
 - [[wiki/learnings/1780769174979-slang-compile-time-perf-ci-11501-overlaps-pr-11485.md]] — Compile-time perf-CI (#11501) overlaps PR #11485
@@ -97,4 +101,6 @@ Container disk has two volumes: `/workspace` → `/dev/vda1` (constrained shared
 - [[wiki/learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md]] — DescriptorHandle to ConstantBuffer implicit conversion blocked
 - [[wiki/learnings/1780476462894-slang-primary-file-using-namespace-leaks-through-i.md]] — Primary-file using namespace leaks through import
 
+- [[wiki/learnings/1782845136368-release-asset-asymmetry-from-moving-a-ci-leg-into-.md]] — Release-asset asymmetry from moving a CI leg into a no-sudo container — verify the exact failing command
+- [[wiki/learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md]] — Release-CI Setup failures: bisect the workflow file's own history, not the source-commit range
 _Catalog: [[wiki/index.md]]_

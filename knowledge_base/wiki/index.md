@@ -5,842 +5,890 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **757 agent learnings**, synthesized into **42 concept pages**.
+Standalone wiki built from **805 agent learnings**, synthesized into **42 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
 ## Concepts (synthesized)
 
 ### Agent fixer / codex / skills
-- [[wiki/concepts/agent-fixer-codex-provider.md]] — Codex & Provider Parity
-- [[wiki/concepts/agent-fixer-triage.md]] — Fixer & Triage Automation
-- [[wiki/concepts/agent-fixer-skills-ncl.md]] — Skills, ncl CLI, and Slang-Specific Mechanics
+- [Codex & Provider Parity](wiki/concepts/agent-fixer-codex-provider.md)
+- [Fixer & Triage Automation](wiki/concepts/agent-fixer-triage.md)
+- [Skills, ncl CLI, and Slang-Specific Mechanics](wiki/concepts/agent-fixer-skills-ncl.md)
 
 ### Agent infrastructure
-- [[wiki/concepts/agent-infra-composer-spine-lego.md]] — Composer, Spine, and Lego Coworker System
-- [[wiki/concepts/agent-infra-github-auth-operations.md]] — GitHub Auth and Operations in Agent Containers
-- [[wiki/concepts/agent-infra-multi-session-coordination.md]] — Multi-Session Coordination, A2A Routing, and Supervisor Operations
-- [[wiki/concepts/agent-infra-sessions-containers-worktrees.md]] — Sessions, Containers, and Worktrees in Agent Infrastructure
+- [Composer, Spine, and Lego Coworker System](wiki/concepts/agent-infra-composer-spine-lego.md)
+- [GitHub Auth and Operations in Agent Containers](wiki/concepts/agent-infra-github-auth-operations.md)
+- [Multi-Session Coordination, A2A Routing, and Supervisor Operations](wiki/concepts/agent-infra-multi-session-coordination.md)
+- [Sessions, Containers, and Worktrees in Agent Infrastructure](wiki/concepts/agent-infra-sessions-containers-worktrees.md)
 
 ### Agent routing & messaging
-- [[wiki/concepts/agent-routing-github-bot-and-webhooks.md]] — Agent Routing: GitHub Bot & Webhooks
-- [[wiki/concepts/agent-routing-mcp-servers-and-gateways.md]] — Agent Routing: MCP Servers & Gateways
-- [[wiki/concepts/agent-routing-message-routing-and-gating.md]] — Agent Routing: Message Routing & Gating
-- [[wiki/concepts/agent-routing-slang-compiler-context.md]] — Agent Routing: Slang Compiler Context
-- [[wiki/concepts/agent-routing-subagent-and-fork-control.md]] — Agent Routing: Subagent & Fork Control
+- [Agent Routing: GitHub Bot & Webhooks](wiki/concepts/agent-routing-github-bot-and-webhooks.md)
+- [Agent Routing: MCP Servers & Gateways](wiki/concepts/agent-routing-mcp-servers-and-gateways.md)
+- [Agent Routing: Message Routing & Gating](wiki/concepts/agent-routing-message-routing-and-gating.md)
+- [Agent Routing: Slang Compiler Context](wiki/concepts/agent-routing-slang-compiler-context.md)
+- [Agent Routing: Subagent & Fork Control](wiki/concepts/agent-routing-subagent-and-fork-control.md)
 
 ### CI & tooling
-- [[wiki/concepts/ci-build-tooling.md]] — CI Build Tooling & Workflow Structure
-- [[wiki/concepts/ci-runners-flake-triage.md]] — CI Runners & Flake Triage
-- [[wiki/concepts/ci-gh-cli-usage.md]] — gh CLI Usage & PR/Issue Mechanics
+- [CI Build Tooling & Workflow Structure](wiki/concepts/ci-build-tooling.md)
+- [CI Runners & Flake Triage](wiki/concepts/ci-runners-flake-triage.md)
+- [gh CLI Usage & PR/Issue Mechanics](wiki/concepts/ci-gh-cli-usage.md)
 
 ### general-misc
-- [[wiki/concepts/general-misc-agent-subagent-control.md]] — Agent and Subagent Control Discipline
-- [[wiki/concepts/general-misc-bot-operational-protocols.md]] — Bot Operational Protocols and Maintainer Interactions
-- [[wiki/concepts/general-misc-github-pr-and-bot-operations.md]] — GitHub PR and Bot Operations
-- [[wiki/concepts/general-misc-slang-compiler-technical.md]] — Slang Compiler Technical Findings
-- [[wiki/concepts/general-misc-state-verification-discipline.md]] — State Verification Discipline
+- [Agent and Subagent Control Discipline](wiki/concepts/general-misc-agent-subagent-control.md)
+- [Bot Operational Protocols and Maintainer Interactions](wiki/concepts/general-misc-bot-operational-protocols.md)
+- [GitHub PR and Bot Operations](wiki/concepts/general-misc-github-pr-and-bot-operations.md)
+- [Slang Compiler Technical Findings](wiki/concepts/general-misc-slang-compiler-technical.md)
+- [State Verification Discipline](wiki/concepts/general-misc-state-verification-discipline.md)
 
 ### Review & process
-- [[wiki/concepts/review-pr-practices.md]] — PR Review Practices
-- [[wiki/concepts/review-research-workflow.md]] — Reading Papers, Transcripts & Research Workflow
+- [PR Review Practices](wiki/concepts/review-pr-practices.md)
+- [Reading Papers, Transcripts & Research Workflow](wiki/concepts/review-research-workflow.md)
 
 ### Slang autodiff & IR
-- [[wiki/concepts/slang-autodiff-ir-autodiff-differentiation.md]] — Slang Autodiff & Differentiation: Internals, Bugs, and Design Rules
-- [[wiki/concepts/slang-autodiff-ir-passes-diagnostics.md]] — Slang IR Passes, Diagnostics, and Tooling
+- [Slang Autodiff & Differentiation: Internals, Bugs, and Design Rules](wiki/concepts/slang-autodiff-ir-autodiff-differentiation.md)
+- [Slang IR Passes, Diagnostics, and Tooling](wiki/concepts/slang-autodiff-ir-passes-diagnostics.md)
 
 ### Slang backends
-- [[wiki/concepts/slang-backends-glsl.md]] — Slang GLSL Backend: Emission, Legalization, and glslang Integration
-- [[wiki/concepts/slang-backends-optix-raytracing.md]] — Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics
-- [[wiki/concepts/slang-backends-spirv.md]] — Slang SPIR-V Backend: Emission, Capabilities, and Validation
-- [[wiki/concepts/slang-backends-wgsl-metal.md]] — Slang WGSL and Metal Backends: Textual Constructor-Syntax Targets
+- [Slang GLSL Backend: Emission, Legalization, and glslang Integration](wiki/concepts/slang-backends-glsl.md)
+- [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](wiki/concepts/slang-backends-optix-raytracing.md)
+- [Slang SPIR-V Backend: Emission, Capabilities, and Validation](wiki/concepts/slang-backends-spirv.md)
+- [Slang WGSL and Metal Backends: Textual Constructor-Syntax Targets](wiki/concepts/slang-backends-wgsl-metal.md)
 
 ### slang-grab-bag
-- [[wiki/concepts/slang-misc-build-infrastructure-and-tooling.md]] — Slang Build Infrastructure, Tooling, and Language Server
-- [[wiki/concepts/slang-misc-byteaddressbuffer-alignment.md]] — Slang ByteAddressBuffer Alignment and Legalization
-- [[wiki/concepts/slang-misc-compiler-internals.md]] — Slang Compiler Internals: Parser, IR, Types, and Language Semantics
-- [[wiki/concepts/slang-misc-diagnostics-catalog-and-system.md]] — Slang Diagnostics System: Catalog, Definitions, and Rendering
-- [[wiki/concepts/slang-misc-pr-process-and-maintainer-workflow.md]] — Slang PR Process, Maintainer Workflow, and Issue Lifecycle
-- [[wiki/concepts/slang-misc-test-harness.md]] — Slang Test Harness Mechanics and Gotchas
+- [Slang Build Infrastructure, Tooling, and Language Server](wiki/concepts/slang-misc-build-infrastructure-and-tooling.md)
+- [Slang ByteAddressBuffer Alignment and Legalization](wiki/concepts/slang-misc-byteaddressbuffer-alignment.md)
+- [Slang Compiler Internals: Parser, IR, Types, and Language Semantics](wiki/concepts/slang-misc-compiler-internals.md)
+- [Slang Diagnostics System: Catalog, Definitions, and Rendering](wiki/concepts/slang-misc-diagnostics-catalog-and-system.md)
+- [Slang PR Process, Maintainer Workflow, and Issue Lifecycle](wiki/concepts/slang-misc-pr-process-and-maintainer-workflow.md)
+- [Slang Test Harness Mechanics and Gotchas](wiki/concepts/slang-misc-test-harness.md)
 
 ### Slang language core
-- [[wiki/concepts/slang-language-generics-and-type-system.md]] — Slang Generics & Type System
-- [[wiki/concepts/slang-language-intrinsics-and-builtins.md]] — Slang Intrinsics & Builtins
-- [[wiki/concepts/slang-language-reflection-api.md]] — Slang Reflection API
+- [Slang Generics & Type System](wiki/concepts/slang-language-generics-and-type-system.md)
+- [Slang Intrinsics & Builtins](wiki/concepts/slang-language-intrinsics-and-builtins.md)
+- [Slang Reflection API](wiki/concepts/slang-language-reflection-api.md)
 
 ### Slang tooling
-- [[wiki/concepts/slang-tooling-build-runtime-libs.md]] — Build System, Runtime Libraries & Debug Workflows
-- [[wiki/concepts/slang-tooling-formatting-lint.md]] — Formatting & Lint Tooling (clang-format, prettier, gersemi)
-- [[wiki/concepts/slang-tooling-slangc-cli-targets.md]] — slangc CLI, Targets & Emit Verification
+- [Build System, Runtime Libraries & Debug Workflows](wiki/concepts/slang-tooling-build-runtime-libs.md)
+- [Formatting & Lint Tooling (clang-format, prettier, gersemi)](wiki/concepts/slang-tooling-formatting-lint.md)
+- [slangc CLI, Targets & Emit Verification](wiki/concepts/slang-tooling-slangc-cli-targets.md)
 
 ### SlangPy
-- [[wiki/concepts/slangpy-ci-triage.md]] — SlangPy CI, Triage, Build, and Runtime
-- [[wiki/concepts/slangpy-tensor-api.md]] — SlangPy Tensor API (0.41+ Migration)
+- [SlangPy CI, Triage, Build, and Runtime](wiki/concepts/slangpy-ci-triage.md)
+- [SlangPy Tensor API (0.41+ Migration)](wiki/concepts/slangpy-tensor-api.md)
 
 ## Topics
 
-- [[wiki/topics/slang-compiler.md]] — Slang compiler & language (455)
-- [[wiki/topics/agent-ops.md]] — NanoClaw / agent operations (124)
-- [[wiki/topics/ci-tooling.md]] — CI, build & tooling (49)
-- [[wiki/topics/review-process.md]] — Review & process (23)
-- [[wiki/topics/misc.md]] — Uncategorized (106)
+- [Slang compiler & language](wiki/topics/slang-compiler.md) (481)
+- [NanoClaw / agent operations](wiki/topics/agent-ops.md) (127)
+- [CI, build & tooling](wiki/topics/ci-tooling.md) (56)
+- [Review & process](wiki/topics/review-process.md) (26)
+- [Uncategorized](wiki/topics/misc.md) (115)
 
 ## All learnings (chronological)
 
-- [[wiki/learnings/dashboard_slang-triage-1776263007885.md]] — SPIR-V issues require spirv-val, not just slangc exit code
-- [[wiki/learnings/devin-reviewer-scrape-reliability.md]] — Devin reviewer scrape reliability
-- [[wiki/learnings/legoop-feedback_ab_evaluation_criteria.md]] — Judge coworker output by real engineering quality, not proxy metrics
-- [[wiki/learnings/legoop-feedback_chain_shape_strict.md]] — Strict reply-routing in 4-tier issue chain — replies hop back along the dispatch path, never bypass to the orchestrator
-- [[wiki/learnings/legoop-feedback_codex_symlinks_for_skills.md]] — Create symlinks (AGENTS.md→CLAUDE.md, .agents→.claude) in group folders for Codex agents so the Codex CLI natively discovers our skills. Prefer letting the harness pick them up over overriding developer instructions.
-- [[wiki/learnings/legoop-feedback_no_external_post_ab_tests.md]] — Read-only/eval coworkers must be blocked from external posting at BOTH layers
-- [[wiki/learnings/legoop-feedback_no_service_restart_for_mcp.md]] — Restarting nanoclaw service kills all running containers and their in-progress work; restart only the specific MCP subprocess instead
-- [[wiki/learnings/legoop-feedback_precommit_hook_drops_files.md]] — nv-* pre-commit hook runs format:fix then re-adds only src/**/*.ts — silently drops other staged files from the commit
-- [[wiki/learnings/legoop-feedback_service_restart_kills_containers.md]] — Restarting nanoclaw main service triggers initGroupFilesystem → skill refresh → CLAUDE.md recompose → claude-md-stale kills all running containers. Avoid restarts during active sessions.
-- [[wiki/learnings/legoop-project_ab_test_discord_workflow.md]] — Workflows enforce tool usage that prose instructions don't
-- [[wiki/learnings/legoop-project_buddy_not_using_codex.md]] — Legoop project buddy not using codex
-- [[wiki/learnings/legoop-project_gate_refusal_sender_only.md]] — Gate refusals now go to sender not peer (PR
-- [[wiki/learnings/legoop-project_graphql_path_routing.md]] — GitHub GraphQL / ProjectsV2 access needs a per-project grant (often unavailable to the bot)
-- [[wiki/learnings/legoop-project_prod_update_skill_missing_nanoclaw.md]] — update-slang-coworkers-prod skill omits nv-nanoclaw merge; base-nanoclaw is a base-common dependency so validate fails without it
-- [[wiki/learnings/legoop-project_rtk_evaluated_rejected.md]] — rtk token-compression proxy evaluated 2026-06-03 and rejected for all groups; not enabled anywhere
-- [[wiki/learnings/legoop-project_session_may14.md]] — May 14 session — landed PRs
-- [[wiki/learnings/legoop-project_slang_mcp_gateway_lazy.md]] — slang-mcp's Discord Gateway connection is LAZY — init_discord_client() only fires when a Discord tool is invoked. After slang-mcp respawn, no live MESSAGE_CREATE events flow until first tool call.
-- [[wiki/learnings/legoop-reference_show_transcript_skill.md]] — How to render any agent group's Claude Code session transcripts as browsable HTML on port 8080
-- [[wiki/learnings/1777487718343-slang-compiler-tess-foley-name.md]] — Slang compiler: tfoley real name
-- [[wiki/learnings/1778085879531-claude-vs-codex-provider-parity.md]] — claude-vs-codex-provider-parity
-- [[wiki/learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md]] — Reading arXiv/HF papers end-to-end with the Read tool
-- [[wiki/learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md]] — Slang formatting.sh requires clang-format 17.x exactly
-- [[wiki/learnings/1778749638138-slang-fixer-tools-gfx-is-legacy-code-paralleling-s.md]] — slang-fixer: tools/gfx/ is legacy code paralleling slang-rhi — fixes need to land in both, but in-tree tests only exercise slang-rhi
-- [[wiki/learnings/1778835191236-dashboard-channels-render-markdown-always-include-.md]] — Dashboard channels render markdown — always include hyperlinks for issue/PR/discussion refs
-- [[wiki/learnings/1778859843367-gh-cli-field-expands-as-file-path.md]] — gh CLI --field expands @ as file path
-- [[wiki/learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md]] — Verifying GitHub webhook payloads before acting
-- [[wiki/learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md]] — ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked
-- [[wiki/learnings/1779295178725-slang-raypayload-implicit-decoration-paq-gap.md]] — slang-raypayload-implicit-decoration-paq-gap
-- [[wiki/learnings/1779297394847-slang-raypayload-paq-pass-asymmetric-skip-gap.md]] — slang-raypayload-paq-pass-asymmetric-skip-gap
-- [[wiki/learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md]] — Devin Review done-detector races AI-analysis text render
-- [[wiki/learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md]] — PDF transcript extraction: pymupdf blocks beats llama-index
-- [[wiki/learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md]] — Always use markdown links for issues and reviews
-- [[wiki/learnings/1779364869375-slang-10267-pr-11224-coverage-gap-anyhit-only.md]] — slang-10267-pr-11224-coverage-gap-anyhit-only
-- [[wiki/learnings/1779369251370-slangc-debug-build-ld-library-path-order-matters-w.md]] — slangc Debug-build LD_LIBRARY_PATH order matters when prebuilt lib is colocated
-- [[wiki/learnings/1779369269598-slang-propagateconstexpr-s-paramcount-callargcount.md]] — slang propagateConstExpr's paramCount==callArgCount asserts BEFORE the autodiff pass — fix is front-end
-- [[wiki/learnings/1779427288040-furo-theme-dark-mode-code-colors-use-pygments-dark.md]] — Furo theme dark-mode code colors — use pygments_dark_style, not CSS overrides
-- [[wiki/learnings/1779429443648-dxc-v1-10-2605-2-prebuilts-require-glibc-2-38-bloc.md]] — DXC v1.10.2605.2 prebuilts require GLIBC 2.38 (blocks Ubuntu 22.04 CI)
-- [[wiki/learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md]] — slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt
-- [[wiki/learnings/1779432739908-slang-autodiff-transpose-bare-diff-gradient-with-d.md]] — slang autodiff transpose: bare-diff gradient with DiffPair aggPrimalType causes crash
-- [[wiki/learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md]] — slang autodiff transpose: narrowing the gradient at construction is not enough — the aggregation type drives dadd dispatch, and even all four narrowings may be insufficient
-- [[wiki/learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md]] — Empirical "I tested it" probes can miss the wrong sub-case — Devin's persistent flags deserve scrutiny even when initial reading says misread
-- [[wiki/learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md]] — Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round
-- [[wiki/learnings/1779545587070-slangpy-ci-flake-triage-re-symbolize-the-existing-.md]] — slangpy CI flake triage: re-symbolize the existing .dmp before designing fixes
-- [[wiki/learnings/1779612967874-slang-emit-spirv-builtin-var-cache-and-the-volatil.md]] — slang-emit-spirv builtin-var cache and the volatile-set cache-hit trap
-- [[wiki/learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-co.md]] — slang-spirv-asm-operand-builtinvar-is-hoistable-collapses-cross-stage
-- [[wiki/learnings/1779617068760-slang-emit-spirv-extra-memoryaccess-word-grammar-b.md]] — slang-emit-spirv-extra-memoryaccess-word-grammar-bug-pattern
-- [[wiki/learnings/1779619281300-slang-via-glsl-test-premise-verify-with-downstream.md]] — slang-via-glsl-test-premise-verify-with-downstream-tool
-- [[wiki/learnings/1779621016571-deepwiki-can-miss-files-in-large-or-vendored-codeb.md]] — deepwiki-can-miss-files-in-large-or-vendored-codebases-cross-check-source
-- [[wiki/learnings/1779621920622-slang-spir-v-entry-point-rename-auto-applies-only-.md]] — Slang SPIR-V entry-point rename: auto-applies only with >1 entry point
-- [[wiki/learnings/1779622726384-slang-maintainer-handoff-verify-on-pr-state-agains.md]] — slang maintainer handoff — verify on-PR state against internal verdicts
-- [[wiki/learnings/1779805764133-slang-lexer-cpp-has-a-duplicate-hex-digit-decoder-.md]] — slang-lexer.cpp has a duplicate hex-digit decoder with an off-by-ten bug
-- [[wiki/learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md]] — Resume-after-pause: re-verify remote state before applying the saved resume plan
-- [[wiki/learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md]] — slang triage [Fix Report] may route via parent, not direct to triager
-- [[wiki/learnings/1779891890025-slangpy-python-id-c-imodule-identity.md]] — slangpy Python id() ≠ C++ IModule* identity
-- [[wiki/learnings/1779895141195-read-auto-memory-feedback-files-before-authoring-c.md]] — Read auto-memory feedback files before authoring commits — don't trust your own knowledge of email/identity formats
-- [[wiki/learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md]] — Slang `-capability` does not silence "use of undeclared capability" — it's a per-function contract
-- [[wiki/learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md]] — Test-Agent-Filed Issues Need Trigger Verification
-- [[wiki/learnings/1779962007180-spvdescriptorheapext-stride-is-opaque-for-as-load-.md]] — spvDescriptorHeapEXT stride is opaque for AS — load-type must drive runtime-array base type
-- [[wiki/learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md]] — Always post the PR review when explicitly requested via webhook (overrides /slang-pr-review read-only default)
-- [[wiki/learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md]] — Slang diagnostic catalog name conventions — emit sites are PascalCase, not camelCase
-- [[wiki/learnings/1779985772055-marked-block-sha256-pattern-for-cross-file-drift-d.md]] — Marked-block sha256 pattern for cross-file drift detection
-- [[wiki/learnings/1780050112745-slang-autodiff-pr-10827-left-bwddifffunctype-remat.md]] — slang autodiff: PR #10827 left BwdDiffFuncType/RematFuncType/BwdCallableFuncType/FwdDiffFuncType inconsistent with ApplyForBwdFuncType + IR-pass + front-end
-- [[wiki/learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md]] — ncl group container fixes — Bookworm package gaps + approval sequencing
-- [[wiki/learnings/1780064743810-verify-discovery-and-resolution-separately-in-pars.md]] — Verify Discovery and Resolution Separately in Parser-Ambiguity Triage
-- [[wiki/learnings/1780072266959-slang-autodiff-11356-fix-axis-is-nodiffthis-not-st.md]] — slang-autodiff-11356-fix-axis-is-NoDiffThis-not-static-ctor
-- [[wiki/learnings/1780073122582-verify-maintainer-attributions-in-triage-handoffs-.md]] — Verify maintainer attributions in triage handoffs against gh PR data
-- [[wiki/learnings/1780073270938-slang-coerce-bypass-on-bound-receiver-injection-em.md]] — slang-coerce-bypass-on-bound-receiver-injection-empirical
-- [[wiki/learnings/1780157118768-slang-ci-cooperative-vector-tests-fail-on-windows-.md]] — Slang CI: cooperative-vector hlsl-codegen tests fail on Windows-release-GPU pre-#11358
-- [[wiki/learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md]] — Slang per-target stride for `StructuredBuffer<float3, ScalarDataLayout>` — WGSL is the outlier
-- [[wiki/learnings/1780177496970-pin-slang-source-citations-to-comment-text-or-func.md]] — Pin Slang source citations to comment text or function name, not line numbers
-- [[wiki/learnings/1780177920997-don-t-cite-env-var-or-flag-names-without-verifying.md]] — Don't cite env-var or flag names without verifying — they're a high-frequency hallucination surface
-- [[wiki/learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md]] — Slang CI: Windows test-slang disk-space cluster flake
-- [[wiki/learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md]] — Slang CI: `gh run rerun --failed` cannot fix "Artifact not found" on artifact-consuming jobs
-- [[wiki/learnings/1780253722562-slang-spir-v-output-topology-hull-domain-arm-only-.md]] — Slang SPIR-V output-topology: hull/domain arm only handles a subset of OutputTopologyType — Line falls through to mesh OutputLinesEXT
-- [[wiki/learnings/1780285608597-slang-autodiff-return-shape-rule-for-new-diff-oper.md]] — slang autodiff — return shape rule for new diff operators (fwd/bwd asymmetry)
-- [[wiki/learnings/1780292674603-slang-sibling-opcode-threading-grep-not-list-rule-.md]] — slang sibling-opcode threading — grep-not-list rule for fan-out inventory
-- [[wiki/learnings/1780295760692-slang-autodiff-derivative-variants-are-tracked-via.md]] — slang autodiff: derivative variants are tracked via tryGetAssociationOfKind, not raw IR decoration ops
-- [[wiki/learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md]] — slangi VM emitter: missing IRConstant cases produce silent malformed operands
-- [[wiki/learnings/1780300985125-slang-autodiff-missing-no-diff-diagnostic-tests-us.md]] — slang autodiff: missing-no_diff diagnostic tests use //TEST:SIMPLE(filecheck=CHECK), not //DIAGNOSTIC_TEST
-- [[wiki/learnings/1780304385745-always-rebase-before-codex-code-review-to-get-a-ti.md]] — Always rebase before codex CODE_REVIEW to get a tight scope diff
-- [[wiki/learnings/1780307950462-slang-rhi-off-repo-triage-anonymous-clone-works-gh.md]] — slang-rhi off-repo triage: anonymous clone works, GH_TOKEN invalid, no GPU
-- [[wiki/learnings/1780310225210-slang-rhi-builds-headless-no-vulkan-sdk-gpu-via-cm.md]] — slang-rhi builds headless (no Vulkan SDK/GPU) via CMake FetchContent; fresh clones have no git identity
-- [[wiki/learnings/1780311762982-slang-pr-review-runner-patch-mode-reviewer-can-t-f.md]] — slang-pr-review-runner patch mode: reviewer can't find the patch + commit -am drops new files
-- [[wiki/learnings/1780312221839-slang-autodiff-derivative-variant-purity-check-mus.md]] — Slang autodiff: derivative-variant purity check must accept [PreferRecompute], not just [__readNone]
-- [[wiki/learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md]] — slang-test: synthesized subtest skip needs pre-run exclusion, not expected-failure
-- [[wiki/learnings/1780315991721-pr-status-watcher-tasks-use-a-pre-agent-script-gua.md]] — PR/status watcher tasks: use a pre-agent script guard with a state file, not a per-fire agent poll
-- [[wiki/learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md]] — slang-test: matching an expanded subtest name needs exact testName equality, not getSubtestIndex
-- [[wiki/learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md]] — slang-test harness changes: .slang test rule N/A, but slang-unit-test is the right vehicle
-- [[wiki/learnings/1780320688142-slang-llvm-prebuilt-abi-skew-breaks-master-tot-bui.md]] — slang-llvm prebuilt ABI skew breaks master ToT builds (createLLVMBuilder_V2 vs _V3)
-- [[wiki/learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md]] — Slang VM bytecode: missing constant-emit case can silently mask wrong test assertions
-- [[wiki/learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md]] — PR-review lenses: extracted-matcher integration gap + normalize-before-match blind spot
-- [[wiki/learnings/1780324292016-slang-test-exclude-prefix-skip-list-test-prefix-ar.md]] — slang-test: -exclude-prefix / -skip-list / -test-prefix are all Path::simplify'd identically
-- [[wiki/learnings/1780324464202-before-flagging-normalize-before-match-as-a-new-ri.md]] — Before flagging normalize-before-match as a NEW risk, check shipped-sibling parity
-- [[wiki/learnings/1780324487740-testing-slang-llvm-version-skew-diagnostics-slang-.md]] — Testing slang-llvm version-skew diagnostics + Slang worktree/build env gotchas
-- [[wiki/learnings/1780324906216-slang-loads-downstream-libs-by-logical-name-test-s.md]] — Slang loads downstream libs by logical name — test shims match the bare name cross-platform
-- [[wiki/learnings/1780324967550-slang-llvm-prebuilt-v2-v3-abi-skew-breaks-master-t.md]] — slang-llvm prebuilt V2/V3 ABI skew breaks master ToT build with cryptic "cannot find shader.o"
-- [[wiki/learnings/1780325263478-codex-critique-gate-open-the-pr-before-claiming-it.md]] — codex-critique gate: open the PR before claiming it in OUTPUT_REVIEW deliverable
-- [[wiki/learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md]] — Slang DISABLE CI jobs are build-only — no slang-test run step
-- [[wiki/learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md]] — gh search prs misses recent/open PRs — don't use it for PR-existence checks
-- [[wiki/learnings/1780328920397-slang-ir-pass-diagnostics-lose-source-locations-be.md]] — Slang IR-pass diagnostics lose source locations because struct keys inherit IRBuilder's incidental loc
-- [[wiki/learnings/1780330247261-CONSOLIDATED-slang-rhi-vulkan-build-needs-libx11-dev.md]] — CONSOLIDATED: slang-rhi Vulkan build needs libx11-dev (X11/Xlib.h)
-- [[wiki/learnings/1780330259667-slangi-vm-emitter-constant-section-write-sizealign.md]] — slangi VM emitter constant section: write sizeAlignment.size bytes, not natural type size
-- [[wiki/learnings/1780332260528-slangi-printf-s-with-string-literal-crashes-run-vs.md]] — slangi printf %s with string literal crashes (run vs -disasm are distinct paths)
-- [[wiki/learnings/1780332708129-slang-bwd-diff-out-param-convention-bare-in-differ.md]] — slang bwd_diff out-param convention — bare in-differential seed, no primal writeback
-- [[wiki/learnings/1780338418439-slang-cmake-api-github-com-used-only-for-slang-llv.md]] — Slang CMake: api.github.com used only for slang-llvm version resolution; direct asset downloads aren't rate-limited
-- [[wiki/learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-repo.md]] — Don't self-schedule a PR-watcher poller after report_pr_created
-- [[wiki/learnings/1780345715837-slang-scalar-short-circuits-by-design-vector-does-.md]] — Slang `?:` short-circuit semantics + #11403 disposition (scalar short-circuits by design; vector does not)
-- [[wiki/learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md]] — Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write
-- [[wiki/learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md]] — slang #11407 stale 30055 catalog test is a syntax error, not just scalar; fix surface is the gen prompt not slang-diagnostics.lua
-- [[wiki/learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md]] — Scheduled diagnostic tasks re-diagnose persistent state inconsistently across fresh sessions
-- [[wiki/learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md]] — Verify Slang diagnostics with slangc-only build (slang-test won't link: X11 missing)
-- [[wiki/learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md]] — Slang diagnostics-catalog generated tests have 3 divergent provenance stores; hand-fix must bump .slang META
-- [[wiki/learnings/1780352916926-verifying-slang-docs-generated-test-diagnostic-tes.md]] — Verifying Slang docs/generated-test (DIAGNOSTIC_TEST) fixes without a compiler build
-- [[wiki/learnings/1780353662163-slang-diagnostics-catalog-doc-section-digest-gap-v.md]] — slang diagnostics-catalog doc_section_digest gap + verify peer repo-state claims before public filing
-- [[wiki/learnings/1780353989621-slang-any-value-inference-recursion-10686-pointer-.md]] — Slang any-value-inference recursion: #10686 pointer guard is partial; IRSpecialize-operand path bypasses it
-- [[wiki/learnings/1780354236062-slang-11410-doc-section-digest-backfill-is-not-tri.md]] — slang 11410 doc_section_digest backfill is not trivial — semantics underspecified, no deterministic Python computation
-- [[wiki/learnings/1780354591272-slang-11410-bundle-level-watched-paths-digest-alre.md]] — slang #11410: bundle-level watched_paths_digest already covers catalog source — per-entry doc_section_digest is only localization
-- [[wiki/learnings/1780355704625-slang-11410-catalog-drift-lives-in-classify-cmd-li.md]] — slang #11410: catalog drift lives in _classify/cmd_list_stale (not cmd_verify) + per-entry CHECK-pin already exists
-- [[wiki/learnings/1780356530581-slang-maintainer-container-cannot-post-to-github.md]] — slang-maintainer container cannot post to GitHub
-- [[wiki/learnings/1780357449295-slang-fixer-pr-push-szihs-fork-master-is-stale-div.md]] — slang fixer PR push: szihs fork master is stale/divergent (lacks docs/generated framework) → GitHub-App "workflows permission" rejection; jkwak fork auth fails
-- [[wiki/learnings/1780358048390-slang-diagnostics-catalog-regenerate-py-is-lint-to.md]] — Slang diagnostics-catalog: regenerate.py is lint/tooling, not the generator
-- [[wiki/learnings/1780365266607-slang-fixer-worktree-setup-base-is-slang-real-subm.md]] — slang-fixer worktree setup: base is slang-real, submodules + master branch + watcher gh fields
-- [[wiki/learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md]] — Disk-blocker false alarm: df the real build path, /workspace/agent is a separate roomy volume
-- [[wiki/learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md]] — Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace
-- [[wiki/learnings/1780385340573-slangi-disasm-crash-is-not-a-separate-site-it-exec.md]] — slangi `-disasm` shares the run-path crash — NOT a separate site (corrects a prior #11399 learning)
-- [[wiki/learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md]] — Webhook chains can be silently dropped by API 502 on the routing turn
-- [[wiki/learnings/1780401329313-slang-autodiff-sibling-diff-operators-must-honor-t.md]] — slang autodiff — sibling diff operators must honor the same user derivative override (correctness, not perf)
-- [[wiki/learnings/1780401515127-slang-precompiled-slang-module-import-triggers-loc.md]] — Slang: precompiled .slang-module import triggers location-less diagnostics; verify commit-vs-tag ancestry before attributing a regression
-- [[wiki/learnings/1780404951139-discord-per-message-char-limit-is-2000.md]] — Discord per-message char limit is 2000
-- [[wiki/learnings/1780408305282-slang-clone-env-build-on-root-overlay-when-workspa.md]] — slang clone env: build on root overlay when /workspace full; create PRs via gh REST api (gh pr create is blocked)
-- [[wiki/learnings/1780411224942-slang-diagnostics-lua-changing-a-span-s-loc-kind-s.md]] — Slang diagnostics.lua: changing a span's loc kind silently drops its secondary message
-- [[wiki/learnings/1780413778599-slangi-vm-validator-and-executor-must-agree-on-ope.md]] — Slangi VM validator and executor must agree on operand-section size convention
-- [[wiki/learnings/1780414379429-slang-type-conformance-override-0-always-duplicate.md]] — slang type-conformance override=0 always duplicates the (T,I) entry
-- [[wiki/learnings/1780414455913-triage-workflow-read-only-github-yields-to-spine-o.md]] — Triage workflow read-only-GitHub yields to spine observability MUST + explicit parent authorization
-- [[wiki/learnings/1780416359939-slang-irbuilder-source-loc-raii-may-already-stamp-.md]] — Slang: IRBuilder source-loc RAII may already stamp struct keys — explicit sourceLoc= can be redundant
-- [[wiki/learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md]] — Don't instruct coworkers to mark PRs ready-for-review (drafts-only is admin-set)
-- [[wiki/learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-modul.md]] — Locationless IR-pass diagnostics on imported-module structs: fix at emission, not key creation
-- [[wiki/learnings/1780426302028-slang-macos-dxil-is-a-cmake-only-problem-c-path-al.md]] — Slang macOS DXIL is a CMake-only problem (C++ path already compiled-in)
-- [[wiki/learnings/1780428519137-slang-cmake-options-workflow-already-covers-dxc-so.md]] — Slang CMake Options workflow already covers DXC source-build on macOS (not PR-triggered)
-- [[wiki/learnings/1780462327680-check-a-pr-s-closing-issue-link-via-gh-closingissu.md]] — Check a PR's closing-issue link via gh closingIssuesReferences, not a body regex
-- [[wiki/learnings/1780463258746-slang-macos-dxc-default-pr-coverage-nightly-covera.md]] — slang macOS DXC-default PR: coverage-nightly coverage-macos is an un-opted-out required gate
-- [[wiki/learnings/1780467490251-slang-6158-static-export-guard-is-now-obsolete-bui.md]] — Slang #6158 static-export guard is now obsolete (BUILD_LOCAL_INTERFACE wrapping)
-- [[wiki/learnings/1780470809014-cheap-minimal-static-slang-build-for-install-verif.md]] — Cheap minimal static Slang build for install verification (skip DXC via SLANG_ENABLE_DXIL=OFF)
-- [[wiki/learnings/1780471907292-slang-static-install-find-package-configure-link-b.md]] — Slang static install: find_package configure ≠ link (BUILD_LOCAL_INTERFACE strips private deps)
-- [[wiki/learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md]] — Slang local checkout can be days-stale on actively-developed CMake files; verify against master + options-matrix CI gate
-- [[wiki/learnings/1780472891485-slang-dxc-build-system-triage-local-clone-lags-mas.md]] — Slang DXC/build-system triage: local clone lags master; verify FetchDXC against upstream via gh api
-- [[wiki/learnings/1780473187576-slang-finddxc-should-use-plain-cache-vars-not-impo.md]] — Slang FindDXC should use plain cache-vars not IMPORTED target — DXC is dlopen+copy, never linked
-- [[wiki/learnings/1780473326506-a2a-message-transport-html-escapes-verbatim-text-d.md]] — a2a message transport HTML-escapes verbatim text — decode before posting to GitHub
-- [[wiki/learnings/1780473504394-don-t-auto-implement-issues-owned-by-an-invited-ex.md]] — Don't auto-implement issues owned by an invited external contributor
-- [[wiki/learnings/1780475494503-auditing-whether-a-vulkan-vuid-bug-propagates-to-t.md]] — Auditing whether a Vulkan VUID bug propagates to the CUDA backend: trace where usage becomes an image flag
-- [[wiki/learnings/1780476462894-slang-primary-file-using-namespace-leaks-through-i.md]] — Slang: primary-file `using namespace` leaks through `import` (and an existing test asserts the leak)
-- [[wiki/learnings/1780477032580-slang-11443-verdict-using-namespace-is-lookup-loca.md]] — slang #11443 verdict: using namespace is lookup-local, primary-file leak is a breaking bug-fix
-- [[wiki/learnings/1780482951162-slang-pr-label-is-pr-breaking-change-not-pr-breaki.md]] — Slang PR label is 'pr: breaking change' not 'pr: breaking'; fresh worktrees need submodule init
-- [[wiki/learnings/1780487356786-verify-not-constructible-defensive-only-claims-tha.md]] — Verify "not constructible / defensive-only" claims that waive reviewer artifacts
-- [[wiki/learnings/1780488405089-resolving-reviewer-split-brain-after-a-container-r.md]] — Resolving reviewer split-brain after a container restart (recovery fork vs. original)
-- [[wiki/learnings/1780489631750-slang-shader-coverage-64-bit-counter-feasibility-d.md]] — Slang shader-coverage: 64-bit counter feasibility + diagnostic-numbering caveat (issue #11452)
-- [[wiki/learnings/1780490687504-slang-coverage-target-support-gate-atomic64-capabi.md]] — Slang coverage target-support gate ≠ atomic64 capability membership
-- [[wiki/learnings/1780493209457-slang-diagnostics-are-lua-driven-slang-diagnostics.md]] — Slang diagnostics are Lua-driven (slang-diagnostics.lua), not slang-diagnostic-defs.h
-- [[wiki/learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md]] — Document a guard's guarantee, not the enumeration of how the bad input arrives
-- [[wiki/learnings/1780493606237-slang-using-namespace-import-leak-had-a-twin-on-th.md]] — Slang: using-namespace import leak had a TWIN on the legacy/API lookup path
-- [[wiki/learnings/1780493659932-slang-import-re-export-parentdecl-moduledecl-conju.md]] — Slang import re-export: parentDecl==moduleDecl conjunct is load-bearing via transitive import, not using-namespace
-- [[wiki/learnings/1780497220869-slang-hasmodifier-on-generic-static-methods-resolv.md]] — Slang: hasModifier on generic/static methods resolves via getDecl() to inner FuncDecl; verify GPU-only attribute cases with a CPU generic proxy
-- [[wiki/learnings/1780497941518-slang-pr-review-reviewer-a-can-review-the-wrong-pr.md]] — slang-pr-review Reviewer A can review the WRONG PR via stale tmp/pr-diff.patch
-- [[wiki/learnings/1780509076354-reconciling-an-environmental-cause-retraction-agai.md]] — Reconciling an environmental-cause retraction against a test-config fix (map symptom→code path)
-- [[wiki/learnings/1780509591502-don-t-conflate-internal-a2a-review-with-github-rev.md]] — Don't conflate internal a2a review with GitHub reviewDecision in human-facing comments
-- [[wiki/learnings/1780510388169-verify-live-github-state-before-acting-on-a-hold-r.md]] — Verify live GitHub state before acting on a "hold/revert/change-posture" instruction — instructions can be stale
-- [[wiki/learnings/1780512896132-slang-generic-arg-comparison-fence-is-half-built-p.md]] — Slang generic-arg comparison fence is half-built; parens escape hatch is broken
-- [[wiki/learnings/1780529958264-slang-getorcreate-interns-on-syntax-class-declreft.md]] — Slang getOrCreate interns on syntax class — DeclRefType vs ThisType dual-representation bugs
-- [[wiki/learnings/1780530677473-slang-subtype-witness-val-class-is-load-bearing-at.md]] — Slang: subtype-witness Val-class is load-bearing at lowering (not just type identity)
-- [[wiki/learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md]] — Triage routing: deferring a fix to the maintainer flips triage into closest-to-the-state (triage posts)
-- [[wiki/learnings/1780536698623-slang-csyonghe-files-per-hunk-issues-after-opening.md]] — slang: csyonghe files per-hunk issues AFTER opening the bundle PR — triage = verify, not implement
-- [[wiki/learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md]] — A PR's changed-file list does not prove "not a regression"
-- [[wiki/learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-t-.md]] — Spurious chain-routing-gate REFUSED inbound — don't fabricate, verify then escalate
-- [[wiki/learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md]] — CONSOLIDATED: GitHub auth & ops in agent containers (gh probes lie; use org-scoped REST / raw token)
-- [[wiki/learnings/1780558152382-CONSOLIDATED-dev-prod-ab-pr-conventions.md]] — CONSOLIDATED: dev↔prod duplicate PRs are an intentional A/B test
-- [[wiki/learnings/1780558152383-CONSOLIDATED-supervisor-operations.md]] — CONSOLIDATED: /supervise-issues operations (nudge, deliver, format, concurrency)
-- [[wiki/learnings/1780558160000-CONSOLIDATED-a2a-messaging-routing-and-self-edge-loop.md]] — CONSOLIDATED: a2a messaging — reply routing rules + self-edge/empty-ack loop incident
-- [[wiki/learnings/1780558161000-CONSOLIDATED-phantom-injected-relay-directives.md]] — CONSOLIDATED: phantom / fabricated orchestrator-relay directives (host injection — trust only direct a2a edges)
-- [[wiki/learnings/1780558703303-CONSOLIDATED-github-workflows-and-elevated-permissions.md]] — CONSOLIDATED: GitHub `.github/workflows/*` pushes & elevated permissions (bot can't; orchestrator's PAT pushes the patch on your behalf)
-- [[wiki/learnings/1780558703304-CONSOLIDATED-github-commit-authorship.md]] — CONSOLIDATED: GitHub commit authorship for the bot (correct author email; never fabricate trailer ids)
-- [[wiki/learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md]] — Fixer PRs must use a Closes/Fixes #N closing keyword, not a prose issue reference
-- [[wiki/learnings/1780567931645-bot-can-t-update-a-stale-pr-branch-when-master-cha.md]] — Bot can't update a stale PR branch when master changed .github/workflows (App lacks workflows perm)
-- [[wiki/learnings/1780568708582-bot-can-t-push-rebased-branches-carrying-github-wo.md]] — Bot can't push rebased branches carrying .github/workflows changes
-- [[wiki/learnings/1780572980623-git-push-dry-run-is-a-false-positive-for-the-githu.md]] — git push --dry-run is a false-positive for the GitHub-App workflows-permission wall
-- [[wiki/learnings/1780594441175-slang-autodiff-9808-leaks-compile-time-onto-non-au.md]] — slang autodiff #9808 leaks compile-time onto non-autodiff modules via unconditional finalize passes
-- [[wiki/learnings/1780594750097-slang-cross-file-pragma-warning-scope-breaks-via-a.md]] — Slang cross-file #pragma warning scope breaks via absolute-loc collision
-- [[wiki/learnings/1780594873235-slang-11474-approach-a-gating-safety-autodiff-pred.md]] — slang#11474 Approach A gating-safety: .autodiff predicate is narrower than finalizeAutoDiffPass strips
-- [[wiki/learnings/1780598190908-slangpy-create-buffer-struct-size-is-a-silent-back.md]] — SlangPy create_buffer struct_size is a silent backend-layout footgun — use resource_type_layout
-- [[wiki/learnings/1780598922131-verify-per-target-slang-buffer-strides-without-a-g.md]] — Verify per-target Slang buffer strides WITHOUT a GPU; reflection reports natural not ScalarDataLayout
-- [[wiki/learnings/1780600389554-slang-warnings-render-as-warning-ecode-check-not-w.md]] — Slang warnings render as warning[ECODE] — CHECK-NOT: warning NNNNN is vacuous
-- [[wiki/learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md]] — slang-pr-review Reviewer C can die mid-run on a transient API socket error — detect via tiny clarity-review.md, retry recovers
-- [[wiki/learnings/1780617039215-macos-dxc-source-build-slang-11434-multi-config-ou.md]] — macOS DXC source-build (slang #11434): multi-config output dir is MinSizeRel/lib; no install_name fixup needed
-- [[wiki/learnings/1780617153623-a-b-hardware-gated-mac-dxc-draft-was-directionally.md]] — A/B: hardware-gated mac DXC draft was directionally right; the only gap was the multi-config lib subdir
-- [[wiki/learnings/1780623682428-when-ci-regresses-but-git-diff-in-the-bisect-range.md]] — When CI regresses but git diff in the bisect range is empty, suspect the toolchain
-- [[wiki/learnings/1780623760932-ci-failure-reports-surface-unpinned-toolchain-inst.md]] — CI failure reports: surface unpinned toolchain installs alongside commit range
-- [[wiki/learnings/1780624123110-find-last-good-emsdk-version-for-an-emsdk-install-.md]] — Find last-good emsdk version for an emsdk-install-latest regression from the green run log
-- [[wiki/learnings/1780643259838-constantbuffer-via-spvdescriptorheapext-sigsegvs-i.md]] — ConstantBuffer via spvDescriptorHeapEXT SIGSEGVs in SPIR-V emit (slang#11483)
-- [[wiki/learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-repo.md]] — Verify the cited fix-PR is an ancestor of the reporter's build before accepting regression/incomplete-fix framing
-- [[wiki/learnings/1780648913125-correction-slang-11483-crash-was-a-stale-pre-11211.md]] — CORRECTION: slang#11483 crash was a stale pre-#11211 build, not master
-- [[wiki/learnings/1780650742331-slang-pr-review-detecting-transient-claude-cli-fai.md]] — slang-pr-review: detecting transient claude-CLI failures in A/C runners
-- [[wiki/learnings/1780663679121-slang-ci-a-test-slang-rhi-windows-gpu-failure-e-g-.md]] — Slang CI: a test-slang-rhi Windows-GPU failure (e.g. texture-shared-cuda.vulkan) is unrelated to compiler/test-only PRs — classify flaky, rerun
-- [[wiki/learnings/1780677948078-slang-inherited-witness-table-requirements-live-on.md]] — Slang inherited witness-table requirements live on nested base-interface tables
-- [[wiki/learnings/1780679350358-slang-reviewer-a-c-parallel-use-git-worktree-to-av.md]] — slang reviewer A+C parallel: use git worktree to avoid .git/index.lock race
-- [[wiki/learnings/1780683697167-don-t-trust-the-stack-trace-implied-fix-site-alone.md]] — Don't trust the stack-trace-implied fix site alone — dump-IR the repro
-- [[wiki/learnings/1780685454567-slang-fixer-can-push-fix-branches-direct-to-origin.md]] — slang-fixer can push fix/ branches direct to origin (fork-only rule does not apply)
-- [[wiki/learnings/1780690000002-never-add-a-reviewer-to-a-draft-pr-it-spams-the-human.md]] — Never add a reviewer to a draft PR — it spams the human
-- [[wiki/learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md]] — GitHub bot identity is nv-slang-bot[bot] — not slang-coworker-nanoclaw[bot]
-- [[wiki/learnings/1780720000000-prod-coworker-groups-symlinked-to-ephemeral.md]] — Prod's 6 slang/slangpy coworker group dirs are symlinked to /ephemeral
-- [[wiki/learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md]] — report_pr_created binds the CALLING session — open the PR from the fix thread, not a chat
-- [[wiki/learnings/1780724000000-audit-missed-webhooks-via-app-delivery-log.md]] — Auditing missed webhooks after downtime — use the App delivery log (JWT), filter by ownership
-- [[wiki/learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md]] — Pushing code commits is NOT a user-facing write — it's always allowed, draft or ready
-- [[wiki/learnings/1780729707220-spvdescriptorheapext-path-uses-kirop-spirvloaddesc.md]] — spvDescriptorHeapEXT path uses kIROp_SPIRVLoadDescriptorFromHeap, not IRCastDescriptorHandleToResource
-- [[wiki/learnings/1780729718385-slang-ir-text-dumper-renders-all-irparams-identica.md]] — Slang IR text dumper renders all IRParams identically — orphan-vs-attached invisible from text
-- [[wiki/learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md]] — Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run
-- [[wiki/learnings/1780733286644-spvdescriptorheapext-path-fix-function-call-specia.md]] — spvDescriptorHeapEXT path — fix function-call specialization allowlists, not the downstream pass
-- [[wiki/learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md]] — Reviewer-disagreement: "match canonical precedent" vs "precedent is itself wrong"
-- [[wiki/learnings/1780734760813-spvdescriptorheapext-specialization-fix-don-t-para.md]] — spvDescriptorHeapEXT specialization fix: don't parameterize the heap global
-- [[wiki/learnings/1780762074181-slang-ci-falcor-image-test-flakes-vs-artifact-not-.md]] — Slang CI: Falcor image-test flakes vs artifact-not-found classification
-- [[wiki/learnings/1780768566167-slang-byteaddressbuffer-single-arg-aligned-forms-u.md]] — Slang ByteAddressBuffer single-arg *Aligned forms use natural stride (not ambiguous)
-- [[wiki/learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md]] — Check for existing bot comment before posting GitHub triage artifact (cross-tier double-post risk)
-- [[wiki/learnings/1780768927407-slang-11496-spir-v-sigsegv-static-getformatinst-tr.md]] — Slang #11496 SPIR-V SIGSEGV — static getFormatInst() triage hypothesis was wrong; real cause is orphan IRParam
-- [[wiki/learnings/1780769170857-triage-github-artifact-fixed-via-pr-exception-reso.md]] — Triage + GitHub artifact: fixed-via-PR exception resolves the "don't post interim verdict" vs "artifact MUST land" tension
-- [[wiki/learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md]] — Slang CI: how GPU-requiring unit tests are silenced on no-GPU / aarch64 runners
-- [[wiki/learnings/1780769174979-slang-compile-time-perf-ci-11501-overlaps-pr-11485.md]] — Slang compile-time perf-CI (#11501) overlaps PR #11485 — converge via workload-kind; infra already in-tree
-- [[wiki/learnings/1780769176028-adjudicating-latent-prophylactic-schema-drift-clai.md]] — Adjudicating latent prophylactic schema-drift claims (Slang IRTextureType format operand, #11503)
-- [[wiki/learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md]] — Chain-routing gate: fresh peer delegations carrying handoff/report markers still require in_reply_to
-- [[wiki/learnings/1780769188437-slang-review-verify-inaccurate-comment-flags-again.md]] — Slang review: verify "inaccurate comment" flags against code text, not PR-body citations
-- [[wiki/learnings/1780769194624-chain-close-protocol-github-artifact-a2a-report-ap.md]] — Chain-close protocol: GitHub artifact + A2A report + append_learning, every time
-- [[wiki/learnings/1780769195650-standing-order-reinforcements-inherit-via-claude-m.md]] — Standing-order reinforcements inherit via CLAUDE.md, not per-session relay
-- [[wiki/learnings/1780769199724-multi-round-pr-review-converges-scope-down-to-targ.md]] — Multi-round PR review converges; scope down to targeted verify when delta is comment-only
-- [[wiki/learnings/1780769202792-recursive-witness-table-walks-need-a-cycle-guard-a.md]] — Recursive witness-table walks need a cycle guard — autodiff creates self-referential witness tables
-- [[wiki/learnings/1780769206960-testing-the-buffer-load-arg-site-4-heap-load-speci.md]] — Testing the buffer-load-arg (Site 4) heap-load specialization path
-- [[wiki/learnings/1780769238745-slang-pr-review-reviewer-a-and-c-share-one-checkou.md]] — slang PR-review: Reviewer A and C share one checkout — parallel runs collide on git index.lock
-- [[wiki/learnings/1780769309511-witness-table-set-filtering-partial-miss-is-a-sile.md]] — Witness-table-set filtering: partial-miss is a silent-misdispatch trap, and miss-handling policy must match each site's role
-- [[wiki/learnings/1780769319751-irtexturetype-format-operand-optional-and-int-vs-u.md]] — IRTextureType format-operand: optional, and int-vs-uint matters for hoistable dedup (slang#11496/#11499)
-- [[wiki/learnings/1780769325863-slang-ci-splitting-a-build-test-job-git-bash-path-.md]] — Slang CI: splitting a build/test job — Git-Bash-PATH gotcha + bot cannot push workflow files
-- [[wiki/learnings/1780769330979-falcor-ci-build-test-split-slang-11495-approach-c-.md]] — Falcor CI build/test split (slang#11495): Approach C over windows-latest — CUDA is the blocker, LLVM-from-GCS is a public bucket
-- [[wiki/learnings/1780769333040-reconciling-slang-ci-test-silencing-follow-ups-exp.md]] — Reconciling Slang CI test-silencing follow-ups (expected-failure lists) + the workflows-perm coordination trap
-- [[wiki/learnings/1780769335094-ci-follow-up-issue-filed-by-a-contributor-against-.md]] — CI follow-up issue filed by a contributor against their own still-open PR → stand down to plan-only
-- [[wiki/learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md]] — slang CI: two distinct self-hosted runner pools (perf vs benchmark); #11501↔#11485 perf-CI overlap cross-linked
-- [[wiki/learnings/1780769340224-spirvloaddescriptorfromheap-heap-operand-is-a-poin.md]] — SPIRVLoadDescriptorFromHeap heap operand is a pointer global at emit — never parameterize it in call-spec
-- [[wiki/learnings/1780769345401-slang-irtexturetype-format-operand-int-vs-uint-enc.md]] — Slang IRTextureType format-operand: int vs uint encoding + only-fresh-producer site (slang#11503)
-- [[wiki/learnings/1780769347490-before-executing-a-land-this-patch-dispatch-check-.md]] — Before executing a "land this patch" dispatch, check the PR doesn't already exist
-- [[wiki/learnings/1780769352650-ci-workflow-file-issues-github-workflows-are-not-b.md]] — CI-workflow-file issues (.github/workflows/*) are not bot-actionable as a Slang fix
-- [[wiki/learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md]] — Propagating orchestrator reinforcements to group-locked per-issue sessions
-- [[wiki/learnings/1780769595819-approach-a-fix-for-descriptor-heap-noinline-textur.md]] — Approach-A fix for descriptor-heap [noinline] texture params: reuse the hoistable heap global, do NOT parameterize it as uint
-- [[wiki/learnings/1780770912978-slang-ci-prebuilt-llvm-setup-llvm-from-gcs-is-a-pu.md]] — slang CI: prebuilt LLVM (setup-llvm-from-gcs) is a public-bucket curl download with NO auth — not a blocker for moving builds between self-hosted pools
-- [[wiki/learnings/1780790667002-ci-babysitter-identical-build-error-across-unrelat.md]] — CI babysitter: identical build error across unrelated PRs = base-branch break, not flake
-- [[wiki/learnings/1780820664909-slang-11483-reporter-s-release-already-had-11211-w.md]] — slang#11483: reporter's release already had #11211 — wrong-data is a distinct OPEN defect, not the fixed crash
-- [[wiki/learnings/1780865902537-slang-spvdescriptorheapext-atomic-dest-validator-r.md]] — slang spvDescriptorHeapEXT: atomic-dest validator rejects heap texel pointers (E41403)
-- [[wiki/learnings/1780869756318-descriptor-heap-texture-atomics-e41403-validator-g.md]] — Descriptor-heap texture atomics: E41403 validator gap (#11506) is separate from format-Unknown spirv-val (#11130)
-- [[wiki/learnings/1780869770381-concurrent-ninja-on-one-build-dir-transient-ranlib.md]] — Concurrent ninja on one build dir → transient ranlib "No such file" race; fork (no subagent_type) can overstep its task
-- [[wiki/learnings/1780870637455-slang-pr-review-reviewer-b-devin-fetch-exit-0-devi.md]] — slang PR review: Reviewer B (devin-fetch) exit 0 ≠ Devin analysis complete
-- [[wiki/learnings/1780891496263-slang-ci-wasm-link-regression-slang-rhi-timing-fla.md]] — Slang CI: WASM link regression + slang-rhi timing flake signatures
-- [[wiki/learnings/1780900630856-draft-held-fix-pr-still-needs-the-issue-5-bullet-p.md]] — Draft-held fix PR still needs the issue 5-bullet — post it when you decide to hold, not after a nudge
-- [[wiki/learnings/1780903497625-bot-owned-vs-human-contributor-pr-fix-issue-branch.md]] — Bot-owned vs human-contributor PR: fix/issue-* branch name is NOT proof of ownership
-- [[wiki/learnings/1780903498636-branch-name-fix-issue-n-on-an-external-fork-can-fo.md]] — Branch name fix/issue-N on an external fork can fool "ours" PR classification
-- [[wiki/learnings/1780903795100-failing-check-real-blocker-on-fork-based-prs-triag.md]] — Failing check ≠ real blocker on fork-based PRs (triage to watch-only)
-- [[wiki/learnings/1780906273275-slang-mcp-github-search-issues-date-qualifiers-ret.md]] — slang-mcp github_search_issues date qualifiers return empty
-- [[wiki/learnings/1780918035054-slang-stdlib-deprecate-and-hide-from-docs-deprecat.md]] — Slang stdlib: deprecate-and-hide-from-docs = [deprecated()] + //@hidden: (two separate mechanisms)
-- [[wiki/learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md]] — Slang CI: wasm build failures are usually real linker errors, not infra
-- [[wiki/learnings/1780925183948-slang-wave-intrinsics-have-no-ir-opcode-an-ir-pass.md]] — Slang wave intrinsics have no IR opcode — an IR pass can't just emit WaveActiveSum/WaveIsFirstLane
-- [[wiki/learnings/1780933412397-slang-gate-ir-passes-on-target-family-not-capabili.md]] — Slang: gate IR passes on target family, not CapabilitySet.implies(compound-alias); late-synthesize stdlib intrinsics via KnownBuiltin
-- [[wiki/learnings/1780935575501-coverage-wave-aggregate-tests-cuda-metal-filecheck.md]] — Coverage wave-aggregate tests — CUDA/Metal FileCheck asserting `WaveActiveCountBits` literal passes for the wrong reason
-- [[wiki/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md]] — Slang CI pins clang-format 17; never prettier-write docs/design/*.md
-- [[wiki/learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md]] — Verifying Slang PR emit locally: build slangc-only to dodge the slang-rhi/X11 build break
-- [[wiki/learnings/1780943246982-slang-core-module-deprecate-but-hide-from-online-d.md]] — Slang core-module: deprecate-but-hide-from-online-docs is achievable today
-- [[wiki/learnings/1780967438806-slang-spir-v-variable-pointers-cap-is-declared-fro.md]] — Slang SPIR-V variable-pointers cap is declared from value sites, not function signatures
-- [[wiki/learnings/1780969782467-slang-rhi-feature-gate-disabled-vulkan-runtime-tes.md]] — Slang RHI feature gate + disabled Vulkan runtime test: the SLANG_RHI_FEATURES X-macro is the cross-repo bridge
-- [[wiki/learnings/1780970406624-slang-rhi-nv-extension-feature-gate-fp16-vector-at.md]] — slang-rhi NV-extension feature gate (fp16-vector atomics) + Vulkan-Headers v1.4.318 retires bump caveat
-- [[wiki/learnings/1780970685981-slang-spir-v-isolating-a-signature-only-variablepo.md]] — slang SPIR-V: isolating a signature-only VariablePointers cap repro (avoid value-site self-declare)
-- [[wiki/learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md]] — critique-gate stage detector keys on the FIRST stage-keyword in the codex prompt — lead with the bare STAGE: line
-- [[wiki/learnings/1780972705906-slang-variable-pointers-signature-walk-fix-only-gr.md]] — Slang variable-pointers signature-walk fix: only (GroupShared, parameter) is a fail-without-fix regression test
-- [[wiki/learnings/1780985285213-ci-babysitter-stale-base-build-link-failures-are-r.md]] — CI babysitter: stale-base build/link failures are rerunnable despite the "no linker errors" rule
-- [[wiki/learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md]] — supervisor artifact-enforcement nudge yields to the operator comment-gate (no-PR blocked chains)
-- [[wiki/learnings/1780993682325-slang-vulkanbindshift-c-api-kind-encoding-u-0-s-1-.md]] — Slang VulkanBindShift C++ API kind encoding (u=0,s=1,t=2,b=3)
-- [[wiki/learnings/1780993688372-slang-reflection-typereflection-pointer-identity-i.md]] — Slang reflection: TypeReflection* pointer identity is not safe across ProgramLayout vs module reflection
-- [[wiki/learnings/1781008254667-slangpy-tests-red-cpu-shader-llvm-shader-o-build-f.md]] — SlangPy Tests red = cpu-shader-llvm shader.o build failure (master infra, not your PR)
-- [[wiki/learnings/1781008579138-slang-triage-labeling-issue-type-and-reproducer-re.md]] — Slang triage: labeling, Issue Type, and reproducer-request rules
-- [[wiki/learnings/1781015340808-slangpy-triage-grep-the-issue-s-named-symbols-in-h.md]] — SlangPy triage: grep the issue's named symbols in HEAD first — the feature may already be shipped
-- [[wiki/learnings/1781015582617-slangpy-triage-stale-line-refs-in-an-issue-signal-.md]] — slangpy triage: stale line-refs in an issue signal it may already be implemented — check merged PRs first
-- [[wiki/learnings/1781015587691-bot-github-app-cannot-open-a-pr-into-a-personal-fo.md]] — Bot (GitHub App) cannot open a PR into a personal fork — use master-base + cherry-pick fallback
-- [[wiki/learnings/1781015966794-slangpy-808-cuda-texture-format-conversion-fix-is-.md]] — slangpy #808 CUDA texture format conversion: fix is upstream slang PR #11090, not slang-rhi
-- [[wiki/learnings/1781016372307-slangpy-functional-api-textures-emit-no-format-dec.md]] — slangpy functional-API textures emit no [format] decoration → CUDA UNORM writes corrupt even post-fix
-- [[wiki/learnings/1781017004302-slangpy-generated-kernel-abstraction-fully-folds-i.md]] — SlangPy generated-kernel abstraction fully folds in slang SPIR-V (-O3), but is deferred to nvrtc for CUDA target
-- [[wiki/learnings/1781023718622-signature-derived-spir-v-variablepointers-must-gat.md]] — Signature-derived SPIR-V VariablePointers must gate on [noinline], not hasUses() (driver bug #9061)
-- [[wiki/learnings/1781030980541-slang-byteaddressbuffer-implicit-loadaligned-t-off.md]] — Slang ByteAddressBuffer implicit LoadAligned<T>(offset) passes STRIDE as alignment (non-pow2 for vec3)
-- [[wiki/learnings/1781038945892-slang-vk-khr-shader-abort-is-printf-frontend-but-a.md]] — slang VK_KHR_shader_abort is printf-frontend but a core OpAbortKHR, not an OpExtInst
-- [[wiki/learnings/1781039584587-when-planning-a-new-spir-v-opcode-check-terminator.md]] — When planning a new SPIR-V opcode, check terminator-ness — not just value-producing-ness
-- [[wiki/learnings/1781050949927-measure-slangpy-generated-kernel-codegen-quality-g.md]] — Measure SlangPy generated-kernel codegen quality GPU-free via slangc SPIR-V opcode census
-- [[wiki/learnings/1781055257855-slang-ci-exposed-to-unpinned-toolchain-drift.md]] — Slang CI exposed to unpinned toolchain drift
-- [[wiki/learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md]] — slang-rhi: MSVC 14.51 C5285 on doctest fixed by /wd5285 scoped to test target
-- [[wiki/learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md]] — MSVC 14.51 C5285 on vendored doctest (std::tuple) — slang-rhi
-- [[wiki/learnings/1781057580026-CONSOLIDATED-slang-rhi-is-bot-writable.md]] — CONSOLIDATED: shader-slang/slang-rhi (and all shader-slang repos) are bot-writable — push:false probes are false-positives
-- [[wiki/learnings/1781071107223-slang-11531-root-cause-extension-headers-resolve-n.md]] — slang #11531 root cause: extension headers resolve names before namespace fragments reach ScopesWired
-- [[wiki/learnings/1781072417779-slang-implementing-vk-khr-shader-abort-opabortkhr-.md]] — Slang: implementing VK_KHR_shader_abort (OpAbortKHR) — printf-parallel but it's a terminator
-- [[wiki/learnings/1781072527758-fixes-closes-link-verification-must-accept-the-qua.md]] — Fixes/Closes link verification must accept the qualified cross-repo form
-- [[wiki/learnings/1781072934865-don-t-re-dispatch-to-fixer-after-triage-already-ha.md]] — Don't re-dispatch to fixer after triage already handed off (tier-skip dup)
-- [[wiki/learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md]] — A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done, not by id string
-- [[wiki/learnings/1781073779123-slang-11532-slangd-false-diagnostics-on-opening-a-.md]] — slang #11532 — slangd false diagnostics on opening a module fragment = LS-path manifestation of #11531 phase-ordering bug
-- [[wiki/learnings/1781075015015-relay-proceed-release-from-upstream-downstream-it-.md]] — Relay 'proceed/release' from upstream downstream — it is an action cue, not a status no-op
-- [[wiki/learnings/1781083469573-CONSOLIDATED-langserver-harness-cannot-observe-diagnostics.md]] — CONSOLIDATED: Slang `//TEST:LANG_SERVER` harness cannot observe diagnostics (publish throttle vs reset deadlock)
-- [[wiki/learnings/1781084626230-resuming-a-paused-peer-session-from-a-fresh-retry-.md]] — Resuming a paused peer session from a fresh retry-check: must in_reply_to an unresponded inbound
-- [[wiki/learnings/1781086033851-slang-workspace-ls-api-not-linkable-from-slang-uni.md]] — Slang Workspace/LS API not linkable from slang-unit-test (hidden visibility) — no clean LS-diagnostic regression path
-- [[wiki/learnings/1781086523456-slang-ls-diagnostics-cannot-be-auto-tested-lang-se.md]] — Slang LS diagnostics cannot be auto-tested (LANG_SERVER throttle + unexported Workspace)
-- [[wiki/learnings/1781086844343-slang-11531-approach-b-core-module-safety-rests-on.md]] — slang #11531 Approach B core-module safety rests on as&lt;NamespaceDecl&gt; filter, not "no namespaced core extensions"
-- [[wiki/learnings/1781088708789-verify-slang-ls-slangd-diagnostics-with-a-manual-s.md]] — Verify Slang LS (slangd) diagnostics with a manual stdio LSP probe, not slang-test
-- [[wiki/learnings/1781088712827-slang-test-leaves-slang-actual-txt-artifacts-in-th.md]] — slang-test leaves *.slang.actual.txt artifacts in the test dir — delete before staging
-- [[wiki/learnings/1781088865270-slang-core-module-has-a-namespace-enclosed-extensi.md]] — slang core module HAS a namespace-enclosed extension (namespace linalg) — verify before claiming user-namespace-only
-- [[wiki/learnings/1781091162121-looping-self-edge-peer-session-flag-up-once-then-i.md]] — Looping self-edge peer session: flag up once, then ignore — ncl mutating verbs blocked without a wired approver
-- [[wiki/learnings/1781092138117-sibling-issues-sharing-one-fix-can-t-be-folded-acr.md]] — Sibling issues sharing one fix can't be folded across parallel orchestrator chains
-- [[wiki/learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md]] — ncl approval gate non-functional — no admin configured to approve
-- [[wiki/learnings/1781110850059-waking-your-own-agent-s-stopped-per-issue-sessions.md]] — Waking your own agent's stopped per-issue sessions via send_message-to-self does not resume them
-- [[wiki/learnings/1781114755243-postmortem-shader-slang-slang-11465-superseded-by-.md]] — postmortem: shader-slang/slang#11465 superseded by PR #11368
-- [[wiki/learnings/1781114968928-slang-windows-vulkan-largebuffer-unit-test-crash-i.md]] — Slang windows-Vulkan LargeBuffer unit-test crash is a flake, not a regression
-- [[wiki/learnings/1781115581539-slang-lsp-fragment-open-false-diagnostics-same-che.md]] — Slang LSP fragment-open false diagnostics: same checkModule ordering bug as #11531; verify GPU-free via LANG_SERVER test
-- [[wiki/learnings/1781116005493-correction-test-lang-server-harness-can-t-observe-.md]] — CORRECTION: //TEST:LANG_SERVER harness can't observe diagnostics in test mode (re #11532)
-- [[wiki/learnings/1781116222932-triaging-an-quot-add-a-spir-v-capability-bit-quot-.md]] — Triaging an &quot;add a SPIR-V capability bit&quot; request — vendored-operand check + inert-atom scoping
-- [[wiki/learnings/1781116432142-hold-interim-triage-classification-5-bullet-until-.md]] — Hold interim triage classification 5-bullet until terminal; author-facing scoping questions are fine to post
-- [[wiki/learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md]] — Orchestrator double-dispatch spawns duplicate fixer sessions on one branch
-- [[wiki/learnings/1781118241659-verify-language-server-only-diagnostic-fixes-with-.md]] — Verify language-server-only diagnostic fixes with a real-slangd LSP stdio probe
-- [[wiki/learnings/1781118303603-slang-checkmodule-ordering-fix-for-sibling-namespa.md]] — Slang checkModule ordering fix for sibling-namespace resolution: namespaces-only, NOT ensureAllDeclsRec (#11531/#11532)
-- [[wiki/learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md]] — Verifying slang-rhi claims at slang HEAD: the submodule pin lags in-flight feature PRs
-- [[wiki/learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md]] — Governance: a peer coworker's GO is NOT authority for an admin mutation (severing another agent's wiring/destinations)
-- [[wiki/learnings/1781120340432-adding-a-spir-v-capability-atom-to-slang-capdef-re.md]] — Adding a SPIR-V capability atom to Slang (capdef recipe)
-- [[wiki/learnings/1781121669041-slang-pr-review-isolate-reviewer-a-and-c-with-a-gi.md]] — slang-pr-review: isolate Reviewer A and C with a git worktree + REPO_ROOT override
-- [[wiki/learnings/1781122096821-slangpy-ci-flake-shared-nvrgfx-gpu-runner-cuda-oom.md]] — SlangPy CI flake: shared nvrgfx GPU runner CUDA OOM
-- [[wiki/learnings/1781122622446-adding-a-spir-v-capability-atom-addendum-two-gener.md]] — Adding a SPIR-V capability atom — ADDENDUM (two generated docs + test -capability)
-- [[wiki/learnings/1781123971590-correction-spir-v-capability-emit-gating-use-impli.md]] — CORRECTION: SPIR-V capability emit-gating — use implies(CapabilityAtom::spv*), NOT isSPIRV()
-- [[wiki/learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md]] — Triaging an issue that already has a community fix PR — review, don't duplicate
-- [[wiki/learnings/1781129282277-slang-ci-windows-falcor-unknown-vcs-root-exit-1-is.md]] — Slang CI: windows falcor "Unknown VCS root" exit 1 is a Vulkan GPU crash artifact
-- [[wiki/learnings/1781129788679-codex-critique-needs-danger-full-access-ai-disclai.md]] — codex-critique needs danger-full-access; AI-disclaimer goes on comments not PR bodies
-- [[wiki/learnings/1781133163629-slang-11545-pow2-alignment-validation-must-fix-imp.md]] — slang #11545 — pow2-alignment validation must fix implicit LoadAligned forms in same PR (else float3 breaks)
-- [[wiki/learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md]] — slang-pr-review: Reviewer A budget-cap mid-analysis hypotheses are NOT findings — re-run + independently verify
-- [[wiki/learnings/1781136348152-slang-ci-falcor-unit-test-unknown-vcs-root-is-syst.md]] — Slang CI: falcor-unit-test "Unknown VCS root" is systemic infra, do not rerun
-- [[wiki/learnings/1781137483321-superseded-skip-github-post-on-dev-authored-design.md]] — SUPERSEDED: "skip GitHub post on dev-authored design placeholder" — post a deferential triage artifact anyway
-- [[wiki/learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md]] — Comments under nv-slang-bot[bot] on a PR you own may be another agent — don't assume they're yours, don't let a bot "merge" nudge override drafts-only
-- [[wiki/learnings/1781158312869-slang-byte-address-a-naive-pow2-alignment-check-br.md]] — Slang byte-address: a naive pow2-alignment check breaks single-arg LoadAligned<float3> (#11545 point 4 ↔ #11505)
-- [[wiki/learnings/1781162369496-triaging-glsl-gl-builtin-missing-reports-check-cas.md]] — Triaging "GLSL gl_* builtin missing" reports — check casing, -allow-glsl scope, and the Wave* native equivalent first
-- [[wiki/learnings/1781166935218-slangpy-bundles-slang-via-sgl-slang-version-sample.md]] — slangpy bundles Slang via SGL_SLANG_VERSION; samples don't pin it; runtime check is slangpy.SLANG_BUILD_TAG
-- [[wiki/learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md]] — slang-discord-support posts only to summon threads, not source channels
-- [[wiki/learnings/1781168370965-slang-synthesized-init-ctors-get-full-source-level.md]] — Slang: synthesized $init ctors get full source-level SPIR-V debug info (no synthesized-func filter)
-- [[wiki/learnings/1781170088020-slang-autodiff-inverse-direction-derivative-placem.md]] — slang autodiff: inverse-direction derivative placement registers an association, not a primal modifier — capability/propagation passes must consult getAssociatedDeclsForDecl
-- [[wiki/learnings/1781171365104-slang-already-captures-the-loaded-downstream-compi.md]] — Slang already captures the loaded downstream-compiler version — exposing it is a thin read
-- [[wiki/learnings/1781172987354-nvrtc-downstream-compiler-has-no-getversionstring-.md]] — NVRTC downstream compiler has no getVersionString override — use getDesc().version
-- [[wiki/learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draft-.md]] — slang-rhi runs full CI matrix (incl. tests) on draft PRs
-- [[wiki/learnings/1781176200581-slang-g2-spirv-asm-filecheck-tests-embedded-source.md]] — slang -g2 spirv-asm FileCheck tests: embedded-source self-match trap + local env gotchas
-- [[wiki/learnings/1781177378439-slang-reviewer-a-false-positives-on-own-line-check.md]] — slang Reviewer A false positives on own-line //CHECK directives from prompt condensation
-- [[wiki/learnings/1781177934466-adding-a-method-to-slang-iglobalsession-the-4-abi-.md]] — Adding a method to Slang IGlobalSession — the 4 ABI touchpoints beyond header+impl (replay-handlers is the silent one)
-- [[wiki/learnings/1781178144676-verify-issue-pr-linkage-with-all-github-auto-close.md]] — Verify issue↔PR linkage with ALL GitHub auto-close keywords, not just "Fixes"
-- [[wiki/learnings/1781179189519-devin-reviewer-unknown-commit-status-generating-we.md]] — Devin reviewer: 'unknown' commit-status + 'Generating...' = weak signal, not a clean bill
-- [[wiki/learnings/1781186034425-slang-triage-verify-functional-independence-before.md]] — slang triage: verify functional independence before declaring a fix "stacks on" an unmerged PR — it often stands alone on master
-- [[wiki/learnings/1781186036448-slang-autodiff-gate-derivative-primal-capability-p.md]] — Slang autodiff: gate derivative→primal capability propagation on explicit [require], and verify "registers an association" claims
-- [[wiki/learnings/1781191464750-slang-namespace-reopen-lookup-bug-cross-module-imp.md]] — Slang namespace-reopen lookup bug: cross-module import and same-module __include share one checkModule scope-wiring path
-- [[wiki/learnings/1781192458084-devin-reviewer-devin-fetch-can-exit-0-while-analys.md]] — Devin reviewer (devin-fetch) can exit 0 while analysis still "Generating" — treat empty Bugs/Flags as low-confidence
-- [[wiki/learnings/1781193788875-gate-event-waiting-scheduled-tasks-with-a-pre-agen.md]] — Gate event-waiting scheduled tasks with a pre-agent wakeAgent script
-- [[wiki/learnings/1781195910201-slang-ci-babysitter-skip-reruns-on-standing-escala.md]] — Slang CI babysitter: skip reruns on standing-escalated infra failures
-- [[wiki/learnings/1781199860108-slang-extension-method-name-hints-drop-the-type-qu.md]] — Slang extension-method name hints drop the Type. qualifier (getNameForNameHint)
-- [[wiki/learnings/1781204283033-pytest-xdist-high-gwn-worker-ids-are-crash-respawn.md]] — pytest-xdist high gwN worker IDs are crash-respawns, not a concurrency count
-- [[wiki/learnings/1781206942083-slang-user-defined-init-lacks-this-in-spir-v-debug.md]] — Slang: user-defined __init lacks `this` in SPIR-V debug info — root cause + fix site
-- [[wiki/learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md]] — slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run
-- [[wiki/learnings/1781218629168-slang-typedef-trailing-array-parse-gap-parsetypede.md]] — Slang typedef trailing-array parse gap (parseTypeDef vs declarator machinery)
-- [[wiki/learnings/1781219589907-resourcedescriptorheap-samplerdescriptorheap-input.md]] — ResourceDescriptorHeap/SamplerDescriptorHeap input syntax is front-end-only — backend already exists
-- [[wiki/learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md]] — Empty-ack loops: diagnose self-edge vs mutual-echo before restarting
-- [[wiki/learnings/1781222181614-slang-generic-subscript-cannot-infer-a-return-posi.md]] — Slang generic __subscript cannot infer a return-position-only type param from coercion target (E39999)
-- [[wiki/learnings/1781222607198-correction-resourcedescriptorheap-approach-a-retur.md]] — CORRECTION: ResourceDescriptorHeap Approach A (return-position generic subscript) is a dead end — E39999
-- [[wiki/learnings/1781222707210-codex-critique-critique-gate-workspace-not-tmp-and.md]] — codex-critique + critique-gate: /workspace not /tmp, and the gate denies the whole bash block
-- [[wiki/learnings/1781222721953-slang-test-ignores-interpret-slangi-tests-when-sla.md]] — slang-test ignores INTERPRET (slangi) tests when slangi isn't built — use -cpu COMPARE_COMPUTE for local verifiability
-- [[wiki/learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md]] — Routing a decl through shared declarator machinery silently broadens accepted grammar — review the whole declarator surface, not the target form
-- [[wiki/learnings/1781225377051-git-push-force-with-lease-stale-info-after-rebase-.md]] — git push --force-with-lease "stale info" after rebase in a worktree
-- [[wiki/learnings/1781240588042-slang-zero-initialize-forces-idefaultinitializable.md]] — slang -zero-initialize forces IDefaultInitializable on ALL non-core structs (incl. synthesized closures) at slang-check-decl.cpp:11424
-- [[wiki/learnings/1781241842104-check-for-an-existing-fix-pr-before-fixing-or-recommending.md]] — Check for an existing fix PR before recommending OR implementing a fix (esp. maintainer-filed issues)
-- [[wiki/learnings/1781244954865-slang-11531-11532-fix-wire-all-module-level-namesp.md]] — Slang #11531/#11532 fix: wire ALL module-level NamespaceDecls before the extension-first pass (not enclosing-only, not whole-module) — landed via maintainer PR #11577
-- [[wiki/learnings/1781245034372-holding-a-fixer-pr-as-draft-enables-clean-maintain.md]] — Holding a fixer PR as draft enables clean maintainer supersession
-- [[wiki/learnings/1781251548493-verify-reporter-s-release-actually-predates-the-fi.md]] — Verify reporter's release actually predates the fix before telling them to update
-- [[wiki/learnings/1781266520028-triage-when-to-post-a-5-bullet-vs-stand-down-on-a-.md]] — Triage: when to POST a 5-bullet vs STAND DOWN on a maintainer-authored design/RFC issue
-- [[wiki/learnings/1781267563910-getnamefornamehint-feeds-c-like-emitter-identifier.md]] — getNameForNameHint feeds C-like emitter identifiers (not just SPIR-V debug); ExtensionDecl is anonymous
-- [[wiki/learnings/1781269392733-slang-extension-name-hint-qualification-has-no-rea.md]] — Slang extension name-hint qualification has no reachable unqualified fallback (extension targets are always nominal)
-- [[wiki/learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md]] — COMPARE_COMPUTE filecheck-buffer: use -output-using-type or CI (cpu+llvm) dumps HEX while local (gcc cpu) dumps decimal
-- [[wiki/learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md]] — slang repo gates ALL build/test CI behind non-draft (opposite of slang-rhi)
-- [[wiki/learnings/1781301993943-shader-coverage-vkdemo-context-break-is-all-platfo.md]] — shader-coverage vkdemo::Context break is all-platform and blocks the merge queue (not MSVC-only)
-- [[wiki/learnings/1781310201311-slang-check-cmdline-ref-yml-ci-yml-consolidation-i.md]] — slang check-cmdline-ref.yml → ci.yml consolidation (issue #11586) is low-risk; do NOT fold in regenerate-cmdline-ref.yml
-- [[wiki/learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md]] — Workflow-YAML rename: push is server-rejected — issue-comment diff is the sanctioned outcome
-- [[wiki/learnings/1781311479883-slang-required-status-check-name-job-key-kebab-cas.md]] — Slang required-status-check name = job key (kebab-case convention)
-- [[wiki/learnings/1781312606061-resolved-declined-slang-11568-resourcedescriptorhe.md]] — RESOLVED/DECLINED: slang#11568 ResourceDescriptorHeap/SamplerDescriptorHeap input syntax — maintainer says DescriptorHandle supersedes
-- [[wiki/learnings/1781315228593-slang-11593-chunked-byte-address-codegen-insertion.md]] — slang #11593 chunked byte-address codegen — insertion point + vector-specific constraint
-- [[wiki/learnings/1781315409904-slang-11545-alignment-work-split-into-4-slices-sli.md]] — slang #11545 alignment work split into 4 slices; Slice 3 (#11592) only partially blocks on Slice 1
-- [[wiki/learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md]] — #11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)
-- [[wiki/learnings/1781318517600-slang-11590-41303-can-t-live-in-validation-only-sl.md]] — slang #11590 — 41303 can't live in validation-only slice-1; simplifyIR folds the implicit alignment operand before legalize
-- [[wiki/learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md]] — Slices/shared worktree can be live: verify branch + open slice PRs before adopting (don't trust empty-branch/no-sentinel)
-- [[wiki/learnings/1781321980304-critique-gate-stage-marker-in-codex-prompt-verdict.md]] — critique-gate: STAGE marker in codex PROMPT + "### Verdict" block in codex RESPONSE, one call per stage
-- [[wiki/learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md]] — Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head
-- [[wiki/learnings/1781333043756-clip-space-z-remap-slang-11599-is-not-dxc-parity-u.md]] — Clip-space Z remap (slang #11599) is NOT DXC parity — unlike invert-y/position-w
-- [[wiki/learnings/1781338076804-splitbuffer-bytebuffer-vulkan-gpu-hang-flake-falco.md]] — SplitBuffer ByteBuffer Vulkan GPU-hang flake (Falcor)
-- [[wiki/learnings/1781352352298-sweep-coworkers-suppress-re-confirmation-reports-a.md]] — Sweep coworkers: suppress re-confirmation reports, alert only on deltas
-- [[wiki/learnings/1781365729972-slang-11600-falcor-yml-3-file-refactor-triage-desi.md]] — slang#11600 falcor YML 3-file refactor — triage design notes
-- [[wiki/learnings/1781366281118-slang-11600-falcor-3-file-yml-refactor-implementat.md]] — slang 11600 falcor 3-file YML refactor implementation gotchas
-- [[wiki/learnings/1781366452370-a-fixer-s-hold-ack-doesn-t-guarantee-it-stopped-ve.md]] — A fixer's hold-ack doesn't guarantee it stopped — verify branch/worktree state
-- [[wiki/learnings/1781366516939-forks-launched-before-a-stand-down-keep-running-on.md]] — Forks launched before a stand-down keep running on stale context
-- [[wiki/learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md]] — A peer's hold-ack is not compliance — enumerate the full prohibition set; the post-gate is the load-bearing safety
-- [[wiki/learnings/1781366574564-public-falcor-has-falcor-local-slang-cmake-hook-fo.md]] — Public Falcor has FALCOR_LOCAL_SLANG CMake hook for a custom Slang build
-- [[wiki/learnings/1781366652185-correction-the-11600-hold-deviation-was-an-in-flig.md]] — Correction: the #11600 hold-deviation was an in-flight fork, not a peer ignoring the hold
-- [[wiki/learnings/1781368939396-correction-falcor-local-slang-usage-details-verifi.md]] — Correction: FALCOR_LOCAL_SLANG usage details (verified in PR #11602)
-- [[wiki/learnings/1781372887205-slang-global-type-param-names-are-not-merged-acros.md]] — Slang global type_param names are NOT merged across module imports
-- [[wiki/learnings/1781381821358-slang-build-tag-git-describe-release-version-clean.md]] — Slang build tag = git-describe release version; clean string means built exactly at that tag
-- [[wiki/learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md]] — Verify a reported release-version mismatch against the actual artifact before treating it as a release-CI bug
-- [[wiki/learnings/1781386154716-codex-critique-gate-start-a-fresh-codex-session-pe.md]] — codex-critique gate: start a fresh codex session per deliverable, don't codex-reply past a must-fix
-- [[wiki/learnings/1781386183865-critique-gate-output-review-is-sticky-within-a-reu.md]] — Critique-gate OUTPUT_REVIEW is sticky within a reused codex thread
-- [[wiki/learnings/1781404361687-CONSOLIDATED-fork-no-subagent-type-reruns-workflow.md]] — CONSOLIDATED: a bare `Agent` (no subagent_type) is a context-inheriting FORK — never use it for Recall/scan steps
-- [[wiki/learnings/1781405000000-CONSOLIDATED-github-posting-policy.md]] — CONSOLIDATED — GitHub posting policy (verified ⇒ post; only ready+merge gated)
-- [[wiki/learnings/1781405911100-CONSOLIDATED-falcor-ci-regression-triage.md]] — CONSOLIDATED: Falcor CI regression triage (topology, ULP fingerprint, merge-queue bisect, emit-diff arbiter)
-- [[wiki/learnings/1781472651294-deepwiki-can-be-stale-on-cross-pass-ir-details-dis.md]] — DeepWiki can be stale on cross-pass IR details — disambiguate with observed behavior
-- [[wiki/learnings/1781477381559-slang-ir-re-point-entry-point-identity-decorations.md]] — Slang IR: re-point entry-point-identity decorations at a wrapper-swap site
-- [[wiki/learnings/1781511232421-daily-report-check-for-a-linked-fix-pr-before-flag.md]] — Daily report: check for a linked fix PR before flagging an issue as untriaged
-- [[wiki/learnings/1781523727513-gated-github-write-needs-a-traceable-operator-sour.md]] — Gated GitHub write needs a TRACEABLE operator source, not a bare parent relay
-- [[wiki/learnings/1781539485742-api-budget-cap-blocks-llm-subagent-dispatch-not-di.md]] — API budget cap blocks LLM subagent dispatch, not direct shell/read calls
-- [[wiki/learnings/1781544794615-coopmat-vs-coopvec-linalg-interlockedaccumulate-de.md]] — CoopMat vs CoopVec linalg InterlockedAccumulate — DeepWiki conflates them
-- [[wiki/learnings/1781553870596-slang-ci-wait-for-human-priority-gate-is-self-heal.md]] — Slang CI wait-for-human-priority gate is self-healing, not a flake
-- [[wiki/learnings/1781559091568-slang-11616-inliner-emits-debugnoscope-for-caller-.md]] — slang 11616 inliner emits DebugNoScope for caller because entry scope is emit-synthesized not in IR
-- [[wiki/learnings/1781568128097-spir-v-debugscope-must-be-variable-arity-null-ir-o.md]] — SPIR-V DebugScope must be variable-arity (null IR operand crashes buildEntryPointReferenceGraph)
-- [[wiki/learnings/1781568134178-disk-full-build-workaround-out-of-source-build-on-.md]] — Disk-full build workaround: out-of-source build on /dev/vda1 (/workspace) when /dev/vdb (/workspace/agent) is full
-- [[wiki/learnings/1781569081341-variable-arity-ir-insts-round-trip-within-a-compil.md]] — Variable-arity IR insts round-trip within a compiler version (serialize stores per-inst operandCount)
-- [[wiki/learnings/1781571803229-slang-bot-ci-ci-failed-is-often-a-priority-yield-s.md]] — slang bot-CI "ci_failed" is often a priority-yield (self-heals via retry-yielded-bot-ci) — do NOT rerun or treat as code failure
-- [[wiki/learnings/1781574732054-bi-weekly-every-other-week-scheduling-via-cron-gua.md]] — Bi-weekly (every-other-week) scheduling via cron guard
-- [[wiki/learnings/1781598056955-daily-maintainer-report-must-carry-open-ship-stopp.md]] — daily maintainer report must carry open ship-stoppers until merged
-- [[wiki/learnings/1781598359787-escalations-route-up-the-chain-bot-never-self-post.md]] — escalations route up the chain, bot never self-posts to gated channels
-- [[wiki/learnings/1781601865188-slangpy-api-churn-getv-setv-load-store-add-rename-.md]] — slangpy API churn: getv/setv→load/store/add rename + create_device has no experimental-features passthrough (neural module gate)
-- [[wiki/learnings/1781602255080-slang-cuda-wmma-coopmat-emit-is-unconditional-but-.md]] — Slang CUDA WMMA/coopmat emit is unconditional but the prelude namespace is CUDA-12.5-guarded (NVRTC <12.5 fails cryptically) — #10689
-- [[wiki/learnings/1781603359888-slangpy-0-41-tensor-api-migration-official-guide-t.md]] — slangpy 0.41 Tensor API migration — official guide + the real store-vs-add rule
-- [[wiki/learnings/1781603959329-slangpy-samples-editing-bot-issue-comments-403s-ad.md]] — slangpy-samples: editing bot issue comments 403s ("admin rights") — use fresh comments, not PATCH-in-place
-- [[wiki/learnings/1781606753707-follow-up-refactor-issues-may-target-code-not-yet-.md]] — Follow-up refactor issues may target code not yet on master
-- [[wiki/learnings/1781606921222-slangpy-0-41-tensor-migration-coop-vec-reference-g.md]] — slangpy 0.41 Tensor migration: coop-vec reference gap + Python NDBuffer fully removed on main
-- [[wiki/learnings/1781607246297-gpu-is-available-nvidia-l40s-don-t-assume-no-gpu-t.md]] — GPU is available (NVIDIA L40S) — don't assume "no GPU"; toolchain may need install
-- [[wiki/learnings/1781608041360-migrating-slang-code-to-slangpy-0-41-tensor-api-im.md]] — Migrating Slang code to slangpy 0.41 Tensor API — implementation gotchas + GPU-less compile-check
-- [[wiki/learnings/1781608830888-slangpy-0-41-migration-old-set-on-atomictensor-acc.md]] — slangpy 0.41 migration: old set() on AtomicTensor ACCUMULATED (set→add preserves, not changes)
-- [[wiki/learnings/1781609083456-slangpy-samples-ci-pre-commit-runs-all-files-a-sin.md]] — slangpy-samples CI pre-commit runs --all-files; a single un-newlined file reds every PR
-- [[wiki/learnings/1781609114268-slangpy-getv-setv-load-store-add-the-precise-store.md]] — slangpy getv/setv→load/store/add: the precise store-vs-add rule (reviewer-verified) — add preserves behavior, not changes it
-- [[wiki/learnings/1781621242788-slang-flag-enum-compound-assign-gap-ilogical-vs-bu.md]] — Slang flag-enum compound-assign gap: ILogical vs __BuiltinLogicalType operators
-- [[wiki/learnings/1781624196085-build-subagent-that-bails-mid-build-often-leaves-i.md]] — Build subagent that bails mid-build often leaves its detached cmake running — check before relaunching
-- [[wiki/learnings/1781624737396-wgsl-emit-static-const-arrays-must-be-var-private-.md]] — WGSL emit: static-const arrays must be var<private> (not const) for runtime indexing
-- [[wiki/learnings/1781626237709-slang-ci-common-test-setup-pre-test-flake-evicts-p.md]] — Slang CI: "Common Test Setup" pre-test flake evicts PRs from merge queue
-- [[wiki/learnings/1781626696031-slang-11629-reporter-s-root-cause-contradicted-by-.md]] — slang #11629 — reporter's root cause contradicted by HEAD; verify propagation before fixing coverage-manifest gaps
-- [[wiki/learnings/1781627346796-slang-pr-review-cross-check-reviewer-c-clarity-fin.md]] — slang-pr-review: cross-check Reviewer C clarity findings against A and for internal consistency before forwarding
-- [[wiki/learnings/1781638061693-slang-require-capabilities-never-reach-codegen-cap.md]] — Slang [require] capabilities never reach codegen cap set; version path has a partial compensation, bindless has none
-- [[wiki/learnings/1781639050403-wgsl-static-const-array-review-replaceglobalconsta.md]] — WGSL static-const-array review: replaceGlobalConstants false-positive + value-indexability rule
-- [[wiki/learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md]] — A maintainer's literal review suggestion can be locally unsafe — verify all read sites of a reused predicate
-- [[wiki/learnings/1781641446803-expected-failure-list-only-reclassifies-a-fail-nev.md]] — expected-failure list only reclassifies a Fail — never reddens a passing listed test
-- [[wiki/learnings/1781643037138-correction-to-11631-version-root-cause-require-ato.md]] — CORRECTION to #11631 version root cause: require atom stamped only on layout IR module, not the codegen module determineSpirvVersion runs on
-- [[wiki/learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md]] — A maintainer merging master into your PR branch can silently fix the root cause — rebuild+retest after any base move
-- [[wiki/learnings/1781651877940-confirm-a-build-is-really-tot-with-a-feature-probe.md]] — Confirm a build is really ToT with a feature-probe, not the slangc -v string (extends the #11483 stale-binary trap)
-- [[wiki/learnings/1781653325417-execute-maintainer-directed-non-gated-actions-with.md]] — Execute maintainer-directed non-gated actions without round-tripping
-- [[wiki/learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md]] — CMake CACHE PATH absolutizes relative -D values against the cmake CWD — pass :STRING to keep them relative
-- [[wiki/learnings/1781661845733-critique-gate-records-verdict-from-fresh-codex-cal.md]] — Critique-gate records verdict from fresh codex calls, not codex-reply rounds
-- [[wiki/learnings/1781663343829-bot-draft-prs-get-zero-ci-on-shader-slang-slang-fi.md]] — Bot draft PRs get ZERO CI on shader-slang/slang (filter job skips drafts)
-- [[wiki/learnings/1781663682498-wgsl-location-return-0-fallback-branch-can-t-be-un.md]] — WGSL @location return-0 fallback branch can't be unit-tested in one struct
-- [[wiki/learnings/1781663826357-maintainer-propose-a-fix-if-none-exists-their-own-.md]] — Maintainer 'propose a fix if none exists' + their own fork PR = confirm direction, don't assume upstream-it
-- [[wiki/learnings/1781679288468-slang-11641-mac-aarch64-rhi-flake-cmd-query-timing.md]] — slang #11641 mac-aarch64 rhi flake = cmd-query timing assert (slang-rhi#775), NOT LLVM instruction-set
-- [[wiki/learnings/1781684668464-slang-e39999-could-not-specialize-generic-has-an-e.md]] — slang E39999 "could not specialize generic" has an extensible failure-reason mechanism (PR #11571)
-- [[wiki/learnings/1781685016229-fabricated-parent-edge-dispatch-contained-by-draft.md]] — Fabricated parent-edge dispatch contained by drafts-only + gate-irreversible-step discipline
-- [[wiki/learnings/1781686744418-slang-11631-severity-require-drop-is-a-silent-runt.md]] — slang#11631 severity: [require]-drop is a SILENT runtime-divergence (SS-class), and only hits codegen-DECISION caps
-- [[wiki/learnings/1781686753503-operator-override-that-bypasses-your-parent-confir.md]] — Operator override that bypasses your parent — confirm on operator edge AND nudge parent, or it goes stale
-- [[wiki/learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md]] — This environment HAS an NVIDIA GPU (nvidia-smi works) despite CLAUDE.md saying "no GPU" — but no Vulkan loader, so Vulkan execution still unavailable
-- [[wiki/learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40s-.md]] — Slang coworker containers HAVE an NVIDIA GPU (L40S) — "no GPU" docs are stale; verify with nvidia-smi
-- [[wiki/learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md]] — Correction: installing libvulkan1 does NOT enable NVIDIA-GPU Vulkan in these containers — only software llvmpipe; NVIDIA Vulkan ICD fails (ERROR_INCOMPATIBLE_DRIVER, NVIDIA_VISIBLE_DEVICES=void)
-- [[wiki/learnings/1781702557335-re-pull-mutable-pr-state-from-github-before-assert.md]] — Re-pull mutable PR state from GitHub before asserting it in a status report
-- [[wiki/learnings/1781703451468-slang-11493-fast-path-silently-declines-float-bitw.md]] — Slang #11493 fast-path silently declines float-bitwise → E39999 ambiguous (regression vector)
-- [[wiki/learnings/1781708255374-stale-prebuilt-slangc-inlining-mask-spir-v-static-.md]] — Stale prebuilt slangc + inlining mask SPIR-V static-local bugs (verify-at-HEAD pitfalls)
-- [[wiki/learnings/1781712984955-slang-assert-release-assert-only-gives-false-fixed.md]] — SLANG_ASSERT=release-assert-only gives FALSE "fixed" when triaging assert-failure ICEs
-- [[wiki/learnings/1781713033202-slang-9382-gather-constoffset-naive-fix-unsafe-two.md]] — slang #9382 Gather ConstOffset — naive fix unsafe; two stale draft PRs exist
-- [[wiki/learnings/1781713084820-spir-v-function-static-state-loss-spirv-tools-priv.md]] — SPIR-V function-static state loss = SPIRV-Tools private-to-local (and how to CLI-repro)
-- [[wiki/learnings/1781713187860-fresh-peer-delegation-carrying-a-chain-delivery-ma.md]] — Fresh peer delegation carrying a chain-delivery marker still needs in_reply_to
-- [[wiki/learnings/1781713263122-empty-struct-cuda-layout-bug-only-repros-when-the-.md]] — Empty-struct CUDA layout bug only repros when the empty type is in the public/exported interface
-- [[wiki/learnings/1781713625746-re-triage-rescan-live-cross-ref-timeline-for-newer.md]] — Re-triage: rescan live cross-ref timeline for newer maintainer PRs touching the issue's files
-- [[wiki/learnings/1781714495665-slangc-target-spirv-asm-at-default-opt-does-run-sp.md]] — slangc -target spirv-asm at default opt DOES run spirv-opt (private-to-local)
-- [[wiki/learnings/1781716025205-slang-coworker-dev-shm-is-64m-parallel-c-builds-si.md]] — slang coworker /dev/shm is 64M — parallel C++ builds SIGBUS in cc1plus; set TMPDIR on disk
-- [[wiki/learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-cont.md]] — A forked Agent (no subagent_type) inherits full context and may run the whole task, not the scoped prompt
-- [[wiki/learnings/1781720061070-slang-ci-slang-module-gen-failure-with-e99997-asse.md]] — Slang CI: .slang-module gen failure with E99997 assert = real bug, not infra flake
-- [[wiki/learnings/1781724696064-verify-triage-root-cause-empirically-slang-10027-v.md]] — Verify triage root cause empirically — slang#10027 vector-default-N synthesized-ctor cross-module abort
-- [[wiki/learnings/1781724869679-slang-11648-float-bitwise-diagnostic-binary-and-un.md]] — slang #11648 float-bitwise diagnostic: binary and unary ~ are separate fast-path branches
-- [[wiki/learnings/1781724956224-don-t-promote-a-hedged-hypothesis-to-root-cause-tr.md]] — Don't promote a hedged hypothesis to "root cause (traced)" in a public triage verdict
-- [[wiki/learnings/1781725277930-empty-struct-field-emit-skip-is-incomplete-must-re.md]] — Empty-struct field emit-skip is incomplete — must remove fields in IR, not at emit
-- [[wiki/learnings/1781725591470-never-mutate-a-hoistable-spirvasmoperand-in-place-.md]] — Never mutate a hoistable SPIRVAsmOperand in place; repoint the consuming inst
-- [[wiki/learnings/1781726667133-spir-v-asm-operand-legalization-hoistable-operands.md]] — SPIR-V asm-operand legalization: hoistable operands + foldable≠constant pitfalls
-- [[wiki/learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md]] — Don't use a context-inheriting Agent fork for narrow recall while a fix workflow is auto-routed
-- [[wiki/learnings/1781727054458-fixer-stall-diagnosis-unpushed-worktree-vs-dead-se.md]] — Fixer stall diagnosis — unpushed worktree vs dead session
-- [[wiki/learnings/1781729215980-slang-11643-resolved-focused-generic-specializatio.md]] — slang #11643 RESOLVED — focused generic-specialization diagnostics landed (PR #11656), 3 of ~9 sites done
-- [[wiki/learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md]] — slang-pr-review: claude CLI recovers from mid-stream 504 — don't kill a stalled reviewer run
-- [[wiki/learnings/1781731175811-slang-9382-negated-constant-gather-offset-int2-2-1.md]] — slang #9382: negated-constant gather offset (-int2(2,1)) is NOT a stable runtime OpSNegate — it folds to constant+ConstOffset (cap lingers)
-- [[wiki/learnings/1781731413287-devin-reviewer-b-can-exit-rc-0-while-analysis-is-s.md]] — Devin reviewer (B) can exit rc=0 while analysis is still "Generating" — a false all-clear
-- [[wiki/learnings/1781731735312-recover-slang-clarity-review-candidates-after-a-tr.md]] — Recover slang clarity-review candidates after a transient API error instead of re-running
-- [[wiki/learnings/1781735606781-empty-struct-field-removal-is-c-source-only-never-.md]] — Empty-struct field removal is C-source-only — never run it on the direct-LLVM CPU path
-- [[wiki/learnings/1781753229607-slang-generic-arg-arity-diagnostics-must-range-che.md]] — Slang generic-arg arity diagnostics must range-check against defaulted params
-- [[wiki/learnings/1781770372055-slang-11545-byte-address-slice-1-11594-delivered-4.md]] — Slang #11545 byte-address Slice-1 (#11594) delivered 41302 via constexpr but NOT 41303 — the consistency slice must carry its own location-alignment guard
-- [[wiki/learnings/1781775272408-codex-critique-gate-records-stage-verdicts-only-fr.md]] — codex-critique gate records stage verdicts only from a fresh staged codex call, not from codex-reply
-- [[wiki/learnings/1781775592867-a-fresh-unblock-handoff-can-contradict-a-prior-tri.md]] — A fresh unblock handoff can contradict a prior triager ruling — run Recall on shared learnings before implementing a multi-slice fix
-- [[wiki/learnings/1781776078394-slang-11591-11590-prior-41303-to-slice-3-ruling-17.md]] — slang #11591/#11590 — prior 41303-to-Slice-3 ruling (1781318517600) re-verified VALID at HEAD a84f48e62 post-#11594; carrying 41303 in Slice 2 is a confirmed band-aid
-- [[wiki/learnings/1781777421724-slang-optix-payload-lost-when-terminate-intrinsic-.md]] — slang OptiX payload lost when terminate-intrinsic is in a callee (entrypoint-local writeback scan gap)
-- [[wiki/learnings/1781778033276-ncl-sessions-list-is-capped-use-thread-id-for-hand.md]] — ncl sessions list is capped — use --thread-id for handoff verification
-- [[wiki/learnings/1781782798777-slang-cuda-optix-varying-param-legalizer-terminate.md]] — Slang CUDA/OptiX varying-param legalizer: terminate-intrinsic detection + pre-pass timing
-- [[wiki/learnings/1781783056677-slang-target-hpp-cpp-no-output-file-is-usually-a-c.md]] — slang -target hpp/cpp "no output file" is usually a crash from a graphics-stage entry point
-- [[wiki/learnings/1781784301760-slang-diagnostics-unimplemented-is-severity-intern.md]] — Slang Diagnostics::Unimplemented is Severity::Internal — aborts compilation, wrong channel for user-actionable errors
-- [[wiki/learnings/1781787235055-slang-diagnostic-test-diag-check-authoring-exhaust.md]] — Slang DIAGNOSTIC_TEST(diag=CHECK) authoring — exhaustive matcher, title+span = two annotations
-- [[wiki/learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md]] — PR-review heuristic: when a fix adds a null-possible invariant + helper, audit ALL structurally-identical sites
-- [[wiki/learnings/1781797125582-adding-a-slangd-config-setting-is-a-two-repo-job-c.md]] — Adding a slangd config setting is a two-repo job — copy the workspaceFlavor template
-- [[wiki/learnings/1781799089141-slang-downstream-compiler-load-optional-spirv-opt-.md]] — slang downstream-compiler load: optional spirv-opt is fatal via real sink + half-wired GLSLANG gate
-- [[wiki/learnings/1781803009034-slang-downstream-compiler-load-is-per-session-memo.md]] — Slang downstream-compiler load is per-session memoized; ListBlob::moveCreate doesn't actually move
-- [[wiki/learnings/1781804734767-slang-downstream-compiler-absence-spirv-opt-slang-.md]] — Slang downstream-compiler absence (spirv-opt/slang-glslang) IS unit-testable via setSharedLibraryLoader
-- [[wiki/learnings/1781806349986-front-end-stage-rejection-for-cpu-kernel-targets-i.md]] — Front-end stage-rejection for CPU-kernel targets is over-broad — graphics→CPU cross-compile is valid
-- [[wiki/learnings/1781807946287-slang-slang-assert-is-a-no-op-slang-assume-ub-lice.md]] — Slang: SLANG_ASSERT is a no-op (SLANG_ASSUME/UB-license) in release builds — use SLANG_RELEASE_ASSERT to actually fail loudly
-- [[wiki/learnings/1781809987259-build-only-subagent-overstepped-committed-pushed-d.md]] — Build-only subagent overstepped: committed/pushed/dispatched-CI/edited-PR-body — verify every claim
-- [[wiki/learnings/1781810067410-slang-opt-level-default-is-default-not-none-use-ha.md]] — Slang opt-level default is Default not None — use hasOption to detect explicit -O
-- [[wiki/learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md]] — hasOption(Optimization) is NOT an explicit-vs-default signal at the emit layer
-- [[wiki/learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md]] — slangc -v version string is baked at CONFIGURE time, not build time
-- [[wiki/learnings/1781823315708-slang-parsedeclname-shared-by-func-and-var-declara.md]] — slang ParseDeclName shared by func and var declarators accepts operator names
-- [[wiki/learnings/1781823486955-recall-step-spawn-a-read-only-explore-subagent-nev.md]] — Recall step: spawn a read-only Explore subagent, never a bare Agent fork
-- [[wiki/learnings/1781825083619-ci-runs-slang-test-with-slang-run-spirv-validation.md]] — CI runs slang-test with SLANG_RUN_SPIRV_VALIDATION enabled — unit tests must not assume validation is off
-- [[wiki/learnings/1781826649693-slang-parser-diagnostic-gotchas-message-dedup-body.md]] — Slang parser-diagnostic gotchas: message dedup, body-phase error suppression, DIAGNOSTIC_TEST exhaustive rows
-- [[wiki/learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated-w.md]] — Untraceable from-parent mandate for costly/gated work — analyze cheaply and surface, don't execute
-- [[wiki/learnings/1781841056611-controlled-rebase-experiments-mislead-when-the-iso.md]] — Controlled-rebase experiments mislead when the 'isolated' change is cross-cutting (name hints/mangling)
-- [[wiki/learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md]] — Discord send_message enforces a 2000-char hard limit
-- [[wiki/learnings/1781903775019-slang-descriptorhandle-accelerationstructure-two-m.md]] — Slang DescriptorHandle<AccelerationStructure>: two models, heap vs plain bindless
-- [[wiki/learnings/1781905197543-slang-as-forcing-ray-query-only-capability-avoid-s.md]] — Slang AS: forcing ray-query-only capability (avoid SPV_KHR_ray_tracing)
-- [[wiki/learnings/1781974573249-conditionally-requiring-a-spir-v-capability-for-a-.md]] — Conditionally requiring a SPIR-V capability for a stdlib spirv_asm intrinsic forces pass-level block manipulation — layer-choice tree
-- [[wiki/learnings/1781975592365-slang-glslang-add-an-opt-out-via-dedicated-cmake-e.md]] — slang-glslang: add an opt-out via dedicated CMake escape-hatch, not by deleting the pass
-- [[wiki/learnings/1781992589265-combined-sampler-getdimensions-off-by-one-wgsl-met.md]] — Combined-sampler GetDimensions off-by-one (WGSL/Metal/CUDA) — shared root with HLSL #10522
-- [[wiki/learnings/1782026325950-curating-shared-learnings-serialize-directory-edit.md]] — Curating shared learnings: serialize directory edits, never parallel forks
-- [[wiki/learnings/1782041019246-slang-texture-sample-offset-is-constexpr-wrappers-.md]] — Slang texture Sample offset is constexpr; wrappers must forward it as constexpr
-- [[wiki/learnings/1782144700294-current-slang-maintainer-is-dynamic-ask-the-slang-.md]] — Current Slang maintainer is dynamic — ask the Slang Maintainer agent, never hardcode
-- [[wiki/learnings/1782145409789-slang-g0-doesn-t-zero-spir-v-debug-info-opsource-o.md]] — slang -g0 doesn't zero SPIR-V debug info: OpSource/OpName bypass the IRDebug gating path
-- [[wiki/learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md]] — DescriptorHandle to ConstantBuffer implicit conversion blocked by ParameterGroupType target guard in _coerce
-- [[wiki/learnings/1782145779844-slang-triager-has-no-deliverable-edge-to-slang-fix.md]] — slang-triager has no deliverable edge to slang-fixer — route triage handoffs through the orchestrator (parent)
-- [[wiki/learnings/1782145876334-auto-route-userpromptsubmit-hook-can-re-fire-a-par.md]] — Auto-route UserPromptSubmit hook can re-fire a parked/retracted chain — explicit stand-down wins
-- [[wiki/learnings/1782146682704-localizing-slangc-reflection-json-crash-on-failed-.md]] — Localizing slangc -reflection-json crash on failed compile (#11683) + REFLECTION test directive gotcha
-- [[wiki/learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md]] — RETRACTION: triager→slang-fixer edge DOES work — earlier "no wired edge" learning was wrong; real lesson is no double-dispatch
-- [[wiki/learnings/1782148249067-slang-fixer-container-disk-fills-from-accumulated-.md]] — Slang fixer container disk fills from accumulated build/ trees
-- [[wiki/learnings/1782148330338-stacked-pr-cross-chain-base-branch-force-push-coll.md]] — Stacked-PR cross-chain base-branch force-push collision (slang #11595/#11596): detect, DON'T force-push back, freeze + escalate to orchestrator
-- [[wiki/learnings/1782148692608-internal-a2a-review-github-reviewdecision.md]] — Internal a2a review ≠ GitHub reviewDecision
-- [[wiki/learnings/1782151532732-disk-full-on-workspace-agent-prune-worktree-build-.md]] — Disk-full on /workspace/agent: prune worktree build/ dirs, not whole worktrees
-- [[wiki/learnings/1782151554268-slang-descriptorhandle-t-t-implicit-conversion-blo.md]] — slang DescriptorHandle<T> → T implicit conversion blocked for ParameterGroupType targets by _coerce guard ordering
-- [[wiki/learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md]] — Fixer container disk fills from accumulated build/ trees (ENOSPC at cmake-configure)
-- [[wiki/learnings/1782151905566-slang-rich-diagnostic-renderer-is-tty-color-gated-.md]] — Slang rich diagnostic renderer is tty/color-gated — pipe-masking trap when reproducing render bugs
-- [[wiki/learnings/1782151944896-slang-rich-diagnostic-renderer-mishandles-zero-wid.md]] — slang rich diagnostic renderer mishandles zero-width EOF span and byte-vs-codepoint columns
-- [[wiki/learnings/1782152095347-slangpy-slang-rhi-rerun-403-is-the-same-gateway-co.md]] — slangpy/slang-rhi rerun 403 is the same gateway collision as slang, not missing actions:write
-- [[wiki/learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md]] — Don't fork (omit subagent_type) for read-only recall/scan steps — the fork inherits full triage context and may run the entire workflow
-- [[wiki/learnings/1782152715724-read-only-recall-scan-steps-must-be-explore-typed-.md]] — Read-only recall/scan steps must be Explore-typed, never bare forks
-- [[wiki/learnings/1782152994624-slang-glslang-is-the-spir-v-backend-don-t-mask-its.md]] — slang-glslang is the SPIR-V backend — don't mask its load as optional (fix the build system)
-- [[wiki/learnings/1782153228750-slang-language-directive-precedence-unconditional-.md]] — Slang #language directive precedence: unconditional per-file override of the option-set default
-- [[wiki/learnings/1782154549776-slang-legacy-slang-dll-proxy-libslang-symlink-loca.md]] — slang legacy slang.dll proxy + libslang symlink: location and opt-out pattern
-- [[wiki/learnings/1782156721731-clang-format-17-via-pip-target-needs-pythonpath-se.md]] — clang-format-17 via pip --target needs PYTHONPATH set to run
-- [[wiki/learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md]] — codex-critique artifacts must live under /workspace, not /tmp (ephemeral + invisible to codex)
-- [[wiki/learnings/1782156945737-latent-adjacent-defect-found-by-code-reading-don-t.md]] — Latent adjacent defect found by code-reading: don't file a speculative tracking issue while the covering fix is an unmerged PR
-- [[wiki/learnings/1782158570480-slang-buffer-layout-marker-warning-needs-a-new-dia.md]] — Slang buffer-layout-marker warning needs a new diagnostic, not a capability gate
-- [[wiki/learnings/1782159092911-slangpy-downstream-check-reruns-are-blocked-for-th.md]] — SlangPy downstream check reruns are blocked for the bot (no slangpy admin)
-- [[wiki/learnings/1782159293633-retraction-slangpy-downstream-rerun-block-is-the-g.md]] — RETRACTION: slangpy downstream rerun block is the gateway collision, NOT a babysitter-authority gap
-- [[wiki/learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md]] — Verifying detached background PR-reviewer completion (Monitor + pgrep gotchas)
-- [[wiki/learnings/1782162119070-broad-blast-radius-lowering-changes-need-a-full-lo.md]] — Broad-blast-radius lowering changes need a FULL local slang-test sweep, not a sampled subset
-- [[wiki/learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md]] — Filing a neutral design-discussion issue split off from a PR (maintainer wants analysis before solution)
-- [[wiki/learnings/1782164510013-addendum-slang-11681-maintainer-preferred-removing.md]] — ADDENDUM (slang #11681): maintainer preferred REMOVING the dubious _coerce guard over a DescriptorHandle carve-out
-- [[wiki/learnings/1782165817624-slang-sv-depth-greater-less-equal-direct-spir-v-co.md]] — Slang SV_Depth{Greater,Less}Equal: direct SPIR-V correct, GLSL/via-GLSL drops directional mode
-- [[wiki/learnings/1782166177663-slangpy-tests-failures-on-slang-prs-are-not-bot-re.md]] — SlangPy Tests failures on slang PRs are not bot-rerunnable (admin-rights boundary)
-- [[wiki/learnings/1782171440977-slang-11599-clip-space-z-remap-option-declined-by-.md]] — slang #11599 clip-space Z-remap option — DECLINED by maintainer (out of scope)
-- [[wiki/learnings/1782171529298-slang-11599-clip-space-z-remap-declined-by-maintai.md]] — slang#11599 clip-space-Z remap DECLINED by maintainer
-- [[wiki/learnings/1782172056258-verifying-slangd-lsp-config-settings-probe-must-an.md]] — Verifying slangd LSP-config settings: probe must answer the workspace/configuration pull
-- [[wiki/learnings/1782173862922-glsl-legalize-per-entry-point-system-value-decorat.md]] — GLSL legalize: per-entry-point system-value decorations must gate on VaryingOutput (inout double-attach)
-- [[wiki/learnings/1782175276058-depth-sv-semantics-are-output-only-e30702-a-review.md]] — Depth SV semantics are output-only (E30702) — a reviewer-traced 'inout duplicate' gap can be unreachable
-- [[wiki/learnings/1782175454099-glsl-legalize-per-entry-point-system-value-decorat.md]] — GLSL legalize: per-entry-point system-value decorations must gate on VaryingOutput (inout double-attach)
-- [[wiki/learnings/1782203064448-slang-11683-reflection-json-crash-is-broad-scope-a.md]] — slang 11683 reflection-json crash is broad scope and NOT a regression
-- [[wiki/learnings/1782203173377-a-scan-only-agent-fork-can-overreach-into-the-full.md]] — A scan-only Agent fork can overreach into the full task and message the parent
-- [[wiki/learnings/1782211031715-slang-direct-spir-v-depth-mode-also-dropped-via-co.md]] — Slang direct-SPIR-V depth mode ALSO dropped via conflict-branch (dual depth-affecting vars) — not just GLSL
-- [[wiki/learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md]] — Stale PR fix-requests: verify base vs current main, and issue-vs-PR, before implementing
-- [[wiki/learnings/1782215106250-slang-diagnostic-callback-api-legacy-severity-less.md]] — Slang diagnostic-callback API: legacy + severity-less; diagnostics roadmap is the Rich Diagnostics rewrite
-- [[wiki/learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fetc.md]] — NVAPI render-tests silently "ignored" — submodule→FetchContent migration left render-test path stale
-- [[wiki/learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md]] — Stale feature requests can be half-implemented at HEAD — verify before scoping
-- [[wiki/learnings/1782215139629-slang-memoryscope-machinery-exists-but-is-unwired-.md]] — Slang MemoryScope machinery exists but is unwired to atomics (issue #6970)
-- [[wiki/learnings/1782215211806-slang-adding-a-diagnostic-type-display-flag-diagno.md]] — Slang: adding a diagnostic type-display flag — DiagnosticColor template + toText has no sink context
-- [[wiki/learnings/1782215264522-recall-research-fan-out-must-use-explore-subagent-.md]] — Recall/research fan-out must use Explore subagent, never a bare Agent() fork
-- [[wiki/learnings/1782215284222-vk-location-on-a-cbuffer-is-silently-dropped-glsl-.md]] — vk::location on a cbuffer is silently dropped → GLSL binding follows declaration order (slang #6216)
-- [[wiki/learnings/1782215337634-recall-research-fan-out-must-use-explore-never-a-b.md]] — Recall/research fan-out must use Explore, never a bare Agent() fork
-- [[wiki/learnings/1782215352976-slang-extension-same-name-member-resolution-dual-p.md]] — slang extension same-name member resolution — dual policy + immediate-parent tie-break gap (#9660)
-- [[wiki/learnings/1782215579233-import-vs-include-reflection-binding-loss-missing-.md]] — import-vs-include reflection/binding loss = missing IComponentType::link()
-- [[wiki/learnings/1782215625162-slang-associated-constant-fold-gated-on-declaredsu.md]] — slang associated-constant fold gated on DeclaredSubtypeWitness; eager tryConstantFoldDeclRef skips normalize
-- [[wiki/learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md]] — Read-only recall forks must be scoped Explore or explicitly constrained — bare Agent forks inherit ALL tools and can post/dispatch
-- [[wiki/learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md]] — duplicate dispatch peer live-writes the fix into your shared worktree
-- [[wiki/learnings/1782216036396-slang-9660-extension-shadowing-design-gated-overri.md]] — slang#9660 extension shadowing — design-gated; override keyword already exists
-- [[wiki/learnings/1782216127466-recall-scan-fork-can-misread-the-parent-s-own-edit.md]] — Recall-scan fork can misread the parent's own edits as a peer collision
-- [[wiki/learnings/1782216962036-detect-groupshared-tgsm-codegen-bugs-on-dxil-witho.md]] — Detect groupshared/TGSM codegen bugs on DXIL without a GPU (addrspace(3) vs alloca)
-- [[wiki/learnings/1782217764152-agentic-test-bundle-staleness-is-often-compiler-dr.md]] — Agentic-test bundle staleness is often compiler-driven and list-stale won't catch it
-- [[wiki/learnings/1782222346038-falcor-ci-tracking-issues-from-jkiviluoto-nv-park-.md]] — Falcor CI tracking issues from jkiviluoto-nv: park at triaged, cross-link the family
-- [[wiki/learnings/1782223714002-recall-scan-forks-can-phantom-overstep-into-worktr.md]] — Recall/scan forks can phantom-overstep into worktree inspection, faking a peer-collision
-- [[wiki/learnings/1782224910624-slang-a-fold-over-a-concrete-declaredsubtypewitnes.md]] — Slang: a fold over a concrete DeclaredSubtypeWitness can return symbolic purely because the conformance witness table isn't built yet — fix with ensureDecl(ReadyForConformances), not resolve()/normalize
-- [[wiki/learnings/1782224927601-context-inheriting-agent-forks-can-no-op-on-long-b.md]] — Context-inheriting Agent forks can no-op on long build/verify work — use a detached script + Monitor
-- [[wiki/learnings/1782225149459-vk-location-on-non-varying-warning-6216-the-param-.md]] — vk::location-on-non-varying warning (#6216): the param-binding gate placement and the "double-emission matches precedent" trap
-- [[wiki/learnings/1782226186227-a-single-common-suite-flake-can-functionally-stall.md]] — A single common-suite flake can functionally stall the Slang merge queue
-- [[wiki/learnings/1782226877304-cuda-13-0-gpu-ci-runner-driver-mismatch-signature-.md]] — cuda>=13.0 GPU CI runner driver-mismatch signature (shader-slang)
-- [[wiki/learnings/1782228288994-groupshared-array-parameter-lowered-by-value-loses.md]] — groupshared array PARAMETER lowered by-value loses TGSM (slang#10641)
-- [[wiki/learnings/1782228568362-slang-10641-groupshared-array-param-bug-fix-is-by-.md]] — slang #10641 — groupshared array PARAM bug: fix is by-reference lowering, NOT address-space recovery
-- [[wiki/learnings/1782231360603-reading-a-submodule-pin-commit-date-version-check-.md]] — Reading a submodule pin: commit date ≠ version; check reachability with compare
-- [[wiki/learnings/1782231415029-when-ci-infra-failure-goes-fleet-wide-reruns-mask-.md]] — When CI infra failure goes fleet-wide, reruns mask — escalate instead
-- [[wiki/learnings/1782235481283-imgui-in-slang-is-a-unity-build-bumping-it-needs-i.md]] — imgui in slang is a unity build; bumping it needs IMGUI_DEFINE_MATH_OPERATORS
-- [[wiki/learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md]] — A maintainer flipping your draft PR to ready/merge is NOT a bot operator-gate violation — verify isDraft from live state
-- [[wiki/learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md]] — Verify live PR draft/ready state before reporting it — maintainers can flip it
-- [[wiki/learnings/1782237919713-groupshared-by-reference-param-regresses-khronos-s.md]] — groupshared by-reference param regresses Khronos SPIR-V; fix is Khronos-gated inlining keyed on param RATE
-- [[wiki/learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola.md]] — Before reporting a "bot flipped PR ready" gate violation, verify the ready_for_review actor
-- [[wiki/learnings/1782244083021-dependency-bump-pr-triage-cross-platform-check-pro.md]] — Dependency-bump PR triage: cross-platform check proves innocence
-- [[wiki/learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md]] — CI babysitter: headline the dominant root-cause when maintainers rerun into a deterministic wall
-- [[wiki/learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md]] — SPV_KHR_abort transitively requires SPV_KHR_constant_data; message is OpConstantDataKHR not a runtime composite
-- [[wiki/learnings/1782251874470-correction-abort-message-is-a-runtime-composite-ru.md]] — CORRECTION: abort message is a runtime composite (runtime args), not OpConstantDataKHR; shipped #11542 bug is the wrong OpExtension token
-- [[wiki/learnings/1782252899885-slang-test-dx12-lane-empty-output-filecheck-fail-i.md]] — slang-test -dx12 lane: empty-output FileCheck fail is often a bad test flag, not codegen — read the ACTUAL block
-- [[wiki/learnings/1782260121429-bot-enqueuepullrequest-blocked-for-all-prs-not-jus.md]] — Bot enqueuePullRequest blocked for ALL PRs, not just forks
-- [[wiki/learnings/1782260610851-read-only-classification-subagents-may-execute-the.md]] — Read-only classification subagents may execute the full workflow anyway
-- [[wiki/learnings/1782261706992-slang-bootstrap-eagerly-recompiles-core-glsl-at-se.md]] — slang bootstrap eagerly recompiles core+GLSL at session creation (EMBED_CORE_MODULE=OFF)
-- [[wiki/learnings/1782264486800-slang-descriptor-heap-unified-stride-11718-already.md]] — slang descriptor-heap unified stride (#11718) — already-supported extension, gap is stride policy not the extension
-- [[wiki/learnings/1782264622886-closing-a-github-issue-as-duplicate-use-graphql-cl.md]] — Closing a GitHub issue as duplicate: use GraphQL closeIssue, not REST state_reason (403)
-- [[wiki/learnings/1782264656205-closing-issues-as-duplicate-use-graphql-closeissue.md]] — Closing issues as duplicate — use GraphQL closeIssue, not REST
-- [[wiki/learnings/1782264945972-spvdescriptorheapext-unified-stride-per-type-array.md]] — spvDescriptorHeapEXT unified-stride: per-type arrays + symbolic-max construct (#11718)
-- [[wiki/learnings/1782267495019-triage-discriminator-slang-embedded-spirv-tools-vs.md]] — Triage discriminator: Slang embedded spirv-tools vs system Vulkan validation layer (version-skew)
-- [[wiki/learnings/1782270000000-coworkers-must-not-close-github-issues-tool-backstop.md]] — Coworkers must not close GitHub issues — deterministic tool backstop
-- [[wiki/learnings/1782271381546-spirv-val-accepts-opspecconstantop-max-over-opaque.md]] — spirv-val accepts OpSpecConstantOp(max) over opaque OpConstantSizeOfEXT as an ArrayStrideIdEXT id
-- [[wiki/learnings/1782275600814-slang-triage-follow-up-from-pr-n-issues-check-if-p.md]] — Slang triage: "follow-up from PR #N" issues — check if PR #N merged before forwarding to fixer
-- [[wiki/learnings/1782280210918-do-not-autonomously-close-issues-prs-surface-to-a-.md]] — Do NOT autonomously close issues/PRs — surface to a human maintainer
-- [[wiki/learnings/1782281850149-slang-platform-macros-are-value-style-always-defin.md]] — Slang platform macros are value-style (always defined) — defined()/#ifdef on them is an always-true bug
-- [[wiki/learnings/1782288946942-daily-report-fallback-when-slang-mcp-server-is-dow.md]] — Daily-report fallback when slang-mcp server is down
-- [[wiki/learnings/1782295021483-ir-label-test-breaks-a-renamed-function-struct-ext.md]] — IR-LABEL test breaks: a renamed function (struct→extension) is not an opcode change — verify which one broke
-- [[wiki/learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md]] — CI babysitter: CPU-job failure is the tell for real regression vs GPU flake
-- [[wiki/learnings/1782305359829-slang-fixer-shared-mount-fills-with-in-flight-buil.md]] — slang-fixer shared mount fills with in-flight build trees — don't reclaim siblings
-- [[wiki/learnings/1782318227042-validate-slang-test-gate-if-fixes-confirm-the-macr.md]] — Validate slang test-gate #if fixes: confirm the macro is a compile-define for that target
-- [[wiki/learnings/1782322436550-spir-v-atomic-emit-has-two-address-space-gates-a-p.md]] — SPIR-V atomic emit has TWO address-space gates — a per-address-space fix must touch both
-- [[wiki/learnings/1782322517394-slang-spir-v-emit-new-spv-enum-constants-resolve-f.md]] — Slang SPIR-V emit: new Spv* enum constants resolve from the SPIRV-Headers package, not external/spirv/spirv.h
-- [[wiki/learnings/1782323528074-serializing-slang-reflection-use-reflection-json-o.md]] — Serializing Slang reflection: use -reflection-json or reflect from a loaded module
-- [[wiki/learnings/1782324227290-converting-presence-value-macro-tests-can-silently.md]] — Converting presence→value macro tests can silently narrow platform coverage (iOS dropped from dlfcn)
-- [[wiki/learnings/1782324497848-slangpy-gpu-mem-leak-115-608-don-t-reproduce-at-he.md]] — slangpy GPU mem-leak #115/#608 don't reproduce at HEAD; CI OOM is concurrent-peak high-water-mark, not a leak
-- [[wiki/learnings/1782324519820-building-slangpy-from-source-in-the-fixer-containe.md]] — Building slangpy from source in the fixer container: python3-dev, PEP-668, torch bridge, submodule/ENOSPC gotchas
-- [[wiki/learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md]] — Attributing check-cmdline-ref CI failures (not master-doc drift by default)
-- [[wiki/learnings/1782325331597-verifying-slang-per-target-buffer-layout-measure-e.md]] — Verifying Slang per-target buffer layout: measure emitted AND reflection separately; use a pinned worktree + full build
-- [[wiki/learnings/1782327804698-presence-value-slang-macro-conversions-can-silentl.md]] — Presence→value SLANG_* macro conversions can silently narrow the active-platform side (iOS dropped from dlfcn)
-- [[wiki/learnings/1782328977641-sanitizer-finding-fixes-must-remove-the-matching-e.md]] — Sanitizer-finding fixes must remove the matching expected-sanitizer-findings.txt suppression in the same PR
-- [[wiki/learnings/1782329772659-use-explore-subagent-not-a-bare-fork-for-the-learn.md]] — Use Explore subagent (not a bare fork) for the learnings-scan step
-- [[wiki/learnings/1782330515490-expected-sanitizer-findings-txt-has-two-match-mode.md]] — expected-sanitizer-findings.txt has two match modes — SUMMARY-substring vs LEAK-prefix
-- [[wiki/learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md]] — A coworker can't edit a PEER coworker's GitHub comment even under the same bot identity (HTTP 403)
-- [[wiki/learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-token-.md]] — CORRECTION: bot issue-comment PATCH 403 is a token-permission limit, not author-binding — remedy is a fresh SUPERSEDING comment
-- [[wiki/learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md]] — VERIFIED (retracts prior correction): nv-slang-bot edits its OWN issue comments, repeatably 403s on a PEER coworker's — creator-bound, not transient, not a flat token limit
-- [[wiki/learnings/1782339425194-slang-11568-corollary-11718-unified-descriptor-hea.md]] — slang#11568 corollary: #11718 unified descriptor-heap stride is BACKEND-only — does NOT remove the E39999 front-end blocker
-- [[wiki/learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-no.md]] — REFINEMENT: bot issue-comment PATCH is PER-TOKEN, not clean creator-binding — some coworker tokens can't edit even their own comments; CREATE is the only universally reliable path
-- [[wiki/learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md]] — nv-slang-bot issue-comment login is "nv-slang-bot" (no [bot]) — edit-in-place check must match loosely or it silently posts duplicates
-- [[wiki/learnings/1782345863846-mutual-ack-loops-between-peer-wired-coworkers-endi.md]] — Mutual-ack loops between peer-wired coworkers ("Ending silently" ping-pong)
-- [[wiki/learnings/1782346077621-before-escalating-a-peer-s-ongoing-loop-claim-chec.md]] — Before escalating a peer's "ongoing loop" claim, check last MESSAGE timestamp vs last_active (heartbeat)
-- [[wiki/learnings/1782346122322-slang-spir-v-atomic-emission-has-4-cross-layer-gat.md]] — Slang SPIR-V atomic emission has 4 cross-layer gates keyed on address space — check all when reviewing atomic/VUID fixes
-- [[wiki/learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md]] — CI: flake-class vs deterministic-hang, and the two-sweep escalation threshold
-- [[wiki/learnings/1782353151387-slang-glslang-leaks-leaksanitizer-nightly-is-not-a.md]] — slang-glslang leaks: LeakSanitizer nightly is NOT a valid verification net (SKIP_ASAN + broad suppression)
-- [[wiki/learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md]] — Mutual empty-ack loop — verify both sides, the reporter isn't silent
-- [[wiki/learnings/1782353887467-a2a-silent-hold-plain-text-turn-output-routes-to-t.md]] — a2a silent-hold: plain-text turn output routes to the peer (echo-loop trap)
-- [[wiki/learnings/1782360530038-xpass-is-a-deterministic-author-owned-ci-failure-n.md]] — XPASS is a deterministic author-owned CI failure, not a flake or regression
-- [[wiki/learnings/1782373627011-render-test-compare-compute-is-not-slangc-local-sl.md]] — render-test (COMPARE_COMPUTE) is not slangc — local slangc pass does not predict the runtime lane
-- [[wiki/learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md]] — nv-slang-bot 403 on issue-assign and cross-session comment-edit
-- [[wiki/learnings/1782389247211-gh-issue-view-comments-can-return-empty-use-json-o.md]] — gh issue view --comments can return empty; use --json or gh api for comments
-- [[wiki/learnings/1782390307922-verify-triage-memo-file-line-claims-about-adjacent.md]] — Verify triage-memo file:line claims about adjacent code before quoting in a PR
-- [[wiki/learnings/1782390736339-auto-route-background-fork-can-fully-run-the-fix-w.md]] — auto-route background fork can fully run the fix workflow in your own worktree — adopt via GitHub PR dedup
-- [[wiki/learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md]] — Auto-route can spawn a parallel triage/fix fork → duplicate issue comments; cross-identity comment delete 403s
-- [[wiki/learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md]] — CI-integrity bug class: a detected failure is logged but never folded into the recorded test result (stale init=Success leaks through)
-- [[wiki/learnings/1782392258907-investigating-merge-queue-evictions-in-shader-slan.md]] — Investigating merge-queue evictions in shader-slang (merge_group runs)
-- [[wiki/learnings/1782397269166-slang-test-rpc-failure-reporting-11753-fails-after.md]] — slang-test RPC-failure reporting (#11753): "fails after the fix" ⇒ test-server crash
-- [[wiki/learnings/1782398466162-slang-test-false-green-a-unit-test-that-crashes-th.md]] — slang-test false-green: a unit test that crashes the test-server is reported PASSED (#11751)
-- [[wiki/learnings/1782405218135-slang-bundled-dep-override-path-convention-skip-de.md]] — Slang bundled-dep override-path convention + skip DeepWiki for pure-CMake triage
-- [[wiki/learnings/1782406116154-slang-slang-override-path-options-are-cmake-only-n.md]] — slang SLANG_OVERRIDE_*_PATH options are CMake-only (no docs/matrix), unlike SLANG_ENABLE_*
-- [[wiki/learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md]] — On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add
-- [[wiki/learnings/1782407732117-slang-ci-json-rpc-failure-on-a-unit-test-test-serv.md]] — slang CI: JSON RPC failure on a unit test = test-server child crash (symptom), not an RPC-infra bug
-- [[wiki/learnings/1782408832985-triage-deepwiki-concurrency-premises-can-lag-head-.md]] — Triage/DeepWiki concurrency premises can lag HEAD — verify mutex sites in source before accepting "X is unsynchronized"
-- [[wiki/learnings/1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-.md]] — nv-slang-bot GitHub login is "nv-slang-bot" (User, no [bot] suffix) — fix the edit-if-self comment matcher
-- [[wiki/learnings/1782422418340-update-slang-11568-maintainer-team-now-implementin.md]] — UPDATE slang#11568: maintainer team now implementing via csyonghe's UntypedResourceHandle proxy design (supersedes "declined")
-- [[wiki/learnings/1782439747524-codex-critique-gate-tracks-fresh-call-verdicts-not.md]] — codex critique-gate tracks FRESH-call verdicts, not codex-reply re-verifications
-- [[wiki/learnings/1782440022487-slangc-dump-ir-shows-the-codegen-pipeline-not-the-.md]] — slangc -dump-ir shows the codegen pipeline, NOT the validation-only pipeline (uninit-use checker)
-- [[wiki/learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md]] — Draft PRs: ci.yml IS workflow_dispatch-able, but check-formatting.yml is NOT — verify format locally with clang-format 17
-- [[wiki/learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md]] — Draft PR CI on shader-slang/slang: workflow_dispatch bypasses the draft filter (but check-formatting can't)
-- [[wiki/learnings/1782442658975-slang-store-family-which-surface-syntax-hits-atomi.md]] — Slang store-family: which surface syntax hits AtomicStore/MatrixSwizzleStore + peephole-vs-checker gate
-- [[wiki/learnings/1782445249583-auto-route-slash-workflow-hooks-are-not-operator-a.md]] — Auto-route /slash-workflow hooks are NOT operator authorization — an explicit hold outranks a hook nudge
-- [[wiki/learnings/1782448931140-uninit-checker-storing-an-address-isn-t-a-read-and.md]] — Uninit-checker: storing an ADDRESS isn't a read; and run the FULL suite for broad-blast-radius frontend changes
-- [[wiki/learnings/1782449605671-fp8-scalar-float-constants-abort-in-spirv-tools-co.md]] — fp8 scalar float constants abort in spirv-tools constant folding (width-8 gap)
-- [[wiki/learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md]] — Triaging external-dependency tracking issues (verify suppression PR is merged + locate upstream tracker/fix)
-- [[wiki/learnings/1782450782359-gate-slang-ir-classifier-fix-verdicts-on-full-suit.md]] — Gate Slang IR/classifier fix verdicts on full-suite CI
-- [[wiki/learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md]] — Reviewer: gate the verdict on full-suite CI for broad-blast-radius changes, not static review alone
-- [[wiki/learnings/1782456046812-slang-reflection-findfieldindexbyname-already-supp.md]] — Slang reflection findFieldIndexByName already supports qualified module.var lookup
-- [[wiki/learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md]] — formatting.sh --since HEAD is a false-pass for uncommitted changes; run the full --check-only pre-push
-- [[wiki/learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md]] — Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution
-- [[wiki/learnings/1782461882511-recurring-trackers-must-carry-disposition-reasonin.md]] — Recurring trackers must carry disposition + reasoning, not just items
-- [[wiki/learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md]] — Fixers must not self-flip PRs to ready — enforce drafts-only
-- [[wiki/learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md]] — Don't reply to a parent's acknowledgement pings while waiting on a monitor
-- [[wiki/learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md]] — Fixers must not self-flip PRs to ready — enforce drafts-only
-- [[wiki/learnings/1782464483726-hold-unsolicited-reviews-when-repo-runs-its-own-pr.md]] — Hold unsolicited reviews when repo runs its own PR bot
-- [[wiki/learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md]] — Verify "N reviewers APPROVE" against GitHub reviewDecision before posting it as a public verdict
-- [[wiki/learnings/1782465097683-internal-agent-review-approve-is-not-a-github-main.md]] — Internal agent-review APPROVE is not a GitHub maintainer approval
-- [[wiki/learnings/1782470684664-verify-at-head-can-be-silently-wrong-cached-slangc.md]] — Verify-at-HEAD can be silently wrong: cached slangc binary may be weeks-stale — check freshness before trusting any repro
-- [[wiki/learnings/1782474542819-slang-11780-simplifyir-half-of-9808-perf-regressio.md]] — slang #11780: simplifyIR half of #9808 perf regression — referenced diff entries escape #11779's link gating
-- [[wiki/learnings/1782476439849-slang-github-rest-label-add-can-403-admin-rights-w.md]] — slang GitHub: REST label-add can 403 "admin rights" while GraphQL addLabelsToLabelable succeeds
-- [[wiki/learnings/1782478960515-slang-11779-precompilation-is-gated-by-isfinalcode.md]] — slang #11779 — precompilation IS gated by isFinalCodegenLink (PR comment is wrong)
-- [[wiki/learnings/1782480236370-in-maintainer-design-discussions-the-bot-should-be.md]] — In maintainer design discussions, the bot should be reticent — and stand down instantly (and silently) when asked
-- [[wiki/learnings/1782485307814-conditional-lt-t-b-gt-ice-non-literal-flag-survive.md]] — Conditional&lt;T,b&gt; ICE: non-literal flag survives lowerConditionalType to spirv-emit
-- [[wiki/learnings/1782488412008-slang-11782-conditional-autodiff-crash-is-flag-ind.md]] — slang#11782 Conditional autodiff crash is flag-independent (NOT a generic-value-param leak)
-- [[wiki/learnings/1782490233144-slang-autodiff-wires-optional-intrinsics-but-omits.md]] — Slang autodiff wires Optional intrinsics but omits the parallel Conditional family (E99999)
-- [[wiki/learnings/1782491016302-external-dxc-is-2-vendored-compile-time-dxc-api-he.md]] — external/dxc is 2 vendored compile-time DXC API headers, not a submodule
-- [[wiki/learnings/1782491129029-adding-an-ir-instruction-requires-bumping-k-maxsup.md]] — Adding an IR instruction requires bumping k_maxSupportedModuleVersion (slang-ir.h)
-- [[wiki/learnings/1782499611532-slang-test-wgpu-compare-compute-vuid-errors-come-f.md]] — slang-test wgpu COMPARE_COMPUTE VUID errors come from Dawn's internal tint, not Slang's SPIR-V emitter
-- [[wiki/learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md]] — Run CI-pinned clang-format locally when the build is disk-blocked
-- [[wiki/learnings/1782512199002-slang-11599-feature-delivered-as-a-cherry-pickable.md]] — slang #11599 — feature delivered as a cherry-pickable reference PR maintainer won't merge to ToT (CHANGES_REQUESTED = no-merge signal)
-- [[wiki/learnings/1782512263705-changes-requested-with-a-looks-good-body-and-zero-.md]] — CHANGES_REQUESTED with a "looks good" body and zero inline comments is a no-merge signal, not an edit request
-- [[wiki/learnings/1782515089370-runtime-slang-test-for-a-new-vulkan-extension-is-g.md]] — Runtime slang-test for a new Vulkan extension is gated on slang-rhi harness support (abort/VK_KHR_shader_abort #11790)
-- [[wiki/learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md]] — postmortem: slang#11759 superseded by PR #11761 (stress-reduce, not concurrency-guard)
-- [[wiki/learnings/1782520511938-adding-a-slangc-cli-option-trips-check-cmdline-ref.md]] — Adding a slangc CLI option trips check-cmdline-ref CI; the bot can't self-fix it via /regenerate-cmdline-ref
-- [[wiki/learnings/1782521104183-slang-triage-vcpkg-can-silently-pin-a-stale-2024-b.md]] — Slang triage: vcpkg can silently pin a stale (2024) build — ask `slangc -version` early when a symptom won't reproduce on any current version
-- [[wiki/learnings/1782524288491-git-stash-is-repo-global-across-worktrees-never-gi.md]] — git stash is repo-global across worktrees — never `git stash clear`
-- [[wiki/learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md]] — Merge-group build break with green head = merge-time collision, legitimate not flake
-- [[wiki/learnings/1782535032557-merge-queue-duplicate-case-enum-collision-two-conc.md]] — Merge-queue duplicate-case enum collision: two concurrent PRs appending to the same public enum
-- [[wiki/learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md]] — Parallel fix/issue-* chains can grab the same OptionKind/enum value off a shared base → duplicate-case build break; self-heals via append-renumber
-- [[wiki/learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md]] — Bot-PR: lone red workflow_dispatch run with build/test skipped is a no-op, read the rollup
-- [[wiki/learnings/1782564838123-render-test-render-features-is-a-two-stage-gate-un.md]] — render-test -render-features is a TWO-stage gate: unknown name = loud SLANG_FAIL, unsupported device = silent IGNORE
-- [[wiki/learnings/1782579642375-slang-11568-maintainer-base-pr-on-11723-is-a-layer.md]] — slang #11568: maintainer "base PR on #11723" is a layer-mismatch — front-end feature, csyonghe design is the real path
-- [[wiki/learnings/1782585186668-new-slang-ir-opcode-stable-name-registration-type-.md]] — New Slang IR opcode: stable-name registration + type-vs-key enum naming
-- [[wiki/learnings/1782586901771-reviewer-a-c-parallel-isolation-use-workspace-agen.md]] — Reviewer A + C parallel isolation: use /workspace/agent/slang-clarity as C's REPO_ROOT
-- [[wiki/learnings/1782594329649-slang-pr-review-scope-a-re-run-to-focused-verifica.md]] — slang-pr-review: scope a re-run to focused verification when the re-push is test-only
-- [[wiki/learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md]] — Flaky-CI evidence: dedup by run id; JSON-RPC and Falcor symptoms each conflate multiple root causes
-- [[wiki/learnings/1782605298157-distinguish-missing-runner-queue-timeout-from-a-re.md]] — Distinguish missing-runner queue-timeout from a real test hang (gh api job runner/steps)
-- [[wiki/learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md]] — report_pr_created remaps the PR to the CALLING session
-- [[wiki/learnings/1782632216704-glsl-target-emits-invalid-c-style-brace-array-init.md]] — GLSL target emits invalid C-style brace array initializers; WGSL already has the constructor-syntax override GLSL lacks
-- [[wiki/learnings/1782648000000-CONSOLIDATED-stand-down-when-maintainer-or-contributor-drives-fix.md]] — CONSOLIDATED — stand down when a maintainer/contributor is already driving the fix
-- [[wiki/learnings/1782653846227-slang-test-default-compiler-flag-needs-two-forms-b.md]] — slang-test default compiler flag needs TWO forms: bare for slangc paths, -Xslang for render-test paths
-- [[wiki/learnings/1782692523381-worktree-gc-reap-is-operator-gated-sibling-isolati.md]] — Worktree GC reap is operator-gated (sibling-isolation [MUST NOT])
-- [[wiki/learnings/1782700143228-triage-maintainer-opens-own-fix-pr-same-time-as-is.md]] — Triage: maintainer opens own fix PR ~same time as issue → verify + post + PARK, don't dispatch fixer
-- [[wiki/learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md]] — Worktree-GC reap: safe-execution facts (branch refs survive; workflows-perm blocks wip/reap; pipefail bug)
-- [[wiki/learnings/1782711499913-copilot-may-resolve-conflicts-on-bot-authored-prs-.md]] — @copilot may resolve conflicts on bot-authored PRs — check remote tip before pushing your own
-- [[wiki/learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md]] — warn→error on an invalid *misuse* can still be labeled pr: non-breaking (maintainer call, slang #6216)
-- [[wiki/learnings/1782719314130-an-infra-unblock-nudge-is-not-an-override-of-a-dec.md]] — An infra-unblock nudge is not an override of a decision-based hold — verify the actual trigger
-- [[wiki/learnings/1782719999000-slang-fixer-a-contributor-pr-combined-review-is-ad.md]] — slang-fixer: a contributor-PR combined review is advisory, not a fix task — and don't echo the reviewer
-- [[wiki/learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md]] — Reviewer combined-review fan-out can trigger a taskless-fixer echo loop via always-engage a2a wiring
-- [[wiki/learnings/1782721748193-slang-floors-glsl-version-at-450-invalid-in-old-gl.md]] — Slang floors GLSL #version at 450 — "invalid in old GLSL" emit bugs are usually valid-as-emitted (lower severity)
-- [[wiki/learnings/1782722840826-slang-scalar-block-layout-is-forced-by-the-arrayst.md]] — Slang scalar-block-layout is forced by the ArrayStride decoration, not by load codegen
-- [[wiki/learnings/1782727631172-bot-enqueue-of-workflow-touching-prs-has-a-second-.md]] — Bot enqueue of workflow-touching PRs has a second blocker (workflows permission)
-- [[wiki/learnings/1782731516993-slang-string-is-cow-deep-copy-via-string-x-getunow.md]] — Slang::String is COW — deep-copy via String(x.getUnownedSlice()) to share across threads
-- [[wiki/learnings/1782733705823-slang-11730-builtin-vector-is-a-declreftype-lt-str.md]] — slang #11730 — builtin vector is a DeclRefType&lt;StructDecl&gt;; init-list arg-coercion bug = if(outExpr) guard on createInvokeExprForExplicitCtor
-- [[wiki/learnings/1782733787106-slang-local-spirv-asm-verify-put-build-debug-lib-f.md]] — slang local spirv-asm verify: put build/Debug/lib FIRST in LD_LIBRARY_PATH or you test a stale compiler
-- [[wiki/learnings/1782734222994-templated-operator-wake-explicit-scoped-override-o.md]] — Templated operator-wake ≠ explicit scoped override of a considered hold
-- [[wiki/learnings/1782735484974-slang-pr-11815-review-a-c-converge-on-dead-flavor-.md]] — Slang PR #11815 review — A∩C converge on dead Flavor::Simple arm; Devin "30m timeout" quirk
-- [[wiki/learnings/1782736932170-slang-init-list-as-argument-bugs-check-cancoerce-v.md]] — Slang init-list-as-argument bugs: check canCoerce viability-probe (outExpr==null) divergence
-- [[wiki/learnings/1782737319266-correction-glsl-brace-array-init-is-valid-in-4-20-.md]] — CORRECTION: GLSL brace array-init is valid in 4.20+; the bug is portability, not universal invalidity
-- [[wiki/learnings/1782737882496-a-recurring-merge-conflict-on-an-approved-pr-can-m.md]] — A recurring merge conflict on an approved PR can mean a competing fix merged — check before resolving
-- [[wiki/learnings/1782738058115-slang-pr-review-merge-step-find-reviewer-c-run-dir.md]] — slang-pr-review merge step: find Reviewer C run-dir from stdout, and drift-grep tool NAME not content
-- [[wiki/learnings/1782738059209-recurring-pr-conflict-may-mean-the-issue-was-close.md]] — Recurring PR conflict may mean the issue was closed by a competing merged PR
-- [[wiki/learnings/1782739042356-slang-init-list-arg-coercion-11730-fixed-the-succe.md]] — slang init-list arg coercion: #11730 fixed the success return's probe-safety but the ERROR return still leaks a real-sink diagnostic during canCoerce
-- [[wiki/learnings/1782739391257-glsl-makearrayfromelement-is-reachable-in-text-emi.md]] — GLSL MakeArrayFromElement IS reachable in text emit (default-init global const array)
-- [[wiki/learnings/1782739994323-slang-reviewer-c-clarity-run-recover-truncated-out.md]] — slang Reviewer C clarity run: recover truncated output from on-disk candidate file
-- [[wiki/learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md]] — Diagnostic/enum codes picked against a stale base collide on master-merge and break ALL platform builds
-- [[wiki/learnings/1782745012175-slang-9660-a-just-assert-it-clarity-suggestion-can.md]] — slang #9660: a "just assert it" clarity suggestion can introduce an abort regression (InterfaceDecl is an AggTypeDecl)
-- [[wiki/learnings/1782751325517-e31106-e31107-also-fire-on-the-synthesized-entry-p.md]] — E31106/E31107 also fire on the SYNTHESIZED entry-point uniform param group (not just imported modules)
-- [[wiki/learnings/1782754805883-slang-include-slang-deprecated-h-holds-the-active-.md]] — slang include/slang-deprecated.h holds the ACTIVE reflection C-API (not just deprecated stuff)
-- [[wiki/learnings/1782755822091-hold-the-fixer-until-parent-confirms-before-high-s.md]] — Hold the fixer until parent confirms before high-stakes maintainer-facing posts (don't fire in parallel under delegated latitude)
-- [[wiki/learnings/1782759769387-slang-public-header-include-cycle-include-slang-h-.md]] — Slang public-header include cycle: include slang.h OUTSIDE your own guard
-- [[wiki/learnings/1782761345395-slang-pr-review-devin-can-report-0-bugs-while-anal.md]] — slang-pr-review: Devin can report 0 bugs while analysis still "Generating…" — treat as weak signal
-- [[wiki/learnings/1782762110953-slang-slang-use-system-options-all-find-package-no.md]] — Slang SLANG_USE_SYSTEM_* options: all find_package, no _ROOT_DIR; three separate dep-locating conventions
-- [[wiki/learnings/1782765717544-force-with-lease-stale-info-refresh-the-remote-tra.md]] — force-with-lease "stale info" — refresh the remote-tracking ref first
+- [SPIR-V issues require spirv-val, not just slangc exit code](wiki/learnings/dashboard_slang-triage-1776263007885.md)
+- [Devin reviewer scrape reliability](wiki/learnings/devin-reviewer-scrape-reliability.md)
+- [Judge coworker output by real engineering quality, not proxy metrics](wiki/learnings/legoop-feedback_ab_evaluation_criteria.md)
+- [Strict reply-routing in 4-tier issue chain — replies hop back along the dispatch path, never bypass to the orchestrator](wiki/learnings/legoop-feedback_chain_shape_strict.md)
+- [Create symlinks (AGENTS.md→CLAUDE.md, .agents→.claude) in group folders for Codex agents so the Codex CLI natively discovers our skills. Prefer letting the harness pick them up over overriding developer instructions.](wiki/learnings/legoop-feedback_codex_symlinks_for_skills.md)
+- [Read-only/eval coworkers must be blocked from external posting at BOTH layers](wiki/learnings/legoop-feedback_no_external_post_ab_tests.md)
+- [Restarting nanoclaw service kills all running containers and their in-progress work; restart only the specific MCP subprocess instead](wiki/learnings/legoop-feedback_no_service_restart_for_mcp.md)
+- [nv-* pre-commit hook runs format:fix then re-adds only src/**/*.ts — silently drops other staged files from the commit](wiki/learnings/legoop-feedback_precommit_hook_drops_files.md)
+- [Restarting nanoclaw main service triggers initGroupFilesystem → skill refresh → CLAUDE.md recompose → claude-md-stale kills all running containers. Avoid restarts during active sessions.](wiki/learnings/legoop-feedback_service_restart_kills_containers.md)
+- [Workflows enforce tool usage that prose instructions don't](wiki/learnings/legoop-project_ab_test_discord_workflow.md)
+- [Legoop project buddy not using codex](wiki/learnings/legoop-project_buddy_not_using_codex.md)
+- [Gate refusals now go to sender not peer (PR](wiki/learnings/legoop-project_gate_refusal_sender_only.md)
+- [GitHub GraphQL / ProjectsV2 access needs a per-project grant (often unavailable to the bot)](wiki/learnings/legoop-project_graphql_path_routing.md)
+- [update-slang-coworkers-prod skill omits nv-nanoclaw merge; base-nanoclaw is a base-common dependency so validate fails without it](wiki/learnings/legoop-project_prod_update_skill_missing_nanoclaw.md)
+- [rtk token-compression proxy evaluated 2026-06-03 and rejected for all groups; not enabled anywhere](wiki/learnings/legoop-project_rtk_evaluated_rejected.md)
+- [May 14 session — landed PRs](wiki/learnings/legoop-project_session_may14.md)
+- [slang-mcp's Discord Gateway connection is LAZY — init_discord_client() only fires when a Discord tool is invoked. After slang-mcp respawn, no live MESSAGE_CREATE events flow until first tool call.](wiki/learnings/legoop-project_slang_mcp_gateway_lazy.md)
+- [How to render any agent group's Claude Code session transcripts as browsable HTML on port 8080](wiki/learnings/legoop-reference_show_transcript_skill.md)
+- [Slang compiler: tfoley real name](wiki/learnings/1777487718343-slang-compiler-tess-foley-name.md)
+- [claude-vs-codex-provider-parity](wiki/learnings/1778085879531-claude-vs-codex-provider-parity.md)
+- [Reading arXiv/HF papers end-to-end with the Read tool](wiki/learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md)
+- [Slang formatting.sh requires clang-format 17.x exactly](wiki/learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md)
+- [slang-fixer: tools/gfx/ is legacy code paralleling slang-rhi — fixes need to land in both, but in-tree tests only exercise slang-rhi](wiki/learnings/1778749638138-slang-fixer-tools-gfx-is-legacy-code-paralleling-s.md)
+- [Dashboard channels render markdown — always include hyperlinks for issue/PR/discussion refs](wiki/learnings/1778835191236-dashboard-channels-render-markdown-always-include-.md)
+- [gh CLI --field expands @ as file path](wiki/learnings/1778859843367-gh-cli-field-expands-as-file-path.md)
+- [Verifying GitHub webhook payloads before acting](wiki/learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md)
+- [ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked](wiki/learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md)
+- [slang-raypayload-implicit-decoration-paq-gap](wiki/learnings/1779295178725-slang-raypayload-implicit-decoration-paq-gap.md)
+- [slang-raypayload-paq-pass-asymmetric-skip-gap](wiki/learnings/1779297394847-slang-raypayload-paq-pass-asymmetric-skip-gap.md)
+- [Devin Review done-detector races AI-analysis text render](wiki/learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md)
+- [PDF transcript extraction: pymupdf blocks beats llama-index](wiki/learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md)
+- [Always use markdown links for issues and reviews](wiki/learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md)
+- [slang-10267-pr-11224-coverage-gap-anyhit-only](wiki/learnings/1779364869375-slang-10267-pr-11224-coverage-gap-anyhit-only.md)
+- [slangc Debug-build LD_LIBRARY_PATH order matters when prebuilt lib is colocated](wiki/learnings/1779369251370-slangc-debug-build-ld-library-path-order-matters-w.md)
+- [slang propagateConstExpr's paramCount==callArgCount asserts BEFORE the autodiff pass — fix is front-end](wiki/learnings/1779369269598-slang-propagateconstexpr-s-paramcount-callargcount.md)
+- [Furo theme dark-mode code colors — use pygments_dark_style, not CSS overrides](wiki/learnings/1779427288040-furo-theme-dark-mode-code-colors-use-pygments-dark.md)
+- [DXC v1.10.2605.2 prebuilts require GLIBC 2.38 (blocks Ubuntu 22.04 CI)](wiki/learnings/1779429443648-dxc-v1-10-2605-2-prebuilts-require-glibc-2-38-bloc.md)
+- [slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt](wiki/learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md)
+- [slang autodiff transpose: bare-diff gradient with DiffPair aggPrimalType causes crash](wiki/learnings/1779432739908-slang-autodiff-transpose-bare-diff-gradient-with-d.md)
+- [slang autodiff transpose: narrowing the gradient at construction is not enough — the aggregation type drives dadd dispatch, and even all four narrowings may be insufficient](wiki/learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md)
+- [Empirical "I tested it" probes can miss the wrong sub-case — Devin's persistent flags deserve scrutiny even when initial reading says misread](wiki/learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
+- [Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round](wiki/learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
+- [slangpy CI flake triage: re-symbolize the existing .dmp before designing fixes](wiki/learnings/1779545587070-slangpy-ci-flake-triage-re-symbolize-the-existing-.md)
+- [slang-emit-spirv builtin-var cache and the volatile-set cache-hit trap](wiki/learnings/1779612967874-slang-emit-spirv-builtin-var-cache-and-the-volatil.md)
+- [slang-spirv-asm-operand-builtinvar-is-hoistable-collapses-cross-stage](wiki/learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-co.md)
+- [slang-emit-spirv-extra-memoryaccess-word-grammar-bug-pattern](wiki/learnings/1779617068760-slang-emit-spirv-extra-memoryaccess-word-grammar-b.md)
+- [slang-via-glsl-test-premise-verify-with-downstream-tool](wiki/learnings/1779619281300-slang-via-glsl-test-premise-verify-with-downstream.md)
+- [deepwiki-can-miss-files-in-large-or-vendored-codebases-cross-check-source](wiki/learnings/1779621016571-deepwiki-can-miss-files-in-large-or-vendored-codeb.md)
+- [Slang SPIR-V entry-point rename: auto-applies only with >1 entry point](wiki/learnings/1779621920622-slang-spir-v-entry-point-rename-auto-applies-only-.md)
+- [slang maintainer handoff — verify on-PR state against internal verdicts](wiki/learnings/1779622726384-slang-maintainer-handoff-verify-on-pr-state-agains.md)
+- [slang-lexer.cpp has a duplicate hex-digit decoder with an off-by-ten bug](wiki/learnings/1779805764133-slang-lexer-cpp-has-a-duplicate-hex-digit-decoder-.md)
+- [Resume-after-pause: re-verify remote state before applying the saved resume plan](wiki/learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md)
+- [slang triage [Fix Report] may route via parent, not direct to triager](wiki/learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md)
+- [slangpy Python id() ≠ C++ IModule* identity](wiki/learnings/1779891890025-slangpy-python-id-c-imodule-identity.md)
+- [Read auto-memory feedback files before authoring commits — don't trust your own knowledge of email/identity formats](wiki/learnings/1779895141195-read-auto-memory-feedback-files-before-authoring-c.md)
+- [Slang `-capability` does not silence "use of undeclared capability" — it's a per-function contract](wiki/learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md)
+- [Test-Agent-Filed Issues Need Trigger Verification](wiki/learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md)
+- [spvDescriptorHeapEXT stride is opaque for AS — load-type must drive runtime-array base type](wiki/learnings/1779962007180-spvdescriptorheapext-stride-is-opaque-for-as-load-.md)
+- [Always post the PR review when explicitly requested via webhook (overrides /slang-pr-review read-only default)](wiki/learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md)
+- [Slang diagnostic catalog name conventions — emit sites are PascalCase, not camelCase](wiki/learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md)
+- [Marked-block sha256 pattern for cross-file drift detection](wiki/learnings/1779985772055-marked-block-sha256-pattern-for-cross-file-drift-d.md)
+- [slang autodiff: PR #10827 left BwdDiffFuncType/RematFuncType/BwdCallableFuncType/FwdDiffFuncType inconsistent with ApplyForBwdFuncType + IR-pass + front-end](wiki/learnings/1780050112745-slang-autodiff-pr-10827-left-bwddifffunctype-remat.md)
+- [ncl group container fixes — Bookworm package gaps + approval sequencing](wiki/learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md)
+- [Verify Discovery and Resolution Separately in Parser-Ambiguity Triage](wiki/learnings/1780064743810-verify-discovery-and-resolution-separately-in-pars.md)
+- [slang-autodiff-11356-fix-axis-is-NoDiffThis-not-static-ctor](wiki/learnings/1780072266959-slang-autodiff-11356-fix-axis-is-nodiffthis-not-st.md)
+- [Verify maintainer attributions in triage handoffs against gh PR data](wiki/learnings/1780073122582-verify-maintainer-attributions-in-triage-handoffs-.md)
+- [slang-coerce-bypass-on-bound-receiver-injection-empirical](wiki/learnings/1780073270938-slang-coerce-bypass-on-bound-receiver-injection-em.md)
+- [Slang CI: cooperative-vector hlsl-codegen tests fail on Windows-release-GPU pre-#11358](wiki/learnings/1780157118768-slang-ci-cooperative-vector-tests-fail-on-windows-.md)
+- [Slang per-target stride for `StructuredBuffer<float3, ScalarDataLayout>` — WGSL is the outlier](wiki/learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md)
+- [Pin Slang source citations to comment text or function name, not line numbers](wiki/learnings/1780177496970-pin-slang-source-citations-to-comment-text-or-func.md)
+- [Don't cite env-var or flag names without verifying — they're a high-frequency hallucination surface](wiki/learnings/1780177920997-don-t-cite-env-var-or-flag-names-without-verifying.md)
+- [Slang CI: Windows test-slang disk-space cluster flake](wiki/learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)
+- [Slang CI: `gh run rerun --failed` cannot fix "Artifact not found" on artifact-consuming jobs](wiki/learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md)
+- [Slang SPIR-V output-topology: hull/domain arm only handles a subset of OutputTopologyType — Line falls through to mesh OutputLinesEXT](wiki/learnings/1780253722562-slang-spir-v-output-topology-hull-domain-arm-only-.md)
+- [slang autodiff — return shape rule for new diff operators (fwd/bwd asymmetry)](wiki/learnings/1780285608597-slang-autodiff-return-shape-rule-for-new-diff-oper.md)
+- [slang sibling-opcode threading — grep-not-list rule for fan-out inventory](wiki/learnings/1780292674603-slang-sibling-opcode-threading-grep-not-list-rule-.md)
+- [slang autodiff: derivative variants are tracked via tryGetAssociationOfKind, not raw IR decoration ops](wiki/learnings/1780295760692-slang-autodiff-derivative-variants-are-tracked-via.md)
+- [slangi VM emitter: missing IRConstant cases produce silent malformed operands](wiki/learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md)
+- [slang autodiff: missing-no_diff diagnostic tests use //TEST:SIMPLE(filecheck=CHECK), not //DIAGNOSTIC_TEST](wiki/learnings/1780300985125-slang-autodiff-missing-no-diff-diagnostic-tests-us.md)
+- [Always rebase before codex CODE_REVIEW to get a tight scope diff](wiki/learnings/1780304385745-always-rebase-before-codex-code-review-to-get-a-ti.md)
+- [slang-rhi off-repo triage: anonymous clone works, GH_TOKEN invalid, no GPU](wiki/learnings/1780307950462-slang-rhi-off-repo-triage-anonymous-clone-works-gh.md)
+- [slang-rhi builds headless (no Vulkan SDK/GPU) via CMake FetchContent; fresh clones have no git identity](wiki/learnings/1780310225210-slang-rhi-builds-headless-no-vulkan-sdk-gpu-via-cm.md)
+- [slang-pr-review-runner patch mode: reviewer can't find the patch + commit -am drops new files](wiki/learnings/1780311762982-slang-pr-review-runner-patch-mode-reviewer-can-t-f.md)
+- [Slang autodiff: derivative-variant purity check must accept [PreferRecompute], not just [__readNone]](wiki/learnings/1780312221839-slang-autodiff-derivative-variant-purity-check-mus.md)
+- [slang-test: synthesized subtest skip needs pre-run exclusion, not expected-failure](wiki/learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md)
+- [PR/status watcher tasks: use a pre-agent script guard with a state file, not a per-fire agent poll](wiki/learnings/1780315991721-pr-status-watcher-tasks-use-a-pre-agent-script-gua.md)
+- [slang-test: matching an expanded subtest name needs exact testName equality, not getSubtestIndex](wiki/learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md)
+- [slang-test harness changes: .slang test rule N/A, but slang-unit-test is the right vehicle](wiki/learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md)
+- [slang-llvm prebuilt ABI skew breaks master ToT builds (createLLVMBuilder_V2 vs _V3)](wiki/learnings/1780320688142-slang-llvm-prebuilt-abi-skew-breaks-master-tot-bui.md)
+- [Slang VM bytecode: missing constant-emit case can silently mask wrong test assertions](wiki/learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md)
+- [PR-review lenses: extracted-matcher integration gap + normalize-before-match blind spot](wiki/learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md)
+- [slang-test: -exclude-prefix / -skip-list / -test-prefix are all Path::simplify'd identically](wiki/learnings/1780324292016-slang-test-exclude-prefix-skip-list-test-prefix-ar.md)
+- [Before flagging normalize-before-match as a NEW risk, check shipped-sibling parity](wiki/learnings/1780324464202-before-flagging-normalize-before-match-as-a-new-ri.md)
+- [Testing slang-llvm version-skew diagnostics + Slang worktree/build env gotchas](wiki/learnings/1780324487740-testing-slang-llvm-version-skew-diagnostics-slang-.md)
+- [Slang loads downstream libs by logical name — test shims match the bare name cross-platform](wiki/learnings/1780324906216-slang-loads-downstream-libs-by-logical-name-test-s.md)
+- [slang-llvm prebuilt V2/V3 ABI skew breaks master ToT build with cryptic "cannot find shader.o"](wiki/learnings/1780324967550-slang-llvm-prebuilt-v2-v3-abi-skew-breaks-master-t.md)
+- [codex-critique gate: open the PR before claiming it in OUTPUT_REVIEW deliverable](wiki/learnings/1780325263478-codex-critique-gate-open-the-pr-before-claiming-it.md)
+- [Slang DISABLE CI jobs are build-only — no slang-test run step](wiki/learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
+- [gh search prs misses recent/open PRs — don't use it for PR-existence checks](wiki/learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md)
+- [Slang IR-pass diagnostics lose source locations because struct keys inherit IRBuilder's incidental loc](wiki/learnings/1780328920397-slang-ir-pass-diagnostics-lose-source-locations-be.md)
+- [CONSOLIDATED: slang-rhi Vulkan build needs libx11-dev (X11/Xlib.h)](wiki/learnings/1780330247261-CONSOLIDATED-slang-rhi-vulkan-build-needs-libx11-dev.md)
+- [slangi VM emitter constant section: write sizeAlignment.size bytes, not natural type size](wiki/learnings/1780330259667-slangi-vm-emitter-constant-section-write-sizealign.md)
+- [slangi printf %s with string literal crashes (run vs -disasm are distinct paths)](wiki/learnings/1780332260528-slangi-printf-s-with-string-literal-crashes-run-vs.md)
+- [slang bwd_diff out-param convention — bare in-differential seed, no primal writeback](wiki/learnings/1780332708129-slang-bwd-diff-out-param-convention-bare-in-differ.md)
+- [Slang CMake: api.github.com used only for slang-llvm version resolution; direct asset downloads aren't rate-limited](wiki/learnings/1780338418439-slang-cmake-api-github-com-used-only-for-slang-llv.md)
+- [Don't self-schedule a PR-watcher poller after report_pr_created](wiki/learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-repo.md)
+- [Slang `?:` short-circuit semantics + #11403 disposition (scalar short-circuits by design; vector does not)](wiki/learnings/1780345715837-slang-scalar-short-circuits-by-design-vector-does-.md)
+- [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](wiki/learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
+- [slang #11407 stale 30055 catalog test is a syntax error, not just scalar; fix surface is the gen prompt not slang-diagnostics.lua](wiki/learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md)
+- [Scheduled diagnostic tasks re-diagnose persistent state inconsistently across fresh sessions](wiki/learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md)
+- [Verify Slang diagnostics with slangc-only build (slang-test won't link: X11 missing)](wiki/learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md)
+- [Slang diagnostics-catalog generated tests have 3 divergent provenance stores; hand-fix must bump .slang META](wiki/learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md)
+- [Verifying Slang docs/generated-test (DIAGNOSTIC_TEST) fixes without a compiler build](wiki/learnings/1780352916926-verifying-slang-docs-generated-test-diagnostic-tes.md)
+- [slang diagnostics-catalog doc_section_digest gap + verify peer repo-state claims before public filing](wiki/learnings/1780353662163-slang-diagnostics-catalog-doc-section-digest-gap-v.md)
+- [Slang any-value-inference recursion: #10686 pointer guard is partial; IRSpecialize-operand path bypasses it](wiki/learnings/1780353989621-slang-any-value-inference-recursion-10686-pointer-.md)
+- [slang 11410 doc_section_digest backfill is not trivial — semantics underspecified, no deterministic Python computation](wiki/learnings/1780354236062-slang-11410-doc-section-digest-backfill-is-not-tri.md)
+- [slang #11410: bundle-level watched_paths_digest already covers catalog source — per-entry doc_section_digest is only localization](wiki/learnings/1780354591272-slang-11410-bundle-level-watched-paths-digest-alre.md)
+- [slang #11410: catalog drift lives in _classify/cmd_list_stale (not cmd_verify) + per-entry CHECK-pin already exists](wiki/learnings/1780355704625-slang-11410-catalog-drift-lives-in-classify-cmd-li.md)
+- [slang-maintainer container cannot post to GitHub](wiki/learnings/1780356530581-slang-maintainer-container-cannot-post-to-github.md)
+- [slang fixer PR push: szihs fork master is stale/divergent (lacks docs/generated framework) → GitHub-App "workflows permission" rejection; jkwak fork auth fails](wiki/learnings/1780357449295-slang-fixer-pr-push-szihs-fork-master-is-stale-div.md)
+- [Slang diagnostics-catalog: regenerate.py is lint/tooling, not the generator](wiki/learnings/1780358048390-slang-diagnostics-catalog-regenerate-py-is-lint-to.md)
+- [slang-fixer worktree setup: base is slang-real, submodules + master branch + watcher gh fields](wiki/learnings/1780365266607-slang-fixer-worktree-setup-base-is-slang-real-subm.md)
+- [Disk-blocker false alarm: df the real build path, /workspace/agent is a separate roomy volume](wiki/learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md)
+- [Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace](wiki/learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md)
+- [slangi `-disasm` shares the run-path crash — NOT a separate site (corrects a prior #11399 learning)](wiki/learnings/1780385340573-slangi-disasm-crash-is-not-a-separate-site-it-exec.md)
+- [Webhook chains can be silently dropped by API 502 on the routing turn](wiki/learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md)
+- [slang autodiff — sibling diff operators must honor the same user derivative override (correctness, not perf)](wiki/learnings/1780401329313-slang-autodiff-sibling-diff-operators-must-honor-t.md)
+- [Slang: precompiled .slang-module import triggers location-less diagnostics; verify commit-vs-tag ancestry before attributing a regression](wiki/learnings/1780401515127-slang-precompiled-slang-module-import-triggers-loc.md)
+- [Discord per-message char limit is 2000](wiki/learnings/1780404951139-discord-per-message-char-limit-is-2000.md)
+- [slang clone env: build on root overlay when /workspace full; create PRs via gh REST api (gh pr create is blocked)](wiki/learnings/1780408305282-slang-clone-env-build-on-root-overlay-when-workspa.md)
+- [Slang diagnostics.lua: changing a span's loc kind silently drops its secondary message](wiki/learnings/1780411224942-slang-diagnostics-lua-changing-a-span-s-loc-kind-s.md)
+- [Slangi VM validator and executor must agree on operand-section size convention](wiki/learnings/1780413778599-slangi-vm-validator-and-executor-must-agree-on-ope.md)
+- [slang type-conformance override=0 always duplicates the (T,I) entry](wiki/learnings/1780414379429-slang-type-conformance-override-0-always-duplicate.md)
+- [Triage workflow read-only-GitHub yields to spine observability MUST + explicit parent authorization](wiki/learnings/1780414455913-triage-workflow-read-only-github-yields-to-spine-o.md)
+- [Slang: IRBuilder source-loc RAII may already stamp struct keys — explicit sourceLoc= can be redundant](wiki/learnings/1780416359939-slang-irbuilder-source-loc-raii-may-already-stamp-.md)
+- [Don't instruct coworkers to mark PRs ready-for-review (drafts-only is admin-set)](wiki/learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md)
+- [Locationless IR-pass diagnostics on imported-module structs: fix at emission, not key creation](wiki/learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-modul.md)
+- [Slang macOS DXIL is a CMake-only problem (C++ path already compiled-in)](wiki/learnings/1780426302028-slang-macos-dxil-is-a-cmake-only-problem-c-path-al.md)
+- [Slang CMake Options workflow already covers DXC source-build on macOS (not PR-triggered)](wiki/learnings/1780428519137-slang-cmake-options-workflow-already-covers-dxc-so.md)
+- [Check a PR's closing-issue link via gh closingIssuesReferences, not a body regex](wiki/learnings/1780462327680-check-a-pr-s-closing-issue-link-via-gh-closingissu.md)
+- [slang macOS DXC-default PR: coverage-nightly coverage-macos is an un-opted-out required gate](wiki/learnings/1780463258746-slang-macos-dxc-default-pr-coverage-nightly-covera.md)
+- [Slang #6158 static-export guard is now obsolete (BUILD_LOCAL_INTERFACE wrapping)](wiki/learnings/1780467490251-slang-6158-static-export-guard-is-now-obsolete-bui.md)
+- [Cheap minimal static Slang build for install verification (skip DXC via SLANG_ENABLE_DXIL=OFF)](wiki/learnings/1780470809014-cheap-minimal-static-slang-build-for-install-verif.md)
+- [Slang static install: find_package configure ≠ link (BUILD_LOCAL_INTERFACE strips private deps)](wiki/learnings/1780471907292-slang-static-install-find-package-configure-link-b.md)
+- [Slang local checkout can be days-stale on actively-developed CMake files; verify against master + options-matrix CI gate](wiki/learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md)
+- [Slang DXC/build-system triage: local clone lags master; verify FetchDXC against upstream via gh api](wiki/learnings/1780472891485-slang-dxc-build-system-triage-local-clone-lags-mas.md)
+- [Slang FindDXC should use plain cache-vars not IMPORTED target — DXC is dlopen+copy, never linked](wiki/learnings/1780473187576-slang-finddxc-should-use-plain-cache-vars-not-impo.md)
+- [a2a message transport HTML-escapes verbatim text — decode before posting to GitHub](wiki/learnings/1780473326506-a2a-message-transport-html-escapes-verbatim-text-d.md)
+- [Don't auto-implement issues owned by an invited external contributor](wiki/learnings/1780473504394-don-t-auto-implement-issues-owned-by-an-invited-ex.md)
+- [Auditing whether a Vulkan VUID bug propagates to the CUDA backend: trace where usage becomes an image flag](wiki/learnings/1780475494503-auditing-whether-a-vulkan-vuid-bug-propagates-to-t.md)
+- [Slang: primary-file `using namespace` leaks through `import` (and an existing test asserts the leak)](wiki/learnings/1780476462894-slang-primary-file-using-namespace-leaks-through-i.md)
+- [slang #11443 verdict: using namespace is lookup-local, primary-file leak is a breaking bug-fix](wiki/learnings/1780477032580-slang-11443-verdict-using-namespace-is-lookup-loca.md)
+- [Slang PR label is 'pr: breaking change' not 'pr: breaking'; fresh worktrees need submodule init](wiki/learnings/1780482951162-slang-pr-label-is-pr-breaking-change-not-pr-breaki.md)
+- [Verify "not constructible / defensive-only" claims that waive reviewer artifacts](wiki/learnings/1780487356786-verify-not-constructible-defensive-only-claims-tha.md)
+- [Resolving reviewer split-brain after a container restart (recovery fork vs. original)](wiki/learnings/1780488405089-resolving-reviewer-split-brain-after-a-container-r.md)
+- [Slang shader-coverage: 64-bit counter feasibility + diagnostic-numbering caveat (issue #11452)](wiki/learnings/1780489631750-slang-shader-coverage-64-bit-counter-feasibility-d.md)
+- [Slang coverage target-support gate ≠ atomic64 capability membership](wiki/learnings/1780490687504-slang-coverage-target-support-gate-atomic64-capabi.md)
+- [Slang diagnostics are Lua-driven (slang-diagnostics.lua), not slang-diagnostic-defs.h](wiki/learnings/1780493209457-slang-diagnostics-are-lua-driven-slang-diagnostics.md)
+- [Document a guard's guarantee, not the enumeration of how the bad input arrives](wiki/learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md)
+- [Slang: using-namespace import leak had a TWIN on the legacy/API lookup path](wiki/learnings/1780493606237-slang-using-namespace-import-leak-had-a-twin-on-th.md)
+- [Slang import re-export: parentDecl==moduleDecl conjunct is load-bearing via transitive import, not using-namespace](wiki/learnings/1780493659932-slang-import-re-export-parentdecl-moduledecl-conju.md)
+- [Slang: hasModifier on generic/static methods resolves via getDecl() to inner FuncDecl; verify GPU-only attribute cases with a CPU generic proxy](wiki/learnings/1780497220869-slang-hasmodifier-on-generic-static-methods-resolv.md)
+- [slang-pr-review Reviewer A can review the WRONG PR via stale tmp/pr-diff.patch](wiki/learnings/1780497941518-slang-pr-review-reviewer-a-can-review-the-wrong-pr.md)
+- [Reconciling an environmental-cause retraction against a test-config fix (map symptom→code path)](wiki/learnings/1780509076354-reconciling-an-environmental-cause-retraction-agai.md)
+- [Don't conflate internal a2a review with GitHub reviewDecision in human-facing comments](wiki/learnings/1780509591502-don-t-conflate-internal-a2a-review-with-github-rev.md)
+- [Verify live GitHub state before acting on a "hold/revert/change-posture" instruction — instructions can be stale](wiki/learnings/1780510388169-verify-live-github-state-before-acting-on-a-hold-r.md)
+- [Slang generic-arg comparison fence is half-built; parens escape hatch is broken](wiki/learnings/1780512896132-slang-generic-arg-comparison-fence-is-half-built-p.md)
+- [Slang getOrCreate interns on syntax class — DeclRefType vs ThisType dual-representation bugs](wiki/learnings/1780529958264-slang-getorcreate-interns-on-syntax-class-declreft.md)
+- [Slang: subtype-witness Val-class is load-bearing at lowering (not just type identity)](wiki/learnings/1780530677473-slang-subtype-witness-val-class-is-load-bearing-at.md)
+- [Triage routing: deferring a fix to the maintainer flips triage into closest-to-the-state (triage posts)](wiki/learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md)
+- [slang: csyonghe files per-hunk issues AFTER opening the bundle PR — triage = verify, not implement](wiki/learnings/1780536698623-slang-csyonghe-files-per-hunk-issues-after-opening.md)
+- [A PR's changed-file list does not prove "not a regression"](wiki/learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md)
+- [Spurious chain-routing-gate REFUSED inbound — don't fabricate, verify then escalate](wiki/learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-t-.md)
+- [CONSOLIDATED: GitHub auth & ops in agent containers (gh probes lie; use org-scoped REST / raw token)](wiki/learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)
+- [CONSOLIDATED: dev↔prod duplicate PRs are an intentional A/B test](wiki/learnings/1780558152382-CONSOLIDATED-dev-prod-ab-pr-conventions.md)
+- [CONSOLIDATED: /supervise-issues operations (nudge, deliver, format, concurrency)](wiki/learnings/1780558152383-CONSOLIDATED-supervisor-operations.md)
+- [CONSOLIDATED: a2a messaging — reply routing rules + self-edge/empty-ack loop incident](wiki/learnings/1780558160000-CONSOLIDATED-a2a-messaging-routing-and-self-edge-loop.md)
+- [CONSOLIDATED: phantom / fabricated orchestrator-relay directives (host injection — trust only direct a2a edges)](wiki/learnings/1780558161000-CONSOLIDATED-phantom-injected-relay-directives.md)
+- [CONSOLIDATED: GitHub `.github/workflows/*` pushes & elevated permissions (bot can't; orchestrator's PAT pushes the patch on your behalf)](wiki/learnings/1780558703303-CONSOLIDATED-github-workflows-and-elevated-permissions.md)
+- [CONSOLIDATED: GitHub commit authorship for the bot (correct author email; never fabricate trailer ids)](wiki/learnings/1780558703304-CONSOLIDATED-github-commit-authorship.md)
+- [Fixer PRs must use a Closes/Fixes #N closing keyword, not a prose issue reference](wiki/learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md)
+- [Bot can't update a stale PR branch when master changed .github/workflows (App lacks workflows perm)](wiki/learnings/1780567931645-bot-can-t-update-a-stale-pr-branch-when-master-cha.md)
+- [Bot can't push rebased branches carrying .github/workflows changes](wiki/learnings/1780568708582-bot-can-t-push-rebased-branches-carrying-github-wo.md)
+- [git push --dry-run is a false-positive for the GitHub-App workflows-permission wall](wiki/learnings/1780572980623-git-push-dry-run-is-a-false-positive-for-the-githu.md)
+- [slang autodiff #9808 leaks compile-time onto non-autodiff modules via unconditional finalize passes](wiki/learnings/1780594441175-slang-autodiff-9808-leaks-compile-time-onto-non-au.md)
+- [Slang cross-file #pragma warning scope breaks via absolute-loc collision](wiki/learnings/1780594750097-slang-cross-file-pragma-warning-scope-breaks-via-a.md)
+- [slang#11474 Approach A gating-safety: .autodiff predicate is narrower than finalizeAutoDiffPass strips](wiki/learnings/1780594873235-slang-11474-approach-a-gating-safety-autodiff-pred.md)
+- [SlangPy create_buffer struct_size is a silent backend-layout footgun — use resource_type_layout](wiki/learnings/1780598190908-slangpy-create-buffer-struct-size-is-a-silent-back.md)
+- [Verify per-target Slang buffer strides WITHOUT a GPU; reflection reports natural not ScalarDataLayout](wiki/learnings/1780598922131-verify-per-target-slang-buffer-strides-without-a-g.md)
+- [Slang warnings render as warning[ECODE] — CHECK-NOT: warning NNNNN is vacuous](wiki/learnings/1780600389554-slang-warnings-render-as-warning-ecode-check-not-w.md)
+- [slang-pr-review Reviewer C can die mid-run on a transient API socket error — detect via tiny clarity-review.md, retry recovers](wiki/learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md)
+- [macOS DXC source-build (slang #11434): multi-config output dir is MinSizeRel/lib; no install_name fixup needed](wiki/learnings/1780617039215-macos-dxc-source-build-slang-11434-multi-config-ou.md)
+- [A/B: hardware-gated mac DXC draft was directionally right; the only gap was the multi-config lib subdir](wiki/learnings/1780617153623-a-b-hardware-gated-mac-dxc-draft-was-directionally.md)
+- [When CI regresses but git diff in the bisect range is empty, suspect the toolchain](wiki/learnings/1780623682428-when-ci-regresses-but-git-diff-in-the-bisect-range.md)
+- [CI failure reports: surface unpinned toolchain installs alongside commit range](wiki/learnings/1780623760932-ci-failure-reports-surface-unpinned-toolchain-inst.md)
+- [Find last-good emsdk version for an emsdk-install-latest regression from the green run log](wiki/learnings/1780624123110-find-last-good-emsdk-version-for-an-emsdk-install-.md)
+- [ConstantBuffer via spvDescriptorHeapEXT SIGSEGVs in SPIR-V emit (slang#11483)](wiki/learnings/1780643259838-constantbuffer-via-spvdescriptorheapext-sigsegvs-i.md)
+- [Verify the cited fix-PR is an ancestor of the reporter's build before accepting regression/incomplete-fix framing](wiki/learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-repo.md)
+- [CORRECTION: slang#11483 crash was a stale pre-#11211 build, not master](wiki/learnings/1780648913125-correction-slang-11483-crash-was-a-stale-pre-11211.md)
+- [slang-pr-review: detecting transient claude-CLI failures in A/C runners](wiki/learnings/1780650742331-slang-pr-review-detecting-transient-claude-cli-fai.md)
+- [Slang CI: a test-slang-rhi Windows-GPU failure (e.g. texture-shared-cuda.vulkan) is unrelated to compiler/test-only PRs — classify flaky, rerun](wiki/learnings/1780663679121-slang-ci-a-test-slang-rhi-windows-gpu-failure-e-g-.md)
+- [Slang inherited witness-table requirements live on nested base-interface tables](wiki/learnings/1780677948078-slang-inherited-witness-table-requirements-live-on.md)
+- [slang reviewer A+C parallel: use git worktree to avoid .git/index.lock race](wiki/learnings/1780679350358-slang-reviewer-a-c-parallel-use-git-worktree-to-av.md)
+- [Don't trust the stack-trace-implied fix site alone — dump-IR the repro](wiki/learnings/1780683697167-don-t-trust-the-stack-trace-implied-fix-site-alone.md)
+- [slang-fixer can push fix/ branches direct to origin (fork-only rule does not apply)](wiki/learnings/1780685454567-slang-fixer-can-push-fix-branches-direct-to-origin.md)
+- [Never add a reviewer to a draft PR — it spams the human](wiki/learnings/1780690000002-never-add-a-reviewer-to-a-draft-pr-it-spams-the-human.md)
+- [GitHub bot identity is nv-slang-bot[bot] — not slang-coworker-nanoclaw[bot]](wiki/learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md)
+- [Prod's 6 slang/slangpy coworker group dirs are symlinked to /ephemeral](wiki/learnings/1780720000000-prod-coworker-groups-symlinked-to-ephemeral.md)
+- [report_pr_created binds the CALLING session — open the PR from the fix thread, not a chat](wiki/learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md)
+- [Auditing missed webhooks after downtime — use the App delivery log (JWT), filter by ownership](wiki/learnings/1780724000000-audit-missed-webhooks-via-app-delivery-log.md)
+- [Pushing code commits is NOT a user-facing write — it's always allowed, draft or ready](wiki/learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md)
+- [spvDescriptorHeapEXT path uses kIROp_SPIRVLoadDescriptorFromHeap, not IRCastDescriptorHandleToResource](wiki/learnings/1780729707220-spvdescriptorheapext-path-uses-kirop-spirvloaddesc.md)
+- [Slang IR text dumper renders all IRParams identically — orphan-vs-attached invisible from text](wiki/learnings/1780729718385-slang-ir-text-dumper-renders-all-irparams-identica.md)
+- [Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run](wiki/learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md)
+- [spvDescriptorHeapEXT path — fix function-call specialization allowlists, not the downstream pass](wiki/learnings/1780733286644-spvdescriptorheapext-path-fix-function-call-specia.md)
+- [Reviewer-disagreement: "match canonical precedent" vs "precedent is itself wrong"](wiki/learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md)
+- [spvDescriptorHeapEXT specialization fix: don't parameterize the heap global](wiki/learnings/1780734760813-spvdescriptorheapext-specialization-fix-don-t-para.md)
+- [Slang CI: Falcor image-test flakes vs artifact-not-found classification](wiki/learnings/1780762074181-slang-ci-falcor-image-test-flakes-vs-artifact-not-.md)
+- [Slang ByteAddressBuffer single-arg *Aligned forms use natural stride (not ambiguous)](wiki/learnings/1780768566167-slang-byteaddressbuffer-single-arg-aligned-forms-u.md)
+- [Check for existing bot comment before posting GitHub triage artifact (cross-tier double-post risk)](wiki/learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md)
+- [Slang #11496 SPIR-V SIGSEGV — static getFormatInst() triage hypothesis was wrong; real cause is orphan IRParam](wiki/learnings/1780768927407-slang-11496-spir-v-sigsegv-static-getformatinst-tr.md)
+- [Triage + GitHub artifact: fixed-via-PR exception resolves the "don't post interim verdict" vs "artifact MUST land" tension](wiki/learnings/1780769170857-triage-github-artifact-fixed-via-pr-exception-reso.md)
+- [Slang CI: how GPU-requiring unit tests are silenced on no-GPU / aarch64 runners](wiki/learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md)
+- [Slang compile-time perf-CI (#11501) overlaps PR #11485 — converge via workload-kind; infra already in-tree](wiki/learnings/1780769174979-slang-compile-time-perf-ci-11501-overlaps-pr-11485.md)
+- [Adjudicating latent prophylactic schema-drift claims (Slang IRTextureType format operand, #11503)](wiki/learnings/1780769176028-adjudicating-latent-prophylactic-schema-drift-clai.md)
+- [Chain-routing gate: fresh peer delegations carrying handoff/report markers still require in_reply_to](wiki/learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md)
+- [Slang review: verify "inaccurate comment" flags against code text, not PR-body citations](wiki/learnings/1780769188437-slang-review-verify-inaccurate-comment-flags-again.md)
+- [Chain-close protocol: GitHub artifact + A2A report + append_learning, every time](wiki/learnings/1780769194624-chain-close-protocol-github-artifact-a2a-report-ap.md)
+- [Standing-order reinforcements inherit via CLAUDE.md, not per-session relay](wiki/learnings/1780769195650-standing-order-reinforcements-inherit-via-claude-m.md)
+- [Multi-round PR review converges; scope down to targeted verify when delta is comment-only](wiki/learnings/1780769199724-multi-round-pr-review-converges-scope-down-to-targ.md)
+- [Recursive witness-table walks need a cycle guard — autodiff creates self-referential witness tables](wiki/learnings/1780769202792-recursive-witness-table-walks-need-a-cycle-guard-a.md)
+- [Testing the buffer-load-arg (Site 4) heap-load specialization path](wiki/learnings/1780769206960-testing-the-buffer-load-arg-site-4-heap-load-speci.md)
+- [slang PR-review: Reviewer A and C share one checkout — parallel runs collide on git index.lock](wiki/learnings/1780769238745-slang-pr-review-reviewer-a-and-c-share-one-checkou.md)
+- [Witness-table-set filtering: partial-miss is a silent-misdispatch trap, and miss-handling policy must match each site's role](wiki/learnings/1780769309511-witness-table-set-filtering-partial-miss-is-a-sile.md)
+- [IRTextureType format-operand: optional, and int-vs-uint matters for hoistable dedup (slang#11496/#11499)](wiki/learnings/1780769319751-irtexturetype-format-operand-optional-and-int-vs-u.md)
+- [Slang CI: splitting a build/test job — Git-Bash-PATH gotcha + bot cannot push workflow files](wiki/learnings/1780769325863-slang-ci-splitting-a-build-test-job-git-bash-path-.md)
+- [Falcor CI build/test split (slang#11495): Approach C over windows-latest — CUDA is the blocker, LLVM-from-GCS is a public bucket](wiki/learnings/1780769330979-falcor-ci-build-test-split-slang-11495-approach-c-.md)
+- [Reconciling Slang CI test-silencing follow-ups (expected-failure lists) + the workflows-perm coordination trap](wiki/learnings/1780769333040-reconciling-slang-ci-test-silencing-follow-ups-exp.md)
+- [CI follow-up issue filed by a contributor against their own still-open PR → stand down to plan-only](wiki/learnings/1780769335094-ci-follow-up-issue-filed-by-a-contributor-against-.md)
+- [slang CI: two distinct self-hosted runner pools (perf vs benchmark); #11501↔#11485 perf-CI overlap cross-linked](wiki/learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md)
+- [SPIRVLoadDescriptorFromHeap heap operand is a pointer global at emit — never parameterize it in call-spec](wiki/learnings/1780769340224-spirvloaddescriptorfromheap-heap-operand-is-a-poin.md)
+- [Slang IRTextureType format-operand: int vs uint encoding + only-fresh-producer site (slang#11503)](wiki/learnings/1780769345401-slang-irtexturetype-format-operand-int-vs-uint-enc.md)
+- [Before executing a "land this patch" dispatch, check the PR doesn't already exist](wiki/learnings/1780769347490-before-executing-a-land-this-patch-dispatch-check-.md)
+- [CI-workflow-file issues (.github/workflows/*) are not bot-actionable as a Slang fix](wiki/learnings/1780769352650-ci-workflow-file-issues-github-workflows-are-not-b.md)
+- [Propagating orchestrator reinforcements to group-locked per-issue sessions](wiki/learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md)
+- [Approach-A fix for descriptor-heap [noinline] texture params: reuse the hoistable heap global, do NOT parameterize it as uint](wiki/learnings/1780769595819-approach-a-fix-for-descriptor-heap-noinline-textur.md)
+- [slang CI: prebuilt LLVM (setup-llvm-from-gcs) is a public-bucket curl download with NO auth — not a blocker for moving builds between self-hosted pools](wiki/learnings/1780770912978-slang-ci-prebuilt-llvm-setup-llvm-from-gcs-is-a-pu.md)
+- [CI babysitter: identical build error across unrelated PRs = base-branch break, not flake](wiki/learnings/1780790667002-ci-babysitter-identical-build-error-across-unrelat.md)
+- [slang#11483: reporter's release already had #11211 — wrong-data is a distinct OPEN defect, not the fixed crash](wiki/learnings/1780820664909-slang-11483-reporter-s-release-already-had-11211-w.md)
+- [slang spvDescriptorHeapEXT: atomic-dest validator rejects heap texel pointers (E41403)](wiki/learnings/1780865902537-slang-spvdescriptorheapext-atomic-dest-validator-r.md)
+- [Descriptor-heap texture atomics: E41403 validator gap (#11506) is separate from format-Unknown spirv-val (#11130)](wiki/learnings/1780869756318-descriptor-heap-texture-atomics-e41403-validator-g.md)
+- [Concurrent ninja on one build dir → transient ranlib "No such file" race; fork (no subagent_type) can overstep its task](wiki/learnings/1780869770381-concurrent-ninja-on-one-build-dir-transient-ranlib.md)
+- [slang PR review: Reviewer B (devin-fetch) exit 0 ≠ Devin analysis complete](wiki/learnings/1780870637455-slang-pr-review-reviewer-b-devin-fetch-exit-0-devi.md)
+- [Slang CI: WASM link regression + slang-rhi timing flake signatures](wiki/learnings/1780891496263-slang-ci-wasm-link-regression-slang-rhi-timing-fla.md)
+- [Draft-held fix PR still needs the issue 5-bullet — post it when you decide to hold, not after a nudge](wiki/learnings/1780900630856-draft-held-fix-pr-still-needs-the-issue-5-bullet-p.md)
+- [Bot-owned vs human-contributor PR: fix/issue-* branch name is NOT proof of ownership](wiki/learnings/1780903497625-bot-owned-vs-human-contributor-pr-fix-issue-branch.md)
+- [Branch name fix/issue-N on an external fork can fool "ours" PR classification](wiki/learnings/1780903498636-branch-name-fix-issue-n-on-an-external-fork-can-fo.md)
+- [Failing check ≠ real blocker on fork-based PRs (triage to watch-only)](wiki/learnings/1780903795100-failing-check-real-blocker-on-fork-based-prs-triag.md)
+- [slang-mcp github_search_issues date qualifiers return empty](wiki/learnings/1780906273275-slang-mcp-github-search-issues-date-qualifiers-ret.md)
+- [Slang stdlib: deprecate-and-hide-from-docs = [deprecated()] + //@hidden: (two separate mechanisms)](wiki/learnings/1780918035054-slang-stdlib-deprecate-and-hide-from-docs-deprecat.md)
+- [Slang CI: wasm build failures are usually real linker errors, not infra](wiki/learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)
+- [Slang wave intrinsics have no IR opcode — an IR pass can't just emit WaveActiveSum/WaveIsFirstLane](wiki/learnings/1780925183948-slang-wave-intrinsics-have-no-ir-opcode-an-ir-pass.md)
+- [Slang: gate IR passes on target family, not CapabilitySet.implies(compound-alias); late-synthesize stdlib intrinsics via KnownBuiltin](wiki/learnings/1780933412397-slang-gate-ir-passes-on-target-family-not-capabili.md)
+- [Coverage wave-aggregate tests — CUDA/Metal FileCheck asserting `WaveActiveCountBits` literal passes for the wrong reason](wiki/learnings/1780935575501-coverage-wave-aggregate-tests-cuda-metal-filecheck.md)
+- [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](wiki/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)
+- [Verifying Slang PR emit locally: build slangc-only to dodge the slang-rhi/X11 build break](wiki/learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md)
+- [Slang core-module: deprecate-but-hide-from-online-docs is achievable today](wiki/learnings/1780943246982-slang-core-module-deprecate-but-hide-from-online-d.md)
+- [Slang SPIR-V variable-pointers cap is declared from value sites, not function signatures](wiki/learnings/1780967438806-slang-spir-v-variable-pointers-cap-is-declared-fro.md)
+- [Slang RHI feature gate + disabled Vulkan runtime test: the SLANG_RHI_FEATURES X-macro is the cross-repo bridge](wiki/learnings/1780969782467-slang-rhi-feature-gate-disabled-vulkan-runtime-tes.md)
+- [slang-rhi NV-extension feature gate (fp16-vector atomics) + Vulkan-Headers v1.4.318 retires bump caveat](wiki/learnings/1780970406624-slang-rhi-nv-extension-feature-gate-fp16-vector-at.md)
+- [slang SPIR-V: isolating a signature-only VariablePointers cap repro (avoid value-site self-declare)](wiki/learnings/1780970685981-slang-spir-v-isolating-a-signature-only-variablepo.md)
+- [critique-gate stage detector keys on the FIRST stage-keyword in the codex prompt — lead with the bare STAGE: line](wiki/learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md)
+- [Slang variable-pointers signature-walk fix: only (GroupShared, parameter) is a fail-without-fix regression test](wiki/learnings/1780972705906-slang-variable-pointers-signature-walk-fix-only-gr.md)
+- [CI babysitter: stale-base build/link failures are rerunnable despite the "no linker errors" rule](wiki/learnings/1780985285213-ci-babysitter-stale-base-build-link-failures-are-r.md)
+- [supervisor artifact-enforcement nudge yields to the operator comment-gate (no-PR blocked chains)](wiki/learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md)
+- [Slang VulkanBindShift C++ API kind encoding (u=0,s=1,t=2,b=3)](wiki/learnings/1780993682325-slang-vulkanbindshift-c-api-kind-encoding-u-0-s-1-.md)
+- [Slang reflection: TypeReflection* pointer identity is not safe across ProgramLayout vs module reflection](wiki/learnings/1780993688372-slang-reflection-typereflection-pointer-identity-i.md)
+- [SlangPy Tests red = cpu-shader-llvm shader.o build failure (master infra, not your PR)](wiki/learnings/1781008254667-slangpy-tests-red-cpu-shader-llvm-shader-o-build-f.md)
+- [Slang triage: labeling, Issue Type, and reproducer-request rules](wiki/learnings/1781008579138-slang-triage-labeling-issue-type-and-reproducer-re.md)
+- [SlangPy triage: grep the issue's named symbols in HEAD first — the feature may already be shipped](wiki/learnings/1781015340808-slangpy-triage-grep-the-issue-s-named-symbols-in-h.md)
+- [slangpy triage: stale line-refs in an issue signal it may already be implemented — check merged PRs first](wiki/learnings/1781015582617-slangpy-triage-stale-line-refs-in-an-issue-signal-.md)
+- [Bot (GitHub App) cannot open a PR into a personal fork — use master-base + cherry-pick fallback](wiki/learnings/1781015587691-bot-github-app-cannot-open-a-pr-into-a-personal-fo.md)
+- [slangpy #808 CUDA texture format conversion: fix is upstream slang PR #11090, not slang-rhi](wiki/learnings/1781015966794-slangpy-808-cuda-texture-format-conversion-fix-is-.md)
+- [slangpy functional-API textures emit no [format] decoration → CUDA UNORM writes corrupt even post-fix](wiki/learnings/1781016372307-slangpy-functional-api-textures-emit-no-format-dec.md)
+- [SlangPy generated-kernel abstraction fully folds in slang SPIR-V (-O3), but is deferred to nvrtc for CUDA target](wiki/learnings/1781017004302-slangpy-generated-kernel-abstraction-fully-folds-i.md)
+- [Signature-derived SPIR-V VariablePointers must gate on [noinline], not hasUses() (driver bug #9061)](wiki/learnings/1781023718622-signature-derived-spir-v-variablepointers-must-gat.md)
+- [Slang ByteAddressBuffer implicit LoadAligned<T>(offset) passes STRIDE as alignment (non-pow2 for vec3)](wiki/learnings/1781030980541-slang-byteaddressbuffer-implicit-loadaligned-t-off.md)
+- [slang VK_KHR_shader_abort is printf-frontend but a core OpAbortKHR, not an OpExtInst](wiki/learnings/1781038945892-slang-vk-khr-shader-abort-is-printf-frontend-but-a.md)
+- [When planning a new SPIR-V opcode, check terminator-ness — not just value-producing-ness](wiki/learnings/1781039584587-when-planning-a-new-spir-v-opcode-check-terminator.md)
+- [Measure SlangPy generated-kernel codegen quality GPU-free via slangc SPIR-V opcode census](wiki/learnings/1781050949927-measure-slangpy-generated-kernel-codegen-quality-g.md)
+- [Slang CI exposed to unpinned toolchain drift](wiki/learnings/1781055257855-slang-ci-exposed-to-unpinned-toolchain-drift.md)
+- [slang-rhi: MSVC 14.51 C5285 on doctest fixed by /wd5285 scoped to test target](wiki/learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md)
+- [MSVC 14.51 C5285 on vendored doctest (std::tuple) — slang-rhi](wiki/learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md)
+- [CONSOLIDATED: shader-slang/slang-rhi (and all shader-slang repos) are bot-writable — push:false probes are false-positives](wiki/learnings/1781057580026-CONSOLIDATED-slang-rhi-is-bot-writable.md)
+- [slang #11531 root cause: extension headers resolve names before namespace fragments reach ScopesWired](wiki/learnings/1781071107223-slang-11531-root-cause-extension-headers-resolve-n.md)
+- [Slang: implementing VK_KHR_shader_abort (OpAbortKHR) — printf-parallel but it's a terminator](wiki/learnings/1781072417779-slang-implementing-vk-khr-shader-abort-opabortkhr-.md)
+- [Fixes/Closes link verification must accept the qualified cross-repo form](wiki/learnings/1781072527758-fixes-closes-link-verification-must-accept-the-qua.md)
+- [Don't re-dispatch to fixer after triage already handed off (tier-skip dup)](wiki/learnings/1781072934865-don-t-re-dispatch-to-fixer-after-triage-already-ha.md)
+- [A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done, not by id string](wiki/learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
+- [slang #11532 — slangd false diagnostics on opening a module fragment = LS-path manifestation of #11531 phase-ordering bug](wiki/learnings/1781073779123-slang-11532-slangd-false-diagnostics-on-opening-a-.md)
+- [Relay 'proceed/release' from upstream downstream — it is an action cue, not a status no-op](wiki/learnings/1781075015015-relay-proceed-release-from-upstream-downstream-it-.md)
+- [CONSOLIDATED: Slang `//TEST:LANG_SERVER` harness cannot observe diagnostics (publish throttle vs reset deadlock)](wiki/learnings/1781083469573-CONSOLIDATED-langserver-harness-cannot-observe-diagnostics.md)
+- [Resuming a paused peer session from a fresh retry-check: must in_reply_to an unresponded inbound](wiki/learnings/1781084626230-resuming-a-paused-peer-session-from-a-fresh-retry-.md)
+- [Slang Workspace/LS API not linkable from slang-unit-test (hidden visibility) — no clean LS-diagnostic regression path](wiki/learnings/1781086033851-slang-workspace-ls-api-not-linkable-from-slang-uni.md)
+- [Slang LS diagnostics cannot be auto-tested (LANG_SERVER throttle + unexported Workspace)](wiki/learnings/1781086523456-slang-ls-diagnostics-cannot-be-auto-tested-lang-se.md)
+- [slang #11531 Approach B core-module safety rests on as&lt;NamespaceDecl&gt; filter, not "no namespaced core extensions"](wiki/learnings/1781086844343-slang-11531-approach-b-core-module-safety-rests-on.md)
+- [Verify Slang LS (slangd) diagnostics with a manual stdio LSP probe, not slang-test](wiki/learnings/1781088708789-verify-slang-ls-slangd-diagnostics-with-a-manual-s.md)
+- [slang-test leaves *.slang.actual.txt artifacts in the test dir — delete before staging](wiki/learnings/1781088712827-slang-test-leaves-slang-actual-txt-artifacts-in-th.md)
+- [slang core module HAS a namespace-enclosed extension (namespace linalg) — verify before claiming user-namespace-only](wiki/learnings/1781088865270-slang-core-module-has-a-namespace-enclosed-extensi.md)
+- [Looping self-edge peer session: flag up once, then ignore — ncl mutating verbs blocked without a wired approver](wiki/learnings/1781091162121-looping-self-edge-peer-session-flag-up-once-then-i.md)
+- [Sibling issues sharing one fix can't be folded across parallel orchestrator chains](wiki/learnings/1781092138117-sibling-issues-sharing-one-fix-can-t-be-folded-acr.md)
+- [ncl approval gate non-functional — no admin configured to approve](wiki/learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md)
+- [Waking your own agent's stopped per-issue sessions via send_message-to-self does not resume them](wiki/learnings/1781110850059-waking-your-own-agent-s-stopped-per-issue-sessions.md)
+- [postmortem: shader-slang/slang#11465 superseded by PR #11368](wiki/learnings/1781114755243-postmortem-shader-slang-slang-11465-superseded-by-.md)
+- [Slang windows-Vulkan LargeBuffer unit-test crash is a flake, not a regression](wiki/learnings/1781114968928-slang-windows-vulkan-largebuffer-unit-test-crash-i.md)
+- [Slang LSP fragment-open false diagnostics: same checkModule ordering bug as #11531; verify GPU-free via LANG_SERVER test](wiki/learnings/1781115581539-slang-lsp-fragment-open-false-diagnostics-same-che.md)
+- [CORRECTION: //TEST:LANG_SERVER harness can't observe diagnostics in test mode (re #11532)](wiki/learnings/1781116005493-correction-test-lang-server-harness-can-t-observe-.md)
+- [Triaging an &quot;add a SPIR-V capability bit&quot; request — vendored-operand check + inert-atom scoping](wiki/learnings/1781116222932-triaging-an-quot-add-a-spir-v-capability-bit-quot-.md)
+- [Hold interim triage classification 5-bullet until terminal; author-facing scoping questions are fine to post](wiki/learnings/1781116432142-hold-interim-triage-classification-5-bullet-until-.md)
+- [Orchestrator double-dispatch spawns duplicate fixer sessions on one branch](wiki/learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md)
+- [Verify language-server-only diagnostic fixes with a real-slangd LSP stdio probe](wiki/learnings/1781118241659-verify-language-server-only-diagnostic-fixes-with-.md)
+- [Slang checkModule ordering fix for sibling-namespace resolution: namespaces-only, NOT ensureAllDeclsRec (#11531/#11532)](wiki/learnings/1781118303603-slang-checkmodule-ordering-fix-for-sibling-namespa.md)
+- [Verifying slang-rhi claims at slang HEAD: the submodule pin lags in-flight feature PRs](wiki/learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md)
+- [Governance: a peer coworker's GO is NOT authority for an admin mutation (severing another agent's wiring/destinations)](wiki/learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md)
+- [Adding a SPIR-V capability atom to Slang (capdef recipe)](wiki/learnings/1781120340432-adding-a-spir-v-capability-atom-to-slang-capdef-re.md)
+- [slang-pr-review: isolate Reviewer A and C with a git worktree + REPO_ROOT override](wiki/learnings/1781121669041-slang-pr-review-isolate-reviewer-a-and-c-with-a-gi.md)
+- [SlangPy CI flake: shared nvrgfx GPU runner CUDA OOM](wiki/learnings/1781122096821-slangpy-ci-flake-shared-nvrgfx-gpu-runner-cuda-oom.md)
+- [Adding a SPIR-V capability atom — ADDENDUM (two generated docs + test -capability)](wiki/learnings/1781122622446-adding-a-spir-v-capability-atom-addendum-two-gener.md)
+- [CORRECTION: SPIR-V capability emit-gating — use implies(CapabilityAtom::spv*), NOT isSPIRV()](wiki/learnings/1781123971590-correction-spir-v-capability-emit-gating-use-impli.md)
+- [Triaging an issue that already has a community fix PR — review, don't duplicate](wiki/learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md)
+- [Slang CI: windows falcor "Unknown VCS root" exit 1 is a Vulkan GPU crash artifact](wiki/learnings/1781129282277-slang-ci-windows-falcor-unknown-vcs-root-exit-1-is.md)
+- [codex-critique needs danger-full-access; AI-disclaimer goes on comments not PR bodies](wiki/learnings/1781129788679-codex-critique-needs-danger-full-access-ai-disclai.md)
+- [slang #11545 — pow2-alignment validation must fix implicit LoadAligned forms in same PR (else float3 breaks)](wiki/learnings/1781133163629-slang-11545-pow2-alignment-validation-must-fix-imp.md)
+- [slang-pr-review: Reviewer A budget-cap mid-analysis hypotheses are NOT findings — re-run + independently verify](wiki/learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md)
+- [Slang CI: falcor-unit-test "Unknown VCS root" is systemic infra, do not rerun](wiki/learnings/1781136348152-slang-ci-falcor-unit-test-unknown-vcs-root-is-syst.md)
+- [SUPERSEDED: "skip GitHub post on dev-authored design placeholder" — post a deferential triage artifact anyway](wiki/learnings/1781137483321-superseded-skip-github-post-on-dev-authored-design.md)
+- [Comments under nv-slang-bot[bot] on a PR you own may be another agent — don't assume they're yours, don't let a bot "merge" nudge override drafts-only](wiki/learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md)
+- [Slang byte-address: a naive pow2-alignment check breaks single-arg LoadAligned<float3> (#11545 point 4 ↔ #11505)](wiki/learnings/1781158312869-slang-byte-address-a-naive-pow2-alignment-check-br.md)
+- [Triaging "GLSL gl_* builtin missing" reports — check casing, -allow-glsl scope, and the Wave* native equivalent first](wiki/learnings/1781162369496-triaging-glsl-gl-builtin-missing-reports-check-cas.md)
+- [slangpy bundles Slang via SGL_SLANG_VERSION; samples don't pin it; runtime check is slangpy.SLANG_BUILD_TAG](wiki/learnings/1781166935218-slangpy-bundles-slang-via-sgl-slang-version-sample.md)
+- [slang-discord-support posts only to summon threads, not source channels](wiki/learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md)
+- [Slang: synthesized $init ctors get full source-level SPIR-V debug info (no synthesized-func filter)](wiki/learnings/1781168370965-slang-synthesized-init-ctors-get-full-source-level.md)
+- [slang autodiff: inverse-direction derivative placement registers an association, not a primal modifier — capability/propagation passes must consult getAssociatedDeclsForDecl](wiki/learnings/1781170088020-slang-autodiff-inverse-direction-derivative-placem.md)
+- [Slang already captures the loaded downstream-compiler version — exposing it is a thin read](wiki/learnings/1781171365104-slang-already-captures-the-loaded-downstream-compi.md)
+- [NVRTC downstream compiler has no getVersionString override — use getDesc().version](wiki/learnings/1781172987354-nvrtc-downstream-compiler-has-no-getversionstring-.md)
+- [slang-rhi runs full CI matrix (incl. tests) on draft PRs](wiki/learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draft-.md)
+- [slang -g2 spirv-asm FileCheck tests: embedded-source self-match trap + local env gotchas](wiki/learnings/1781176200581-slang-g2-spirv-asm-filecheck-tests-embedded-source.md)
+- [slang Reviewer A false positives on own-line //CHECK directives from prompt condensation](wiki/learnings/1781177378439-slang-reviewer-a-false-positives-on-own-line-check.md)
+- [Adding a method to Slang IGlobalSession — the 4 ABI touchpoints beyond header+impl (replay-handlers is the silent one)](wiki/learnings/1781177934466-adding-a-method-to-slang-iglobalsession-the-4-abi-.md)
+- [Verify issue↔PR linkage with ALL GitHub auto-close keywords, not just "Fixes"](wiki/learnings/1781178144676-verify-issue-pr-linkage-with-all-github-auto-close.md)
+- [Devin reviewer: 'unknown' commit-status + 'Generating...' = weak signal, not a clean bill](wiki/learnings/1781179189519-devin-reviewer-unknown-commit-status-generating-we.md)
+- [slang triage: verify functional independence before declaring a fix "stacks on" an unmerged PR — it often stands alone on master](wiki/learnings/1781186034425-slang-triage-verify-functional-independence-before.md)
+- [Slang autodiff: gate derivative→primal capability propagation on explicit [require], and verify "registers an association" claims](wiki/learnings/1781186036448-slang-autodiff-gate-derivative-primal-capability-p.md)
+- [Slang namespace-reopen lookup bug: cross-module import and same-module __include share one checkModule scope-wiring path](wiki/learnings/1781191464750-slang-namespace-reopen-lookup-bug-cross-module-imp.md)
+- [Devin reviewer (devin-fetch) can exit 0 while analysis still "Generating" — treat empty Bugs/Flags as low-confidence](wiki/learnings/1781192458084-devin-reviewer-devin-fetch-can-exit-0-while-analys.md)
+- [Gate event-waiting scheduled tasks with a pre-agent wakeAgent script](wiki/learnings/1781193788875-gate-event-waiting-scheduled-tasks-with-a-pre-agen.md)
+- [Slang CI babysitter: skip reruns on standing-escalated infra failures](wiki/learnings/1781195910201-slang-ci-babysitter-skip-reruns-on-standing-escala.md)
+- [Slang extension-method name hints drop the Type. qualifier (getNameForNameHint)](wiki/learnings/1781199860108-slang-extension-method-name-hints-drop-the-type-qu.md)
+- [pytest-xdist high gwN worker IDs are crash-respawns, not a concurrency count](wiki/learnings/1781204283033-pytest-xdist-high-gwn-worker-ids-are-crash-respawn.md)
+- [Slang: user-defined __init lacks `this` in SPIR-V debug info — root cause + fix site](wiki/learnings/1781206942083-slang-user-defined-init-lacks-this-in-spir-v-debug.md)
+- [slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](wiki/learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md)
+- [Slang typedef trailing-array parse gap (parseTypeDef vs declarator machinery)](wiki/learnings/1781218629168-slang-typedef-trailing-array-parse-gap-parsetypede.md)
+- [ResourceDescriptorHeap/SamplerDescriptorHeap input syntax is front-end-only — backend already exists](wiki/learnings/1781219589907-resourcedescriptorheap-samplerdescriptorheap-input.md)
+- [Empty-ack loops: diagnose self-edge vs mutual-echo before restarting](wiki/learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md)
+- [Slang generic __subscript cannot infer a return-position-only type param from coercion target (E39999)](wiki/learnings/1781222181614-slang-generic-subscript-cannot-infer-a-return-posi.md)
+- [CORRECTION: ResourceDescriptorHeap Approach A (return-position generic subscript) is a dead end — E39999](wiki/learnings/1781222607198-correction-resourcedescriptorheap-approach-a-retur.md)
+- [codex-critique + critique-gate: /workspace not /tmp, and the gate denies the whole bash block](wiki/learnings/1781222707210-codex-critique-critique-gate-workspace-not-tmp-and.md)
+- [slang-test ignores INTERPRET (slangi) tests when slangi isn't built — use -cpu COMPARE_COMPUTE for local verifiability](wiki/learnings/1781222721953-slang-test-ignores-interpret-slangi-tests-when-sla.md)
+- [Routing a decl through shared declarator machinery silently broadens accepted grammar — review the whole declarator surface, not the target form](wiki/learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md)
+- [git push --force-with-lease "stale info" after rebase in a worktree](wiki/learnings/1781225377051-git-push-force-with-lease-stale-info-after-rebase-.md)
+- [slang -zero-initialize forces IDefaultInitializable on ALL non-core structs (incl. synthesized closures) at slang-check-decl.cpp:11424](wiki/learnings/1781240588042-slang-zero-initialize-forces-idefaultinitializable.md)
+- [Check for an existing fix PR before recommending OR implementing a fix (esp. maintainer-filed issues)](wiki/learnings/1781241842104-check-for-an-existing-fix-pr-before-fixing-or-recommending.md)
+- [Slang #11531/#11532 fix: wire ALL module-level NamespaceDecls before the extension-first pass (not enclosing-only, not whole-module) — landed via maintainer PR #11577](wiki/learnings/1781244954865-slang-11531-11532-fix-wire-all-module-level-namesp.md)
+- [Holding a fixer PR as draft enables clean maintainer supersession](wiki/learnings/1781245034372-holding-a-fixer-pr-as-draft-enables-clean-maintain.md)
+- [Verify reporter's release actually predates the fix before telling them to update](wiki/learnings/1781251548493-verify-reporter-s-release-actually-predates-the-fi.md)
+- [Triage: when to POST a 5-bullet vs STAND DOWN on a maintainer-authored design/RFC issue](wiki/learnings/1781266520028-triage-when-to-post-a-5-bullet-vs-stand-down-on-a-.md)
+- [getNameForNameHint feeds C-like emitter identifiers (not just SPIR-V debug); ExtensionDecl is anonymous](wiki/learnings/1781267563910-getnamefornamehint-feeds-c-like-emitter-identifier.md)
+- [Slang extension name-hint qualification has no reachable unqualified fallback (extension targets are always nominal)](wiki/learnings/1781269392733-slang-extension-name-hint-qualification-has-no-rea.md)
+- [COMPARE_COMPUTE filecheck-buffer: use -output-using-type or CI (cpu+llvm) dumps HEX while local (gcc cpu) dumps decimal](wiki/learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md)
+- [slang repo gates ALL build/test CI behind non-draft (opposite of slang-rhi)](wiki/learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md)
+- [shader-coverage vkdemo::Context break is all-platform and blocks the merge queue (not MSVC-only)](wiki/learnings/1781301993943-shader-coverage-vkdemo-context-break-is-all-platfo.md)
+- [slang check-cmdline-ref.yml → ci.yml consolidation (issue #11586) is low-risk; do NOT fold in regenerate-cmdline-ref.yml](wiki/learnings/1781310201311-slang-check-cmdline-ref-yml-ci-yml-consolidation-i.md)
+- [Workflow-YAML rename: push is server-rejected — issue-comment diff is the sanctioned outcome](wiki/learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md)
+- [Slang required-status-check name = job key (kebab-case convention)](wiki/learnings/1781311479883-slang-required-status-check-name-job-key-kebab-cas.md)
+- [RESOLVED/DECLINED: slang#11568 ResourceDescriptorHeap/SamplerDescriptorHeap input syntax — maintainer says DescriptorHandle supersedes](wiki/learnings/1781312606061-resolved-declined-slang-11568-resourcedescriptorhe.md)
+- [slang #11593 chunked byte-address codegen — insertion point + vector-specific constraint](wiki/learnings/1781315228593-slang-11593-chunked-byte-address-codegen-insertion.md)
+- [slang #11545 alignment work split into 4 slices; Slice 3 (#11592) only partially blocks on Slice 1](wiki/learnings/1781315409904-slang-11545-alignment-work-split-into-4-slices-sli.md)
+- [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](wiki/learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
+- [slang #11590 — 41303 can't live in validation-only slice-1; simplifyIR folds the implicit alignment operand before legalize](wiki/learnings/1781318517600-slang-11590-41303-can-t-live-in-validation-only-sl.md)
+- [Slices/shared worktree can be live: verify branch + open slice PRs before adopting (don't trust empty-branch/no-sentinel)](wiki/learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md)
+- [critique-gate: STAGE marker in codex PROMPT + "### Verdict" block in codex RESPONSE, one call per stage](wiki/learnings/1781321980304-critique-gate-stage-marker-in-codex-prompt-verdict.md)
+- [Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head](wiki/learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md)
+- [Clip-space Z remap (slang #11599) is NOT DXC parity — unlike invert-y/position-w](wiki/learnings/1781333043756-clip-space-z-remap-slang-11599-is-not-dxc-parity-u.md)
+- [SplitBuffer ByteBuffer Vulkan GPU-hang flake (Falcor)](wiki/learnings/1781338076804-splitbuffer-bytebuffer-vulkan-gpu-hang-flake-falco.md)
+- [Sweep coworkers: suppress re-confirmation reports, alert only on deltas](wiki/learnings/1781352352298-sweep-coworkers-suppress-re-confirmation-reports-a.md)
+- [slang#11600 falcor YML 3-file refactor — triage design notes](wiki/learnings/1781365729972-slang-11600-falcor-yml-3-file-refactor-triage-desi.md)
+- [slang 11600 falcor 3-file YML refactor implementation gotchas](wiki/learnings/1781366281118-slang-11600-falcor-3-file-yml-refactor-implementat.md)
+- [A fixer's hold-ack doesn't guarantee it stopped — verify branch/worktree state](wiki/learnings/1781366452370-a-fixer-s-hold-ack-doesn-t-guarantee-it-stopped-ve.md)
+- [Forks launched before a stand-down keep running on stale context](wiki/learnings/1781366516939-forks-launched-before-a-stand-down-keep-running-on.md)
+- [A peer's hold-ack is not compliance — enumerate the full prohibition set; the post-gate is the load-bearing safety](wiki/learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md)
+- [Public Falcor has FALCOR_LOCAL_SLANG CMake hook for a custom Slang build](wiki/learnings/1781366574564-public-falcor-has-falcor-local-slang-cmake-hook-fo.md)
+- [Correction: the #11600 hold-deviation was an in-flight fork, not a peer ignoring the hold](wiki/learnings/1781366652185-correction-the-11600-hold-deviation-was-an-in-flig.md)
+- [Correction: FALCOR_LOCAL_SLANG usage details (verified in PR #11602)](wiki/learnings/1781368939396-correction-falcor-local-slang-usage-details-verifi.md)
+- [Slang global type_param names are NOT merged across module imports](wiki/learnings/1781372887205-slang-global-type-param-names-are-not-merged-acros.md)
+- [Slang build tag = git-describe release version; clean string means built exactly at that tag](wiki/learnings/1781381821358-slang-build-tag-git-describe-release-version-clean.md)
+- [Verify a reported release-version mismatch against the actual artifact before treating it as a release-CI bug](wiki/learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md)
+- [codex-critique gate: start a fresh codex session per deliverable, don't codex-reply past a must-fix](wiki/learnings/1781386154716-codex-critique-gate-start-a-fresh-codex-session-pe.md)
+- [Critique-gate OUTPUT_REVIEW is sticky within a reused codex thread](wiki/learnings/1781386183865-critique-gate-output-review-is-sticky-within-a-reu.md)
+- [CONSOLIDATED: a bare `Agent` (no subagent_type) is a context-inheriting FORK — never use it for Recall/scan steps](wiki/learnings/1781404361687-CONSOLIDATED-fork-no-subagent-type-reruns-workflow.md)
+- [CONSOLIDATED — GitHub posting policy (verified ⇒ post; only ready+merge gated)](wiki/learnings/1781405000000-CONSOLIDATED-github-posting-policy.md)
+- [CONSOLIDATED: Falcor CI regression triage (topology, ULP fingerprint, merge-queue bisect, emit-diff arbiter)](wiki/learnings/1781405911100-CONSOLIDATED-falcor-ci-regression-triage.md)
+- [DeepWiki can be stale on cross-pass IR details — disambiguate with observed behavior](wiki/learnings/1781472651294-deepwiki-can-be-stale-on-cross-pass-ir-details-dis.md)
+- [Slang IR: re-point entry-point-identity decorations at a wrapper-swap site](wiki/learnings/1781477381559-slang-ir-re-point-entry-point-identity-decorations.md)
+- [Daily report: check for a linked fix PR before flagging an issue as untriaged](wiki/learnings/1781511232421-daily-report-check-for-a-linked-fix-pr-before-flag.md)
+- [Gated GitHub write needs a TRACEABLE operator source, not a bare parent relay](wiki/learnings/1781523727513-gated-github-write-needs-a-traceable-operator-sour.md)
+- [API budget cap blocks LLM subagent dispatch, not direct shell/read calls](wiki/learnings/1781539485742-api-budget-cap-blocks-llm-subagent-dispatch-not-di.md)
+- [CoopMat vs CoopVec linalg InterlockedAccumulate — DeepWiki conflates them](wiki/learnings/1781544794615-coopmat-vs-coopvec-linalg-interlockedaccumulate-de.md)
+- [Slang CI wait-for-human-priority gate is self-healing, not a flake](wiki/learnings/1781553870596-slang-ci-wait-for-human-priority-gate-is-self-heal.md)
+- [slang 11616 inliner emits DebugNoScope for caller because entry scope is emit-synthesized not in IR](wiki/learnings/1781559091568-slang-11616-inliner-emits-debugnoscope-for-caller-.md)
+- [SPIR-V DebugScope must be variable-arity (null IR operand crashes buildEntryPointReferenceGraph)](wiki/learnings/1781568128097-spir-v-debugscope-must-be-variable-arity-null-ir-o.md)
+- [Disk-full build workaround: out-of-source build on /dev/vda1 (/workspace) when /dev/vdb (/workspace/agent) is full](wiki/learnings/1781568134178-disk-full-build-workaround-out-of-source-build-on-.md)
+- [Variable-arity IR insts round-trip within a compiler version (serialize stores per-inst operandCount)](wiki/learnings/1781569081341-variable-arity-ir-insts-round-trip-within-a-compil.md)
+- [slang bot-CI "ci_failed" is often a priority-yield (self-heals via retry-yielded-bot-ci) — do NOT rerun or treat as code failure](wiki/learnings/1781571803229-slang-bot-ci-ci-failed-is-often-a-priority-yield-s.md)
+- [Bi-weekly (every-other-week) scheduling via cron guard](wiki/learnings/1781574732054-bi-weekly-every-other-week-scheduling-via-cron-gua.md)
+- [daily maintainer report must carry open ship-stoppers until merged](wiki/learnings/1781598056955-daily-maintainer-report-must-carry-open-ship-stopp.md)
+- [escalations route up the chain, bot never self-posts to gated channels](wiki/learnings/1781598359787-escalations-route-up-the-chain-bot-never-self-post.md)
+- [slangpy API churn: getv/setv→load/store/add rename + create_device has no experimental-features passthrough (neural module gate)](wiki/learnings/1781601865188-slangpy-api-churn-getv-setv-load-store-add-rename-.md)
+- [Slang CUDA WMMA/coopmat emit is unconditional but the prelude namespace is CUDA-12.5-guarded (NVRTC <12.5 fails cryptically) — #10689](wiki/learnings/1781602255080-slang-cuda-wmma-coopmat-emit-is-unconditional-but-.md)
+- [slangpy 0.41 Tensor API migration — official guide + the real store-vs-add rule](wiki/learnings/1781603359888-slangpy-0-41-tensor-api-migration-official-guide-t.md)
+- [slangpy-samples: editing bot issue comments 403s ("admin rights") — use fresh comments, not PATCH-in-place](wiki/learnings/1781603959329-slangpy-samples-editing-bot-issue-comments-403s-ad.md)
+- [Follow-up refactor issues may target code not yet on master](wiki/learnings/1781606753707-follow-up-refactor-issues-may-target-code-not-yet-.md)
+- [slangpy 0.41 Tensor migration: coop-vec reference gap + Python NDBuffer fully removed on main](wiki/learnings/1781606921222-slangpy-0-41-tensor-migration-coop-vec-reference-g.md)
+- [GPU is available (NVIDIA L40S) — don't assume "no GPU"; toolchain may need install](wiki/learnings/1781607246297-gpu-is-available-nvidia-l40s-don-t-assume-no-gpu-t.md)
+- [Migrating Slang code to slangpy 0.41 Tensor API — implementation gotchas + GPU-less compile-check](wiki/learnings/1781608041360-migrating-slang-code-to-slangpy-0-41-tensor-api-im.md)
+- [slangpy 0.41 migration: old set() on AtomicTensor ACCUMULATED (set→add preserves, not changes)](wiki/learnings/1781608830888-slangpy-0-41-migration-old-set-on-atomictensor-acc.md)
+- [slangpy-samples CI pre-commit runs --all-files; a single un-newlined file reds every PR](wiki/learnings/1781609083456-slangpy-samples-ci-pre-commit-runs-all-files-a-sin.md)
+- [slangpy getv/setv→load/store/add: the precise store-vs-add rule (reviewer-verified) — add preserves behavior, not changes it](wiki/learnings/1781609114268-slangpy-getv-setv-load-store-add-the-precise-store.md)
+- [Slang flag-enum compound-assign gap: ILogical vs __BuiltinLogicalType operators](wiki/learnings/1781621242788-slang-flag-enum-compound-assign-gap-ilogical-vs-bu.md)
+- [Build subagent that bails mid-build often leaves its detached cmake running — check before relaunching](wiki/learnings/1781624196085-build-subagent-that-bails-mid-build-often-leaves-i.md)
+- [WGSL emit: static-const arrays must be var<private> (not const) for runtime indexing](wiki/learnings/1781624737396-wgsl-emit-static-const-arrays-must-be-var-private-.md)
+- [Slang CI: "Common Test Setup" pre-test flake evicts PRs from merge queue](wiki/learnings/1781626237709-slang-ci-common-test-setup-pre-test-flake-evicts-p.md)
+- [slang #11629 — reporter's root cause contradicted by HEAD; verify propagation before fixing coverage-manifest gaps](wiki/learnings/1781626696031-slang-11629-reporter-s-root-cause-contradicted-by-.md)
+- [slang-pr-review: cross-check Reviewer C clarity findings against A and for internal consistency before forwarding](wiki/learnings/1781627346796-slang-pr-review-cross-check-reviewer-c-clarity-fin.md)
+- [Slang [require] capabilities never reach codegen cap set; version path has a partial compensation, bindless has none](wiki/learnings/1781638061693-slang-require-capabilities-never-reach-codegen-cap.md)
+- [WGSL static-const-array review: replaceGlobalConstants false-positive + value-indexability rule](wiki/learnings/1781639050403-wgsl-static-const-array-review-replaceglobalconsta.md)
+- [A maintainer's literal review suggestion can be locally unsafe — verify all read sites of a reused predicate](wiki/learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md)
+- [expected-failure list only reclassifies a Fail — never reddens a passing listed test](wiki/learnings/1781641446803-expected-failure-list-only-reclassifies-a-fail-nev.md)
+- [CORRECTION to #11631 version root cause: require atom stamped only on layout IR module, not the codegen module determineSpirvVersion runs on](wiki/learnings/1781643037138-correction-to-11631-version-root-cause-require-ato.md)
+- [A maintainer merging master into your PR branch can silently fix the root cause — rebuild+retest after any base move](wiki/learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md)
+- [Confirm a build is really ToT with a feature-probe, not the slangc -v string (extends the #11483 stale-binary trap)](wiki/learnings/1781651877940-confirm-a-build-is-really-tot-with-a-feature-probe.md)
+- [Execute maintainer-directed non-gated actions without round-tripping](wiki/learnings/1781653325417-execute-maintainer-directed-non-gated-actions-with.md)
+- [CMake CACHE PATH absolutizes relative -D values against the cmake CWD — pass :STRING to keep them relative](wiki/learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md)
+- [Critique-gate records verdict from fresh codex calls, not codex-reply rounds](wiki/learnings/1781661845733-critique-gate-records-verdict-from-fresh-codex-cal.md)
+- [Bot draft PRs get ZERO CI on shader-slang/slang (filter job skips drafts)](wiki/learnings/1781663343829-bot-draft-prs-get-zero-ci-on-shader-slang-slang-fi.md)
+- [WGSL @location return-0 fallback branch can't be unit-tested in one struct](wiki/learnings/1781663682498-wgsl-location-return-0-fallback-branch-can-t-be-un.md)
+- [Maintainer 'propose a fix if none exists' + their own fork PR = confirm direction, don't assume upstream-it](wiki/learnings/1781663826357-maintainer-propose-a-fix-if-none-exists-their-own-.md)
+- [slang #11641 mac-aarch64 rhi flake = cmd-query timing assert (slang-rhi#775), NOT LLVM instruction-set](wiki/learnings/1781679288468-slang-11641-mac-aarch64-rhi-flake-cmd-query-timing.md)
+- [slang E39999 "could not specialize generic" has an extensible failure-reason mechanism (PR #11571)](wiki/learnings/1781684668464-slang-e39999-could-not-specialize-generic-has-an-e.md)
+- [Fabricated parent-edge dispatch contained by drafts-only + gate-irreversible-step discipline](wiki/learnings/1781685016229-fabricated-parent-edge-dispatch-contained-by-draft.md)
+- [slang#11631 severity: [require]-drop is a SILENT runtime-divergence (SS-class), and only hits codegen-DECISION caps](wiki/learnings/1781686744418-slang-11631-severity-require-drop-is-a-silent-runt.md)
+- [Operator override that bypasses your parent — confirm on operator edge AND nudge parent, or it goes stale](wiki/learnings/1781686753503-operator-override-that-bypasses-your-parent-confir.md)
+- [This environment HAS an NVIDIA GPU (nvidia-smi works) despite CLAUDE.md saying "no GPU" — but no Vulkan loader, so Vulkan execution still unavailable](wiki/learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md)
+- [Slang coworker containers HAVE an NVIDIA GPU (L40S) — "no GPU" docs are stale; verify with nvidia-smi](wiki/learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40s-.md)
+- [Correction: installing libvulkan1 does NOT enable NVIDIA-GPU Vulkan in these containers — only software llvmpipe; NVIDIA Vulkan ICD fails (ERROR_INCOMPATIBLE_DRIVER, NVIDIA_VISIBLE_DEVICES=void)](wiki/learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md)
+- [Re-pull mutable PR state from GitHub before asserting it in a status report](wiki/learnings/1781702557335-re-pull-mutable-pr-state-from-github-before-assert.md)
+- [Slang #11493 fast-path silently declines float-bitwise → E39999 ambiguous (regression vector)](wiki/learnings/1781703451468-slang-11493-fast-path-silently-declines-float-bitw.md)
+- [Stale prebuilt slangc + inlining mask SPIR-V static-local bugs (verify-at-HEAD pitfalls)](wiki/learnings/1781708255374-stale-prebuilt-slangc-inlining-mask-spir-v-static-.md)
+- [SLANG_ASSERT=release-assert-only gives FALSE "fixed" when triaging assert-failure ICEs](wiki/learnings/1781712984955-slang-assert-release-assert-only-gives-false-fixed.md)
+- [slang #9382 Gather ConstOffset — naive fix unsafe; two stale draft PRs exist](wiki/learnings/1781713033202-slang-9382-gather-constoffset-naive-fix-unsafe-two.md)
+- [SPIR-V function-static state loss = SPIRV-Tools private-to-local (and how to CLI-repro)](wiki/learnings/1781713084820-spir-v-function-static-state-loss-spirv-tools-priv.md)
+- [Fresh peer delegation carrying a chain-delivery marker still needs in_reply_to](wiki/learnings/1781713187860-fresh-peer-delegation-carrying-a-chain-delivery-ma.md)
+- [Empty-struct CUDA layout bug only repros when the empty type is in the public/exported interface](wiki/learnings/1781713263122-empty-struct-cuda-layout-bug-only-repros-when-the-.md)
+- [Re-triage: rescan live cross-ref timeline for newer maintainer PRs touching the issue's files](wiki/learnings/1781713625746-re-triage-rescan-live-cross-ref-timeline-for-newer.md)
+- [slangc -target spirv-asm at default opt DOES run spirv-opt (private-to-local)](wiki/learnings/1781714495665-slangc-target-spirv-asm-at-default-opt-does-run-sp.md)
+- [slang coworker /dev/shm is 64M — parallel C++ builds SIGBUS in cc1plus; set TMPDIR on disk](wiki/learnings/1781716025205-slang-coworker-dev-shm-is-64m-parallel-c-builds-si.md)
+- [A forked Agent (no subagent_type) inherits full context and may run the whole task, not the scoped prompt](wiki/learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-cont.md)
+- [Slang CI: .slang-module gen failure with E99997 assert = real bug, not infra flake](wiki/learnings/1781720061070-slang-ci-slang-module-gen-failure-with-e99997-asse.md)
+- [Verify triage root cause empirically — slang#10027 vector-default-N synthesized-ctor cross-module abort](wiki/learnings/1781724696064-verify-triage-root-cause-empirically-slang-10027-v.md)
+- [slang #11648 float-bitwise diagnostic: binary and unary ~ are separate fast-path branches](wiki/learnings/1781724869679-slang-11648-float-bitwise-diagnostic-binary-and-un.md)
+- [Don't promote a hedged hypothesis to "root cause (traced)" in a public triage verdict](wiki/learnings/1781724956224-don-t-promote-a-hedged-hypothesis-to-root-cause-tr.md)
+- [Empty-struct field emit-skip is incomplete — must remove fields in IR, not at emit](wiki/learnings/1781725277930-empty-struct-field-emit-skip-is-incomplete-must-re.md)
+- [Never mutate a hoistable SPIRVAsmOperand in place; repoint the consuming inst](wiki/learnings/1781725591470-never-mutate-a-hoistable-spirvasmoperand-in-place-.md)
+- [SPIR-V asm-operand legalization: hoistable operands + foldable≠constant pitfalls](wiki/learnings/1781726667133-spir-v-asm-operand-legalization-hoistable-operands.md)
+- [Don't use a context-inheriting Agent fork for narrow recall while a fix workflow is auto-routed](wiki/learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md)
+- [Fixer stall diagnosis — unpushed worktree vs dead session](wiki/learnings/1781727054458-fixer-stall-diagnosis-unpushed-worktree-vs-dead-se.md)
+- [slang #11643 RESOLVED — focused generic-specialization diagnostics landed (PR #11656), 3 of ~9 sites done](wiki/learnings/1781729215980-slang-11643-resolved-focused-generic-specializatio.md)
+- [slang-pr-review: claude CLI recovers from mid-stream 504 — don't kill a stalled reviewer run](wiki/learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md)
+- [slang #9382: negated-constant gather offset (-int2(2,1)) is NOT a stable runtime OpSNegate — it folds to constant+ConstOffset (cap lingers)](wiki/learnings/1781731175811-slang-9382-negated-constant-gather-offset-int2-2-1.md)
+- [Devin reviewer (B) can exit rc=0 while analysis is still "Generating" — a false all-clear](wiki/learnings/1781731413287-devin-reviewer-b-can-exit-rc-0-while-analysis-is-s.md)
+- [Recover slang clarity-review candidates after a transient API error instead of re-running](wiki/learnings/1781731735312-recover-slang-clarity-review-candidates-after-a-tr.md)
+- [Empty-struct field removal is C-source-only — never run it on the direct-LLVM CPU path](wiki/learnings/1781735606781-empty-struct-field-removal-is-c-source-only-never-.md)
+- [Slang generic-arg arity diagnostics must range-check against defaulted params](wiki/learnings/1781753229607-slang-generic-arg-arity-diagnostics-must-range-che.md)
+- [Slang #11545 byte-address Slice-1 (#11594) delivered 41302 via constexpr but NOT 41303 — the consistency slice must carry its own location-alignment guard](wiki/learnings/1781770372055-slang-11545-byte-address-slice-1-11594-delivered-4.md)
+- [codex-critique gate records stage verdicts only from a fresh staged codex call, not from codex-reply](wiki/learnings/1781775272408-codex-critique-gate-records-stage-verdicts-only-fr.md)
+- [A fresh unblock handoff can contradict a prior triager ruling — run Recall on shared learnings before implementing a multi-slice fix](wiki/learnings/1781775592867-a-fresh-unblock-handoff-can-contradict-a-prior-tri.md)
+- [slang #11591/#11590 — prior 41303-to-Slice-3 ruling (1781318517600) re-verified VALID at HEAD a84f48e62 post-#11594; carrying 41303 in Slice 2 is a confirmed band-aid](wiki/learnings/1781776078394-slang-11591-11590-prior-41303-to-slice-3-ruling-17.md)
+- [slang OptiX payload lost when terminate-intrinsic is in a callee (entrypoint-local writeback scan gap)](wiki/learnings/1781777421724-slang-optix-payload-lost-when-terminate-intrinsic-.md)
+- [ncl sessions list is capped — use --thread-id for handoff verification](wiki/learnings/1781778033276-ncl-sessions-list-is-capped-use-thread-id-for-hand.md)
+- [Slang CUDA/OptiX varying-param legalizer: terminate-intrinsic detection + pre-pass timing](wiki/learnings/1781782798777-slang-cuda-optix-varying-param-legalizer-terminate.md)
+- [slang -target hpp/cpp "no output file" is usually a crash from a graphics-stage entry point](wiki/learnings/1781783056677-slang-target-hpp-cpp-no-output-file-is-usually-a-c.md)
+- [Slang Diagnostics::Unimplemented is Severity::Internal — aborts compilation, wrong channel for user-actionable errors](wiki/learnings/1781784301760-slang-diagnostics-unimplemented-is-severity-intern.md)
+- [Slang DIAGNOSTIC_TEST(diag=CHECK) authoring — exhaustive matcher, title+span = two annotations](wiki/learnings/1781787235055-slang-diagnostic-test-diag-check-authoring-exhaust.md)
+- [PR-review heuristic: when a fix adds a null-possible invariant + helper, audit ALL structurally-identical sites](wiki/learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md)
+- [Adding a slangd config setting is a two-repo job — copy the workspaceFlavor template](wiki/learnings/1781797125582-adding-a-slangd-config-setting-is-a-two-repo-job-c.md)
+- [slang downstream-compiler load: optional spirv-opt is fatal via real sink + half-wired GLSLANG gate](wiki/learnings/1781799089141-slang-downstream-compiler-load-optional-spirv-opt-.md)
+- [Slang downstream-compiler load is per-session memoized; ListBlob::moveCreate doesn't actually move](wiki/learnings/1781803009034-slang-downstream-compiler-load-is-per-session-memo.md)
+- [Slang downstream-compiler absence (spirv-opt/slang-glslang) IS unit-testable via setSharedLibraryLoader](wiki/learnings/1781804734767-slang-downstream-compiler-absence-spirv-opt-slang-.md)
+- [Front-end stage-rejection for CPU-kernel targets is over-broad — graphics→CPU cross-compile is valid](wiki/learnings/1781806349986-front-end-stage-rejection-for-cpu-kernel-targets-i.md)
+- [Slang: SLANG_ASSERT is a no-op (SLANG_ASSUME/UB-license) in release builds — use SLANG_RELEASE_ASSERT to actually fail loudly](wiki/learnings/1781807946287-slang-slang-assert-is-a-no-op-slang-assume-ub-lice.md)
+- [Build-only subagent overstepped: committed/pushed/dispatched-CI/edited-PR-body — verify every claim](wiki/learnings/1781809987259-build-only-subagent-overstepped-committed-pushed-d.md)
+- [Slang opt-level default is Default not None — use hasOption to detect explicit -O](wiki/learnings/1781810067410-slang-opt-level-default-is-default-not-none-use-ha.md)
+- [hasOption(Optimization) is NOT an explicit-vs-default signal at the emit layer](wiki/learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md)
+- [slangc -v version string is baked at CONFIGURE time, not build time](wiki/learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md)
+- [slang ParseDeclName shared by func and var declarators accepts operator names](wiki/learnings/1781823315708-slang-parsedeclname-shared-by-func-and-var-declara.md)
+- [Recall step: spawn a read-only Explore subagent, never a bare Agent fork](wiki/learnings/1781823486955-recall-step-spawn-a-read-only-explore-subagent-nev.md)
+- [CI runs slang-test with SLANG_RUN_SPIRV_VALIDATION enabled — unit tests must not assume validation is off](wiki/learnings/1781825083619-ci-runs-slang-test-with-slang-run-spirv-validation.md)
+- [Slang parser-diagnostic gotchas: message dedup, body-phase error suppression, DIAGNOSTIC_TEST exhaustive rows](wiki/learnings/1781826649693-slang-parser-diagnostic-gotchas-message-dedup-body.md)
+- [Untraceable from-parent mandate for costly/gated work — analyze cheaply and surface, don't execute](wiki/learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated-w.md)
+- [Controlled-rebase experiments mislead when the 'isolated' change is cross-cutting (name hints/mangling)](wiki/learnings/1781841056611-controlled-rebase-experiments-mislead-when-the-iso.md)
+- [Discord send_message enforces a 2000-char hard limit](wiki/learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md)
+- [Slang DescriptorHandle<AccelerationStructure>: two models, heap vs plain bindless](wiki/learnings/1781903775019-slang-descriptorhandle-accelerationstructure-two-m.md)
+- [Slang AS: forcing ray-query-only capability (avoid SPV_KHR_ray_tracing)](wiki/learnings/1781905197543-slang-as-forcing-ray-query-only-capability-avoid-s.md)
+- [Conditionally requiring a SPIR-V capability for a stdlib spirv_asm intrinsic forces pass-level block manipulation — layer-choice tree](wiki/learnings/1781974573249-conditionally-requiring-a-spir-v-capability-for-a-.md)
+- [slang-glslang: add an opt-out via dedicated CMake escape-hatch, not by deleting the pass](wiki/learnings/1781975592365-slang-glslang-add-an-opt-out-via-dedicated-cmake-e.md)
+- [Combined-sampler GetDimensions off-by-one (WGSL/Metal/CUDA) — shared root with HLSL #10522](wiki/learnings/1781992589265-combined-sampler-getdimensions-off-by-one-wgsl-met.md)
+- [Curating shared learnings: serialize directory edits, never parallel forks](wiki/learnings/1782026325950-curating-shared-learnings-serialize-directory-edit.md)
+- [Slang texture Sample offset is constexpr; wrappers must forward it as constexpr](wiki/learnings/1782041019246-slang-texture-sample-offset-is-constexpr-wrappers-.md)
+- [Current Slang maintainer is dynamic — ask the Slang Maintainer agent, never hardcode](wiki/learnings/1782144700294-current-slang-maintainer-is-dynamic-ask-the-slang-.md)
+- [slang -g0 doesn't zero SPIR-V debug info: OpSource/OpName bypass the IRDebug gating path](wiki/learnings/1782145409789-slang-g0-doesn-t-zero-spir-v-debug-info-opsource-o.md)
+- [DescriptorHandle to ConstantBuffer implicit conversion blocked by ParameterGroupType target guard in _coerce](wiki/learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md)
+- [slang-triager has no deliverable edge to slang-fixer — route triage handoffs through the orchestrator (parent)](wiki/learnings/1782145779844-slang-triager-has-no-deliverable-edge-to-slang-fix.md)
+- [Auto-route UserPromptSubmit hook can re-fire a parked/retracted chain — explicit stand-down wins](wiki/learnings/1782145876334-auto-route-userpromptsubmit-hook-can-re-fire-a-par.md)
+- [Localizing slangc -reflection-json crash on failed compile (#11683) + REFLECTION test directive gotcha](wiki/learnings/1782146682704-localizing-slangc-reflection-json-crash-on-failed-.md)
+- [RETRACTION: triager→slang-fixer edge DOES work — earlier "no wired edge" learning was wrong; real lesson is no double-dispatch](wiki/learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)
+- [Slang fixer container disk fills from accumulated build/ trees](wiki/learnings/1782148249067-slang-fixer-container-disk-fills-from-accumulated-.md)
+- [Stacked-PR cross-chain base-branch force-push collision (slang #11595/#11596): detect, DON'T force-push back, freeze + escalate to orchestrator](wiki/learnings/1782148330338-stacked-pr-cross-chain-base-branch-force-push-coll.md)
+- [Internal a2a review ≠ GitHub reviewDecision](wiki/learnings/1782148692608-internal-a2a-review-github-reviewdecision.md)
+- [Disk-full on /workspace/agent: prune worktree build/ dirs, not whole worktrees](wiki/learnings/1782151532732-disk-full-on-workspace-agent-prune-worktree-build-.md)
+- [slang DescriptorHandle<T> → T implicit conversion blocked for ParameterGroupType targets by _coerce guard ordering](wiki/learnings/1782151554268-slang-descriptorhandle-t-t-implicit-conversion-blo.md)
+- [Fixer container disk fills from accumulated build/ trees (ENOSPC at cmake-configure)](wiki/learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md)
+- [Slang rich diagnostic renderer is tty/color-gated — pipe-masking trap when reproducing render bugs](wiki/learnings/1782151905566-slang-rich-diagnostic-renderer-is-tty-color-gated-.md)
+- [slang rich diagnostic renderer mishandles zero-width EOF span and byte-vs-codepoint columns](wiki/learnings/1782151944896-slang-rich-diagnostic-renderer-mishandles-zero-wid.md)
+- [slangpy/slang-rhi rerun 403 is the same gateway collision as slang, not missing actions:write](wiki/learnings/1782152095347-slangpy-slang-rhi-rerun-403-is-the-same-gateway-co.md)
+- [Don't fork (omit subagent_type) for read-only recall/scan steps — the fork inherits full triage context and may run the entire workflow](wiki/learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md)
+- [Read-only recall/scan steps must be Explore-typed, never bare forks](wiki/learnings/1782152715724-read-only-recall-scan-steps-must-be-explore-typed-.md)
+- [slang-glslang/spirv-opt: gate the emit-path load to only-when-needed (masking vs. principled gating)](wiki/learnings/1782152994624-slang-glslang-is-the-spir-v-backend-don-t-mask-its.md)
+- [Slang #language directive precedence: unconditional per-file override of the option-set default](wiki/learnings/1782153228750-slang-language-directive-precedence-unconditional-.md)
+- [slang legacy slang.dll proxy + libslang symlink: location and opt-out pattern](wiki/learnings/1782154549776-slang-legacy-slang-dll-proxy-libslang-symlink-loca.md)
+- [clang-format-17 via pip --target needs PYTHONPATH set to run](wiki/learnings/1782156721731-clang-format-17-via-pip-target-needs-pythonpath-se.md)
+- [codex-critique artifacts must live under /workspace, not /tmp (ephemeral + invisible to codex)](wiki/learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md)
+- [Latent adjacent defect found by code-reading: don't file a speculative tracking issue while the covering fix is an unmerged PR](wiki/learnings/1782156945737-latent-adjacent-defect-found-by-code-reading-don-t.md)
+- [Slang buffer-layout-marker warning needs a new diagnostic, not a capability gate](wiki/learnings/1782158570480-slang-buffer-layout-marker-warning-needs-a-new-dia.md)
+- [SlangPy downstream check reruns are blocked for the bot (no slangpy admin)](wiki/learnings/1782159092911-slangpy-downstream-check-reruns-are-blocked-for-th.md)
+- [RETRACTION: slangpy downstream rerun block is the gateway collision, NOT a babysitter-authority gap](wiki/learnings/1782159293633-retraction-slangpy-downstream-rerun-block-is-the-g.md)
+- [Verifying detached background PR-reviewer completion (Monitor + pgrep gotchas)](wiki/learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md)
+- [Broad-blast-radius lowering changes need a FULL local slang-test sweep, not a sampled subset](wiki/learnings/1782162119070-broad-blast-radius-lowering-changes-need-a-full-lo.md)
+- [Filing a neutral design-discussion issue split off from a PR (maintainer wants analysis before solution)](wiki/learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md)
+- [ADDENDUM (slang #11681): maintainer preferred REMOVING the dubious _coerce guard over a DescriptorHandle carve-out](wiki/learnings/1782164510013-addendum-slang-11681-maintainer-preferred-removing.md)
+- [Slang SV_Depth{Greater,Less}Equal: direct SPIR-V correct, GLSL/via-GLSL drops directional mode](wiki/learnings/1782165817624-slang-sv-depth-greater-less-equal-direct-spir-v-co.md)
+- [SlangPy Tests failures on slang PRs are not bot-rerunnable (admin-rights boundary)](wiki/learnings/1782166177663-slangpy-tests-failures-on-slang-prs-are-not-bot-re.md)
+- [slang #11599 clip-space Z-remap option — DECLINED by maintainer (out of scope)](wiki/learnings/1782171440977-slang-11599-clip-space-z-remap-option-declined-by-.md)
+- [slang#11599 clip-space-Z remap DECLINED by maintainer](wiki/learnings/1782171529298-slang-11599-clip-space-z-remap-declined-by-maintai.md)
+- [Verifying slangd LSP-config settings: probe must answer the workspace/configuration pull](wiki/learnings/1782172056258-verifying-slangd-lsp-config-settings-probe-must-an.md)
+- [GLSL legalize: per-entry-point system-value decorations must gate on VaryingOutput (inout double-attach)](wiki/learnings/1782173862922-glsl-legalize-per-entry-point-system-value-decorat.md)
+- [Depth SV semantics are output-only (E30702) — a reviewer-traced 'inout duplicate' gap can be unreachable](wiki/learnings/1782175276058-depth-sv-semantics-are-output-only-e30702-a-review.md)
+- [GLSL legalize: per-entry-point system-value decorations must gate on VaryingOutput (inout double-attach)](wiki/learnings/1782175454099-glsl-legalize-per-entry-point-system-value-decorat.md)
+- [slang 11683 reflection-json crash is broad scope and NOT a regression](wiki/learnings/1782203064448-slang-11683-reflection-json-crash-is-broad-scope-a.md)
+- [A scan-only Agent fork can overreach into the full task and message the parent](wiki/learnings/1782203173377-a-scan-only-agent-fork-can-overreach-into-the-full.md)
+- [Slang direct-SPIR-V depth mode ALSO dropped via conflict-branch (dual depth-affecting vars) — not just GLSL](wiki/learnings/1782211031715-slang-direct-spir-v-depth-mode-also-dropped-via-co.md)
+- [Stale PR fix-requests: verify base vs current main, and issue-vs-PR, before implementing](wiki/learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md)
+- [Slang diagnostic-callback API: legacy + severity-less; diagnostics roadmap is the Rich Diagnostics rewrite](wiki/learnings/1782215106250-slang-diagnostic-callback-api-legacy-severity-less.md)
+- [NVAPI render-tests silently "ignored" — submodule→FetchContent migration left render-test path stale](wiki/learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fetc.md)
+- [Stale feature requests can be half-implemented at HEAD — verify before scoping](wiki/learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md)
+- [Slang MemoryScope machinery exists but is unwired to atomics (issue #6970)](wiki/learnings/1782215139629-slang-memoryscope-machinery-exists-but-is-unwired-.md)
+- [Slang: adding a diagnostic type-display flag — DiagnosticColor template + toText has no sink context](wiki/learnings/1782215211806-slang-adding-a-diagnostic-type-display-flag-diagno.md)
+- [Recall/research fan-out must use Explore subagent, never a bare Agent() fork](wiki/learnings/1782215264522-recall-research-fan-out-must-use-explore-subagent-.md)
+- [vk::location on a cbuffer is silently dropped → GLSL binding follows declaration order (slang #6216)](wiki/learnings/1782215284222-vk-location-on-a-cbuffer-is-silently-dropped-glsl-.md)
+- [Recall/research fan-out must use Explore, never a bare Agent() fork](wiki/learnings/1782215337634-recall-research-fan-out-must-use-explore-never-a-b.md)
+- [slang extension same-name member resolution — dual policy + immediate-parent tie-break gap (#9660)](wiki/learnings/1782215352976-slang-extension-same-name-member-resolution-dual-p.md)
+- [import-vs-include reflection/binding loss = missing IComponentType::link()](wiki/learnings/1782215579233-import-vs-include-reflection-binding-loss-missing-.md)
+- [slang associated-constant fold gated on DeclaredSubtypeWitness; eager tryConstantFoldDeclRef skips normalize](wiki/learnings/1782215625162-slang-associated-constant-fold-gated-on-declaredsu.md)
+- [Read-only recall forks must be scoped Explore or explicitly constrained — bare Agent forks inherit ALL tools and can post/dispatch](wiki/learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md)
+- [duplicate dispatch peer live-writes the fix into your shared worktree](wiki/learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md)
+- [slang#9660 extension shadowing — design-gated; override keyword already exists](wiki/learnings/1782216036396-slang-9660-extension-shadowing-design-gated-overri.md)
+- [Recall-scan fork can misread the parent's own edits as a peer collision](wiki/learnings/1782216127466-recall-scan-fork-can-misread-the-parent-s-own-edit.md)
+- [Detect groupshared/TGSM codegen bugs on DXIL without a GPU (addrspace(3) vs alloca)](wiki/learnings/1782216962036-detect-groupshared-tgsm-codegen-bugs-on-dxil-witho.md)
+- [Agentic-test bundle staleness is often compiler-driven and list-stale won't catch it](wiki/learnings/1782217764152-agentic-test-bundle-staleness-is-often-compiler-dr.md)
+- [Falcor CI tracking issues from jkiviluoto-nv: park at triaged, cross-link the family](wiki/learnings/1782222346038-falcor-ci-tracking-issues-from-jkiviluoto-nv-park-.md)
+- [Recall/scan forks can phantom-overstep into worktree inspection, faking a peer-collision](wiki/learnings/1782223714002-recall-scan-forks-can-phantom-overstep-into-worktr.md)
+- [Slang: a fold over a concrete DeclaredSubtypeWitness can return symbolic purely because the conformance witness table isn't built yet — fix with ensureDecl(ReadyForConformances), not resolve()/normalize](wiki/learnings/1782224910624-slang-a-fold-over-a-concrete-declaredsubtypewitnes.md)
+- [Context-inheriting Agent forks can no-op on long build/verify work — use a detached script + Monitor](wiki/learnings/1782224927601-context-inheriting-agent-forks-can-no-op-on-long-b.md)
+- [vk::location-on-non-varying warning (#6216): the param-binding gate placement and the "double-emission matches precedent" trap](wiki/learnings/1782225149459-vk-location-on-non-varying-warning-6216-the-param-.md)
+- [A single common-suite flake can functionally stall the Slang merge queue](wiki/learnings/1782226186227-a-single-common-suite-flake-can-functionally-stall.md)
+- [cuda>=13.0 GPU CI runner driver-mismatch signature (shader-slang)](wiki/learnings/1782226877304-cuda-13-0-gpu-ci-runner-driver-mismatch-signature-.md)
+- [groupshared array PARAMETER lowered by-value loses TGSM (slang#10641)](wiki/learnings/1782228288994-groupshared-array-parameter-lowered-by-value-loses.md)
+- [slang #10641 — groupshared array PARAM bug: fix is by-reference lowering, NOT address-space recovery](wiki/learnings/1782228568362-slang-10641-groupshared-array-param-bug-fix-is-by-.md)
+- [Reading a submodule pin: commit date ≠ version; check reachability with compare](wiki/learnings/1782231360603-reading-a-submodule-pin-commit-date-version-check-.md)
+- [When CI infra failure goes fleet-wide, reruns mask — escalate instead](wiki/learnings/1782231415029-when-ci-infra-failure-goes-fleet-wide-reruns-mask-.md)
+- [imgui in slang is a unity build; bumping it needs IMGUI_DEFINE_MATH_OPERATORS](wiki/learnings/1782235481283-imgui-in-slang-is-a-unity-build-bumping-it-needs-i.md)
+- [A maintainer flipping your draft PR to ready/merge is NOT a bot operator-gate violation — verify isDraft from live state](wiki/learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md)
+- [Verify live PR draft/ready state before reporting it — maintainers can flip it](wiki/learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md)
+- [groupshared by-reference param regresses Khronos SPIR-V; fix is Khronos-gated inlining keyed on param RATE](wiki/learnings/1782237919713-groupshared-by-reference-param-regresses-khronos-s.md)
+- [Before reporting a "bot flipped PR ready" gate violation, verify the ready_for_review actor](wiki/learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola.md)
+- [Dependency-bump PR triage: cross-platform check proves innocence](wiki/learnings/1782244083021-dependency-bump-pr-triage-cross-platform-check-pro.md)
+- [CI babysitter: headline the dominant root-cause when maintainers rerun into a deterministic wall](wiki/learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md)
+- [SPV_KHR_abort transitively requires SPV_KHR_constant_data; message is OpConstantDataKHR not a runtime composite](wiki/learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md)
+- [CORRECTION: abort message is a runtime composite (runtime args), not OpConstantDataKHR; shipped #11542 bug is the wrong OpExtension token](wiki/learnings/1782251874470-correction-abort-message-is-a-runtime-composite-ru.md)
+- [slang-test -dx12 lane: empty-output FileCheck fail is often a bad test flag, not codegen — read the ACTUAL block](wiki/learnings/1782252899885-slang-test-dx12-lane-empty-output-filecheck-fail-i.md)
+- [Bot enqueuePullRequest blocked for ALL PRs, not just forks](wiki/learnings/1782260121429-bot-enqueuepullrequest-blocked-for-all-prs-not-jus.md)
+- [Read-only classification subagents may execute the full workflow anyway](wiki/learnings/1782260610851-read-only-classification-subagents-may-execute-the.md)
+- [slang bootstrap eagerly recompiles core+GLSL at session creation (EMBED_CORE_MODULE=OFF)](wiki/learnings/1782261706992-slang-bootstrap-eagerly-recompiles-core-glsl-at-se.md)
+- [slang descriptor-heap unified stride (#11718) — already-supported extension, gap is stride policy not the extension](wiki/learnings/1782264486800-slang-descriptor-heap-unified-stride-11718-already.md)
+- [Closing a GitHub issue as duplicate: use GraphQL closeIssue, not REST state_reason (403)](wiki/learnings/1782264622886-closing-a-github-issue-as-duplicate-use-graphql-cl.md)
+- [Closing issues as duplicate — use GraphQL closeIssue, not REST](wiki/learnings/1782264656205-closing-issues-as-duplicate-use-graphql-closeissue.md)
+- [spvDescriptorHeapEXT unified-stride: per-type arrays + symbolic-max construct (#11718)](wiki/learnings/1782264945972-spvdescriptorheapext-unified-stride-per-type-array.md)
+- [Triage discriminator: Slang embedded spirv-tools vs system Vulkan validation layer (version-skew)](wiki/learnings/1782267495019-triage-discriminator-slang-embedded-spirv-tools-vs.md)
+- [Coworkers must not close GitHub issues — deterministic tool backstop](wiki/learnings/1782270000000-coworkers-must-not-close-github-issues-tool-backstop.md)
+- [spirv-val accepts OpSpecConstantOp(max) over opaque OpConstantSizeOfEXT as an ArrayStrideIdEXT id](wiki/learnings/1782271381546-spirv-val-accepts-opspecconstantop-max-over-opaque.md)
+- [Slang triage: "follow-up from PR #N" issues — check if PR #N merged before forwarding to fixer](wiki/learnings/1782275600814-slang-triage-follow-up-from-pr-n-issues-check-if-p.md)
+- [Do NOT autonomously close issues/PRs — surface to a human maintainer](wiki/learnings/1782280210918-do-not-autonomously-close-issues-prs-surface-to-a-.md)
+- [Slang platform macros are value-style (always defined) — defined()/#ifdef on them is an always-true bug](wiki/learnings/1782281850149-slang-platform-macros-are-value-style-always-defin.md)
+- [Daily-report fallback when slang-mcp server is down](wiki/learnings/1782288946942-daily-report-fallback-when-slang-mcp-server-is-dow.md)
+- [IR-LABEL test breaks: a renamed function (struct→extension) is not an opcode change — verify which one broke](wiki/learnings/1782295021483-ir-label-test-breaks-a-renamed-function-struct-ext.md)
+- [CI babysitter: CPU-job failure is the tell for real regression vs GPU flake](wiki/learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
+- [slang-fixer shared mount fills with in-flight build trees — don't reclaim siblings](wiki/learnings/1782305359829-slang-fixer-shared-mount-fills-with-in-flight-buil.md)
+- [Validate slang test-gate #if fixes: confirm the macro is a compile-define for that target](wiki/learnings/1782318227042-validate-slang-test-gate-if-fixes-confirm-the-macr.md)
+- [SPIR-V atomic emit has TWO address-space gates — a per-address-space fix must touch both](wiki/learnings/1782322436550-spir-v-atomic-emit-has-two-address-space-gates-a-p.md)
+- [Slang SPIR-V emit: new Spv* enum constants resolve from the SPIRV-Headers package, not external/spirv/spirv.h](wiki/learnings/1782322517394-slang-spir-v-emit-new-spv-enum-constants-resolve-f.md)
+- [Serializing Slang reflection: use -reflection-json or reflect from a loaded module](wiki/learnings/1782323528074-serializing-slang-reflection-use-reflection-json-o.md)
+- [Converting presence→value macro tests can silently narrow platform coverage (iOS dropped from dlfcn)](wiki/learnings/1782324227290-converting-presence-value-macro-tests-can-silently.md)
+- [slangpy GPU mem-leak #115/#608 don't reproduce at HEAD; CI OOM is concurrent-peak high-water-mark, not a leak](wiki/learnings/1782324497848-slangpy-gpu-mem-leak-115-608-don-t-reproduce-at-he.md)
+- [Building slangpy from source in the fixer container: python3-dev, PEP-668, torch bridge, submodule/ENOSPC gotchas](wiki/learnings/1782324519820-building-slangpy-from-source-in-the-fixer-containe.md)
+- [Attributing check-cmdline-ref CI failures (not master-doc drift by default)](wiki/learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)
+- [Verifying Slang per-target buffer layout: measure emitted AND reflection separately; use a pinned worktree + full build](wiki/learnings/1782325331597-verifying-slang-per-target-buffer-layout-measure-e.md)
+- [Presence→value SLANG_* macro conversions can silently narrow the active-platform side (iOS dropped from dlfcn)](wiki/learnings/1782327804698-presence-value-slang-macro-conversions-can-silentl.md)
+- [Sanitizer-finding fixes must remove the matching expected-sanitizer-findings.txt suppression in the same PR](wiki/learnings/1782328977641-sanitizer-finding-fixes-must-remove-the-matching-e.md)
+- [Use Explore subagent (not a bare fork) for the learnings-scan step](wiki/learnings/1782329772659-use-explore-subagent-not-a-bare-fork-for-the-learn.md)
+- [expected-sanitizer-findings.txt has two match modes — SUMMARY-substring vs LEAK-prefix](wiki/learnings/1782330515490-expected-sanitizer-findings-txt-has-two-match-mode.md)
+- [A coworker can't edit a PEER coworker's GitHub comment even under the same bot identity (HTTP 403)](wiki/learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md)
+- [CORRECTION: bot issue-comment PATCH 403 is a token-permission limit, not author-binding — remedy is a fresh SUPERSEDING comment](wiki/learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-token-.md)
+- [VERIFIED (retracts prior correction): nv-slang-bot edits its OWN issue comments, repeatably 403s on a PEER coworker's — creator-bound, not transient, not a flat token limit](wiki/learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md)
+- [slang#11568 corollary: #11718 unified descriptor-heap stride is BACKEND-only — does NOT remove the E39999 front-end blocker](wiki/learnings/1782339425194-slang-11568-corollary-11718-unified-descriptor-hea.md)
+- [REFINEMENT: bot issue-comment PATCH is PER-TOKEN, not clean creator-binding — some coworker tokens can't edit even their own comments; CREATE is the only universally reliable path](wiki/learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-no.md)
+- [nv-slang-bot issue-comment login is "nv-slang-bot" (no [bot]) — edit-in-place check must match loosely or it silently posts duplicates](wiki/learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md)
+- [Mutual-ack loops between peer-wired coworkers ("Ending silently" ping-pong)](wiki/learnings/1782345863846-mutual-ack-loops-between-peer-wired-coworkers-endi.md)
+- [Before escalating a peer's "ongoing loop" claim, check last MESSAGE timestamp vs last_active (heartbeat)](wiki/learnings/1782346077621-before-escalating-a-peer-s-ongoing-loop-claim-chec.md)
+- [Slang SPIR-V atomic emission has 4 cross-layer gates keyed on address space — check all when reviewing atomic/VUID fixes](wiki/learnings/1782346122322-slang-spir-v-atomic-emission-has-4-cross-layer-gat.md)
+- [CI: flake-class vs deterministic-hang, and the two-sweep escalation threshold](wiki/learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md)
+- [slang-glslang leaks: LeakSanitizer nightly is NOT a valid verification net (SKIP_ASAN + broad suppression)](wiki/learnings/1782353151387-slang-glslang-leaks-leaksanitizer-nightly-is-not-a.md)
+- [Mutual empty-ack loop — verify both sides, the reporter isn't silent](wiki/learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md)
+- [a2a silent-hold: plain-text turn output routes to the peer (echo-loop trap)](wiki/learnings/1782353887467-a2a-silent-hold-plain-text-turn-output-routes-to-t.md)
+- [XPASS is a deterministic author-owned CI failure, not a flake or regression](wiki/learnings/1782360530038-xpass-is-a-deterministic-author-owned-ci-failure-n.md)
+- [render-test (COMPARE_COMPUTE) is not slangc — local slangc pass does not predict the runtime lane](wiki/learnings/1782373627011-render-test-compare-compute-is-not-slangc-local-sl.md)
+- [nv-slang-bot 403 on issue-assign and cross-session comment-edit](wiki/learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md)
+- [gh issue view --comments can return empty; use --json or gh api for comments](wiki/learnings/1782389247211-gh-issue-view-comments-can-return-empty-use-json-o.md)
+- [Verify triage-memo file:line claims about adjacent code before quoting in a PR](wiki/learnings/1782390307922-verify-triage-memo-file-line-claims-about-adjacent.md)
+- [auto-route background fork can fully run the fix workflow in your own worktree — adopt via GitHub PR dedup](wiki/learnings/1782390736339-auto-route-background-fork-can-fully-run-the-fix-w.md)
+- [Auto-route can spawn a parallel triage/fix fork → duplicate issue comments; cross-identity comment delete 403s](wiki/learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md)
+- [CI-integrity bug class: a detected failure is logged but never folded into the recorded test result (stale init=Success leaks through)](wiki/learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
+- [Investigating merge-queue evictions in shader-slang (merge_group runs)](wiki/learnings/1782392258907-investigating-merge-queue-evictions-in-shader-slan.md)
+- [slang-test RPC-failure reporting (#11753): "fails after the fix" ⇒ test-server crash](wiki/learnings/1782397269166-slang-test-rpc-failure-reporting-11753-fails-after.md)
+- [slang-test false-green: a unit test that crashes the test-server is reported PASSED (#11751)](wiki/learnings/1782398466162-slang-test-false-green-a-unit-test-that-crashes-th.md)
+- [Slang bundled-dep override-path convention + skip DeepWiki for pure-CMake triage](wiki/learnings/1782405218135-slang-bundled-dep-override-path-convention-skip-de.md)
+- [slang SLANG_OVERRIDE_*_PATH options are CMake-only (no docs/matrix), unlike SLANG_ENABLE_*](wiki/learnings/1782406116154-slang-slang-override-path-options-are-cmake-only-n.md)
+- [On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add](wiki/learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md)
+- [slang CI: JSON RPC failure on a unit test = test-server child crash (symptom), not an RPC-infra bug](wiki/learnings/1782407732117-slang-ci-json-rpc-failure-on-a-unit-test-test-serv.md)
+- [Triage/DeepWiki concurrency premises can lag HEAD — verify mutex sites in source before accepting "X is unsynchronized"](wiki/learnings/1782408832985-triage-deepwiki-concurrency-premises-can-lag-head-.md)
+- [nv-slang-bot GitHub login is "nv-slang-bot" (User, no [bot] suffix) — fix the edit-if-self comment matcher](wiki/learnings/1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-.md)
+- [UPDATE slang#11568: maintainer team now implementing via csyonghe's UntypedResourceHandle proxy design (supersedes "declined")](wiki/learnings/1782422418340-update-slang-11568-maintainer-team-now-implementin.md)
+- [codex critique-gate tracks FRESH-call verdicts, not codex-reply re-verifications](wiki/learnings/1782439747524-codex-critique-gate-tracks-fresh-call-verdicts-not.md)
+- [slangc -dump-ir shows the codegen pipeline, NOT the validation-only pipeline (uninit-use checker)](wiki/learnings/1782440022487-slangc-dump-ir-shows-the-codegen-pipeline-not-the-.md)
+- [Draft PRs: ci.yml IS workflow_dispatch-able, but check-formatting.yml is NOT — verify format locally with clang-format 17](wiki/learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md)
+- [Draft PR CI on shader-slang/slang: workflow_dispatch bypasses the draft filter (but check-formatting can't)](wiki/learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md)
+- [Slang store-family: which surface syntax hits AtomicStore/MatrixSwizzleStore + peephole-vs-checker gate](wiki/learnings/1782442658975-slang-store-family-which-surface-syntax-hits-atomi.md)
+- [Auto-route /slash-workflow hooks are NOT operator authorization — an explicit hold outranks a hook nudge](wiki/learnings/1782445249583-auto-route-slash-workflow-hooks-are-not-operator-a.md)
+- [Uninit-checker: storing an ADDRESS isn't a read; and run the FULL suite for broad-blast-radius frontend changes](wiki/learnings/1782448931140-uninit-checker-storing-an-address-isn-t-a-read-and.md)
+- [fp8 scalar float constants abort in spirv-tools constant folding (width-8 gap)](wiki/learnings/1782449605671-fp8-scalar-float-constants-abort-in-spirv-tools-co.md)
+- [Triaging external-dependency tracking issues (verify suppression PR is merged + locate upstream tracker/fix)](wiki/learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md)
+- [Gate Slang IR/classifier fix verdicts on full-suite CI](wiki/learnings/1782450782359-gate-slang-ir-classifier-fix-verdicts-on-full-suit.md)
+- [Reviewer: gate the verdict on full-suite CI for broad-blast-radius changes, not static review alone](wiki/learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md)
+- [Slang reflection findFieldIndexByName already supports qualified module.var lookup](wiki/learnings/1782456046812-slang-reflection-findfieldindexbyname-already-supp.md)
+- [formatting.sh --since HEAD is a false-pass for uncommitted changes; run the full --check-only pre-push](wiki/learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md)
+- [Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution](wiki/learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md)
+- [Recurring trackers must carry disposition + reasoning, not just items](wiki/learnings/1782461882511-recurring-trackers-must-carry-disposition-reasonin.md)
+- [Fixers must not self-flip PRs to ready — enforce drafts-only](wiki/learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)
+- [Don't reply to a parent's acknowledgement pings while waiting on a monitor](wiki/learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md)
+- [Fixers must not self-flip PRs to ready — enforce drafts-only](wiki/learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)
+- [Hold unsolicited reviews when repo runs its own PR bot](wiki/learnings/1782464483726-hold-unsolicited-reviews-when-repo-runs-its-own-pr.md)
+- [Verify "N reviewers APPROVE" against GitHub reviewDecision before posting it as a public verdict](wiki/learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md)
+- [Internal agent-review APPROVE is not a GitHub maintainer approval](wiki/learnings/1782465097683-internal-agent-review-approve-is-not-a-github-main.md)
+- [Verify-at-HEAD can be silently wrong: cached slangc binary may be weeks-stale — check freshness before trusting any repro](wiki/learnings/1782470684664-verify-at-head-can-be-silently-wrong-cached-slangc.md)
+- [slang #11780: simplifyIR half of #9808 perf regression — referenced diff entries escape #11779's link gating](wiki/learnings/1782474542819-slang-11780-simplifyir-half-of-9808-perf-regressio.md)
+- [slang GitHub: REST label-add can 403 "admin rights" while GraphQL addLabelsToLabelable succeeds](wiki/learnings/1782476439849-slang-github-rest-label-add-can-403-admin-rights-w.md)
+- [slang #11779 — precompilation IS gated by isFinalCodegenLink (PR comment is wrong)](wiki/learnings/1782478960515-slang-11779-precompilation-is-gated-by-isfinalcode.md)
+- [In maintainer design discussions, the bot should be reticent — and stand down instantly (and silently) when asked](wiki/learnings/1782480236370-in-maintainer-design-discussions-the-bot-should-be.md)
+- [Conditional&lt;T,b&gt; ICE: non-literal flag survives lowerConditionalType to spirv-emit](wiki/learnings/1782485307814-conditional-lt-t-b-gt-ice-non-literal-flag-survive.md)
+- [slang#11782 Conditional autodiff crash is flag-independent (NOT a generic-value-param leak)](wiki/learnings/1782488412008-slang-11782-conditional-autodiff-crash-is-flag-ind.md)
+- [Slang autodiff wires Optional intrinsics but omits the parallel Conditional family (E99999)](wiki/learnings/1782490233144-slang-autodiff-wires-optional-intrinsics-but-omits.md)
+- [external/dxc is 2 vendored compile-time DXC API headers, not a submodule](wiki/learnings/1782491016302-external-dxc-is-2-vendored-compile-time-dxc-api-he.md)
+- [Adding an IR instruction requires bumping k_maxSupportedModuleVersion (slang-ir.h)](wiki/learnings/1782491129029-adding-an-ir-instruction-requires-bumping-k-maxsup.md)
+- [slang-test wgpu COMPARE_COMPUTE VUID errors come from Dawn's internal tint, not Slang's SPIR-V emitter](wiki/learnings/1782499611532-slang-test-wgpu-compare-compute-vuid-errors-come-f.md)
+- [Run CI-pinned clang-format locally when the build is disk-blocked](wiki/learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md)
+- [slang #11599 — feature delivered as a cherry-pickable reference PR maintainer won't merge to ToT (CHANGES_REQUESTED = no-merge signal)](wiki/learnings/1782512199002-slang-11599-feature-delivered-as-a-cherry-pickable.md)
+- [CHANGES_REQUESTED with a "looks good" body and zero inline comments is a no-merge signal, not an edit request](wiki/learnings/1782512263705-changes-requested-with-a-looks-good-body-and-zero-.md)
+- [Runtime slang-test for a new Vulkan extension is gated on slang-rhi harness support (abort/VK_KHR_shader_abort #11790)](wiki/learnings/1782515089370-runtime-slang-test-for-a-new-vulkan-extension-is-g.md)
+- [postmortem: slang#11759 superseded by PR #11761 (stress-reduce, not concurrency-guard)](wiki/learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md)
+- [Adding a slangc CLI option trips check-cmdline-ref CI; the bot can't self-fix it via /regenerate-cmdline-ref](wiki/learnings/1782520511938-adding-a-slangc-cli-option-trips-check-cmdline-ref.md)
+- [Slang triage: vcpkg can silently pin a stale (2024) build — ask `slangc -version` early when a symptom won't reproduce on any current version](wiki/learnings/1782521104183-slang-triage-vcpkg-can-silently-pin-a-stale-2024-b.md)
+- [git stash is repo-global across worktrees — never `git stash clear`](wiki/learnings/1782524288491-git-stash-is-repo-global-across-worktrees-never-gi.md)
+- [Merge-group build break with green head = merge-time collision, legitimate not flake](wiki/learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md)
+- [Merge-queue duplicate-case enum collision: two concurrent PRs appending to the same public enum](wiki/learnings/1782535032557-merge-queue-duplicate-case-enum-collision-two-conc.md)
+- [Parallel fix/issue-* chains can grab the same OptionKind/enum value off a shared base → duplicate-case build break; self-heals via append-renumber](wiki/learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md)
+- [Bot-PR: lone red workflow_dispatch run with build/test skipped is a no-op, read the rollup](wiki/learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md)
+- [render-test -render-features is a TWO-stage gate: unknown name = loud SLANG_FAIL, unsupported device = silent IGNORE](wiki/learnings/1782564838123-render-test-render-features-is-a-two-stage-gate-un.md)
+- [slang #11568: maintainer "base PR on #11723" is a layer-mismatch — front-end feature, csyonghe design is the real path](wiki/learnings/1782579642375-slang-11568-maintainer-base-pr-on-11723-is-a-layer.md)
+- [New Slang IR opcode: stable-name registration + type-vs-key enum naming](wiki/learnings/1782585186668-new-slang-ir-opcode-stable-name-registration-type-.md)
+- [Reviewer A + C parallel isolation: use /workspace/agent/slang-clarity as C's REPO_ROOT](wiki/learnings/1782586901771-reviewer-a-c-parallel-isolation-use-workspace-agen.md)
+- [slang-pr-review: scope a re-run to focused verification when the re-push is test-only](wiki/learnings/1782594329649-slang-pr-review-scope-a-re-run-to-focused-verifica.md)
+- [Flaky-CI evidence: dedup by run id; JSON-RPC and Falcor symptoms each conflate multiple root causes](wiki/learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)
+- [Distinguish missing-runner queue-timeout from a real test hang (gh api job runner/steps)](wiki/learnings/1782605298157-distinguish-missing-runner-queue-timeout-from-a-re.md)
+- [report_pr_created remaps the PR to the CALLING session](wiki/learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md)
+- [GLSL target emits invalid C-style brace array initializers; WGSL already has the constructor-syntax override GLSL lacks](wiki/learnings/1782632216704-glsl-target-emits-invalid-c-style-brace-array-init.md)
+- [CONSOLIDATED — stand down when a maintainer/contributor is already driving the fix](wiki/learnings/1782648000000-CONSOLIDATED-stand-down-when-maintainer-or-contributor-drives-fix.md)
+- [slang-test default compiler flag needs TWO forms: bare for slangc paths, -Xslang for render-test paths](wiki/learnings/1782653846227-slang-test-default-compiler-flag-needs-two-forms-b.md)
+- [Worktree GC reap is operator-gated (sibling-isolation [MUST NOT])](wiki/learnings/1782692523381-worktree-gc-reap-is-operator-gated-sibling-isolati.md)
+- [Triage: maintainer opens own fix PR ~same time as issue → verify + post + PARK, don't dispatch fixer](wiki/learnings/1782700143228-triage-maintainer-opens-own-fix-pr-same-time-as-is.md)
+- [Worktree-GC reap: safe-execution facts (branch refs survive; workflows-perm blocks wip/reap; pipefail bug)](wiki/learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md)
+- [@copilot may resolve conflicts on bot-authored PRs — check remote tip before pushing your own](wiki/learnings/1782711499913-copilot-may-resolve-conflicts-on-bot-authored-prs-.md)
+- [warn→error on an invalid *misuse* can still be labeled pr: non-breaking (maintainer call, slang #6216)](wiki/learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md)
+- [An infra-unblock nudge is not an override of a decision-based hold — verify the actual trigger](wiki/learnings/1782719314130-an-infra-unblock-nudge-is-not-an-override-of-a-dec.md)
+- [slang-fixer: a contributor-PR combined review is advisory, not a fix task — and don't echo the reviewer](wiki/learnings/1782719999000-slang-fixer-a-contributor-pr-combined-review-is-ad.md)
+- [Reviewer combined-review fan-out can trigger a taskless-fixer echo loop via always-engage a2a wiring](wiki/learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md)
+- [Slang floors GLSL #version at 450 — "invalid in old GLSL" emit bugs are usually valid-as-emitted (lower severity)](wiki/learnings/1782721748193-slang-floors-glsl-version-at-450-invalid-in-old-gl.md)
+- [Slang scalar-block-layout is forced by the ArrayStride decoration, not by load codegen](wiki/learnings/1782722840826-slang-scalar-block-layout-is-forced-by-the-arrayst.md)
+- [Bot enqueue of workflow-touching PRs has a second blocker (workflows permission)](wiki/learnings/1782727631172-bot-enqueue-of-workflow-touching-prs-has-a-second-.md)
+- [Slang::String is COW — deep-copy via String(x.getUnownedSlice()) to share across threads](wiki/learnings/1782731516993-slang-string-is-cow-deep-copy-via-string-x-getunow.md)
+- [slang #11730 — builtin vector is a DeclRefType&lt;StructDecl&gt;; init-list arg-coercion bug = if(outExpr) guard on createInvokeExprForExplicitCtor](wiki/learnings/1782733705823-slang-11730-builtin-vector-is-a-declreftype-lt-str.md)
+- [slang local spirv-asm verify: put build/Debug/lib FIRST in LD_LIBRARY_PATH or you test a stale compiler](wiki/learnings/1782733787106-slang-local-spirv-asm-verify-put-build-debug-lib-f.md)
+- [Templated operator-wake ≠ explicit scoped override of a considered hold](wiki/learnings/1782734222994-templated-operator-wake-explicit-scoped-override-o.md)
+- [Slang PR #11815 review — A∩C converge on dead Flavor::Simple arm; Devin "30m timeout" quirk](wiki/learnings/1782735484974-slang-pr-11815-review-a-c-converge-on-dead-flavor-.md)
+- [Slang init-list-as-argument bugs: check canCoerce viability-probe (outExpr==null) divergence](wiki/learnings/1782736932170-slang-init-list-as-argument-bugs-check-cancoerce-v.md)
+- [CORRECTION: GLSL brace array-init is valid in 4.20+; the bug is portability, not universal invalidity](wiki/learnings/1782737319266-correction-glsl-brace-array-init-is-valid-in-4-20-.md)
+- [A recurring merge conflict on an approved PR can mean a competing fix merged — check before resolving](wiki/learnings/1782737882496-a-recurring-merge-conflict-on-an-approved-pr-can-m.md)
+- [slang-pr-review merge step: find Reviewer C run-dir from stdout, and drift-grep tool NAME not content](wiki/learnings/1782738058115-slang-pr-review-merge-step-find-reviewer-c-run-dir.md)
+- [Recurring PR conflict may mean the issue was closed by a competing merged PR](wiki/learnings/1782738059209-recurring-pr-conflict-may-mean-the-issue-was-close.md)
+- [slang init-list arg coercion: #11730 fixed the success return's probe-safety but the ERROR return still leaks a real-sink diagnostic during canCoerce](wiki/learnings/1782739042356-slang-init-list-arg-coercion-11730-fixed-the-succe.md)
+- [GLSL MakeArrayFromElement IS reachable in text emit (default-init global const array)](wiki/learnings/1782739391257-glsl-makearrayfromelement-is-reachable-in-text-emi.md)
+- [slang Reviewer C clarity run: recover truncated output from on-disk candidate file](wiki/learnings/1782739994323-slang-reviewer-c-clarity-run-recover-truncated-out.md)
+- [Diagnostic/enum codes picked against a stale base collide on master-merge and break ALL platform builds](wiki/learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md)
+- [slang #9660: a "just assert it" clarity suggestion can introduce an abort regression (InterfaceDecl is an AggTypeDecl)](wiki/learnings/1782745012175-slang-9660-a-just-assert-it-clarity-suggestion-can.md)
+- [E31106/E31107 also fire on the SYNTHESIZED entry-point uniform param group (not just imported modules)](wiki/learnings/1782751325517-e31106-e31107-also-fire-on-the-synthesized-entry-p.md)
+- [slang include/slang-deprecated.h holds the ACTIVE reflection C-API (not just deprecated stuff)](wiki/learnings/1782754805883-slang-include-slang-deprecated-h-holds-the-active-.md)
+- [Hold the fixer until parent confirms before high-stakes maintainer-facing posts (don't fire in parallel under delegated latitude)](wiki/learnings/1782755822091-hold-the-fixer-until-parent-confirms-before-high-s.md)
+- [Slang public-header include cycle: include slang.h OUTSIDE your own guard](wiki/learnings/1782759769387-slang-public-header-include-cycle-include-slang-h-.md)
+- [slang-pr-review: Devin can report 0 bugs while analysis still "Generating…" — treat as weak signal](wiki/learnings/1782761345395-slang-pr-review-devin-can-report-0-bugs-while-anal.md)
+- [Slang SLANG_USE_SYSTEM_* options: all find_package, no _ROOT_DIR; three separate dep-locating conventions](wiki/learnings/1782762110953-slang-slang-use-system-options-all-find-package-no.md)
+- [force-with-lease "stale info" — refresh the remote-tracking ref first](wiki/learnings/1782765717544-force-with-lease-stale-info-refresh-the-remote-tra.md)
+- [Lexer escape-validation must be deferred to the decode layer, not the scan pass (#include paths opt out)](wiki/learnings/1782799753646-lexer-escape-validation-must-be-deferred-to-the-de.md)
+- [ASan "runtime does not come first" CI flake — static-canary tell + why static linkage isn't the fix](wiki/learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md)
+- [ASan "runtime does not come first" CI flake — diagnosis, fix levers, and the GH Actions success() trap](wiki/learnings/1782802321817-asan-runtime-does-not-come-first-ci-flake-diagnosi.md)
+- [CORRECTION to ASan-runtime-not-first learning — the CANARY is the gating step, harden it (not just test steps)](wiki/learnings/1782802481315-correction-to-asan-runtime-not-first-learning-the-.md)
+- [WGSL f16 floats already work; E56103 is the 16-bit-INTEGER path (slang #11835)](wiki/learnings/1782813507927-wgsl-f16-floats-already-work-e56103-is-the-16-bit-.md)
+- [GLSL emitter half-float literal path misses extension registration (slang #11836)](wiki/learnings/1782814479057-glsl-emitter-half-float-literal-path-misses-extens.md)
+- [Slang Metal backend emits FP literals with NO type suffix (issue #11837)](wiki/learnings/1782814984950-slang-metal-backend-emits-fp-literals-with-no-type.md)
+- [Slang verify gotchas: slang-test crashes at startup in-container; codex revert-without-rebuild false positive](wiki/learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md)
+- [Devin re-scrape recovery: fresh draft PR renders with NO flag anchors; escaped-JSON grep gotcha](wiki/learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md)
+- [slang-pr-review: route verdict to the actual requester edge, not always orchestrator](wiki/learnings/1782820926535-slang-pr-review-route-verdict-to-the-actual-reques.md)
+- [CORRECTION: slangc -emit-spirv-via-glsl DOES work in-container (only the slang-test harness crashes)](wiki/learnings/1782821382180-correction-slangc-emit-spirv-via-glsl-does-work-in.md)
+- [-emit-spirv-via-glsl DOES run via direct slangc in a freshly-built worktree (corrects "glslang load fails" learning)](wiki/learnings/1782821414217-emit-spirv-via-glsl-does-run-via-direct-slangc-in-.md)
+- [[require] capability atom does NOT auto-emit OpCapability for spirv_asm builtin-loads — declare it inline](wiki/learnings/1782828754941-require-capability-atom-does-not-auto-emit-opcapab.md)
+- [slang-pr-review: a container restart kills the completion-waiter; recover reviewer outputs from persistent paths](wiki/learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md)
+- [slang-clarity run-clarity.sh: pass --mode directly, NOT the run-clarity subcommand word](wiki/learnings/1782832548664-slang-clarity-run-clarity-sh-pass-mode-directly-no.md)
+- [Metal emitter is the lone backend that omits FP literal type suffixes](wiki/learnings/1782832643994-metal-emitter-is-the-lone-backend-that-omits-fp-li.md)
+- [SPIR-V capability/validation fixes need a -target spirv test directive, not just spirv-asm](wiki/learnings/1782833127380-spir-v-capability-validation-fixes-need-a-target-s.md)
+- [Release-asset asymmetry from moving a CI leg into a no-sudo container (verify exact failing command, not disk/transient)](wiki/learnings/1782845136368-release-asset-asymmetry-from-moving-a-ci-leg-into-.md)
+- [Slang synthesized-member init: IDefaultInitializable loop is off for bitfield structs; raw literal beats DefaultConstruct for backend-robust zero](wiki/learnings/1782847433081-slang-synthesized-member-init-idefaultinitializabl.md)
+- [Synthesized struct storage added after ctor-signature collection needs its own initExpr](wiki/learnings/1782847970010-synthesized-struct-storage-added-after-ctor-signat.md)
+- [SLANG_OVERRIDE_*_PATH can be silently shadowed by a sibling dep's incidental public include](wiki/learnings/1782852472140-slang-override-path-can-be-silently-shadowed-by-a-.md)
+- [Implicit CountOf sentinel aliases an option when a concurrent-PR renumber breaks textual value-order](wiki/learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when-a.md)
+- [SLANG_OVERRIDE_DEP_PATH silently fails when a public header uses the bundled-parent include spelling](wiki/learnings/1782854132050-slang-override-dep-path-silently-fails-when-a-publ.md)
+- [Reviewer: a self-recommended comment addition does not reset the PR review pipeline](wiki/learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md)
+- [edit-if-self check: nv-slang-bot login has NO [bot] suffix via gh — match by substring](wiki/learnings/1782857315349-edit-if-self-check-nv-slang-bot-login-has-no-bot-s.md)
+- [Sentinel static_assert pinned to a named option is not a uniqueness guard](wiki/learnings/1782858072079-sentinel-static-assert-pinned-to-a-named-option-is.md)
+- [Terminal count/sentinel enums: prefer keeping them IMPLICIT, not explicit+static_assert](wiki/learnings/1782859187073-terminal-count-sentinel-enums-prefer-keeping-them-.md)
+- [Slang validateEntryPoint validates SV semantics per-param with NO cross-entry-point aggregation (#11855)](wiki/learnings/1782860967918-slang-validateentrypoint-validates-sv-semantics-pe.md)
+- [Device caching silently defeats per-invocation debug-callback bridges in slang-test (false greens)](wiki/learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md)
+- [slangc -v version string is stale on incremental builds — don't use it to identify a binary's commit](wiki/learnings/1782864395490-slangc-v-version-string-is-stale-on-incremental-bu.md)
+- [vk::binding entry-point diagnostic predicate (AST-type) must match binder's layout-kind contract](wiki/learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md)
+- [Slang autodiff: derivative [require] must ride the differentiation use, not the primal (over-propagation regression #11859)](wiki/learnings/1782864820466-slang-autodiff-derivative-require-must-ride-the-di.md)
+- [Triage SPIR-V binding/layout bugs via -target spirv -O0 -reflection-json when glslang downstream is unavailable](wiki/learnings/1782865769198-triage-spir-v-binding-layout-bugs-via-target-spirv.md)
+- [GH labels: if POST issues/:n/labels 403s, fall back to gh issue edit --add-label](wiki/learnings/1782866408005-gh-labels-if-post-issues-n-labels-403s-fall-back-t.md)
+- [Record/replay stream is fixed-schema at the call level — never conditionally skip RECORD_OUTPUT](wiki/learnings/1782866674061-record-replay-stream-is-fixed-schema-at-the-call-l.md)
+- [supervise-issues pull-universe.sh argv-overflow at ~170+ chains](wiki/learnings/1782867269290-supervise-issues-pull-universe-sh-argv-overflow-at.md)
+- [A required draft-PR ci.yml workflow_dispatch can itself priority-yield](wiki/learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md)
+- [P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build](wiki/learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)
+- [Shallow clones (--depth N) make git blame mis-attribute old lines to the clone boundary](wiki/learnings/1782868921334-shallow-clones-depth-n-make-git-blame-mis-attribut.md)
+- [git blame lies on shallow clones — use git log -S for provenance](wiki/learnings/1782869392078-git-blame-lies-on-shallow-clones-use-git-log-s-for.md)
+- [Release-CI Setup failures: bisect the workflow file's own history, not just the source-commit range](wiki/learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md)
+- [GPU-free render-test regression via a real CPU device in gfx-unit-test](wiki/learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md)
+- [slang #11861 — vk::binding on struct-of-resources entry param: mirror of #11857, same predicate](wiki/learnings/1782871594193-slang-11861-vk-binding-on-struct-of-resources-entr.md)
+- [Slang local build: ninja skips rebuild after git checkout (source mtime < object); zombie-PID waiter trap; parse SPIR-V without spirv-dis](wiki/learnings/1782871600830-slang-local-build-ninja-skips-rebuild-after-git-ch.md)
+- [Re-review after a PR redesign: check for gaps the redesign introduced, not just old ones closed](wiki/learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md)
+- [Isolate Reviewer C in a git worktree for parallel /slang-pr-review runs](wiki/learnings/1782876940783-isolate-reviewer-c-in-a-git-worktree-for-parallel-.md)
+- [Reviewer A (slang-pr-review-runner) premature-termination signature: exit-0 but incomplete](wiki/learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md)
+- [Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers reliably ask for a shared predicate](wiki/learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md)

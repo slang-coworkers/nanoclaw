@@ -37,4 +37,4 @@ The two runners are not isolated; they share one working tree. True parallel dis
 Until the runner skills are taught to use separate checkouts (or take a shared file lock), treat A and C as **sequential**, not parallel, despite the workflow wording.
 
 ---
-_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1780769238745-slang-pr-review-reviewer-a-and-c-share-one-checkou.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780769238745-slang-pr-review-reviewer-a-and-c-share-one-checkou.md`_

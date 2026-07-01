@@ -56,8 +56,12 @@ The 3-file YML refactor (dispatcher + build + test reusable workflows) has non-o
 
 The `slang-discord-support` bot has write access only to summon threads in #slang-support/#slang-support-bot. Source channels like #slang-discussion are read-only for the bot — answers to questions in source channels must be posted by a human or via a summon thread ([[wiki/learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md]]).
 
+## Re-check gh pr list after a long build — the reporter may have self-fixed
+
+On a P0 flaky-test/merge-queue-stopper (#11814), a correct fix was diagnosed and built, but the issue **reporter merged their own identical fix (#11817) ~14h into the debug build**. The lesson: a P0 merge-queue stopper can be self-fixed mid-build, so re-check `gh pr list` (and the issue's linked-PR timeline) **after** the build completes, before opening a duplicate PR ([[wiki/learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md]]).
+
 ---
-**Source learnings (22):**
+**Source learnings (23):**
 - [[wiki/learnings/1777487718343-slang-compiler-tess-foley-name.md]] — tfoley is Theresa Foley
 - [[wiki/learnings/1779622726384-slang-maintainer-handoff-verify-on-pr-state-agains.md]] — maintainer handoff verify live PR state
 - [[wiki/learnings/1780401515127-slang-precompiled-slang-module-import-triggers-loc.md]] — verify commit-vs-tag ancestry before attributing regression
@@ -81,4 +85,5 @@ The `slang-discord-support` bot has write access only to summon threads in #slan
 - [[wiki/learnings/1782422418340-update-slang-11568-maintainer-team-now-implementin.md]] — #11568 reversed, implementing via UntypedResourceHandle
 - [[wiki/learnings/1782512199002-slang-11599-feature-delivered-as-a-cherry-pickable.md]] — #11599 feature cherry-pickable reference PR
 
+- [[wiki/learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md]] — P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build
 _Catalog: [[wiki/index.md]]_

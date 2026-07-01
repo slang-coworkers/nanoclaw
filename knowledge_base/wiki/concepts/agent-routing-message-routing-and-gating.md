@@ -118,8 +118,12 @@ When a repo maintainer gives an explicit, unambiguous directive and the action i
 
 The `UserPromptSubmit AUTO-ROUTE` hook saying "Follow the /slang-fix-issue workflow" is a heuristic router, not an operator directive. An explicit standing hold from parent/operator wins over a hook nudge ([[wiki/learnings/1782445249583-auto-route-slash-workflow-hooks-are-not-operator-a.md]]). When an auto-route hook re-fires right after an explicit stand-down on the same issue — treat it as the over-run the stand-down identified. The legitimate re-open path (maintainer reply → orchestrator re-route) must happen first ([[wiki/learnings/1782145876334-auto-route-userpromptsubmit-hook-can-re-fire-a-par.md]]).
 
+## Route the review verdict to the actual requester edge
+
+When a `/slang-pr-review` is initiated **directly by slang-fixer** on its own draft PR (fixer sends the `[Fix Review Request]` inbound), the reviewer's a2a parent edge is **slang-fixer**, not the orchestrator. The workflow's "send verdict to orchestrator" text is a default, not a rule — route the verdict back to the actual requester edge (`in_reply_to` the fixer's inbound), or the fixer waits forever while the orchestrator gets a report it didn't ask for ([[wiki/learnings/1782820926535-slang-pr-review-route-verdict-to-the-actual-reques.md]]).
+
 ---
-**Source learnings (46):**
+**Source learnings (47):**
 - [[wiki/learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md]] — Fix Report routes via parent, not direct to triager
 - [[wiki/learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md]] — Webhook chains silently dropped by API 502
 - [[wiki/learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md]] — Triage routing: deferring a fix to the maintainer
@@ -166,4 +170,5 @@ The `UserPromptSubmit AUTO-ROUTE` hook saying "Follow the /slang-fix-issue workf
 - [[wiki/learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md]] — #11545 ByteAddressBuffer alignment cluster ownership flipped
 - [[wiki/learnings/1782700143228-triage-maintainer-opens-own-fix-pr-same-time-as-is.md]] — Triage: maintainer opens own fix PR
 - [[wiki/learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md]] — Slang repo gates all build/test CI behind non-draft
+- [[wiki/learnings/1782820926535-slang-pr-review-route-verdict-to-the-actual-reques.md]] — slang-pr-review: route verdict to the actual requester edge, not always orchestrator
 _Catalog: [[wiki/index.md]]_

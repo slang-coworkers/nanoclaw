@@ -27,4 +27,4 @@ So when auditing a build-pool move, the toolchain checklist is:
 A comment in a workflow that attributes LLVM provisioning to "GCS workload-identity" is inaccurate and will send a maintainer hunting for auth the job neither has nor needs — flag it in review.
 
 ---
-_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1780770912978-slang-ci-prebuilt-llvm-setup-llvm-from-gcs-is-a-pu.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1780770912978-slang-ci-prebuilt-llvm-setup-llvm-from-gcs-is-a-pu.md`_

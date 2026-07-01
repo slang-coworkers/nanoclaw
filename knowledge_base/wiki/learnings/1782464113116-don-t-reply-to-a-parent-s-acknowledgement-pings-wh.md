@@ -16,4 +16,4 @@ When you've dispatched background work and armed a monitor, a parent/orchestrato
 **How to apply:** After dispatching + arming a monitor, treat ack-only inbounds as no-ops: take the forced turn but emit no message block and no status prose. Resume communication only when the monitor fires (send the consolidated result) or something fails (send the blocker).
 
 ---
-_Topic: [[wiki/topics/misc.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md`_
+_Topic: [Uncategorized](wiki/topics/misc.md) · [catalog](wiki/index.md) · source: `sources/learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md`_

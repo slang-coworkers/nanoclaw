@@ -162,8 +162,12 @@ Falcor CI runs against a pre-built Falcor with fresh Slang binaries copied on to
 
 When a reporter's symptom reproduces on NO current version, suspect a stale/mismatched build early — before deep root-cause spelunking. Ask for `slangc -version` (actual runtime, not the package manifest version) in the first clarification. vcpkg/conan can pin or downgrade to an old build silently; a reporter's stated "2026.7.1" may be their actual 2024 binary. ([[wiki/learnings/1782521104183-slang-triage-vcpkg-can-silently-pin-a-stale-2024-b.md]])
 
+## In-container slangc: -emit-spirv-via-glsl DOES run; use reflection-json for binding triage
+
+Correcting an earlier "glslang load fails in-container" note: `slangc -emit-spirv-via-glsl` **does** run in a freshly-built worktree via direct `slangc` — only the `slang-test` *harness* crashes at startup, not the compiler itself ([[wiki/learnings/1782821382180-correction-slangc-emit-spirv-via-glsl-does-work-in.md]], [[wiki/learnings/1782821414217-emit-spirv-via-glsl-does-run-via-direct-slangc-in-.md]]). When the local env genuinely can't load the glslang downstream (`spirv-opt`/`spirv-dis`/`slang-glslang-*` load failure) so `-target spirv-asm` aborts before writing output, triage SPIR-V **binding/layout** bugs with `-target spirv -O0 -reflection-json` — the reflection JSON exposes the binding decisions without needing the disassembler ([[wiki/learnings/1782865769198-triage-spir-v-binding-layout-bugs-via-target-spirv.md]]).
+
 ---
-**Source learnings (26):**
+**Source learnings (29):**
 - [[wiki/learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md]] — Slang diagnostic catalog name conventions — emit sites are PascalCase, not camelCase
 - [[wiki/learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md]] — slangi VM emitter: missing IRConstant cases produce silent malformed operands
 - [[wiki/learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md]] — Slang VM bytecode: missing constant-emit case can silently mask wrong test assertions
@@ -190,4 +194,7 @@ When a reporter's symptom reproduces on NO current version, suspect a stale/mism
 - [[wiki/learnings/1782520511938-adding-a-slangc-cli-option-trips-check-cmdline-ref.md]] — Adding a slangc CLI option trips check-cmdline-ref CI; the bot can't self-fix it via /regenerate-cmdline-ref
 - [[wiki/learnings/1782521104183-slang-triage-vcpkg-can-silently-pin-a-stale-2024-b.md]] — Slang triage: vcpkg can silently pin a stale (2024) build
 - [[wiki/learnings/1782653846227-slang-test-default-compiler-flag-needs-two-forms-b.md]] — slang-test default compiler flag needs TWO forms: bare for slangc paths, -Xslang for render-test paths
+- [[wiki/learnings/1782821382180-correction-slangc-emit-spirv-via-glsl-does-work-in.md]] — CORRECTION: slangc -emit-spirv-via-glsl DOES work in-container (only slang-test harness crashes)
+- [[wiki/learnings/1782821414217-emit-spirv-via-glsl-does-run-via-direct-slangc-in-.md]] — -emit-spirv-via-glsl runs via direct slangc in a freshly-built worktree
+- [[wiki/learnings/1782865769198-triage-spir-v-binding-layout-bugs-via-target-spirv.md]] — Triage SPIR-V binding/layout bugs via -target spirv -O0 -reflection-json when glslang is unavailable
 _Catalog: [[wiki/index.md]]_

@@ -86,8 +86,28 @@ The `-capability` command-line flag only affects target-compatibility checking (
 
 Slang already has `MemoryScope` enum, IR attribute, and coherent-buffer emit wiring, but all atomic operations hard-code `SpvScopeDevice`. Exposing atomic scope would be pure plumbing (add `IRMemoryScopeAttr` decoration to atomic insts) reusing existing representation ([[wiki/learnings/1782215139629-slang-memoryscope-machinery-exists-but-is-unwired-.md]]).
 
+## Lexer: escape validation belongs in the decode layer, not the scan pass
+
+Escape-sequence *interpretation* in the Slang lexer is deferred and context-dependent: `getStringLiteralTokenValue` decodes escapes for real string values, but `getFileNameTokenValue` returns the **raw** quoted content and deliberately never processes escapes (`\` is a valid Windows path separator). Regression #11829 landed because PR #11714 added escape *validation* (`\u`/`\U` digit-count → E10007/E10008) into the token **scanning** pass, making it universal before a token's downstream role is known — so it fired on `#include "dir\utility\f.slangh"` paths. The principle: escape *validation* must ride the decode layer that interprets escapes, so consumers that opt out of interpretation (file-name paths) also opt out of validation ([[wiki/learnings/1782799753646-lexer-escape-validation-must-be-deferred-to-the-de.md]]).
+
+## Synthesized member storage added after ctor-signature collection needs its own initExpr
+
+When the front-end synthesizes a hidden storage member **after** the constructor signature is collected — e.g. the bitfield backing word `$bit_field_backing_N` created in `SemanticsDeclAttributesVisitor` — that member needs its own `initExpr`, otherwise it is left uninitialized in the synthesized ctor ([[wiki/learnings/1782847970010-synthesized-struct-storage-added-after-ctor-signat.md]]). Related: the `IDefaultInitializable` synthesis loop is off for bitfield structs, and a raw literal beats `DefaultConstruct` for backend-robust zero-init ([[wiki/learnings/1782847433081-slang-synthesized-member-init-idefaultinitializabl.md]]).
+
+## Terminal count/sentinel enums: keep them IMPLICIT; static_asserts aren't uniqueness guards
+
+When a trailing `CountOf`/`Count`/`NUM_*` sentinel enumerator collides with a real option (#11852: `CompilerOptionName::CountOf == SPIRVUnifiedDescriptorHeapStride == 154`), the durable fix is to restore **textual order == value order** and keep the sentinel *implicit* rather than pinning it explicitly ([[wiki/learnings/1782859187073-terminal-count-sentinel-enums-prefer-keeping-them-.md]]). An implicit `CountOf` can silently alias an option when a concurrent-PR renumber breaks textual value-order — a subtle follow-on to the enum-collision hazard that survives the usual fix ([[wiki/learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when-a.md]]). And a `static_assert(CountOf == SomeNamedOption + 1)` guard is **not** a uniqueness guard: it only checks adjacency to one named enumerator, not the general "CountOf is unique" invariant ([[wiki/learnings/1782858072079-sentinel-static-assert-pinned-to-a-named-option-is.md]]).
+
+## vk::binding parameter-binding predicates: single-kind guards are correct-but-fragile
+
+A cluster of regressions from #11712 in `slang-parameter-binding`: the `vk::binding` entry-point diagnostic predicate keys off an AST type that must match the binder's layout-kind contract ([[wiki/learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md]]); the same predicate misfires on a struct-of-resources entry param (#11861, a mirror of #11857) ([[wiki/learnings/1782871594193-slang-11861-vk-binding-on-struct-of-resources-entr.md]]). More generally, single-kind exclusion guards (e.g. `InputAttachmentIndex` falsely reserving descriptor set 0 because it lowers to `OpDecorateInputAttachmentIndex` and is not a descriptor set) are correct but fragile — reviewers reliably ask for a shared predicate covering all the non-descriptor-set kinds ([[wiki/learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md]]).
+
+## Record/replay stream is fixed-schema at the call level
+
+In Slang's record/replay layer (`source/slang-record-replay/`), the recorded stream is **fixed-schema at the call level** even though each value carries a TypeId tag. On playback `executeNextCall` re-invokes the same call shape, so you must **never conditionally skip `RECORD_OUTPUT`** — a skipped output desynchronizes the stream for every subsequent call ([[wiki/learnings/1782866674061-record-replay-stream-is-fixed-schema-at-the-call-l.md]]).
+
 ---
-**Source learnings (24):**
+**Source learnings (34):**
 - [[wiki/learnings/1779805764133-slang-lexer-cpp-has-a-duplicate-hex-digit-decoder-.md]] — lexer hex-digit decoder bug
 - [[wiki/learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md]] — capability flag vs [require]
 - [[wiki/learnings/1780332708129-slang-bwd-diff-out-param-convention-bare-in-differ.md]] — bwd_diff out-param convention
@@ -112,4 +132,14 @@ Slang already has `MemoryScope` enum, IR attribute, and coherent-buffer emit wir
 - [[wiki/learnings/1782731516993-slang-string-is-cow-deep-copy-via-string-x-getunow.md]] — Slang::String is COW
 - [[wiki/learnings/1782736932170-slang-init-list-as-argument-bugs-check-cancoerce-v.md]] — init-list arg bugs canCoerce divergence
 - [[wiki/learnings/1782739042356-slang-init-list-arg-coercion-11730-fixed-the-succe.md]] — init-list arg coercion #11730 fixed success but error path leaks
+- [[wiki/learnings/1782799753646-lexer-escape-validation-must-be-deferred-to-the-de.md]] — Lexer escape-validation must be deferred to the decode layer, not the scan pass (#include opts out)
+- [[wiki/learnings/1782847433081-slang-synthesized-member-init-idefaultinitializabl.md]] — Synthesized-member init: IDefaultInitializable loop off for bitfield structs; raw literal beats DefaultConstruct
+- [[wiki/learnings/1782847970010-synthesized-struct-storage-added-after-ctor-signat.md]] — Synthesized struct storage added after ctor-signature collection needs its own initExpr
+- [[wiki/learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when-a.md]] — Implicit CountOf sentinel aliases an option when a concurrent-PR renumber breaks textual value-order
+- [[wiki/learnings/1782858072079-sentinel-static-assert-pinned-to-a-named-option-is.md]] — Sentinel static_assert pinned to a named option is not a uniqueness guard
+- [[wiki/learnings/1782859187073-terminal-count-sentinel-enums-prefer-keeping-them-.md]] — Terminal count/sentinel enums: prefer keeping them IMPLICIT, not explicit+static_assert
+- [[wiki/learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md]] — vk::binding entry-point diagnostic predicate (AST-type) must match binder's layout-kind contract
+- [[wiki/learnings/1782871594193-slang-11861-vk-binding-on-struct-of-resources-entr.md]] — slang #11861: vk::binding on struct-of-resources entry param — mirror of #11857, same predicate
+- [[wiki/learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md]] — Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers ask for a shared predicate
+- [[wiki/learnings/1782866674061-record-replay-stream-is-fixed-schema-at-the-call-l.md]] — Record/replay stream is fixed-schema at the call level — never conditionally skip RECORD_OUTPUT
 _Catalog: [[wiki/index.md]]_

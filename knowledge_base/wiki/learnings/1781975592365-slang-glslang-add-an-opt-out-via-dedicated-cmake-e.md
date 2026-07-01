@@ -22,4 +22,4 @@ Non-obvious gotchas:
 - Surface the default value (ON vs OFF) as the maintainer's explicit call in your PR reply — it's a correctness-vs-output-stability tradeoff, not yours to assume.
 
 ---
-_Topic: [[wiki/topics/slang-compiler.md]] · catalog: [[wiki/index.md]] · source: `sources/learnings/1781975592365-slang-glslang-add-an-opt-out-via-dedicated-cmake-e.md`_
+_Topic: [Slang compiler & language](wiki/topics/slang-compiler.md) · [catalog](wiki/index.md) · source: `sources/learnings/1781975592365-slang-glslang-add-an-opt-out-via-dedicated-cmake-e.md`_
