@@ -28,8 +28,8 @@
 import type Database from 'better-sqlite3';
 import type { Migration } from './index.js';
 
-export const migration029: Migration = {
-  version: 29,
+export const migration016: Migration = {
+  version: 16,
   name: 'messaging-group-instance',
   disableForeignKeys: true,
   up: (db: Database.Database) => {

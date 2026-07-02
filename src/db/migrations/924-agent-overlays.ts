@@ -1,7 +1,7 @@
 import type { Migration } from './index.js';
 
-export const migration024: Migration = {
-  version: 24,
+export const migration924: Migration = {
+  version: 924,
   name: 'agent-overlays',
   dependsOn: ['disable-overlays'],
   up(db) {

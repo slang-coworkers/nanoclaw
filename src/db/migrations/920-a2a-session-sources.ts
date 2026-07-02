@@ -25,8 +25,8 @@ import type { Migration } from './index.js';
  * Non-a2a sessions (dashboard/slack/telegram/…) never get a row, so the
  * table is empty on installs that don't use agent-to-agent.
  */
-export const migration020: Migration = {
-  version: 20,
+export const migration920: Migration = {
+  version: 920,
   name: 'a2a-session-sources',
   up(db) {
     const hasTable = (name: string) =>

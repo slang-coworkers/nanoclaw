@@ -1,7 +1,7 @@
 import type { Migration } from './index.js';
 
-export const migration015: Migration = {
-  version: 15,
+export const migration915: Migration = {
+  version: 915,
   name: 'agent-routing',
   // Backfill references `is_admin`, added by 006-coworker-fields. Declare
   // the edge so the loader's topo-sort guarantees 006 runs first, even if
