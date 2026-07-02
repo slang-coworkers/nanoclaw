@@ -45,8 +45,13 @@ export function measureRunaway(
     (
       outDb
         .prepare(
+          // datetime() normalizes both sides: the container writes status_changed
+          // via datetime('now') ('YYYY-MM-DD HH:MM:SS', space-separated), while the
+          // cutoff is an ISO string ('...THH:MM:SS.000Z'). A raw TEXT `>=` compares
+          // lexicographically and the space (0x20) sorts below 'T' (0x54), so every
+          // in-window same-day row is wrongly excluded and the detector never trips.
           `SELECT COUNT(*) AS c FROM processing_ack
-           WHERE status = 'completed' AND status_changed >= ?`,
+           WHERE status = 'completed' AND datetime(status_changed) >= datetime(?)`,
         )
         .get(cutoffIso) as { c: number } | undefined
     )?.c ?? 0;
@@ -55,8 +60,10 @@ export function measureRunaway(
     (
       outDb
         .prepare(
+          // Same normalization as above: messages_out.timestamp is written with
+          // datetime('now'); datetime() on both sides makes the compare correct.
           `SELECT COALESCE(SUM(LENGTH(content)), 0) AS b FROM messages_out
-           WHERE timestamp >= ?`,
+           WHERE datetime(timestamp) >= datetime(?)`,
         )
         .get(cutoffIso) as { b: number } | undefined
     )?.b ?? 0;

@@ -782,7 +782,7 @@ export async function performAgentRoute(
   // expensive full-context replay that a wake triggers. Sibling guard to the L2
   // self-loop drop above; see modules/runaway/echo-drop.ts for the rationale
   // (a runaway "Ignored." echo loop was ~21% of a month's spend).
-  const echo = evaluateEchoDrop(targetSession.id, extractText(msg.content));
+  const echo = evaluateEchoDrop(targetSession.id, session.id, extractText(msg.content));
 
   writeSessionMessage(targetAgentGroupId, targetSession.id, {
     id: a2aMsgId,
