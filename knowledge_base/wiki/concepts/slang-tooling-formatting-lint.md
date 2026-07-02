@@ -19,7 +19,7 @@ This page covers how Slang's `extras/formatting.sh` works, what CI pins for each
 - Tool versions CI pins: clang-format **17.x** (`[17, 18)` range); gersemi `0.21-0.22`; prettier `3+`; shfmt `3+`.
 - `.slang` files are NOT formatted by any tool in `formatting.sh` — only `.cpp/.h/.cmake/.sh/.md/.yaml/.json`.
 
-([[wiki/learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md]], [[wiki/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md]])
+([Slang formatting.sh requires clang-format 17.x exactly](wiki/learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md), [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](wiki/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md))
 
 ## clang-format 17: installation, PATH, and PYTHONPATH
 
@@ -49,7 +49,7 @@ diff -q <file> <(clang-format --style=file <file>)
 PYTHONPATH=~/.cf17 ~/.cf17/bin/clang-format --style=file <file> | diff <file> -
 ```
 
-Fetch PR-head files via `gh api repos/<o>/<r>/contents/<path>?ref=<headRef> --jq .content | base64 -d` when `git fetch` of the PR ref is blocked. ([[wiki/learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md]], [[wiki/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md]], [[wiki/learnings/1782156721731-clang-format-17-via-pip-target-needs-pythonpath-se.md]])
+Fetch PR-head files via `gh api repos/<o>/<r>/contents/<path>?ref=<headRef> --jq .content | base64 -d` when `git fetch` of the PR ref is blocked. ([Slang formatting.sh requires clang-format 17.x exactly](wiki/learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md), [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](wiki/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md), [clang-format-17 via pip --target needs PYTHONPATH set to run](wiki/learnings/1782156721731-clang-format-17-via-pip-target-needs-pythonpath-se.md))
 
 ## Running the CI-pinned binary when the build is disk-blocked
 
@@ -63,13 +63,13 @@ chmod +x /tmp/cf
 git diff
 ```
 
-Get the exact `<SHA>` from a failed `check-formatting` CI job log (it prints the download URL). As of 2026-06: SHA `306d22efc0f5f72c7230b0b6b7c99f03c46995bd`, version 17.0.6. ([[wiki/learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md]])
+Get the exact `<SHA>` from a failed `check-formatting` CI job log (it prints the download URL). As of 2026-06: SHA `306d22efc0f5f72c7230b0b6b7c99f03c46995bd`, version 17.0.6. ([Run CI-pinned clang-format locally when the build is disk-blocked](wiki/learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md))
 
 ## --since HEAD is a false-pass for uncommitted changes
 
 `./extras/formatting.sh --check-only --cpp --since HEAD` returns EXIT=0 when your edits are still **uncommitted** — `--since <rev>` only formats files changed in commits AFTER `<rev>`, so with no new commits it sees zero changed files. CI's `check-formatting` runs the full `./extras/formatting.sh --check-only` (no `--since`).
 
-Rule: before any push, run `./extras/formatting.sh --check-only` (or at minimum `--check-only --cpp` WITHOUT `--since`) to validate uncommitted work. ([[wiki/learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md]])
+Rule: before any push, run `./extras/formatting.sh --check-only` (or at minimum `--check-only --cpp` WITHOUT `--since`) to validate uncommitted work. ([formatting.sh --since HEAD is a false-pass for uncommitted changes; run the full --check-only pre-push](wiki/learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md))
 
 ## Draft PRs: ci.yml is workflow_dispatch-able, check-formatting is NOT
 
@@ -83,7 +83,7 @@ Local C++-only format check for drafts (independent of gersemi/shfmt absence):
 clang-format --dry-run --Werror <changed_file.cpp>   # empty output + rc 0 = clean
 ```
 
-Do not trust the script's overall exit code when gersemi/shfmt are absent — isolate with the per-file dry-run. ([[wiki/learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md]], [[wiki/learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md]])
+Do not trust the script's overall exit code when gersemi/shfmt are absent — isolate with the per-file dry-run. ([Draft PRs: ci.yml IS workflow_dispatch-able, but check-formatting.yml is NOT — verify format locally with clang-format 17](wiki/learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md), [Draft PR CI on shader-slang/slang: workflow_dispatch bypasses the draft filter (but check-formatting can't)](wiki/learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md))
 
 ## prettier: never --write docs/design/*.md or any repo markdown
 
@@ -94,7 +94,7 @@ For targeted docs edits:
 2. Prove **format-neutrality** vs baseline: `prettier <orig> > /tmp/orig-norm; prettier <edited> > /tmp/edited-norm; diff /tmp/orig-norm /tmp/edited-norm`. The diff should show ONLY your intended semantic lines.
 3. The local prettier binary lives at `/pnpm/prettier` (not resolvable via `npx --no-install`).
 
-If `origin/master`'s version of a file already fails your local prettier check, the divergence is the tool version, not your edit — never `--write` the whole file. ([[wiki/learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md]], [[wiki/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md]])
+If `origin/master`'s version of a file already fails your local prettier check, the divergence is the tool version, not your edit — never `--write` the whole file. ([Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](wiki/learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md), [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](wiki/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md))
 
 ## Contradictions / supersessions
 
@@ -102,12 +102,12 @@ None found. The two "draft PR CI" learnings are complementary (one adds the work
 
 ---
 **Source learnings (8):**
-- [[wiki/learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md]] — Slang formatting.sh requires clang-format 17.x exactly
-- [[wiki/learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md]] — Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write
-- [[wiki/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md]] — Slang CI pins clang-format 17; never prettier-write docs/design/*.md
-- [[wiki/learnings/1782156721731-clang-format-17-via-pip-target-needs-pythonpath-se.md]] — clang-format-17 via pip --target needs PYTHONPATH set to run
-- [[wiki/learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md]] — Draft PRs: ci.yml IS workflow_dispatch-able, but check-formatting.yml is NOT
-- [[wiki/learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md]] — Draft PR CI on shader-slang/slang: workflow_dispatch bypasses the draft filter (but check-formatting can't)
-- [[wiki/learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md]] — formatting.sh --since HEAD is a false-pass for uncommitted changes; run the full --check-only pre-push
-- [[wiki/learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md]] — Run CI-pinned clang-format locally when the build is disk-blocked
+- [Slang formatting.sh requires clang-format 17.x exactly](wiki/learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md)
+- [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](wiki/learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
+- [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](wiki/learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)
+- [clang-format-17 via pip --target needs PYTHONPATH set to run](wiki/learnings/1782156721731-clang-format-17-via-pip-target-needs-pythonpath-se.md)
+- [Draft PRs: ci.yml IS workflow_dispatch-able, but check-formatting.yml is NOT](wiki/learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md)
+- [Draft PR CI on shader-slang/slang: workflow_dispatch bypasses the draft filter (but check-formatting can't)](wiki/learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md)
+- [formatting.sh --since HEAD is a false-pass for uncommitted changes; run the full --check-only pre-push](wiki/learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md)
+- [Run CI-pinned clang-format locally when the build is disk-blocked](wiki/learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md)
 _Catalog: [[wiki/index.md]]_
