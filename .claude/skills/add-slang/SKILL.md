@@ -19,27 +19,15 @@ If `ALREADY_APPLIED`, skip to Phase 3 (Verify). The code changes are already in 
 
 ## Phase 2: Apply Code Changes
 
-### Ensure slang remote
+### Merge the slang project branch
+
+Run the merge-train script (installed with the coworker base on nv-main). It is
+idempotent — skips the branch if already merged, resolves the expected
+`pnpm-lock.yaml` conflict, aborts on any other, then installs + builds +
+rebuilds CLAUDE.md:
 
 ```bash
-git remote -v
-```
-
-If `slang` remote is missing, add it:
-
-```bash
-git remote add slang https://github.com/szihs/nanoclaw.git
-```
-
-### Merge the skill branch
-
-```bash
-git fetch origin nv-slang
-git merge origin/nv-slang || {
-  # Resolve package-lock.json conflicts if any
-  git checkout --theirs package-lock.json 2>/dev/null && git add package-lock.json
-  git merge --continue
-}
+bash setup/merge-train.sh nv-slang
 ```
 
 This merges in:
