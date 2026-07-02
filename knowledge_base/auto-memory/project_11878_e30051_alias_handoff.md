@@ -1,0 +1,13 @@
+---
+name: #11878 E30051 false-positive alias — handed off to maintainer
+type: project
+description: E30051 false-positive alias warning on same-field-different-base args; root-caused (regression from #11151); @expipiplus1 (source author) self-assigned → bot fixer stood down
+originSessionId: a67d851f-b38f-4c13-82b6-a8074d14ed36
+---
+**#11878 — false-positive `warning[E30051]: potentially aliased argument`.** `_exprsDefinitelyAlias` (source/slang/slang-check-expr.cpp:3976) tests `as<DeclRefExpr>` BEFORE `as<MemberExpr>`; since `MemberExpr : public DeclRefExpr`, the base-class branch swallows every member access, compares only the field decl, and never recurses into the base object → any two same-type objects sharing a field name falsely alias (`a.x`/`b.x`, `buf[0].x`/`buf[1].x`, buffer-vs-by-value-param). Warning-only, compiles fine. Regression from #11151. Verified 5-bullet posted (issuecomment-4852683754). Recommended fix = Approach A: reorder MemberExpr (derived) before DeclRefExpr (base) + add a same-field-different-base negative to tests/diagnostics/aliased-out-inout-parameter.slang (existing negatives only vary field/index under the same base — why #11151 missed it).
+
+**Status: HANDED OFF to maintainer, chain closed on our end (2026-07-01).** @expipiplus1 (author of source PR #11151) self-assigned ("Assigned to me, thanks Jay", comment 4852915519); assignees now [expipiplus1, jkwak-work]; issue OPEN. Bot fixer STOOD DOWN — no PR / no push / no ready-flip, zero GitHub footprint. Local branch `fix/issue-11878 @ bc023daaba` kept as a cherry-pickable reference only: single commit (reorder + 3 distinct-base negatives — `s1.x`/`s2.x` and `sArr1[0].x`/`sArr2[0].x` are the RED→GREEN discriminators, `arr1[0]`/`arr2[0]` added coverage; `Closes #11878`, no AI attribution). NOT locally build-verified (build aborted under disk pressure) — RED→GREEN by construction under exhaustive diagnostic mode; false positive was repro'd on a Release binary. codex 3-stage approve; no build dir remains in the worktree.
+
+**Why:** the source-PR author claimed the fix, and our verified 5-bullet already handed them the exact location + Approach A + the test-gap note — maximal value delivered without competing in their workflow. jkwak's earlier ping to expipiplus1 ("intended or a bug?") + expipiplus1's self-assign = maintainer-takes-ownership, consistent with our confirmed-bug verdict.
+
+**How to apply:** do NOT re-dispatch the fixer or re-triage. slang-triager owns thread `gh-issue-shader-slang/slang-11878` and watches for expipiplus1's fix PR or a stall. Re-open only if expipiplus1 directly asks the bot, their fix stalls and a human invites us back, or a substantive bot-directed comment lands. A thanks/ack comment closes again with no routing.
