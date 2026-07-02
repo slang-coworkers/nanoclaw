@@ -1,0 +1,80 @@
+shader-slang/slang|11715|Fixes GitHub issue #7894 (makes reflection
+shader-slang/slang|6319|Slang successfully compiles to invalid sha
+shader-slang/slang|11878|False positive E30051 alias warning for In
+shader-slang/slang|11865|Record layer reads uninitialized output va
+shader-slang/slang|11877|operator* overload for matrix types silent
+shader-slang/slang|11881|Allow [numthreads] to override layout-deri
+shader-slang/slang|11858|Malformed UTF-8 is treated as EOF and trun
+shader-slang/slang|11882|Capability: a primal's own `[require]` is 
+shader-slang/slang|11855|Reject multiple depth semantics on fragmen
+shader-slang/slang|11859|[require] on a user-defined derivative rej
+shader-slang/slang|11864|Unpaired JSON high surrogate causes undefi
+shader-slang/slang|11874|Incorrect profile upgraded warning when us
+shader-slang/slang|11599|Clip-space z remapping option
+shader-slang/slang|11483|spvDescriptorHeapEXT fetching nested data 
+shader-slang/slang|11856|Cached RHI devices drop validation message
+shader-slang/slangpy|1040|CI GPU test OOM cascade is peak concurrent
+shader-slang/slang|11836|The GLSL backend does not emit GL_EXT_shad
+shader-slang/slang|11860|vk::input_attachment_index incorrectly res
+shader-slang/slang|11861|vk::binding on a resource-containing struc
+shader-slang/slang|11841|`RayTracingMotionBlurNV` missing when usin
+shader-slang/slang|11857|vk::binding on pointer entry-point paramet
+shader-slang/slang|11851|SLANG_OVERRIDE_IMGUI_PATH does not work fo
+shader-slang/slang|8148|Slang crashes when using static consts in 
+shader-slang/slang|11793|Add GitHub Actions workflow lint
+shader-slang/slang|11226|Fix #10639: propagate optional constraints
+shader-slang/slang|11852|CompilerOptionName::CountOf aliases Compil
+shader-slang/slang|10641|Cross-module [ForceInline] generic special
+shader-slang/slang|11837|Half-float literals are incorrect in the M
+shader-slang/slang|11778|Uninitialized variable not diagnosed (E410
+shader-slang/slang|11814|Flaky test: gfx-unit-test-tool/coreDebugBr
+shader-slang/slang|11813|Access memory traits orthogonal to DataLay
+shader-slang/slang|11313|Metal: dynamic dispatch uint2 handle type 
+shader-slang/slang|11826|Functions in include/slang.h should not ca
+shader-slang/slang|11501|[CI] Add compile time performance checking
+shader-slang/slang|11641|Intermittent failure of mac-aarch64 slang-
+shader-slang/slang|11844|Warning E41021 inconsistency
+shader-slang/slang|11845|The latest release is missing the linux bi
+shader-slang/slang|11790|Add a runtime slang-test for the `abort` f
+shader-slang/slang|11829|Regression: backslash `#include` paths rej
+shader-slang/slang|11835|The WebGPU / WGSL backend is missing 16-bi
+shader-slang/slang|11627|Operators `|=`, `&=` and `^=` on flag enum
+shader-slang/slang|11658|OptiX: Incorrect handling of `AcceptHitAnd
+shader-slang/slang|11833|CI flaky: sanitizer merge-group job evicts
+shader-slang/slang|11831|Intermittent sanitizer CI flake: "ASan run
+shader-slang/slang|11441|Add SLANG_USE_SYSTEM_DXC option
+shader-slang/slang|11565|User-defined struct initializer debug info
+shader-slang/slang|11563|Extension methods emit unqualified SPIR-V 
+shader-slang/slang|11662|slang wants to load libslang-glslang-<vers
+shader-slang/slang|11802|GLSL 330 profile based output uses brace i
+shader-slang/slang-rhi|781|Vulkan: support VK_KHR_shader_abort + VK_K
+shader-slang/slang|9382|Gather with ConstOffset incorrectly requir
+shader-slang/slang|11825|Warning E31106 and E31107 questionable on 
+shader-slang/slang|11591|ByteAddressBuffer alignment: decide wide-v
+shader-slang/slang-vscode-extension|70|Add setting for default language version [
+shader-slang/slang|9999|Switch statement without cases compiles bu
+shader-slang/slang|11550|Synthesized struct initializer debug info 
+shader-slang/slang|9660|Inconsistent override behavior in extensio
+shader-slang/slang|11742|Memory leak: glslang disassembly buffer ne
+shader-slang/slang|11730|Brace-initialization does not work for par
+shader-slang/slang|11659|slangc generates no output file when using
+shader-slang/slang|11664|"operator+" can be used as variable name, 
+shader-slang/slang|11538|Add capability bit for spvShader64BitIndex
+shader-slang/slang|11774|[CUDA] runtime-indexed resource arrays are
+shader-slang/slang|11782|Conditional as method parameter crash comp
+shader-slang/slang|11682|`slangc -g0` includes SPIR-V debug info
+shader-slang/slang|11519|Expose RHI feature gate for VK_NV_shader_a
+shader-slang/slang|11784|[autodiff] bwd_diff of Conditional<T,b>.ge
+shader-slang/slang|11780|simplifyIR regression: differentiable nume
+shader-slang/slang|8822|Implement diagnostic callback system for s
+shader-slang/slang|11779|Restore auto-diff link gating to the final
+shader-slang/slang|11629|Coverage manifest not written for metallib
+shader-slang/slang|10027|Accessing static const vector<T, 4> from i
+shader-slang/slang|11781|Per-compile linkIR / linkAndOptimizeIR reg
+shader-slang/slang|11551|[require] capabilities not checked for inv
+shader-slang/slang|11669|Miscompilation of Sampler2D.GetDimensions 
+shader-slang/slang|6216|Out of order constant buffer declaration o
+shader-slang/slang|11545|Redefine ByteAddressBuffer LoadAligned/Sto
+shader-slang/slang|11479|tests/diagnostics/pragma-warning-multifile
+shader-slang/slang|11806|CMake Options workflow fails across VS2022
+shader-slang/slang|11763|slangc fails to warn about uninitialized v
