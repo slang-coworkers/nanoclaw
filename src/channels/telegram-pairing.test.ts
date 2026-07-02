@@ -72,8 +72,11 @@ describe('createPairing', () => {
 
   it('does not collide with active codes', async () => {
     const codes = new Set<string>();
+    // Use distinct intents so prior codes stay active in the store
+    // (same intent invalidates the previous pairing, removing it from
+    // the dedup set and making collisions possible via birthday paradox).
     for (let i = 0; i < 20; i++) {
-      const r = await createPairing('main');
+      const r = await createPairing({ kind: 'wire-to', folder: `test-${i}` });
       expect(codes.has(r.code)).toBe(false);
       codes.add(r.code);
     }
