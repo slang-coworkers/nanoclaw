@@ -6666,6 +6666,17 @@ export async function handleRequest(
         result.groups.total = (db.prepare('SELECT COUNT(*) as c FROM agent_groups').get() as any)?.c || 0;
         result.messages.total = (db.prepare('SELECT COUNT(*) as c FROM hook_events').get() as any)?.c || 0;
         result.sessions = (db.prepare('SELECT COUNT(*) as c FROM sessions').get() as any)?.c || 0;
+        const groups = db.prepare('SELECT id FROM agent_groups').all() as any[];
+        for (const g of groups) {
+          const { sessionIds } = collectSessionDbFiles(g.id);
+          const tasks = extractScheduledTasks(g.id, sessionIds);
+          for (const t of tasks) {
+            const st = t.status === 'pending' ? 'active' : t.status;
+            if (st === 'active') result.tasks.active++;
+            else if (st === 'paused') result.tasks.paused++;
+            else if (st === 'completed') result.tasks.completed++;
+          }
+        }
       } catch {
         /* ignore */
       }
