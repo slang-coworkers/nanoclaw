@@ -1,7 +1,7 @@
 import type { Migration } from './index.js';
 
-export const migration016: Migration = {
-  version: 16,
+export const migration916: Migration = {
+  version: 916,
   name: 'disable-overlays',
   up(db) {
     const hasCol = (

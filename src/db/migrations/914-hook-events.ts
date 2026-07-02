@@ -5,8 +5,8 @@ import type { Migration } from './index.js';
  * for the Pixel Office dashboard. Events arrive via POST /api/hook-event
  * and are persisted here for history, analytics, and session flow views.
  */
-export const migration014: Migration = {
-  version: 14,
+export const migration914: Migration = {
+  version: 914,
   name: 'hook-events',
   up(db) {
     db.exec(`

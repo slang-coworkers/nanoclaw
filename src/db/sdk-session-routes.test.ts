@@ -9,7 +9,7 @@ import {
   stampLiveRouteValidated,
   touchRouteLastSeen,
 } from './sdk-session-routes.js';
-import { migration018 } from './migrations/018-sdk-session-routes.js';
+import { migration918 } from './migrations/918-sdk-session-routes.js';
 
 function freshDb(): Database.Database {
   const db = new Database(':memory:');
@@ -19,7 +19,7 @@ function freshDb(): Database.Database {
     CREATE TABLE agent_groups (id TEXT PRIMARY KEY, folder TEXT NOT NULL);
     CREATE TABLE sessions (id TEXT PRIMARY KEY, agent_group_id TEXT NOT NULL);
   `);
-  migration018.up(db);
+  migration918.up(db);
   return db;
 }
 
@@ -140,8 +140,8 @@ describe('sdk-session-routes helpers', () => {
     expect(rs).toEqual(['sdk-b', 'sdk-a']); // ordered by first_seen_at asc
   });
 
-  it('migration018 is idempotent', () => {
-    expect(() => migration018.up(db)).not.toThrow();
+  it('migration918 is idempotent', () => {
+    expect(() => migration918.up(db)).not.toThrow();
     const cols = db.prepare('PRAGMA table_info(sdk_session_routes)').all() as Array<{ name: string }>;
     expect(cols.map((c) => c.name).sort()).toEqual(
       [

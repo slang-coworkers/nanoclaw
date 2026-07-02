@@ -20,8 +20,8 @@ import type { Migration } from './index.js';
  *
  * Other channels (dashboard, slack, discord, telegram, etc.) are untouched.
  */
-export const migration019: Migration = {
-  version: 19,
+export const migration919: Migration = {
+  version: 919,
   name: 'a2a-session-mode-per-thread',
   up(db) {
     const hasTable = (name: string) =>

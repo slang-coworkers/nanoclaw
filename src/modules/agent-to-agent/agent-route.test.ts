@@ -27,8 +27,8 @@ vi.mock('../../log.js', () => ({
 import { isSafeAttachmentName, ensureA2aWiring, routeAgentMessage, forwardAttachedFiles } from './agent-route.js';
 import { initTestDb, closeDb, getDb } from '../../db/connection.js';
 import { runMigrations } from '../../db/migrations/index.js';
-import { migration019 } from '../../db/migrations/019-a2a-session-mode-per-thread.js';
-import { migration020 } from '../../db/migrations/020-a2a-session-sources.js';
+import { migration919 } from '../../db/migrations/919-a2a-session-mode-per-thread.js';
+import { migration920 } from '../../db/migrations/920-a2a-session-sources.js';
 import { createAgentGroup } from '../../db/agent-groups.js';
 import { createSession, getSession } from '../../db/sessions.js';
 import {
@@ -2064,8 +2064,8 @@ describe('migration 020', () => {
 
   it('is idempotent', () => {
     const db = getDb();
-    expect(() => migration020.up(db)).not.toThrow();
-    expect(() => migration020.up(db)).not.toThrow();
+    expect(() => migration920.up(db)).not.toThrow();
+    expect(() => migration920.up(db)).not.toThrow();
   });
 });
 
@@ -2108,7 +2108,7 @@ describe('migration 019', () => {
        VALUES ('mga-old', 'mg-agent-old', 'ag-r', 'always', NULL, 'all', 'drop', 'shared', 0, ?)`,
     ).run(now());
 
-    migration019.up(db);
+    migration919.up(db);
     const row = db.prepare("SELECT session_mode FROM messaging_group_agents WHERE id = 'mga-old'").get() as {
       session_mode: string;
     };
@@ -2146,7 +2146,7 @@ describe('migration 019', () => {
       ).run(`mga-${channel}`, mgId, now());
     }
 
-    migration019.up(db);
+    migration919.up(db);
     const rows = db
       .prepare("SELECT id, session_mode FROM messaging_group_agents WHERE id LIKE 'mga-%'")
       .all() as Array<{ id: string; session_mode: string }>;
@@ -2183,8 +2183,8 @@ describe('migration 019', () => {
        VALUES ('mga-1', 'mg-agent', 'ag-1', 'always', NULL, 'all', 'drop', 'per-thread', 0, ?)`,
     ).run(now());
 
-    expect(() => migration019.up(db)).not.toThrow();
-    expect(() => migration019.up(db)).not.toThrow();
+    expect(() => migration919.up(db)).not.toThrow();
+    expect(() => migration919.up(db)).not.toThrow();
     const row = db.prepare("SELECT session_mode FROM messaging_group_agents WHERE id = 'mga-1'").get() as {
       session_mode: string;
     };

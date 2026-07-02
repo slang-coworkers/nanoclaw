@@ -16,8 +16,8 @@ import type { Migration } from './index.js';
  * for non-threaded adapters (Telegram, WhatsApp, iMessage) and is the
  * explicit default for new non-dashboard wirings.
  */
-export const migration017: Migration = {
-  version: 17,
+export const migration917: Migration = {
+  version: 917,
   name: 'dashboard-session-mode-per-thread',
   up(db) {
     // Guard: the columns and tables must exist. On a completely fresh

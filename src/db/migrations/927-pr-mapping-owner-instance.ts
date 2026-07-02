@@ -2,8 +2,8 @@ import type Database from 'better-sqlite3';
 
 import type { Migration } from './index.js';
 
-export const migration027: Migration = {
-  version: 27,
+export const migration927: Migration = {
+  version: 927,
   name: 'pr-mapping-owner-instance',
   dependsOn: ['pr-session-mappings'],
   up(db: Database.Database) {

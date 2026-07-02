@@ -15,8 +15,8 @@ import type { Migration } from './index.js';
  * access control. Idempotent so it is safe under the merged deployment
  * schema where other branches may already have added the column.
  */
-export const migration028: Migration = {
-  version: 28,
+export const migration928: Migration = {
+  version: 928,
   name: 'sidebar-group',
   up(db: Database.Database) {
     const cols = db.prepare('PRAGMA table_info(agent_groups)').all() as Array<{ name: string }>;

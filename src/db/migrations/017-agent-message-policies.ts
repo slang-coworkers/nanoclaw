@@ -3,8 +3,8 @@ import type Database from 'better-sqlite3';
 import type { Migration } from './index.js';
 
 /** Per-message approval gate on an agent-to-agent connection; no row = free flow. */
-export const migration030: Migration = {
-  version: 30,
+export const migration017: Migration = {
+  version: 17,
   name: 'agent-message-policies',
   up(db: Database.Database) {
     db.exec(`

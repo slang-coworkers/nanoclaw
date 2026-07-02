@@ -17,8 +17,8 @@ import type { Migration } from './index.js';
  *
  * Version 021 because 020 is already taken by a2a-session-sources.
  */
-export const migration021: Migration = {
-  version: 21,
+export const migration921: Migration = {
+  version: 921,
   name: 'session-display-title',
   up(db: Database.Database) {
     const cols = db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;

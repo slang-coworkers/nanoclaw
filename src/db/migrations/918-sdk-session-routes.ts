@@ -22,8 +22,8 @@ import type { Migration } from './index.js';
  * script can fill historical rows with source='backfill'; query-time
  * fallback handles ambiguous cases so data is never silently dropped.
  */
-export const migration018: Migration = {
-  version: 18,
+export const migration918: Migration = {
+  version: 918,
   name: 'sdk-session-routes',
   up(db) {
     const hasTable = (name: string) =>

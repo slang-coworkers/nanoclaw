@@ -1,7 +1,7 @@
 /**
  * Read/write helpers for the a2a_session_sources mapping table.
  *
- * See src/db/migrations/020-a2a-session-sources.ts for schema + rationale.
+ * See src/db/migrations/920-a2a-session-sources.ts for schema + rationale.
  */
 import { getDb } from './connection.js';
 
