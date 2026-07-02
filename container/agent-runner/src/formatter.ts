@@ -103,13 +103,24 @@ export interface RoutingContext {
 
 /**
  * Extract routing context from a batch of messages.
- * Uses the first message's routing fields.
+ *
+ * Prefers session routing (channel_type + platform_id) over the first
+ * message's routing fields. This matters when a cross-channel webhook
+ * (e.g. github PR review) wakes an a2a session: the webhook's routing
+ * is github, but the session's bound channel is agent. Without this
+ * preference, bare-text auto-route writes target github — which has no
+ * messaging group on the delivery side and fails permanently.
+ *
+ * threadId and inReplyTo always come from the first message — they are
+ * per-turn, not per-session.
  */
 export function extractRouting(messages: MessageInRow[]): RoutingContext {
   const first = messages[0];
+  const session = getSessionRouting();
+  const useSession = !!(session.channel_type && session.platform_id);
   return {
-    platformId: first?.platform_id ?? null,
-    channelType: first?.channel_type ?? null,
+    platformId: useSession ? session.platform_id : (first?.platform_id ?? null),
+    channelType: useSession ? session.channel_type : (first?.channel_type ?? null),
     threadId: first?.thread_id ?? null,
     inReplyTo: first?.id ?? null,
   };
