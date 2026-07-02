@@ -95,6 +95,7 @@ container/overlays/chain-routing-gate/**
 .claude/skills/convert-to-apple-container/**
 .claude/skills/x-integration/**
 .claude/skills/lego-system-tour/**
+.claude/skills/run-test/**
 
 # Channel install skills carry resources beyond SKILL.md (e.g. add-dashboard/resources/):
 .claude/skills/add-*/**
