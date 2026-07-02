@@ -131,6 +131,8 @@ L1   = os.path.join(ROOT, "learnings")
 SRC  = os.path.join(ROOT, "sources", "learnings")
 WIKI = os.path.join(ROOT, "wiki")
 LINK = re.compile(r"\[(?:[^\]]*)\]\((wiki/[^)]+\.md)\)")
+OBSIDIAN_WITH_DESC = re.compile(r"\[\[wiki/learnings/([^\]]+\.md)\]\]\s*—\s*(.+)")
+OBSIDIAN_BARE = re.compile(r"\[\[wiki/learnings/([^\]]+\.md)\]\]")
 
 PATTERNS = [
     (re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"), "GITHUB_TOKEN"),
@@ -275,7 +277,31 @@ def _write_index(entries, by_topic, concepts=None):
         idx.append(f"- [{e['title']}](wiki/learnings/{e['stem']}.md)")
     open(os.path.join(WIKI, "index.md"), "w", encoding="utf-8").write("\n".join(idx) + "\n")
 
+def _convert_obsidian_links(learn_dir):
+    """Convert any remaining Obsidian [[wiki/learnings/...]] links to standard markdown in concept pages."""
+    titles = {}
+    for fp in glob.glob(os.path.join(learn_dir, "*.md")):
+        fn = os.path.basename(fp)
+        t = open(fp, encoding="utf-8").read()
+        for line in t.splitlines():
+            if line.startswith("# "):
+                titles[fn] = line[2:].strip()
+                break
+    concepts_dir = os.path.join(WIKI, "concepts")
+    converted = 0
+    for fp in glob.glob(os.path.join(concepts_dir, "*.md")):
+        text = open(fp, encoding="utf-8").read()
+        original = text
+        text = OBSIDIAN_WITH_DESC.sub(lambda m: f"[{m.group(2).strip()}](wiki/learnings/{m.group(1)})", text)
+        text = OBSIDIAN_BARE.sub(lambda m: f"[{titles.get(m.group(1), stem_of(m.group(1)))}](wiki/learnings/{m.group(1)})", text)
+        if text != original:
+            open(fp, "w", encoding="utf-8").write(text)
+            converted += 1
+    if converted:
+        print(f"obsidian→markdown: converted {converted} concept pages")
+
 def finalize():
+    _convert_obsidian_links(os.path.join(WIKI, "learnings"))
     cfiles = sorted(glob.glob(os.path.join(WIKI, "concepts", "*.md")))
     concepts = []
     for p in cfiles:
