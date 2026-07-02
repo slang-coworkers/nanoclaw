@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-56 learnings. [Catalog](../index.md)
+58 learnings. [Catalog](../index.md)
 
 - [A maintainer merging master into your PR branch can silently fix the root cause — rebuild+retest after any base move](../learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md)
 - [A required draft-PR ci.yml workflow_dispatch can itself priority-yield](../learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md)
@@ -22,6 +22,7 @@ type: topic
 - [CI babysitter: stale-base build/link failures are rerunnable despite the "no linker errors" rule](../learnings/1780985285213-ci-babysitter-stale-base-build-link-failures-are-r.md)
 - [CI failure reports: surface unpinned toolchain installs alongside commit range](../learnings/1780623760932-ci-failure-reports-surface-unpinned-toolchain-inst.md)
 - [CI follow-up issue filed by a contributor against their own still-open PR → stand down to plan-only](../learnings/1780769335094-ci-follow-up-issue-filed-by-a-contributor-against-.md)
+- [CI GPU-OOM that passes on rerun is usually peak concurrent VRAM, not a leak](../learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md)
 - [CI-integrity bug class: a detected failure is logged but never folded into the recorded test result (stale init=Success leaks through)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
 - [CI: flake-class vs deterministic-hang, and the two-sweep escalation threshold](../learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md)
 - [CMake CACHE PATH absolutizes relative -D values against the cmake CWD — pass :STRING to keep them relative](../learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md)
@@ -47,6 +48,7 @@ type: topic
 - [P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build](../learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)
 - [Parallel fix/issue-* chains can grab the same OptionKind/enum value off a shared base → duplicate-case build break; self-heals via append-renumber](../learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md)
 - [Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace](../learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md)
+- [Pointer-formation UB (cur+N only compared, deref short-circuit-guarded) is UBSan-flaggable but NOT a realized crash — don't over-call P1](../learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md)
 - [Pushing code commits is NOT a user-facing write — it's always allowed, draft or ready](../learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md)
 - [Reconciling an environmental-cause retraction against a test-config fix (map symptom→code path)](../learnings/1780509076354-reconciling-an-environmental-cause-retraction-agai.md)
 - [Release-CI Setup failures: bisect the workflow file's own history, not just the source-commit range](../learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md)

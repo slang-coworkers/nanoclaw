@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **808 agent learnings**, synthesized into **42 concept pages**.
+Standalone wiki built from **839 agent learnings**, synthesized into **42 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -79,11 +79,11 @@ Standalone wiki built from **808 agent learnings**, synthesized into **42 concep
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (483)
-- [NanoClaw / agent operations](topics/agent-ops.md) (127)
-- [CI, build & tooling](topics/ci-tooling.md) (56)
+- [Slang compiler & language](topics/slang-compiler.md) (497)
+- [NanoClaw / agent operations](topics/agent-ops.md) (132)
+- [CI, build & tooling](topics/ci-tooling.md) (58)
 - [Review & process](topics/review-process.md) (26)
-- [Uncategorized](topics/misc.md) (116)
+- [Uncategorized](topics/misc.md) (126)
 
 ## All learnings (chronological)
 
@@ -895,3 +895,34 @@ Standalone wiki built from **808 agent learnings**, synthesized into **42 concep
 - [Stack a PR on a sibling instead of duplicating its fix (faithful-subset coordination)](learnings/1782882818697-stack-a-pr-on-a-sibling-instead-of-duplicating-its.md)
 - [Slang: use-site propagation of user-defined derivative [require] under-constrains transitive differentiation](learnings/1782882850345-slang-use-site-propagation-of-user-defined-derivat.md)
 - [Reviewer A (nv-slang-bot) can emit confident false-positive crash bugs whose repros do not compile — always compile the repro](learnings/1782885111139-reviewer-a-nv-slang-bot-can-emit-confident-false-p.md)
+- [Don't add a recursion guard for input an earlier fatal diagnostic already rejects](learnings/1782886466163-don-t-add-a-recursion-guard-for-input-an-earlier-f.md)
+- [Spurious E41012 profile-upgrade warning: static [require] out of sync with emit-time isCombined gate (samplerless)](learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md)
+- [Verified GitHub comments/labels are NOT operator-gated — only pr-ready/merge/auto-close are](learnings/1782894060592-verified-github-comments-labels-are-not-operator-g.md)
+- [Slang #11493 builtin-operator fast path silently bypasses user operator overloads on builtin scalar/vector/matrix types](learnings/1782894605011-slang-11493-builtin-operator-fast-path-silently-by.md)
+- [Pointer-formation UB (cur+N only compared, deref short-circuit-guarded) is UBSan-flaggable but NOT a realized crash — don't over-call P1](learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md)
+- [gh auth status false-negative with App installation token (gh api still works)](learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md)
+- [E41012 from a [require] attribute comes from slang-check-shader.cpp (ProfileImplicitlyUpgraded), NOT IRLateRequireCapability](learnings/1782895560951-e41012-from-a-require-attribute-comes-from-slang-c.md)
+- [CI GPU-OOM that passes on rerun is usually peak concurrent VRAM, not a leak](learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md)
+- [Slang AST: MemberExpr/VarExpr/StaticMemberExpr derive from DeclRefExpr — order as&lt;derived&gt; before as&lt;base&gt;](learnings/1782898009300-slang-ast-memberexpr-varexpr-staticmemberexpr-deri.md)
+- [Fixing a capability [require] atom on a texture method? Also check the glsl.meta.slang texelFetch wrappers that delegate to it](learnings/1782898835005-fixing-a-capability-require-atom-on-a-texture-meth.md)
+- [Slang slangc -v version string is a cached CMake value, NOT proof of compiled commit (bisect trap)](learnings/1782898953945-slang-slangc-v-version-string-is-a-cached-cmake-va.md)
+- [Slang bisect: don't trust slangc's version string for commit identity](learnings/1782899060456-slang-bisect-don-t-trust-slangc-s-version-string-f.md)
+- [Slang DIAGNOSTIC_TEST: //CHECK-NOT: is inert — negatives enforced by exhaustive mode only](learnings/1782900106845-slang-diagnostic-test-check-not-is-inert-negatives.md)
+- [slang #6319 dedup: PR #11863 is related-not-duplicate; duplicate-SV vs depth-overlap are complementary checks](learnings/1782900707997-slang-6319-dedup-pr-11863-is-related-not-duplicate.md)
+- [Slang stores modifiers in reverse-declaration order; findModifier returns the last-written attribute](learnings/1782905768996-slang-stores-modifiers-in-reverse-declaration-orde.md)
+- [Slang primal [require] propagation at fwd_diff/bwd_diff is inconsistent across 4 cells (not a uniform gap)](learnings/1782906093613-slang-primal-require-propagation-at-fwd-diff-bwd-d.md)
+- [Failing CI checks on our own bot PRs don't webhook the fixer — surface them](learnings/1782907713547-failing-ci-checks-on-our-own-bot-prs-don-t-webhook.md)
+- [slang-test FileCheck runner parses CHECK: tokens in PROSE comments as live directives](learnings/1782908183110-slang-test-filecheck-runner-parses-check-tokens-in.md)
+- [DIAGNOSTIC_TEST SIMPLE diag=CHECK: E-code row count = 2× diagnostics (title+span), deduped only if identical](learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md)
+- [E38052 VS-missing-SV_Position is an intentional heuristic false-positive (VS→GS is known-legit)](learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md)
+- [Entry-point duplicate system-value check: output-binding-space keying (mesh=category, geometry=per-stream) + inout-stream double-collection hazard](learnings/1782911038880-entry-point-duplicate-system-value-check-output-bi.md)
+- [Attribute PR ownership by author field, not title/branch prefix](learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md)
+- [Slang API compiler-options: applySettingsToDiagnosticSink double-apply clobbers with defaults; API-path bugs need slang-unit-test not .slang](learnings/1782929205990-slang-api-compiler-options-applysettingstodiagnost.md)
+- [CORRECTION to #11890 diagnostic-color learning: the empty option set is the COMPOSITE component's, not the loaded module's](learnings/1782933741329-correction-to-11890-diagnostic-color-learning-the-.md)
+- [hasOption(DiagnosticColor) IS reliable on the getTargetCode composite path (unlike Optimization on getEntryPointCode)](learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md)
+- [Verify against source before trusting single-point triage OR contradictory reviewer invariants](learnings/1782935715651-verify-against-source-before-trusting-single-point.md)
+- [Verify a fix PR's closing reference matches the tracked issue, not just the title](learnings/1782936185036-verify-a-fix-pr-s-closing-reference-matches-the-tr.md)
+- [texture-shared-cuda.vulkan is a recurring slang-rhi interop flake](learnings/1782936358409-texture-shared-cuda-vulkan-is-a-recurring-slang-rh.md)
+- [PR-description prose fixes-N closes the wrong issue and blocks auto-close](learnings/1782951523566-pr-description-prose-fixes-n-closes-the-wrong-issu.md)
+- [Verify a PR's live state before rolling a fixer's PR-state claim upstream — maintainer-side actions go stale fast](learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md)
+- [MSVC /W4 /WX flags C4456 shadow-declaration as error — invisible to local gcc/clang builds](learnings/1782956138561-msvc-w4-wx-flags-c4456-shadow-declaration-as-error.md)

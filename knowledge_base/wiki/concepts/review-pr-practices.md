@@ -3,7 +3,7 @@ title: "PR Review Practices"
 type: concept
 group: review-process
 tags: [pr-review, slang-reviewer, devin, reviewer-a, reviewer-b, reviewer-c, github, draft-pr, convergence, false-positives, a2a-review]
-source_count: 37
+source_count: 38
 ---
 
 # PR Review Practices
@@ -164,6 +164,8 @@ A code-reading reviewer can trace a plausible bug path that is foreclosed upstre
 
 This applies with full force to **🔴 crash / infinite-recursion / spurious-diagnostic findings**, which read as blocking. On #11873 (vk::binding on resource-containing struct params), Reviewer A produced a confident 🔴 stack-overflow with a detailed code trace (cited `slang-ir-check-recursion.cpp`, exact line numbers, a sibling-guard comparison) — and it was a false positive because **both of its repros don't compile**. The front-end guards pre-empt the predicate entirely: a value-recursive `struct S { S next; }` entry param hits fatal E39997 "maximum type nesting level exceeded" (bounded at `kMaxTypeNestingDepth = 128`) before `validateEntryPoint` runs; the same struct as a *global* hits E41001 but a global isn't an entry param so the predicate never runs on it (the case A wrongly generalized from); cyclic inheritance hits E39999; interface-before-struct-base hits E30820 (so `findBaseStructType`'s `getFirstOrNull()` is correct by construction). Rule: for any reviewer crash/recursion/spurious-diagnostic claim, **compile the exact repro against a built slangc before treating it as blocking** — a confident code trace is not proof the input is reachable, because automated reviewers reason from source and miss earlier front-end rejections. Don't pass A's 🔴/high-🟡 through verbatim; add a coordinator verification addendum backed by a compiled repro. (Reviewer C correctly dropped the same termination concern here — its instinct beat A — though C's stated mechanism was imprecise; the real guard is the E39997 depth limit. Reviewer B echoed the PR body: weak signal, consistent with this file family.) ([[wiki/learnings/1782885111139-reviewer-a-nv-slang-bot-can-emit-confident-false-p.md]])
 
+Corollary decision (same #11873 / PR): when a reviewer flags a new recursive walk for "missing a cycle/depth guard that sibling functions carry," do NOT reflexively add the guard — first check whether the divergent input is rejected by an EARLIER fatal front-end diagnostic before your code runs (here E39997/E39999 reject value-recursive/cyclic types before `validateEntryPoint`, so a visited-set would be dead code under correct input). The decision that held (codex + 3-reviewer APPROVE_WITH_NITS): omit the guard and **document the termination invariant at the function** ("descends a finite acyclic structure; cycles rejected earlier by E39997/E39999") — CLAUDE.md forbids guards never hit under correct input and changes with no failing test. Also reinforced: **trust codex's CONTENT verdict over the PostToolUse hook's stage-verdict parse** — the hook parsed the stages as "approve" while codex's content verdict was request-changes for a real, harness-verified item (an unnecessary `non-exhaustive` on a DIAGNOSTIC_TEST, which `slang-test` reports as a failure); a DIAGNOSTIC_TEST should use plain `diag=CHECK` unless you deliberately leave diagnostics unmatched ([[wiki/learnings/1782886466163-don-t-add-a-recursion-guard-for-input-an-earlier-f.md]]).
+
 ## FileCheck Test Nuances
 
 Several review-time FileCheck lessons apply across the review pipeline [[wiki/learnings/1782594329649-slang-pr-review-scope-a-re-run-to-focused-verifica.md]]:
@@ -228,4 +230,5 @@ When a fixer reworks a PR in response to feedback and re-requests review, the re
 - [[wiki/learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md]] — A self-recommended comment addition does not reset the PR review pipeline
 - [[wiki/learnings/1782882818697-stack-a-pr-on-a-sibling-instead-of-duplicating-its.md]] — Stack a PR on a sibling instead of duplicating its fix (faithful-subset coordination)
 - [[wiki/learnings/1782885111139-reviewer-a-nv-slang-bot-can-emit-confident-false-p.md]] — Reviewer A can emit confident false-positive crash bugs whose repros don't compile — always compile the repro
+- [[wiki/learnings/1782886466163-don-t-add-a-recursion-guard-for-input-an-earlier-f.md]] — Don't add a recursion guard for input an earlier fatal diagnostic rejects; trust codex content verdict over hook stage-parse
 _Catalog: [[wiki/index.md]]_

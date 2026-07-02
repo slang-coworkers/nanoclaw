@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-127 learnings. [Catalog](../index.md)
+132 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [A fixer's hold-ack doesn't guarantee it stopped — verify branch/worktree state](../learnings/1781366452370-a-fixer-s-hold-ack-doesn-t-guarantee-it-stopped-ve.md)
@@ -63,6 +63,7 @@ type: topic
 - [Execute maintainer-directed non-gated actions without round-tripping](../learnings/1781653325417-execute-maintainer-directed-non-gated-actions-with.md)
 - [Fabricated parent-edge dispatch contained by drafts-only + gate-irreversible-step discipline](../learnings/1781685016229-fabricated-parent-edge-dispatch-contained-by-draft.md)
 - [Failing check ≠ real blocker on fork-based PRs (triage to watch-only)](../learnings/1780903795100-failing-check-real-blocker-on-fork-based-prs-triag.md)
+- [Failing CI checks on our own bot PRs don't webhook the fixer — surface them](../learnings/1782907713547-failing-ci-checks-on-our-own-bot-prs-don-t-webhook.md)
 - [Falcor CI tracking issues from jkiviluoto-nv: park at triaged, cross-link the family](../learnings/1782222346038-falcor-ci-tracking-issues-from-jkiviluoto-nv-park-.md)
 - [Fixer container disk fills from accumulated build/ trees (ENOSPC at cmake-configure)](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md)
 - [Fixer PRs must use a Closes/Fixes #N closing keyword, not a prose issue reference](../learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md)
@@ -112,6 +113,7 @@ type: topic
 - [rtk token-compression proxy evaluated 2026-06-03 and rejected for all groups; not enabled anywhere](../learnings/legoop-project_rtk_evaluated_rejected.md)
 - [Scheduled diagnostic tasks re-diagnose persistent state inconsistently across fresh sessions](../learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md)
 - [Spurious chain-routing-gate REFUSED inbound — don't fabricate, verify then escalate](../learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-t-.md)
+- [Spurious E41012 profile-upgrade warning: static [require] out of sync with emit-time isCombined gate (samplerless)](../learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md)
 - [Standing-order reinforcements inherit via CLAUDE.md, not per-session relay](../learnings/1780769195650-standing-order-reinforcements-inherit-via-claude-m.md)
 - [Strict reply-routing in 4-tier issue chain — replies hop back along the dispatch path, never bypass to the orchestrator](../learnings/legoop-feedback_chain_shape_strict.md)
 - [SUPERSEDED: "skip GitHub post on dev-authored design placeholder" — post a deferential triage artifact anyway](../learnings/1781137483321-superseded-skip-github-post-on-dev-authored-design.md)
@@ -125,6 +127,9 @@ type: topic
 - [Triage: when to POST a 5-bullet vs STAND DOWN on a maintainer-authored design/RFC issue](../learnings/1781266520028-triage-when-to-post-a-5-bullet-vs-stand-down-on-a-.md)
 - [Untraceable from-parent mandate for costly/gated work — analyze cheaply and surface, don't execute](../learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated-w.md)
 - [Use Explore subagent (not a bare fork) for the learnings-scan step](../learnings/1782329772659-use-explore-subagent-not-a-bare-fork-for-the-learn.md)
+- [Verified GitHub comments/labels are NOT operator-gated — only pr-ready/merge/auto-close are](../learnings/1782894060592-verified-github-comments-labels-are-not-operator-g.md)
+- [Verify a PR's live state before rolling a fixer's PR-state claim upstream — maintainer-side actions go stale fast](../learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md)
+- [Verify against source before trusting single-point triage OR contradictory reviewer invariants](../learnings/1782935715651-verify-against-source-before-trusting-single-point.md)
 - [Verify Discovery and Resolution Separately in Parser-Ambiguity Triage](../learnings/1780064743810-verify-discovery-and-resolution-separately-in-pars.md)
 - [Verify maintainer attributions in triage handoffs against gh PR data](../learnings/1780073122582-verify-maintainer-attributions-in-triage-handoffs-.md)
 - [Verify triage-memo file:line claims about adjacent code before quoting in a PR](../learnings/1782390307922-verify-triage-memo-file-line-claims-about-adjacent.md)

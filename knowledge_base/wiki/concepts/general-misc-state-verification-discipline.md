@@ -3,7 +3,7 @@ title: "State Verification Discipline"
 type: concept
 group: general-misc
 tags: [state-verification, stale-state, github, live-check, pr-state, resume, feature-requests, submodule, trackers]
-source_count: 16
+source_count: 18
 ---
 
 # State Verification Discipline
@@ -21,6 +21,10 @@ A PR's `isDraft`, `state`, `reviewDecision`, `mergeable`, and `mergeStateStatus`
 ## Verify Live PR Draft/Ready State Before Reporting
 
 A corollary: before writing "draft"/"ready"/"merged" in a `[Fix Report]`, run `gh pr view <n> -R <repo> --json isDraft,state,reviewDecision,mergeStateStatus` and report those values, not the last state set. A maintainer readying the bot's draft is the expected positive path toward merge — approval alone does not mean the PR is still draft. ([[wiki/learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md]])
+
+## Verify a Child's PR-State Claim Before Rolling It Upstream
+
+A fixer/child's report of a PR's state (draft/ready, head SHA, review verdict, "held pending X") is a snapshot of *its own actions* and can be blind to maintainer-side moves that happen out-of-band. Before surfacing a state-dependent decision to the operator/parent, re-pull `gh pr view <N> --json isDraft,headRefOid,reviewDecision,state,mergeable` + the timeline. On #11881/PR #11883 the fixer accurately reported "did NOT flip ready" and teed up an operator ready-flip decision — but the maintainer (jkwak-work) had ~2 min earlier driven the PR himself (Update branch → `ready_for_review` → APPROVE → MERGE); relaying the fixer's framing verbatim would have asked the operator to authorize a flip that was already done and mis-stated the head SHA. Notes: GitHub's "Update branch" merge does NOT dismiss an existing approval (reviewDecision stays APPROVED on the new merge-commit head); a maintainer flipping/merging their OWN assigned PR is legitimate, not a bot-guardrail breach — distinguish "who acted"; and once a maintainer merges an APPROVED+MERGEABLE bot PR, a "wait for priority-yielded CI" hold becomes moot ([[wiki/learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md]]).
 
 ## Verify Live GitHub State Before Acting on Hold/Revert Instructions
 
@@ -58,6 +62,10 @@ When triaging issues filed by an agentic test-generation pipeline, do not trust 
 
 When attributing whether an ICE/assert is a regression of a past PR, do not conclude "not a regression" merely because the PR's changed-file list excludes the assert site. Adjacent lowering/transform changes can alter whether execution reaches a downstream unchanged assert. The only file-list-verifiable claim is "the assert site was/wasn't modified." For causal regression claims, trace the data/control path — not the file list. When that tracing cannot be done, say "not determinable from the file list — maintainer's call." ([[wiki/learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md]])
 
+## Verify Control-Flow Invariants Against Source, Not Triage Memos or Reviewer Assertions
+
+Two reinforcing lessons from slang#11860 (PR #11871, MERGED). (1) A triage "recommended fix" naming ONE code point is a hypothesis, not a diagnosis — prove it with a local RED→GREEN + ablation before shipping. The single-point fix (skip `markSpaceUsed` at one site) left the bug live because a SECOND independent space-occupancy consumer also reserved set 0; only an instrumented build plus an ablation matrix (hunk1-only → still broken; hunk2-only → still broken; both → fixed) proved both hunks load-bearing. If you can't name a test that goes RED without a given hunk, you don't yet understand the fix. (2) When two reviewers assert CONTRADICTORY invariants, read the source and settle it yourself — never encode a reviewer's claim as a code comment on faith. Reviewer A said VaryingInput/Output/SpecializationConstant DO reach a guarded branch with placeholder space==0; reviewer C said the opposite; reading `addExplicitParameterBindings_GLSL` showed A was right, and committing C's framing would have shipped a confidently-false invariant comment (worse than none). General rule: comments and PR-body claims about control-flow invariants must be verified against code at HEAD, not lifted from a memo or reviewer assertion — cheap to verify, expensive to ship wrong ([[wiki/learnings/1782935715651-verify-against-source-before-trusting-single-point.md]]).
+
 ## Check Issue Comments for External Contributor Ownership
 
 On an issue handoff, check issue comments and author intent before coding. If an external contributor said they are writing a PR or a maintainer publicly invited them to build the fix, do not auto-implement a competing draft PR. Stand down at a read-only plan. Re-engage only if the contributor abandons the PR AND a maintainer explicitly asks the bot to take over. ([[wiki/learnings/1780473504394-don-t-auto-implement-issues-owned-by-an-invited-ex.md]])
@@ -88,4 +96,6 @@ When a maintainer asks the bot to file a new issue for design/analysis discussio
 - [[wiki/learnings/1782648000000-CONSOLIDATED-stand-down-when-maintainer-or-contributor-drives-fix.md]] — CONSOLIDATED: stand down when a maintainer/contributor is already driving the fix
 - [[wiki/learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md]] — Filing a neutral design-discussion issue split off from a PR
 - [[wiki/learnings/1781574732054-bi-weekly-every-other-week-scheduling-via-cron-gua.md]] — Bi-weekly (every-other-week) scheduling via cron guard
+- [[wiki/learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md]] — Verify a PR's live state before rolling a fixer's PR-state claim upstream (maintainer moves go stale fast)
+- [[wiki/learnings/1782935715651-verify-against-source-before-trusting-single-point.md]] — Verify against source before trusting single-point triage OR contradictory reviewer invariants
 _Catalog: [[wiki/index.md]]_

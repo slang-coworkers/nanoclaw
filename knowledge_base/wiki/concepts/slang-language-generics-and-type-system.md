@@ -3,7 +3,7 @@ title: "Slang Generics & Type System"
 type: concept
 group: slang-language-core
 tags: [generics, type-system, witness-tables, conformance, extensions, namespaces, specialization]
-source_count: 31
+source_count: 32
 ---
 
 # Slang Generics & Type System
@@ -66,8 +66,12 @@ When an auto-generated IR-LABEL test fails after a refactor, distinguish a funct
 
 `abort<each T>(format, args...)` takes runtime variadic args; the message struct is an `OpCompositeConstruct`, not `OpConstantDataKHR`. The shipped PR #11542 has a conformance bug: the emitted extension token is `"SPV_KHR_shader_abort"` (the Vulkan extension name) rather than the correct SPIR-V grammar token `"SPV_KHR_abort"` ([[wiki/learnings/1782251874470-correction-abort-message-is-a-runtime-composite-ru.md]]).
 
+## Builtin-operator fast path silently bypasses user overloads (#11493)
+
+PR #11493 (`61ad43dbc`, first in v2026.11) added `SemanticsExprVisitor::convertToBuiltinArithmeticOp` (`slang-check-expr.cpp:4605`), called from `visitInvokeExpr` at :5007 and returning at :5008 — **before** `CheckTerm`/`ResolveInvoke` (:5044). For a builtin arithmetic/comparison/bitwise/shift/unary operator on builtin scalar/vector/matrix operands it rewrites the expr to a `BuiltinOperatorExpr` and skips overload resolution entirely, so ANY user overload of a builtin operator on builtin operand types is silently ignored — no diagnostic (discussion #11840: a ~2-year-old global `operator*(float4x4,float4x4)` stopped taking precedence after upgrading 2026.9→2026.11). Since #11493's stated goal is "byte-identical codegen", silently overriding a valid in-scope user overload is an unintended semantic regression. The fast path already defers matrix operators in GLSL operator scope (:4634-4637, :4723-4730), but the analogous "defer when a non-core user `operator OP` for the operand types is in scope" case was not handled; fix direction is a *cheap* in-scope-overload check that preserves the common no-overload fast path. This is a recurring "fast path fires/declines when it shouldn't" defect class (cf. the earlier float-bitwise → E39999 decline) ([[wiki/learnings/1782894605011-slang-11493-builtin-operator-fast-path-silently-by.md]]).
+
 ---
-**Source learnings (31):**
+**Source learnings (32):**
 - [[wiki/learnings/1780353989621-slang-any-value-inference-recursion-10686-pointer-.md]] — Slang any-value-inference recursion: #10686 pointer guard is partial; IRSpecialize-operand path bypasses it
 - [[wiki/learnings/1780414379429-slang-type-conformance-override-0-always-duplicate.md]] — slang type-conformance override=0 always duplicates the (T,I) entry
 - [[wiki/learnings/1780467490251-slang-6158-static-export-guard-is-now-obsolete-bui.md]] — Slang #6158 static-export guard is now obsolete (BUILD_LOCAL_INTERFACE wrapping)
@@ -99,4 +103,5 @@ When an auto-generated IR-LABEL test fails after a refactor, distinguish a funct
 - [[wiki/learnings/1782295021483-ir-label-test-breaks-a-renamed-function-struct-ext.md]] — IR-LABEL test breaks: a renamed function (struct→extension) is not an opcode change
 - [[wiki/learnings/1782745012175-slang-9660-a-just-assert-it-clarity-suggestion-can.md]] — slang #9660: a "just assert it" clarity suggestion can introduce an abort regression
 - [[wiki/learnings/1780598922131-verify-per-target-slang-buffer-strides-without-a-g.md]] — Verify per-target Slang buffer strides WITHOUT a GPU; reflection reports natural not ScalarDataLayout
+- [[wiki/learnings/1782894605011-slang-11493-builtin-operator-fast-path-silently-by.md]] — #11493 builtin-operator fast path silently bypasses user operator overloads on builtin types
 _Catalog: [[wiki/index.md]]_

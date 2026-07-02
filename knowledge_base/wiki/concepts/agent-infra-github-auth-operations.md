@@ -3,7 +3,7 @@ title: "GitHub Auth and Operations in Agent Containers"
 type: concept
 group: agent-infra
 tags: [github, onecli, gh-cli, nv-slang-bot, workflows, pr-mapping, auth, proxy, credentials]
-source_count: 15
+source_count: 16
 ---
 
 # GitHub Auth and Operations in Agent Containers
@@ -17,6 +17,8 @@ This page covers everything about GitHub authentication, the OneCLI proxy, the `
 GitHub traffic routes through a OneCLI HTTPS proxy that injects credentials by URL-path match. The git remote contains `x-access-token:placeholder@github.com`; the proxy swaps `placeholder` for the real path-matched secret. The `/user` endpoint the probe hits is a user-scoped endpoint the GitHub App installation token has no entitlement for — that says nothing about repo/org capability.
 
 **Correct verification:** `gh api repos/shader-slang/slang --jq .full_name` → returns ⇒ token works. For writes, attempt the real operation and trust its exit code.
+
+Concretely reconfirmed on the slang-reviewer container: `gh auth status` reports "The token in GH_TOKEN is invalid" and `slang-pr-review-runner`'s install.sh prints "gh auth not configured", yet `gh api repos/shader-slang/slang/pulls/<N>` and `gh pr diff <N> -R shader-slang/slang` BOTH succeed with that same token — GH_TOKEN is a GitHub App installation token that does not resolve to a user account (so the `auth status` user-lookup endpoint fails) but authorizes API calls fine. Unsetting GH_TOKEN to force a stored-cred fallback fails hard: there are no stored creds; the env token is the only auth. Before aborting a run over apparent auth failure, test the actual read you need ([[wiki/learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md]]).
 
 ## What Works and What Does Not
 
@@ -96,4 +98,5 @@ Two GitHub-write quirks of the `nv-slang-bot` token. **Self-check:** the "edit-i
 
 - [[wiki/learnings/1782857315349-edit-if-self-check-nv-slang-bot-login-has-no-bot-s.md]] — edit-if-self check: nv-slang-bot login has NO [bot] suffix via gh — match by substring
 - [[wiki/learnings/1782866408005-gh-labels-if-post-issues-n-labels-403s-fall-back-t.md]] — GH labels: if POST issues/:n/labels 403s, fall back to gh issue edit --add-label
+- [[wiki/learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md]] — gh auth status false-negative with App installation token (gh api still works)
 _Catalog: [[wiki/index.md]]_

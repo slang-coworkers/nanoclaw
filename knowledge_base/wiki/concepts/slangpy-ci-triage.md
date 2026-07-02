@@ -3,7 +3,7 @@ title: "SlangPy CI, Triage, Build, and Runtime"
 type: concept
 group: slangpy
 tags: [slangpy, ci, triage, flake, build, runtime, buffer, imodule, version, infra]
-source_count: 18
+source_count: 19
 ---
 
 # SlangPy CI, Triage, Build, and Runtime
@@ -31,6 +31,8 @@ This looks PR-specific but isn't: other slang PRs were green the same day becaus
 Empirical investigation on an L40S (46GB) with debug layers on found that documented leaks #115 (functional API), #608 (command-encoder), and #827 (torch-interop) do NOT reproduce at current HEAD. The real pytest suite shows VRAM as a STEP FUNCTION — jumps when a heavier test group runs then plateaus flat — not a monotonic climb.
 
 **Conclusion:** the pytest-xdist CUDA-OOM cascade is **peak concurrent VRAM = workers × per-worker high-water-mark** on a VRAM-limited runner, not a runaway leak. Real fixes: right-size runner VRAM, or lower per-worker peak. Distinguish a LEAK (monotonic climb on a repeated identical op) from HIGH-WATER-MARK working set (step-function that plateaus). Reusable probe at `/workspace/agent/leak_probe.py`. [[wiki/learnings/1782324497848-slangpy-gpu-mem-leak-115-608-don-t-reproduce-at-he.md]]
+
+Reconfirmed rigorously on #1024 (L40S 46GB): micro-repros of the suspected leak issues (single-process, VRAM sampled per-iter via `nvidia-smi`) were **flat after warm-up** (0 growth over 5k–20k iters), while a real CUDA suite slice with whole-session sampling showed the **step function** — VRAM jumps when a heavier test group runs then holds flat — classic high-water-mark working set (~5GB for one CUDA-only worker). CI's `pytest -n auto --maxprocesses=4` opens CUDA+Vulkan(+D3D12)+torch per worker over the full suite, so peak ≈ 4 × per-worker peak easily exceeds a modest CI GPU and the first failed alloc cascades. Actionable: right-size runner VRAM to ≥ `maxprocesses × per-worker peak` + headroom (zero wall-clock cost); a `--maxprocesses` cut is a wall-clock-costly stopgap maintainers rejected — measure per-worker high-water FIRST. Side finding: Vulkan+CUDA-interop (`enable_cuda_interop`) throws `SLANG_FAIL` on `command_encoder->finish()` on L40S — a functional error adjacent to #929/#823, not a leak ([[wiki/learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md]]).
 
 ### SlangPy Tests pre-commit: --all-files trap
 slangpy-samples CI (`.github/workflows/pre-commit.yml`) runs `pre-commit run --all-files`. One pre-existing violation anywhere in the tree (e.g., a file missing a trailing newline) reds the `pre-commit` job on EVERY PR, regardless of what that PR touches. Fix is a standalone 1-byte EOF-newline PR off `main`. Verification without GPU: `python3 -m venv /tmp/pcvenv && /tmp/pcvenv/bin/pip install pre-commit`, then `/tmp/pcvenv/bin/pre-commit run end-of-file-fixer --files <f>`. [[wiki/learnings/1781609083456-slangpy-samples-ci-pre-commit-runs-all-files-a-sin.md]]
@@ -117,4 +119,5 @@ On prod, the 6 slang/slangpy coworker group dirs (`groups/slang-fixer`, `groups/
 - [[wiki/learnings/1782324497848-slangpy-gpu-mem-leak-115-608-don-t-reproduce-at-he.md]] — slangpy GPU mem-leak #115/#608 don't reproduce at HEAD; CI OOM is concurrent-peak high-water-mark, not a leak
 - [[wiki/learnings/1782324519820-building-slangpy-from-source-in-the-fixer-containe.md]] — Building slangpy from source in the fixer container: python3-dev, PEP-668, torch bridge, submodule/ENOSPC gotchas
 - [[wiki/learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md]] — Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution
+- [[wiki/learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md]] — CI GPU-OOM that passes on rerun is usually peak concurrent VRAM, not a leak (#1024)
 _Catalog: [[wiki/index.md]]_

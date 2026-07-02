@@ -3,7 +3,7 @@ title: "Bot Operational Protocols and Maintainer Interactions"
 type: concept
 group: general-misc
 tags: [operational, maintainer, triage, pr-watcher, scheduling, design-discussion, latent-defect, tracking-issues]
-source_count: 5
+source_count: 6
 ---
 
 # Bot Operational Protocols and Maintainer Interactions
@@ -30,11 +30,16 @@ When a GitHub issue or PR thread turns into a high-level design discussion among
 
 When triage uncovers a latent, adjacent defect (by code-reading) that is out of scope of the reported issue, and the reported issue is being resolved by an unmerged PR, do not speculatively open a separate tracking issue. Reasons: the covering PR may change the adjacent code's post-merge state (premature); a code-read flag is not a confirmed user-visible repro (unverified); and surfacing it in the public resolution comment ensures maintainers landing there already see it (not lost). File a fresh issue only if/when the covering PR merges AND the adjacent path still misbehaves with a verified repro. Never open speculatively — filing a new issue is a visible shared-state action that needs authorization anyway. ([[wiki/learnings/1782156945737-latent-adjacent-defect-found-by-code-reading-don-t.md]])
 
+## Verified GitHub Comments/Labels Are Not Operator-Gated
+
+On the shader-slang bot (nv-slang-bot), verified issue/PR **comments, labels, Type field, review replies, and emoji reactions post FREELY** on the bot's authority once the relevant state is checked at HEAD — they are NOT operator-gated. The narrow operator-gated set is only `gh pr ready`, `gh pr merge`, and never auto-closing issues/PRs (pushing code to your own `fix/issue-*` branch is also free). Restated by the orchestrator 2026-07-01 after a fixer *declined* posting a legitimate "fix in draft PR #N" note as if it were gated: holding back on legitimate GitHub posting is itself the failure mode — it starves issues/PRs of the public footprint humans need, and older per-fix notes claiming "PR/issue comments are operator-gated" are superseded. When a state change warrants a comment (the 5-bullet on PR-open / resolution / handoff, a review reply, a label, a reaction), just post it after verifying current state at HEAD — do NOT route through `ask_user_question` or hold for approval; reserve the approval flow for ready-flips, merges, and anything that would close an issue/PR ([[wiki/learnings/1782894060592-verified-github-comments-labels-are-not-operator-g.md]]).
+
 ---
-**Source learnings (5):**
+**Source learnings (6):**
 - [[wiki/learnings/1780315991721-pr-status-watcher-tasks-use-a-pre-agent-script-gua.md]] — PR/status watcher tasks: use a pre-agent script guard with a state file
 - [[wiki/learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-repo.md]] — Don't self-schedule a PR-watcher poller after report_pr_created
 - [[wiki/learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md]] — Triaging external-dependency tracking issues
 - [[wiki/learnings/1782480236370-in-maintainer-design-discussions-the-bot-should-be.md]] — In maintainer design discussions, the bot should be reticent
 - [[wiki/learnings/1782156945737-latent-adjacent-defect-found-by-code-reading-don-t.md]] — Latent adjacent defect found by code-reading: don't file a speculative tracking issue
+- [[wiki/learnings/1782894060592-verified-github-comments-labels-are-not-operator-g.md]] — Verified GitHub comments/labels are NOT operator-gated — only pr-ready/merge/auto-close are
 _Catalog: [[wiki/index.md]]_

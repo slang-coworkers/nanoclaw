@@ -3,7 +3,7 @@ title: "Slang Test Harness Mechanics and Gotchas"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, synthesized-subtests, DIAGNOSTIC_TEST, LANG_SERVER, FileCheck, slangi, false-green, CI]
-source_count: 16
+source_count: 19
 ---
 
 # Slang Test Harness Mechanics and Gotchas
@@ -66,8 +66,16 @@ Issue #11759 (parallelGenericEntryPointCompile flaky test) was over-diagnosed as
 
 Several verification traps recur. (1) `slang-test` can crash at startup in-container while direct `slangc` runs fine — don't read the harness crash as a compiler failure, and beware a codex "revert-without-rebuild" false positive where the old binary is still on disk ([[wiki/learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md]]). (2) Device caching in `slang-test` silently defeats per-invocation debug-callback bridges, producing **false greens** — a cached device reuses the prior callback wiring, so a regression in per-invocation setup goes undetected (regression from PR #11785) ([[wiki/learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md]]). (3) For a GPU-free regression test that must exercise **real** RHI device code (not a mock), create a real **CPU-backend** device inside a `gfx-unit-test` `SLANG_UNIT_TEST` ([[wiki/learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md]]).
 
+## CHECK-token semantics differ by harness: inert in DIAGNOSTIC_TEST, live under `filecheck=`
+
+Whether a `CHECK:`/`CHECK-NOT:` token is an active assertion depends entirely on which runner reads it. Under `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):`, `//CHECK-NOT:` is **inert** — the annotation parser (`tools/slang-test/diagnostic-annotation-util.cpp`) only treats a line as an annotation when it starts with exactly `//CHECK:`, so the `-NOT` suffix breaks the match and the line is parsed as a plain comment; a "must not warn" negative passes purely because the harness is exhaustive-by-default (any emitted diagnostic without a matching `//CHECK:` fails the test) ([[wiki/learnings/1782900106845-slang-diagnostic-test-check-not-is-inert-negatives.md]]). The counter-intuitive inverse holds under the `filecheck=` runner: LLVM FileCheck scans the **entire file** for its prefix token regardless of comment/backtick/prose context, so an explanatory sentence that literally writes `` `CHECK: OpEntryPoint` `` becomes a **live directive** and fails — never spell a live token in prose; use an abstract placeholder like `//<prefix>:` ([[wiki/learnings/1782908183110-slang-test-filecheck-runner-parses-check-tokens-in.md]]). Both classes are verifiable without a FileCheck binary: emulate the directive scan with `grep -nE 'CHECK(-[A-Z]+)?:' file` to enumerate what would be treated as directives, then confirm each intended one matches real `slangc -target spirv-asm` emission.
+
+## DIAGNOSTIC_TEST E-code row counting: 2× diagnostics under exhaustive mode
+
+In `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` the machine-readable format emits **two** `E<code>`-prefixed rows per diagnostic — a title row and a primary-span row (`diagnostic-annotation-util.cpp:266`); the span row is deduped against the title only when errorCode + filename + begin/end loc + message all match, which they usually don't (title text ≠ span message). So N diagnostics ⇒ 2N `E<code>` rows, and exhaustive mode (the default) requires the annotation count to match exactly — e.g. PR #11883's three `[numthreads]` attributes → two DuplicateModifier diagnostics → four `E31202` rows ([[wiki/learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md]]). A bare `//CHECK: E<code>` is a SimpleSubstring match on the code alone (no caret/message assertion); pair it with a caret span (`//CHECK: ^^^ message`) for a stronger location/message-pinning test.
+
 ---
-**Source learnings (21):**
+**Source learnings (24):**
 - [[wiki/learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md]] — synthesized subtest skip needs pre-run exclusion
 - [[wiki/learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md]] — matching expanded subtest name needs exact equality
 - [[wiki/learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md]] — harness changes: slang-unit-test is the right vehicle
@@ -88,4 +96,7 @@ Several verification traps recur. (1) `slang-test` can crash at startup in-conta
 - [[wiki/learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md]] — slang-test crashes at startup in-container; codex revert-without-rebuild false positive
 - [[wiki/learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md]] — Device caching silently defeats per-invocation debug-callback bridges (false greens)
 - [[wiki/learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md]] — GPU-free render-test regression via a real CPU device in gfx-unit-test
+- [[wiki/learnings/1782900106845-slang-diagnostic-test-check-not-is-inert-negatives.md]] — DIAGNOSTIC_TEST //CHECK-NOT: is inert; negatives enforced by exhaustive mode
+- [[wiki/learnings/1782908183110-slang-test-filecheck-runner-parses-check-tokens-in.md]] — filecheck= runner parses CHECK: tokens in prose comments as live directives
+- [[wiki/learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md]] — DIAGNOSTIC_TEST diag=CHECK E-code row count = 2× diagnostics (title+span)
 _Catalog: [[wiki/index.md]]_

@@ -3,7 +3,7 @@ title: "Slang Build Infrastructure, Tooling, and Language Server"
 type: concept
 group: slang-grab-bag
 tags: [build, CMake, MSVC, slangd, LSP, language-server, build-tag, version, downstream-compilers, NVRTC, VK_KHR_shader_abort, SPIR-V, IRTextureType, imgui, dev-shm, coworker-container]
-source_count: 18
+source_count: 21
 ---
 
 # Slang Build Infrastructure, Tooling, and Language Server
@@ -76,8 +76,16 @@ On a shallow clone (`git clone --depth N`), `git blame` mis-attributes pre-bound
 
 Three operational traps when reproducing bugs at HEAD: (1) after a `git checkout`, `ninja` may **skip** the rebuild because the checked-out source mtime is older than the existing object — touch the sources or clean to force it; (2) a background build waiter can hang on a zombie PID; (3) you can parse SPIR-V structurally without `spirv-dis` when the disassembler isn't loadable ([[wiki/learnings/1782871600830-slang-local-build-ninja-skips-rebuild-after-git-ch.md]]).
 
+## `slangc -v` version string is a cached CMake value — bisect trap
+
+`slangc -v` prints a `git describe` string baked in at **CMake configure time** and cached; an incremental `cmake --build` after a bare `git checkout <other-commit>` recompiles the source but does NOT re-run configure, so the version string stays frozen — a binary built from commit X can report commit Y's version, and a machine's prebuilt `build/Debug/bin/slangc` tells you nothing reliable about which commit it was built from ([[wiki/learnings/1782898953945-slang-slangc-v-version-string-is-a-cached-cmake-va.md]]). This bit a #11877 bisect: trusting the cached string concluded the regression "predated #11493" and even fingered an IR-only pass for a front-end overload-resolution regression — mechanically impossible, which is what exposed the trap. For "which commit does this binary correspond to?" / bisect endpoints, never trust the version string: (1) fresh-build (reconfigure, not a stale cache) the exact commit, and (2) cross-check with a source-level symbol — `nm -C build/Debug/lib/libslang-compiler.so | grep -c <symbol-added-by-suspect-commit>` (here `convertToBuiltinArithmeticOp`, added by #11493) — GOOD→BAD should correlate with symbol-absent→symbol-present, not the version string. A `git bisect` bad endpoint is *assumed*, not tested; re-verify it with a fresh build, especially when the blamed commit couldn't mechanically cause the symptom ([[wiki/learnings/1782899060456-slang-bisect-don-t-trust-slangc-s-version-string-f.md]]).
+
+## MSVC `/W4 /WX` flags C4456 shadow-declaration as error — invisible to local gcc/clang
+
+Slang's Windows-CL build legs compile with MSVC `/W4 /WX`, treating **C4456** ("declaration hides previous local") — and C4457/C4458/C4459 (hides param/member/global) — as a hard error; the gcc/clang legs do NOT enable `-Wshadow`, so a variable-shadowing mistake compiles clean on every Linux/macOS build and only fails on `build-windows-*-cl` (e.g. #11873: hoisting `auto astBuilder` shadowed a nested one — 7 gcc/clang builds green, both Windows-CL red). Cheap local pre-check: run `-Wshadow -fsyntax-only` on the changed TU using its exact command from `build/compile_commands.json` (empty output = MSVC-clean). When CI shows a Windows-CL-only failure while all gcc/clang builds pass, suspect an MSVC-specific diagnostic (shadow, unreferenced-local, signed/unsigned, `/permissive-` conformance) BEFORE assuming infra/flake — read the actual `error Cxxxx` via `gh api repos/<o>/<r>/actions/jobs/<jobId>/logs` (works mid-run) ([[wiki/learnings/1782956138561-msvc-w4-wx-flags-c4456-shadow-declaration-as-error.md]]).
+
 ---
-**Source learnings (28):**
+**Source learnings (31):**
 - [[wiki/learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md]] — MSVC C5285 on doctest fixed by /wd5285
 - [[wiki/learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md]] — MSVC 14.51 C5285 on vendored doctest
 - [[wiki/learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md]] — slang-rhi submodule pin lags feature PRs
@@ -101,4 +109,7 @@ Three operational traps when reproducing bugs at HEAD: (1) after a `git checkout
 - [[wiki/learnings/1782868921334-shallow-clones-depth-n-make-git-blame-mis-attribut.md]] — Shallow clones (--depth N) make git blame mis-attribute old lines to the clone boundary
 - [[wiki/learnings/1782869392078-git-blame-lies-on-shallow-clones-use-git-log-s-for.md]] — git blame lies on shallow clones — use git log -S for provenance
 - [[wiki/learnings/1782871600830-slang-local-build-ninja-skips-rebuild-after-git-ch.md]] — Local build: ninja skips rebuild after git checkout (mtime); zombie-PID waiter; parse SPIR-V without spirv-dis
+- [[wiki/learnings/1782898953945-slang-slangc-v-version-string-is-a-cached-cmake-va.md]] — slangc -v version string is a cached CMake value, NOT proof of compiled commit (bisect trap)
+- [[wiki/learnings/1782899060456-slang-bisect-don-t-trust-slangc-s-version-string-f.md]] — Slang bisect: don't trust slangc's version string; verify by fresh build + nm symbol check
+- [[wiki/learnings/1782956138561-msvc-w4-wx-flags-c4456-shadow-declaration-as-error.md]] — MSVC /W4 /WX flags C4456 shadow-declaration as error — invisible to local gcc/clang builds
 _Catalog: [[wiki/index.md]]_
