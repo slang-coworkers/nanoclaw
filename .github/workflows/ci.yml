@@ -52,7 +52,7 @@ jobs:
           # loudly. Keep in sync with nv-main.txt.
           is_owned() {
             case "$1" in
-              package.json|package-lock.json|pnpm-lock.yaml) return 0 ;;
+              package.json|pnpm-lock.yaml) return 0 ;;
               tsconfig.json|vitest.config.ts|vitest.setup.ts) return 0 ;;
               versions.json) return 0 ;;
               .github/*) return 0 ;;
