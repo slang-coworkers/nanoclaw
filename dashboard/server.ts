@@ -1343,23 +1343,38 @@ bootstrapHookEvents();
 // Last message timestamp cache (group_folder -> ISO timestamp)
 const lastMessageTsCache = new Map<string, string>();
 
+// Per-file mtime gate for refreshMessageTimestamps: session DBs use
+// journal_mode=DELETE (writes land in the main .db file, so its mtime advances
+// on every commit — see container/agent-runner/src/db/connection.ts). We stat
+// the file (cheap) and only re-open+query it when the mtime changed since the
+// last poll; an idle session costs one stat instead of a full sqlite open.
+// This is what makes a 1s poll cheaper than the old 3s full-open sweep.
+const msgTsFileCache = new Map<string, { mtimeMs: number; ts: string | null }>();
+
 function pickLatestMessageTs(
   current: string | null,
   dbPath: string,
   table: 'messages_in' | 'messages_out',
 ): string | null {
-  if (!existsSync(dbPath)) return current;
+  let ts: string | null;
   try {
-    const sdb = new Database(dbPath, { readonly: true });
-    const row = sdb.prepare(`SELECT timestamp FROM ${table} ORDER BY timestamp DESC LIMIT 1`).get() as any;
-    sdb.close();
-    const ts = row?.timestamp as string | undefined;
-    if (!ts) return current;
-    if (!current) return ts;
-    return Date.parse(ts) > Date.parse(current) ? ts : current;
+    const mtimeMs = statSync(dbPath).mtimeMs; // throws if the file doesn't exist
+    const cached = msgTsFileCache.get(dbPath);
+    if (cached && cached.mtimeMs === mtimeMs) {
+      ts = cached.ts; // unchanged since last poll — reuse, skip the open
+    } else {
+      const sdb = new Database(dbPath, { readonly: true });
+      const row = sdb.prepare(`SELECT timestamp FROM ${table} ORDER BY timestamp DESC LIMIT 1`).get() as any;
+      sdb.close();
+      ts = (row?.timestamp as string | undefined) ?? null;
+      msgTsFileCache.set(dbPath, { mtimeMs, ts });
+    }
   } catch {
-    return current;
+    return current; // missing/unreadable → treat as no change
   }
+  if (!ts) return current;
+  if (!current) return ts;
+  return Date.parse(ts) > Date.parse(current) ? ts : current;
 }
 
 function refreshMessageTimestamps(): void {
@@ -1384,12 +1399,14 @@ function refreshMessageTimestamps(): void {
   }
 }
 refreshMessageTimestamps();
-// Poll every 3s — agent-originated messages (a2a replies, fix reports, peer-review
+// Poll every 1s — agent-originated messages (a2a replies, fix reports, peer-review
 // verdicts) write to outbound.db inside container subprocesses; the dashboard has no
-// direct hook, so we rely on this poll to surface new activity to the unread badge.
-// 3s is the balance between dashboard responsiveness and disk I/O across all sessions.
+// direct hook, so we rely on this poll to surface new activity to the unread badge
+// and drive the coworker-chat auto-refresh (app.js keys on lastMessageTs). The poll
+// is now mtime-gated (pickLatestMessageTs), so an idle session is a cheap stat rather
+// than a sqlite open — 1s is both snappier than the old 3s and lighter on disk I/O.
 if (!process.env.VITEST) {
-  const msgTsTimer = setInterval(refreshMessageTimestamps, 3000);
+  const msgTsTimer = setInterval(refreshMessageTimestamps, 1000);
   msgTsTimer.unref?.();
 }
 
@@ -3493,6 +3510,7 @@ export function resetTransientDashboardStateForTests(): void {
   liveSubagentState.clear();
   hookEverSeen.clear();
   lastMessageTsCache.clear();
+  msgTsFileCache.clear();
   runningContainers.clear();
   _mcpAllTools = [];
   _typeColors = null;
