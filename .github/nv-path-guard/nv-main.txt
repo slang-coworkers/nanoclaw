@@ -44,7 +44,6 @@ container/agent-runner/src/mcp-tools/**.md
 
 # Top-level config / docs / tooling:
 package.json
-package-lock.json
 pnpm-lock.yaml
 tsconfig.json
 vitest.config.ts

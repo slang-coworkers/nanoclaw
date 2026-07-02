@@ -57,3 +57,13 @@ AGENTS.md
 docs/maintainer-guide.md
 docs/drafts/
 forks.md
+
+# Local knowledge/scratch corpora, archives, runtime pidfiles — never tracked.
+# slang_kb/ is a large raw-export corpus that must never be `git add`-ed.
+slang_kb/
+*.zip
+*.pid
+
+# npm lockfile: this project uses pnpm exclusively (pnpm-workspace.yaml +
+# minimumReleaseAge). A stray package-lock.json bypasses that supply-chain gate.
+package-lock.json
