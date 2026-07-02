@@ -127,12 +127,72 @@ function tokenFor(repo: string): string | null {
   }
 }
 
+// ── Disk cache for GitHub API responses ──
+// Terminal-state items (merged PRs, closed issues) rarely change — cache them
+// for 24h. Open/active items get 15min. Listings always refetch.
+const DISK_CACHE_PATH = path.join(path.dirname(import.meta.url.replace('file://', '')), '..', 'reports', '.funnel-gh-cache.json');
+const TTL_LONG = 24 * 60 * 60 * 1000;   // 24h — merged PRs, closed issues
+const TTL_MED = 60 * 60 * 1000;          // 1h  — check-runs, timeline, comments
+const TTL_SHORT = 15 * 60 * 1000;        // 15m — open items, listings
+
+interface DiskCacheEntry { data: unknown; fetchedAt: number; }
+let diskCache: Record<string, DiskCacheEntry> = {};
+try {
+  diskCache = JSON.parse(fs.readFileSync(DISK_CACHE_PATH, 'utf-8'));
+} catch { /* first run or corrupt — start fresh */ }
+
+function diskCacheTtl(apiPath: string, data: any): number {
+  // Listings and paginated results: always refetch
+  if (apiPath.includes('page=') || apiPath.match(/^issues\?/)) return TTL_SHORT;
+  // Individual PR or issue: long TTL if terminal state
+  if (/^pulls\/\d+$/.test(apiPath) && data) {
+    if (data.merged || data.state === 'closed') return TTL_LONG;
+    return TTL_SHORT;
+  }
+  if (/^issues\/\d+$/.test(apiPath) && data) {
+    if (data.state === 'closed') return TTL_LONG;
+    return TTL_SHORT;
+  }
+  // Check-runs, timeline, comments: medium
+  if (apiPath.includes('check-runs') || apiPath.includes('timeline') || apiPath.includes('comments')) {
+    return TTL_MED;
+  }
+  return TTL_SHORT;
+}
+
+let diskCacheHits = 0;
+let diskCacheMisses = 0;
+
+function saveDiskCache(): void {
+  try {
+    fs.mkdirSync(path.dirname(DISK_CACHE_PATH), { recursive: true });
+    // Prune entries older than 48h before saving
+    const cutoff = Date.now() - 2 * TTL_LONG;
+    const pruned: Record<string, DiskCacheEntry> = {};
+    for (const [k, v] of Object.entries(diskCache)) {
+      if (v.fetchedAt > cutoff) pruned[k] = v;
+    }
+    fs.writeFileSync(DISK_CACHE_PATH, JSON.stringify(pruned));
+  } catch { /* best-effort */ }
+}
+
 // ── GitHub GET with --noproxy (OneCLI gateway would otherwise tunnel localhost
-//    and corrupt these calls) + small in-run cache ──
-const ghCache = new Map<string, unknown>();
+//    and corrupt these calls) + in-memory + disk cache ──
+const ghMemCache = new Map<string, unknown>();
 function gh(repo: string, apiPath: string): any {
   const key = `${repo}|${apiPath}`;
-  if (ghCache.has(key)) return ghCache.get(key);
+  if (ghMemCache.has(key)) return ghMemCache.get(key);
+  // Check disk cache
+  const cached = diskCache[key];
+  if (cached) {
+    const ttl = diskCacheTtl(apiPath, cached.data);
+    if (Date.now() - cached.fetchedAt < ttl) {
+      diskCacheHits++;
+      ghMemCache.set(key, cached.data);
+      return cached.data;
+    }
+  }
+  diskCacheMisses++;
   const tok = tokenFor(repo);
   if (!tok) return null;
   try {
@@ -151,7 +211,8 @@ function gh(repo: string, apiPath: string): any {
       { encoding: 'utf-8', maxBuffer: 20 * 1024 * 1024 },
     );
     const json = JSON.parse(out);
-    ghCache.set(key, json);
+    ghMemCache.set(key, json);
+    diskCache[key] = { data: json, fetchedAt: Date.now() };
     return json;
   } catch {
     return null;
@@ -434,7 +495,7 @@ async function main() {
       pr_open: botPrBy('pr-open'),
     },
   };
-  const winRate = actionable > 0 ? counts.bot_pr.merged / actionable : 0;
+  const winRate = counts.bot_pr.total > 0 ? counts.bot_pr.merged / counts.bot_pr.total : 0;
 
   // ── Weekly WIN trend (rolling) ──────────────────────────────────────────
   // Cohort issues by the Monday of the week they were FILED, then per week:
@@ -448,13 +509,14 @@ async function main() {
     d.setUTCHours(0, 0, 0, 0);
     return d.toISOString().slice(0, 10);
   }
-  const weekMap = new Map<string, { filed: number; notOur: number; merged: number }>();
+  const weekMap = new Map<string, { filed: number; notOur: number; merged: number; botPr: number }>();
   for (const p of issueParts) {
     if (!p.createdAt) continue;
     const wk = weekStart(p.createdAt);
-    const w = weekMap.get(wk) ?? { filed: 0, notOur: 0, merged: 0 };
+    const w = weekMap.get(wk) ?? { filed: 0, notOur: 0, merged: 0, botPr: 0 };
     w.filed++;
     if (p.bucket === 'not_our_problem') w.notOur++;
+    if (p.bucket === 'bot_pr') w.botPr++;
     if (p.bucket === 'bot_pr' && p.stage === 'merged') w.merged++;
     weekMap.set(wk, w);
   }
@@ -462,18 +524,18 @@ async function main() {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([week, w]) => {
       const act = w.filed - w.notOur;
-      return { week, filed: w.filed, actionable: act, merged: w.merged, winRate: act > 0 ? w.merged / act : 0 };
+      return { week, filed: w.filed, actionable: act, merged: w.merged, botPr: w.botPr, winRate: w.botPr > 0 ? w.merged / w.botPr : 0 };
     });
-  // Trailing 4-week rolling win-rate (sum merged / sum actionable over the window).
+  // Trailing 4-week rolling win-rate (sum merged / sum bot PRs authored over the window).
   const ROLL = 4;
   for (let i = 0; i < weekly.length; i++) {
     let m = 0;
-    let a = 0;
+    let bp = 0;
     for (let j = Math.max(0, i - ROLL + 1); j <= i; j++) {
       m += weekly[j].merged;
-      a += weekly[j].actionable;
+      bp += weekly[j].botPr;
     }
-    (weekly[i] as any).rollingWinRate = a > 0 ? m / a : 0;
+    (weekly[i] as any).rollingWinRate = bp > 0 ? m / bp : 0;
   }
 
   const issuePartition = { window: { start: windowStart, end: WINDOW_END }, counts, winRate, weekly, issues: issueParts };
@@ -553,7 +615,7 @@ async function main() {
   ipart('    ↳ pr-open', counts.bot_pr.pr_open);
   ipart('    ↳ pr-closed/superseded', counts.bot_pr.pr_closed);
   console.log('────────────────────────────────────────────');
-  console.log(`WIN-RATE  (merged ÷ actionable) = ${Math.round(winRate * 100)}%`);
+  console.log(`WIN-RATE  (merged ÷ PRs authored) = ${Math.round(winRate * 100)}%`);
   if (weekly.length) {
     console.log('\nWEEKLY WIN TREND  (by issue file-week; rolling = trailing 4wk)\n');
     console.log('week        filed  act  merged  win%   roll%');
@@ -621,7 +683,12 @@ async function main() {
   );
 }
 
-main().catch((e) => {
+main().then(() => {
+  saveDiskCache();
+  if (diskCacheHits + diskCacheMisses > 0)
+    console.error(`[funnel] gh cache: ${diskCacheHits} hits, ${diskCacheMisses} misses (${Math.round(diskCacheHits / (diskCacheHits + diskCacheMisses) * 100)}% hit rate)`);
+}).catch((e) => {
+  saveDiskCache();
   console.error(e);
   process.exit(1);
 });
