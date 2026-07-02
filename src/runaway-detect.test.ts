@@ -24,15 +24,27 @@ function makeOutDb(): Database.Database {
   return db;
 }
 
+// Store timestamps the way the container actually writes them: via SQLite
+// datetime('now') → 'YYYY-MM-DD HH:MM:SS' (space-separated, no fractional, no
+// 'Z'). Seeding with .toISOString() (the old test) accidentally matched the
+// ISO cutoff format and hid the lexicographic-compare bug that made the
+// detector never trip in production. Converting here keeps the detector's
+// datetime() normalization honest.
+function toSqliteUtc(iso: string): string {
+  return iso.replace('T', ' ').replace(/\.\d+Z?$|Z$/, '');
+}
+
 function seedTurns(db: Database.Database, n: number, atIso: string): void {
+  const at = toSqliteUtc(atIso);
   const stmt = db.prepare(`INSERT INTO processing_ack (message_id, status, status_changed) VALUES (?, 'completed', ?)`);
-  for (let i = 0; i < n; i++) stmt.run(`m-${atIso}-${i}-${Math.random()}`, atIso);
+  for (let i = 0; i < n; i++) stmt.run(`m-${at}-${i}-${Math.random()}`, at);
 }
 
 function seedOutput(db: Database.Database, bytes: number, atIso: string): void {
+  const at = toSqliteUtc(atIso);
   db.prepare(`INSERT INTO messages_out (id, timestamp, kind, content) VALUES (?, ?, 'chat', ?)`).run(
-    `o-${atIso}-${Math.random()}`,
-    atIso,
+    `o-${at}-${Math.random()}`,
+    at,
     'x'.repeat(bytes),
   );
 }

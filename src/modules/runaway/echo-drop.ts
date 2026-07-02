@@ -88,17 +88,30 @@ export interface EchoDropDecision {
  * message. A message that is dropped by pattern is still recorded so it
  * counts toward a subsequent loop.
  */
-export function evaluateEchoDrop(targetSessionId: string, text: string, now = Date.now()): EchoDropDecision {
+export function evaluateEchoDrop(
+  targetSessionId: string,
+  sourceSessionId: string,
+  text: string,
+  now = Date.now(),
+): EchoDropDecision {
   const norm = normalize(text);
   const h = hash(norm);
 
-  const buf = (recent.get(targetSessionId) ?? []).filter((e) => now - e.at < WINDOW_MS);
+  // Loop detection is keyed on the (target, source) PAIR — a loop is the same
+  // source spamming the same target. Keying on target alone (the prior bug)
+  // caused a fan-in false positive: N distinct coworkers each sending an
+  // identical short status ("done") to one orchestrator within the window
+  // tripped the counter and dropped the N-th legitimate report, so the
+  // orchestrator was never woken. The (target, source) key is joined with a
+  // NUL byte, which a session id can never contain.
+  const key = `${targetSessionId}\x00${sourceSessionId}`;
+  const buf = (recent.get(key) ?? []).filter((e) => now - e.at < WINDOW_MS);
   // Count prior occurrences of this exact normalized text in the window.
   const priorSame = buf.reduce((n, e) => n + (e.hash === h ? 1 : 0), 0);
   buf.push({ hash: h, at: now });
-  // Cap retained history so a long-lived session can't grow this unbounded.
+  // Cap retained history so a long-lived pair can't grow this unbounded.
   if (buf.length > 64) buf.splice(0, buf.length - 64);
-  recent.set(targetSessionId, buf);
+  recent.set(key, buf);
 
   if (isNoopPattern(norm)) return { drop: true, reason: 'noop_pattern' };
   // priorSame counts occurrences BEFORE this one; this message is the
