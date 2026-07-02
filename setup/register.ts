@@ -11,6 +11,8 @@ import { initDb } from '../src/db/connection.js';
 import { runMigrations } from '../src/db/migrations/index.js';
 import { createAgentGroup, getAdminAgentGroup, getAgentGroupByFolder } from '../src/db/agent-groups.js';
 import { ensureContainerConfig } from '../src/db/container-configs.js';
+import { createUser, getUser } from '../src/modules/permissions/db/users.js';
+import { grantRole, getUserRoles } from '../src/modules/permissions/db/user-roles.js';
 import {
   createMessagingGroup,
   createMessagingGroupAgent,
@@ -198,18 +200,25 @@ export async function run(args: string[]): Promise<void> {
   }
   ensureContainerConfig(agentGroup.id);
 
-  // 1b. Grant the channel's default user the owner role so approval flows work
+  // 1b. Grant the channel's default user the owner role so approval flows work.
+  // Route through the permissions DB helpers instead of raw SQL against core
+  // tables (anti-pattern #4), and guard on existence so re-registration stays
+  // idempotent (the helpers do plain INSERTs that throw on duplicate). No
+  // error swallowing: a genuine failure here should surface, not be hidden.
   if (parsed.isAdmin && parsed.channel === 'dashboard') {
-    try {
-      const now = new Date().toISOString();
-      const dashUserId = 'dashboard:dashboard-admin';
-      db.prepare("INSERT OR IGNORE INTO users (id, kind, display_name, created_at) VALUES ('system', 'system', 'System', ?)").run(now);
-      db.prepare("INSERT OR IGNORE INTO users (id, kind, display_name, created_at) VALUES (?, 'dashboard', 'Dashboard Admin', ?)").run(dashUserId, now);
-      db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role, agent_group_id, granted_by, granted_at) VALUES (?, 'owner', NULL, 'system', ?)").run(dashUserId, now);
-      log.info('Granted dashboard-admin owner role');
-    } catch {
-      // permissions module tables may not exist
+    const now = new Date().toISOString();
+    const dashUserId = 'dashboard:dashboard-admin';
+    if (!getUser('system')) {
+      createUser({ id: 'system', kind: 'system', display_name: 'System', created_at: now });
     }
+    if (!getUser(dashUserId)) {
+      createUser({ id: dashUserId, kind: 'dashboard', display_name: 'Dashboard Admin', created_at: now });
+    }
+    const hasOwner = getUserRoles(dashUserId).some((r) => r.role === 'owner' && r.agent_group_id === null);
+    if (!hasOwner) {
+      grantRole({ user_id: dashUserId, role: 'owner', agent_group_id: null, granted_by: 'system', granted_at: now });
+    }
+    log.info('Granted dashboard-admin owner role');
   }
 
   const shouldCreateDirectChannel = parsed.routing === 'direct';
