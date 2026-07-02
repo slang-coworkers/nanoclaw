@@ -16,6 +16,7 @@ import path from 'path';
 
 import { isSafeAttachmentName } from './attachment-safety.js';
 import type { OutboundFile } from './channels/adapter.js';
+import { ensureContainedInboxDir } from './inbox-safety.js';
 import { DATA_DIR } from './config.js';
 import { getSourceFor as getA2aSourceFor } from './db/a2a-session-sources.js';
 import { getMessagingGroup } from './db/messaging-groups.js';
@@ -340,38 +341,28 @@ function extractAttachmentFiles(
         continue;
       }
       const inboxRoot = path.join(sessionDir(agentGroupId, sessionId), 'inbox');
-      const inboxDir = path.join(inboxRoot, messageId);
-      // Reject if inboxDir or any parent is a symlink leading outside inboxRoot.
-      if (fs.existsSync(inboxDir)) {
-        try {
-          if (fs.lstatSync(inboxDir).isSymbolicLink()) {
-            log.warn('Refused inbox dir that is a symlink', { messageId });
-            continue;
-          }
-          const realInbox = fs.realpathSync(inboxDir);
-          if (!isPathInside(realInbox, fs.realpathSync(inboxRoot))) {
-            log.warn('Inbox dir resolves outside inbox root', { messageId });
-            continue;
-          }
-        } catch (err) {
-          log.warn('Inbox dir stat failed', { messageId, err });
+      // ensureContainedInboxDir lstat-checks the inbox ROOT and the per-message
+      // subdir for pre-placed symlinks BEFORE mkdir, then realpath-confirms
+      // containment. The prior inline check only ran when inboxDir already
+      // existed, so a symlinked `inbox` root with a not-yet-created subdir
+      // slipped straight through to mkdir (CWE-59). Session dirs are mounted
+      // writable into the container, so this is reachable by a compromised agent.
+      const inboxDir = ensureContainedInboxDir(inboxRoot, messageId, { messageId });
+      if (!inboxDir) continue;
+      const filePath = path.join(inboxDir, filename);
+      // wx = exclusive create: refuses to follow a pre-existing symlinked file
+      // or overwrite an existing one, closing the check-then-write TOCTOU gap.
+      // The host is the sole writer of inbox attachments.
+      try {
+        fs.writeFileSync(filePath, Buffer.from(att.data as string, 'base64'), { flag: 'wx' });
+      } catch (err: unknown) {
+        const e = err as NodeJS.ErrnoException;
+        if (e.code === 'EEXIST') {
+          log.warn('Inbox attachment target already exists, refusing to overwrite', { messageId, filename });
           continue;
         }
+        throw err;
       }
-      fs.mkdirSync(inboxDir, { recursive: true });
-      const filePath = path.join(inboxDir, filename);
-      // Refuse to follow a pre-existing symlink at the attachment path.
-      if (fs.existsSync(filePath)) {
-        try {
-          if (fs.lstatSync(filePath).isSymbolicLink()) {
-            log.warn('Refused inbox attachment path that is a symlink', { messageId, filename });
-            continue;
-          }
-        } catch {
-          /* best-effort */
-        }
-      }
-      fs.writeFileSync(filePath, Buffer.from(att.data as string, 'base64'));
       att.name = filename;
       att.localPath = `inbox/${messageId}/${filename}`;
       delete att.data;

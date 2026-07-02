@@ -22,6 +22,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { isSafeAttachmentName } from '../../attachment-safety.js';
+import { ensureContainedInboxDir, isPathInside } from '../../inbox-safety.js';
 import { getSourceFor, recordSource, type A2aSessionSource } from '../../db/a2a-session-sources.js';
 import { getAgentGroup } from '../../db/agent-groups.js';
 import { recordDroppedMessage } from '../../db/dropped-messages.js';
@@ -116,11 +117,6 @@ export interface ForwardedAttachment {
   localPath: string;
 }
 
-function isPathInside(parent: string, child: string): boolean {
-  const relative = path.relative(parent, child);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
-}
-
 /**
  * Copy file attachments from the source agent's outbox into the target
  * agent's inbox. Returns attachments using the formatter's existing
@@ -172,8 +168,17 @@ export function forwardAttachedFiles(
     return [];
   }
 
-  const targetInboxDir = path.join(sessionDir(target.agentGroupId, target.sessionId), 'inbox', target.messageId);
-  fs.mkdirSync(targetInboxDir, { recursive: true });
+  // ensureContainedInboxDir lstat-checks the inbox root + per-message subdir for
+  // pre-placed symlinks before mkdir and realpath-confirms containment (CWE-59):
+  // the target session dir is mounted writable into the recipient container.
+  const targetInboxRoot = path.join(sessionDir(target.agentGroupId, target.sessionId), 'inbox');
+  const targetInboxDir = ensureContainedInboxDir(targetInboxRoot, target.messageId, {
+    targetMsgId: target.messageId,
+  });
+  if (!targetInboxDir) {
+    log.warn('agent-route: unsafe target inbox dir, no files forwarded', { targetMsgId: target.messageId });
+    return [];
+  }
 
   const attachments: ForwardedAttachment[] = [];
   for (const filename of source.filenames) {
@@ -211,7 +216,22 @@ export function forwardAttachedFiles(
       continue;
     }
     const dst = path.join(targetInboxDir, filename);
-    fs.copyFileSync(realSrc, dst);
+    // COPYFILE_EXCL: fail with EEXIST rather than follow or overwrite a
+    // pre-placed symlinked destination — the recipient container could have
+    // planted one at this path.
+    try {
+      fs.copyFileSync(realSrc, dst, fs.constants.COPYFILE_EXCL);
+    } catch (err: unknown) {
+      const e = err as NodeJS.ErrnoException;
+      if (e.code === 'EEXIST') {
+        log.warn('agent-route: inbox attachment target already exists, refusing to overwrite', {
+          targetMsgId: target.messageId,
+          filename,
+        });
+        continue;
+      }
+      throw err;
+    }
     attachments.push({
       name: filename,
       filename,
