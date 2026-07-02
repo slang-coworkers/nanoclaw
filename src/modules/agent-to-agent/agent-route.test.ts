@@ -2539,4 +2539,29 @@ describe('forwardAttachedFiles — file-forwarding security guard', () => {
     );
     expect(attachments).toHaveLength(0);
   });
+
+  it('SECURITY (#2828): skips a symlinked TARGET inbox dir — writes nothing outside', () => {
+    // A compromised recipient can write inside its own session dir; pre-placing
+    // its whole `inbox` as a symlink must not redirect a forwarded attachment
+    // outside the sandbox. ensureContainedInboxDir rejects the symlinked root.
+    const canaryDir = path.join(tempDir, 'canary-outside-inbox');
+    fs.mkdirSync(canaryDir, { recursive: true });
+
+    const outboxDir = makeOutbox('msg-tgt-symlink');
+    fs.writeFileSync(path.join(outboxDir, 'pwn.txt'), 'attacker-bytes');
+
+    // Target pre-places its whole `inbox` as a symlink pointing outside.
+    const targetSessDir = sessionDir('ag-tgt', 'sess-tgt');
+    fs.mkdirSync(targetSessDir, { recursive: true });
+    fs.symlinkSync(canaryDir, path.join(targetSessDir, 'inbox'));
+
+    const attachments = forwardAttachedFiles(
+      { agentGroupId: 'ag-src', sessionId: 'sess-src', messageId: 'msg-tgt-symlink', filenames: ['pwn.txt'] },
+      { agentGroupId: 'ag-tgt', sessionId: 'sess-tgt', messageId: 'in-tgt-symlink' },
+    );
+
+    expect(attachments).toHaveLength(0);
+    // Nothing written through the symlink to the canary location.
+    expect(fs.readdirSync(canaryDir)).toHaveLength(0);
+  });
 });
