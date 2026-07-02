@@ -23,6 +23,12 @@ import {
   stopServer,
 } from './mcp-registry.js';
 
+// Upper bound on a proxied MCP request body. Tool-call args are small; this is
+// a DoS backstop so a prompt-injected agent can't exhaust host memory by
+// streaming an unbounded body at the proxy. Generous enough not to clip a
+// legitimate large tool-call payload.
+const MAX_MCP_BODY_BYTES = 32 * 1024 * 1024;
+
 // ── Token registry ──────────────────────────────────────────────────────────
 
 interface TokenEntry {
@@ -382,8 +388,27 @@ export function startMcpAuthProxy(
 
     // ── Collect request body for tool ACL check ─────────────────────
     const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    let bodyLen = 0;
+    let bodyTooLarge = false;
+    req.on('data', (chunk: Buffer) => {
+      bodyLen += chunk.length;
+      if (bodyLen > MAX_MCP_BODY_BYTES) {
+        if (!bodyTooLarge) {
+          bodyTooLarge = true;
+          log.warn('MCP auth proxy: request body exceeds cap, rejecting', {
+            group: entry.groupFolder,
+            cap: MAX_MCP_BODY_BYTES,
+          });
+          res.writeHead(413, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'request body too large' }));
+          req.destroy();
+        }
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => {
+      if (bodyTooLarge) return;
       const body = Buffer.concat(chunks);
 
       // Check tool-level ACL on tools/call requests and track tools/list for filtering
@@ -391,29 +416,38 @@ export function startMcpAuthProxy(
       if (body.length > 0) {
         try {
           const parsed = JSON.parse(body.toString());
-          if (parsed.method === 'tools/call' && parsed.params?.name) {
-            const toolName: string = parsed.params.name;
-            const scopedKey = serverName ? `${serverName}__${toolName}` : toolName;
-            if (!entry.allowedTools.has(scopedKey)) {
-              log.warn('MCP auth proxy: tool call blocked', {
-                group: entry.groupFolder,
-                tool: scopedKey,
-              });
-              res.writeHead(403, { 'Content-Type': 'application/json' });
-              res.end(
-                JSON.stringify({
-                  jsonrpc: '2.0',
-                  id: parsed.id,
-                  error: {
-                    code: -32600,
-                    message: `Tool "${toolName}" is not authorized for this agent on server "${serverName}"`,
-                  },
-                }),
-              );
-              return;
+          // A JSON-RPC batch is a top-level array; a single call is an object.
+          // Enforce the tool ACL on EVERY tools/call in the payload — otherwise
+          // a container scoped to one tool could smuggle a disallowed call
+          // through by wrapping it in a batch array (parsed.method is undefined
+          // for an array, which the old single-object check skipped entirely).
+          const messages: Array<Record<string, unknown>> = Array.isArray(parsed) ? parsed : [parsed];
+          for (const m of messages) {
+            const params = m?.params as { name?: string } | undefined;
+            if (m?.method === 'tools/call' && params?.name) {
+              const toolName: string = params.name;
+              const scopedKey = serverName ? `${serverName}__${toolName}` : toolName;
+              if (!entry.allowedTools.has(scopedKey)) {
+                log.warn('MCP auth proxy: tool call blocked', {
+                  group: entry.groupFolder,
+                  tool: scopedKey,
+                });
+                res.writeHead(403, { 'Content-Type': 'application/json' });
+                res.end(
+                  JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: m.id ?? null,
+                    error: {
+                      code: -32600,
+                      message: `Tool "${toolName}" is not authorized for this agent on server "${serverName}"`,
+                    },
+                  }),
+                );
+                return;
+              }
+            } else if (m?.method === 'tools/list') {
+              isToolsList = true;
             }
-          } else if (parsed.method === 'tools/list') {
-            isToolsList = true;
           }
         } catch {
           // Not valid JSON — pass through
