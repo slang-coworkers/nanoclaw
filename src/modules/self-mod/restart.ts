@@ -5,7 +5,8 @@
  * message with `action: 'request_restart'`, the host kills the container and
  * writes a follow-up message so the sweep respawns it with a fresh CLAUDE.md.
  */
-import { killContainer } from '../../container-runner.js';
+import { killContainer, wakeContainer } from '../../container-runner.js';
+import { getSession } from '../../db/sessions.js';
 import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import type { DeliveryActionHandler } from '../../delivery.js';
@@ -13,8 +14,14 @@ import type { DeliveryActionHandler } from '../../delivery.js';
 export const handleRequestRestart: DeliveryActionHandler = async (content, session, _inDb) => {
   const reason = (content.reason as string) || 'restart requested';
   log.info('Container restart requested', { sessionId: session.id, reason });
-  killContainer(session.id, `request_restart: ${reason}`);
 
+  // Write the follow-up with onWake:1 BEFORE killing, then respawn via the
+  // kill's onExit callback — the pattern proven in self-mod/apply.ts. onWake:1
+  // means only the FRESH container's first poll picks it up, so the dying
+  // container (still inside its SIGTERM grace window) can't consume its own
+  // restart message. The prior code fired killContainer unawaited (no onExit)
+  // and relied on a 5s processAfter delay, which loses the race whenever the
+  // grace period exceeds 5s.
   writeSessionMessage(session.agent_group_id, session.id, {
     id: `restart-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: 'chat',
@@ -24,15 +31,17 @@ export const handleRequestRestart: DeliveryActionHandler = async (content, sessi
     // can never resolve self as an a2a destination.
     platformId: null,
     channelType: 'system',
-    threadId: null,
+    threadId: session.thread_id,
     content: JSON.stringify({
       text: `Container restarted: ${reason}. Continue your current task.`,
       sender: 'system',
       senderId: 'system',
     }),
-    processAfter: new Date(Date.now() + 5000)
-      .toISOString()
-      .replace('T', ' ')
-      .replace(/\.\d+Z$/, ''),
+    onWake: 1,
+  });
+
+  killContainer(session.id, `request_restart: ${reason}`, () => {
+    const s = getSession(session.id);
+    if (s) wakeContainer(s);
   });
 };

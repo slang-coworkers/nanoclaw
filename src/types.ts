@@ -68,6 +68,15 @@ export interface MessagingGroup {
   created_at: string;
 }
 
+// Re-exported so importers (including upstream code pulled in on an update)
+// resolve these symbols. The fork widened the underlying unions vs upstream
+// ('always'/'never' engage modes, 'admin-only' sender scope); keeping the
+// aliases — and referencing them from the interface below — restores the
+// single source of truth and prevents a broken import on the next upstream pull.
+export type EngageMode = 'always' | 'pattern' | 'mention' | 'mention-sticky' | 'never';
+export type SenderScope = 'all' | 'known' | 'admin-only';
+export type IgnoredMessagePolicy = 'drop' | 'accumulate';
+
 export interface MessagingGroupAgent {
   id: string;
   messaging_group_id: string;
@@ -76,10 +85,10 @@ export interface MessagingGroupAgent {
   response_scope?: 'all' | 'triggered' | 'allowlisted';
   session_mode: 'shared' | 'per-thread' | 'agent-shared';
   priority: number;
-  engage_mode: 'always' | 'pattern' | 'mention' | 'mention-sticky' | 'never';
+  engage_mode: EngageMode;
   engage_pattern: string | null;
-  sender_scope: 'all' | 'known' | 'admin-only' | null;
-  ignored_message_policy: 'drop' | 'accumulate' | null;
+  sender_scope: SenderScope | null;
+  ignored_message_policy: IgnoredMessagePolicy | null;
   created_at: string;
 }
 
