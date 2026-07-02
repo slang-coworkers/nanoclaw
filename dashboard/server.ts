@@ -1393,6 +1393,35 @@ if (!process.env.VITEST) {
   msgTsTimer.unref?.();
 }
 
+// ---------- JSONL discovery (projects + skill transcripts) ----------
+function collectClaudeJsonlFiles(claudeSharedDir: string): string[] {
+  const files: string[] = [];
+  const walk = (dir: string): void => {
+    try {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith('.jsonl')) files.push(full);
+      }
+    } catch {
+      /* skip */
+    }
+  };
+  const projectsDir = join(claudeSharedDir, 'projects');
+  if (existsSync(projectsDir)) walk(projectsDir);
+  const skillsDir = join(claudeSharedDir, 'skills');
+  try {
+    for (const skill of readdirSync(skillsDir, { withFileTypes: true })) {
+      if (!skill.isDirectory()) continue;
+      const txDir = join(skillsDir, skill.name, 'transcripts');
+      if (existsSync(txDir)) walk(txDir);
+    }
+  } catch {
+    /* skills dir may not exist */
+  }
+  return files;
+}
+
 // ---------- Context window cache (token usage per coworker) ----------
 interface ContextWindowInfo {
   contextTokens: number;
@@ -1411,6 +1440,7 @@ function modelMaxContext(model: string): number {
   if (model.includes('opus-4-8')) return 1000000;
   if (model.includes('opus-4-7')) return 1000000;
   if (model.includes('opus-4-6')) return 200000;
+  if (model.includes('sonnet-5')) return 200000;
   if (model.includes('sonnet-4')) return 200000;
   if (model.includes('haiku')) return 200000;
   return 200000;
@@ -1423,25 +1453,8 @@ function refreshContextWindowCache(): void {
     const groups = db.prepare('SELECT id, folder FROM agent_groups').all() as { id: string; folder: string }[];
     const sessionsDir = join(getDataDir(), 'v2-sessions');
     for (const group of groups) {
-      const claudeDir = join(sessionsDir, group.id, '.claude-shared', 'projects');
-      let jsonlFiles: string[];
-      try {
-        jsonlFiles = [];
-        const walkJsonl = (dir: string): void => {
-          try {
-            for (const entry of readdirSync(dir, { withFileTypes: true })) {
-              const full = join(dir, entry.name);
-              if (entry.isDirectory()) walkJsonl(full);
-              else if (entry.name.endsWith('.jsonl')) jsonlFiles.push(full);
-            }
-          } catch {
-            /* skip */
-          }
-        };
-        walkJsonl(claudeDir);
-      } catch {
-        continue;
-      }
+      const claudeShared = join(sessionsDir, group.id, '.claude-shared');
+      const jsonlFiles = collectClaudeJsonlFiles(claudeShared);
       if (jsonlFiles.length === 0) continue;
 
       jsonlFiles.sort((a, b) => {
@@ -1530,22 +1543,8 @@ function refreshGroupTokens(): void {
   }
 
   for (const agDir of agDirs) {
-    const claudeDir = join(sessionsDir, agDir, '.claude-shared', 'projects');
-    if (!existsSync(claudeDir)) continue;
-
-    const jsonlFiles: string[] = [];
-    const walkJsonl = (dir: string): void => {
-      try {
-        for (const entry of readdirSync(dir, { withFileTypes: true })) {
-          const full = join(dir, entry.name);
-          if (entry.isDirectory()) walkJsonl(full);
-          else if (entry.name.endsWith('.jsonl')) jsonlFiles.push(full);
-        }
-      } catch {
-        /* skip */
-      }
-    };
-    walkJsonl(claudeDir);
+    const claudeShared = join(sessionsDir, agDir, '.claude-shared');
+    const jsonlFiles = collectClaudeJsonlFiles(claudeShared);
 
     for (const file of jsonlFiles) {
       let content: string;
@@ -1737,6 +1736,115 @@ function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
   };
 }
 
+// Per-token pricing for models ccusage doesn't know about yet.
+// Used by scanSkillTranscriptCosts to compute cost from raw JSONL entries.
+const FALLBACK_PRICING: Record<string, { input: number; output: number; cacheCreate: number; cacheRead: number }> = {
+  'claude-sonnet-5': { input: 3e-6, output: 15e-6, cacheCreate: 3.75e-6, cacheRead: 3e-7 },
+};
+
+function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): CcusageDayEntry[] {
+  const skillsDir = join(claudeSharedDir, 'skills');
+  // Collect { file, dirDate } pairs — dirDate is extracted from the parent
+  // directory name (e.g. "pr-20260702T092508Z" → "2026-07-02") since skill
+  // transcript JSONL entries typically lack a timestamp field.
+  const files: { path: string; dirDate: string }[] = [];
+  const extractDirDate = (dir: string): string => {
+    const m = dir.match(/(\d{4})(\d{2})(\d{2})T/);
+    return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+  };
+  try {
+    for (const skill of readdirSync(skillsDir, { withFileTypes: true })) {
+      if (!skill.isDirectory()) continue;
+      const txDir = join(skillsDir, skill.name, 'transcripts');
+      if (!existsSync(txDir)) continue;
+      const walk = (dir: string, dirDate: string): void => {
+        try {
+          for (const entry of readdirSync(dir, { withFileTypes: true })) {
+            const full = join(dir, entry.name);
+            if (entry.isDirectory()) walk(full, extractDirDate(entry.name) || dirDate);
+            else if (entry.name.endsWith('.jsonl')) files.push({ path: full, dirDate });
+          }
+        } catch { /* skip */ }
+      };
+      walk(txDir, '');
+    }
+  } catch {
+    return [];
+  }
+  if (files.length === 0) return [];
+
+  const byDate: Record<string, Record<string, { input: number; output: number; cacheCreate: number; cacheRead: number }>> = {};
+  for (const { path: filePath, dirDate } of files) {
+    let content: string;
+    try { content = readFileSync(filePath, 'utf-8'); } catch { continue; }
+    // Fall back to file mtime if no dir-based date available
+    let fallbackDate = dirDate;
+    if (!fallbackDate) {
+      try { fallbackDate = new Date(statSync(filePath).mtimeMs).toISOString().slice(0, 10); } catch { /* skip */ }
+    }
+    for (const line of content.split('\n')) {
+      if (!line.trim()) continue;
+      try {
+        const r = JSON.parse(line);
+        if (r.type !== 'assistant' || !r.message?.usage) continue;
+        const model = r.message.model || '';
+        if (!FALLBACK_PRICING[model]) continue;
+        const ts = r.timestamp;
+        let date = '';
+        if (typeof ts === 'string' && ts.length >= 10) date = ts.slice(0, 10);
+        else if (typeof ts === 'number') date = new Date(ts).toISOString().slice(0, 10);
+        if (!date) date = fallbackDate;
+        if (!date) continue;
+        if (since && date.replace(/-/g, '') < since) continue;
+        if (!byDate[date]) byDate[date] = {};
+        if (!byDate[date][model]) byDate[date][model] = { input: 0, output: 0, cacheCreate: 0, cacheRead: 0 };
+        const u = r.message.usage;
+        byDate[date][model].input += u.input_tokens || 0;
+        byDate[date][model].output += u.output_tokens || 0;
+        byDate[date][model].cacheCreate += u.cache_creation_input_tokens || 0;
+        byDate[date][model].cacheRead += u.cache_read_input_tokens || 0;
+      } catch { /* skip */ }
+    }
+  }
+
+  const entries: CcusageDayEntry[] = [];
+  for (const [date, models] of Object.entries(byDate)) {
+    const modelBreakdowns: CcusageDayEntry['modelBreakdowns'] = [];
+    let totalCost = 0;
+    let totalInput = 0, totalOutput = 0, totalCC = 0, totalCR = 0;
+    for (const [modelName, tokens] of Object.entries(models)) {
+      const p = FALLBACK_PRICING[modelName];
+      const cost = tokens.input * p.input + tokens.output * p.output
+        + tokens.cacheCreate * p.cacheCreate + tokens.cacheRead * p.cacheRead;
+      modelBreakdowns.push({
+        modelName,
+        inputTokens: tokens.input,
+        outputTokens: tokens.output,
+        cacheCreationTokens: tokens.cacheCreate,
+        cacheReadTokens: tokens.cacheRead,
+        cost,
+      });
+      totalCost += cost;
+      totalInput += tokens.input;
+      totalOutput += tokens.output;
+      totalCC += tokens.cacheCreate;
+      totalCR += tokens.cacheRead;
+    }
+    entries.push({
+      date,
+      inputTokens: totalInput,
+      outputTokens: totalOutput,
+      cacheCreationTokens: totalCC,
+      cacheReadTokens: totalCR,
+      totalTokens: totalInput + totalOutput + totalCC + totalCR,
+      totalCost,
+      modelsUsed: Object.keys(models),
+      modelBreakdowns,
+    });
+  }
+  return entries;
+}
+
 function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDayEntry[]> {
   return new Promise((resolve) => {
     // --breakdown and other legacy flags were removed in ccusage 19. Keep
@@ -1757,6 +1865,9 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
     const env: Record<string, string | undefined> = { ...process.env };
     if (claudeConfigDir) env.CLAUDE_CONFIG_DIR = claudeConfigDir;
     else delete env.CLAUDE_CONFIG_DIR;
+    if (!env.CCUSAGE_MODEL_ALIASES) env.CCUSAGE_MODEL_ALIASES = 'claude-sonnet-5=claude-sonnet-4-6';
+    else if (!env.CCUSAGE_MODEL_ALIASES.includes('claude-sonnet-5'))
+      env.CCUSAGE_MODEL_ALIASES += ',claude-sonnet-5=claude-sonnet-4-6';
     proc = exec(`npx ${args.join(' ')}`, { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env }, (err, stdout) => {
       clearTimeout(timer);
       if (timedOut || err) {
@@ -2079,6 +2190,14 @@ async function refreshCcusageCacheInner(): Promise<void> {
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, tasks.length) }, worker));
+
+  // Supplement with skill-transcript JSONL entries for models ccusage doesn't
+  // price yet (e.g. claude-sonnet-5). Synchronous scan — these files are small.
+  for (const agDir of agDirs) {
+    const claudeShared = join(sessionsDir, agDir, '.claude-shared');
+    const skillEntries = scanSkillTranscriptCosts(claudeShared, month);
+    if (skillEntries.length > 0) perGroup.get(agDir)!.push(skillEntries);
+  }
 
   // Build the cache: per-coworker merged daily, then combined.
   const result: CcusageCache = {
