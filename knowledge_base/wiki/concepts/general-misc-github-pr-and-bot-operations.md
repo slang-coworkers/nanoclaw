@@ -3,7 +3,7 @@ title: "GitHub PR and Bot Operations"
 type: concept
 group: general-misc
 tags: [github, pr, bot, merge-queue, authorship, workflows, fork, issue-close, copilot]
-source_count: 22
+source_count: 24
 ---
 
 # GitHub PR and Bot Operations
@@ -56,6 +56,8 @@ The GitHub App can create a cross-fork PR via the REST API with a user PAT (`gh 
 
 GitHub auto-closes a linked issue on merge for any of `close/closes/closed`, `fix/fixes/fixed`, `resolve/resolves/resolved` followed by `#N`. When verifying PR body linkage, grep for the full keyword set — not just `Fixes`. Also accept the fully-qualified cross-repo form (`Fixes shader-slang/slang-rhi#772`), which requires a pattern allowing an optional `owner/repo` qualifier between keyword and `#`. ([[wiki/learnings/1781072527758-fixes-closes-link-verification-must-accept-the-qua.md]], [[wiki/learnings/1781178144676-verify-issue-pr-linkage-with-all-github-auto-close.md]])
 
+Two failure modes on the same #11856 incident sharpen this. (1) A PR **title** like `Fix #11856` does NOT auto-close the issue — only a **body** keyword does — nor does the squash merge **commit subject**; auto-close uses only the body-parsed `closingIssuesReferences`. PR #11866 merged the correct fix but its body carried a closing keyword for the unrelated already-closed `#11720`, so #11856 silently stayed OPEN while the fixer reported the chain terminal — caught only by verifying the merge with `gh` ([[wiki/learnings/1782936185036-verify-a-fix-pr-s-closing-reference-matches-the-tr.md]]). (2) Worse, an *incidental* `fixes #N` in PR-body prose describing a **different** PR (`PR #11785 ("...", fixes #11720)`) gets hijacked by GitHub's linkifier as a closing reference for the current PR → `closingIssuesReferences = [#11720]` → the merge closes nothing new. Rules: put the literal `Closes #<this-issue>` in the PR **body**; NEVER write `fixes/closes/resolves #N` in prose when merely describing another PR/issue (use plain `#N` — "PR #11785 which addressed #11720"); after opening, verify `gh pr view <n> --json closingIssuesReferences` shows the intended issue, and after merge verify `gh issue view <tracked> --json state` is CLOSED. If a fix merged but the tracked issue lingers OPEN, have the closest-to-the-state coworker post a merge-landed comment flagging the mis-reference so a **maintainer** closes it — never auto-close (the `gh issue close` PreToolUse hook blocks the bot anyway) ([[wiki/learnings/1782951523566-pr-description-prose-fixes-n-closes-the-wrong-issu.md]]).
+
 ## force-with-lease Stale Remote-Tracking Refs
 
 `git push --force-with-lease` can fail with `stale info` even when nobody else pushed because `git fetch origin <branch>` only updates `FETCH_HEAD`, not `refs/remotes/origin/<branch>`. Fix: `git fetch -f origin <branch>:refs/remotes/origin/<branch>` to force-refresh the remote-tracking ref, then lease against the true head SHA. Use `git range-diff` to verify a rebase preserves an existing approval. ([[wiki/learnings/1782765717544-force-with-lease-stale-info-refresh-the-remote-tra.md]])
@@ -92,4 +94,6 @@ A `CHANGES_REQUESTED` review with an approving/neutral body and zero inline comm
 - [[wiki/learnings/1782765717544-force-with-lease-stale-info-refresh-the-remote-tra.md]] — force-with-lease "stale info" — refresh the remote-tracking ref first
 - [[wiki/learnings/1781241842104-check-for-an-existing-fix-pr-before-fixing-or-recommending.md]] — Check for an existing fix PR before recommending OR implementing a fix
 - [[wiki/learnings/1782512263705-changes-requested-with-a-looks-good-body-and-zero-.md]] — CHANGES_REQUESTED with a "looks good" body and zero inline comments is a no-merge signal
+- [[wiki/learnings/1782936185036-verify-a-fix-pr-s-closing-reference-matches-the-tr.md]] — Verify a fix PR's closing reference matches the tracked issue (title Fix #N doesn't auto-close)
+- [[wiki/learnings/1782951523566-pr-description-prose-fixes-n-closes-the-wrong-issu.md]] — PR-description prose fixes-N hijacks auto-close for the wrong issue; commit subject doesn't auto-close
 _Catalog: [[wiki/index.md]]_

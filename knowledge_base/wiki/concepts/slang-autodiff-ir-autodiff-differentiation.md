@@ -3,7 +3,7 @@ title: "Slang Autodiff & Differentiation: Internals, Bugs, and Design Rules"
 type: concept
 group: slang-autodiff-ir
 tags: [autodiff, differentiation, transpose, derivative-variants, purity, capability, member-methods, performance, witness-tables]
-source_count: 21
+source_count: 22
 ---
 
 # Slang Autodiff & Differentiation: Internals, Bugs, and Design Rules
@@ -104,8 +104,10 @@ Follow-up to the "gate derivative→primal capability propagation on explicit `[
 
 But the *layer* the use-site hook lives at has a soundness gap. Reviewing PR #11872 (the #11859 fix) surfaced that Slang capability checking is **AST-only** — the synthesized IR derivative is never capability-checked (`grep -rlnE "[Cc]apabilit" source/slang/slang-ir-autodiff*.cpp` is empty; `slang-ir-late-require-capability.cpp` only handles explicit `__requireCapability`). So a `CapabilityDeclReferenceVisitor` use-site hook that fires only on a *direct* syntactic `fwd_diff(p)`/`bwd_diff(p)` cannot see **transitive** differentiation: `bwd_diff(g)` where `g` calls a `testC` carrying a `[require(spirv)]` user-defined derivative never joins `testCBwd`'s requirement — a silent false-negative that compiles clean on `-target hlsl`. The OLD primal-side model caught this for free because the requirement sat on `testC` and rode ordinary call-graph capability inference (`visitReferencedDecls` → `inferredCapabilityRequirements`), which is exactly what handles transitivity; an AST syntactic hook only sees the *outermost* operator. Reviewer rule: when a capability/requirement moves from a callee/primal to a "use-site," ask whether the old location rode call-graph inference and whether the new hook does. Note also DeepWiki claimed transitive propagation works and the IR derivative is capability-checked — it conflated *differentiability* checking (`CheckDifferentiabilityPassContext`) with *capability* checking (`SemanticsDeclCapabilityVisitor` / E36107); verify pipeline claims against source ([[wiki/learnings/1782882850345-slang-use-site-propagation-of-user-defined-derivat.md]]).
 
+Deeper still (#11882, HEAD 7f79b923f): propagation of a primal's OWN `[require(spirv)]` to a differentiation entry point is **inconsistent across four cells**, not a uniform gap — for a user-defined derivative, `fwd_diff` propagates (E36107) but `bwd_diff` drops it; for a synthesized derivative, `fwd_diff` drops but `bwd_diff` propagates (plain calls always propagate). Since both directions go through the SAME rewrite (`convertHigherOrderExprToLookup`, where `as<DifferentiateExpr>` matches both), a single stated root cause like the `visitMemberExpr`-vs-`visitStaticMemberExpr` base-visitor asymmetry is INCOMPLETE: `ConstructDeclRefExpr` yields a StaticMemberExpr (base dropped) OR a plain MemberExpr (base traversed) depending on the member's static-ness, and that form decides visitation per cell. Lesson: when a bug report gives a clean single root cause for "X is dropped," run the full behavior matrix (direction × derivative-kind × call-form) before accepting it — a shared path producing divergent results means the cause is incomplete. This also surfaces a genuine semantic design question (should a primal's own `[require]` gate fwd/bwd_diff when a user-defined derivative means the primal body may never run?), making it a maintainer call — HOLD given the over-propagation abort history (#11551) ([[wiki/learnings/1782906093613-slang-primal-require-propagation-at-fwd-diff-bwd-d.md]]).
+
 ---
-**Source learnings (23):**
+**Source learnings (24):**
 - [[wiki/learnings/1779432739908-slang-autodiff-transpose-bare-diff-gradient-with-d.md]] — slang autodiff transpose: bare-diff gradient with DiffPair aggPrimalType causes crash
 - [[wiki/learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md]] — slang autodiff transpose: aggregation type vs gradient narrowing — not enough with three sites
 - [[wiki/learnings/1780050112745-slang-autodiff-pr-10827-left-bwddifffunctype-remat.md]] — slang autodiff: PR #10827 left BwdDiffFuncType/RematFuncType inconsistent
@@ -130,4 +132,5 @@ But the *layer* the use-site hook lives at has a soundness gap. Reviewing PR #11
 
 - [[wiki/learnings/1782864820466-slang-autodiff-derivative-require-must-ride-the-di.md]] — Autodiff: derivative [require] must ride the differentiation use, not the primal (over-propagation #11859)
 - [[wiki/learnings/1782882850345-slang-use-site-propagation-of-user-defined-derivat.md]] — Use-site [require] propagation is AST-only, so misses transitive differentiation (#11872 review gap)
+- [[wiki/learnings/1782906093613-slang-primal-require-propagation-at-fwd-diff-bwd-d.md]] — Primal [require] propagation at fwd_diff/bwd_diff is inconsistent across 4 cells (#11882)
 _Catalog: [[wiki/index.md]]_

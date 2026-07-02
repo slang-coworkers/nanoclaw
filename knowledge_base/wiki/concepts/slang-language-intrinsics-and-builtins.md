@@ -3,7 +3,7 @@ title: "Slang Intrinsics & Builtins"
 type: concept
 group: slang-language-core
 tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector]
-source_count: 8
+source_count: 11
 ---
 
 # Slang Intrinsics & Builtins
@@ -38,6 +38,10 @@ Extending the `specializeAddressSpace` recovery pass to DXIL was empirically fal
 
 `vector<float,3>` (and other builtin vector/matrix types) ARE `DeclRefType<StructDecl>` — `isDeclRefTypeOf<StructDecl>(float3)` is true. This means initializer-list-to-vector coercion goes through `createInvokeExprForExplicitCtor` (the struct-explicit-ctor branch of `_coerceInitializerList`), not `createCtorInvokeExprForAbstractType`. When overload resolution's `canCoerce` probe passes `outExpr == nullptr`, the viability check inside `createInvokeExprForExplicitCtor` is nested inside an `if (outExpr)` guard and returns `false` even though the coercion is valid — causing `{float2, float}` to fail as a function argument while succeeding in declarations. The fix is to un-nest the `return true` so viability is reported independently of `outExpr` ([[wiki/learnings/1782733705823-slang-11730-builtin-vector-is-a-declreftype-lt-str.md]]).
 
+## Texture `[require]` capability atoms, samplerless, and the E41012 profile-upgrade warning
+
+An instantiation-dependent capability (bare vs. combined sampler) CANNOT be expressed by a static `[require]` on a method generic over the discriminator — `[require]` can't reference a generic `let isCombined`. Model it at emit time via `__requireTargetExtension(...)` gated on the generic, with a NON-extension base atom (`texture_sm_4_1`) in `[require]`, mirroring the correct `GetDimensions` precedent. `Texture.Load`'s unconditional `[require(..., texture_sm_4_1_samplerless)]` was out of sync with its already-gated `if(isCombined==0)` GLSL emission, firing a spurious `warning E41012 (ProfileImplicitlyUpgraded)` on combined samplers under an explicit `-profile` even though the `#extension GL_EXT_samplerless_texture_functions` is correctly omitted ([[wiki/learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md]]). Crucially, that E41012 for a `[require]` **attribute** originates in the AST-side check `slang-check-shader.cpp:2222/2244` (gated on `specificCapabilityRequested || specificProfileRequested`) — NOT the IR `LateRequireCapability` pass, which only handles the `__requireCapability` **statement** form; keep the two paths distinct when tracing a `[require]`-attribute diagnostic, and note the AST path can't observe generic lets like `isCombined` ([[wiki/learnings/1782895560951-e41012-from-a-require-attribute-comes-from-slang-c.md]]). Because that AST check fires for ANY `[require]`-annotated inlined FuncDecl (method OR free function), a fix that only edits `hlsl.meta.slang` `.Load` is incomplete: the `texelFetch(...)` wrappers in `glsl.meta.slang` (~:2767–2863) are `[ForceInline]`, carry their own samplerless `[require]`, and several are hardcoded-combined — `grep texture_sm_4_1_samplerless source/slang/glsl.meta.slang` and decide explicitly whether the fix extends to the combined wrappers ([[wiki/learnings/1782898835005-fixing-a-capability-require-atom-on-a-texture-meth.md]]). Bonus: dropping a capability atom from a stdlib `[require]` can flip GENERATED `-restrictive-capability-check` negative tests red→green — those are "DO NOT EDIT", so fix the generator and regenerate.
+
 ## Contradictions / Supersessions
 
 - The claim that `vector` types take the abstract-type ctor coercion path is wrong; they take the explicit-ctor path because they are `DeclRefType<StructDecl>` ([[wiki/learnings/1782733705823-slang-11730-builtin-vector-is-a-declreftype-lt-str.md]]).
@@ -54,4 +58,7 @@ Extending the `specializeAddressSpace` recovery pass to DXIL was empirically fal
 - [[wiki/learnings/1782228288994-groupshared-array-parameter-lowered-by-value-loses.md]] — groupshared array PARAMETER lowered by-value loses TGSM (slang#10641)
 - [[wiki/learnings/1782228568362-slang-10641-groupshared-array-param-bug-fix-is-by-.md]] — slang #10641 — groupshared array PARAM bug: fix is by-reference lowering, NOT address-space recovery
 - [[wiki/learnings/1782733705823-slang-11730-builtin-vector-is-a-declreftype-lt-str.md]] — slang #11730 — builtin vector is a DeclRefType<StructDecl>; init-list arg-coercion bug = if(outExpr) guard
+- [[wiki/learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md]] — Spurious E41012: static [require] out of sync with emit-time isCombined gate (samplerless)
+- [[wiki/learnings/1782895560951-e41012-from-a-require-attribute-comes-from-slang-c.md]] — E41012 from a [require] attribute comes from slang-check-shader.cpp, NOT IRLateRequireCapability
+- [[wiki/learnings/1782898835005-fixing-a-capability-require-atom-on-a-texture-meth.md]] — Fixing a [require] atom on a texture method? Also check the glsl.meta.slang texelFetch wrappers
 _Catalog: [[wiki/index.md]]_

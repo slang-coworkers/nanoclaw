@@ -3,7 +3,7 @@ title: "Slang Compiler Internals: Parser, IR, Types, and Language Semantics"
 type: concept
 group: slang-grab-bag
 tags: [parser, IRBuilder, type-interning, module-import, autodiff, SLANG_ASSERT, String, AST, DeclRefType, ThisType, source-location, lexer]
-source_count: 23
+source_count: 28
 ---
 
 # Slang Compiler Internals: Parser, IR, Types, and Language Semantics
@@ -106,8 +106,20 @@ A cluster of regressions from #11712 in `slang-parameter-binding`: the `vk::bind
 
 In Slang's record/replay layer (`source/slang-record-replay/`), the recorded stream is **fixed-schema at the call level** even though each value carries a TypeId tag. On playback `executeNextCall` re-invokes the same call shape, so you must **never conditionally skip `RECORD_OUTPUT`** — a skipped output desynchronizes the stream for every subsequent call ([[wiki/learnings/1782866674061-record-replay-stream-is-fixed-schema-at-the-call-l.md]]).
 
+## AST expr classification: order `as<derived>` before `as<base>`
+
+In `source/slang/slang-ast-expr.h`, `VarExpr`, `MemberExpr`, and `StaticMemberExpr` all derive from `DeclRefExpr` (and `DerefMemberExpr` from `MemberExpr`); `IndexExpr` derives directly from `Expr`. Because `as<Base>` matches a derived instance, any `as<>`-cascade that classifies expressions **must test the most-derived type first** — putting `as<DeclRefExpr>` before `as<MemberExpr>` makes the MemberExpr branch dead code and swallows every member access, seeing only the field's own `declRef` and losing the base object. This was the exact ordering bug behind the E30051 false-positive alias in `_exprsDefinitelyAlias` (`slang-check-expr.cpp`, introduced by PR #11151): `a.x` and `b.x` were judged to alias because both name field `x` ([[wiki/learnings/1782898009300-slang-ast-memberexpr-varexpr-staticmemberexpr-deri.md]]). Triage technique: when static reading of the AST-node types contradicts observed behavior, run cheap empirical discriminators (same field / different base vs. different field / same base) before trusting your read — and note `-dump-ast` is unmaintained.
+
+## Modifier list is reverse-declaration order; `findModifier` returns the last-written attribute
+
+`findModifier<T>()` (`slang-ast-base.h:737`) returns the *first* element of the decl's modifier linked list, but Slang builds that list in **reverse declaration order** — so first-in-list is the **last-written** source attribute. Empirically, three stacked `[numthreads(...)]` attributes emit the LAST one's `LocalSize`, so any "which duplicate/conflicting modifier wins" reasoning must be verified empirically, not assumed from source order ([[wiki/learnings/1782905768996-slang-stores-modifiers-in-reverse-declaration-orde.md]]). Related (issue #11881): duplicate `[numthreads]` is genuinely undiagnosed because `NumThreadsAttribute` is absent from `getModifierConflictGroupKind()` (falls to `default: NodeBase`), so the duplicate-modifier loop never fires; adding a `case ASTNodeType::NumThreadsAttribute` reuses the existing error E31202 — but watch the layout-synthesized `NumThreadsAttribute` added after the conflict loop.
+
+## `validateEntryPoint` system-value validation: dedup keying, VS→GS false positive, output binding space
+
+The front-end entry-point validator (`validateEntryPoint`/`validateSystemValueSemantic`, `slang-check-shader.cpp`) validates each param's SV semantic in isolation with **no cross-param aggregation** — the shared gap behind several checks. Two complementary duplicate-detection concerns share this function and neither subsumes the other: #6319 is an **exact duplicate** (same SV name+index+direction on 2+ params), while PR #11863 handles **overlap** (distinct depth-output names lowering to the same builtin) — an independent #6319 PR only textually conflicts with #11863's aggregation block and must coordinate the new diagnostic code ([[wiki/learnings/1782900707997-slang-6319-dedup-pr-11863-is-related-not-duplicate.md]]). A duplicate-SV diagnostic must fire for **system values only** (the post-linking `fixFieldSemanticsOfFlatStruct` legitimately re-indexes overlapping *user* semantics) and its collision key's **output binding space** is the hard part: classic stages use an empty space key, mesh keys by output CATEGORY (not parameter position), and geometry keys by the STREAM PARAMETER — with a landmine that `inout TriangleStream<T>` streams get double-collected (input+output call both force-resolve to Output) → spurious self-collision unless the InOut branch skips output-only-by-type params ([[wiki/learnings/1782911038880-entry-point-duplicate-system-value-check-output-bi.md]]). Distinct from these: the E38052 "vertex shader has no output with SV_Position" warning (PR #10971) is an **intentional heuristic false-positive** — it's gated only on `stage == Vertex` with no pipeline-pairing awareness, and its in-code comment explicitly names the VS→GS/tess/mesh case as legitimate-but-undetected, with `-warnings-disable 38052` as the documented escape hatch. So E38052 on a VS→GS shader is known and intentional, not a clear bug ([[wiki/learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md]]).
+
 ---
-**Source learnings (34):**
+**Source learnings (39):**
 - [[wiki/learnings/1779805764133-slang-lexer-cpp-has-a-duplicate-hex-digit-decoder-.md]] — lexer hex-digit decoder bug
 - [[wiki/learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md]] — capability flag vs [require]
 - [[wiki/learnings/1780332708129-slang-bwd-diff-out-param-convention-bare-in-differ.md]] — bwd_diff out-param convention
@@ -142,4 +154,9 @@ In Slang's record/replay layer (`source/slang-record-replay/`), the recorded str
 - [[wiki/learnings/1782871594193-slang-11861-vk-binding-on-struct-of-resources-entr.md]] — slang #11861: vk::binding on struct-of-resources entry param — mirror of #11857, same predicate
 - [[wiki/learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md]] — Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers ask for a shared predicate
 - [[wiki/learnings/1782866674061-record-replay-stream-is-fixed-schema-at-the-call-l.md]] — Record/replay stream is fixed-schema at the call level — never conditionally skip RECORD_OUTPUT
+- [[wiki/learnings/1782898009300-slang-ast-memberexpr-varexpr-staticmemberexpr-deri.md]] — AST MemberExpr/VarExpr/StaticMemberExpr derive from DeclRefExpr — order as<derived> first
+- [[wiki/learnings/1782905768996-slang-stores-modifiers-in-reverse-declaration-orde.md]] — Modifier list is reverse-declaration order; findModifier returns last-written; [numthreads] dup undiagnosed
+- [[wiki/learnings/1782900707997-slang-6319-dedup-pr-11863-is-related-not-duplicate.md]] — #6319 duplicate-SV vs #11863 depth-overlap are complementary validateEntryPoint checks
+- [[wiki/learnings/1782911038880-entry-point-duplicate-system-value-check-output-bi.md]] — Entry-point duplicate-SV check: output-binding-space keying + inout-stream double-collection hazard
+- [[wiki/learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md]] — E38052 VS-missing-SV_Position is an intentional heuristic false-positive (VS→GS known-legit)
 _Catalog: [[wiki/index.md]]_

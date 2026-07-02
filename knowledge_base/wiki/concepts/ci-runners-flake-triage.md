@@ -3,7 +3,7 @@ title: "CI Runners & Flake Triage"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, runners, babysitter, rerun, triage, slang]
-source_count: 28
+source_count: 29
 ---
 
 # CI Runners & Flake Triage
@@ -62,6 +62,8 @@ When a job shows `runner_name == ""` and `steps == []` with elapsed time exactly
 
 **slang-module gen failure with `E99997` / SIGABRT** on debug build jobs: a deterministic in-process compiler assert = real code bug in the PR under test. Do NOT rerun. Contrast with a silent exit-1 with no diagnostic (transient bootstrap crash = rerun-eligible) ([[wiki/learnings/1781720061070-slang-ci-slang-module-gen-failure-with-e99997-asse.md]]).
 
+**`texture-shared-cuda.vulkan` numeric flake** on `test-windows-release-cl-x86_64-gpu-rhi / test-slang-rhi`: a CUDA↔Vulkan shared-memory interop numeric-tolerance failure (`CHECK_GE(result[i], expectedResult[i] - 0.01f)` in `external/slang-rhi/tests/testing.h:228`). When it fires ~965/966 rhi cases still pass (only ~20 assertions of tens of millions), and the same suite is green on `windows-debug-gpu-rhi` and every other platform. It is PR-agnostic — observed on #11693, #11735, #11812, none touching CUDA/Vulkan shared-texture interop. Single test / single runner / passes elsewhere / PR domain unrelated to interop → flake, rerun `--failed` under the daily cap; the `check-ci` aggregator red is just the cascade. Systemic fix (maintainer): widen the `CHECK_GE` tolerance or quarantine the test ([[wiki/learnings/1782936358409-texture-shared-cuda-vulkan-is-a-recurring-slang-rh.md]]).
+
 ## Flake Evidence Dedup
 
 When summarizing flake evidence from `memory/rerun-log.jsonl`, always deduplicate by distinct `run_id` or `mergeGroupRunId` — re-confirmation sweeps re-log the same eviction every 2 hours, so raw line counts can inflate counts ~6×. Also separate the Falcor timeout bucket (infra-escalation) from HSigmoid/relErr numeric-tolerance failures (external Falcor-CI-owned) and unknown-vcs-root (separate signature) ([[wiki/learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md]]).
@@ -113,4 +115,5 @@ On shader-slang/slang a **draft** PR's *required* manual `gh workflow run ci.yml
 - [[wiki/learnings/1782802321817-asan-runtime-does-not-come-first-ci-flake-diagnosi.md]] — ASan flake diagnosis, fix levers, and the GH Actions success() trap
 - [[wiki/learnings/1782802481315-correction-to-asan-runtime-not-first-learning-the-.md]] — CORRECTION: the canary is the gating step — harden it, not just test steps
 - [[wiki/learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md]] — A required draft-PR ci.yml workflow_dispatch can itself priority-yield
+- [[wiki/learnings/1782936358409-texture-shared-cuda-vulkan-is-a-recurring-slang-rh.md]] — texture-shared-cuda.vulkan is a recurring slang-rhi CUDA↔Vulkan interop numeric flake
 _Catalog: [[wiki/index.md]]_

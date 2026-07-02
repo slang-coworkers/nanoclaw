@@ -3,7 +3,7 @@ title: "Agent Routing: GitHub Bot & Webhooks"
 type: concept
 group: agent-routing
 tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
-source_count: 23
+source_count: 25
 ---
 
 # Agent Routing: GitHub Bot & Webhooks
@@ -116,8 +116,14 @@ A standalone red `workflow_dispatch` run where only `wait-for-human-priority` + 
 
 The `wait-for-human-priority` gate intentionally yields bot-initiated CI to higher-priority human CI. Signature: `wait-for-human-priority` fails in ~7s with `priority-gate-yielded`. This self-heals — `retry-yielded-bot-ci` automatically reruns the yielded bot CI. A `gh run rerun` here is wasted effort and fights the gate ([[wiki/learnings/1781553870596-slang-ci-wait-for-human-priority-gate-is-self-heal.md]]).
 
+A failing CI **check** on a bot-authored PR (head branch in `shader-slang/slang`) does NOT generate a webhook to the owning fixer's session — only review comments/verdicts webhook back. So the CI babysitter surfacing such a deterministic red to the parent is the genuine (and only) mechanism by which the fixer learns its own PR's CI check is failing; don't dismiss it as "author-owned, no action" the way you would an external contributor's fork red. Corollary: positive-control `//CHECK:` directives in a diagnostic test can't be validated locally without a FileCheck binary, so a CHECK-line mismatch against real compiler output only surfaces once CI runs it — expect fixer PRs to occasionally land with a CHECK that fails first in CI ([[wiki/learnings/1782907713547-failing-ci-checks-on-our-own-bot-prs-don-t-webhook.md]]).
+
+## PR Ownership: Attribute by Author Field, Not Title/Branch
+
+When deciding whether a shader-slang/slang PR is "ours" (bot-driven, route to a fixer) vs. author-owned (human's responsibility, re-confirm silently), attribute by the PR's `author` field — never the title or branch name. `nv-slang-bot[bot]` author (usually a `fix/issue-*` branch) = **ours**; a human maintainer as author = **theirs**, even when the title has a `[codex]` prefix or the branch is `codex/*` (that just means the maintainer drafted it with the codex tool — there is no bot driver to nudge, nothing to route). Concrete miss (2026-07-01): PR #11850 `[codex] Add hash-set pool hysteresis` with a deterministic `check-formatting` red was initially flagged as possibly bot-authored, but author + assignee are both `saipraveenb25` (maintainer) — correct handling is author-owned, re-confirm silently, no route. Mis-attributing a maintainer's codex-drafted PR as "ours" wastes routing effort and produces a spurious "nudge the driver" line for a red the human already owns ([[wiki/learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md]]).
+
 ---
-**Source learnings (23):**
+**Source learnings (25):**
 - [[wiki/learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md]] — Verifying GitHub webhook payloads before acting
 - [[wiki/learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md]] — Always post the PR review when explicitly requested via webhook
 - [[wiki/learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md]] — GitHub bot identity is nv-slang-bot[bot]
@@ -141,4 +147,6 @@ The `wait-for-human-priority` gate intentionally yields bot-initiated CI to high
 - [[wiki/learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md]] — Bot-PR: lone red workflow_dispatch run with build/test skipped is a no-op
 - [[wiki/learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md]] — Auto-route can spawn a parallel triage/fix fork (cross-identity DELETE 403)
 - [[wiki/learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md]] — #11545 ByteAddressBuffer alignment cluster ownership flipped
+- [[wiki/learnings/1782907713547-failing-ci-checks-on-our-own-bot-prs-don-t-webhook.md]] — Failing CI checks on bot PRs don't webhook the fixer — surface them via the babysitter
+- [[wiki/learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md]] — Attribute PR ownership by author field, not title/branch ([codex] prefix ≠ bot-owned)
 _Catalog: [[wiki/index.md]]_

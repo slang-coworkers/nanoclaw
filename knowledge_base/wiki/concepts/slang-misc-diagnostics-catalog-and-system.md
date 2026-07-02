@@ -3,7 +3,7 @@ title: "Slang Diagnostics System: Catalog, Definitions, and Rendering"
 type: concept
 group: slang-grab-bag
 tags: [diagnostics, slang-diagnostics.lua, regenerate.py, diagnostics-catalog, warning, FileCheck, rich-diagnostics, pragma-warning, severity, Lua]
-source_count: 18
+source_count: 21
 ---
 
 # Slang Diagnostics System: Catalog, Definitions, and Rendering
@@ -62,8 +62,12 @@ A `warn-error` on a diagnostic for invalid/miscompiling code can still carry its
 
 When triaging "Slang accepts conflicting/duplicate system-value semantics" bugs (#11855 multiple depth outputs; umbrella #6319), the front-end gap is **structural**: `validateEntryPoint` validates SV semantics per-parameter with no cross-entry-point aggregation, so it can't catch a conflict that only exists when two params' semantics are considered together. Closing the gap needs an aggregation pass, not a per-case special ([[wiki/learnings/1782860967918-slang-validateentrypoint-validates-sv-semantics-pe.md]]).
 
+## C++ API compiler-options plumbing: the empty-option-set clobber (DiagnosticColor)
+
+Setting `CompilerOptionName::DiagnosticColor = ALWAYS` via the C++ API (`SessionDesc::compilerOptionEntries`) colored only pre-codegen diagnostics; target-stage ones came out ASCII, while the CLI `-diagnostic-color always` worked for both (#11890/#11891, HEAD f490a52aa). Reusable pattern: `ComponentType::getTargetArtifact` layers diagnostic settings onto one sink from two option sets in sequence — first `linkage->m_optionSet` (has the API-set value), then the component's own `m_optionSet` — and `applySettingsToDiagnosticSink` applies the color UNCONDITIONALLY while `getIntOption` returns the *default* (AUTO) for an absent option, so the second apply from an empty set silently clobbers the first layer's ALWAYS with AUTO (which defers to `isConsole()` → no color on an in-memory blob). Fix: guard on presence, `if (options.hasOption(CompilerOptionName::DiagnosticColor))` ([[wiki/learnings/1782929205990-slang-api-compiler-options-applysettingstodiagnost.md]]). **Which set is empty:** NOT the loaded module's — `Module`'s ctor copies `linkage->m_optionSet` (`slang-module.cpp:27`), which is why module-load diagnostics ARE colored — but the linked **composite** component's, because `CompositeComponentType`'s ctor (`slang-linkable-impls.cpp:48`) does not copy linkage options and is populated only by `linkWithOptions()`; `getTargetCode` runs through that composite ([[wiki/learnings/1782933741329-correction-to-11890-diagnostic-color-learning-the-.md]]). This refines the earlier "hasOption is unreliable" gotcha into a **path-specific** rule: on `getEntryPointCode`, keys like Optimization are force-materialized to their default (so `hasOption(Optimization)` false-positives), but on the `getTargetCode` composite path `DiagnosticColor` is genuinely absent-vs-set, so the `hasOption` guard is a real signal — a revert-drill unit test (set K non-default via an earlier layer, assert it survives the empty layer) falsifies force-materialization cleanly ([[wiki/learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md]]). **Testing:** an API-path option bug like this CANNOT be a `.slang` slang-test (the CLI color path is immune, bypassing the double-apply); write a GPU-free `slang-unit-test` that sets the option in `SessionDesc`, `loadModuleFromSourceString` a shader producing a target-stage diagnostic, calls `getTargetCode`, and asserts the returned blob contains an ANSI escape `\x1b[`.
+
 ---
-**Source learnings (22):**
+**Source learnings (25):**
 - [[wiki/learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md]] — stale E30055 catalog test is a syntax error
 - [[wiki/learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md]] — catalog generated tests have 3 provenance stores
 - [[wiki/learnings/1780352916926-verifying-slang-docs-generated-test-diagnostic-tes.md]] — verifying DIAGNOSTIC_TEST fixes
@@ -83,4 +87,7 @@ When triaging "Slang accepts conflicting/duplicate system-value semantics" bugs 
 - [[wiki/learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md]] — warn→error is non-breaking
 - [[wiki/learnings/1780177496970-pin-slang-source-citations-to-comment-text-or-func.md]] — pin source citations to comment text not line numbers
 - [[wiki/learnings/1782860967918-slang-validateentrypoint-validates-sv-semantics-pe.md]] — validateEntryPoint validates SV semantics per-param with NO cross-entry-point aggregation (#11855)
+- [[wiki/learnings/1782929205990-slang-api-compiler-options-applysettingstodiagnost.md]] — API compiler-options: applySettingsToDiagnosticSink double-apply clobbers with defaults; use slang-unit-test
+- [[wiki/learnings/1782933741329-correction-to-11890-diagnostic-color-learning-the-.md]] — CORRECTION: the empty option set is the COMPOSITE component's, not the loaded module's
+- [[wiki/learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md]] — hasOption(DiagnosticColor) IS reliable on getTargetCode composite path (path-specific)
 _Catalog: [[wiki/index.md]]_

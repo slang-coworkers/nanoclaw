@@ -3,7 +3,7 @@ title: "Fixer & Triage Automation"
 type: concept
 group: agent-fixer-codex-skills
 tags: [fixer, triage, github, pr-hygiene, slang, ci, bot-policy]
-source_count: 32
+source_count: 33
 ---
 
 # Fixer & Triage Automation
@@ -49,6 +49,10 @@ Before implementing, scan `/workspace/shared/learnings/INDEX.md` for prior triag
 DeepWiki and same-day triage memos can describe an older codebase state ([[wiki/learnings/1782408832985-triage-deepwiki-concurrency-premises-can-lag-head-.md]]). On concurrency/thread-safety work, always `grep -rn` actual lock-acquisition sites at HEAD before accepting any "component X is unsynchronized" framing.
 
 Triage memos verify the defect site deeply but cite surrounding code more loosely ([[wiki/learnings/1782390307922-verify-triage-memo-file-line-claims-about-adjacent.md]]). Before quoting any file:line claim about *adjacent* code (alternative-approach blast radius, "other callers do X") in a commit/PR/comment, grep/read it yourself.
+
+## Severity Triage: Pointer-Formation UB Is Not Always a Realized Crash
+
+When triaging a "memory-safety / UB pointer arithmetic" bug, distinguish **pointer formation** from **pointer dereference**. Forming a pointer more than one-past-the-end (e.g. `cur + 6 <= end` when fewer than 6 bytes remain) is UB per C++ `[expr.add]` and `-fsanitize=pointer-overflow` will flag it — but if that pointer is only *compared*, never *dereferenced*, there is no actual OOB read/write and no crash on mainstream flat-memory ISAs. Check whether the subsequent dereferences are short-circuit-guarded behind the bounds check (`&&` ordering); if they are, the realized severity is "latent UB / UBSan finding" (typically P2), NOT "crash/OOB" (P1). On slang #11864, `JSONStringEscapeHandler::appendUnescaped` formed `cur+6`/`cur+4` past-end pointers but all `cur[0]`/`_parseHex4(cur+2)` reads were guarded behind `cur+6 <= end` via `&&` — so the honest call was P2, not the recommended P1. A true P1 is when the pointer is dereferenced OOB or drives an unguarded memcpy/index. Fix idiom: compute `end - cur >= N` (always well-defined). Also pickaxe (`git log -S`) the exact site to attribute the introducing PR — sibling sites in one function can have different provenance (one a fresh regression, one latent for years) ([[wiki/learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md]]).
 
 ## Cross-Reference and Re-Triage Scanning
 
@@ -130,5 +134,6 @@ The root fix for the reviewer-fixer echo loop is **deleting the wiring** (`ncl w
 - [[wiki/learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md]] — Fixers must not self-flip PRs to ready (corrected: verify actor)
 - [[wiki/learnings/1782719999000-slang-fixer-a-contributor-pr-combined-review-is-ad.md]] — slang-fixer: contributor PR combined review is advisory
 - [[wiki/learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md]] — Reviewer combined-review fan-out can trigger a taskless-fixer echo loop
+- [[wiki/learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md]] — Pointer-formation UB (compare-only, deref short-circuit-guarded) is P2 UBSan finding, not P1 crash
 
 _Catalog: [[wiki/index.md]]_
