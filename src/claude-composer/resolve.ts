@@ -358,6 +358,18 @@ export function resolveCoworkerManifest(
       const uses = [...meta.uses.skills, ...meta.uses.workflows];
       // Inherit steps + step bodies + prologue + epilogue from parent
       // workflow if this child has none of its own.
+      // A declared `extends:` parent MUST resolve. Previously a missing parent
+      // was silently skipped (the `&& catalog[...]` guard below), producing an
+      // empty-body workflow with no error — e.g. onboard-project generating
+      // `extends: investigate` after that base workflow was consolidated into
+      // `plan`. Fail loudly so the composer and validate:templates catch it,
+      // the same way an unknown skill ref already throws.
+      if (meta.extendsWorkflow && !catalog[meta.extendsWorkflow]) {
+        throw new Error(
+          `Workflow '${name}' extends '${meta.extendsWorkflow}' but no workflow with that name is ` +
+            `registered — extends targets must resolve (was the parent renamed or removed?).`,
+        );
+      }
       let steps = meta.steps;
       let stepBodies = meta.stepBodies;
       let prologue = meta.prologue;
