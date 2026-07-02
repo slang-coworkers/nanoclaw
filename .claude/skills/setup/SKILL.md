@@ -185,25 +185,19 @@ Ask them to let you know when done.
 
 ## 4a. Coworker Infrastructure
 
-Check if nv-main is already merged:
+Bring in the nv coworker system (typed agents, trait bindings, project-scoped
+resolution, workflows, and the skill catalog) by running the merge-train
+script:
+
 ```bash
-ls container/spines/base/coworker-types.yaml 2>/dev/null
+bash setup/merge-train.sh
 ```
 
-If NOT found, merge the coworker infrastructure:
-```bash
-git fetch origin
-git merge origin/nv-main --no-edit || {
-  git checkout --theirs package-lock.json pnpm-lock.yaml 2>/dev/null
-  git add package-lock.json pnpm-lock.yaml 2>/dev/null
-  git merge --continue
-}
-pnpm install
-pnpm run build
-npm run rebuild:claude
-```
-
-This adds the nv coworker system: typed agents, trait bindings, project-scoped resolution, workflows, and the skill catalog.
+The script is idempotent — it skips branches already merged, resolves the
+expected `pnpm-lock.yaml` conflict, then runs `pnpm install --frozen-lockfile`,
+`pnpm run build`, and `npm run rebuild:claude`. It aborts loudly on any
+unexpected conflict. (The merge lives in the script rather than inline here
+because a skill never merges — see docs/skills-model.md.)
 
 ## 5. Set Up Channels
 
