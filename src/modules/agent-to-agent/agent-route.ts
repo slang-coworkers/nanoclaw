@@ -168,15 +168,18 @@ export function forwardAttachedFiles(
     return [];
   }
 
-  // ensureContainedInboxDir lstat-checks the inbox root + per-message subdir for
-  // pre-placed symlinks before mkdir and realpath-confirms containment (CWE-59):
-  // the target session dir is mounted writable into the recipient container.
-  const targetInboxRoot = path.join(sessionDir(target.agentGroupId, target.sessionId), 'inbox');
-  const targetInboxDir = ensureContainedInboxDir(targetInboxRoot, target.messageId, {
+  // Target-side containment — shared with the channel-inbound path. A
+  // compromised target agent can write inside its own session dir, so it could
+  // pre-place `inbox` (or `inbox/<future-msgId>`) as a symlink pointing
+  // anywhere host-writable; ensureContainedInboxDir refuses the symlink before
+  // any copy lands outside the sandbox (#2828, CWE-59).
+  const inboxRoot = path.join(sessionDir(target.agentGroupId, target.sessionId), 'inbox');
+  const targetInboxDir = ensureContainedInboxDir(inboxRoot, target.messageId, {
+    targetGroup: target.agentGroupId,
+    targetSession: target.sessionId,
     targetMsgId: target.messageId,
   });
   if (!targetInboxDir) {
-    log.warn('agent-route: unsafe target inbox dir, no files forwarded', { targetMsgId: target.messageId });
     return [];
   }
 
@@ -216,21 +219,19 @@ export function forwardAttachedFiles(
       continue;
     }
     const dst = path.join(targetInboxDir, filename);
-    // COPYFILE_EXCL: fail with EEXIST rather than follow or overwrite a
-    // pre-placed symlinked destination — the recipient container could have
-    // planted one at this path.
     try {
+      // COPYFILE_EXCL: fail with EEXIST rather than follow or overwrite a
+      // pre-placed symlink / existing file at dst — the host is the sole
+      // writer of these attachments.
       fs.copyFileSync(realSrc, dst, fs.constants.COPYFILE_EXCL);
-    } catch (err: unknown) {
-      const e = err as NodeJS.ErrnoException;
-      if (e.code === 'EEXIST') {
-        log.warn('agent-route: inbox attachment target already exists, refusing to overwrite', {
-          targetMsgId: target.messageId,
-          filename,
-        });
-        continue;
-      }
-      throw err;
+    } catch (err) {
+      log.warn('agent-route: refusing to write target inbox file', {
+        sourceMsgId: source.messageId,
+        targetMsgId: target.messageId,
+        filename,
+        err,
+      });
+      continue;
     }
     attachments.push({
       name: filename,

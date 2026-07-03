@@ -14,6 +14,7 @@ import type Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
+import { deriveAttachmentName } from './attachment-naming.js';
 import { isSafeAttachmentName } from './attachment-safety.js';
 import type { OutboundFile } from './channels/adapter.js';
 import { ensureContainedInboxDir } from './inbox-safety.js';
@@ -318,57 +319,63 @@ function extractAttachmentFiles(
   const attachments = parsed.attachments as Array<Record<string, unknown>> | undefined;
   if (!Array.isArray(attachments)) return contentStr;
 
+  if (!isSafeAttachmentName(messageId)) {
+    log.warn('Rejecting unsafe inbound message id', { messageId });
+    return contentStr;
+  }
+
+  const inboxRoot = path.join(sessionDir(agentGroupId, sessionId), 'inbox');
+  // Resolved lazily on the first attachment that actually carries bytes, so a
+  // message whose attachments have no inline `data` never creates an inbox dir.
+  // ensureContainedInboxDir refuses a pre-placed symlink at the inbox root or
+  // the per-message subdir before any write lands outside the sandbox (#2828).
+  let inboxDir: string | null = null;
+  let inboxResolved = false;
+
   let changed = false;
   for (const att of attachments) {
-    if (typeof att.data === 'string') {
-      // The name field is attacker-controlled: chat platforms with E2E
-      // attachment encryption (WhatsApp, Matrix) cannot sanitize filename
-      // server-side, and other adapters pass att.name through raw. Without
-      // this guard, `path.join(inboxDir, '../../...')` writes anywhere the
-      // host process has fs permission — see Signal Desktop's Nov 2025
-      // attachment-fileName advisory for the same archetype.
-      const rawName = (att.name as string | undefined) ?? `attachment-${Date.now()}`;
-      const filename = isSafeAttachmentName(rawName) ? rawName : `attachment-${Date.now()}`;
-      if (filename !== rawName) {
-        log.warn('Refused unsafe attachment filename — would escape inbox', {
+    if (typeof att.data !== 'string') continue;
+
+    const rawName = deriveAttachmentName(att);
+    const filename = isSafeAttachmentName(rawName) ? rawName : `attachment-${Date.now()}`;
+    if (filename !== rawName) {
+      log.warn('Refused unsafe attachment filename, would escape inbox', {
+        messageId,
+        rawName,
+        replacement: filename,
+      });
+    }
+
+    if (!inboxResolved) {
+      inboxDir = ensureContainedInboxDir(inboxRoot, messageId, { messageId });
+      inboxResolved = true;
+    }
+    // Unsafe inbox (symlink / escape) — no attachment can be written safely.
+    if (!inboxDir) break;
+
+    const filePath = path.join(inboxDir, filename);
+    try {
+      // wx = exclusive create. Refuses to follow a pre existing symlink or
+      // overwrite any existing file. The host expects to be the sole writer
+      // of these attachments.
+      fs.writeFileSync(filePath, Buffer.from(att.data as string, 'base64'), { flag: 'wx' });
+    } catch (err: unknown) {
+      const e = err as NodeJS.ErrnoException;
+      if (e.code === 'EEXIST') {
+        log.warn('Inbox attachment target already exists, refusing to overwrite', {
           messageId,
-          rawName,
-          replacement: filename,
+          filename,
         });
-      }
-      if (!isSafeAttachmentName(messageId)) {
-        log.warn('Refused unsafe inbox messageId', { messageId });
         continue;
       }
-      const inboxRoot = path.join(sessionDir(agentGroupId, sessionId), 'inbox');
-      // ensureContainedInboxDir lstat-checks the inbox ROOT and the per-message
-      // subdir for pre-placed symlinks BEFORE mkdir, then realpath-confirms
-      // containment. The prior inline check only ran when inboxDir already
-      // existed, so a symlinked `inbox` root with a not-yet-created subdir
-      // slipped straight through to mkdir (CWE-59). Session dirs are mounted
-      // writable into the container, so this is reachable by a compromised agent.
-      const inboxDir = ensureContainedInboxDir(inboxRoot, messageId, { messageId });
-      if (!inboxDir) continue;
-      const filePath = path.join(inboxDir, filename);
-      // wx = exclusive create: refuses to follow a pre-existing symlinked file
-      // or overwrite an existing one, closing the check-then-write TOCTOU gap.
-      // The host is the sole writer of inbox attachments.
-      try {
-        fs.writeFileSync(filePath, Buffer.from(att.data as string, 'base64'), { flag: 'wx' });
-      } catch (err: unknown) {
-        const e = err as NodeJS.ErrnoException;
-        if (e.code === 'EEXIST') {
-          log.warn('Inbox attachment target already exists, refusing to overwrite', { messageId, filename });
-          continue;
-        }
-        throw err;
-      }
-      att.name = filename;
-      att.localPath = `inbox/${messageId}/${filename}`;
-      delete att.data;
-      changed = true;
-      log.debug('Saved attachment to inbox', { messageId, filename, size: att.size });
+      throw err;
     }
+
+    att.name = filename;
+    att.localPath = `inbox/${messageId}/${filename}`;
+    delete att.data;
+    changed = true;
+    log.debug('Saved attachment to inbox', { messageId, filename, size: att.size });
   }
 
   return changed ? JSON.stringify(parsed) : contentStr;
