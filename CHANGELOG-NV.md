@@ -6,15 +6,29 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 268 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 272 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 141 |
-| `nv-slang` | slang project spine, skills, workflows | 97 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 40 |
+| `nv-slang` | slang project spine, skills, workflows | 98 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 41 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 28 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-03
+
+### nv-main (4 PRs)
+- **#777** `feat(composer): compose-time {{vars.KEY}} value substitution`
+- **#778** `feat(workflows): base triage-issue workflow (shared skeleton for project triagers)`
+- **#781** `style(composer): prettier-format the value-substitution tests`
+- **#782** `fix(onboard-project): generate {project}-plan/{project}-implement, not retired workflows`
+
+### nv-slang (1 PRs)
+- **#779** `refactor(slang): slang-triage-issue extends base triage-issue (dedup)`
+
+### nv-slangpy (1 PRs)
+- **#780** `refactor(slangpy): slangpy-triage-issue extends base triage-issue (dedup)`
 
 ## 📅 2026-06-30
 
