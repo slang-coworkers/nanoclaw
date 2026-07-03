@@ -255,6 +255,27 @@ function rewritePlaceholders(md: string): string {
   return lines.join('\n');
 }
 
+// Substitute compose-time `{{vars.KEY}}` tokens with the coworker's resolved
+// `vars` map (CoworkerTypeEntry.vars, merged leaf-wins). Unlike
+// rewritePlaceholders, this runs over the WHOLE body INCLUDING fenced code
+// blocks — a shared workflow's bash example hard-codes e.g. `{{vars.repo}}`,
+// and that must become the real repo. Must run BEFORE rewritePlaceholders so a
+// var token is replaced by its value rather than rendered as `<vars.KEY>`. A
+// referenced-but-undeclared var throws (compose-time error), so a typo or a
+// project that forgot to declare it fails validate:templates loudly instead of
+// shipping a literal `{{vars.KEY}}`.
+function substituteVars(md: string, vars: Record<string, string>): string {
+  return md.replace(/\{\{\s*vars\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (_m, key: string) => {
+    if (!(key in vars)) {
+      throw new Error(
+        `Template references {{vars.${key}}} but the coworker type declares no such var. ` +
+          `Declare it in the type's (or its project-common parent's) \`vars:\` map in coworker-types.yaml.`,
+      );
+    }
+    return vars[key];
+  });
+}
+
 // Rewrite `/name` references embedded inside workflow / overlay bodies so
 // the agent doesn't confuse workflow names (embedded procedures) with skill
 // names (runtime slash commands) or overlay names (Task-tool subagents, not
@@ -780,7 +801,8 @@ export function renderCoworkerSpine(
     // become Task-tool subagent pointers. Capability skill refs stay literal.
     const wfJoined = wfBlocks.join('\n\n');
     const slashRewritten = rewriteSlashRefs(wfJoined, workflowNames, capabilitySkillNames, overlayNames);
-    const wfOutput = rewritePlaceholders(slashRewritten);
+    const wfVarSubbed = substituteVars(slashRewritten, manifest.vars);
+    const wfOutput = rewritePlaceholders(wfVarSubbed);
 
     // Emit shared gate protocols for every staged overlay whose stages
     // appeared as inline anchors above. Each overlay contributes one

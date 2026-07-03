@@ -241,6 +241,7 @@ export function resolveCoworkerManifest(
   const skillNames: string[] = [];
   const overlayNames: string[] = [];
   const bindings: Record<string, string> = {};
+  const vars: Record<string, string> = {};
   const mcpServers: Record<string, import('./types.js').McpServerTypeConfig> = {};
   let manifestProject: string | undefined;
   let flat = false;
@@ -276,6 +277,11 @@ export function resolveCoworkerManifest(
       if (entry.bindings) {
         for (const [trait, skillName] of Object.entries(entry.bindings)) {
           bindings[trait] = skillName;
+        }
+      }
+      if (entry.vars) {
+        for (const [key, value] of Object.entries(entry.vars)) {
+          vars[key] = value; // leaf-wins: chain is base→leaf
         }
       }
       if (entry.mcpServers) {
@@ -322,6 +328,7 @@ export function resolveCoworkerManifest(
       skills: [],
       tools: [],
       bindings: {},
+      vars,
       customizations: [],
       mcpServers,
       flat: true,
@@ -589,6 +596,7 @@ export function resolveCoworkerManifest(
     skills: skillEntries,
     tools: [...tools].sort(),
     bindings: resolvedBindings,
+    vars,
     customizations,
     mcpServers,
     flat: false,

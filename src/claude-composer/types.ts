@@ -89,6 +89,17 @@ export interface CoworkerTypeEntry {
   // across the extends chain. Per-skill @version in workflow `uses:` overrides.
   skillSource?: string;
 
+  // Compose-time substitution values. A shared workflow/overlay body can write
+  // `{{vars.repo}}` and the composer replaces it with this map's value when
+  // rendering for THIS coworker — including inside fenced code blocks (unlike
+  // the runtime `{{target}}` placeholders, which render as `<target>`). Merged
+  // leaf-wins across the extends chain, so a project-common type declares
+  // `vars: { repo: shader-slang/slang, fixer: slang-fixer }` once and every
+  // subtype inherits it. Lets one base workflow serve multiple projects that
+  // differ only in hard-coded strings. A referenced-but-undeclared var is a
+  // compose-time error (caught by validate:templates).
+  vars?: Record<string, string>;
+
   // Trait bindings: abstract trait name → concrete skill name that provides it.
   // Leaf-wins across the type chain. Lets a type inherit a workflow that
   // declares `requires: [repo.pr]` without hard-coding which skill satisfies it.
@@ -230,6 +241,10 @@ export interface CoworkerManifest {
   // Trait layer.
   bindings: Record<string, string>;
   customizations: WorkflowCustomization[];
+
+  // Compose-time `{{vars.KEY}}` substitution values, merged leaf-wins across
+  // the type chain. See CoworkerTypeEntry.vars.
+  vars: Record<string, string>;
 
   // MCP servers from the type registry (merged across extends chain).
   mcpServers: Record<string, McpServerTypeConfig>;
