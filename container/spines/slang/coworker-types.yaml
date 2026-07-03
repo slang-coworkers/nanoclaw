@@ -2,6 +2,12 @@ slang-common:
   description: "Slang compiler spine — identity, ABI invariants, repo layout."
   project: slang
   extends: base-common
+  # Compose-time substitution values for shared workflow bodies (e.g. the base
+  # triage-issue workflow, which slang-triage-issue extends). See CoworkerTypeEntry.vars.
+  vars:
+    repo: shader-slang/slang
+    project: slang
+    fixer: slang-fixer
   skill-source: shader-slang/slang-skills@main
   identity: container/spines/slang/identity/compiler-engineer.md
   invariants:
