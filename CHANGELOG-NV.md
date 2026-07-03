@@ -6,11 +6,11 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 272 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 141 |
-| `nv-slang` | slang project spine, skills, workflows | 98 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 41 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 28 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 292 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 145 |
+| `nv-slang` | slang project spine, skills, workflows | 100 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 43 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 31 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
@@ -18,17 +18,26 @@ Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or 
 
 ## 📅 2026-07-03
 
-### nv-main (4 PRs)
+### nv-main (5 PRs)
 - **#777** `feat(composer): compose-time {{vars.KEY}} value substitution`
 - **#778** `feat(workflows): base triage-issue workflow (shared skeleton for project triagers)`
 - **#781** `style(composer): prettier-format the value-substitution tests`
 - **#782** `fix(onboard-project): generate {project}-plan/{project}-implement, not retired workflows`
+- **#789** `Sync nv-main with upstream/main (aecad864)`
 
-### nv-slang (1 PRs)
+### nv-dashboard (1 PRs)
+- **#786** `Sync nv-dashboard with upstream/main (aecad864)`
+
+### nv-slang (2 PRs)
 - **#779** `refactor(slang): slang-triage-issue extends base triage-issue (dedup)`
+- **#787** `Sync nv-slang with upstream/main (aecad864)`
 
-### nv-slangpy (1 PRs)
+### nv-slangpy (2 PRs)
 - **#780** `refactor(slangpy): slangpy-triage-issue extends base triage-issue (dedup)`
+- **#784** `Sync nv-slangpy with upstream/main (aecad864)`
+
+### nv-nanoclaw (1 PRs)
+- **#788** `Sync nv-nanoclaw with upstream/main (aecad864)`
 
 ## 📅 2026-06-30
 
