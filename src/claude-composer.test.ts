@@ -411,6 +411,46 @@ slang-triage:
       // Spine should be a small document — well under 3kB for this fixture.
       expect(out.length).toBeLessThan(3000);
     });
+
+    // Compose-time {{vars.KEY}} substitution — lets one shared workflow body
+    // serve multiple projects that differ only in hard-coded strings (e.g. the
+    // repo in a `gh api` block). Distinct from the runtime {{target}} tokens,
+    // which still render as <target>.
+    function setupVarsProject(opts: { declareRepo: boolean }): string {
+      const root = makeTempProject();
+      writeFile(path.join(root, 'spine/identity.md'), 'You are a triager.');
+      writeSkill(root, 'base-nanoclaw', { name: 'base-nanoclaw', description: 'Host tools.' });
+      // A SHARED workflow body that hard-codes {{vars.repo}} inside a fenced
+      // code block AND in prose, plus a runtime {{target}} placeholder.
+      writeSkill(
+        root,
+        'triage-workflow',
+        { name: 'triage-issue', type: 'workflow', description: 'Triage.', uses: { skills: [], workflows: [] } },
+        '## Steps\n\n1. **Post** {#post} — comment on the issue.\n\n   ```bash\n   gh api repos/{{vars.repo}}/issues/comments\n   ```\n\n   Triage {{target}} in {{vars.repo}}.\n',
+      );
+      writeTypes(root, 'spine-base', `base-common:\n  description: "base"\n  identity: spine/identity.md\n  skills:\n    - base-nanoclaw\n`);
+      const varsBlock = opts.declareRepo ? `\n  vars:\n    repo: "acme/widget"` : '';
+      writeTypes(
+        root,
+        'spine-proj',
+        `proj-triage:\n  project: proj\n  extends: base-common\n  description: "proj triage"${varsBlock}\n  workflows:\n    - triage-issue\n`,
+      );
+      return root;
+    }
+
+    it('substitutes {{vars.KEY}} with the type’s value, including inside code fences', () => {
+      const root = setupVarsProject({ declareRepo: true });
+      const out = composeCoworkerSpine({ projectRoot: root, coworkerType: 'proj-triage' });
+      expect(out).toContain('gh api repos/acme/widget/issues/comments'); // substituted INSIDE the fence
+      expect(out).toContain('in acme/widget.'); // substituted in prose
+      expect(out).not.toContain('{{vars.repo}}'); // no literal token leaks
+      expect(out).toContain('<target>'); // runtime placeholder still rendered, not substituted
+    });
+
+    it('throws when a workflow references an undeclared {{vars.KEY}}', () => {
+      const root = setupVarsProject({ declareRepo: false });
+      expect(() => composeCoworkerSpine({ projectRoot: root, coworkerType: 'proj-triage' })).toThrow(/vars\.repo/);
+    });
   });
 
   describe('flat mode (main body + additive fragments)', () => {

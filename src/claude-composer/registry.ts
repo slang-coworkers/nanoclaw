@@ -130,6 +130,7 @@ function mergeTypeEntries(base: CoworkerTypeEntry, addon: CoworkerTypeEntry, typ
     // from this base+addon merge for redeclarations of the same type.
     requiredCritiqueStages: [...(base.requiredCritiqueStages || []), ...(addon.requiredCritiqueStages || [])],
     bindings: { ...(base.bindings || {}), ...(addon.bindings || {}) },
+    vars: { ...(base.vars || {}), ...(addon.vars || {}) },
     mcpServers: { ...(base.mcpServers || {}), ...(addon.mcpServers || {}) },
   };
 }
