@@ -2,6 +2,12 @@ slangpy-common:
   description: "SlangPy spine — identity, repo layout."
   project: slangpy
   extends: base-common
+  # Compose-time substitution values for shared workflow bodies (e.g. the base
+  # triage-issue workflow, which slangpy-triage-issue extends). See CoworkerTypeEntry.vars.
+  vars:
+    repo: shader-slang/slangpy
+    project: slangpy
+    fixer: slangpy-fixer
   skill-source: shader-slang/slang-skills@main
   identity: container/spines/slangpy/identity/engineer.md
   invariants: []
