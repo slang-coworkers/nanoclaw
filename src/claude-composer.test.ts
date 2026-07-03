@@ -428,7 +428,11 @@ slang-triage:
         { name: 'triage-issue', type: 'workflow', description: 'Triage.', uses: { skills: [], workflows: [] } },
         '## Steps\n\n1. **Post** {#post} — comment on the issue.\n\n   ```bash\n   gh api repos/{{vars.repo}}/issues/comments\n   ```\n\n   Triage {{target}} in {{vars.repo}}.\n',
       );
-      writeTypes(root, 'spine-base', `base-common:\n  description: "base"\n  identity: spine/identity.md\n  skills:\n    - base-nanoclaw\n`);
+      writeTypes(
+        root,
+        'spine-base',
+        `base-common:\n  description: "base"\n  identity: spine/identity.md\n  skills:\n    - base-nanoclaw\n`,
+      );
       const varsBlock = opts.declareRepo ? `\n  vars:\n    repo: "acme/widget"` : '';
       writeTypes(
         root,
