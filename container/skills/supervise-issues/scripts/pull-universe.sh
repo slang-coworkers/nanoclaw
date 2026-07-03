@@ -14,6 +14,12 @@
 # Requires: ncl, gh, python3
 set -euo pipefail
 
+# Scratch dir for passing large JSON blobs between steps via files instead of
+# argv (argv overflows "Argument list too long" once the chain universe grows
+# past ~170 chains / ~0.5MB payloads).
+TMPD=$(mktemp -d)
+trap 'rm -rf "$TMPD"' EXIT
+
 STATE_FILE=""
 INCLUDE_CLOSED=false
 while [[ $# -gt 0 ]]; do
@@ -58,11 +64,17 @@ CHAIN_COUNT=$(echo "$THREADS" | python3 -c 'import json,sys; print(len(json.load
 echo "pull-universe: $CHAIN_COUNT chains to fetch" >&2
 
 # --- 3+4. Batch GraphQL: issue states + comments + PR discovery + PR details ---
-CHAINS_JSON=$(python3 -c '
-import json, sys, subprocess, re
+# Heredoc (quoted 'PY') so the inline Python is passed verbatim — NOT re-parsed
+# by bash. The previous `python3 -c '...'` form broke because Python single-
+# quoted subscripts like t['issue'] closed the bash single-quote early.
+# THREADS is passed via a file (argv-safe); INCLUDE_CLOSED via env.
+printf '%s' "$THREADS" > "$TMPD/threads.json"
+INCLUDE_CLOSED="$INCLUDE_CLOSED" python3 - "$TMPD/threads.json" <<'PY' > "$TMPD/chains.json"
+import json, sys, subprocess, re, os
 
-threads = json.loads(sys.argv[1])
-include_closed = sys.argv[2] == "true"
+with open(sys.argv[1]) as _f:
+    threads = json.load(_f)
+include_closed = os.environ["INCLUDE_CLOSED"] == "true"
 bot_logins = {"nv-slang-bot[bot]", "nv-slang-bot"}
 BATCH_SIZE = 50
 
@@ -388,7 +400,7 @@ for i, t in enumerate(threads):
 
 print(f"pull-universe: done — {total} chains, {skipped_closed} closed (skipped detail), {gh_calls} GH API calls total", file=sys.stderr)
 json.dump(chains, sys.stdout)
-' "$THREADS" "$INCLUDE_CLOSED")
+PY
 
 # --- 5. Assemble the full scan.py input ---
 STATE="{}"
@@ -396,15 +408,21 @@ if [[ -n "$STATE_FILE" && -f "$STATE_FILE" ]]; then
   STATE=$(cat "$STATE_FILE")
 fi
 
-python3 -c '
-import json, sys
-now, sessions_s, chains_s, state_s = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+# Read the big blobs from files (not argv) to avoid "Argument list too long".
+printf '%s' "$GH_SESSIONS" > "$TMPD/gh_sessions.json"
+printf '%s' "$STATE" > "$TMPD/state.json"
+
+NOW="$NOW" python3 - "$TMPD/gh_sessions.json" "$TMPD/chains.json" "$TMPD/state.json" <<'PY'
+import json, sys, os
+with open(sys.argv[1]) as f: sessions = json.load(f)
+with open(sys.argv[2]) as f: chains = json.load(f)
+with open(sys.argv[3]) as f: state = json.load(f)
 payload = {
-    "now": now,
-    "sessions": json.loads(sessions_s),
-    "chains": json.loads(chains_s),
-    "state": json.loads(state_s),
+    "now": os.environ["NOW"],
+    "sessions": sessions,
+    "chains": chains,
+    "state": state,
 }
 json.dump(payload, sys.stdout, indent=2)
 print()
-' "$NOW" "$GH_SESSIONS" "$CHAINS_JSON" "$STATE"
+PY
