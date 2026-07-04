@@ -1,10 +1,14 @@
 ---
 name: project_11919_remove_ox_optins_parked
-description: "slang#11919 remove explicit -OX opt-ins from slang-test tests — PARKED, hard-blocked on PR"
+description: "slang#11919 remove -OX opt-ins from slang-test — Phase 1 SHIPPED draft PR #11923; Phase 2 held pending maintainer scope signal"
 metadata: 
   node_type: memory
   type: project
   originSessionId: adec0fca-5d0e-4e58-9409-9de2afcda755
+---
+
+**UPDATE 2026-07-03:** #11805 MERGED 00:27:54Z → auto-resume gate task-1783029120180-i4oxwt fired once + self-cancelled (verified gone from list_tasks). Triager re-surveyed at post-merge HEAD 99c3b77bd: #11805 *added* 61 opt-in lines (0 removed), so redundant-`-O0` held at 118 while opt-sensitive `-O1/-O2/-O3` tail nearly tripled (~32→93 lines/65 files). **Phase 1 SHIPPED** as draft PR #11923 (nv-slang-bot, `fix/issue-11919 @ 36319f33cb`, base master, +121/−121 / 103 files, `Addresses #11919` NOT Closes, `pr: non-breaking`): dropped explicit `-O0` from 121 directives (112 bare, 8 `-Xslang -O0` pairs, 1 preserving `-g`); all `-O1/-O2/-O3` left for Phase 2. Verified 157/157 PASS on merged master (GPU present, `-vk` render forms ran) → output-neutral confirmed. codex PLAN/CODE/OUTPUT approve; Reviewer-A pipeline declined as disproportionate for directive-only mechanical change (I concur). Issue comment 4870747030 refreshed for the trail. **Phase 2 HELD** (~93 lines/65 files): 2b core is 56 output-pinned (44 freshly added by #11805) = mostly keep-with-doc not removal; recommend maintainer signal on how far to push "remove all" before fixer effort; 2a exec-test drops (37, minus `performance-profile.slang`) = safe optional P3. Next human action: maintainer review + ready-flip/merge of #11923 (operator-gated). Original parked-state context below.
+
 ---
 
 shader-slang/slang#11919 (bot-filed follow-up, @jkwak-work requested off PR #11805): remove ALL explicit `-O0..-O3` / `-Xslang -OX` / `-compile-arg -OX` opt-ins from `tests/**`, relying on slang-test's new `-O0` default.
