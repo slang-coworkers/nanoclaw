@@ -64,16 +64,19 @@ if [ -f "$REQUIRED_FILE" ] && jq -e 'length > 0' "$REQUIRED_FILE" >/dev/null 2>&
   if [ -n "$MISSING" ]; then
     DENIAL_REASON="missing critique stages: $MISSING"
   fi
-  # OUTPUT_REVIEW verdict gate: count>=1 is not enough — last verdict must be "approve".
-  # This prevents delivering with an un-reverified must-fix output.
-  # Backwards-compat: if critique_verdicts has no OUTPUT_REVIEW entry (old hook),
-  # we fall through (count-only). Only enforce when the verdict was actually recorded.
-  if [ -z "$DENIAL_REASON" ]; then
+  # OUTPUT_REVIEW verdict gate: count>=1 is not enough — last verdict must be
+  # "approve". This prevents delivering with an un-reverified must-fix output.
+  # Fails CLOSED when OUTPUT_REVIEW is required but no verdict was recorded:
+  # a missing verdict means the recorder couldn't parse one, and 33% of June
+  # stage-rounds had no recorded verdict — passing those count-only is exactly
+  # the leak the verdict gate exists to close. CRITIQUE_VERDICT_STRICT=0
+  # restores the legacy count-only fallthrough.
+  if [ -z "$DENIAL_REASON" ] && jq -e 'index("OUTPUT_REVIEW")' "$REQUIRED_FILE" >/dev/null 2>&1; then
     OUTPUT_VERDICT=$(echo "$VERDICTS" | jq -r '.OUTPUT_REVIEW // empty' 2>/dev/null || true)
     if [ -n "$OUTPUT_VERDICT" ] && [ "$OUTPUT_VERDICT" != "approve" ]; then
-      if jq -e 'index("OUTPUT_REVIEW")' "$REQUIRED_FILE" >/dev/null 2>&1; then
-        DENIAL_REASON="OUTPUT_REVIEW last verdict is \"$OUTPUT_VERDICT\" (must be \"approve\"). Re-run /codex-critique with STAGE: OUTPUT_REVIEW after fixing the issues"
-      fi
+      DENIAL_REASON="OUTPUT_REVIEW last verdict is \"$OUTPUT_VERDICT\" (must be \"approve\"). Re-run /codex-critique with STAGE: OUTPUT_REVIEW after fixing the issues"
+    elif [ -z "$OUTPUT_VERDICT" ] && [ "${CRITIQUE_VERDICT_STRICT:-1}" != "0" ]; then
+      DENIAL_REASON="OUTPUT_REVIEW ran but no verdict was recorded (missing or unparseable). Re-run /codex-critique with STAGE: OUTPUT_REVIEW and make sure codex returns a '### Verdict' section containing approve or must-fix"
     fi
   fi
 else

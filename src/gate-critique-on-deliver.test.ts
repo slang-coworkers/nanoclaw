@@ -254,7 +254,9 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     expect(result.status).toBe(0);
   });
 
-  it('falls through (count-only) when critique_verdicts has no OUTPUT_REVIEW entry', () => {
+  it('fails closed when OUTPUT_REVIEW is required but no verdict was recorded', () => {
+    // 33% of June stage-rounds had no recorded verdict; passing them
+    // count-only was exactly the leak the verdict gate exists to close.
     activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']);
     fs.writeFileSync(
       stateFile,
@@ -267,7 +269,45 @@ describe('OUTPUT_REVIEW verdict gate', () => {
       tool_name: 'mcp__nanoclaw__send_message',
       tool_input: { text: '[Fix Report] PR #123 ready' },
     });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('no verdict was recorded');
+  });
+
+  it('CRITIQUE_VERDICT_STRICT=0 restores the legacy count-only fallthrough', () => {
+    activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 3,
+        critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1, OUTPUT_REVIEW: 1 },
+      }),
+    );
+    const result = run(
+      {
+        tool_name: 'mcp__nanoclaw__send_message',
+        tool_input: { text: '[Fix Report] PR #123 ready' },
+      },
+      { CRITIQUE_VERDICT_STRICT: '0' },
+    );
     expect(result.status).toBe(0);
+  });
+
+  it('blocks delivery when OUTPUT_REVIEW verdict is unparseable', () => {
+    activateWithStages(['OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'unparseable' },
+      }),
+    );
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] PR #123 ready' },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('unparseable');
   });
 
   it('blocks gh pr create when OUTPUT_REVIEW verdict is must-fix', () => {
