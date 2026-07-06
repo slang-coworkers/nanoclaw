@@ -838,6 +838,35 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
     }
   });
 
+  it('blocks delivery when an attested artifact changed after the approve', () => {
+    const savedRoot = process.env.CRITIQUE_ATTEST_ROOT;
+    process.env.CRITIQUE_ATTEST_ROOT = tmp;
+    try {
+      const crypto = require('crypto') as typeof import('crypto');
+      const artifact = path.join(tmp, 'report.md');
+      fs.writeFileSync(artifact, 'reviewed content\n');
+      const goodHash = crypto.createHash('sha256').update(fs.readFileSync(artifact)).digest('hex');
+      fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+      fs.writeFileSync(
+        statePath,
+        JSON.stringify({
+          critique_rounds: 1,
+          critique_stages: { OUTPUT_REVIEW: 1 },
+          critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+          critique_attested: { OUTPUT_REVIEW: { [artifact]: goodHash } },
+        }),
+      );
+      expect(gate().blocked).toBe(false); // matching hash → ships
+      fs.appendFileSync(artifact, 'sneaky post-review edit\n');
+      const blocked = gate();
+      expect(blocked.blocked).toBe(true);
+      expect(blocked.reason).toContain('reviewed artifacts changed');
+    } finally {
+      if (savedRoot === undefined) delete process.env.CRITIQUE_ATTEST_ROOT;
+      else process.env.CRITIQUE_ATTEST_ROOT = savedRoot;
+    }
+  });
+
   it('CRITIQUE_VERDICT_STRICT=0 restores the count-only fallthrough', () => {
     process.env.CRITIQUE_VERDICT_STRICT = '0';
     fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));

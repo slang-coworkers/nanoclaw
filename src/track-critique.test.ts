@@ -356,6 +356,73 @@ describe('codex-reply verdicts update the mapped stage', () => {
   });
 });
 
+describe('reviewer-attested artifact hashes', () => {
+  const H1 = 'a'.repeat(64);
+  const H2 = 'b'.repeat(64);
+
+  it('records the Attested section as a path→hash map for the stage', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
+      tool_response: JSON.stringify({
+        threadId: 't-att',
+        content: `### Verdict\napprove\n\n### Must-fix\n- None.\n\n### Attested\n- ${H1} /workspace/agent/reports/fix.md\n- ${H2} /workspace/agent/src/main.ts\n`,
+      }),
+    });
+    const state = readState() as any;
+    expect(state.critique_attested?.OUTPUT_REVIEW).toEqual({
+      '/workspace/agent/reports/fix.md': H1,
+      '/workspace/agent/src/main.ts': H2,
+    });
+  });
+
+  it('records nothing for "- none" attestations', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
+      tool_response: JSON.stringify({
+        threadId: 't-att-none',
+        content: '### Verdict\napprove\n\n### Attested\n- none\n',
+      }),
+    });
+    expect((readState() as any).critique_attested).toBeUndefined();
+  });
+
+  it('a reply re-attests for its mapped stage', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
+      tool_response: JSON.stringify({
+        threadId: 't-att-re',
+        content: `### Verdict\nmust-fix\n- x\n\n### Attested\n- ${H1} /workspace/agent/a.md\n`,
+      }),
+    });
+    run({
+      tool_name: 'mcp__codex__codex-reply',
+      tool_input: { threadId: 't-att-re', prompt: 're-verify' },
+      tool_response: JSON.stringify({
+        threadId: 't-att-re',
+        content: `### Verdict\napprove\n\n### Attested\n- ${H2} /workspace/agent/a.md\n`,
+      }),
+    });
+    const state = readState() as any;
+    expect(state.critique_attested?.OUTPUT_REVIEW).toEqual({ '/workspace/agent/a.md': H2 });
+    expect(state.critique_verdicts?.OUTPUT_REVIEW).toBe('approve');
+  });
+});
+
 describe('reviewer-instruction pinning', () => {
   // The doer authors the reviewer's developer-instructions, so a puppet
   // prompt could mint a recorded stage round. STAGE calls only count when

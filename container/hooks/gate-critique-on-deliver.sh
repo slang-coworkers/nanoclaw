@@ -106,6 +106,37 @@ if [ -f "$REQUIRED_FILE" ] && jq -e 'length > 0' "$REQUIRED_FILE" >/dev/null 2>&
       DENIAL_REASON="$EDITS edit(s) recorded since the last critique round — the OUTPUT_REVIEW approve no longer covers the current state. Re-run /codex-critique with STAGE: OUTPUT_REVIEW"
     fi
   fi
+  # Attested-hash binding: the reviewer lists sha256 hashes of the artifacts
+  # it actually read ("### Attested" section, recorded by track-critique.sh).
+  # Re-hash them at delivery time — an approve whose reviewed artifacts have
+  # since changed does not ship. Precise complement to the blunt freshness
+  # counter: it also catches edit → other-stage critique (counter reset) →
+  # deliver-with-stale-approve. Opportunistic: no attestation → no check.
+  # CRITIQUE_ATTEST=0 disables; CRITIQUE_ATTEST_ROOT bounds which paths are
+  # verified (default /workspace).
+  if [ -z "$DENIAL_REASON" ] && [ "${CRITIQUE_ATTEST:-1}" != "0" ] \
+    && jq -e 'index("OUTPUT_REVIEW")' "$REQUIRED_FILE" >/dev/null 2>&1; then
+    ATT=$(jq -c '(.critique_attested // {}).OUTPUT_REVIEW // {}' "$STATE" 2>/dev/null || echo '{}')
+    if [ -n "$ATT" ] && [ "$ATT" != "{}" ] && [ "$ATT" != "null" ]; then
+      ATTEST_ROOT="${CRITIQUE_ATTEST_ROOT:-/workspace}"
+      CHANGED=""
+      while IFS=$'\t' read -r p h; do
+        [ -z "$p" ] && continue
+        case "$p" in "$ATTEST_ROOT"/*) ;; *) continue ;; esac
+        if [ -f "$p" ]; then
+          CUR=$(sha256sum "$p" 2>/dev/null | awk '{print $1}' || true)
+          [ "$CUR" = "$h" ] || CHANGED="$CHANGED $p"
+        else
+          CHANGED="$CHANGED $p(missing)"
+        fi
+      done <<EOF_ATT
+$(jq -r 'to_entries[:20][] | "\(.key)\t\(.value)"' <<< "$ATT" 2>/dev/null || true)
+EOF_ATT
+      if [ -n "$CHANGED" ]; then
+        DENIAL_REASON="reviewed artifacts changed since the OUTPUT_REVIEW approve:$CHANGED. Re-run /codex-critique with STAGE: OUTPUT_REVIEW"
+      fi
+    fi
+  fi
 else
   ROUNDS=$(jq -r '.critique_rounds // 0' "$STATE" 2>/dev/null || echo 0)
   if [ "$ROUNDS" -lt 1 ]; then

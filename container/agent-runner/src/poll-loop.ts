@@ -1017,6 +1017,7 @@ export function checkCritiqueGate(
     critique_gate_bypass_approved?: boolean;
     critique_gate_bypass_rejected?: boolean;
     edits_since_critique?: number;
+    critique_attested?: Record<string, Record<string, string>>;
   } = {};
   try {
     state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as typeof state;
@@ -1068,6 +1069,29 @@ export function checkCritiqueGate(
       const edits = typeof state.edits_since_critique === 'number' ? state.edits_since_critique : 0;
       if (edits > 0) {
         denialReason = `${edits} edit(s) recorded since the last critique round — the OUTPUT_REVIEW approve no longer covers the current state; re-run /codex-critique with STAGE: OUTPUT_REVIEW`;
+      }
+    }
+    // Attested-hash binding: re-hash the artifacts the reviewer attested to
+    // (### Attested → critique_attested, recorded by track-critique.sh) —
+    // an approve whose reviewed artifacts have since changed does not ship.
+    // Mirrors the bash hook; CRITIQUE_ATTEST=0 disables,
+    // CRITIQUE_ATTEST_ROOT bounds verified paths (default /workspace).
+    if (denialReason === '' && required.includes('OUTPUT_REVIEW') && process.env.CRITIQUE_ATTEST !== '0') {
+      const attested = (state.critique_attested ?? {})['OUTPUT_REVIEW'] ?? {};
+      const attestRoot = process.env.CRITIQUE_ATTEST_ROOT ?? '/workspace';
+      const changed: string[] = [];
+      for (const [artifactPath, hash] of Object.entries(attested).slice(0, 20)) {
+        if (!artifactPath.startsWith(`${attestRoot}/`)) continue;
+        try {
+          const crypto = require('crypto') as typeof import('crypto');
+          const digest = crypto.createHash('sha256').update(fs.readFileSync(artifactPath)).digest('hex');
+          if (digest !== hash) changed.push(artifactPath);
+        } catch {
+          changed.push(`${artifactPath}(missing)`);
+        }
+      }
+      if (changed.length > 0) {
+        denialReason = `reviewed artifacts changed since the OUTPUT_REVIEW approve: ${changed.join(', ')} — re-run /codex-critique with STAGE: OUTPUT_REVIEW`;
       }
     }
   } else {

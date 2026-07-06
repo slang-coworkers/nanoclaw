@@ -97,6 +97,30 @@ if [ -n "$CONTENT" ]; then
   esac
 fi
 
+# Reviewer-attested artifact hashes: the "### Attested" section lists
+# "- <sha256> <path>" lines for files the reviewer actually read. Recording
+# them lets the delivery gate re-hash at send time and refuse to ship an
+# approve whose reviewed artifacts have since changed — binding the verdict
+# to the exact content reviewed, not just to a timestamp.
+ATTESTED_JSON='{}'
+if [ -n "$CONTENT" ]; then
+  ATTESTED_LINES=$(awk '
+    in_att && /^###/ { exit }
+    in_att && /^[ \t]*-[ \t]+[a-f0-9]{64}[ \t]+/ {
+      line = $0
+      sub(/^[ \t]*-[ \t]+/, "", line)
+      print line
+    }
+    tolower($0) ~ /^###[ \t]*attested/ { in_att = 1 }
+  ' <<< "$CONTENT" 2>/dev/null | head -20 || true)
+  if [ -n "$ATTESTED_LINES" ]; then
+    ATTESTED_JSON=$(jq -Rn '
+      [inputs | capture("^(?<h>[a-f0-9]{64})[ \\t]+(?<p>.+)$") | {(.p): .h}] | add // {}
+    ' <<< "$ATTESTED_LINES" 2>/dev/null || echo '{}')
+  fi
+fi
+[ -n "$ATTESTED_JSON" ] || ATTESTED_JSON='{}'
+
 # Thread identity: the initial call's response carries the codex threadId;
 # codex-reply calls carry it in tool_input. Recording threadId → STAGE on the
 # initial call lets a reply's verdict update the SAME stage. The skill's
@@ -140,7 +164,7 @@ fi
 # the reset, 3 early denials opened the gate for the session's lifetime — a
 # later, completely unreviewed second deliverable sailed through.
 if [ -n "$STAGE" ]; then
-  jq --arg ts "$NOW" --arg s "$STAGE" --arg v "$VERDICT" --arg tid "$TID" '
+  jq --arg ts "$NOW" --arg s "$STAGE" --arg v "$VERDICT" --arg tid "$TID" --argjson att "$ATTESTED_JSON" '
     .critique_rounds = ((.critique_rounds // 0) + 1)
     | .critique_stages = (.critique_stages // {})
     | .critique_stages[$s] = ((.critique_stages[$s] // 0) + 1)
@@ -150,17 +174,19 @@ if [ -n "$STAGE" ]; then
     | .last_critique_at = $ts
     | if $v != "" then .critique_verdicts = (.critique_verdicts // {}) | .critique_verdicts[$s] = $v else . end
     | if $tid != "" then .critique_threads = ((.critique_threads // {}) + {($tid): $s}) else . end
+    | if ($att | length) > 0 then .critique_attested = ((.critique_attested // {}) + {($s): $att}) else . end
   ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
 elif [ -n "$REPLY_STAGE" ]; then
   # In-thread re-review: update the mapped stage's verdict. Don't double-count
   # the stage — completion was recorded by the initial call.
-  jq --arg ts "$NOW" --arg s "$REPLY_STAGE" --arg v "$VERDICT" '
+  jq --arg ts "$NOW" --arg s "$REPLY_STAGE" --arg v "$VERDICT" --argjson att "$ATTESTED_JSON" '
     .critique_rounds = ((.critique_rounds // 0) + 1)
     | .last_critique_stage = $s
     | .edits_since_critique = 0
     | .critique_gate_denials = 0
     | .last_critique_at = $ts
     | if $v != "" then .critique_verdicts = (.critique_verdicts // {}) | .critique_verdicts[$s] = $v else . end
+    | if ($att | length) > 0 then .critique_attested = ((.critique_attested // {}) + {($s): $att}) else . end
   ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
 else
   jq --arg ts "$NOW" --arg v "$VERDICT" '

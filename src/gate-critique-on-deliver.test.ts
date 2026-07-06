@@ -487,6 +487,60 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     expect(result.status).toBe(0);
   });
 
+  it('blocks delivery when an attested artifact changed after the approve', () => {
+    const crypto = require('crypto') as typeof import('crypto');
+    const artifact = path.join(tmpRoot, 'report.md');
+    fs.writeFileSync(artifact, 'reviewed content\n');
+    const goodHash = crypto.createHash('sha256').update(fs.readFileSync(artifact)).digest('hex');
+    activateWithStages(['OUTPUT_REVIEW']);
+    const state = {
+      critique_rounds: 1,
+      critique_stages: { OUTPUT_REVIEW: 1 },
+      critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+      critique_attested: { OUTPUT_REVIEW: { [artifact]: goodHash } },
+    };
+    fs.writeFileSync(stateFile, JSON.stringify(state));
+    // Matching hash → passes.
+    const ok = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { CRITIQUE_ATTEST_ROOT: tmpRoot },
+    );
+    expect(ok.status).toBe(0);
+    // Mutate the reviewed artifact → the stale approve must not ship.
+    fs.appendFileSync(artifact, 'sneaky post-review edit\n');
+    const blocked = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { CRITIQUE_ATTEST_ROOT: tmpRoot },
+    );
+    expect(blocked.status).toBe(2);
+    expect(blocked.stderr).toContain('reviewed artifacts changed');
+  });
+
+  it('attested paths outside the attest root are ignored; CRITIQUE_ATTEST=0 disables', () => {
+    activateWithStages(['OUTPUT_REVIEW']);
+    const state = {
+      critique_rounds: 1,
+      critique_stages: { OUTPUT_REVIEW: 1 },
+      critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+      critique_attested: { OUTPUT_REVIEW: { '/etc/passwd': 'f'.repeat(64), [path.join(tmpRoot, 'gone.md')]: 'e'.repeat(64) } },
+    };
+    fs.writeFileSync(stateFile, JSON.stringify(state));
+    // Outside-root path ignored; the in-root missing file still trips the check…
+    const blocked = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { CRITIQUE_ATTEST_ROOT: tmpRoot },
+    );
+    expect(blocked.status).toBe(2);
+    expect(blocked.stderr).toContain('missing');
+    expect(blocked.stderr).not.toContain('/etc/passwd');
+    // …and the kill switch bypasses it entirely.
+    const off = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { CRITIQUE_ATTEST_ROOT: tmpRoot, CRITIQUE_ATTEST: '0' },
+    );
+    expect(off.status).toBe(0);
+  });
+
   it('does not enforce verdict for stages other than OUTPUT_REVIEW', () => {
     activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW']);
     fs.writeFileSync(
