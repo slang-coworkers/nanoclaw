@@ -26,9 +26,13 @@ PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty' 2>/dev/null | head 
 if echo "$DEV_INST" | grep -q "You are Buddy" 2>/dev/null; then exit 0; fi
 if echo "$PROMPT"   | grep -qE "^BATCH [0-9]+ \(" 2>/dev/null; then exit 0; fi
 
-# Skip error / timeout responses
-RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty' 2>/dev/null | head -c 2000)
-if echo "$RESPONSE" | grep -qE '"error":|"is_error":\s*true|"timed[_ ]out"|^Error\b' 2>/dev/null; then exit 0; fi
+# Skip error / timeout responses. Sniff only a bounded prefix here — the
+# verdict parse below must see the FULL payload. (Truncating the whole
+# response to 2000 bytes before parsing cut long reviews mid-JSON and
+# silently dropped their verdicts: 45% of June must-fix verdicts were lost
+# that way, and a lost must-fix downgrades the delivery gate to count-only.)
+RESPONSE_HEAD=$(echo "$INPUT" | jq -r '.tool_response // empty' 2>/dev/null | head -c 2000 || true)
+if echo "$RESPONSE_HEAD" | grep -qE '"error":|"is_error":\s*true|"timed[_ ]out"|^Error\b' 2>/dev/null; then exit 0; fi
 
 STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
 mkdir -p "$(dirname "$STATE")"
@@ -49,9 +53,17 @@ STAGE=$(echo "$PROMPT" | grep -oE 'STAGE:[[:space:]]*[A-Z_]+' | head -1 | sed -E
 
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# Extract verdict from codex response content ("### Verdict\napprove" or "### Verdict\nmust-fix")
+# Extract verdict from codex response content ("### Verdict\napprove" or "### Verdict\nmust-fix").
+# In production tool_response arrives as a JSON-encoded string
+# ('{"threadId":…,"content":…}' serialized into one string); handle the
+# object shape and plain text too. Parsed from the full response — never
+# truncate before this parse (see RESPONSE_HEAD note above).
 VERDICT=""
-CONTENT=$(echo "$RESPONSE" | jq -r '.content // empty' 2>/dev/null || true)
+CONTENT=$(echo "$INPUT" | jq -r '
+  .tool_response as $r
+  | (if ($r | type) == "string" then ($r | (try fromjson catch {content: $r})) else ($r // {}) end)
+  | if type == "object" then (.content // empty) else empty end
+' 2>/dev/null || true)
 if [ -n "$CONTENT" ]; then
   VERDICT=$(echo "$CONTENT" | sed -n '/^### *Verdict/{n;p;}' 2>/dev/null | tr -d '[:space:]' | head -c 20 || true)
 fi

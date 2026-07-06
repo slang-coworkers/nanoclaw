@@ -198,6 +198,35 @@ describe('track-critique records verdicts', () => {
     expect(state.critique_verdicts?.CODE_REVIEW).toBe('must-fix');
   });
 
+  it('records verdict from a response larger than 2KB (regression: truncation dropped it)', () => {
+    // 45% of June must-fix verdicts were >2KB and got silently dropped by the
+    // old `head -c 2000` pre-parse truncation — must-fix reviews are the long
+    // ones, so the bias hit exactly the verdicts the gate exists to enforce.
+    const filler = Array.from({ length: 200 }, (_, i) => `- src/file${i}.ts:${i} — long review detail line`).join(
+      '\n',
+    );
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: JSON.stringify({
+        threadId: 't-long',
+        content: `### Verdict\nmust-fix\n\n### Must-fix (blocks merge)\n${filler}`,
+      }),
+    });
+    const state = readState() as any;
+    expect(state.critique_verdicts?.OUTPUT_REVIEW).toBe('must-fix');
+  });
+
+  it('records verdict when tool_response is an object rather than a JSON string', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: CODE_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: { threadId: 't-obj', content: '### Verdict\napprove\n\n### Must-fix\n- None.' },
+    });
+    const state = readState() as any;
+    expect(state.critique_verdicts?.CODE_REVIEW).toBe('approve');
+  });
+
   it('does not record verdict when response has no Verdict header', () => {
     run({
       tool_name: 'mcp__codex__codex',
