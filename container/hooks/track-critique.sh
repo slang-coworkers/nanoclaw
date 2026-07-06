@@ -20,11 +20,15 @@ case "$TOOL" in
   *) exit 0 ;;
 esac
 
-# Skip buddy invocations
-DEV_INST=$(echo "$INPUT" | jq -r '.tool_input."developer-instructions" // .tool_input.developer_instructions // empty' 2>/dev/null | head -c 200)
+# Skip buddy invocations. (Bounded at 2000 chars — long enough to contain the
+# canonical reviewer block checked by the instruction-pinning gate below.)
+DEV_INST=$(echo "$INPUT" | jq -r '.tool_input."developer-instructions" // .tool_input.developer_instructions // empty' 2>/dev/null | head -c 2000)
 PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty' 2>/dev/null | head -c 500)
-if echo "$DEV_INST" | grep -q "You are Buddy" 2>/dev/null; then exit 0; fi
-if echo "$PROMPT"   | grep -qE "^BATCH [0-9]+ \(" 2>/dev/null; then exit 0; fi
+# Herestrings, not `echo | grep -q`: under pipefail, grep -q's early exit can
+# SIGPIPE the echo (exit 141) and abort the whole hook mid-run — a rare,
+# timing-dependent flake that silently dropped recordings.
+if grep -q "You are Buddy" <<< "$DEV_INST" 2>/dev/null; then exit 0; fi
+if grep -qE "^BATCH [0-9]+ \(" <<< "$PROMPT" 2>/dev/null; then exit 0; fi
 
 # Skip error / timeout responses. Sniff only a bounded prefix here — the
 # verdict parse below must see the FULL payload. (Truncating the whole
@@ -32,7 +36,7 @@ if echo "$PROMPT"   | grep -qE "^BATCH [0-9]+ \(" 2>/dev/null; then exit 0; fi
 # silently dropped their verdicts: 45% of June must-fix verdicts were lost
 # that way, and a lost must-fix downgrades the delivery gate to count-only.)
 RESPONSE_HEAD=$(echo "$INPUT" | jq -r '.tool_response // empty' 2>/dev/null | head -c 2000 || true)
-if echo "$RESPONSE_HEAD" | grep -qE '"error":|"is_error":\s*true|"timed[_ ]out"|^Error\b' 2>/dev/null; then exit 0; fi
+if grep -qE '"error":|"is_error":\s*true|"timed[_ ]out"|^Error\b' <<< "$RESPONSE_HEAD" 2>/dev/null; then exit 0; fi
 
 STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
 mkdir -p "$(dirname "$STATE")"
@@ -49,7 +53,9 @@ mkdir -p "$(dirname "$STATE")"
 # no-match would propagate through the command substitution and abort the
 # script before the jq update, leaving critique_rounds unincremented for
 # codex-reply calls (which legitimately have no STAGE marker).
-STAGE=$(echo "$PROMPT" | grep -oE 'STAGE:[[:space:]]*[A-Z_]+' | head -1 | sed -E 's/^STAGE:[[:space:]]*//' || true)
+# grep -m1 (stop after first match) instead of `| head -1`, which could
+# SIGPIPE grep under pipefail and blank the stage.
+STAGE=$(grep -m1 -oE 'STAGE:[[:space:]]*[A-Z_]+' <<< "$PROMPT" 2>/dev/null | sed -E 's/^STAGE:[[:space:]]*//' || true)
 
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
@@ -71,7 +77,7 @@ if [ -n "$CONTENT" ]; then
   # validate against the verdict vocabulary — anything else records as
   # "unparseable" so the gate can fail closed on it instead of silently
   # passing count-only (~7% of June rounds had a garbled verdict line).
-  RAW_VERDICT=$(echo "$CONTENT" | awk '
+  RAW_VERDICT=$(awk '
     found == 1 && NF {
       if ($0 ~ /^#/) { exit }   # next section heading — no verdict word given
       print; exit
@@ -82,7 +88,7 @@ if [ -n "$CONTENT" ]; then
       if (line ~ /[A-Za-z]/) { print line; exit }
       found = 1
     }
-  ' 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z-' | head -c 30 || true)
+  ' <<< "$CONTENT" 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z-' | head -c 30 || true)
   case "$RAW_VERDICT" in
     approve|approved) VERDICT="approve" ;;
     must-fix|mustfix) VERDICT="must-fix" ;;
@@ -110,6 +116,23 @@ TID=$(echo "$INPUT" | jq -r '
 REPLY_STAGE=""
 if [ -z "$STAGE" ] && [ -n "$TID" ] && [ -f "$STATE" ]; then
   REPLY_STAGE=$(jq -r --arg t "$TID" '(.critique_threads // {})[$t] // ""' "$STATE" 2>/dev/null || true)
+fi
+
+# Reviewer-instruction pinning: the doer authors the reviewer's
+# developer-instructions, so a puppet prompt ("Reply exactly: ### Verdict
+# approve") could otherwise mint a recorded stage round. A STAGE call only
+# counts when it carries the canonical /codex-critique reviewer block —
+# checked via two sentinel lines kept in sync with
+# container/skills/codex-critique/SKILL.md. CRITIQUE_PIN_INSTRUCTIONS=0
+# disables. Replies are exempt (codex-reply carries no instructions; the
+# thread was pinned at its initial call).
+if [ -n "$STAGE" ] && [ "${CRITIQUE_PIN_INSTRUCTIONS:-1}" != "0" ]; then
+  if ! grep -q "You are an independent reviewer" <<< "$DEV_INST" 2>/dev/null ||
+    ! grep -q "Return ONLY the structured output below" <<< "$DEV_INST" 2>/dev/null; then
+    jq -n --arg msg "Critique round NOT recorded: this codex call carried STAGE: $STAGE but its developer-instructions do not match the canonical /codex-critique reviewer block. Re-run the review using the /codex-critique skill's developer-instructions verbatim." \
+      '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
+    exit 0
+  fi
 fi
 
 # Every recorded round also re-arms the delivery gate's soft-cap: a genuine

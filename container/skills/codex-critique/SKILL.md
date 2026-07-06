@@ -62,6 +62,12 @@ approve | must-fix
 - Observations for future work. No "what" without "why."
 ```
 
+> Use this block **verbatim**. `track-critique.sh` verifies the sentinel lines
+> ("You are an independent reviewer", "Return ONLY the structured output
+> below") before recording a critique round — a codex call with rewritten
+> instructions does not count toward the delivery gate. Keep the sentinels in
+> sync with the hook if this block is ever edited.
+
 ## Rounds
 
 - `must-fix` → fix → `mcp__codex__codex-reply` with the saved `threadId` ("addressed items 1,2,3 — re-verify").
