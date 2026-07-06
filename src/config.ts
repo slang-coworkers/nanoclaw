@@ -27,6 +27,11 @@ const envConfig = readEnvFile([
   'INTERNAL_REGISTER_SECRET',
   'INSTANCE_FORWARD_TARGETS',
   'ROUTE_ISSUES_TO',
+  'CONTAINER_CPU_LIMIT',
+  'CONTAINER_MEMORY_LIMIT',
+  'NANOCLAW_EGRESS_LOCKDOWN',
+  'NANOCLAW_EGRESS_NETWORK',
+  'ONECLI_GATEWAY_CONTAINER',
 ]);
 
 export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
@@ -63,7 +68,6 @@ export const CONTAINER_PREFIX = process.env.CONTAINER_PREFIX || envConfig.CONTAI
 export const INSTALL_SLUG = getInstallSlug(PROJECT_ROOT);
 export const CONTAINER_INSTALL_LABEL = `nanoclaw-install=${INSTALL_SLUG}`;
 export const CONTAINER_TIMEOUT = parseInt(process.env.CONTAINER_TIMEOUT || '1800000', 10);
-export const CONTAINER_MAX_OUTPUT_SIZE = parseInt(process.env.CONTAINER_MAX_OUTPUT_SIZE || '10485760', 10); // 10MB default
 export const ONECLI_URL = process.env.ONECLI_URL || envConfig.ONECLI_URL;
 export const ONECLI_API_KEY = process.env.ONECLI_API_KEY || envConfig.ONECLI_API_KEY;
 export const MAX_MESSAGES_PER_PROMPT = Math.max(1, parseInt(process.env.MAX_MESSAGES_PER_PROMPT || '10', 10) || 10);
@@ -131,25 +135,16 @@ export const MAX_CONCURRENT_CONTAINERS = Math.max(1, parseInt(process.env.MAX_CO
 // Per-container resource caps, passed through to `docker run`. Default empty =
 // no flag added = today's unbounded behavior (don't OOM existing OSS workloads).
 // Operators opt in: CONTAINER_CPU_LIMIT=2, CONTAINER_MEMORY_LIMIT=8g.
-export const CONTAINER_CPU_LIMIT = process.env.CONTAINER_CPU_LIMIT || '';
-export const CONTAINER_MEMORY_LIMIT = process.env.CONTAINER_MEMORY_LIMIT || '';
+export const CONTAINER_CPU_LIMIT = process.env.CONTAINER_CPU_LIMIT || envConfig.CONTAINER_CPU_LIMIT || '';
+export const CONTAINER_MEMORY_LIMIT = process.env.CONTAINER_MEMORY_LIMIT || envConfig.CONTAINER_MEMORY_LIMIT || '';
 
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-export function buildTriggerPattern(trigger: string): RegExp {
-  return new RegExp(`^${escapeRegex(trigger.trim())}\\b`, 'i');
-}
-
-export const DEFAULT_TRIGGER = `@${ASSISTANT_NAME}`;
-
-export function getTriggerPattern(trigger?: string): RegExp {
-  const normalizedTrigger = trigger?.trim();
-  return buildTriggerPattern(normalizedTrigger || DEFAULT_TRIGGER);
-}
-
-export const TRIGGER_PATTERN = buildTriggerPattern(DEFAULT_TRIGGER);
+// Egress lockdown — force all agent traffic through the OneCLI gateway on a
+// no-internet Docker network. Off by default; consumed by src/egress-lockdown.ts.
+export const EGRESS_LOCKDOWN = (process.env.NANOCLAW_EGRESS_LOCKDOWN || envConfig.NANOCLAW_EGRESS_LOCKDOWN) === 'true';
+export const EGRESS_NETWORK =
+  process.env.NANOCLAW_EGRESS_NETWORK || envConfig.NANOCLAW_EGRESS_NETWORK || 'nanoclaw-egress';
+export const ONECLI_GATEWAY_CONTAINER =
+  process.env.ONECLI_GATEWAY_CONTAINER || envConfig.ONECLI_GATEWAY_CONTAINER || 'onecli';
 
 // MCP proxy
 export const MCP_PROXY_PORT = parseInt(process.env.MCP_PROXY_PORT || envConfig.MCP_PROXY_PORT || '3100', 10);
