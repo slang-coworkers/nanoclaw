@@ -801,6 +801,43 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
     expect(r.reason).toContain('no verdict was recorded');
   });
 
+  it('blocks delivery when edits happened after the last critique (stale approve)', () => {
+    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+        edits_since_critique: 3,
+      }),
+    );
+    const r = gate();
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toContain('edit(s) recorded since the last critique');
+  });
+
+  it('CRITIQUE_FRESHNESS=0 disables the staleness check', () => {
+    const saved = process.env.CRITIQUE_FRESHNESS;
+    process.env.CRITIQUE_FRESHNESS = '0';
+    try {
+      fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+      fs.writeFileSync(
+        statePath,
+        JSON.stringify({
+          critique_rounds: 1,
+          critique_stages: { OUTPUT_REVIEW: 1 },
+          critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+          edits_since_critique: 3,
+        }),
+      );
+      expect(gate().blocked).toBe(false);
+    } finally {
+      if (saved === undefined) delete process.env.CRITIQUE_FRESHNESS;
+      else process.env.CRITIQUE_FRESHNESS = saved;
+    }
+  });
+
   it('CRITIQUE_VERDICT_STRICT=0 restores the count-only fallthrough', () => {
     process.env.CRITIQUE_VERDICT_STRICT = '0';
     fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));

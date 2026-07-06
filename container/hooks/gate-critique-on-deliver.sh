@@ -90,6 +90,19 @@ if [ -f "$REQUIRED_FILE" ] && jq -e 'length > 0' "$REQUIRED_FILE" >/dev/null 2>&
       DENIAL_REASON="OUTPUT_REVIEW ran but no verdict was recorded (missing or unparseable). Re-run /codex-critique with STAGE: OUTPUT_REVIEW and make sure codex returns a '### Verdict' section containing approve or must-fix"
     fi
   fi
+  # Freshness: the OUTPUT_REVIEW approve must postdate the last mutation.
+  # track-edits.sh bumps edits_since_critique on every substantive edit and
+  # track-critique.sh zeroes it on every recorded round — so a nonzero count
+  # here means the approve covers code that has since changed
+  # (approve-then-edit-then-ship). CRITIQUE_FRESHNESS=0 disables.
+  if [ -z "$DENIAL_REASON" ] && [ "${CRITIQUE_FRESHNESS:-1}" != "0" ] \
+    && jq -e 'index("OUTPUT_REVIEW")' "$REQUIRED_FILE" >/dev/null 2>&1; then
+    EDITS=$(jq -r '.edits_since_critique // 0' "$STATE" 2>/dev/null || echo 0)
+    case "$EDITS" in *[!0-9]*|'') EDITS=0 ;; esac
+    if [ "$EDITS" -gt 0 ]; then
+      DENIAL_REASON="$EDITS edit(s) recorded since the last critique round — the OUTPUT_REVIEW approve no longer covers the current state. Re-run /codex-critique with STAGE: OUTPUT_REVIEW"
+    fi
+  fi
 else
   ROUNDS=$(jq -r '.critique_rounds // 0' "$STATE" 2>/dev/null || echo 0)
   if [ "$ROUNDS" -lt 1 ]; then

@@ -1016,6 +1016,7 @@ export function checkCritiqueGate(
     critique_verdicts?: Record<string, string>;
     critique_gate_bypass_approved?: boolean;
     critique_gate_bypass_rejected?: boolean;
+    edits_since_critique?: number;
   } = {};
   try {
     state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as typeof state;
@@ -1056,6 +1057,17 @@ export function checkCritiqueGate(
       } else if (verdict === '' && process.env.CRITIQUE_VERDICT_STRICT !== '0') {
         denialReason =
           'OUTPUT_REVIEW ran but no verdict was recorded (missing or unparseable) — re-run /codex-critique with STAGE: OUTPUT_REVIEW';
+      }
+    }
+    // Freshness: the OUTPUT_REVIEW approve must postdate the last mutation.
+    // track-edits.sh bumps edits_since_critique on every substantive edit and
+    // track-critique.sh zeroes it on every recorded round — a nonzero count
+    // means the approve covers code that has since changed. Mirrors the bash
+    // hook; CRITIQUE_FRESHNESS=0 disables.
+    if (denialReason === '' && required.includes('OUTPUT_REVIEW') && process.env.CRITIQUE_FRESHNESS !== '0') {
+      const edits = typeof state.edits_since_critique === 'number' ? state.edits_since_critique : 0;
+      if (edits > 0) {
+        denialReason = `${edits} edit(s) recorded since the last critique round — the OUTPUT_REVIEW approve no longer covers the current state; re-run /codex-critique with STAGE: OUTPUT_REVIEW`;
       }
     }
   } else {

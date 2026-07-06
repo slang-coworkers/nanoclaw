@@ -447,6 +447,46 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     expect(result.stderr).toContain('OUTPUT_REVIEW');
   });
 
+  it('blocks delivery when edits happened after the last critique (stale approve)', () => {
+    activateWithStages(['OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+        edits_since_critique: 2,
+      }),
+    );
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] PR #123 ready' },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('edit(s) recorded since the last critique');
+  });
+
+  it('CRITIQUE_FRESHNESS=0 disables the staleness check', () => {
+    activateWithStages(['OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+        edits_since_critique: 2,
+      }),
+    );
+    const result = run(
+      {
+        tool_name: 'mcp__nanoclaw__send_message',
+        tool_input: { text: '[Fix Report] PR #123 ready' },
+      },
+      { CRITIQUE_FRESHNESS: '0' },
+    );
+    expect(result.status).toBe(0);
+  });
+
   it('does not enforce verdict for stages other than OUTPUT_REVIEW', () => {
     activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW']);
     fs.writeFileSync(
