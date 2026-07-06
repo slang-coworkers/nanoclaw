@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-132 learnings. [Catalog](../index.md)
+136 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [A fixer's hold-ack doesn't guarantee it stopped — verify branch/worktree state](../learnings/1781366452370-a-fixer-s-hold-ack-doesn-t-guarantee-it-stopped-ve.md)
@@ -73,6 +73,7 @@ type: topic
 - [Forks launched before a stand-down keep running on stale context](../learnings/1781366516939-forks-launched-before-a-stand-down-keep-running-on.md)
 - [Gate event-waiting scheduled tasks with a pre-agent wakeAgent script](../learnings/1781193788875-gate-event-waiting-scheduled-tasks-with-a-pre-agen.md)
 - [Gate refusals now go to sender not peer (PR](../learnings/legoop-project_gate_refusal_sender_only.md)
+- [Gated GitHub set is ONLY gh pr ready + merge — comments/labels/replies/reactions post freely](../learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md)
 - [Gated GitHub write needs a TRACEABLE operator source, not a bare parent relay](../learnings/1781523727513-gated-github-write-needs-a-traceable-operator-sour.md)
 - [GitHub GraphQL / ProjectsV2 access needs a per-project grant (often unavailable to the bot)](../learnings/legoop-project_graphql_path_routing.md)
 - [Hold interim triage classification 5-bullet until terminal; author-facing scoping questions are fine to post](../learnings/1781116432142-hold-interim-triage-classification-5-bullet-until-.md)
@@ -100,6 +101,7 @@ type: topic
 - [Recall/research fan-out must use Explore subagent, never a bare Agent() fork](../learnings/1782215264522-recall-research-fan-out-must-use-explore-subagent-.md)
 - [Recall/research fan-out must use Explore, never a bare Agent() fork](../learnings/1782215337634-recall-research-fan-out-must-use-explore-never-a-b.md)
 - [Recall/scan forks can phantom-overstep into worktree inspection, faking a peer-collision](../learnings/1782223714002-recall-scan-forks-can-phantom-overstep-into-worktr.md)
+- [Recall/scan step: use an isolated subagent_type, never a bare context-inheriting fork](../learnings/1783301166520-recall-scan-step-use-an-isolated-subagent-type-nev.md)
 - [Release-asset asymmetry from moving a CI leg into a no-sudo container (verify exact failing command, not disk/transient)](../learnings/1782845136368-release-asset-asymmetry-from-moving-a-ci-leg-into-.md)
 - [report_pr_created binds the CALLING session — open the PR from the fix thread, not a chat](../learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md)
 - [report_pr_created remaps the PR to the CALLING session](../learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md)
@@ -118,6 +120,7 @@ type: topic
 - [Strict reply-routing in 4-tier issue chain — replies hop back along the dispatch path, never bypass to the orchestrator](../learnings/legoop-feedback_chain_shape_strict.md)
 - [SUPERSEDED: "skip GitHub post on dev-authored design placeholder" — post a deferential triage artifact anyway](../learnings/1781137483321-superseded-skip-github-post-on-dev-authored-design.md)
 - [supervise-issues pull-universe.sh argv-overflow at ~170+ chains](../learnings/1782867269290-supervise-issues-pull-universe-sh-argv-overflow-at.md)
+- [supervise-issues pull-universe.sh bash-quoting bug](../learnings/1782995331984-supervise-issues-pull-universe-sh-bash-quoting-bug.md)
 - [supervisor artifact-enforcement nudge yields to the operator comment-gate (no-PR blocked chains)](../learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md)
 - [Triage + GitHub artifact: fixed-via-PR exception resolves the "don't post interim verdict" vs "artifact MUST land" tension](../learnings/1780769170857-triage-github-artifact-fixed-via-pr-exception-reso.md)
 - [Triage routing: deferring a fix to the maintainer flips triage into closest-to-the-state (triage posts)](../learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md)
@@ -129,6 +132,7 @@ type: topic
 - [Use Explore subagent (not a bare fork) for the learnings-scan step](../learnings/1782329772659-use-explore-subagent-not-a-bare-fork-for-the-learn.md)
 - [Verified GitHub comments/labels are NOT operator-gated — only pr-ready/merge/auto-close are](../learnings/1782894060592-verified-github-comments-labels-are-not-operator-g.md)
 - [Verify a PR's live state before rolling a fixer's PR-state claim upstream — maintainer-side actions go stale fast](../learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md)
+- [Verify a triage's predicate premise at HEAD (revert-drill) before fixing on top of it — #11889 HitObject NVAPI premise was empirically false](../learnings/1782991917563-verify-a-triage-s-predicate-premise-at-head-revert.md)
 - [Verify against source before trusting single-point triage OR contradictory reviewer invariants](../learnings/1782935715651-verify-against-source-before-trusting-single-point.md)
 - [Verify Discovery and Resolution Separately in Parser-Ambiguity Triage](../learnings/1780064743810-verify-discovery-and-resolution-separately-in-pars.md)
 - [Verify maintainer attributions in triage handoffs against gh PR data](../learnings/1780073122582-verify-maintainer-attributions-in-triage-handoffs-.md)

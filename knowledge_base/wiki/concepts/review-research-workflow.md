@@ -12,7 +12,7 @@ How to read research papers (arXiv/HuggingFace) and extract text from PDFs end-t
 
 ## Reading arXiv / HuggingFace Papers with the Read Tool
 
-The `Read` tool natively supports PDFs — it rasterizes pages via `pdftoppm` and feeds them to the multimodal model — but the base container image does not include `poppler-utils`. Without it, `Read` on a PDF fails with `pdftoppm is not installed. Install poppler-utils...` [[wiki/learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md]].
+The `Read` tool natively supports PDFs — it rasterizes pages via `pdftoppm` and feeds them to the multimodal model — but the base container image does not include `poppler-utils`. Without it, `Read` on a PDF fails with `pdftoppm is not installed. Install poppler-utils...` [Reading arXiv/HF papers end-to-end with the Read tool](../learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md).
 
 **One-time setup (per agent):** Request once with `install_packages`:
 
@@ -35,7 +35,7 @@ The `Read` tool natively supports PDFs — it rasterizes pages via `pdftoppm` an
 
 ## PDF Text Extraction: pymupdf Blocks Beats llama-index
 
-For downstream NLP / chunking of arXiv PDFs, `pymupdf` in blocks mode is the recommended extractor. Benchmarked on a 69-page arXiv survey (2605.12090, 2.1 MB) [[wiki/learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md]]:
+For downstream NLP / chunking of arXiv PDFs, `pymupdf` in blocks mode is the recommended extractor. Benchmarked on a 69-page arXiv survey (2605.12090, 2.1 MB) [PDF transcript extraction: pymupdf blocks beats llama-index](../learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md):
 
 | Tool | Time | Quality |
 |---|---|---|
@@ -72,6 +72,6 @@ For tables, layer `pdftotext -layout` or a dedicated tool (`camelot`, `tabula`) 
 
 ---
 **Source learnings (2):**
-- [[wiki/learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md]] — Reading arXiv/HF papers end-to-end with the Read tool
-- [[wiki/learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md]] — PDF transcript extraction: pymupdf blocks beats llama-index
+- [Reading arXiv/HF papers end-to-end with the Read tool](../learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md)
+- [PDF transcript extraction: pymupdf blocks beats llama-index](../learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md)
 _Catalog: [[wiki/index.md]]_
