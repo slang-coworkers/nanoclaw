@@ -703,6 +703,121 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
   );
 });
 
+describe('checkCritiqueGate — required stages + verdict parity with the bash hook', () => {
+  // Before this parity the text-output path enforced only critique_rounds>=1,
+  // so a must-fix OUTPUT_REVIEW could ship via plain <message> emission while
+  // the tool path (gate-critique-on-deliver.sh) denied it.
+  let tmp: string;
+  let markerPath: string;
+  let statePath: string;
+  let requiredPath: string;
+  let savedStrict: string | undefined;
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'critique-parity-test-'));
+    markerPath = path.join(tmp, '.overlay-critique-gate');
+    statePath = path.join(tmp, 'workflow-state.json');
+    requiredPath = path.join(tmp, '.critique-required-stages');
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    savedStrict = process.env.CRITIQUE_VERDICT_STRICT;
+    delete process.env.CRITIQUE_VERDICT_STRICT;
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    if (savedStrict === undefined) delete process.env.CRITIQUE_VERDICT_STRICT;
+    else process.env.CRITIQUE_VERDICT_STRICT = savedStrict;
+  });
+
+  function gate(body = '[Fix Report] done') {
+    return checkCritiqueGate(body, { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+  }
+
+  it('denies when a required stage has not run (rounds alone are not enough)', () => {
+    fs.writeFileSync(requiredPath, JSON.stringify(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']));
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify({ critique_rounds: 2, critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1 } }),
+    );
+    const r = gate();
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toContain('OUTPUT_REVIEW');
+    expect(r.reason).toContain('missing');
+  });
+
+  it('denies when OUTPUT_REVIEW last verdict is must-fix', () => {
+    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
+      }),
+    );
+    const r = gate();
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toContain('must-fix');
+  });
+
+  it('passes when all stages ran and OUTPUT_REVIEW verdict is approve', () => {
+    fs.writeFileSync(requiredPath, JSON.stringify(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']));
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify({
+        critique_rounds: 3,
+        critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1, OUTPUT_REVIEW: 1 },
+        critique_verdicts: { PLAN_REVIEW: 'approve', CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' },
+      }),
+    );
+    expect(gate().blocked).toBe(false);
+  });
+
+  it('fails closed when OUTPUT_REVIEW is required but no verdict was recorded', () => {
+    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1, critique_stages: { OUTPUT_REVIEW: 1 } }));
+    const r = gate();
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toContain('no verdict was recorded');
+  });
+
+  it('CRITIQUE_VERDICT_STRICT=0 restores the count-only fallthrough', () => {
+    process.env.CRITIQUE_VERDICT_STRICT = '0';
+    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1, critique_stages: { OUTPUT_REVIEW: 1 } }));
+    expect(gate().blocked).toBe(false);
+  });
+
+  it('keeps the legacy any-1-round check when no required-stages file exists', () => {
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
+    expect(gate().blocked).toBe(false);
+  });
+
+  it('empty required-stages list falls back to the legacy round check', () => {
+    fs.writeFileSync(requiredPath, JSON.stringify([]));
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    const r = gate();
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toContain('critique_rounds=0');
+  });
+
+  it('soft-cap still yields after 3 denials on stage-based refusals', () => {
+    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
+      }),
+    );
+    expect(gate().blocked).toBe(true);
+    expect(gate().blocked).toBe(true);
+    expect(gate().blocked).toBe(true);
+    expect(gate().blocked).toBe(false); // 4th attempt yields (cap)
+  });
+});
+
 
 describe('dispatchResultText — chain-routing check (always on, not an overlay)', () => {
   let tmp: string;

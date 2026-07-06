@@ -993,9 +993,10 @@ export function checkRoutingGate(
 
 export function checkCritiqueGate(
   body: string,
-  opts: { overlayMarkerPath?: string; workflowStatePath?: string } = {},
+  opts: { overlayMarkerPath?: string; workflowStatePath?: string; requiredStagesPath?: string } = {},
 ): { blocked: boolean; reason?: string } {
   const fs = require('fs') as typeof import('fs');
+  const path = require('path') as typeof import('path');
   // Path resolution mirrors the bash hook's two-stage override (env var
   // wins over default), with an opts-arg layer on top for unit tests.
   const markerPath =
@@ -1004,16 +1005,62 @@ export function checkCritiqueGate(
   if (!DELIVERY_MARKER_RE.test(body)) return { blocked: false };
   const statePath =
     opts.workflowStatePath ?? process.env.CRITIQUE_GATE_STATE_PATH ?? '/workspace/.claude/workflow-state.json';
-  let rounds = 0;
+
+  let state: {
+    critique_rounds?: number;
+    critique_stages?: Record<string, number>;
+    critique_verdicts?: Record<string, string>;
+  } = {};
   try {
-    const raw = fs.readFileSync(statePath, 'utf-8');
-    const parsed = JSON.parse(raw) as { critique_rounds?: number };
-    rounds = typeof parsed.critique_rounds === 'number' ? parsed.critique_rounds : 0;
+    state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as typeof state;
   } catch {
-    rounds = 0;
+    state = {};
   }
-  if (rounds >= 1) return { blocked: false };
-  // Soft-cap parity with gate-critique-on-deliver.sh:73-89 — the bash hook
+
+  // Required-stages + verdict enforcement — full parity with
+  // gate-critique-on-deliver.sh. The composer materializes
+  // .critique-required-stages next to the overlay marker; when present (and
+  // non-empty) the gate requires every listed stage recorded AND, when
+  // OUTPUT_REVIEW is required, its last verdict to be "approve" — failing
+  // closed on a missing verdict unless CRITIQUE_VERDICT_STRICT=0. Without
+  // the file, the historical any-1-round check applies. Before this parity
+  // the text-output path (the most common delivery path) enforced only the
+  // count check, so a must-fix OUTPUT_REVIEW could ship via plain
+  // <message> emission while the tool path denied it.
+  const requiredPath = opts.requiredStagesPath ?? path.join(path.dirname(markerPath), '.critique-required-stages');
+  let required: string[] = [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(requiredPath, 'utf-8')) as unknown;
+    if (Array.isArray(parsed)) required = parsed.filter((s): s is string => typeof s === 'string');
+  } catch {
+    required = [];
+  }
+
+  let denialReason = '';
+  if (required.length > 0) {
+    const stages = state.critique_stages ?? {};
+    const verdicts = state.critique_verdicts ?? {};
+    const missing = required.filter((s) => (stages[s] ?? 0) < 1);
+    if (missing.length > 0) {
+      denialReason = `required critique stages are missing: ${missing.join(', ')}`;
+    } else if (required.includes('OUTPUT_REVIEW')) {
+      const verdict = verdicts['OUTPUT_REVIEW'] ?? '';
+      if (verdict !== '' && verdict !== 'approve') {
+        denialReason = `OUTPUT_REVIEW last verdict is "${verdict}" (must be "approve") — re-run /codex-critique with STAGE: OUTPUT_REVIEW after fixing the issues`;
+      } else if (verdict === '' && process.env.CRITIQUE_VERDICT_STRICT !== '0') {
+        denialReason =
+          'OUTPUT_REVIEW ran but no verdict was recorded (missing or unparseable) — re-run /codex-critique with STAGE: OUTPUT_REVIEW';
+      }
+    }
+  } else {
+    const rounds = typeof state.critique_rounds === 'number' ? state.critique_rounds : 0;
+    if (rounds < 1) {
+      denialReason = `no /codex-critique round has been recorded for this session (critique_rounds=${rounds})`;
+    }
+  }
+  if (denialReason === '') return { blocked: false };
+
+  // Soft-cap parity with gate-critique-on-deliver.sh — the bash hook
   // (send_message/Bash tool path) caps denials but this text-output path
   // previously refused indefinitely, so an agent that couldn't run critique
   // (e.g. an orchestrator with no codex wired) thrashed forever.
@@ -1024,7 +1071,7 @@ export function checkCritiqueGate(
   return {
     blocked: true,
     reason:
-      `[critique-gate] REFUSED — your message contained a [${marker}] marker but no /codex-critique round has been recorded for this session (critique_rounds=${rounds}). ` +
+      `[critique-gate] REFUSED — your message contained a [${marker}] marker but ${denialReason}. ` +
       `Run /codex-critique on the work first, then resend. The original delivery body was retained in the container scratchpad log only — it was not delivered to the destination.`,
   };
 }
