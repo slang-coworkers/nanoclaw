@@ -39,7 +39,10 @@ case "$TOOL" in
     # line prefixes). Unanchored matching burned a denial — and one of the
     # session's 3 soft-cap strikes — every time an agent merely MENTIONED a
     # marker mid-sentence in a status update.
-    if echo "$TEXT" | grep -qE '^[[:space:]]*\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]'; then
+    # Herestring, not `echo | grep -q`: under pipefail grep's early exit can
+    # SIGPIPE the echo and abort the hook — a rare flake that here would mean
+    # a silent gate bypass.
+    if grep -qE '^[[:space:]]*\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]' <<< "$TEXT"; then
       HIT="delivery/handoff message"
     fi
     ;;
@@ -49,7 +52,7 @@ case "$TOOL" in
     # mutation name. Pattern enumeration can never be complete — the durable
     # backstop is credential-layer enforcement at the OneCLI proxy — but
     # these cover every egress shape observed in production.
-    if echo "$TEXT" | grep -qE '(gh pr create|gh api [^|]*pulls\b|api\.github\.com[^ ]*/pulls\b|createPullRequest)'; then
+    if grep -qE '(gh pr create|gh api [^|]*pulls\b|api\.github\.com[^ ]*/pulls\b|createPullRequest)' <<< "$TEXT"; then
       HIT="PR creation"
     fi
     ;;
@@ -83,7 +86,7 @@ if [ -f "$REQUIRED_FILE" ] && jq -e 'length > 0' "$REQUIRED_FILE" >/dev/null 2>&
   # the leak the verdict gate exists to close. CRITIQUE_VERDICT_STRICT=0
   # restores the legacy count-only fallthrough.
   if [ -z "$DENIAL_REASON" ] && jq -e 'index("OUTPUT_REVIEW")' "$REQUIRED_FILE" >/dev/null 2>&1; then
-    OUTPUT_VERDICT=$(echo "$VERDICTS" | jq -r '.OUTPUT_REVIEW // empty' 2>/dev/null || true)
+    OUTPUT_VERDICT=$(jq -r '.OUTPUT_REVIEW // empty' <<< "$VERDICTS" 2>/dev/null || true)
     if [ -n "$OUTPUT_VERDICT" ] && [ "$OUTPUT_VERDICT" != "approve" ]; then
       DENIAL_REASON="OUTPUT_REVIEW last verdict is \"$OUTPUT_VERDICT\" (must be \"approve\"). Re-run /codex-critique with STAGE: OUTPUT_REVIEW after fixing the issues"
     elif [ -z "$OUTPUT_VERDICT" ] && [ "${CRITIQUE_VERDICT_STRICT:-1}" != "0" ]; then
