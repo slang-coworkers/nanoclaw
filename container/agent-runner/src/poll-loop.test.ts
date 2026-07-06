@@ -661,6 +661,28 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
     expect(r.blocked).toBe(false);
   });
 
+  it('CRITIQUE_GATE_ACTIVE env gates without a marker file (default path mode)', () => {
+    const saved = process.env.CRITIQUE_GATE_ACTIVE;
+    const savedOverlay = process.env.CRITIQUE_GATE_OVERLAY_PATH;
+    const savedState = process.env.CRITIQUE_GATE_STATE_PATH;
+    process.env.CRITIQUE_GATE_ACTIVE = '1';
+    // Point defaults at a nonexistent marker + empty state so only env drives it.
+    process.env.CRITIQUE_GATE_OVERLAY_PATH = path.join(tmp, 'nonexistent-marker');
+    process.env.CRITIQUE_GATE_STATE_PATH = path.join(tmp, 'nostate.json');
+    try {
+      // No opts → env-authoritative activation path.
+      const r = checkCritiqueGate('[Fix Report] x');
+      expect(r.blocked).toBe(true);
+    } finally {
+      if (saved === undefined) delete process.env.CRITIQUE_GATE_ACTIVE;
+      else process.env.CRITIQUE_GATE_ACTIVE = saved;
+      if (savedOverlay === undefined) delete process.env.CRITIQUE_GATE_OVERLAY_PATH;
+      else process.env.CRITIQUE_GATE_OVERLAY_PATH = savedOverlay;
+      if (savedState === undefined) delete process.env.CRITIQUE_GATE_STATE_PATH;
+      else process.env.CRITIQUE_GATE_STATE_PATH = savedState;
+    }
+  });
+
   it('marker present + no delivery marker in body → not blocked', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     const r = checkCritiqueGate('Just a chat response, no delivery marker.', {

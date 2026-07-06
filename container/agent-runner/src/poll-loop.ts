@@ -1035,7 +1035,15 @@ export function checkCritiqueGate(
   // wins over default), with an opts-arg layer on top for unit tests.
   const markerPath =
     opts.overlayMarkerPath ?? process.env.CRITIQUE_GATE_OVERLAY_PATH ?? '/workspace/agent/.overlay-critique-gate';
-  if (!fs.existsSync(markerPath)) return { blocked: false };
+  // Activation precedence: the host-injected CRITIQUE_GATE_ACTIVE env var is
+  // authoritative when set (the agent can't `rm` its way out — a child can't
+  // mutate the harness's inherited env). The marker file is the fallback for
+  // local mode / tests. opts.overlayMarkerPath (tests) forces file mode.
+  if (opts.overlayMarkerPath === undefined && process.env.CRITIQUE_GATE_ACTIVE !== undefined) {
+    if (process.env.CRITIQUE_GATE_ACTIVE !== '1') return { blocked: false };
+  } else if (!fs.existsSync(markerPath)) {
+    return { blocked: false };
+  }
   const markerRe = deliveryMarkerRe(
     opts.deliveryMarkersPath ?? path.join(path.dirname(markerPath), '.critique-delivery-markers'),
   );
@@ -1068,10 +1076,16 @@ export function checkCritiqueGate(
   // the text-output path (the most common delivery path) enforced only the
   // count check, so a must-fix OUTPUT_REVIEW could ship via plain
   // <message> emission while the tool path denied it.
+  // Required stages: env wins over file (same tamper-resistance as activation);
+  // opts.requiredStagesPath (tests) forces file mode.
   const requiredPath = opts.requiredStagesPath ?? path.join(path.dirname(markerPath), '.critique-required-stages');
   let required: string[] = [];
   try {
-    const parsed = JSON.parse(fs.readFileSync(requiredPath, 'utf-8')) as unknown;
+    const raw =
+      opts.requiredStagesPath === undefined && process.env.CRITIQUE_REQUIRED_STAGES !== undefined
+        ? process.env.CRITIQUE_REQUIRED_STAGES
+        : fs.readFileSync(requiredPath, 'utf-8');
+    const parsed = JSON.parse(raw) as unknown;
     if (Array.isArray(parsed)) required = parsed.filter((s): s is string => typeof s === 'string');
   } catch {
     required = [];

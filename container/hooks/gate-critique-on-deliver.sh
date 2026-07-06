@@ -26,7 +26,15 @@ set -euo pipefail
 # Opt-in gate — overlay-marker check (Model A symmetric opt-in).
 # Path is overridable for testing; container default is /workspace/agent/.
 OVERLAY_DIR="${OVERLAY_MARKER_DIR:-/workspace/agent}"
-[ -f "$OVERLAY_DIR/.overlay-critique-gate" ] || exit 0
+# Activation precedence: the host-injected CRITIQUE_GATE_ACTIVE env var is
+# authoritative when set (the agent can't `rm .overlay-critique-gate` to
+# escape it — a child process can't mutate the harness's inherited env). The
+# file check is the fallback for local mode / tests where env isn't injected.
+if [ -n "${CRITIQUE_GATE_ACTIVE:-}" ]; then
+  [ "$CRITIQUE_GATE_ACTIVE" = "1" ] || exit 0
+else
+  [ -f "$OVERLAY_DIR/.overlay-critique-gate" ] || exit 0
+fi
 
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // ""')
@@ -81,7 +89,17 @@ STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
 # materialized by the composer from the matched overlays' frontmatter).
 # Without that file, fall back to the historical "any 1 critique round" check
 # so coworkers using the bare critique-gate overlay keep working unchanged.
+#
+# Source precedence, mirroring activation: the host-injected
+# CRITIQUE_REQUIRED_STAGES env var wins when set (agent can't rewrite it to
+# weaken the gate); the file is the fallback. We materialize the env JSON to a
+# temp file so the existing jq-on-file logic below is unchanged.
 REQUIRED_FILE="$OVERLAY_DIR/.critique-required-stages"
+if [ -n "${CRITIQUE_REQUIRED_STAGES:-}" ]; then
+  REQUIRED_FILE=$(mktemp 2>/dev/null || echo "/tmp/.crit-req-$$")
+  printf '%s' "$CRITIQUE_REQUIRED_STAGES" > "$REQUIRED_FILE"
+  trap 'rm -f "$REQUIRED_FILE"' EXIT
+fi
 DENIAL_REASON=""
 
 if [ -f "$REQUIRED_FILE" ] && jq -e 'length > 0' "$REQUIRED_FILE" >/dev/null 2>&1; then

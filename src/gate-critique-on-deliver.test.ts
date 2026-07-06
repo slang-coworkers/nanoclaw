@@ -85,6 +85,38 @@ describe('Model A: no-op when overlay marker absent', () => {
   });
 });
 
+describe('env-based activation (tamper-resistant)', () => {
+  it('CRITIQUE_GATE_ACTIVE=1 gates even when the marker file is absent', () => {
+    expect(fs.existsSync(markerFile)).toBe(false);
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({ tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } }, { CRITIQUE_GATE_ACTIVE: '1' });
+    expect(result.status).toBe(2);
+  });
+
+  it('CRITIQUE_GATE_ACTIVE=0 disables even when the marker file is present', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({ tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } }, { CRITIQUE_GATE_ACTIVE: '0' });
+    expect(result.status).toBe(0);
+  });
+
+  it('CRITIQUE_REQUIRED_STAGES env overrides the (agent-writable) file', () => {
+    activateOverlay();
+    // File says "no stages" (legacy 1-round) but env demands OUTPUT_REVIEW.
+    fs.writeFileSync(path.join(overlayDir, '.critique-required-stages'), JSON.stringify([]));
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({ critique_rounds: 5, critique_stages: { PLAN_REVIEW: 1 } }),
+    );
+    const result = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } },
+      { CRITIQUE_GATE_ACTIVE: '1', CRITIQUE_REQUIRED_STAGES: JSON.stringify(['OUTPUT_REVIEW']) },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('OUTPUT_REVIEW');
+  });
+});
+
 describe('Marker active: critique gate enforces on delivery markers', () => {
   it('blocks send_message [Fix Report] when critique_rounds=0', () => {
     activateOverlay();

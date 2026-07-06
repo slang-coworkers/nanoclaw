@@ -1328,6 +1328,30 @@ async function buildContainerArgs(
         args.push('-e', `OVERLAY_WORKFLOWS=${routingTable}`);
       }
     }
+    // Tamper-resistant critique-gate activation: the composer already
+    // materialized .overlay-critique-gate / .critique-required-stages into
+    // groupDir (composeCoworkerClaudeMd, above). Read them here — before the
+    // container (and the agent) exists — and pass them as env. The gate hook
+    // and poll-loop treat the env as authoritative when present, so an agent
+    // can no longer disable the gate by `rm .overlay-critique-gate` or weaken
+    // it by rewriting .critique-required-stages: a child process cannot mutate
+    // the harness's inherited environment. (workflow-state.json verdicts stay
+    // agent-writable — host-side receipts are the deeper fix, tracked
+    // separately.) When disable_overlays=1, hasCritique is false and no env is
+    // emitted, so the gate stays off.
+    if (hasCritique) {
+      const gateGroupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
+      const active = fs.existsSync(path.join(gateGroupDir, '.overlay-critique-gate'));
+      args.push('-e', `CRITIQUE_GATE_ACTIVE=${active ? '1' : '0'}`);
+      if (active) {
+        try {
+          const stages = fs.readFileSync(path.join(gateGroupDir, '.critique-required-stages'), 'utf-8').trim();
+          if (stages) args.push('-e', `CRITIQUE_REQUIRED_STAGES=${stages}`);
+        } catch {
+          /* no required-stages file → legacy any-1-round mode, gate still active */
+        }
+      }
+    }
   }
 
   // Model + API routing + SDK tuning — forward host .env vars so the Claude
