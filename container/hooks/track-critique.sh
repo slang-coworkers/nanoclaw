@@ -65,7 +65,30 @@ CONTENT=$(echo "$INPUT" | jq -r '
   | if type == "object" then (.content // empty) else empty end
 ' 2>/dev/null || true)
 if [ -n "$CONTENT" ]; then
-  VERDICT=$(echo "$CONTENT" | sed -n '/^### *Verdict/{n;p;}' 2>/dev/null | tr -d '[:space:]' | head -c 20 || true)
+  # Accept "### Verdict\napprove", inline "### Verdict: approve", blank lines
+  # before the verdict word, and any capitalization / markdown emphasis
+  # ("**Approve**", "approve."). Normalize to lowercase a-z + hyphen, then
+  # validate against the verdict vocabulary — anything else records as
+  # "unparseable" so the gate can fail closed on it instead of silently
+  # passing count-only (~7% of June rounds had a garbled verdict line).
+  RAW_VERDICT=$(echo "$CONTENT" | awk '
+    found == 1 && NF {
+      if ($0 ~ /^#/) { exit }   # next section heading — no verdict word given
+      print; exit
+    }
+    tolower($0) ~ /^###[ \t]*verdict/ {
+      line = $0
+      sub(/^###[ \t]*[Vv][Ee][Rr][Dd][Ii][Cc][Tt][ \t:]*/, "", line)
+      if (line ~ /[A-Za-z]/) { print line; exit }
+      found = 1
+    }
+  ' 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z-' | head -c 30 || true)
+  case "$RAW_VERDICT" in
+    approve|approved) VERDICT="approve" ;;
+    must-fix|mustfix) VERDICT="must-fix" ;;
+    "") VERDICT="" ;;
+    *) VERDICT="unparseable" ;;
+  esac
 fi
 
 # Thread identity: the initial call's response carries the codex threadId;

@@ -238,6 +238,45 @@ describe('track-critique records verdicts', () => {
   });
 });
 
+describe('verdict parse normalization', () => {
+  function verdictOf(content: string): string | undefined {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: JSON.stringify({ threadId: 't-norm', content }),
+    });
+    return (readState() as any).critique_verdicts?.OUTPUT_REVIEW;
+  }
+
+  it('normalizes capitalized verdicts (Approve → approve)', () => {
+    expect(verdictOf('### Verdict\nApprove\n\n### Must-fix\n- None.')).toBe('approve');
+  });
+
+  it('parses the inline form "### Verdict: approve"', () => {
+    expect(verdictOf('### Verdict: approve\n\n### Must-fix\n- None.')).toBe('approve');
+  });
+
+  it('parses emphasized verdict after a blank line ("**Must-Fix**")', () => {
+    expect(verdictOf('### Verdict\n\n**Must-Fix**\n\n### Must-fix\n- x')).toBe('must-fix');
+  });
+
+  it('strips trailing punctuation ("approve.")', () => {
+    expect(verdictOf('### Verdict\napprove.\n')).toBe('approve');
+  });
+
+  it('records "unparseable" for garbage under the Verdict heading', () => {
+    expect(verdictOf('### Verdict\nlgtm-ish\n')).toBe('unparseable');
+  });
+
+  it('records no verdict when the heading is directly followed by the next section', () => {
+    expect(verdictOf('### Verdict\n### Must-fix\n- x')).toBeUndefined();
+  });
+
+  it('does not mistake the instruction template echo for a verdict', () => {
+    expect(verdictOf('### Verdict\napprove | must-fix\n')).toBe('unparseable');
+  });
+});
+
 describe('codex-reply verdicts update the mapped stage', () => {
   // The skill's prescribed re-verify flow is `codex-reply` on the saved
   // threadId. The initial call records threadId → STAGE in critique_threads;
