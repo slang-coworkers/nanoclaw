@@ -238,6 +238,73 @@ describe('track-critique records verdicts', () => {
   });
 });
 
+describe('codex-reply verdicts update the mapped stage', () => {
+  // The skill's prescribed re-verify flow is `codex-reply` on the saved
+  // threadId. The initial call records threadId → STAGE in critique_threads;
+  // the reply's verdict must land on that stage — before this mapping it only
+  // updated last_critique_verdict and the gate kept denying an
+  // already-approved deliverable (June soft-cap thrash, sess-*91h559).
+  it('records the thread map on the initial STAGE call', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: JSON.stringify({ threadId: 't-map', content: '### Verdict\nmust-fix\n\n### Must-fix\n- bad' }),
+    });
+    const state = readState() as any;
+    expect(state.critique_threads).toEqual({ 't-map': 'OUTPUT_REVIEW' });
+  });
+
+  it('updates the stage verdict when the re-verify approve arrives via codex-reply', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: JSON.stringify({ threadId: 't-map', content: '### Verdict\nmust-fix\n\n### Must-fix\n- bad' }),
+    });
+    run({
+      tool_name: 'mcp__codex__codex-reply',
+      tool_input: { threadId: 't-map', prompt: 'addressed items 1-3 — re-verify' },
+      tool_response: JSON.stringify({ threadId: 't-map', content: '### Verdict\napprove\n\n### Must-fix\n- None.' }),
+    });
+    const state = readState() as any;
+    expect(state.critique_verdicts?.OUTPUT_REVIEW).toBe('approve');
+    // No double-count: completion was recorded by the initial call.
+    expect(state.critique_stages?.OUTPUT_REVIEW).toBe(1);
+    expect(state.critique_rounds).toBe(2);
+  });
+
+  it('keeps per-stage isolation when several threads are mapped', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: PLAN_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: JSON.stringify({ threadId: 't-plan', content: '### Verdict\napprove' }),
+    });
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: JSON.stringify({ threadId: 't-out', content: '### Verdict\nmust-fix\n- x' }),
+    });
+    run({
+      tool_name: 'mcp__codex__codex-reply',
+      tool_input: { threadId: 't-out', prompt: 're-verify' },
+      tool_response: JSON.stringify({ threadId: 't-out', content: '### Verdict\napprove' }),
+    });
+    const state = readState() as any;
+    expect(state.critique_verdicts?.PLAN_REVIEW).toBe('approve');
+    expect(state.critique_verdicts?.OUTPUT_REVIEW).toBe('approve');
+  });
+
+  it('falls back to last_critique_verdict for replies with an unmapped thread', () => {
+    run({
+      tool_name: 'mcp__codex__codex-reply',
+      tool_input: { threadId: 't-unknown', prompt: 're-verify' },
+      tool_response: JSON.stringify({ threadId: 't-unknown', content: '### Verdict\napprove' }),
+    });
+    const state = readState() as any;
+    expect(state.critique_verdicts).toBeUndefined();
+    expect(state.last_critique_verdict).toBe('approve');
+  });
+});
+
 describe('track-critique ignores non-codex tools', () => {
   it('exits 0 silently for Edit', () => {
     const res = run({

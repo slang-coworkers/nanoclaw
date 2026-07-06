@@ -41,9 +41,9 @@ mkdir -p "$(dirname "$STATE")"
 # Parse STAGE: marker from the codex prompt — only present on direct
 # `mcp__codex__codex` calls (the entry point of a critique session).
 # `mcp__codex__codex-reply` continuations don't carry STAGE; they inherit the
-# parent thread's stage. We mark a stage as completed (count>=1) on the first
-# call carrying it; iteration rounds bump critique_rounds for back-compat but
-# don't double-count the stage.
+# parent thread's stage via the critique_threads map recorded below. We mark
+# a stage as completed (count>=1) on the first call carrying it; iteration
+# rounds bump critique_rounds but don't double-count the stage.
 #
 # `|| true` is load-bearing: under `set -euo pipefail`, grep's exit-1 on
 # no-match would propagate through the command substitution and abort the
@@ -68,11 +68,43 @@ if [ -n "$CONTENT" ]; then
   VERDICT=$(echo "$CONTENT" | sed -n '/^### *Verdict/{n;p;}' 2>/dev/null | tr -d '[:space:]' | head -c 20 || true)
 fi
 
+# Thread identity: the initial call's response carries the codex threadId;
+# codex-reply calls carry it in tool_input. Recording threadId → STAGE on the
+# initial call lets a reply's verdict update the SAME stage. The skill's
+# prescribed re-verify flow is `codex-reply` on the saved thread — before this
+# mapping those verdicts only landed in last_critique_verdict, leaving
+# critique_verdicts[stage] stuck at must-fix and the delivery gate denying an
+# already-approved deliverable until the soft-cap opened (June thrash).
+TID=$(echo "$INPUT" | jq -r '
+  (.tool_input.threadId // .tool_input.thread_id // "") as $in
+  | (.tool_response as $r
+     | (if ($r | type) == "string" then ($r | (try fromjson catch {})) else ($r // {}) end)
+     | (if type == "object" then (.threadId // "") else "" end)) as $resp
+  | (if $resp != "" then $resp else $in end)
+' 2>/dev/null || true)
+
+# Reply calls carry no STAGE:; resolve their stage from the thread map.
+REPLY_STAGE=""
+if [ -z "$STAGE" ] && [ -n "$TID" ] && [ -f "$STATE" ]; then
+  REPLY_STAGE=$(jq -r --arg t "$TID" '(.critique_threads // {})[$t] // ""' "$STATE" 2>/dev/null || true)
+fi
+
 if [ -n "$STAGE" ]; then
-  jq --arg ts "$NOW" --arg s "$STAGE" --arg v "$VERDICT" '
+  jq --arg ts "$NOW" --arg s "$STAGE" --arg v "$VERDICT" --arg tid "$TID" '
     .critique_rounds = ((.critique_rounds // 0) + 1)
     | .critique_stages = (.critique_stages // {})
     | .critique_stages[$s] = ((.critique_stages[$s] // 0) + 1)
+    | .last_critique_stage = $s
+    | .edits_since_critique = 0
+    | .last_critique_at = $ts
+    | if $v != "" then .critique_verdicts = (.critique_verdicts // {}) | .critique_verdicts[$s] = $v else . end
+    | if $tid != "" then .critique_threads = ((.critique_threads // {}) + {($tid): $s}) else . end
+  ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+elif [ -n "$REPLY_STAGE" ]; then
+  # In-thread re-review: update the mapped stage's verdict. Don't double-count
+  # the stage — completion was recorded by the initial call.
+  jq --arg ts "$NOW" --arg s "$REPLY_STAGE" --arg v "$VERDICT" '
+    .critique_rounds = ((.critique_rounds // 0) + 1)
     | .last_critique_stage = $s
     | .edits_since_critique = 0
     | .last_critique_at = $ts
