@@ -1271,7 +1271,12 @@ async function buildContainerArgs(
   agentIdentifier?: string,
   mcpProxy?: { proxyToken: string; allowedTools: string[] },
 ): Promise<string[]> {
-  const args: string[] = ['run', '--rm', '--name', containerName, '--label', CONTAINER_INSTALL_LABEL];
+  // --init injects docker's own tini as PID 1 so orphaned children (curl/gh
+  // fired by the agent and hooks) get reaped. Without it, the host overrides
+  // the image's tini ENTRYPOINT with `--entrypoint bash` (see below), leaving
+  // `bun` as PID 1 — and bun doesn't reap, so defunct curl/gh zombies pile up
+  // for the container's lifetime.
+  const args: string[] = ['run', '--rm', '--init', '--name', containerName, '--label', CONTAINER_INSTALL_LABEL];
 
   {
     const mode = detectGpuMode();
