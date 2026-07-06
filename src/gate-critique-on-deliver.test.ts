@@ -89,14 +89,20 @@ describe('env-based activation (tamper-resistant)', () => {
   it('CRITIQUE_GATE_ACTIVE=1 gates even when the marker file is absent', () => {
     expect(fs.existsSync(markerFile)).toBe(false);
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
-    const result = run({ tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } }, { CRITIQUE_GATE_ACTIVE: '1' });
+    const result = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } },
+      { CRITIQUE_GATE_ACTIVE: '1' },
+    );
     expect(result.status).toBe(2);
   });
 
   it('CRITIQUE_GATE_ACTIVE=0 disables even when the marker file is present', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
-    const result = run({ tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } }, { CRITIQUE_GATE_ACTIVE: '0' });
+    const result = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } },
+      { CRITIQUE_GATE_ACTIVE: '0' },
+    );
     expect(result.status).toBe(0);
   });
 
@@ -104,10 +110,7 @@ describe('env-based activation (tamper-resistant)', () => {
     activateOverlay();
     // File says "no stages" (legacy 1-round) but env demands OUTPUT_REVIEW.
     fs.writeFileSync(path.join(overlayDir, '.critique-required-stages'), JSON.stringify([]));
-    fs.writeFileSync(
-      stateFile,
-      JSON.stringify({ critique_rounds: 5, critique_stages: { PLAN_REVIEW: 1 } }),
-    );
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 5, critique_stages: { PLAN_REVIEW: 1 } }));
     const result = run(
       { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } },
       { CRITIQUE_GATE_ACTIVE: '1', CRITIQUE_REQUIRED_STAGES: JSON.stringify(['OUTPUT_REVIEW']) },
@@ -397,10 +400,7 @@ describe('graduated escalation at the denial cap', () => {
   it('times out to fail-open when no decision lands', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
-    fs.writeFileSync(
-      escFile(),
-      JSON.stringify({ requested_at: Math.floor(Date.now() / 1000) - 3600, reason: 'x' }),
-    );
+    fs.writeFileSync(escFile(), JSON.stringify({ requested_at: Math.floor(Date.now() / 1000) - 3600, reason: 'x' }));
     const result = run(denyPayload());
     expect(result.status).toBe(0);
     expect(result.stderr).toContain('escalation timeout');
@@ -605,7 +605,9 @@ describe('OUTPUT_REVIEW verdict gate', () => {
       critique_rounds: 1,
       critique_stages: { OUTPUT_REVIEW: 1 },
       critique_verdicts: { OUTPUT_REVIEW: 'approve' },
-      critique_attested: { OUTPUT_REVIEW: { '/etc/passwd': 'f'.repeat(64), [path.join(tmpRoot, 'gone.md')]: 'e'.repeat(64) } },
+      critique_attested: {
+        OUTPUT_REVIEW: { '/etc/passwd': 'f'.repeat(64), [path.join(tmpRoot, 'gone.md')]: 'e'.repeat(64) },
+      },
     };
     fs.writeFileSync(stateFile, JSON.stringify(state));
     // Outside-root path ignored; the in-root missing file still trips the check…

@@ -182,12 +182,20 @@ describe('track-critique records verdicts', () => {
   it('overwrites previous verdict on re-run', () => {
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: '{"threadId":"t1","content":"### Verdict\\nmust-fix\\n\\n### Must-fix\\n- bad"}',
     });
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: '{"threadId":"t1","content":"### Verdict\\napprove\\n\\n### Must-fix\\n- None."}',
     });
     const state = readState() as any;
@@ -197,12 +205,20 @@ describe('track-critique records verdicts', () => {
   it('tracks verdicts per stage independently', () => {
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: PLAN_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: PLAN_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: '{"threadId":"t1","content":"### Verdict\\napprove\\n\\n### Must-fix\\n- None."}',
     });
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: CODE_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: CODE_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: '{"threadId":"t2","content":"### Verdict\\nmust-fix\\n\\n### Must-fix\\n- bug"}',
     });
     const state = readState() as any;
@@ -214,12 +230,14 @@ describe('track-critique records verdicts', () => {
     // 45% of June must-fix verdicts were >2KB and got silently dropped by the
     // old `head -c 2000` pre-parse truncation — must-fix reviews are the long
     // ones, so the bias hit exactly the verdicts the gate exists to enforce.
-    const filler = Array.from({ length: 200 }, (_, i) => `- src/file${i}.ts:${i} — long review detail line`).join(
-      '\n',
-    );
+    const filler = Array.from({ length: 200 }, (_, i) => `- src/file${i}.ts:${i} — long review detail line`).join('\n');
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: JSON.stringify({
         threadId: 't-long',
         content: `### Verdict\nmust-fix\n\n### Must-fix (blocks merge)\n${filler}`,
@@ -232,7 +250,11 @@ describe('track-critique records verdicts', () => {
   it('records verdict when tool_response is an object rather than a JSON string', () => {
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: CODE_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: CODE_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: { threadId: 't-obj', content: '### Verdict\napprove\n\n### Must-fix\n- None.' },
     });
     const state = readState() as any;
@@ -242,7 +264,11 @@ describe('track-critique records verdicts', () => {
   it('does not record verdict when response has no Verdict header', () => {
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: CODE_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: CODE_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: '{"threadId":"t1","content":"some random response without structured output"}',
     });
     const state = readState() as any;
@@ -254,7 +280,11 @@ describe('verdict parse normalization', () => {
   function verdictOf(content: string): string | undefined {
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: JSON.stringify({ threadId: 't-norm', content }),
     });
     return (readState() as any).critique_verdicts?.OUTPUT_REVIEW;
@@ -298,7 +328,11 @@ describe('codex-reply verdicts update the mapped stage', () => {
   it('records the thread map on the initial STAGE call', () => {
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: JSON.stringify({ threadId: 't-map', content: '### Verdict\nmust-fix\n\n### Must-fix\n- bad' }),
     });
     const state = readState() as any;
@@ -308,7 +342,11 @@ describe('codex-reply verdicts update the mapped stage', () => {
   it('updates the stage verdict when the re-verify approve arrives via codex-reply', () => {
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: JSON.stringify({ threadId: 't-map', content: '### Verdict\nmust-fix\n\n### Must-fix\n- bad' }),
     });
     run({
@@ -326,12 +364,20 @@ describe('codex-reply verdicts update the mapped stage', () => {
   it('keeps per-stage isolation when several threads are mapped', () => {
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: PLAN_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: PLAN_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: JSON.stringify({ threadId: 't-plan', content: '### Verdict\napprove' }),
     });
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: JSON.stringify({ threadId: 't-out', content: '### Verdict\nmust-fix\n- x' }),
     });
     run({
@@ -494,7 +540,11 @@ describe('soft-cap re-arm', () => {
     fs.writeFileSync(stateFile, JSON.stringify({ critique_gate_denials: 2, critique_rounds: 0 }));
     run({
       tool_name: 'mcp__codex__codex',
-      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
       tool_response: JSON.stringify({ threadId: 't-arm', content: '### Verdict\napprove' }),
     });
     expect((readState() as any).critique_gate_denials).toBe(0);

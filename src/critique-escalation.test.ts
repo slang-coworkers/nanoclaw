@@ -45,9 +45,8 @@ vi.mock('./session-manager.js', () => ({
   sessionDir: (agentGroupId: string, sessionId: string) => path.join(os.tmpdir(), 'unused', agentGroupId, sessionId),
 }));
 
-const { checkCritiqueEscalation, applyBypassApproval, applyBypassRejection } = await import(
-  './modules/critique-escalation/index.js'
-);
+const { checkCritiqueEscalation, applyBypassApproval, applyBypassRejection } =
+  await import('./modules/critique-escalation/index.js');
 
 const session = { id: 'sess-esc-test', agent_group_id: 'ag-esc-test' } as Session;
 
