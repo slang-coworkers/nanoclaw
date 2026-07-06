@@ -690,6 +690,33 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
     expect(r.blocked).toBe(true);
   });
 
+  it('a configured extra marker (.critique-delivery-markers) gates like a built-in', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    const vocabPath = path.join(tmp, 'delivery-markers.json');
+    fs.writeFileSync(vocabPath, JSON.stringify({ message_markers: ['Weekly Report'] }));
+    const r = checkCritiqueGate('[Weekly Report] all green', {
+      overlayMarkerPath: markerPath,
+      workflowStatePath: statePath,
+      deliveryMarkersPath: vocabPath,
+    });
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toContain('Weekly Report');
+  });
+
+  it('sanitizes regex metacharacters out of configured markers', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    const vocabPath = path.join(tmp, 'delivery-markers.json');
+    fs.writeFileSync(vocabPath, JSON.stringify({ message_markers: ['.*'] }));
+    const r = checkCritiqueGate('[anything] not a marker', {
+      overlayMarkerPath: markerPath,
+      workflowStatePath: statePath,
+      deliveryMarkersPath: vocabPath,
+    });
+    expect(r.blocked).toBe(false);
+  });
+
   it('marker present + [Fix Report] + critique_rounds=0 → BLOCKED', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));

@@ -267,6 +267,57 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
   });
 });
 
+describe('configurable delivery vocabulary (.critique-delivery-markers)', () => {
+  function writeVocab(vocab: object): void {
+    fs.writeFileSync(path.join(overlayDir, '.critique-delivery-markers'), JSON.stringify(vocab));
+  }
+
+  it('a configured extra marker gates like a built-in', () => {
+    activateOverlay();
+    writeVocab({ message_markers: ['Weekly Report'], bash_patterns: [] });
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Weekly Report] all green' },
+    });
+    expect(result.status).toBe(2);
+  });
+
+  it('a configured extra bash pattern gates like a built-in', () => {
+    activateOverlay();
+    writeVocab({ message_markers: [], bash_patterns: ['glab mr create'] });
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'Bash',
+      tool_input: { command: 'glab mr create --title foo' },
+    });
+    expect(result.status).toBe(2);
+  });
+
+  it('built-in vocabulary survives regardless of the file (additive only)', () => {
+    activateOverlay();
+    writeVocab({ message_markers: [], bash_patterns: [] });
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] still gated' },
+    });
+    expect(result.status).toBe(2);
+  });
+
+  it('markers with regex metacharacters are ignored (sanitized at read)', () => {
+    activateOverlay();
+    // ".*" would match everything if spliced into the alternation.
+    writeVocab({ message_markers: ['.*'], bash_patterns: [] });
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[anything] not a real marker' },
+    });
+    expect(result.status).toBe(0);
+  });
+});
+
 describe('graduated escalation at the denial cap', () => {
   const denyPayload = () => ({
     tool_name: 'mcp__nanoclaw__send_message',

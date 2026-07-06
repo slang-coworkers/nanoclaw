@@ -921,7 +921,32 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
 // message/line prefixes, and unanchored matching treated a mid-sentence
 // MENTION of a marker as a delivery — burning a denial and one of the
 // session's soft-cap strikes each time.
+const DEFAULT_DELIVERY_MARKERS = ['Fix Report', 'Resolution', 'Triage Resolution', 'Review Verdict', 'handoff'];
 const DELIVERY_MARKER_RE = /^[ \t]*\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]/m;
+
+// Critique-gate vocabulary: built-in defaults plus ADDITIVE extensions from
+// .critique-delivery-markers (materialized by the composer from the
+// coworker-type chain's delivery_markers declarations). Labels are
+// re-validated to a regex-metachar-free charset before splicing — and since
+// extensions can only add markers, tampering with the file can only widen
+// the gate, never narrow it. The chain-routing gate keeps the static
+// default set (its protocol vocabulary is not per-role configurable).
+function deliveryMarkerRe(markersPath: string): RegExp {
+  const fs = require('fs') as typeof import('fs');
+  let extra: string[] = [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(markersPath, 'utf-8')) as { message_markers?: unknown };
+    if (Array.isArray(parsed.message_markers)) {
+      extra = parsed.message_markers.filter(
+        (m): m is string => typeof m === 'string' && /^[A-Za-z0-9][A-Za-z0-9 _-]*$/.test(m),
+      );
+    }
+  } catch {
+    extra = [];
+  }
+  if (extra.length === 0) return DELIVERY_MARKER_RE;
+  return new RegExp(`^[ \\t]*\\[(${[...DEFAULT_DELIVERY_MARKERS, ...extra].join('|')})\\]`, 'm');
+}
 const ROUTING_HANDOFF_MARKER_RE = DELIVERY_MARKER_RE;
 
 // Soft-cap shared by the in-process gates, mirroring the bash hooks
@@ -997,7 +1022,12 @@ export function checkRoutingGate(
 
 export function checkCritiqueGate(
   body: string,
-  opts: { overlayMarkerPath?: string; workflowStatePath?: string; requiredStagesPath?: string } = {},
+  opts: {
+    overlayMarkerPath?: string;
+    workflowStatePath?: string;
+    requiredStagesPath?: string;
+    deliveryMarkersPath?: string;
+  } = {},
 ): { blocked: boolean; reason?: string } {
   const fs = require('fs') as typeof import('fs');
   const path = require('path') as typeof import('path');
@@ -1006,7 +1036,10 @@ export function checkCritiqueGate(
   const markerPath =
     opts.overlayMarkerPath ?? process.env.CRITIQUE_GATE_OVERLAY_PATH ?? '/workspace/agent/.overlay-critique-gate';
   if (!fs.existsSync(markerPath)) return { blocked: false };
-  if (!DELIVERY_MARKER_RE.test(body)) return { blocked: false };
+  const markerRe = deliveryMarkerRe(
+    opts.deliveryMarkersPath ?? path.join(path.dirname(markerPath), '.critique-delivery-markers'),
+  );
+  if (!markerRe.test(body)) return { blocked: false };
   const statePath =
     opts.workflowStatePath ?? process.env.CRITIQUE_GATE_STATE_PATH ?? '/workspace/.claude/workflow-state.json';
 
@@ -1102,7 +1135,7 @@ export function checkCritiqueGate(
   }
   if (denialReason === '') return { blocked: false };
 
-  const marker = body.match(DELIVERY_MARKER_RE)?.[1] ?? '<delivery>';
+  const marker = body.match(markerRe)?.[1] ?? '<delivery>';
 
   // Denial cap → graduated escalation, in parity with the bash hook. At the
   // cap the gate no longer silently fails open: it writes an escalation

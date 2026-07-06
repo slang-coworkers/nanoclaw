@@ -13,6 +13,7 @@ export { readCoworkerTypes, readSkillCatalog } from './claude-composer/registry.
 export {
   getAppliedOverlayNames,
   injectOverlays,
+  materializeCritiqueDeliveryMarkers,
   materializeCritiqueRequiredStages,
   materializeOverlayMarkers,
   resolveCoworkerManifest,

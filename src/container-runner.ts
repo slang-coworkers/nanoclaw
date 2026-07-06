@@ -14,6 +14,7 @@ import { OneCLI } from '@onecli-sh/sdk';
 import {
   composeCoworkerSpine,
   getAppliedOverlayNames,
+  materializeCritiqueDeliveryMarkers,
   materializeCritiqueRequiredStages,
   materializeOverlayMarkers,
   readCoworkerTypes,
@@ -219,6 +220,7 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
       const appliedOverlays = getAppliedOverlayNames(process.cwd(), 'default', composeOpts);
       materializeOverlayMarkers(appliedOverlays, process.cwd(), groupDir);
       materializeCritiqueRequiredStages('default', readCoworkerTypes(process.cwd()), appliedOverlays, groupDir);
+      materializeCritiqueDeliveryMarkers('default', readCoworkerTypes(process.cwd()), appliedOverlays, groupDir);
       log.debug('CLAUDE.md composed for untyped coworker via default type', { folder: agentGroup.folder });
     } catch (err) {
       log.warn('Failed to compose CLAUDE.md for untyped coworker', { folder: agentGroup.folder, err });
@@ -249,6 +251,12 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
     const appliedOverlays = getAppliedOverlayNames(process.cwd(), agentGroup.coworker_type, composeOpts);
     materializeOverlayMarkers(appliedOverlays, process.cwd(), groupDir);
     materializeCritiqueRequiredStages(
+      agentGroup.coworker_type,
+      readCoworkerTypes(process.cwd()),
+      appliedOverlays,
+      groupDir,
+    );
+    materializeCritiqueDeliveryMarkers(
       agentGroup.coworker_type,
       readCoworkerTypes(process.cwd()),
       appliedOverlays,

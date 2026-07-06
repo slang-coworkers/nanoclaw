@@ -803,3 +803,45 @@ export function materializeCritiqueRequiredStages(
   }
   fs.writeFileSync(filePath, JSON.stringify([...stages]) + '\n');
 }
+
+/**
+ * Union `delivery_markers` / `pr_command_patterns` across the coworker-type
+ * chain and write them to `<groupDir>/.critique-delivery-markers` as
+ * `{"message_markers": [...], "bash_patterns": [...]}`. The gates
+ * (gate-critique-on-deliver.sh + poll-loop's checkCritiqueGate) union the
+ * file with their built-in vocabulary — extensions are ADDITIVE only, so the
+ * defaults can never be configured (or tampered) away.
+ *
+ * No declarations (or overlay not active) → remove any stale file; absent
+ * file = built-in vocabulary only. Idempotent, safe on every spawn.
+ */
+export function materializeCritiqueDeliveryMarkers(
+  coworkerType: string,
+  types: Record<string, CoworkerTypeEntry>,
+  appliedOverlays: string[],
+  groupDir: string,
+): void {
+  const filePath = path.join(groupDir, '.critique-delivery-markers');
+  const remove = (): void => {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  };
+  if (!appliedOverlays.includes('critique-gate')) {
+    remove();
+    return;
+  }
+  const markers = new Set<string>();
+  const patterns = new Set<string>();
+  try {
+    for (const entry of resolveTypeChain(types, coworkerType)) {
+      for (const m of entry.deliveryMarkers ?? []) markers.add(m);
+      for (const p of entry.prCommandPatterns ?? []) patterns.add(p);
+    }
+  } catch {
+    // Cycle or unknown type — treat as no extensions.
+  }
+  if (markers.size === 0 && patterns.size === 0) {
+    remove();
+    return;
+  }
+  fs.writeFileSync(filePath, JSON.stringify({ message_markers: [...markers], bash_patterns: [...patterns] }) + '\n');
+}

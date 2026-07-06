@@ -32,6 +32,21 @@ INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // ""')
 TEXT=$(echo "$INPUT" | jq -r '.tool_input.text // .tool_input.command // ""')
 
+# Delivery vocabulary: built-in defaults, extendable (ADDITIVE only — the
+# defaults can never be configured away) via .critique-delivery-markers,
+# materialized by the composer from the coworker-type chain's
+# delivery_markers / pr_command_patterns declarations. Marker labels are
+# re-validated to a regex-metachar-free charset before splicing into the ERE.
+MSG_MARKERS='Fix Report|Resolution|Triage Resolution|Review Verdict|handoff'
+BASH_PATTERNS='gh pr create|gh api [^|]*pulls\b|api\.github\.com[^ ]*/pulls\b|createPullRequest'
+MARKERS_FILE="$OVERLAY_DIR/.critique-delivery-markers"
+if [ -f "$MARKERS_FILE" ]; then
+  EXTRA_MSG=$(jq -r '(.message_markers // []) | map(select(type == "string" and test("^[A-Za-z0-9][A-Za-z0-9 _-]*$"))) | join("|")' "$MARKERS_FILE" 2>/dev/null || true)
+  [ -n "$EXTRA_MSG" ] && MSG_MARKERS="$MSG_MARKERS|$EXTRA_MSG"
+  EXTRA_BASH=$(jq -r '(.bash_patterns // []) | map(select(type == "string" and length > 0)) | join("|")' "$MARKERS_FILE" 2>/dev/null || true)
+  [ -n "$EXTRA_BASH" ] && BASH_PATTERNS="$BASH_PATTERNS|$EXTRA_BASH"
+fi
+
 HIT=""
 case "$TOOL" in
   mcp__nanoclaw__send_message)
@@ -42,7 +57,7 @@ case "$TOOL" in
     # Herestring, not `echo | grep -q`: under pipefail grep's early exit can
     # SIGPIPE the echo and abort the hook — a rare flake that here would mean
     # a silent gate bypass.
-    if grep -qE '^[[:space:]]*\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]' <<< "$TEXT"; then
+    if grep -qE "^[[:space:]]*\[($MSG_MARKERS)\]" <<< "$TEXT"; then
       HIT="delivery/handoff message"
     fi
     ;;
@@ -52,7 +67,7 @@ case "$TOOL" in
     # mutation name. Pattern enumeration can never be complete — the durable
     # backstop is credential-layer enforcement at the OneCLI proxy — but
     # these cover every egress shape observed in production.
-    if grep -qE '(gh pr create|gh api [^|]*pulls\b|api\.github\.com[^ ]*/pulls\b|createPullRequest)' <<< "$TEXT"; then
+    if grep -qE "($BASH_PATTERNS)" <<< "$TEXT"; then
       HIT="PR creation"
     fi
     ;;
