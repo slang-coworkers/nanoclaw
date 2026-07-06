@@ -85,6 +85,18 @@ export function readCoworkerTypes(projectRoot = process.cwd()): Record<string, C
         if (Array.isArray(rawStages)) {
           entry.requiredCritiqueStages = rawStages.map(String).filter((s) => /^[A-Z_]+$/.test(s));
         }
+        // Critique-gate vocabulary extensions. Marker labels are sanitized to
+        // a regex-metachar-free charset — they get spliced into an ERE
+        // alternation by the gate. Bash patterns are operator-authored ERE
+        // fragments and pass through as-is (same trust level as the YAML).
+        const rawMarkers = (raw as Record<string, unknown>)['delivery_markers'];
+        if (Array.isArray(rawMarkers)) {
+          entry.deliveryMarkers = rawMarkers.map(String).filter((m) => /^[A-Za-z0-9][A-Za-z0-9 _-]*$/.test(m));
+        }
+        const rawPatterns = (raw as Record<string, unknown>)['pr_command_patterns'];
+        if (Array.isArray(rawPatterns)) {
+          entry.prCommandPatterns = rawPatterns.map(String).filter((p) => p.trim().length > 0);
+        }
         registry[name] = registry[name] ? mergeTypeEntries(registry[name], entry, name) : entry;
       }
     }
@@ -129,6 +141,8 @@ function mergeTypeEntries(base: CoworkerTypeEntry, addon: CoworkerTypeEntry, typ
     // resolveCritiqueRequiredStages walking the chain — that's separate
     // from this base+addon merge for redeclarations of the same type.
     requiredCritiqueStages: [...(base.requiredCritiqueStages || []), ...(addon.requiredCritiqueStages || [])],
+    deliveryMarkers: [...(base.deliveryMarkers || []), ...(addon.deliveryMarkers || [])],
+    prCommandPatterns: [...(base.prCommandPatterns || []), ...(addon.prCommandPatterns || [])],
     bindings: { ...(base.bindings || {}), ...(addon.bindings || {}) },
     vars: { ...(base.vars || {}), ...(addon.vars || {}) },
     mcpServers: { ...(base.mcpServers || {}), ...(addon.mcpServers || {}) },

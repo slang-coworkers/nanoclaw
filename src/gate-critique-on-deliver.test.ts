@@ -85,6 +85,41 @@ describe('Model A: no-op when overlay marker absent', () => {
   });
 });
 
+describe('env-based activation (tamper-resistant)', () => {
+  it('CRITIQUE_GATE_ACTIVE=1 gates even when the marker file is absent', () => {
+    expect(fs.existsSync(markerFile)).toBe(false);
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } },
+      { CRITIQUE_GATE_ACTIVE: '1' },
+    );
+    expect(result.status).toBe(2);
+  });
+
+  it('CRITIQUE_GATE_ACTIVE=0 disables even when the marker file is present', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } },
+      { CRITIQUE_GATE_ACTIVE: '0' },
+    );
+    expect(result.status).toBe(0);
+  });
+
+  it('CRITIQUE_REQUIRED_STAGES env overrides the (agent-writable) file', () => {
+    activateOverlay();
+    // File says "no stages" (legacy 1-round) but env demands OUTPUT_REVIEW.
+    fs.writeFileSync(path.join(overlayDir, '.critique-required-stages'), JSON.stringify([]));
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 5, critique_stages: { PLAN_REVIEW: 1 } }));
+    const result = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } },
+      { CRITIQUE_GATE_ACTIVE: '1', CRITIQUE_REQUIRED_STAGES: JSON.stringify(['OUTPUT_REVIEW']) },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('OUTPUT_REVIEW');
+  });
+});
+
 describe('Marker active: critique gate enforces on delivery markers', () => {
   it('blocks send_message [Fix Report] when critique_rounds=0', () => {
     activateOverlay();
@@ -148,6 +183,37 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     expect(result.status).toBe(0);
   });
 
+  it('mid-sentence MENTION of a marker is not a delivery (anchored match)', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: 'Still working — I will send the [Fix Report] after the review completes.' },
+    });
+    expect(result.status).toBe(0);
+  });
+
+  it('indented marker at line start still gates', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: 'Summary first.\n  [Fix Report] PR #9 fixed' },
+    });
+    expect(result.status).toBe(2);
+  });
+
+  it('denial message no longer advertises the state-file path', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] x' },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).not.toContain(stateFile);
+  });
+
   it('blocks Bash gh pr create when critique_rounds=0', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
@@ -159,16 +225,39 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     expect(result.stderr).toContain('PR creation');
   });
 
-  it('blocks Bash gh api ... pulls when critique_rounds=0', () => {
+  it('blocks direct curl to api.github.com/.../pulls when critique_rounds=0', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
     const result = run({
       tool_name: 'Bash',
       tool_input: { command: 'curl -X POST https://api.github.com/repos/x/y/pulls -d @body.json' },
     });
-    // Note: this test shape would need the regex to match `gh api .../pulls`
-    // — curl directly to api.github.com is not gated. Asserting the curl
-    // case passes confirms gate scope is intentionally narrow (gh-only).
+    // Previously asserted as intentionally-narrow (gh-only) — but curl to the
+    // same endpoint is the same delivery with a different client, so the
+    // scope now covers the /pulls route regardless of http client.
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('PR creation');
+  });
+
+  it('blocks GraphQL createPullRequest mutations when critique_rounds=0', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'Bash',
+      tool_input: {
+        command: `gh api graphql -f query='mutation { createPullRequest(input: {repositoryId: "r", baseRefName: "main", headRefName: "f", title: "t"}) { pullRequest { url } } }'`,
+      },
+    });
+    expect(result.status).toBe(2);
+  });
+
+  it('passes gh api pulls listing... still gated (unchanged legacy scope)', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 1 }));
+    const result = run({
+      tool_name: 'Bash',
+      tool_input: { command: 'gh api repos/x/y/pulls' },
+    });
     expect(result.status).toBe(0);
   });
 
@@ -213,6 +302,119 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
   });
 });
 
+describe('configurable delivery vocabulary (.critique-delivery-markers)', () => {
+  function writeVocab(vocab: object): void {
+    fs.writeFileSync(path.join(overlayDir, '.critique-delivery-markers'), JSON.stringify(vocab));
+  }
+
+  it('a configured extra marker gates like a built-in', () => {
+    activateOverlay();
+    writeVocab({ message_markers: ['Weekly Report'], bash_patterns: [] });
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Weekly Report] all green' },
+    });
+    expect(result.status).toBe(2);
+  });
+
+  it('a configured extra bash pattern gates like a built-in', () => {
+    activateOverlay();
+    writeVocab({ message_markers: [], bash_patterns: ['glab mr create'] });
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'Bash',
+      tool_input: { command: 'glab mr create --title foo' },
+    });
+    expect(result.status).toBe(2);
+  });
+
+  it('built-in vocabulary survives regardless of the file (additive only)', () => {
+    activateOverlay();
+    writeVocab({ message_markers: [], bash_patterns: [] });
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] still gated' },
+    });
+    expect(result.status).toBe(2);
+  });
+
+  it('markers with regex metacharacters are ignored (sanitized at read)', () => {
+    activateOverlay();
+    // ".*" would match everything if spliced into the alternation.
+    writeVocab({ message_markers: ['.*'], bash_patterns: [] });
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[anything] not a real marker' },
+    });
+    expect(result.status).toBe(0);
+  });
+});
+
+describe('graduated escalation at the denial cap', () => {
+  const denyPayload = () => ({
+    tool_name: 'mcp__nanoclaw__send_message',
+    tool_input: { text: '[Fix Report] x' },
+  });
+  const escFile = () => path.join(tmpRoot, 'critique-escalation.json');
+
+  it('at the cap: denies, requests human approval, writes the escalation file', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
+    const result = run(denyPayload());
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('requesting human approval');
+    const esc = JSON.parse(fs.readFileSync(escFile(), 'utf-8')) as { requested_at: number; reason: string };
+    expect(esc.requested_at).toBeGreaterThan(0);
+    expect(esc.reason).toContain('no critique rounds');
+    // Second attempt while pending: still denied — no silent fail-open.
+    const again = run(denyPayload());
+    expect(again.status).toBe(2);
+    expect(again.stderr).toContain('awaiting human approval');
+  });
+
+  it('admin-approved bypass allows the delivery', () => {
+    activateOverlay();
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3, critique_gate_bypass_approved: true }),
+    );
+    const result = run(denyPayload());
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('admin-approved bypass');
+  });
+
+  it('admin-rejected bypass keeps denying', () => {
+    activateOverlay();
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3, critique_gate_bypass_rejected: true }),
+    );
+    const result = run(denyPayload());
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('REJECTED');
+  });
+
+  it('times out to fail-open when no decision lands', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
+    fs.writeFileSync(escFile(), JSON.stringify({ requested_at: Math.floor(Date.now() / 1000) - 3600, reason: 'x' }));
+    const result = run(denyPayload());
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('escalation timeout');
+  });
+
+  it('CRITIQUE_ESCALATION=0 restores the legacy fail-open cap', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
+    const result = run(denyPayload(), { CRITIQUE_ESCALATION: '0' });
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('soft-fail');
+  });
+});
+
 describe('OUTPUT_REVIEW verdict gate', () => {
   function activateWithStages(stages: string[]): void {
     fs.writeFileSync(markerFile, 'critique-gate\n');
@@ -254,7 +456,9 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     expect(result.status).toBe(0);
   });
 
-  it('falls through (count-only) when critique_verdicts has no OUTPUT_REVIEW entry', () => {
+  it('fails closed when OUTPUT_REVIEW is required but no verdict was recorded', () => {
+    // 33% of June stage-rounds had no recorded verdict; passing them
+    // count-only was exactly the leak the verdict gate exists to close.
     activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']);
     fs.writeFileSync(
       stateFile,
@@ -267,7 +471,45 @@ describe('OUTPUT_REVIEW verdict gate', () => {
       tool_name: 'mcp__nanoclaw__send_message',
       tool_input: { text: '[Fix Report] PR #123 ready' },
     });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('no verdict was recorded');
+  });
+
+  it('CRITIQUE_VERDICT_STRICT=0 restores the legacy count-only fallthrough', () => {
+    activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 3,
+        critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1, OUTPUT_REVIEW: 1 },
+      }),
+    );
+    const result = run(
+      {
+        tool_name: 'mcp__nanoclaw__send_message',
+        tool_input: { text: '[Fix Report] PR #123 ready' },
+      },
+      { CRITIQUE_VERDICT_STRICT: '0' },
+    );
     expect(result.status).toBe(0);
+  });
+
+  it('blocks delivery when OUTPUT_REVIEW verdict is unparseable', () => {
+    activateWithStages(['OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'unparseable' },
+      }),
+    );
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] PR #123 ready' },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('unparseable');
   });
 
   it('blocks gh pr create when OUTPUT_REVIEW verdict is must-fix', () => {
@@ -286,6 +528,102 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('OUTPUT_REVIEW');
+  });
+
+  it('blocks delivery when edits happened after the last critique (stale approve)', () => {
+    activateWithStages(['OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+        edits_since_critique: 2,
+      }),
+    );
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] PR #123 ready' },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('edit(s) recorded since the last critique');
+  });
+
+  it('CRITIQUE_FRESHNESS=0 disables the staleness check', () => {
+    activateWithStages(['OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+        edits_since_critique: 2,
+      }),
+    );
+    const result = run(
+      {
+        tool_name: 'mcp__nanoclaw__send_message',
+        tool_input: { text: '[Fix Report] PR #123 ready' },
+      },
+      { CRITIQUE_FRESHNESS: '0' },
+    );
+    expect(result.status).toBe(0);
+  });
+
+  it('blocks delivery when an attested artifact changed after the approve', () => {
+    const crypto = require('crypto') as typeof import('crypto');
+    const artifact = path.join(tmpRoot, 'report.md');
+    fs.writeFileSync(artifact, 'reviewed content\n');
+    const goodHash = crypto.createHash('sha256').update(fs.readFileSync(artifact)).digest('hex');
+    activateWithStages(['OUTPUT_REVIEW']);
+    const state = {
+      critique_rounds: 1,
+      critique_stages: { OUTPUT_REVIEW: 1 },
+      critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+      critique_attested: { OUTPUT_REVIEW: { [artifact]: goodHash } },
+    };
+    fs.writeFileSync(stateFile, JSON.stringify(state));
+    // Matching hash → passes.
+    const ok = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { CRITIQUE_ATTEST_ROOT: tmpRoot },
+    );
+    expect(ok.status).toBe(0);
+    // Mutate the reviewed artifact → the stale approve must not ship.
+    fs.appendFileSync(artifact, 'sneaky post-review edit\n');
+    const blocked = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { CRITIQUE_ATTEST_ROOT: tmpRoot },
+    );
+    expect(blocked.status).toBe(2);
+    expect(blocked.stderr).toContain('reviewed artifacts changed');
+  });
+
+  it('attested paths outside the attest root are ignored; CRITIQUE_ATTEST=0 disables', () => {
+    activateWithStages(['OUTPUT_REVIEW']);
+    const state = {
+      critique_rounds: 1,
+      critique_stages: { OUTPUT_REVIEW: 1 },
+      critique_verdicts: { OUTPUT_REVIEW: 'approve' },
+      critique_attested: {
+        OUTPUT_REVIEW: { '/etc/passwd': 'f'.repeat(64), [path.join(tmpRoot, 'gone.md')]: 'e'.repeat(64) },
+      },
+    };
+    fs.writeFileSync(stateFile, JSON.stringify(state));
+    // Outside-root path ignored; the in-root missing file still trips the check…
+    const blocked = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { CRITIQUE_ATTEST_ROOT: tmpRoot },
+    );
+    expect(blocked.status).toBe(2);
+    expect(blocked.stderr).toContain('missing');
+    expect(blocked.stderr).not.toContain('/etc/passwd');
+    // …and the kill switch bypasses it entirely.
+    const off = run(
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { CRITIQUE_ATTEST_ROOT: tmpRoot, CRITIQUE_ATTEST: '0' },
+    );
+    expect(off.status).toBe(0);
   });
 
   it('does not enforce verdict for stages other than OUTPUT_REVIEW', () => {

@@ -120,6 +120,19 @@ export interface CoworkerTypeEntry {
   // suffices). YAML key: `required_critique_stages`.
   requiredCritiqueStages?: string[];
 
+  // Extra delivery-marker labels for the critique gate, ADDITIVE to the
+  // built-in vocabulary ([Fix Report] etc. — defaults can be extended, never
+  // removed, so config tampering can only widen the gate). Plain labels, no
+  // brackets; sanitized to [A-Za-z0-9 _-]. Union across the type chain;
+  // materialized with the bash patterns below to
+  // <groupDir>/.critique-delivery-markers. YAML key: `delivery_markers`.
+  deliveryMarkers?: string[];
+
+  // Extra Bash PR/egress patterns (POSIX ERE fragments) for the critique
+  // gate, additive to the built-ins (gh pr create, …/pulls,
+  // createPullRequest). YAML key: `pr_command_patterns`.
+  prCommandPatterns?: string[];
+
   // MCP servers to inject into containers for this coworker type.
   // Shallow merge across the extends chain (leaf wins per server name).
   // Per-instance container.json overrides type-level config.

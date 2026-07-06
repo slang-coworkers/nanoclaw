@@ -60,7 +60,21 @@ approve | must-fix
 
 ### Notes
 - Observations for future work. No "what" without "why."
+
+### Attested
+- <sha256> <path> — one line per file artifact you actually read (run `sha256sum <path>` yourself, up to 20 files). Write `- none` if this review had no file artifacts.
 ```
+
+> Use this block **verbatim**. `track-critique.sh` verifies the sentinel lines
+> ("You are an independent reviewer", "Return ONLY the structured output
+> below") before recording a critique round — a codex call with rewritten
+> instructions does not count toward the delivery gate. Keep the sentinels in
+> sync with the hook if this block is ever edited.
+>
+> The `### Attested` hashes bind the verdict to the exact artifacts reviewed:
+> the delivery gate re-hashes them at send time and denies if any changed
+> after the approve. Attestation is opportunistic — no `### Attested` section
+> means no hash check — but an approve with stale hashes will not ship.
 
 ## Rounds
 
