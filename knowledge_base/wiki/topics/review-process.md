@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-26 learnings. [Catalog](../index.md)
+27 learnings. [Catalog](../index.md)
 
 - [A maintainer's literal review suggestion can be locally unsafe — verify all read sites of a reused predicate](../learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md)
 - [Always use markdown links for issues and reviews](../learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md)
@@ -27,6 +27,7 @@ type: topic
 - [Re-review after a PR redesign: check for gaps the redesign introduced, not just old ones closed](../learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md)
 - [Reading arXiv/HF papers end-to-end with the Read tool](../learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md)
 - [Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
+- [Reviewer A error_max_budget_usd salvage: subagent final texts are recoverable from stream.jsonl](../learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md)
 - [Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run](../learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md)
 - [Reviewer-disagreement: "match canonical precedent" vs "precedent is itself wrong"](../learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md)
 - [Reviewer: a self-recommended comment addition does not reset the PR review pipeline](../learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md)

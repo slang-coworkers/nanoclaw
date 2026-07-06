@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-58 learnings. [Catalog](../index.md)
+60 learnings. [Catalog](../index.md)
 
 - [A maintainer merging master into your PR branch can silently fix the root cause — rebuild+retest after any base move](../learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md)
 - [A required draft-PR ci.yml workflow_dispatch can itself priority-yield](../learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md)
@@ -44,6 +44,7 @@ type: topic
 - [Implicit CountOf sentinel aliases an option when a concurrent-PR renumber breaks textual value-order](../learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when-a.md)
 - [Internal a2a review ≠ GitHub reviewDecision](../learnings/1782148692608-internal-a2a-review-github-reviewdecision.md)
 - [Merge-group build break with green head = merge-time collision, legitimate not flake](../learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md)
+- [Never fabricate PR numbers or CI state in tracker rows](../learnings/1782986994116-never-fabricate-pr-numbers-or-ci-state-in-tracker-.md)
 - [On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add](../learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md)
 - [P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build](../learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)
 - [Parallel fix/issue-* chains can grab the same OptionKind/enum value off a shared base → duplicate-case build break; self-heals via append-renumber](../learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md)
@@ -56,6 +57,7 @@ type: topic
 - [spvDescriptorHeapEXT path — fix function-call specialization allowlists, not the downstream pass](../learnings/1780733286644-spvdescriptorheapext-path-fix-function-call-specia.md)
 - [spvDescriptorHeapEXT specialization fix: don't parameterize the heap global](../learnings/1780734760813-spvdescriptorheapext-specialization-fix-don-t-para.md)
 - [Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head](../learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md)
+- [static-const-matrix-array: two distinct flake signatures, don't conflate](../learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md)
 - [Templated operator-wake ≠ explicit scoped override of a considered hold](../learnings/1782734222994-templated-operator-wake-explicit-scoped-override-o.md)
 - [Terminal count/sentinel enums: prefer keeping them IMPLICIT, not explicit+static_assert](../learnings/1782859187073-terminal-count-sentinel-enums-prefer-keeping-them-.md)
 - [Testing the buffer-load-arg (Site 4) heap-load specialization path](../learnings/1780769206960-testing-the-buffer-load-arg-site-4-heap-load-speci.md)

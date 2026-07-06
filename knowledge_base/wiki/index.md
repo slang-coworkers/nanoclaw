@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **839 agent learnings**, synthesized into **42 concept pages**.
+Standalone wiki built from **889 agent learnings**, synthesized into **42 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -79,11 +79,11 @@ Standalone wiki built from **839 agent learnings**, synthesized into **42 concep
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (497)
-- [NanoClaw / agent operations](topics/agent-ops.md) (132)
-- [CI, build & tooling](topics/ci-tooling.md) (58)
-- [Review & process](topics/review-process.md) (26)
-- [Uncategorized](topics/misc.md) (126)
+- [Slang compiler & language](topics/slang-compiler.md) (528)
+- [NanoClaw / agent operations](topics/agent-ops.md) (136)
+- [CI, build & tooling](topics/ci-tooling.md) (60)
+- [Review & process](topics/review-process.md) (27)
+- [Uncategorized](topics/misc.md) (138)
 
 ## All learnings (chronological)
 
@@ -926,3 +926,53 @@ Standalone wiki built from **839 agent learnings**, synthesized into **42 concep
 - [PR-description prose fixes-N closes the wrong issue and blocks auto-close](learnings/1782951523566-pr-description-prose-fixes-n-closes-the-wrong-issu.md)
 - [Verify a PR's live state before rolling a fixer's PR-state claim upstream — maintainer-side actions go stale fast](learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md)
 - [MSVC /W4 /WX flags C4456 shadow-declaration as error — invisible to local gcc/clang builds](learnings/1782956138561-msvc-w4-wx-flags-c4456-shadow-declaration-as-error.md)
+- [slangc -h advertises glsl_110/120/130/140 profiles that the parser rejects (three-site sync + check-cmdline-ref CI)](learnings/1782980898198-slangc-h-advertises-glsl-110-120-130-140-profiles-.md)
+- [Never fabricate downstream chain events (PR numbers/reports)](learnings/1782981166747-never-fabricate-downstream-chain-events-pr-numbers.md)
+- [GLSL struct literal (MakeStruct) needs a SEPARATE constructor form from the array fix](learnings/1782981552695-glsl-struct-literal-makestruct-needs-a-separate-co.md)
+- [slang-pr-review-runner post-back scripts lack execute bit — invoke sub-steps with bash](learnings/1782986622527-slang-pr-review-runner-post-back-scripts-lack-exec.md)
+- [Slang HitObject SM6.9+NVAPI invalid mix — CapabilitySet.implies() is inert on disjunctive/abstract target caps](learnings/1782986638349-slang-hitobject-sm6-9-nvapi-invalid-mix-capability.md)
+- [Gated GitHub set is ONLY gh pr ready + merge — comments/labels/replies/reactions post freely](learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md)
+- [Never fabricate PR numbers or CI state in tracker rows](learnings/1782986994116-never-fabricate-pr-numbers-or-ci-state-in-tracker-.md)
+- [Verify a triage's predicate premise at HEAD (revert-drill) before fixing on top of it — #11889 HitObject NVAPI premise was empirically false](learnings/1782991917563-verify-a-triage-s-predicate-premise-at-head-revert.md)
+- [CORRECTION: Slang HitObject SM6.9+NVAPI — refutes my earlier "implies() inert" learning; real bug is 2-arg Invoke ABI gap; stale-binary meta-lesson](learnings/1782992753685-correction-slang-hitobject-sm6-9-nvapi-refutes-my-.md)
+- [supervise-issues pull-universe.sh bash-quoting bug](learnings/1782995331984-supervise-issues-pull-universe-sh-bash-quoting-bug.md)
+- [slang-test test-server retry false-green (#11911) + gh App-token auth-status false alarm](learnings/1783009679066-slang-test-test-server-retry-false-green-11911-gh-.md)
+- [macOS: hidden visibility breaks cross-dylib typed catch of C++ exceptions (libc++abi RTTI-identity)](learnings/1783011716114-macos-hidden-visibility-breaks-cross-dylib-typed-c.md)
+- [slang-test harness false-green fixes: verify behaviorally; Defect-A registry-drain repro is platform-dependent](learnings/1783013967417-slang-test-harness-false-green-fixes-verify-behavi.md)
+- [Adjudicate "false-positive warning?" disputes by diffing emitted target code across divergent cases](learnings/1783019615446-adjudicate-false-positive-warning-disputes-by-diff.md)
+- [slang-rhi formatting/lint gates differ from the slang compiler (clang-format v20, ASCII hook, -Werror)](learnings/1783022365578-slang-rhi-formatting-lint-gates-differ-from-the-sl.md)
+- [slang #11917 — generalizing RequiredLoweringPassSet gating; the set is already re-scanned once post-specialization](learnings/1783026531085-slang-11917-generalizing-requiredloweringpassset-g.md)
+- [Slang binary-module up-to-date check is DIGEST-based (not mtime); path layer has no cross-drive handling](learnings/1783028515295-slang-binary-module-up-to-date-check-is-digest-bas.md)
+- [Follow-up/tracking issue premise can outrun its prerequisite PR — verify the PR is actually MERGED](learnings/1783029023011-follow-up-tracking-issue-premise-can-outrun-its-pr.md)
+- [slang#11918 cross-drive module-cache MISS: reproducer refutes the naive path-layer hypothesis](learnings/1783029316997-slang-11918-cross-drive-module-cache-miss-reproduc.md)
+- [CORRECTION to #11918 learning: load-side path layer is drive-agnostic; getRelativePath is save-side only](learnings/1783029497134-correction-to-11918-learning-load-side-path-layer-.md)
+- [Local FileCheck IS bundled; RequiredLoweringPassSet gating (slang #11917)](learnings/1783031485208-local-filecheck-is-bundled-requiredloweringpassset.md)
+- [SUPERSEDES prior #11918 correction: the getRelativePath cross-volume EMPTY-dep IS the root cause (save produces, load consumes)](learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md)
+- [spirv-opt crash suppressed via expected-failure list is often droppable via the -O0 default (PR #11805), independent of the upstream fix](learnings/1783036168133-spirv-opt-crash-suppressed-via-expected-failure-li.md)
+- [Re-pushing a fix branch: check the remote tip's AUTHOR first — a maintainer may have pushed (merge/commits); never force over it](learnings/1783038459347-re-pushing-a-fix-branch-check-the-remote-tip-s-aut.md)
+- [slang#11918 RESOLVED: getRelativePath returns empty across Windows volumes → empty serialized module dep (PR #11921)](learnings/1783038802019-slang-11918-resolved-getrelativepath-returns-empty.md)
+- [slang-pr-review-runner: final-review.md can capture the coordinator's trailing recap, not the review body](learnings/1783042659846-slang-pr-review-runner-final-review-md-can-capture.md)
+- [Reproducing slang-test render-test aborts with standalone slangc; #11805 -O0 is slang-test-path-only](learnings/1783043861186-reproducing-slang-test-render-test-aborts-with-sta.md)
+- [Removing explicit -O0 from slang-test test directives (post-#11805) + bulk-directive-edit gotchas](learnings/1783047481430-removing-explicit-o0-from-slang-test-test-directiv.md)
+- [Triaging "use library allocation wrappers" issues — latent vs live, and caller-owned vs library-owned buffers](learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md)
+- [mimalloc "for Slang core" is not a turn-key reuse of the SPIRV-Tools integration](learnings/1783058024375-mimalloc-for-slang-core-is-not-a-turn-key-reuse-of.md)
+- [if constexpr does NOT discard branches in a non-template function (dead-code-to-type-checked conversions)](learnings/1783059299573-if-constexpr-does-not-discard-branches-in-a-non-te.md)
+- [Slang public-header ODR under mixed ASan (#11927): which header constructs are/aren't detect_odr_violation offenders](learnings/1783059512544-slang-public-header-odr-under-mixed-asan-11927-whi.md)
+- [Delivering workflow-file changes: diff-as-issue-comment + RelWithDebInfo output-dir](learnings/1783059878582-delivering-workflow-file-changes-diff-as-issue-com.md)
+- [Slang CI common-setup maps the releaseWithDebugInfo preset to the RelWithDebInfo config dir (bin_dir/lib_dir)](learnings/1783060729289-slang-ci-common-setup-maps-the-releasewithdebuginf.md)
+- [Slang direct SPIR-V emitter never emits NoContraction — fp-mode/precise are no-ops there](learnings/1783064216848-slang-direct-spir-v-emitter-never-emits-nocontract.md)
+- [miniz heap-archive buffers are owned by per-archive callbacks, not global mz_free](learnings/1783064260282-miniz-heap-archive-buffers-are-owned-by-per-archiv.md)
+- [static-const-matrix-array: two distinct flake signatures, don't conflate](learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md)
+- [Slang direct SPIR-V: emit NoContraction for -fp-mode precise at the emitArithmetic choke point (issue #11933)](learnings/1783067747847-slang-direct-spir-v-emit-nocontraction-for-fp-mode.md)
+- [Slang record-replay: the REPLAY path leaks because ReplayContext registries are raw/non-owning (DeepWiki wrongly says owning)](learnings/1783073842766-slang-record-replay-the-replay-path-leaks-because-.md)
+- [Verify PR-issue relationship before assuming duplicate — accept-now/fix-later splits (slang #11938 vs #11937)](learnings/1783078003012-verify-pr-issue-relationship-before-assuming-dupli.md)
+- [Slang ASan/LSan build: detect_leaks=0 during build, full build won't fit ~9.4G disk, verify-without-link trick](learnings/1783079812616-slang-asan-lsan-build-detect-leaks-0-during-build-.md)
+- [Merge hazard: two branches bumping a shared version counter collapse to one value (git can't see it)](learnings/1783089145425-merge-hazard-two-branches-bumping-a-shared-version.md)
+- [postmortem: slang#11928 superseded by PR #11930 (partial dead-code removal)](learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md)
+- [slang merge-queue green ≠ C++ unit-test health (test-server masking, #11911)](learnings/1783239972308-slang-merge-queue-green-c-unit-test-health-test-se.md)
+- [SV_Target location fix lives in TWO places in slang-parameter-binding.cpp](learnings/1783263604045-sv-target-location-fix-lives-in-two-places-in-slan.md)
+- [Reviewer A error_max_budget_usd salvage: subagent final texts are recoverable from stream.jsonl](learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md)
+- [WGSL trailing break in switch cases is VALID (redundant), not invalid — verify validator claims via DeepWiki when WebSearch is down](learnings/1783296818057-wgsl-trailing-break-in-switch-cases-is-valid-redun.md)
+- [CORRECTION: WGSL redundant switch-case break IS a real bug (older naga rejects) — verify across toolchain VERSIONS, not just current source](learnings/1783300097186-correction-wgsl-redundant-switch-case-break-is-a-r.md)
+- [Slang: supportsSwitchFallThrough() is NOT a proxy for "target needs a switch-case break" — HLSL/FXC returns false yet requires the break](learnings/1783300771712-slang-supportsswitchfallthrough-is-not-a-proxy-for.md)
+- [Recall/scan step: use an isolated subagent_type, never a bare context-inheriting fork](learnings/1783301166520-recall-scan-step-use-an-isolated-subagent-type-nev.md)
