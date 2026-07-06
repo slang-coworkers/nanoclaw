@@ -148,6 +148,37 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     expect(result.status).toBe(0);
   });
 
+  it('mid-sentence MENTION of a marker is not a delivery (anchored match)', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: 'Still working — I will send the [Fix Report] after the review completes.' },
+    });
+    expect(result.status).toBe(0);
+  });
+
+  it('indented marker at line start still gates', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: 'Summary first.\n  [Fix Report] PR #9 fixed' },
+    });
+    expect(result.status).toBe(2);
+  });
+
+  it('denial message no longer advertises the state-file path', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'mcp__nanoclaw__send_message',
+      tool_input: { text: '[Fix Report] x' },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).not.toContain(stateFile);
+  });
+
   it('blocks Bash gh pr create when critique_rounds=0', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));

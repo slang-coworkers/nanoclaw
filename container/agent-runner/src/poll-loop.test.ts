@@ -670,6 +670,26 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
     expect(r.blocked).toBe(false);
   });
 
+  it('mid-sentence MENTION of a marker is not a delivery (anchored match)', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    const r = checkCritiqueGate('I will send the [Fix Report] once codex approves.', {
+      overlayMarkerPath: markerPath,
+      workflowStatePath: statePath,
+    });
+    expect(r.blocked).toBe(false);
+  });
+
+  it('marker at the start of a later line still gates', () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    const r = checkCritiqueGate('Summary first.\n[Fix Report] PR #9 fixed', {
+      overlayMarkerPath: markerPath,
+      workflowStatePath: statePath,
+    });
+    expect(r.blocked).toBe(true);
+  });
+
   it('marker present + [Fix Report] + critique_rounds=0 → BLOCKED', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));

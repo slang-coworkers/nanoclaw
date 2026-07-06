@@ -33,7 +33,11 @@ TEXT=$(echo "$INPUT" | jq -r '.tool_input.text // .tool_input.command // ""')
 HIT=""
 case "$TOOL" in
   mcp__nanoclaw__send_message)
-    if echo "$TEXT" | grep -qE '\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]'; then
+    # Anchored to line start (the chain protocol emits markers as message /
+    # line prefixes). Unanchored matching burned a denial — and one of the
+    # session's 3 soft-cap strikes — every time an agent merely MENTIONED a
+    # marker mid-sentence in a status update.
+    if echo "$TEXT" | grep -qE '^[[:space:]]*\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]'; then
       HIT="delivery/handoff message"
     fi
     ;;
@@ -114,8 +118,7 @@ must-fix items.
 
 If multiple stages are required, run /codex-critique once per listed
 STAGE value (the codex-critique skill defines DIAGNOSIS_REVIEW,
-PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW). State file:
-$STATE
+PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW).
 EOF
   exit 2
 fi

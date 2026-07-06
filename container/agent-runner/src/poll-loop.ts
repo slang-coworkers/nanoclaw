@@ -917,7 +917,11 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
  *
  * Paths overridable for tests via the optional opts.
  */
-const DELIVERY_MARKER_RE = /\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]/;
+// Anchored to line start (multiline): the chain protocol emits markers as
+// message/line prefixes, and unanchored matching treated a mid-sentence
+// MENTION of a marker as a delivery — burning a denial and one of the
+// session's soft-cap strikes each time.
+const DELIVERY_MARKER_RE = /^[ \t]*\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]/m;
 const ROUTING_HANDOFF_MARKER_RE = DELIVERY_MARKER_RE;
 
 // Soft-cap shared by the in-process gates, mirroring the bash hooks
