@@ -267,6 +267,71 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
   });
 });
 
+describe('graduated escalation at the denial cap', () => {
+  const denyPayload = () => ({
+    tool_name: 'mcp__nanoclaw__send_message',
+    tool_input: { text: '[Fix Report] x' },
+  });
+  const escFile = () => path.join(tmpRoot, 'critique-escalation.json');
+
+  it('at the cap: denies, requests human approval, writes the escalation file', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
+    const result = run(denyPayload());
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('requesting human approval');
+    const esc = JSON.parse(fs.readFileSync(escFile(), 'utf-8')) as { requested_at: number; reason: string };
+    expect(esc.requested_at).toBeGreaterThan(0);
+    expect(esc.reason).toContain('no critique rounds');
+    // Second attempt while pending: still denied — no silent fail-open.
+    const again = run(denyPayload());
+    expect(again.status).toBe(2);
+    expect(again.stderr).toContain('awaiting human approval');
+  });
+
+  it('admin-approved bypass allows the delivery', () => {
+    activateOverlay();
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3, critique_gate_bypass_approved: true }),
+    );
+    const result = run(denyPayload());
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('admin-approved bypass');
+  });
+
+  it('admin-rejected bypass keeps denying', () => {
+    activateOverlay();
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3, critique_gate_bypass_rejected: true }),
+    );
+    const result = run(denyPayload());
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('REJECTED');
+  });
+
+  it('times out to fail-open when no decision lands', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
+    fs.writeFileSync(
+      escFile(),
+      JSON.stringify({ requested_at: Math.floor(Date.now() / 1000) - 3600, reason: 'x' }),
+    );
+    const result = run(denyPayload());
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('escalation timeout');
+  });
+
+  it('CRITIQUE_ESCALATION=0 restores the legacy fail-open cap', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
+    const result = run(denyPayload(), { CRITIQUE_ESCALATION: '0' });
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('soft-fail');
+  });
+});
+
 describe('OUTPUT_REVIEW verdict gate', () => {
   function activateWithStages(stages: string[]): void {
     fs.writeFileSync(markerFile, 'critique-gate\n');

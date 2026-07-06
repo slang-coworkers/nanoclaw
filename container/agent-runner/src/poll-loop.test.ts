@@ -821,7 +821,7 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
     expect(r.reason).toContain('critique_rounds=0');
   });
 
-  it('soft-cap still yields after 3 denials on stage-based refusals', () => {
+  it('at the denial cap, escalates to human approval instead of failing open', () => {
     fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
     fs.writeFileSync(
       statePath,
@@ -834,7 +834,87 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
     expect(gate().blocked).toBe(true);
     expect(gate().blocked).toBe(true);
     expect(gate().blocked).toBe(true);
-    expect(gate().blocked).toBe(false); // 4th attempt yields (cap)
+    const fourth = gate(); // cap: graduated escalation, still denied
+    expect(fourth.blocked).toBe(true);
+    expect(fourth.reason).toContain('bypass request has been sent');
+    const esc = JSON.parse(fs.readFileSync(path.join(tmp, 'critique-escalation.json'), 'utf-8')) as {
+      requested_at: number;
+      reason: string;
+    };
+    expect(esc.requested_at).toBeGreaterThan(0);
+    expect(esc.reason).toContain('must-fix');
+  });
+
+  it('admin-approved bypass allows delivery at the cap', () => {
+    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
+        critique_gate_denials: 3,
+        critique_gate_bypass_approved: true,
+      }),
+    );
+    expect(gate().blocked).toBe(false);
+  });
+
+  it('admin-rejected bypass keeps denying without re-escalating', () => {
+    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
+        critique_gate_denials: 3,
+        critique_gate_bypass_rejected: true,
+      }),
+    );
+    const r = gate();
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toContain('REJECTED');
+    expect(fs.existsSync(path.join(tmp, 'critique-escalation.json'))).toBe(false);
+  });
+
+  it('escalation timeout fails open when no decision lands', () => {
+    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify({
+        critique_rounds: 1,
+        critique_stages: { OUTPUT_REVIEW: 1 },
+        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
+        critique_gate_denials: 3,
+      }),
+    );
+    fs.writeFileSync(
+      path.join(tmp, 'critique-escalation.json'),
+      JSON.stringify({ requested_at: Math.floor(Date.now() / 1000) - 3600, reason: 'x' }),
+    );
+    expect(gate().blocked).toBe(false);
+  });
+
+  it('CRITIQUE_ESCALATION=0 restores the legacy fail-open cap', () => {
+    const saved = process.env.CRITIQUE_ESCALATION;
+    process.env.CRITIQUE_ESCALATION = '0';
+    try {
+      fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
+      fs.writeFileSync(
+        statePath,
+        JSON.stringify({
+          critique_rounds: 1,
+          critique_stages: { OUTPUT_REVIEW: 1 },
+          critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
+          critique_gate_denials: 3,
+        }),
+      );
+      expect(gate().blocked).toBe(false);
+    } finally {
+      if (saved === undefined) delete process.env.CRITIQUE_ESCALATION;
+      else process.env.CRITIQUE_ESCALATION = saved;
+    }
   });
 });
 
@@ -1072,17 +1152,24 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     expect(result.gateRefusals![0]).toContain('[critique-gate] REFUSED');
   });
 
-  it('critique gate soft-caps after 3 denials (parity with the bash hook)', () => {
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const call = () =>
-      checkCritiqueGate('[Fix Report] x', { overlayMarkerPath: markerPath, workflowStatePath: statePath }).blocked;
-    expect(call()).toBe(true); // denial 1
-    expect(call()).toBe(true); // denial 2
-    expect(call()).toBe(true); // denial 3
-    expect(call()).toBe(false); // soft-cap: yields instead of thrashing
-    const persisted = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as { critique_gate_denials?: number };
-    expect(persisted.critique_gate_denials).toBe(3);
+  it('critique gate legacy soft-cap (CRITIQUE_ESCALATION=0) yields after 3 denials', () => {
+    const saved = process.env.CRITIQUE_ESCALATION;
+    process.env.CRITIQUE_ESCALATION = '0';
+    try {
+      fs.writeFileSync(markerPath, 'critique-gate\n');
+      fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+      const call = () =>
+        checkCritiqueGate('[Fix Report] x', { overlayMarkerPath: markerPath, workflowStatePath: statePath }).blocked;
+      expect(call()).toBe(true); // denial 1
+      expect(call()).toBe(true); // denial 2
+      expect(call()).toBe(true); // denial 3
+      expect(call()).toBe(false); // legacy soft-cap: yields instead of thrashing
+      const persisted = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as { critique_gate_denials?: number };
+      expect(persisted.critique_gate_denials).toBe(3);
+    } finally {
+      if (saved === undefined) delete process.env.CRITIQUE_ESCALATION;
+      else process.env.CRITIQUE_ESCALATION = saved;
+    }
   });
 });
 

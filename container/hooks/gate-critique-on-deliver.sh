@@ -98,20 +98,77 @@ else
 fi
 
 if [ -n "$DENIAL_REASON" ]; then
-  # Soft cap: track gate denials. After 3 denies in a single session, the gate
-  # stops denying and yields with a "stuck" warning. Prevents the 100-deny
-  # pathology where a confused agent never learns to comply and burns turns
-  # retrying. Threshold is intentionally low — the gate's job is to surface
-  # the requirement, not to be an infinite wall.
+  # Denial cap → graduated escalation. After 3 denies in a single session the
+  # gate no longer silently fails open: it writes an escalation request file
+  # (the host sweep turns it into an admin approval card) and keeps denying
+  # until an admin approves the bypass, rejects it, or the request times out.
+  # The timeout backstop preserves the original anti-thrash contract — a
+  # broken approval path must not wedge the agent forever.
+  # CRITIQUE_ESCALATION=0 restores the legacy fail-open cap.
   DENIALS=$(jq -r '.critique_gate_denials // 0' "$STATE" 2>/dev/null || echo 0)
   if [ "$DENIALS" -ge 3 ]; then
-    cat >&2 << EOF
+    if [ "${CRITIQUE_ESCALATION:-1}" = "0" ]; then
+      cat >&2 << EOF
 [critique-gate soft-fail] Allowing $HIT despite unresolved requirement
 ($DENIAL_REASON). The gate denied this session 3 times already; further
 denials would just thrash. If the agent is consistently bypassing critique,
 the workflow / overlay setup needs review.
 EOF
-    exit 0
+      exit 0
+    fi
+    BYPASS=$(jq -r '.critique_gate_bypass_approved // false' "$STATE" 2>/dev/null || echo false)
+    if [ "$BYPASS" = "true" ]; then
+      echo "[critique-gate] Delivery allowed by admin-approved bypass (requirement still unmet: $DENIAL_REASON)." >&2
+      exit 0
+    fi
+    REJECTED=$(jq -r '.critique_gate_bypass_rejected // false' "$STATE" 2>/dev/null || echo false)
+    if [ "$REJECTED" = "true" ]; then
+      cat >&2 << EOF
+CRITIQUE REQUIRED before $HIT — an admin REJECTED the bypass request.
+
+Reason: $DENIAL_REASON.
+
+Satisfy the critique requirement (/codex-critique) or report the blocker to
+your parent instead of delivering.
+EOF
+      exit 2
+    fi
+    ESC_FILE="${CRITIQUE_ESCALATION_FILE:-$(dirname "$STATE")/critique-escalation.json}"
+    NOW_EPOCH=$(date +%s)
+    if [ -f "$ESC_FILE" ]; then
+      REQUESTED_AT=$(jq -r '.requested_at // 0' "$ESC_FILE" 2>/dev/null || echo 0)
+      case "$REQUESTED_AT" in *[!0-9]*|'') REQUESTED_AT=0 ;; esac
+      TIMEOUT="${CRITIQUE_ESCALATION_TIMEOUT_SECS:-1800}"
+      if [ "$REQUESTED_AT" -gt 0 ] && [ $(( NOW_EPOCH - REQUESTED_AT )) -ge "$TIMEOUT" ]; then
+        cat >&2 << EOF
+[critique-gate escalation timeout] Allowing $HIT: the human-approval request
+has been pending for over ${TIMEOUT}s with no decision. Unresolved
+requirement: $DENIAL_REASON. The approval path needs review.
+EOF
+        exit 0
+      fi
+      cat >&2 << EOF
+CRITIQUE REQUIRED before $HIT — escalated, awaiting human approval.
+
+Reason: $DENIAL_REASON.
+
+An admin has been asked to approve or reject this delivery. Satisfy the
+requirement with /codex-critique or wait for the decision; do not retry the
+delivery in a tight loop.
+EOF
+      exit 2
+    fi
+    jq -n --arg reason "$DENIAL_REASON" --arg hit "$HIT" --argjson at "$NOW_EPOCH" --argjson denials "$DENIALS" \
+      '{requested_at: $at, reason: $reason, hit: $hit, denials: $denials}' > "$ESC_FILE" 2>/dev/null || true
+    cat >&2 << EOF
+CRITIQUE REQUIRED before $HIT — denial cap reached; requesting human approval.
+
+Reason: $DENIAL_REASON.
+
+A bypass request has been sent to an admin. Satisfy the requirement with
+/codex-critique, or wait for the admin decision.
+EOF
+    exit 2
   fi
   jq '.critique_gate_denials = ((.critique_gate_denials // 0) + 1)' "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" || true
   cat >&2 << EOF

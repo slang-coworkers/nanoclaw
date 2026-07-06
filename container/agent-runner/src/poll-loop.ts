@@ -1014,6 +1014,8 @@ export function checkCritiqueGate(
     critique_rounds?: number;
     critique_stages?: Record<string, number>;
     critique_verdicts?: Record<string, string>;
+    critique_gate_bypass_approved?: boolean;
+    critique_gate_bypass_rejected?: boolean;
   } = {};
   try {
     state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as typeof state;
@@ -1064,14 +1066,62 @@ export function checkCritiqueGate(
   }
   if (denialReason === '') return { blocked: false };
 
-  // Soft-cap parity with gate-critique-on-deliver.sh — the bash hook
-  // (send_message/Bash tool path) caps denials but this text-output path
-  // previously refused indefinitely, so an agent that couldn't run critique
-  // (e.g. an orchestrator with no codex wired) thrashed forever.
-  if (gateShouldYield(statePath, 'critique_gate_denials')) {
-    return { blocked: false };
-  }
   const marker = body.match(DELIVERY_MARKER_RE)?.[1] ?? '<delivery>';
+
+  // Denial cap → graduated escalation, in parity with the bash hook. At the
+  // cap the gate no longer silently fails open: it writes an escalation
+  // request file (the host sweep turns it into an admin approval card) and
+  // keeps denying until an admin approves the bypass, rejects it, or the
+  // request times out (backstop preserving the original anti-thrash
+  // contract). CRITIQUE_ESCALATION=0 restores the legacy fail-open cap.
+  if (gateShouldYield(statePath, 'critique_gate_denials')) {
+    if (process.env.CRITIQUE_ESCALATION === '0') return { blocked: false };
+    if (state.critique_gate_bypass_approved === true) return { blocked: false };
+    if (state.critique_gate_bypass_rejected === true) {
+      return {
+        blocked: true,
+        reason:
+          `[critique-gate] REFUSED — an admin REJECTED the bypass request (${denialReason}). ` +
+          `Satisfy the critique requirement (/codex-critique) or report the blocker to your parent instead of delivering.`,
+      };
+    }
+    const escPath =
+      process.env.CRITIQUE_ESCALATION_FILE ?? path.join(path.dirname(statePath), 'critique-escalation.json');
+    const nowS = Math.floor(Date.now() / 1000);
+    let requestedAt = 0;
+    try {
+      const esc = JSON.parse(fs.readFileSync(escPath, 'utf-8')) as { requested_at?: number };
+      requestedAt = typeof esc.requested_at === 'number' ? esc.requested_at : 0;
+    } catch {
+      requestedAt = 0;
+    }
+    const timeoutS = Number(process.env.CRITIQUE_ESCALATION_TIMEOUT_SECS ?? 1800);
+    if (requestedAt > 0 && nowS - requestedAt >= timeoutS) {
+      // Timeout backstop: no decision landed — fail open rather than wedge.
+      return { blocked: false };
+    }
+    if (requestedAt === 0) {
+      try {
+        fs.writeFileSync(
+          escPath,
+          JSON.stringify({
+            requested_at: nowS,
+            reason: denialReason,
+            hit: 'text-output delivery',
+            denials: GATE_DENIAL_CAP,
+          }),
+        );
+      } catch {
+        // Best-effort — an unwritable escalation file degrades to deny-only.
+      }
+    }
+    return {
+      blocked: true,
+      reason:
+        `[critique-gate] REFUSED — denial cap reached; a bypass request has been sent to an admin (${denialReason}). ` +
+        `Satisfy the requirement with /codex-critique or wait for the decision; do not retry the delivery in a tight loop.`,
+    };
+  }
   return {
     blocked: true,
     reason:

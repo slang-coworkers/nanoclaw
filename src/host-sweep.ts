@@ -270,6 +270,19 @@ async function sweepSession(session: Session): Promise<void> {
     }
     // MODULE-HOOK:runaway-detect:end
 
+    // 1c. Critique-gate escalation: a session that hit the gate's denial cap
+    // writes .claude/critique-escalation.json (host-visible — /workspace is
+    // the session-dir mount); turn a fresh request into an admin approval
+    // card. Non-blocking and module-gated like runaway.
+    // MODULE-HOOK:critique-escalation:start
+    try {
+      const { checkCritiqueEscalation } = await import('./modules/critique-escalation/index.js');
+      await checkCritiqueEscalation(session);
+    } catch (err) {
+      log.debug('critique escalation check skipped', { sessionId: session.id, err });
+    }
+    // MODULE-HOOK:critique-escalation:end
+
     // 2. Wake a container if work is due and nothing is running. Ordered
     // before the crashed-container cleanup so a fresh container gets a chance
     // to clean its own orphan processing_ack rows on startup (see
