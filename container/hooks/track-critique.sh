@@ -112,6 +112,10 @@ if [ -z "$STAGE" ] && [ -n "$TID" ] && [ -f "$STATE" ]; then
   REPLY_STAGE=$(jq -r --arg t "$TID" '(.critique_threads // {})[$t] // ""' "$STATE" 2>/dev/null || true)
 fi
 
+# Every recorded round also re-arms the delivery gate's soft-cap: a genuine
+# critique call is the compliance signal the cap exists to elicit. Without
+# the reset, 3 early denials opened the gate for the session's lifetime — a
+# later, completely unreviewed second deliverable sailed through.
 if [ -n "$STAGE" ]; then
   jq --arg ts "$NOW" --arg s "$STAGE" --arg v "$VERDICT" --arg tid "$TID" '
     .critique_rounds = ((.critique_rounds // 0) + 1)
@@ -119,6 +123,7 @@ if [ -n "$STAGE" ]; then
     | .critique_stages[$s] = ((.critique_stages[$s] // 0) + 1)
     | .last_critique_stage = $s
     | .edits_since_critique = 0
+    | .critique_gate_denials = 0
     | .last_critique_at = $ts
     | if $v != "" then .critique_verdicts = (.critique_verdicts // {}) | .critique_verdicts[$s] = $v else . end
     | if $tid != "" then .critique_threads = ((.critique_threads // {}) + {($tid): $s}) else . end
@@ -130,6 +135,7 @@ elif [ -n "$REPLY_STAGE" ]; then
     .critique_rounds = ((.critique_rounds // 0) + 1)
     | .last_critique_stage = $s
     | .edits_since_critique = 0
+    | .critique_gate_denials = 0
     | .last_critique_at = $ts
     | if $v != "" then .critique_verdicts = (.critique_verdicts // {}) | .critique_verdicts[$s] = $v else . end
   ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
@@ -137,6 +143,7 @@ else
   jq --arg ts "$NOW" --arg v "$VERDICT" '
     .critique_rounds = ((.critique_rounds // 0) + 1)
     | .edits_since_critique = 0
+    | .critique_gate_denials = 0
     | .last_critique_at = $ts
     | if $v != "" then .last_critique_verdict = $v else . end
   ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"

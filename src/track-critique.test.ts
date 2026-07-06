@@ -344,6 +344,31 @@ describe('codex-reply verdicts update the mapped stage', () => {
   });
 });
 
+describe('soft-cap re-arm', () => {
+  // A recorded round is the compliance signal the denial cap exists to
+  // elicit — it must restore the wall. Without the reset, 3 early denials
+  // opened the gate for the session's lifetime.
+  it('resets critique_gate_denials when a STAGE round is recorded', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_gate_denials: 2, critique_rounds: 0 }));
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix', sandbox: 'danger-full-access' },
+      tool_response: JSON.stringify({ threadId: 't-arm', content: '### Verdict\napprove' }),
+    });
+    expect((readState() as any).critique_gate_denials).toBe(0);
+  });
+
+  it('resets on legacy (no-STAGE) rounds too', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_gate_denials: 3 }));
+    run({
+      tool_name: 'mcp__codex__codex-reply',
+      tool_input: { threadId: 't-none', prompt: 're-verify please' },
+      tool_response: JSON.stringify({ threadId: 't-none', content: '### Verdict\napprove' }),
+    });
+    expect((readState() as any).critique_gate_denials).toBe(0);
+  });
+});
+
 describe('track-critique ignores non-codex tools', () => {
   it('exits 0 silently for Edit', () => {
     const res = run({
