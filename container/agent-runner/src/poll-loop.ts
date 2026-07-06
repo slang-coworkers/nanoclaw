@@ -11,8 +11,13 @@ import {
 import { getPendingMessages, markProcessing, markCompleted, type MessageInRow } from './db/messages-in.js';
 import { writeMessageOut } from './db/messages-out.js';
 import { getInboundDb, touchHeartbeat, clearStaleProcessingAcks } from './db/connection.js';
-import { clearContinuation, migrateLegacyContinuation, setContinuation } from './db/session-state.js';
-import { clearCurrentInReplyTo, setCurrentInReplyTo } from './current-batch.js';
+import {
+  clearContinuation,
+  clearCurrentInReplyTo,
+  migrateLegacyContinuation,
+  setContinuation,
+  setCurrentInReplyTo,
+} from './db/session-state.js';
 import {
   formatMessages,
   extractRouting,
