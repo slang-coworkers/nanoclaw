@@ -6,15 +6,34 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 292 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 145 |
-| `nv-slang` | slang project spine, skills, workflows | 100 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 43 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 298 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 146 |
+| `nv-slang` | slang project spine, skills, workflows | 101 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 44 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 31 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-06
+
+### nv-main (6 PRs)
+- **#799** `Sync nv-main with upstream/main (b6cb53e2)`
+- **#800** `fix(supervise-issues): make pull-universe.sh robust to bash quoting + large chain universes`
+- **#802** `fix(container-runner): add --init so container PID 1 reaps zombies`
+- **#803** `fix(critique-gate): Close verdict-enforcement gaps + tamper-resistance`
+- **#804** `docs+test: critique-gate boundaries doc + delivery-vocabulary coverage (follow-up to #803)`
+- **#805** `docs: critique-gate extension recipes (R1–R7)`
+
+### nv-dashboard (1 PRs)
+- **#793** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PRs)
+- **#797** `Sync nv-slang with upstream/main (b6cb53e2)`
+
+### nv-slangpy (1 PRs)
+- **#794** `Sync nv-slangpy with upstream/main`
 
 ## 📅 2026-07-03
 
