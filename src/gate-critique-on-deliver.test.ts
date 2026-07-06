@@ -190,16 +190,39 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     expect(result.stderr).toContain('PR creation');
   });
 
-  it('blocks Bash gh api ... pulls when critique_rounds=0', () => {
+  it('blocks direct curl to api.github.com/.../pulls when critique_rounds=0', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
     const result = run({
       tool_name: 'Bash',
       tool_input: { command: 'curl -X POST https://api.github.com/repos/x/y/pulls -d @body.json' },
     });
-    // Note: this test shape would need the regex to match `gh api .../pulls`
-    // — curl directly to api.github.com is not gated. Asserting the curl
-    // case passes confirms gate scope is intentionally narrow (gh-only).
+    // Previously asserted as intentionally-narrow (gh-only) — but curl to the
+    // same endpoint is the same delivery with a different client, so the
+    // scope now covers the /pulls route regardless of http client.
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('PR creation');
+  });
+
+  it('blocks GraphQL createPullRequest mutations when critique_rounds=0', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const result = run({
+      tool_name: 'Bash',
+      tool_input: {
+        command: `gh api graphql -f query='mutation { createPullRequest(input: {repositoryId: "r", baseRefName: "main", headRefName: "f", title: "t"}) { pullRequest { url } } }'`,
+      },
+    });
+    expect(result.status).toBe(2);
+  });
+
+  it('passes gh api pulls listing... still gated (unchanged legacy scope)', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 1 }));
+    const result = run({
+      tool_name: 'Bash',
+      tool_input: { command: 'gh api repos/x/y/pulls' },
+    });
     expect(result.status).toBe(0);
   });
 

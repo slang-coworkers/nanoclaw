@@ -14,6 +14,8 @@
 # PR commands (Bash):
 #   gh pr create
 #   gh api .../pulls
+#   direct REST calls carrying api.github.com/.../pulls (curl, wget, python…)
+#   GraphQL createPullRequest mutations
 #
 # Force-push gates intentionally NOT wired in v1 — too noisy for legitimate
 # rebases of feature branches; revisit if abuse pattern emerges.
@@ -42,7 +44,12 @@ case "$TOOL" in
     fi
     ;;
   Bash)
-    if echo "$TEXT" | grep -qE '(gh pr create|gh api [^|]*pulls\b)'; then
+    # Known PR-creation shapes: the gh CLI, direct REST calls carrying the
+    # /pulls route (curl/wget/python — any http client), and the GraphQL
+    # mutation name. Pattern enumeration can never be complete — the durable
+    # backstop is credential-layer enforcement at the OneCLI proxy — but
+    # these cover every egress shape observed in production.
+    if echo "$TEXT" | grep -qE '(gh pr create|gh api [^|]*pulls\b|api\.github\.com[^ ]*/pulls\b|createPullRequest)'; then
       HIT="PR creation"
     fi
     ;;
