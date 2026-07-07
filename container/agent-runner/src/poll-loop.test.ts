@@ -7,7 +7,15 @@ import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from '
 import { getPendingMessages, markCompleted } from './db/messages-in.js';
 import { getUndeliveredMessages } from './db/messages-out.js';
 import { formatMessages, extractRouting } from './formatter.js';
-import { checkCritiqueGate, checkRoutingGate, dispatchResultText, isCorruptionError, isNewSessionBatch, processQuery, taskOptsOutOfNewSession } from './poll-loop.js';
+import {
+  checkCritiqueGate,
+  checkRoutingGate,
+  dispatchResultText,
+  isCorruptionError,
+  isNewSessionBatch,
+  processQuery,
+  taskOptsOutOfNewSession,
+} from './poll-loop.js';
 import { MockProvider } from './providers/mock.js';
 import type { AgentQuery, ProviderEvent } from './providers/types.js';
 
@@ -267,10 +275,7 @@ describe('dispatchResultText <message> attribute parsing', () => {
 
   it('thread_id="X" overrides destRouting fallback', () => {
     addDestination('peer');
-    const result = dispatchResultText(
-      '<message to="peer" thread_id="branch-A">hello</message>',
-      sourceRouting,
-    );
+    const result = dispatchResultText('<message to="peer" thread_id="branch-A">hello</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out[0].thread_id).toBe('branch-A');
@@ -278,10 +283,7 @@ describe('dispatchResultText <message> attribute parsing', () => {
 
   it('in_reply_to="X" overrides destRouting fallback', () => {
     addDestination('peer');
-    const result = dispatchResultText(
-      '<message to="peer" in_reply_to="parent-msg-42">hello</message>',
-      sourceRouting,
-    );
+    const result = dispatchResultText('<message to="peer" in_reply_to="parent-msg-42">hello</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out[0].in_reply_to).toBe('parent-msg-42');
@@ -347,20 +349,14 @@ describe('dispatchResultText <message> attribute parsing', () => {
 
   it('dangling open does NOT trip when block is properly closed', () => {
     addDestination('peer');
-    const result = dispatchResultText(
-      '<message to="peer">complete block</message>',
-      sourceRouting,
-    );
+    const result = dispatchResultText('<message to="peer">complete block</message>', sourceRouting);
     expect(result.sent).toBe(1);
     expect(result.danglingOpen).toBeFalsy();
   });
 
   it('dangling open with thread_id attribute still refuses', () => {
     addDestination('peer');
-    const result = dispatchResultText(
-      '<message to="peer" thread_id="T">unfinished',
-      sourceRouting,
-    );
+    const result = dispatchResultText('<message to="peer" thread_id="T">unfinished', sourceRouting);
     expect(result.sent).toBe(0);
     expect(result.danglingOpen).toBe(true);
   });
@@ -390,10 +386,7 @@ describe('dispatchResultText <message> attribute parsing', () => {
     // back to the source. We verify the chain-attribute parser didn't
     // crash on the unknown name (regression: the old code didn't even
     // recognize the block as a <message> tag because of the regex bug).
-    const result = dispatchResultText(
-      '<message to="nonexistent" thread_id="T">body</message>',
-      sourceRouting,
-    );
+    const result = dispatchResultText('<message to="nonexistent" thread_id="T">body</message>', sourceRouting);
     // sent=1 from the scratchpad auto-route fallback (existing behavior),
     // not from a successful dispatch. The dropped block's body is in
     // the scratchpad payload routed back to source.
@@ -433,7 +426,13 @@ describe('origin metadata (from= attribute)', () => {
       .run(name, name, channelType, platformId);
   }
 
-  function insertWithRouting(id: string, kind: string, content: object, channelType: string | null, platformId: string | null): void {
+  function insertWithRouting(
+    id: string,
+    kind: string,
+    content: object,
+    channelType: string | null,
+    platformId: string | null,
+  ): void {
     getInboundDb()
       .prepare(
         `INSERT INTO messages_in (id, kind, timestamp, status, platform_id, channel_type, content)
@@ -657,7 +656,10 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
   });
 
   it('marker absent → not blocked (overlay opt-out)', () => {
-    const r = checkCritiqueGate('[Fix Report] something', { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+    const r = checkCritiqueGate('[Fix Report] something', {
+      overlayMarkerPath: markerPath,
+      workflowStatePath: statePath,
+    });
     expect(r.blocked).toBe(false);
   });
 
@@ -742,7 +744,10 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
   it('marker present + [Fix Report] + critique_rounds=0 → BLOCKED', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const r = checkCritiqueGate('[Fix Report] all done', { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+    const r = checkCritiqueGate('[Fix Report] all done', {
+      overlayMarkerPath: markerPath,
+      workflowStatePath: statePath,
+    });
     expect(r.blocked).toBe(true);
     expect(r.reason).toContain('critique_rounds=0');
     expect(r.reason).toContain('Fix Report');
@@ -750,14 +755,20 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
 
   it('marker present + [Fix Report] + missing state file → BLOCKED (treats as 0)', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
-    const r = checkCritiqueGate('[Fix Report] all done', { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+    const r = checkCritiqueGate('[Fix Report] all done', {
+      overlayMarkerPath: markerPath,
+      workflowStatePath: statePath,
+    });
     expect(r.blocked).toBe(true);
   });
 
   it('marker present + [Fix Report] + critique_rounds=1 → not blocked', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
-    const r = checkCritiqueGate('[Fix Report] all done', { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+    const r = checkCritiqueGate('[Fix Report] all done', {
+      overlayMarkerPath: markerPath,
+      workflowStatePath: statePath,
+    });
     expect(r.blocked).toBe(false);
   });
 
@@ -1033,7 +1044,6 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
   });
 });
 
-
 describe('dispatchResultText — chain-routing check (always on, not an overlay)', () => {
   let tmp: string;
   let statePath: string;
@@ -1124,13 +1134,38 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     // No in_reply_to → blocked.
     expect(checkRoutingGate('[Resolution] x', {}, { workflowStatePath: statePath }).blocked).toBe(true);
     // in_reply_to alone → allowed (thread_id optional).
-    expect(checkRoutingGate('[Resolution] x', { inReplyToOverride: '1' }, { workflowStatePath: statePath }).blocked).toBe(
-      false,
-    );
+    expect(
+      checkRoutingGate('[Resolution] x', { inReplyToOverride: '1' }, { workflowStatePath: statePath }).blocked,
+    ).toBe(false);
     // thread_id alone (no in_reply_to) → still blocked: in_reply_to is the primitive.
-    expect(checkRoutingGate('[Resolution] x', { threadIdOverride: 't1' }, { workflowStatePath: statePath }).blocked).toBe(
-      true,
-    );
+    expect(
+      checkRoutingGate('[Resolution] x', { threadIdOverride: 't1' }, { workflowStatePath: statePath }).blocked,
+    ).toBe(true);
+  });
+
+  it('checkRoutingGate unions a per-role delivery_markers extension', () => {
+    // Step-2 part-1: routing must recognize the same per-role vocabulary the
+    // critique gate does (via deliveryMarkerRe), so moving a marker to YAML
+    // later won't regress routing.
+    const vocab = path.join(tmp, 'routing-markers.json');
+    fs.writeFileSync(vocab, JSON.stringify({ message_markers: ['Weekly Report'] }));
+    // Extra marker, no in_reply_to → blocked.
+    expect(
+      checkRoutingGate('[Weekly Report] all green', {}, { workflowStatePath: statePath, deliveryMarkersPath: vocab })
+        .blocked,
+    ).toBe(true);
+    // Same marker with in_reply_to → allowed.
+    expect(
+      checkRoutingGate(
+        '[Weekly Report] all green',
+        { inReplyToOverride: '9' },
+        { workflowStatePath: statePath, deliveryMarkersPath: vocab },
+      ).blocked,
+    ).toBe(false);
+    // A built-in marker still gates with the extension file present.
+    expect(
+      checkRoutingGate('[Resolution] x', {}, { workflowStatePath: statePath, deliveryMarkersPath: vocab }).blocked,
+    ).toBe(true);
   });
 
   it('routing check soft-caps after 3 denials so it cannot thrash', () => {
@@ -1215,7 +1250,10 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer" in_reply_to="1">[Fix Report] shipped</message>', sourceRouting);
+    const result = dispatchResultText(
+      '<message to="peer" in_reply_to="1">[Fix Report] shipped</message>',
+      sourceRouting,
+    );
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(JSON.parse(out[0].content).text).toBe('[Fix Report] shipped');

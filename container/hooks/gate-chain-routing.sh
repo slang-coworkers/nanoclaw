@@ -25,7 +25,23 @@ TOOL=$(echo "$INPUT" | jq -r '.tool_name // ""')
 [ "$TOOL" = "mcp__nanoclaw__send_message" ] || exit 0
 
 TEXT=$(echo "$INPUT" | jq -r '.tool_input.text // ""')
-if ! echo "$TEXT" | grep -qE '\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]'; then
+
+# Delivery vocabulary: built-in defaults + ADDITIVE per-role extensions from
+# .critique-delivery-markers (same file the critique gate + poll-loop union).
+# Keeping all three enforcement points on one vocabulary is the prerequisite
+# for ever moving a role marker into per-role YAML: without it, that move
+# would silently regress this always-on routing gate for the role.
+OVERLAY_DIR="${OVERLAY_MARKER_DIR:-/workspace/agent}"
+MSG_MARKERS='Fix Report|Resolution|Triage Resolution|Review Verdict|handoff'
+MARKERS_FILE="$OVERLAY_DIR/.critique-delivery-markers"
+if [ -f "$MARKERS_FILE" ]; then
+  EXTRA_MSG=$(jq -r '(.message_markers // []) | map(select(type == "string" and test("^[A-Za-z0-9][A-Za-z0-9 _-]*$"))) | join("|")' "$MARKERS_FILE" 2>/dev/null || true)
+  [ -n "$EXTRA_MSG" ] && MSG_MARKERS="$MSG_MARKERS|$EXTRA_MSG"
+fi
+
+# Anchored to line start (matches poll-loop's routing regex + the critique
+# gate); herestring not `echo|grep` (SIGPIPE-safe under pipefail).
+if ! grep -qE "^[[:space:]]*\[($MSG_MARKERS)\]" <<< "$TEXT"; then
   exit 0
 fi
 
