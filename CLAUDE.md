@@ -1,10 +1,42 @@
 # NanoClaw
 
-Personal Claude assistant. See [README.md](README.md) for philosophy and setup. See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) for architecture decisions.
+Personal AI assistant. See [README.md](README.md) for philosophy and setup. Architecture lives in `docs/`.
 
 ## Quick Context
 
-Single Node.js process with skill-based channel system. Channels (WhatsApp, Telegram, Slack, Discord, Gmail) are skills that self-register at startup. Messages route to Claude Agent SDK running in containers (Linux VMs). Each group has isolated filesystem and memory.
+The host is a single Node process that orchestrates per-session agent containers. Platform messages land via channel adapters, route through an entity model (users → messaging groups → agent groups → sessions), get written into the session's inbound DB, and wake a container. The agent-runner inside the container polls the DB, calls the agent provider, and writes back to the outbound DB. The host polls the outbound DB and delivers through the same adapter.
+
+**Everything is a message.** There is no IPC, no file watcher, no stdin piping between host and container. The two session DBs are the sole IO surface.
+
+## Entity Model
+
+```
+users (id "<channel>:<handle>", kind, display_name)
+user_roles (user_id, role, agent_group_id)       — owner | admin (global or scoped)
+agent_group_members (user_id, agent_group_id)    — unprivileged access gate
+user_dms (user_id, channel_type, messaging_group_id) — cold-DM cache
+
+agent_groups (workspace, memory, CLAUDE.md, personality, container config)
+    ↕ many-to-many via messaging_group_agents (session_mode, engage_mode/engage_pattern, sender_scope, priority)
+messaging_groups (one chat/channel on one platform; instance = adapter-instance name, defaults to channel_type; unknown_sender_policy)
+
+sessions (agent_group_id + messaging_group_id + thread_id → per-session container)
+```
+
+Privilege is user-level (owner/admin), not agent-group-level. See [docs/isolation-model.md](docs/isolation-model.md) for the three isolation levels (`agent-shared`, `shared`, separate agents).
+
+## Two-DB Session Split
+
+Each session has **two** SQLite files under `data/v2-sessions/<session_id>/`:
+
+- `inbound.db` — host writes, container reads. `messages_in`, delivered, destinations, session_routing.
+- `outbound.db` — container writes, host reads. `messages_out`, processing_ack, session_state, container_state.
+
+Exactly one writer per file — no cross-mount lock contention. Heartbeat is a file touch at `/workspace/.heartbeat`, not a DB update. Host uses even `seq` numbers, container uses odd.
+
+## Central DB
+
+`data/v2.db` holds everything that isn't per-session: users, user_roles, agent_groups, messaging_groups, wiring, pending_approvals, user_dms, chat_sdk_* (for the Chat SDK bridge), schema_version. Migrations live at `src/db/migrations/`.
 
 For ad-hoc queries from skills or scripts, use the in-tree wrapper rather than the `sqlite3` CLI: `pnpm exec tsx scripts/q.ts <db> "<sql>"`. The host setup intentionally avoids depending on the `sqlite3` binary (`setup/verify.ts:5`); the wrapper goes through the `better-sqlite3` dep that setup already installs and verifies. Default-output format matches `sqlite3 -list` (pipe-separated, no header) so existing skill text reads identically.
 
@@ -18,9 +50,9 @@ For ad-hoc queries from skills or scripts, use the in-tree wrapper rather than t
 | `src/host-sweep.ts` | 60s sweep: `processing_ack` sync, stale detection, due-message wake, recurrence |
 | `src/session-manager.ts` | Resolves sessions; opens `inbound.db` / `outbound.db`; manages heartbeat path |
 | `src/container-runner.ts` | Spawns per-agent-group containers with session DB + outbox mounts, OneCLI `ensureAgent`, per-thread plumbing, webhook routing, A/B test infra |
-| `src/container-runtime.ts` | Runtime selection (Docker vs Apple containers), orphan cleanup |
+| `src/container-runtime.ts` | Container runtime wrapper (runtime binary, host-gateway args, mount args), orphan cleanup |
 | `src/claude-composer.ts` + `src/claude-composer/` | Coworker spine composer (lego model). See [docs/lego-coworker-workflows.md](docs/lego-coworker-workflows.md) |
-| `src/modules/permissions/access.ts` | `canAccessAgentGroup` — owner / global admin / scoped admin / member resolution |
+| `src/modules/permissions/access.ts` | `canAccessAgentGroup` — owner / global admin / scoped admin / member resolution against `user_roles` + `agent_group_members` |
 | `src/modules/approvals/primitive.ts` | `pickApprover`, `pickApprovalDelivery`, `requestApproval`, approval-handler registry |
 | `src/command-gate.ts` | Router-side admin command gate — queries `user_roles` directly (no env var, no container-side check) |
 | `src/modules/approvals/onecli-approvals.ts` | OneCLI credentialed-action approval bridge |
@@ -70,6 +102,11 @@ Key files: `src/cli/dispatch.ts` (dispatcher + approval handler), `src/cli/crud.
 Typed coworkers are composed at build time from spine fragments, skills, workflows, overlays, and trait bindings — the "lego" model. A thin always-in-context `CLAUDE.md` (the spine) is rendered; procedural bodies live in `container/skills/<name>/SKILL.md` and load on demand via slash commands.
 
 See [docs/lego-coworker-workflows.md](docs/lego-coworker-workflows.md) for the full architecture, decision trees for base-vs-project, and step-by-step project bring-up.
+
+Branch-installed surfaces remain first-class extension points:
+
+- **`channels` branch** — Discord, Slack, Telegram, WhatsApp, Teams, Linear, GitHub, iMessage, Webex, Resend, Matrix, Google Chat, WhatsApp Cloud, Signal, WeChat, DeltaChat, Emacs (+ helpers, tests, channel-specific setup steps). Installed via `/add-<channel>` skills.
+- **`providers` branch** — OpenCode and any future non-default agent providers. Installed via `/add-opencode`.
 
 Author-time check: `npm run validate:templates` (runs in CI before tests).
 
@@ -137,7 +174,7 @@ If you've just enabled `mode all`, no container restart is needed — the gatewa
 
 Approval-gating credentialed actions is a **two-sided** flow:
 
-- **Server-side** (OneCLI gateway): decides *when* to hold a request and emit a pending approval. As of `onecli@1.3.0`, the CLI does **not** expose this — `rules create --action` only accepts `block` or `rate_limit`, and `secrets create` has no approval flag. Approval policies must be configured via the OneCLI web UI at `http://127.0.0.1:10254`. If/when the CLI grows an `approve` action, this section needs updating.
+- **Server-side** (OneCLI gateway): decides *when* to hold a request and emit a pending approval. As of `onecli@2.2.5`, the CLI does **not** expose this — `rules create --action` only accepts `block` or `rate_limit`, and `secrets create` has no approval flag. Approval policies must be configured via the OneCLI web UI at `http://127.0.0.1:10254`. If/when the CLI grows an `approve` action, this section needs updating.
 - **Host-side** (nanoclaw): receives pending approvals and routes them to a human. `src/modules/approvals/onecli-approvals.ts` registers a callback via `onecli.configureManualApproval(cb)` (long-polls `GET /api/approvals/pending`). The callback uses `pickApprover` + `pickApprovalDelivery` from `src/modules/approvals/primitive.ts` to DM an approver. Approvers are resolved from the `user_roles` table — preference order: scoped admins for the agent group → global admins → owners. There is no env var like `NANOCLAW_ADMIN_USER_IDS`; roles are persisted in the central DB only.
 
 If approvals are configured server-side but the host callback isn't running (or throws), every credentialed call hangs until the gateway times out. Conversely, if the gateway has no rule asking for approval, the host callback never fires regardless of how it's wired.
@@ -183,9 +220,15 @@ Show the output and wait for approval. Installation-specific files (group files,
 Run commands directly—don't tell the user to run them.
 
 ```bash
-npm run dev          # Run with hot reload
-npm run build        # Compile TypeScript
-./container/build.sh # Rebuild agent container
+# Host (Node + pnpm)
+pnpm run dev          # Host via tsx (no watch)
+pnpm run build        # Compile host TypeScript (src/)
+./container/build.sh  # Rebuild agent container image (nanoclaw-agent:latest)
+pnpm test             # Host tests (vitest)
+
+# Agent-runner (Bun — separate package tree under container/agent-runner/)
+cd container/agent-runner && bun install   # After editing agent-runner deps
+cd container/agent-runner && bun test      # Container tests (bun:test)
 ```
 
 Service management:
@@ -251,3 +294,34 @@ This project uses pnpm with `minimumReleaseAge: 4320` (3 days) in `pnpm-workspac
 ## Container Build Cache
 
 The container buildkit caches the build context aggressively. `--no-cache` alone does NOT invalidate COPY steps — the builder's volume retains stale files. To force a truly clean rebuild, prune the builder then re-run `./container/build.sh`.
+
+
+## Container Runtime (Bun)
+
+The agent container runs on **Bun**; the host runs on **Node** (pnpm). They communicate only via session DBs — no shared modules. Details and rationale: [docs/build-and-runtime.md](docs/build-and-runtime.md).
+
+**Gotchas — trigger + action:**
+
+- **Adding or bumping a runtime dep in `container/agent-runner/`** → edit `package.json`, then `cd container/agent-runner && bun install` and commit the updated `bun.lock`. Do not run `pnpm install` there — agent-runner is not a pnpm workspace.
+- **Bumping `@anthropic-ai/claude-agent-sdk`, `@modelcontextprotocol/sdk`, or any agent-runner runtime dep** → no `minimumReleaseAge` policy applies to this tree. Check the release date on npm, pin deliberately, never `bun update` blindly.
+- **Writing a new named-param SQL insert/update in the container** → use `$name` in both SQL and JS keys: `.run({ $id: msg.id })`. `bun:sqlite` does not auto-strip the prefix the way `better-sqlite3` does on the host. Positional `?` params work normally.
+- **Adding a test in `container/agent-runner/src/`** → import from `bun:test`, not `vitest`. Vitest runs on Node and can't load `bun:sqlite`. `vitest.config.ts` excludes this tree.
+- **Adding a Node CLI the agent invokes at runtime** (like `agent-browser`, `claude-code`, `vercel`) → put it in the Dockerfile's pnpm global-install block, pinned to an exact version via a new `ARG`. Don't use `bun install -g` — that bypasses the pnpm supply-chain policy.
+- **Changing the Dockerfile entrypoint or the dynamic-spawn command** (`src/container-runner.ts`) → keep `exec bun ...` so signals forward cleanly. The image has no `/app/dist`; don't reintroduce a tsc build step.
+- **Changing session-DB pragmas** (`container/agent-runner/src/db/connection.ts`) → `journal_mode=DELETE` is load-bearing for cross-mount visibility. Read the comment block at the top of the file first.
+
+## CJK font support
+
+Agent containers ship without CJK fonts by default (~200MB saved). If you notice signals the user works with Chinese/Japanese/Korean content — conversing in CJK, CJK timezone (e.g., `Asia/Tokyo`, `Asia/Shanghai`, `Asia/Seoul`, `Asia/Taipei`, `Asia/Hong_Kong`), system locale hint, or mentions of needing to render CJK in screenshots/PDFs/scraped pages — offer to enable it:
+
+```bash
+# Ensure .env has INSTALL_CJK_FONTS=true (overwrite or append)
+grep -q '^INSTALL_CJK_FONTS=' .env && sed -i.bak 's/^INSTALL_CJK_FONTS=.*/INSTALL_CJK_FONTS=true/' .env && rm -f .env.bak || echo 'INSTALL_CJK_FONTS=true' >> .env
+
+# Rebuild and restart so new sessions pick up the new image
+./container/build.sh
+launchctl kickstart -k gui/$(id -u)/com.nanoclaw   # macOS
+# systemctl --user restart nanoclaw                # Linux
+```
+
+`container/build.sh` reads `INSTALL_CJK_FONTS` from `.env` and passes it through as a Docker build-arg. Without CJK fonts, Chromium-rendered screenshots and PDFs containing CJK text show tofu (empty rectangles) instead of characters.
