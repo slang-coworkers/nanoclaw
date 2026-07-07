@@ -102,20 +102,28 @@ fi
 # them lets the delivery gate re-hash at send time and refuse to ship an
 # approve whose reviewed artifacts have since changed — binding the verdict
 # to the exact content reviewed, not just to a timestamp.
+#
+# PORTABILITY (load-bearing): the container's awk is mawk/busybox, which does
+# NOT support {n} interval expressions — a prior version filtered hash lines
+# with an awk `[a-f0-9]{64}` pattern that matched under the host's gawk (so
+# tests + host runs passed) but silently matched NOTHING in-container, so no
+# attestation was ever recorded despite reviewers emitting correct hashes.
+# The 64-hex validation therefore lives in jq (Oniguruma — intervals reliable
+# everywhere); awk only delimits the section, with no interval. jq's capture
+# also naturally skips the "<sha256> <path>" instruction-echo placeholder,
+# "- none", and any trailing "— comment".
 ATTESTED_JSON='{}'
 if [ -n "$CONTENT" ]; then
   ATTESTED_LINES=$(awk '
     in_att && /^###/ { exit }
-    in_att && /^[ \t]*-[ \t]+[a-f0-9]{64}[ \t]+/ {
-      line = $0
-      sub(/^[ \t]*-[ \t]+/, "", line)
-      print line
-    }
+    in_att { print }
     tolower($0) ~ /^###[ \t]*attested/ { in_att = 1 }
-  ' <<< "$CONTENT" 2>/dev/null | head -20 || true)
+  ' <<< "$CONTENT" 2>/dev/null | head -40 || true)
   if [ -n "$ATTESTED_LINES" ]; then
     ATTESTED_JSON=$(jq -Rn '
-      [inputs | capture("^(?<h>[a-f0-9]{64})[ \\t]+(?<p>.+)$") | {(.p): .h}] | add // {}
+      [ inputs
+        | capture("-[ \\t]*(?<h>[a-fA-F0-9]{64})[ \\t]+(?<p>[^ \\t]+)")
+        | { (.p): (.h | ascii_downcase) } ] | add // {}
     ' <<< "$ATTESTED_LINES" 2>/dev/null || echo '{}')
   fi
 fi
