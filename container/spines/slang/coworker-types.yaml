@@ -87,6 +87,10 @@ slang-triage:
   # classifies, names candidate approaches. OUTPUT_REVIEW is on the handoff
   # message itself. The fixer side carries PLAN/CODE/OUTPUT.
   required_critique_stages: [DIAGNOSIS_REVIEW, OUTPUT_REVIEW]
+  # Role-specific delivery markers (the built-in floor is general primitives
+  # only: Resolution/handoff). The gate + routing recognize these via the
+  # composed .critique-delivery-markers; without this line they'd be ungated.
+  delivery_markers: [Triage Resolution, Triage handoff]
 
 slang-fixer:
   description: "Slang issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
@@ -98,6 +102,7 @@ slang-fixer:
   # a Fix Report. PLAN_REVIEW catches a bad approach before code is written;
   # CODE_REVIEW catches diff issues; OUTPUT_REVIEW vets the report itself.
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
+  delivery_markers: [Fix Report]
 
 slang-reviewer:
   description: "Slang PR reviewer — runs the production claude-code-action@v1 + .github/workflows/claude-pr-review.yml protocol locally against a PR, branch, or patch, in parallel with Devin Review. Mirrors production end-to-end: cleanup prior bot reviews → run inner CLI → post merged review as COMMENT-state with prior bot reviews minimized OUTDATED first. The /slang-pr-review workflow gates the post-back step on the orchestrator's <github-post-authorized /> marker (set when a human tagged @nv-slang-bot on the PR). Without that marker — chat invocation, internal coworker handoff, scheduled task — the workflow returns via send_file only. Bot reviews are always event=COMMENT, never APPROVE/CHANGES_REQUESTED; post-review.sh's safety net dismisses any non-COMMENT review the inner CLI accidentally submits. Cleanup targets nv-slang-bot only, so coexists with production's claude-pr-review.yml auto-reviews."
@@ -118,6 +123,7 @@ slang-reviewer:
   # of the diff under review (codex independent-checks the assessment);
   # OUTPUT_REVIEW vets the final review verdict before sending.
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
+  delivery_markers: [Review Verdict]
 
 slang-discord:
   description: "Slang Discord support — read user questions, research via DeepWiki + GitHub, draft verified answers, send to parent for review. Read-only, no posting."
