@@ -45,7 +45,10 @@ TEXT=$(echo "$INPUT" | jq -r '.tool_input.text // .tool_input.command // ""')
 # materialized by the composer from the coworker-type chain's
 # delivery_markers / pr_command_patterns declarations. Marker labels are
 # re-validated to a regex-metachar-free charset before splicing into the ERE.
-MSG_MARKERS='Fix Report|Resolution|Triage Resolution|Review Verdict|handoff'
+# Built-in floor = general chain-protocol primitives only. Role-specific
+# terminal names (Fix Report / Triage Resolution / Review Verdict / Triage
+# handoff) come from each role's delivery_markers YAML via .critique-delivery-markers.
+MSG_MARKERS='Resolution|handoff'
 BASH_PATTERNS='gh pr create|gh api [^|]*pulls\b|api\.github\.com[^ ]*/pulls\b|createPullRequest'
 MARKERS_FILE="$OVERLAY_DIR/.critique-delivery-markers"
 if [ -f "$MARKERS_FILE" ]; then

@@ -32,7 +32,9 @@ TEXT=$(echo "$INPUT" | jq -r '.tool_input.text // ""')
 # for ever moving a role marker into per-role YAML: without it, that move
 # would silently regress this always-on routing gate for the role.
 OVERLAY_DIR="${OVERLAY_MARKER_DIR:-/workspace/agent}"
-MSG_MARKERS='Fix Report|Resolution|Triage Resolution|Review Verdict|handoff'
+# Built-in floor = general chain-protocol primitives only; role-specific
+# names arrive via each role's delivery_markers YAML (.critique-delivery-markers).
+MSG_MARKERS='Resolution|handoff'
 MARKERS_FILE="$OVERLAY_DIR/.critique-delivery-markers"
 if [ -f "$MARKERS_FILE" ]; then
   EXTRA_MSG=$(jq -r '(.message_markers // []) | map(select(type == "string" and test("^[A-Za-z0-9][A-Za-z0-9 _-]*$"))) | join("|")' "$MARKERS_FILE" 2>/dev/null || true)

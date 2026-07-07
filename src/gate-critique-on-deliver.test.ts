@@ -60,7 +60,7 @@ describe('Model A: no-op when overlay marker absent', () => {
     expect(fs.existsSync(markerFile)).toBe(false);
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { to: 'parent', text: '[Fix Report] PR #123 fixed; tests pass.' },
+      tool_input: { to: 'parent', text: '[Resolution] PR #123 fixed; tests pass.' },
     });
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
@@ -90,7 +90,7 @@ describe('env-based activation (tamper-resistant)', () => {
     expect(fs.existsSync(markerFile)).toBe(false);
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
     const result = run(
-      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } },
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Resolution] x' } },
       { CRITIQUE_GATE_ACTIVE: '1' },
     );
     expect(result.status).toBe(2);
@@ -100,7 +100,7 @@ describe('env-based activation (tamper-resistant)', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
     const result = run(
-      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } },
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Resolution] x' } },
       { CRITIQUE_GATE_ACTIVE: '0' },
     );
     expect(result.status).toBe(0);
@@ -112,7 +112,7 @@ describe('env-based activation (tamper-resistant)', () => {
     fs.writeFileSync(path.join(overlayDir, '.critique-required-stages'), JSON.stringify([]));
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 5, critique_stages: { PLAN_REVIEW: 1 } }));
     const result = run(
-      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] x' } },
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Resolution] x' } },
       { CRITIQUE_GATE_ACTIVE: '1', CRITIQUE_REQUIRED_STAGES: JSON.stringify(['OUTPUT_REVIEW']) },
     );
     expect(result.status).toBe(2);
@@ -121,12 +121,12 @@ describe('env-based activation (tamper-resistant)', () => {
 });
 
 describe('Marker active: critique gate enforces on delivery markers', () => {
-  it('blocks send_message [Fix Report] when critique_rounds=0', () => {
+  it('blocks send_message [Resolution] when critique_rounds=0', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { to: 'parent', text: '[Fix Report] PR #123 ready' },
+      tool_input: { to: 'parent', text: '[Resolution] PR #123 ready' },
     });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('CRITIQUE REQUIRED');
@@ -143,24 +143,24 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     expect(result.status).toBe(2);
   });
 
-  it('blocks send_message [Triage Resolution] when critique_rounds=0', () => {
+  it('role-specific markers ([Triage Resolution], [Review Verdict]) are NOT built-in — they gate only when declared per-role', () => {
+    // Post floor-slim: the built-in floor is the general primitives only
+    // (Resolution/handoff). Role terminal names gate solely via each role's
+    // delivery_markers → .critique-delivery-markers.
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
-    const result = run({
-      tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Triage Resolution] forwarding upstream' },
-    });
-    expect(result.status).toBe(2);
-  });
-
-  it('blocks send_message [Review Verdict] when critique_rounds=0', () => {
-    activateOverlay();
-    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
-    const result = run({
-      tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Review Verdict] APPROVE' },
-    });
-    expect(result.status).toBe(2);
+    for (const text of ['[Triage Resolution] forwarding upstream', '[Review Verdict] APPROVE']) {
+      // Not built-in → passes with no per-role vocab file.
+      expect(run({ tool_name: 'mcp__nanoclaw__send_message', tool_input: { text } }).status).toBe(0);
+    }
+    // Declared per-role → gated like a built-in.
+    fs.writeFileSync(
+      path.join(overlayDir, '.critique-delivery-markers'),
+      JSON.stringify({ message_markers: ['Triage Resolution', 'Review Verdict'] }),
+    );
+    for (const text of ['[Triage Resolution] forwarding upstream', '[Review Verdict] APPROVE']) {
+      expect(run({ tool_name: 'mcp__nanoclaw__send_message', tool_input: { text } }).status).toBe(2);
+    }
   });
 
   it('blocks send_message [handoff] when critique_rounds=0', () => {
@@ -188,7 +188,7 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: 'Still working — I will send the [Fix Report] after the review completes.' },
+      tool_input: { text: 'Still working — I will send the [Resolution] after the review completes.' },
     });
     expect(result.status).toBe(0);
   });
@@ -198,7 +198,7 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: 'Summary first.\n  [Fix Report] PR #9 fixed' },
+      tool_input: { text: 'Summary first.\n  [Resolution] PR #9 fixed' },
     });
     expect(result.status).toBe(2);
   });
@@ -208,7 +208,7 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Fix Report] x' },
+      tool_input: { text: '[Resolution] x' },
     });
     expect(result.status).toBe(2);
     expect(result.stderr).not.toContain(stateFile);
@@ -271,12 +271,12 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     expect(result.status).toBe(0);
   });
 
-  it('passes [Fix Report] when critique_rounds>=1', () => {
+  it('passes [Resolution] when critique_rounds>=1', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 1 }));
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Fix Report] approved' },
+      tool_input: { text: '[Resolution] approved' },
     });
     expect(result.status).toBe(0);
   });
@@ -286,7 +286,7 @@ describe('Marker active: critique gate enforces on delivery markers', () => {
     expect(fs.existsSync(stateFile)).toBe(false);
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Fix Report] x' },
+      tool_input: { text: '[Resolution] x' },
     });
     expect(result.status).toBe(2);
   });
@@ -335,7 +335,7 @@ describe('configurable delivery vocabulary (.critique-delivery-markers)', () => 
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Fix Report] still gated' },
+      tool_input: { text: '[Resolution] still gated' },
     });
     expect(result.status).toBe(2);
   });
@@ -356,7 +356,7 @@ describe('configurable delivery vocabulary (.critique-delivery-markers)', () => 
 describe('graduated escalation at the denial cap', () => {
   const denyPayload = () => ({
     tool_name: 'mcp__nanoclaw__send_message',
-    tool_input: { text: '[Fix Report] x' },
+    tool_input: { text: '[Resolution] x' },
   });
   const escFile = () => path.join(tmpRoot, 'critique-escalation.json');
 
@@ -433,7 +433,7 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     );
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Fix Report] PR #123 ready' },
+      tool_input: { text: '[Resolution] PR #123 ready' },
     });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('OUTPUT_REVIEW last verdict is "must-fix"');
@@ -451,7 +451,7 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     );
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Fix Report] PR #123 ready' },
+      tool_input: { text: '[Resolution] PR #123 ready' },
     });
     expect(result.status).toBe(0);
   });
@@ -469,7 +469,7 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     );
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Fix Report] PR #123 ready' },
+      tool_input: { text: '[Resolution] PR #123 ready' },
     });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('no verdict was recorded');
@@ -487,7 +487,7 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     const result = run(
       {
         tool_name: 'mcp__nanoclaw__send_message',
-        tool_input: { text: '[Fix Report] PR #123 ready' },
+        tool_input: { text: '[Resolution] PR #123 ready' },
       },
       { CRITIQUE_VERDICT_STRICT: '0' },
     );
@@ -506,7 +506,7 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     );
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Fix Report] PR #123 ready' },
+      tool_input: { text: '[Resolution] PR #123 ready' },
     });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('unparseable');
@@ -543,7 +543,7 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     );
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Fix Report] PR #123 ready' },
+      tool_input: { text: '[Resolution] PR #123 ready' },
     });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('edit(s) recorded since the last critique');
@@ -563,7 +563,7 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     const result = run(
       {
         tool_name: 'mcp__nanoclaw__send_message',
-        tool_input: { text: '[Fix Report] PR #123 ready' },
+        tool_input: { text: '[Resolution] PR #123 ready' },
       },
       { CRITIQUE_FRESHNESS: '0' },
     );
@@ -585,14 +585,14 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     fs.writeFileSync(stateFile, JSON.stringify(state));
     // Matching hash → passes.
     const ok = run(
-      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Resolution] ready' } },
       { CRITIQUE_ATTEST_ROOT: tmpRoot },
     );
     expect(ok.status).toBe(0);
     // Mutate the reviewed artifact → the stale approve must not ship.
     fs.appendFileSync(artifact, 'sneaky post-review edit\n');
     const blocked = run(
-      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Resolution] ready' } },
       { CRITIQUE_ATTEST_ROOT: tmpRoot },
     );
     expect(blocked.status).toBe(2);
@@ -612,7 +612,7 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     fs.writeFileSync(stateFile, JSON.stringify(state));
     // Outside-root path ignored; the in-root missing file still trips the check…
     const blocked = run(
-      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Resolution] ready' } },
       { CRITIQUE_ATTEST_ROOT: tmpRoot },
     );
     expect(blocked.status).toBe(2);
@@ -620,7 +620,7 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     expect(blocked.stderr).not.toContain('/etc/passwd');
     // …and the kill switch bypasses it entirely.
     const off = run(
-      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Fix Report] ready' } },
+      { tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Resolution] ready' } },
       { CRITIQUE_ATTEST_ROOT: tmpRoot, CRITIQUE_ATTEST: '0' },
     );
     expect(off.status).toBe(0);
@@ -638,7 +638,7 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     );
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { text: '[Fix Report] PR #123 ready' },
+      tool_input: { text: '[Resolution] PR #123 ready' },
     });
     expect(result.status).toBe(0);
   });
