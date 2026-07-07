@@ -92,4 +92,9 @@ slangpy-reviewer:
     - container/spines/slangpy/invariants/review-output.md
   workflows:
     - slangpy-pr-review
+  # Role-specific delivery marker (built-in floor is general primitives only:
+  # Resolution/handoff). slangpy-reviewer is the only slangpy role emitting a
+  # removed message-marker; the fixer/triage deliver via PR-egress (still
+  # gated by the Bash patterns) + general primitives, so they need none.
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
+  delivery_markers: [Review Verdict]
