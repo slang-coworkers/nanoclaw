@@ -61,4 +61,8 @@ nanoclaw-reviewer:
     - nanoclaw-pr-review-runner
   workflows:
     - nanoclaw-pr-review
+  # Role-specific delivery marker (built-in floor is general primitives only:
+  # Resolution/handoff). nanoclaw-reviewer emits [Review Verdict]; declare it
+  # so the critique + routing gates recognize it via .critique-delivery-markers.
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
+  delivery_markers: [Review Verdict]
