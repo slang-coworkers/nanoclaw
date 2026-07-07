@@ -16,6 +16,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const SCRIPT = path.resolve(process.cwd(), 'container', 'hooks', 'track-critique.sh');
 
+// The container's awk is mawk/busybox (no {n} interval support). Locate mawk
+// so the portability regression test below can force `awk` → mawk; skip if
+// absent (host/CI without mawk). This is the test that would have caught the
+// attested-parse `[a-f0-9]{64}` interval bug that was invisible under gawk.
+const MAWK = (() => {
+  const r = spawnSync('sh', ['-c', 'command -v mawk || command -v busybox'], { encoding: 'utf-8' });
+  return (r.stdout || '').trim().split('\n')[0] || '';
+})();
+
 // The canonical reviewer block from container/skills/codex-critique/SKILL.md —
 // the instruction-pinning gate requires its sentinel lines before a STAGE
 // call records ("You are an independent reviewer" + "Return ONLY the
@@ -440,6 +449,76 @@ describe('reviewer-attested artifact hashes', () => {
       }),
     });
     expect((readState() as any).critique_attested).toBeUndefined();
+  });
+
+  it('extracts the real hash amid an echoed placeholder line and trailing comment', () => {
+    // Codex often echoes the instruction placeholder line then emits the real
+    // hash line, sometimes with a trailing "— note". jq must skip the
+    // placeholder and take only the path token, not the comment.
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
+      tool_response: JSON.stringify({
+        threadId: 't-att-mix',
+        content: `### Attested\n- <sha256> <path> — one line per file you read\n- ${H1} /workspace/agent/reports/fix.md — the plan file\n`,
+      }),
+    });
+    expect((readState() as any).critique_attested?.OUTPUT_REVIEW).toEqual({
+      '/workspace/agent/reports/fix.md': H1,
+    });
+  });
+
+  it('normalizes uppercase hex to lowercase (matches sha256sum output)', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: {
+        prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+        sandbox: 'danger-full-access',
+        'developer-instructions': REVIEWER_INSTRUCTIONS,
+      },
+      tool_response: JSON.stringify({
+        threadId: 't-att-up',
+        content: `### Attested\n- ${'A'.repeat(64)} /workspace/agent/x.md\n`,
+      }),
+    });
+    expect((readState() as any).critique_attested?.OUTPUT_REVIEW).toEqual({ '/workspace/agent/x.md': 'a'.repeat(64) });
+  });
+
+  // The bug this whole fix addresses: the old awk `[a-f0-9]{64}` interval
+  // matched under the host's gawk but NOTHING under the container's
+  // mawk/busybox awk, so attestations were silently dropped in prod. Force
+  // awk → mawk here to prove the parse no longer depends on interval support.
+  // Skips on hosts/CI without mawk or busybox.
+  it.skipIf(!MAWK)('records attestation under mawk/busybox awk [interval-portability regression]', () => {
+    const shimDir = fs.mkdtempSync(path.join(os.tmpdir(), 'awkshim-'));
+    fs.symlinkSync(MAWK, path.join(shimDir, 'awk')); // busybox dispatches its awk applet via argv[0]
+    try {
+      run(
+        {
+          tool_name: 'mcp__codex__codex',
+          tool_input: {
+            prompt: 'STAGE: OUTPUT_REVIEW\nTASK: fix',
+            sandbox: 'danger-full-access',
+            'developer-instructions': REVIEWER_INSTRUCTIONS,
+          },
+          tool_response: JSON.stringify({
+            threadId: 't-att-mawk',
+            content: `### Verdict\napprove\n\n### Attested\n- ${H1} /workspace/agent/reports/fix.md\n`,
+          }),
+        },
+        { PATH: `${shimDir}:${process.env.PATH || ''}` },
+      );
+      const state = readState() as any;
+      // Both the verdict (no-interval awk) and the attestation (jq-validated) must survive under mawk.
+      expect(state.critique_verdicts?.OUTPUT_REVIEW).toBe('approve');
+      expect(state.critique_attested?.OUTPUT_REVIEW).toEqual({ '/workspace/agent/reports/fix.md': H1 });
+    } finally {
+      fs.rmSync(shimDir, { recursive: true, force: true });
+    }
   });
 
   it('a reply re-attests for its mapped stage', () => {
