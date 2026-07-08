@@ -305,9 +305,11 @@ function resolveExplicitReplyTarget(
     return null;
   }
   let originSessionId: string | null = null;
+  let viaDirectInReplyTo = false;
   try {
     if (msg.in_reply_to) {
       originSessionId = getInboundSourceSessionId(srcDb, msg.in_reply_to);
+      if (originSessionId) viaDirectInReplyTo = true;
     }
     if (!originSessionId) {
       // Pass msg.thread_id so peer-affinity respects the thread the sender
@@ -325,10 +327,42 @@ function resolveExplicitReplyTarget(
   }
   if (!originSessionId) return null;
   const candidate = getSession(originSessionId);
-  if (candidate && candidate.agent_group_id === targetAgentGroupId && candidate.status === 'active') {
-    return candidate;
+  if (!candidate || candidate.agent_group_id !== targetAgentGroupId || candidate.status !== 'active') {
+    return null;
   }
-  return null;
+
+  // Cross-thread hijack guard (D1): a DIRECT in_reply_to hit whose origin
+  // session sits on a thread matching NEITHER the thread the agent stamped on
+  // this outbound NOR the sender's own thread is a stale reference — the named
+  // inbound belongs to a different conversation than the one the agent actually
+  // addressed. Honoring it delivers the message into an unrelated session and
+  // skips the auth + message gate the ancestor/fresh path enforces. Fall
+  // through so the stamped thread's own routing applies instead. Untouched:
+  // same-thread replies (candidate.thread_id === stamped), replies to a
+  // threadless session e.g. the orchestrator (candidate.thread_id null),
+  // same-thread-as-sender replies (candidate.thread_id === sender's), the
+  // already-thread-filtered peer-affinity path, and genuine ancestor replies
+  // (the Layer-2 ancestor walk re-resolves them to the same session).
+  const stamped = msg.thread_id?.trim() || null;
+  if (
+    viaDirectInReplyTo &&
+    stamped &&
+    candidate.thread_id &&
+    candidate.thread_id !== stamped &&
+    candidate.thread_id !== sourceSession.thread_id
+  ) {
+    log.warn('a2a in_reply_to cross-thread reference rejected (D1 guard)', {
+      source: sourceSession.id,
+      sourceThread: sourceSession.thread_id,
+      stampedThread: stamped,
+      candidate: candidate.id,
+      candidateThread: candidate.thread_id,
+      inReplyTo: msg.in_reply_to,
+    });
+    return null;
+  }
+
+  return candidate;
 }
 
 /**

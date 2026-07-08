@@ -1878,6 +1878,154 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     expect(JSON.parse(replyRow!.content).text).toBe('on it');
   });
 
+  it('D1 guard: a direct in_reply_to pointing at an unrelated (non-ancestor) thread is rejected, not hijacked', async () => {
+    // Hijack shape: agent rA (thread A) replies naming an inbound whose origin
+    // session sC lives on thread C — a session NOT in rA's lineage — but stamps
+    // a THIRD thread B. Layer 1 must NOT deliver into sC; it should fall through
+    // to the stamped thread's own routing (fresh + auth).
+    const { openInboundDb } = await import('../../session-manager.js');
+    seedPair(); // ag-sender, ag-recipient, ag-sender→ag-recipient destination
+    createDestination({
+      agent_group_id: 'ag-recipient',
+      local_name: 'sender',
+      target_type: 'agent',
+      target_id: 'ag-sender',
+      created_at: now(),
+    });
+
+    // sC: sender-group session on thread "C" (the future in_reply_to target).
+    const sC: Session = {
+      id: 'sess-sC',
+      agent_group_id: 'ag-sender',
+      messaging_group_id: null,
+      thread_id: 'C',
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(sC);
+    initSessionFolder('ag-sender', sC.id);
+
+    // sC dispatches to ag-recipient on thread "A" → mints rA (recipient session
+    // on thread A) whose inbox row carries source_session_id = sess-sC.
+    await routeAgentMessage(
+      {
+        id: 'out-C-to-A',
+        platform_id: 'ag-recipient',
+        thread_id: 'A',
+        content: JSON.stringify({ text: 'from C on A' }),
+      },
+      sC,
+    );
+    const rARow = getDb()
+      .prepare("SELECT id FROM sessions WHERE agent_group_id = 'ag-recipient' AND thread_id = 'A'")
+      .get() as { id: string };
+    const rA = getSession(rARow.id)!;
+
+    // Sever the lineage so sC is NOT rA's ancestor — isolates the guard from the
+    // Layer-2 ancestor walk (which would otherwise legitimately re-deliver to sC).
+    getDb().prepare('DELETE FROM a2a_session_sources WHERE recipient_session_id = ?').run(rA.id);
+
+    const rAInbox = openInboundDb('ag-recipient', rA.id);
+    const srcInbound = rAInbox
+      .prepare(
+        "SELECT id FROM messages_in WHERE channel_type = 'agent' AND source_session_id = 'sess-sC' ORDER BY seq ASC LIMIT 1",
+      )
+      .get() as { id: string } | undefined;
+    rAInbox.close();
+    expect(srcInbound).toBeDefined();
+
+    // rA replies, NAMING the sC inbound, but STAMPS thread "B" (≠ C, ≠ A).
+    await routeAgentMessage(
+      {
+        id: 'reply-stamped-B',
+        platform_id: 'ag-sender',
+        in_reply_to: srcInbound!.id,
+        thread_id: 'B',
+        content: JSON.stringify({ text: 'stamped B' }),
+      },
+      rA,
+    );
+
+    // Guard fired: NOTHING delivered into sC (thread C).
+    const sCInbox = openInboundDb('ag-sender', sC.id);
+    const inC = (
+      sCInbox.prepare("SELECT COUNT(*) AS n FROM messages_in WHERE channel_type = 'agent'").get() as { n: number }
+    ).n;
+    sCInbox.close();
+    expect(inC).toBe(0);
+
+    // Fell through to a fresh per-thread session on the STAMPED thread B.
+    const bSessions = getDb()
+      .prepare("SELECT id FROM sessions WHERE agent_group_id = 'ag-sender' AND thread_id = 'B'")
+      .all();
+    expect(bSessions).toHaveLength(1);
+  });
+
+  it('D1 guard does NOT fire on a same-thread reply (candidate thread === stamped thread)', async () => {
+    // Same setup as above, but rA stamps thread "C" — matching the candidate's
+    // thread. This is a legitimate reply; the guard must NOT fire and delivery
+    // must land in sC.
+    const { openInboundDb } = await import('../../session-manager.js');
+    seedPair();
+    createDestination({
+      agent_group_id: 'ag-recipient',
+      local_name: 'sender',
+      target_type: 'agent',
+      target_id: 'ag-sender',
+      created_at: now(),
+    });
+    const sC: Session = {
+      id: 'sess-sC',
+      agent_group_id: 'ag-sender',
+      messaging_group_id: null,
+      thread_id: 'C',
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    createSession(sC);
+    initSessionFolder('ag-sender', sC.id);
+    await routeAgentMessage(
+      { id: 'out-C-to-A2', platform_id: 'ag-recipient', thread_id: 'A', content: JSON.stringify({ text: 'from C' }) },
+      sC,
+    );
+    const rARow = getDb()
+      .prepare("SELECT id FROM sessions WHERE agent_group_id = 'ag-recipient' AND thread_id = 'A'")
+      .get() as { id: string };
+    const rA = getSession(rARow.id)!;
+    getDb().prepare('DELETE FROM a2a_session_sources WHERE recipient_session_id = ?').run(rA.id);
+    const rAInbox = openInboundDb('ag-recipient', rA.id);
+    const srcInbound = rAInbox
+      .prepare(
+        "SELECT id FROM messages_in WHERE channel_type = 'agent' AND source_session_id = 'sess-sC' ORDER BY seq ASC LIMIT 1",
+      )
+      .get() as { id: string };
+    rAInbox.close();
+
+    await routeAgentMessage(
+      {
+        id: 'reply-stamped-C',
+        platform_id: 'ag-sender',
+        in_reply_to: srcInbound.id,
+        thread_id: 'C', // matches candidate thread → guard must NOT fire
+        content: JSON.stringify({ text: 'stamped C' }),
+      },
+      rA,
+    );
+
+    const sCInbox = openInboundDb('ag-sender', sC.id);
+    const inC = (
+      sCInbox.prepare("SELECT COUNT(*) AS n FROM messages_in WHERE channel_type = 'agent'").get() as { n: number }
+    ).n;
+    sCInbox.close();
+    expect(inC).toBeGreaterThan(0);
+  });
+
   it('peer-affinity respects thread_id: re-dispatch on thread X routes to that thread, not most-recent peer overall', async () => {
     // Multi-thread fan-out scenario: A dispatches to B on TWO different
     // threads (T-1 and T-2). Two B sessions emerge. B-on-T-2 replies
