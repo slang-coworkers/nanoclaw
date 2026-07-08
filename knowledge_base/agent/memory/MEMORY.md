@@ -50,3 +50,4 @@
 - [How to list prod→lego forwarded GitHub issues/comments over a time window (the dev-routed log line)](legoop-reference_prod_lego_forward_query.md) — ported from lego operator memory
 - [systemd units on this host — which one is prod](legoop-reference_systemd_units.md) — ported from lego operator memory
 - [How to push .github/workflows/ changes to slang-coworkers/nanoclaw despite nv-slang-bot lacking 'workflows' scope — push to the szihs/nanoclaw fork path so OneCLI injects the workflow-scoped szihs PAT; the fork redirects to slang-coworkers.](legoop-reference_workflow_push_via_szihs_fork.md) — ported from lego operator memory
+- [Do NOT CC the /supervise-issues tick summary to slang-discord-support — deliver only to orchestrator-dashboard](project_supervise_tick_no_cc_discord.md) — model-driven CC, not asked for anywhere; recurs because tick runs new_session so chat corrections evaporate
