@@ -75,34 +75,30 @@ Two reasons, both real:
    marked messages — an unmarked "fix" lands nowhere useful. So an agent can't
    dodge the gate by dropping the marker: its work then isn't delivered anyway.
 
-### The built-in list vs what's actually emitted (known drift)
+### Why the vocabulary was reorganized (historical: the pre-refactor drift)
 
-The built-in default set is `Fix Report | Resolution | Triage Resolution |
-Review Verdict | handoff`. **No code branches on the specific name** — all
-three enforcement points (`gate-critique-on-deliver.sh`, `gate-chain-routing.sh`,
+**No code branches on the specific marker name** — all three enforcement
+points (`gate-critique-on-deliver.sh`, `gate-chain-routing.sh`,
 `poll-loop.ts`) test the *same* alternation and treat any match identically.
 The names are for human/routing readability, not machine dispatch.
 
-That readability set has drifted from what the system actually emits. The
-protocol spine (`container/spines/base/context/chain-reporting.md`) defines
-only **two** general primitives — `[Report]` (status up one tier) and
-`[Resolution]` (close every chain) — and workflows emit role specializations
-on top:
+Before the refactor, the built-in set was `Fix Report | Resolution | Triage
+Resolution | Review Verdict | handoff` — a mix of general primitives and
+role names that had drifted from what workflows actually emitted: the
+most-emitted primitive (`[Report]`) was correctly absent (status channel),
+but the real triage handoff (`[Triage handoff]`) and the fixer→reviewer
+handoff (`[Fix Review Request]`, emitted by **both** slang and slangpy
+fixers) weren't recognized by any gate, while `Review Verdict` sat in the
+list on behalf of exactly one role per project. The protocol spine
+(`container/spines/base/context/chain-reporting.md`) defines only two
+general primitives — `[Report]` (status up one tier) and `[Resolution]`
+(close every chain) — with everything else being a role specialization.
 
-| Marker | Emitted (workflows/spines) | In built-in gate list | What it is |
-|--------|----------------------------|-----------------------|------------|
-| `[Report]` | **most-used** | **no** | protocol primitive: status/progress up | 
-| `[Resolution]` | yes | yes | protocol primitive: chain close |
-| `[Fix Report]` | yes | yes | fixer's terminal deliverable |
-| `[Triage Resolution]` | yes | yes | triager's final close |
-| `[Triage handoff]` | yes | **no** (only bare `handoff` is listed) | triager → fixer, lateral |
-| `[Review Verdict]` | not found in tree | yes | reviewer output (verify emit-site) |
-| `handoff` (bare) | not found in tree | yes | generic lateral pass |
-
-Two of the listed markers (`Review Verdict`, bare `handoff`) weren't found
-emitted anywhere in the tree; the most-emitted primitive (`[Report]`) and the
-real handoff (`[Triage handoff]`) aren't in the list. Reconciling the list
-with the true emitted vocabulary is tracked as follow-up hardening (§5).
+The reorganization (landed via the routing-gate vocabulary union + the
+floor slim + the `base-common` declaration) restored that layering: floor =
+general primitives, `base-common` = the standard role vocabulary, project
+YAML = novel markers only — and closed the `[Triage handoff]` /
+`[Fix Review Request]` recognition gaps in the process.
 
 ### The one real semantic hiding in the names: status vs terminal
 
@@ -113,36 +109,34 @@ trap). **`[Fix Report]` / `[Resolution]` = terminal deliverable (gated).** The
 distinction between "status up" and "deliverable out" is carried by one word,
 which is subtle and fragile: a role that closes with bare `[Report]` instead of
 its gated terminal marker would slip the critique gate. Making that line
-explicit (rather than implied by naming) is part of the target model below.
+explicit (rather than implied by naming) is encoded explicitly in the landed model below.
 
-### Target model: general floor (built-in) + role names (YAML)
+### The landed model: floor (code) + standard vocabulary (base-common) + novel markers (project YAML)
 
-The coherent principle — **built-in = general routing semantics mapped to
-tiers; per-role YAML = role-specific deliverable names** (via `delivery_markers`,
-see R3):
+**Built-in = general routing semantics mapped to tiers; `base-common` = the
+standard chain-role vocabulary, declared once and inherited; project YAML =
+novel markers only** (via `delivery_markers`, see R3):
 
-| Tier | General primitive (built-in floor) | Gated? | Role specialization → YAML `delivery_markers` |
-|------|-------------------------------------|--------|-----------------------------------------------|
+| Tier | General primitive (built-in floor) | Gated? | Standard role vocabulary → inherited from `base-common` |
+|------|-------------------------------------|--------|---------------------------------------------------------|
 | 1 internal | `STAGE:` (not a delivery marker) | — | — |
 | 2 status | `[Report]` | no (status, not a deliverable) | — |
-| 2 lateral | `[handoff]` | yes (routing) | — |
-| 2 terminal / 3 external | `[Resolution]` | **yes** | fixer→`Fix Report`, triager→`Triage Resolution`, reviewer→`Review Verdict` |
+| 2 lateral | `[handoff]` | yes (routing) | `Triage handoff`, `Fix Review Request` |
+| 2 terminal / 3 external | `[Resolution]` | **yes** | `Fix Report`, `Triage Resolution`, `Review Verdict` |
 
 Tier 3 (external egress) isn't a distinct marker — it's a `[Resolution]`/
 deliverable whose *destination* is a human/PR, plus the `gh pr create` egress
-commands. The three role names move out of the built-in floor into each role's
-`delivery_markers` YAML, layered additively on the general floor.
+commands.
 
-> **Migration constraint (why this can't be a one-line rename).** Today
-> `checkCritiqueGate` unions the per-role YAML vocabulary, but the always-on
-> **routing** gate does not — `ROUTING_HANDOFF_MARKER_RE = DELIVERY_MARKER_RE`
-> (`poll-loop.ts`) and `gate-chain-routing.sh` both read only the *static*
-> built-in regex. So moving a role marker out of the built-in list into YAML
-> would keep the critique gate working (it unions YAML) but silently regress
-> the routing gate for **every** role. The safe order is: (1) teach the
-> routing gate + `gate-chain-routing.sh` to union the YAML vocabulary, THEN
-> (2) move the role names to per-role YAML and slim the built-in floor. Until
-> (1) lands, keep the role names in the built-in list.
+> **How the migration was sequenced (historical).** The always-on routing
+> gate originally read only the static built-in regex, so moving a role
+> marker out of the floor would have silently regressed routing for every
+> role. The landed order was: (1) teach all three enforcement points to
+> union the composed `.critique-delivery-markers` vocabulary, then (2) slim
+> the floor to the general primitives and declare the standard role
+> vocabulary once on `base-common` — atomically, so no marker was ever
+> unrecognized in between. A contract test keeps the `base-common` set from
+> being silently narrowed.
 
 ---
 
