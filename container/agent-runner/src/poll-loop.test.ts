@@ -1174,6 +1174,32 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     expect(JSON.parse(out[0].content).text).toBe('[handoff] approved');
   });
 
+  it('D2×D1 handoff: a seq-quoted cross-thread handoff persists the RESOLVED id with the stamped thread', () => {
+    // The container half of the D1/D2 interaction. The agent quotes id="88" (a
+    // seq — D2) on a handoff stamped for thread "B" while the quoted inbound
+    // lives on thread "C". The fan-out must (D2) resolve the seq to the
+    // canonical id AND preserve the stamped thread — producing exactly the
+    // (resolvable canonical id, divergent thread) tuple the host-side D1 guard
+    // (resolveExplicitReplyTarget) is built to reject. Without D2 the raw seq
+    // "88" would be persisted and the host's id lookup would miss entirely, so
+    // D1 could never even evaluate it.
+    addDestination('peer');
+    getInboundDb()
+      .prepare(
+        `INSERT INTO messages_in (id, seq, kind, timestamp, status, channel_type, thread_id, content)
+         VALUES ('a2a-xthread-88', 88, 'chat', datetime('now'), 'pending', 'agent', 'C', '{}')`,
+      )
+      .run();
+    const result = dispatchResultText(
+      '<message to="peer" thread_id="B" in_reply_to="88">[handoff] cross-thread</message>',
+      sourceRouting,
+    );
+    expect(result.sent).toBe(1);
+    const out = getUndeliveredMessages();
+    expect(out[0].in_reply_to).toBe('a2a-xthread-88'); // D2: seq → canonical id
+    expect(out[0].thread_id).toBe('B'); // D1 input: stamped thread preserved (≠ inbound's "C")
+  });
+
   it('checkRoutingGate enforces in_reply_to regardless of any marker file', () => {
     // No in_reply_to → blocked.
     expect(checkRoutingGate('[Resolution] x', {}, { workflowStatePath: statePath }).blocked).toBe(true);
