@@ -929,8 +929,11 @@ const DELIVERY_MARKER_RE = /^[ \t]*\[(Fix Report|Resolution|Triage Resolution|Re
 // coworker-type chain's delivery_markers declarations). Labels are
 // re-validated to a regex-metachar-free charset before splicing — and since
 // extensions can only add markers, tampering with the file can only widen
-// the gate, never narrow it. The chain-routing gate keeps the static
-// default set (its protocol vocabulary is not per-role configurable).
+// the gate, never narrow it. Both the critique gate AND the always-on
+// chain-routing gate resolve their vocabulary through this helper, so a
+// per-role delivery_markers extension is recognized identically by both —
+// otherwise moving a marker into per-role YAML would keep the critique gate
+// working while silently regressing routing for that role.
 function deliveryMarkerRe(markersPath: string): RegExp {
   const fs = require('fs') as typeof import('fs');
   let extra: string[] = [];
@@ -947,7 +950,9 @@ function deliveryMarkerRe(markersPath: string): RegExp {
   if (extra.length === 0) return DELIVERY_MARKER_RE;
   return new RegExp(`^[ \\t]*\\[(${[...DEFAULT_DELIVERY_MARKERS, ...extra].join('|')})\\]`, 'm');
 }
-const ROUTING_HANDOFF_MARKER_RE = DELIVERY_MARKER_RE;
+// Default location of the per-role delivery vocabulary file (materialized by
+// the composer). Shared by both gates; overridable in tests via opts.
+const DEFAULT_DELIVERY_MARKERS_PATH = '/workspace/agent/.critique-delivery-markers';
 
 // Soft-cap shared by the in-process gates, mirroring the bash hooks
 // (gate-critique-on-deliver.sh:73-89). After GATE_DENIAL_CAP refusals on a
@@ -991,12 +996,18 @@ function gateShouldYield(statePath: string, key: string): boolean {
 // bodies carrying a chain delivery marker, which is the chain protocol's own
 // vocabulary — non-chain coworkers never emit those markers, so they never
 // trip it. There is nothing to select and nothing to opt into.
+//
+// It resolves its vocabulary through the SAME deliveryMarkerRe() union as the
+// critique gate, so a per-role delivery_markers extension is recognized here
+// too. Built-in defaults always apply; the per-role file (if present) only
+// widens the set.
 export function checkRoutingGate(
   body: string,
   attrs: { threadIdOverride?: string; inReplyToOverride?: string },
-  opts: { workflowStatePath?: string } = {},
+  opts: { workflowStatePath?: string; deliveryMarkersPath?: string } = {},
 ): { blocked: boolean; reason?: string } {
-  if (!ROUTING_HANDOFF_MARKER_RE.test(body)) return { blocked: false };
+  const routingRe = deliveryMarkerRe(opts.deliveryMarkersPath ?? DEFAULT_DELIVERY_MARKERS_PATH);
+  if (!routingRe.test(body)) return { blocked: false };
   // in_reply_to is the canonical routing primitive: it resolves the inbound
   // row → source_session_id → the exact edge, and the runtime auto-derives
   // thread_id from it (see applyInReplyToDefaults in mcp-tools/core.ts). So
@@ -1009,7 +1020,7 @@ export function checkRoutingGate(
   if (gateShouldYield(statePath, 'routing_gate_denials')) {
     return { blocked: false };
   }
-  const marker = body.match(ROUTING_HANDOFF_MARKER_RE)?.[1] ?? '<handoff>';
+  const marker = body.match(routingRe)?.[1] ?? '<handoff>';
   return {
     blocked: true,
     reason:
