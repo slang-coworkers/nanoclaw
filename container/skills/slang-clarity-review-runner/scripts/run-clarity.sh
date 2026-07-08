@@ -92,6 +92,62 @@ command -v gh     >/dev/null || { echo "error: gh CLI missing." >&2; exit 1; }
 [ -d "$REPO_ROOT/.claude/skills/slang-review-clarity-workflow" ] \
   || { echo "error: $REPO_ROOT/.claude/skills/slang-review-clarity-workflow missing — checkout predates shader-slang/slang#11340. Re-run install.sh to refresh." >&2; exit 1; }
 
+# --- Reviewer C isolation (own git worktree) -------------------------------
+# Reviewer A (slang-pr-review-runner/compose-and-run.sh) and Reviewer C both
+# default REPO_ROOT=/workspace/agent/slang and each does `git checkout
+# origin/master` at startup; run concurrently they race on the shared
+# checkout's `.git/index.lock`. Give C its own git worktree derived from the
+# shared object store: isolated index + working tree, but REVIEW.md and the
+# clarity skills come along at origin/master. Removed on exit.
+# See knowledge_base learnings 1782586901771 / 1782876940783.
+SHARED_REPO="$REPO_ROOT"
+git -C "$SHARED_REPO" rev-parse --git-dir >/dev/null 2>&1 \
+  || { echo "error: $SHARED_REPO is not a git checkout — cannot isolate Reviewer C." >&2; exit 1; }
+
+# Run key = (mode, repo, pr/branch id, head sha, bundle hash, pid). Keying on
+# BOTH the head sha and a hash of the reviewed bundle (the actual diff/patch)
+# means artifacts can never be cross-attributed between concurrent runs, and a
+# re-review of the same PR at a different base is a distinct key. bundle_hash is
+# best-effort (a failed fetch → "nobundle") and never blocks the run.
+KEY_REPO="$REPO"
+case "$MODE" in
+  pr)
+    RUN_HEAD="$(gh pr view "$PR_NUMBER" -R "$REPO" --json headRefOid -q .headRefOid 2>/dev/null || true)"
+    RUN_ID="pr${PR_NUMBER}"
+    BUNDLE_HASH="$(gh pr diff "$PR_NUMBER" -R "$REPO" 2>/dev/null | sha256sum 2>/dev/null | cut -c1-12 || true)"
+    ;;
+  branch)
+    RUN_HEAD="$BRANCH_REF"
+    RUN_ID="branch-${BRANCH_REF}"
+    BUNDLE_HASH=""
+    ;;
+  patch)
+    RUN_HEAD="$(basename "$PATCH_FILE")"
+    RUN_ID="patch-$(basename "$PATCH_FILE")"
+    BUNDLE_HASH="$(sha256sum "$PATCH_FILE" 2>/dev/null | cut -c1-12 || true)"
+    ;;
+esac
+[ -n "${RUN_HEAD:-}" ]   || RUN_HEAD="nohead"
+[ -n "${BUNDLE_HASH:-}" ] || BUNDLE_HASH="nobundle"
+RUN_KEY="$(printf '%s' "${MODE}-${RUN_ID}-${RUN_HEAD}-${BUNDLE_HASH}-$$" | tr -c 'A-Za-z0-9._-' '_')"
+
+WORKTREE="${CLARITY_WORKTREE_ROOT:-/workspace/agent}/slang-clarity-${RUN_KEY}"
+rm -rf "$WORKTREE"
+git -C "$SHARED_REPO" worktree prune >/dev/null 2>&1 || true
+git -C "$SHARED_REPO" worktree add --detach "$WORKTREE" origin/master >/dev/null 2>&1 \
+  || { echo "error: failed to create isolated worktree at $WORKTREE (is origin/master fetched in $SHARED_REPO?)" >&2; exit 1; }
+
+cleanup_worktree() {
+  git -C "$SHARED_REPO" worktree remove --force "$WORKTREE" >/dev/null 2>&1 || rm -rf "$WORKTREE"
+  git -C "$SHARED_REPO" worktree prune >/dev/null 2>&1 || true
+}
+trap cleanup_worktree EXIT
+
+# From here on, Reviewer C operates entirely inside its private worktree.
+REPO_ROOT="$WORKTREE"
+[ -f "$REPO_ROOT/REVIEW.md" ] && [ -d "$REPO_ROOT/.claude/skills/slang-review-clarity-workflow" ] \
+  || { echo "error: isolated worktree $REPO_ROOT is missing REVIEW.md or the clarity skills at origin/master." >&2; exit 1; }
+
 # --- Mode-specific repo prep (mirrors slang-pr-review-runner's compose-and-run.sh) ---
 
 cd "$REPO_ROOT"
@@ -139,8 +195,18 @@ esac
 # --- Run -------------------------------------------------------------------
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
-RUN_DIR="$SKILL_DIR/transcripts/${MODE}-${TS}"
+# Key the run dir on the full RUN_KEY (mode, repo, pr/branch, head sha, bundle
+# hash, pid) so artifacts can never be cross-attributed between concurrent runs.
+RUN_DIR="$SKILL_DIR/transcripts/${RUN_KEY}-${TS}"
 mkdir -p "$RUN_DIR"
+
+# Durable run-key marker. The reliability lab's telemetry survives past the
+# dashboard's 7-day hook_events prune because it also lives here in the run dir
+# (not only in hook_events), tying every artifact to (repo, pr/branch, head sha,
+# bundle hash) so a run can never be silently cross-attributed after the fact.
+cat > "$RUN_DIR/run-key.json" <<JSON
+{"mode":"${MODE}","repo":"${KEY_REPO}","pr":"${PR_NUMBER}","branch":"${BRANCH_REF}","head_sha":"${RUN_HEAD}","bundle_hash":"${BUNDLE_HASH}","run_key":"${RUN_KEY}","pid":$$,"created_utc":"${TS}"}
+JSON
 
 # The inner CLI applies the checkout's clarity-review pipeline. We pin the
 # steps explicitly (generation → coverage audit → consolidate → scope-filter →
@@ -269,6 +335,22 @@ if [ "$MODE" = "patch" ] && [ -n "${TEMP_BRANCH:-}" ]; then
   cd "$REPO_ROOT"
   git checkout -q origin/master >/dev/null 2>&1 || true
   git branch -D "$TEMP_BRANCH" >/dev/null 2>&1 || true
+fi
+
+# --- Post-run integrity guard ----------------------------------------------
+# A healthy clarity pass is multi-KB. A run killed by a transient API/socket
+# error still writes a ~135-byte clarity-review.md whose whole body is the
+# error string — and the inner CLI can exit 0. Fail LOUD (nonzero) on a
+# sub-floor or crash-signature output so the workflow retries C rather than
+# shipping empty/garbage clarity as a clean pass. See learnings
+# 1780603736166 / 1781213312260.
+REVIEW_BYTES=$(wc -c < "$RUN_DIR/clarity-review.md" 2>/dev/null | tr -d ' ')
+: "${REVIEW_BYTES:=0}"
+MIN_REVIEW_BYTES="${CLARITY_MIN_REVIEW_BYTES:-500}"
+if [ "$REVIEW_BYTES" -lt "$MIN_REVIEW_BYTES" ] \
+   || grep -qiE 'API Error|socket connection( was)? closed' "$RUN_DIR/clarity-review.md" 2>/dev/null; then
+  echo "!!! CLARITY-INCOMPLETE: clarity-review.md is ${REVIEW_BYTES}B (floor ${MIN_REVIEW_BYTES}B) or matches a crash signature — Reviewer C did NOT complete; treat as failed/inconclusive and re-run." >&2
+  [ "$RC" -eq 0 ] && RC=1
 fi
 
 echo
