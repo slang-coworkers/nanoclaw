@@ -131,3 +131,18 @@ slang-discord:
   # factual accuracy, citations, continuation hygiene from the artifacts
   # themselves. OUTPUT_REVIEW subsumes the legacy ANSWER_REVIEW stage.
   required_critique_stages: [OUTPUT_REVIEW]
+
+slang-pr-approver:
+  description: "Standalone offline approval-decision spine — deterministic eligibility clauses + adversarial challenger over pre-staged review artifacts. No GitHub access; deepwiki is the single permitted network MCP (supplementary only)."
+  project: slang
+  extends: base-common
+  vars:
+    repo: shader-slang/slang
+    project: slang
+  skills: []
+  workflows: []
+  mcpServers:
+    deepwiki:
+      type: http
+      url: https://mcp.deepwiki.com/mcp
+  bindings: {}
