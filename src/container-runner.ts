@@ -168,7 +168,7 @@ const spawnedClaudeMdHash = new Map<string, string>();
  * a duplicate container against the same session directory, producing
  * racy double-replies.
  */
-const wakePromises = new Map<string, Promise<void>>();
+const wakePromises = new Map<string, Promise<boolean>>();
 
 /**
  * Compose CLAUDE.md from the lego coworker model: spine fragments + skills +
@@ -377,11 +377,17 @@ export function isContainerRunning(sessionId: string): boolean {
  * (the in-flight wake promise is reused).
  *
  * The container runs the v2 agent-runner which polls the session DB.
+ *
+ * Returns `true` if the container is (or becomes) running, `false` on a
+ * skipped wake (closed session) or a transient spawn failure (e.g. the
+ * container runtime / OneCLI gateway is unreachable). Callers don't need to
+ * wrap — the inbound row stays pending and host-sweep retries on its next
+ * tick — but callers that care (e.g. a typing indicator) can branch on it.
  */
-export function wakeContainer(session: Session): Promise<void> {
+export function wakeContainer(session: Session): Promise<boolean> {
   if (activeContainers.has(session.id)) {
     log.debug('Container already running', { sessionId: session.id });
-    return Promise.resolve();
+    return Promise.resolve(true);
   }
   // Never respawn a session that has been closed (e.g. admin clicked Stop on a
   // runaway card). The approval response-handler fires wakeContainer after
@@ -391,16 +397,22 @@ export function wakeContainer(session: Session): Promise<void> {
   const current = getSession(session.id);
   if (current && current.status === 'closed') {
     log.debug('Skipping wake of closed session', { sessionId: session.id });
-    return Promise.resolve();
+    return Promise.resolve(false);
   }
   const existing = wakePromises.get(session.id);
   if (existing) {
     log.debug('Container wake already in-flight — joining existing promise', { sessionId: session.id });
     return existing;
   }
-  const promise = spawnContainer(session).finally(() => {
-    wakePromises.delete(session.id);
-  });
+  const promise = spawnContainer(session)
+    .then(() => true)
+    .catch((err) => {
+      log.warn('wakeContainer failed — host-sweep will retry', { sessionId: session.id, err });
+      return false;
+    })
+    .finally(() => {
+      wakePromises.delete(session.id);
+    });
   wakePromises.set(session.id, promise);
   return promise;
 }
