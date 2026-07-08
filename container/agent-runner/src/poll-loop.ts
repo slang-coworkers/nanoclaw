@@ -8,7 +8,13 @@ import {
   getDestinationsFingerprint,
   type DestinationEntry,
 } from './destinations.js';
-import { getPendingMessages, markProcessing, markCompleted, type MessageInRow } from './db/messages-in.js';
+import {
+  getPendingMessages,
+  markProcessing,
+  markCompleted,
+  getMessageInBySeq,
+  type MessageInRow,
+} from './db/messages-in.js';
 import { writeMessageOut } from './db/messages-out.js';
 import { getInboundDb, touchHeartbeat, clearStaleProcessingAcks } from './db/connection.js';
 import {
@@ -1405,6 +1411,32 @@ export function dispatchResultText(
   return { sent, hasUnwrapped, danglingOpen, gateRefusals: gateRefusals.length ? gateRefusals : undefined };
 }
 
+/**
+ * Resolve an agent-supplied `in_reply_to` override to the canonical inbound
+ * message id, mirroring `resolveInReplyTo` in the send_message MCP tool.
+ *
+ * The formatter shows each inbound message as id="<seq>", so agents quote the
+ * integer seq. Returns:
+ *   - `undefined` when there is no override (so the caller's `??` chain falls
+ *     through to the destination/routing default),
+ *   - the resolved canonical id when the seq maps to a real inbound row,
+ *   - `undefined` when a numeric seq does NOT resolve (fall back to the
+ *     canonical routing value — never persist a bare seq),
+ *   - the raw value unchanged when it is already a non-numeric canonical id.
+ */
+export function resolveInReplyToOverride(raw: string | undefined): string | undefined {
+  if (raw == null) return undefined;
+  const seq = Number(raw);
+  if (Number.isNaN(seq)) return raw; // non-numeric → already a canonical id, use as-is
+  if (!Number.isInteger(seq) || seq <= 0) return undefined; // numeric but not a valid seq → fall back
+  try {
+    const row = getMessageInBySeq(seq);
+    return row ? row.id : undefined; // resolved id, or fall back — never persist a bare seq
+  } catch {
+    return undefined; // never worse than the canonical routing fallback
+  }
+}
+
 function sendToDestination(
   dest: DestinationEntry,
   body: string,
@@ -1423,7 +1455,14 @@ function sendToDestination(
   // produce a thread we've never seen.
   const destRouting = resolveDestinationThread(channelType, platformId);
   const threadId = overrides?.threadIdOverride ?? destRouting?.threadId ?? null;
-  const inReplyTo = overrides?.inReplyToOverride ?? destRouting?.inReplyTo ?? routing.inReplyTo;
+  // An agent-supplied `in_reply_to` override is the integer id shown on an
+  // inbound message (the formatter renders id="<seq>"). Resolve it to the
+  // canonical message id the same way `send_message` does — otherwise the raw
+  // seq is persisted as `in_reply_to`, the host's id-based source lookup
+  // (getInboundSourceSessionId) misses, and routing silently falls back to
+  // peer-affinity guessing. That is the seq-as-id ("D2") misroute.
+  const resolvedOverride = resolveInReplyToOverride(overrides?.inReplyToOverride);
+  const inReplyTo = resolvedOverride ?? destRouting?.inReplyTo ?? routing.inReplyTo;
   writeMessageOut({
     id: generateId(),
     in_reply_to: inReplyTo,
