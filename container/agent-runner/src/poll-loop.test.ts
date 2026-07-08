@@ -14,6 +14,7 @@ import {
   isCorruptionError,
   isNewSessionBatch,
   processQuery,
+  resolveInReplyToOverride,
   taskOptsOutOfNewSession,
 } from './poll-loop.js';
 import { MockProvider } from './providers/mock.js';
@@ -40,6 +41,40 @@ function insertMessage(
     )
     .run(id, kind, opts?.processAfter ?? null, opts?.trigger ?? 1, opts?.onWake ?? 0, JSON.stringify(content));
 }
+
+describe('resolveInReplyToOverride (D2: seq-as-id in the <message> fan-out path)', () => {
+  function seedInbound(seq: number, id: string) {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO messages_in (id, seq, kind, timestamp, status, channel_type, content)
+         VALUES (?, ?, 'chat', datetime('now'), 'pending', 'agent', ?)`,
+      )
+      .run(id, seq, JSON.stringify({ text: 'hi' }));
+  }
+
+  it('resolves a quoted seq to the canonical inbound id (the D2 fix)', () => {
+    seedInbound(101, 'a2a-1780819905710-m1ompa');
+    // Formatter shows id="101"; the agent quotes 101 in <message in_reply_to="101">.
+    expect(resolveInReplyToOverride('101')).toBe('a2a-1780819905710-m1ompa');
+  });
+
+  it('returns undefined for a numeric seq with no matching inbound row (fall back to routing value, never a bare seq)', () => {
+    expect(resolveInReplyToOverride('999999')).toBeUndefined();
+  });
+
+  it('returns undefined when there is no override (caller ?? chain falls through)', () => {
+    expect(resolveInReplyToOverride(undefined)).toBeUndefined();
+  });
+
+  it('passes a non-numeric canonical id through unchanged', () => {
+    expect(resolveInReplyToOverride('a2a-1783491341639-1zzezh')).toBe('a2a-1783491341639-1zzezh');
+  });
+
+  it('numeric-but-invalid seqs (<=0) fall back rather than persist a bad value', () => {
+    expect(resolveInReplyToOverride('0')).toBeUndefined();
+    expect(resolveInReplyToOverride('-5')).toBeUndefined();
+  });
+});
 
 describe('formatter', () => {
   it('should format a single chat message', () => {
@@ -1099,20 +1134,35 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     expect(refusal).not.toContain('[Resolution] done');
   });
 
+  // The agent quotes the integer id the formatter showed (id="<seq>"). The
+  // fan-out path resolves that seq to the canonical inbound id before it is
+  // persisted (the D2 fix) — so seed the inbound row seq 42 points at.
+  function seedQuotedInbound() {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO messages_in (id, seq, kind, timestamp, status, channel_type, content)
+         VALUES ('a2a-parent-42', 42, 'chat', datetime('now'), 'pending', 'agent', '{}')`,
+      )
+      .run();
+  }
+
   it('marked handoff with in_reply_to alone passes (thread_id derived)', () => {
     // Canonical upstream report form from the workflows:
     // send_message(to="parent", in_reply_to=<id>, ...). thread_id is derived
     // by the runtime, so the check must NOT demand it.
     addDestination('peer');
+    seedQuotedInbound();
     const result = dispatchResultText('<message to="peer" in_reply_to="42">[Resolution] done</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
-    expect(out[0].in_reply_to).toBe('42');
+    // Persisted as the canonical id resolved from seq 42, never the raw seq.
+    expect(out[0].in_reply_to).toBe('a2a-parent-42');
     expect(JSON.parse(out[0].content).text).toBe('[Resolution] done');
   });
 
   it('marked handoff with thread_id and in_reply_to passes', () => {
     addDestination('peer');
+    seedQuotedInbound();
     const result = dispatchResultText(
       '<message to="peer" thread_id="t1" in_reply_to="42">[handoff] approved</message>',
       sourceRouting,
@@ -1120,7 +1170,7 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out[0].thread_id).toBe('t1');
-    expect(out[0].in_reply_to).toBe('42');
+    expect(out[0].in_reply_to).toBe('a2a-parent-42');
     expect(JSON.parse(out[0].content).text).toBe('[handoff] approved');
   });
 
