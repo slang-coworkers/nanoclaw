@@ -37,7 +37,7 @@ import {
   getMessagingGroupByPlatform,
 } from '../../db/messaging-groups.js';
 import { createDestination } from './db/agent-destinations.js';
-import { getSourceFor, recordSource } from '../../db/a2a-session-sources.js';
+import { getSourceFor } from '../../db/a2a-session-sources.js';
 import { initSessionFolder, writeSessionRouting, sessionDir } from '../../session-manager.js';
 import type { Session } from '../../types.js';
 
@@ -885,15 +885,19 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     createSession(recipientSession);
     initSessionFolder('ag-recipient', recipientSession.id);
 
-    // Inject the corrupt mapping: this session points at itself as the source.
-    recordSource({
-      recipientSessionId: recipientSession.id,
-      recipientAgentGroupId: 'ag-recipient',
-      recipientThreadId: 'T1',
-      sourceSessionId: recipientSession.id,
-      sourceAgentGroupId: 'ag-recipient',
-      sourceThreadId: 'T1',
-    });
+    // Inject the corrupt mapping directly: this session points at itself as the
+    // source. recordSource now refuses a self-referential write (its own guard),
+    // so we insert straight into the table to simulate a row arriving via
+    // migration / backfill / a future code path that bypasses recordSource —
+    // exactly the corruption this defense-in-depth test exists to cover.
+    getDb()
+      .prepare(
+        `INSERT INTO a2a_session_sources
+           (recipient_session_id, recipient_agent_group_id, recipient_thread_id,
+            source_session_id, source_agent_group_id, source_thread_id, created_at)
+         VALUES (?, 'ag-recipient', 'T1', ?, 'ag-recipient', 'T1', ?)`,
+      )
+      .run(recipientSession.id, recipientSession.id, now());
     expect(getSourceFor(recipientSession.id)?.source_session_id).toBe(recipientSession.id);
 
     // Recipient emits a "reply" addressed at its own agent group. Reply

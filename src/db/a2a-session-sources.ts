@@ -4,6 +4,7 @@
  * See src/db/migrations/920-a2a-session-sources.ts for schema + rationale.
  */
 import { getDb } from './connection.js';
+import { log } from '../log.js';
 
 export interface A2aSessionSource {
   recipient_session_id: string;
@@ -31,6 +32,19 @@ export function recordSource(params: {
   sourceThreadId: string | null;
   now?: string;
 }): void {
+  // Defense in depth: never record a self-referential lineage edge
+  // (recipient === source). Such a row is a 1-cycle that corrupts the
+  // ancestor walk (self-loop). The main-route caller already drops
+  // self-targets before reaching here (agent-route.ts L2 self-target guard),
+  // but guarding at the write helper protects any future/alternate caller and
+  // keeps a2a_session_sources acyclic at the 1-cycle level.
+  if (params.recipientSessionId === params.sourceSessionId) {
+    log.warn('a2a recordSource: refusing self-referential lineage row', {
+      session: params.recipientSessionId,
+      agentGroup: params.recipientAgentGroupId,
+    });
+    return;
+  }
   const now = params.now ?? new Date().toISOString();
   getDb()
     .prepare(
