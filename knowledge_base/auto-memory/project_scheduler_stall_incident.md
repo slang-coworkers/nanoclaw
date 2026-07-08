@@ -1,0 +1,27 @@
+---
+name: project_scheduler_stall_incident
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: a5790b77-160e-4f43-8acc-cc66ac7dd6c3
+---
+
+**Scheduler stall — a host event orphans overdue recurring-task occurrences, freezing the series. OPEN (host fix scoped, not deployed).**
+
+**Discovered 2026-07-06** when the operator asked "why is the wiki not updated even though learnings are being pushed?" Root-caused with DB receipts.
+
+**Mechanism (verified against host source in the `nanoclaw-kb` full checkout):**
+- `src/modules/scheduling/recurrence.ts:21-24` (`handleRecurrence` → `getCompletedRecurring`) only mints a series' NEXT occurrence when the current one reaches `status='completed'`. A `pending` occurrence that never fires never advances → the whole series freezes.
+- `src/host-sweep.ts:205` — the host's due-message wake is gated on `!isContainerRunning`. On an always-running session the host defers firing to the container's own poll (`container/agent-runner/src/db/messages-in.ts getPendingMessages`).
+- Net: a host event (restart/rebuild) around 07-03 left several daily occurrences `pending, tries=0, process_after` in the past; the sweep never re-attempted them (`tries=0` proves no attempt), so they sat frozen.
+
+**Blast radius (07-06):** ALL three daily tasks froze — wiki-synth `task-1782828347850-4m9u23` (stuck 07-03T06:00), release-CI `task-1777346910467-p0dxfu` (07-03T01:30), nightly-CI `task-1777308843998-o6r5su` (07-04T00:00). The 12-hourly supervise task `task-1780670816061-rgq8eo` stayed current (it minted a fresh occurrence after the event). `new_session=true` on all four — not the differentiator; frequency/timing-vs-restart is. Scheduled-task rows live in the container's `inbound.db` `messages_in` (kind='task'; series_id, process_after, recurrence, tries, status) — query there to see stuck rows.
+
+**Actions taken:**
+1. Re-armed all three frozen daily tasks via `update_task({processAfter})` — verified future fire-times.
+2. Deployed a **scheduler watchdog** (`task-1783328238990-qikxwn`, cron `0 */6 * * *`): every 6h it lists tasks, finds any whose next-fire is >10min overdue, and re-arms `processAfter` (skips itself; never touches recurrence/prompt; silent unless it acts). Cuts recovery from days-until-a-human-notices to ≤6h. This is a compensating control I own — NOT the root fix.
+3. Full root cause saved as a shared learning (`append_learning`, "learnings-wiki coverage-checker miscounts…stalls freeze the whole recurrence") for all coworkers.
+
+**Durable host fix (SCOPED, NOT DEPLOYED — awaiting operator decision):** make `handleRecurrence` also advance a series whose latest occurrence is overdue-and-orphaned (or have the sweep re-fire overdue pending occurrences), with a test in the existing `src/modules/scheduling/recurrence.test.ts`. I CANNOT deploy this from inside the container — it needs a host-side `git pull`+`pnpm build`+service restart by a human, and it's high-blast-radius core scheduler code I won't merge untested/blind. Offered the operator: open a reviewable PR vs the fork, or file an issue with the diff. **Awaiting their pick** (asked 07-06; prod rebuild 2.1.38 landed ~07-06 15:57 mid-decision — may have interrupted the reply). The 2.1.38 rebuild did NOT re-freeze anything (all occurrences were future-dated at that point, nothing overdue-pending to orphan).
+
+**Watch:** if the watchdog ever fires and reports re-arms, that's a recurrence of this bug — the host fix is still needed. Relates to [[project_stall_sweep_incident]] (a different host-sweep defect: fabricated `[Relay]` directives).

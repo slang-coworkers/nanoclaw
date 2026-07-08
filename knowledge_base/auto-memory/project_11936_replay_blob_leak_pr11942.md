@@ -1,6 +1,6 @@
 ---
 name: project_11936_replay_blob_leak_pr11942
-description: "#11936 record-replay replay-path blob leaks — PR #11942 APPROVED+green, awaiting maintainer merge; proxy-wrapper leaks deferred"
+description: "#11936 record-replay replay-path blob leaks — PR #11942 MERGED; issue stays OPEN for deferred proxy-wrapper leaks"
 metadata: 
   node_type: memory
   type: project
@@ -9,7 +9,7 @@ metadata:
 
 shader-slang/slang **#11936** (record-replay replay path leaks objects created by replayed calls). Triaged (bug / low / P3 / record-replay tooling, Type=Bug, verdict comment 4875148453), fixed by slang-fixer in draft→**non-draft PR #11942** (commit `5dc21d864b`, parent-1 of maintainer master-merge `1bd0d0fcfb`).
 
-**State (verified 2026-07-07 via `gh pr view`):** OPEN, non-draft, `reviewDecision: APPROVED` (jkwak-work, maintainer, 0 findings), `mergeable: MERGEABLE`, `mergeStateStatus: BLOCKED` = awaiting the merge action only. All 50 CI checks green incl. authoritative `sanitizer-linux-clang-x86_64` LSan. Merge is operator/maintainer-gated — NOT the bot's; szihs (maintainer) did the ready-flip, guardrail intact.
+**State (verified 2026-07-07 via `gh pr view`): MERGED** by jkwak-work, merge commit `90c2c8dbddf261286e07950fa9f39e87ed188eb8`. Blob-leak fix now in master. Was APPROVED (jkwak-work, 0 findings) + all 50 CI green incl. authoritative `sanitizer-linux-clang-x86_64` LSan before merge. Guardrails intact end-to-end: szihs (maintainer) did the ready-flip, fixer refused to force-push over Harsh Aggarwal's master-merge, no self-merge (jkwak-work merged). Worktree `wt-slang-11936` + sentinel reaped. **Issue #11936 correctly stays OPEN** — no closing keyword by design (deferred follow-up below). Chain closed from bot's side.
 
 **Fix (2 files, +63/−4):** `recordBlobByHash` playback releases the prior output blob before overwrite (scoped Output/ReturnValue; input blobs caller-owned) + blob-only `BlobOutputTempReleaser` RAII guard on `PREPARE_POINTER_OUTPUT`. No-op in record mode + for registry-tracked proxies. Leak triple-confirmed (CI sanitizer + author jvepsalainen-nv's manual branch LSan + local single-TU compile).
 
