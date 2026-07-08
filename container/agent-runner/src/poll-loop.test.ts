@@ -1213,6 +1213,22 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     ).toBe(true);
   });
 
+  it('soft-cap re-arms after a properly-linked handoff (D4)', () => {
+    const body = '[Resolution] done';
+    const unlinked = () => checkRoutingGate(body, {}, { workflowStatePath: statePath }).blocked;
+    // 3 unlinked handoffs are denied; the 4th yields (soft-cap reached).
+    expect(unlinked()).toBe(true);
+    expect(unlinked()).toBe(true);
+    expect(unlinked()).toBe(true);
+    expect(unlinked()).toBe(false); // capped → yields
+
+    // A properly-linked handoff re-arms the cap.
+    expect(checkRoutingGate(body, { inReplyToOverride: '42' }, { workflowStatePath: statePath }).blocked).toBe(false);
+
+    // The gate enforces again — the next unlinked handoff is blocked, not yielded.
+    expect(unlinked()).toBe(true);
+  });
+
   it('checkRoutingGate unions a per-role delivery_markers extension', () => {
     // Step-2 part-1: routing must recognize the same per-role vocabulary the
     // critique gate does (via deliveryMarkerRe), so moving a marker to YAML
