@@ -63,6 +63,13 @@ fi
 DONE_EXPR='(() => {
   const t = document.body.innerText;
   if (/PR analysis in progress/i.test(t)) return false;
+  // The "Devin.s AI analysis" heading can render while the panel is still
+  // streaming — it shows a "Generating…"/"Generating..." placeholder and
+  // echoes the PR description, and a flags summary ("No flags") may already
+  // be visible. That is NOT a completed verdict, so treat a still-streaming
+  // marker as NOT done and keep polling (worst case → timeout, a best-effort
+  // skip). See knowledge_base learnings on devin-fetch premature exit-0.
+  if (/Generating\s*(\.{2,}|…)/i.test(t)) return false;
   if (!/Devin.s AI analysis/i.test(t)) return false;
   return /\b\d+\s+Flags?\b/.test(t) || /\bNo flags\b/i.test(t) || /All checks passed/i.test(t) || /checks? failed/i.test(t);
 })()'
@@ -111,5 +118,25 @@ print(analysis[:5000])
 print('\n## Flags\n')
 print(flags[:5000])
 PY
+
+# Body-integrity guard: require a terminal status AND a non-trivial body before
+# declaring success. A reachable page can pass the DONE poll with the panel
+# still streaming ("Generating…") — the AI-Analysis body is then just the PR
+# description echoed back with Bugs/Flags "(none reported)", which reads like a
+# clean pass but is an *incomplete* analysis. Also guard against a truly empty
+# scrape. Either case → inconclusive (exit 3, best-effort skip), never a silent
+# exit-0 "clean" that folds a half-rendered page into the verdict.
+if grep -qE 'Generating[[:space:]]*(\.{2,}|…)' "$OUT/devin-flags.md" 2>/dev/null; then
+  echo "inconclusive: Devin analysis still generating at scrape time" > "$OUT/devin-error.txt"
+  echo ">>> devin-fetch: still generating at scrape time — inconclusive (exit 3)" >&2
+  exit 3
+fi
+ANALYSIS_BYTES=$(wc -c < "$OUT/devin-flags.md" 2>/dev/null | tr -d ' ')
+: "${ANALYSIS_BYTES:=0}"
+if [ "$ANALYSIS_BYTES" -lt "${DEVIN_MIN_BYTES:-200}" ]; then
+  echo "inconclusive: Devin analysis body too short (${ANALYSIS_BYTES}B)" > "$OUT/devin-error.txt"
+  echo ">>> devin-fetch: body too short (${ANALYSIS_BYTES}B) — inconclusive (exit 3)" >&2
+  exit 3
+fi
 
 echo ">>> devin-fetch: ${OUT}/devin-flags.md ($(wc -l < "$OUT/devin-flags.md") lines)"
