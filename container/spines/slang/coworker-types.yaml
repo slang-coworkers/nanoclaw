@@ -133,7 +133,7 @@ slang-discord:
   required_critique_stages: [OUTPUT_REVIEW]
 
 slang-pr-approver:
-  description: "Standalone offline approval-decision spine — deterministic eligibility clauses + adversarial challenger over pre-staged review artifacts. No GitHub access; deepwiki is the single permitted network MCP (supplementary only)."
+  description: "Standalone approval-decision spine — deterministic eligibility clauses + adversarial challenger over pre-staged review artifacts. GitHub is read-only when available (snapshots are the baseline input); writes to GitHub are forbidden. deepwiki MCP is supplementary."
   project: slang
   extends: base-common
   vars:
