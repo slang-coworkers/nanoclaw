@@ -6,15 +6,44 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 299 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 146 |
-| `nv-slang` | slang project spine, skills, workflows | 101 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 44 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 31 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 311 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 148 |
+| `nv-slang` | slang project spine, skills, workflows | 103 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 45 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 33 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-08
+
+### nv-main (12 PRs)
+- **#833** `fix(host): wakeContainer returns Promise<boolean> (match its documented contract)`
+- **#832** `Sync nv-main with upstream/main (559bb5ca)`
+- **#830** `fix(delivery): consume github outbound as a no-op instead of retry→failed`
+- **#829** `fix(a2a): re-arm the chain-routing gate soft-cap on a linked handoff`
+- **#828** `fix(a2a): guard + clean up self-referential lineage rows`
+- **#827** `fix(a2a): reject cross-thread in_reply_to hijacks in Layer-1 routing`
+- **#826** `fix(a2a): resolve in_reply_to override seq→id in the message fan-out path`
+- **#823** `docs: reconcile marker-model sections to the landed state`
+- **#821** `Sync nv-main with upstream/main (2.1.39)`
+- _+3 more: #814, #810, #809_
+
+### nv-dashboard (2 PRs)
+- **#817** `Sync nv-dashboard with upstream/main`
+- **#824** `dashboard: exempt review-group telemetry from the 7-day hook_events prune`
+
+### nv-slang (2 PRs)
+- **#818** `Sync nv-slang with upstream/main`
+- **#825** `slang-clarity-review-runner: worktree isolation, output floor, run keying`
+
+### nv-slangpy (1 PRs)
+- **#819** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#820** `Sync nv-nanoclaw with upstream/main`
+- **#831** `nanoclaw-pr-review-runner: don't treat a still-generating Devin response as done`
 
 ## 📅 2026-07-07
 
