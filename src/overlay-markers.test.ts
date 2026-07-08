@@ -517,3 +517,18 @@ describe('materializeCritiqueDeliveryMarkers', () => {
     fs.rmSync(groupDir, { recursive: true, force: true });
   });
 });
+
+// Contract: the SHIPPED base-common declares the standard chain-role delivery
+// vocabulary. The built-in gate floor carries only the general primitives
+// (Resolution/handoff); every project role inherits these standard markers via
+// `extends: base-common`, so deleting one here silently un-gates that marker
+// for every fixer/reviewer/triager across all project spines.
+describe('base-common standard delivery vocabulary (shipped contract)', () => {
+  it('declares the five standard chain-role markers', async () => {
+    const { readCoworkerTypes } = await import('./claude-composer.js');
+    const types = readCoworkerTypes(process.cwd());
+    expect(new Set(types['base-common']?.deliveryMarkers ?? [])).toEqual(
+      new Set(['Fix Report', 'Fix Review Request', 'Review Verdict', 'Triage Resolution', 'Triage handoff']),
+    );
+  });
+});

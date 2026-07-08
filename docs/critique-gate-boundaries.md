@@ -36,7 +36,7 @@ place. This table is the answer to "where do the markers live?":
 | Signal | Who **emits** it | Where the **definition** lives | Who **reads** it |
 |--------|------------------|-------------------------------|------------------|
 | **`STAGE:` markers** (Tier 1) — `DIAGNOSIS_REVIEW`, `PLAN_REVIEW`, `CODE_REVIEW`, `OUTPUT_REVIEW` | the doer, in the codex prompt (per the `codex-critique` skill template — `container/skills/codex-critique/SKILL.md`) | the enum is documented in the skill; parsed by pattern in `container/hooks/track-critique.sh` (`grep -oE 'STAGE:[[:space:]]*[A-Z_]+'`) | `track-critique.sh` — to record *which* review happened into `workflow-state.json` |
-| **Delivery markers** (Tier 2/3) — built-in floor `[Resolution]`, `[handoff]` (general chain primitives); role names `[Fix Report]`, `[Triage Resolution]`, `[Review Verdict]`, `[Triage handoff]` per-role | the doer, as a **line prefix** in `send_message` text | **built-in floor** = general primitives only, in `container/hooks/gate-critique-on-deliver.sh` (`MSG_MARKERS=`) + `container/agent-runner/src/poll-loop.ts` (`DEFAULT_DELIVERY_MARKERS`). **Role-specific names** are NOT built-in — each emitting role declares them in `container/spines/<spine>/coworker-types.yaml` under `delivery_markers:`, materialized to `<groupDir>/.critique-delivery-markers`, unioned with the floor at runtime by **all three** gates (critique + routing + poll-loop). `[Report]` is deliberately absent (status channel, ungated). | `gate-critique-on-deliver.sh`, `gate-chain-routing.sh`, and `checkCritiqueGate`/`checkRoutingGate` in `poll-loop.ts` |
+| **Delivery markers** (Tier 2/3) — built-in floor `[Resolution]`, `[handoff]` (general chain primitives); standard role names `[Fix Report]`, `[Fix Review Request]`, `[Review Verdict]`, `[Triage Resolution]`, `[Triage handoff]` inherited from `base-common` | the doer, as a **line prefix** in `send_message` text | **built-in floor** = general primitives only, in `container/hooks/gate-critique-on-deliver.sh` (`MSG_MARKERS=`) + `container/agent-runner/src/poll-loop.ts` (`DEFAULT_DELIVERY_MARKERS`). **Standard role names** = declared ONCE on `base-common` (`container/spines/base/coworker-types.yaml` `delivery_markers:`), inherited by every type via `extends:`, materialized to `<groupDir>/.critique-delivery-markers`, unioned with the floor at runtime by **all three** gates (critique + routing + poll-loop). Project spines add `delivery_markers` only for novel markers. `[Report]` is deliberately absent (status channel, ungated). | `gate-critique-on-deliver.sh`, `gate-chain-routing.sh`, and `checkCritiqueGate`/`checkRoutingGate` in `poll-loop.ts` |
 | **PR / egress patterns** (Tier 3) — `gh pr create`, `gh api …/pulls`, `createPullRequest` | the doer, as a Bash command | **built-in defaults** in `gate-critique-on-deliver.sh` (`BASH_PATTERNS=`). **Optional extensions** via `pr_command_patterns:` in `coworker-types.yaml` → same `.critique-delivery-markers` file. | `gate-critique-on-deliver.sh` (the Bash matcher) |
 
 ### The short version
@@ -45,20 +45,24 @@ place. This table is the answer to "where do the markers live?":
   is the two general chain primitives `[Resolution]` and `[handoff]`, hardcoded
   in the bash hook and the poll-loop mirror (they must agree; keep in sync).
   `[Report]` is deliberately not gated — it's the status channel.
-- **Role-specific names live in YAML** — `[Fix Report]` (fixer), `[Triage
-  Resolution]`/`[Triage handoff]` (triager), `[Review Verdict]` (reviewer) are
-  declared per role via `delivery_markers` in `coworker-types.yaml`, composed
-  into `<groupDir>/.critique-delivery-markers` at spawn and unioned with the
-  floor by all three gates. Extensions are **additive only**: the general floor
-  can never be configured (or tampered) away, and labels are sanitized to a
+- **The standard chain-role vocabulary lives ONCE on `base-common`** —
+  `[Fix Report]`, `[Fix Review Request]`, `[Review Verdict]`,
+  `[Triage Resolution]`, `[Triage handoff]` are declared in
+  `container/spines/base/coworker-types.yaml` under `delivery_markers` and
+  inherited by **every** coworker type via `extends:` (the composer unions
+  `delivery_markers` across the chain into
+  `<groupDir>/.critique-delivery-markers`; all three gates union that file
+  with the floor). No per-project duplication — a future project's
+  fixer/reviewer/triager inherits the standard set automatically. Locked by
+  a contract test in `src/overlay-markers.test.ts`.
+- **Project spines declare only NOVEL markers** — a role adds
+  `delivery_markers` only for a marker of its own invention (see R3).
+  Extensions are **additive only**: neither the floor nor the inherited base
+  set can be configured (or tampered) away, and labels are sanitized to a
   regex-metachar-free charset before use.
 - **The agent emits markers, it does not define them.** The doer writes
   `[Fix Report]` in its message; whether that *counts* is decided by the floor
-  + its role's declared vocabulary, which the agent cannot weaken.
-- **Consequence of a general-only floor:** a role that emits a role-specific
-  terminal marker MUST declare it in `delivery_markers`, or that marker is
-  ungated. Every project spine (slang, slangpy, nanoclaw, and any future one)
-  owns this for its roles — the floor no longer covers them by default.
+  + its role's composed vocabulary, which the agent cannot weaken.
 
 ### Why markers at all (and not "gate every message")
 

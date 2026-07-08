@@ -35,6 +35,23 @@ base-common:
     - base-nanoclaw
     - codex-critique
     - buddy
+  # Standard chain-role delivery vocabulary — declared ONCE here and inherited
+  # by every coworker type via `extends:` (the composer unions delivery_markers
+  # across the chain into .critique-delivery-markers; all three gates —
+  # critique, chain-routing, poll-loop — union that file with the built-in
+  # floor). The floor itself carries only the general primitives
+  # (Resolution/handoff); these are the standard role-terminal markers the
+  # chain protocol's workflows emit (fixer report, fixer→reviewer handoff,
+  # reviewer verdict, triage close + handoff). A project spine only declares
+  # delivery_markers for genuinely NOVEL markers of its own; roles that never
+  # emit these are unaffected (the gates are self-scoping on emission).
+  # [Report] is deliberately absent — it is the ungated status channel.
+  delivery_markers:
+    - Fix Report
+    - Fix Review Request
+    - Review Verdict
+    - Triage Resolution
+    - Triage handoff
 
 main:
   flat: true
