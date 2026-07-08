@@ -812,23 +812,27 @@ export function materializeCritiqueRequiredStages(
  * file with their built-in vocabulary — extensions are ADDITIVE only, so the
  * defaults can never be configured (or tampered) away.
  *
- * No declarations (or overlay not active) → remove any stale file; absent
- * file = built-in vocabulary only. Idempotent, safe on every spawn.
+ * No declarations → remove any stale file; absent file = built-in vocabulary
+ * only. Idempotent, safe on every spawn.
+ *
+ * NOT gated on the `critique-gate` overlay (unlike materializeCritiqueRequiredStages):
+ * the delivery vocabulary feeds the ALWAYS-ON routing gate, which applies to
+ * every role — including non-critique-gated ones (triager, reviewer). Since
+ * the built-in floor now carries only the general primitives, a non-gated
+ * role's role-specific marker (e.g. a reviewer's [Review Verdict]) would go
+ * unrecognized by routing unless its file is materialized regardless of the
+ * critique-gate overlay. `appliedOverlays` is retained for call-site symmetry.
  */
 export function materializeCritiqueDeliveryMarkers(
   coworkerType: string,
   types: Record<string, CoworkerTypeEntry>,
-  appliedOverlays: string[],
+  _appliedOverlays: string[],
   groupDir: string,
 ): void {
   const filePath = path.join(groupDir, '.critique-delivery-markers');
   const remove = (): void => {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   };
-  if (!appliedOverlays.includes('critique-gate')) {
-    remove();
-    return;
-  }
   const markers = new Set<string>();
   const patterns = new Set<string>();
   try {

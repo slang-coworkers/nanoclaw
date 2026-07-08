@@ -55,7 +55,7 @@ describe('gate-chain-routing.sh', () => {
     // Canonical upstream report form: send_message(to="parent", in_reply_to=<id>, ...).
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { to: 'parent', text: '[Triage Resolution] done', in_reply_to: 12 },
+      tool_input: { to: 'parent', text: '[Resolution] done', in_reply_to: 12 },
     });
     expect(result.status).toBe(0);
   });
@@ -71,7 +71,7 @@ describe('gate-chain-routing.sh', () => {
   it('thread_id alone (no in_reply_to) is still blocked', () => {
     const result = run({
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { to: 'peer', text: '[Fix Report] done', thread_id: 't1' },
+      tool_input: { to: 'peer', text: '[Resolution] done', thread_id: 't1' },
     });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('in_reply_to');
@@ -141,7 +141,7 @@ describe('gate-chain-routing.sh', () => {
   it('non-send_message tool passes', () => {
     const result = run({
       tool_name: 'Bash',
-      tool_input: { command: 'echo [Fix Report]' },
+      tool_input: { command: 'echo [Resolution]' },
     });
     expect(result.status).toBe(0);
   });
@@ -149,7 +149,7 @@ describe('gate-chain-routing.sh', () => {
   it('soft-caps after 3 denials so it cannot thrash', () => {
     const payload = {
       tool_name: 'mcp__nanoclaw__send_message',
-      tool_input: { to: 'parent', text: '[Fix Report] done' },
+      tool_input: { to: 'parent', text: '[Resolution] done' },
     };
     expect(run(payload).status).toBe(2); // denial 1
     expect(run(payload).status).toBe(2); // denial 2

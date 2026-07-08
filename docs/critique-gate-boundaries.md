@@ -36,25 +36,33 @@ place. This table is the answer to "where do the markers live?":
 | Signal | Who **emits** it | Where the **definition** lives | Who **reads** it |
 |--------|------------------|-------------------------------|------------------|
 | **`STAGE:` markers** (Tier 1) — `DIAGNOSIS_REVIEW`, `PLAN_REVIEW`, `CODE_REVIEW`, `OUTPUT_REVIEW` | the doer, in the codex prompt (per the `codex-critique` skill template — `container/skills/codex-critique/SKILL.md`) | the enum is documented in the skill; parsed by pattern in `container/hooks/track-critique.sh` (`grep -oE 'STAGE:[[:space:]]*[A-Z_]+'`) | `track-critique.sh` — to record *which* review happened into `workflow-state.json` |
-| **Delivery markers** (Tier 2/3) — `[Fix Report]`, `[Resolution]`, `[Triage Resolution]`, `[Review Verdict]`, `[handoff]` | the doer, as a **line prefix** in `send_message` text | **built-in defaults, hardcoded in two runtime files:** `container/hooks/gate-critique-on-deliver.sh` (`MSG_MARKERS=`) and `container/agent-runner/src/poll-loop.ts` (`DEFAULT_DELIVERY_MARKERS` / `DELIVERY_MARKER_RE`). **Optional per-role extensions:** declared in `container/spines/<spine>/coworker-types.yaml` under `delivery_markers:`, materialized by the composer to `<groupDir>/.critique-delivery-markers`, and unioned with the built-ins at runtime. | the PreToolUse hook `gate-critique-on-deliver.sh` and the text-dispatch mirror `checkCritiqueGate` in `poll-loop.ts` |
+| **Delivery markers** (Tier 2/3) — built-in floor `[Resolution]`, `[handoff]` (general chain primitives); standard role names `[Fix Report]`, `[Fix Review Request]`, `[Review Verdict]`, `[Triage Resolution]`, `[Triage handoff]` inherited from `base-common` | the doer, as a **line prefix** in `send_message` text | **built-in floor** = general primitives only, in `container/hooks/gate-critique-on-deliver.sh` (`MSG_MARKERS=`) + `container/agent-runner/src/poll-loop.ts` (`DEFAULT_DELIVERY_MARKERS`). **Standard role names** = declared ONCE on `base-common` (`container/spines/base/coworker-types.yaml` `delivery_markers:`), inherited by every type via `extends:`, materialized to `<groupDir>/.critique-delivery-markers`, unioned with the floor at runtime by **all three** gates (critique + routing + poll-loop). Project spines add `delivery_markers` only for novel markers. `[Report]` is deliberately absent (status channel, ungated). | `gate-critique-on-deliver.sh`, `gate-chain-routing.sh`, and `checkCritiqueGate`/`checkRoutingGate` in `poll-loop.ts` |
 | **PR / egress patterns** (Tier 3) — `gh pr create`, `gh api …/pulls`, `createPullRequest` | the doer, as a Bash command | **built-in defaults** in `gate-critique-on-deliver.sh` (`BASH_PATTERNS=`). **Optional extensions** via `pr_command_patterns:` in `coworker-types.yaml` → same `.critique-delivery-markers` file. | `gate-critique-on-deliver.sh` (the Bash matcher) |
 
 ### The short version
 
-- **Defaults live in code** — the built-in delivery vocabulary is hardcoded in
-  the bash hook and the poll-loop mirror (they must agree; keep them in sync).
-- **Extensions live in YAML** — `delivery_markers` / `pr_command_patterns` in a
-  coworker type, composed into `<groupDir>/.critique-delivery-markers` at spawn
-  and read by both gates. Extensions are **additive only**: the built-ins can
-  never be configured (or tampered) away, and labels are sanitized to a
+- **The floor lives in code, and is general only** — the built-in vocabulary
+  is the two general chain primitives `[Resolution]` and `[handoff]`, hardcoded
+  in the bash hook and the poll-loop mirror (they must agree; keep in sync).
+  `[Report]` is deliberately not gated — it's the status channel.
+- **The standard chain-role vocabulary lives ONCE on `base-common`** —
+  `[Fix Report]`, `[Fix Review Request]`, `[Review Verdict]`,
+  `[Triage Resolution]`, `[Triage handoff]` are declared in
+  `container/spines/base/coworker-types.yaml` under `delivery_markers` and
+  inherited by **every** coworker type via `extends:` (the composer unions
+  `delivery_markers` across the chain into
+  `<groupDir>/.critique-delivery-markers`; all three gates union that file
+  with the floor). No per-project duplication — a future project's
+  fixer/reviewer/triager inherits the standard set automatically. Locked by
+  a contract test in `src/overlay-markers.test.ts`.
+- **Project spines declare only NOVEL markers** — a role adds
+  `delivery_markers` only for a marker of its own invention (see R3).
+  Extensions are **additive only**: neither the floor nor the inherited base
+  set can be configured (or tampered) away, and labels are sanitized to a
   regex-metachar-free charset before use.
 - **The agent emits markers, it does not define them.** The doer writes
-  `[Fix Report]` in its message; whether that *counts* is decided by the
-  definition above, which the agent cannot weaken.
-- **No live role declares extensions today.** The built-in vocabulary covers
-  the current fixers; a role only needs a `delivery_markers` entry when it has
-  a genuinely new delivery shape. Adding one is a YAML edit, no code change,
-  no rebuild.
+  `[Fix Report]` in its message; whether that *counts* is decided by the floor
+  + its role's composed vocabulary, which the agent cannot weaken.
 
 ### Why markers at all (and not "gate every message")
 
@@ -250,25 +258,26 @@ ncl groups update --id <group-id> --coworker-type docs-writer --overlays '["crit
 (A genuinely new *review type* like `DRAFT_REVIEW` also needs a matching stage
 in the reviewer skill — see R6-adjacent note; adding an existing stage does not.)
 
-### R6 — change the built-in default vocabulary (needs code, 2 files)
+### R6 — change the built-in floor (needs code, 3 files)
 
-The five defaults are the fixed routing/handoff protocol, so they live in code —
-and in **two** files that must stay in sync. Change both:
+The floor is the **general** chain primitives only (`Resolution`, `handoff`) —
+changing it is a protocol change (these tokens drive routing too). It lives in
+**three** matchers that must stay in sync:
 
 ```bash
-# container/hooks/gate-critique-on-deliver.sh
-MSG_MARKERS='Fix Report|Resolution|Triage Resolution|Review Verdict|handoff'
+# container/hooks/gate-critique-on-deliver.sh  AND  container/hooks/gate-chain-routing.sh
+MSG_MARKERS='Resolution|handoff'
 ```
 
 ```ts
-// container/agent-runner/src/poll-loop.ts
-const DEFAULT_DELIVERY_MARKERS = ['Fix Report', 'Resolution', 'Triage Resolution', 'Review Verdict', 'handoff'];
+// container/agent-runner/src/poll-loop.ts  (feeds both checkCritiqueGate and checkRoutingGate)
+const DEFAULT_DELIVERY_MARKERS = ['Resolution', 'handoff'];
 ```
 
-If you change the default set, also check the routing layer
-(`ROUTING_HANDOFF_MARKER_RE = DELIVERY_MARKER_RE`) — the same tokens drive
-routing, so this is a protocol change, not just a gate change. (Collapsing
-these two into a single source of truth is a natural follow-up.)
+For a *role-specific* marker, do NOT touch the floor — declare it in that
+role's `delivery_markers` (R3). Adding to the floor is only for a new
+project-agnostic primitive every coworker would use. (Collapsing these three
+matchers into a single source of truth is a natural follow-up.)
 
 ### R7 — roll out or disable a check without code
 

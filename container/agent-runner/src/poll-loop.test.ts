@@ -656,7 +656,7 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
   });
 
   it('marker absent → not blocked (overlay opt-out)', () => {
-    const r = checkCritiqueGate('[Fix Report] something', {
+    const r = checkCritiqueGate('[Resolution] something', {
       overlayMarkerPath: markerPath,
       workflowStatePath: statePath,
     });
@@ -673,7 +673,7 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
     process.env.CRITIQUE_GATE_STATE_PATH = path.join(tmp, 'nostate.json');
     try {
       // No opts → env-authoritative activation path.
-      const r = checkCritiqueGate('[Fix Report] x');
+      const r = checkCritiqueGate('[Resolution] x');
       expect(r.blocked).toBe(true);
     } finally {
       if (saved === undefined) delete process.env.CRITIQUE_GATE_ACTIVE;
@@ -697,7 +697,7 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
   it('mid-sentence MENTION of a marker is not a delivery (anchored match)', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const r = checkCritiqueGate('I will send the [Fix Report] once codex approves.', {
+    const r = checkCritiqueGate('I will send the [Resolution] once codex approves.', {
       overlayMarkerPath: markerPath,
       workflowStatePath: statePath,
     });
@@ -707,7 +707,7 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
   it('marker at the start of a later line still gates', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const r = checkCritiqueGate('Summary first.\n[Fix Report] PR #9 fixed', {
+    const r = checkCritiqueGate('Summary first.\n[Resolution] PR #9 fixed', {
       overlayMarkerPath: markerPath,
       workflowStatePath: statePath,
     });
@@ -741,46 +741,43 @@ describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', 
     expect(r.blocked).toBe(false);
   });
 
-  it('marker present + [Fix Report] + critique_rounds=0 → BLOCKED', () => {
+  it('marker present + [Resolution] + critique_rounds=0 → BLOCKED', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const r = checkCritiqueGate('[Fix Report] all done', {
+    const r = checkCritiqueGate('[Resolution] all done', {
       overlayMarkerPath: markerPath,
       workflowStatePath: statePath,
     });
     expect(r.blocked).toBe(true);
     expect(r.reason).toContain('critique_rounds=0');
-    expect(r.reason).toContain('Fix Report');
+    expect(r.reason).toContain('Resolution');
   });
 
-  it('marker present + [Fix Report] + missing state file → BLOCKED (treats as 0)', () => {
+  it('marker present + [Resolution] + missing state file → BLOCKED (treats as 0)', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
-    const r = checkCritiqueGate('[Fix Report] all done', {
+    const r = checkCritiqueGate('[Resolution] all done', {
       overlayMarkerPath: markerPath,
       workflowStatePath: statePath,
     });
     expect(r.blocked).toBe(true);
   });
 
-  it('marker present + [Fix Report] + critique_rounds=1 → not blocked', () => {
+  it('marker present + [Resolution] + critique_rounds=1 → not blocked', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
-    const r = checkCritiqueGate('[Fix Report] all done', {
+    const r = checkCritiqueGate('[Resolution] all done', {
       overlayMarkerPath: markerPath,
       workflowStatePath: statePath,
     });
     expect(r.blocked).toBe(false);
   });
 
-  it.each(['Fix Report', 'Resolution', 'Triage Resolution', 'Review Verdict', 'handoff'])(
-    'recognizes [%s] as a delivery marker',
-    (marker) => {
-      fs.writeFileSync(markerPath, 'critique-gate\n');
-      fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-      const r = checkCritiqueGate(`[${marker}] body`, { overlayMarkerPath: markerPath, workflowStatePath: statePath });
-      expect(r.blocked).toBe(true);
-    },
-  );
+  it.each(['Resolution', 'handoff'])('recognizes [%s] as a delivery marker', (marker) => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    const r = checkCritiqueGate(`[${marker}] body`, { overlayMarkerPath: markerPath, workflowStatePath: statePath });
+    expect(r.blocked).toBe(true);
+  });
 });
 
 describe('checkCritiqueGate — required stages + verdict parity with the bash hook', () => {
@@ -809,7 +806,7 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
     else process.env.CRITIQUE_VERDICT_STRICT = savedStrict;
   });
 
-  function gate(body = '[Fix Report] done') {
+  function gate(body = '[Resolution] done') {
     return checkCritiqueGate(body, { overlayMarkerPath: markerPath, workflowStatePath: statePath });
   }
 
@@ -1090,7 +1087,7 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
 
   it('marked handoff without in_reply_to is refused to the SENDER, not delivered to the peer', () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer">[Fix Report] done</message>', sourceRouting);
+    const result = dispatchResultText('<message to="peer">[Resolution] done</message>', sourceRouting);
     // Nothing reaches the peer — the gated body is withheld.
     expect(result.sent).toBe(0);
     expect(getUndeliveredMessages()).toHaveLength(0);
@@ -1099,7 +1096,7 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     const refusal = result.gateRefusals![0];
     expect(refusal).toContain('[chain-routing-gate] REFUSED');
     expect(refusal).toContain('in_reply_to');
-    expect(refusal).not.toContain('[Fix Report] done');
+    expect(refusal).not.toContain('[Resolution] done');
   });
 
   it('marked handoff with in_reply_to alone passes (thread_id derived)', () => {
@@ -1107,27 +1104,24 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
     // send_message(to="parent", in_reply_to=<id>, ...). thread_id is derived
     // by the runtime, so the check must NOT demand it.
     addDestination('peer');
-    const result = dispatchResultText(
-      '<message to="peer" in_reply_to="42">[Triage Resolution] done</message>',
-      sourceRouting,
-    );
+    const result = dispatchResultText('<message to="peer" in_reply_to="42">[Resolution] done</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out[0].in_reply_to).toBe('42');
-    expect(JSON.parse(out[0].content).text).toBe('[Triage Resolution] done');
+    expect(JSON.parse(out[0].content).text).toBe('[Resolution] done');
   });
 
   it('marked handoff with thread_id and in_reply_to passes', () => {
     addDestination('peer');
     const result = dispatchResultText(
-      '<message to="peer" thread_id="t1" in_reply_to="42">[Review Verdict] approved</message>',
+      '<message to="peer" thread_id="t1" in_reply_to="42">[handoff] approved</message>',
       sourceRouting,
     );
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out[0].thread_id).toBe('t1');
     expect(out[0].in_reply_to).toBe('42');
-    expect(JSON.parse(out[0].content).text).toBe('[Review Verdict] approved');
+    expect(JSON.parse(out[0].content).text).toBe('[handoff] approved');
   });
 
   it('checkRoutingGate enforces in_reply_to regardless of any marker file', () => {
@@ -1169,7 +1163,7 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
   });
 
   it('routing check soft-caps after 3 denials so it cannot thrash', () => {
-    const call = () => checkRoutingGate('[Fix Report] x', {}, { workflowStatePath: statePath }).blocked;
+    const call = () => checkRoutingGate('[Resolution] x', {}, { workflowStatePath: statePath }).blocked;
     expect(call()).toBe(true); // denial 1
     expect(call()).toBe(true); // denial 2
     expect(call()).toBe(true); // denial 3
@@ -1217,21 +1211,21 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     inReplyTo: 'src-msg',
   };
 
-  it('marker absent → [Fix Report] passes through unchanged (R1: no opt-in, no gating)', () => {
+  it('marker absent → [Resolution] passes through unchanged (R1: no opt-in, no gating)', () => {
     addDestination('peer');
-    const result = dispatchResultText('<message to="peer" in_reply_to="1">[Fix Report] hello</message>', sourceRouting);
+    const result = dispatchResultText('<message to="peer" in_reply_to="1">[Resolution] hello</message>', sourceRouting);
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
     expect(out).toHaveLength(1);
-    expect(JSON.parse(out[0].content).text).toBe('[Fix Report] hello');
+    expect(JSON.parse(out[0].content).text).toBe('[Resolution] hello');
   });
 
-  it('marker present + critique_rounds=0 → [Fix Report] refused to the SENDER, not delivered to the peer', () => {
+  it('marker present + critique_rounds=0 → [Resolution] refused to the SENDER, not delivered to the peer', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer');
     const result = dispatchResultText(
-      '<message to="peer" in_reply_to="1">[Fix Report] all done — please ship</message>',
+      '<message to="peer" in_reply_to="1">[Resolution] all done — please ship</message>',
       sourceRouting,
     );
     // Nothing reaches the peer.
@@ -1241,22 +1235,22 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     expect(result.gateRefusals).toHaveLength(1);
     const refusal = result.gateRefusals![0];
     expect(refusal).toContain('[critique-gate] REFUSED');
-    expect(refusal).toContain('Fix Report');
+    expect(refusal).toContain('Resolution');
     expect(refusal).toContain('/codex-critique');
     expect(refusal).not.toContain('please ship'); // original body NOT delivered
   });
 
-  it('marker present + critique_rounds=1 → original [Fix Report] passes through (gate satisfied)', () => {
+  it('marker present + critique_rounds=1 → original [Resolution] passes through (gate satisfied)', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
     addDestination('peer');
     const result = dispatchResultText(
-      '<message to="peer" in_reply_to="1">[Fix Report] shipped</message>',
+      '<message to="peer" in_reply_to="1">[Resolution] shipped</message>',
       sourceRouting,
     );
     expect(result.sent).toBe(1);
     const out = getUndeliveredMessages();
-    expect(JSON.parse(out[0].content).text).toBe('[Fix Report] shipped');
+    expect(JSON.parse(out[0].content).text).toBe('[Resolution] shipped');
   });
 
   it('marker present + non-delivery body → passes through (only delivery markers are gated)', () => {
@@ -1269,13 +1263,13 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     expect(JSON.parse(out[0].content).text).toBe('just a regular reply');
   });
 
-  it('mixed batch: gated [Fix Report] block is withheld + refused to sender, normal block still delivered', () => {
+  it('mixed batch: gated [Resolution] block is withheld + refused to sender, normal block still delivered', () => {
     fs.writeFileSync(markerPath, 'critique-gate\n');
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer-a');
     addDestination('peer-b');
     const result = dispatchResultText(
-      '<message to="peer-a" in_reply_to="1">[Fix Report] blocked</message>\n<message to="peer-b">passes through</message>',
+      '<message to="peer-a" in_reply_to="1">[Resolution] blocked</message>\n<message to="peer-b">passes through</message>',
       sourceRouting,
     );
     // Only the non-gated block is delivered; peer-a receives nothing.
@@ -1294,7 +1288,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
     addDestination('peer');
     const result = dispatchResultText(
-      '<message to="peer" thread_id="branch-A" in_reply_to="1">[Fix Report] body</message>',
+      '<message to="peer" thread_id="branch-A" in_reply_to="1">[Resolution] body</message>',
       sourceRouting,
     );
     // No peer delivery regardless of the agent's chosen thread/reply overrides;
@@ -1312,7 +1306,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
       fs.writeFileSync(markerPath, 'critique-gate\n');
       fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
       const call = () =>
-        checkCritiqueGate('[Fix Report] x', { overlayMarkerPath: markerPath, workflowStatePath: statePath }).blocked;
+        checkCritiqueGate('[Resolution] x', { overlayMarkerPath: markerPath, workflowStatePath: statePath }).blocked;
       expect(call()).toBe(true); // denial 1
       expect(call()).toBe(true); // denial 2
       expect(call()).toBe(true); // denial 3

@@ -921,8 +921,16 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
 // message/line prefixes, and unanchored matching treated a mid-sentence
 // MENTION of a marker as a delivery — burning a denial and one of the
 // session's soft-cap strikes each time.
-const DEFAULT_DELIVERY_MARKERS = ['Fix Report', 'Resolution', 'Triage Resolution', 'Review Verdict', 'handoff'];
-const DELIVERY_MARKER_RE = /^[ \t]*\[(Fix Report|Resolution|Triage Resolution|Review Verdict|handoff)\]/m;
+// Built-in floor = the GENERAL chain-protocol primitives only (chain-reporting.md):
+// [Resolution] (terminal chain close) and [handoff] (lateral peer pass). These
+// are project-agnostic and every coworker uses them. Role-specific terminal
+// names ([Fix Report], [Triage Resolution], [Review Verdict], [Triage handoff])
+// are NOT built in — each emitting role declares them in its coworker-type
+// `delivery_markers` (materialized to .critique-delivery-markers, unioned here
+// and by the routing gate). [Report] is deliberately absent: it's the status
+// channel, not a gated deliverable.
+const DEFAULT_DELIVERY_MARKERS = ['Resolution', 'handoff'];
+const DELIVERY_MARKER_RE = /^[ \t]*\[(Resolution|handoff)\]/m;
 
 // Critique-gate vocabulary: built-in defaults plus ADDITIVE extensions from
 // .critique-delivery-markers (materialized by the composer from the
