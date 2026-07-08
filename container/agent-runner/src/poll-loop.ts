@@ -998,6 +998,29 @@ function gateShouldYield(statePath: string, key: string): boolean {
   return false;
 }
 
+// Re-arm a gate's soft-cap counter. Called when the agent demonstrates it CAN
+// satisfy the gate (e.g. a properly-linked handoff). Without this the counter
+// only ever climbs, so after GATE_DENIAL_CAP denials ANYWHERE in a session's
+// life the gate yields permanently and every later unlinked handoff slips
+// through — the counter is meant to bound a thrash loop, not disable the gate.
+// Best-effort: a read/write failure just leaves the counter as-is.
+function resetGateDenials(statePath: string, key: string): void {
+  const fs = require('fs') as typeof import('fs');
+  let state: Record<string, unknown>;
+  try {
+    state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
+  } catch {
+    return; // no state file → nothing to reset
+  }
+  if (!state[key]) return; // already cleared
+  delete state[key];
+  try {
+    fs.writeFileSync(statePath, JSON.stringify(state));
+  } catch {
+    // Best-effort.
+  }
+}
+
 // The chain-routing check is ALWAYS ON — not an overlay. It enforces a pure
 // structural invariant ("a chain handoff must name the inbound it answers",
 // the [MUST] in chain-reporting.md), and it is self-scoping: it only fires on
@@ -1022,9 +1045,15 @@ export function checkRoutingGate(
   // in_reply_to alone is sufficient; thread_id is optional. Requiring both
   // would reject the spec's canonical upstream report form
   // (send_message(to="parent", in_reply_to=<id>, ...)).
-  if (attrs.inReplyToOverride) return { blocked: false };
   const statePath =
     opts.workflowStatePath ?? process.env.ROUTING_GATE_STATE_PATH ?? '/workspace/.claude/workflow-state.json';
+  if (attrs.inReplyToOverride) {
+    // A properly-linked handoff proves the agent CAN satisfy the gate — re-arm
+    // the soft-cap so unlinked handoffs earlier in the session don't leave the
+    // gate permanently yielded (routing_gate_denials otherwise only climbs).
+    resetGateDenials(statePath, 'routing_gate_denials');
+    return { blocked: false };
+  }
   if (gateShouldYield(statePath, 'routing_gate_denials')) {
     return { blocked: false };
   }

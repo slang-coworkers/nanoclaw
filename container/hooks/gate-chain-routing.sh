@@ -47,10 +47,20 @@ if ! grep -qE "^[[:space:]]*\[($MSG_MARKERS)\]" <<< "$TEXT"; then
   exit 0
 fi
 
-IN_REPLY_TO=$(echo "$INPUT" | jq -r '.tool_input.in_reply_to // ""')
-[ -n "$IN_REPLY_TO" ] && exit 0
-
 STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
+
+IN_REPLY_TO=$(echo "$INPUT" | jq -r '.tool_input.in_reply_to // ""')
+if [ -n "$IN_REPLY_TO" ]; then
+  # A properly-linked handoff proves the agent CAN satisfy the gate — re-arm the
+  # soft-cap (mirror of poll-loop resetGateDenials). Without this the counter
+  # only ever climbs and, once capped, the gate yields for every later unlinked
+  # handoff in the session.
+  if [ -f "$STATE" ]; then
+    jq 'del(.routing_gate_denials)' "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" || rm -f "$STATE.tmp"
+  fi
+  exit 0
+fi
+
 DENIALS=$(jq -r '.routing_gate_denials // 0' "$STATE" 2>/dev/null || echo 0)
 if [ "$DENIALS" -ge 3 ]; then
   cat >&2 << EOF2
