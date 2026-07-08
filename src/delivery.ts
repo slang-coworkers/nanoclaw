@@ -314,6 +314,24 @@ async function deliverMessage(
         ? originMg
         : getMessagingGroupByPlatform(msg.channel_type, msg.platform_id);
     if (!mg) {
+      // GitHub arrives as host-injected webhooks with no messaging group
+      // (see webhook-github.ts) and has no outbound *chat* channel — a coworker
+      // posts back to GitHub through the github MCP tools / gh CLI, never
+      // through host delivery. So a channel_type='github' outbound is a
+      // status/report that inherited the github-origin thread and has no
+      // deliverable destination; the real GitHub write (comment, PR) already
+      // happened via its own tool call. Consume it as an observable no-op
+      // rather than throwing into the 3× retry → 'failed' path, which only
+      // produced permanently-failed rows and error-log noise (there is no
+      // github channel-delivery path to regress).
+      if (msg.channel_type === 'github') {
+        log.warn('github outbound has no delivery channel — consuming status message as no-op', {
+          messageId: msg.id,
+          platformId: msg.platform_id,
+          sessionId: session.id,
+        });
+        return;
+      }
       throw new Error(`unknown messaging group for ${msg.channel_type}/${msg.platform_id} (message ${msg.id})`);
     }
     const isOriginChat = session.messaging_group_id === mg.id;
