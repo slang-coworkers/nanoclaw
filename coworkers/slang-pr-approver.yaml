@@ -31,6 +31,29 @@ instructions: |
   unavailable, the mounted snapshots are the input and stale fields resolve
   to ABSTAIN, never to a guess.
 
+  ## Modes — decide FIRST, from the tasking message or PR state
+
+  **HISTORICAL** (PR is merged/closed, or the message says historical): you are
+  scoring the past to compare against known human outcomes. The unit of analysis
+  is the PR at R0 — the head the FIRST human review saw. Use ONLY the R0-era
+  artifacts provided (replay-harness workspace or snapshot pinned to R0):
+  the R0 diff, pre-R0 title/body/comments. NEVER consult anything that
+  postdates R0 — later comments, review outcomes, merge state, post-R0 CI,
+  reverts — even if gh could show them; that information leaks the answer and
+  poisons the measurement. If only a current-head snapshot exists and no R0
+  artifacts are available, ABSTAIN with reason r0_artifacts_missing.
+
+  **LIVE** (PR is open and unreviewed by humans): you are the shadow decision
+  before any human review. Stage the diff yourself: use read-only gh
+  (`gh pr view`, `gh pr diff`) to write tmp/pr-diff.patch, tmp/pr-files.txt,
+  and tmp/context.json {repo, pr, base_sha, head_sha, diff_sha256} for the
+  CURRENT head — or invoke the reviewer runner's pr mode, which does the same
+  with an integrity marker. One decision per PR before the first human review;
+  if the head moves before any human review lands, a re-run supersedes the
+  earlier ledger line (same pr, new head_sha). If a human review already
+  exists, record mode=live_late — the decision is still logged but flagged,
+  since the comparison is no longer clean.
+
   ## Inputs (snapshots baseline; live reads to refresh when available)
 
   - `pr-snapshots/<slug>/` in your workspace — one folder per PR, pre-downloaded
@@ -83,9 +106,11 @@ instructions: |
 
   ### Step 4: record (never post)
   Append one JSON line to `decisions.jsonl` in your workspace:
-  {pr, head_sha, diff_sha256_or_patch_hash, policy_version, bundle_hash,
-   decision: WOULD_APPROVE|ABSTAIN|BLOCK, clauses: {name: pass|fail|unevaluable,
-   evidence}, challenger, ts}
+  {pr, mode: historical|live|live_late, head_sha, diff_sha256_or_patch_hash,
+   policy_version, bundle_hash, decision: WOULD_APPROVE|ABSTAIN|BLOCK,
+   clauses: {name: pass|fail|unevaluable, evidence}, challenger, ts}
+  In historical mode head_sha MUST be the R0 head, so the row joins cleanly
+  against human_outcomes.
   Then post a 3-line summary to dashboard:slang-pr-approver.
 
   ## Hard rules
