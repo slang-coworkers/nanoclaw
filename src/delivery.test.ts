@@ -225,6 +225,64 @@ describe('deliverSessionMessages — retry and permanent failure', () => {
   });
 });
 
+describe('deliverSessionMessages — github outbound has no delivery channel', () => {
+  function insertChannelOutbound(sessionId: string, msgId: string, channelType: string, platformId: string): void {
+    const db = new Database(outboundDbPath('ag-1', sessionId));
+    db.prepare(
+      `INSERT INTO messages_out (id, timestamp, kind, platform_id, channel_type, content)
+       VALUES (?, datetime('now'), 'chat', ?, ?, ?)`,
+    ).run(msgId, platformId, channelType, JSON.stringify({ text: 'status report' }));
+    db.close();
+  }
+
+  it('consumes a channel_type=github outbound as a no-op (delivered on first pass, adapter never called)', async () => {
+    // GitHub is host-injected inbound-only (no messaging group); a github-addressed
+    // outbound is a status report with no delivery path. It must be consumed, not
+    // retried into a permanent failure.
+    seedAgentAndChannel();
+    const { session } = resolveSession('ag-1', 'mg-1', null, 'shared');
+    insertChannelOutbound(session.id, 'out-gh', 'github', 'github:owner/repo:11988');
+
+    let called = 0;
+    setDeliveryAdapter({
+      async deliver() {
+        called++;
+        return 'x';
+      },
+    });
+
+    await deliverSessionMessages(session);
+
+    expect(called).toBe(0); // nothing to deliver — no adapter invocation
+    const inDb = openInboundDb('ag-1', session.id);
+    const delivered = getDeliveredIds(inDb);
+    inDb.close();
+    expect(delivered.has('out-gh')).toBe(true); // consumed immediately, not left to retry
+  });
+
+  it('still fails loud for a NON-github channel with no messaging group (throw preserved)', async () => {
+    // The fail-closed behaviour for real chat channels is unchanged: a missing
+    // messaging group throws → retry, so the message is NOT consumed on the first
+    // pass (it is not yet in the delivered table).
+    seedAgentAndChannel();
+    const { session } = resolveSession('ag-1', 'mg-1', null, 'shared');
+    insertChannelOutbound(session.id, 'out-slack', 'slack', 'slack:nonexistent');
+
+    setDeliveryAdapter({
+      async deliver() {
+        return 'x';
+      },
+    });
+
+    await deliverSessionMessages(session); // attempt 1 throws in the mg lookup
+
+    const inDb = openInboundDb('ag-1', session.id);
+    const delivered = getDeliveredIds(inDb);
+    inDb.close();
+    expect(delivered.has('out-slack')).toBe(false); // threw → still pending retry, not consumed
+  });
+});
+
 describe('deliverSessionMessages — instance resolution', () => {
   it('delivers via the origin session instance when sibling rows share (channel_type, platform_id)', async () => {
     createAgentGroup({
