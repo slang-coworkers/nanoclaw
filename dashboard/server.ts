@@ -10953,14 +10953,34 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
   }, 5000);
   expireTimer.unref?.();
 
-  // Retention cleanup: delete hook_events older than HOOK_RETENTION_DAYS (default 7)
+  // Retention cleanup: delete hook_events older than HOOK_RETENTION_DAYS (default 7).
   const retentionDays = parseInt(process.env.HOOK_RETENTION_DAYS || '7', 10);
+  // Reliability-lab telemetry from the slang-pr-review pipeline lands in
+  // hook_events under these group folders (e.g. `slang-reviewer`); retain it
+  // past the default window so longitudinal reviewer-reliability analysis
+  // survives the 7-day prune. Both the prefix list and the longer window are
+  // env-overridable; set HOOK_REVIEW_KEEP_PREFIXES="" to restore the flat prune.
+  const reviewKeepPrefixes = (process.env.HOOK_REVIEW_KEEP_PREFIXES ?? 'slang-reviewer')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const reviewRetentionDays = parseInt(process.env.HOOK_REVIEW_RETENTION_DAYS || '90', 10);
   const retentionTimer = setInterval(() => {
     const heDb = getHookEventsDb();
     if (heDb) {
       try {
         const cutoff = Date.now() - retentionDays * 86400000;
-        heDb.prepare('DELETE FROM hook_events WHERE timestamp < ?').run(cutoff);
+        if (reviewKeepPrefixes.length > 0) {
+          const likeParams = reviewKeepPrefixes.map((p) => `${p}%`);
+          const notLike = reviewKeepPrefixes.map(() => 'group_folder NOT LIKE ?').join(' AND ');
+          const isLike = reviewKeepPrefixes.map(() => 'group_folder LIKE ?').join(' OR ');
+          // Never prune review telemetry MORE aggressively than the default.
+          const reviewCutoff = Math.min(cutoff, Date.now() - reviewRetentionDays * 86400000);
+          heDb.prepare(`DELETE FROM hook_events WHERE timestamp < ? AND (${notLike})`).run(cutoff, ...likeParams);
+          heDb.prepare(`DELETE FROM hook_events WHERE timestamp < ? AND (${isLike})`).run(reviewCutoff, ...likeParams);
+        } else {
+          heDb.prepare('DELETE FROM hook_events WHERE timestamp < ?').run(cutoff);
+        }
       } catch {
         /* non-fatal */
       }
