@@ -131,8 +131,7 @@ function buildDestinationsSection(): string {
       '## Sending messages',
       '',
       'You currently have no configured destinations. You cannot send messages until an admin wires one up.',
-    ].join('
-');
+    ].join('\n');
   }
 
   // Single-destination shortcut: the agent just writes its response normally.
@@ -160,8 +159,7 @@ function buildDestinationsSection(): string {
   lines.push(
     'To send a message mid-response (e.g., an acknowledgment before a long task), call the `send_message` MCP tool with the `to` parameter set to a destination name.',
   );
-  return lines.join('
-');
+  return lines.join('\n');
 }
 
 function destinationLabel(d: DestinationEntry): string {
