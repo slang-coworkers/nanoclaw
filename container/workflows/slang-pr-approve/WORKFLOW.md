@@ -1,3 +1,13 @@
+---
+name: slang-pr-approve
+license: MIT
+type: workflow
+description: 'Stage inputs for the approval-decision pipeline, then hand each PR to the slang-pr-approver skill. Two entry modes converge on one workspace contract: OFFLINE/HISTORICAL batches from a round manifest of R0-pinned snapshots (reviewer runs in patch mode), or a LIVE PR number from the ready_for_review trigger (current head staged via read-only gh; reviewer runs in pr mode). The decision procedure itself is identical in both modes and always critique-gated; this workflow never makes or edits a decision.'
+requires: [code.read]
+uses:
+  skills: [slang-pr-approver, slang-pr-review-runner]
+---
+
 # /slang-pr-approve — stage inputs, then decide
 
 You run inside the lab container. The mounted workspace always provides:
