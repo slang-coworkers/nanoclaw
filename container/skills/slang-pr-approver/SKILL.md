@@ -125,8 +125,11 @@ Because reviewable events route to you, later webhook events for those PRs
 land in your session. Your handling differs from slang-github-webhook's
 reviewer/fixer procedures — do NOT reply, resolve threads, or triage CI:
 - `github.pr_review` (a human reviewed): RECORD it — update the ledger row
-  for that (pr, head) with the human verdict. This is the live
-  ground-truth join arriving for free; it is your only action.
+  for that (pr, head) with the human verdict — and if it contradicts your
+  decision, immediately capture an `append_learning` entry
+  (`[approver/false-safe]` or `[approver/human-disagreement]`, per the
+  workflow's Step 4 taxonomy). The join and the learning are your only
+  actions.
 - Everything else (review comments, thread resolves, CI failures): note in
   the session, take no GitHub action; the reviewer/fixer coworkers own
   those loops.

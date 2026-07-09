@@ -91,6 +91,21 @@ each decision still cites only the current revision's artifacts.
    authorization — it exists only as the ledger row + the
    `[Approval Decision]` message.
 
+### Step 1.5: RECALL prior learnings (both modes, before deciding)
+
+Same pattern as the sibling workflows: dispatch a background Agent —
+"Check if /workspace/shared/wiki/index.md exists. IF YES: read it with
+limit=100 (concepts section only), identify concept pages relevant to
+approval decisions, false-safes, or the files/classes this PR touches;
+read up to 2 concept pages and follow their links to cited learnings.
+If no concept fits, Grep wiki/ for keywords. IF NO wiki/: Grep
+/workspace/shared/learnings/ for keywords (changed paths, the PR's
+class, 'false-safe', 'clause', 'challenger'). Return ≤5 bullets —
+title, 1-line summary, file path. No hits → 'no prior hits'."
+Feed the bullets to the skill run — they are context for the challenger
+(prior misses on similar files are exactly what it should probe), never
+a substitute for the scripted clauses.
+
 ### Step 2: decide (both modes converge here)
 
 The PR workspace now satisfies the `slang-pr-approver` skill's input
@@ -105,3 +120,29 @@ After all entries: post one summary line per decision to
 `dashboard:slang-pr-approver` (the per-decision `[Approval Decision]`
 messages are emitted by the skill, not the workflow) and return counts per
 state: would_approve / abstain_policy / abstain_infra / block.
+
+### Step 4 (LAST): capture learnings
+
+Failure is training data. For every notable outcome this run, write ONE
+`append_learning` file each (L1 atoms are immutable — always append, never
+edit), titled with its category so the learnings-wiki sync groups them:
+
+- `[approver/false-safe]` — WOULD_APPROVE where the human verdict (join or
+  a later `github.pr_review`) was CHANGES_REQUESTED. Highest severity;
+  include the missed evidence file:line.
+- `[approver/human-disagreement]` — any other decision/human mismatch
+  (e.g. BLOCK where the human approved), with both rationales.
+- `[approver/clause-gap]` — a policy predicate proved wrong or imprecise
+  (e.g. executable under docs/ slipped a class boundary).
+- `[approver/challenger-miss]` — the human caught what the challenger
+  cleared; quote what the challenger should have probed.
+- `[approver/infra-abstain]` — every ABSTAIN_INFRA: the named artifact and
+  root cause (these burn down the infra gate).
+- `[approver/critique-mustfix]` — what the critique gate keeps correcting
+  in the derivation; recurring ones are procedure bugs.
+
+Structure each like the existing exemplars: Symptom / Root cause /
+How to catch it / Fix. These compound through the wiki into Step 1.5's
+recall — the review improves from live human feedback at zero replay
+cost. (Formal-evidence runs still key on bundle_hash; recalled learnings
+are challenger context, not silent protocol changes.)
