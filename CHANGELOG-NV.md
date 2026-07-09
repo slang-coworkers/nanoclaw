@@ -6,15 +6,50 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 311 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 148 |
-| `nv-slang` | slang project spine, skills, workflows | 103 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 45 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 33 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 317 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 157 |
+| `nv-slang` | slang project spine, skills, workflows | 107 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 48 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 34 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-09
+
+### nv-main (6 PRs)
+- **#836** `Sync nv-main with upstream/main`
+- **#846** `feat(webhook): route PR ready_for_review to slang-pr-approver via ROUTE_READY_PRS_TO`
+- **#851** `feat(webhook): route all reviewable PR events to the orchestrator`
+- **#854** `Add approval-decision ledger (record_decision host infra)`
+- **#857** `feat(funnel): join Verity approver decision onto PR rows`
+- **#860** `fix(agent-runner): stop sidecar rows starving the scheduled-task poll`
+
+### nv-dashboard (9 PRs)
+- **#843** `feat(dashboard): weekly Funnel-trend graph (merged÷filed + PRs-created)`
+- **#844** `feat(dashboard): Context column in By-Coworker table (compactions + peak histogram)`
+- **#845** `fix(dashboard): scale context histogram to widest window used (1M for Opus)`
+- **#838** `Sync nv-dashboard with upstream/main`
+- **#847** `feat(dashboard): friendly a2a group names + live Groups tab`
+- **#848** `feat(dashboard): a2a channel names + real/a2a session split + stale flag in Groups`
+- **#849** `feat(dashboard): nv-slang-bot contributions table in Funnel view`
+- **#850** `feat(dashboard): clean @mention handle per coworker (strip \b)`
+- **#858** `feat(dashboard): add Approver column to funnel issue table`
+
+### nv-slang (4 PRs)
+- **#839** `Sync nv-slang with upstream/main`
+- **#852** `feat(slang-github-webhook): route github.pr_ready_for_review to the reviewer`
+- **#834** `Add slang-pr-approver coworker: standalone offline approval-decision agent (shadow mode)`
+- **#855** `Skill wording: record-decision → the record_decision MCP tool`
+
+### nv-slangpy (3 PRs)
+- **#840** `Sync nv-slangpy with upstream/main`
+- **#853** `Add slangpy-pr-approver: full approver clone for the slangpy project`
+- **#856** `Skill wording: record-decision → the record_decision MCP tool`
+
+### nv-nanoclaw (1 PRs)
+- **#841** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-07-08
 
