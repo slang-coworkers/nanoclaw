@@ -1082,6 +1082,34 @@ function agentGroupIdForFolder(folder) {
   return group?.id || null;
 }
 
+// Resolve an agent-group id (ag-…) to its friendly coworker name, searching every
+// place the client keeps group identity. Falls back to the raw id when unknown.
+function agNameById(agId) {
+  if (!agId) return agId;
+  const pools = [adminState.groups || [], state.registeredGroups || []];
+  for (const pool of pools) {
+    const hit = pool.find((g) => g.id === agId);
+    if (hit) return hit.name || hit.folder || agId;
+  }
+  const cw = (state.coworkers || []).find((c) => (c.agentGroupId || c.agent_group_id) === agId);
+  return cw ? cw.name || cw.folder : agId;
+}
+
+// Human label for a messaging group. a2a groups are auto-created with no name and
+// a platform_id of `agent:<from-ag>:<to-ag>` — render that as "From → To (a2a)"
+// instead of the opaque id. Non-a2a groups use their name or platform_id as-is.
+function messagingGroupLabel(g) {
+  if (g && g.name) return g.name;
+  const pid = g && g.platform_id ? String(g.platform_id) : '';
+  const m = /^agent:(ag-[^:]+):(ag-[^:]+)$/.exec(pid);
+  if (m) {
+    const from = agNameById(m[1]);
+    const to = agNameById(m[2]);
+    return from === to ? `${from} ⟳ self (a2a)` : `${from} → ${to} (a2a)`;
+  }
+  return pid || '(unnamed)';
+}
+
 function hookEventBelongsToCoworker(event, cw) {
   const agentGroupId = cw.agentGroupId || cw.agent_group_id || agentGroupIdForFolder(cw.folder);
   if (agentGroupId && event.agent_group_id) return event.agent_group_id === agentGroupId;
@@ -4135,9 +4163,27 @@ function renderAdminSkills() {
 }
 
 // --- Groups ---
-async function loadAdminGroups() {
+// Skip a silent refresh while the user is mid-interaction so we don't wipe an open
+// CLAUDE.md editor/preview or a focused textarea.
+function groupsInteracting() {
   const el = document.getElementById('admin-groups-content');
-  el.innerHTML = '<div class="admin-loading">Loading...</div>';
+  if (!el) return false;
+  const a = document.activeElement;
+  if (a && el.contains(a) && a.tagName === 'TEXTAREA') return true;
+  return !!el.querySelector('details[open]');
+}
+
+// Keep the Groups tab (and its session counts) live — it otherwise loads once and
+// freezes. Silent re-fetch every 20s while the tab is open and idle.
+setInterval(() => {
+  if (adminState.panel === 'groups' && adminState.loaded.has('groups') && !groupsInteracting()) {
+    loadAdminGroups(true);
+  }
+}, 20000);
+
+async function loadAdminGroups(silent) {
+  const el = document.getElementById('admin-groups-content');
+  if (!silent) el.innerHTML = '<div class="admin-loading">Loading...</div>';
   try {
     const res = await fetch('/api/groups/detail');
     if (!res.ok) throw new Error('fetch failed');
@@ -4145,7 +4191,7 @@ async function loadAdminGroups() {
     adminState.loaded.add('groups');
     renderAdminGroups();
   } catch {
-    el.innerHTML = '<div class="admin-empty">Failed to load groups</div>';
+    if (!silent) el.innerHTML = '<div class="admin-empty">Failed to load groups</div>';
   }
 }
 
@@ -4198,7 +4244,7 @@ function renderAdminGroups() {
       <h4>${esc(g.name || g.folder)}${mainBadge} ${containerChip} ${updateChip}</h4>
       <div class="admin-group-meta">
         <span>Folder: <strong>${esc(g.folder)}</strong></span>
-        <span>Sessions: ${g.sessionCount || 0}</span>
+        <span title="Lifetime nanoclaw sessions for this group, including a2a delegation sessions (usually the large majority). Not the SDK transcript count.">Sessions: ${g.sessionCount || 0}</span>
         <span>Trigger: ${esc(g.trigger_pattern || 'default')}</span>
         <span>Added: ${g.added_at ? formatTime(g.added_at) : '-'}</span>
       </div>
@@ -6610,7 +6656,7 @@ async function updateCwDetail() {
   document.getElementById('cw-detail-name').textContent = cw.name;
   document.getElementById('cw-detail-type').innerHTML = esc(cw.type) + ' ' + updateDotHtml(cw.isAutoUpdate, true);
   document.getElementById('cw-detail-trigger').textContent = cw.trigger?.replace(/\\b$/, '') || '-';
-  document.getElementById('cw-detail-jid').textContent = cw.jid || `dashboard:${cw.folder}`;
+  document.getElementById('cw-detail-jid').textContent = messagingGroupLabel({ platform_id: cw.jid || `dashboard:${cw.folder}` });
   document.getElementById('cw-detail-status').textContent = cw.status;
   document.getElementById('cw-detail-tasks').textContent = String(cw.taskCount);
 
@@ -8674,7 +8720,7 @@ function renderMetricsChannels(el, channels) {
         '<div style="margin-top:6px;font-size:11px;color:#94A3B8">' +
         ch.groups
           .map((g) => {
-            const label = esc(g.name || g.platform_id) + (g.is_group ? ' (group)' : '');
+            const label = esc(messagingGroupLabel(g)) + (g.is_group ? ' (group)' : '');
             const agents = g.agentGroups ? g.agentGroups.map((a) => esc(a)).join(', ') : '';
             return agents ? `${label} → ${agents}` : label;
           })
