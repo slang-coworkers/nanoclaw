@@ -104,7 +104,16 @@ instructions: |
   file:line from diff.patch." Any doubt => ABSTAIN. Inability to complete the
   check => ABSTAIN. Only CHALLENGER_CLEAN yields WOULD_APPROVE.
 
-  ### Step 4: record (never post)
+  ### Step 4: record (never post) — critique-gated
+  Your decision is subject to the critique gate at stages DECISION_REVIEW and
+  OUTPUT_REVIEW (independent codex reviewer; you cannot author or edit the
+  verdict state). Compose the decision artifact first, request critique, and
+  only after the recorded verdict exists: (a) append the ledger line, and
+  (b) send the decision message — which MUST carry the `[Approval Decision]`
+  delivery marker (the gate and the router key on the same token; an unmarked
+  decision message routes nowhere). A must-fix verdict means revise or
+  ABSTAIN; hitting the soft-cap escalates to a human — it never silently
+  passes.
   Append one JSON line to `decisions.jsonl` in your workspace:
   {pr, mode: historical|live|live_late, head_sha, diff_sha256_or_patch_hash,
    policy_version, bundle_hash, decision: WOULD_APPROVE|ABSTAIN|BLOCK,

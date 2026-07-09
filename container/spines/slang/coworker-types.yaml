@@ -145,4 +145,18 @@ slang-pr-approver:
     deepwiki:
       type: http
       url: https://mcp.deepwiki.com/mcp
-  bindings: {}
+  bindings:
+    critique: codex-critique
+  # Verity's terminal artifact is the approval decision, and its "delivery"
+  # is internal-tier: the decisions.jsonl append + the [Approval Decision]
+  # message. Nothing leaves the system, but downstream automation trusts the
+  # ledger, so it is gated like a boundary. DECISION_REVIEW independently
+  # vets the derivation (clauses evaluated from data, verdict parse matches
+  # final-review.md, mode discipline: historical stays R0-pinned);
+  # OUTPUT_REVIEW vets the ledger line + decision message themselves.
+  # The marker is declared here (novel, project-level) so the composer unions
+  # it into the shared vocabulary: the same token drives routing and gating —
+  # dropping it to dodge the gate also drops the message from routing.
+  required_critique_stages: [DECISION_REVIEW, OUTPUT_REVIEW]
+  delivery_markers:
+    - Approval Decision
