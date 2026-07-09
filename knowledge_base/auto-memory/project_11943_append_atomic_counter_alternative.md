@@ -1,10 +1,14 @@
 ---
 name: project_11943_append_atomic_counter_alternative
-description: PR
+description: PR #11943 AppendStructuredBuffer review chain → bot alternative #11972 MERGED by jkwak 07-08; #11943 closed. TERMINAL-POSITIVE.
 metadata: 
   node_type: memory
   type: project
   originSessionId: 933df625-cd2e-460d-b5dc-099e7cefd3f7
+---
+
+**TERMINAL 07-08: bot-authored alternative #11972 MERGED to master by jkwak-work** (merge commit `1c17703c1955bcbb2ed7ea702bcf5ca98b9261eb`; approved 13:30 → merged 15:59, both jkwak — VERIFIED `merged_by: jkwak-work`). **#11943 (the human PR) CLOSED by jkwak-work** — VERIFIED actor=jkwak-work, closed 13:31 manually (right after approving #11972; commit_id null, NOT the 15:59 merge-triggered auto-close the fixer's report characterized — harmless imprecision; the bot never touched #11943's state). Every gated action (approve/merge/close) was maintainer-performed; fixer did NOT land or groom. Worktree wt-slang-append-atomic-counter reaped. Chain complete — no follow-up. Below = the history.
+
 ---
 
 **#11943** (human PR by `ramang-unity`, "[Metal][WGSL] Enable AppendStructuredBuffer"; `jkwak-work` assignee) drew four `@nv-slang-bot` analysis questions from jkwak — all answered by slang-fixer with receipts, zero code changes:
@@ -38,4 +42,6 @@ jkwak then directed (r3535180452) a **new draft PR** of that alternative, assign
 - (2) `slang-ir-explicit-global-context.cpp`: `IntroduceExplicitGlobalContextPass` rewrites the decoration's counter operand to the struct field key instead of `findOrCreateContextPtrForInst` on a global→global use — fixes the exact `no outer func at use site` Metal abort the counterfactual measured.
 - Re-verified fresh binary: Metal no-abort + cast-free `atomic<int> device*`; WGSL `array<atomic<i32>>`; SPIR-V `OpAtomicIIncrement`+validates; CUDA `atomicAdd`; slang-test append 5/5. codex approved. Real `pull_request` CI auto-fired (fixer did NOT manually dispatch — drafts-only rule applied). Fixer surfaced codex's one advisory (broad `as<IRDecoration>` vs `as<IRCounterBufferDecoration>`) to jkwak as FYI, kept patch verbatim — **jkwak later (issuecomment-4909813969) confirmed he's happy keeping the fix on ALL `IRDecoration`, closing the advisory with no code change.** jkwak also resolved the isSPIRV-guard review thread (r3538082688) after the applied fix.
 
-**State:** #11972 non-draft, atomicity now 100% target-agnostic with ZERO special-case (maximally clean version of jkwak's original concern). jkwak has been directing fixes onto #11972 (not #11943) — signals he leans toward #11972 as the PR to land, but the compare-and-decide vs #11943 is still his to formalize. Bot-merge operator-gated. Reopens on substantive comment on either PR via webhook.
+**07-08 — #11972 APPROVED by jkwak-work** (review pullrequestreview-4654590278, "Looks good to me.", 13:30 UTC). `reviewDecision: APPROVED`, `mergeable: MERGEABLE`, `mergeState: BEHIND` (needs update-from-master). Atomicity 100% target-agnostic, zero special-case; WGSL/SPIR-V/Metal/CUDA verified fresh. ramang-unity (author of the human PR #11943) thanked jkwak (issuecomment-4915314036) — human-to-human courtesy, NOT bot-addressed; fixer correctly didn't inject.
+
+**State (terminal-positive, holding):** #11972 is the maintainer-approved alternative to the human PR #11943; jkwak directed every fix onto #11972 and approved it → he's converging on #11972 as the PR to land, but the formal land-#11972-vs-#11943 choice + the BEHIND update-from-master + any merge are jkwak/operator/merge-queue's, NOT the bot's. **Do NOT groom #11972 (update-from-master / enqueue) proactively** — with two competing PRs and no formal land-decision, grooming the bot's own PR is a thumb-on-scale; wait for jkwak to pick or for an explicit operator go. Bot-merge + ready-flip operator-gated ([[feedback_github_writes_operator_authorized]]). If jkwak asks the bot to update-from-master or enqueue, that's a gated action → route to operator for authorization. Reopens on substantive comment on either PR via webhook.
