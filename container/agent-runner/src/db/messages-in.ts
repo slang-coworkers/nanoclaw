@@ -68,10 +68,32 @@ export function getPendingMessages(isFirstPoll = false): MessageInRow[] {
 
   try {
     const onWakeFilter = hasOnWakeColumn(inbound) ? 'AND (on_wake = 0 OR ?1 = 1)' : '';
+    // Exclude SIDECAR correlation rows at the SQL layer. `cli_response` and
+    // `question_response` system rows are private handshakes: the `ncl` CLI and
+    // `ask_user_question` MCP tool read them by their own `content LIKE
+    // requestId` query and mark them done via processing_ack — they are never
+    // agent-turn input. (Other system rows, e.g. action=register_group /
+    // create_agent results, ARE surfaced to the agent as <system_response> and
+    // must NOT be filtered — hence we key on the sidecar `type`, not a blanket
+    // kind='system'.) These sidecar rows carry `process_after = NULL` (always
+    // "due"), and a timed-out ncl pollResponse leaves one `pending` forever
+    // with no reaper. Counted by the `ORDER BY seq DESC LIMIT N` window below,
+    // they pile up at high seq and starve lower-seq scheduled tasks
+    // (kind='task'), which then never fire — and since handleRecurrence only
+    // advances a series on completion, the whole recurrence freezes (observed
+    // 2026-07-09: the daily learnings-wiki synth stalled behind 83 orphaned
+    // cli_response rows; re-arming process_after can't help because starvation
+    // is on seq/position, not time). Filtering at SQL (not in JS after LIMIT)
+    // makes the window count only pollable rows, so no volume of orphaned
+    // correlation rows can starve a task. IFNULL(...,'') is load-bearing:
+    // json_extract returns NULL for rows without a `type` key, and SQLite's
+    // `NULL NOT IN (...)` is NULL (not true), which WHERE treats as false and
+    // would wrongly drop every non-sidecar row (chat, task, action-system).
     const pending = inbound
       .prepare(
         `SELECT * FROM messages_in
          WHERE status = 'pending'
+           AND IFNULL(json_extract(content, '$.type'), '') NOT IN ('cli_response', 'question_response')
            AND (process_after IS NULL OR datetime(process_after) <= datetime('now'))
            ${onWakeFilter}
          ORDER BY seq DESC
