@@ -99,3 +99,33 @@ slangpy-reviewer:
   vars:
     approver: slangpy-pr-approver
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
+
+slangpy-pr-approver:
+  description: "Approval-decision coworker — turns a PR review into one auditable decision each (WOULD_APPROVE | ABSTAIN | BLOCK), critique-gated, shadow-mode. Does NOT review code itself: it delegates the review to slangpy-reviewer (the same reviewer coworker the fixer uses) and decides from the returned review doc. Inherits slangpy-common (repo context, deepwiki, slangpy-github reads, codex-critique binding). Writing to GitHub is forbidden by invariant and gate."
+  project: slangpy
+  extends: slangpy-common
+  # No review-runner here: the approver never runs the review itself. It hands
+  # the PR to slangpy-reviewer (see vars.reviewer + the reviewer destination on
+  # coworkers/slangpy-pr-approver.yaml) and parses the review doc the reviewer
+  # sends back. Keeps a single source of review truth and stays read-only.
+  skills:
+    - slangpy-pr-approver
+  workflows:
+    - slangpy-pr-approve
+  # Compose-time substitution for the reviewer this approver delegates to
+  # (sibling of the slang slang-pr-approver -> slang-reviewer relationship).
+  vars:
+    reviewer: slangpy-reviewer
+  # The terminal artifact is the approval decision; its "delivery" is
+  # internal-tier: the ledger append + the [Approval Decision] message.
+  # Nothing leaves the system, but downstream automation trusts the ledger, so
+  # it is gated like a boundary. DECISION_REVIEW independently vets the
+  # derivation (clauses evaluated from data, verdict parse matches the
+  # reviewer's returned review doc, historical mode stays R0-pinned);
+  # OUTPUT_REVIEW vets the ledger line + decision message themselves. The
+  # marker is declared here (project-level) so the composer unions it into the
+  # shared vocabulary: the same token drives routing and gating — dropping it
+  # to dodge the gate also drops the message from routing.
+  required_critique_stages: [DECISION_REVIEW, OUTPUT_REVIEW]
+  delivery_markers:
+    - Approval Decision

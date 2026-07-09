@@ -1,0 +1,24 @@
+{
+  "policy_version": "v0-shadow",
+  "_comment": "v0 shadow-mode approval policy for slang-pr-approver / eval-clauses.py. Bundled default; a mounted policy/APPROVAL_POLICY.json overrides it. Deliberately conservative — shadow mode measures agreement, it never auto-approves anything for real. Widen only with human sign-off. JSON (not YAML) because the lab container is stdlib-only (no PyYAML).",
+
+  "trusted_associations": ["OWNER", "MEMBER", "COLLABORATOR"],
+
+  "allow_fork_head": false,
+
+  "require_ci_green": true,
+
+  "protected_paths": [
+    ".github/**",
+    "**/CMakeLists.txt",
+    "cmake/**",
+    "external/**",
+    "**/*.yml",
+    "**/*.yaml",
+    "source/slang/slang-ast-support-code.h",
+    "**/slang-tag-version.h"
+  ],
+
+  "max_total_lines": 400,
+  "max_files": 30
+}
