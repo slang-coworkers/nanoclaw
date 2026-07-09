@@ -92,4 +92,10 @@ slangpy-reviewer:
     - container/spines/slangpy/invariants/review-output.md
   workflows:
     - slangpy-pr-review
+  # Downstream PR-approver the reviewer forwards a live-PR review to (Case 1 in
+  # /slangpy-pr-review). Wired as a destination on the reviewer group by the
+  # operator; dormant until a slangpy-pr-approver exists (mirrors the slang
+  # slang-reviewer -> slang-pr-approver relationship).
+  vars:
+    approver: slangpy-pr-approver
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
