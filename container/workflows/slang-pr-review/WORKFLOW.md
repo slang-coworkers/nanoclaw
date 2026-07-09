@@ -105,17 +105,29 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    } > "$COMBINED"
    ```
 
-   **Send the combined report whole to the fixer AND the parent:**
+   **Send the combined report whole to the parent — and to the fixer UNLESS this is an approval-review dispatch:**
+
+   The fixer-forward is conditional on the request mode. A dispatch carrying `MODE=pr-approve` comes from the PR-approver (`/slang-pr-approve`): it wants the review doc back to *decide*, not to fix — so **skip the fixer entirely** and let the reply-to-parent (the approver is the parent) be the whole handoff. Any other dispatch (a fix-review request, an `@nv-slang-bot` mention, an internal fix handoff) forwards to the fixer as before.
+
+   ```bash
+   DISPATCH="$(cat /workspace/agent/.dispatch.txt 2>/dev/null || true)"
+   APPROVE_MODE=0
+   echo "$DISPATCH" | grep -qE "^MODE=pr-approve\b" && APPROVE_MODE=1
+   ```
 
    ```
+   # Fixer forward — ONLY when NOT an approval-review dispatch (APPROVE_MODE=0):
    send_file(to="slang-fixer", path="<run_dir_A>/combined-review.md")
-   send_file(to="parent",      path="<run_dir_A>/combined-review.md")
-   send_message(to="parent", in_reply_to=<id-of-review-request>, text="[Review Verdict] <repo>#<number> (<mode>)\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n• Findings: <X bugs, Y gaps, Z questions> (A: <counts>; B: <counts or skipped>; C clarity: <counts or skipped>)\n• Top concern: <one-line of the highest-severity finding, or 'no bugs'>\n• Test gaps: <one-line of recommended tests, or 'none'>\n• Disagreements: <N A/B/C disagreements — see combined-review.md, or 'none'>\n• Sent to: slang-fixer (combined-review.md)")
+
+   # Always to the parent (= the approver in pr-approve mode, else the orchestrator/requester):
+   send_file(to="parent", path="<run_dir_A>/combined-review.md")
+   send_message(to="parent", in_reply_to=<id-of-review-request>, text="[Review Verdict] <repo>#<number> (<mode>)\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n• Findings: <X bugs, Y gaps, Z questions> (A: <counts>; B: <counts or skipped>; C clarity: <counts or skipped>)\n• Top concern: <one-line of the highest-severity finding, or 'no bugs'>\n• Test gaps: <one-line of recommended tests, or 'none'>\n• Disagreements: <N A/B/C disagreements — see combined-review.md, or 'none'>\n• Sent to: <slang-fixer + parent | parent only (pr-approve)>")
    ```
 
    Notes:
-   - The fixer consumes `combined-review.md` whole — A's correctness findings drive code changes; C's clarity findings are advisory context the fixer weighs. The reviewer→fixer destination (`local_name=slang-fixer`) is already wired; if it ever resolves "unknown destination", fall back to `to="parent"` only and note it in the verdict.
-   - `combined-review.md` is what the parent/webhook path also receives, so the human sees the same whole report.
+   - **Approval-review mode (`MODE=pr-approve`) skips the fixer** — the approver consumes `combined-review.md` (whole review + embedded result) to derive a decision; forwarding to the fixer would kick off an unwanted fix loop. The `[Review Verdict]` reply to the parent (the approver) is the handoff.
+   - Otherwise the fixer consumes `combined-review.md` whole — A's correctness findings drive code changes; C's clarity findings are advisory context the fixer weighs. The reviewer→fixer destination (`local_name=slang-fixer`) is already wired; if it ever resolves "unknown destination", fall back to `to="parent"` only and note it in the verdict.
+   - `combined-review.md` is what the parent/webhook path also receives, so the human (or the approver) sees the same whole report.
 
 6. **Post review back to GitHub (authorized only)** {#post-review-to-github} — only when the dispatch carries the `<github-post-authorized />` marker (emitted by the orchestrator's `slang-github-webhook` skill when a human tagged `@nv-slang-bot`); else a no-op. The dispatch also carries `REPO=<owner>/<name>` and `PR=<number>` lines for grep. **Posts Reviewer A's correctness review only** (`<run_dir_A>/final-review.md`) — Reviewer C's clarity findings are advisory and delivered to the fixer/parent via the combined report, not auto-posted to the PR. (Clarity has a lower bar; auto-posting it as a bot review would be noisy. Revisit if a clarity post is explicitly wanted.)
 

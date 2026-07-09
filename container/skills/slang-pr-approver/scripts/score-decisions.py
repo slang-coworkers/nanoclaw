@@ -75,7 +75,7 @@ def pct(a, b):
 def score(rows, truth, classes):
     joined, unmatched = [], 0
     for r in rows:
-        key = (int(r["pr"]), r.get("head_sha") or r.get("r0_head_sha") or "")
+        key = (int(r["pr"]), r.get("commit_sha") or r.get("head_sha") or "")
         t = truth.get(key)
         if not t:
             unmatched += 1
@@ -101,7 +101,7 @@ def score(rows, truth, classes):
             "scored": len(scored),
             "infra_rate": pct(len(infra), len(js)),
             "false_safe": pct(len(fs), len(unsafe)),
-            "false_safe_cases": [(j["pr"], j.get("head_sha", "")[:12]) for j in fs],
+            "false_safe_cases": [(j["pr"], (j.get("commit_sha") or j.get("head_sha") or "")[:12]) for j in fs],
             "unsafe_recall": pct(sum(1 for j in unsafe
                                      if j["decision"] in ("BLOCK", "ABSTAIN_POLICY")),
                                  len(unsafe)),
