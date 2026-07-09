@@ -75,5 +75,5 @@ decision itself.
 
 After all entries: post one summary line per decision to
 `dashboard:slang-pr-approver` (the per-decision `[Approval Decision]`
-messages are emitted by the skill, not the workflow) and return counts:
-decided / abstained / blocked / failed-staging.
+messages are emitted by the skill, not the workflow) and return counts per
+state: would_approve / abstain_policy / abstain_infra / block.

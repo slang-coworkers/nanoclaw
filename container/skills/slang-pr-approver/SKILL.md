@@ -1,6 +1,6 @@
 ---
 name: slang-pr-approver
-description: Turn a finished slang PR review into one auditable approval decision (WOULD_APPROVE | ABSTAIN | BLOCK). Runs identically for historical and live PRs once the /slang-pr-approve workflow has staged the workspace. Deterministic clauses first, verdict parse second, adversarial challenger last; recording is critique-gated.
+description: Turn a finished slang PR review into one auditable approval decision (WOULD_APPROVE | ABSTAIN_POLICY | ABSTAIN_INFRA | BLOCK). Runs identically for historical and live PRs once the /slang-pr-approve workflow has staged the workspace. Deterministic clauses first, verdict parse second, adversarial challenger last; recording is critique-gated.
 ---
 
 # slang-pr-approver — the decision procedure
@@ -20,7 +20,7 @@ The PR workspace `work/<pr>-<sha12>/` contains:
 - a mode marker: `historical` | `live` | `live_late`
 - `policy/APPROVAL_POLICY.yaml` (mounted; carries policy_version)
 
-Any missing item => ABSTAIN naming the artifact. Do not reconstruct inputs.
+Any missing item => ABSTAIN_INFRA naming the artifact. Do not reconstruct inputs.
 
 ## Step 1 — eligibility clauses (run the script; never judge these yourself)
 
@@ -29,7 +29,7 @@ author_trust, head_provenance, sha_match (context.json vs pr.json head — in
 historical mode the R0 head), ci_green_on_sha, no_protected_paths,
 tier_eligible + size caps. Output: `clauses.json` with per-clause
 pass | fail | unevaluable + evidence.
-ANY fail or unevaluable => the decision is ABSTAIN (record which clause).
+A clause FAIL => ABSTAIN_POLICY; UNEVALUABLE => ABSTAIN_INFRA (record which clause).
 Historical mode: never consult anything postdating R0 — later comments,
 review outcomes, merge state, post-R0 CI — it leaks the answer.
 
@@ -56,18 +56,22 @@ deepwiki never blocks, excuses, or upgrades a decision.
 ## Step 4 — record (critique-gated; never post)
 
 1. Compose `decision.json`: `{pr, mode, head_sha, diff_sha256_or_patch_hash,
-   policy_version, bundle_hash, decision, abstain_class, reason_code,
-   clauses, challenger, ts}`. Every ABSTAIN carries `abstain_class` +
-   `reason_code`:
-   - `infra` — the pipeline failed, not the PR: R0_ARTIFACTS_MISSING,
-     STALE_STAGE, HARNESS_FAIL, CLAUSE_UNEVALUABLE:<name> (data that
-     should have been staged is absent), CHALLENGER_INCOMPLETE,
-     CRITIQUE_UNAVAILABLE. Infra abstains are defects: name the artifact,
-     they are tracked to ~zero.
-   - `policy` — the system working as intended: CLAUSE_FAIL:<name>
-     (untrusted author, protected path, class/size ineligible), OPEN_GAP,
-     CHALLENGER_CONCERN, CRITIQUE_MUSTFIX, ESCALATED. These are correct
-     "human must look" outputs; do not optimize them away.
+   policy_version, bundle_hash, decision, reason_code, clauses,
+   challenger, ts}`. `decision` is a CLOSED four-state enum:
+   - `WOULD_APPROVE` — the full conjunction held (Steps 1-4 all clean).
+   - `BLOCK` — the review found a verified 🔴 Bug.
+   - `ABSTAIN_INFRA` — the PIPELINE failed, not the PR: reason_code ∈
+     R0_ARTIFACTS_MISSING, STALE_STAGE, HARNESS_FAIL,
+     CLAUSE_UNEVALUABLE:<name> (data that should have been staged is
+     absent), CHALLENGER_INCOMPLETE, CRITIQUE_UNAVAILABLE. Every one is a
+     named defect; the infra-abstain rate is a quality gate driven to ~0.
+     These rows alert, and they are EXCLUDED from agreement scoring.
+   - `ABSTAIN_POLICY` — the system working as intended ("human must
+     look"): reason_code ∈ CLAUSE_FAIL:<name> (untrusted author,
+     protected path, class/size ineligible), OPEN_GAP,
+     CHALLENGER_CONCERN, CRITIQUE_MUSTFIX, ESCALATED (unresolved
+     soft-cap escalations land here). Never optimized toward zero.
+   The enum never grows per-cause — reason_code carries the detail.
    Historical rows key on the R0 head so they join against human_outcomes.
 2. Request critique. Your decision is gated at DECISION_REVIEW (the
    derivation: clauses from data, verdict parse matches final-review.md,
