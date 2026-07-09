@@ -32,8 +32,18 @@ The decision procedure is identical in both modes — only staging differs.
   gh — pr.json (author_association), fully-paginated reviews, files, r0.json,
   and the merge-base three-dot `diff.patch` at R0 — then emits round
   manifests. Then proceed as a normal offline batch, round by round.
-- Message carries a **repo + PR number** (the ready_for_review trigger)
-  → **LIVE single PR**.
+- Message carries the **webhook dispatch wire format** (from the
+  orchestrator's slang-github-webhook routing of `github.pr_ready_for_review`)
+  → **LIVE single PR**. Parse the byte-exact trailer lines with `grep -oE`:
+  `REPO={repo}`, `PR={pr_number}`, `MODE=...`; the body also carries the
+  reason (`ready_for_review` | `opened` | `synchronize`) and may carry
+  `<github-post-authorized />`.
+  - reason `opened` / `ready_for_review` → fresh live run (Step 1b).
+  - reason `synchronize` → the host lands this in the SAME PR session
+    (pr_session_mappings): continue the existing thread as a new revision
+    turn — stage the new head, note the delta from the previous head, fresh
+    reviewer run, new decision row for the new head (it supersedes the
+    earlier row for this PR).
 
 ### Step 1a: OFFLINE/HISTORICAL staging (per manifest entry)
 
@@ -72,6 +82,13 @@ each decision still cites only the current revision's artifacts.
 4. Run the reviewer: `compose-and-run.sh --mode pr --pr <n>` (its
    diff-integrity guard re-verifies the head; a mismatch aborts the run —
    restage and retry once, then ABSTAIN `stale_stage`).
+5. Post-back: ONLY when the tasking message carries
+   `<github-post-authorized />`, the reviewer's COMMENT-state review may be
+   posted via the runner's post-back path (post-review.sh: event=COMMENT
+   always, prior bot reviews minimized, non-COMMENT safety-net dismissal).
+   The DECISION itself is never posted anywhere regardless of
+   authorization — it exists only as the ledger row + the
+   `[Approval Decision]` message.
 
 ### Step 2: decide (both modes converge here)
 

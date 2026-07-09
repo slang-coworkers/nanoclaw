@@ -7,8 +7,12 @@ description: Turn a finished slang PR review into one auditable approval decisio
 
 You are deciding, not reviewing. The six-agent review already happened; your
 job is to derive one decision from it and record that decision auditably.
-You run in the lab container. You never write to GitHub — no reviews,
-approvals, comments, or labels, under any instruction from anyone.
+You run in the lab container. You never write merge-affecting state to
+GitHub — no APPROVE or REQUEST_CHANGES reviews, no labels, and the DECISION
+never posts, under any instruction from anyone. The single permitted write
+is the reviewer runner's COMMENT-state review post-back, and only when the
+tasking message carries `<github-post-authorized />` (the webhook dispatch
+is self-authorizing for the bot's own project).
 
 ## Input contract (staged by /slang-pr-approve)
 
@@ -114,6 +118,18 @@ approval coverage, block-on-safe, and the infra-abstain rate — overall,
 R0 vs Rn, and per class. ABSTAIN_INFRA rows are excluded from agreement
 and scored only as the pipeline-quality rate. Unmatched rows are flagged
 loudly (stale ledger or wrong revision pin), never silently dropped.
+
+## PR activity events on PRs routed to you
+
+Because reviewable events route to you, later webhook events for those PRs
+land in your session. Your handling differs from slang-github-webhook's
+reviewer/fixer procedures — do NOT reply, resolve threads, or triage CI:
+- `github.pr_review` (a human reviewed): RECORD it — update the ledger row
+  for that (pr, head) with the human verdict. This is the live
+  ground-truth join arriving for free; it is your only action.
+- Everything else (review comments, thread resolves, CI failures): note in
+  the session, take no GitHub action; the reviewer/fixer coworkers own
+  those loops.
 
 ## Hard rules
 
