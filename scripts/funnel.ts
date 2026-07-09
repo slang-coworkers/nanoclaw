@@ -253,6 +253,12 @@ interface Row {
   ciBucket: string | null; // pass|fail|pending|none
   stage: string; // terminal classification
   note: string;
+  // Verity (PR-approver) shadow-mode decision for this PR, joined from
+  // approval_decisions by (repo, pr_number). NULL when no approver ran (the
+  // common case until the approvers have processed the PR). `decision` is one
+  // of WOULD_APPROVE|BLOCK|ABSTAIN_POLICY|ABSTAIN_INFRA; `human` is the joined
+  // human outcome (APPROVED|CHANGES_REQUESTED|…) or null if not yet joined.
+  approver: { decision: string; human: string | null } | null;
 }
 
 function issueNumFromThread(threadId: string | null): number | null {
@@ -281,6 +287,24 @@ async function main() {
     const re = /dev-routed issue(?: comment)? to peer.*?repo="([^"]+)".*?issue=(\d+)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(log))) routedSet.add(`${m[1]}#${m[2]}`);
+  }
+
+  // ── Approver ledger: Verity's shadow-mode decisions, keyed by (repo, pr) ──
+  // One query, latest decision per PR (a PR can be decided at multiple commits;
+  // the funnel shows the most recent). Absent table (pre-migration-929 DB) is
+  // tolerated so the funnel still renders on an un-migrated instance.
+  const approverByPr = new Map<string, { decision: string; human: string | null }>();
+  try {
+    const decisions = db
+      .prepare(
+        `SELECT repo, pr_number AS pr, decision, human_verdict AS human, decided_at
+         FROM approval_decisions ORDER BY decided_at ASC`,
+      )
+      .all() as Array<{ repo: string; pr: number; decision: string; human: string | null }>;
+    // ASC order + overwrite → last (newest) decision per PR wins.
+    for (const d of decisions) approverByPr.set(`${d.repo}#${d.pr}`, { decision: d.decision, human: d.human });
+  } catch {
+    // approval_decisions table not present — leave the map empty.
   }
 
   const rows: Row[] = [];
@@ -354,6 +378,7 @@ async function main() {
       ciBucket,
       stage,
       note,
+      approver: approverByPr.get(`${map.repo}#${map.pr}`) ?? null,
     });
   }
 
