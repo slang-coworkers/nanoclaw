@@ -139,8 +139,11 @@ slang-pr-approver:
   vars:
     repo: shader-slang/slang
     project: slang
-  skills: []
-  workflows: []
+  skills:
+    - slang-pr-review-runner
+    - slang-pr-approver
+  workflows:
+    - slang-pr-approve
   mcpServers:
     deepwiki:
       type: http
