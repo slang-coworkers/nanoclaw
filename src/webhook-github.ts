@@ -29,8 +29,14 @@
  * deferred to the receiving agent (orchestrator), which has GH_TOKEN
  * injected via OneCLI.
  */
-import { INSTANCE_FORWARD_TARGETS, INSTANCE_SLUG, INTERNAL_REGISTER_SECRET, ROUTE_ISSUES_TO } from './config.js';
-import { getAdminAgentGroup } from './db/agent-groups.js';
+import {
+  INSTANCE_FORWARD_TARGETS,
+  INSTANCE_SLUG,
+  INTERNAL_REGISTER_SECRET,
+  ROUTE_ISSUES_TO,
+  ROUTE_READY_PRS_TO,
+} from './config.js';
+import { getAdminAgentGroup, getAgentGroupByFolder } from './db/agent-groups.js';
 import { getDb } from './db/connection.js';
 import { openInboundDb, insertMessage } from './db/session-db.js';
 import {
@@ -110,10 +116,36 @@ export interface GitHubIssueOpenedEvent {
 }
 
 /**
+ * A PR `ready_for_review` (draft→ready) event. Prod forwards these to a peer
+ * (ROUTE_READY_PRS_TO); the consumer instance delivers them to its
+ * `slang-pr-approver` coworker for review.
+ */
+export interface GitHubPrReadyForReviewEvent {
+  repo: string;
+  prNumber: number;
+  prUrl: string;
+  title: string;
+  author: string;
+  /** Raw webhook body, preserved for forwarding when ROUTE_READY_PRS_TO is set. */
+  rawBody?: string;
+  /** GitHub event type header, propagated to peer on forward. */
+  eventType?: string;
+  /** GitHub delivery id — propagated on forward AND used in the rowId so each
+   * draft→ready flip re-fires while same-delivery retries dedup. */
+  deliveryId?: string;
+}
+
+/**
  * Outcome of a webhook delivery decision. Used by the funnel-entry handler
  * for the JSON response shape and ops log filtering.
  */
-export type DeliveryOutcome = 'local' | 'forwarded' | 'dropped' | 'no-session' | 'no-admin-group';
+export type DeliveryOutcome =
+  | 'local'
+  | 'forwarded'
+  | 'dropped'
+  | 'no-session'
+  | 'no-admin-group'
+  | 'no-consumer-group';
 
 /**
  * Internal helper: write an event payload to the admin (orchestrator) agent
@@ -150,7 +182,28 @@ function deliverToOrchestrator(args: {
     });
     return 'no-admin-group';
   }
+  return deliverToAgentGroup(group, args);
+}
 
+/**
+ * Write an event payload into a specific agent group's inbound.db. Shared by
+ * deliverToOrchestrator (admin group) and deliverGitHubPrReadyForReview (the
+ * named slang-pr-approver group). Session selection and the idempotency guard
+ * are identical to the orchestrator path — see deliverToOrchestrator's doc
+ * comment for the mint-per-thread / display-title rationale.
+ */
+function deliverToAgentGroup(
+  group: AgentGroup,
+  args: {
+    repo: string;
+    issueNumber: number;
+    rowId: string;
+    threadId: string;
+    eventContent: string;
+    mintPerThread?: boolean;
+    displayTitle?: string;
+  },
+): DeliveryOutcome {
   let session: Session | undefined;
   let minted = false;
   if (args.mintPerThread && args.threadId) {
@@ -164,7 +217,7 @@ function deliverToOrchestrator(args: {
   }
 
   if (!session) {
-    log.warn('github-webhook: orchestrator agent group has no active session — dropping', {
+    log.warn('github-webhook: agent group has no active session — dropping', {
       group: group.name,
       repo: args.repo,
       issue: args.issueNumber,
@@ -172,10 +225,9 @@ function deliverToOrchestrator(args: {
     return 'no-session';
   }
 
-  // Stamp a display title for fresh issue sessions so the dashboard
-  // timeline reads "<repo> #<num>: <title>" instead of inheriting the
-  // first inbound's first 80 chars (which historically left the legacy
-  // √121 self-loop test as the visible label).
+  // Stamp a display title for fresh sessions so the dashboard timeline reads
+  // "<repo> #<num>: <title>" instead of inheriting the first inbound's first
+  // 80 chars.
   if (minted && args.displayTitle) {
     updateSessionTitle(session.id, args.displayTitle, 'auto');
   }
@@ -183,8 +235,7 @@ function deliverToOrchestrator(args: {
   const dbPath = inboundDbPath(group.id, session.id);
   const db = openInboundDb(dbPath);
   try {
-    // Idempotency guard: row id is `gh-issue-<repo>-<num>` (or `gh-<commentId>`
-    // for PR mentions). GitHub retries deliveries on 5xx and the peer-forwarder
+    // Idempotency guard: GitHub retries deliveries on 5xx and the peer-forwarder
     // retries on transport blips, so we will see duplicate deliveries with the
     // same id. Skip the insert when the row already exists — without this, the
     // PRIMARY KEY collision throws and breaks the response stream, leaving the
@@ -210,7 +261,7 @@ function deliverToOrchestrator(args: {
       processAfter: null,
       recurrence: null,
     });
-    log.info('github-webhook: delivered to orchestrator', {
+    log.info('github-webhook: delivered to agent group', {
       group: group.name,
       session: session.id,
       repo: args.repo,
@@ -529,6 +580,88 @@ export function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): Deliver
     displayTitle: event.title
       ? `${event.repo} #${event.issueNumber}: ${event.title}`
       : `${event.repo} #${event.issueNumber}`,
+  });
+}
+
+/**
+ * Deliver a PR `ready_for_review` (draft→ready) event.
+ *
+ *   - Forward branch: when ROUTE_READY_PRS_TO is set (and names a different
+ *     instance), forward the raw webhook to that peer — same trust channel as
+ *     ROUTE_ISSUES_TO. Prod uses this to hand ready PRs to lego. Misconfig
+ *     (missing target/secret/body) drops with a warn so the operator notices,
+ *     matching deliverGitHubIssueOpened's behavior.
+ *   - Local branch: deliver to the `slang-pr-approver` coworker so it can
+ *     review the PR. Mint-per-thread on `gh-pr-<repo>-<num>` so the approver's
+ *     work on one PR converges to a single session/tile. The rowId embeds the
+ *     GitHub delivery id, so every draft→ready flip re-fires while retries of
+ *     the same delivery dedup via the shared idempotency guard. If the approver
+ *     group doesn't exist yet, warn and return `no-consumer-group` (no throw).
+ */
+export function deliverGitHubPrReadyForReview(event: GitHubPrReadyForReviewEvent): DeliveryOutcome {
+  // Forward to a peer when configured (prod → lego). Fires before local
+  // delivery so the canonical instance ships ready PRs to the consumer.
+  if (ROUTE_READY_PRS_TO && INSTANCE_SLUG && ROUTE_READY_PRS_TO !== INSTANCE_SLUG) {
+    const target = INSTANCE_FORWARD_TARGETS[ROUTE_READY_PRS_TO];
+    if (target && event.rawBody && INTERNAL_REGISTER_SECRET) {
+      forwardWebhookToPeer({
+        url: target,
+        secret: INTERNAL_REGISTER_SECRET,
+        rawBody: event.rawBody,
+        event: event.eventType ?? 'pull_request',
+        delivery: event.deliveryId ?? '',
+      });
+      log.info('github-webhook: dev-routed ready-for-review PR to peer', {
+        repo: event.repo,
+        pr: event.prNumber,
+        peer: ROUTE_READY_PRS_TO,
+        target,
+      });
+      return 'forwarded';
+    }
+    log.warn('github-webhook: ROUTE_READY_PRS_TO set but cannot forward — dropping', {
+      repo: event.repo,
+      pr: event.prNumber,
+      peer: ROUTE_READY_PRS_TO,
+      haveTarget: Boolean(target),
+      haveSecret: Boolean(INTERNAL_REGISTER_SECRET),
+      haveBody: Boolean(event.rawBody),
+    });
+    return 'dropped';
+  }
+
+  // Local consumer: hand the PR to the slang-pr-approver coworker.
+  const group = getAgentGroupByFolder('slang-pr-approver');
+  if (!group) {
+    log.warn('github-webhook: slang-pr-approver group not found — cannot deliver ready-for-review PR', {
+      repo: event.repo,
+      pr: event.prNumber,
+    });
+    return 'no-consumer-group';
+  }
+
+  const eventContent = JSON.stringify({
+    event: 'github.pr_ready_for_review',
+    repo: event.repo,
+    pr_number: event.prNumber,
+    pr_url: event.prUrl,
+    title: event.title,
+    author: event.author,
+    task: `PR ${event.repo}#${event.prNumber} is ready for review. Review it and post your verdict.`,
+  });
+
+  return deliverToAgentGroup(group, {
+    repo: event.repo,
+    issueNumber: event.prNumber,
+    // Delivery id in the rowId → each draft→ready flip is a distinct row and
+    // re-fires; retries of the same delivery collide and dedup.
+    rowId: `gh-pr-ready-${event.repo}-${event.prNumber}-${event.deliveryId ?? ''}`,
+    threadId: `gh-pr-${event.repo}-${event.prNumber}`,
+    eventContent,
+    mintPerThread: true,
+    displayTitle: event.title
+      ? `${event.repo} #${event.prNumber}: ${event.title}`
+      : `${event.repo} #${event.prNumber}`,
   });
 }
 
