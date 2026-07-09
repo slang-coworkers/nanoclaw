@@ -124,6 +124,7 @@ export function buildSystemPromptAddendum(assistantName?: string): string {
 
 function buildDestinationsSection(): string {
   const all = getAllDestinations();
+  const lines = ['## Sending messages', ''];
 
   if (all.length === 0) {
     return [
@@ -136,22 +137,14 @@ function buildDestinationsSection(): string {
   // Single-destination shortcut: the agent just writes its response normally.
   if (all.length === 1) {
     const d = all[0];
-    const label = d.displayName && d.displayName !== d.name ? ` (${d.displayName})` : '';
-    return [
-      '## Sending messages',
-      '',
-      `Your messages are delivered to \`${d.name}\`${label}. Just write your response directly — no special wrapping needed.`,
-      '',
-      'To mark something as scratchpad (logged but not sent), wrap it in `<internal>...</internal>`.',
-      '',
-      'To send a message mid-response (e.g., an acknowledgment before a long task), call the `send_message` MCP tool.',
-    ].join('\n');
-  }
-
-  const lines = ['## Sending messages', '', 'You can send messages to the following destinations:', ''];
-  for (const d of all) {
-    const label = d.displayName && d.displayName !== d.name ? ` (${d.displayName})` : '';
-    lines.push(`- \`${d.name}\`${label}`);
+    lines.push(
+      `Your messages are delivered to \`${d.name}\`${destinationLabel(d)}. Just write your response directly — no special wrapping needed.`,
+    );
+  } else {
+    lines.push('You can send messages to the following destinations:', '');
+    for (const d of all) {
+      lines.push(`- \`${d.name}\`${destinationLabel(d)}`);
+    }
   }
   lines.push('');
   lines.push(
@@ -167,4 +160,11 @@ function buildDestinationsSection(): string {
     'To send a message mid-response (e.g., an acknowledgment before a long task), call the `send_message` MCP tool with the `to` parameter set to a destination name.',
   );
   return lines.join('\n');
+}
+
+function destinationLabel(d: DestinationEntry): string {
+  const parts: string[] = [];
+  if (d.channelType) parts.push(d.channelType);
+  if (d.displayName && d.displayName !== d.name) parts.push(d.displayName);
+  return parts.length > 0 ? ` (${parts.join(' · ')})` : '';
 }

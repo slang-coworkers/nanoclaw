@@ -46,7 +46,7 @@ import { validateContainerTimeouts } from './config.js';
 import { startDashboardIngress } from './dashboard-ingress.js';
 import { runMigrations } from './db/migrations/index.js';
 import { countDueMessages, ensureSchema, openInboundDb } from './db/session-db.js';
-import { cancelTask, insertTask, pauseTask } from './modules/scheduling/db.js';
+import { cancelTask, insertTaskRow, pauseTask } from './modules/scheduling/db.js';
 import { once } from 'events';
 
 const tempRoots: string[] = [];
@@ -75,13 +75,11 @@ function insertScheduledTask(
   processAfter: string,
   opts: { recurrence?: string | null } = {},
 ): void {
-  insertTask(db, {
+  insertTaskRow(db, {
     id,
+    seriesId: id,
     processAfter,
     recurrence: opts.recurrence ?? null,
-    platformId: null,
-    channelType: null,
-    threadId: null,
     content: JSON.stringify({ prompt: 'noop' }),
   });
 }
@@ -139,7 +137,7 @@ describe('SC04: scheduled task cancel stays cancelled past fire time', () => {
       status: string;
       recurrence: string | null;
     };
-    expect(row.status).toBe('completed');
+    expect(row.status).toBe('cancelled');
     // Recurrence cleared so the recurrence sweep doesn't spawn a follow-up.
     expect(row.recurrence).toBeNull();
     db.close();
@@ -168,7 +166,7 @@ describe('SC04: scheduled task cancel stays cancelled past fire time', () => {
       status: string;
       recurrence: string | null;
     };
-    expect(follow.status).toBe('completed');
+    expect(follow.status).toBe('cancelled');
     expect(follow.recurrence).toBeNull();
     db.close();
   });
