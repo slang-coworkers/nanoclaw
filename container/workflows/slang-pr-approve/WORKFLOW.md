@@ -35,7 +35,8 @@ The decision procedure is identical in both modes — only staging differs.
 - Message carries the **webhook dispatch wire format** (from the
   orchestrator's slang-github-webhook routing of `github.pr_ready_for_review`)
   → **LIVE single PR**. Parse the byte-exact trailer lines with `grep -oE`:
-  `REPO={repo}`, `PR={pr_number}`, `MODE=...`; the body also carries the
+  `REPO={repo}`, `PR={pr_number}`, `MODE=pr-approve` (tolerate other MODE
+  values — the trailer's REPO/PR are authoritative); the body also carries the
   reason (`ready_for_review` | `opened` | `synchronize`) and may carry
   `<github-post-authorized />`.
   - reason `opened` / `ready_for_review` → fresh live run (Step 1b).
