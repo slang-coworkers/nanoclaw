@@ -4339,7 +4339,7 @@ function renderAdminGroups() {
       <div class="admin-group-meta">
         <span>Folder: <strong>${esc(g.folder)}</strong></span>
         <span title="Lifetime nanoclaw sessions (real = webhook/dashboard; a2a = coworker-to-coworker delegation, usually the majority). Not the SDK transcript count.">Sessions: ${g.sessionCount || 0}${a2aSuffix}</span>
-        <span>Trigger: ${esc(g.trigger_pattern || 'default')}</span>
+        <span title="engage mode: ${esc(g.engageMode || 'always')} — 'always' = responds to everything in its own channel; 'pattern' = engages only when @mentioned in the shared Orchestrator channel">Mention: ${g.mentionHandle ? esc(g.mentionHandle) : '<span style="color:var(--text-muted)">default</span>'}${g.engageMode === 'pattern' ? ' <span style="color:var(--text-muted);font-size:9px">(gated)</span>' : ''}</span>
         <span>Last active: ${g.lastActive ? formatTime(g.lastActive) : '—'}</span>
       </div>
       ${renderGroupDestinations(g.destinations || [])}
