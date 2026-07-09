@@ -11,9 +11,15 @@ The decision procedure is identical in both modes — only staging differs.
 
 ## Step 0: determine the mode from the tasking message
 
-- Message carries a **manifest path** (e.g. `pr-snapshots/task-manifest.json`)
-  → **OFFLINE/HISTORICAL batch**. The manifest lists entries:
-  `{pr, slug, mode: historical, r0_head_sha}`.
+- Message carries a **manifest path** (e.g.
+  `pr-snapshots/task-manifest-round-001.json`) → **OFFLINE/HISTORICAL batch**.
+  The manifest lists entries: `{pr, slug, mode: historical, r0_head_sha}`.
+- Message carries a **PR list but no manifest** → generate the rounds first:
+  `scripts/prepare-offline-rounds.py --prs <list> --out pr-snapshots` (in the
+  slang-pr-approver skill). It downloads R0-pinned snapshots with read-only
+  gh — pr.json (author_association), fully-paginated reviews, files, r0.json,
+  and the merge-base three-dot `diff.patch` at R0 — then emits round
+  manifests. Then proceed as a normal offline batch, round by round.
 - Message carries a **repo + PR number** (the ready_for_review trigger)
   → **LIVE single PR**.
 
