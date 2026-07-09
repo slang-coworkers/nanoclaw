@@ -36,7 +36,7 @@ import {
   ROUTE_ISSUES_TO,
   ROUTE_READY_PRS_TO,
 } from './config.js';
-import { getAdminAgentGroup, getAgentGroupByFolder } from './db/agent-groups.js';
+import { getAdminAgentGroup } from './db/agent-groups.js';
 import { getDb } from './db/connection.js';
 import { openInboundDb, insertMessage } from './db/session-db.js';
 import {
@@ -116,22 +116,26 @@ export interface GitHubIssueOpenedEvent {
 }
 
 /**
- * A PR `ready_for_review` (draft→ready) event. Prod forwards these to a peer
- * (ROUTE_READY_PRS_TO); the consumer instance delivers them to its
- * `slang-pr-approver` coworker for review.
+ * A PR that has become reviewable: draft→ready (`ready_for_review`), opened
+ * directly non-draft (`opened`), or a new push to a ready PR (`synchronize`).
+ * Prod forwards these to a peer (ROUTE_READY_PRS_TO); the consumer instance
+ * routes them to the PR's owning session (pr_session_mappings) or, when
+ * unmapped, to the orchestrator — the same unified flow as PR mentions.
  */
-export interface GitHubPrReadyForReviewEvent {
+export interface GitHubPrReviewableEvent {
   repo: string;
   prNumber: number;
   prUrl: string;
   title: string;
   author: string;
+  /** Which action made the PR reviewable: ready_for_review | opened | synchronize. */
+  reason: string;
   /** Raw webhook body, preserved for forwarding when ROUTE_READY_PRS_TO is set. */
   rawBody?: string;
   /** GitHub event type header, propagated to peer on forward. */
   eventType?: string;
   /** GitHub delivery id — propagated on forward AND used in the rowId so each
-   * draft→ready flip re-fires while same-delivery retries dedup. */
+   * reviewable event (flip / push) re-fires while same-delivery retries dedup. */
   deliveryId?: string;
 }
 
@@ -139,7 +143,7 @@ export interface GitHubPrReadyForReviewEvent {
  * Outcome of a webhook delivery decision. Used by the funnel-entry handler
  * for the JSON response shape and ops log filtering.
  */
-export type DeliveryOutcome = 'local' | 'forwarded' | 'dropped' | 'no-session' | 'no-admin-group' | 'no-consumer-group';
+export type DeliveryOutcome = 'local' | 'forwarded' | 'dropped' | 'no-session' | 'no-admin-group';
 
 /**
  * Internal helper: write an event payload to the admin (orchestrator) agent
@@ -578,23 +582,26 @@ export function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): Deliver
 }
 
 /**
- * Deliver a PR `ready_for_review` (draft→ready) event.
+ * Deliver a PR "reviewable" event (draft→ready, opened non-draft, or a new
+ * push to a ready PR) to the orchestrator, which mints a per-PR session and —
+ * via the slang-github-webhook skill — forwards to the right reviewer coworker.
  *
  *   - Forward branch: when ROUTE_READY_PRS_TO is set (and names a different
  *     instance), forward the raw webhook to that peer — same trust channel as
- *     ROUTE_ISSUES_TO. Prod uses this to hand ready PRs to lego. Misconfig
+ *     ROUTE_ISSUES_TO. Prod uses this to hand reviewable PRs to lego. Misconfig
  *     (missing target/secret/body) drops with a warn so the operator notices,
  *     matching deliverGitHubIssueOpened's behavior.
- *   - Local branch: deliver to the `slang-pr-approver` coworker so it can
- *     review the PR. Mint-per-thread on `gh-pr-<repo>-<num>` so the approver's
- *     work on one PR converges to a single session/tile. The rowId embeds the
- *     GitHub delivery id, so every draft→ready flip re-fires while retries of
- *     the same delivery dedup via the shared idempotency guard. If the approver
- *     group doesn't exist yet, warn and return `no-consumer-group` (no throw).
+ *   - Orchestrator branch: ALWAYS deliver to the admin (orchestrator) group on
+ *     the PR's canonical thread `gh-pr-<repo>-<num>`, minting the session per
+ *     thread. The orchestrator owns routing to the reviewer coworker — we don't
+ *     look up pr_session_mappings here; a reviewable PR always merits a review.
+ *
+ * The rowId embeds the GitHub delivery id, so every flip/push re-fires while
+ * retries of the same delivery dedup via the shared idempotency guard.
  */
-export function deliverGitHubPrReadyForReview(event: GitHubPrReadyForReviewEvent): DeliveryOutcome {
+export function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent): DeliveryOutcome {
   // Forward to a peer when configured (prod → lego). Fires before local
-  // delivery so the canonical instance ships ready PRs to the consumer.
+  // routing so the canonical instance ships reviewable PRs to the consumer.
   if (ROUTE_READY_PRS_TO && INSTANCE_SLUG && ROUTE_READY_PRS_TO !== INSTANCE_SLUG) {
     const target = INSTANCE_FORWARD_TARGETS[ROUTE_READY_PRS_TO];
     if (target && event.rawBody && INTERNAL_REGISTER_SECRET) {
@@ -605,9 +612,10 @@ export function deliverGitHubPrReadyForReview(event: GitHubPrReadyForReviewEvent
         event: event.eventType ?? 'pull_request',
         delivery: event.deliveryId ?? '',
       });
-      log.info('github-webhook: dev-routed ready-for-review PR to peer', {
+      log.info('github-webhook: dev-routed reviewable PR to peer', {
         repo: event.repo,
         pr: event.prNumber,
+        reason: event.reason,
         peer: ROUTE_READY_PRS_TO,
         target,
       });
@@ -624,31 +632,24 @@ export function deliverGitHubPrReadyForReview(event: GitHubPrReadyForReviewEvent
     return 'dropped';
   }
 
-  // Local consumer: hand the PR to the slang-pr-approver coworker.
-  const group = getAgentGroupByFolder('slang-pr-approver');
-  if (!group) {
-    log.warn('github-webhook: slang-pr-approver group not found — cannot deliver ready-for-review PR', {
-      repo: event.repo,
-      pr: event.prNumber,
-    });
-    return 'no-consumer-group';
-  }
-
   const eventContent = JSON.stringify({
     event: 'github.pr_ready_for_review',
     repo: event.repo,
-    pr_number: event.prNumber,
+    issue_number: event.prNumber,
+    is_pr: true,
+    reason: event.reason,
     pr_url: event.prUrl,
     title: event.title,
     author: event.author,
-    task: `PR ${event.repo}#${event.prNumber} is ready for review. Review it and post your verdict.`,
+    task: `PR ${event.repo}#${event.prNumber} is ready for review (${event.reason}). Route it to the reviewer coworker.`,
   });
 
-  return deliverToAgentGroup(group, {
+  // Always to the orchestrator on the PR's canonical thread. Delivery id in the
+  // rowId → each flip/push is a distinct row and re-fires; retries of the same
+  // delivery collide and dedup.
+  return deliverToOrchestrator({
     repo: event.repo,
     issueNumber: event.prNumber,
-    // Delivery id in the rowId → each draft→ready flip is a distinct row and
-    // re-fires; retries of the same delivery collide and dedup.
     rowId: `gh-pr-ready-${event.repo}-${event.prNumber}-${event.deliveryId ?? ''}`,
     threadId: `gh-pr-${event.repo}-${event.prNumber}`,
     eventContent,

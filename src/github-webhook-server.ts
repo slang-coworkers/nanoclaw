@@ -33,7 +33,7 @@ import {
   deliverGitHubIssueOpened,
   deliverGitHubMention,
   deliverGitHubPrEvent,
-  deliverGitHubPrReadyForReview,
+  deliverGitHubPrReviewable,
 } from './webhook-github.js';
 
 const MAX_BODY_SIZE = 512 * 1024; // 512 KB
@@ -301,26 +301,39 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
     // its cleanup step (worktree remove). Only `closed` matters — other actions
     // (opened/synchronize/edited) carry no cleanup signal.
     if (eventType === 'pull_request') {
-      // draft→ready: hand the PR to the review-approver flow (forwarded to a
-      // peer when ROUTE_READY_PRS_TO is set, else delivered locally). Handled
-      // before the non-closed skip below.
-      if (payload.action === 'ready_for_review') {
-        const readyPr = payload.pull_request as Record<string, unknown> | undefined;
-        const readyPrNumber = typeof readyPr?.number === 'number' ? readyPr.number : 0;
-        if (!repoFullName || !readyPrNumber) {
-          log.warn('github-webhook: malformed ready_for_review payload', {
+      // A PR becoming "reviewable" — route to the orchestrator (which mints a
+      // per-PR session and forwards to the reviewer coworker via the
+      // slang-github-webhook skill), or forward to a peer when
+      // ROUTE_READY_PRS_TO is set. Three actions qualify, all handled before
+      // the non-closed skip below:
+      //   • ready_for_review       — draft → ready
+      //   • opened      && !draft  — opened directly non-draft
+      //   • synchronize && !draft  — new commits pushed to a ready PR
+      // No sender filter: all sources (human or bot) are treated the same.
+      const reviewablePr = payload.pull_request as Record<string, unknown> | undefined;
+      const isDraft = reviewablePr?.draft === true;
+      const isReviewable =
+        payload.action === 'ready_for_review' ||
+        (payload.action === 'opened' && !isDraft) ||
+        (payload.action === 'synchronize' && !isDraft);
+      if (isReviewable) {
+        const reviewablePrNumber = typeof reviewablePr?.number === 'number' ? reviewablePr.number : 0;
+        if (!repoFullName || !reviewablePrNumber) {
+          log.warn('github-webhook: malformed reviewable pull_request payload', {
             repo: repoFullName,
-            prNumber: readyPrNumber,
+            prNumber: reviewablePrNumber,
+            action: String(payload.action),
           });
           writeJson(res, 400, { error: 'malformed payload' });
           return;
         }
-        const outcome = deliverGitHubPrReadyForReview({
+        const outcome = deliverGitHubPrReviewable({
           repo: repoFullName,
-          prNumber: readyPrNumber,
-          prUrl: typeof readyPr?.html_url === 'string' ? readyPr.html_url : '',
-          title: typeof readyPr?.title === 'string' ? readyPr.title : '',
-          author: loginOf(readyPr),
+          prNumber: reviewablePrNumber,
+          prUrl: typeof reviewablePr?.html_url === 'string' ? reviewablePr.html_url : '',
+          title: typeof reviewablePr?.title === 'string' ? reviewablePr.title : '',
+          author: loginOf(reviewablePr),
+          reason: String(payload.action),
           rawBody,
           eventType: String(eventType),
           deliveryId: String(req.headers['x-github-delivery'] ?? ''),

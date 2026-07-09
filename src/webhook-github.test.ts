@@ -878,7 +878,7 @@ describe('deliverGitHubIssueOpened', () => {
   });
 });
 
-describe('deliverGitHubPrReadyForReview', () => {
+describe('deliverGitHubPrReviewable', () => {
   it('forwards to peer when ROUTE_READY_PRS_TO is set and differs from INSTANCE_SLUG', async () => {
     vi.doMock('./config.js', () => ({
       INSTANCE_FORWARD_TARGETS: { lego: peerUrl },
@@ -907,13 +907,14 @@ describe('deliverGitHubPrReadyForReview', () => {
       insertMessage: () => undefined,
     }));
 
-    const { deliverGitHubPrReadyForReview } = await import('./webhook-github.js');
-    const outcome = deliverGitHubPrReadyForReview({
+    const { deliverGitHubPrReviewable } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrReviewable({
       repo: 'shader-slang/slang',
       prNumber: 321,
       prUrl: 'https://github.com/shader-slang/slang/pull/321',
       title: 'feat',
       author: 'a-human',
+      reason: 'ready_for_review',
       rawBody: '{"action":"ready_for_review"}',
       eventType: 'pull_request',
       deliveryId: 'd-ready-1',
@@ -954,13 +955,14 @@ describe('deliverGitHubPrReadyForReview', () => {
       insertMessage: () => undefined,
     }));
 
-    const { deliverGitHubPrReadyForReview } = await import('./webhook-github.js');
-    const outcome = deliverGitHubPrReadyForReview({
+    const { deliverGitHubPrReviewable } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrReviewable({
       repo: 'shader-slang/slang',
       prNumber: 321,
       prUrl: '',
       title: '',
       author: '',
+      reason: 'ready_for_review',
       rawBody: '{}',
       eventType: 'pull_request',
       deliveryId: 'd-ready-1',
@@ -970,7 +972,7 @@ describe('deliverGitHubPrReadyForReview', () => {
     expect(captured).toHaveLength(0);
   });
 
-  it('delivers locally to slang-pr-approver, minting a gh-pr-<repo>-<num> thread', async () => {
+  it('delivers to the orchestrator on gh-pr-<repo>-<num>, minting the session', async () => {
     const insertCalls: Array<Record<string, unknown>> = [];
     const threadLookups: string[] = [];
     vi.doMock('./config.js', () => ({
@@ -985,16 +987,15 @@ describe('deliverGitHubPrReadyForReview', () => {
       findSessionByAgentGroup: () => undefined,
       findSessionByAgentThread: (_g: string, thread: string) => {
         threadLookups.push(thread);
-        return { id: 'sess-approver' };
+        return { id: 'sess-orch' };
       },
       getSession: () => undefined,
       createSession: () => undefined,
       updateSessionTitle: () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: (folder: string) =>
-        folder === 'slang-pr-approver' ? { id: 'g-approver', name: 'slang-pr-approver' } : undefined,
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
@@ -1004,17 +1005,18 @@ describe('deliverGitHubPrReadyForReview', () => {
       insertMessage: (_db: unknown, msg: Record<string, unknown>) => insertCalls.push(msg),
     }));
     vi.doMock('./session-manager.js', () => ({
-      inboundDbPath: () => '/tmp/approver.db',
+      inboundDbPath: () => '/tmp/orch.db',
       initSessionFolder: () => undefined,
     }));
 
-    const { deliverGitHubPrReadyForReview } = await import('./webhook-github.js');
-    const outcome = deliverGitHubPrReadyForReview({
+    const { deliverGitHubPrReviewable } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrReviewable({
       repo: 'shader-slang/slang',
       prNumber: 321,
       prUrl: 'https://github.com/shader-slang/slang/pull/321',
       title: 'My feature',
       author: 'a-human',
+      reason: 'opened',
       rawBody: '{}',
       eventType: 'pull_request',
       deliveryId: 'd-ready-1',
@@ -1027,54 +1029,12 @@ describe('deliverGitHubPrReadyForReview', () => {
     expect(insertCalls[0].id).toBe('gh-pr-ready-shader-slang/slang-321-d-ready-1');
     const content = JSON.parse(insertCalls[0].content as string);
     expect(content.event).toBe('github.pr_ready_for_review');
-    expect(content.pr_number).toBe(321);
-  });
-
-  it('returns no-consumer-group (no throw) when slang-pr-approver is absent', async () => {
-    vi.doMock('./config.js', () => ({
-      INSTANCE_FORWARD_TARGETS: {},
-      INSTANCE_SLUG: 'lego',
-      INTERNAL_REGISTER_SECRET: SECRET,
-      ROUTE_ISSUES_TO: '',
-      ROUTE_READY_PRS_TO: '',
-    }));
-    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
-    vi.doMock('./db/sessions.js', () => ({
-      findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => undefined,
-      getSession: () => undefined,
-      createSession: () => undefined,
-      updateSessionTitle: () => true,
-    }));
-    vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
-      getAgentGroupByFolder: () => undefined, // approver group not created yet
-    }));
-    vi.doMock('./db/session-db.js', () => ({
-      openInboundDb: () => ({
-        prepare: () => ({ get: () => undefined, run: () => undefined }),
-        close: () => undefined,
-      }),
-      insertMessage: () => undefined,
-    }));
-
-    const { deliverGitHubPrReadyForReview } = await import('./webhook-github.js');
-    const outcome = deliverGitHubPrReadyForReview({
-      repo: 'shader-slang/slang',
-      prNumber: 321,
-      prUrl: '',
-      title: '',
-      author: '',
-      rawBody: '{}',
-      eventType: 'pull_request',
-      deliveryId: 'd-ready-1',
-    });
-
-    expect(outcome).toBe('no-consumer-group');
+    expect(content.reason).toBe('opened');
+    expect(content.is_pr).toBe(true);
   });
 
   it('re-fires on a new deliveryId but dedups a repeat of the same delivery', async () => {
-    // Two draft→ready flips arrive as distinct deliveries → two distinct rowIds
+    // Two reviewable events arrive as distinct deliveries → two distinct rowIds
     // → two inserts. A retry of the SAME delivery hits the idempotency guard
     // (SELECT 1 finds the existing row) → no second insert.
     const seenIds = new Set<string>();
@@ -1089,14 +1049,14 @@ describe('deliverGitHubPrReadyForReview', () => {
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
     vi.doMock('./db/sessions.js', () => ({
       findSessionByAgentGroup: () => undefined,
-      findSessionByAgentThread: () => ({ id: 'sess-approver' }),
+      findSessionByAgentThread: () => ({ id: 'sess-orch' }),
       getSession: () => undefined,
       createSession: () => undefined,
       updateSessionTitle: () => true,
     }));
     vi.doMock('./db/agent-groups.js', () => ({
-      getAdminAgentGroup: () => undefined,
-      getAgentGroupByFolder: () => ({ id: 'g-approver', name: 'slang-pr-approver' }),
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
@@ -1113,27 +1073,28 @@ describe('deliverGitHubPrReadyForReview', () => {
       },
     }));
     vi.doMock('./session-manager.js', () => ({
-      inboundDbPath: () => '/tmp/approver.db',
+      inboundDbPath: () => '/tmp/orch.db',
       initSessionFolder: () => undefined,
     }));
 
-    const { deliverGitHubPrReadyForReview } = await import('./webhook-github.js');
+    const { deliverGitHubPrReviewable } = await import('./webhook-github.js');
     const base = {
       repo: 'shader-slang/slang',
       prNumber: 321,
       prUrl: '',
       title: 't',
       author: 'a',
+      reason: 'synchronize',
       rawBody: '{}',
       eventType: 'pull_request',
     } as const;
 
-    // First flip.
-    expect(deliverGitHubPrReadyForReview({ ...base, deliveryId: 'd-1' })).toBe('local');
+    // First push.
+    expect(deliverGitHubPrReviewable({ ...base, deliveryId: 'd-1' })).toBe('local');
     // Same delivery retried → dedup.
-    expect(deliverGitHubPrReadyForReview({ ...base, deliveryId: 'd-1' })).toBe('local');
-    // Second flip (new delivery) → re-fire.
-    expect(deliverGitHubPrReadyForReview({ ...base, deliveryId: 'd-2' })).toBe('local');
+    expect(deliverGitHubPrReviewable({ ...base, deliveryId: 'd-1' })).toBe('local');
+    // Second push (new delivery) → re-fire.
+    expect(deliverGitHubPrReviewable({ ...base, deliveryId: 'd-2' })).toBe('local');
 
     expect(insertCalls).toHaveLength(2);
     expect(insertCalls.map((m) => m.id)).toEqual([
