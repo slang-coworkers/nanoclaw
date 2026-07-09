@@ -4204,8 +4204,8 @@ function renderGroupDestinations(destinations) {
   if (peers.length > 0) {
     const peerTags = peers
       .map((d) => {
-        const name = esc(d.local_name);
-        return `<span class="admin-chip" style="background:#3B82F620;color:#3B82F6;font-size:9px" title="Peer agent: ${name}">&#x2194; ${name}</span>`;
+        const name = esc(d.display || d.local_name);
+        return `<span class="admin-chip" style="background:#3B82F620;color:#3B82F6;font-size:9px" title="Peer agent: ${esc(d.local_name)}">&#x2194; ${name}</span>`;
       })
       .join(' ');
     html += `<span>Peers: </span>${peerTags} `;
@@ -4213,8 +4213,11 @@ function renderGroupDestinations(destinations) {
   if (channels.length > 0) {
     const chTags = channels
       .map((d) => {
-        const name = esc(d.local_name);
-        return `<span class="admin-chip" style="background:#10B98120;color:#10B981;font-size:9px" title="Channel: ${name}">&#x25CB; ${name}</span>`;
+        // a2a conduits get the resolved "From → To (a2a)" label + a distinct tint
+        // so they read as routing plumbing, not real chat channels.
+        const name = esc(d.display || d.local_name);
+        const tint = d.isA2a ? 'background:#8957e520;color:#bc8cff' : 'background:#10B98120;color:#10B981';
+        return `<span class="admin-chip" style="${tint};font-size:9px" title="Channel: ${esc(d.local_name)}">&#x25CB; ${name}</span>`;
       })
       .join(' ');
     html += `<span>Channels: </span>${chTags}`;
@@ -4240,13 +4243,24 @@ function renderAdminGroups() {
     const updateChip = isAutoUpdate
       ? '<span class="admin-chip auto-update">auto-update</span>'
       : '<span class="admin-chip static">static</span>';
+    // Flag groups with no recent session activity (helps spot stale/duplicate
+    // groups — e.g. a legacy "Slang Fixer" superseded by an active namesake).
+    const lastMs = g.lastActive ? Date.parse(g.lastActive) : 0;
+    const staleDays = lastMs ? Math.floor((Date.now() - lastMs) / 86400000) : null;
+    const staleBadge =
+      staleDays != null && staleDays >= 14
+        ? ` <span class="admin-chip" style="background:#6e768130;color:#8b949e" title="No session activity in ${staleDays} days">stale ${staleDays}d</span>`
+        : '';
+    const a2aSuffix = g.sessionCountA2a
+      ? ` <span style="color:var(--text-muted)">(${g.sessionCountReal} real / ${g.sessionCountA2a} a2a)</span>`
+      : '';
     html += `<div class="admin-group-card">
-      <h4>${esc(g.name || g.folder)}${mainBadge} ${containerChip} ${updateChip}</h4>
+      <h4>${esc(g.name || g.folder)}${mainBadge} ${containerChip} ${updateChip}${staleBadge}</h4>
       <div class="admin-group-meta">
         <span>Folder: <strong>${esc(g.folder)}</strong></span>
-        <span title="Lifetime nanoclaw sessions for this group, including a2a delegation sessions (usually the large majority). Not the SDK transcript count.">Sessions: ${g.sessionCount || 0}</span>
+        <span title="Lifetime nanoclaw sessions (real = webhook/dashboard; a2a = coworker-to-coworker delegation, usually the majority). Not the SDK transcript count.">Sessions: ${g.sessionCount || 0}${a2aSuffix}</span>
         <span>Trigger: ${esc(g.trigger_pattern || 'default')}</span>
-        <span>Added: ${g.added_at ? formatTime(g.added_at) : '-'}</span>
+        <span>Last active: ${g.lastActive ? formatTime(g.lastActive) : '—'}</span>
       </div>
       ${renderGroupDestinations(g.destinations || [])}
       <details>

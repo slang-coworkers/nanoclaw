@@ -7500,10 +7500,25 @@ export async function handleRequest(
     if (db) {
       try {
         groups = db.prepare('SELECT * FROM agent_groups').all() as any[];
+        // ag-id → friendly name, for resolving a2a destination channels (whose
+        // messaging group is `agent:<from-ag>:<to-ag>`) to "From → To (a2a)".
+        const agNameMap = new Map<string, string>(groups.map((x: any) => [x.id, x.name || x.folder]));
         for (const g of groups) {
-          // Count sessions
+          // Count sessions — total, plus the a2a-delegation split (usually the
+          // large majority) and the most recent activity so the UI can flag
+          // stale/duplicate groups. "real" = non-a2a (webhook/dashboard) sessions.
           g.sessionCount =
             (db.prepare('SELECT COUNT(*) as c FROM sessions WHERE agent_group_id = ?').get(g.id) as any)?.c || 0;
+          g.sessionCountA2a =
+            (
+              db
+                .prepare("SELECT COUNT(*) as c FROM sessions WHERE agent_group_id = ? AND messaging_group_id LIKE 'mg-a2a-%'")
+                .get(g.id) as any
+            )?.c || 0;
+          g.sessionCountReal = g.sessionCount - g.sessionCountA2a;
+          g.lastActive =
+            (db.prepare('SELECT MAX(last_active) as m FROM sessions WHERE agent_group_id = ?').get(g.id) as any)?.m ||
+            null;
           // Enrich with trigger_pattern and jid from messaging tables
           try {
             const mga = db
@@ -7568,9 +7583,36 @@ export async function handleRequest(
           g.containerRunning = hasRunningContainer(g.folder);
           // Include destinations for peer/channel visibility
           try {
-            g.destinations = db
-              .prepare('SELECT local_name, target_type, target_id FROM agent_destinations WHERE agent_group_id = ?')
-              .all(g.id);
+            g.destinations = (
+              db
+                .prepare('SELECT local_name, target_type, target_id FROM agent_destinations WHERE agent_group_id = ?')
+                .all(g.id) as any[]
+            ).map((d) => {
+              // Resolve a2a channel destinations (opaque `agent-mg-a2a-N` aliases)
+              // to a readable "From → To (a2a)" using the messaging group's
+              // platform_id. Leaves non-a2a destinations untouched.
+              if (d.target_type === 'channel' && typeof d.target_id === 'string') {
+                try {
+                  const mg = db
+                    .prepare('SELECT platform_id, name FROM messaging_groups WHERE id = ?')
+                    .get(d.target_id) as any;
+                  if (mg) {
+                    const m = /^agent:(ag-[^:]+):(ag-[^:]+)$/.exec(mg.platform_id || '');
+                    if (m) {
+                      const from = agNameMap.get(m[1]) || m[1];
+                      const to = agNameMap.get(m[2]) || m[2];
+                      d.display = from === to ? `${from} ⟳ self (a2a)` : `${from} → ${to} (a2a)`;
+                      d.isA2a = true;
+                    } else if (mg.name) {
+                      d.display = mg.name;
+                    }
+                  }
+                } catch {
+                  /* leave d.local_name as-is */
+                }
+              }
+              return d;
+            });
           } catch {
             g.destinations = [];
           }
