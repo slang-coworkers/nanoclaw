@@ -107,7 +107,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 
    **Send the combined report whole to the parent — and to the fixer UNLESS this is an approval-review dispatch:**
 
-   The fixer-forward is conditional on the request mode. A dispatch carrying `MODE=pr-approve` comes from the PR-approver (`/slang-pr-approve`): it wants the review doc back to *decide*, not to fix — so **skip the fixer entirely** and let the reply-to-parent (the approver is the parent) be the whole handoff. Any other dispatch (a fix-review request, an `@nv-slang-bot` mention, an internal fix handoff) forwards to the fixer as before.
+   The fixer-forward is conditional on the request mode. A dispatch carrying `MODE=pr-approve` comes from the PR-approver coworker (its approve workflow): it wants the review doc back to *decide*, not to fix — so **skip the fixer entirely** and let the reply-to-parent (the approver is the parent) be the whole handoff. Any other dispatch (a fix-review request, an `@nv-slang-bot` mention, an internal fix handoff) forwards to the fixer as before.
 
    ```bash
    DISPATCH="$(cat /workspace/agent/.dispatch.txt 2>/dev/null || true)"
