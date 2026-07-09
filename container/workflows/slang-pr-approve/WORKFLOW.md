@@ -19,7 +19,9 @@ This workflow does ONE thing: normalize the inputs for the requested PR(s)
 into a per-PR session workspace, then hand each to `/slang-pr-approver`.
 The decision procedure is identical in both modes — only staging differs.
 
-## Step 0: determine the mode from the tasking message
+## Steps
+
+### Step 0: determine the mode from the tasking message
 
 - Message carries a **manifest path** (e.g.
   `pr-snapshots/task-manifest-round-001.json`) → **OFFLINE/HISTORICAL batch**.
@@ -33,7 +35,7 @@ The decision procedure is identical in both modes — only staging differs.
 - Message carries a **repo + PR number** (the ready_for_review trigger)
   → **LIVE single PR**.
 
-## Step 1a: OFFLINE/HISTORICAL staging (per manifest entry)
+### Step 1a: OFFLINE/HISTORICAL staging (per manifest entry)
 
 1. Create `work/<pr>-<r0sha12>/` in the session.
 2. Copy `pr-snapshots/<slug>/` contents in: `pr.json`, `diff.patch`,
@@ -48,7 +50,7 @@ The decision procedure is identical in both modes — only staging differs.
 5. The runner leaves `final-review.md`, per-agent findings, and
    `tmp/context.json` in the run dir; link/copy them into the PR workspace.
 
-## Step 1b: LIVE staging (single PR)
+### Step 1b: LIVE staging (single PR)
 
 1. Create `work/<pr>-<headsha12>/`.
 2. Stage the CURRENT head with read-only gh: `gh pr view` (metadata →
@@ -61,7 +63,7 @@ The decision procedure is identical in both modes — only staging differs.
    diff-integrity guard re-verifies the head; a mismatch aborts the run —
    restage and retry once, then ABSTAIN `stale_stage`).
 
-## Step 2: decide (both modes converge here)
+### Step 2: decide (both modes converge here)
 
 The PR workspace now satisfies the `slang-pr-approver` skill's input
 contract. Invoke the skill for each PR workspace. It performs the
@@ -69,7 +71,7 @@ deterministic clauses, verdict parse, challenger, critique-gated record —
 identically for historical and live. This workflow never makes or edits a
 decision itself.
 
-## Step 3: report
+### Step 3: report
 
 After all entries: post one summary line per decision to
 `dashboard:slang-pr-approver` (the per-decision `[Approval Decision]`
