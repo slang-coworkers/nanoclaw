@@ -543,4 +543,121 @@ const reportPrCreated: McpToolDefinition = {
   },
 };
 
-registerTools([sendMessage, sendFile, addReaction, reportPrCreated]);
+const recordDecision: McpToolDefinition = {
+  tool: {
+    name: 'record_decision',
+    description:
+      'Record one PR-approval decision to the host approval_decisions ledger (PR-approver coworkers only). Host-owned + auditable; survives container exit. One row per (repo, pr, commit_sha) — a re-run on the same commit replaces it. This is the ledger append gated by the critique stages; call it only after the recorded verdicts exist.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        repo: { type: 'string', description: 'Repository in owner/name format (e.g. shader-slang/slang)' },
+        pr_number: { type: 'number', description: 'PR number' },
+        commit_sha: { type: 'string', description: 'The reviewed commit (R0 in historical mode; head in live)' },
+        mode: { type: 'string', description: 'historical | live | live_late' },
+        decision: {
+          type: 'string',
+          description: 'Closed enum: WOULD_APPROVE | BLOCK | ABSTAIN_POLICY | ABSTAIN_INFRA',
+        },
+        reason_code: { type: 'string', description: 'e.g. CLAUSE_FAIL:<name>, OPEN_GAP, REVIEW_DOC_MISSING' },
+        review_diff_hash: { type: 'string', description: "The diff_hash the review doc reported reviewing" },
+        policy_version: { type: 'string', description: 'APPROVAL_POLICY policy_version' },
+        clauses: { description: 'The clauses.json evidence (object or JSON string)' },
+        challenger: { description: 'Challenger finding or CHALLENGER_CLEAN (object or JSON string)' },
+        ts: { type: 'string', description: 'ISO timestamp of the decision' },
+      },
+      required: ['repo', 'pr_number', 'commit_sha', 'decision'],
+    },
+  },
+  async handler(args) {
+    const repo = typeof args.repo === 'string' ? args.repo.trim() : '';
+    const prNumber = typeof args.pr_number === 'number' ? args.pr_number : NaN;
+    const commitSha = typeof args.commit_sha === 'string' ? args.commit_sha.trim() : '';
+    const decision = typeof args.decision === 'string' ? args.decision.trim() : '';
+    if (!repo || !Number.isFinite(prNumber) || !commitSha || !decision) {
+      return err('repo (string), pr_number (number), commit_sha (string), decision (string) are required');
+    }
+
+    const seq = writeMessageOut({
+      id: generateId(),
+      kind: 'system',
+      platform_id: null,
+      channel_type: null,
+      thread_id: null,
+      content: JSON.stringify({
+        action: 'record_decision',
+        repo,
+        pr_number: prNumber,
+        commit_sha: commitSha,
+        mode: args.mode,
+        decision,
+        reason_code: args.reason_code,
+        review_diff_hash: args.review_diff_hash,
+        policy_version: args.policy_version,
+        clauses: args.clauses,
+        challenger: args.challenger,
+        ts: args.ts,
+      }),
+    });
+
+    log(`record_decision: #${seq} → ${repo}#${prNumber}@${commitSha.slice(0, 12)} = ${decision}`);
+    return ok(`Decision recorded: ${repo}#${prNumber}@${commitSha.slice(0, 12)} = ${decision}`);
+  },
+};
+
+const recordHumanVerdict: McpToolDefinition = {
+  tool: {
+    name: 'record_human_verdict',
+    description:
+      'Stamp the human review outcome onto an existing approval_decisions row for (repo, pr, commit_sha), for agreement scoring (PR-approver coworkers only). No-op host-side if no decision row exists yet.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        repo: { type: 'string', description: 'Repository in owner/name format' },
+        pr_number: { type: 'number', description: 'PR number' },
+        commit_sha: { type: 'string', description: 'The reviewed commit the human verdict applies to' },
+        human_verdict: {
+          type: 'string',
+          description: 'e.g. APPROVED | CHANGES_REQUESTED | COMMENTED',
+        },
+      },
+      required: ['repo', 'pr_number', 'commit_sha', 'human_verdict'],
+    },
+  },
+  async handler(args) {
+    const repo = typeof args.repo === 'string' ? args.repo.trim() : '';
+    const prNumber = typeof args.pr_number === 'number' ? args.pr_number : NaN;
+    const commitSha = typeof args.commit_sha === 'string' ? args.commit_sha.trim() : '';
+    const humanVerdict = typeof args.human_verdict === 'string' ? args.human_verdict.trim() : '';
+    if (!repo || !Number.isFinite(prNumber) || !commitSha || !humanVerdict) {
+      return err('repo, pr_number, commit_sha, human_verdict are required');
+    }
+
+    const seq = writeMessageOut({
+      id: generateId(),
+      kind: 'system',
+      platform_id: null,
+      channel_type: null,
+      thread_id: null,
+      content: JSON.stringify({
+        action: 'record_human_verdict',
+        repo,
+        pr_number: prNumber,
+        commit_sha: commitSha,
+        human_verdict: humanVerdict,
+      }),
+    });
+
+    log(`record_human_verdict: #${seq} → ${repo}#${prNumber}@${commitSha.slice(0, 12)} = ${humanVerdict}`);
+    return ok(`Human verdict recorded: ${repo}#${prNumber}@${commitSha.slice(0, 12)} = ${humanVerdict}`);
+  },
+};
+
+registerTools([
+  sendMessage,
+  sendFile,
+  addReaction,
+  reportPrCreated,
+  recordDecision,
+  recordHumanVerdict,
+]);
