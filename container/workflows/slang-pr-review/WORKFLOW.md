@@ -107,16 +107,10 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 
    **Send the combined report whole to the parent — and to the fixer UNLESS this is an approval-review dispatch:**
 
-   The fixer-forward is conditional on the request mode. A dispatch carrying `MODE=pr-approve` comes from the PR-approver coworker (its approve workflow): it wants the review doc back to *decide*, not to fix — so **skip the fixer entirely** and let the reply-to-parent (the approver is the parent) be the whole handoff. Any other dispatch (a fix-review request, an `@nv-slang-bot` mention, an internal fix handoff) forwards to the fixer as before.
-
-   ```bash
-   DISPATCH="$(cat /workspace/agent/.dispatch.txt 2>/dev/null || true)"
-   APPROVE_MODE=0
-   echo "$DISPATCH" | grep -qE "^MODE=pr-approve\b" && APPROVE_MODE=1
-   ```
+   The fixer-forward is conditional on the request mode, read from **the tasking message that started this review** (it arrived via `send_message` and is in your context — do not read any file). If that message carries a `MODE=pr-approve` line, the request came from the PR-approver coworker: it wants the review doc back to *decide*, not to fix — so **skip the fixer entirely** and let the reply-to-parent (the approver is the parent) be the whole handoff. Any other request (a fix-review request, an `@nv-slang-bot` mention, an internal fix handoff — no `MODE=pr-approve`) forwards to the fixer as before.
 
    ```
-   # Fixer forward — ONLY when NOT an approval-review dispatch (APPROVE_MODE=0):
+   # Fixer forward — ONLY when the tasking message did NOT carry `MODE=pr-approve`:
    send_file(to="slang-fixer", path="<run_dir_A>/combined-review.md")
 
    # Always to the parent (= the approver in pr-approve mode, else the orchestrator/requester):
@@ -129,17 +123,14 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    - Otherwise the fixer consumes `combined-review.md` whole — A's correctness findings drive code changes; C's clarity findings are advisory context the fixer weighs. The reviewer→fixer destination (`local_name=slang-fixer`) is already wired; if it ever resolves "unknown destination", fall back to `to="parent"` only and note it in the verdict.
    - `combined-review.md` is what the parent/webhook path also receives, so the human (or the approver) sees the same whole report.
 
-6. **Post review back to GitHub (authorized only)** {#post-review-to-github} — only when the dispatch carries the `<github-post-authorized />` marker (emitted by the orchestrator's `slang-github-webhook` skill when a human tagged `@nv-slang-bot`); else a no-op. The dispatch also carries `REPO=<owner>/<name>` and `PR=<number>` lines for grep. **Posts Reviewer A's correctness review only** (`<run_dir_A>/final-review.md`) — Reviewer C's clarity findings are advisory and delivered to the fixer/parent via the combined report, not auto-posted to the PR. (Clarity has a lower bar; auto-posting it as a bot review would be noisy. Revisit if a clarity post is explicitly wanted.)
+6. **Post review back to GitHub (authorized only)** {#post-review-to-github} — only when **the tasking message that started this review** (in your context — do not read any file) carries the `<github-post-authorized />` marker (emitted by the orchestrator's `slang-github-webhook` skill when a human tagged `@nv-slang-bot`, or by the PR-approver in LIVE authorized mode); else a no-op. That same message carries the `REPO=<owner>/<name>` and `PR=<number>` lines — read the two values from it. **Posts Reviewer A's correctness review only** (`<run_dir_A>/final-review.md`) — Reviewer C's clarity findings are advisory and delivered to the fixer/parent via the combined report, not auto-posted to the PR. (Clarity has a lower bar; auto-posting it as a bot review would be noisy. Revisit if a clarity post is explicitly wanted.)
+
+   Substitute `<REPO>` and `<PR>` with the values you read from the tasking message, and run this only if that message contained `<github-post-authorized />`:
 
    ```bash
-   DISPATCH="$(cat /workspace/agent/.dispatch.txt 2>/dev/null || true)"
-   if echo "$DISPATCH" | grep -q "<github-post-authorized />"; then
-     REPO=$(echo "$DISPATCH" | grep -oE "^REPO=[^[:space:]]+" | head -1 | cut -d= -f2)
-     PR=$(echo "$DISPATCH" | grep -oE "^PR=[0-9]+" | head -1 | cut -d= -f2)
-     SKILL_DIR=/path/to/slang-pr-review-runner   # resolve via skill registry
-     [ -n "$REPO" ] && [ -n "$PR" ] && [ -s "$run_dir_A/final-review.md" ] && \
-       "$SKILL_DIR/scripts/post-back.sh" "$REPO" "$PR" "$run_dir_A/final-review.md"
-   fi
+   SKILL_DIR=/path/to/slang-pr-review-runner   # resolve via skill registry
+   [ -s "$run_dir_A/final-review.md" ] && \
+     "$SKILL_DIR/scripts/post-back.sh" "<REPO>" "<PR>" "$run_dir_A/final-review.md"
    ```
 
    Report result to parent: exit 0 = posted; exit 3 = no `pull_requests:write` (fall back to `send_file`); any nonzero = failure (final-review.md already sent). `post-back.sh` = `cleanup.sh` (minimize prior bot reviews/comments, resolve threads) + `post-review.sh` (POST event=COMMENT, dismiss any non-COMMENT bot review). Inline per-line comments are optional (`<run_dir_A>/inline-comments.json`, same POST); default posts body only.

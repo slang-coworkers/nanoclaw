@@ -11,7 +11,7 @@ uses:
 # /slang-pr-approve — stage the PR, delegate the review, then decide
 
 You run inside the lab container with read-only `gh` and a mounted `policy/`
-(APPROVAL_POLICY.yaml). You have two things bound: the `slang-pr-approver`
+(APPROVAL_POLICY.json). You have two things bound: the `slang-pr-approver`
 skill (the decision procedure of record) and a **`{{vars.reviewer}}`** destination
 (the reviewer coworker that actually reviews the code).
 

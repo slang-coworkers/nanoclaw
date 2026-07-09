@@ -26,7 +26,8 @@ The PR workspace `work/<pr>-<sha12>/` contains:
   combined review, with an embedded fenced ```json block carrying the
   structured result `{verdict, bugs, gaps, questions, diff_hash,
   reviewers_complete}`. This is the ONLY source of the review verdict.
-- `policy/APPROVAL_POLICY.yaml` (mounted; carries policy_version)
+- `policy/APPROVAL_POLICY.json` (mounted; carries policy_version). If none is
+  mounted, `eval-clauses.py` falls back to the v0 default bundled next to it.
 
 The review doc missing, empty, or with no parseable embedded result =>
 ABSTAIN_INFRA (`REVIEW_DOC_MISSING`). Do not reconstruct inputs and do not
