@@ -7563,20 +7563,35 @@ export async function handleRequest(
           g.lastActive =
             (db.prepare('SELECT MAX(last_active) as m FROM sessions WHERE agent_group_id = ?').get(g.id) as any)?.m ||
             null;
-          // Enrich with trigger_pattern and jid from messaging tables
+          // Enrich with the coworker's @mention handle + jid from its wirings.
+          // A coworker typically has TWO non-a2a wirings: `always` on its own
+          // channel (alias) and `pattern` on the shared Orchestrator channel
+          // (the actual @mention dispatch). Prefer the pattern wiring's handle,
+          // fall back to any wiring that carries a pattern, and strip regex
+          // artifacts (\b, ^, $) so the card reads "@slang-fixer", not
+          // "@slang-fixer\b". The stored regex is left untouched.
           try {
-            const mga = db
+            const wirings = db
               .prepare(
                 `SELECT mga.engage_mode, mga.engage_pattern, mg.platform_id
                FROM messaging_group_agents mga
                JOIN messaging_groups mg ON mg.id = mga.messaging_group_id
-               WHERE mga.agent_group_id = ?
-               LIMIT 1`,
+               WHERE mga.agent_group_id = ?`,
               )
-              .get(g.id) as any;
-            if (mga) {
-              g.trigger_pattern = mga.engage_mode === 'pattern' && mga.engage_pattern ? mga.engage_pattern : null;
-              g.jid = mga.platform_id || null;
+              .all(g.id) as any[];
+            if (wirings.length) g.jid = wirings[0].platform_id || null;
+            const withPattern = wirings.filter((w) => w.engage_pattern);
+            const chosen = withPattern.find((w) => w.engage_mode === 'pattern') || withPattern[0];
+            if (chosen) {
+              g.engageMode = chosen.engage_mode;
+              g.mentionHandle = String(chosen.engage_pattern)
+                .replace(/\\[bB]/g, '')
+                .replace(/^\^/, '')
+                .replace(/\$$/, '')
+                .trim();
+              // Keep trigger_pattern populated only when the coworker is actually
+              // gated (pattern mode), for any consumer that relied on the old field.
+              g.trigger_pattern = chosen.engage_mode === 'pattern' ? chosen.engage_pattern : null;
             }
           } catch {
             /* ignore */
