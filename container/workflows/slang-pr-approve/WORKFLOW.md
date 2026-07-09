@@ -50,6 +50,16 @@ The decision procedure is identical in both modes — only staging differs.
 5. The runner leaves `final-review.md`, per-agent findings, and
    `tmp/context.json` in the run dir; link/copy them into the PR workspace.
 
+**Revision chains** (manifest entries with more than one revision): the whole
+chain runs in ONE Verity session, replaying the PR's real history. For R0,
+stage and decide exactly as above. Then for each later revision Rn, IN THE
+SAME SESSION: append the human review comments given on Rn-1 (from
+reviews.json + review-comments.json, only those submitted before Rn's
+review), the author's `delta.patch` (Rn-1...Rn), and a FRESH reviewer run
+over Rn's `diff.patch` — then invoke the skill again. One ledger row per
+(pr, rn_head_sha). Earlier turns are context, exactly as in live follow-ups;
+each decision still cites only the current revision's artifacts.
+
 ### Step 1b: LIVE staging (single PR)
 
 1. Create `work/<pr>-<headsha12>/`.

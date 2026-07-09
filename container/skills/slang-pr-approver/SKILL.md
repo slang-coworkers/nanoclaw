@@ -84,9 +84,21 @@ deepwiki never blocks, excuses, or upgrades a decision.
    marker — the gate and the router key on the same token; an unmarked
    decision routes nowhere.
 
+## Revision chains (same session, one decision per revision)
+
+Follow-up revisions of the same PR arrive as new turns in YOUR CURRENT
+session — historical chains replay them in order, and live follow-up pushes
+behave identically. For every revision: re-run the FULL procedure (clauses
+from that revision's data, that revision's fresh reviewer output, a fresh
+challenger, the critique gate). Prior turns are context — the discussion a
+real reviewer would remember — never evidence: the decision for Rn cites
+only Rn's artifacts, and an earlier revision's clean clauses or verdicts
+never carry forward. One ledger row per (pr, revision head).
+
 ## Preparing offline rounds
 
 `scripts/prepare-offline-rounds.py --prs-file sample-v1.json --round-size 20`
+(add `--per-revision` to emit full R0..Rn chains for follow-up-turnaround measurement)
 downloads R0-pinned snapshots (read-only gh) and writes
 `task-manifest-round-NNN.json` files for the workflow's offline batches.
 Idempotent: cached slugs are skipped; failures land in
