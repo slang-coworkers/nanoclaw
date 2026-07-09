@@ -13,7 +13,7 @@ vi.mock('./config.js', () => ({
 vi.mock('./webhook-github.js', () => ({
   deliverGitHubMention: vi.fn(),
   deliverGitHubIssueOpened: vi.fn(),
-  deliverGitHubPrReadyForReview: vi.fn(),
+  deliverGitHubPrReviewable: vi.fn(),
 }));
 
 vi.mock('./modules/pr-mapping/register-endpoint.js', () => ({
@@ -37,7 +37,7 @@ vi.mock('./env.js', () => ({
 }));
 
 import { postEyesReaction, startGitHubWebhookServer } from './github-webhook-server.js';
-import { deliverGitHubMention, deliverGitHubPrReadyForReview } from './webhook-github.js';
+import { deliverGitHubMention, deliverGitHubPrReviewable } from './webhook-github.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
 
 describe('postEyesReaction', () => {
@@ -140,7 +140,7 @@ describe('webhook handler: 👀 ack + own-bot gate', () => {
   let baseUrl: string;
   let fetchMock: ReturnType<typeof vi.fn>;
   const deliverMock = vi.mocked(deliverGitHubMention);
-  const readyMock = vi.mocked(deliverGitHubPrReadyForReview);
+  const readyMock = vi.mocked(deliverGitHubPrReviewable);
   const prMappingMock = vi.mocked(prMappingExists);
 
   // POST a signed pull_request webhook (no comment) and return the parsed JSON.
@@ -283,7 +283,7 @@ describe('webhook handler: 👀 ack + own-bot gate', () => {
     expect(calls[0][0]).toBe('https://api.github.com/repos/org/repo/pulls/comments/558/reactions');
   });
 
-  it('routes a ready_for_review PR to deliverGitHubPrReadyForReview (before the non-closed skip)', async () => {
+  it('routes ready_for_review to deliverGitHubPrReviewable (before the non-closed skip)', async () => {
     const json = await postPullRequest({
       action: 'ready_for_review',
       repository: { full_name: 'org/repo' },
@@ -305,12 +305,52 @@ describe('webhook handler: 👀 ack + own-bot gate', () => {
       prUrl: 'https://github.com/org/repo/pull/321',
       title: 'My feature',
       author: 'a-human',
+      reason: 'ready_for_review',
       eventType: 'pull_request',
       deliveryId: 'test-delivery',
     });
   });
 
-  it('400s a malformed ready_for_review (missing pr number)', async () => {
+  it('routes opened + non-draft PR as reviewable', async () => {
+    const json = await postPullRequest({
+      action: 'opened',
+      repository: { full_name: 'org/repo' },
+      pull_request: { number: 322, draft: false, title: 'Direct PR', user: { login: 'a-human' } },
+    });
+    expect(json).toMatchObject({ outcome: 'forwarded' });
+    expect(readyMock).toHaveBeenCalledTimes(1);
+    expect(readyMock.mock.calls[0][0]).toMatchObject({ prNumber: 322, reason: 'opened' });
+  });
+
+  it('routes synchronize on a non-draft PR as reviewable (all sources, no bot filter)', async () => {
+    const json = await postPullRequest({
+      action: 'synchronize',
+      repository: { full_name: 'org/repo' },
+      pull_request: { number: 323, draft: false, user: { login: 'nv-slang-bot[bot]' } },
+      sender: { login: 'nv-slang-bot[bot]' },
+    });
+    expect(json).toMatchObject({ outcome: 'forwarded' });
+    expect(readyMock).toHaveBeenCalledTimes(1);
+    expect(readyMock.mock.calls[0][0]).toMatchObject({ prNumber: 323, reason: 'synchronize' });
+  });
+
+  it('does NOT route opened/synchronize while the PR is still a draft', async () => {
+    const openedDraft = await postPullRequest({
+      action: 'opened',
+      repository: { full_name: 'org/repo' },
+      pull_request: { number: 324, draft: true },
+    });
+    expect(openedDraft).toMatchObject({ skipped: true, reason: 'pull_request action opened' });
+    const syncDraft = await postPullRequest({
+      action: 'synchronize',
+      repository: { full_name: 'org/repo' },
+      pull_request: { number: 324, draft: true },
+    });
+    expect(syncDraft).toMatchObject({ skipped: true, reason: 'pull_request action synchronize' });
+    expect(readyMock).not.toHaveBeenCalled();
+  });
+
+  it('400s a malformed reviewable event (missing pr number)', async () => {
     const json = await postPullRequest({
       action: 'ready_for_review',
       repository: { full_name: 'org/repo' },
@@ -320,17 +360,17 @@ describe('webhook handler: 👀 ack + own-bot gate', () => {
     expect(readyMock).not.toHaveBeenCalled();
   });
 
-  it('still skips other non-closed pull_request actions (e.g. synchronize)', async () => {
+  it('still skips non-reviewable pull_request actions (e.g. edited)', async () => {
     const json = await postPullRequest({
-      action: 'synchronize',
+      action: 'edited',
       repository: { full_name: 'org/repo' },
-      pull_request: { number: 321 },
+      pull_request: { number: 321, draft: false },
     });
-    expect(json).toMatchObject({ skipped: true, reason: 'pull_request action synchronize' });
+    expect(json).toMatchObject({ skipped: true, reason: 'pull_request action edited' });
     expect(readyMock).not.toHaveBeenCalled();
   });
 
-  it('delivers a peer-forwarded ready_for_review via trust headers (no GitHub signature)', async () => {
+  it('delivers a peer-forwarded reviewable event via trust headers (no GitHub signature)', async () => {
     // A forward from the canonical router carries X-Webhook-Trust=pre-validated
     // and X-Internal-Signature-256, no X-Hub-Signature-256. The body is signed
     // with INTERNAL_REGISTER_SECRET ('trust-secret' in the config mock). We assert
