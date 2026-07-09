@@ -1,7 +1,7 @@
 ---
 name: slang-github-webhook
 license: MIT
-description: 'Handle GitHub PR webhooks: @nv-slang-bot mentions (route via send_message + one editable TODO comment), and on a PR you own — review verdicts, inline comments, review-thread resolves, and CI failures (reply, resolve LLM threads, infra-vs-code CI triage).'
+description: 'Handle GitHub PR webhooks: @nv-slang-bot mentions and reviewable-PR events (draft→ready / opened / synchronize) — route via send_message; and on a PR you own — review verdicts, inline comments, review-thread resolves, and CI failures (reply, resolve LLM threads, infra-vs-code CI triage).'
 provides: [github.webhook.routing]
 allowed-tools: Bash(gh:*), Bash(jq:*), Bash(date:*), Bash(mkdir:*), Bash(echo:*), Bash(cat:*), mcp__nanoclaw__send_message
 ---
@@ -11,6 +11,7 @@ allowed-tools: Bash(gh:*), Bash(jq:*), Bash(date:*), Bash(mkdir:*), Bash(echo:*)
 Run on a `kind: webhook` message whose `content.event` starts `github.`:
 
 - `github.pr_mention` → **route** to the owning coworker (the orchestrator's job — see below).
+- `github.pr_ready_for_review` → a PR became reviewable (draft→ready, opened non-draft, or a new push). **Route** to the project's `*-pr-approver` coworker (the orchestrator's job — see "Reviewable PR events").
 - `github.pr_review` / `github.pr_review_comment` / `github.pr_review_thread` / `github.ci_failed` → **handle on the PR you own** (a coworker's job — see "PR activity events").
 
 A PR routed to **your** session via `pr_session_mappings` is yours: handle the
@@ -131,6 +132,56 @@ gh api repos/{repo}/issues/comments/{comment_id} --jq '{user: .user.login, body,
 ### 7. New webhook → new comment
 
 A fresh `kind: webhook` inbound = new task = new POST + new TODO list. Overwrite `comment_id` in `/workspace/agent/.gh-comments/{repo}-{issue_number}.id`; the previous comment stays as a record.
+
+## Reviewable PR events (`github.pr_ready_for_review`)
+
+The host delivers `github.pr_ready_for_review` when a PR becomes reviewable —
+its `content.reason` says which trigger:
+
+- `ready_for_review` — a draft was marked ready.
+- `opened` — a PR was opened directly as non-draft.
+- `synchronize` — new commits were pushed to an already-ready PR (re-review; no
+  stale reviews). All sources fire this, including the bot's own pushes.
+
+**This is a routing job — like `pr_mention`, you (the orchestrator) forward it
+to the project's PR-approver coworker; that coworker does the review and owns
+the GitHub side.** There is no triggering comment, so **skip the 👀 step** —
+post nothing yourself.
+
+### Procedure
+
+1. **Parse** `content`: `repo`, `pr_number`, `pr_url`, `title`, `author`, `reason`.
+
+2. **Find the PR-approver coworker in your destinations.** List your
+   destinations (`ncl destinations list`) and pick the coworker whose name is
+   the project's PR-approver — i.e. ends in `-pr-approver` (e.g.
+   `slang-pr-approver` for `shader-slang/slang` and `shader-slang/slang-rhi`;
+   `slangpy-pr-approver` for `shader-slang/slangpy`). Route ONLY to that
+   coworker.
+
+3. **If no `*-pr-approver` coworker for that repo is in your destinations** — do
+   NOT fall back to a reviewer, fixer, or any other coworker, and do NOT
+   silently swallow it. Surface the failure the way you would any unroutable
+   request (report it to the human / it shows on the dashboard) and stop. A
+   reviewable event with no PR-approver is a configuration gap, not work to
+   improvise or reroute.
+
+4. **Dispatch** to the PR-approver via `mcp__nanoclaw__send_message` (never
+   inline `<message to>`). A reviewable event is self-authorizing to post back
+   (the bot owns the review of its own project's PR) — include
+   `<github-post-authorized />`:
+
+```
+mcp__nanoclaw__send_message(
+  to: "{pr-approver}",
+  text: "PR {repo}#{pr_number} is ready for review ({reason}): {title}\n\nReview the PR and post your verdict.\n\nPR: {pr_url}\n\n<github-post-authorized />\nREPO={repo}\nPR={pr_number}\nMODE=pr-review-fix"
+)
+```
+
+The `REPO=`/`PR=`/`MODE=` lines are parsed by the receiving workflow
+(`grep -oE`) — keep them byte-exact. The PR-approver's own review flow (below)
+takes over from there; a `synchronize` re-review lands in the same PR session,
+so it continues the existing thread rather than starting fresh.
 
 ## PR activity events (review verdict, review thread, CI failure)
 
