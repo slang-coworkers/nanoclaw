@@ -8371,6 +8371,45 @@ function fmtUsd(n) {
   return '$' + n.toFixed(2);
 }
 
+// "Context" cell for the By-Coworker table: how hard a coworker pushes context.
+// Renders a 5-bar peak-context histogram (per-session peak as % of the model's
+// window: <25/25-50/50-75/75-90/90%+), the mean peak %, and the compaction count
+// (⟳). Colored by mean peak so a glance flags coworkers running hot. cs is the
+// server-side ContextStats ({sessions, compactions, auto/manual, avgPeakPct,
+// avgPreTokens, histogram, maxContext, capped}) or null.
+function contextCellHtml(cs) {
+  if (!cs || !cs.sessions) return '<span style="color:var(--text-muted)">—</span>';
+  const pct = cs.avgPeakPct || 0;
+  const pctColor = pct >= 90 ? '#f85149' : pct >= 75 ? '#d29922' : pct >= 50 ? '#58a6ff' : '#3fb950';
+  // 5-bar sparkline histogram of per-session peak-context buckets.
+  const hist = Array.isArray(cs.histogram) ? cs.histogram : [];
+  const maxBar = Math.max(1, ...hist);
+  const barColors = ['#3fb950', '#79c0ff', '#58a6ff', '#d29922', '#f85149'];
+  const bucketLabels = ['<25%', '25–50%', '50–75%', '75–90%', '90%+'];
+  const BW = 7,
+    GAP = 2,
+    HH = 22;
+  const bars = hist
+    .map((v, i) => {
+      const h = Math.max(1, Math.round((v / maxBar) * HH));
+      return `<rect x="${i * (BW + GAP)}" y="${HH - h}" width="${BW}" height="${h}" fill="${barColors[i]}" fill-opacity="${v ? 0.95 : 0.2}"><title>${bucketLabels[i]} peak: ${v} session${v === 1 ? '' : 's'}</title></rect>`;
+    })
+    .join('');
+  const svgW = hist.length * (BW + GAP);
+  const compTitle =
+    `${cs.compactions} compaction${cs.compactions === 1 ? '' : 's'}` +
+    (cs.compactions ? ` (${cs.autoCompactions} auto / ${cs.manualCompactions} manual; avg ${fmtNum(cs.avgPreTokens)} tok at compaction)` : '') +
+    ` across ${cs.sessions} session${cs.sessions === 1 ? '' : 's'}${cs.capped ? ' (capped)' : ''}`;
+  const comp = cs.compactions
+    ? `<span title="${esc(compTitle)}" style="color:${cs.compactions >= 5 ? '#f85149' : cs.compactions >= 1 ? '#d29922' : 'var(--text-muted)'}">⟳${cs.compactions}</span>`
+    : `<span title="${esc(compTitle)}" style="color:var(--text-muted)">⟳0</span>`;
+  return `<div style="display:flex;align-items:center;gap:8px" title="mean per-session peak context: ${pct}% of ${fmtNum(cs.maxContext)}-token window">
+      <svg width="${svgW}" height="${HH}" viewBox="0 0 ${svgW} ${HH}" style="flex:none">${bars}</svg>
+      <span style="color:${pctColor};font-weight:600">${pct}%</span>
+      ${comp}
+    </div>`;
+}
+
 function renderMetricsTokens(el, data) {
   const days = data.daily || [];
   const p = data.period || metricsState.tokenPeriod;
@@ -8478,14 +8517,14 @@ function renderMetricsTokens(el, data) {
           cacheCreate += d.cacheCreationTokens || 0;
         }
         const models = [...new Set(cw.daily.flatMap((d) => d.modelsUsed || []))];
-        return { name: cw.groupName, cost, tokens, input, output, cacheRead, cacheCreate, models };
+        return { name: cw.groupName, cost, tokens, input, output, cacheRead, cacheCreate, models, contextStats: cw.contextStats || null };
       })
       .sort((a, b) => b.cost - a.cost);
 
     html += `<h4 style="margin:16px 0 8px;color:#94A3B8">By Coworker</h4>
-    <table class="admin-table"><thead><tr><th>Coworker</th><th>Cost</th><th>Tokens</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Models</th></tr></thead><tbody>`;
+    <table class="admin-table"><thead><tr><th>Coworker</th><th>Cost</th><th>Tokens</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Models</th><th title="Per-session peak context (histogram: &lt;25/25-50/50-75/75-90/90%+ of the model window), mean peak %, and compaction count ⟳">Context</th></tr></thead><tbody>`;
     for (const cw of cwSummary) {
-      html += `<tr><td>${esc(cw.name)}</td><td style="color:#10B981">${fmtUsd(cw.cost)}</td><td>${fmtNum(cw.tokens)}</td><td>${fmtNum(cw.input)}</td><td>${fmtNum(cw.output)}</td><td>${fmtNum(cw.cacheRead)}</td><td><code style="font-size:10px">${esc(cw.models.join(', '))}</code></td></tr>`;
+      html += `<tr><td>${esc(cw.name)}</td><td style="color:#10B981">${fmtUsd(cw.cost)}</td><td>${fmtNum(cw.tokens)}</td><td>${fmtNum(cw.input)}</td><td>${fmtNum(cw.output)}</td><td>${fmtNum(cw.cacheRead)}</td><td><code style="font-size:10px">${esc(cw.models.join(', '))}</code></td><td>${contextCellHtml(cw.contextStats)}</td></tr>`;
     }
     html += '</tbody></table>';
   }

@@ -1523,6 +1523,184 @@ if (!process.env.VITEST) {
   ctxTimer.unref?.();
 }
 
+// ---------- Context-usage stats per coworker (compactions + peak histogram) ----------
+// Distinct from contextWindowCache (which only snapshots the *latest* turn): this
+// scans every session transcript for a group and answers "how hard is this
+// coworker pushing context?" — how often it compacts, and the distribution of
+// per-session peak context. Feeds the "Context" column in the By-Coworker table.
+interface ContextStats {
+  sessions: number; // transcript files that had at least one usage/compaction signal
+  compactions: number; // total compact_boundary events
+  autoCompactions: number;
+  manualCompactions: number;
+  avgPreTokens: number; // mean context size (tokens) at the moment of compaction
+  avgPeakContext: number; // mean per-session peak context tokens
+  avgPeakPct: number; // avgPeakContext as % of model max context
+  maxContext: number; // model context window used for the % scale
+  histogram: number[]; // per-session peak-context% distribution, 5 buckets
+  capped: boolean; // true if the transcript scan hit the per-group file cap
+}
+// Peak-context% buckets: <25, 25–50, 50–75, 75–90, 90%+. The last two are narrow
+// on purpose — that's where compaction risk lives and where the signal matters.
+const CONTEXT_HIST_BUCKETS = [0.25, 0.5, 0.75, 0.9, Infinity];
+const MAX_CONTEXT_FILES_PER_GROUP = 400; // bound the scan on very long-lived groups
+interface PerFileContext {
+  mtimeMs: number;
+  peak: number; // max (input + cache_read + cache_creation) across assistant turns
+  compactions: number;
+  auto: number;
+  manual: number;
+  preTokensSum: number;
+  model: string; // last model seen — drives the max-context scale
+  hadSignal: boolean;
+}
+// Per-file cache keyed by path: transcripts are append-only, so a file whose mtime
+// is unchanged never needs re-parsing. Only the active session file (which grows
+// each turn) is re-read on a given cycle.
+const perFileContextCache = new Map<string, PerFileContext>();
+const contextStatsCache = new Map<string, ContextStats>();
+
+function scanFileContext(path: string, mtimeMs: number): PerFileContext {
+  const cached = perFileContextCache.get(path);
+  if (cached && cached.mtimeMs === mtimeMs) return cached;
+  const out: PerFileContext = {
+    mtimeMs,
+    peak: 0,
+    compactions: 0,
+    auto: 0,
+    manual: 0,
+    preTokensSum: 0,
+    model: 'unknown',
+    hadSignal: false,
+  };
+  try {
+    const lines = readFileSync(path, 'utf-8').split('\n');
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      // Cheap pre-filter before JSON.parse — most lines are neither.
+      if (line.indexOf('"usage"') < 0 && line.indexOf('compact_boundary') < 0) continue;
+      let r: Record<string, unknown>;
+      try {
+        r = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (r.type === 'system' && r.subtype === 'compact_boundary') {
+        const m = (r.compactMetadata || {}) as { trigger?: string; preTokens?: number };
+        out.compactions++;
+        if (m.trigger === 'manual') out.manual++;
+        else out.auto++;
+        out.preTokensSum += m.preTokens || 0;
+        out.hadSignal = true;
+        continue;
+      }
+      const msg = r.message as { usage?: Record<string, number>; model?: string } | undefined;
+      if (r.type === 'assistant' && msg?.usage) {
+        const u = msg.usage;
+        const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+        if (ctx > out.peak) out.peak = ctx;
+        if (msg.model) out.model = msg.model;
+        out.hadSignal = true;
+      }
+    }
+  } catch {
+    /* unreadable file — treat as no signal */
+  }
+  perFileContextCache.set(path, out);
+  return out;
+}
+
+function refreshContextStatsCache(): void {
+  if (!db) return;
+  try {
+    const groups = db.prepare('SELECT id, folder FROM agent_groups').all() as { id: string; folder: string }[];
+    const sessionsDir = join(getDataDir(), 'v2-sessions');
+    const livePaths = new Set<string>();
+    for (const group of groups) {
+      const claudeShared = join(sessionsDir, group.id, '.claude-shared');
+      let files = collectClaudeJsonlFiles(claudeShared);
+      if (files.length === 0) {
+        contextStatsCache.delete(group.id);
+        continue;
+      }
+      // Most-recent files first, then cap — a group with thousands of archived
+      // transcripts shouldn't stall the poll; we log the cap via `capped`.
+      const withMtime = files
+        .map((f) => {
+          try {
+            return { f, m: statSync(f).mtimeMs };
+          } catch {
+            return { f, m: 0 };
+          }
+        })
+        .sort((a, b) => b.m - a.m);
+      const capped = withMtime.length > MAX_CONTEXT_FILES_PER_GROUP;
+      const chosen = withMtime.slice(0, MAX_CONTEXT_FILES_PER_GROUP);
+
+      const peaks: number[] = [];
+      let compactions = 0,
+        auto = 0,
+        manual = 0,
+        preTokensSum = 0,
+        preTokensCount = 0,
+        sessions = 0,
+        lastModel = 'unknown';
+      for (const { f, m } of chosen) {
+        livePaths.add(f);
+        const fc = scanFileContext(f, m);
+        if (!fc.hadSignal) continue;
+        sessions++;
+        if (fc.peak > 0) peaks.push(fc.peak);
+        compactions += fc.compactions;
+        auto += fc.auto;
+        manual += fc.manual;
+        preTokensSum += fc.preTokensSum;
+        preTokensCount += fc.compactions;
+        if (fc.model !== 'unknown') lastModel = fc.model;
+      }
+      if (sessions === 0) {
+        contextStatsCache.delete(group.id);
+        continue;
+      }
+      const maxContext = modelMaxContext(lastModel);
+      const avgPeakContext = peaks.length ? peaks.reduce((a, b) => a + b, 0) / peaks.length : 0;
+      const histogram = new Array(CONTEXT_HIST_BUCKETS.length).fill(0);
+      for (const p of peaks) {
+        const pct = maxContext > 0 ? p / maxContext : 0;
+        const bi = CONTEXT_HIST_BUCKETS.findIndex((t) => pct < t);
+        histogram[bi < 0 ? CONTEXT_HIST_BUCKETS.length - 1 : bi]++;
+      }
+      contextStatsCache.set(group.id, {
+        sessions,
+        compactions,
+        autoCompactions: auto,
+        manualCompactions: manual,
+        avgPreTokens: preTokensCount ? Math.round(preTokensSum / preTokensCount) : 0,
+        avgPeakContext: Math.round(avgPeakContext),
+        avgPeakPct: maxContext > 0 ? Math.round((avgPeakContext / maxContext) * 100) : 0,
+        maxContext,
+        histogram,
+        capped,
+      });
+    }
+    // Evict per-file cache entries for transcripts no longer in any group's window.
+    if (perFileContextCache.size > livePaths.size * 2 + 1000) {
+      for (const k of perFileContextCache.keys()) if (!livePaths.has(k)) perFileContextCache.delete(k);
+    }
+  } catch {
+    /* DB not ready */
+  }
+}
+if (!process.env.VITEST) {
+  // Defer the first (cold) scan a few seconds so it never blocks server startup —
+  // it reads every transcript once (~seconds on a large install); after that the
+  // per-file cache makes each 60s cycle cheap (only the growing active files are
+  // re-read). Until the first scan lands the endpoint just reports null stats.
+  setTimeout(refreshContextStatsCache, 4000).unref?.();
+  const ctxStatsTimer = setInterval(refreshContextStatsCache, 60000);
+  ctxStatsTimer.unref?.();
+}
+
 // ---------- Per-group token aggregation (JSONL scanning) ----------
 interface GroupTokenBucket {
   requests: number;
@@ -6832,7 +7010,10 @@ export async function handleRequest(
     res.end(
       JSON.stringify({
         daily: periodData.combined,
-        byCoworker: periodData.byGroup,
+        byCoworker: periodData.byGroup.map((g) => ({
+          ...g,
+          contextStats: contextStatsCache.get(g.groupId) ?? null,
+        })),
         period,
         lastRefresh: ccusageCache.lastRefresh,
       }),
