@@ -560,7 +560,7 @@ const recordDecision: McpToolDefinition = {
           description: 'Closed enum: WOULD_APPROVE | BLOCK | ABSTAIN_POLICY | ABSTAIN_INFRA',
         },
         reason_code: { type: 'string', description: 'e.g. CLAUSE_FAIL:<name>, OPEN_GAP, REVIEW_DOC_MISSING' },
-        review_diff_hash: { type: 'string', description: "The diff_hash the review doc reported reviewing" },
+        review_diff_hash: { type: 'string', description: 'The diff_hash the review doc reported reviewing' },
         policy_version: { type: 'string', description: 'APPROVAL_POLICY policy_version' },
         clauses: { description: 'The clauses.json evidence (object or JSON string)' },
         challenger: { description: 'Challenger finding or CHALLENGER_CLEAN (object or JSON string)' },
@@ -653,11 +653,4 @@ const recordHumanVerdict: McpToolDefinition = {
   },
 };
 
-registerTools([
-  sendMessage,
-  sendFile,
-  addReaction,
-  reportPrCreated,
-  recordDecision,
-  recordHumanVerdict,
-]);
+registerTools([sendMessage, sendFile, addReaction, reportPrCreated, recordDecision, recordHumanVerdict]);

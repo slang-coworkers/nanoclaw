@@ -50,7 +50,9 @@ describe('upsertDecision', () => {
     runMigrations(db);
     upsertDecision(db, baseWrite());
     const row = db
-      .prepare('SELECT decision, mode, policy_version, human_verdict FROM approval_decisions WHERE repo=? AND pr_number=? AND commit_sha=?')
+      .prepare(
+        'SELECT decision, mode, policy_version, human_verdict FROM approval_decisions WHERE repo=? AND pr_number=? AND commit_sha=?',
+      )
       .get('shader-slang/slang', 11993, 'abc123def456abc123def456abc123def456abcd') as Record<string, unknown>;
     expect(row.decision).toBe('WOULD_APPROVE');
     expect(row.mode).toBe('historical');
@@ -63,7 +65,9 @@ describe('upsertDecision', () => {
     runMigrations(db);
     upsertDecision(db, baseWrite());
     upsertDecision(db, baseWrite({ decision: 'ABSTAIN_POLICY', reasonCode: 'OPEN_GAP' }));
-    const rows = db.prepare('SELECT decision, reason_code FROM approval_decisions').all() as Array<Record<string, unknown>>;
+    const rows = db.prepare('SELECT decision, reason_code FROM approval_decisions').all() as Array<
+      Record<string, unknown>
+    >;
     expect(rows).toHaveLength(1);
     expect(rows[0].decision).toBe('ABSTAIN_POLICY');
     expect(rows[0].reason_code).toBe('OPEN_GAP');
@@ -84,9 +88,17 @@ describe('recordHumanVerdict', () => {
     const db = initTestDb();
     runMigrations(db);
     upsertDecision(db, baseWrite());
-    const joined = recordHumanVerdict(db, 'shader-slang/slang', 11993, 'abc123def456abc123def456abc123def456abcd', 'APPROVED');
+    const joined = recordHumanVerdict(
+      db,
+      'shader-slang/slang',
+      11993,
+      'abc123def456abc123def456abc123def456abcd',
+      'APPROVED',
+    );
     expect(joined).toBe(true);
-    const row = db.prepare('SELECT human_verdict FROM approval_decisions WHERE commit_sha=?').get('abc123def456abc123def456abc123def456abcd') as { human_verdict: string };
+    const row = db
+      .prepare('SELECT human_verdict FROM approval_decisions WHERE commit_sha=?')
+      .get('abc123def456abc123def456abc123def456abcd') as { human_verdict: string };
     expect(row.human_verdict).toBe('APPROVED');
   });
 
@@ -101,10 +113,18 @@ describe('recordHumanVerdict', () => {
     const db = initTestDb();
     runMigrations(db);
     upsertDecision(db, baseWrite());
-    recordHumanVerdict(db, 'shader-slang/slang', 11993, 'abc123def456abc123def456abc123def456abcd', 'CHANGES_REQUESTED');
+    recordHumanVerdict(
+      db,
+      'shader-slang/slang',
+      11993,
+      'abc123def456abc123def456abc123def456abcd',
+      'CHANGES_REQUESTED',
+    );
     // Re-decide the same commit — human_verdict must survive (COALESCE subquery).
     upsertDecision(db, baseWrite({ decision: 'BLOCK' }));
-    const row = db.prepare('SELECT decision, human_verdict FROM approval_decisions WHERE commit_sha=?').get('abc123def456abc123def456abc123def456abcd') as Record<string, unknown>;
+    const row = db
+      .prepare('SELECT decision, human_verdict FROM approval_decisions WHERE commit_sha=?')
+      .get('abc123def456abc123def456abc123def456abcd') as Record<string, unknown>;
     expect(row.decision).toBe('BLOCK');
     expect(row.human_verdict).toBe('CHANGES_REQUESTED');
   });
