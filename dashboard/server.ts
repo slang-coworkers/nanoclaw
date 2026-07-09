@@ -1551,7 +1551,7 @@ interface PerFileContext {
   auto: number;
   manual: number;
   preTokensSum: number;
-  model: string; // last model seen — drives the max-context scale
+  maxWindow: number; // max model context window seen in this file (0 if none)
   hadSignal: boolean;
 }
 // Per-file cache keyed by path: transcripts are append-only, so a file whose mtime
@@ -1570,7 +1570,7 @@ function scanFileContext(path: string, mtimeMs: number): PerFileContext {
     auto: 0,
     manual: 0,
     preTokensSum: 0,
-    model: 'unknown',
+    maxWindow: 0,
     hadSignal: false,
   };
   try {
@@ -1599,7 +1599,11 @@ function scanFileContext(path: string, mtimeMs: number): PerFileContext {
         const u = msg.usage;
         const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
         if (ctx > out.peak) out.peak = ctx;
-        if (msg.model) out.model = msg.model;
+        // Track the LARGEST window across models used — a session's effective
+        // context is the 1M Opus window whenever any turn runs on it, even if a
+        // later turn hands off to a 200k model (sonnet/haiku/gpt). Scaling to the
+        // last-seen model would understate the window and inflate the peak %.
+        if (msg.model) out.maxWindow = Math.max(out.maxWindow, modelMaxContext(msg.model));
         out.hadSignal = true;
       }
     }
@@ -1644,7 +1648,7 @@ function refreshContextStatsCache(): void {
         preTokensSum = 0,
         preTokensCount = 0,
         sessions = 0,
-        lastModel = 'unknown';
+        groupMaxWindow = 0;
       for (const { f, m } of chosen) {
         livePaths.add(f);
         const fc = scanFileContext(f, m);
@@ -1656,13 +1660,15 @@ function refreshContextStatsCache(): void {
         manual += fc.manual;
         preTokensSum += fc.preTokensSum;
         preTokensCount += fc.compactions;
-        if (fc.model !== 'unknown') lastModel = fc.model;
+        if (fc.maxWindow > groupMaxWindow) groupMaxWindow = fc.maxWindow;
       }
       if (sessions === 0) {
         contextStatsCache.delete(group.id);
         continue;
       }
-      const maxContext = modelMaxContext(lastModel);
+      // Widest window the coworker actually ran on (1M for Opus fleets); fall back
+      // to the model default if no model was ever identified.
+      const maxContext = groupMaxWindow || modelMaxContext('unknown');
       const avgPeakContext = peaks.length ? peaks.reduce((a, b) => a + b, 0) / peaks.length : 0;
       const histogram = new Array(CONTEXT_HIST_BUCKETS.length).fill(0);
       for (const p of peaks) {
