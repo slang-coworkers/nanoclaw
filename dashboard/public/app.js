@@ -613,7 +613,11 @@ function funnelIssueTableHtml(issues, rows, statusColors) {
   const bucketLabel = { bot_pr: '', triage_only: 'triage-only', never_engaged: 'never-engaged', resolved_elsewhere: 'resolved-elsewhere' };
   const bucketColor = { bot_pr: null, triage_only: statusColors.triage, never_engaged: statusColors.never, resolved_elsewhere: statusColors.resolved };
   let html = `<details style="margin-top:14px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--text)">All ${actionable.length} actionable issues</summary>`;
-  html += `<table class="admin-table" style="margin-top:4px;font-size:11px"><thead><tr><th>Inst</th><th>Issue</th><th>PR</th><th>State</th><th>CI</th><th>Stage</th><th>Note</th></tr></thead><tbody>`;
+  // Verity (PR-approver) shadow-mode decision colors. Approve = green,
+  // block = red, abstain = muted. Falls through to '' (blank cell) when no
+  // approver ran for the PR.
+  const approverColor = { WOULD_APPROVE: statusColors.merged, BLOCK: '#e5534b', ABSTAIN_POLICY: 'var(--text-muted)', ABSTAIN_INFRA: 'var(--text-muted)' };
+  html += `<table class="admin-table" style="margin-top:4px;font-size:11px"><thead><tr><th>Inst</th><th>Issue</th><th>PR</th><th>State</th><th>CI</th><th>Stage</th><th>Note</th><th>Approver</th></tr></thead><tbody>`;
   for (const i of actionable) {
     const repo = (i.repo || '').split('/').pop();
     const r = rowByIssue[`${i.repo}#${i.number}`] || (i.prNumber ? rowByPr[`${i.repo}#${i.prNumber}`] : null);
@@ -628,7 +632,12 @@ function funnelIssueTableHtml(issues, rows, statusColors) {
     const noteCell = r ? (r.note || '') : (i.note || '');
     const color = bucketColor[i.bucket] || (stageVal === 'merged' ? statusColors.merged : stageVal === 'shipped-draft' ? statusColors.shipped : stageVal === 'pr-ready' ? statusColors.ready : '');
     const style = color ? ` style="color:${color}"` : '';
-    html += `<tr><td>${esc(inst)}</td><td>${esc(repo)} ${issueLink}</td><td>${prCell}</td><td>${esc(stateCell)}</td><td>${esc(ciCell)}</td><td${style}>${esc(stageVal)}</td><td style="color:var(--text-muted)">${esc(noteCell)}</td></tr>`;
+    // Approver cell: Verity's decision, with the joined human outcome shown as
+    // "DECISION → HUMAN" once the human review lands (accuracy at a glance).
+    const appr = r ? r.approver : null;
+    const apprText = appr ? (appr.human ? `${appr.decision} → ${appr.human}` : appr.decision) : '';
+    const apprStyle = appr && approverColor[appr.decision] ? ` style="color:${approverColor[appr.decision]}"` : ' style="color:var(--text-muted)"';
+    html += `<tr><td>${esc(inst)}</td><td>${esc(repo)} ${issueLink}</td><td>${prCell}</td><td>${esc(stateCell)}</td><td>${esc(ciCell)}</td><td${style}>${esc(stageVal)}</td><td style="color:var(--text-muted)">${esc(noteCell)}</td><td${apprStyle}>${esc(apprText)}</td></tr>`;
   }
   html += '</tbody></table></details>';
   return html;
