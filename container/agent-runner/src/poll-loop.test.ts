@@ -186,6 +186,61 @@ describe('accumulate gate (trigger column)', () => {
   });
 });
 
+describe('sidecar correlation rows never starve the poll window (seq-starvation regression)', () => {
+  // Seed a row with an explicit seq so we can reproduce the burial ordering.
+  function insertSeq(
+    seq: number,
+    id: string,
+    kind: string,
+    content: object,
+    opts?: { processAfter?: string; trigger?: 0 | 1 },
+  ) {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, trigger, on_wake, content)
+         VALUES (?, ?, ?, datetime('now'), 'pending', ?, ?, 0, ?)`,
+      )
+      .run(id, seq, kind, opts?.processAfter ?? null, opts?.trigger ?? 1, JSON.stringify(content));
+  }
+
+  it('a low-seq task is returned despite many higher-seq orphaned cli_response rows', () => {
+    // The bug: getPendingMessages did `ORDER BY seq DESC LIMIT 10` BEFORE the
+    // caller filtered kind==='system'. Orphaned cli_response rows (process_after
+    // NULL = always due) piled up at high seq and filled the 10-row window, so a
+    // real scheduled task at a lower seq was never fetched → never fired → its
+    // recurrence froze. Here: 1 task at seq 1, then 20 sidecar rows at seq 100+.
+    insertSeq(1, 'task-buried', 'task', { prompt: 'daily wiki synth' }, { processAfter: '2000-01-01T00:00:00.000Z' });
+    for (let i = 0; i < 20; i++) {
+      insertSeq(100 + i, `cli-resp-${i}`, 'system', { type: 'cli_response', requestId: `cli-${i}`, frame: {} });
+    }
+    const messages = getPendingMessages();
+    const ids = messages.map((m) => m.id);
+    // The task must be present even though 20 higher-seq sidecar rows exist.
+    expect(ids).toContain('task-buried');
+    // And no sidecar rows leak into the poll result at all.
+    expect(ids.some((id) => id.startsWith('cli-resp-'))).toBe(false);
+  });
+
+  it('question_response sidecar rows are also excluded from the window', () => {
+    insertSeq(1, 'task-buried', 'task', { prompt: 'x' }, { processAfter: '2000-01-01T00:00:00.000Z' });
+    for (let i = 0; i < 20; i++) {
+      insertSeq(100 + i, `qr-${i}`, 'system', { type: 'question_response', questionId: `q-${i}`, selectedOption: 'a' });
+    }
+    const ids = getPendingMessages().map((m) => m.id);
+    expect(ids).toContain('task-buried');
+    expect(ids.some((id) => id.startsWith('qr-'))).toBe(false);
+  });
+
+  it('agent-facing system rows (action=*, e.g. register_group) are STILL returned', () => {
+    // Only the sidecar `type` handshakes are excluded; system rows the agent is
+    // meant to see (create_agent / register_group results, keyed on `action`)
+    // must keep flowing to the formatter as <system_response>.
+    insertSeq(1, 'sys-facing', 'system', { action: 'register_group', status: 'success', result: { id: 'ag-1' } });
+    const ids = getPendingMessages().map((m) => m.id);
+    expect(ids).toContain('sys-facing');
+  });
+});
+
 describe('on_wake filtering', () => {
   it('first poll returns on_wake=1 messages', () => {
     insertMessage('m1', 'chat', { sender: 'system', text: 'Resuming.' }, { onWake: 1 });
