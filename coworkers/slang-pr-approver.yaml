@@ -3,6 +3,7 @@ mode: standard
 requires:
   coworkerTypes:
     - slang-pr-approver
+    - slang-common
     - base-common
 agent:
   name: Slang PR Approver

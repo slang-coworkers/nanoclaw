@@ -133,33 +133,24 @@ slang-discord:
   required_critique_stages: [OUTPUT_REVIEW]
 
 slang-pr-approver:
-  description: "Standalone approval-decision spine — deterministic eligibility clauses + adversarial challenger over pre-staged review artifacts. GitHub is read-only when available (snapshots are the baseline input); writes to GitHub are forbidden. deepwiki MCP is supplementary."
+  description: "Approval-decision coworker — turns finished PR reviews into one auditable decision each (WOULD_APPROVE | ABSTAIN | BLOCK), critique-gated, shadow-mode. Inherits slang-common (repo context, deepwiki, slang-github reads, codex-critique binding). Writing to GitHub is forbidden by invariant and gate, not by capability absence."
   project: slang
-  extends: base-common
-  vars:
-    repo: shader-slang/slang
-    project: slang
+  extends: slang-common
   skills:
     - slang-pr-review-runner
     - slang-pr-approver
   workflows:
     - slang-pr-approve
-  mcpServers:
-    deepwiki:
-      type: http
-      url: https://mcp.deepwiki.com/mcp
-  bindings:
-    critique: codex-critique
   # Verity's terminal artifact is the approval decision, and its "delivery"
-  # is internal-tier: the decisions.jsonl append + the [Approval Decision]
-  # message. Nothing leaves the system, but downstream automation trusts the
-  # ledger, so it is gated like a boundary. DECISION_REVIEW independently
-  # vets the derivation (clauses evaluated from data, verdict parse matches
-  # final-review.md, mode discipline: historical stays R0-pinned);
-  # OUTPUT_REVIEW vets the ledger line + decision message themselves.
-  # The marker is declared here (novel, project-level) so the composer unions
-  # it into the shared vocabulary: the same token drives routing and gating —
-  # dropping it to dodge the gate also drops the message from routing.
+  # is internal-tier: the ledger append + the [Approval Decision] message.
+  # Nothing leaves the system, but downstream automation trusts the ledger,
+  # so it is gated like a boundary. DECISION_REVIEW independently vets the
+  # derivation (clauses evaluated from data, verdict parse matches
+  # final-review.md, historical mode stays R0-pinned); OUTPUT_REVIEW vets
+  # the ledger line + decision message themselves. The marker is declared
+  # here (novel, project-level) so the composer unions it into the shared
+  # vocabulary: the same token drives routing and gating — dropping it to
+  # dodge the gate also drops the message from routing.
   required_critique_stages: [DECISION_REVIEW, OUTPUT_REVIEW]
   delivery_markers:
     - Approval Decision
