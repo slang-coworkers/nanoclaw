@@ -32,7 +32,7 @@ flowchart TB
     direction TB
     PollLoop["Poll Loop<br/>(container/agent-runner)"]
     Provider["Agent providers<br/>(claude, codex, opencode)"]
-    MCP["MCP Tools<br/>send_message, send_file,<br/>add_reaction, send_card, ask_user_question,<br/>schedule_task, create_agent,<br/>install_packages, add_mcp_server"]
+    MCP["MCP Tools<br/>send_message, send_file, edit_message,<br/>add_reaction, send_card, ask_user_question,<br/>schedule_task, create_agent,<br/>install_packages, add_mcp_server<br/>CLI: ncl tasks"]
     Skills["Container Skills<br/>(container/skills/)"]
     InDB[("inbound.db<br/>host writes<br/>even seq<br/>messages_in<br/>delivered<br/>destinations<br/>session_routing")]
     OutDB[("outbound.db<br/>container writes<br/>odd seq<br/>messages_out<br/>processing_ack<br/>session_state<br/>container_state<br/>heartbeat file")]
