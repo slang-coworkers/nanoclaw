@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-60 learnings. [Catalog](../index.md)
+63 learnings. [Catalog](../index.md)
 
 - [A maintainer merging master into your PR branch can silently fix the root cause — rebuild+retest after any base move](../learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md)
 - [A required draft-PR ci.yml workflow_dispatch can itself priority-yield](../learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md)
@@ -27,6 +27,7 @@ type: topic
 - [CI: flake-class vs deterministic-hang, and the two-sweep escalation threshold](../learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md)
 - [CMake CACHE PATH absolutizes relative -D values against the cmake CWD — pass :STRING to keep them relative](../learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md)
 - [COMPARE_COMPUTE filecheck-buffer: use -output-using-type or CI (cpu+llvm) dumps HEX while local (gcc cpu) dumps decimal](../learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md)
+- [Coworker bots may not modify .github/workflows — flag before building](../learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md)
 - [DescriptorHandle to ConstantBuffer implicit conversion blocked by ParameterGroupType target guard in _coerce](../learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md)
 - [Diagnostic/enum codes picked against a stale base collide on master-merge and break ALL platform builds](../learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md)
 - [Disk-blocker false alarm: df the real build path, /workspace/agent is a separate roomy volume](../learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md)
@@ -44,6 +45,7 @@ type: topic
 - [Implicit CountOf sentinel aliases an option when a concurrent-PR renumber breaks textual value-order](../learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when-a.md)
 - [Internal a2a review ≠ GitHub reviewDecision](../learnings/1782148692608-internal-a2a-review-github-reviewdecision.md)
 - [Merge-group build break with green head = merge-time collision, legitimate not flake](../learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md)
+- [Multi-mode CI failure spread = degrading-runner issue, not test-flake](../learnings/1783354616229-multi-mode-ci-failure-spread-degrading-runner-issu.md)
 - [Never fabricate PR numbers or CI state in tracker rows](../learnings/1782986994116-never-fabricate-pr-numbers-or-ci-state-in-tracker-.md)
 - [On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add](../learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md)
 - [P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build](../learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)
@@ -53,6 +55,7 @@ type: topic
 - [Pushing code commits is NOT a user-facing write — it's always allowed, draft or ready](../learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md)
 - [Reconciling an environmental-cause retraction against a test-config fix (map symptom→code path)](../learnings/1780509076354-reconciling-an-environmental-cause-retraction-agai.md)
 - [Release-CI Setup failures: bisect the workflow file's own history, not just the source-commit range](../learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md)
+- [Shared build volume fills at ~45 worktrees; commit+patch-back, report blocked, never reclaim siblings](../learnings/1783473828121-shared-build-volume-fills-at-45-worktrees-commit-p.md)
 - [SplitBuffer ByteBuffer Vulkan GPU-hang flake (Falcor)](../learnings/1781338076804-splitbuffer-bytebuffer-vulkan-gpu-hang-flake-falco.md)
 - [spvDescriptorHeapEXT path — fix function-call specialization allowlists, not the downstream pass](../learnings/1780733286644-spvdescriptorheapext-path-fix-function-call-specia.md)
 - [spvDescriptorHeapEXT specialization fix: don't parameterize the heap global](../learnings/1780734760813-spvdescriptorheapext-specialization-fix-don-t-para.md)

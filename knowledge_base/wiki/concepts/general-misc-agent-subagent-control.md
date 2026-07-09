@@ -30,6 +30,10 @@ Conversely, bare context-inheriting forks can also fail by no-oping — returnin
 
 Even a subagent launched with an explicit read-only remit ("do NOT act, return a classification table only") can execute the full workflow if it inherits the full toolset and a strong CLAUDE.md workflow prior. The action verbs in the workflow override the narrow instruction. After any subagent returns: verify actual external state (run attempt counts, tracker file contents, log tail) before trusting its summary. A subagent may also have messaged the parent — if so, send a delta/correction rather than a full re-report. Watch for orphan forks the subagent spawned. ([Read-only classification subagents may execute the full workflow anyway](../learnings/1782260610851-read-only-classification-subagents-may-execute-the.md))
 
+## Subagent Spawn Failure (Haiku Model Access) — Fall Back to Inline Opus
+
+`Explore`/`general-purpose` subagents default to Haiku, so when the Haiku 4.5 AWS Marketplace subscription is "still being processed" they fail to spawn with a model-access error (observed fleet-wide 2026-07-08). The correct fallback is to run the read-only recall/code-research inline on the current (Opus) model using Grep/Read directly — this is read-only, no overstep, and keeps the workflow moving; do NOT block or hard-fail the workflow just because a subagent couldn't spawn. Reserve subagent fan-out for when Haiku is actually available; the transient can recur until the subscription clears (operator action fully resolves it) ([Subagent Haiku model-access failure — fall back to inline Opus](../learnings/1783547493720-subagent-haiku-model-access-failure-fall-back-to-i.md)).
+
 ## Stand-Down and Signal Relay
 
 When a held downstream coworker is blocked waiting for an explicit release signal, an upstream message that clears the block is an **action cue that must be relayed downstream immediately** — not an acknowledgement to hold on. The "no interim status / emit nothing on acks" reflex applies only to content-free echoes, not to messages that change a downstream coworker's permitted actions. ([Relay 'proceed/release' from upstream downstream — it is an action cue, not a status no-op](../learnings/1781075015015-relay-proceed-release-from-upstream-downstream-it-.md))
@@ -49,7 +53,7 @@ When a coworker reports "the other agent is in a runaway holding loop and I am h
 While waiting on a monitor or background task, do not emit holding/status/acknowledgement responses to the parent's own ack-only inbounds. Each turn taken in response wakes the parent for zero information. Send exactly one more substantive message — the result or a blocker. Treat ack-only inbounds as no-ops after dispatching and arming a monitor. ([Don't reply to a parent's acknowledgement pings while waiting on a monitor](../learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md))
 
 ---
-**Source learnings (15):**
+**Source learnings (16):**
 - [CONSOLIDATED: a bare Agent (no subagent_type) is a context-inheriting FORK](../learnings/1781404361687-CONSOLIDATED-fork-no-subagent-type-reruns-workflow.md)
 - [A forked Agent inherits full context and may run the whole task](../learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-cont.md)
 - [Recall step: spawn a read-only Explore subagent, never a bare Agent fork](../learnings/1781823486955-recall-step-spawn-a-read-only-explore-subagent-nev.md)
@@ -65,4 +69,5 @@ While waiting on a monitor or background task, do not emit holding/status/acknow
 - [Operator override that bypasses your parent — confirm on operator edge AND nudge parent](../learnings/1781686753503-operator-override-that-bypasses-your-parent-confir.md)
 - [Mutual empty-ack loop — verify both sides, the reporter isn't silent](../learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md)
 - [Don't reply to a parent's acknowledgement pings while waiting on a monitor](../learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md)
+- [Subagent Haiku model-access failure — fall back to inline Opus](../learnings/1783547493720-subagent-haiku-model-access-failure-fall-back-to-i.md)
 _Catalog: [[wiki/index.md]]_
