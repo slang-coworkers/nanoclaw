@@ -64,16 +64,28 @@ substitute for the scripted clauses.
   triples — nothing else is downloaded. Then proceed as a normal offline batch.
 - Message carries the **webhook dispatch wire format** (from the
   orchestrator's slang-github-webhook routing of `github.pr_ready_for_review`)
-  → **LIVE single PR**. Parse the byte-exact trailer lines with `grep -oE`:
-  `REPO={repo}`, `PR={pr_number}`, `MODE=pr-approve` (tolerate other MODE
-  values — the trailer's REPO/PR are authoritative); the body also carries the
-  reason (`ready_for_review` | `opened` | `synchronize`) and may carry
-  `<github-post-authorized />`.
+  → **LIVE — approver-dispatched (Case 2)**. Parse the byte-exact trailer lines
+  with `grep -oE`: `REPO={repo}`, `PR={pr_number}`, `MODE=pr-approve` (tolerate
+  other MODE values — the trailer's REPO/PR are authoritative); the body also
+  carries the reason (`ready_for_review` | `opened` | `synchronize`) and may
+  carry `<github-post-authorized />`. **You dispatch the review** (Step 1b) —
+  the reviewer is downstream of you here, exactly like the offline path.
   - reason `opened` / `ready_for_review` → the PR's current head is the commit.
   - reason `synchronize` → the host lands this in the SAME PR session
     (pr_session_mappings): continue the existing thread as a new revision turn
     — the new head is the commit, note the delta from the previous head, run a
     fresh review + decision (it supersedes the earlier row for this PR).
+- Message is a **`[Review Verdict]` from `{{vars.reviewer}}` with a
+  `combined-review.md` attached** (arrived on thread `gh-pr-<repo>-<num>`) →
+  **LIVE — reviewer-forwarded (Case 1)**. The review already happened: a bot PR
+  went `orch→triager→fixer⇄reviewer` (or an `@nv-slang-bot` mention) and the
+  reviewer forwarded its doc to you downstream. **Do NOT dispatch a reviewer**
+  — you'd be commissioning a redundant second review. Save the attached
+  `combined-review.md` as `work/<pr>-<sha12>/review/review-doc.md`, stage the PR
+  context (Step 1a, `mode=live`/`live_late`), then **skip Step 1b** and go
+  straight to Step 2. Because it arrived on `gh-pr-<repo>-<num>`, a later Case-2
+  `synchronize` on the same PR continues THIS session — one decision thread per
+  PR regardless of which case opened it.
 
 ### Step 1a: stage the PR at its commit (both modes)
 
@@ -92,7 +104,12 @@ this mode:
 You do NOT download the diff here — `{{vars.reviewer}}` fetches the PR itself. You
 only pin the commit and hand it over.
 
-### Step 1b: delegate the review to `{{vars.reviewer}}`
+### Step 1b: delegate the review to `{{vars.reviewer}}` (Case 2 + offline only — SKIP in Case 1)
+
+**Skip this whole step when the review was reviewer-forwarded (Case 1)** — you
+already have `review/review-doc.md`; dispatching now would commission a
+redundant second review. This step runs only when YOU are the one commissioning
+the review: the webhook dispatch (Case 2) and every offline/historical entry.
 
 Dispatch the review with `send_message` (the fix-issue step-8 pattern), then
 **end your turn** and wait for the reply — Reviewer A's pipeline runs

@@ -114,6 +114,11 @@ slang-reviewer:
     - slang-clarity-review-runner  # Reviewer C (clarity) — local skill
   workflows:
     - slang-pr-review
+  # Downstream PR-approver the reviewer forwards a live-PR review to (Case 1 in
+  # /slang-pr-review). Wired as a destination on the reviewer group by the
+  # operator; slangpy-reviewer sets approver: slangpy-pr-approver.
+  vars:
+    approver: slang-pr-approver
   # Reviewer reads a diff, produces a verdict. CODE_REVIEW is the assessment
   # of the diff under review (codex independent-checks the assessment);
   # OUTPUT_REVIEW vets the final review verdict before sending.
