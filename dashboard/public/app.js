@@ -405,7 +405,87 @@ async function loadFunnel() {
   const partHtml = ip && ip.counts ? funnelFlowHtml(ip, snap.rows || []) : '';
 
   if (board) board.innerHTML = partHtml;
-  if (detail) detail.innerHTML = '';
+
+  // nv-slang-bot contribution table (separate snapshot: /api/bot-contributions).
+  if (detail) {
+    detail.innerHTML = '<div style="color:var(--text-muted);font-size:11px;margin-top:16px">Loading bot contributions…</div>';
+    try {
+      const r = await fetch('/api/bot-contributions');
+      if (r.ok) {
+        detail.innerHTML = botContributionsHtml(await r.json());
+      } else {
+        const j = await r.json().catch(() => ({}));
+        detail.innerHTML = `<div style="color:var(--text-muted);font-size:11px;margin-top:16px">nv-slang-bot contributions: no snapshot yet. ${esc(j.hint || '')}</div>`;
+      }
+      const btn = detail.querySelector('[data-action="refresh-botc"]');
+      if (btn) btn.addEventListener('click', () => triggerBotcRefresh(btn));
+    } catch {
+      detail.innerHTML = '';
+    }
+  }
+}
+
+// Table of nv-slang-bot's per-repo commits / additions / deletions, from the
+// /api/bot-contributions snapshot. Shown under the issue funnel.
+function botContributionsHtml(bc) {
+  if (!bc || !Array.isArray(bc.repos)) return '';
+  const t = bc.totals || { commits: 0, additions: 0, deletions: 0 };
+  const rows = bc.repos
+    .map(
+      (r) => `<tr>
+        <td style="padding:3px 10px 3px 0"><code>${esc(r.repo)}</code></td>
+        <td style="text-align:right;padding:3px 10px">${fmtNum(r.commits)}</td>
+        <td style="text-align:right;padding:3px 10px;color:#3fb950">+${fmtNum(r.additions)}</td>
+        <td style="text-align:right;padding:3px 10px;color:#f85149">−${fmtNum(r.deletions)}</td>
+        <td style="text-align:right;padding:3px 10px;color:var(--text-muted);font-size:10px">${r.firstWeek ? `${esc(r.firstWeek)} → ${esc(r.lastWeek)}` : r.error ? esc(r.error) : '—'}</td>
+      </tr>`,
+    )
+    .join('');
+  return `<div style="margin-top:20px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
+        <span style="font-size:14px;font-weight:700">nv-slang-bot contributions</span>
+        <span style="font-size:10px;color:var(--text-muted)">${bc.generatedAt ? `snapshot: ${formatTime(bc.generatedAt)}` : ''}</span>
+        <button data-action="refresh-botc" class="admin-action-btn" style="margin-left:auto;font-size:10px;padding:1px 8px">Refresh</button>
+      </div>
+      <table style="border-collapse:collapse;font-size:12px;width:100%;max-width:560px">
+        <thead><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase">
+          <th style="text-align:left;padding:3px 10px 3px 0">Repo</th>
+          <th style="text-align:right;padding:3px 10px">Commits</th>
+          <th style="text-align:right;padding:3px 10px">Additions</th>
+          <th style="text-align:right;padding:3px 10px">Deletions</th>
+          <th style="text-align:right;padding:3px 10px">Active range</th>
+        </tr></thead>
+        <tbody>${rows}
+          <tr style="border-top:2px solid var(--border);font-weight:700">
+            <td style="padding:4px 10px 4px 0">Total</td>
+            <td style="text-align:right;padding:4px 10px">${fmtNum(t.commits)}</td>
+            <td style="text-align:right;padding:4px 10px;color:#3fb950">+${fmtNum(t.additions)}</td>
+            <td style="text-align:right;padding:4px 10px;color:#f85149">−${fmtNum(t.deletions)}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// Kick off a bot-contributions recompute (a few GitHub calls, ~seconds), then
+// re-load the funnel panel to pick up the fresh snapshot.
+async function triggerBotcRefresh(btn) {
+  const prev = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Refreshing…';
+  try {
+    await fetch('/api/bot-contributions/refresh', { method: 'POST' });
+  } catch {
+    /* ignore */
+  }
+  setTimeout(() => {
+    if (adminState.panel === 'funnel') loadFunnel();
+    else {
+      btn.disabled = false;
+      btn.textContent = prev;
+    }
+  }, 8000);
 }
 
 // Visual funnel for the issue partition — renders the mental model:

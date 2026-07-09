@@ -5008,6 +5008,50 @@ export async function handleRequest(
     return;
   }
 
+  // API: nv-slang-bot contribution snapshot (commits/additions/deletions per repo),
+  // written by scripts/bot-contributions.ts. Served alongside the funnel; never
+  // recomputed inline (GitHub stats/contributors can 202 for seconds).
+  if (url.pathname === '/api/bot-contributions') {
+    if (!requireAuth(req, res)) return;
+    const p = join(getProjectRoot(), 'reports', 'bot-contributions.json');
+    if (!existsSync(p)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'no snapshot', hint: 'run: pnpm exec tsx scripts/bot-contributions.ts' }));
+      return;
+    }
+    try {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(JSON.parse(readFileSync(p, 'utf-8'))));
+    } catch {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'snapshot unreadable' }));
+    }
+    return;
+  }
+
+  // API: recompute the bot-contributions snapshot in the background (a handful of
+  // GitHub calls, ~seconds). Returns 202 and lets the client re-fetch shortly.
+  if (req.method === 'POST' && url.pathname === '/api/bot-contributions/refresh') {
+    if (!requireAuth(req, res)) return;
+    try {
+      const script = join(getProjectRoot(), 'scripts', 'bot-contributions.ts');
+      const child = exec(
+        `npx tsx ${JSON.stringify(script)}`,
+        { cwd: getProjectRoot(), timeout: 2 * 60 * 1000, maxBuffer: 8 * 1024 * 1024 },
+        () => {
+          /* fire-and-forget; client re-fetches the snapshot shortly */
+        },
+      );
+      child.unref?.();
+      res.writeHead(202, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ started: true }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ started: false, error: String((err as Error)?.message || err) }));
+    }
+    return;
+  }
+
   // API: kick off a funnel recompute. The recompute is ~180 GitHub calls / ~3
   // min, so this returns 202 immediately and the work runs in the background;
   // the client polls GET /api/funnel/status and re-fetches /api/funnel when it
