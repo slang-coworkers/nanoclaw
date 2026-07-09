@@ -514,6 +514,7 @@ function funnelFlowHtml(ip, funnelRows) {
       <tr><td style="padding:4px 8px 4px 0">${chip(C.never, 'never-engaged', c.never_engaged)}</td><td style="padding:4px 0;color:var(--text-muted)">Issue was not picked up by the bot</td></tr>
     </table>
     <div style="margin-top:16px">${funnelWeeklyTrendSvg(ip.weekly || [])}</div>
+    <div style="margin-top:20px">${funnelWeeklyConversionSvg(ip.weekly || [])}</div>
 
     ${funnelIssueTableHtml(ip.issues || [], funnelRows || [], C)}`;
 }
@@ -614,6 +615,113 @@ function funnelWeeklyTrendSvg(weekly) {
       ${grid}
       <polyline points="${rollPts}" fill="none" stroke="#3fb950" stroke-width="2"/>
       ${rawDots}${rollDots}${rollLabels}${xlabels}
+    </svg>`;
+}
+
+// Inline-SVG chart of the weekly FUNNEL trend (issuePartition.weekly), a
+// distinct view from the WIN trend above. Here the conversion is measured
+// end-to-end: merged PRs ÷ issues FILED that week (how many filed issues turn
+// into a shipped fix), not merged ÷ PRs-authored. Two %-series on the left axis
+// — per-week conversion (faint violet dots) and the trailing-4wk rolling
+// conversion (solid violet line + labels) — plus PRs-created (botPr) as amber
+// dots on a secondary right-hand count axis, so PR volume reads alongside the
+// conversion rate. Deliberately violet/amber to stay visually separate from the
+// green WIN trend. Returns '' when there's nothing to plot.
+function funnelWeeklyConversionSvg(weekly) {
+  if (!Array.isArray(weekly) || weekly.length === 0) return '';
+  const W = 520,
+    H = 130,
+    padL = 34,
+    padR = 30,
+    padT = 14,
+    padB = 24;
+  const innerW = W - padL - padR,
+    innerH = H - padT - padB;
+  const n = weekly.length;
+  // Per-week conversion = merged ÷ filed; trailing-4wk rolling = Σmerged ÷ Σfiled.
+  const conv = (w) => ((w.filed || 0) > 0 ? (w.merged || 0) / w.filed : 0);
+  const roll = weekly.map((_, i) => {
+    let m = 0,
+      f = 0;
+    for (let j = Math.max(0, i - 3); j <= i; j++) {
+      m += weekly[j].merged || 0;
+      f += weekly[j].filed || 0;
+    }
+    return f > 0 ? m / f : 0;
+  });
+  const CONV_RAW = '#8957e5',
+    CONV_ROLL = '#bc8cff',
+    PR_DOT = '#f0883e';
+  // Left axis: conversion %. Right axis: PRs-created count.
+  const maxPct = Math.max(0.4, ...weekly.map((w, i) => Math.max(conv(w), roll[i])));
+  const maxCnt = Math.max(1, ...weekly.map((w) => w.botPr || 0));
+  const x = (i) => padL + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const yPct = (v) => padT + innerH - (v / maxPct) * innerH;
+  const yCnt = (v) => padT + innerH - (v / maxCnt) * innerH;
+  const gridVals = [0, maxPct / 2, maxPct];
+  const grid = gridVals
+    .map(
+      (v) =>
+        `<line x1="${padL}" y1="${yPct(v).toFixed(1)}" x2="${W - padR}" y2="${yPct(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>` +
+        `<text x="${padL - 5}" y="${(yPct(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-muted)">${Math.round(v * 100)}%</text>`,
+    )
+    .join('');
+  // Right-hand count axis labels (amber), at 0 / mid / max.
+  const cntVals = [0, Math.round(maxCnt / 2), maxCnt];
+  const rightAxis = cntVals
+    .map(
+      (v) =>
+        `<text x="${W - padR + 5}" y="${(yCnt(v) + 3).toFixed(1)}" text-anchor="start" font-size="9" fill="${PR_DOT}">${v}</text>`,
+    )
+    .join('');
+  const rollPts = weekly.map((w, i) => `${x(i).toFixed(1)},${yPct(roll[i]).toFixed(1)}`).join(' ');
+  const rawDots = weekly
+    .map(
+      (w, i) =>
+        `<circle cx="${x(i).toFixed(1)}" cy="${yPct(conv(w)).toFixed(1)}" r="2.5" fill="${CONV_RAW}"><title>${esc(w.week)}: ${Math.round(conv(w) * 100)}% merged/filed (${w.merged}/${w.filed})</title></circle>`,
+    )
+    .join('');
+  const rollDots = weekly
+    .map(
+      (w, i) =>
+        `<circle cx="${x(i).toFixed(1)}" cy="${yPct(roll[i]).toFixed(1)}" r="3" fill="${CONV_ROLL}"><title>${esc(w.week)} rolling 4wk: ${Math.round(roll[i] * 100)}% merged/filed</title></circle>`,
+    )
+    .join('');
+  // PRs-created (botPr) as amber dots on the right-hand count axis.
+  const prDots = weekly
+    .map(
+      (w, i) =>
+        `<circle cx="${x(i).toFixed(1)}" cy="${yCnt(w.botPr || 0).toFixed(1)}" r="2.5" fill="${PR_DOT}" fill-opacity="0.9"><title>${esc(w.week)}: ${w.botPr || 0} PRs created</title></circle>`,
+    )
+    .join('');
+  const prLine = weekly.map((w, i) => `${x(i).toFixed(1)},${yCnt(w.botPr || 0).toFixed(1)}`).join(' ');
+  // Value labels on each rolling conversion point (rates are small — spell out).
+  const rollLabels = weekly
+    .map((w, i) => {
+      const pct = Math.round(roll[i] * 100);
+      const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+      return `<text x="${x(i).toFixed(1)}" y="${(yPct(roll[i]) - 7).toFixed(1)}" text-anchor="${anchor}" font-size="11" font-weight="700" fill="${CONV_ROLL}">${pct}%</text>`;
+    })
+    .join('');
+  const xlabels = weekly
+    .map((w, i) => (i % Math.ceil(n / 6 || 1) === 0 ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(w.week.slice(5))}</text>` : ''))
+    .join('');
+  // Direction hint: last rolling conversion vs first.
+  const first = roll[0] || 0,
+    last = roll[n - 1] || 0;
+  const delta = Math.round((last - first) * 100);
+  const trend = delta > 0 ? `▲ +${delta}pp` : delta < 0 ? `▼ ${delta}pp` : '→ flat';
+  const trendColor = delta > 0 ? CONV_ROLL : delta < 0 ? '#f85149' : 'var(--text-muted)';
+  return `<div style="margin:6px 0 2px;display:flex;align-items:baseline;gap:10px">
+      <span style="font-weight:600">Weekly Funnel trend</span>
+      <span style="font-size:10px;color:var(--text-muted)">merged ÷ filed &nbsp;<span style="color:${CONV_RAW}">●</span> raw &nbsp;<span style="color:${CONV_ROLL}">●</span> rolling 4wk &nbsp;<span style="color:${PR_DOT}">●</span> PRs created (right axis)</span>
+      <span style="margin-left:auto;font-size:12px;color:${trendColor}">${trend}</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
+      ${grid}${rightAxis}
+      <polyline points="${prLine}" fill="none" stroke="${PR_DOT}" stroke-width="1" stroke-opacity="0.35" stroke-dasharray="3 3"/>
+      <polyline points="${rollPts}" fill="none" stroke="${CONV_ROLL}" stroke-width="2"/>
+      ${rawDots}${prDots}${rollDots}${rollLabels}${xlabels}
     </svg>`;
 }
 
