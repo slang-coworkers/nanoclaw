@@ -174,7 +174,7 @@ post nothing yourself.
 ```
 mcp__nanoclaw__send_message(
   to: "{pr-approver}",
-  text: "PR {repo}#{pr_number} is ready for review ({reason}): {title}\n\nReview the PR and post your verdict.\n\nPR: {pr_url}\n\n<github-post-authorized />\nREPO={repo}\nPR={pr_number}\nMODE=pr-review-fix"
+  text: "PR {repo}#{pr_number} is ready for review ({reason}): {title}\n\nReview the PR and post your verdict.\n\nPR: {pr_url}\n\n<github-post-authorized />\nREPO={repo}\nPR={pr_number}\nMODE=pr-approve"
 )
 ```
 

@@ -84,7 +84,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 
 5. **Merge + report** {#report} — On all subprocesses finishing (or whichever ran), call `slang-pr-review-runner`'s summarizer on `run_dir_A`. It returns severity counts, per-subagent cost, and a drift signal (must be 0 — nonzero = a non-COMMENT bot review was submitted). Reviewer C must also be drift-free: confirm `<run_dir_C>/tool-uses.jsonl` contains no GitHub-write tool call (no `gh api … --method POST/PUT`).
 
-   **Build one combined report — all three reviews WHOLE, verbatim, un-summarized** — so the fixer gets every finding in a single file. Concatenate in order, each section the full file contents (or an explicit `_skipped: <reason>_` line if that reviewer didn't run):
+   **Build one combined report — all three reviews WHOLE, verbatim** — so the fixer gets every finding in a single file, plus a machine-readable result block at the end so the **PR-approver can parse a verdict without re-reading prose**. Concatenate in order, each section the full file contents (or an explicit `_skipped: <reason>_` line if that reviewer didn't run), then append one ` ```json ` result block:
 
    ```bash
    COMBINED="<run_dir_A>/combined-review.md"
@@ -102,32 +102,57 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
      echo "## Reviewer C — Clarity"
      echo
      cat "<run_dir_C>/clarity-review.md" 2>/dev/null || echo "_skipped: clarity skills absent in checkout_"
+     echo
+     echo "## Result (machine-readable)"
+     echo
+     echo '```json'
+     echo "$RESULT_JSON"
+     echo '```'
    } > "$COMBINED"
    ```
 
-   **Send the combined report whole to the fixer AND the parent:**
+   `$RESULT_JSON` is a single object the PR-approver consumes (its `commit_match` clause + verdict parse key on it). Build it from the summarizer + the runner's diff-integrity marker — never hand-guess the fields:
+
+   ```json
+   {"verdict":"<APPROVE|APPROVE_WITH_NITS|REQUEST_CHANGES>","bugs":<N>,"gaps":<N>,"questions":<N>,"diff_hash":"<run_dir_A integrity marker: the reviewed diff/patch hash>","reviewers_complete":<true|false>}
+   ```
+
+   - `verdict` — the same verdict as the `[Review Verdict]` message below.
+   - `bugs`/`gaps`/`questions` — Reviewer A's severity counts from the summarizer (🔴 bugs, 🟡 gaps, questions).
+   - `diff_hash` — the diff-integrity marker the runner recorded for what it actually reviewed (`pr` mode: the head diff hash; `patch` mode: the patch hash). This is how the approver confirms the review matches the commit it pinned.
+   - `reviewers_complete` — `true` only if every dispatched reviewer finished and drift==0; `false` if any errored, timed out, or drift was nonzero (tells the approver to treat it as harness-fail → ABSTAIN).
+
+   **Route the combined report by the request mode**, read from **the tasking message that started this review** (it arrived via `send_message` and is in your context — do not read any file). There are two live shapes plus patch/branch:
+
+   - **(2) Approver-dispatched** — the message carries `MODE=pr-approve`. The PR-approver is your parent and wants the doc back to *decide*. **Reply to parent, skip the fixer** (forwarding to the fixer would start an unwanted fix loop). The reply lands in the approver's PR session automatically.
+   - **(1) Fix-chain / mention (live `pr` mode, no `MODE=pr-approve`)** — a fixer peer-review handoff or an `@nv-slang-bot` mention. Reply to parent AND forward to the fixer as before — **and also forward downstream to the PR-approver** so the shadow decision runs. The approver did NOT dispatch this review, so this is a fresh dispatch: address it explicitly and **pin the canonical PR thread** so it converges with the webhook path (below).
+   - **patch / branch mode** — no live PR; never forward to the approver (nothing to decide on a sandboxed diff).
 
    ```
+   # (1) + (2): always reply to the requester (parent).
+   send_file(to="parent", path="<run_dir_A>/combined-review.md")
+   send_message(to="parent", in_reply_to=<id-of-review-request>, text="[Review Verdict] <repo>#<number> (<mode>)\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n• Findings: <X bugs, Y gaps, Z questions> (A: <counts>; B: <counts or skipped>; C clarity: <counts or skipped>)\n• Top concern: <one-line of the highest-severity finding, or 'no bugs'>\n• Test gaps: <one-line of recommended tests, or 'none'>\n• Disagreements: <N A/B/C disagreements — see combined-review.md, or 'none'>\n• Sent to: <parent + fixer + approver | parent only (pr-approve)>")
+
+   # (1) ONLY (live pr mode, message did NOT carry MODE=pr-approve): fix loop + downstream approver.
    send_file(to="slang-fixer", path="<run_dir_A>/combined-review.md")
-   send_file(to="parent",      path="<run_dir_A>/combined-review.md")
-   send_message(to="parent", in_reply_to=<id-of-review-request>, text="[Review Verdict] <repo>#<number> (<mode>)\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n• Findings: <X bugs, Y gaps, Z questions> (A: <counts>; B: <counts or skipped>; C clarity: <counts or skipped>)\n• Top concern: <one-line of the highest-severity finding, or 'no bugs'>\n• Test gaps: <one-line of recommended tests, or 'none'>\n• Disagreements: <N A/B/C disagreements — see combined-review.md, or 'none'>\n• Sent to: slang-fixer (combined-review.md)")
+   send_file(to="{{vars.approver}}", thread_id="gh-pr-<repo>-<number>", path="<run_dir_A>/combined-review.md")
    ```
+
+   **Session convergence — the `thread_id` is load-bearing.** The webhook path (Case 2) mints the approver's session on `gh-pr-<repo>-<number>` (host `deliverToOrchestrator` threadId). Pinning the **same** key on the Case-1 forward makes both land in **one approver session per PR** — so a bot PR reviewed via the fix chain and the same PR arriving later via a `synchronize` webhook continue the same decision thread instead of forking two sessions. Use the repo as `<owner>/<name>` (e.g. `gh-pr-shader-slang/slang-1234`). This is a fresh downstream dispatch (not a reply) — do **not** pass `in_reply_to`; the explicit `thread_id` is what carries convergence, and a fresh thread the approver hasn't used clears the peer-thread guard.
 
    Notes:
-   - The fixer consumes `combined-review.md` whole — A's correctness findings drive code changes; C's clarity findings are advisory context the fixer weighs. The reviewer→fixer destination (`local_name=slang-fixer`) is already wired; if it ever resolves "unknown destination", fall back to `to="parent"` only and note it in the verdict.
-   - `combined-review.md` is what the parent/webhook path also receives, so the human sees the same whole report.
+   - **`{{vars.approver}}` must be wired as a destination** on the reviewer group (operator wiring: `ncl destinations add … slang-pr-approver`). If it resolves "unknown destination", the review still reached the fixer/parent — note it in the verdict and continue; don't fail the review.
+   - The approver treats an unsolicited Case-1 forward as a live decision (it stages the PR context itself and does NOT re-dispatch a reviewer — see the approver's workflow). Case 2 it dispatched, so the reply just continues that session.
+   - `combined-review.md` (with its embedded ` ```json ` result) is what the fixer, the parent, and the approver all receive — one artifact, everyone sees the same whole report.
 
-6. **Post review back to GitHub (authorized only)** {#post-review-to-github} — only when the dispatch carries the `<github-post-authorized />` marker (emitted by the orchestrator's `slang-github-webhook` skill when a human tagged `@nv-slang-bot`); else a no-op. The dispatch also carries `REPO=<owner>/<name>` and `PR=<number>` lines for grep. **Posts Reviewer A's correctness review only** (`<run_dir_A>/final-review.md`) — Reviewer C's clarity findings are advisory and delivered to the fixer/parent via the combined report, not auto-posted to the PR. (Clarity has a lower bar; auto-posting it as a bot review would be noisy. Revisit if a clarity post is explicitly wanted.)
+6. **Post review back to GitHub (authorized only)** {#post-review-to-github} — only when **the tasking message that started this review** (in your context — do not read any file) carries the `<github-post-authorized />` marker (emitted by the orchestrator's `slang-github-webhook` skill when a human tagged `@nv-slang-bot`, or by the PR-approver in LIVE authorized mode); else a no-op. That same message carries the `REPO=<owner>/<name>` and `PR=<number>` lines — read the two values from it. **Posts Reviewer A's correctness review only** (`<run_dir_A>/final-review.md`) — Reviewer C's clarity findings are advisory and delivered to the fixer/parent via the combined report, not auto-posted to the PR. (Clarity has a lower bar; auto-posting it as a bot review would be noisy. Revisit if a clarity post is explicitly wanted.)
+
+   Substitute `<REPO>` and `<PR>` with the values you read from the tasking message, and run this only if that message contained `<github-post-authorized />`:
 
    ```bash
-   DISPATCH="$(cat /workspace/agent/.dispatch.txt 2>/dev/null || true)"
-   if echo "$DISPATCH" | grep -q "<github-post-authorized />"; then
-     REPO=$(echo "$DISPATCH" | grep -oE "^REPO=[^[:space:]]+" | head -1 | cut -d= -f2)
-     PR=$(echo "$DISPATCH" | grep -oE "^PR=[0-9]+" | head -1 | cut -d= -f2)
-     SKILL_DIR=/path/to/slang-pr-review-runner   # resolve via skill registry
-     [ -n "$REPO" ] && [ -n "$PR" ] && [ -s "$run_dir_A/final-review.md" ] && \
-       "$SKILL_DIR/scripts/post-back.sh" "$REPO" "$PR" "$run_dir_A/final-review.md"
-   fi
+   SKILL_DIR=/path/to/slang-pr-review-runner   # resolve via skill registry
+   [ -s "$run_dir_A/final-review.md" ] && \
+     "$SKILL_DIR/scripts/post-back.sh" "<REPO>" "<PR>" "$run_dir_A/final-review.md"
    ```
 
    Report result to parent: exit 0 = posted; exit 3 = no `pull_requests:write` (fall back to `send_file`); any nonzero = failure (final-review.md already sent). `post-back.sh` = `cleanup.sh` (minimize prior bot reviews/comments, resolve threads) + `post-review.sh` (POST event=COMMENT, dismiss any non-COMMENT bot review). Inline per-line comments are optional (`<run_dir_A>/inline-comments.json`, same POST); default posts body only.
