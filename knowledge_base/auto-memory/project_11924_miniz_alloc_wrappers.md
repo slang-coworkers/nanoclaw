@@ -1,11 +1,13 @@
 ---
 name: project_11924_miniz_alloc_wrappers
-description: "#11924 miniz alloc-wrapper hardening — PR #11934 maintainer-APPROVED, held draft, awaiting ready-flip"
+description: "#11924 miniz alloc-wrapper hardening — MERGED (PR #11934, jkwak-work, 07-08). Chain closed/terminal."
 metadata: 
   node_type: memory
   type: project
   originSessionId: 0f097fc1-4ed3-4045-8790-f92f9fed0d91
 ---
+
+**TERMINAL (07-08 14:51):** PR #11934 MERGED by jkwak-work (verified: merged:true, merge_commit bfe6a7f14d); issue #11924 auto-closed (state_reason=completed) via `Fixes #11924`. Worktree wt-slang-11924 reaped. Clean end-to-end run — every gated action (approve/ready-flip/merge) done by the maintainer, never the bot. Historical; no re-open absent a fresh substantive bot-directed inbound.
 
 shader-slang/slang#11924 (pdeayton-nv): Slang freed miniz-owned buffers via `ScopedAllocation`'s `::free`/`::realloc` instead of miniz's matched allocator. Latent/benign today (Slang installs no custom miniz allocator → `MZ_FREE`≡`::free`); real heap corruption only if miniz's allocator is ever reconfigured. Triaged Bug/low/P3/core; verdict posted (comment 4872967859), Type=Bug.
 
