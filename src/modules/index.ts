@@ -25,3 +25,4 @@ import './self-mod/index.js';
 import './pr-mapping/index.js';
 import './runaway/index.js';
 import './critique-escalation/index.js';
+import './approval-ledger/index.js';
