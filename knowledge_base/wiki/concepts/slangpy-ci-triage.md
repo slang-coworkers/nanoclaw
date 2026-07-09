@@ -52,6 +52,8 @@ Until the gateway is extended, a flaky slangpy/slang-rhi check must be rerun by 
 ### Check if Already Implemented
 When triaging a SlangPy "feature request" that cites file:line pointers, grep the CURRENT checkout for the feature's named symbol BEFORE mapping a solution space. Sub-task issues filed under an umbrella effort frequently lag the code — the umbrella PR closes the sub-task's substance without closing the issue. If the feature is already wired and tested, the verdict is needs-decision, not ready-for-fix. [SlangPy triage: grep the issue's named symbols in HEAD first — the feature may already be shipped](../learnings/1781015340808-slangpy-triage-grep-the-issue-s-named-symbols-in-h.md)
 
+Concrete case (#844, "configurable thread group size / 2D tile dispatch / groupshared cooperative kernels"): most of it is ALREADY implemented on the normal (non-`.dispatch()`) call path — `FunctionNode.call_group_shape(shape)` (`slangpy/core/function.py`) drives `[numthreads(call_group_size,1,1)]` codegen (the "internal 32,1,1" is only the default, and IS overridable), and generated `compute_main` exposes `SV_DispatchThreadID`/`SV_GroupID`/`SV_GroupIndex` accessed via `CallShapeInfo`, so one tile maps to one thread group and `groupshared` cooperative code is correct WHEN `call_group_shape` is set (footgun: hand-writing groupshared tile code WITHOUT it gives silent shared-memory corruption — a missing-API-usage, not a bug). Related: the `.dispatch()` + `torch.Tensor` gap (#832) ERRORS cleanly (a ~5-line lazy-init mirror would fix it), BUT maintainer mkeshavaNV directed NOT to add features to `.dispatch()` (slated for removal, gated on the #768 raw-dispatch redesign) ([slangpy call_group_shape already provides tile/groupshared dispatch (issue #844)](../learnings/1783522957219-slangpy-call-group-shape-already-provides-tile-gro.md)).
+
 ### Stale Line References Signal Possible Merge
 When triaging a slangpy GitHub issue citing specific line ranges, first check whether those refs still match the current file. If the file is far shorter/different, that is a staleness signal. Run `gh pr list -R shader-slang/slangpy --state merged --search "<feature keywords>"` filtered to dates after the issue's `createdAt`. [slangpy triage: stale line-refs in an issue signal it may already be implemented — check merged PRs first](../learnings/1781015582617-slangpy-triage-stale-line-refs-in-an-issue-signal-.md)
 
@@ -100,7 +102,7 @@ On prod, the 6 slang/slangpy coworker group dirs (`groups/slang-fixer`, `groups/
 `PATCH` an existing issue comment (even one the bot itself authored) on `shader-slang/slangpy-samples` returns HTTP 403 "Must have admin rights to Repository." `POST` a new comment works. When refreshing a triage/status comment, post a fresh incremental comment carrying only the delta instead of PATCHing. Likely applies to other shader-slang repos the bot writes to with the same token scope — assume edit is unavailable until proven otherwise; design updates as append-only fresh comments. [slangpy-samples: editing bot issue comments 403s ('admin rights') — use fresh comments, not PATCH-in-place](../learnings/1781603959329-slangpy-samples-editing-bot-issue-comments-403s-ad.md)
 
 ---
-**Source learnings (18):**
+**Source learnings (19):**
 - [slangpy CI flake triage: re-symbolize the existing .dmp before designing fixes](../learnings/1779545587070-slangpy-ci-flake-triage-re-symbolize-the-existing-.md)
 - [slangpy Python id() ≠ C++ IModule* identity](../learnings/1779891890025-slangpy-python-id-c-imodule-identity.md)
 - [SlangPy create_buffer struct_size is a silent backend-layout footgun](../learnings/1780598190908-slangpy-create-buffer-struct-size-is-a-silent-back.md)
@@ -120,4 +122,5 @@ On prod, the 6 slang/slangpy coworker group dirs (`groups/slang-fixer`, `groups/
 - [Building slangpy from source in the fixer container: python3-dev, PEP-668, torch bridge, submodule/ENOSPC gotchas](../learnings/1782324519820-building-slangpy-from-source-in-the-fixer-containe.md)
 - [Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution](../learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md)
 - [CI GPU-OOM that passes on rerun is usually peak concurrent VRAM, not a leak (#1024)](../learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md)
+- [slangpy call_group_shape already provides tile/groupshared dispatch (issue #844)](../learnings/1783522957219-slangpy-call-group-shape-already-provides-tile-gro.md)
 _Catalog: [[wiki/index.md]]_

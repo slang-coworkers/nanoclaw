@@ -109,6 +109,8 @@ When a user reports `slangc -target hpp` or `-target cpp` produces no output fil
 
 Triage shortcut: bisect by entry-point STAGE (compute vs vertex/fragment) before investigating other constructs. Fix layers: front-end diagnostic rejecting non-compute stages for CPU host-C++ targets + legalizer null-guard. ([slang -target hpp/cpp 'no output file' is usually a crash from a graphics-stage entry point](../learnings/1781783056677-slang-target-hpp-cpp-no-output-file-is-usually-a-c.md))
 
+A different "empty output" case is NOT a crash and NOT a bug: `slangc -target metal lib.slang -o lib.metal` on a file with no `[shader]` entry point emits only the `#include`s because Slang only emits code reachable from an entry point (reachability culling, not an optimizer pass — so `-O0` doesn't change it). To emit a library, BOTH are required: `-whole-program` (library mode) AND marking the functions to keep as `public`/`export` (which roots them against DCE — `-whole-program` alone still culls anything not reachable from a root). For cross-target (MSL+SPIR-V) library sharing, precompile to a `.slang-module` and `import` it per-target rather than emitting text and hand-splicing (`public __extern_cpp` keeps names unmangled if you must splice) ([Slang library code compiles to empty output without -whole-program + public](../learnings/1783369782920-slang-library-code-compiles-to-empty-output-withou.md)).
+
 ## Wave intrinsics: no IR opcode, stdlib ForceInline only
 
 `WaveActiveSum`, `WaveActiveCountBits`, `WaveIsFirstLane` have **no `kIROp_*` opcode and no IRBuilder emit helper**. They are stdlib `[ForceInline]` functions in `source/slang/hlsl.meta.slang` with `__target_switch` bodies that expand to per-target source/asm.
@@ -138,6 +140,8 @@ The correct fix is a guaranteed IR transform (opt-level-independent): remove emp
 ## CUDA WMMA/coopmat: prelude namespace is CUDA 12.5-guarded, emit is not
 
 `prelude/slang-cuda-prelude.h:6633-6634` guards the entire `Slang_CUDA_WMMA` namespace behind `#if CUDA 12.5+`. But `source/slang/slang-emit-cuda.cpp:1672-1718` emits `Slang_CUDA_WMMA::WmmaFragment<...>` unconditionally — no target-version gate. Under NVRTC < 12.5 the namespace body is empty, producing the cryptic NVRTC error "name followed by :: must be a class or namespace name." The principled fix: gate `emitWMMAFragmentType` on the target NVRTC version (queryable via `nvrtcVersion` in `slang-nvrtc-compiler.cpp:42`) and emit a clean diagnostic "cooperative-matrix requires NVRTC ≥ 12.5". General lesson: when a prelude feature is `#if`-version-guarded, the emitter that references it MUST gate on the same version or diagnose. ([Slang CUDA WMMA/coopmat emit is unconditional but the prelude namespace is CUDA-12.5-guarded (NVRTC <12.5 fails cryptically) — #10689](../learnings/1781602255080-slang-cuda-wmma-coopmat-emit-is-unconditional-but-.md))
+
+CUDA prelude bugs (nvcc path) ARE locally reproducible GPU-free — `nvcc` 12.6 is installed at `/usr/local/cuda-12.6/bin/nvcc` with `cuda_fp16.h`/`cuda_bf16.h`/`cuda_fp8.h`, and compile-only (`nvcc -c ... -o /dev/null`) needs no GPU (so "CUDA lanes use NVRTC and miss this" doesn't block a repro). Recipe: copy `prelude/slang-cuda-prelude.h`, make a fixed copy, write a `.cu` that `#define`s the relevant `SLANG_CUDA_ENABLE_{HALF,BF16,FP8}` together and includes the prelude, then `nvcc -c` before/after and diff the error sets. Gotchas: always enable HALF whenever you enable BF16/FP8 (disabling HALF alone breaks `SLANG_MAKE_VECTOR` macro expansion — a false signal); CUDA 12.6 has a pre-existing `__half2` operator-redefinition clash present before AND after any fix, so grep the specific message rather than raw error counts to isolate your bug's delta. This upgrades a CUDA-prelude triage from "reasoned by inspection" to "reproduced + fix-verified" ([CUDA prelude bugs: nvcc IS available (GPU-free compile-only repro) — /usr/local/cuda-12.6](../learnings/1783355453348-cuda-prelude-bugs-nvcc-is-available-gpu-free-compi.md)).
 
 ## slangpy functional-API textures: no [format] decoration → CUDA UNORM writes corrupt
 
@@ -171,7 +175,7 @@ Correcting an earlier "glslang load fails in-container" note: `slangc -emit-spir
 `slangc -profile glsl_140` → `E00014 unknown profile`, yet `slangc -h` lists `glsl_{110,120,130,140}` as accepted (#11898). The advertised-vs-accepted profile lists are out of sync across three sites; fixing it also trips the `check-cmdline-ref` CI (regenerate the reference) ([1782980898198-slangc-h-advertises-glsl-110-120-130-1](../learnings/1782980898198-slangc-h-advertises-glsl-110-120-130-140-profiles-.md)).
 
 ---
-**Source learnings (30):**
+**Source learnings (32):**
 - [Slang diagnostic catalog name conventions — emit sites are PascalCase, not camelCase](../learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md)
 - [slangi VM emitter: missing IRConstant cases produce silent malformed operands](../learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md)
 - [Slang VM bytecode: missing constant-emit case can silently mask wrong test assertions](../learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md)
@@ -202,4 +206,6 @@ Correcting an earlier "glslang load fails in-container" note: `slangc -emit-spir
 - [-emit-spirv-via-glsl runs via direct slangc in a freshly-built worktree](../learnings/1782821414217-emit-spirv-via-glsl-does-run-via-direct-slangc-in-.md)
 - [Triage SPIR-V binding/layout bugs via -target spirv -O0 -reflection-json when glslang is unavailable](../learnings/1782865769198-triage-spir-v-binding-layout-bugs-via-target-spirv.md)
 - [slangc -h advertises glsl_110/120/130/140 profiles the parser rejects (three-site sync + check-cmdline-ref CI)](../learnings/1782980898198-slangc-h-advertises-glsl-110-120-130-140-profiles-.md)
+- [Slang library code compiles to empty output without -whole-program + public](../learnings/1783369782920-slang-library-code-compiles-to-empty-output-withou.md)
+- [CUDA prelude bugs: nvcc IS available (GPU-free compile-only repro) — /usr/local/cuda-12.6](../learnings/1783355453348-cuda-prelude-bugs-nvcc-is-available-gpu-free-compi.md)
 _Catalog: [[wiki/index.md]]_

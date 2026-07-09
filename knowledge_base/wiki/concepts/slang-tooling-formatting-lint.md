@@ -96,6 +96,14 @@ For targeted docs edits:
 
 If `origin/master`'s version of a file already fails your local prettier check, the divergence is the tool version, not your edit — never `--write` the whole file. ([Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md), [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md))
 
+## Public Headers Must Be ASCII-Only (MSVC C4819); Sweep prelude/ Too
+
+Every file under `include/` must be pure ASCII: MSVC emits **warning C4819** ("character cannot be represented in the current code page") when a consumer compiles an ASCII TU that just `#include`s the header under a non-UTF-8 source charset (`/source-charset:.932`), and under `/WX` that becomes error C2220 — so non-ASCII bytes in doc comments silently break downstream `/WX` builds on CP932/Shift-JIS locales (#12016: 3 U+2014 em-dashes in `include/slang.h`, regressed twice including once via the bot's own PR). Detection without Windows: `grep -rP '[^\x00-\x7F]'` must return empty; C4819 itself needs Windows+MSVC+CP932 to observe, so don't label `reproduced` from Linux. Fix by replacing with the file's own ASCII convention (in slang.h, a spaced ` - ` hyphen). **Two extensions from the shipped #12016 fix:** (1) sweep `prelude/` too, not just `include/` — the shipped preludes install into `include/` and trigger the same C4819 (the fix ended up 3 files incl. `slang-cuda-prelude.h` with em-dashes AND U+2192 `→` arrows — watch for arrows and other Unicode punctuation, not only em-dashes; canonical sweep `grep -rP '[^\x00-\x7F]' include/ prelude/`); (2) scope-widen when the reporter asks to "review all public headers." The Approach-B CI/lint guard (reject non-ASCII in shipped headers) is scoped to `.github/workflows/**` and thus policy-rejected for coworker bots — flag it for maintainer ownership rather than building it ([slang public headers must be ASCII-only (MSVC C4819 under non-UTF-8 charset)](../learnings/1783579004581-slang-public-headers-must-be-ascii-only-msvc-c4819.md), [slang non-ASCII header sweep must include prelude/ and watch arrows — #12016 SHIPPED](../learnings/1783596951560-slang-non-ascii-header-sweep-must-include-prelude-.md)).
+
+## clang -Wformat-security Rejects Argless printf(fmt) — Linux gcc Won't Catch It
+
+A `printf`-family call with a **non-literal** format string and **zero** variadic args (e.g. `reportError("literal\n")` where `reportError(fmt,args...)` forwards to `printf`) is a hard error under clang `-Werror -Wformat-security` — but **gcc/Linux does NOT enforce it**, so a Linux-only local build is green while the macOS/clang CI build fails (Slang examples build `-Werror` on all platforms). Even a compile-time-constant literal passed through a variadic wrapper counts as non-literal at the `printf(fmt)` call site (the wrapper's `fmt` param is a runtime `const char*`). Fix: route through `"%s"` (`reportError("%s", "error: ...\n")`). Verify limitation: a Linux/gcc-only in-container build is structurally blind to clang-only `-Werror` flags (`-Wformat-security`, `-Wreturn-local-addr`), so grep the diff for argless wrapper-`printf` calls even when Linux CI is green — the macOS `build-macos-*-clang-aarch64` job is the real gate (#12009 lost a CI round-trip to exactly this) ([clang -Wformat-security rejects argless printf(fmt) — Linux gcc verify won't catch it](../learnings/1783560312328-clang-wformat-security-rejects-argless-printf-fmt-.md)).
+
 ## Contradictions / supersessions
 
 None found. The two "draft PR CI" learnings are complementary (one adds the workflow_dispatch clarification; both are consistent).
@@ -105,7 +113,7 @@ None found. The two "draft PR CI" learnings are complementary (one adds the work
 When editing **shader-slang/slang-rhi** (not the compiler), its pre-commit/CI gates differ from slang's: **clang-format v20** (not slang's version), an ASCII-only hook, and `-Werror`. Verify against these, not slang's toolchain ([1783022365578-slang-rhi-formatting-lint-gates-differ](../learnings/1783022365578-slang-rhi-formatting-lint-gates-differ-from-the-sl.md)).
 
 ---
-**Source learnings (9):**
+**Source learnings (12):**
 - [Slang formatting.sh requires clang-format 17.x exactly](../learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md)
 - [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
 - [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)
@@ -115,4 +123,7 @@ When editing **shader-slang/slang-rhi** (not the compiler), its pre-commit/CI ga
 - [formatting.sh --since HEAD is a false-pass for uncommitted changes; run the full --check-only pre-push](../learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md)
 - [Run CI-pinned clang-format locally when the build is disk-blocked](../learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md)
 - [slang-rhi formatting/lint gates differ from slang (clang-format v20, ASCII hook, -Werror)](../learnings/1783022365578-slang-rhi-formatting-lint-gates-differ-from-the-sl.md)
+- [slang public headers must be ASCII-only (MSVC C4819 under non-UTF-8 charset)](../learnings/1783579004581-slang-public-headers-must-be-ascii-only-msvc-c4819.md)
+- [slang non-ASCII header sweep must include prelude/ and watch arrows — #12016 SHIPPED](../learnings/1783596951560-slang-non-ascii-header-sweep-must-include-prelude-.md)
+- [clang -Wformat-security rejects argless printf(fmt) — Linux gcc verify won't catch it](../learnings/1783560312328-clang-wformat-security-rejects-argless-printf-fmt-.md)
 _Catalog: [[wiki/index.md]]_
