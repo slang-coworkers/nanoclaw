@@ -139,13 +139,7 @@ export interface GitHubPrReadyForReviewEvent {
  * Outcome of a webhook delivery decision. Used by the funnel-entry handler
  * for the JSON response shape and ops log filtering.
  */
-export type DeliveryOutcome =
-  | 'local'
-  | 'forwarded'
-  | 'dropped'
-  | 'no-session'
-  | 'no-admin-group'
-  | 'no-consumer-group';
+export type DeliveryOutcome = 'local' | 'forwarded' | 'dropped' | 'no-session' | 'no-admin-group' | 'no-consumer-group';
 
 /**
  * Internal helper: write an event payload to the admin (orchestrator) agent
@@ -659,9 +653,7 @@ export function deliverGitHubPrReadyForReview(event: GitHubPrReadyForReviewEvent
     threadId: `gh-pr-${event.repo}-${event.prNumber}`,
     eventContent,
     mintPerThread: true,
-    displayTitle: event.title
-      ? `${event.repo} #${event.prNumber}: ${event.title}`
-      : `${event.repo} #${event.prNumber}`,
+    displayTitle: event.title ? `${event.repo} #${event.prNumber}: ${event.title}` : `${event.repo} #${event.prNumber}`,
   });
 }
 
