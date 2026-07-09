@@ -70,10 +70,11 @@ deepwiki never blocks, excuses, or upgrades a decision.
 
 ## Step 4 — record (critique-gated; never post)
 
-1. Compose `decision.json`: `{pr, mode, commit_sha, review_diff_hash,
-   policy_version, decision, reason_code, clauses, challenger, ts}`
-   (`review_diff_hash` = the `diff_hash` the review doc reported reviewing).
-   `decision` is a CLOSED four-state enum:
+1. Assemble the decision fields you'll pass to the `record_decision` MCP tool:
+   `{repo, pr_number, commit_sha, mode, decision, reason_code, review_diff_hash,
+   policy_version, clauses, challenger, ts}` (`review_diff_hash` = the
+   `diff_hash` the review doc reported reviewing). `decision` is a CLOSED
+   four-state enum:
    - `WOULD_APPROVE` — the full conjunction held (Steps 1-4 all clean).
    - `BLOCK` — the review found a verified 🔴 Bug.
    - `ABSTAIN_INFRA` — the PIPELINE failed, not the PR: reason_code ∈
@@ -95,8 +96,9 @@ deepwiki never blocks, excuses, or upgrades a decision.
    mode discipline held) and OUTPUT_REVIEW (the ledger line + message). You
    cannot author or edit verdict state. A must-fix verdict => revise or
    ABSTAIN. The soft-cap escalates to a human; it never silently passes.
-3. Only after the recorded verdicts exist: `record-decision decision.json`
-   (the ledger append — the gate blocks it without verdicts), then send the
+3. Only after the recorded verdicts exist: call the `record_decision` MCP tool
+   with the fields from step 1 (the ledger append — the host writes the
+   `approval_decisions` row; the gate blocks it without verdicts), then send the
    decision message, which MUST carry the `[Approval Decision]` delivery
    marker — the gate and the router key on the same token; an unmarked
    decision routes nowhere.
@@ -140,8 +142,9 @@ loudly (stale ledger or wrong revision pin), never silently dropped.
 Because reviewable events route to you, later webhook events for those PRs
 land in your session. Your handling differs from slang-github-webhook's
 reviewer/fixer procedures — do NOT reply, resolve threads, or triage CI:
-- `github.pr_review` (a human reviewed): RECORD it — update the ledger row
-  for that (pr, commit) with the human verdict — and if it contradicts your
+- `github.pr_review` (a human reviewed): RECORD it — call the
+  `record_human_verdict` MCP tool for that (repo, pr, commit) so the host
+  stamps the human verdict onto your decision row — and if it contradicts your
   decision, immediately capture an `append_learning` entry
   (`[approver/false-safe]` or `[approver/human-disagreement]`, per the
   workflow's Step 4 taxonomy). The join and the learning are your only
