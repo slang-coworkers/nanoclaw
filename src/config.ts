@@ -27,6 +27,7 @@ const envConfig = readEnvFile([
   'INTERNAL_REGISTER_SECRET',
   'INSTANCE_FORWARD_TARGETS',
   'ROUTE_ISSUES_TO',
+  'ROUTE_READY_PRS_TO',
   'CONTAINER_CPU_LIMIT',
   'CONTAINER_MEMORY_LIMIT',
   'NANOCLAW_EGRESS_LOCKDOWN',
@@ -258,6 +259,19 @@ export const INSTANCE_FORWARD_TARGETS = parseForwardTargets(
 //
 // On lego (or any non-canonical instance), leave unset.
 export const ROUTE_ISSUES_TO = (process.env.ROUTE_ISSUES_TO || envConfig.ROUTE_ISSUES_TO || '').trim();
+
+// Dev-route PR `ready_for_review` (draft→ready) events to a peer instance,
+// which hands them to a PR-approver coworker. Same trust-channel mechanism as
+// ROUTE_ISSUES_TO: set to a slug that ALSO appears in INSTANCE_FORWARD_TARGETS.
+// Empty/unset = handle locally (deliver to the local slang-pr-approver group,
+// or warn-and-drop if that group is absent).
+//
+// Example on prod:
+//   INSTANCE_FORWARD_TARGETS=lego=http://127.0.0.1:3843/webhook/github
+//   ROUTE_READY_PRS_TO=lego
+//
+// On lego (the consumer), leave unset so it delivers locally.
+export const ROUTE_READY_PRS_TO = (process.env.ROUTE_READY_PRS_TO || envConfig.ROUTE_READY_PRS_TO || '').trim();
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.

@@ -270,6 +270,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
@@ -336,6 +337,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
@@ -447,6 +449,7 @@ describe('deliverGitHubMention — owner_instance routing', () => {
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
@@ -507,7 +510,10 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       createSession: () => undefined,
       updateSessionTitle: () => true,
     }));
-    vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => undefined,
+    }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
@@ -569,7 +575,10 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       createSession: () => undefined,
       updateSessionTitle: () => true,
     }));
-    vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => undefined,
+    }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
@@ -622,6 +631,7 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
@@ -674,6 +684,7 @@ describe('deliverGitHubIssueOpened', () => {
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
@@ -726,7 +737,10 @@ describe('deliverGitHubIssueOpened', () => {
       createSession: () => undefined,
       updateSessionTitle: () => true,
     }));
-    vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => undefined,
+    }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
@@ -778,7 +792,10 @@ describe('deliverGitHubIssueOpened', () => {
       createSession: () => undefined,
       updateSessionTitle: () => true,
     }));
-    vi.doMock('./db/agent-groups.js', () => ({ getAdminAgentGroup: () => undefined }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => undefined,
+    }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
         prepare: () => ({ get: () => undefined, run: () => undefined }),
@@ -827,6 +844,7 @@ describe('deliverGitHubIssueOpened', () => {
     }));
     vi.doMock('./db/agent-groups.js', () => ({
       getAdminAgentGroup: () => ({ id: 'g-admin', name: 'lego-orchestrator' }),
+      getAgentGroupByFolder: () => undefined,
     }));
     vi.doMock('./db/session-db.js', () => ({
       openInboundDb: () => ({
@@ -857,5 +875,270 @@ describe('deliverGitHubIssueOpened', () => {
     expect(outcome).toBe('local');
     expect(insertCalls).toHaveLength(1);
     expect(captured).toHaveLength(0);
+  });
+});
+
+describe('deliverGitHubPrReadyForReview', () => {
+  it('forwards to peer when ROUTE_READY_PRS_TO is set and differs from INSTANCE_SLUG', async () => {
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: { lego: peerUrl },
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      ROUTE_READY_PRS_TO: 'lego',
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => undefined,
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+
+    const { deliverGitHubPrReadyForReview } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrReadyForReview({
+      repo: 'shader-slang/slang',
+      prNumber: 321,
+      prUrl: 'https://github.com/shader-slang/slang/pull/321',
+      title: 'feat',
+      author: 'a-human',
+      rawBody: '{"action":"ready_for_review"}',
+      eventType: 'pull_request',
+      deliveryId: 'd-ready-1',
+    });
+
+    expect(outcome).toBe('forwarded');
+    await waitForCapture(1);
+    expect(captured).toHaveLength(1);
+    expect(captured[0].headers['x-webhook-trust']).toBe('pre-validated');
+    expect(captured[0].body).toBe('{"action":"ready_for_review"}');
+  });
+
+  it('drops with warn when ROUTE_READY_PRS_TO is set but the target is missing', async () => {
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {}, // no target for 'lego'
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      ROUTE_READY_PRS_TO: 'lego',
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => undefined,
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+
+    const { deliverGitHubPrReadyForReview } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrReadyForReview({
+      repo: 'shader-slang/slang',
+      prNumber: 321,
+      prUrl: '',
+      title: '',
+      author: '',
+      rawBody: '{}',
+      eventType: 'pull_request',
+      deliveryId: 'd-ready-1',
+    });
+
+    expect(outcome).toBe('dropped');
+    expect(captured).toHaveLength(0);
+  });
+
+  it('delivers locally to slang-pr-approver, minting a gh-pr-<repo>-<num> thread', async () => {
+    const insertCalls: Array<Record<string, unknown>> = [];
+    const threadLookups: string[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      ROUTE_READY_PRS_TO: '', // consumer: handle locally
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: (_g: string, thread: string) => {
+        threadLookups.push(thread);
+        return { id: 'sess-approver' };
+      },
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: (folder: string) =>
+        folder === 'slang-pr-approver' ? { id: 'g-approver', name: 'slang-pr-approver' } : undefined,
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: (_db: unknown, msg: Record<string, unknown>) => insertCalls.push(msg),
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/approver.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubPrReadyForReview } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrReadyForReview({
+      repo: 'shader-slang/slang',
+      prNumber: 321,
+      prUrl: 'https://github.com/shader-slang/slang/pull/321',
+      title: 'My feature',
+      author: 'a-human',
+      rawBody: '{}',
+      eventType: 'pull_request',
+      deliveryId: 'd-ready-1',
+    });
+
+    expect(outcome).toBe('local');
+    expect(captured).toHaveLength(0); // not forwarded
+    expect(threadLookups).toEqual(['gh-pr-shader-slang/slang-321']);
+    expect(insertCalls).toHaveLength(1);
+    expect(insertCalls[0].id).toBe('gh-pr-ready-shader-slang/slang-321-d-ready-1');
+    const content = JSON.parse(insertCalls[0].content as string);
+    expect(content.event).toBe('github.pr_ready_for_review');
+    expect(content.pr_number).toBe(321);
+  });
+
+  it('returns no-consumer-group (no throw) when slang-pr-approver is absent', async () => {
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      ROUTE_READY_PRS_TO: '',
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: () => undefined, // approver group not created yet
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+
+    const { deliverGitHubPrReadyForReview } = await import('./webhook-github.js');
+    const outcome = deliverGitHubPrReadyForReview({
+      repo: 'shader-slang/slang',
+      prNumber: 321,
+      prUrl: '',
+      title: '',
+      author: '',
+      rawBody: '{}',
+      eventType: 'pull_request',
+      deliveryId: 'd-ready-1',
+    });
+
+    expect(outcome).toBe('no-consumer-group');
+  });
+
+  it('re-fires on a new deliveryId but dedups a repeat of the same delivery', async () => {
+    // Two draft→ready flips arrive as distinct deliveries → two distinct rowIds
+    // → two inserts. A retry of the SAME delivery hits the idempotency guard
+    // (SELECT 1 finds the existing row) → no second insert.
+    const seenIds = new Set<string>();
+    const insertCalls: Array<Record<string, unknown>> = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      ROUTE_READY_PRS_TO: '',
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => ({ id: 'sess-approver' }),
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => ({ id: 'g-approver', name: 'slang-pr-approver' }),
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        // Idempotency guard: report a row as existing iff we've inserted its id.
+        prepare: (sql: string) => ({
+          get: (id: string) => (sql.includes('SELECT 1') && seenIds.has(id) ? { 1: 1 } : undefined),
+          run: () => undefined,
+        }),
+        close: () => undefined,
+      }),
+      insertMessage: (_db: unknown, msg: Record<string, unknown>) => {
+        insertCalls.push(msg);
+        seenIds.add(msg.id as string);
+      },
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/approver.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubPrReadyForReview } = await import('./webhook-github.js');
+    const base = {
+      repo: 'shader-slang/slang',
+      prNumber: 321,
+      prUrl: '',
+      title: 't',
+      author: 'a',
+      rawBody: '{}',
+      eventType: 'pull_request',
+    } as const;
+
+    // First flip.
+    expect(deliverGitHubPrReadyForReview({ ...base, deliveryId: 'd-1' })).toBe('local');
+    // Same delivery retried → dedup.
+    expect(deliverGitHubPrReadyForReview({ ...base, deliveryId: 'd-1' })).toBe('local');
+    // Second flip (new delivery) → re-fire.
+    expect(deliverGitHubPrReadyForReview({ ...base, deliveryId: 'd-2' })).toBe('local');
+
+    expect(insertCalls).toHaveLength(2);
+    expect(insertCalls.map((m) => m.id)).toEqual([
+      'gh-pr-ready-shader-slang/slang-321-d-1',
+      'gh-pr-ready-shader-slang/slang-321-d-2',
+    ]);
   });
 });

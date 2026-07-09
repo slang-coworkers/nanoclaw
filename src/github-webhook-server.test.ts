@@ -7,12 +7,13 @@ vi.mock('./config.js', () => ({
   INSTANCE_FORWARD_TARGETS: { lego: 'http://127.0.0.1:1/webhook' },
   INSTANCE_SLUG: 'prod',
   ROUTE_ISSUES_TO: 'lego',
-  INTERNAL_REGISTER_SECRET: '',
+  INTERNAL_REGISTER_SECRET: 'trust-secret',
 }));
 
 vi.mock('./webhook-github.js', () => ({
   deliverGitHubMention: vi.fn(),
   deliverGitHubIssueOpened: vi.fn(),
+  deliverGitHubPrReadyForReview: vi.fn(),
 }));
 
 vi.mock('./modules/pr-mapping/register-endpoint.js', () => ({
@@ -36,7 +37,7 @@ vi.mock('./env.js', () => ({
 }));
 
 import { postEyesReaction, startGitHubWebhookServer } from './github-webhook-server.js';
-import { deliverGitHubMention } from './webhook-github.js';
+import { deliverGitHubMention, deliverGitHubPrReadyForReview } from './webhook-github.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
 
 describe('postEyesReaction', () => {
@@ -139,7 +140,24 @@ describe('webhook handler: 👀 ack + own-bot gate', () => {
   let baseUrl: string;
   let fetchMock: ReturnType<typeof vi.fn>;
   const deliverMock = vi.mocked(deliverGitHubMention);
+  const readyMock = vi.mocked(deliverGitHubPrReadyForReview);
   const prMappingMock = vi.mocked(prMappingExists);
+
+  // POST a signed pull_request webhook (no comment) and return the parsed JSON.
+  async function postPullRequest(payload: unknown): Promise<Record<string, unknown>> {
+    const body = JSON.stringify(payload);
+    const res = await undiciFetch(`${baseUrl}/webhook/github`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-github-event': 'pull_request',
+        'x-github-delivery': 'test-delivery',
+        'x-hub-signature-256': sign(body),
+      },
+      body,
+    });
+    return (await res.json()) as Record<string, unknown>;
+  }
 
   // Sign a body with the test secret (mirrors GitHub's X-Hub-Signature-256).
   function sign(body: string): string {
@@ -183,6 +201,7 @@ describe('webhook handler: 👀 ack + own-bot gate', () => {
     readEnvFileMock.mockReturnValue({});
     process.env.GH_TOKEN = 'fake-token';
     deliverMock.mockReset().mockReturnValue('forwarded');
+    readyMock.mockReset().mockReturnValue('forwarded');
     prMappingMock.mockReset().mockReturnValue(false);
 
     handle = startGitHubWebhookServer();
@@ -262,5 +281,88 @@ describe('webhook handler: 👀 ack + own-bot gate', () => {
     const calls = reactionCalls();
     expect(calls).toHaveLength(1);
     expect(calls[0][0]).toBe('https://api.github.com/repos/org/repo/pulls/comments/558/reactions');
+  });
+
+  it('routes a ready_for_review PR to deliverGitHubPrReadyForReview (before the non-closed skip)', async () => {
+    const json = await postPullRequest({
+      action: 'ready_for_review',
+      repository: { full_name: 'org/repo' },
+      pull_request: {
+        number: 321,
+        html_url: 'https://github.com/org/repo/pull/321',
+        title: 'My feature',
+        draft: false,
+        user: { login: 'a-human' },
+      },
+    });
+    // Must NOT be skipped as an unhandled pull_request action.
+    expect(json).toMatchObject({ outcome: 'forwarded' });
+    expect(json.skipped).toBeUndefined();
+    expect(readyMock).toHaveBeenCalledTimes(1);
+    expect(readyMock.mock.calls[0][0]).toMatchObject({
+      repo: 'org/repo',
+      prNumber: 321,
+      prUrl: 'https://github.com/org/repo/pull/321',
+      title: 'My feature',
+      author: 'a-human',
+      eventType: 'pull_request',
+      deliveryId: 'test-delivery',
+    });
+  });
+
+  it('400s a malformed ready_for_review (missing pr number)', async () => {
+    const json = await postPullRequest({
+      action: 'ready_for_review',
+      repository: { full_name: 'org/repo' },
+      pull_request: { title: 'no number' },
+    });
+    expect(json).toMatchObject({ error: 'malformed payload' });
+    expect(readyMock).not.toHaveBeenCalled();
+  });
+
+  it('still skips other non-closed pull_request actions (e.g. synchronize)', async () => {
+    const json = await postPullRequest({
+      action: 'synchronize',
+      repository: { full_name: 'org/repo' },
+      pull_request: { number: 321 },
+    });
+    expect(json).toMatchObject({ skipped: true, reason: 'pull_request action synchronize' });
+    expect(readyMock).not.toHaveBeenCalled();
+  });
+
+  it('delivers a peer-forwarded ready_for_review via trust headers (no GitHub signature)', async () => {
+    // A forward from the canonical router carries X-Webhook-Trust=pre-validated
+    // and X-Internal-Signature-256, no X-Hub-Signature-256. The body is signed
+    // with INTERNAL_REGISTER_SECRET ('trust-secret' in the config mock). We assert
+    // the ready handler is still reached (event flows past the trust gate and the
+    // pull_request branch runs before the mention gate).
+    const body = JSON.stringify({
+      action: 'ready_for_review',
+      repository: { full_name: 'org/repo' },
+      pull_request: {
+        number: 654,
+        html_url: 'https://github.com/org/repo/pull/654',
+        title: 'Forwarded PR',
+        draft: false,
+        user: { login: 'a-human' },
+      },
+    });
+    const crypto = require('crypto');
+    const trustSig = 'sha256=' + crypto.createHmac('sha256', 'trust-secret').update(body).digest('hex');
+    const res = await undiciFetch(`${baseUrl}/webhook/github`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-github-event': 'pull_request',
+        'x-github-delivery': 'forwarded-delivery',
+        'x-webhook-trust': 'pre-validated',
+        'x-internal-signature-256': trustSig,
+      },
+      body,
+    });
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(json).toMatchObject({ outcome: 'forwarded' });
+    expect(readyMock).toHaveBeenCalledTimes(1);
+    expect(readyMock.mock.calls[0][0]).toMatchObject({ repo: 'org/repo', prNumber: 654 });
   });
 });
