@@ -21,7 +21,21 @@ The decision procedure is identical in both modes — only staging differs.
 
 ## Steps
 
-### Step 0: determine the mode from the tasking message
+### Step 0: RECALL prior learnings (once per session, before anything)
+
+Dispatch a background Agent — "Check if /workspace/shared/wiki/index.md
+exists. IF YES: read it with limit=100 (concepts section only), identify
+concept pages relevant to approval decisions, false-safes, or the
+files/classes this PR touches; read up to 2 concept pages and follow their
+links to cited learnings. If no concept fits, Grep wiki/ for keywords. IF
+NO wiki/: Grep /workspace/shared/learnings/ for keywords (changed paths,
+the PR's class, 'false-safe', 'clause', 'challenger'). Return ≤5 bullets —
+title, 1-line summary, file path. No hits → 'no prior hits'."
+The bullets are context for every challenger run in this session — prior
+misses on similar files are exactly what it should probe — never a
+substitute for the scripted clauses.
+
+### Step 1: determine the mode from the tasking message
 
 - Message carries a **manifest path** (e.g.
   `pr-snapshots/task-manifest-round-001.json`) → **OFFLINE/HISTORICAL batch**.
@@ -91,21 +105,6 @@ each decision still cites only the current revision's artifacts.
    authorization — it exists only as the ledger row + the
    `[Approval Decision]` message.
 
-### Step 1.5: RECALL prior learnings (both modes, before deciding)
-
-Same pattern as the sibling workflows: dispatch a background Agent —
-"Check if /workspace/shared/wiki/index.md exists. IF YES: read it with
-limit=100 (concepts section only), identify concept pages relevant to
-approval decisions, false-safes, or the files/classes this PR touches;
-read up to 2 concept pages and follow their links to cited learnings.
-If no concept fits, Grep wiki/ for keywords. IF NO wiki/: Grep
-/workspace/shared/learnings/ for keywords (changed paths, the PR's
-class, 'false-safe', 'clause', 'challenger'). Return ≤5 bullets —
-title, 1-line summary, file path. No hits → 'no prior hits'."
-Feed the bullets to the skill run — they are context for the challenger
-(prior misses on similar files are exactly what it should probe), never
-a substitute for the scripted clauses.
-
 ### Step 2: decide (both modes converge here)
 
 The PR workspace now satisfies the `slang-pr-approver` skill's input
@@ -121,11 +120,15 @@ After all entries: post one summary line per decision to
 messages are emitted by the skill, not the workflow) and return counts per
 state: would_approve / abstain_policy / abstain_infra / block.
 
-### Step 4 (LAST): capture learnings
+### Step 4: capture learnings (after EVERY revision decision, and last)
 
-Failure is training data. For every notable outcome this run, write ONE
-`append_learning` file each (L1 atoms are immutable — always append, never
-edit), titled with its category so the learnings-wiki sync groups them:
+Failure is training data, and it arrives per revision: run this after
+each Rn's decision (the human review of Rn-1 you just replayed or
+received IS the feedback for Rn-1's decision), on every live
+`github.pr_review` join, and once more at session end as a sweep for
+anything missed. Write ONE `append_learning` file per learning (L1 atoms
+are immutable — always append, never edit), titled with its category so
+the learnings-wiki sync groups them:
 
 - `[approver/false-safe]` — WOULD_APPROVE where the human verdict (join or
   a later `github.pr_review`) was CHANGES_REQUESTED. Highest severity;
