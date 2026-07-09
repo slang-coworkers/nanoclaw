@@ -116,6 +116,15 @@ register({
 });
 
 register({
+  name: 'tasks-list',
+  description: 'test command (tasks resource)',
+  resource: 'tasks',
+  access: 'open',
+  parseArgs: (raw) => raw,
+  handler: async (args) => ({ echo: args }),
+});
+
+register({
   name: 'wirings-list',
   description: 'test command (wirings resource — not allowed)',
   resource: 'wirings',
@@ -218,6 +227,7 @@ beforeEach(() => {
     sessions: 'agent_group_id',
     destinations: 'agent_group_id',
     members: 'agent_group_id',
+    tasks: 'agent_group_id',
   };
   mockGetResource.mockImplementation((plural: string) =>
     scopeFields[plural] ? { scopeField: scopeFields[plural] } : undefined,
@@ -361,6 +371,19 @@ describe('CLI scope enforcement', () => {
     if (resp.ok) {
       const data = resp.data as { echo: Record<string, unknown> };
       expect(data.echo.group).toBe('g1');
+    }
+  });
+
+  it('group: allows tasks, auto-fills --group', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'group' });
+
+    const resp = await dispatch({ id: '1', command: 'tasks-list', args: {} }, agentCtx());
+
+    expect(resp.ok).toBe(true);
+    if (resp.ok) {
+      const data = resp.data as { echo: Record<string, unknown> };
+      expect(data.echo.group).toBe('g1');
+      expect(data.echo.id).toBeUndefined();
     }
   });
 
