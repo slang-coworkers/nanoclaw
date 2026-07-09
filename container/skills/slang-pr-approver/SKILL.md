@@ -56,7 +56,18 @@ deepwiki never blocks, excuses, or upgrades a decision.
 ## Step 4 — record (critique-gated; never post)
 
 1. Compose `decision.json`: `{pr, mode, head_sha, diff_sha256_or_patch_hash,
-   policy_version, bundle_hash, decision, clauses, challenger, ts}`.
+   policy_version, bundle_hash, decision, abstain_class, reason_code,
+   clauses, challenger, ts}`. Every ABSTAIN carries `abstain_class` +
+   `reason_code`:
+   - `infra` — the pipeline failed, not the PR: R0_ARTIFACTS_MISSING,
+     STALE_STAGE, HARNESS_FAIL, CLAUSE_UNEVALUABLE:<name> (data that
+     should have been staged is absent), CHALLENGER_INCOMPLETE,
+     CRITIQUE_UNAVAILABLE. Infra abstains are defects: name the artifact,
+     they are tracked to ~zero.
+   - `policy` — the system working as intended: CLAUSE_FAIL:<name>
+     (untrusted author, protected path, class/size ineligible), OPEN_GAP,
+     CHALLENGER_CONCERN, CRITIQUE_MUSTFIX, ESCALATED. These are correct
+     "human must look" outputs; do not optimize them away.
    Historical rows key on the R0 head so they join against human_outcomes.
 2. Request critique. Your decision is gated at DECISION_REVIEW (the
    derivation: clauses from data, verdict parse matches final-review.md,

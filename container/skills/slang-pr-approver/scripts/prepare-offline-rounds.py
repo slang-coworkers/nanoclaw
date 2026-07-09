@@ -17,6 +17,7 @@ Outputs under --out:
   <slug>/files.txt     changed paths (paginated)
   <slug>/r0.json       {r0_head_sha, r0_kind, first_human_review_at}
   <slug>/diff.patch    merge-base three-dot diff base_ref...R0 (the R0-era diff)
+  <slug>/r0-checks.json check-runs + combined status at R0 (ci_green evaluability)
   task-manifest-round-NNN.json  [{pr, slug, mode: historical, r0_head_sha}, ...]
 
 Idempotent: existing complete slugs are skipped. stdlib + gh only.
@@ -70,6 +71,22 @@ def snapshot(pr, out):
     json.dump(reviews, open(os.path.join(d, "reviews.json"), "w"), indent=1)
     json.dump({"r0_head_sha": r0, "r0_kind": r0_kind, "first_human_review_at": r0_at},
               open(os.path.join(d, "r0.json"), "w"), indent=1)
+    # CI state at R0 — without this, ci_green_on_sha is unevaluable for every
+    # historical PR (a guaranteed infra-abstain). Check-runs + legacy combined
+    # status both persist on GitHub for old commits.
+    try:
+        pages = json.loads(gh("api", f"repos/{REPO}/commits/{r0}/check-runs?per_page=100",
+                              "--paginate", "--slurp"))
+        runs = []
+        for pg in pages:
+            runs.extend(pg.get("check_runs", []))
+        combined = gh_json(f"repos/{REPO}/commits/{r0}/status")
+        json.dump({"check_runs": [{"name": c.get("name"), "conclusion": c.get("conclusion")}
+                                  for c in runs],
+                   "combined_status": combined.get("state")},
+                  open(os.path.join(d, "r0-checks.json"), "w"), indent=1)
+    except Exception as e:
+        json.dump({"error": str(e)[:200]}, open(os.path.join(d, "r0-checks.json"), "w"))
     files = gh_json(f"repos/{REPO}/pulls/{pr}/files?per_page=100", paginate=True)
     with open(os.path.join(d, "files.txt"), "w") as f:
         f.write("\n".join(x["filename"] for x in files) + "\n")
