@@ -101,11 +101,7 @@ export interface DecisionSessionRow {
   human_verdict: string | null;
 }
 
-export function getDecisionSessionsForPr(
-  db: Database.Database,
-  repo: string,
-  prNumber: number,
-): DecisionSessionRow[] {
+export function getDecisionSessionsForPr(db: Database.Database, repo: string, prNumber: number): DecisionSessionRow[] {
   return db
     .prepare(
       `SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict
