@@ -641,7 +641,7 @@ export function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent): Deliv
     pr_url: event.prUrl,
     title: event.title,
     author: event.author,
-    task: `PR ${event.repo}#${event.prNumber} is ready for review (${event.reason}). Route it to the reviewer coworker.`,
+    task: `PR ${event.repo}#${event.prNumber} is ready for review (${event.reason}). Route it to the project's *-pr-approver coworker (never a reviewer/fixer).`,
   });
 
   // Always to the orchestrator on the PR's canonical thread. Delivery id in the
