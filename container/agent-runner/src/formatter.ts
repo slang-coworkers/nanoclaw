@@ -99,6 +99,11 @@ export interface RoutingContext {
   channelType: string | null;
   threadId: string | null;
   inReplyTo: string | null;
+  /** Batch is a task fire — explicit `<message to>` sends must NOT inherit
+   *  inReplyTo (the series id), or the host's task-fire suppression drops
+   *  them as turn-final echoes: zero delivery. Deliberate sends are
+   *  in_reply_to-null, same as the out-of-process MCP send_message path. */
+  taskFire: boolean;
 }
 
 /**
@@ -123,6 +128,7 @@ export function extractRouting(messages: MessageInRow[]): RoutingContext {
     channelType: useSession ? session.channel_type : (first?.channel_type ?? null),
     threadId: first?.thread_id ?? null,
     inReplyTo: first?.id ?? null,
+    taskFire: messages.length > 0 && messages.every((m) => m.kind === 'task'),
   };
 }
 
