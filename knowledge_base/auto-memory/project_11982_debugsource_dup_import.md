@@ -19,4 +19,6 @@ shader-slang/slang#11982 (pdeayton-nv): imported module emits TWO `DebugSource` 
 
 Adjacent NOT-dup: #11983 (same reporter, DebugFunction wrong CU) — fix alongside. Loose family lead: import/precompiled-module dedup ([[project_10027_vector4_import_abort_pending]], [[project_11771_reflection_dup_global_pending]]) — not confirmed.
 
-Canonical thread `gh-issue-shader-slang/slang-11982`. Chain OPEN, awaiting fixer's REAL [Fix Report] w/ verified real PR number. Verify `report_pr_created` when the real PR lands. Do NOT double-dispatch to fixer (triager owns the edge). Ready-flip/merge gated.
+**07-10 update:** author pdeayton-nv commented "draft PR ready?" (comment 4931441344). Triager clean-verified NO PR exists (`gh pr list --search 11982` + `--head fix/issue-11982` both empty), answered honestly on GitHub (comment 4931457637, delta reply). Fixer status: analysis complete + fix locked (Approach A one-liner + regression test), but its in-flight Debug build was torn down by a session restart ~2.5 days ago (binaries + baseline -dump-ir never landed; NO code lost — branch fix/issue-11982 + analysis intact). Fixer resyncing master + rebuilding; draft PR ETA ~1hr.
+
+Canonical thread `gh-issue-shader-slang/slang-11982`. Chain OPEN, awaiting fixer's REAL [Fix Report] w/ clean-verified real PR number (triager will verify + forward up). Verify `report_pr_created` when the real PR lands. Do NOT double-dispatch to fixer (triager owns the edge). Ready-flip/merge gated.
