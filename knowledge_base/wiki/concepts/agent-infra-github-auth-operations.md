@@ -72,6 +72,8 @@ If a REST mutation 403s with an admin-rights message, try the GraphQL equivalent
 
 Reviewer preflight "gh auth not configured" / `gh auth status` non-zero is NOT a reason to abort the `/slang-pr-review` pipeline. Reviewer A's `gh pr diff` / `gh api repos/.../pulls/N` work for public repos. Verify the real read endpoint before deciding gh is broken. Posting back is separately gated by the `<github-post-authorized />` marker ([CONSOLIDATED: GitHub auth & ops in agent containers (gh probes lie; use org-scoped REST / raw token)](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)).
 
+The mechanism behind the lie: `gh auth status` reports `GH_TOKEN` invalid because the local token is a placeholder, but outbound GitHub traffic routes through the onecli-gateway proxy (`HTTPS_PROXY`/`HTTP_PROXY` in the container env), which injects the real `nv-slang-bot[bot]` App installation token *on the wire* — so `gh api`/`gh pr view` succeed with full write access despite the invalid local token. This bites reviewers posting COMMENT-state reviews (`gh api .../pulls/N/reviews --method POST` via `post-review.sh`): a reviewer that runs `gh auth status` as a preflight and sees "invalid" may wrongly abort an authorized post and fall back to `send_file` only, when the POST would have succeeded. Don't gate posting on `gh auth status`. Preflight write access with an actual call (`gh pr view N -R owner/repo`), trust `post-review.sh`'s own 403→exit 3 handling as the authoritative write signal, and remember `shader-slang/*` repos are write-capable via the proxy-injected App token while `slang-coworkers/*` are read-only (App lacks write → 403/exit 3) ([gh auth status shows GH_TOKEN invalid but gh api succeeds via onecli-gateway proxy](../learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api-s.md)).
+
 Reviewer A can review the WRONG PR via stale `tmp/pr-diff.patch` from a prior run. Before any A run on a shared checkout: `rm -f /workspace/agent/slang/tmp/pr-diff.patch`. Independently verify the PR's real diff with `gh pr view <N> -R <repo> --json files,additions,deletions` + `gh pr diff <N> -R <repo> | head` ([slang-pr-review Reviewer A can review the WRONG PR via stale tmp/pr-diff.patch](../learnings/1780497941518-slang-pr-review-reviewer-a-can-review-the-wrong-pr.md)).
 
 ## Emsdk and CI Run Logs
@@ -91,7 +93,7 @@ Before force-pushing an amended commit to your `fix/issue-<n>` branch, always `g
 When two branches each bump the same version counter (e.g. `k_maxSupportedModuleVersion` 22→23), git **collapses both to a single 23** on merge with no conflict — it can't see that two independent increments were intended. Manually correct to the summed value (24). Surfaced resolving #11541 ([1783089145425-merge-hazard-two-branches-bumping-a-sh](../learnings/1783089145425-merge-hazard-two-branches-bumping-a-shared-version.md)).
 
 ---
-**Source learnings (24):**
+**Source learnings (25):**
 - [CONSOLIDATED: GitHub auth & ops in agent containers](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)
 - [gh CLI --field expands @ as file path](../learnings/1778859843367-gh-cli-field-expands-as-file-path.md)
 - [nv-slang-bot 403 on issue-assign and cross-session comment-edit](../learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md)
@@ -116,4 +118,5 @@ When two branches each bump the same version counter (e.g. `k_maxSupportedModule
 - [gh auth status 401 is a FALSE NEGATIVE for nv-slang-bot App token — verify via a real write, never a probe](../learnings/1783388957871-gh-auth-status-401-is-a-false-negative-for-nv-slan.md)
 - [Pushing workflow-file changes: App token lacks workflows perm → fork + REST cross-fork PR](../learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md)
 - [Bot App token lacks 'workflows' permission → workflow-file PRs must go cross-fork via slang-coworkers](../learnings/1783522205653-bot-app-token-lacks-workflows-permission-workflow-.md)
+- [gh auth status shows GH_TOKEN invalid but gh api succeeds via onecli-gateway proxy](../learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api-s.md)
 _Catalog: [[wiki/index.md]]_

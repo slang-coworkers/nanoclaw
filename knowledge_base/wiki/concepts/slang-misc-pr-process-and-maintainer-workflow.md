@@ -60,8 +60,12 @@ The `slang-discord-support` bot has write access only to summon threads in #slan
 
 On a P0 flaky-test/merge-queue-stopper (#11814), a correct fix was diagnosed and built, but the issue **reporter merged their own identical fix (#11817) ~14h into the debug build**. The lesson: a P0 merge-queue stopper can be self-fixed mid-build, so re-check `gh pr list` (and the issue's linked-PR timeline) **after** the build completes, before opening a duplicate PR ([P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build](../learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)).
 
+## For a Codegen-Consistency Asymmetry, Converge on the GOOD Leg — Not the Low-Risk One
+
+When triaging an asymmetry with a "good" leg and a "bad" leg, the fix should lift the *bad* leg to the good — not lower the good leg to the bad, even when lowering is the smaller/lower-risk diff. On slang#12004 (the sampler-vs-texture `[noinline]` SPIR-V param asymmetry), PR #12027's Approach A — specialize scalar `SamplerState` params like textures so both pass by bindless index — was **CLOSED UNMERGED and explicitly rejected** by the maintainer: *"we don't want to make changes to the SamplerState side. Passing the sampler-state as descriptors should be considered downgrading."* The key insight, which was NOT obvious from the code and which the triage guessed wrong: the sampler passed by-value as a loaded `OpTypeSampler` is the DESIRED form, and the texture passed by-index-and-reloaded is the WORKAROUND (from #3252, for old driver bugs). So the principled direction is Approach B (revert the texture index workaround → both by value), not A. The triage memo *did* enumerate B and flag it as the reporter's preference + a maintainer call, but RECOMMENDED A as "fastest correct fix that doesn't regress adjacent surfaces" — a framing that under-weighted that A is itself a quality regression (downgrade) even if behavior-symmetric. Lesson: lead by asking which leg is the better codegen and default the recommendation toward converging on THAT, flagging the risk of touching the older invariant, rather than defaulting to the low-risk-but-downgrading direction. B is NOT authorized here ("no plan to remove the workaround"; removal scheduled only if proven driver-safe) — do NOT re-open with B unilaterally; relaxing the #3252 texture-always-specialize invariant is maintainer-owned and explicitly deferred. Chain outcome was still clean: the PR surfaced the exact A-vs-B tradeoff on the real invariant so maintainers could decide with full framing ([slang#12004 OUTCOME — Approach A rejected as "downgrading"; sampler-as-descriptor is the desired form, not the bug](../learnings/1783635981424-slang-12004-outcome-approach-a-rejected-as-downgra.md)).
+
 ---
-**Source learnings (23):**
+**Source learnings (24):**
 - [tfoley is Theresa Foley](../learnings/1777487718343-slang-compiler-tess-foley-name.md)
 - [maintainer handoff verify live PR state](../learnings/1779622726384-slang-maintainer-handoff-verify-on-pr-state-agains.md)
 - [verify commit-vs-tag ancestry before attributing regression](../learnings/1780401515127-slang-precompiled-slang-module-import-triggers-loc.md)
@@ -86,4 +90,5 @@ On a P0 flaky-test/merge-queue-stopper (#11814), a correct fix was diagnosed and
 - [#11599 feature cherry-pickable reference PR](../learnings/1782512199002-slang-11599-feature-delivered-as-a-cherry-pickable.md)
 
 - [P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build](../learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)
+- [slang#12004 OUTCOME — Approach A rejected as "downgrading"; sampler-as-descriptor is the desired form](../learnings/1783635981424-slang-12004-outcome-approach-a-rejected-as-downgra.md)
 _Catalog: [[wiki/index.md]]_

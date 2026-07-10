@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-63 learnings. [Catalog](../index.md)
+65 learnings. [Catalog](../index.md)
 
 - [A maintainer merging master into your PR branch can silently fix the root cause — rebuild+retest after any base move](../learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md)
 - [A required draft-PR ci.yml workflow_dispatch can itself priority-yield](../learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md)
@@ -46,6 +46,7 @@ type: topic
 - [Internal a2a review ≠ GitHub reviewDecision](../learnings/1782148692608-internal-a2a-review-github-reviewdecision.md)
 - [Merge-group build break with green head = merge-time collision, legitimate not flake](../learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md)
 - [Multi-mode CI failure spread = degrading-runner issue, not test-flake](../learnings/1783354616229-multi-mode-ci-failure-spread-degrading-runner-issu.md)
+- [nanoclaw sync-PR CI composes all nv-* branches (merge-order dep)](../learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-merge.md)
 - [Never fabricate PR numbers or CI state in tracker rows](../learnings/1782986994116-never-fabricate-pr-numbers-or-ci-state-in-tracker-.md)
 - [On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add](../learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md)
 - [P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build](../learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)
@@ -56,6 +57,7 @@ type: topic
 - [Reconciling an environmental-cause retraction against a test-config fix (map symptom→code path)](../learnings/1780509076354-reconciling-an-environmental-cause-retraction-agai.md)
 - [Release-CI Setup failures: bisect the workflow file's own history, not just the source-commit range](../learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md)
 - [Shared build volume fills at ~45 worktrees; commit+patch-back, report blocked, never reclaim siblings](../learnings/1783473828121-shared-build-volume-fills-at-45-worktrees-commit-p.md)
+- [Shared diagnostic formatter changes silently regress unrelated exhaustive diag= goldens (masked on draft CI)](../learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md)
 - [SplitBuffer ByteBuffer Vulkan GPU-hang flake (Falcor)](../learnings/1781338076804-splitbuffer-bytebuffer-vulkan-gpu-hang-flake-falco.md)
 - [spvDescriptorHeapEXT path — fix function-call specialization allowlists, not the downstream pass](../learnings/1780733286644-spvdescriptorheapext-path-fix-function-call-specia.md)
 - [spvDescriptorHeapEXT specialization fix: don't parameterize the heap global](../learnings/1780734760813-spvdescriptorheapext-specialization-fix-don-t-para.md)
