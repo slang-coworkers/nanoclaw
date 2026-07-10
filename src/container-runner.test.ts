@@ -95,3 +95,25 @@ describe('container boot-failure tripwire (structural)', () => {
     expect(src).toMatch(/Container exited non-zero.*stderrTail/s);
   });
 });
+
+describe('detectStaleContainers per-session compose guard (structural)', () => {
+  // composeCoworkerSpine THROWS when a coworker type references a skill/workflow/
+  // overlay that isn't resolvable on disk (e.g. an external `skill-source` skill
+  // not yet fetched into container/skills/). detectStaleContainers loops over
+  // ALL active containers and composes each; before the guard, one unresolvable
+  // type propagated its throw to the sweep's outer try/catch and skipped the
+  // entire CLAUDE.md-stale respawn loop — disabling instruction hot-reload
+  // fleet-wide for every healthy coworker. The compose must be wrapped
+  // per-session so a broken type is skipped (continue), not fatal to the scan.
+  // Driving the real loop needs a live activeContainers map, so guard the wiring
+  // structurally, matching the invariant tests above.
+  it('wraps the per-session spine compose in try/catch and continues on failure', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src', 'container-runner.ts'), 'utf-8');
+    const fnStart = src.indexOf('export function detectStaleContainers');
+    expect(fnStart).toBeGreaterThan(-1);
+    const fnBody = src.slice(fnStart, src.indexOf('\n}', fnStart));
+    // The compose call must sit inside a try whose catch skips just this session.
+    expect(fnBody).toMatch(/try\s*{[\s\S]*composeCoworkerSpine\(/);
+    expect(fnBody).toMatch(/catch \(err\) {[\s\S]*Skipping stale-check[\s\S]*continue;/);
+  });
+});
