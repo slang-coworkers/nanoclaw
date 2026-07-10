@@ -34,6 +34,14 @@ comes from* — the staging below fills that same contract either way.
 
 ## Steps
 
+Maintain a `TodoWrite` checklist for this decision's lifecycle and update it as
+events arrive rather than re-narrating from scratch: stage the PR at the pinned
+commit → dispatch the review to `{{vars.reviewer}}` → await the review doc (end
+your turn; don't poll) → run the decision procedure (clauses / verdict /
+challenger) → record the decision + send `[Approval Decision]`. On a
+`synchronize` event mid-flight, UPDATE the existing todo (re-pin the head, note
+the new revision) — don't start a fresh narration.
+
 ### Step 0: RECALL prior learnings (once per session, before anything)
 
 Dispatch a background Agent — "Check if /workspace/shared/wiki/index.md
@@ -75,6 +83,14 @@ substitute for the scripted clauses.
     (pr_session_mappings): continue the existing thread as a new revision turn
     — the new head is the commit, note the delta from the previous head, run a
     fresh review + decision (it supersedes the earlier row for this PR).
+    - **DEBOUNCE bursts.** When `synchronize` events arrive in rapid
+      succession (the author is actively iterating — several pushes within a
+      short window), do NOT re-stage + re-dispatch the reviewer on every push:
+      that burns a full review cycle per push. Wait for the head to settle (no
+      new push for a reasonable quiet window), then pin the settled head and
+      dispatch ONE review. One decision per settled revision, not per push. The
+      one-decision-per-revision / STALE_STAGE guard is unchanged — this just
+      avoids thrashing the reviewer during an active push burst.
 - Message is a **`[Review Verdict]` from `{{vars.reviewer}}` with a
   `combined-review.md` attached** (arrived on thread `gh-pr-<repo>-<num>`) →
   **LIVE — reviewer-forwarded (Case 1)**. The review already happened: a bot PR
