@@ -255,5 +255,54 @@ class Robustness(unittest.TestCase):
         self.assertEqual(out["summary"]["in_flight"], 0)
 
 
+class NextStepOwnership(unittest.TestCase):
+    """SKILL.md §2: bot-last is ambiguous. A fixer-owned, artifact-less chain that
+    has gone dark is a promise WE owe, not a handoff — nudge it (slang#12002, where
+    the fixer edited code, said 'waiting on the build monitor', idle-exited, and was
+    never woken because the classifier read bot-last as awaiting_human forever)."""
+
+    def _fixer_chain(self, disp=None, pr=None, folder="slang-fixer"):
+        # bot spoke last 5 days ago (ball=human), then silence. No human after.
+        return {
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-o/r-12002",
+                          "container_status": "stopped", "group_folder": folder}],
+            "chains": {"gh-issue-o/r-12002": {
+                "repo": "o/r", "issue": 12002, "sessions": ["s1"],
+                "our_last_outbound": "2026-06-21T12:00:00Z",  # 5 days stale BY US
+                "pr": pr, "disposition": disp,
+                "comments": [
+                    {"author": "nv-slang-bot[bot]", "at": "2026-06-21T12:00:00Z", "is_bot": True},
+                ],
+            }},
+        }
+
+    def test_dark_fixer_no_pr_is_awaiting_us(self):
+        r = row_for(run_scan(self._fixer_chain()), "gh-issue-o/r-12002")
+        self.assertEqual(r["state"], "awaiting_us")   # was awaiting_human (the bug)
+        self.assertTrue(r["needs_nudge"])
+        self.assertEqual(r["ball"], "human")          # bot still spoke last
+
+    def test_human_owned_disposition_stays_parked(self):
+        r = row_for(run_scan(self._fixer_chain(disp="active: human-debate")),
+                    "gh-issue-o/r-12002")
+        self.assertEqual(r["state"], "awaiting_human")
+        self.assertFalse(r["needs_nudge"])
+
+    def test_triage_only_no_fixer_stays_parked(self):
+        # A triager-owned bot-last chain legitimately awaits a human — don't regress it.
+        r = row_for(run_scan(self._fixer_chain(folder="slang-triager")),
+                    "gh-issue-o/r-12002")
+        self.assertEqual(r["state"], "awaiting_human")
+        self.assertFalse(r["needs_nudge"])
+
+    def test_fixer_with_open_pr_stays_parked(self):
+        # PR exists -> artifact present; CI/Step 2b owns the nudge, not this path.
+        pr = {"number": 999, "state": "OPEN", "isDraft": True, "fixes_issue": 12002}
+        r = row_for(run_scan(self._fixer_chain(pr=pr)), "gh-issue-o/r-12002")
+        self.assertEqual(r["state"], "awaiting_human")
+        self.assertFalse(r["needs_nudge"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

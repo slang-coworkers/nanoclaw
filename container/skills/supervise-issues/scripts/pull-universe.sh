@@ -32,14 +32,30 @@ done
 
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# --- 1. Pull all sessions, filter to gh-issue-* ---
+# --- 1. Pull all sessions, filter to gh-issue-*, stamp each with its agent
+#        group's folder (the role signal scan.py needs to tell a fixer-owned
+#        chain apart from a triage-only one — see scan.py we_owe_next_step). ---
 ALL_SESSIONS=$(ncl sessions list --limit 10000 --json 2>/dev/null)
-GH_SESSIONS=$(echo "$ALL_SESSIONS" | python3 -c '
-import json, sys
+ALL_GROUPS=$(ncl groups list --json 2>/dev/null)
+GH_SESSIONS=$(GROUPS_JSON="$ALL_GROUPS" python3 -c '
+import json, os, sys
 data = json.load(sys.stdin)["data"]
-gh = [s for s in data if (s.get("thread_id") or "").startswith("gh-issue-")]
+# agent_group_id -> folder map (best-effort; absent -> "" -> non-fixer, current behavior)
+folder_by_group = {}
+try:
+    for g in (json.loads(os.environ.get("GROUPS_JSON") or "{}").get("data") or []):
+        if g.get("id"):
+            folder_by_group[g["id"]] = g.get("folder") or ""
+except (json.JSONDecodeError, AttributeError, TypeError):
+    pass
+gh = []
+for s in data:
+    if not (s.get("thread_id") or "").startswith("gh-issue-"):
+        continue
+    s["group_folder"] = folder_by_group.get(s.get("agent_group_id"), "")
+    gh.append(s)
 json.dump(gh, sys.stdout)
-')
+' <<<"$ALL_SESSIONS")
 
 # --- 2. Group sessions by thread_id, extract repo + issue number ---
 THREADS=$(echo "$GH_SESSIONS" | python3 -c '
