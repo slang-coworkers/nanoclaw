@@ -47,8 +47,10 @@ import {
   updateSessionTitle,
 } from './db/sessions.js';
 import { log } from './log.js';
+import { getDecisionSessionsForPr } from './modules/approval-ledger/store.js';
 import { forwardWebhookToPeer } from './modules/pr-mapping/forward.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
+import { getAgentGroup } from './db/agent-groups.js';
 import { inboundDbPath, initSessionFolder } from './session-manager.js';
 import type { AgentGroup, Session } from './types.js';
 
@@ -671,6 +673,82 @@ export function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent): Deliv
  * server's gate already ensures these events arrive only for real PRs; the
  * mapping is the "this PR is ours" predicate.
  */
+/**
+ * Terminal PR events (merged / closed) also feed the approver's learning loop.
+ * The approval_decisions ledger records which approver session decided this PR
+ * (agent_group_id + thread_id, keyed on gh-pr-<repo>-<num>); we deliver the
+ * outcome there so the approver can join the human verdict onto its R0 row and
+ * distill an abstract learning ("changes of this shape warrant probing X").
+ *
+ * This is a SIDE delivery, independent of the fixer routing: it never changes
+ * the primary DeliveryOutcome, never mints a session (a reaped approver session
+ * has nothing to resume — the ledger row already persists for the offline
+ * scorer), and is a silent no-op when no approver decided this PR. Deduped on
+ * (agent_group_id, thread_id) so an R0..Rn multi-decision PR wakes the session
+ * once.
+ */
+function notifyApproverOfTerminalPr(event: GitHubPrEvent, eventContent: string): void {
+  try {
+    const rows = getDecisionSessionsForPr(getDb(), event.repo, event.prNumber);
+    if (rows.length === 0) return;
+    const seen = new Set<string>();
+    for (const row of rows) {
+      if (!row.thread_id) continue;
+      const key = `${row.agent_group_id} ${row.thread_id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const group = getAgentGroup(row.agent_group_id);
+      if (!group) continue;
+      // mintPerThread:false — only deliver to a session that still exists; a
+      // reaped approver session isn't re-minted for a backward-looking learning
+      // signal (the ledger already carries the row for offline scoring).
+      const session = findSessionByAgentThread(group.id, row.thread_id);
+      if (!session) {
+        log.info('github-webhook: approver session gone — terminal PR learning skipped', {
+          repo: event.repo,
+          pr: event.prNumber,
+          group: group.name,
+          thread: row.thread_id,
+        });
+        continue;
+      }
+      const dbPath = inboundDbPath(group.id, session.id);
+      const db = openInboundDb(dbPath);
+      try {
+        const rowId = `${event.rowId}-approver`;
+        const existing = db.prepare('SELECT 1 FROM messages_in WHERE id = ?').get(rowId);
+        if (existing) continue;
+        insertMessage(db, {
+          id: rowId,
+          kind: 'webhook',
+          timestamp: new Date().toISOString(),
+          platformId: `github:${event.repo}:${event.prNumber}`,
+          channelType: 'github',
+          threadId: row.thread_id,
+          content: eventContent,
+          processAfter: null,
+          recurrence: null,
+        });
+        log.info('github-webhook: terminal PR delivered to approver for learning', {
+          repo: event.repo,
+          pr: event.prNumber,
+          group: group.name,
+          session: session.id,
+          event: event.event,
+        });
+      } finally {
+        db.close();
+      }
+    }
+  } catch (err) {
+    log.warn('github-webhook: approver learning-loop delivery failed (non-fatal)', {
+      repo: event.repo,
+      pr: event.prNumber,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 export function deliverGitHubPrEvent(event: GitHubPrEvent): DeliveryOutcome {
   const eventContent = JSON.stringify({
     event: event.event,
@@ -679,6 +757,12 @@ export function deliverGitHubPrEvent(event: GitHubPrEvent): DeliveryOutcome {
     is_pr: true,
     ...event.payload,
   });
+
+  // Terminal events (merged/closed) also feed the approver's learning loop, in
+  // addition to the fixer routing below. Independent side-channel.
+  if (event.event === 'github.pr_merged' || event.event === 'github.pr_closed') {
+    notifyApproverOfTerminalPr(event, eventContent);
+  }
 
   const mapped = deliverMappedPrEvent({
     repo: event.repo,

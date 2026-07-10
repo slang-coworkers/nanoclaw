@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { closeDb, initTestDb } from '../../db/connection.js';
 import { runMigrations } from '../../db/migrations/index.js';
-import { isValidDecision, recordHumanVerdict, upsertDecision, type DecisionWrite } from './store.js';
+import {
+  getDecisionSessionsForPr,
+  isValidDecision,
+  recordHumanVerdict,
+  upsertDecision,
+  type DecisionWrite,
+} from './store.js';
 
 beforeEach(() => {
   initTestDb();
@@ -127,5 +133,30 @@ describe('recordHumanVerdict', () => {
       .get('abc123def456abc123def456abc123def456abcd') as Record<string, unknown>;
     expect(row.decision).toBe('BLOCK');
     expect(row.human_verdict).toBe('CHANGES_REQUESTED');
+  });
+});
+
+describe('getDecisionSessionsForPr', () => {
+  it('returns the approver session rows that decided a PR, oldest first', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    // R0 then R1 (a synchronize re-decision) from the same approver session.
+    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
+    upsertDecision(
+      db,
+      baseWrite({ commitSha: 'b'.repeat(40), decision: 'ABSTAIN_POLICY', decidedAt: '2026-07-09T01:00:00Z' }),
+    );
+    const rows = getDecisionSessionsForPr(db, 'shader-slang/slang', 11993);
+    expect(rows.length).toBe(2);
+    expect(rows[0].commit_sha).toBe('a'.repeat(40)); // oldest (R0) first
+    expect(rows[0].agent_group_id).toBe('g1');
+    expect(rows[0].thread_id).toBe('gh-pr-shader-slang/slang-11993');
+    expect(rows[1].decision).toBe('ABSTAIN_POLICY');
+  });
+
+  it('is empty when no approver decided the PR (nothing to route/learn)', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    expect(getDecisionSessionsForPr(db, 'shader-slang/slang', 424242)).toEqual([]);
   });
 });

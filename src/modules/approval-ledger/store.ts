@@ -84,6 +84,37 @@ export function upsertDecision(db: Database.Database, w: DecisionWrite): boolean
 }
 
 /**
+ * The approver session(s) that decided a given PR — the ledger is the index.
+ * Used to route a terminal PR event (merged / closed) back to the approver
+ * that decided it so it can join the human outcome onto its R0 row and distill
+ * an abstract learning. Returns one row per decided commit (a PR may have R0..Rn
+ * decisions from the same session); callers dedup on (agent_group_id, thread_id)
+ * when delivering. Empty when no approver ever decided this PR — nothing to
+ * learn, nothing to route.
+ */
+export interface DecisionSessionRow {
+  agent_group_id: string;
+  session_id: string;
+  thread_id: string | null;
+  commit_sha: string;
+  decision: string;
+  human_verdict: string | null;
+}
+
+export function getDecisionSessionsForPr(
+  db: Database.Database,
+  repo: string,
+  prNumber: number,
+): DecisionSessionRow[] {
+  return db
+    .prepare(
+      `SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict
+       FROM approval_decisions WHERE repo=? AND pr_number=? ORDER BY decided_at ASC`,
+    )
+    .all(repo, prNumber) as DecisionSessionRow[];
+}
+
+/**
  * Stamp the human verdict onto an existing decision row for the join. No-op
  * (returns false) if no decision row exists yet for (repo, pr, commit) — the
  * human review arrived before/without a Verity decision; nothing to join.
