@@ -34,6 +34,17 @@ This eliminates the sampling gap — every `gh-issue-*` session is fetched and c
 issues are filtered out automatically (the script reads `issue_open` from `gh issue view`). Use
 this as the default path; fall back to manual assembly only if the script fails (e.g. `gh` auth).
 
+**Enrichment is partial-tolerant (why the board no longer collapses to "N/M PRs").** The batched
+GraphQL resolver uses `issueOrPullRequest(number:)`, not `issue(number:)` — a chain can be keyed on
+a number that is actually a **PR** (a large fraction of active chains are), and `issue(number:)` is
+strict-typed so it 404s on those. A PR-keyed chain's own PR becomes its artifact (`self_pr` →
+`chain["pr"]`), which also stops `scan.py::we_owe_next_step` from false-flipping it to
+`awaiting_us`. And `gh api graphql` returns **partial success** (HTTP 200 with a valid `data` object
+*and* an `errors` array, exiting non-zero) whenever a few aliased numbers miss; `gh_graphql` now
+**salvages** that data instead of discarding the whole batch — one unresolved number no longer wipes
+PR discovery for the other 49. If you see a data-quality note about low PR-enrichment, the fix path
+is here, not a blind re-run.
+
 **Deterministic classification → `scripts/scan.py`.** Don't re-derive the set math and the activity
 clock by hand each tick (that re-derivation is what produced the documented silent-2-days,
 dark-for-days, and ~16-dropped-chains failures — see *Why these rules exist*). Assemble one JSON

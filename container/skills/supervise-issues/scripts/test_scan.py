@@ -303,6 +303,20 @@ class NextStepOwnership(unittest.TestCase):
         self.assertEqual(r["state"], "awaiting_human")
         self.assertFalse(r["needs_nudge"])
 
+    def test_pr_keyed_chain_is_not_false_flipped(self):
+        # Enrichment contract: a chain keyed on a PR NUMBER (not an issue) must
+        # arrive with chain["pr"] populated (pull-universe stamps it from the
+        # issueOrPullRequest PullRequest arm as self_pr). If enrichment ever
+        # regresses and leaves pr=None on such a chain, we_owe_next_step would
+        # wrongly flip a bot-last, fixer-owned PR chain to awaiting_us and nudge
+        # a PR that already exists. Pin the with-pr behavior as the guard.
+        pr = {"number": 12002, "state": "OPEN", "isDraft": True,
+              "fixes_issue": 12002, "body_has_fixes": True}
+        r = row_for(run_scan(self._fixer_chain(pr=pr)), "gh-issue-o/r-12002")
+        self.assertEqual(r["pr"], 12002)
+        self.assertEqual(r["state"], "awaiting_human")
+        self.assertFalse(r["needs_nudge"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

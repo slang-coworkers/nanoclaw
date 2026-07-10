@@ -102,17 +102,37 @@ def run(cmd, default=""):
         return default
 
 def gh_graphql(query):
-    """Execute a GraphQL query via gh api graphql."""
+    """Execute a GraphQL query via gh api graphql.
+
+    GraphQL is partial-success: an aliased batch where a few numbers don't
+    resolve returns HTTP 200 with a valid `data` object AND an `errors` array,
+    and `gh` exits non-zero for it. The old code treated rc!=0 as total failure
+    and threw the whole batch away — one bad number (e.g. a chain keyed on a PR
+    number, which `issue(number:)` 404s) collapsed PR discovery for all 50 in
+    the batch (the "1/147 PRs" enrichment failure). Salvage the data whenever it
+    parses and contains a `data` object; only bail when there's nothing usable.
+    """
     r = subprocess.run(
         ["gh", "api", "graphql", "-f", f"query={query}"],
         capture_output=True, text=True, timeout=60)
+    parsed = None
+    if r.stdout.strip():
+        try:
+            parsed = json.loads(r.stdout)
+        except json.JSONDecodeError:
+            parsed = None
+    if isinstance(parsed, dict) and parsed.get("data") is not None:
+        errs = parsed.get("errors") or []
+        if errs:
+            # Partial success — keep the salvaged nodes, just note the misses.
+            print(f"pull-universe: graphql partial ({len(errs)} node error(s); "
+                  f"salvaged data): {str(errs[0].get('message',''))[:120]}",
+                  file=sys.stderr)
+        return parsed
+    # Nothing usable in stdout — genuine failure, fall back to REST.
     if r.returncode != 0:
         print(f"pull-universe: graphql error: {r.stderr[:200]}", file=sys.stderr)
-        return None
-    try:
-        return json.loads(r.stdout)
-    except json.JSONDecodeError:
-        return None
+    return None
 
 def ncl_last_outbound(sess_ids):
     latest = None
@@ -147,25 +167,40 @@ for repo, repo_threads in by_repo.items():
     owner, name = repo.split("/", 1)
     for batch_start in range(0, len(repo_threads), BATCH_SIZE):
         batch = repo_threads[batch_start:batch_start + BATCH_SIZE]
-        # Build aliased query fragments
+        # Build aliased query fragments.
+        # Use issueOrPullRequest (a union), NOT issue(number:) — a chain can be
+        # keyed on a number that is actually a PR (32/61 active slang chains
+        # were), and issue(number:) is strict-typed so it 404s on those, which
+        # used to poison the whole batch. The PullRequest arm captures the chain's
+        # own PR as its artifact (self_pr), so we_owe_next_step in scan.py sees a
+        # PR and won't false-flip a PR-keyed chain to awaiting_us.
         fragments = []
         for t in batch:
             alias = f"i{t['issue']}"
             fragments.append(f"""
-    {alias}: issue(number: {t["issue"]}) {{
-      state
-      comments(last: 5) {{
-        nodes {{ author {{ login }} createdAt }}
-      }}
-      timelineItems(last: 30, itemTypes: [CROSS_REFERENCED_EVENT]) {{
-        nodes {{
-          ... on CrossReferencedEvent {{
-            source {{
-              ... on PullRequest {{
-                number state isDraft body headRefName
+    {alias}: issueOrPullRequest(number: {t["issue"]}) {{
+      __typename
+      ... on Issue {{
+        state
+        comments(last: 5) {{
+          nodes {{ author {{ login }} createdAt }}
+        }}
+        timelineItems(last: 30, itemTypes: [CROSS_REFERENCED_EVENT]) {{
+          nodes {{
+            ... on CrossReferencedEvent {{
+              source {{
+                ... on PullRequest {{
+                  number state isDraft body headRefName
+                }}
               }}
             }}
           }}
+        }}
+      }}
+      ... on PullRequest {{
+        state isDraft body headRefName
+        comments(last: 5) {{
+          nodes {{ author {{ login }} createdAt }}
         }}
       }}
     }}""")
@@ -186,25 +221,47 @@ for repo, repo_threads in by_repo.items():
                     state = r.stdout.strip() if r.returncode == 0 else "OPEN"
                 except Exception:
                     state = "OPEN"
-                issue_data[f"{repo}:{t['issue']}"] = {"state": state, "comments": [], "prs": []}
+                issue_data[f"{repo}:{t['issue']}"] = {"state": state, "comments": [], "prs": [], "self_pr": None}
                 gh_calls += 1
             continue
 
-        repo_data = result["data"].get("repository", {})
+        repo_data = (result.get("data") or {}).get("repository") or {}
         for t in batch:
             alias = f"i{t['issue']}"
             node = repo_data.get(alias)
             if not node:
-                issue_data[f"{repo}:{t['issue']}"] = {"state": "OPEN", "comments": [], "prs": []}
+                # A salvaged partial batch leaves misses as null nodes; a single
+                # REST issue-view recovers just this one without poisoning the rest.
+                try:
+                    r = subprocess.run(
+                        ["gh", "issue", "view", str(t["issue"]), "--repo", repo,
+                         "--json", "state", "--jq", ".state"],
+                        capture_output=True, text=True, timeout=15)
+                    state = r.stdout.strip() if r.returncode == 0 else "OPEN"
+                except Exception:
+                    state = "OPEN"
+                issue_data[f"{repo}:{t['issue']}"] = {"state": state, "comments": [], "prs": [], "self_pr": None}
+                gh_calls += 1
                 continue
 
-            # Parse comments
+            # Parse comments (present on both Issue and PullRequest arms).
             comments = []
             for c in (node.get("comments", {}).get("nodes") or []):
                 author = (c.get("author") or {}).get("login", "")
                 comments.append({"author": author, "at": c.get("createdAt", ""), "is_bot": author in bot_logins})
 
-            # Parse cross-referenced PRs (find bot PRs matching fix/issue-* pattern)
+            # If the chain number is itself a PR, that PR IS the artifact.
+            self_pr = None
+            if node.get("__typename") == "PullRequest":
+                self_pr = {
+                    "number": t["issue"],
+                    "state": node.get("state", "OPEN"),
+                    "isDraft": node.get("isDraft", False),
+                    "body": node.get("body", ""),
+                    "headRefName": node.get("headRefName", ""),
+                }
+
+            # Parse cross-referenced PRs (find bot PRs matching fix/issue-* pattern).
             prs = []
             for item in (node.get("timelineItems", {}).get("nodes") or []):
                 src = (item or {}).get("source")
@@ -222,6 +279,7 @@ for repo, repo_threads in by_repo.items():
                 "state": node.get("state", "OPEN"),
                 "comments": comments,
                 "prs": prs,
+                "self_pr": self_pr,
             }
 
 print(f"pull-universe: issue batch done — {len(issue_data)} issues, {gh_calls} graphql calls", file=sys.stderr)
@@ -236,13 +294,15 @@ for repo, repo_threads in by_repo.items():
         is_open = state == "OPEN"
         if not is_open and not include_closed:
             continue
-        # Find our bot PR (matching fix/issue-* branch)
-        bot_pr = None
-        for pr in idata.get("prs", []):
-            head = pr.get("headRefName", "")
-            if head == f"fix/issue-{t['issue']}" or head.startswith(f"fix/issue-{t['issue']}-"):
-                bot_pr = pr
-                break
+        # Find our PR: a chain keyed on a PR number IS that PR (self_pr);
+        # otherwise a cross-referenced bot PR (fix/issue-* branch).
+        bot_pr = idata.get("self_pr")
+        if not bot_pr:
+            for pr in idata.get("prs", []):
+                head = pr.get("headRefName", "")
+                if head == f"fix/issue-{t['issue']}" or head.startswith(f"fix/issue-{t['issue']}-"):
+                    bot_pr = pr
+                    break
         if bot_pr:
             pr_nums_by_repo.setdefault(repo, set()).add(bot_pr["number"])
 
@@ -356,18 +416,23 @@ for i, t in enumerate(threads):
         "pending_ask_user": False,
     }
 
-    # Find bot PR from cross-references
-    bot_pr = None
-    for pr in idata.get("prs", []):
-        head = pr.get("headRefName", "")
-        if head == f"fix/issue-{issue}" or head.startswith(f"fix/issue-{issue}-"):
-            bot_pr = pr
-            break
+    # The chain's PR: a chain keyed on a PR number IS that PR (self_pr);
+    # otherwise a cross-referenced bot PR (fix/issue-* branch).
+    bot_pr = idata.get("self_pr")
+    if not bot_pr:
+        for pr in idata.get("prs", []):
+            head = pr.get("headRefName", "")
+            if head == f"fix/issue-{issue}" or head.startswith(f"fix/issue-{issue}-"):
+                bot_pr = pr
+                break
 
     if bot_pr:
         body = bot_pr.get("body", "")
         fixes_match = re.search(r"(?:Fixes|Closes|Resolves)\s+#(\d+)", body, re.IGNORECASE)
         fixes_issue = int(fixes_match.group(1)) if fixes_match else None
+        # A self_pr's fixes-target is its own chain number when the body omits it.
+        if idata.get("self_pr") is bot_pr and fixes_issue is None:
+            fixes_issue = issue
         pr_num = bot_pr["number"]
         chain["pr"] = {
             "number": pr_num,
