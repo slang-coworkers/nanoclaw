@@ -63,8 +63,16 @@ substitute for the scripted clauses.
   The manifest lists entries: `{pr, mode: historical, revisions: [{index,
   head_sha, human_verdict, reviewed_at}, …]}`. Each `head_sha` is the commit a
   human actually reviewed (R0 = the first). The manifest carries **no diffs and
-  no snapshots** — just the (pr, commit, human_verdict) triples. Process
-  round by round.
+  no snapshots** — just the (pr, commit, human_verdict) triples.
+  **Launch each PR as its own isolated session** via `send_message(to:
+  "self", thread_id: "gh-pr-<repo>-<pr>", text: <the entry's task>)` — the
+  distinct `thread_id` per PR mints a separate per-thread session that runs one
+  full decision (one session is one PR's revision chain, so each PR needs its
+  own thread; a self-send with no/shared thread collapses into the current
+  session instead of spawning). Each worker's `[Approval Decision]` routes back
+  to you (its ancestor) to relay onward. Verify the sessions actually spawned
+  (`ncl sessions list`) — don't assume; a self-send without a distinct
+  `thread_id`, or before the `self` destination row exists, silently no-ops.
 - Message carries a **PR list but no manifest** → generate the manifest first:
   `scripts/prepare-offline-rounds.py --prs <list> --out pr-snapshots` (in the
   slang-pr-approver skill). It resolves each PR's reviewed commits with
