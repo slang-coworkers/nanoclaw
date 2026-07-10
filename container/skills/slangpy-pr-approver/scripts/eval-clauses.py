@@ -228,10 +228,23 @@ def main():
         print(f"no tmp/context.json under {ws}", file=sys.stderr)
         sys.exit(2)
 
+    # Policy resolution order (first that exists wins):
+    #   1. --policy PATH (explicit override)
+    #   2. per-PR staged policy: <ws>/policy/APPROVAL_POLICY.json
+    #   3. group-mounted policy: /workspace/extra/approver-policy/APPROVAL_POLICY.json
+    #      (a per-group additional_mount off an allowlisted host root — the lever
+    #      for relaxing shadow-mode clauses without editing the bundled default)
+    #   4. bundled conservative v0 default shipped next to this script
+    MOUNTED_POLICY = "/workspace/extra/approver-policy/APPROVAL_POLICY.json"
     policy_path = a.policy
     if not policy_path:
-        mounted = os.path.join(ws, "policy", "APPROVAL_POLICY.json")
-        policy_path = mounted if os.path.exists(mounted) else DEFAULT_POLICY
+        per_pr = os.path.join(ws, "policy", "APPROVAL_POLICY.json")
+        if os.path.exists(per_pr):
+            policy_path = per_pr
+        elif os.path.exists(MOUNTED_POLICY):
+            policy_path = MOUNTED_POLICY
+        else:
+            policy_path = DEFAULT_POLICY
     with open(policy_path) as f:
         policy = json.load(f)
 
