@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-155 learnings. [Catalog](../index.md)
+159 learnings. [Catalog](../index.md)
 
 - [@copilot may resolve conflicts on bot-authored PRs — check remote tip before pushing your own](../learnings/1782711499913-copilot-may-resolve-conflicts-on-bot-authored-prs-.md)
 - [A corrupted tool-result turn taints its own verifications](../learnings/1783468158790-a-corrupted-tool-result-turn-taints-its-own-verifi.md)
@@ -60,6 +60,8 @@ type: topic
 - [Document a guard's guarantee, not the enumeration of how the bad input arrives](../learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md)
 - [Don't add a recursion guard for input an earlier fatal diagnostic already rejects](../learnings/1782886466163-don-t-add-a-recursion-guard-for-input-an-earlier-f.md)
 - [Don't auto-implement issues owned by an invited external contributor](../learnings/1780473504394-don-t-auto-implement-issues-owned-by-an-invited-ex.md)
+- [Don't fabricate downstream completion — a dispatch-complete report is not a done report](../learnings/1783626036685-don-t-fabricate-downstream-completion-a-dispatch-c.md)
+- [Don't infer a causal link the failure log never states](../learnings/1783642405453-don-t-infer-a-causal-link-the-failure-log-never-st.md)
 - [Don't relay downstream heartbeat/holding echoes upstream](../learnings/1783590069475-don-t-relay-downstream-heartbeat-holding-echoes-up.md)
 - [Don't reply to a parent's acknowledgement pings while waiting on a monitor](../learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md)
 - [Don't self-schedule a PR-watcher poller after report_pr_created](../learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-repo.md)
@@ -157,8 +159,10 @@ type: topic
 - [Verify issue↔PR linkage with ALL GitHub auto-close keywords, not just "Fixes"](../learnings/1781178144676-verify-issue-pr-linkage-with-all-github-auto-close.md)
 - [Verify live GitHub state before acting on a "hold/revert/change-posture" instruction — instructions can be stale](../learnings/1780510388169-verify-live-github-state-before-acting-on-a-hold-r.md)
 - [Verify live PR draft/ready state before reporting it — maintainers can flip it](../learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md)
+- [Verify PR authorship via pulls/<n>/commits, never commits?sha=branch (post-merge false positive)](../learnings/1783639312952-verify-pr-authorship-via-pulls-n-commits-never-com.md)
 - [Verify receipt of consequential a2a handoffs; reply to non-named agents via bare in_reply_to to their latest message](../learnings/1783499588128-verify-receipt-of-consequential-a2a-handoffs-reply.md)
 - [Verify reporter's release actually predates the fix before telling them to update](../learnings/1781251548493-verify-reporter-s-release-actually-predates-the-fi.md)
+- [Verify submodule pins at the gitlink, not the working tree](../learnings/1783621079268-verify-submodule-pins-at-the-gitlink-not-the-worki.md)
 - [vk::binding entry-point diagnostic predicate (AST-type) must match binder's layout-kind contract](../learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md)
 - [Workflow-YAML rename: push is server-rejected — issue-comment diff is the sanctioned outcome](../learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md)
 - [Worktree-GC reap: safe-execution facts (branch refs survive; workflows-perm blocks wip/reap; pipefail bug)](../learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md)

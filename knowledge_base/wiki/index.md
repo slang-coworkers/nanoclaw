@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **964 agent learnings**, synthesized into **42 concept pages**.
+Standalone wiki built from **997 agent learnings**, synthesized into **42 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -79,11 +79,11 @@ Standalone wiki built from **964 agent learnings**, synthesized into **42 concep
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (572)
-- [NanoClaw / agent operations](topics/agent-ops.md) (147)
-- [CI, build & tooling](topics/ci-tooling.md) (63)
-- [Review & process](topics/review-process.md) (27)
-- [Uncategorized](topics/misc.md) (155)
+- [Slang compiler & language](topics/slang-compiler.md) (588)
+- [NanoClaw / agent operations](topics/agent-ops.md) (156)
+- [CI, build & tooling](topics/ci-tooling.md) (65)
+- [Review & process](topics/review-process.md) (29)
+- [Uncategorized](topics/misc.md) (159)
 
 ## All learnings (chronological)
 
@@ -1051,3 +1051,36 @@ Standalone wiki built from **964 agent learnings**, synthesized into **42 concep
 - [slang#12019 double→bool SPIR-V: getIntValue(floatType,0) mints int-lit with float type → 1-word OpConstant](learnings/1783587817471-slang-12019-double-bool-spir-v-getintvalue-floatty.md)
 - [Don't relay downstream heartbeat/holding echoes upstream](learnings/1783590069475-don-t-relay-downstream-heartbeat-holding-echoes-up.md)
 - [slang non-ASCII header sweep must include prelude/ and watch arrows — #12016 SHIPPED](learnings/1783596951560-slang-non-ascii-header-sweep-must-include-prelude-.md)
+- [Devin (Reviewer B) agent-browser Chrome fails in reviewer container — no DBus socket](learnings/1783618070602-devin-reviewer-b-agent-browser-chrome-fails-in-rev.md)
+- [slang IVector differentiable subscript drift (#12025): requirement is inherited from internal IArrayAccessor](learnings/1783618355299-slang-ivector-differentiable-subscript-drift-12025.md)
+- [slang#11985 2nd cause: slang-rhi FetchContent-downloads Vulkan-Headers despite vendored external/vulkan submodule](learnings/1783619348986-slang-11985-2nd-cause-slang-rhi-fetchcontent-downl.md)
+- [Group-scoped silence ≠ dead coworker; Main resolves via global session list](learnings/1783619754568-group-scoped-silence-dead-coworker-main-resolves-v.md)
+- [slangpy neural-module 0.41 migration: differentiable vector operator[] gates inline too (slang#12026)](learnings/1783620159628-slangpy-neural-module-0-41-migration-differentiabl.md)
+- [Reviewer A (slang-pr-review-runner) needs isolated REPO_ROOT + higher budget under concurrent runs](learnings/1783620361461-reviewer-a-slang-pr-review-runner-needs-isolated-r.md)
+- [slang read-only clone: verify submodule is at gitlink before citing pinned versions (stale working tree gave wrong Vulkan-Headers pin)](learnings/1783621027588-slang-read-only-clone-verify-submodule-is-at-gitli.md)
+- [Verify submodule pins at the gitlink, not the working tree](learnings/1783621079268-verify-submodule-pins-at-the-gitlink-not-the-worki.md)
+- [ncl sessions list is recency-capped at 200 rows — use --thread-id to probe for a parked/old session](learnings/1783622539495-ncl-sessions-list-is-recency-capped-at-200-rows-us.md)
+- [Don't fabricate downstream completion — a dispatch-complete report is not a done report](learnings/1783626036685-don-t-fabricate-downstream-completion-a-dispatch-c.md)
+- [Clarity reviewer (Reviewer C) fails when inner CLI sandbox blocks file writes](learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md)
+- [Slang PR reviewers die on $30 budget cap for large PRs; shared checkout causes wrong-diff collisions](learnings/1783629924272-slang-pr-reviewers-die-on-30-budget-cap-for-large-.md)
+- [slang-pr-review: INTEGRITY-FAIL can be a false positive from concurrent-run shared tmp/ contention](learnings/1783630282751-slang-pr-review-integrity-fail-can-be-a-false-posi.md)
+- [Reviewer B (Devin) fails at Chrome launch in reviewer container — no dbus](learnings/1783630449263-reviewer-b-devin-fails-at-chrome-launch-in-reviewe.md)
+- [Mid-iteration PR: combined-review diff_hash (Reviewer A's SHA) mismatches pinned HEAD → approver Step-2 flag](learnings/1783631632879-mid-iteration-pr-combined-review-diff-hash-reviewe.md)
+- [combined-review RESULT_JSON: reviewers_complete=false when ANY dispatched reviewer (incl. Devin) is skipped](learnings/1783631862638-combined-review-result-json-reviewers-complete-fal.md)
+- [nanoclaw sync-PR CI composes all nv-* branches (merge-order dep)](learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-merge.md)
+- [slang-pr-review-runner fleet contention clobbers shared checkout staging](learnings/1783635509659-slang-pr-review-runner-fleet-contention-clobbers-s.md)
+- [slang-pr-review concurrent runs clobber shared staging](learnings/1783635595122-slang-pr-review-concurrent-runs-clobber-shared-sta.md)
+- [slang#12004 OUTCOME — Approach A rejected as "downgrading"; sampler-as-descriptor is the desired form, not the bug](learnings/1783635981424-slang-12004-outcome-approach-a-rejected-as-downgra.md)
+- [gh auth status shows GH_TOKEN invalid but gh api succeeds via onecli-gateway proxy](learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api-s.md)
+- [slang#12032 Windows CI crash-dump: routes via ci-slang-test.yml, not the Linux container path](learnings/1783637017715-slang-12032-windows-ci-crash-dump-routes-via-ci-sl.md)
+- [Verify PR authorship via pulls/<n>/commits, never commits?sha=branch (post-merge false positive)](learnings/1783639312952-verify-pr-authorship-via-pulls-n-commits-never-com.md)
+- [slangpy-pr-review GitHub post gates on literal marker, not prose](learnings/1783639327701-slangpy-pr-review-github-post-gates-on-literal-mar.md)
+- [slang#11985 Metal diagnosis was plausible-but-wrong: inferred attribute→gpu-printing link the log never supported; real cause macOS-26 flake](learnings/1783642367486-slang-11985-metal-diagnosis-was-plausible-but-wron.md)
+- [Don't infer a causal link the failure log never states](learnings/1783642405453-don-t-infer-a-causal-link-the-failure-log-never-st.md)
+- [ncl mutating-verb help/probes can dispatch the real approval-gated action](learnings/1783650441468-ncl-mutating-verb-help-probes-can-dispatch-the-rea.md)
+- [codex-critique gate requires PLAN_REVIEW too, not just CODE+OUTPUT](learnings/1783655475326-codex-critique-gate-requires-plan-review-too-not-j.md)
+- [slang#12035 overload-failure diagnostics — #7857 already built most of the per-candidate machinery](learnings/1783656901958-slang-12035-overload-failure-diagnostics-7857-alre.md)
+- [Shared diagnostic formatter changes silently regress unrelated exhaustive diag= goldens (masked on draft CI)](learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md)
+- [In-container watches die on exit — quiescence detection must be host-side](learnings/1783659090219-in-container-watches-die-on-exit-quiescence-detect.md)
+- [CORRECTION: slang getMostUniqueIdentity()=absolute, getName()=relative (my earlier #11982 learning had these reversed)](learnings/1783659293513-correction-slang-getmostuniqueidentity-absolute-ge.md)
+- [slang-clarity-review-runner script takes flags directly — no run-clarity subcommand](learnings/1783663020500-slang-clarity-review-runner-script-takes-flags-dir.md)
