@@ -190,9 +190,7 @@ function generateId(): string {
  * since the last call, or on the very first call (seed observation —
  * otherwise every container's first push carries a redundant note).
  */
-function makeDestinationsRefresher(
-  systemContext: PollLoopConfig['systemContext'],
-): () => string | null {
+function makeDestinationsRefresher(systemContext: PollLoopConfig['systemContext']): () => string | null {
   let last: string | null = null;
   return () => {
     const fp = getDestinationsFingerprint();
@@ -222,7 +220,6 @@ function buildDestinationsPushNote(): string {
     '\nUse THIS list, not any earlier mention. No restart is needed.]\n\n'
   );
 }
-
 
 export interface PollLoopConfig {
   provider: AgentProvider;
@@ -495,7 +492,9 @@ function resolveSkillBody(command: string): string | null {
   const agentDirs: string[] = [];
   try {
     agentDirs.push(...fs.readdirSync('/workspace/agent'));
-  } catch { /* /workspace/agent may not exist */ }
+  } catch {
+    /* /workspace/agent may not exist */
+  }
 
   const candidates = [
     path.join('/home/node/.claude/skills', skillName, 'SKILL.md'),
@@ -513,7 +512,9 @@ function resolveSkillBody(command: string): string | null {
       // Strip YAML frontmatter
       body = body.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
       return body.trim();
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
   return null;
 }
@@ -530,7 +531,7 @@ function formatMessagesWithCommands(messages: MessageInRow[], nativeSlashCommand
   const normalBatch: MessageInRow[] = [];
 
   for (const msg of messages) {
-    if ((msg.kind === 'chat' || msg.kind === 'chat-sdk')) {
+    if (msg.kind === 'chat' || msg.kind === 'chat-sdk') {
       const cmdInfo = categorizeMessage(msg);
       if (cmdInfo.category === 'passthrough' || cmdInfo.category === 'admin') {
         if (nativeSlashCommands) {
@@ -1504,7 +1505,7 @@ function sendToDestination(
   const inReplyTo = resolvedOverride ?? destRouting?.inReplyTo ?? routing.inReplyTo;
   writeMessageOut({
     id: generateId(),
-    in_reply_to: inReplyTo,
+    in_reply_to: routing.taskFire ? null : inReplyTo,
     kind: 'chat',
     platform_id: platformId,
     channel_type: channelType,
