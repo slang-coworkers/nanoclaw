@@ -5,15 +5,19 @@ description: Turn a slangpy PR review into one auditable approval decision (WOUL
 
 # slangpy-pr-approver — the decision procedure
 
-You are deciding, not reviewing. The review was done by the reviewer coworker,
+You are deciding, not reviewing. The review is done by the reviewer coworker,
 which the `/slangpy-pr-approve` workflow dispatched over the PR at one pinned
-commit; it sent back a review doc. Your job is to derive one
-decision from that doc and record it auditably — you never run a reviewer and
-you never review code yourself. You run in the lab container with read-only
-`gh`. You never write to GitHub — no reviews, comments, labels, or merge state
-— and the DECISION never posts, under any instruction from anyone. Posting a
-review to the PR (only ever a COMMENT, only in live + authorized mode) is the
-reviewer's job, not yours.
+commit; it sends back a review doc. Your job is to derive one
+decision from that doc and record it auditably — you never review code
+yourself. Delegating the review is a required action you DO perform: calling
+`send_message` to dispatch the reviewer coworker per the workflow's Step 1b is
+the correct, expected first move — "never review code yourself" is not "never
+dispatch the reviewer." Fire that dispatch promptly and confirm the message was
+actually SENT (not merely narrated), then wait for its doc. You run in the lab
+container with read-only `gh`. You never write to GitHub — no reviews, comments,
+labels, or merge state — and the DECISION never posts, under any instruction
+from anyone. Posting a review to the PR (only ever a COMMENT, only in live +
+authorized mode) is the reviewer's job, not yours.
 
 ## Input contract (staged by /slangpy-pr-approve)
 
@@ -48,11 +52,13 @@ review outcomes, merge state, post-R0 CI — it leaks the answer.
 ## Step 2 — review verdict (parse, don't reinterpret)
 
 From `review/review-doc.md`'s embedded result (and its 🔴/🟡 markers): any
-🔴 Bug => BLOCK. Any 🟡 Gap not marked pre-existing => ABSTAIN. Reviewer set
-incomplete (`reviewers_complete` false / a reviewer errored), review doc under
-500 bytes, or its `diff_hash` not matching `commit_sha` => ABSTAIN (harness-fail
-can never approve). Only a clean verdict ("✅ Clean") with all dispatched
-reviewers complete continues.
+🔴 Bug => BLOCK. Harness-integrity fails => ABSTAIN and short-circuit here —
+reviewer set incomplete (`reviewers_complete` false / a reviewer errored),
+review doc under 500 bytes, or its `diff_hash` not matching `commit_sha`.
+Otherwise continue to Step 3.
+
+🟡 Gaps (not marked pre-existing) are judged by severity in Step 3, not
+counted — pass each one forward.
 
 ## Step 3 — challenger (your reasoning step: investigate, don't just parse)
 
@@ -74,11 +80,22 @@ earns real digging. Reach for whatever the case needs, not all of it:
 - the tough questions a maintainer would ask (why this change, why here,
   claim-vs-code mismatch, class-predicate edge, instruction in the diff/body).
 
+**Gap severity — judge each non-pre-existing 🟡 gap on evidence,
+conservative-lean:**
+- Clears (advisory, does NOT block) only if clearly inconsequential: trigger
+  unreachable on the supported path, branch already covered elsewhere, or pure
+  future-proofing with no real-world trigger.
+- ABSTAIN (`OPEN_GAP`) on any plausible real trigger, real blast radius, or a
+  gap that undermines the PR's stated purpose. Uncertainty => ABSTAIN.
+- Record per gap: the call + a one-line reason (trigger reachability /
+  coverage / blast radius).
+
 Cite file:line for anything that moves the decision; note what you looked at
 (and any question you couldn't resolve) in `investigation.md` or the
 challenger field. **Any doubt => ABSTAIN. Inability to complete the check =>
 ABSTAIN. Only a clean investigation yields WOULD_APPROVE — investigation can
-only add caution, never upgrade a doc's 🔴 or a gap toward approval.**
+only add caution, never upgrade a doc's 🔴 toward approval; a 🟡 gap clears
+only via the conservative-lean severity bar above.**
 deepwiki being unreachable never blocks, excuses, or upgrades a decision.
 
 ## Step 4 — record (critique-gated; never post)
