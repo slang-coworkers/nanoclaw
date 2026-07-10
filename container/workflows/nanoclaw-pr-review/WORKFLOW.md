@@ -34,7 +34,7 @@ Review a PR in `slang-coworkers/nanoclaw`: drive `agent-browser` to Devin's revi
    agent-browser --help >/dev/null
    ```
 
-4. **Run Devin scraper** {#scrape} — invoke `devin-fetch.sh`. Exit codes: `0` success (`<RUN_DIR>/devin-flags.md` holds flags + narrative); `2` auth-wall (login redirect) — report status `auth-wall`, don't fail (App token likely lost access); `3` timeout — report `timeout`, don't fail (re-run usually succeeds); other non-zero — error, report and stop.
+4. **Run Devin scraper** {#scrape} — invoke `devin-fetch.sh`. Exit codes: `0` success (`<RUN_DIR>/devin-flags.md` holds flags + narrative); `2` auth-wall (login redirect) — report status `auth-wall`, don't fail (App token likely lost access); `3` timeout — report `timeout`, don't fail (re-run usually succeeds); `4` browser-launch-failure — report `browser-launch (transient)`, don't fail (the script already cleared the stale Chrome profile and retried once; re-run usually succeeds — do NOT call it a deterministic environment failure); other non-zero — error, report and stop.
 
    ```bash
    RUN_DIR=$(mktemp -d /tmp/nanoclaw-pr-review-<N>.XXXXXX)
@@ -63,3 +63,4 @@ Review a PR in `slang-coworkers/nanoclaw`: drive `agent-browser` to Devin's revi
 - **Brittle scraper:** `devin-fetch.sh` selectors are minimal; UI changes → exit 1; report and ask the operator to file an issue against `nanoclaw-pr-review-runner`.
 - **Auth-wall (exit 2):** repo is private; Devin must be installed on the org. Repeated exit 2 = App installation expired.
 - **Timeout (exit 3) is not a failure:** large diffs (1000+ lines) may exceed 20 min; override with `--max-minutes 40` on request.
+- **Browser-launch failure (exit 4) is transient, not deterministic:** Chrome launches fine here without a dbus session bus; the error means a stale `/tmp/agent-browser-*` profile from a prior crash. The script clears it and retries once; a surviving failure means retry later — re-running usually succeeds.
