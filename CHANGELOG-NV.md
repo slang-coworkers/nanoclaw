@@ -6,15 +6,48 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 317 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 157 |
-| `nv-slang` | slang project spine, skills, workflows | 107 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 48 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 34 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 325 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 158 |
+| `nv-slang` | slang project spine, skills, workflows | 113 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 52 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 36 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-10
+
+### nv-main (8 PRs)
+- **#868** `Sync nv-main with upstream/main 0c0f4c25`
+- **#870** `fix(sweep): guard per-session spine compose in detectStaleContainers`
+- **#871** `fix(funnel): regenerate bot-contributions snapshot in funnel-cron`
+- **#873** `Sync nv-main with upstream/main (0c0f4c25)`
+- **#874** `fix(webhook): route reviewable PRs to *-pr-approver not reviewer`
+- **#877** `feat(webhook): route terminal PR events to approver for its learning loop`
+- **#885** `fix(supervise-issues): nudge fixer-owned chains that go dark (bot-last ≠ handoff)`
+- **#886** `fix(supervise-issues): partial-tolerant PR enrichment (batched issueOrPullRequest + salvage)`
+
+### nv-dashboard (1 PRs)
+- **#864** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (6 PRs)
+- **#865** `Sync nv-slang with upstream/main`
+- **#875** `feat(slang-pr-approver): mounted-policy fallback for shadow relaxation`
+- **#878** `feat(slang-pr-approver): gap-severity judgment + TodoWrite anchor + dispatch clarity`
+- **#880** `docs(slang-pr-approve): offline batch launches each PR as its own self-thread session`
+- **#884** `docs(slang-pr-review): wire Devin exit-4 (transient launch failure) + refresh semantics`
+- **#882** `fix(slang-pr-review): treat Devin Chrome-launch failure (exit 4) as transient, self-heal + retry`
+
+### nv-slangpy (4 PRs)
+- **#866** `Sync nv-slangpy with upstream/main`
+- **#876** `feat(slangpy-pr-approver): mounted-policy fallback for shadow relaxation`
+- **#879** `feat(slangpy-pr-approver): gap-severity judgment + TodoWrite anchor + dispatch clarity`
+- **#881** `docs(slangpy-pr-approve): offline batch launches each PR as its own self-thread session`
+
+### nv-nanoclaw (2 PRs)
+- **#867** `Sync nv-nanoclaw with upstream/main`
+- **#883** `fix(nanoclaw-pr-review-runner): transient Chrome-launch retry + stable-done for Devin scraper`
 
 ## 📅 2026-07-09
 
