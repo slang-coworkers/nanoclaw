@@ -25,5 +25,19 @@ if pnpm exec tsx scripts/funnel.ts --since 2026-04-10 --out reports/funnel.json 
 else
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] funnel refresh FAILED (rc=$?)" >> "$LOG"
 fi
+
+# nv-slang-bot contributions snapshot for the panel under the funnel
+# (dashboard /api/bot-contributions serves reports/bot-contributions.json
+# cached and never recomputes). Without this the panel is stuck on
+# "no snapshot yet" until someone hits the manual refresh button — the
+# funnel-cron never generated it. Same proxy-stripped env + gh-App-token
+# path as the funnel above; a handful of read-only gh API calls.
+echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] bot-contributions refresh start" >> "$LOG"
+if pnpm exec tsx scripts/bot-contributions.ts >> "$LOG" 2>&1; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] bot-contributions refresh ok" >> "$LOG"
+else
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] bot-contributions refresh FAILED (rc=$?)" >> "$LOG"
+fi
+
 # Keep the log bounded.
 tail -200 "$LOG" > "$LOG.tmp" 2>/dev/null && mv "$LOG.tmp" "$LOG"
