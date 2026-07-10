@@ -684,15 +684,33 @@ export function detectStaleContainers(): Array<{ sessionId: string; agentGroupId
       /* no instructions */
     }
 
-    const overlays = ag.overlays ? JSON.parse(ag.overlays) : undefined;
-    const composed = composeCoworkerSpine({
-      coworkerType,
-      extraInstructions: extra,
-      disableOverlays: ag.disable_overlays === 1,
-      overlays,
-      cliScope: (getContainerConfig(ag.id)?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
-    });
-    const currentHash = crypto.createHash('sha256').update(composed).digest('hex');
+    // Compose the current spine to compare against the running container's
+    // baseline. This can THROW when a coworker type references a skill/workflow/
+    // overlay that isn't resolvable on disk (e.g. an external `skill-source`
+    // skill that hasn't been fetched into container/skills/ yet). Guard it
+    // per-session: a single broken type must not abort the whole stale scan.
+    //
+    // Before this guard, one unresolvable type (any live slang/slangpy
+    // container while its external skills were absent) threw here, propagated
+    // to the sweep's outer try/catch, and skipped the entire CLAUDE.md-stale
+    // respawn loop — silently disabling instruction hot-reload FLEET-WIDE for
+    // every healthy coworker. Mirror resolveTypeManifest's tolerance: log and
+    // skip just this session. Its stale-check resumes once the type resolves.
+    let currentHash: string;
+    try {
+      const overlays = ag.overlays ? JSON.parse(ag.overlays) : undefined;
+      const composed = composeCoworkerSpine({
+        coworkerType,
+        extraInstructions: extra,
+        disableOverlays: ag.disable_overlays === 1,
+        overlays,
+        cliScope: (getContainerConfig(ag.id)?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
+      });
+      currentHash = crypto.createHash('sha256').update(composed).digest('hex');
+    } catch (err) {
+      log.warn('Skipping stale-check — spine compose failed', { folder: ag.folder, coworkerType, err });
+      continue;
+    }
 
     // Resolve the baseline hash for the running container. The in-memory map
     // is populated when this host process spawned the container, but it
