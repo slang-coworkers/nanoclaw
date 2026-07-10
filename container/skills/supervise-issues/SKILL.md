@@ -107,7 +107,10 @@ For each chain, compute `last_activity_by_us` (R4) and the direction of the ball
 state from the classification table (reference.md → *Classification states + thresholds*). The
 discriminator that matters most: bot spoke last → `awaiting_human` (leave alone); human spoke last
 and we haven't answered → `awaiting_us` (stuck now, nudge immediately, regardless of how recent the
-human comment is and without waiting for any stale window).
+human comment is and without waiting for any stale window). **Exception — bot-last is ambiguous:**
+a fixer-owned chain with no PR and no human-owned disposition that has gone silent is a promise we
+still owe, not a handoff → `awaiting_us`, nudge the fixer (reference.md → *Classification states*,
+fixer-owned carve-out; root cause of slang#12002).
 
 ### 2b. CI check (PR-bearing chains)
 

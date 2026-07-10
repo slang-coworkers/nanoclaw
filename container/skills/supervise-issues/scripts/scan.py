@@ -172,6 +172,39 @@ def any_session_running(chain, sessions_by_id):
     return False
 
 
+# Dispositions where a HUMAN (maintainer, external contributor, reporter) genuinely
+# owns the next step, or the chain is terminal — bot-last there is a correct wait, not
+# a stalled promise. Any other bot-last chain a fixer owns is ours to drive.
+HUMAN_OWNED_DISPOSITION = (
+    "human-debate", "external-pr", "maintainer-driving",
+    "awaiting-pickup", "closed-by-us", "stood-down", "advisory",
+)
+
+
+def we_owe_next_step(chain, sessions_by_id, silent_age):
+    """Bot-last, but WE own the next step (root cause of slang#12002).
+
+    The direction-of-the-ball heuristic (compute_ball) reads bot-last as
+    'awaiting_human', but bot-last is ambiguous: it is either a genuine handoff to
+    a human OR a promise we still owe ("Will update here when the PR is up"). This
+    disambiguates deterministically: a fixer-role session is on the thread, no PR /
+    owed artifact exists yet, no human-owned disposition says otherwise, and we've
+    been silent past the soft-nudge window. Such a chain is ours to wake, not park.
+    """
+    disp = (chain.get("disposition") or "").lower()
+    if any(tok in disp for tok in HUMAN_OWNED_DISPOSITION):
+        return False  # a human genuinely owns it -> leave alone
+    if chain.get("pr"):
+        return False  # PR exists -> artifact present; Step 2b/CI owns the nudge
+    has_fixer = any(
+        "fixer" in (sessions_by_id.get(sid, {}).get("group_folder") or "")
+        for sid in chain.get("sessions", [])
+    )
+    if not has_fixer:
+        return False  # triage-only chain -> bot-last legitimately awaits a human
+    return silent_age is not None and silent_age >= SILENT_S
+
+
 def classify(now, chain, sessions_by_id, bot_logins):
     """Return (state, ball, last_activity_by_us, needs_nudge, nudge_reason)."""
     ball = compute_ball(chain, bot_logins)
@@ -189,8 +222,13 @@ def classify(now, chain, sessions_by_id, bot_logins):
             return ("fixing" if pr is None else "pr_open", ball, last_by_us, False, "")
         return ("awaiting_us", ball, last_by_us, True, "human spoke last, unanswered by us; wake owning tier")
 
-    # awaiting_human — we spoke last / a question is pending. Leave alone.
+    # awaiting_human — we spoke last / a question is pending. Leave alone UNLESS a
+    # fixer owns an artifact-less chain that has gone dark: bot-last there is a
+    # promise we still owe, not a handoff (root cause of slang#12002).
     if ball == "human":
+        if we_owe_next_step(chain, sessions_by_id, silent_age):
+            return ("awaiting_us", ball, last_by_us, True,
+                    "fixer owns this chain, no PR, silent ≥ threshold; wake the fixer")
         return ("awaiting_human", ball, last_by_us, False, "")
 
     # ball == 'none' — no GitHub conversation yet; fall back to the silence clock.

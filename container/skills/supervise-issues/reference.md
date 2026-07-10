@@ -116,7 +116,7 @@ gh pr view <pr> --repo <owner>/<repo> --json reviews,comments
 |---|---|---|
 | `dispatched` | < 5 min ago | fresh — leave alone |
 | `triaging`/`fixing`/`reviewing`/`pr_open` | < 60 min since `last_activity_by_us` | working — leave alone |
-| `awaiting_human` | pending `ask_user_question`, OR bot spoke last and we await a human | leave alone — blocked on operator/maintainer |
+| `awaiting_human` | pending `ask_user_question`, OR bot spoke last and we await a human — **except** the fixer-owned carve-out below | leave alone — blocked on operator/maintainer |
 | `awaiting_us` | latest actor is a non-bot, unanswered by us; ball in our court | STUCK regardless of how recent — nudge owning tier now (Step 3); does not wait for any stale window |
 | `silent` ≥ 60 min | no `last_activity_by_us`, ball not cleanly on a human | stuck — investigate (container running? last msg answered? `[Refusal]`/`[not actionable]`?) then soft-nudge deepest tier |
 | `silent` ≥ 4 h | as above, escalated | escalate via `ask_user_question(timeout: 0)`: extend / re-dispatch from triage / close (out of scope) / abandon |
@@ -126,6 +126,18 @@ gh pr view <pr> --repo <owner>/<repo> --json reviews,comments
 Discriminator for `awaiting_human` vs `awaiting_us`: **who spoke last.** Bot-last =
 `awaiting_human`; human-last-unanswered = `awaiting_us`. A `pr_open` chain with a trailing
 unanswered human comment is `awaiting_us`, never watch-only.
+
+**Fixer-owned carve-out (bot-last is ambiguous).** Bot-last is not automatically "leave alone."
+A bot's last word is either a genuine handoff to a human *or a promise we still owe* ("Will update
+here when the PR is up"). So a bot-last chain flips to `awaiting_us` (nudge the fixer) when **all**
+hold: a **fixer-role session** owns the thread, **no PR** exists yet (no owed artifact), **no
+human-owned disposition** says a human is driving, and it has been **silent ≥ 60 min by us**. This
+is computed deterministically in `scan.py::we_owe_next_step` and was the root cause of slang#12002
+(fixer edited code, said "waiting on the build monitor", idle-exited, and was never woken because
+bot-last read as `awaiting_human` forever). Human-owned dispositions that keep a bot-last chain
+parked: `active:human-debate`, `stood-down:external-PR`, `advisory:maintainer-driving`,
+`triaged:awaiting-pickup`, `closed-by-us` (matched on the tokens `human-debate`, `external-pr`,
+`maintainer-driving`, `awaiting-pickup`, `closed-by-us`, `stood-down`, `advisory`).
 
 ## GitHub-comment existence test (Step 5)
 
