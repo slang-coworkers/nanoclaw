@@ -8,6 +8,4 @@
 
 import './cli.js';
 
-// dashboard
-import './dashboard.js';
 import './telegram.js';

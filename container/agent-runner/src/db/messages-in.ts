@@ -123,10 +123,10 @@ export function markProcessing(ids: string[]): void {
   if (ids.length === 0) return;
   const db = getOutboundDb();
   const stmt = db.prepare(
-    "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES (?, 'processing', datetime('now'))",
+    "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES (?, 'processing', ?)",
   );
   db.transaction(() => {
-    for (const id of ids) stmt.run(id);
+    for (const id of ids) stmt.run(id, new Date().toISOString());
   })();
 }
 
@@ -135,10 +135,10 @@ export function markCompleted(ids: string[]): void {
   if (ids.length === 0) return;
   const db = getOutboundDb();
   const stmt = db.prepare(
-    "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES (?, 'completed', datetime('now'))",
+    "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES (?, 'completed', ?)",
   );
   db.transaction(() => {
-    for (const id of ids) stmt.run(id);
+    for (const id of ids) stmt.run(id, new Date().toISOString());
   })();
 }
 
@@ -153,10 +153,10 @@ export function markScriptSkipped(skips: Array<{ id: string; reason: string }>):
   if (skips.length === 0) return;
   const db = getOutboundDb();
   const stmt = db.prepare(
-    "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES (?, ?, datetime('now'))",
+    'INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES (?, ?, ?)',
   );
   db.transaction(() => {
-    for (const s of skips) stmt.run(s.id, s.reason === 'error' ? 'script-skip:error' : 'completed');
+    for (const s of skips) stmt.run(s.id, s.reason === 'error' ? 'script-skip:error' : 'completed', new Date().toISOString());
   })();
 }
 
@@ -164,9 +164,9 @@ export function markScriptSkipped(skips: Array<{ id: string; reason: string }>):
 export function markFailed(id: string): void {
   getOutboundDb()
     .prepare(
-      "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES (?, 'failed', datetime('now'))",
+      "INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES (?, 'failed', ?)",
     )
-    .run(id);
+    .run(id, new Date().toISOString());
 }
 
 /** Get a message by ID (read from inbound.db). */
