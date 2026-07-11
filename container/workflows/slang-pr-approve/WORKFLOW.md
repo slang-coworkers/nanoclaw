@@ -2,45 +2,40 @@
 name: slang-pr-approve
 license: MIT
 type: workflow
-description: 'Stage a PR at a pinned commit, delegate the review to {{vars.reviewer}} (the reviewer coworker — the approver never reviews code itself), then hand the returned review doc to the slang-pr-approver skill for one auditable decision. One uniform model for both modes: LIVE (ready_for_review trigger — the PR head) and OFFLINE/HISTORICAL (a round manifest of (pr, commit) targets — the R0-pinned commit). In both, the reviewer is dispatched over the PR at that commit and returns a review doc (markdown + embedded JSON result); the decision procedure is identical and always critique-gated. This workflow never makes, edits, or posts a decision, and never runs the review itself.'
+description: 'Stage a PR at its head, build the review input yourself — harvest the bot review already posted on the PR (github-actions[bot] = production claude-code-action; coderabbitai[bot]) read-only via harvest-reviews.py, and run Devin over the PR head via devin-fetch.sh — synthesize ONE review doc (markdown + embedded JSON result), then hand it to the slang-pr-approver skill for one auditable decision. Driven by the reviewable-PR webhook (ready_for_review / synchronize). Never re-runs the production review itself, never makes/edits/posts a decision or writes to GitHub. Deterministic clauses → verdict parse → challenger → critique-gated record.'
 requires: [code.read]
 uses:
-  skills: [slang-pr-approver]
+  skills: [slang-pr-approver, agent-browser, slang-pr-review-runner]
 ---
 
-# /slang-pr-approve — stage the PR, delegate the review, then decide
+# /slang-pr-approve — stage the PR, build the review input, then decide
 
 You run inside the lab container with read-only `gh` and a mounted `policy/`
-(APPROVAL_POLICY.json). You have two things bound: the `slang-pr-approver`
-skill (the decision procedure of record) and a **`{{vars.reviewer}}`** destination
-(the reviewer coworker that actually reviews the code).
+(APPROVAL_POLICY.json). You have the `slang-pr-approver` skill (the decision
+procedure of record), `harvest-reviews.py` (reuse the bot review CI already
+posted), and Devin via `agent-browser` + `slang-pr-review-runner`'s
+`devin-fetch.sh`.
 
-**You never review code.** This workflow stages a PR at one pinned commit,
-**delegates the review to `{{vars.reviewer}}`**, waits for the review doc it sends
-back, then hands that doc to `/slang-pr-approver`. There is one uniform model:
-a real PR at a specific commit, reviewed through the same reviewer path, in
-both modes. Only *which* commit and *where the PR list comes from* differ.
+This workflow stages a PR at its head, **builds its own review input** by
+harvesting the already-posted bot review and running Devin, synthesizes ONE
+review doc, then hands that doc to `/slang-pr-approver` to decide.
 
-## The uniform contract (both modes)
+## The contract
 
-For each PR to decide, you build a per-PR session workspace `work/<pr>-<sha12>/`
+For the PR to decide, you build a per-PR session workspace `work/<pr>-<sha12>/`
 that satisfies the `slang-pr-approver` skill's **Input contract** (see the
-skill — it owns the field definitions): `tmp/context.json` (repo, pr, the one
-pinned `commit_sha`, `mode`, and the historical-only `human_verdict`) plus
-`review/review-doc.md` (the review doc `{{vars.reviewer}}` returns — the only source
-of the verdict; there is no local `final-review.md` and no bundled runner).
-The two modes differ only in *which* commit gets pinned and *where the PR list
-comes from* — the staging below fills that same contract either way.
+skill — it owns the field definitions): `tmp/context.json` (repo, pr, the
+pinned `commit_sha` = the PR head, `mode`) plus `review/review-doc.md` (the
+review doc YOU synthesize from the harvested bot review + Devin — the only
+source of the verdict).
 
 ## Steps
 
-Maintain a `TodoWrite` checklist for this decision's lifecycle and update it as
-events arrive rather than re-narrating from scratch: stage the PR at the pinned
-commit → dispatch the review to `{{vars.reviewer}}` → await the review doc (end
-your turn; don't poll) → run the decision procedure (clauses / verdict /
-challenger) → record the decision + send `[Approval Decision]`. On a
-`synchronize` event mid-flight, UPDATE the existing todo (re-pin the head, note
-the new revision) — don't start a fresh narration.
+Track the lifecycle with `TodoWrite`: stage the PR at its head → harvest the
+posted bot review + run Devin → synthesize the review doc → run the
+decision procedure (clauses / verdict / challenger) → record the decision +
+send `[Approval Decision]`. On a mid-flight `synchronize`, update the existing
+todo (re-pin the head, note the new revision).
 
 ### Step 0: RECALL prior learnings (once per session, before anything)
 
@@ -56,174 +51,143 @@ The bullets are context for every challenger run in this session — prior
 misses on similar files are exactly what it should probe — never a
 substitute for the scripted clauses.
 
-### Step 1: determine the mode and the PR list from the tasking message
+### Step 1: parse the tasking message
 
-- Message carries a **manifest path** (e.g.
-  `pr-snapshots/task-manifest-round-001.json`) → **OFFLINE/HISTORICAL batch**.
-  The manifest lists entries: `{pr, mode: historical, revisions: [{index,
-  head_sha, human_verdict, reviewed_at}, …]}`. Each `head_sha` is the commit a
-  human actually reviewed (R0 = the first). The manifest carries **no diffs and
-  no snapshots** — just the (pr, commit, human_verdict) triples.
-  **Launch each PR as its own isolated session** via `send_message(to:
-  "self", thread_id: "gh-pr-<repo>-<pr>", text: <the entry's task>)` — the
-  distinct `thread_id` per PR mints a separate per-thread session that runs one
-  full decision (one session is one PR's revision chain, so each PR needs its
-  own thread; a self-send with no/shared thread collapses into the current
-  session instead of spawning). Each worker's `[Approval Decision]` routes back
-  to you (its ancestor) to relay onward. Verify the sessions actually spawned
-  (`ncl sessions list`) — don't assume; a self-send without a distinct
-  `thread_id`, or before the `self` destination row exists, silently no-ops.
-- Message carries a **PR list but no manifest** → generate the manifest first:
-  `scripts/prepare-offline-rounds.py --prs <list> --out pr-snapshots` (in the
-  slang-pr-approver skill). It resolves each PR's reviewed commits with
-  read-only gh and emits round manifests of (pr, commit, human_verdict)
-  triples — nothing else is downloaded. Then proceed as a normal offline batch.
-- Message carries the **webhook dispatch wire format** (from the
-  orchestrator's slang-github-webhook routing of `github.pr_ready_for_review`)
-  → **LIVE — approver-dispatched (Case 2)**. Parse the byte-exact trailer lines
-  with `grep -oE`: `REPO={repo}`, `PR={pr_number}`, `MODE=pr-approve` (tolerate
-  other MODE values — the trailer's REPO/PR are authoritative); the body also
-  carries the reason (`ready_for_review` | `opened` | `synchronize`) and may
-  carry `<github-post-authorized />`. **You dispatch the review** (Step 1b) —
-  the reviewer is downstream of you here, exactly like the offline path.
-  - reason `opened` / `ready_for_review` → the PR's current head is the commit.
-  - reason `synchronize` → the host lands this in the SAME PR session
-    (pr_session_mappings): continue the existing thread as a new revision turn
-    — the new head is the commit, note the delta from the previous head, run a
-    fresh review + decision (it supersedes the earlier row for this PR).
-    - **DEBOUNCE bursts.** When `synchronize` events arrive in rapid
-      succession (the author is actively iterating — several pushes within a
-      short window), do NOT re-stage + re-dispatch the reviewer on every push:
-      that burns a full review cycle per push. Wait for the head to settle (no
-      new push for a reasonable quiet window), then pin the settled head and
-      dispatch ONE review. One decision per settled revision, not per push. The
-      one-decision-per-revision / STALE_STAGE guard is unchanged — this just
-      avoids thrashing the reviewer during an active push burst.
-- Message is a **`[Review Verdict]` from `{{vars.reviewer}}` with a
-  `combined-review.md` attached** (arrived on thread `gh-pr-<repo>-<num>`) →
-  **LIVE — reviewer-forwarded (Case 1)**. The review already happened: a bot PR
-  went `orch→triager→fixer⇄reviewer` (or an `@nv-slang-bot` mention) and the
-  reviewer forwarded its doc to you downstream. **Do NOT dispatch a reviewer**
-  — you'd be commissioning a redundant second review. Save the attached
-  `combined-review.md` as `work/<pr>-<sha12>/review/review-doc.md`, stage the PR
-  context (Step 1a, `mode=live`/`live_late`), then **skip Step 1b** and go
-  straight to Step 2. Because it arrived on `gh-pr-<repo>-<num>`, a later Case-2
-  `synchronize` on the same PR continues THIS session — one decision thread per
-  PR regardless of which case opened it.
+The message carries the **webhook dispatch wire format** (from the
+orchestrator's slang-github-webhook routing of `github.pr_ready_for_review`).
+Parse the byte-exact trailer lines with `grep -oE`: `REPO={repo}`, `PR={pr_number}`,
+`MODE=pr-approve` (tolerate other MODE values — the trailer's REPO/PR are
+authoritative); the body also carries the reason (`ready_for_review` | `opened`
+| `synchronize`).
 
-### Step 1a: stage the PR at its commit (both modes)
+- reason `opened` / `ready_for_review` → the PR's current head is the commit.
+- reason `synchronize` → the host lands this in the SAME PR session
+  (pr_session_mappings): continue the existing thread as a new revision turn —
+  the new head is the commit, note the delta from the previous head, run a
+  fresh harvest + Devin + decision (it supersedes the earlier row for this PR).
+  - **DEBOUNCE bursts.** When `synchronize` events arrive in rapid succession
+    (the author is actively iterating — several pushes within a short window),
+    do NOT re-harvest + re-Devin on every push: that burns a full cycle per
+    push. Wait for the head to settle (no new push for a reasonable quiet
+    window), then pin the settled head and build the input ONCE. One decision
+    per settled revision, not per push.
 
-Build `work/<pr>-<sha12>/` and write `tmp/context.json` with the commit for
-this mode:
+### Step 1a: stage the PR at its head
 
-- **LIVE**: `commit_sha` = the PR's current head (`gh pr view <pr> --repo
-  <repo> --json headRefOid`). `mode` = `live_late` if any human review already
-  exists on the PR, else `live`. `human_verdict` = null.
-- **HISTORICAL**: `commit_sha` = the manifest revision's `head_sha` (R0 for the
-  headline metric; each Rn in a `--per-revision` chain in turn). `mode` =
-  `historical`. `human_verdict` = the manifest's `human_verdict` for that
-  revision — recorded for the scorer, NEVER shown to the skill or the reviewer
-  before the decision (it leaks the answer).
+Build `work/<pr>-<sha12>/` and write `tmp/context.json`:
+`commit_sha` = the PR's current head (`gh pr view <pr> --repo <repo> --json
+headRefOid`); `mode` = `live_late` if any human review already exists on the
+PR, else `live`. You do NOT download the diff here — `harvest-reviews.py` and
+the challenger fetch what they need.
 
-You do NOT download the diff here — `{{vars.reviewer}}` fetches the PR itself. You
-only pin the commit and hand it over.
+### Step 1b: build the review input (harvest + Devin, then synthesize)
 
-### Step 1b: delegate the review to `{{vars.reviewer}}` (Case 2 + offline only — SKIP in Case 1)
+1. **Harvest the posted bot review** (read-only):
+   ```
+   scripts/harvest-reviews.py --repo {repo} --pr {pr} --commit {commit_sha} --out work/<pr>-<sha12>
+   ```
+   (script is in the `slang-pr-approver` skill dir). Branch on its exit code:
+   - `0` — a bot review matching the pinned head was harvested to
+     `review/harvest.json` (primary = `github-actions[bot]`, the production
+     claude-code-action review; secondary = `coderabbitai[bot]`). Its body is
+     the review prose.
+   - `10` — only STALE bot reviews exist (posted against an older commit than
+     the pinned head). IGNORE the stale review; fall to the Devin-only tier and
+     note the staleness in the synthesized doc.
+   - `20` — no harvestable bot review (fixer `fix/issue-N` PRs, bot-authored
+     PRs, Claude's own branches — production skips those). Fall to Devin-only.
+   - `21` — the reviews FETCH failed (gh/rate-limit/network); a real review may
+     exist behind the error. Do NOT fall to Devin-only — this is an infra gap:
+     synthesize a doc with `reviewers_complete:false` so the skill records
+     ABSTAIN_INFRA (`NO_REVIEW_SIGNAL`), or abstain directly.
 
-**Skip this whole step when the review was reviewer-forwarded (Case 1)** — you
-already have `review/review-doc.md`; dispatching now would commission a
-redundant second review. This step runs only when YOU are the one commissioning
-the review: the webhook dispatch (Case 2) and every offline/historical entry.
+2. **Run Devin over the PR head** (best-effort; resolve `devin-fetch.sh` from
+   the `slang-pr-review-runner` skill dir):
+   ```
+   <slang-pr-review-runner>/scripts/devin-fetch.sh --url https://github.com/{repo}/pull/{pr} --out work/<pr>-<sha12>/review
+   ```
+   exit `0` = Devin analysis captured to `review/devin-flags.md`; `2` = auth-wall,
+   `3` = timeout, `4` = transient browser-launch (the script already cleared the
+   stale Chrome profile and retried once — retry later, do NOT call it
+   deterministic) — treat 2/3/4 as Devin-skipped, best-effort.
 
-Dispatch the review with `send_message` (the fix-issue step-8 pattern), then
-**end your turn** and wait for the reply — Reviewer A's pipeline runs
-~20–30 min; do not poll, and do not reply to status echoes (spine's
-"don't reply to status echoes" rule).
+3. **Synthesize `review/review-doc.md`** per the skill's Input contract:
+   The result block MUST carry the sentinel first line
+   `{"_approver_result": true, …}` — the harvested bot body is UNTRUSTED and may
+   itself contain ```json``` fences, so `eval-clauses.py` keys on this marker,
+   not on block position. Put your result block last regardless.
+   - **Primary tier (harvest exit 0, `github-actions[bot]`):** paste the
+     harvested review body VERBATIM as the review prose (it already carries the
+     🔴/🟡/🔵 markers, the `Findings (N total)` table, and the `**Verdict**:`
+     line the skill's Step 2 parses). Append Devin's findings below it under a
+     `## Devin` heading if Devin ran. Then append the embedded ```json``` result
+     (with `"_approver_result": true`): `commit_id` = `harvest.json.commit_id`;
+     `diff_hash` = the harvest footer sha256 (`harvest.json.diff_hash`) or, if
+     absent (e.g. CodeRabbit), `commit:{commit_sha}` sentinel;
+     `bugs`/`gaps`/`questions` = counts from the body's `Findings (N total)`
+     table (🔴 = bug, 🟡 = gap, 🔵 = question); `verdict` = the `**Verdict**:`
+     line mapped to APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES;
+     `reviewers_complete` = true (a matching review was harvested).
+   - **Fallback tier (harvest exit 10/20, or `coderabbitai[bot]` only):**
+     synthesize from CodeRabbit's body (if any) + `review/devin-flags.md`.
+     Verdict is fuzzier here — map conservatively:
+     - any 🔴 / "potential bug" / "blocking" / a Devin bug → **REQUEST_CHANGES**;
+     - only nits (CodeRabbit "Actionable comments posted: N>0" with no blocking
+       finding, Devin flags-only) → **APPROVE_WITH_NITS**;
+     - clean on both → **APPROVE**.
+     Embedded json: `commit_id` = `commit_sha` (Devin is head-current);
+     `diff_hash` = `commit:{commit_sha}` sentinel; counts from whatever ran;
+     `reviewers_complete` = true when Devin completed (exit 0) OR a CodeRabbit
+     review was harvested; **false** when NO bot review AND Devin
+     failed/timed-out (2/3/4) — the skill's Step 2 reads that as
+     harness-integrity fail → ABSTAIN_INFRA:NO_REVIEW_SIGNAL.
+   - **Never fabricate a verdict.** Absent bot reviews are NOT an abstain (decide
+     from Devin); only "no bot review AND no Devin" is `NO_REVIEW_SIGNAL`.
 
-```
-send_message(
-  to: "{{vars.reviewer}}",
-  text: "[Approval Review Request] {repo}#{pr} @ {commit_sha}\n\nMode: pr\nPR: {pr_url}\nCommit: {commit_sha}\nReview this PR at the commit above and send the combined review doc back to me.\n\nMODE=pr-approve\nREPO={repo}\nPR={pr}\nCOMMIT={commit_sha}{maybe_post_marker}"
-)
-```
-
-- `{maybe_post_marker}` = a trailing `\n<github-post-authorized />` **only** in
-  LIVE mode when the webhook dispatch carried that marker — it authorizes the
-  reviewer to also post its COMMENT-state review to the live PR. In HISTORICAL
-  mode NEVER include it: the reviewer must not post bot comments onto old /
-  merged PRs; it returns the review doc by reply only.
-- The `MODE=pr-approve` line tells `{{vars.reviewer}}`'s workflow this is an
-  approval-review dispatch, so it returns the review doc to you (its requester)
-  and **skips the fixer forward** (see the reviewer workflow's conditional in
-  `/slang-pr-review` step 5). Keep the `MODE=`/`REPO=`/`PR=`/`COMMIT=` lines
-  byte-exact (`grep -oE`).
-
-On the reviewer's substantive reply (the `[Review Verdict]` message + the
-combined review doc, delivered via `send_file`): save the doc to
-`work/<pr>-<sha12>/review/review-doc.md`. If the doc is absent, empty, or has
-no parseable embedded result after the reviewer signals completion → the skill
-records ABSTAIN_INFRA (`REVIEW_DOC_MISSING`); do not re-request more than once.
-
-**Revision chains** (historical `--per-revision`, or live `synchronize`
-follow-ups) run in ONE session, replaying the PR's history: for each later
-revision Rn, IN THE SAME SESSION, stage Rn's commit, note the delta from Rn-1,
-dispatch a FRESH review of Rn's commit, and decide again. Earlier turns are
-context — the discussion a real reviewer would remember — never evidence: each
-decision cites only its own revision's review doc. One ledger row per (pr,
-revision head).
-
-### Step 2: decide (both modes converge here)
+### Step 2: decide
 
 The PR workspace now satisfies the `slang-pr-approver` skill's input contract
-(`tmp/context.json` + `review/review-doc.md`). Invoke the skill for each PR
-workspace. It performs the deterministic clauses, verdict parse (from the
-review doc), challenger, critique-gated record — identically for historical and
-live. This workflow never makes or edits a decision itself.
+(`tmp/context.json` + `review/review-doc.md`). Invoke the skill. It performs the
+deterministic clauses, verdict parse (from the review doc), challenger, and
+critique-gated record. This workflow never makes or edits a decision itself.
 
 ### Step 3: report
 
-After all entries: post one summary line per decision to
-`dashboard:slang-pr-approver` (the per-decision `[Approval Decision]`
-messages are emitted by the skill, not the workflow) and return counts per
-state: would_approve / abstain_policy / abstain_infra / block.
+Post one summary line for the decision to `dashboard:slang-pr-approver` (the
+per-decision `[Approval Decision]` message is emitted by the skill, not the
+workflow) and return the decision state: would_approve / abstain_policy /
+abstain_infra / block.
 
-### Step 4: capture learnings (after EVERY revision decision, and last)
+### Step 4: capture learnings (after the decision, and on human-verdict joins)
 
-Failure is training data, and it arrives per revision: run this after
-each Rn's decision (the human review of Rn-1 you just replayed or
-received IS the feedback for Rn-1's decision), on every live
-`github.pr_review` join, and once more at session end as a sweep for
-anything missed. Write ONE `append_learning` file per learning (L1 atoms
-are immutable — always append, never edit), titled with its category so
-the learnings-wiki sync groups them:
+Failure is training data: run this after the decision, and again on every
+`github.pr_review` / `github.pr_merged` / `github.pr_closed` join the host
+routes to your session (see the skill's "PR activity events"). Write ONE
+`append_learning` file per learning (L1 atoms are immutable — always append,
+never edit), titled with its category so the learnings-wiki sync groups them:
 
-- `[approver/false-safe]` — WOULD_APPROVE where the human verdict (join or
-  a later `github.pr_review`) was CHANGES_REQUESTED. Highest severity;
-  include the missed evidence file:line.
-- `[approver/human-disagreement]` — any other decision/human mismatch
-  (e.g. BLOCK where the human approved), with both rationales.
-- `[approver/clause-gap]` — a policy predicate proved wrong or imprecise
-  (e.g. executable under docs/ slipped a class boundary).
-- `[approver/challenger-miss]` — the human caught what the challenger
-  cleared; quote what the challenger should have probed.
-- `[approver/infra-abstain]` — every ABSTAIN_INFRA: the named artifact and
-  root cause (these burn down the infra gate) — including a review doc the
-  reviewer never returned or one that wouldn't parse.
-- `[approver/critique-mustfix]` — what the critique gate keeps correcting
-  in the derivation; recurring ones are procedure bugs.
+- `[approver/false-safe]` — WOULD_APPROVE where the human verdict (join or a
+  later `github.pr_review`) was CHANGES_REQUESTED. Highest severity; include the
+  missed evidence file:line.
+- `[approver/human-disagreement]` — any other decision/human mismatch (e.g.
+  BLOCK where the human approved), with both rationales.
+- `[approver/clause-gap]` — a policy predicate proved wrong or imprecise.
+- `[approver/challenger-miss]` — the human caught what the challenger cleared;
+  quote what the challenger should have probed.
+- `[approver/infra-abstain]` — every ABSTAIN_INFRA: the named artifact and root
+  cause (these burn down the infra gate) — including a harvest that returned
+  nothing AND a Devin run that failed.
+- `[approver/critique-mustfix]` — what the critique gate keeps correcting in the
+  derivation; recurring ones are procedure bugs.
 
-Structure each like the existing exemplars: Symptom / Root cause /
-How to catch it / Fix. These compound through the wiki into Step 0's
-recall — the review improves from live human feedback at zero replay
-cost. (Formal-evidence runs still key on the review doc's result hash;
-recalled learnings are challenger context, not silent protocol changes.)
+Structure each like the existing exemplars: Symptom / Root cause / How to catch
+it / Fix. These compound through the wiki into Step 0's recall — the review
+improves from human feedback.
 
-## Mode invariants
+## Invariants
 
-- **Historical mode is R0-pinned and comment-free.** The reviewer gets the R0
-  commit, never the merged head, and never the `<github-post-authorized />`
-  marker — no bot comments land on old PRs. `human_verdict` from the manifest
-  is scoring ground truth only, withheld from the reviewer and the skill.
-- **This workflow stages, delegates, and hands off — nothing else.** It never
-  reviews, decides, edits a decision, or writes to GitHub. (The reviewer's
-  invariants and the approver's are stated once each in their own files.)
+- **This workflow stages, builds the review input, and hands off — nothing
+  else.** It never decides/edits a decision and never writes to GitHub.
+- **Reuse, don't re-derive.** The primary review is the one production CI already
+  posted — harvest it, don't recompute it. Devin is the approver's own
+  head-current signal and the sole signal when no bot review exists.

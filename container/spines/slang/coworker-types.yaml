@@ -114,11 +114,6 @@ slang-reviewer:
     - slang-clarity-review-runner  # Reviewer C (clarity) — local skill
   workflows:
     - slang-pr-review
-  # Downstream PR-approver the reviewer forwards a live-PR review to (Case 1 in
-  # /slang-pr-review). Wired as a destination on the reviewer group by the
-  # operator; slangpy-reviewer sets approver: slangpy-pr-approver.
-  vars:
-    approver: slang-pr-approver
   # Reviewer reads a diff, produces a verdict. CODE_REVIEW is the assessment
   # of the diff under review (codex independent-checks the assessment);
   # OUTPUT_REVIEW vets the final review verdict before sending.
@@ -138,29 +133,21 @@ slang-discord:
   required_critique_stages: [OUTPUT_REVIEW]
 
 slang-pr-approver:
-  description: "Approval-decision coworker — turns a PR review into one auditable decision each (WOULD_APPROVE | ABSTAIN | BLOCK), critique-gated, shadow-mode. Does NOT review code itself: it delegates the review to slang-reviewer (the same reviewer coworker the fixer uses) and decides from the returned review doc. Inherits slang-common (repo context, deepwiki, slang-github reads, codex-critique binding). Writing to GitHub is forbidden by invariant and gate."
+  description: "Approval-decision coworker — turns a PR review into one auditable decision each (WOULD_APPROVE | ABSTAIN | BLOCK), critique-gated, shadow-mode. Builds its own review input: harvests the bot review already posted on the PR (github-actions[bot] = production claude-code-action; coderabbitai[bot]) and runs Devin, then decides from it. Inherits slang-common (repo context, deepwiki, slang-github reads, codex-critique binding); agent-browser + slang-pr-review-runner give it Devin. Writing to GitHub is forbidden by invariant and gate."
   project: slang
   extends: slang-common
-  # No slang-pr-review-runner here: the approver never runs the review itself.
-  # It hands the PR to slang-reviewer (see vars.reviewer + the reviewer
-  # destination on coworkers/slang-pr-approver.yaml) and parses the review doc
-  # the reviewer sends back. Keeps a single source of review truth and lets the
-  # approver stay read-only.
   skills:
     - slang-pr-approver
+    - agent-browser            # Devin (app.devin.ai) via browser
+    - slang-pr-review-runner   # for devin-fetch.sh (Devin scraper); never runs the reviewer
   workflows:
     - slang-pr-approve
-  # Compose-time substitution for the reviewer this approver delegates to.
-  # The slangpy clone sets reviewer: slangpy-reviewer.
-  vars:
-    reviewer: slang-reviewer
   # Verity's terminal artifact is the approval decision, and its "delivery"
   # is internal-tier: the ledger append + the [Approval Decision] message.
   # Nothing leaves the system, but downstream automation trusts the ledger,
   # so it is gated like a boundary. DECISION_REVIEW independently vets the
-  # derivation (clauses evaluated from data, verdict parse matches the
-  # reviewer's returned review doc, historical mode stays R0-pinned);
-  # OUTPUT_REVIEW vets the ledger line + decision message themselves. The
+  # derivation (clauses evaluated from data, verdict parse matches the review
+  # doc); OUTPUT_REVIEW vets the ledger line + decision message themselves. The
   # marker is declared here (novel, project-level) so the composer unions it
   # into the shared vocabulary: the same token drives routing and gating —
   # dropping it to dodge the gate also drops the message from routing.
