@@ -10,10 +10,9 @@ import type { Migration } from './index.js';
  * action (container agents can't touch v2.db directly — same transport as
  * `map_pr_session`).
  *
- * `human_verdict` is filled later — either from the offline manifest at
- * scoring time, or when a live `github.pr_review` arrives on the PR's session
- * — so the scorer (`score-decisions.py`) can join decision vs. ground truth
- * on (repo, commit_sha). It stays NULL until then.
+ * `human_verdict` is filled later — when a live `github.pr_review` (or a
+ * terminal merged/closed event) arrives on the PR's session — so decision vs.
+ * ground truth can be joined on (repo, commit_sha). It stays NULL until then.
  *
  * PK is (repo, pr, commit_sha): one decision per reviewed revision. A re-run
  * on the same commit (re-review, corrected derivation) is INSERT OR REPLACE —
@@ -28,9 +27,9 @@ export const migration929: Migration = {
         repo             TEXT NOT NULL,
         pr_number        INTEGER NOT NULL,
         commit_sha       TEXT NOT NULL,
-        mode             TEXT NOT NULL,          -- historical | live | live_late
+        mode             TEXT NOT NULL,          -- live | live_late
         decision         TEXT NOT NULL,          -- WOULD_APPROVE | BLOCK | ABSTAIN_POLICY | ABSTAIN_INFRA
-        reason_code      TEXT,                    -- CLAUSE_FAIL:<name>, OPEN_GAP, REVIEW_DOC_MISSING, ...
+        reason_code      TEXT,                    -- CLAUSE_FAIL:<name>, OPEN_GAP, NO_REVIEW_SIGNAL, ...
         review_diff_hash TEXT,                    -- the diff_hash the review doc reported reviewing
         policy_version   TEXT,
         clauses_json     TEXT,                    -- full clauses.json evidence blob

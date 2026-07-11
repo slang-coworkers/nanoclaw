@@ -10,10 +10,10 @@
  * INSERT OR REPLACE on (repo, pr, commit_sha): one decision per reviewed
  * commit, last-writer-wins (a corrected re-run supersedes the prior row).
  *
- * `recordHumanVerdict` is the join side: when a live `github.pr_review`
- * lands, or the offline manifest supplies ground truth, the human outcome is
- * stamped onto the matching (repo, pr, commit) row so score-decisions.py can
- * measure agreement. It never overwrites decision fields.
+ * `recordHumanVerdict` is the join side: when a live `github.pr_review` lands
+ * (or a terminal merged/closed event), the human outcome is stamped onto the
+ * matching (repo, pr, commit) row so agreement can be measured and the approver
+ * can distill a learning. It never overwrites decision fields.
  */
 import type Database from 'better-sqlite3';
 
@@ -86,11 +86,11 @@ export function upsertDecision(db: Database.Database, w: DecisionWrite): boolean
 /**
  * The approver session(s) that decided a given PR — the ledger is the index.
  * Used to route a terminal PR event (merged / closed) back to the approver
- * that decided it so it can join the human outcome onto its R0 row and distill
- * an abstract learning. Returns one row per decided commit (a PR may have R0..Rn
- * decisions from the same session); callers dedup on (agent_group_id, thread_id)
- * when delivering. Empty when no approver ever decided this PR — nothing to
- * learn, nothing to route.
+ * that decided it so it can join the human outcome onto its decision row and
+ * distill an abstract learning. Returns one row per decided commit (a PR may
+ * have several revision decisions from the same session); callers dedup on
+ * (agent_group_id, thread_id) when delivering. Empty when no approver ever
+ * decided this PR — nothing to learn, nothing to route.
  */
 export interface DecisionSessionRow {
   agent_group_id: string;
