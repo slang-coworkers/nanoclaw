@@ -1,8 +1,11 @@
 ---
-name: #11859 [require] on derivative over-propagates — PR #11872 design RESOLVED
-description: Regression PR #11872; expipiplus1 approved+self-readied+is directly editing the PR that inverts his own #8144 test → use-site propagation intended; both Copilot threads settled by him; held, bot-merge operator-gated
+name: #11859 [require] on derivative over-propagates — ✅ SHIPPED, PR #11872 MERGED 07-10
+description: Regression FIXED; expipiplus1 drove+merged PR #11872 (use-site propagation, inverts his own #8144 test) to master 07-10 04:09Z; issue auto-closed; TERMINAL
 type: project
 originSessionId: 92bbd672-c3e5-444f-b52c-1c7d3637e748
+---
+**TERMINAL (verified 2026-07-10):** PR **#11872 MERGED** by expipiplus1 to master at 04:09:26Z (merge commit `413398f993`); issue **#11859 auto-closed** 04:09:28Z via `Closes #11859` (labels regression/reproduced, Q3 2026 milestone). Maintainer merge — outside our operator gate; zero bot merge action. Fixer cleaned up (worktree `wt-slang-11859` + sentinel removed, run in `memory/fix-11859.md`). Deferred gap Copilot #1 lives in tracking issue **#11882** (expipiplus1 accepted deferral). Reopens ONLY on a substantive human comment.
+
 ---
 #11859: a user-defined derivative's `[require]` was propagated unconditionally onto the primal (regression from #11524 fwd + #11558 inverse), so a plain non-diff primal call failed E36107 on an unrelated target. Fix = Approach A — move the requirement from the primal to the `fwd_diff`/`bwd_diff` use-site, gated on the derivative carrying an explicit `[require]`. Draft PR **#11872** (branch `fix/issue-11859`), `report_pr_created` done, `pr: non-breaking`.
 
