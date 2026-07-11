@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-159 learnings. [Catalog](../index.md)
+163 learnings. [Catalog](../index.md)
 
 - [@copilot may resolve conflicts on bot-authored PRs — check remote tip before pushing your own](../learnings/1782711499913-copilot-may-resolve-conflicts-on-bot-authored-prs-.md)
 - [A corrupted tool-result turn taints its own verifications](../learnings/1783468158790-a-corrupted-tool-result-turn-taints-its-own-verifi.md)
@@ -16,6 +16,8 @@ type: topic
 - [Adjudicate "false-positive warning?" disputes by diffing emitted target code across divergent cases](../learnings/1783019615446-adjudicate-false-positive-warning-disputes-by-diff.md)
 - [API budget cap blocks LLM subagent dispatch, not direct shell/read calls](../learnings/1781539485742-api-budget-cap-blocks-llm-subagent-dispatch-not-di.md)
 - [Approach-A fix for descriptor-heap [noinline] texture params: reuse the hoistable heap global, do NOT parameterize it as uint](../learnings/1780769595819-approach-a-fix-for-descriptor-heap-noinline-textur.md)
+- [approver/human-disagreement: for a proven-correct behavior-preserving perf fix from a trusted contributor, maintainers approve-with-nits over "missing test + invariant-doc-scope" gaps — the shadow abstain is conservative-by-design, not a signal something's wrong](../learnings/1783692443899-approver-human-disagreement-for-a-proven-correct-b.md)
+- [Approver: `gh auth status` reports token invalid but `gh api`/`gh pr view` reads still work](../learnings/1783691364726-approver-gh-auth-status-reports-token-invalid-but-.md)
 - [Attribute PR ownership by author field, not title/branch prefix](../learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md)
 - [Before escalating a peer's "ongoing loop" claim, check last MESSAGE timestamp vs last_active (heartbeat)](../learnings/1782346077621-before-escalating-a-peer-s-ongoing-loop-claim-chec.md)
 - [Before executing a "land this patch" dispatch, check the PR doesn't already exist](../learnings/1780769347490-before-executing-a-land-this-patch-dispatch-check-.md)
@@ -62,6 +64,7 @@ type: topic
 - [Don't auto-implement issues owned by an invited external contributor](../learnings/1780473504394-don-t-auto-implement-issues-owned-by-an-invited-ex.md)
 - [Don't fabricate downstream completion — a dispatch-complete report is not a done report](../learnings/1783626036685-don-t-fabricate-downstream-completion-a-dispatch-c.md)
 - [Don't infer a causal link the failure log never states](../learnings/1783642405453-don-t-infer-a-causal-link-the-failure-log-never-st.md)
+- [Don't narrate your own no-echo silence upstream](../learnings/1783680642501-don-t-narrate-your-own-no-echo-silence-upstream.md)
 - [Don't relay downstream heartbeat/holding echoes upstream](../learnings/1783590069475-don-t-relay-downstream-heartbeat-holding-echoes-up.md)
 - [Don't reply to a parent's acknowledgement pings while waiting on a monitor](../learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md)
 - [Don't self-schedule a PR-watcher poller after report_pr_created](../learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-repo.md)
@@ -113,6 +116,7 @@ type: topic
 - [NVAPI render-tests silently "ignored" — submodule→FetchContent migration left render-test path stale](../learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fetc.md)
 - [Operator override that bypasses your parent — confirm on operator edge AND nudge parent, or it goes stale](../learnings/1781686753503-operator-override-that-bypasses-your-parent-confir.md)
 - [Perf regression bisected to a fix ≠ the fix's logic is the cost (byte-compare serialized artifacts to distinguish semantic vs LTO-layout)](../learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md)
+- [Pin a moving PR head with patch mode, not pr mode](../learnings/1783681496336-pin-a-moving-pr-head-with-patch-mode-not-pr-mode.md)
 - [Post-compaction coworker drift: verify against the canonical thread and halt before any external artifact](../learnings/1783467434848-post-compaction-coworker-drift-verify-against-the-.md)
 - [PR-description prose fixes-N closes the wrong issue and blocks auto-close](../learnings/1782951523566-pr-description-prose-fixes-n-closes-the-wrong-issu.md)
 - [PR/status watcher tasks: use a pre-agent script guard with a state file, not a per-fire agent poll](../learnings/1780315991721-pr-status-watcher-tasks-use-a-pre-agent-script-gua.md)

@@ -3,7 +3,7 @@ title: "Slang Diagnostics System: Catalog, Definitions, and Rendering"
 type: concept
 group: slang-grab-bag
 tags: [diagnostics, slang-diagnostics.lua, regenerate.py, diagnostics-catalog, warning, FileCheck, rich-diagnostics, pragma-warning, severity, Lua]
-source_count: 21
+source_count: 22
 ---
 
 # Slang Diagnostics System: Catalog, Definitions, and Rendering
@@ -85,7 +85,14 @@ When a maintainer disputes whether a diagnostic (e.g. uninitialized-field E41021
 Changing a **shared type/name formatter** — `getTypeNameHint` in `source/slang/slang-ir-util.cpp`, or anything reached by `printDiagnosticArg` (`slang-ir.cpp:36`, the generic `IRInst`/`IRType` diagnostic-argument renderer) — can silently alter the *message text of completely unrelated diagnostics*. On PR #12005 / issue #7878, adding a `case kIROp_OptionalType` to `getTypeNameHint` so a new diagnostic (E41037) could render `Optional<T>` also changed how a pre-existing `__ref`/`__constref` dynamic-dispatch diagnostic rendered an `IROptionalType` param — from the empty string `''` to `'Optional<IFoo>'` — failing the exhaustive `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` golden `tests/language-feature/dynamic-dispatch/diagnose-ref-interface-in-compound.slang` (+ its `.1` hlsl variant) on both the position-match and exhaustive-check. Why it bites: (1) **draft-PR CI hides it** — build/test jobs are SKIPPED on drafts (only `check-ci`+`wait-for-human-priority` show a cosmetic failure), so the regression surfaces only when the PR flips non-draft and the real `pull_request` build runs, often after a maintainer already approved; (2) `.slang` goldens are runtime-interpreted, so a stale golden isn't caught by a C++ rebuild — you must actually run the affected test; (3) diagnostic goldens are scattered (`tests/diagnostics/`, `tests/language-feature/dynamic-dispatch/`, `tests/glsl-intrinsic/`, `tests/autodiff/`, `tests/compute/`, …), so a two-directory local sweep does NOT bound the blast radius. **What to do:** when you touch a shared render/format helper, `grep -rn getTypeNameHint source/slang/` for callers AND run the broad diagnostic dirs locally before trusting draft CI, and SAY SO in the report — don't claim a two-dir sweep covers every golden. The exhaustive-check failure output prints the exact replacement annotation ("Suggested annotations you can copy") — copy it verbatim; caret columns are almost always unchanged (only message text moved), so the fix is a pure message refresh, not a re-alignment. This is a genuine golden *refresh* (the message became more informative), not silencing — but confirm via merge-base that YOUR change is the reaching edit before touching a pre-existing test ([Shared diagnostic formatter changes silently regress unrelated exhaustive diag= goldens (masked on draft CI)](../learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md)).
 
 ---
-**Source learnings (31):**
+
+## (Struct)0 Zero-Cast Has No Decl -- Deprecation Needs a Direct diagnose() (#12045)
+
+The legacy HLSL `(Struct)0` cast (treated as `Struct s = {}`, default-init not zero-init) is a hardcoded compiler special case in `SemanticsExprVisitor::visitTypeCastExpr` (`slang-check-expr.cpp:7389`), gated on target StructDecl + exactly one `IntegerLiteralExpr` arg == 0, firing only for C-style cast syntax (not `T(0)`). Key nuance for deprecating it: Slang's `[deprecated]`/`[RemovedSince]` machinery works by `findModifier<>` on a **`Decl`** -- but the zero-cast has NO declaration to attach an attribute to, so a deprecation CANNOT reuse the attribute path. It must be a direct version-gated `diagnose()` inserted at the special-case site (:7404), reusing the `moduleDecl->languageVersion` comparison idiom + a new diagnostic; the removal version is an ABI-relevant `SlangLanguageVersion` enum append ([slang (Struct)0 zero-cast is a synthetic special case, no Decl for [deprecated] attribute](../learnings/1783690411342-slang-struct-0-zero-cast-is-a-synthetic-special-ca.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (32):**
 - [Shared diagnostic formatter changes silently regress unrelated exhaustive diag= goldens (masked on draft CI)](../learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md)
 - [stale E30055 catalog test is a syntax error](../learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md)
 - [catalog generated tests have 3 provenance stores](../learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md)
@@ -114,4 +121,5 @@ Changing a **shared type/name formatter** — `getTypeNameHint` in `source/slang
 - [slang rich-diagnostics render layer already supports SourceRange; only authoring/plumbing collapses to one loc](../learnings/1783523470770-slang-rich-diagnostics-render-layer-already-suppor.md)
 - [slang#12006 E41017 false-positive on export __global __extern_cpp host-provided globals](../learnings/1783545729206-slang-12006-e41017-false-positive-on-export-global.md)
 - [slang#12007 E36108 'llvm' false-positive is the sm_6_0 alias listing cpp/llvm, NOT auto-available-because-linked](../learnings/1783547031032-slang-12007-e36108-llvm-false-positive-is-the-sm-6.md)
+- [slang (Struct)0 zero-cast is a synthetic special case, no Decl for [deprecated] attribute (#12045)](../learnings/1783690411342-slang-struct-0-zero-cast-is-a-synthetic-special-ca.md)
 _Catalog: [[wiki/index.md]]_

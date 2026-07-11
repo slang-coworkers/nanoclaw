@@ -3,7 +3,7 @@ title: "Slang SPIR-V Backend: Emission, Capabilities, and Validation"
 type: concept
 group: slang-backends
 tags: [spirv, vulkan, codegen, capabilities, descriptor-heap, debug-info, atomics]
-source_count: 70
+source_count: 71
 ---
 
 # Slang SPIR-V Backend: Emission, Capabilities, and Validation
@@ -153,7 +153,14 @@ Slang's *direct* SPIR-V backend (`slang-emit-spirv.cpp`) never emitted the `NoCo
 A test suppressed because it ABORTS inside `spirv-opt` can often have its expected-failure entry dropped simply because slang-test now defaults to `-O0` (PR #11805) — the crash never triggers at O0 — independent of any upstream spirv-tools fix ([spirv-opt crash suppressed via expected-failure list is often droppable via the -O0 default (PR #11805), independent of the upstream fix](../learnings/1783036168133-spirv-opt-crash-suppressed-via-expected-failure-li.md)).
 
 ---
-**Source learnings (93):**
+
+## #12002 OpName Register Leak: Shipped (refute-then-fix)
+
+shader-slang/slang#12002 shipped as PR #12053 (MERGED 2026-07-11, jkwak-work, merge commit 4d91d47bf3). Approach A (narrow, producer-side): renamed the internal spirv_asm result register `%sampled`->`%__sampled` in `hlsl.meta.slang` -- the fixer found 94 whole-token sites (triage grep undercounted at ~20; the register spans OpImageSample{Implicit,Explicit}Lod + OpImageFetch/Read + sparse OpCompositeExtract + the `$(spvLoadInstName)` splice), plus a regression test asserting the OpName is `"__sampled"` and `CHECK-NOT: "sampled"`. Triage lessons that held: the rename-drill discriminator is decisive for "debug name on the wrong inst" claims (rename the user's var, see whether the OpName follows -> real propagation, or stays -> intrinsic-baked name); refuting the reporter's stated hypothesis did NOT mean "not a bug" -- lead the public verdict with the refutation, then the real defect. Approach B (gating the auto-emit-OpName loop) correctly left maintainer-scope: it's a documented/tested feature and gating would make asm names inconsistent with ungated user OpNames ([slang#12002 SHIPPED: refute-then-fix triage of a 'misattributed OpName' that was a coincidental stdlib name collision](../learnings/1783746988745-slang-12002-shipped-refute-then-fix-triage-of-a-mi.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (94):**
 - [slang-emit-spirv builtin-var cache and the volatile-set cache-hit trap](../learnings/1779612967874-slang-emit-spirv-builtin-var-cache-and-the-volatil.md)
 - [IRSPIRVAsmOperandBuiltinVar is hoistable — cross-stage builtin refs always collapse to one inst](../learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-co.md)
 - [emitOperand(extraMask) after a user-supplied MemoryAccess word emits invalid SPIR-V](../learnings/1779617068760-slang-emit-spirv-extra-memoryaccess-word-grammar-b.md)
@@ -247,4 +254,5 @@ A test suppressed because it ABORTS inside `spirv-opt` can often have its expect
 - [slang#12004 sampler-vs-texture noinline SPIR-V param asymmetry — isIllegalSPIRVParameterType isArray gate](../learnings/1783527024741-slang-12004-sampler-vs-texture-noinline-spir-v-par.md)
 - [slang#8681 spirv-opt strip-debug deletes DebugBuildIdentifier — separate-debug-info needs a DBI shim](../learnings/1783556986544-slang-8681-spirv-opt-strip-debug-deletes-debugbuil.md)
 - [slang#12019 double→bool SPIR-V: getIntValue(floatType,0) mints int-lit with float type → 1-word OpConstant](../learnings/1783587817471-slang-12019-double-bool-spir-v-getintvalue-floatty.md)
+- [slang#12002 SHIPPED: refute-then-fix triage of a 'misattributed OpName' coincidental stdlib name collision](../learnings/1783746988745-slang-12002-shipped-refute-then-fix-triage-of-a-mi.md)
 _Catalog: [[wiki/index.md]]_

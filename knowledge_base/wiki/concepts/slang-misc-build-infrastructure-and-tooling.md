@@ -3,7 +3,7 @@ title: "Slang Build Infrastructure, Tooling, and Language Server"
 type: concept
 group: slang-grab-bag
 tags: [build, CMake, MSVC, slangd, LSP, language-server, build-tag, version, downstream-compilers, NVRTC, VK_KHR_shader_abort, SPIR-V, IRTextureType, imgui, dev-shm, coworker-container]
-source_count: 21
+source_count: 22
 ---
 
 # Slang Build Infrastructure, Tooling, and Language Server
@@ -105,7 +105,14 @@ A common 'convert `#if` dead code to `if constexpr` to keep it type-checked' ask
 For 'use library allocation wrappers' issues (#11924), separate latent from live and caller-owned from library-owned buffers before acting ([1783057786633-triaging-use-library-allocation-wrappe](../learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md)). 'Use mimalloc for Slang core' (#11925) is **not** a turn-key reuse of the existing SPIRV-Tools mimalloc dependency — the mechanism doesn't transfer ([1783058024375-mimalloc-for-slang-core-is-not-a-turn-](../learnings/1783058024375-mimalloc-for-slang-core-is-not-a-turn-key-reuse-of.md)). And the #11928 dead-code removal (`USE_RIFF`/`DIRECT_FROM_FOSSIL`) was only partially done, superseded by PR #11930 ([1783125158769-postmortem-slang-11928-superseded-by-p](../learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md)).
 
 ---
-**Source learnings (41):**
+
+## MSVC /DEBUG for Release PDBs Silently Disables /OPT:REF and /OPT:ICF (#12054)
+
+Slang's default MSVC Release build loses dead-code elimination and identical-COMDAT folding (larger binaries, no functional change) because `SLANG_ENABLE_RELEASE_DEBUG_INFO` defaults ON, injecting `/DEBUG` into MSVC Release links -- and MSVC's linker flips `/OPT` defaults (`REF->NOREF`, `ICF->NOICF`) whenever `/DEBUG` is present, which Slang never re-asserts. The non-obvious wrinkle: `/DEBUG` implies `/INCREMENTAL`, under which `/OPT:REF|ICF` are silently ignored (LNK4075), so re-adding them only works with incremental OFF -- Release already carries `/INCREMENTAL:NO` (clean) but a fix that also touches RelWithDebInfo must guard against LNK4075. Verify MSVC-linker behavior against Microsoft's `/DEBUG` doc + a code trace, not DeepWiki ([slang#12054: MSVC /DEBUG for Release PDBs silently disables /OPT:REF and /OPT:ICF](../learnings/1783729799704-slang-12054-msvc-debug-for-release-pdbs-silently-d.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (42):**
 - [MSVC C5285 on doctest fixed by /wd5285](../learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md)
 - [MSVC 14.51 C5285 on vendored doctest](../learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md)
 - [slang-rhi submodule pin lags feature PRs](../learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md)
@@ -142,4 +149,5 @@ For 'use library allocation wrappers' issues (#11924), separate latent from live
 - [Triaging 'use library allocation wrappers' — latent vs live, caller- vs library-owned buffers](../learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md)
 - [mimalloc 'for Slang core' is not a turn-key reuse of the SPIRV-Tools integration](../learnings/1783058024375-mimalloc-for-slang-core-is-not-a-turn-key-reuse-of.md)
 - [postmortem: #11928 superseded by PR #11930 (partial dead-code removal)](../learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md)
+- [slang#12054: MSVC /DEBUG for Release PDBs silently disables /OPT:REF and /OPT:ICF](../learnings/1783729799704-slang-12054-msvc-debug-for-release-pdbs-silently-d.md)
 _Catalog: [[wiki/index.md]]_

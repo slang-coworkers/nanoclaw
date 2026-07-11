@@ -3,7 +3,7 @@ title: "CI Runners & Flake Triage"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, runners, babysitter, rerun, triage, slang]
-source_count: 29
+source_count: 34
 ---
 
 # CI Runners & Flake Triage
@@ -99,7 +99,22 @@ When a maintainer sees `@shader-slang/dev` (the team) added as a reviewer on a b
 `bash scripts/pull-universe.sh … | python3 scripts/scan.py` exits 1 with `syntax error near unexpected token '('` at ~line 145, and scan.py then reports `stdin is not a tty` — a bash-quoting bug in pull-universe.sh (a sibling to the earlier argv-overflow issue) that aborts the supervise tick ([1782995331984-supervise-issues-pull-universe-sh-bash](../learnings/1782995331984-supervise-issues-pull-universe-sh-bash-quoting-bug.md)).
 
 ---
-**Source learnings (40):**
+
+## Merge-Group-Only ASan Overflow: a Caller Bug, Not the Callee (#12058)
+
+A deterministic ASan `heap-buffer-overflow` in `rhi::cpu::DeviceImpl::createBuffer` surfaces ONLY in the merge-group `sanitizer-linux-clang` job -- a PR's own head checks stay green, so evicted PRs look healthy. Merge-group-only surfacing (head green + merge-group red on `sanitizer`) is the tell for a batch/merged-state regression; it is NOT the #11833 ASan-canary/LD_PRELOAD flake (intermittent env noise) -- it's a concrete overflow with a fixed allocation site, so do NOT requeue evicted PRs ([merge-group-only ASan overflow in slang-rhi createBuffer (#12058)](../learnings/1783722231562-merge-group-only-asan-overflow-in-slang-rhi-create.md)). The CI-babysitter's "likely fix in slang-rhi + suspect the #11960 bump" framing was doubly wrong: the layer is the *caller* (render-test `render-test-main.cpp:497` floor-truncates a non-4-aligned `bufferSize` into a `List<uint32_t>` 2 bytes short, then passes `desc.size` bytes), and slang-rhi structurally CANNOT fix it because `createBuffer` takes `initData` as a length-less `const void*` -- the reusable tell: when an API takes a length-less data pointer, an over-read is always a caller/producer bug; don't propose clamping in the callee. The #11960 suspect was refuted cheaply by a file-level diff across the two submodule pins (byte-identical), no rebuild needed ([merge-group ASan overflow in cpu createBuffer is a render-test caller bug, not slang-rhi](../learnings/1783724432597-merge-group-asan-overflow-in-cpu-createbuffer-is-a.md)). Also: an auto-filed sanitizer issue's "failing tests" list can be collateral -- all 11 listed `(cpu)` tests were `EXECUTABLE` tests that never call `createBuffer` and failed on the *different* LD_PRELOAD canary flake; the actual overflow was triggered by an unlisted compute test, unpinnable from the shared multi-server log. Verify each listed test's `//TEST:` directive before assuming it's the culprit, and separate the two conflated problems to different owners ([a merge-group sanitizer issue's 'failing tests' list can be collateral, not the trigger](../learnings/1783724442644-a-merge-group-sanitizer-issue-s-failing-tests-list.md)).
+
+## Short test-slang Failures Can Hide a Compile Error, Not a Flake
+
+A `test-slang` GPU job that fails in ~1 minute with all "Checking supported backends" probes green then exit 1 is NOT automatically a pre-test infra flake. Windows GPU runners compile the PR's own CUDA `.cu` test files with `nvcc` as a setup step *after* the backend probes but *before* the main batch -- a compile error there produces a short job that mimics the "Common Test Setup" flake. On #11957 a classify-only subagent misread 17 real `nvcc` errors in the prelude as INTERMITTENT; consistent failure on BOTH windows-debug and windows-release confirms multi-platform legitimacy. For any short (<2min) test-slang failure, grep the specific job for `errors detected|error:|exit code|Segmentation` and always verify a subagent's INTERMITTENT verdict before firing a rerun ([short test-slang failures can hide an nvcc compile error, not an infra flake](../learnings/1783743117364-short-test-slang-failures-can-hide-an-nvcc-compile.md)).
+
+## Verify a Self-Filed Bot CI Issue's Root Cause at Receipts Level (#12062)
+
+A `nv-slang-bot` self-filed CI-health issue can be wrong about its own root cause. #12062 claimed a "hard-coded stale bot node id `BOT_kgDOCnlnWA`" in `pr-board-sync.yml` -- but `grep`/`git log -S` found the id was NEVER in the repo, and the workflow's assignment code passes login strings, not node ids. The real cause was server-side: a phantom requested-reviewer already on PR #11964 made GitHub 422 on any reviewer-mutation REST call, and the failing step (`removeRequestedReviewers` @yml:1290) was the one mutation NOT wrapped in the fail-safe try/catch its siblings had. Reusable method: read the actual failing-step API to find `conclusion=failure`, note the response URL on the HttpError (it names the endpoint), grep the cited magic constant before believing "hard-coded", and treat a "global node id" 422 on a logins-only call as a pre-existing server-side entity, not your code ([verify a self-filed bot CI issue's root cause at receipts level -- it can be wrong](../learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (45):**
 - [Cooperative-vector tests failing deterministically on Windows-release-GPU](../learnings/1780157118768-slang-ci-cooperative-vector-tests-fail-on-windows-.md)
 - [Windows disk-space cluster flake](../learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)
 - [`gh run rerun --failed` cannot fix cross-attempt artifact-not-found](../learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md)
@@ -142,4 +157,9 @@ When a maintainer sees `@shader-slang/dev` (the team) added as a reviewer on a b
 - [static-const-matrix-array .3 syn(llvm) RPC drop: harness-retry is NOT a fix; #11951 is the Signature-B tracking issue](../learnings/1783340384337-static-const-matrix-array-3-syn-llvm-rpc-drop-harn.md)
 - [#11951 Sig-B and #11955 CPU SIGSEGV converge on static-const-matrix-array.slang.3 syn (llvm)](../learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md)
 - [CODEOWNERS auto-routes @shader-slang/dev on ready_for_review — not bot misfire](../learnings/1783531331428-codeowners-auto-routes-shader-slang-dev-on-ready-f.md)
+- [Merge-group-only ASan overflow in slang-rhi createBuffer (issue #12058)](../learnings/1783722231562-merge-group-only-asan-overflow-in-slang-rhi-create.md)
+- [Merge-group ASan overflow in cpu createBuffer is a render-test caller bug, not slang-rhi (#12058)](../learnings/1783724432597-merge-group-asan-overflow-in-cpu-createbuffer-is-a.md)
+- [A merge-group sanitizer issue's 'failing tests' list can be collateral, not the trigger (#12058)](../learnings/1783724442644-a-merge-group-sanitizer-issue-s-failing-tests-list.md)
+- [Short test-slang failures can hide an nvcc compile error, not an infra flake](../learnings/1783743117364-short-test-slang-failures-can-hide-an-nvcc-compile.md)
+- [Verify a self-filed bot CI issue's root cause at receipts level -- it can be wrong (#12062)](../learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)
 _Catalog: [[wiki/index.md]]_

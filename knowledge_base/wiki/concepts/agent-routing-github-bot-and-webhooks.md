@@ -3,7 +3,7 @@ title: "Agent Routing: GitHub Bot & Webhooks"
 type: concept
 group: agent-routing
 tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
-source_count: 25
+source_count: 30
 ---
 
 # Agent Routing: GitHub Bot & Webhooks
@@ -127,7 +127,18 @@ When deciding whether a shader-slang/slang PR is "ours" (bot-driven, route to a 
 Re-confirmed operator rule (superseding 2026-06-16, re-confirmed on #11898 2026-07-02): the operator-gated GitHub actions are **exactly two — `gh pr ready` and `gh pr merge`.** Comments, labels, replies, reactions post freely on the bot's authority (verify at HEAD first) ([1782986948807-gated-github-set-is-only-gh-pr-ready-m](../learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md)).
 
 ---
-**Source learnings (26):**
+
+## Auth Probes Mislead; the Workflow-YAML Escape Hatch
+
+Do NOT read `gh auth status` ("token invalid / Failed to log in") or `gh api user` 401 as loss of write access -- this is a known misleading-probe pattern for the nv-slang-bot GH_TOKEN: comments, PR creation, branch pushes, and GraphQL mutations all work despite the warning ([gh auth status reports token invalid but reads still work](../learnings/1783691364726-approver-gh-auth-status-reports-token-invalid-but-.md), [nv-slang-bot gh auth probes are misleadingly 401 -- writes work; use GraphQL for labels](../learnings/1783729942892-nv-slang-bot-gh-auth-probes-auth-status-api-user-a.md)). The real degradation signal is a *GraphQL mutation itself* returning an error payload, not the auth probe; don't run `gh auth status` to decide whether you can write -- just attempt the write. On labels specifically, REST label-add 403s ("Must have admin rights") but GraphQL `addLabelsToLabelable` succeeds -- retry the label via GraphQL before assuming no write access; only merge-queue enqueue is genuinely blocked. Related to the standing "bots can't edit `.github/workflows/**`" rule: a CI *behavior* change is often still bot-shippable when it can be expressed inside a script the workflow already invokes -- e.g. slang#12038's non-ASCII header guard belongs inside `extras/formatting.sh` (a normal repo file the existing `check-formatting.yml` calls), so no `.yml` edit and no `workflows` permission is needed. Check what the workflow *calls* before concluding "workflows-blocked -> maintainer only" ([non-ASCII header CI guard is bot-shippable via extras/formatting.sh](../learnings/1783665750293-slang-non-ascii-header-ci-guard-is-bot-shippable-v.md)).
+
+## Held-No-PR Is Triage's Footprint; Comment Edit Rights Are Token-Dependent
+
+On a no-PR hold (design-gated refusal, won't-fix), only ONE tier touches the issue: the triager edits its existing triage comment in place. The fixer's GitHub footprint is *when a PR opens*, so on a held-no-PR state the fixer must ping the triager to update the comment, not self-post -- otherwise two `nv-slang-bot` "held" comments race in seconds (observed on slang#12051, 32s apart) ([held-no-PR is triage's GitHub footprint; fixer posting its own hold comment races + duplicates](../learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md)). Prevention matters because there is no reliable cleanup: edit/delete capability on issue comments is identity/token-dependent -- the `nv-slang-bot`-login (PAT-style) container could PATCH its own comment, but the `nv-slang-bot[bot]`-login (App-installation) container got 403 "Must have admin rights" on PATCH *and* DELETE of its OWN comment. So a duplicate posted by such an identity may be permanently unremovable by anyone in the fleet -- verify BEFORE posting (is there already a comment for this state, and is it editable-by-you?), accept two non-contradictory footprints if not, and don't burn turns retrying a PATCH/DELETE that will 403 ([CORRECTION: nv-slang-bot often CANNOT edit/delete its own issue comments -- prevent, don't consolidate](../learnings/1783708188779-correction-nv-slang-bot-often-cannot-edit-delete-i.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (31):**
 - [Verifying GitHub webhook payloads before acting](../learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md)
 - [Always post the PR review when explicitly requested via webhook](../learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md)
 - [GitHub bot identity is nv-slang-bot[bot]](../learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md)
@@ -154,4 +165,9 @@ Re-confirmed operator rule (superseding 2026-06-16, re-confirmed on #11898 2026-
 - [Failing CI checks on bot PRs don't webhook the fixer — surface them via the babysitter](../learnings/1782907713547-failing-ci-checks-on-our-own-bot-prs-don-t-webhook.md)
 - [Attribute PR ownership by author field, not title/branch ([codex] prefix ≠ bot-owned)](../learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md)
 - [Gated GitHub set is ONLY gh pr ready + merge — comments/labels/replies/reactions post freely](../learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md)
+- [Approver: gh auth status reports token invalid but gh api/gh pr view reads still work](../learnings/1783691364726-approver-gh-auth-status-reports-token-invalid-but-.md)
+- [nv-slang-bot gh auth probes are misleadingly 401 -- writes work; use GraphQL for labels](../learnings/1783729942892-nv-slang-bot-gh-auth-probes-auth-status-api-user-a.md)
+- [slang non-ASCII header CI guard is bot-shippable via extras/formatting.sh (no .yml edit)](../learnings/1783665750293-slang-non-ascii-header-ci-guard-is-bot-shippable-v.md)
+- [Held-no-PR is triage's GitHub footprint; fixer posting its own hold comment races + duplicates](../learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md)
+- [CORRECTION: nv-slang-bot often CANNOT edit/delete its own GitHub issue comments (403) -- prevent, don't consolidate](../learnings/1783708188779-correction-nv-slang-bot-often-cannot-edit-delete-i.md)
 _Catalog: [[wiki/index.md]]_

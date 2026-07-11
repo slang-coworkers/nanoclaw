@@ -3,7 +3,7 @@ title: "Slang Compiler Internals: Parser, IR, Types, and Language Semantics"
 type: concept
 group: slang-grab-bag
 tags: [parser, IRBuilder, type-interning, module-import, autodiff, SLANG_ASSERT, String, AST, DeclRefType, ThisType, source-location, lexer]
-source_count: 28
+source_count: 35
 ---
 
 # Slang Compiler Internals: Parser, IR, Types, and Language Semantics
@@ -155,7 +155,30 @@ An empty `struct` used as a **member** inside a public/layout-decorated struct (
 Approach-A fix for descriptor-heap `[noinline]` texture params (#11498, root cause of #11496, fixed in PR #11502): **reuse the hoistable heap global** rather than parameterizing the texture through the noinline boundary ([1780769595819-approach-a-fix-for-descriptor-heap-noi](../learnings/1780769595819-approach-a-fix-for-descriptor-heap-noinline-textur.md)).
 
 ---
-**Source learnings (52):**
+
+## IR Type-Legalization Quadratic (#12040)
+
+`IRTypeLegalizationPass` (`slang-ir-legalize-types.cpp`) is O(N^2) on straight-line functions via two compounding mechanisms: the per-round `resetScratchDataBit(module->getModuleInst(), ...)` is INSIDE the round loop (@3819) and walks the whole module each round (O(module) x O(rounds)); and re-queueing is gated only on presence-on-worklist, never on whether an operand's legalized value actually *changed*, with no already-processed early-out -- so on a dependence chain the ready-frontier advances ~O(1)/round, giving O(N) rounds x O(N). All three lowering variants route through the same `legalizeTypes`->`processModule`, so one fix (author's own: re-queue only on a real operand-value change; drop the per-round full-module bit reset) covers all invocations -- the load-bearing correctness point is that the "changed" predicate MUST treat inst replacement and struct->tuple splitting as a change ([slang#12040 IR type-legalization O(N^2) root cause](../learnings/1783674869932-slang-12040-ir-type-legalization-o-n-root-cause-is.md)).
+
+## Half Double-Rounding: Conversions Are the Hazard, Not Arithmetic (#12042)
+
+For CPU/C++ `half`, basic arithmetic (+ - * /) via `float` is provably benign for normalized results (Figueroa's 2q+2 threshold: q=11 gives 24 bits = float's exactly-24 significand), so don't over-scope a fix there -- the load-bearing exposure is CONVERSIONS and LITERALS. The front-end literal path rounds a `double` directly to half via `_truncateDouble` (round-to-even, `slang-lexer.cpp:1335`), NOT through `float`; the genuine float-intermediate double-rounding is the runtime prelude `struct half` (only `explicit half(float)`, no `half(double)`). A native-fp16 fast path already exists behind `FLT16_MIN`/`__STDCPP_FLOAT16_T__`; `struct half` is only the fallback. Flagged risk for a stdlib-`std::float16_t` route: cross-build-host non-determinism unless the fallback is bit-identical ([slang#12042 half double-rounding -- arithmetic benign, conversions are the hazard](../learnings/1783677064766-slang-12042-half-double-rounding-arithmetic-benign.md)).
+
+## Enum-Cast Lowering Gate: Gate on Ops, Not Just the Type (#12048/#12050)
+
+`enum : uint -> int` casts abort at emit with E99999 on all targets because `calcRequiredLoweringPassSet` (`slang-emit.cpp:436`) sets `enumType=true` ONLY for `kIROp_EnumType`, not the cast opcodes. The trap: an enum-typed *local* holding a compile-time constant gets SSA/const-folded away along with the last `IREnumType` reference, leaving a degenerate `CastEnumToInt` on tag-typed operands with no live EnumType to trigger the pass, so `lowerEnumType` is skipped and the stranded cast reaches emit ([slang enum->int cast E99999: lowerEnumType gated only on EnumType, not cast ops](../learnings/1783700480198-slang-enum-int-cast-e99999-lowerenumtype-gated-onl.md)). The principled fix adds the enum-cast opcodes to the gate switch (precedent: `taggedUnion` flags on all its ops). Reviewing the fix (#12050), the completeness argument is precise: opcode-only gating on {EnumType + 3 casts} IS complete because a live enum-typed value keeps the hoistable `IREnumType` alive as a module child; and the `Constexpr*` enum casts are safe to exclude because they're produced ONLY in IntVal contexts (`emitConstexprCast` from `visitTypeCastIntVal`) and `lowerEnumType` has no case for them (flagging would schedule a pass that can't lower them) -- the correct safety argument is "IntVal-context-only production", not the imprecise "SCCP folds them" ([enum-cast lowering gate -- completeness reasoning](../learnings/1783706489119-slang-enum-cast-lowering-gate-calcrequiredlowering.md)). General lesson: any pass gated on a TYPE opcode is fragile; const-folding can delete the type while leaving an op that still needs the pass.
+
+## DescriptorHandle Per-Use Reload (#12051)
+
+`DescriptorHandle<T>` descriptors re-load on every use (a handle sampled in a loop reloads each iteration). Two independent mechanisms, both confirmed by source Read: `shouldDuplicateInstAtUseSite()` (`slang-ir-util.cpp:2634`) hard-codes `CastDescriptorHandleToResource -> true`, and the descriptor cast/load ops are NOT `hoistable` in `slang-ir-insts.lua` (so IRBuilder's GVN dedup never collapses repeated identical loads). But `hoistable=true` is the WRONG lever (it means module-global GVN, not per-loop LICM); the right levers are relaxing `shouldDuplicateInstAtUseSite` for dominating loop-invariant casts and/or enabling `hoistLoopInvariantInsts` for these ops ([slang#12051 DescriptorHandle reloads every use -- root cause](../learnings/1783705209384-slang-12051-descriptorhandle-reloads-every-use-roo.md)). A same-day CORRECTION overturned an earlier "HLSL can't pin" inference: an empirical `slangc -target hlsl` repro showed resource-typed locals ARE storable and reusable on HLSL today -- hoisting the conversion into a local before the loop emits `ResourceDescriptorHeap[i]` once; the per-use reload only happens when the conversion is written per-use. So the asymmetry is real (SPIR-V's `CastDescriptorHandleToResource` IS force-duplicated by design; HLSL is not), and #11798 (input-syntax via `UntypedResourceHandle`) does NOT close #12051. The meta-lesson: for any cross-target codegen claim, EMIT AND GREP before asserting -- source-path reading establishes the mechanism but not the observable output shape ([CORRECTION #12051: DescriptorHandle reuse ALREADY works on HLSL via a local](../learnings/1783724965975-correction-slang-12051-descriptorhandle-reuse-alre.md)).
+
+## Entry-Point Layout Fixes Belong in the Front-End (#9580/#10030)
+
+For entry-point / varying-parameter / reflection *layout* fixes, the resolution must happen at the front-end AST level *before* entry-point layout generation, NOT via a back-end IR post-link layout rebuild, which is "wrong by construction" per Slang conventions (a parallel IR layout path has no consistency guarantee against AST-computed core layout). Verified on PR #10030 (fix for #9580): tangent-vector's CHANGES_REQUESTED and csyonghe's comment both reject the IR approach and call for a front-end resolution step, and the github-actions bot's nits were all hardening the *wrong* (back-end) path. Our own triage-9580 had recommended exactly that rejected Approach A; default the recommendation to a front-end AST resolution step and only propose a back-end IR transform if a maintainer explicitly asks ([Slang entry-point layout fixes must be front-end (AST), not back-end IR rebuild](../learnings/1783710345558-slang-entry-point-layout-fixes-must-be-front-end-a.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (59):**
 - [lexer hex-digit decoder bug](../learnings/1779805764133-slang-lexer-cpp-has-a-duplicate-hex-digit-decoder-.md)
 - [capability flag vs [require]](../learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md)
 - [bwd_diff out-param convention](../learnings/1780332708129-slang-bwd-diff-out-param-convention-bare-in-differ.md)
@@ -208,4 +231,11 @@ Approach-A fix for descriptor-heap `[noinline]` texture params (#11498, root cau
 - [slang#6557 loadModuleFromIRBlob-imports-module already fixed by RIFF rewrite (#7041)](../learnings/1783463091677-slang-6557-loadmodulefromirblob-imports-module-alr.md)
 - [slang#9580 assoc-type-of-export-struct entry-point return crashes — stale post-link result layout (PR #8603 regression)](../learnings/1783557222885-slang-9580-assoc-type-of-export-struct-entry-point.md)
 - [slang#8125 empty-struct fix — global field-removal pass is CI-rejected, fix belongs in empty-type legalization](../learnings/1783473465864-slang-8125-empty-struct-fix-global-field-removal-p.md)
+- [slang#12040 IR type-legalization O(N^2) root cause is the per-round scratch reset + presence-gated re-queue](../learnings/1783674869932-slang-12040-ir-type-legalization-o-n-root-cause-is.md)
+- [slang#12042 half double-rounding -- arithmetic benign, conversions are the hazard](../learnings/1783677064766-slang-12042-half-double-rounding-arithmetic-benign.md)
+- [slang enum->int cast E99999: lowerEnumType gated only on EnumType, not cast ops](../learnings/1783700480198-slang-enum-int-cast-e99999-lowerenumtype-gated-onl.md)
+- [Slang enum-cast lowering gate (calcRequiredLoweringPassSet) -- completeness reasoning (#12050)](../learnings/1783706489119-slang-enum-cast-lowering-gate-calcrequiredlowering.md)
+- [slang#12051 DescriptorHandle reloads every use -- shouldDuplicateInstAtUseSite + non-hoistable cast op](../learnings/1783705209384-slang-12051-descriptorhandle-reloads-every-use-roo.md)
+- [CORRECTION slang#12051: DescriptorHandle reuse ALREADY works on HLSL via a local; #11798 is input-syntax only](../learnings/1783724965975-correction-slang-12051-descriptorhandle-reuse-alre.md)
+- [Slang entry-point layout fixes must be front-end (AST), not back-end IR rebuild](../learnings/1783710345558-slang-entry-point-layout-fixes-must-be-front-end-a.md)
 _Catalog: [[wiki/index.md]]_

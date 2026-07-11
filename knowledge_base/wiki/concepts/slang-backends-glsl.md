@@ -3,7 +3,7 @@ title: "Slang GLSL Backend: Emission, Legalization, and glslang Integration"
 type: concept
 group: slang-backends
 tags: [glsl, glslang, legalization, system-values, array-init, bootstrap]
-source_count: 12
+source_count: 13
 ---
 
 # Slang GLSL Backend: Emission, Legalization, and glslang Integration
@@ -67,7 +67,14 @@ The GLSL backend (`-target glsl` / `-emit-spirv-via-glsl`) emits a half-float li
 Two entangled GLSL-profile findings. A spurious `E41012 profile implicitly upgraded` on a **combined** `Sampler2D.Load()` under `-profile glsl_450` comes from a static `[require]` being out of sync with the emit-time `isCombined` gate ([Spurious E41012 profile-upgrade warning: static [require] out of sync with emit-time isCombined gate (samplerless)](../learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md)). Crucially, that E41012 is emitted by `slang-check-shader.cpp` (`ProfileImplicitlyUpgraded`), **not** the IR late-require pass — a misattribution seen in PR #11876's own test comment and a prior learning ([E41012 from a [require] attribute comes from slang-check-shader.cpp (ProfileImplicitlyUpgraded), NOT IRLateRequireCapability](../learnings/1782895560951-e41012-from-a-require-attribute-comes-from-slang-c.md)).
 
 ---
-**Source learnings (16):**
+
+## FRem->mod() Sign Bug; Metal fmod Sign-Flip Is Redundant (#12046)
+
+Slang `%`(float) and `fmod()` are both truncation remainder (sign follows dividend) and both lower to `kIROp_FRem`; there is no `kIROp_FMod` (GLSL floor-`mod()` is synthesized arithmetically). The real bug (F1): the GLSL *text* emitter maps `kIROp_FRem` -> GLSL `mod()` builtin (`slang-emit-glsl.cpp:2601`), which is floor modulus -- wrong sign for negatives, making `a % b` disagree with `fmod(a,b)` on GLSL though the language defines them identically. The stdlib GLSL `fmod()` case already uses the correct sign-flip workaround, so the fix mirrors it in the emitter FRem case. Non-obvious cleanup (F3): the stdlib Metal `fmod()` sign-flip is bit-identical to plain `fmod` in all four sign quadrants -- Metal's fmod is already C-style truncation remainder, and the in-tree "In Metal fmod is Modulus" comment is factually wrong ([slang mod/rem emission: FRem-to-GLSL-mod is a real bug; Metal fmod sign-flip is redundant](../learnings/1783694537132-slang-mod-rem-emission-frem-to-glsl-mod-is-a-real-.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (17):**
 - [`-emit-spirv-via-glsl` tests that rely on glslang to "already do the right thing" need verification](../learnings/1779619281300-slang-via-glsl-test-premise-verify-with-downstream.md)
 - [Triaging "GLSL gl_* builtin missing" reports](../learnings/1781162369496-triaging-glsl-gl-builtin-missing-reports-check-cas.md)
 - [slang-glslang: add an opt-out via dedicated CMake escape-hatch](../learnings/1781975592365-slang-glslang-add-an-opt-out-via-dedicated-cmake-e.md)
@@ -84,4 +91,5 @@ Two entangled GLSL-profile findings. A spurious `E41012 profile implicitly upgra
 - [GLSL struct literal (MakeStruct) needs a SEPARATE constructor form from the array fix (#11899)](../learnings/1782981552695-glsl-struct-literal-makestruct-needs-a-separate-co.md)
 - [Spurious E41012 profile-upgrade: static [require] out of sync with emit-time isCombined gate (#11874)](../learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md)
 - [E41012 from a [require] attribute comes from slang-check-shader.cpp (ProfileImplicitlyUpgraded), NOT IR late-require](../learnings/1782895560951-e41012-from-a-require-attribute-comes-from-slang-c.md)
+- [slang mod/rem emission: FRem-to-GLSL-mod is a real bug; Metal fmod sign-flip is redundant (#12046)](../learnings/1783694537132-slang-mod-rem-emission-frem-to-glsl-mod-is-a-real-.md)
 _Catalog: [[wiki/index.md]]_

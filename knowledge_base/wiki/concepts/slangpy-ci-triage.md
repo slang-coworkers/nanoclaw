@@ -3,7 +3,7 @@ title: "SlangPy CI, Triage, Build, and Runtime"
 type: concept
 group: slangpy
 tags: [slangpy, ci, triage, flake, build, runtime, buffer, imodule, version, infra]
-source_count: 19
+source_count: 20
 ---
 
 # SlangPy CI, Triage, Build, and Runtime
@@ -102,7 +102,14 @@ On prod, the 6 slang/slangpy coworker group dirs (`groups/slang-fixer`, `groups/
 `PATCH` an existing issue comment (even one the bot itself authored) on `shader-slang/slangpy-samples` returns HTTP 403 "Must have admin rights to Repository." `POST` a new comment works. When refreshing a triage/status comment, post a fresh incremental comment carrying only the delta instead of PATCHing. Likely applies to other shader-slang repos the bot writes to with the same token scope — assume edit is unavailable until proven otherwise; design updates as append-only fresh comments. [slangpy-samples: editing bot issue comments 403s ('admin rights') — use fresh comments, not PATCH-in-place](../learnings/1781603959329-slangpy-samples-editing-bot-issue-comments-403s-ad.md)
 
 ---
-**Source learnings (19):**
+
+## slangpy-samples Review: Vendored MDL, LFS Resolution, Zero-CI Experiments (PR #53)
+
+Reusable facts for the slangpy-samples repo/PR family. MDL material `.slang` files (e.g. `mdl_ceramic_material.slang`, 3492 lines of Itanium-mangled machine-generated MDL target code) are vendored/generated -- do NOT hand-review them; only the tail hand-written `IMaterialInstance` wrapper (~190 lines) is glue. Verify LFS objects actually resolve (a dangling pointer = non-runnable sample): extract `oid`/`size` from the ~130-byte pointer files and POST to the repo's `info/lfs/objects/batch` endpoint -- `actions.download` present means the object exists. Zero CI is the norm for anything under `experiments/` (only `examples/` entries in `test_examples.py` get coverage), so an examples->experiments rename loses no coverage if the demo wasn't already a test entry -- check `git show main:tests/examples/test_examples.py` ([slangpy-samples utracer experiment (PR #53): MDL files are generated/vendored; verify LFS + rename cleanliness](../learnings/1783721228354-slangpy-samples-utracer-experiment-pr-53-mdl-files.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (20):**
 - [slangpy CI flake triage: re-symbolize the existing .dmp before designing fixes](../learnings/1779545587070-slangpy-ci-flake-triage-re-symbolize-the-existing-.md)
 - [slangpy Python id() ≠ C++ IModule* identity](../learnings/1779891890025-slangpy-python-id-c-imodule-identity.md)
 - [SlangPy create_buffer struct_size is a silent backend-layout footgun](../learnings/1780598190908-slangpy-create-buffer-struct-size-is-a-silent-back.md)
@@ -123,4 +130,5 @@ On prod, the 6 slang/slangpy coworker group dirs (`groups/slang-fixer`, `groups/
 - [Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution](../learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md)
 - [CI GPU-OOM that passes on rerun is usually peak concurrent VRAM, not a leak (#1024)](../learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md)
 - [slangpy call_group_shape already provides tile/groupshared dispatch (issue #844)](../learnings/1783522957219-slangpy-call-group-shape-already-provides-tile-gro.md)
+- [slangpy-samples utracer experiment (PR #53): MDL files are generated/vendored; verify LFS + rename cleanliness](../learnings/1783721228354-slangpy-samples-utracer-experiment-pr-53-mdl-files.md)
 _Catalog: [[wiki/index.md]]_

@@ -1,3 +1,3 @@
 # Sources — learnings (L2)
 
-997 cleaned, secret-scrubbed files. `read_source('learnings/<stem>.md')`.
+1040 cleaned, secret-scrubbed files. `read_source('learnings/<stem>.md')`.
