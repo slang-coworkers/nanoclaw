@@ -94,8 +94,21 @@ the challenger fetch what they need.
    - `10` — only STALE bot reviews exist (posted against an older commit than
      the pinned head). IGNORE the stale review; fall to the Devin-only tier and
      note the staleness in the synthesized doc.
-   - `20` — no harvestable bot review (fixer `fix/issue-N` PRs, bot-authored
-     PRs, Claude's own branches — production skips those). Fall to Devin-only.
+   - `20` — no harvestable bot review AND no review bot still working (fixer
+     `fix/issue-N` PRs, bot-authored PRs, Claude's own branches — production
+     genuinely skips those). Fall to Devin-only.
+   - `22` — no bot review YET, but a review bot is still running (`harvest.json`
+     names it in `pending_bot`: a Claude/review check-run on slang, or
+     CodeRabbit's commit status). This is a **timing race on a fresh PR, not a
+     skip** — the review is imminent. Do **NOT** fall to Devin-only (that
+     discards the primary signal — the root cause of the slang#12064
+     `harvest_used=0` miss). **WAIT for `pending_bot` to settle, then
+     re-harvest:** poll the named signal (the check-run to `completed`, or
+     CodeRabbit status `pending`→`success`) up to ~6 min, sleeping ~30s between
+     polls, re-running `harvest-reviews.py` after each. On the re-run take
+     whichever terminal code it returns (`0` primary tier, `10`/`20` fall to
+     Devin-only). Only if the bot never settles within the window do you fall to
+     Devin-only, noting `pending_bot` timed out.
    - `21` — the reviews FETCH failed (gh/rate-limit/network); a real review may
      exist behind the error. Do NOT fall to Devin-only — this is an infra gap:
      synthesize a doc with `reviewers_complete:false` so the skill records
