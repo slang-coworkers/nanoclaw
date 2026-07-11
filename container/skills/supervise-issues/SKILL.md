@@ -139,6 +139,17 @@ cases are containers that exited mid-task and need a wake. Route by `thread_id` 
 <message to="<coworker>" thread_id="gh-issue-<owner>/<repo>-<num>">[Supervisor nudge — gh-issue-X/Y-N] No outbound for {duration}. Are you blocked? Reply: status, blocker, ETA. If your container restarted and you lost context, re-read your task memory and resume.</message>
 ```
 
+**[MUST] `needs_nudge=true` from `scan.py` is authoritative — send the nudge.** Every row with
+`needs_nudge=true` gets exactly one message this tick. Do **not** suppress it because a coworker
+session exists on the thread and you narrate the chain as "fixer dispatched" / "already assigned" /
+"in progress." `scan.py` already accounts for live work: a `running` container that acted within the
+working window is classified `fixing`/`pr_open` with `needs_nudge=false`. So a chain that reaches
+Step 3 *still* flagged `awaiting_us`/`needs_nudge` has a **dead or stalled** container (exited
+mid-task, idle-exited, or killed at the ceiling) — the "dispatched" story is exactly the stall being
+mistaken for progress (the #12059 miss: a killed fixer left `awaiting_us` on the board but was never
+woken because the tick narrated it as dispatched). The board row and the nudge are not
+alternatives — write the row **and** send the nudge; a dead session wakes on the inbound.
+
 CI rebase nudge (from Step 2b — to the fixer, keyed on the chain's thread):
 
 ```
