@@ -11,8 +11,8 @@ policy file. The skill reads the output and maps it to a decision:
   all PASS               -> continue to the verdict parse (Step 2)
 
 Input: a workspace dir staged by /slangpy-pr-approve, containing
-  tmp/context.json   {repo, pr, commit_sha, mode, human_verdict_or_null}
-  review/review-doc.md   (embedded ```json {..., diff_hash, ...})
+  tmp/context.json   {repo, pr, commit_sha, mode}
+  review/review-doc.md   (embedded ```json {..., commit_id, diff_hash, ...})
 Policy: --policy PATH (default: the mounted policy/APPROVAL_POLICY.json, else
 the v0 default shipped next to this script). JSON, not YAML — the lab
 container has no PyYAML and these scripts are stdlib-only.
@@ -21,12 +21,6 @@ Output: <workspace>/clauses.json
   {"policy_version": "...", "commit_sha": "...", "mode": "...",
    "clauses": [{"name","status","evidence"}...],
    "summary": {"pass":[...], "fail":[...], "unevaluable":[...]}}
-
-HISTORICAL LEAK GUARD: in historical mode nothing that postdates the R0
-commit may be consulted — later reviews, merge state, post-R0 comments, or
-CI on a newer sha. Every gh call here is keyed on `commit_sha` (the R0
-commit) or on stable PR-level facts (author association, base/head repo),
-never on the PR's *final* head or its review/merge history.
 
 stdlib + gh only.
 """
@@ -73,21 +67,54 @@ def load_context(ws):
         return json.load(f)
 
 
-def review_diff_hash(ws):
-    """Pull diff_hash out of the review doc's embedded ```json block.
-    Missing doc / no block / no field -> None (commit_match unevaluable)."""
+def _result_block(ws):
+    """Parse the workflow's synthesized result object out of review-doc.md.
+
+    The harvested bot-review body is pasted VERBATIM and is UNTRUSTED — it may
+    contain its own ```json fences (examples, metadata). So we do NOT trust
+    block position: we prefer the block carrying the `_approver_result` marker
+    the workflow stamps on its result. Fallback (marker absent, older doc): the
+    LAST parseable json block, since the workflow always appends its result
+    last. Returns the parsed dict, or None."""
     p = os.path.join(ws, "review", "review-doc.md")
     if not os.path.exists(p):
         return None
     text = open(p, encoding="utf-8", errors="replace").read()
-    for m in re.finditer(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL):
+    blocks = []
+    for m in re.finditer(r"```json\s*(.*?)```", text, re.DOTALL):
+        raw = m.group(1).strip()
         try:
-            obj = json.loads(m.group(1))
+            obj = json.loads(raw)  # full-object parse — nested braces are fine
         except json.JSONDecodeError:
             continue
-        if "diff_hash" in obj:
-            return obj.get("diff_hash")
-    return None
+        if isinstance(obj, dict):
+            blocks.append(obj)
+    if not blocks:
+        return None
+    for obj in blocks:
+        if obj.get("_approver_result") is True:
+            return obj
+    return blocks[-1]  # marker absent -> the workflow appends its result last
+
+
+def _review_field(ws, key):
+    """One field from the synthesized result block (None if absent)."""
+    obj = _result_block(ws)
+    return obj.get(key) if obj else None
+
+
+def review_diff_hash(ws):
+    """The diff_hash the synthesized review doc records (secondary evidence)."""
+    return _review_field(ws, "diff_hash")
+
+
+def review_commit_id(ws):
+    """The commit_id the harvested review reported reviewing. The workflow
+    synthesizes this from the posted bot review's `.commit_id`; a review that
+    matched the pinned commit carries the pinned sha here. When the harvest
+    footer lacked a diff sha256, diff_hash is written as a `commit:<sha>`
+    sentinel — commit_match still passes off this field."""
+    return _review_field(ws, "commit_id")
 
 
 def clause(name, status, evidence):
@@ -130,19 +157,29 @@ def evaluate(ws, policy):
         else:
             clauses.append(clause("head_provenance", "fail", f"fork head {head_repo}, policy forbids"))
 
-    # 3. commit_match — the review doc reviewed this commit's diff. We can't
-    # recompute the reviewer's hash, so the predicate is: the doc records a
-    # diff_hash at all (a doc with none never reviewed a pinned commit). The
-    # skill's Step 2 cross-checks the hash value against commit_sha too.
+    # 3. commit_match — the review reviewed exactly this commit. The workflow
+    # writes commit_id into the review doc's embedded json: the harvested bot
+    # review's `.commit_id` on the harvest tier, or the pinned commit_sha on the
+    # Devin-only tier (Devin reviews the pinned head). Predicate: commit_id ==
+    # the pinned commit_sha. Present but different => a synthesis error (the
+    # workflow only ever writes the pinned sha or a matched harvest) — fail.
+    # Absent => the review doc is missing/malformed — unevaluable. diff_hash is
+    # kept as secondary evidence.
+    cid = review_commit_id(ws)
     dh = review_diff_hash(ws)
-    if dh:
-        clauses.append(clause("commit_match", "pass", f"review doc diff_hash={dh[:16]}"))
-    else:
+    if cid is None:
         clauses.append(clause("commit_match", "unevaluable",
-                              "review doc absent or carries no diff_hash"))
+                              "review doc absent or carries no commit_id"))
+    elif cid == sha:
+        clauses.append(clause("commit_match", "pass",
+                              f"review commit_id={cid[:12]} == pinned"
+                              + (f"; diff_hash={dh[:16]}" if dh else "")))
+    else:
+        clauses.append(clause("commit_match", "fail",
+                              f"review commit_id={cid[:12]} != pinned {sha[:12]}"))
 
-    # 4. ci_green_on_sha — combined status at the PINNED commit (never a newer
-    # sha; at R0 in historical mode). Skipped if policy doesn't require it.
+    # 4. ci_green_on_sha — combined status at the PINNED commit (the PR head).
+    # Skipped if policy doesn't require it.
     if not policy.get("require_ci_green", True):
         clauses.append(clause("ci_green_on_sha", "pass", "policy does not require CI green"))
     else:
@@ -159,8 +196,7 @@ def evaluate(ws, policy):
         except Exception as e:
             clauses.append(clause("ci_green_on_sha", "unevaluable", f"status fetch: {str(e)[:160]}"))
 
-    # Changed paths at the pinned commit — base_ref...commit_sha (the Rn-era
-    # diff, not the PR's final files). Feeds clauses 5 + 6.
+    # Changed paths at the pinned commit — base_ref...commit_sha. Feeds 5 + 6.
     files, files_err = None, None
     if meta is not None:
         base_ref = (meta.get("base") or {}).get("ref")
