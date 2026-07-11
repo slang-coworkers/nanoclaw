@@ -3,7 +3,7 @@ title: "Codex & Provider Parity"
 type: concept
 group: agent-fixer-codex-skills
 tags: [codex, claude, provider-parity, code-review, critique, AGENT_RUNTIME, plan-review]
-source_count: 4
+source_count: 7
 ---
 
 # Codex & Provider Parity
@@ -38,10 +38,20 @@ From a 10-probe stress test on `AGENT_RUNTIME=local` (PR #52, snapshot `84ae3e5`
 **The delivery gate requires a recorded round for EVERY required stage — including PLAN_REVIEW.** For the slang-fixer critique-gate overlay the required stages are **PLAN_REVIEW, CODE_REVIEW, and OUTPUT_REVIEW** (all count ≥1, plus OUTPUT_REVIEW verdict=approve). Running only CODE_REVIEW + OUTPUT_REVIEW is NOT enough: `gh pr create` was denied with "CRITIQUE REQUIRED before PR creation. Reason: missing critique stages: PLAN_REVIEW" even though CODE+OUTPUT were both approve. Run all three *up front* — before the first `gh pr create` attempt, do a PLAN_REVIEW round against the plan file (`/workspace/agent/reports/slang-<n>.md`; write the plan first if the fix skipped straight to code — diagnosis→approach→files-in-scope→rejected-alternatives→verification suffices). DIAGNOSIS_REVIEW appears optional (the gate didn't demand it). Each stage needs a FRESH `mcp__codex__codex` call with the verbatim canonical developer-instructions and a `STAGE:` marker; a `codex-reply` is NOT attributed to the gate. The gate names exactly which stage is missing, so if denied, add just that round — but running all three from the start saves the late round-trip, since the denial fires at PR-create time after all code/output review is already done ([codex-critique gate requires PLAN_REVIEW too, not just CODE+OUTPUT](../learnings/1783655475326-codex-critique-gate-requires-plan-review-too-not-j.md)).
 
 ---
-**Source learnings (4):**
+
+## Critique-Gate Recording Mechanics (slang-pr-approver)
+
+The approver's recording gate (`track-critique.sh` + `gate-critique-on-deliver.sh`) counts a critique round toward the delivery gate ONLY when the `mcp__codex__codex` call carries BOTH a `STAGE: <NAME>` line AND the canonical `/codex-critique` `developer-instructions` block verbatim (the hook checks the two sentinel lines "You are an independent reviewer" and "Return ONLY the structured output below"); a free-form call records as `stages: none, verdicts: none` and never satisfies the gate. Required stages are DECISION_REVIEW + OUTPUT_REVIEW, and the gate opens only when each count is at least 1 AND OUTPUT_REVIEW's *last* recorded verdict = approve with `edits_since_critique==0` and an attested-hash match ([critique gate only counts codex calls carrying STAGE marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)). A subtle trap on re-verify: a `codex-reply` prompt containing a literal `STAGE:` line still matches the hook's grep, so it is treated as an *initial* stage call and runs the instruction-pinning check -- but replies carry no developer-instructions, so the pin check fails and the reply's approve is silently dropped. Either phrase the reply WITHOUT the literal `STAGE:` token (the thread inherits its stage) or issue a fresh `codex` call carrying the canonical instructions + a leading `STAGE:` line ([codex-reply re-verify must NOT contain a literal STAGE: line](../learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)). Separately, the `gate-critique-on-deliver.sh` PreToolUse hook pattern-matches `gh api .../pulls` as PR-creation and DENIES it even for read-only `gh api .../pulls/N` reads -- route around with `gh pr view` or `gh api .../compare/...`, or read `eval-clauses.py`'s already-fetched output rather than re-fetching ([critique-gate hook false-positives on read-only gh api .../pulls](../learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (7):**
 - [Claude vs Codex provider parity — empirical findings](../learnings/1778085879531-claude-vs-codex-provider-parity.md)
 - [Always rebase before codex CODE_REVIEW to get a tight scope diff](../learnings/1780304385745-always-rebase-before-codex-code-review-to-get-a-ti.md)
 - [codex-critique needs danger-full-access; AI-disclaimer on comments not PR bodies](../learnings/1781129788679-codex-critique-needs-danger-full-access-ai-disclai.md)
 - [codex-critique gate requires PLAN_REVIEW too, not just CODE+OUTPUT](../learnings/1783655475326-codex-critique-gate-requires-plan-review-too-not-j.md)
 
+- [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
+- [critique-gate: codex-reply re-verify must NOT contain a literal 'STAGE:' line](../learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)
+- [Approver: critique-gate hook false-positives on read-only gh api .../pulls](../learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md)
 _Catalog: [[wiki/index.md]]_

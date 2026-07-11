@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **997 agent learnings**, synthesized into **42 concept pages**.
+Standalone wiki built from **1040 agent learnings**, synthesized into **42 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -79,11 +79,11 @@ Standalone wiki built from **997 agent learnings**, synthesized into **42 concep
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (588)
-- [NanoClaw / agent operations](topics/agent-ops.md) (156)
-- [CI, build & tooling](topics/ci-tooling.md) (65)
-- [Review & process](topics/review-process.md) (29)
-- [Uncategorized](topics/misc.md) (159)
+- [Slang compiler & language](topics/slang-compiler.md) (613)
+- [NanoClaw / agent operations](topics/agent-ops.md) (159)
+- [CI, build & tooling](topics/ci-tooling.md) (69)
+- [Review & process](topics/review-process.md) (36)
+- [Uncategorized](topics/misc.md) (163)
 
 ## All learnings (chronological)
 
@@ -1084,3 +1084,46 @@ Standalone wiki built from **997 agent learnings**, synthesized into **42 concep
 - [In-container watches die on exit — quiescence detection must be host-side](learnings/1783659090219-in-container-watches-die-on-exit-quiescence-detect.md)
 - [CORRECTION: slang getMostUniqueIdentity()=absolute, getName()=relative (my earlier #11982 learning had these reversed)](learnings/1783659293513-correction-slang-getmostuniqueidentity-absolute-ge.md)
 - [slang-clarity-review-runner script takes flags directly — no run-clarity subcommand](learnings/1783663020500-slang-clarity-review-runner-script-takes-flags-dir.md)
+- [post-review.sh posts body verbatim — no bot-transparency disclaimer](learnings/1783665412901-post-review-sh-posts-body-verbatim-no-bot-transpar.md)
+- [Verdict-detection guards must page or query by author, not read reviews page 1](learnings/1783665568170-verdict-detection-guards-must-page-or-query-by-aut.md)
+- [slang non-ASCII header CI guard is bot-shippable via extras/formatting.sh (no .yml edit)](learnings/1783665750293-slang-non-ascii-header-ci-guard-is-bot-shippable-v.md)
+- [critique-gate: codex-reply re-verify must NOT contain a literal "STAGE:" line](learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)
+- [slang-pr-review: REST review-body edit 404s under App token; use GraphQL updatePullRequestReview](learnings/1783669185294-slang-pr-review-rest-review-body-edit-404s-under-a.md)
+- [slang-pr-review: check existing human reviews + author self-resolution before reporting a verdict](learnings/1783669294473-slang-pr-review-check-existing-human-reviews-autho.md)
+- [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
+- [approver: relaxed shadow policy still protects .github/** — CI-touching PRs ABSTAIN_POLICY before the review verdict is even read](learnings/1783673178930-approver-relaxed-shadow-policy-still-protects-gith.md)
+- [slang#12040 IR type-legalization O(N²) root cause is the per-round module-wide scratch reset + presence-gated re-queue](learnings/1783674869932-slang-12040-ir-type-legalization-o-n-root-cause-is.md)
+- [[approver/calibration] Maintainer merged over an ABSTAIN on a single low-severity robustness gap (slang #12037)](learnings/1783676779766-approver-calibration-maintainer-merged-over-an-abs.md)
+- [slang#12042 half double-rounding — arithmetic benign, conversions are the hazard](learnings/1783677064766-slang-12042-half-double-rounding-arithmetic-benign.md)
+- [Don't narrate your own no-echo silence upstream](learnings/1783680642501-don-t-narrate-your-own-no-echo-silence-upstream.md)
+- [Pin a moving PR head with patch mode, not pr mode](learnings/1783681496336-pin-a-moving-pr-head-with-patch-mode-not-pr-mode.md)
+- [Verify Reviewer A's cited files against the authoritative PR file list before trusting a finding](learnings/1783681518930-verify-reviewer-a-s-cited-files-against-the-author.md)
+- [approver/reviewer: debounce live PR head churn, then byte-prove the frozen review still covers the settled head](learnings/1783682287036-approver-reviewer-debounce-live-pr-head-churn-then.md)
+- [Historical R0-pinned review: repoint clone origin to R0 base, not just local ref](learnings/1783689995051-historical-r0-pinned-review-repoint-clone-origin-t.md)
+- [slang (Struct)0 zero-cast is a synthetic special case, no Decl for [deprecated] attribute](learnings/1783690411342-slang-struct-0-zero-cast-is-a-synthetic-special-ca.md)
+- [Approver: critique-gate hook false-positives on read-only `gh api .../pulls`](learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md)
+- [Approver: `gh auth status` reports token invalid but `gh api`/`gh pr view` reads still work](learnings/1783691364726-approver-gh-auth-status-reports-token-invalid-but-.md)
+- [approver/human-disagreement: for a proven-correct behavior-preserving perf fix from a trusted contributor, maintainers approve-with-nits over "missing test + invariant-doc-scope" gaps — the shadow abstain is conservative-by-design, not a signal something's wrong](learnings/1783692443899-approver-human-disagreement-for-a-proven-correct-b.md)
+- [slang mod/rem emission: FRem-to-GLSL-mod is a real bug; Metal fmod sign-flip is redundant](learnings/1783694537132-slang-mod-rem-emission-frem-to-glsl-mod-is-a-real-.md)
+- [slang enum→int cast E99999: lowerEnumType gated only on EnumType, not cast ops](learnings/1783700480198-slang-enum-int-cast-e99999-lowerenumtype-gated-onl.md)
+- [slang#12049 — generic entry-point -specialize can't see primary-file extension conformances (ad-hoc lookup starved)](learnings/1783701731376-slang-12049-generic-entry-point-specialize-can-t-s.md)
+- [slang#12051 DescriptorHandle reloads every use — root cause is shouldDuplicateInstAtUseSite + non-hoistable cast op](learnings/1783705209384-slang-12051-descriptorhandle-reloads-every-use-roo.md)
+- [Slang enum-cast lowering gate (calcRequiredLoweringPassSet) — completeness reasoning](learnings/1783706489119-slang-enum-cast-lowering-gate-calcrequiredlowering.md)
+- [approver: reviewers_complete field is authoritative — B/Devin infra-skip alone is not a harness-fail](learnings/1783707333659-approver-reviewers-complete-field-is-authoritative.md)
+- [Held-no-PR is triage's GitHub footprint; fixer posting its own hold comment races + duplicates (slang#12051)](learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md)
+- [CORRECTION: nv-slang-bot often CANNOT edit/delete its own GitHub issue comments (403) — duplicate footprints may be uncleanable; prevent, don't consolidate](learnings/1783708188779-correction-nv-slang-bot-often-cannot-edit-delete-i.md)
+- [When push cadence beats review turnaround, widen the quiescence window — don't chase per-push](learnings/1783709416771-when-push-cadence-beats-review-turnaround-widen-th.md)
+- [Slang entry-point layout fixes must be front-end (AST), not back-end IR rebuild](learnings/1783710345558-slang-entry-point-layout-fixes-must-be-front-end-a.md)
+- [slangpy-samples utracer experiment (PR #53): MDL files are generated/vendored; verify LFS + rename cleanliness](learnings/1783721228354-slangpy-samples-utracer-experiment-pr-53-mdl-files.md)
+- [Merge-group-only ASan overflow in slang-rhi createBuffer (issue #12058)](learnings/1783722231562-merge-group-only-asan-overflow-in-slang-rhi-create.md)
+- [Merge-group ASan overflow in cpu createBuffer is a render-test caller bug, not slang-rhi (slang#12058)](learnings/1783724432597-merge-group-asan-overflow-in-cpu-createbuffer-is-a.md)
+- [A merge-group sanitizer issue's "failing tests" list can be collateral, not the trigger (slang#12058)](learnings/1783724442644-a-merge-group-sanitizer-issue-s-failing-tests-list.md)
+- [CORRECTION slang#12051: DescriptorHandle reuse ALREADY works on HLSL via a local; #11798 is input-syntax only, not the reload fix](learnings/1783724965975-correction-slang-12051-descriptorhandle-reuse-alre.md)
+- [slang#12059 HLSL CoopMat fill/Splat — dot-form intrinsic on void method discards value-returning target op](learnings/1783725139961-slang-12059-hlsl-coopmat-fill-splat-dot-form-intri.md)
+- [Stamp maintainer self-merge as NO_HUMAN_REVIEW, not APPROVED](learnings/1783726677874-stamp-maintainer-self-merge-as-no-human-review-not.md)
+- [slang#12054: MSVC /DEBUG for Release PDBs silently disables /OPT:REF and /OPT:ICF](learnings/1783729799704-slang-12054-msvc-debug-for-release-pdbs-silently-d.md)
+- [nv-slang-bot gh auth probes (auth status / api user) are misleadingly 401 — writes work; use GraphQL for labels](learnings/1783729942892-nv-slang-bot-gh-auth-probes-auth-status-api-user-a.md)
+- [CHANGES_REQUESTED ≠ edit list — read the review body + inline count, not just reviewDecision](learnings/1783731922642-changes-requested-edit-list-read-the-review-body-i.md)
+- [Short test-slang failures can hide an nvcc compile error, not an infra flake](learnings/1783743117364-short-test-slang-failures-can-hide-an-nvcc-compile.md)
+- [Verify a self-filed bot CI issue's root cause at receipts level — it can be wrong](learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)
+- [slang#12002 SHIPPED: refute-then-fix triage of a "misattributed OpName" that was a coincidental stdlib name collision](learnings/1783746988745-slang-12002-shipped-refute-then-fix-triage-of-a-mi.md)

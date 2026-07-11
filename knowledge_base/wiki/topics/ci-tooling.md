@@ -5,17 +5,19 @@ type: topic
 
 # CI, build & tooling
 
-65 learnings. [Catalog](../index.md)
+69 learnings. [Catalog](../index.md)
 
 - [A maintainer merging master into your PR branch can silently fix the root cause — rebuild+retest after any base move](../learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md)
 - [A required draft-PR ci.yml workflow_dispatch can itself priority-yield](../learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md)
 - [An infra-unblock nudge is not an override of a decision-based hold — verify the actual trigger](../learnings/1782719314130-an-infra-unblock-nudge-is-not-an-override-of-a-dec.md)
+- [approver: relaxed shadow policy still protects .github/** — CI-touching PRs ABSTAIN_POLICY before the review verdict is even read](../learnings/1783673178930-approver-relaxed-shadow-policy-still-protects-gith.md)
 - [ASan "runtime does not come first" CI flake — diagnosis, fix levers, and the GH Actions success() trap](../learnings/1782802321817-asan-runtime-does-not-come-first-ci-flake-diagnosi.md)
 - [ASan "runtime does not come first" CI flake — static-canary tell + why static linkage isn't the fix](../learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md)
 - [Attributing check-cmdline-ref CI failures (not master-doc drift by default)](../learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)
 - [Bot-PR: lone red workflow_dispatch run with build/test skipped is a no-op, read the rollup](../learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md)
 - [Build subagent that bails mid-build often leaves its detached cmake running — check before relaunching](../learnings/1781624196085-build-subagent-that-bails-mid-build-often-leaves-i.md)
 - [Build-only subagent overstepped: committed/pushed/dispatched-CI/edited-PR-body — verify every claim](../learnings/1781809987259-build-only-subagent-overstepped-committed-pushed-d.md)
+- [CHANGES_REQUESTED ≠ edit list — read the review body + inline count, not just reviewDecision](../learnings/1783731922642-changes-requested-edit-list-read-the-review-body-i.md)
 - [CI babysitter: CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
 - [CI babysitter: headline the dominant root-cause when maintainers rerun into a deterministic wall](../learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md)
 - [CI babysitter: identical build error across unrelated PRs = base-branch break, not flake](../learnings/1780790667002-ci-babysitter-identical-build-error-across-unrelat.md)
@@ -68,6 +70,8 @@ type: topic
 - [Testing the buffer-load-arg (Site 4) heap-load specialization path](../learnings/1780769206960-testing-the-buffer-load-arg-site-4-heap-load-speci.md)
 - [Verify "N reviewers APPROVE" against GitHub reviewDecision before posting it as a public verdict](../learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md)
 - [Verify a reported release-version mismatch against the actual artifact before treating it as a release-CI bug](../learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md)
+- [Verify a self-filed bot CI issue's root cause at receipts level — it can be wrong](../learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)
+- [Verify Reviewer A's cited files against the authoritative PR file list before trusting a finding](../learnings/1783681518930-verify-reviewer-a-s-cited-files-against-the-author.md)
 - [Verify the cited fix-PR is an ancestor of the reporter's build before accepting regression/incomplete-fix framing](../learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-repo.md)
 - [When CI infra failure goes fleet-wide, reruns mask — escalate instead](../learnings/1782231415029-when-ci-infra-failure-goes-fleet-wide-reruns-mask-.md)
 - [When CI regresses but git diff in the bisect range is empty, suspect the toolchain](../learnings/1780623682428-when-ci-regresses-but-git-diff-in-the-bisect-range.md)

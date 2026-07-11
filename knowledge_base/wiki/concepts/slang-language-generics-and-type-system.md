@@ -3,7 +3,7 @@ title: "Slang Generics & Type System"
 type: concept
 group: slang-language-core
 tags: [generics, type-system, witness-tables, conformance, extensions, namespaces, specialization]
-source_count: 32
+source_count: 33
 ---
 
 # Slang Generics & Type System
@@ -87,7 +87,14 @@ PR #11493 (`61ad43dbc`, first in v2026.11) added `SemanticsExprVisitor::convertT
 The "explain why each overload candidate was rejected" DX ask (#12035) is NOT greenfield — issue #7857 already built most of the per-candidate machinery. The `OverloadCandidate` struct (`slang-check-impl.h:377-456`) carries a coarse per-candidate `Status` enum (Unchecked → ArityChecked → FixityChecked → TypeChecked → DirectionChecked → VisibilityChecked → Applicable, + GenericArgumentInferenceFailed), the first un-coercible arg (`argMismatchArgIndex/ExpectedType/ActualType`, recorded in `recordArgMismatch` @ `slang-check-overload.cpp:877-886`, only when bare types differ — skips l-value/inout qualifier-only mismatches), `conversionCostSum` (the existing ranking metric for *applicable* candidates), and `genericInferenceFailure`. The "no applicable overload" emitter (`:3520-3611`) already sorts `bestCandidates` by status and prints `argument N does not match: expected 'X', got 'Y'` per candidate when an arg mismatch was recorded. The GAP: only the type-coercion rejection reason is surfaced — arity mismatch (count recomputed but not stored per-candidate), inaccessibility (`InvisibleOverloadCandidate` note E40014 exists but only in the *ambiguous* branch @ :3692, never the no-applicable branch), failed generic constraint, and direction/inout mismatch all show just the bare signature. Diagnostic text lives in `source/slang/slang-diagnostics.lua:3896-3958` (rich struct-based, not the legacy defs header); `bestCandidates` holds only the tied-furthest-progressing set (`AddOverloadCandidateInner` @ :2461-2540 filters strictly-worse out), so a full "rank ALL candidates by proximity" feature may need candidate-retention changes on the hot resolution path. So #12035 splits cleanly: (A) fix-ready near-term slice = emit the remaining rejection reasons reusing the #7857 pattern; (B) design-gated = true proximity ranking needs a heuristic-definition decision ([slang#12035 overload-failure diagnostics — #7857 already built most of the per-candidate machinery](../learnings/1783656901958-slang-12035-overload-failure-diagnostics-7857-alre.md)).
 
 ---
-**Source learnings (37):**
+
+## Generic Entry-Point -specialize Can't See Primary-File Extension Conformances (#12049)
+
+`slangc file.slang -entry g -specialize float` on `void g<T:IDenorm>(...)` emits E38029 when `float:IDenorm` is supplied by an `extension` *in the same command-line source file*. Root cause: `EntryPoint::_validateSpecializationArgsImpl` builds its context with `m_module = nullptr`, so `getCandidateExtensionsForTypeDecl` takes the "ad-hoc/API" branch that enumerates extensions only from `m_linkage->loadedModulesList` -- and the primary command-line TU is never added to that list (it goes into the request-local `loadedModules` dict). Discriminator (verified empirically, not just reasoned): moving the same interface+extension into an *imported* module makes E38029 disappear. Recommended fix: scope the specialization context to `EntryPoint::getModule()` AND seed that module's own extensions (the `m_module`-set branch adds only imported modules, an asymmetry vs `_addDeclAssociationsFromModule` that is itself a cleanup candidate) -- reject "just add the primary TU to loadedModulesList" (broad reflection/import blast radius) ([slang#12049 -- generic entry-point -specialize can't see primary-file extension conformances](../learnings/1783701731376-slang-12049-generic-entry-point-specialize-can-t-s.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (38):**
 - [slang#12035 overload-failure diagnostics — #7857 already built most of the per-candidate machinery](../learnings/1783656901958-slang-12035-overload-failure-diagnostics-7857-alre.md)
 - [Slang any-value-inference recursion: #10686 pointer guard is partial; IRSpecialize-operand path bypasses it](../learnings/1780353989621-slang-any-value-inference-recursion-10686-pointer-.md)
 - [slang type-conformance override=0 always duplicates the (T,I) entry](../learnings/1780414379429-slang-type-conformance-override-0-always-duplicate.md)
@@ -125,4 +132,5 @@ The "explain why each overload candidate was rejected" DX ask (#12035) is NOT gr
 - [slang#7878 Optional-of-opaque via generic member escapes the E30902 front-end guard](../learnings/1783523243524-slang-7878-optional-of-opaque-via-generic-member-e.md)
 - [slang#10471 module accessibility — maintainer-blessed design; both parts semantic-check-only](../learnings/1783523027176-slang-10471-module-accessibility-maintainer-blesse.md)
 - [Lambda name synthesis omits disambiguator at module scope (_slang_Lambda_ collision)](../learnings/1783407191560-lambda-name-synthesis-omits-disambiguator-at-modul.md)
+- [slang#12049 -- generic entry-point -specialize can't see primary-file extension conformances (ad-hoc lookup starved)](../learnings/1783701731376-slang-12049-generic-entry-point-specialize-can-t-s.md)
 _Catalog: [[wiki/index.md]]_

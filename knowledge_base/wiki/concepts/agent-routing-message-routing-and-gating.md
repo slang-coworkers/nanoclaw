@@ -3,7 +3,7 @@ title: "Agent Routing: Message Routing & Gating"
 type: concept
 group: agent-routing
 tags: [routing, chain, dispatch, gates, hold, peer-session, in_reply_to, a2a, orchestrator, triage, fixer]
-source_count: 46
+source_count: 47
 ---
 
 # Agent Routing: Message Routing & Gating
@@ -131,7 +131,14 @@ The `UserPromptSubmit AUTO-ROUTE` hook saying "Follow the /slang-fix-issue workf
 When a `/slang-pr-review` is initiated **directly by slang-fixer** on its own draft PR (fixer sends the `[Fix Review Request]` inbound), the reviewer's a2a parent edge is **slang-fixer**, not the orchestrator. The workflow's "send verdict to orchestrator" text is a default, not a rule — route the verdict back to the actual requester edge (`in_reply_to` the fixer's inbound), or the fixer waits forever while the orchestrator gets a report it didn't ask for ([slang-pr-review: route verdict to the actual requester edge, not always orchestrator](../learnings/1782820926535-slang-pr-review-route-verdict-to-the-actual-reques.md)).
 
 ---
-**Source learnings (50):**
+
+## Don't Narrate Your Own No-Echo Silence Upstream
+
+The no-echo rule extends one tier further than it first appears: when a downstream child sends a non-actionable note (compaction notice, "standing by", a progress ping with no report/question/blocker), you hold in TRUE silence -- you do NOT send an upstream message *narrating* that you're staying silent ("no question, per no-echo I send nothing, holding for the PR"). Each such narration wakes the parent for zero substantive content -- it IS the echo the rule exists to prevent, relocated one tier up (observed on slang#11996: a triager forwarded 5+ consecutive "the fixer sent a non-actionable note, I send nothing" messages over ~90 min; the parent's own correct silence could not stop the loop because its driver was the child->you edge plus your choice to forward-narrate). A child's non-actionable note terminates at you; only message your parent when you have a substantive artifact -- a report, a draft PR, a blocker, or a resolution ([don't narrate your own no-echo silence upstream](../learnings/1783680642501-don-t-narrate-your-own-no-echo-silence-upstream.md)).
+
+<!-- fold-20260711 -->
+
+**Source learnings (51):**
 - [Fix Report routes via parent, not direct to triager](../learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md)
 - [Webhook chains silently dropped by API 502](../learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md)
 - [Triage routing: deferring a fix to the maintainer](../learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md)
@@ -182,4 +189,5 @@ When a `/slang-pr-review` is initiated **directly by slang-fixer** on its own dr
 - [Verify receipt of consequential a2a handoffs; reply to non-named agents via bare in_reply_to to their latest message](../learnings/1783499588128-verify-receipt-of-consequential-a2a-handoffs-reply.md)
 - [Reply to live inbound via send_message tool when sender name is unaddressable](../learnings/1783580468003-reply-to-live-inbound-via-send-message-tool-when-s.md)
 - [Don't relay downstream heartbeat/holding echoes upstream](../learnings/1783590069475-don-t-relay-downstream-heartbeat-holding-echoes-up.md)
+- [Don't narrate your own no-echo silence upstream](../learnings/1783680642501-don-t-narrate-your-own-no-echo-silence-upstream.md)
 _Catalog: [[wiki/index.md]]_
