@@ -1,0 +1,2094 @@
+{
+"gh-issue-shader-slang/shader-slang.github.io-203": {
+"key": "gh-issue-shader-slang/shader-slang.github.io-203",
+"repo": "shader-slang/shader-slang.github.io",
+"issue": 203,
+"labels": [],
+"last_comment_author": null,
+"last_comment_at": null,
+"ncomments": 0,
+"last_is_bot": null,
+"pr": null
+},
+"gh-issue-shader-slang/slang-10027": {
+"key": "gh-issue-shader-slang/slang-10027",
+"repo": "shader-slang/slang",
+"issue": 10027,
+"labels": [
+"Dev Reviewed",
+"Typesystem",
+"Office-Yong",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T00:20:24Z",
+"ncomments": 8,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-10030": {
+"key": "gh-issue-shader-slang/slang-10030",
+"repo": "shader-slang/slang",
+"issue": 10030,
+"labels": [
+"Community LLM Authored"
+],
+"last_comment_author": "csyonghe",
+"last_comment_at": "2026-05-14T15:54:59Z",
+"ncomments": 3,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-10471": {
+"key": "gh-issue-shader-slang/slang-10471",
+"repo": "shader-slang/slang",
+"issue": 10471,
+"labels": [
+"Dev Reviewed",
+"RTR",
+"Office-Yong"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-07-08T22:17:45Z",
+"ncomments": 3,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-10476": {
+"key": "gh-issue-shader-slang/slang-10476",
+"repo": "shader-slang/slang",
+"issue": 10476,
+"labels": [
+"Dev Opened",
+"Diagnostic Output",
+"Diagnostics low prio"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T23:09:59Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-10641": {
+"key": "gh-issue-shader-slang/slang-10641",
+"repo": "shader-slang/slang",
+"issue": 10641,
+"labels": [
+"Dev Reviewed",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-23T12:12:52Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-10641",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11709,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-10642": {
+"key": "gh-issue-shader-slang/slang-10642",
+"repo": "shader-slang/slang",
+"issue": 10642,
+"labels": [
+"Needs reporter feedback",
+"Dev Reviewed",
+"not reproduced"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-07-08T01:05:13Z",
+"ncomments": 3,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-10660": {
+"key": "gh-issue-shader-slang/slang-10660",
+"repo": "shader-slang/slang",
+"issue": 10660,
+"labels": [
+"GoodFirstBug",
+"Dev Reviewed",
+"Dev Opened",
+"CI Bug"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-23T11:43:45Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-10802": {
+"key": "gh-issue-shader-slang/slang-10802",
+"repo": "shader-slang/slang",
+"issue": 10802,
+"labels": [
+"Dev Reviewed",
+"WebGPU",
+"CoPilot",
+"bug",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-17T02:07:29Z",
+"ncomments": 7,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-10802",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11638,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-10918": {
+"key": "gh-issue-shader-slang/slang-10918",
+"repo": "shader-slang/slang",
+"issue": 10918,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T03:54:52Z",
+"ncomments": 5,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-10920": {
+"key": "gh-issue-shader-slang/slang-10920",
+"repo": "shader-slang/slang",
+"issue": 10920,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-04-28T23:56:09Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11004": {
+"key": "gh-issue-shader-slang/slang-11004",
+"repo": "shader-slang/slang",
+"issue": 11004,
+"labels": [
+"Autodiff",
+"bug",
+"reproduced"
+],
+"last_comment_author": "jhelferty-nv",
+"last_comment_at": "2026-05-06T17:53:11Z",
+"ncomments": 5,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-11004",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11234,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11441": {
+"key": "gh-issue-shader-slang/slang-11441",
+"repo": "shader-slang/slang",
+"issue": 11441,
+"labels": [
+"Needs reporter feedback",
+"Dev Reviewed"
+],
+"last_comment_author": "szihs",
+"last_comment_at": "2026-06-30T08:24:16Z",
+"ncomments": 11,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11487": {
+"key": "gh-issue-shader-slang/slang-11487",
+"repo": "shader-slang/slang",
+"issue": 11487,
+"labels": [
+"dynamic_dispatch",
+"reproduced"
+],
+"last_comment_author": "jhelferty-nv",
+"last_comment_at": "2026-06-10T17:49:25Z",
+"ncomments": 2,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-11487",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11492,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11501": {
+"key": "gh-issue-shader-slang/slang-11501",
+"repo": "shader-slang/slang",
+"issue": 11501,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-29T07:50:40Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11505": {
+"key": "gh-issue-shader-slang/slang-11505",
+"repo": "shader-slang/slang",
+"issue": 11505,
+"labels": [
+"Dev Reviewed"
+],
+"last_comment_author": "maxime-modulopi",
+"last_comment_at": "2026-06-09T18:39:07Z",
+"ncomments": 5,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11509": {
+"key": "gh-issue-shader-slang/slang-11509",
+"repo": "shader-slang/slang",
+"issue": 11509,
+"labels": [
+"Shader coverage"
+],
+"last_comment_author": "jvepsalainen-nv",
+"last_comment_at": "2026-06-09T10:41:31Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-11509",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11511,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11516": {
+"key": "gh-issue-shader-slang/slang-11516",
+"repo": "shader-slang/slang",
+"issue": 11516,
+"labels": [
+"Metal",
+"Dev Opened"
+],
+"last_comment_author": "kaizhangNV",
+"last_comment_at": "2026-07-06T18:23:32Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11519": {
+"key": "gh-issue-shader-slang/slang-11519",
+"repo": "shader-slang/slang",
+"issue": 11519,
+"labels": [
+"Dev Reviewed",
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-15T11:29:54Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11545": {
+"key": "gh-issue-shader-slang/slang-11545",
+"repo": "shader-slang/slang",
+"issue": 11545,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-06-13T01:46:46Z",
+"ncomments": 10,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-11545",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11564,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11568": {
+"key": "gh-issue-shader-slang/slang-11568",
+"repo": "shader-slang/slang",
+"issue": 11568,
+"labels": [
+"Dev Reviewed"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-27T17:58:39Z",
+"ncomments": 16,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11568",
+"isDraft": false,
+"mergeStateStatus": "DIRTY",
+"number": 11798,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11573": {
+"key": "gh-issue-shader-slang/slang-11573",
+"repo": "shader-slang/slang",
+"issue": 11573,
+"labels": [
+"Dev Reviewed",
+"Dev Opened"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-06-25T21:40:54Z",
+"ncomments": 3,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11591": {
+"key": "gh-issue-shader-slang/slang-11591",
+"repo": "shader-slang/slang",
+"issue": 11591,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "jhelferty-nv",
+"last_comment_at": "2026-06-22T16:03:14Z",
+"ncomments": 2,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-11591",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11595,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11592": {
+"key": "gh-issue-shader-slang/slang-11592",
+"repo": "shader-slang/slang",
+"issue": 11592,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-13T03:52:13Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11592",
+"isDraft": true,
+"mergeStateStatus": "DIRTY",
+"number": 11596,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11593": {
+"key": "gh-issue-shader-slang/slang-11593",
+"repo": "shader-slang/slang",
+"issue": 11593,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": null,
+"last_comment_at": null,
+"ncomments": 0,
+"last_is_bot": null,
+"pr": {
+"headRefName": "fix/issue-11593",
+"isDraft": true,
+"mergeStateStatus": "DIRTY",
+"number": 11803,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11599": {
+"key": "gh-issue-shader-slang/slang-11599",
+"repo": "shader-slang/slang",
+"issue": 11599,
+"labels": [
+"Needs reporter feedback",
+"Dev Reviewed",
+"GLSL"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T04:04:03Z",
+"ncomments": 17,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11599",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11789,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11612": {
+"key": "gh-issue-shader-slang/slang-11612",
+"repo": "shader-slang/slang",
+"issue": 11612,
+"labels": [],
+"last_comment_author": null,
+"last_comment_at": null,
+"ncomments": 0,
+"last_is_bot": null,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11613": {
+"key": "gh-issue-shader-slang/slang-11613",
+"repo": "shader-slang/slang",
+"issue": 11613,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-06-17T14:21:36Z",
+"ncomments": 3,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11615": {
+"key": "gh-issue-shader-slang/slang-11615",
+"repo": "shader-slang/slang",
+"issue": 11615,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-06-15T19:11:58Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11616": {
+"key": "gh-issue-shader-slang/slang-11616",
+"repo": "shader-slang/slang",
+"issue": 11616,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "maxime-modulopi",
+"last_comment_at": "2026-07-02T16:37:32Z",
+"ncomments": 3,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-11616",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11617,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11631": {
+"key": "gh-issue-shader-slang/slang-11631",
+"repo": "shader-slang/slang",
+"issue": 11631,
+"labels": [
+"Dev Opened",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-09T18:20:27Z",
+"ncomments": 22,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11631",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11633,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11659": {
+"key": "gh-issue-shader-slang/slang-11659",
+"repo": "shader-slang/slang",
+"issue": 11659,
+"labels": [
+"reproduced"
+],
+"last_comment_author": "maxime-modulopi",
+"last_comment_at": "2026-06-22T18:49:59Z",
+"ncomments": 5,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-11659",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11661,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11669": {
+"key": "gh-issue-shader-slang/slang-11669",
+"repo": "shader-slang/slang",
+"issue": 11669,
+"labels": [
+"Metal",
+"WebGPU",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-20T21:55:28Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11669",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11816,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11682": {
+"key": "gh-issue-shader-slang/slang-11682",
+"repo": "shader-slang/slang",
+"issue": 11682,
+"labels": [
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-22T16:24:39Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11703": {
+"key": "gh-issue-shader-slang/slang-11703",
+"repo": "shader-slang/slang",
+"issue": 11703,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-27T22:20:11Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11722": {
+"key": "gh-issue-shader-slang/slang-11722",
+"repo": "shader-slang/slang",
+"issue": 11722,
+"labels": [
+"Typesystem",
+"Dev Opened"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-06-26T17:04:54Z",
+"ncomments": 2,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11730": {
+"key": "gh-issue-shader-slang/slang-11730",
+"repo": "shader-slang/slang",
+"issue": 11730,
+"labels": [
+"Dev Reviewed",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-29T12:42:09Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11730",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11818,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11745": {
+"key": "gh-issue-shader-slang/slang-11745",
+"repo": "shader-slang/slang",
+"issue": 11745,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-06-25T07:21:02Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11746": {
+"key": "gh-issue-shader-slang/slang-11746",
+"repo": "shader-slang/slang",
+"issue": 11746,
+"labels": [
+"Typesystem",
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-25T07:55:32Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11771": {
+"key": "gh-issue-shader-slang/slang-11771",
+"repo": "shader-slang/slang",
+"issue": 11771,
+"labels": [
+"Dev Opened",
+"reflection"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-06-26T22:17:03Z",
+"ncomments": 2,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11774": {
+"key": "gh-issue-shader-slang/slang-11774",
+"repo": "shader-slang/slang",
+"issue": 11774,
+"labels": [
+"Dev Reviewed",
+"Dev Opened"
+],
+"last_comment_author": "skallweitNV",
+"last_comment_at": "2026-07-10T07:58:40Z",
+"ncomments": 5,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11782": {
+"key": "gh-issue-shader-slang/slang-11782",
+"repo": "shader-slang/slang",
+"issue": 11782,
+"labels": [
+"Needs reporter feedback",
+"Dev Reviewed"
+],
+"last_comment_author": "szihs",
+"last_comment_at": "2026-06-29T09:08:57Z",
+"ncomments": 2,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11784": {
+"key": "gh-issue-shader-slang/slang-11784",
+"repo": "shader-slang/slang",
+"issue": 11784,
+"labels": [
+"reproduced"
+],
+"last_comment_author": "szihs",
+"last_comment_at": "2026-06-29T12:02:31Z",
+"ncomments": 2,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11790": {
+"key": "gh-issue-shader-slang/slang-11790",
+"repo": "shader-slang/slang",
+"issue": 11790,
+"labels": [
+"slang-test",
+"Testing",
+"spirv_vulkan"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-02T00:32:24Z",
+"ncomments": 12,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11790",
+"isDraft": true,
+"mergeStateStatus": "DIRTY",
+"number": 11792,
+"state": "CLOSED"
+}
+},
+"gh-issue-shader-slang/slang-11813": {
+"key": "gh-issue-shader-slang/slang-11813",
+"repo": "shader-slang/slang",
+"issue": 11813,
+"labels": [
+"Dev Reviewed",
+"Office-Yong",
+"Office-Tess"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-06-30T22:55:35Z",
+"ncomments": 7,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11825": {
+"key": "gh-issue-shader-slang/slang-11825",
+"repo": "shader-slang/slang",
+"issue": 11825,
+"labels": [
+"Dev Opened",
+"RTR",
+"reproduced"
+],
+"last_comment_author": "skallweitNV",
+"last_comment_at": "2026-06-29T16:49:05Z",
+"ncomments": 2,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11833": {
+"key": "gh-issue-shader-slang/slang-11833",
+"repo": "shader-slang/slang",
+"issue": 11833,
+"labels": [
+"Dev Reviewed",
+"CI",
+"Infra"
+],
+"last_comment_author": null,
+"last_comment_at": null,
+"ncomments": 0,
+"last_is_bot": null,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11847": {
+"key": "gh-issue-shader-slang/slang-11847",
+"repo": "shader-slang/slang",
+"issue": 11847,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-06-30T17:54:30Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11858": {
+"key": "gh-issue-shader-slang/slang-11858",
+"repo": "shader-slang/slang",
+"issue": 11858,
+"labels": [
+"regression",
+"Dev Opened",
+"reproduced"
+],
+"last_comment_author": "skiminki-nv",
+"last_comment_at": "2026-07-01T13:11:35Z",
+"ncomments": 4,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11877": {
+"key": "gh-issue-shader-slang/slang-11877",
+"repo": "shader-slang/slang",
+"issue": 11877,
+"labels": [
+"regression",
+"Dev Reviewed",
+"Dev Opened",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T08:23:48Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11877",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11879,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11879": {
+"key": "gh-issue-shader-slang/slang-11879",
+"repo": "shader-slang/slang",
+"issue": 11879,
+"labels": [
+"pr: non-breaking",
+"Office-Yong"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-02T23:10:06Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11882": {
+"key": "gh-issue-shader-slang/slang-11882",
+"repo": "shader-slang/slang",
+"issue": 11882,
+"labels": [
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-01T11:40:30Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11903": {
+"key": "gh-issue-shader-slang/slang-11903",
+"repo": "shader-slang/slang",
+"issue": 11903,
+"labels": [
+"Dev Opened",
+"RTR",
+"reproduced"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-07-02T21:37:35Z",
+"ncomments": 8,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-11903",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11907,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11906": {
+"key": "gh-issue-shader-slang/slang-11906",
+"repo": "shader-slang/slang",
+"issue": 11906,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-02T11:24:12Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11910": {
+"key": "gh-issue-shader-slang/slang-11910",
+"repo": "shader-slang/slang",
+"issue": 11910,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-02T16:13:16Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11911": {
+"key": "gh-issue-shader-slang/slang-11911",
+"repo": "shader-slang/slang",
+"issue": 11911,
+"labels": [
+"CI Bug"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-02T17:36:39Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11911",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11913,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11912": {
+"key": "gh-issue-shader-slang/slang-11912",
+"repo": "shader-slang/slang",
+"issue": 11912,
+"labels": [
+"CI Bug"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-02T17:01:01Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11917": {
+"key": "gh-issue-shader-slang/slang-11917",
+"repo": "shader-slang/slang",
+"issue": 11917,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-06T20:55:41Z",
+"ncomments": 7,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11917",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11920,
+"state": "MERGED"
+}
+},
+"gh-issue-shader-slang/slang-11919": {
+"key": "gh-issue-shader-slang/slang-11919",
+"repo": "shader-slang/slang",
+"issue": 11919,
+"labels": [],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-02T21:48:45Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11919",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11923,
+"state": "MERGED"
+}
+},
+"gh-issue-shader-slang/slang-11925": {
+"key": "gh-issue-shader-slang/slang-11925",
+"repo": "shader-slang/slang",
+"issue": 11925,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-07T23:11:57Z",
+"ncomments": 5,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11926": {
+"key": "gh-issue-shader-slang/slang-11926",
+"repo": "shader-slang/slang",
+"issue": 11926,
+"labels": [
+"CI Improvement"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-03T06:23:24Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11927": {
+"key": "gh-issue-shader-slang/slang-11927",
+"repo": "shader-slang/slang",
+"issue": 11927,
+"labels": [],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-03T06:17:01Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11931": {
+"key": "gh-issue-shader-slang/slang-11931",
+"repo": "shader-slang/slang",
+"issue": 11931,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-03T07:11:05Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11936": {
+"key": "gh-issue-shader-slang/slang-11936",
+"repo": "shader-slang/slang",
+"issue": 11936,
+"labels": [],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-03T11:54:15Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11936",
+"isDraft": false,
+"mergeStateStatus": "UNKNOWN",
+"number": 11942,
+"state": "MERGED"
+}
+},
+"gh-issue-shader-slang/slang-11940": {
+"key": "gh-issue-shader-slang/slang-11940",
+"repo": "shader-slang/slang",
+"issue": 11940,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-07-07T20:03:42Z",
+"ncomments": 2,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11944": {
+"key": "gh-issue-shader-slang/slang-11944",
+"repo": "shader-slang/slang",
+"issue": 11944,
+"labels": [
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-05T13:34:41Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11944",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11945,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11946": {
+"key": "gh-issue-shader-slang/slang-11946",
+"repo": "shader-slang/slang",
+"issue": 11946,
+"labels": [
+"reproduced"
+],
+"last_comment_author": "jhelferty-nv",
+"last_comment_at": "2026-07-08T17:11:38Z",
+"ncomments": 5,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-11946",
+"isDraft": false,
+"mergeStateStatus": "BLOCKED",
+"number": 11947,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11951": {
+"key": "gh-issue-shader-slang/slang-11951",
+"repo": "shader-slang/slang",
+"issue": 11951,
+"labels": [
+"CI",
+"Infra"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T06:13:25Z",
+"ncomments": 8,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11952": {
+"key": "gh-issue-shader-slang/slang-11952",
+"repo": "shader-slang/slang",
+"issue": 11952,
+"labels": [
+"regression"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T14:21:34Z",
+"ncomments": 4,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11955": {
+"key": "gh-issue-shader-slang/slang-11955",
+"repo": "shader-slang/slang",
+"issue": 11955,
+"labels": [
+"CI",
+"Infra"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-09T13:54:55Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11956": {
+"key": "gh-issue-shader-slang/slang-11956",
+"repo": "shader-slang/slang",
+"issue": 11956,
+"labels": [
+"bug",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-06T16:29:50Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11958": {
+"key": "gh-issue-shader-slang/slang-11958",
+"repo": "shader-slang/slang",
+"issue": 11958,
+"labels": [
+"Dev Reviewed",
+"Dev Opened"
+],
+"last_comment_author": null,
+"last_comment_at": null,
+"ncomments": 0,
+"last_is_bot": null,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11963": {
+"key": "gh-issue-shader-slang/slang-11963",
+"repo": "shader-slang/slang",
+"issue": 11963,
+"labels": [
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-07T06:52:15Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11963",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11965,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11966": {
+"key": "gh-issue-shader-slang/slang-11966",
+"repo": "shader-slang/slang",
+"issue": 11966,
+"labels": [
+"CI"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-07T08:24:50Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11967": {
+"key": "gh-issue-shader-slang/slang-11967",
+"repo": "shader-slang/slang",
+"issue": 11967,
+"labels": [
+"Dev Reviewed",
+"Dev Opened",
+"spirv_vulkan"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-07T09:14:27Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11969": {
+"key": "gh-issue-shader-slang/slang-11969",
+"repo": "shader-slang/slang",
+"issue": 11969,
+"labels": [
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-09T02:41:57Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11969",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 12015,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11970": {
+"key": "gh-issue-shader-slang/slang-11970",
+"repo": "shader-slang/slang",
+"issue": 11970,
+"labels": [
+"Metal",
+"bug",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-07T10:52:02Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11973": {
+"key": "gh-issue-shader-slang/slang-11973",
+"repo": "shader-slang/slang",
+"issue": 11973,
+"labels": [
+"CI",
+"Infra"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-09T18:14:29Z",
+"ncomments": 6,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11978": {
+"key": "gh-issue-shader-slang/slang-11978",
+"repo": "shader-slang/slang",
+"issue": 11978,
+"labels": [
+"Shader coverage"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-07T20:24:16Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11981": {
+"key": "gh-issue-shader-slang/slang-11981",
+"repo": "shader-slang/slang",
+"issue": 11981,
+"labels": [
+"Metal",
+"bug",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-09T01:52:27Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11981",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 12014,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11982": {
+"key": "gh-issue-shader-slang/slang-11982",
+"repo": "shader-slang/slang",
+"issue": 11982,
+"labels": [
+"Dev Opened",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T03:47:59Z",
+"ncomments": 4,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11982",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 12034,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11983": {
+"key": "gh-issue-shader-slang/slang-11983",
+"repo": "shader-slang/slang",
+"issue": 11983,
+"labels": [
+"Dev Opened",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-07T23:11:05Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11984": {
+"key": "gh-issue-shader-slang/slang-11984",
+"repo": "shader-slang/slang",
+"issue": 11984,
+"labels": [
+"Dev Opened",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T03:14:04Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11985": {
+"key": "gh-issue-shader-slang/slang-11985",
+"repo": "shader-slang/slang",
+"issue": 11985,
+"labels": [
+"regression",
+"Metal",
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T00:11:55Z",
+"ncomments": 10,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11988": {
+"key": "gh-issue-shader-slang/slang-11988",
+"repo": "shader-slang/slang",
+"issue": 11988,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-07-08T00:45:49Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11989": {
+"key": "gh-issue-shader-slang/slang-11989",
+"repo": "shader-slang/slang",
+"issue": 11989,
+"labels": [
+"Dev Opened",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T21:16:51Z",
+"ncomments": 12,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11989",
+"isDraft": true,
+"mergeStateStatus": "BEHIND",
+"number": 12001,
+"state": "CLOSED"
+}
+},
+"gh-issue-shader-slang/slang-11990": {
+"key": "gh-issue-shader-slang/slang-11990",
+"repo": "shader-slang/slang",
+"issue": 11990,
+"labels": [],
+"last_comment_author": null,
+"last_comment_at": null,
+"ncomments": 0,
+"last_is_bot": null,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11996": {
+"key": "gh-issue-shader-slang/slang-11996",
+"repo": "shader-slang/slang",
+"issue": 11996,
+"labels": [
+"Dev Opened",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T10:52:15Z",
+"ncomments": 7,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11996",
+"isDraft": false,
+"mergeStateStatus": "BEHIND",
+"number": 12043,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-11997": {
+"key": "gh-issue-shader-slang/slang-11997",
+"repo": "shader-slang/slang",
+"issue": 11997,
+"labels": [],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T11:59:37Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11998": {
+"key": "gh-issue-shader-slang/slang-11998",
+"repo": "shader-slang/slang",
+"issue": 11998,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-08T13:43:17Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-11999": {
+"key": "gh-issue-shader-slang/slang-11999",
+"repo": "shader-slang/slang",
+"issue": 11999,
+"labels": [],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T23:01:14Z",
+"ncomments": 5,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-11999",
+"isDraft": false,
+"mergeStateStatus": "BLOCKED",
+"number": 12009,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-12002": {
+"key": "gh-issue-shader-slang/slang-12002",
+"repo": "shader-slang/slang",
+"issue": 12002,
+"labels": [
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T15:52:18Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12004": {
+"key": "gh-issue-shader-slang/slang-12004",
+"repo": "shader-slang/slang",
+"issue": 12004,
+"labels": [
+"Dev Reviewed",
+"reproduced"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-07-09T22:21:25Z",
+"ncomments": 5,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-12004",
+"isDraft": false,
+"mergeStateStatus": "BLOCKED",
+"number": 12027,
+"state": "CLOSED"
+}
+},
+"gh-issue-shader-slang/slang-12006": {
+"key": "gh-issue-shader-slang/slang-12006",
+"repo": "shader-slang/slang",
+"issue": 12006,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T23:06:09Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-12006",
+"isDraft": false,
+"mergeStateStatus": "BLOCKED",
+"number": 12011,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-12022": {
+"key": "gh-issue-shader-slang/slang-12022",
+"repo": "shader-slang/slang",
+"issue": 12022,
+"labels": [],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-09T12:07:35Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12023": {
+"key": "gh-issue-shader-slang/slang-12023",
+"repo": "shader-slang/slang",
+"issue": 12023,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-09T14:24:23Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12028": {
+"key": "gh-issue-shader-slang/slang-12028",
+"repo": "shader-slang/slang",
+"issue": 12028,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-09T18:04:52Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12030": {
+"key": "gh-issue-shader-slang/slang-12030",
+"repo": "shader-slang/slang",
+"issue": 12030,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-09T21:04:43Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12031": {
+"key": "gh-issue-shader-slang/slang-12031",
+"repo": "shader-slang/slang",
+"issue": 12031,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-09T22:14:03Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12032": {
+"key": "gh-issue-shader-slang/slang-12032",
+"repo": "shader-slang/slang",
+"issue": 12032,
+"labels": [
+"Dev Opened",
+"CI Improvement",
+"CI",
+"Testing"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-09T22:57:53Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12033": {
+"key": "gh-issue-shader-slang/slang-12033",
+"repo": "shader-slang/slang",
+"issue": 12033,
+"labels": [
+"pr: non-breaking",
+"CoPilot"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-10T00:34:47Z",
+"ncomments": 3,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12035": {
+"key": "gh-issue-shader-slang/slang-12035",
+"repo": "shader-slang/slang",
+"issue": 12035,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T04:13:29Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12036": {
+"key": "gh-issue-shader-slang/slang-12036",
+"repo": "shader-slang/slang",
+"issue": 12036,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "coderabbitai",
+"last_comment_at": "2026-07-10T05:45:20Z",
+"ncomments": 1,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12040": {
+"key": "gh-issue-shader-slang/slang-12040",
+"repo": "shader-slang/slang",
+"issue": 12040,
+"labels": [],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T09:12:34Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12041": {
+"key": "gh-issue-shader-slang/slang-12041",
+"repo": "shader-slang/slang",
+"issue": 12041,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "jvepsalainen-nv",
+"last_comment_at": "2026-07-10T09:41:53Z",
+"ncomments": 2,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12042": {
+"key": "gh-issue-shader-slang/slang-12042",
+"repo": "shader-slang/slang",
+"issue": 12042,
+"labels": [],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T09:49:49Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-12043": {
+"key": "gh-issue-shader-slang/slang-12043",
+"repo": "shader-slang/slang",
+"issue": 12043,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-10T11:14:55Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-6319": {
+"key": "gh-issue-shader-slang/slang-6319",
+"repo": "shader-slang/slang",
+"issue": 6319,
+"labels": [
+"Dev Reviewed",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-01T10:10:13Z",
+"ncomments": 6,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-6319",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11885,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-6557": {
+"key": "gh-issue-shader-slang/slang-6557",
+"repo": "shader-slang/slang",
+"issue": 6557,
+"labels": [],
+"last_comment_author": "pdeayton-nv",
+"last_comment_at": "2026-07-08T02:08:38Z",
+"ncomments": 4,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-6955": {
+"key": "gh-issue-shader-slang/slang-6955",
+"repo": "shader-slang/slang",
+"issue": 6955,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-23T11:44:00Z",
+"ncomments": 5,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-6970": {
+"key": "gh-issue-shader-slang/slang-6970",
+"repo": "shader-slang/slang",
+"issue": 6970,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-06-23T21:25:50Z",
+"ncomments": 8,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-7878": {
+"key": "gh-issue-shader-slang/slang-7878",
+"repo": "shader-slang/slang",
+"issue": 7878,
+"labels": [
+"Dev Reviewed",
+"Diagnostics",
+"known_issues",
+"Missing Diagnostic",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T17:27:20Z",
+"ncomments": 8,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-7878",
+"isDraft": false,
+"mergeStateStatus": "BLOCKED",
+"number": 12005,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-8125": {
+"key": "gh-issue-shader-slang/slang-8125",
+"repo": "shader-slang/slang",
+"issue": 8125,
+"labels": [
+"Dev Opened",
+"RTR",
+"reproduced"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-07-08T01:02:42Z",
+"ncomments": 15,
+"last_is_bot": false,
+"pr": {
+"headRefName": "fix/issue-8125",
+"isDraft": false,
+"mergeStateStatus": "BEHIND",
+"number": 11657,
+"state": "CLOSED"
+}
+},
+"gh-issue-shader-slang/slang-8681": {
+"key": "gh-issue-shader-slang/slang-8681",
+"repo": "shader-slang/slang",
+"issue": 8681,
+"labels": [
+"client support",
+"Dev Opened"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-07-09T01:27:18Z",
+"ncomments": 6,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-8822": {
+"key": "gh-issue-shader-slang/slang-8822",
+"repo": "shader-slang/slang",
+"issue": 8822,
+"labels": [
+"Dev Reviewed",
+"Diagnostics",
+"Diagnostic Output"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-23T11:42:21Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-8870": {
+"key": "gh-issue-shader-slang/slang-8870",
+"repo": "shader-slang/slang",
+"issue": 8870,
+"labels": [
+"Dev Reviewed",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-17T16:08:31Z",
+"ncomments": 10,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-8957": {
+"key": "gh-issue-shader-slang/slang-8957",
+"repo": "shader-slang/slang",
+"issue": 8957,
+"labels": [
+"Dev Reviewed",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-17T16:25:33Z",
+"ncomments": 11,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-9062": {
+"key": "gh-issue-shader-slang/slang-9062",
+"repo": "shader-slang/slang",
+"issue": 9062,
+"labels": [
+"Dev Opened",
+"reproduced"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-07-08T21:19:17Z",
+"ncomments": 4,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-9085": {
+"key": "gh-issue-shader-slang/slang-9085",
+"repo": "shader-slang/slang",
+"issue": 9085,
+"labels": [
+"pr: non-breaking"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-07T21:21:18Z",
+"ncomments": 4,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-9125": {
+"key": "gh-issue-shader-slang/slang-9125",
+"repo": "shader-slang/slang",
+"issue": 9125,
+"labels": [
+"Dev Opened",
+"Diagnostic Output",
+"Diagnostics low prio"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-23T11:45:13Z",
+"ncomments": 1,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-9210": {
+"key": "gh-issue-shader-slang/slang-9210",
+"repo": "shader-slang/slang",
+"issue": 9210,
+"labels": [
+"Dev Opened"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T15:03:33Z",
+"ncomments": 6,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-9382": {
+"key": "gh-issue-shader-slang/slang-9382",
+"repo": "shader-slang/slang",
+"issue": 9382,
+"labels": [
+"Dev Reviewed",
+"Typesystem",
+"Office-Yong",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-29T17:40:04Z",
+"ncomments": 8,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-9382",
+"isDraft": true,
+"mergeStateStatus": "BEHIND",
+"number": 11655,
+"state": "CLOSED"
+}
+},
+"gh-issue-shader-slang/slang-9580": {
+"key": "gh-issue-shader-slang/slang-9580",
+"repo": "shader-slang/slang",
+"issue": 9580,
+"labels": [
+"regression",
+"Dev Reviewed",
+"Office-Yong",
+"reproduced"
+],
+"last_comment_author": "jkwak-work",
+"last_comment_at": "2026-07-09T16:47:41Z",
+"ncomments": 9,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-9660": {
+"key": "gh-issue-shader-slang/slang-9660",
+"repo": "shader-slang/slang",
+"issue": 9660,
+"labels": [
+"Dev Opened",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-23T11:46:28Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-9660",
+"isDraft": true,
+"mergeStateStatus": "UNKNOWN",
+"number": 11820,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-9999": {
+"key": "gh-issue-shader-slang/slang-9999",
+"repo": "shader-slang/slang",
+"issue": 9999,
+"labels": [
+"Dev Reviewed",
+"Diagnostics",
+"Missing Diagnostic",
+"reproduced"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-29T15:07:41Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slang-rhi-787": {
+"key": "gh-issue-shader-slang/slang-rhi-787",
+"repo": "shader-slang/slang-rhi",
+"issue": 787,
+"labels": [
+"Dev Reviewed"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-02T19:57:12Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": {
+"headRefName": "fix/issue-787",
+"isDraft": true,
+"mergeStateStatus": "BEHIND",
+"number": 791,
+"state": "OPEN"
+}
+},
+"gh-issue-shader-slang/slang-torch-46": {
+"key": "gh-issue-shader-slang/slang-torch-46",
+"repo": "shader-slang/slang-torch",
+"issue": 46,
+"labels": [
+"enhancement"
+],
+"last_comment_author": "Burton2000",
+"last_comment_at": "2026-07-09T14:17:52Z",
+"ncomments": 5,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slang-vscode-extension-70": {
+"key": "gh-issue-shader-slang/slang-vscode-extension-70",
+"repo": "shader-slang/slang-vscode-extension",
+"issue": 70,
+"labels": [],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-22T23:45:18Z",
+"ncomments": 10,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slangpy-1014": {
+"key": "gh-issue-shader-slang/slangpy-1014",
+"repo": "shader-slang/slangpy",
+"issue": 1014,
+"labels": [
+"metal"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-26T20:28:44Z",
+"ncomments": 11,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slangpy-1040": {
+"key": "gh-issue-shader-slang/slangpy-1040",
+"repo": "shader-slang/slangpy",
+"issue": 1040,
+"labels": [],
+"last_comment_author": null,
+"last_comment_at": null,
+"ncomments": 0,
+"last_is_bot": null,
+"pr": null
+},
+"gh-issue-shader-slang/slangpy-806": {
+"key": "gh-issue-shader-slang/slangpy-806",
+"repo": "shader-slang/slangpy",
+"issue": 806,
+"labels": [
+"Dev Opened",
+"RTR",
+"slangtorch_parity_polish"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-10T00:22:06Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slangpy-807": {
+"key": "gh-issue-shader-slang/slangpy-807",
+"repo": "shader-slang/slangpy",
+"issue": 807,
+"labels": [
+"Dev Opened",
+"RTR",
+"slangtorch_parity_polish"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-09T14:31:53Z",
+"ncomments": 4,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slangpy-808": {
+"key": "gh-issue-shader-slang/slangpy-808",
+"repo": "shader-slang/slangpy",
+"issue": 808,
+"labels": [
+"Dev Opened",
+"RTR",
+"slangtorch_parity_polish"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-09T14:38:24Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slangpy-844": {
+"key": "gh-issue-shader-slang/slangpy-844",
+"repo": "shader-slang/slangpy",
+"issue": 844,
+"labels": [
+"slangtorch_parity_polish"
+],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T15:01:41Z",
+"ncomments": 3,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slangpy-997": {
+"key": "gh-issue-shader-slang/slangpy-997",
+"repo": "shader-slang/slangpy",
+"issue": 997,
+"labels": [],
+"last_comment_author": "szihs",
+"last_comment_at": "2026-06-29T12:23:55Z",
+"ncomments": 4,
+"last_is_bot": false,
+"pr": null
+},
+"gh-issue-shader-slang/slangpy-samples-43": {
+"key": "gh-issue-shader-slang/slangpy-samples-43",
+"repo": "shader-slang/slangpy-samples",
+"issue": 43,
+"labels": [],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-06-16T11:06:19Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": null
+},
+"gh-issue-shader-slang/slangpy-samples-45": {
+"key": "gh-issue-shader-slang/slangpy-samples-45",
+"repo": "shader-slang/slangpy-samples",
+"issue": 45,
+"labels": [],
+"last_comment_author": "nv-slang-bot",
+"last_comment_at": "2026-07-08T15:39:19Z",
+"ncomments": 2,
+"last_is_bot": true,
+"pr": null
+}
+}
