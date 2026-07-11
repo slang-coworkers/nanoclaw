@@ -46,17 +46,11 @@ This is the SlangPy counterpart to the slang `slang-pr-review` workflow. It is *
    send_message(to="parent", in_reply_to=<id-of-review-request>, text="[Review Verdict] shader-slang/slangpy#<number> (<mode>)\n\n- **Verdict:** <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n- **Findings:** <X bugs, Y gaps, Z questions, W clarity>\n- **Top concern:** <one-line of the highest-severity finding, or 'no bugs'>\n- **Test gaps:** <one-line recommended tests, or 'none'>\n- **Next:** <post-back authorized? / send_file only>")
    ```
 
-   **Forwarding, by request mode** (read the mode from the tasking message that started this review — it's in your context; do not read any file):
-   - **Approver-dispatched** (message carries `MODE=pr-approve`) — the PR-approver is your parent and wants the doc to *decide*; the reply above already reached it. **Do not** forward to the fixer.
-   - **Fix-chain / mention** (live `pr` mode, no `MODE=pr-approve`) — if a `slangpy-fixer` destination is wired and this was a fixer handoff, `send_file(to="slangpy-fixer", …)` so the fixer can act on findings. **And**, if a `{{vars.approver}}` destination is wired, forward the review downstream for the shadow decision, pinned to the canonical PR thread so it converges with any webhook-dispatched session:
+   **Forwarding** (read the mode from the tasking message that started this review — it's in your context; do not read any file):
+   - **Fix-chain / mention** (live `pr` mode) — if a `slangpy-fixer` destination is wired and this was a fixer handoff, `send_file(to="slangpy-fixer", …)` so the fixer can act on findings.
+   - **patch/branch mode** — no live PR; reply to parent only.
 
-     ```
-     send_file(to="{{vars.approver}}", thread_id="gh-pr-shader-slang/slangpy-<number>", path="/workspace/agent/review-<repo-slug>-<number>.md")
-     ```
-
-     This is a fresh downstream dispatch — do NOT pass `in_reply_to`; the explicit `thread_id` (`gh-pr-<repo>-<num>`, the same key the host mints for webhook-routed approver sessions) is what makes Case-1 (fix chain) and Case-2 (webhook) land in ONE approver session per PR. If `{{vars.approver}}` resolves "unknown destination" (no approver wired yet), skip it and note it in the verdict — don't fail the review. **patch/branch mode never forwards** (no live PR to decide on).
-
-5. **Post review back to GitHub (authorized only)** {#post-review-to-github} — only when **the tasking message that started this review** (in your context — do not read any file) carries the `<github-post-authorized />` marker (set when a human tagged `@nv-slang-bot` on the PR, or by the PR-approver in LIVE authorized mode); else a no-op (the verdict already went out via **Write + report the verdict**). That same message carries the `REPO=<owner>/<name>` and `PR=<number>` lines — read the two values from it. Post the review body as an `event=COMMENT` review per the `review-output.md` invariant — never `APPROVE`/`CHANGES_REQUESTED`. Round-2 hygiene first: if you posted a prior bot review on this PR, minimize it (`OUTDATED`) and resolve its threads before posting the new one (target `nv-slang-bot` only).
+5. **Post review back to GitHub (authorized only)** {#post-review-to-github} — only when **the tasking message that started this review** (in your context — do not read any file) carries the `<github-post-authorized />` marker (set when a human tagged `@nv-slang-bot` on the PR); else a no-op (the verdict already went out via **Write + report the verdict**). That same message carries the `REPO=<owner>/<name>` and `PR=<number>` lines — read the two values from it. Post the review body as an `event=COMMENT` review per the `review-output.md` invariant — never `APPROVE`/`CHANGES_REQUESTED`. Round-2 hygiene first: if you posted a prior bot review on this PR, minimize it (`OUTDATED`) and resolve its threads before posting the new one (target `nv-slang-bot` only).
 
    Substitute `<REPO>` and `<PR>` with the values you read from the tasking message, and run this only if that message contained `<github-post-authorized />`:
 
