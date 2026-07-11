@@ -24,7 +24,7 @@ function baseWrite(overrides: Partial<DecisionWrite> = {}): DecisionWrite {
     repo: 'shader-slang/slang',
     prNumber: 11993,
     commitSha: 'abc123def456abc123def456abc123def456abcd',
-    mode: 'historical',
+    mode: 'live',
     decision: 'WOULD_APPROVE',
     reasonCode: null,
     reviewDiffHash: 'dh1',
@@ -61,7 +61,7 @@ describe('upsertDecision', () => {
       )
       .get('shader-slang/slang', 11993, 'abc123def456abc123def456abc123def456abcd') as Record<string, unknown>;
     expect(row.decision).toBe('WOULD_APPROVE');
-    expect(row.mode).toBe('historical');
+    expect(row.mode).toBe('live');
     expect(row.policy_version).toBe('v0-shadow');
     expect(row.human_verdict).toBeNull();
   });
