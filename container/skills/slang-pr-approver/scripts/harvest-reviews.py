@@ -17,13 +17,24 @@ Step 2 parser and eval-clauses.py consume. Secondary: `coderabbitai[bot]`
 Input:  --repo owner/name  --pr N  --commit <pinned sha>  --out <workspace>
 Output: <workspace>/review/harvest.json
   {"found": bool, "login": "...", "commit_id": "...", "submitted_at": "...",
-   "diff_hash": "..." | null, "stale": bool, "body": "..."}
+   "diff_hash": "..." | null, "stale": bool, "body": "...",
+   "pending_bot": "CodeRabbit" | "<check-run name>" | null}
+  (`pending_bot` is set only on exit 22 — the bot whose review we're waiting on.)
 
 Exit codes (let the workflow branch):
   0  — harvested a bot review matching the pinned commit (fresh)
   10 — only STALE bot reviews exist (newest bot review's commit_id != pinned) —
        the workflow falls to Devin-only, noting the stale review
-  20 — no harvestable bot review at all — the workflow falls to Devin-only
+  20 — no harvestable bot review at all AND no review bot is still working — a
+       genuine production-skip (fixer fix/issue-N PRs, bot-authored PRs, Claude's
+       own branches). The workflow falls to Devin-only.
+  22 — no bot review YET, but a review bot is still running (CodeRabbit status
+       `pending` on slangpy, or a Claude/review check-run `queued`/`in_progress`
+       on slang). This is a TIMING RACE on a fresh PR, NOT a skip — the review is
+       imminent. The workflow WAITS and re-harvests; falling to Devin-only here
+       discards the primary signal (root cause of the slang#12064 harvest_used=0
+       miss). `harvest.json` carries `pending_bot` so the caller knows what to
+       poll.
   21 — the reviews fetch itself FAILED (gh error / rate-limit / network) — the
        PR may carry a real review we couldn't see, so the workflow treats this
        as an infra signal (ABSTAIN_INFRA), never a clean Devin-only decision
@@ -69,6 +80,46 @@ def parse_diff_hash(body):
     return m.group(1) if m else None
 
 
+# A review bot is "still working" when its signal is present but not settled.
+# On slangpy CodeRabbit reports via a *commit status* context (`CodeRabbit`,
+# pending -> success); on slang the Claude/production review reports via a
+# *check-run* (queued/in_progress -> completed). Either, at the pinned head,
+# means a review is imminent and exit 20 would be a false "skip". Matched
+# loosely by name so a context rename ("CodeRabbit" -> "coderabbit review")
+# doesn't silently regress us back to racing.
+PENDING_STATUS_RE = re.compile(r"coderabbit|claude|review", re.IGNORECASE)
+
+
+def pending_review_bot(repo, commit):
+    """Return the name of a review bot still working at `commit`, else None.
+
+    Read-only; never raises — a lookup failure just means "no pending signal I
+    can prove", so the caller falls through to the genuine-skip path (exit 20)
+    rather than hanging. Checks both surfaces because the two repos differ:
+      - commit status contexts (CodeRabbit on slangpy) with state `pending`
+      - check-runs (Claude/review on slang) with status queued/in_progress
+    """
+    # Commit-status contexts (CodeRabbit's surface).
+    try:
+        st = gh_json(f"repos/{repo}/commits/{commit}/status")
+        for s in st.get("statuses", []):
+            ctx = s.get("context") or ""
+            if s.get("state") == "pending" and PENDING_STATUS_RE.search(ctx):
+                return ctx
+    except Exception:
+        pass
+    # Check-runs (Claude/production-review's surface).
+    try:
+        cr = gh_json(f"repos/{repo}/commits/{commit}/check-runs")
+        for c in cr.get("check_runs", []):
+            name = c.get("name") or ""
+            if c.get("status") in ("queued", "in_progress") and PENDING_STATUS_RE.search(name):
+                return name
+    except Exception:
+        pass
+    return None
+
+
 def harvest(repo, pr, commit):
     """Return (result_dict, exit_code). Never raises: a genuinely empty PR is
     exit 20, a fetch failure exit 21, a match exit 0, stale-only exit 10."""
@@ -93,6 +144,14 @@ def harvest(repo, pr, commit):
         cand.append(rv)
 
     if not cand:
+        # No harvestable bot review right now. Distinguish a genuine
+        # production-skip (exit 20, fall to Devin-only) from a fresh-PR TIMING
+        # RACE where a review bot is still working (exit 22, the caller waits
+        # and re-harvests). Racing to Devin-only here is what made slang#12064
+        # discard its primary review (harvest_used=0).
+        pending = pending_review_bot(repo, commit)
+        if pending:
+            return ({"found": False, "pending_bot": pending}, 22)
         return ({"found": False}, 20)
 
     # Newest first (submitted_at is ISO-8601, lexicographically sortable).
@@ -160,6 +219,10 @@ def main():
         print(f"STALE ONLY: newest bot review is {result.get('login')} @ "
               f"{(result.get('commit_id') or '?')[:12]} != pinned "
               f"{a.commit[:12]} -> Devin-only (noted stale)")
+    elif code == 22:
+        print(f"REVIEW PENDING for {a.repo}#{a.pr} @ {a.commit[:12]}: "
+              f"{result.get('pending_bot')} still running -> WAIT + re-harvest "
+              f"(timing race, NOT a skip)")
     elif code == 21:
         print(f"FETCH FAILED for {a.repo}#{a.pr} -> ABSTAIN_INFRA "
               f"({result.get('fetch_error')})")
