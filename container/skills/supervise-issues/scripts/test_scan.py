@@ -318,5 +318,75 @@ class NextStepOwnership(unittest.TestCase):
         self.assertFalse(r["needs_nudge"])
 
 
+class ClosedIssueArchival(unittest.TestCase):
+    """We supervise OPEN issues only. A chain whose issue is CLOSED (pull-universe
+    emits it as a minimal stub with issue_open:false) must be archived, never
+    classified or nudged — otherwise the closed stub keeps a live board row and
+    could even draw a nudge on a chain no human is waiting on."""
+
+    def _closed_stub(self, issue=200):
+        return {
+            "repo": "o/r", "issue": issue, "sessions": [],
+            "our_last_outbound": None, "our_last_push": None,
+            "pr": None, "issue_open": False, "comments": [],
+            "pending_ask_user": False,
+        }
+
+    def test_closed_chain_is_archived_not_classified(self):
+        out = run_scan({
+            "state": {},
+            "sessions": [],
+            "chains": {"gh-issue-o/r-200": self._closed_stub()},
+        })
+        self.assertEqual(out["rows"], [])                       # not on the board
+        self.assertEqual(out["summary"]["in_flight"], 0)        # not counted live
+        self.assertEqual(out["summary"]["closed"], 1)
+        self.assertIn("gh-issue-o/r-200", out["state"]["_archived"])
+        self.assertNotIn("gh-issue-o/r-200", out["state"])      # dropped from top level
+
+    def test_closed_chain_is_never_nudged(self):
+        # A fixer session sits on a now-closed chain: must NOT be nudged.
+        out = run_scan({
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-o/r-200",
+                          "container_status": "stopped", "group_folder": "slang-fixer"}],
+            "chains": {"gh-issue-o/r-200": self._closed_stub()},
+        })
+        self.assertEqual(out["summary"]["needs_nudge"], 0)
+        self.assertEqual(out["summary"]["closed"], 1)
+
+    def test_open_chain_alongside_closed_still_boards(self):
+        out = run_scan({
+            "state": {},
+            "sessions": [],
+            "chains": {
+                "gh-issue-o/r-100": {
+                    "repo": "o/r", "issue": 100, "sessions": [],
+                    "our_last_outbound": None, "pr": None,
+                    "issue_open": True, "comments": [],
+                },
+                "gh-issue-o/r-200": self._closed_stub(),
+            },
+        })
+        self.assertEqual(len(out["rows"]), 1)
+        self.assertEqual(out["rows"][0]["issue"], 100)
+        self.assertEqual(out["summary"]["closed"], 1)
+
+    def test_archival_is_idempotent(self):
+        # Already in _archived from a prior tick -> not re-stamped, not double-counted.
+        out = run_scan({
+            "now": "2026-06-27T12:00:00Z",
+            "state": {"_archived": {"gh-issue-o/r-200": {
+                "issue": 200, "reason": "issue closed",
+                "archivedAt": "2026-06-26T12:00:00Z"}}},
+            "sessions": [],
+            "chains": {"gh-issue-o/r-200": self._closed_stub()},
+        })
+        self.assertEqual(
+            out["state"]["_archived"]["gh-issue-o/r-200"]["archivedAt"],
+            "2026-06-26T12:00:00Z",  # preserved, not overwritten with the new tick
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

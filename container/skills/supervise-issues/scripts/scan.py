@@ -56,9 +56,15 @@ OUTPUT (stdout), a JSON object:
   "now": "...",
   "rows": [ {thread,repo,issue,pr,state,ball,delta,last_activity_by_us,
              needs_nudge,nudge_reason,github_artifact,disposition,mis_threaded} ],
-  "summary": {"in_flight","new","updated","same","awaiting_us","silent","needs_nudge","escalate"},
+  "summary": {"in_flight","new","updated","same","awaiting_us","silent",
+              "needs_nudge","escalate","closed"},
   "state": { ...next supervisor-state.json (merged, snapshots refreshed)... }
 }
+
+Only OPEN issues appear in `rows` and the in-flight counts. A chain whose issue
+is CLOSED (`issue_open:false`) is moved to `state._archived` (once) and dropped
+from the live board — never classified or nudged. `summary.closed` reports how
+many were archived this tick.
 
 The script never decides *whether to send* a nudge — it sets needs_nudge + a
 reason so the LLM composes and routes it (thread-keyed, per SKILL.md §3).
@@ -288,10 +294,37 @@ def run(payload):
     counts = {
         "in_flight": 0, "new": 0, "updated": 0, "same": 0,
         "awaiting_us": 0, "silent": 0, "needs_nudge": 0, "escalate": 0,
+        "closed": 0,
     }
 
     for thread in sorted(live_keys):
         chain = chains[thread]
+
+        # We only supervise OPEN issues. A chain whose issue is CLOSED
+        # (pull-universe emits it as a minimal stub with issue_open:false) is
+        # done — never classify, nudge, or count it as in-flight. Move it to
+        # _archived once and drop it from the live board. Without this guard the
+        # closed stub (empty comments) classifies as 'dispatched'/'silent' and
+        # keeps consuming a board row and, worse, could draw a nudge — work on a
+        # chain no human is waiting on.
+        if chain.get("issue_open") is False:
+            archived_map = next_state.get("_archived")
+            if not isinstance(archived_map, dict):
+                archived_map = dict(archived) if isinstance(archived, dict) else {}
+            if thread not in archived_map:
+                prior_snap = prior_state.get(thread, {}) if isinstance(prior_state, dict) else {}
+                archived_map[thread] = {
+                    "issue": chain.get("issue"),
+                    "repo": chain.get("repo"),
+                    "reason": "issue closed",
+                    "archivedAt": now.isoformat().replace("+00:00", "Z"),
+                    "githubArtifactUrl": prior_snap.get("githubArtifactUrl"),
+                }
+            next_state["_archived"] = archived_map
+            next_state.pop(thread, None)  # drop the live top-level snapshot
+            counts["closed"] += 1
+            continue
+
         state, ball, last_by_us, needs_nudge, reason = classify(
             now, chain, sessions_by_id, bot_logins
         )
