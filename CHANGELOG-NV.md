@@ -6,15 +6,38 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 325 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 158 |
-| `nv-slang` | slang project spine, skills, workflows | 113 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 52 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 36 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 328 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 159 |
+| `nv-slang` | slang project spine, skills, workflows | 116 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 55 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 37 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-11
+
+### nv-main (3 PRs)
+- **#893** `Sync nv-main with upstream/main (a30547fb)`
+- **#898** `docs(approval-ledger): drop stale offline-scoring references after approver went live-only`
+- **#901** `fix(supervise-issues): archive closed chains + never suppress a needs_nudge row`
+
+### nv-dashboard (1 PRs)
+- **#892** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (3 PRs)
+- **#889** `Sync nv-slang with upstream/main`
+- **#896** `feat(slang-pr-approver): self-harvest posted bot reviews + run Devin, drop reviewer delegation`
+- **#900** `fix(slang-pr-approver): wait for a pending review bot instead of racing to Devin-only`
+
+### nv-slangpy (3 PRs)
+- **#890** `Sync nv-slangpy with upstream/main`
+- **#897** `feat(slangpy-pr-approver): self-harvest posted bot reviews + run Devin, drop reviewer delegation`
+- **#899** `fix(slangpy-pr-approver): wait for a pending review bot instead of racing to Devin-only`
+
+### nv-nanoclaw (1 PRs)
+- **#891** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-07-10
 
