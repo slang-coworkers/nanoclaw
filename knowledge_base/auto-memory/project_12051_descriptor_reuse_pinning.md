@@ -13,6 +13,24 @@ metadata:
 
 **Classification:** Feature/enhancement, low sev, P3. Component: IR + SPIR-V emit + core-module. Type set to Feature on GitHub; verified verdict posted (issuecomment-4937951648).
 
+**REPORTER TARGET-SPLIT REPRO (07-11, issuecomment-4943954942):** maxime-modulopi posted a minimal repro with 3 Godbolt links isolating the problem to SPIR-V:
+- **HLSL** (godbolt 74daKWbKP): hoist-into-local `Texture2D tex = texH;` → loads ONCE ✓ (matches triager finding).
+- **SPIR-V** (godbolt za9vKEYE3): SAME hoist-into-local → descriptors STILL reloaded every loop iteration ✗ — this is the crux.
+- **SPIR-V + `.pinDescriptor()`** (godbolt dxMn4fx8s, his `OpCopyObject` workaround): fixed ✓ — "but should ideally not be required."
+⇒ Confirms the SPIR-V asymmetry: `CastDescriptorHandleToResource` is force-duplicated (slang-ir-util.cpp:2638) REGARDLESS of user hoisting, so a local doesn't stick on SPIR-V the way it does on HLSL.
+
+**CRUX ANSWERED (07-11, triager, DISASSEMBLED SPIR-V at HEAD 4d91d47b, replied issuecomment-4944015739, fresh CREATE):** the SPIR-V reload is **NOT a hard SPIR-V requirement — it's an ARTIFACT.**
+- HLSL + hoisted local → `ResourceDescriptorHeap[i]` 1×, reused ✓
+- SPIR-V + hoisted local → descriptor `OpLoad` **3×** from SAME `OpAccessChain` (%32/%43/%52 ← %24) ✗ = reporter's exact complaint
+- SPIR-V + `pinDescriptor()` → `OpLoad` **1×** (%25) feeding all 3 `OpImageSampleExplicitLod` ✓ — **PROVES one load feeding N samples is valid SPIR-V; nothing in spec forces the reload.**
+The hoisted load is treated as re-materializable (kin to `shouldDuplicateInstAtUseSite` force-dup, slang-ir-util.cpp:2638) → OpLoad re-emitted per use → user's explicit local store not honored. pin() defeats it by forcing a materialized SSA value the duplicator won't re-clone. **Fix is clearly on our side and safe.**
+
+**Design options framed for jkwak/csyonghe (triager offered to prototype any):**
+- **(a) [LEADING]** relax use-site duplication for descriptor loads when the def dominates uses → local "sticks" on SPIR-V, matches HLSL, **NO new API surface**.
+- (b) official `pin()`/`loadOnce()` builtin.
+- (c) auto loop-invariant-load hoist pass.
+Design-gated on WHICH approach; still **no bot PR (jkwak's surface)**; ready/merge operator-gated. Chain OPEN awaiting maintainer pick.
+
 **ANSWERED jkwak (07-10, issuecomment-4940241238) — all 3 asks verified empirically at slangc 2026.12.2-60-g33f9ed0ce ≈HEAD, fresh CREATE (jkwak was last commenter):**
 1. **Repro delivered + reporter is RIGHT:** `DescriptorHandle<Texture2D>` sampled 3× in a loop → per-use conversion emits `ResourceDescriptorHeap[i]` **3× (one reload/use)**. Hoisting the conversion into a local outside the loop → emits **1×, reused**. ⇒ "store in a local" **already works on HLSL today**, no new pin() needed there. This CORRECTS our earlier imprecise "no value to pin on HLSL" note.
 2. **#11798 does NOT close #12051 (jkwak's 1st-comment guess checked & refuted):** #11798 is the [[project_11568_descriptor_heap_direct_index]] INPUT-SYNTAX feature (adds UntypedResourceHandle→uint lowering; peephole only collapses the uint↔handle round-trip). Changes how you SPELL a heap index, NOT how many times the descriptor loads. Complementary; does NOT by itself remove per-use reload. **Do not assume #11798 resolves this.**

@@ -1,0 +1,22 @@
+pull-universe: 323 chains to fetch
+pull-universe: graphql partial (1 node error(s); salvaged data): Could not resolve to a Repository with the name 'shader-slang/slang-11568/recovery'.
+pull-universe: issue batch done — 323 issues, 16 graphql calls
+pull-universe: PR batch done — 63 PRs, 21 total graphql calls
+pull-universe: 1/323 — gh-issue-shader-slang/shader-slang.github.io-203
+pull-universe: 20/323 — gh-issue-shader-slang/slang-11441
+pull-universe: 40/323 — gh-issue-shader-slang/slang-11532
+pull-universe: 60/323 — gh-issue-shader-slang/slang-11592
+pull-universe: 80/323 — gh-issue-shader-slang/slang-11643
+pull-universe: 100/323 — gh-issue-shader-slang/slang-11703
+pull-universe: 120/323 — gh-issue-shader-slang/slang-11755
+pull-universe: 140/323 — gh-issue-shader-slang/slang-11802
+pull-universe: 160/323 — gh-issue-shader-slang/slang-11852
+pull-universe: 180/323 — gh-issue-shader-slang/slang-11903
+pull-universe: 200/323 — gh-issue-shader-slang/slang-11944
+pull-universe: 220/323 — gh-issue-shader-slang/slang-11984
+pull-universe: 240/323 — gh-issue-shader-slang/slang-12020
+pull-universe: 260/323 — gh-issue-shader-slang/slang-12045
+pull-universe: 280/323 — gh-issue-shader-slang/slang-6216
+pull-universe: 300/323 — gh-issue-shader-slang/slang-9210
+pull-universe: 320/323 — gh-issue-shader-slang/slangpy-samples-51
+pull-universe: done — 323 chains, 178 closed (skipped detail), 21 GH API calls total
