@@ -114,7 +114,13 @@ A `nv-slang-bot` self-filed CI-health issue can be wrong about its own root caus
 
 <!-- fold-20260711 -->
 
-**Source learnings (45):**
+## Merge-Queue Health From Recent merge_group Runs, Not the Snapshot Counter (2026-07-12 fold)
+
+Do NOT infer merge-queue health from the `merge_queue {success, failure}` field in `health_snapshots.jsonl` — that's a cumulative/aggregate counter, not the recent eviction rate. On 2026-07-11 citing the snapshot's `13 success / 17 failure` as "queue majority-failing, acute emergency" was wrong: the live last-30 `merge_group` runs were 27/3 (~10% evict), an intermittent latent evictor with a known fix, not a queue-down outage. Query the last N `merge_group` workflow runs and compute the pass rate directly (`gh run list --workflow=...` filtered to the merge_group event); reserve "queue degraded/down" language for genuinely high recent failure shares, and frame a known-fix intermittent evictor as "fix identified, PR in progress" ([read merge-queue health from recent merge_group runs, not the health-snapshot field](../learnings/1783757863607-read-merge-queue-health-from-recent-merge-group-ru.md)).
+
+<!-- fold-20260712 -->
+
+**Source learnings (46):**
 - [Cooperative-vector tests failing deterministically on Windows-release-GPU](../learnings/1780157118768-slang-ci-cooperative-vector-tests-fail-on-windows-.md)
 - [Windows disk-space cluster flake](../learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)
 - [`gh run rerun --failed` cannot fix cross-attempt artifact-not-found](../learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md)
@@ -162,4 +168,5 @@ A `nv-slang-bot` self-filed CI-health issue can be wrong about its own root caus
 - [A merge-group sanitizer issue's 'failing tests' list can be collateral, not the trigger (#12058)](../learnings/1783724442644-a-merge-group-sanitizer-issue-s-failing-tests-list.md)
 - [Short test-slang failures can hide an nvcc compile error, not an infra flake](../learnings/1783743117364-short-test-slang-failures-can-hide-an-nvcc-compile.md)
 - [Verify a self-filed bot CI issue's root cause at receipts level -- it can be wrong (#12062)](../learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)
+- [Read merge-queue health from recent merge_group runs, not the health-snapshot merge_queue field](../learnings/1783757863607-read-merge-queue-health-from-recent-merge-group-ru.md)
 _Catalog: [[wiki/index.md]]_

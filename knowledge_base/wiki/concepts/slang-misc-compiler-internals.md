@@ -178,7 +178,13 @@ For entry-point / varying-parameter / reflection *layout* fixes, the resolution 
 
 <!-- fold-20260711 -->
 
-**Source learnings (59):**
+## slang#12069: Endianness Fails Loudly, Pointer Size Fails Silently (2026-07-12 fold)
+
+In `include/slang.h`, endianness and pointer size are both derived from an architecture whitelist (`SLANG_PROCESSOR_X86_64|ARM_64|POWER_PC_64`), but their failure modes are ASYMMETRIC. Endianness has a guard (`#if ((SLANG_BIG_ENDIAN | SLANG_LITTLE_ENDIAN) == 0) #error`) so an unlisted arch fails the build loudly; pointer size has NO such guard — `SLANG_PTR_IS_32 = (SLANG_PTR_IS_64 ^ 1)`, so on any 64-bit arch NOT whitelisted (RISC-V rv64, LoongArch64, s390x, MIPS64), `SLANG_PTR_IS_32` silently evaluates to 1 → `SlangInt`/`SlangUInt` become 32-bit on a 64-bit target → public-ABI/struct-layout corruption with no error. That silent miscompile is the load-bearing bug, not the cosmetic "use compiler macros" ask. Verified: gcc & clang predefine `__BYTE_ORDER__`, `__SIZEOF_POINTER__`, `__LP64__`; `__POINTER_WIDTH__` is clang-only; MSVC provides none (use `_WIN64`). The detection block is the single source of truth — copied verbatim into generated C++/CUDA host preludes and consumed by core.meta.slang/nvrtc/slang-llvm — so don't remove the whitelist, only augment the derivation and add the symmetric pointer-size `#error`. Triage: Bug / low / P3 (latent — no supported target affected); hybrid fix (guards first, then compiler-macro-primary + whitelist fallback + `sizeof(void*)` cross-check), draft held for maintainer sign-off on the public ABI header ([slang#12069 endian/ptr whitelist — pointer-size fails silently, endianness fails loudly](../learnings/1783835875827-slang-12069-endian-ptr-whitelist-pointer-size-fail.md)).
+
+<!-- fold-20260712 -->
+
+**Source learnings (60):**
 - [lexer hex-digit decoder bug](../learnings/1779805764133-slang-lexer-cpp-has-a-duplicate-hex-digit-decoder-.md)
 - [capability flag vs [require]](../learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md)
 - [bwd_diff out-param convention](../learnings/1780332708129-slang-bwd-diff-out-param-convention-bare-in-differ.md)
@@ -238,4 +244,5 @@ For entry-point / varying-parameter / reflection *layout* fixes, the resolution 
 - [slang#12051 DescriptorHandle reloads every use -- shouldDuplicateInstAtUseSite + non-hoistable cast op](../learnings/1783705209384-slang-12051-descriptorhandle-reloads-every-use-roo.md)
 - [CORRECTION slang#12051: DescriptorHandle reuse ALREADY works on HLSL via a local; #11798 is input-syntax only](../learnings/1783724965975-correction-slang-12051-descriptorhandle-reuse-alre.md)
 - [Slang entry-point layout fixes must be front-end (AST), not back-end IR rebuild](../learnings/1783710345558-slang-entry-point-layout-fixes-must-be-front-end-a.md)
+- [slang#12069 endian/ptr whitelist — pointer-size fails SILENTLY, endianness fails LOUDLY](../learnings/1783835875827-slang-12069-endian-ptr-whitelist-pointer-size-fail.md)
 _Catalog: [[wiki/index.md]]_

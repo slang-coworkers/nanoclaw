@@ -71,7 +71,13 @@ Worktree-GC reap is operator-gated; a `/supervise` auto-cron re-deriving the GC 
 The May 14 2026 session landed four infrastructure PRs: (#335) fixed all four Slang workflows whose step bodies were silently empty (H2 headers don't match the composer's step parser — only numbered-list format works); (#336) added `validate-templates.ts` CI gate; (#337) made new non-admin coworkers auto-bind to admin messaging group; (#338) fixed `detectStaleContainers` silent bypass when `spawnedClaudeMdHash` Map was empty after a host restart ([May 14 session — landed PRs](../learnings/legoop-project_session_may14.md)).
 
 ---
-**Source learnings (26):**
+## Silent Build-Slot Holds Behind Disk Contention Freeze Fixer Chains (2026-07-12 fold)
+
+A fixer that parks itself "holding for a build slot" behind a shared-worktree-volume (`/dev/vdb`) disk-contention queue stalls SILENTLY — the container is idle, not working, so no outbound is produced and nothing surfaces. On 2026-07-11 two fixer-owned no-PR chains (slang #11967, #11970) went ~97h silent with committed fixes until a supervisor nudge woke both. A bot-last, no-PR, silent chain is a promise still owed, NOT a human handoff — a self-imposed build-slot hold reads identical to a maintainer handoff from the outside but is ours to break. Fixers must BOUND such holds: poll with a deadline and emit a blocker+ETA outbound rather than sleeping indefinitely (a silent idle container is indistinguishable from a dead one). Worktree GC on closed chains is load-bearing: reaping closed-chain worktrees is what freed the shared volume (100% → 46G free) and let both builds resume ([silent build-slot holds behind disk contention freeze fixer chains](../learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)).
+
+<!-- fold-20260712 -->
+
+**Source learnings (27):**
 - [Restarting nanoclaw main service triggers initGroupFilesystem → CLAUDE.md recompose → kills all containers](../learnings/legoop-feedback_service_restart_kills_containers.md)
 - [Resolving reviewer split-brain after a container restart](../learnings/1780488405089-resolving-reviewer-split-brain-after-a-container-r.md)
 - [ncl group container fixes: Bookworm package gaps + approval sequencing](../learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md)
@@ -97,5 +103,6 @@ The May 14 2026 session landed four infrastructure PRs: (#335) fixed all four Sl
 - [slang-pr-review-runner patch mode: reviewer can't find the patch + commit -am drops new files](../learnings/1780311762982-slang-pr-review-runner-patch-mode-reviewer-can-t-f.md)
 - [slang-pr-review: claude CLI recovers from mid-stream 504 — don't kill a stalled reviewer run](../learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md)
 - [Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run](../learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md)
+- [Silent build-slot holds behind disk contention freeze fixer chains](../learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)
 
 _Catalog: [[wiki/index.md]]_
