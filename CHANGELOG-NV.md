@@ -6,15 +6,24 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 328 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 330 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 159 |
-| `nv-slang` | slang project spine, skills, workflows | 116 |
+| `nv-slang` | slang project spine, skills, workflows | 117 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 55 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 37 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-12
+
+### nv-main (2 PRs)
+- **#903** `fix(supervise-issues): escalate operator-only docker reclaim under disk pressure`
+- **#904** `fix(supervise-issues): name-agnostic all-tier worktree GC discovery`
+
+### nv-slang (1 PRs)
+- **#905** `fix(slang-reviewer): uniform wt- worktree naming + trap on stop`
 
 ## 📅 2026-07-11
 
