@@ -1,106 +1,110 @@
-- [Admin standing rules precede orch dispatches](feedback_admin_standing_rules_precedence.md) — check admin rules before "don't X"; accept conflict-surfacing from coworkers
-- [Don't close chains with open proposals](feedback_dont_close_open_proposals.md) — counter-proposals need a real decision, not "tracked phase-2"/"chain closed"
-- [Re-open ≠ release on a parked feature chain](feedback_reopen_not_release_parked_feature.md) — maintainer reply reopens discussion, NOT auto-release; release only on converged design
-- [Bare response text is delivered, not scratchpad](feedback_bare_text_is_delivered.md) — wrap reasoning in <internal>; write "msg #N" not bare "#N"
-- [<message> before a tool call is dropped](feedback_message_block_before_toolcall_dropped.md) — tool calls first + dispatch in final response, or send_message
-- [Fleet disk wall — REFILLED 07-10 (100%, 2.1G)](project_fleet_disk_capacity_wall_11969.md) — 54wt/124G; MERGED/CLOSED reap EXHAUSTED; STABLE HOLD; DO NOT prune OPEN-PR worktrees
-- [Don't add_reaction to coworker a2a messages](feedback_no_reaction_acks_to_coworkers.md) — reaction → empty "message from parent" → empty-ack loop; use TRUE silence
-- [Drafts-only PR guardrail](feedback_drafts_only_guardrail.md) — fixer PRs stay draft; never direct ready-flip; non-draft bot PR ≠ breach if MAINTAINER flipped (verify who)
-- [CHANGES_REQUESTED ≠ edit list](feedback_changes_requested_read_body.md) — read body + inline count; 0 inline + "won't merge to ToT" = POLICY block not edit request
-- [Code pushes are not user-facing writes](feedback_pushes_not_gated.md) — don't gate pushes to fix/issue-*; gated = comments/replies/reactions/ready-flips/merges
-- [Always reap merged-PR worktrees](feedback_always_reap_merged_worktrees.md) — standing grant; reap MERGED via owning fixer; Main never git-worktree-removes
-- [nv-coworkers auto-merge authority](feedback_nv_coworkers_automerge.md) — standing OK push/PR/merge into nv-coworkers fork; self-merge via REST; nightly syncs knowledge_base/
-- [Bot can't push workflow YAML](project_bot_workflows_permission.md) — App lacks `workflows` perm; post workflow diff as comment; `push --dry-run` lies
-- [Bot-PR workflow_dispatch = cosmetic red](project_bot_pr_priority_yield_red_run.md) — manual ci.yml RED via priority-yield ≠ failure; read pull_request run/rollup for head-green
-- [gh auth probes are misleading](feedback_gh_auth_status_misleading.md) — `gh api user`/`auth status` 401 even when writes work; verify via org-scoped repo API
-- [Don't post AND delegate the same write](feedback_dont_post_and_delegate_same_write.md) — retry-yourself + I-post = parallel dup comment; pick one path
+- [Admin standing rules precede orch dispatches](feedback_admin_standing_rules_precedence.md) — check admin rules before "don't X"; accept coworker conflict-surfacing
+- [Don't close chains with open proposals](feedback_dont_close_open_proposals.md) — counter-proposals need a real decision, not "chain closed"
+- [Re-open ≠ release on parked feature chain](feedback_reopen_not_release_parked_feature.md) — maintainer reply reopens discussion, NOT auto-release
+- [Bare response text is delivered](feedback_bare_text_is_delivered.md) — wrap reasoning in <internal>; write "msg #N" not bare "#N"
+- [<message> before tool call is dropped](feedback_message_block_before_toolcall_dropped.md) — tool calls first, dispatch in final response; else send_message
+- [Fleet disk wall — REFILLED 07-10](project_fleet_disk_capacity_wall_11969.md) — 54wt/124G; MERGED/CLOSED reap exhausted; DO NOT prune OPEN-PR worktrees
+- [No add_reaction to coworker a2a](feedback_no_reaction_acks_to_coworkers.md) — reaction→empty-ack loop; use TRUE silence
+- [Drafts-only PR guardrail](feedback_drafts_only_guardrail.md) — fixer PRs stay draft; non-draft bot PR OK if MAINTAINER flipped (verify who)
+- [CHANGES_REQUESTED ≠ edit list](feedback_changes_requested_read_body.md) — 0 inline + "won't merge to ToT" = POLICY block, not edit request
+- [Code pushes aren't user-facing writes](feedback_pushes_not_gated.md) — don't gate pushes to fix/issue-*; gated = comments/replies/ready-flips/merges
+- [Always reap merged-PR worktrees](feedback_always_reap_merged_worktrees.md) — standing grant; reap MERGED via owning fixer; Main never removes
+- [nv-coworkers auto-merge authority](feedback_nv_coworkers_automerge.md) — standing OK push/PR/merge into nv-coworkers fork; self-merge via REST
+- [Bot can't push workflow YAML](project_bot_workflows_permission.md) — App lacks `workflows` perm; post diff as comment; `push --dry-run` lies
+- [Bot-PR workflow_dispatch = cosmetic red](project_bot_pr_priority_yield_red_run.md) — manual ci.yml RED via priority-yield ≠ failure; read pull_request rollup
+- [gh auth probes are misleading](feedback_gh_auth_status_misleading.md) — `gh api user`/`auth status` 401 even when writes work; verify org-scoped
+- [Don't post AND delegate same write](feedback_dont_post_and_delegate_same_write.md) — retry-yourself + I-post = dup comment; pick one path
 - ["Push not sent" ≠ operator away](feedback_push_not_away.md) — failed MOBILE push says nothing about presence; ask_user_question timeout ≠ absent
-- [NG deferred-asks policy](feedback_ng_deferred_asks.md) — NG drops asks after one silent cycle; parent gives explicit approve/deny, not silence
-- [Reports use inline markdown links](feedback_report_links.md) — clickable PR/issue/dashboard links; dashboard base https://3737-yjdzmdo7h.brevlab.com/
+- [NG deferred-asks policy](feedback_ng_deferred_asks.md) — NG drops asks after one silent cycle; parent gives explicit approve/deny
+- [Reports use inline markdown links](feedback_report_links.md) — clickable PR/issue/dashboard links; dashboard https://3737-yjdzmdo7h.brevlab.com/
 - [Status updates inline as table](feedback_status_format.md) — render issue-chain/status inline as markdown table every update
-- [Supervisor table tier-link columns](feedback_supervisor_table_tier_links.md) — status table needs triager/fixer/reviewer columns, each a clickable artifact link
-- [Post VERIFIED triage verdicts to GitHub](feedback_triage_github_posting.md) — verified verdicts POST proactively; HOLD only unverified/interim/design-preempt; ready-flips/merges gated
-- [Authorize comment matches memo hedging](feedback_authorize_comment_matches_memo_hedging.md) — before posting, diff drafted comment's qualifiers vs verified memo; don't overstate
-- [Only gh pr ready + merge are operator-gated](feedback_github_writes_operator_authorized.md) — verified comments/labels/Type/replies POST freely; gated=ready+merge; NEVER auto-close
-- [Supervisor autonomous authority](feedback_supervisor_autonomous_authority.md) — standing authority to drive postmortems/nudges/CI-red each tick; respect ready-flip/merge gate
-- [Main can't approve install_packages/add_mcp_server](feedback_main_cannot_approve_install_packages.md) — self-mod approvals route to HUMAN operator; `ncl approvals` read-only
-- [GitHub comment hygiene — edit-in-place](feedback_github_comment_hygiene.md) — if bot was last commenter, EDIT that comment; new comment only after another user replies
-- [Routing-gate markers + partial-delivery on refusal](feedback_routing_gate_marker_and_resend.md) — no bracketed markers without in_reply_to; on refusal re-send ONLY blocked
-- [Route webhooks by content.event](feedback_webhook_dispatch_by_event.md) — pr_ready_for_review → *-pr-approver (NEVER reviewer/fixer); pr_mention → coworker by branch; unroutable→stop
-- [Debounce PR review on churn](feedback_debounce_pr_review_on_churn.md) — fast-churning PR → debounce pipeline to 15-min quiet head; never nudge a maintainer on their own PR
-- [Don't double-dispatch to a peer-wired downstream](feedback_no_double_dispatch_peer_wired.md) — if triager owns peer-wire to fixer, don't ALSO dispatch direct; detect via sessions list
-- [Route authorizations through the dispatch owner](feedback_route_authorizations_through_dispatch_owner.md) — if triager holds fixer's edge, authorize THROUGH triager; disambiguate by pass name
-- [Let the fixer own fix work on one session](feedback_let_fixer_own_single_session.md) — route once, let fixer drive end-to-end; don't run hold→steer→go→halt cycles
-- [Verify fixer called report_pr_created](feedback_verify_report_pr_created.md) — confirm on every new-PR report; fix/issue-* has no prefix-route fallback; miss → orphaned webhooks
-- [Verify regression claims at claim-precision](feedback_verify_regression_claims_at_precision.md) — check suspect-commit hunk LINES + merge_group runs before relaying
-- [Verify a branch in the env where it fires](feedback_verify_branch_in_env_where_it_fires.md) — "bytes identical" proves nothing if repro env can't reach branch; match reporter OS/flags
-- [Fork-PR fix → carrier PR fallback](project_fork_pr_carrier_fallback.md) — bot can't push into personal forks; pr-review-fix uses draft master-base carrier + cherry-pick
-- [Dup PRs = dev↔prod cross-instance collision](project_dup_pr_cross_instance.md) — `fix/issue-*`=dev, `dev/slang-fixer/*`=prod; both auto-fix live issues as nv-slang-bot
+- [Supervisor table tier-link columns](feedback_supervisor_table_tier_links.md) — table needs triager/fixer/reviewer columns, each a clickable artifact link
+- [Post VERIFIED triage verdicts to GitHub](feedback_triage_github_posting.md) — verified verdicts POST proactively; HOLD only unverified/interim
+- [Authorize comment matches memo hedging](feedback_authorize_comment_matches_memo_hedging.md) — diff comment qualifiers vs verified memo; don't overstate
+- [Only gh pr ready + merge operator-gated](feedback_github_writes_operator_authorized.md) — verified comments/labels/replies POST freely; NEVER auto-close
+- [Supervisor autonomous authority](feedback_supervisor_autonomous_authority.md) — standing authority to drive postmortems/nudges/CI-red; respect ready/merge gate
+- [GitHub comment hygiene — edit-in-place](feedback_github_comment_hygiene.md) — if bot last commenter, EDIT; new comment only after another user replies
+- [Routing-gate markers + partial-delivery](feedback_routing_gate_marker_and_resend.md) — no bracketed markers without in_reply_to; on refusal re-send ONLY blocked
+- [Route webhooks by content.event](feedback_webhook_dispatch_by_event.md) — pr_ready_for_review → *-pr-approver; pr_mention → coworker by branch
+- [Debounce PR review on churn](feedback_debounce_pr_review_on_churn.md) — fast-churn → debounce to 15-min quiet head; never nudge maintainer on own PR
+- [Coworker named a2a edge can vanish → silent hang](project_coworker_named_edge_dropped_silent_hang.md) — verify `ncl destinations list`, restore via wire_agents; correlated with ~20h dispatch hang
+- [No double-dispatch to peer-wired downstream](feedback_no_double_dispatch_peer_wired.md) — if triager owns fixer peer-wire, don't ALSO dispatch direct
+- [Route authorizations through dispatch owner](feedback_route_authorizations_through_dispatch_owner.md) — if triager holds fixer's edge, authorize THROUGH triager
+- [Let fixer own fix work on one session](feedback_let_fixer_own_single_session.md) — route once, let fixer drive end-to-end; no hold→steer→go→halt cycles
+- [Coworker respawn drops verbal timing gates](feedback_coworker_respawn_drops_verbal_gates.md) — deviation from a recent agreement is likely respawn-amnesia (stale tracker), not defiance; correct discipline proportionately; agreed gates must be persisted their side
+- [#12052 stranded merge-queue — PARENT-owned operator escalation](project_12052_stranded_mergequeue_operator_escalation.md) — APPROVED bot PR evicted by #11955 flake, ~18h+ no auto-requeue; fix=maintainer runs `gh pr merge 12052 --merge-queue`; operator card fired 2× both timed out; re-surface AT MOST once more, don't re-spam; babysitter stood down (owner:PARENT)
+- [Verify fixer called report_pr_created](feedback_verify_report_pr_created.md) — confirm on every new-PR report; fix/issue-* has no prefix fallback
+- [Nudge relays quote verbatim source](feedback_nudge_relay_verbatim_source.md) — fetch the issue's real comment byte-exact; don't splice adjacent-issue context (Tick82 #6557/#7406 conflation)
+- [Verify regression claims at claim-precision](feedback_verify_regression_claims_at_precision.md) — check suspect-commit hunk LINES + merge_group runs
+- [Verify a branch in the env where it fires](feedback_verify_branch_in_env_where_it_fires.md) — "bytes identical" proves nothing; match reporter OS/flags
+- [Fork-PR fix → carrier PR fallback](project_fork_pr_carrier_fallback.md) — bot can't push into personal forks; draft master-base carrier + cherry-pick
+- [Dup PRs = dev↔prod cross-instance](project_dup_pr_cross_instance.md) — `fix/issue-*`=dev, `dev/slang-fixer/*`=prod; both auto-fix as nv-slang-bot
 - [Dup PR from inadequate existence-check](project_dup_pr_inadequate_existence_check.md) — check linked-PR timeline + broad search, not just head+body
-- [Fork-reentrancy phantom co-driver](project_fork_reentrancy_phantom_codriver.md) — dup commits on ONE worktree = context-inheriting fork re-running workflow; verify via `--thread-id`
-- [Bot comment webhooks are echoes, not collisions](project_bot_comment_webhook_echo.md) — bot structured-report webhook = own footprint echoed; verify author+branch first
-- [Stacked-PR shared-base clobber](project_stacked_pr_shared_base_clobber.md) — stacked PRs share base; stale dependent checkout force-pushes base back; freeze holding side
+- [Fork-reentrancy phantom co-driver](project_fork_reentrancy_phantom_codriver.md) — dup commits on ONE worktree = context-inheriting fork; verify via `--thread-id`
+- [Bot comment webhooks are echoes](project_bot_comment_webhook_echo.md) — bot structured-report webhook = own footprint echoed; verify author+branch
+- [Stacked-PR shared-base clobber](project_stacked_pr_shared_base_clobber.md) — stale dependent checkout force-pushes base back; freeze holding side
 - [Self-wiring loop incident (SYSTEMIC)](project_self_wiring_loop_incident.md) — self-edge a2a → empty-ack loops; fix=sever wiring+restart
-- [Taskless-fixer review-CC loop](project_taskless_fixer_review_cc_loop.md) — reviewer CC wakes taskless fixer → "holding" loop; fix=`ncl groups restart` fixer
-- [#11917 fixer compaction thrash loop (open)](project_11917_fixer_compaction_loop.md) — 9-day batch session, 5x consecutive 865-915k compactions, 0 work, 3 inbounds swallowed; fix=scoped restart (admin-gated)+tight re-dispatch; DON'T message stuck session
-- [Stall-sweep incident (open)](project_stall_sweep_incident.md) — host sweep fabricated unsafe `[Relay]` directives; operator fix PENDING; multi-session injection
-- [Scheduler stall freezes recurrence (open)](project_scheduler_stall_incident.md) — un-fired occurrence never advances series; daily froze 07-03; watchdog re-arms 6h; host fix undeployed
-- [Upstream-sync incident (blocked/paused)](project_upstream_sync_incident.md) — nv-fork daily sync broken since 05-29; PAUSED; awaiting operator all/hybrid/hold
+- [Taskless-fixer review-CC loop](project_taskless_fixer_review_cc_loop.md) — reviewer CC wakes taskless fixer → "holding" loop; fix=`ncl groups restart`
+- [#11917 fixer compaction thrash loop (open)](project_11917_fixer_compaction_loop.md) — batch session 5x compactions, 0 work; fix=scoped restart; DON'T message it
+- [Stall-sweep incident (open)](project_stall_sweep_incident.md) — host sweep fabricated unsafe `[Relay]` directives; operator fix PENDING
+- [Scheduler stall freezes recurrence (open)](project_scheduler_stall_incident.md) — un-fired occurrence never advances series; watchdog re-arms 6h; host fix undeployed
+- [Upstream-sync incident (paused)](project_upstream_sync_incident.md) — nv-fork daily sync broken since 05-29; awaiting operator all/hybrid/hold
 - [nv-slang-bot write-perm (mostly resolved)](project_nv_slang_bot_readonly_incident.md) — push/PR/comments/labels WORK; merge-queue enqueue blocked
 - [Coworker → repo routing](reference_coworker_repo_routing.md) — slang-{triager,fixer,reviewer} cover slang + slang-rhi; slangpy-* cover slangpy
-- [nanoclaw coworker-infra PRs #864-882 — reviewed inline, maintainer owns merge](project_nanoclaw_pr874_webhook_route_approver.md) — bot/human PRs on slang-coworkers/nanoclaw fork; no nanoclaw-reviewer (don't route to product reviewers); bot REST comment WORKS; NEVER auto-merge
+- [nanoclaw coworker-infra PRs #864-882](project_nanoclaw_pr874_webhook_route_approver.md) — bot/human PRs on nanoclaw fork; no nanoclaw-reviewer; NEVER auto-merge
 - [User research interests](user_interests.md) — Neural Graphics, World Models, Diffusion, Flow Matching, Real-time graphics
-- [Contributor PR offers get a brief warm yes](feedback_contributor_pr_offer_brief.md) — offer to raise a PR → short warm "yes please", NOT triage dump; @szihs on slang-torch#46
-- [Auto-route hook pressures parked chains](project_autoroute_hook_pressures_parks.md) — fixer auto-route hook nudges impl despite park; defend parks; only maintainer-reply reopens
-- [pull-universe enrichment can silently fail](project_supervisor_pull_universe_enrichment_fail.md) — 1/137 chains got PR data; scan.py nudge flags→false positives; verify has_pr≈open, recover via direct-gh re-enrich
-- [Use --thread-id to prove a session exists](feedback_thread_id_filter_for_session_existence.md) — plain `ncl sessions list` has 200-row cap → false "never created"; wake parked via session-pin
-- [#11528 VK_KHR_shader_abort — Gap C + #11790](project_11528_gapc_pending.md) — park off shipped #11542; Gap C spirv-val token bug HOLD; #11790 pending slang-rhi#781
+- [Contributor PR offers get brief warm yes](feedback_contributor_pr_offer_brief.md) — offer to raise PR → short "yes please", NOT triage dump
+- [Auto-route hook pressures parked chains](project_autoroute_hook_pressures_parks.md) — fixer auto-route hook nudges impl despite park; defend parks
+- [pull-universe enrichment can silently fail](project_supervisor_pull_universe_enrichment_fail.md) — verify has_pr≈open; recover via direct-gh re-enrich
+- [Use --thread-id to prove session exists](feedback_thread_id_filter_for_session_existence.md) — plain `ncl sessions list` 200-row cap → false "never created"
+- [#11528 VK_KHR_shader_abort — Gap C + #11790](project_11528_gapc_pending.md) — park off shipped #11542; Gap C spirv-val HOLD; #11790 pending slang-rhi#781
 - [#11746 WitnessTable refactor](project_11746_witnesstable_refactor_pending.md) — csyonghe self-filed; high blast radius; NO auto-dispatch; explicit go only
 - [#11771 reflection dup-global](project_11771_reflection_dup_global_pending.md) — 2nd same-named cross-module global unaddressable; HELD for ABI call
 - [#11759 concurrency contract](project_11759_concurrency_contract_pending.md) — parallel entry-point compile crash; codegen race; awaiting jkwak
-- [#11780 simplifyIR regression (HOLD BOTH)](project_11780_simplifyir_regression_pending.md) — dead IDifferentiable closure into non-AD; author owns; release iff #11779 merges
-- [#11806 CMake Options — maintainer self-fix, PARKED](project_11806_cmake_options_maintainer_selffix.md) — jkwak self-filed+self-fixed via draft #11807; re-engage on comment/PR
-- [#11732 groupshared VUID = Dawn/tint not Slang](project_11732_groupshared_vuid_dawn_tint.md) — DUP #8145; Slang SPIR-V valid; jkwak owns PR #11960; resolves on #11960 merge
+- [#11780 simplifyIR regression (HOLD BOTH)](project_11780_simplifyir_regression_pending.md) — dead IDifferentiable closure into non-AD; release iff #11779 merges
+- [#11806 CMake Options — maintainer self-fix](project_11806_cmake_options_maintainer_selffix.md) — jkwak self-filed+fixed via draft #11807; re-engage on comment/PR
+- [#11732 groupshared VUID = Dawn/tint not Slang](project_11732_groupshared_vuid_dawn_tint.md) — DUP #8145; jkwak owns PR #11960; resolves on #11960 merge
 - [#11784 Conditional autodiff ICE](project_11784_conditional_autodiff_pending.md) — bwd_diff Conditional.get() ICE; transcriber wires Optional not Conditional; HELD
 - [#10027 vector<T,4> import abort](project_10027_vector4_import_abort_pending.md) — precompiled-module int4 import aborts (synthesized-$init dedup gap); HELD
-- [#9382 Gather const-offset — CLOSED (maintainer design call)](project_9382_gather_constoffset_pending.md) — draft #11655 closed unmerged by jkwak 07-08; issue OPEN; fixer HELD, branch kept
-- [#11709 groupshared by-ref — non-draft (maintainer-flipped), CR r2](project_11709_groupshared_byref.md) — fixes #10641; err 30705 + __constref docs; jhelferty CR; webhook-driven
-- [#11938 PathInfo repro-load leak — PARKED behind #11937](project_11938_pathinfo_leak_parked.md) — CacheFileSystem leak in ReproUtil::load; author owns; re-engage on webhook
-- [#11925 mimalloc for core — RELEASED, fixer dispatched](project_11925_mimalloc_core_parked.md) — default-ON Windows + Mechanism B; DRAFT-only
-- [#11917 backend-pass gating epic — slice #1 SHIPPED (#11920)](project_11917_pass_gating_epic.md) — incremental A; slice #1 merged; #11917 OPEN; pass #2 needs go
-- [#11919 remove -OX opt-ins — Phase 1 MERGED (#11923); Phase 2 HELD](project_11919_remove_ox_optins_parked.md) — pdeayton-nv MERGED Phase 1; #11919 tracks Phase 2 tail, HELD
-- [#11882 primal [require] dropped at diff use-site](project_11882_primal_require_diff_usesite_pending.md) — mirror of shipped #11859/#11872; bot issue INCOMPLETE; HELD for expipiplus1
-- [#6319 duplicate system-value semantics — draft #11885](project_6319_dup_sysval_pr11885.md) — jkwak-requested; new E30706; reworked to his review; gated
-- [#11669 Sampler2D.GetDimensions WGSL/Metal — PR #11816](project_11669_getdimensions_wgsl_parked.md) — `$q` skip-sampler marker; non-draft; jhelferty CR
-- [#11903 HitObject sm_6_9 NVAPI — PR #11907 APPROVED-but-HELD](project_11903_hitobject_sm69_nvapi_pending.md) — jkwak APPROVED; held on #10660 CI + merge
-- [#11877 operator overload fast-path drop — PR #11879 non-draft](project_11877_operator_overload_fastpath.md) — builtin operator dropped since v2026.11; existence-only lookup fix; jkwak ready
-- [#11927 ODR-in-headers mixed-ASan — TRIAGE-AND-PARK](project_11927_odr_headers_asan_parked.md) — ASan consumer + non-instrumented libslang trips ODR; gated #11926
-- [IN-FLIGHT — #11963 module-scope lambda name collision](project_11963_module_scope_lambda_collision.md) — two global lambdas collide on bare `_slang_Lambda_`; A; peer-wired
-- [IN-FLIGHT — #11967 64-bit indexing E2E test](project_11967_64bit_indexing_e2e.md) — 64-bit index truncated via IArray `__subscript(int)`; A=widen to generic TIndex; peer-wired
+- [#9382 Gather const-offset — CLOSED](project_9382_gather_constoffset_pending.md) — draft #11655 closed unmerged by jkwak 07-08; issue OPEN; fixer HELD, branch kept
+- [#11709 groupshared by-ref — non-draft, CR r2](project_11709_groupshared_byref.md) — fixes #10641; err 30705 + __constref docs; jhelferty CR; webhook-driven
+- [#11938 PathInfo repro-load leak — PARKED](project_11938_pathinfo_leak_parked.md) — CacheFileSystem leak in ReproUtil::load; behind #11937; re-engage on webhook
+- [#11925 mimalloc for core — RELEASED](project_11925_mimalloc_core_parked.md) — default-ON Windows + Mechanism B; DRAFT-only; fixer dispatched
+- [#11917 backend-pass gating epic — slice #1 SHIPPED](project_11917_pass_gating_epic.md) — incremental A; #11920 merged; #11917 OPEN; pass #2 needs go
+- [#11919 remove -OX opt-ins — Phase 1 MERGED](project_11919_remove_ox_optins_parked.md) — pdeayton-nv MERGED Phase 1 (#11923); Phase 2 tail HELD
+- [#11882 primal [require] dropped at diff use-site](project_11882_primal_require_diff_usesite_pending.md) — mirror of shipped #11859/#11872; bot issue INCOMPLETE; HELD
+- [#6319 duplicate system-value semantics](project_6319_dup_sysval_pr11885.md) — jkwak-requested; new E30706; draft #11885 reworked to his review; gated
+- [#11669 Sampler2D.GetDimensions WGSL/Metal](project_11669_getdimensions_wgsl_parked.md) — `$q` skip-sampler marker; PR #11816 non-draft; jhelferty CR
+- [#11903 HitObject sm_6_9 NVAPI — APPROVED-but-HELD](project_11903_hitobject_sm69_nvapi_pending.md) — jkwak APPROVED PR #11907; held on #10660 CI + merge
+- [#11877 operator overload fast-path drop](project_11877_operator_overload_fastpath.md) — builtin operator dropped since v2026.11; existence-only lookup fix; PR #11879
+- [#11927 ODR-in-headers mixed-ASan — PARK](project_11927_odr_headers_asan_parked.md) — ASan consumer + non-instrumented libslang trips ODR; gated #11926
+- [IN-FLIGHT #11963 module-scope lambda collision](project_11963_module_scope_lambda_collision.md) — two global lambdas collide on bare `_slang_Lambda_`; A; peer-wired
+- [IN-FLIGHT #11967 64-bit indexing E2E test](project_11967_64bit_indexing_e2e.md) — 64-bit index truncated via IArray `__subscript(int)`; A=widen to TIndex
 - [#11990 IArray subscript 64-bit truncation](project_11990_iarray_subscript_64bit_pending.md) — follow-up #11967; widen vs document; skiminki hesitant; needs-maintainer
-- [IN-FLIGHT — #11970 Metal bindless MSL codegen](project_11970_metal_bindless_msl.md) — bindless resource arrays emit invalid MSL; Variant 3, V1&2→#10842; peer-wired
-- [#11969 Metal fragment out-param crash — draft #12015, review IN FLIGHT](project_11969_metal_out_param_addrspace.md) — A (drop vertex-only gate); DRAFT #12015; reviewer running; gated; await [Review]
-- [IN-FLIGHT — #11981 Metal export out/inout addrspace crash](project_11981_metal_export_out_param_addrspace.md) — export mutable-ref param → Generic addrspace; sibling #11969; A; peer-wired
-- [#11982 duplicate DebugSource imported module — draft PR #12034 held](project_11982_debugsource_dup_import.md) — A (loop→getName); Main-verified; next=human review→ready→merge; fix w/ #11983
-- [#11984 DebugSource UTF-8 BOM for #line files — draft PR #12055, review in flight](project_11984_debugsource_bom_pending.md) — raw-byte re-read bypasses BOM-strip; A=shared decodeContentBlob; codex all-approve, slang-reviewer running; ready/merge gated; sibling #11982
-- [#11985 macOS Metal capability regression — HELD](project_11985_macos_metal_capability_regression.md) — bare `-target metal` defaults metallib_4_0 (#10592); jkwak+looped jhelferty-nv; NO PR
-- [#12002 OpName wrong result ID — premise REFUTED, draft PR #12053](project_12002_opname_asm_register_leak.md) — real=emitter leaks every spirv_asm register OpName (slang-emit-spirv.cpp:11591-92); A=rename `%sampled`→`%__sampled`; DRAFT-held, review pending
-- [IN-FLIGHT — #8125 empty-struct CUDA/CPU crash](project_8125_empty_struct_cuda_infllight.md) — adopt #10788; re-engaged 07-09 via session-pin; scope C/CUDA ONLY; await [Fix Report]
-- [#11568 direct-index ResourceDescriptorHeap — draft #11798 REDESIGN](project_11568_descriptor_heap_direct_index.md) — csyonghe invariant: lower to uint in legalization; fixer building lowerUntypedResourceHandleToUInt
-- [#11996 CPU/LLVM half→scalar conv — PR #12043 NON-DRAFT, 2 APPROVEs, jkwak CR=investigation-hold](project_11996_half_to_int_cpu_conv.md) — A=scalar conv via load(); rounding→#12042; skiminki flipped ready; merge-queue reds=flake, jkwak's own #12060 (#11833 ASan) fixes; merge maintainer-gated
-- [RE-OPENED — #11952 module_link +5% from #11921](project_11952_module_link_perf_reopened.md) — real on Windows W:/C: (wrongly closed on Linux); P2; awaiting draft PR
-- [#9062 diff-ptr-array SPIR-V validation — jkwak chose A](project_9062_diffptr_array_spirv_validation_parked.md) — illegal OpCompositeConstruct over logical-ptr array; drafts-only; STAND DOWN if jkwak self-fixes
-- [slangpy-samples#45 SlangPy 0.41 migration — draft #50, PARKED](project_slangpy_samples_45_coopvec_parked.md) — coop-vec LinearLayer.slang only live item; #50 held for HW validation
-- [#12004 image-vs-sampler param asymmetry — ⛔ A REJECTED, #12027 CLOSED Unplanned](project_12004_image_sampler_param_asymmetry.md) — jkwak closed unmerged; STAND DOWN pending B directive
-- [#7878 Optional<opaque> none ICE — SUPERSEDED by merged #11971](project_7878_optional_opaque_none_ice.md) — maintainer PR #11971 merged 07-10; bot #12005 would double-diagnose+over-reject → recommend close-as-superseded; #7878 still OPEN
-- [#11999 gpu-printing macOS test — DRAFT PR #12009 held](project_11999_gpu_printing_reenable_parked.md) — intermittent RHI-creation fail virtualized Metal; adds IDebugCallback; gated
-- [#9580 GLSL-legalize layout-mismatch crash — jkwak green-lit front-end fix](project_9580_glsl_legalize_layout_mismatch.md) — null structTypeLayout; FRONT-END fix at slang-parameter-binding.cpp:2739-2749 (VARIANT 0 assoc-type); jkwak reviews draft himself; triager owns fixer edge; drafts-only
-- [#12035 overload-failure diagnostics — maintainer self-assigned, PARKED](project_12035_overload_diag_reasons.md) — expipiplus1 self-filed+assigned; NO auto-dispatch; re-engage on maintainer comment/PR
-- [#11951 test-server JSON-RPC flake — PATH-LEVEL, jkwak-work owns](project_11951_testserver_jsonrpc_pathlevel_flake.md) — Sig-B IPC-drop; NO bot fixer; escalate on 3rd file OR 2+ evictions/sweep
-- [#11833 ASan-canary merge-queue evictor — jkwak-work owns](project_11833_asan_canary_mergequeue_evictor.md) — LD_PRELOAD link-order flake; NO bot fixer; escalate iff stuck-in-queue + maintainer silent; blocker cite = "bot enqueue not authorized" (NOT "#11675")
-- [#12058 cpu-buffer createBuffer ASan overflow — LATENT bug (not regression)](project_cpu_buffer_createbuffer_asan_regression.md) — Main-verified: render-test-main.cpp:~497 reserve FLOOR-div → 140B List backs 142B memcpy = 2B over-read; render-test-side ceil fix; #11960 REFUTED by bisect; fixer down on AWS-transient, don't restart
-- [#12023 compile-perf sweep — R1+R2 ABSTAIN_POLICY, TERMINAL @ 33be104](project_12023_compileperf_sweep_abstain_policy.md) — CI-workflow protected-path gate; maintainer owns merge; on `synchronize` compare head SHA before re-dispatch
-- [#12046 modulus/remainder emission audit — PARKED at triaged](project_12046_modulus_remainder_audit.md) — skiminki umbrella; F1 real GLSL FRem→mod() bug + F2-F5; NO auto-dispatch, hold for maintainer; slice A (F1+F5) fixer-ready on go
-- [#12048 enum→int cast E99999 — FIXED, draft PR #12050, review authorized](project_12048_enum_to_int_cast_infllight.md) — flag enum-cast ops in pass-gating (Constexpr* excluded); revert-drill + 37/37 green; DRAFT-only, ready+merge operator-gated
-- [#12051 re-use loaded descriptors — OPEN, jkwak design call](project_12051_descriptor_reuse_pinning.md) — per-use descriptor reload verified; #11798 does NOT close (input-syntax only), #12027 IS linked; design-gated @jkwak/@csyonghe; no PR (his surface)
-- [#12059 CoopMat.fill/clear discard Splat return — fixer DISPATCHED, awaiting PR#](project_12059_coopmat_fill_splat_discard.md) — jkwak asked "@nv-slang-bot create a PR" (4940736154); triager dispatched fixer on canonical thread; implement HIS tested inline `$0=$0.Splat($1)` (NOT our `__hlslSplat`) + FileCheck on fill.slang `-DBAB`; DRAFT-only, jkwak reviews→ready→merge; P1; no PR# yet
+- [IN-FLIGHT #11970 Metal bindless MSL codegen](project_11970_metal_bindless_msl.md) — bindless resource arrays emit invalid MSL; Variant 3, V1&2→#10842; peer-wired
+- [#11969 Metal fragment out-param crash — draft #12015](project_11969_metal_out_param_addrspace.md) — A (drop vertex-only gate); reviewer running; gated; await [Review]
+- [IN-FLIGHT #11981 Metal export out/inout crash](project_11981_metal_export_out_param_addrspace.md) — export mutable-ref param → Generic addrspace; sibling #11969; A; peer-wired
+- [#11982 dup DebugSource imported module — draft #12034](project_11982_debugsource_dup_import.md) — A (loop→getName); Main-verified; next=review→ready→merge; fix w/ #11983
+- [#11984 DebugSource UTF-8 BOM #line files — draft #12055](project_11984_debugsource_bom_pending.md) — A=shared decodeContentBlob; codex approve, reviewer running; sibling #11982
+- [#11985 macOS Metal capability regression — HELD](project_11985_macos_metal_capability_regression.md) — bare `-target metal` defaults metallib_4_0 (#10592); jkwak+jhelferty; NO PR
+- [#12002 OpName wrong result ID — SHIPPED, PR #12053 MERGED](project_12002_opname_asm_register_leak.md) — coincidental name match; real=emitter leaks spirv_asm register OpName; A=rename `%sampled`→`%__sampled` (94 sites); jkwak merged 4d91d47bf3 07-11; reap fix/issue-12002
+- [IN-FLIGHT #8125 empty-struct CUDA/CPU crash](project_8125_empty_struct_cuda_infllight.md) — adopt #10788; re-engaged 07-09 via session-pin; scope C/CUDA ONLY
+- [#11568 direct-index ResourceDescriptorHeap — draft #11798](project_11568_descriptor_heap_direct_index.md) — csyonghe: lower to uint in legalization; building lowerUntypedResourceHandleToUInt
+- [#11996 CPU/LLVM half→scalar conv — PR #12043 non-draft, 2 APPROVEs](project_11996_half_to_int_cpu_conv.md) — A=scalar conv via load(); reds=flake + jkwak's #12060 fixes; merge maintainer-gated
+- [RE-OPENED #11952 module_link +5% from #11921](project_11952_module_link_perf_reopened.md) — real on Windows W:/C: (wrongly closed on Linux); P2; awaiting draft PR
+- [#9062 diff-ptr-array SPIR-V validation — jkwak chose A](project_9062_diffptr_array_spirv_validation_parked.md) — illegal OpCompositeConstruct over logical-ptr array; drafts-only; stand down if self-fix
+- [slangpy-samples#45 SlangPy 0.41 migration — draft #50](project_slangpy_samples_45_coopvec_parked.md) — coop-vec LinearLayer.slang only live item; held for HW validation
+- [#12004 image-vs-sampler asymmetry — A REJECTED, #12027 CLOSED](project_12004_image_sampler_param_asymmetry.md) — jkwak closed unmerged; STAND DOWN pending B directive
+- [#7878 Optional<opaque> none ICE — SUPERSEDED by #11971](project_7878_optional_opaque_none_ice.md) — maintainer PR merged 07-10; recommend close-as-superseded; #7878 still OPEN
+- [#11999 gpu-printing macOS test — draft #12009 held](project_11999_gpu_printing_reenable_parked.md) — intermittent RHI-creation fail virtualized Metal; adds IDebugCallback; gated
+- [#9580 GLSL-legalize layout-mismatch crash — jkwak green-lit](project_9580_glsl_legalize_layout_mismatch.md) — null structTypeLayout; FRONT-END fix (VARIANT 0); jkwak reviews draft; drafts-only
+- [#12035 overload-failure diagnostics — PARKED](project_12035_overload_diag_reasons.md) — expipiplus1 self-filed+assigned; NO auto-dispatch; re-engage on maintainer comment/PR
+- [#11951 test-server JSON-RPC flake — PATH-LEVEL](project_11951_testserver_jsonrpc_pathlevel_flake.md) — Sig-B IPC-drop; NO bot fixer; escalate on 3rd file OR 2+ evictions/sweep
+- [#11833 ASan-canary evictor — jkwak FIX #12060, escalation STOOD DOWN](project_11833_asan_canary_mergequeue_evictor.md) — LD_PRELOAD link-order flake; NO bot fixer; closes when #12060 merges
+- [#12058 cpu-buffer createBuffer ASan overflow — LATENT](project_cpu_buffer_createbuffer_asan_regression.md) — render-test reserve FLOOR-div 2B over-read; #11960 REFUTED; render-test-side ceil fix
+- [#12023 compile-perf sweep — ABSTAIN_POLICY TERMINAL](project_12023_compileperf_sweep_abstain_policy.md) — CI-workflow protected-path gate; on `synchronize` compare head SHA before re-dispatch
+- [#12046 modulus/remainder audit — PARKED](project_12046_modulus_remainder_audit.md) — skiminki umbrella; F1 real GLSL FRem→mod() + F2-F5; slice A fixer-ready on go
+- [#12048 enum→int cast E99999 — FIXED, draft #12050](project_12048_enum_to_int_cast_infllight.md) — flag enum-cast ops in pass-gating; 37/37 green; ready+merge operator-gated
+- [#12051 re-use loaded descriptors — jkwak design call](project_12051_descriptor_reuse_pinning.md) — SPIR-V per-use reload is ARTIFACT not spec-required (disasm-proven: pin=1 OpLoad→3 samples); HLSL local sticks, SPIR-V local ignored (use-site force-dup); lead fix (a) relax dup when def dominates=no new surface vs (b) pin() vs (c) auto-LICM; #11798 doesn't close, #12027 linked; no PR (his surface)
+- [#12062 board-sync 422 BOT_kgDOCnlnWA — RESOLVED, maintainer-blocked](project_12062_board_sync_422_maintainer_blocked.md) — issue's root cause WRONG; real=unguarded removeRequestedReviewers yml:1290; comment 4942454202
+- [#12059 CoopMat.fill/clear discard Splat — non-draft PR #12065, review-iter](project_12059_coopmat_fill_splat_discard.md) — jkwak's inline `$0=$0.Splat($1)` (+43/−1); fixer opened draft, jkwak flipped ready himself 21:25Z (no breach); P1; jkwak 2 test change-reqs (merge redundant + add `-dx12` COMPARE) route to fixer; REAL PR=#12065 NOT #12060 (I hallucinated #12060 twice — corrected); don't fabricate PR#/webhook
