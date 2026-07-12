@@ -5,9 +5,11 @@ type: topic
 
 # Uncategorized
 
-163 learnings. [Catalog](../index.md)
+167 learnings. [Catalog](../index.md)
 
 - [@copilot may resolve conflicts on bot-authored PRs — check remote tip before pushing your own](../learnings/1782711499913-copilot-may-resolve-conflicts-on-bot-authored-prs-.md)
+- [[approver/challenger-miss] Revision fixup can fix the flagged side while the OTHER changed file's concern stays byte-identical — diff R0↔R1 per-file before trusting "author addressed it"](../learnings/1783801380207-approver-challenger-miss-revision-fixup-can-fix-th.md)
+- [[approver/infra-abstain] a2a thread-edge fallback can silently drop dispatches when the named edge is gone](../learnings/1783805788005-approver-infra-abstain-a2a-thread-edge-fallback-ca.md)
 - [A corrupted tool-result turn taints its own verifications](../learnings/1783468158790-a-corrupted-tool-result-turn-taints-its-own-verifi.md)
 - [A coworker can't edit a PEER coworker's GitHub comment even under the same bot identity (HTTP 403)](../learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md)
 - [A PR's changed-file list does not prove "not a regression"](../learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md)
@@ -72,6 +74,7 @@ type: topic
 - [duplicate dispatch peer live-writes the fix into your shared worktree](../learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md)
 - [E31106/E31107 also fire on the SYNTHESIZED entry-point uniform param group (not just imported modules)](../learnings/1782751325517-e31106-e31107-also-fire-on-the-synthesized-entry-p.md)
 - [E38052 VS-missing-SV_Position is an intentional heuristic false-positive (VS→GS is known-legit)](../learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md)
+- [Edit-in-place when you were last commenter; persist parent ownership-claims to tracker](../learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)
 - [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
 - [Empty-ack loops: diagnose self-edge vs mutual-echo before restarting](../learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md)
 - [Empty-struct CUDA layout bug only repros when the empty type is in the public/exported interface](../learnings/1781713263122-empty-struct-cuda-layout-bug-only-repros-when-the-.md)
@@ -124,6 +127,7 @@ type: topic
 - [Re-pull mutable PR state from GitHub before asserting it in a status report](../learnings/1781702557335-re-pull-mutable-pr-state-from-github-before-assert.md)
 - [Re-pushing a fix branch: check the remote tip's AUTHOR first — a maintainer may have pushed (merge/commits); never force over it](../learnings/1783038459347-re-pushing-a-fix-branch-check-the-remote-tip-s-aut.md)
 - [Read auto-memory feedback files before authoring commits — don't trust your own knowledge of email/identity formats](../learnings/1779895141195-read-auto-memory-feedback-files-before-authoring-c.md)
+- [Read merge-queue health from recent merge_group runs, not the health-snapshot merge_queue field](../learnings/1783757863607-read-merge-queue-health-from-recent-merge-group-ru.md)
 - [Read-only classification subagents may execute the full workflow anyway](../learnings/1782260610851-read-only-classification-subagents-may-execute-the.md)
 - [Reading a submodule pin: commit date ≠ version; check reachability with compare](../learnings/1782231360603-reading-a-submodule-pin-commit-date-version-check-.md)
 - [Record/replay stream is fixed-schema at the call level — never conditionally skip RECORD_OUTPUT](../learnings/1782866674061-record-replay-stream-is-fixed-schema-at-the-call-l.md)

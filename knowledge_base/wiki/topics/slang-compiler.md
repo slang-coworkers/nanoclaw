@@ -5,11 +5,15 @@ type: topic
 
 # Slang compiler & language
 
-613 learnings. [Catalog](../index.md)
+619 learnings. [Catalog](../index.md)
 
 - [#11951 Sig-B and #11955 CPU SIGSEGV converge on static-const-matrix-array.slang.3 syn (llvm)](../learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md)
 - [-emit-spirv-via-glsl DOES run via direct slangc in a freshly-built worktree (corrects "glslang load fails" learning)](../learnings/1782821414217-emit-spirv-via-glsl-does-run-via-direct-slangc-in-.md)
 - [[approver/calibration] Maintainer merged over an ABSTAIN on a single low-severity robustness gap (slang #12037)](../learnings/1783676779766-approver-calibration-maintainer-merged-over-an-abs.md)
+- [[approver/calibration] Size-cap ABSTAIN on a large compiler-core PR confirmed well-placed by a month-long human review (slang #11615)](../learnings/1783786027293-approver-calibration-size-cap-abstain-on-a-large-c.md)
+- [[approver/challenger-miss] autodiff member-method this-argument contract must be checked on BOTH sides + all reference/receiver shapes](../learnings/1783796318762-approver-challenger-miss-autodiff-member-method-th.md)
+- [[approver/challenger] SPIR-V builtin-var Flat gate: prove else-branch reachability via getBuiltinGlobalVar's ptr-assert, not IR-type intuition](../learnings/1783767618309-approver-challenger-spir-v-builtin-var-flat-gate-p.md)
+- [[approver/clause-gap] Autodiff member-method changes must be checked across ALL higher-order operator paths — fwd/bwd AND the passthrough operators (primal_substitute, dispatch_kernel)](../learnings/1783806277414-approver-clause-gap-autodiff-member-method-changes.md)
 - [[require] capability atom does NOT auto-emit OpCapability for spirv_asm builtin-loads — declare it inline](../learnings/1782828754941-require-capability-atom-does-not-auto-emit-opcapab.md)
 - [A merge-group sanitizer issue's "failing tests" list can be collateral, not the trigger (slang#12058)](../learnings/1783724442644-a-merge-group-sanitizer-issue-s-failing-tests-list.md)
 - [A single common-suite flake can functionally stall the Slang merge queue](../learnings/1782226186227-a-single-common-suite-flake-can-functionally-stall.md)
@@ -439,8 +443,10 @@ type: topic
 - [slang#12042 half double-rounding — arithmetic benign, conversions are the hazard](../learnings/1783677064766-slang-12042-half-double-rounding-arithmetic-benign.md)
 - [slang#12049 — generic entry-point -specialize can't see primary-file extension conformances (ad-hoc lookup starved)](../learnings/1783701731376-slang-12049-generic-entry-point-specialize-can-t-s.md)
 - [slang#12051 DescriptorHandle reloads every use — root cause is shouldDuplicateInstAtUseSite + non-hoistable cast op](../learnings/1783705209384-slang-12051-descriptorhandle-reloads-every-use-roo.md)
+- [slang#12051 SPIR-V descriptor reload is an emit-time ARTIFACT not a spec requirement — proven by OpCopyObject pin (disassembled at HEAD)](../learnings/1783759451138-slang-12051-spir-v-descriptor-reload-is-an-emit-ti.md)
 - [slang#12054: MSVC /DEBUG for Release PDBs silently disables /OPT:REF and /OPT:ICF](../learnings/1783729799704-slang-12054-msvc-debug-for-release-pdbs-silently-d.md)
 - [slang#12059 HLSL CoopMat fill/Splat — dot-form intrinsic on void method discards value-returning target op](../learnings/1783725139961-slang-12059-hlsl-coopmat-fill-splat-dot-form-intri.md)
+- [slang#12069 endian/ptr whitelist — pointer-size fails SILENTLY, endianness fails LOUDLY](../learnings/1783835875827-slang-12069-endian-ptr-whitelist-pointer-size-fail.md)
 - [slang#6557 loadModuleFromIRBlob-imports-module already fixed by RIFF rewrite (#7041)](../learnings/1783463091677-slang-6557-loadmodulefromirblob-imports-module-alr.md)
 - [slang#7878 Optional-of-opaque via generic member escapes the E30902 front-end guard](../learnings/1783523243524-slang-7878-optional-of-opaque-via-generic-member-e.md)
 - [slang#8125 empty-struct fix — global field-removal pass is CI-rejected, fix belongs in empty-type legalization](../learnings/1783473465864-slang-8125-empty-struct-fix-global-field-removal-p.md)

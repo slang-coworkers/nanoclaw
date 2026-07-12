@@ -5,15 +5,19 @@ type: topic
 
 # NanoClaw / agent operations
 
-159 learnings. [Catalog](../index.md)
+165 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
+- [[approver/challenger] Fixer PR that closes the maintainer's review asks still ABSTAINs while the human reviewer is mid-cycle](../learnings/1783806650503-approver-challenger-fixer-pr-that-closes-the-maint.md)
+- [[approver/infra-abstain] harvest exit 20 on a fresh external-fork PR is a TIMING race with the Claude PR Review check, not a production-skip — wait, don't fall to Devin-only](../learnings/1783767626000-approver-infra-abstain-harvest-exit-20-on-a-fresh-.md)
+- [[approver/infra] critique-gate hook false-matches read-only `gh api .../pulls/...` GETs as PR-creation — use `gh pr view/diff --json` instead](../learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)
 - [A compacted fixer can schedule autonomous actions from stale state — re-anchor and demand fallback cancellation](../learnings/1783477748732-a-compacted-fixer-can-schedule-autonomous-actions-.md)
 - [A fixer's hold-ack doesn't guarantee it stopped — verify branch/worktree state](../learnings/1781366452370-a-fixer-s-hold-ack-doesn-t-guarantee-it-stopped-ve.md)
 - [A forked Agent (no subagent_type) inherits full context and may run the whole task, not the scoped prompt](../learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-cont.md)
 - [A fresh unblock handoff can contradict a prior triager ruling — run Recall on shared learnings before implementing a multi-slice fix](../learnings/1781775592867-a-fresh-unblock-handoff-can-contradict-a-prior-tri.md)
 - [A maintainer flipping your draft PR to ready/merge is NOT a bot operator-gate violation — verify isDraft from live state](../learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md)
 - [A peer's hold-ack is not compliance — enumerate the full prohibition set; the post-gate is the load-bearing safety](../learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md)
+- [A read-only daily-report session cannot see in-flight fixer session chains — don't frame owned work as new/unowned](../learnings/1783757869861-a-read-only-daily-report-session-cannot-see-in-fli.md)
 - [A scan-only Agent fork can overreach into the full task and message the parent](../learnings/1782203173377-a-scan-only-agent-fork-can-overreach-into-the-full.md)
 - [A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done, not by id string](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
 - [a2a silent-hold: plain-text turn output routes to the peer (echo-loop trap)](../learnings/1782353887467-a2a-silent-hold-plain-text-turn-output-routes-to-t.md)
@@ -110,6 +114,7 @@ type: topic
 - [nv-* pre-commit hook runs format:fix then re-adds only src/**/*.ts — silently drops other staged files from the commit](../learnings/legoop-feedback_precommit_hook_drops_files.md)
 - [Orchestrator double-dispatch spawns duplicate fixer sessions on one branch](../learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md)
 - [Peer 'not addressable / blocked' can mean session logged-out — operator /login blocker, don't re-dispatch](../learnings/1783565846208-peer-not-addressable-blocked-can-mean-session-logg.md)
+- [Persist parent-agreed timing gates; flag before acting early](../learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)
 - [Propagating orchestrator reinforcements to group-locked per-issue sessions](../learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md)
 - [Pushing workflow-file changes: App token lacks workflows perm → fork + REST cross-fork PR](../learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md)
 - [Re-triage: rescan live cross-ref timeline for newer maintainer PRs touching the issue's files](../learnings/1781713625746-re-triage-rescan-live-cross-ref-timeline-for-newer.md)
@@ -135,6 +140,7 @@ type: topic
 - [Routing a decl through shared declarator machinery silently broadens accepted grammar — review the whole declarator surface, not the target form](../learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md)
 - [rtk token-compression proxy evaluated 2026-06-03 and rejected for all groups; not enabled anywhere](../learnings/legoop-project_rtk_evaluated_rejected.md)
 - [Scheduled diagnostic tasks re-diagnose persistent state inconsistently across fresh sessions](../learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md)
+- [Silent build-slot holds behind disk contention freeze fixer chains](../learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)
 - [Spurious chain-routing-gate REFUSED inbound — don't fabricate, verify then escalate](../learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-t-.md)
 - [Spurious E41012 profile-upgrade warning: static [require] out of sync with emit-time isCombined gate (samplerless)](../learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md)
 - [Standing-order reinforcements inherit via CLAUDE.md, not per-session relay](../learnings/1780769195650-standing-order-reinforcements-inherit-via-claude-m.md)

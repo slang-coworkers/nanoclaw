@@ -160,7 +160,11 @@ shader-slang/slang#12002 shipped as PR #12053 (MERGED 2026-07-11, jkwak-work, me
 
 <!-- fold-20260711 -->
 
-**Source learnings (94):**
+On slang#12051, disassembled SPIR-V at HEAD `4d91d47b` settled the open design question: the per-use descriptor reload is an EMIT-TIME ARTIFACT, not a SPIR-V requirement. A `DescriptorHandle<T>` hoisted into a local (`Texture2D tex = texH;`) emits three `OpLoad` from the same `OpAccessChain` on the SPIR-V path (the user's local store is not honored), while HLSL loads once — and the reporter's `pinDescriptor()` (`OpCopyObject`) collapses it to a single `OpLoad` feeding all samples, proving one load is valid SPIR-V. The mechanism is `shouldDuplicateInstAtUseSite` unconditionally duplicating `CastDescriptorHandleToResource` at use sites (`slang-ir-util.cpp:2638`); the cleanest fix (surfaced to jkwak/csyonghe) is to make an explicitly-stored descriptor local "stick" when its def dominates the uses. Tooling note: `-target spirv-asm` needs the glslang disassembler downstream lib a bare Debug build lacks — put a RELEASE `libslang-glslang-*.so` on `LD_LIBRARY_PATH`; `-dump-ir` shows a single shared load (duplication is downstream at emit), so you must disassemble to see the true per-use count ([slang#12051 SPIR-V descriptor reload is an emit-time artifact, proven by OpCopyObject pin](../learnings/1783759451138-slang-12051-spir-v-descriptor-reload-is-an-emit-ti.md)). Separately, for the builtin-var Flat gate (slang#12064): to clear a "skips the Input/BuiltinInput address-space gate" concern on `needFlatDecorationForBuiltinVar`, prove else-branch reachability by tracing CALLERS and their type-asserts, not IR-type intuition — `getBuiltinGlobalVar` asserts a pointer type, so the non-ptr `else` branch is reachable only for `SPIRVAsmOperandBuiltinVar` (always BuiltinInput); note `IRGlobalParam` CAN be non-pointer-typed (only `IRGlobalVar` is always ptr), so the tempting "globals are always ptr" clear is wrong ([SPIR-V builtin-var Flat gate: prove reachability via getBuiltinGlobalVar's ptr-assert](../learnings/1783767618309-approver-challenger-spir-v-builtin-var-flat-gate-p.md)).
+
+<!-- fold-20260712 -->
+
+**Source learnings (96):**
 - [slang-emit-spirv builtin-var cache and the volatile-set cache-hit trap](../learnings/1779612967874-slang-emit-spirv-builtin-var-cache-and-the-volatil.md)
 - [IRSPIRVAsmOperandBuiltinVar is hoistable — cross-stage builtin refs always collapse to one inst](../learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-co.md)
 - [emitOperand(extraMask) after a user-supplied MemoryAccess word emits invalid SPIR-V](../learnings/1779617068760-slang-emit-spirv-extra-memoryaccess-word-grammar-b.md)
@@ -255,4 +259,6 @@ shader-slang/slang#12002 shipped as PR #12053 (MERGED 2026-07-11, jkwak-work, me
 - [slang#8681 spirv-opt strip-debug deletes DebugBuildIdentifier — separate-debug-info needs a DBI shim](../learnings/1783556986544-slang-8681-spirv-opt-strip-debug-deletes-debugbuil.md)
 - [slang#12019 double→bool SPIR-V: getIntValue(floatType,0) mints int-lit with float type → 1-word OpConstant](../learnings/1783587817471-slang-12019-double-bool-spir-v-getintvalue-floatty.md)
 - [slang#12002 SHIPPED: refute-then-fix triage of a 'misattributed OpName' coincidental stdlib name collision](../learnings/1783746988745-slang-12002-shipped-refute-then-fix-triage-of-a-mi.md)
+- [slang#12051 SPIR-V descriptor reload is an emit-time ARTIFACT not a spec requirement — proven by OpCopyObject pin](../learnings/1783759451138-slang-12051-spir-v-descriptor-reload-is-an-emit-ti.md)
+- [SPIR-V builtin-var Flat gate: prove else-branch reachability via getBuiltinGlobalVar's ptr-assert, not IR-type intuition](../learnings/1783767618309-approver-challenger-spir-v-builtin-var-flat-gate-p.md)
 _Catalog: [[wiki/index.md]]_

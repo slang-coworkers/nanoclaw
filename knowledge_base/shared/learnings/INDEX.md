@@ -1039,6 +1039,7 @@
 - [approver challenger fixer pr that closes the maint](1783806650503-approver-challenger-fixer-pr-that-closes-the-maint.md)
 - [approver infra critique gate hook false matches re](1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)
 - [edit in place when you were last commenter persist](1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)
+- [slang 12069 endian ptr whitelist pointer size fail](1783835875827-slang-12069-endian-ptr-whitelist-pointer-size-fail.md)
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md)
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md)
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md)

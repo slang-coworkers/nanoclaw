@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1040 agent learnings**, synthesized into **42 concept pages**.
+Standalone wiki built from **1058 agent learnings**, synthesized into **42 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -79,11 +79,11 @@ Standalone wiki built from **1040 agent learnings**, synthesized into **42 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (613)
-- [NanoClaw / agent operations](topics/agent-ops.md) (159)
+- [Slang compiler & language](topics/slang-compiler.md) (619)
+- [NanoClaw / agent operations](topics/agent-ops.md) (165)
 - [CI, build & tooling](topics/ci-tooling.md) (69)
-- [Review & process](topics/review-process.md) (36)
-- [Uncategorized](topics/misc.md) (163)
+- [Review & process](topics/review-process.md) (38)
+- [Uncategorized](topics/misc.md) (167)
 
 ## All learnings (chronological)
 
@@ -1127,3 +1127,21 @@ Standalone wiki built from **1040 agent learnings**, synthesized into **42 conce
 - [Short test-slang failures can hide an nvcc compile error, not an infra flake](learnings/1783743117364-short-test-slang-failures-can-hide-an-nvcc-compile.md)
 - [Verify a self-filed bot CI issue's root cause at receipts level — it can be wrong](learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)
 - [slang#12002 SHIPPED: refute-then-fix triage of a "misattributed OpName" that was a coincidental stdlib name collision](learnings/1783746988745-slang-12002-shipped-refute-then-fix-triage-of-a-mi.md)
+- [Read merge-queue health from recent merge_group runs, not the health-snapshot merge_queue field](learnings/1783757863607-read-merge-queue-health-from-recent-merge-group-ru.md)
+- [A read-only daily-report session cannot see in-flight fixer session chains — don't frame owned work as new/unowned](learnings/1783757869861-a-read-only-daily-report-session-cannot-see-in-fli.md)
+- [slang#12051 SPIR-V descriptor reload is an emit-time ARTIFACT not a spec requirement — proven by OpCopyObject pin (disassembled at HEAD)](learnings/1783759451138-slang-12051-spir-v-descriptor-reload-is-an-emit-ti.md)
+- [approver-reviewer edge survives restart via a2a channel, not named dest or in_reply_to](learnings/1783763066378-approver-reviewer-edge-survives-restart-via-a2a-ch.md)
+- [[approver/challenger] SPIR-V builtin-var Flat gate: prove else-branch reachability via getBuiltinGlobalVar's ptr-assert, not IR-type intuition](learnings/1783767618309-approver-challenger-spir-v-builtin-var-flat-gate-p.md)
+- [[approver/infra-abstain] harvest exit 20 on a fresh external-fork PR is a TIMING race with the Claude PR Review check, not a production-skip — wait, don't fall to Devin-only](learnings/1783767626000-approver-infra-abstain-harvest-exit-20-on-a-fresh-.md)
+- [Silent build-slot holds behind disk contention freeze fixer chains](learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)
+- [Persist parent-agreed timing gates; flag before acting early](learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)
+- [[approver/calibration] Size-cap ABSTAIN on a large compiler-core PR confirmed well-placed by a month-long human review (slang #11615)](learnings/1783786027293-approver-calibration-size-cap-abstain-on-a-large-c.md)
+- [[approver/infra-abstain] outer timeout wrapper on devin-fetch.sh causes false NO_REVIEW_SIGNAL — let the script's own --max-minutes govern](learnings/1783796304562-approver-infra-abstain-outer-timeout-wrapper-on-de.md)
+- [[approver/challenger-miss] autodiff member-method this-argument contract must be checked on BOTH sides + all reference/receiver shapes](learnings/1783796318762-approver-challenger-miss-autodiff-member-method-th.md)
+- [[approver/challenger-miss] Revision fixup can fix the flagged side while the OTHER changed file's concern stays byte-identical — diff R0↔R1 per-file before trusting "author addressed it"](learnings/1783801380207-approver-challenger-miss-revision-fixup-can-fix-th.md)
+- [[approver/infra-abstain] a2a thread-edge fallback can silently drop dispatches when the named edge is gone](learnings/1783805788005-approver-infra-abstain-a2a-thread-edge-fallback-ca.md)
+- [[approver/clause-gap] Autodiff member-method changes must be checked across ALL higher-order operator paths — fwd/bwd AND the passthrough operators (primal_substitute, dispatch_kernel)](learnings/1783806277414-approver-clause-gap-autodiff-member-method-changes.md)
+- [[approver/challenger] Fixer PR that closes the maintainer's review asks still ABSTAINs while the human reviewer is mid-cycle](learnings/1783806650503-approver-challenger-fixer-pr-that-closes-the-maint.md)
+- [[approver/infra] critique-gate hook false-matches read-only `gh api .../pulls/...` GETs as PR-creation — use `gh pr view/diff --json` instead](learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)
+- [Edit-in-place when you were last commenter; persist parent ownership-claims to tracker](learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)
+- [slang#12069 endian/ptr whitelist — pointer-size fails SILENTLY, endianness fails LOUDLY](learnings/1783835875827-slang-12069-endian-ptr-whitelist-pointer-size-fail.md)

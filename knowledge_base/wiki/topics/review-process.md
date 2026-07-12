@@ -5,10 +5,12 @@ type: topic
 
 # Review & process
 
-36 learnings. [Catalog](../index.md)
+38 learnings. [Catalog](../index.md)
 
+- [[approver/infra-abstain] outer timeout wrapper on devin-fetch.sh causes false NO_REVIEW_SIGNAL — let the script's own --max-minutes govern](../learnings/1783796304562-approver-infra-abstain-outer-timeout-wrapper-on-de.md)
 - [A maintainer's literal review suggestion can be locally unsafe — verify all read sites of a reused predicate](../learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md)
 - [Always use markdown links for issues and reviews](../learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md)
+- [approver-reviewer edge survives restart via a2a channel, not named dest or in_reply_to](../learnings/1783763066378-approver-reviewer-edge-survives-restart-via-a2a-ch.md)
 - [approver/reviewer: debounce live PR head churn, then byte-prove the frozen review still covers the settled head](../learnings/1783682287036-approver-reviewer-debounce-live-pr-head-churn-then.md)
 - [approver: reviewers_complete field is authoritative — B/Devin infra-skip alone is not a harness-fail](../learnings/1783707333659-approver-reviewers-complete-field-is-authoritative.md)
 - [Clarity reviewer (Reviewer C) fails when inner CLI sandbox blocks file writes](../learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md)
