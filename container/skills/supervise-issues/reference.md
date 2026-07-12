@@ -218,7 +218,29 @@ du -sh /workspace/extra/ephemeral/prod-groups/*/wt-* | sort -rh             # re
   for any in the REAP set. This is lightweight (a few `gh` calls) and prevents closed-issue
   worktrees from accumulating between pressure events.
 - **Free < 10 GB** → disk pressure: escalate to the operator immediately in addition to the
-  routine GC.
+  routine GC. If the reap set is empty or too small to clear the pressure, the escalation **must**
+  say so and point at the operator-only docker reclaim (below) — worktrees are usually not the
+  largest lever, and silence reads as "nothing more to reclaim" when there is.
+
+### Operator-only reclaim (escalate, never attempt)
+
+The worktree GC is the **only** disk lever you can pull from inside the container. The bigger one —
+the docker data-root at `/ephemeral/docker` (per-group image layers + build cache) — is
+`drwx--x--- root`, so a container **cannot `du`, list, or prune it**. On this host the docker
+footprint has been the dominant consumer (tens of GB reclaimable at a time) and an unattended fill
+there once crashed the host with `ENOSPC`. A daily host timer (`nanoclaw-docker-gc.timer`,
+`~/.config/nanoclaw/docker-gc.sh`) already prunes **dangling images + build cache** (never `-a`, so
+tagged per-group `ag-*` images survive), but that timer cannot free tagged-but-unused images — only
+an operator can, with a deliberate `docker image prune -a`.
+
+So when `worktree-vol` free < 10 GB **and** the reap set can't clear it, the operator escalation must
+name this explicitly, e.g.:
+
+> Disk pressure: `worktree-vol` NN GB free, worktree reap {empty | frees only ~MM GB}. The remaining
+> reclaim is docker images/build-cache under `/ephemeral/docker`, which I cannot reach from the
+> container. The daily `nanoclaw-docker-gc.timer` handles dangling images + cache; freeing more needs
+> a host-side `docker image prune -a` (operator-only — verify no idle group needs its `ag-*` image
+> first). Last ENOSPC there crashed the host.
 
 Discover the reap set from disk (orphans outlive their session). Resolve each `wt-<slug>` to
 **both** its issue state (`gh issue view <num> --json state`) and PR state (`gh pr list --head

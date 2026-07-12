@@ -193,8 +193,10 @@ Reclaim abandoned fixer worktrees. Run the GC scan every tick *before* the per-c
 surface `worktree-vol: <N>GB free` in the rollup. Discover the reap set from disk, resolve each to
 **both** issue state and PR state (`REAP` = PR merged/closed OR issue closed; `KEEP` = issue open +
 PR open/running), and dispatch a save-then-remove to the owning fixer (R8) — never delete from this
-session. Escalate to operator when free < 10 GB. Commands and the dispatch body are in
-reference.md → *Worktree GC*.
+session. Escalate to operator when free < 10 GB — and when the reap set can't clear the pressure,
+the escalation must name the operator-only docker reclaim (`/ephemeral/docker` is root-only, the
+supervisor can't prune it) rather than implying worktrees are the whole story. Commands, the
+dispatch body, and the docker-escalation wording are in reference.md → *Worktree GC*.
 
 ## Scheduling
 
