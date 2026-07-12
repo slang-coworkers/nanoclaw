@@ -131,7 +131,9 @@ esac
 [ -n "${BUNDLE_HASH:-}" ] || BUNDLE_HASH="nobundle"
 RUN_KEY="$(printf '%s' "${MODE}-${RUN_ID}-${RUN_HEAD}-${BUNDLE_HASH}-$$" | tr -c 'A-Za-z0-9._-' '_')"
 
-WORKTREE="${CLARITY_WORKTREE_ROOT:-/workspace/agent}/slang-clarity-${RUN_KEY}"
+# `wt-` prefix so the supervisor's worktree GC (supervise-issues §8) discovers and
+# reaps this on the uniform convention; RUN_KEY still keys the isolation per run.
+WORKTREE="${CLARITY_WORKTREE_ROOT:-/workspace/agent}/wt-clarity-${RUN_KEY}"
 rm -rf "$WORKTREE"
 git -C "$SHARED_REPO" worktree prune >/dev/null 2>&1 || true
 git -C "$SHARED_REPO" worktree add --detach "$WORKTREE" origin/master >/dev/null 2>&1 \
@@ -141,7 +143,10 @@ cleanup_worktree() {
   git -C "$SHARED_REPO" worktree remove --force "$WORKTREE" >/dev/null 2>&1 || rm -rf "$WORKTREE"
   git -C "$SHARED_REPO" worktree prune >/dev/null 2>&1 || true
 }
-trap cleanup_worktree EXIT
+# EXIT alone misses a SIGTERM/SIGINT (graceful container stop) — trap those too so a
+# stopped review doesn't orphan its worktree. (SIGKILL still can't be trapped; the
+# supervisor GC is the backstop for those, which is why the `wt-` name above matters.)
+trap cleanup_worktree EXIT INT TERM
 
 # From here on, Reviewer C operates entirely inside its private worktree.
 REPO_ROOT="$WORKTREE"
