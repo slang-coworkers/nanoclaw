@@ -210,7 +210,14 @@ that is a different, always-healthy disk.
 
 ```bash
 df -BG --output=avail /workspace/extra/ephemeral | tail -1 | tr -dc '0-9'   # GB free
-du -sh /workspace/extra/ephemeral/prod-groups/*/wt-* | sort -rh             # reap candidates
+# Reap candidates: EVERY worktree in EVERY tier, name-agnostic. A worktree's .git is a
+# FILE (gitdir pointer); a base clone's .git is a DIR — so `-name .git -type f` finds
+# exactly the worktrees and never the base checkouts. Do NOT use a `wt-*` glob: fixer
+# worktrees are named `wt-slang-<n>`, but reviewer ones are freehand (`slang-<n>-verify`,
+# `slang-prNNNNN-r2`, `slang-clarity-*`, `wt-<n>-review`) and a glob silently misses them.
+find /workspace/extra/ephemeral/prod-groups -mindepth 2 -maxdepth 3 -name .git -type f \
+  -not -path '*/.*/*' 2>/dev/null \
+  | sed 's#/\.git$##' | while read -r wt; do echo "$(du -sh "$wt" | cut -f1)  $wt"; done | sort -rh
 ```
 
 - Surface `worktree-vol: <N>GB free` in every board rollup.
@@ -242,31 +249,49 @@ name this explicitly, e.g.:
 > a host-side `docker image prune -a` (operator-only — verify no idle group needs its `ag-*` image
 > first). Last ENOSPC there crashed the host.
 
-Discover the reap set from disk (orphans outlive their session). Resolve each `wt-<slug>` to
-**both** its issue state (`gh issue view <num> --json state`) and PR state (`gh pr list --head
-fix/issue-<num>` for slang, or the dir's branch `dev/<coworker>/<slug>` for slangpy). The reap
-decision combines both signals:
+Discover the reap set from disk across **all tiers** (orphans outlive their session). Two things
+per worktree from the `find` above:
+
+- **Issue number** = the first ≥ 4-digit run in the dir basename (`basename "$wt" | grep -oE
+  '[0-9]{4,}' | head -1`). This survives every naming style — `wt-slang-11982`, `slang-11544-verify`,
+  `slang-pr11511-r2`, `wt-12037-A`. A worktree whose name yields **no** number is the **NO-PR** case
+  below → wake the owner to confirm, never blind-delete.
+- **Owning coworker** = the tier folder the path lives under (`prod-groups/<folder>/…`):
+  `slang-reviewer/…` → dispatch to **slang-reviewer**, `slang-fixer/…` → slang-fixer, `slangpy-*`
+  likewise. It is **not always a fixer** — reviewer worktrees are the ones the old `wt-*` glob missed.
+
+Resolve each to **both** its issue state (`gh issue view <num> --json state`) and PR state (`gh pr
+list --head fix/issue-<num>` for slang fixer branches, or the dir's own branch for reviewer/slangpy).
+The reap decision combines both signals:
 
 - **REAP** = PR `MERGED` or `CLOSED`; OR issue `CLOSED` (regardless of PR state — a closed issue
   means the work is done or abandoned, even if a draft PR lingers).
 - **KEEP** = issue `OPEN` AND (PR `OPEN` or a `running` session).
-- **NO-PR** = issue `OPEN` with no PR found → wake to confirm, never blind-delete.
+- **NO-PR** = issue `OPEN` with no PR found (or no number in the name) → wake to confirm, never
+  blind-delete.
 
-Dispatch one a2a per worktree on its canonical thread (R5, R8):
+`git worktree list` from a base clone shows every worktree as `prunable` over the read-only mount
+(their live sessions live elsewhere) — `prunable` is **not** a reap signal (R8); reap is decided by
+issue+PR state only.
 
-> [Supervisor — worktree GC — gh-issue-X/Y-N] Issue #<num> is `<issue_state>`; PR #<pr> is `<pr_state>`; reclaim `wt-<slug>` (~<size>G).
-> **Save-then-remove:** `cd /workspace/agent/wt-<slug>`; if `git status --porcelain` non-empty or
+Dispatch one a2a per worktree on its canonical thread (R5, R8). `<dir>` is the worktree's own
+directory name (whatever it's called); `<base-clone>` is the tier's main checkout the worktree was
+derived from (`slang` for slang-*, `slangpy` for slangpy-*) — remove from the base clone, never from
+inside the worktree:
+
+> [Supervisor — worktree GC — gh-issue-X/Y-N] Issue #<num> is `<issue_state>`; PR #<pr> is `<pr_state>`; reclaim `<dir>` (~<size>G).
+> **Save-then-remove:** `cd /workspace/agent/<dir>`; if `git status --porcelain` non-empty or
 > ahead of upstream → `git add -A && git commit -m "wip(reap): <branch> @ <sha>" && git push -u origin HEAD:wip/reap/<branch>`
-> (resume via `git worktree add wt-<slug> wip/reap/<branch>`). THEN
-> `git -C /workspace/agent/slang worktree remove --force /workspace/agent/wt-<slug> && rm -rf /workspace/agent/active-work/<slug>`.
+> (resume via `git worktree add <dir> wip/reap/<branch>`). THEN
+> `git -C /workspace/agent/<base-clone> worktree remove --force /workspace/agent/<dir> && rm -rf /workspace/agent/active-work/<slug>`.
 > Reply 'gc done <freed>G', or 'active' to keep it.
 
 Save-then-remove is mandatory — even merged-PR worktrees often hold untracked files that
-`remove --force` would destroy. Track `gcRequestedAt` per worktree; if still on disk after 2
-clean dispatches, escalate with the `du`/`df` numbers + the `wt-*` list. A woken long-idle fixer
-may reply `Error: No conversation found with session ID …` on its first turn — self-healing (the
-runner clears the stale continuation and the host re-delivers); treat as "in progress, recheck
-next tick," not as `gc done`.
+`remove --force` would destroy (reviewer worktrees in particular carry ad-hoc review notes). Track
+`gcRequestedAt` per worktree; if still on disk after 2 clean dispatches, escalate with the `du`/`df`
+numbers + the worktree list. A woken long-idle coworker may reply `Error: No conversation found with
+session ID …` on its first turn — self-healing (the runner clears the stale continuation and the
+host re-delivers); treat as "in progress, recheck next tick," not as `gc done`.
 
 ## CI status + rebase nudge
 
