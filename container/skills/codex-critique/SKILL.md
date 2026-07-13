@@ -19,7 +19,7 @@ mcp__codex__codex({ prompt: <below>, developer-instructions: <below>, sandbox: "
 ## Prompt
 
 ```
-STAGE: <DIAGNOSIS_REVIEW | PLAN_REVIEW | CODE_REVIEW | OUTPUT_REVIEW>
+STAGE: <DIAGNOSIS_REVIEW | PLAN_REVIEW | CODE_REVIEW | DECISION_REVIEW | OUTPUT_REVIEW>
 
 TASK (verbatim — only you have this, codex cannot read it from disk):
 <the original user request, no paraphrasing>
@@ -38,9 +38,12 @@ Run each at its natural workflow transition. If `critique-gate` is in your overl
 | `DIAGNOSIS_REVIEW` | Root cause / request identified           | Issue; your reading; file:line pointers                              |
 | `PLAN_REVIEW`      | Approach chosen, before editing           | Plan file (`/workspace/agent/reports/<n>.md`); approaches considered |
 | `CODE_REVIEW`      | Edits + tests pass, before reporting / PR | `git diff <base>..HEAD`; test path + result                          |
+| `DECISION_REVIEW`  | Verdict derived, before recording it      | The derivation: clauses from data, verdict parse vs. the review doc, source tier stated |
 | `OUTPUT_REVIEW`    | Deliverable drafted, before sending       | Deliverable text/path; referenced artifacts                          |
 
 Answer-style work (a question, a release note) uses `OUTPUT_REVIEW` for factual accuracy and source coverage. No separate `ANSWER_REVIEW` stage.
+
+Decision-style work (a PR approver producing an auditable verdict) is gated at `DECISION_REVIEW` — vetting the *derivation* (does the verdict follow from the clauses and the review doc?) — and `OUTPUT_REVIEW` — vetting the ledger line and decision message themselves. The two are distinct: a sound derivation can still be recorded with a malformed ledger row, and vice versa.
 
 ## developer-instructions
 
