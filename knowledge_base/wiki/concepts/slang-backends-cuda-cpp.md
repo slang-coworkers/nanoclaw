@@ -1,0 +1,45 @@
+---
+title: "Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen"
+type: concept
+group: slang-backends
+tags: [cuda, cpp, c-family-emitter, swizzle, float3, codegen-perf, nvrtc, slang-12073]
+source_count: 6
+---
+
+# Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen
+
+The CUDA and CPU/C++ targets share one code path — `CPPSourceEmitter` (`source/slang/slang-emit-cpp.cpp`), which `CUDASourceEmitter` inherits (`slang-emit-cuda.h:44`). This shared "C-family emitter" is distinct from the SPIR-V and HLSL paths, and its lowering choices produce a target asymmetry that has surfaced as a real performance bug.
+
+## The float3/swizzle-base re-evaluation perf bug (slang#12073, from slangpy#1059)
+
+**Symptom:** a hot loop reading a multi-component swizzle (`.rgb`/`.xyz`) runs ~3× slower on the CUDA backend (measured 2.87× on an L40S/NVRTC 13) than reading a whole `float4` or accumulating in named scalars. Vulkan (SPIR-V) and D3D12 (HLSL) show no penalty.
+
+**Root cause — the base is re-emitted once per swizzle component.** The C-family emitter lowers a multi-component swizzle READ to a per-component brace initializer `float3{ base.x, base.y, base.z }`. `CPPSourceEmitter`'s `kIROp_Swizzle` handler (`slang-emit-cpp.cpp:1642-1719`, the per-component loop at 1692-1716) calls `emitOperand(getBase())` *inside* the loop, so the base expression is re-emitted for every component. When the base is a value that `shouldFoldInstIntoUseSites` (`slang-emit-c-like.cpp:1685-1687`) folds into its use sites — a texture fetch, a buffer load, a helper call — the fetch is **textually duplicated N×** (N = swizzle width). Verified emitted-`.cu` fetch counts in the repro: `f4_all`=1 `tex2Dfetch`, `f3_loop`=**3**, `f3_epi`=1. SPIR-V emits a single `OpVectorShuffle` and HLSL a native `.xyz` — both evaluate the base once, which is the entire source of the backend asymmetry. The output values are correct; this is a codegen-quality/perf defect, not a wrong-result bug. See [Slang CUDA/CPP multi-component swizzle re-evaluates its base once per component (perf)](../learnings/1783909950787-slang-cuda-cpp-multi-component-swizzle-re-evaluate.md) and [slang C-family swizzle re-evaluates base per component (CUDA/CPP perf bug)](../learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md).
+
+**Why the fold gate misses it:** `shouldFoldInstIntoUseSites` only refuses to fold on >1 *IR* uses. A multi-element swizzle is a SINGLE IR use that expands to N *textual* references — invisible to the multi-use guard ([slang C-family swizzle re-evaluates base per component (CUDA/CPP perf bug)](../learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md)).
+
+**Trigger boundary:** the slowdown fires only when the swizzle base is a non-trivial folded expression (texture fetch / helper call / `saturate(...)`). It does NOT fire when the base is a cheap register-resident local — which is exactly why the minimal `f3_epi` control (`.rgb` of a local) is fast while a production epilogue whose `.rgb` base was an expensive helper expression is slow ([float3/vec3 CUDA slowdown is swizzle-base re-evaluation, not float3 layout](../learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md)).
+
+**Fix seam:** `CPPSourceEmitter::shouldFoldInstIntoUseSites` (override at `slang-emit-cpp.cpp:1931-1970`) ALREADY refuses to fold a vector/matrix value when its user is a reshape/cast (1943-1951), rationale "the implementation of cast will have multiple references to it." A multi-element swizzle base is the identical situation — extend that guard to `kIROp_Swizzle` with `getElementCount()>1` so the base materializes as a temp via existing machinery. Target-scoped, minimal, no adjacent regression ([slang C-family swizzle re-evaluates base per component (CUDA/CPP perf bug)](../learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md)). Alternative emit-side fix: bind the swizzle base to a temp once when `elementCount>1` and the base is non-trivial/folded ([Slang CUDA/CPP multi-component swizzle re-evaluates its base once per component (perf)](../learnings/1783909950787-slang-cuda-cpp-multi-component-swizzle-re-evaluate.md)).
+
+**User workaround:** bind the fetch to a named local first, then read its components — `float4 s = tex[q]; use s.r/s.g/s.b` — and write via lane assignment (`v.a = a; dst[tid] = v;`) instead of constructor-swizzle (`float4(shade(uv).rgb, a)` calls `shade` 3×). Each removes a folded expression from directly under a multi-component swizzle so the base is evaluated once ([Slang CUDA/CPP float3 .rgb swizzle slowdown is base re-evaluation, not layout](../learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base.md)).
+
+## Contradictions / supersessions
+
+**The vec3-layout hypothesis was WRONG and is superseded.** The first triage note ([Slang CUDA float3 loop arithmetic ~3x slower than float4 (vec3 layout + swizzle-constructor emission)](../learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md)) attributed the slowdown to `float3`'s 12-byte/4-byte-aligned CUDA layout (vs `float4`'s 16-byte/16-byte) defeating NVRTC register allocation, and framed it as CUDA-only. Both claims are false. Two later corrections ([CORRECTION: Slang float3 CUDA slowdown is swizzle-base re-evaluation, NOT vec3 layout/register pressure](../learnings/1783910402434-correction-slang-float3-cuda-slowdown-is-swizzle-b.md), [Slang CUDA/CPP float3 .rgb swizzle slowdown is base re-evaluation, not layout](../learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base.md)) proved via GPU-free emitted-`.cu` inspection at slang HEAD `8f0c3515d` that the real cause is swizzle-base re-evaluation, and that the scope is **CUDA + CPU/C++** (shared emitter), not CUDA-alone. The 12-byte float3 layout is a real fact but a red herring for this perf bug — falsified by the `f3_epi` control (native `float3` with a register-resident base emits 1 fetch, is fast). The emission *form* observed in the original note (`float3{a,b,c}` constructors vs `OpVectorShuffle`) was correct; only the *causal consequence* (register spilling) was mis-inferred. Treat 1783908909248's layout attribution as retracted; keep its ownership rule of thumb (below).
+
+## Reusable rules
+
+- **Ownership:** SlangPy does not vendor the Slang compiler (its `.gitmodules` has only `external/slang-rhi`; Slang is a prebuilt FetchContent binary) and is transparent to vector types. So any "float3/vector arithmetic is slow/wrong on CUDA" report where the math lives in the user's `.slang` body is an upstream `shader-slang/slang` codegen issue — SlangPy has no lever ([Slang CUDA float3 loop arithmetic ~3x slower than float4 (vec3 layout + swizzle-constructor emission)](../learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md)).
+- **Confirmation recipe (GPU-free):** `slangc repro.slang -target cuda -entry <e> -stage compute -o k.cu` (or `-target cpp` — same emitter) then count how many times an expensive base appears per `.rgb`/`.xyz`. The whole `float3{...}` initializer is on ONE line, so `grep -c` (counts lines) reports 1 even when the fetch appears 3× — use `grep -o tex2Dfetch | wc -l`. `SLANGPY_PRINT_GENERATED_SHADERS=1` dumps the Slang *wrapper*, not the emitted CUDA C++ — wrong tool ([slang C-family swizzle re-evaluates base per component (CUDA/CPP perf bug)](../learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md)).
+- **Triage meta-lesson:** a layout/alignment fact being true does not make it the cause. When a codegen perf asymmetry has a tidy structural explanation, confirm it by counting operations in the actual emitted target code before recording the mechanism ([float3/vec3 CUDA slowdown is swizzle-base re-evaluation, not float3 layout](../learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md)). NOT related to Metal PR #10031 packed-vec3 (that is buffer-layout stride, a different concern).
+
+**Source learnings (6):**
+- [original (now-superseded) triage: float3 loop 3× slower on CUDA, attributed to vec3 layout; keep only the ownership rule](../learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md)
+- [C-family emitter re-evaluates swizzle base once per component; fix directions](../learnings/1783909950787-slang-cuda-cpp-multi-component-swizzle-re-evaluate.md)
+- [CORRECTION: cause is swizzle-base re-evaluation, not vec3 layout; scope is CUDA + CPU/C++](../learnings/1783910402434-correction-slang-float3-cuda-slowdown-is-swizzle-b.md)
+- [#12073 file:line detail, fold-gate miss, principled shouldFoldInstIntoUseSites fix seam](../learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md)
+- [trigger boundary (folded base, not type), f3_epi control, triage meta-lesson](../learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md)
+- [reviewer note: get emitted code / control kernel, don't reason from layout; workaround detail](../learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base.md)
+
+_Catalog: [[wiki/index.md]]_

@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1058 agent learnings**, synthesized into **42 concept pages**.
+Standalone wiki built from **1101 agent learnings**, synthesized into **44 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -50,6 +50,7 @@ Standalone wiki built from **1058 agent learnings**, synthesized into **42 conce
 - [Slang IR Passes, Diagnostics, and Tooling](concepts/slang-autodiff-ir-passes-diagnostics.md)
 
 ### Slang backends
+- [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
 - [Slang GLSL Backend: Emission, Legalization, and glslang Integration](concepts/slang-backends-glsl.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
@@ -76,14 +77,15 @@ Standalone wiki built from **1058 agent learnings**, synthesized into **42 conce
 ### SlangPy
 - [SlangPy CI, Triage, Build, and Runtime](concepts/slangpy-ci-triage.md)
 - [SlangPy Tensor API (0.41+ Migration)](concepts/slangpy-tensor-api.md)
+- [SlangPy Torch Autograd: Bridge, Cache Signature, and Grad-Buffer Binding](concepts/slangpy-torch-autograd.md)
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (619)
-- [NanoClaw / agent operations](topics/agent-ops.md) (165)
+- [Slang compiler & language](topics/slang-compiler.md) (647)
+- [NanoClaw / agent operations](topics/agent-ops.md) (170)
 - [CI, build & tooling](topics/ci-tooling.md) (69)
-- [Review & process](topics/review-process.md) (38)
-- [Uncategorized](topics/misc.md) (167)
+- [Review & process](topics/review-process.md) (40)
+- [Uncategorized](topics/misc.md) (175)
 
 ## All learnings (chronological)
 
@@ -1145,3 +1147,46 @@ Standalone wiki built from **1058 agent learnings**, synthesized into **42 conce
 - [[approver/infra] critique-gate hook false-matches read-only `gh api .../pulls/...` GETs as PR-creation — use `gh pr view/diff --json` instead](learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)
 - [Edit-in-place when you were last commenter; persist parent ownership-claims to tracker](learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)
 - [slang#12069 endian/ptr whitelist — pointer-size fails SILENTLY, endianness fails LOUDLY](learnings/1783835875827-slang-12069-endian-ptr-whitelist-pointer-size-fail.md)
+- [gh via OneCLI can be down while direct curl to GitHub API still works](learnings/1783873229538-gh-via-onecli-can-be-down-while-direct-curl-to-git.md)
+- [SlangPy delegates all loop reverse-mode autodiff to the Slang compiler (bwd_diff) — bwds crashes are usually upstream](learnings/1783873232594-slangpy-delegates-all-loop-reverse-mode-autodiff-t.md)
+- [Slang autodiff: runtime (non-constant) loop induction start crashes bwd_diff — cross-scope dangling counterOffset](learnings/1783875005308-slang-autodiff-runtime-non-constant-loop-induction.md)
+- [Correction: slangpy#1051 root cause is runtime-non-const loop start reconstruction, NOT negative/OOB](learnings/1783875390119-correction-slangpy-1051-root-cause-is-runtime-non-.md)
+- [slangpy torch call-data cache ignores requires_grad (autograd hook dropped)](learnings/1783875433681-slangpy-torch-call-data-cache-ignores-requires-gra.md)
+- [slang#12070 autodiff runtime-start induction reconstruction dangles counterOffset](learnings/1783875599862-slang-12070-autodiff-runtime-start-induction-recon.md)
+- [Regression-testing a native SIGSEGV under pytest (subprocess + strict xfail + phase bracket)](learnings/1783875908806-regression-testing-a-native-sigsegv-under-pytest-s.md)
+- [[approver/critique-mustfix] Approval-message verdict prose must not overclaim past the challenger's own hedges](learnings/1783876835715-approver-critique-mustfix-approval-message-verdict.md)
+- [slangpy torch fix verification: two bridge paths, native pkg build, env quirks (#1052)](learnings/1783877917048-slangpy-torch-fix-verification-two-bridge-paths-na.md)
+- [gh API comment login is 'nv-slang-bot' not 'nv-slang-bot[bot]' — edit-if-self guard mismatch](learnings/1783878154169-gh-api-comment-login-is-nv-slang-bot-not-nv-slang-.md)
+- [Persisted memory does NOT close a rule-gap for already-running sessions (cross-session load-timing)](learnings/1783879309365-persisted-memory-does-not-close-a-rule-gap-for-alr.md)
+- [Cross-session memory-load-timing gap: a memory written mid-flight by another session isn't loaded by already-running sessions](learnings/1783879382333-cross-session-memory-load-timing-gap-a-memory-writ.md)
+- [SlangPy cache-key granularity review lens: key must be a superset of what dispatch gates](learnings/1783879708151-slangpy-cache-key-granularity-review-lens-key-must.md)
+- [Reviewing PreToolUse gh-command guards: two bypass classes (title-token spoof, glued short-flag fail-open)](learnings/1783879965262-reviewing-pretooluse-gh-command-guards-two-bypass-.md)
+- [SlangPy vector-return autodiff bug triages to slang-core transpose, not front-end](learnings/1783881108388-slangpy-vector-return-autodiff-bug-triages-to-slan.md)
+- [slangpy backward scatters _grad_out unconditionally but binds it only for requires_grad inputs (CUDA illegal address, #1056)](learnings/1783881151114-slangpy-backward-scatters-grad-out-unconditionally.md)
+- [Verifying slangpy backward grad binding: has_grad_fields is per-parameter (Slang type name), and DeepWiki's PrimalTensor claim is primal-pass-only](learnings/1783881931096-verifying-slangpy-backward-grad-binding-has-grad-f.md)
+- [[approver/challenger] Signature/serialization-format changes across a versioned bridge must bump the version constant](learnings/1783881950122-approver-challenger-signature-serialization-format.md)
+- [[approver/critique-mustfix] Re-pin and re-check live PR head/draft state before recording — HEAD can move mid-run](learnings/1783881964285-approver-critique-mustfix-re-pin-and-re-check-live.md)
+- [slang #12070 autodiff negative-start loop: counterOffset bypasses cross-region legalization (reconstruction path unguarded vs const-only exit-value path)](learnings/1783882459151-slang-12070-autodiff-negative-start-loop-counterof.md)
+- [slangpy#1055: bwd_diff of vector/scalar divide with coupled loop accumulators is silently wrong](learnings/1783882682982-slangpy-1055-bwd-diff-of-vector-scalar-divide-with.md)
+- [[approver/challenger-miss] On a remediation revision, a STALE Devin snapshot re-flags the already-fixed finding — verify freshness or it drives a false BLOCK](learnings/1783884242462-approver-challenger-miss-on-a-remediation-revision.md)
+- [slang autodiff: vector-by-scalar divide loses gradients only inside a loop, not the divide transpose (slang#12071)](learnings/1783885532350-slang-autodiff-vector-by-scalar-divide-loses-gradi.md)
+- [Patch your own posted comment when a downstream refinement refutes it](learnings/1783885801139-patch-your-own-posted-comment-when-a-downstream-re.md)
+- [slangpy #1056 fix — no-grad IDiffTensor backward needs a bound scratch grad buffer on ALL backends](learnings/1783886043309-slangpy-1056-fix-no-grad-idifftensor-backward-need.md)
+- [slang escalation session that FILES an upstream issue also triggers a duplicate webhook triage session — don't double-post/double-dispatch](learnings/1783886221663-slang-escalation-session-that-files-an-upstream-is.md)
+- [SlangPy torch-interop tests hardcode device=cuda even under non-CUDA parametrization](learnings/1783886520730-slangpy-torch-interop-tests-hardcode-device-cuda-e.md)
+- [slangpy CI: test_tensor_interfaces[d3d12] and matrix-vector grad tests are flaky on GFX pipelines](learnings/1783887861915-slangpy-ci-test-tensor-interfaces-d3d12-and-matrix.md)
+- [Slang CUDA float3 loop arithmetic ~3x slower than float4 (vec3 layout + swizzle-constructor emission)](learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md)
+- [A test that deliberately crashes (SIGSEGV) hangs SlangPy CI because Crashpad intercepts it](learnings/1783909321657-a-test-that-deliberately-crashes-sigsegv-hangs-sla.md)
+- [SlangPy py_doc.h must be updated when editing SlangCompilerOptions docstrings](learnings/1783909847856-slangpy-py-doc-h-must-be-updated-when-editing-slan.md)
+- [SlangPy downstream_args forwarded only to DXC (d3d12) and NVRTC (cuda)](learnings/1783909862147-slangpy-downstream-args-forwarded-only-to-dxc-d3d1.md)
+- [Slang CUDA/CPP multi-component swizzle re-evaluates its base once per component (perf)](learnings/1783909950787-slang-cuda-cpp-multi-component-swizzle-re-evaluate.md)
+- [slangpy downstream_args only forwarded for D3D12 (dropped on CUDA/NVRTC)](learnings/1783910132054-slangpy-downstream-args-only-forwarded-for-d3d12-d.md)
+- [CORRECTION: Slang float3 CUDA slowdown is swizzle-base re-evaluation, NOT vec3 layout/register pressure](learnings/1783910402434-correction-slang-float3-cuda-slowdown-is-swizzle-b.md)
+- [slang C-family swizzle re-evaluates base per component (CUDA/CPP perf bug)](learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md)
+- [float3/vec3 CUDA slowdown is swizzle-base re-evaluation, not float3 layout](learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md)
+- [Slang CUDA/CPP float3 .rgb swizzle slowdown is base re-evaluation, not layout](learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base.md)
+- [SlangPy CUDA/NVRTC codegen is deferred to first dispatch — tests must dispatch to catch downstream-arg errors](learnings/1783912568549-slangpy-cuda-nvrtc-codegen-is-deferred-to-first-di.md)
+- [[approver/critique-mustfix] Critique gate false-positives on read-only `gh api .../pulls` GETs — don't burn denial strikes](learnings/1783913716215-approver-critique-mustfix-critique-gate-false-posi.md)
+- [Agent ncl restart can't target another group](learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md)
+- [[approver/human-disagreement] Large samples/experiment PRs self-merge past the size-cap abstain — the tier_eligible cap systematically abstains on a class humans fast-track](learnings/1783918446960-approver-human-disagreement-large-samples-experime.md)
+- [Heartbeat pre-check pending_summons is inflated by button spam — dedup by thread_id before working](learnings/1783923415924-heartbeat-pre-check-pending-summons-is-inflated-by.md)

@@ -5,10 +5,11 @@ type: topic
 
 # NanoClaw / agent operations
 
-165 learnings. [Catalog](../index.md)
+170 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [[approver/challenger] Fixer PR that closes the maintainer's review asks still ABSTAINs while the human reviewer is mid-cycle](../learnings/1783806650503-approver-challenger-fixer-pr-that-closes-the-maint.md)
+- [[approver/critique-mustfix] Critique gate false-positives on read-only `gh api .../pulls` GETs — don't burn denial strikes](../learnings/1783913716215-approver-critique-mustfix-critique-gate-false-posi.md)
 - [[approver/infra-abstain] harvest exit 20 on a fresh external-fork PR is a TIMING race with the Claude PR Review check, not a production-skip — wait, don't fall to Devin-only](../learnings/1783767626000-approver-infra-abstain-harvest-exit-20-on-a-fresh-.md)
 - [[approver/infra] critique-gate hook false-matches read-only `gh api .../pulls/...` GETs as PR-creation — use `gh pr view/diff --json` instead](../learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)
 - [A compacted fixer can schedule autonomous actions from stale state — re-anchor and demand fallback cancellation](../learnings/1783477748732-a-compacted-fixer-can-schedule-autonomous-actions-.md)
@@ -21,6 +22,7 @@ type: topic
 - [A scan-only Agent fork can overreach into the full task and message the parent](../learnings/1782203173377-a-scan-only-agent-fork-can-overreach-into-the-full.md)
 - [A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done, not by id string](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
 - [a2a silent-hold: plain-text turn output routes to the peer (echo-loop trap)](../learnings/1782353887467-a2a-silent-hold-plain-text-turn-output-routes-to-t.md)
+- [Agent ncl restart can't target another group](../learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md)
 - [Always rebase before codex CODE_REVIEW to get a tight scope diff](../learnings/1780304385745-always-rebase-before-codex-code-review-to-get-a-ti.md)
 - [Approver: critique-gate hook false-positives on read-only `gh api .../pulls`](../learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md)
 - [Auditing missed webhooks after downtime — use the App delivery log (JWT), filter by ownership](../learnings/1780724000000-audit-missed-webhooks-via-app-delivery-log.md)
@@ -65,6 +67,7 @@ type: topic
 - [critique-gate: codex-reply re-verify must NOT contain a literal "STAGE:" line](../learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)
 - [critique-gate: STAGE marker in codex PROMPT + "### Verdict" block in codex RESPONSE, one call per stage](../learnings/1781321980304-critique-gate-stage-marker-in-codex-prompt-verdict.md)
 - [Cross-fork workflow-file PR opens but is POLICY-CLOSED by maintainer — coworker bots can't land .github/workflows changes at all](../learnings/1783546977853-cross-fork-workflow-file-pr-opens-but-is-policy-cl.md)
+- [Cross-session memory-load-timing gap: a memory written mid-flight by another session isn't loaded by already-running sessions](../learnings/1783879382333-cross-session-memory-load-timing-gap-a-memory-writ.md)
 - [Curating shared learnings: serialize directory edits, never parallel forks](../learnings/1782026325950-curating-shared-learnings-serialize-directory-edit.md)
 - [Daily report: check for a linked fix PR before flagging an issue as untriaged](../learnings/1781511232421-daily-report-check-for-a-linked-fix-pr-before-flag.md)
 - [Dashboard channels render markdown — always include hyperlinks for issue/PR/discussion refs](../learnings/1778835191236-dashboard-channels-render-markdown-always-include-.md)
@@ -93,6 +96,7 @@ type: topic
 - [Gated GitHub set is ONLY gh pr ready + merge — comments/labels/replies/reactions post freely](../learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md)
 - [Gated GitHub write needs a TRACEABLE operator source, not a bare parent relay](../learnings/1781523727513-gated-github-write-needs-a-traceable-operator-sour.md)
 - [gh auth status shows GH_TOKEN invalid but gh api succeeds via onecli-gateway proxy](../learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api-s.md)
+- [gh via OneCLI can be down while direct curl to GitHub API still works](../learnings/1783873229538-gh-via-onecli-can-be-down-while-direct-curl-to-git.md)
 - [GitHub GraphQL / ProjectsV2 access needs a per-project grant (often unavailable to the bot)](../learnings/legoop-project_graphql_path_routing.md)
 - [Group-scoped silence ≠ dead coworker; Main resolves via global session list](../learnings/1783619754568-group-scoped-silence-dead-coworker-main-resolves-v.md)
 - [Hold interim triage classification 5-bullet until terminal; author-facing scoping questions are fine to post](../learnings/1781116432142-hold-interim-triage-classification-5-bullet-until-.md)
@@ -115,6 +119,7 @@ type: topic
 - [Orchestrator double-dispatch spawns duplicate fixer sessions on one branch](../learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md)
 - [Peer 'not addressable / blocked' can mean session logged-out — operator /login blocker, don't re-dispatch](../learnings/1783565846208-peer-not-addressable-blocked-can-mean-session-logg.md)
 - [Persist parent-agreed timing gates; flag before acting early](../learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)
+- [Persisted memory does NOT close a rule-gap for already-running sessions (cross-session load-timing)](../learnings/1783879309365-persisted-memory-does-not-close-a-rule-gap-for-alr.md)
 - [Propagating orchestrator reinforcements to group-locked per-issue sessions](../learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md)
 - [Pushing workflow-file changes: App token lacks workflows perm → fork + REST cross-fork PR](../learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md)
 - [Re-triage: rescan live cross-ref timeline for newer maintainer PRs touching the issue's files](../learnings/1781713625746-re-triage-rescan-live-cross-ref-timeline-for-newer.md)
