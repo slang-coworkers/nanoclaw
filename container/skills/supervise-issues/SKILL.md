@@ -192,10 +192,12 @@ and for `not_planned` closes without a PR.
 Reclaim abandoned worktrees across **all tiers** (fixer *and* reviewer/triager/slangpy — reviewer
 worktrees are freehand-named and a `wt-*` glob silently misses them; discover name-agnostically by
 `.git`-as-file, see reference.md). Run the GC scan every tick *before* the per-chain pass, and
-surface `worktree-vol: <N>GB free` in the rollup. Discover the reap set from disk, resolve each to
-**both** issue state and PR state (`REAP` = PR merged/closed OR issue closed; `KEEP` = issue open +
-PR open/running), and dispatch a save-then-remove to the owning coworker — the tier the worktree
-lives under, not always a fixer (R8) — never delete from this session. Escalate to operator when free < 10 GB — and when the reap set can't clear the pressure,
+surface `worktree-vol: <N>GB free` in the rollup. Discover the reap set from disk, resolve each
+worktree's issue + PR state, and hand the set to `scripts/worktree-gc.py` for the deterministic tier
+decision (`REAP` / `KEEP` / `STALE-OPEN` / `NO-PR`) — don't re-derive the thresholds in-context; the
+script owns them. Dispatch the matching action to the owning coworker — the tier the worktree lives
+under, not always a fixer (R8): save-then-remove for `REAP`, build-only reclaim for `STALE-OPEN` —
+never delete from this session. Escalate to operator when free < 10 GB — and when the reap set can't clear the pressure,
 the escalation must name the operator-only docker reclaim (`/ephemeral/docker` is root-only, the
 supervisor can't prune it) rather than implying worktrees are the whole story. Commands, the
 dispatch body, and the docker-escalation wording are in reference.md → *Worktree GC*.
