@@ -221,9 +221,11 @@ find /workspace/extra/ephemeral/prod-groups -mindepth 2 -maxdepth 3 -name .git -
 ```
 
 - Surface `worktree-vol: <N>GB free` in every board rollup.
-- **Every tick**: run the GC scan. Resolve worktree issue+PR states and dispatch save-then-remove
-  for any in the REAP set. This is lightweight (a few `gh` calls) and prevents closed-issue
-  worktrees from accumulating between pressure events.
+- **Every tick**: run the GC scan. Resolve worktree issue+PR states, pass them to
+  `scripts/worktree-gc.py`, and dispatch save-then-remove for the REAP set plus build-only reclaim
+  for anything the script puts in `reclaim` (STALE-OPEN under pressure). This is lightweight (a few
+  `gh` calls) and prevents closed-issue worktrees — and dead-open build trees — from accumulating
+  between pressure events.
 - **Free < 10 GB** → disk pressure: escalate to the operator immediately in addition to the
   routine GC. If the reap set is empty or too small to clear the pressure, the escalation **must**
   say so and point at the operator-only docker reclaim (below) — worktrees are usually not the
@@ -262,13 +264,31 @@ per worktree from the `find` above:
 
 Resolve each to **both** its issue state (`gh issue view <num> --json state`) and PR state (`gh pr
 list --head fix/issue-<num>` for slang fixer branches, or the dir's own branch for reviewer/slangpy).
-The reap decision combines both signals:
+For an OPEN PR also read its idle age (`gh pr view <pr> --json updatedAt` → days since last touch).
+**Don't judge the tier by hand — feed the resolved set to `scripts/worktree-gc.py`** (pure, tested
+by `test_worktree_gc.py`), which owns the thresholds and the pressure math in one place:
 
-- **REAP** = PR `MERGED` or `CLOSED`; OR issue `CLOSED` (regardless of PR state — a closed issue
-  means the work is done or abandoned, even if a draft PR lingers).
-- **KEEP** = issue `OPEN` AND (PR `OPEN` or a `running` session).
+```bash
+# payload: {free_gb, running_dirs:[...], worktrees:[{dir,size_gb,has_build,issue_state,pr_state,pr_idle_days},...]}
+python3 scripts/worktree-gc.py < payload.json > gc-out.json   # → {tiers, reclaim, summary}
+```
+
+The four tiers it returns (semantics, not numbers — the numbers live in the script):
+
+- **REAP** = PR `MERGED`/`CLOSED`, OR issue `CLOSED` (work done or abandoned, even if a draft PR
+  lingers). → save-then-remove (below); this is the only path that pushes `wip/reap/<branch>`.
+- **KEEP** = issue `OPEN` + PR `OPEN` recently active, or a `running` session. Leave untouched.
+- **STALE-OPEN** = issue `OPEN` + PR `OPEN` but idle beyond the script's threshold with no running
+  session. Under disk pressure the script lists these in `reclaim` (oldest-PR-first, only enough to
+  clear the pressure). → **build-only reclaim**: dispatch `rm -rf /workspace/agent/<dir>/build`.
+  `build/` is gitignored regenerable cmake output — source, branch, uncommitted work, and the PR are
+  untouched; the coworker re-runs cmake on resume. **NEVER `git worktree remove` a STALE-OPEN chain**
+  (the PR may still land). If it later goes REAP, it flows through save-then-remove.
 - **NO-PR** = issue `OPEN` with no PR found (or no number in the name) → wake to confirm, never
   blind-delete.
+
+Dispatch only the tiers that need action: every `REAP` (save-then-remove), and every worktree in
+`reclaim` (build-only). `KEEP` / `NO-PR` need no build churn.
 
 `git worktree list` from a base clone shows every worktree as `prunable` over the read-only mount
 (their live sessions live elsewhere) — `prunable` is **not** a reap signal (R8); reap is decided by
@@ -285,6 +305,14 @@ inside the worktree:
 > (resume via `git worktree add <dir> wip/reap/<branch>`). THEN
 > `git -C /workspace/agent/<base-clone> worktree remove --force /workspace/agent/<dir> && rm -rf /workspace/agent/active-work/<slug>`.
 > Reply 'gc done <freed>G', or 'active' to keep it.
+
+For each worktree `scripts/worktree-gc.py` puts in `reclaim` (STALE-OPEN under pressure), the
+dispatch reclaims the regenerable build only — the worktree, branch, and PR stay:
+
+> [Supervisor — build-reclaim — gh-issue-X/Y-N] Issue #<num> `OPEN`, PR #<pr> `OPEN` but idle <days>d; reclaiming regenerable `build/` in `<dir>` (~<size>G) under disk pressure.
+> Run `rm -rf /workspace/agent/<dir>/build` (gitignored cmake output — source, branch, uncommitted
+> work, and the PR are untouched; rebuild on resume). Do **not** remove the worktree.
+> Reply 'reclaimed <freed>G', or 'active' to keep the build.
 
 Save-then-remove is mandatory — even merged-PR worktrees often hold untracked files that
 `remove --force` would destroy (reviewer worktrees in particular carry ad-hoc review notes). Track
