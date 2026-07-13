@@ -44,6 +44,54 @@ function log(msg: string): void {
 
 const CWD = '/workspace/agent';
 
+/**
+ * Discover directories to pass to the SDK as `additionalDirectories`:
+ *   - every immediate subdir of `/workspace/extra` (host-mounted extras), and
+ *   - every immediate subdir of CWD that carries its own `.claude/` (a cloned
+ *     repo bringing skills/commands/CLAUDE.md).
+ *
+ * The SDK loads each additional directory's `.claude/agents/` and `CLAUDE.md`.
+ * A writer tier accumulates many git *worktrees* of the SAME repo under CWD
+ * (e.g. `wt-slang-*`), and each worktree carries an identical `.claude/`. Adding
+ * every worktree re-registers the repo's subagents and re-injects its CLAUDE.md
+ * once PER worktree, every turn — 50+ duplicate copies that refill the context
+ * window and drive autocompaction thrash. So we include a repo's PRIMARY
+ * checkout but skip its linked worktrees: a worktree's `.git` is a FILE (a
+ * gitdir pointer), a primary clone's `.git` is a DIRECTORY.
+ */
+export function discoverAdditionalDirectories(
+  bases: string[],
+  cwd: string,
+): string[] {
+  const out: string[] = [];
+  for (const base of bases) {
+    if (!fs.existsSync(base)) continue;
+    for (const entry of fs.readdirSync(base)) {
+      const fullPath = path.join(base, entry);
+      try {
+        if (!fs.statSync(fullPath).isDirectory()) continue;
+      } catch {
+        continue;
+      }
+      // For CWD subdirs, only include if they have .claude/ (skills, commands, CLAUDE.md)…
+      if (base === cwd) {
+        if (!fs.existsSync(path.join(fullPath, '.claude'))) continue;
+        // …and skip linked git worktrees — their `.git` is a file, not a dir.
+        // All N worktrees of a repo carry the same `.claude/`; adding each one
+        // duplicates the repo's agents + CLAUDE.md N times and thrashes context.
+        try {
+          const gitPath = path.join(fullPath, '.git');
+          if (fs.existsSync(gitPath) && fs.statSync(gitPath).isFile()) continue;
+        } catch {
+          /* if we can't stat .git, fall through and include the dir */
+        }
+      }
+      out.push(fullPath);
+    }
+  }
+  return out;
+}
+
 async function main(): Promise<void> {
   // Load /workspace/agent/container.json once at startup. Without this call,
   // getConfig() throws on first read, leaving features like maxMessagesPerPrompt
@@ -61,24 +109,11 @@ async function main(): Promise<void> {
   // provides the routing addendum — CLAUDE.md ownership lives in the provider.
   const instructions = buildSystemPromptAddendum();
 
-  // Discover additional directories: /workspace/extra/* (host-mounted)
-  // and /workspace/agent/* subdirs that have their own .claude/ config
-  // (e.g. cloned repos with skills/commands/CLAUDE.md).
-  const additionalDirectories: string[] = [];
-  for (const base of ['/workspace/extra', CWD]) {
-    if (!fs.existsSync(base)) continue;
-    for (const entry of fs.readdirSync(base)) {
-      const fullPath = path.join(base, entry);
-      try {
-        if (!fs.statSync(fullPath).isDirectory()) continue;
-      } catch { continue; }
-      // For CWD subdirs, only include if they have .claude/ (skills, commands, CLAUDE.md)
-      if (base === CWD) {
-        if (!fs.existsSync(path.join(fullPath, '.claude'))) continue;
-      }
-      additionalDirectories.push(fullPath);
-    }
-  }
+  // Discover additional directories: /workspace/extra/* (host-mounted) and
+  // /workspace/agent/* subdirs with their own .claude/ (cloned repos), skipping
+  // linked git worktrees so a repo's .claude/ isn't registered once per worktree
+  // (that duplication thrashes the context window — see the helper's doc).
+  const additionalDirectories = discoverAdditionalDirectories(['/workspace/extra', CWD], CWD);
   if (additionalDirectories.length > 0) {
     log(`Additional directories: ${additionalDirectories.join(', ')}`);
   }
@@ -240,7 +275,11 @@ async function main(): Promise<void> {
   });
 }
 
-main().catch((err) => {
-  log(`Fatal error: ${err instanceof Error ? err.message : String(err)}`);
-  process.exit(1);
-});
+// Only auto-run when invoked as the entrypoint — not when imported (e.g. by
+// tests that exercise the pure helpers above without booting the poll loop).
+if (import.meta.main) {
+  main().catch((err) => {
+    log(`Fatal error: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  });
+}
