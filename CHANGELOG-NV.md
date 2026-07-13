@@ -6,15 +6,32 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 330 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 337 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 159 |
-| `nv-slang` | slang project spine, skills, workflows | 117 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 55 |
+| `nv-slang` | slang project spine, skills, workflows | 118 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 56 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 37 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-13
+
+### nv-main (7 PRs)
+- **#911** `feat(supervise-issues): STALE-OPEN worktree tier — reclaim dead-open build trees under disk pressure`
+- **#912** `feat(base): universal TodoWrite step-tracking + compaction survival`
+- **#915** `feat(supervise-issues): critical-pressure tier — reclaim idle KEEP builds at ENOSPC risk`
+- **#916** `fix(agent-runner): skip git worktrees in additionalDirectories (autocompact thrash)`
+- **#917** `refactor(agent-runner): precise linked-worktree predicate + side-effect-free helper`
+- **#918** `feat(agent-runner): refresh primary clones at boot (ff-only + submodules)`
+- **#924** `docs(codex-critique): add DECISION_REVIEW to the stage menu + table`
+
+### nv-slang (1 PRs)
+- **#913** `feat(slang-fixer): peer-review-before-report as a spine invariant`
+
+### nv-slangpy (1 PRs)
+- **#914** `feat(slangpy-fixer): peer-review-before-report as a spine invariant`
 
 ## 📅 2026-07-12
 
