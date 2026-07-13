@@ -23,10 +23,10 @@
  *     .claude/          ← Claude SDK session data
  */
 
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { discoverAdditionalDirectories } from './additional-directories.js';
 import { loadConfig } from './config.js';
 import { buildSystemPromptAddendum } from './destinations.js';
 import { ensureMemoryScaffold } from './memory-scaffold.js';
@@ -43,54 +43,6 @@ function log(msg: string): void {
 }
 
 const CWD = '/workspace/agent';
-
-/**
- * Discover directories to pass to the SDK as `additionalDirectories`:
- *   - every immediate subdir of `/workspace/extra` (host-mounted extras), and
- *   - every immediate subdir of CWD that carries its own `.claude/` (a cloned
- *     repo bringing skills/commands/CLAUDE.md).
- *
- * The SDK loads each additional directory's `.claude/agents/` and `CLAUDE.md`.
- * A writer tier accumulates many git *worktrees* of the SAME repo under CWD
- * (e.g. `wt-slang-*`), and each worktree carries an identical `.claude/`. Adding
- * every worktree re-registers the repo's subagents and re-injects its CLAUDE.md
- * once PER worktree, every turn — 50+ duplicate copies that refill the context
- * window and drive autocompaction thrash. So we include a repo's PRIMARY
- * checkout but skip its linked worktrees: a worktree's `.git` is a FILE (a
- * gitdir pointer), a primary clone's `.git` is a DIRECTORY.
- */
-export function discoverAdditionalDirectories(
-  bases: string[],
-  cwd: string,
-): string[] {
-  const out: string[] = [];
-  for (const base of bases) {
-    if (!fs.existsSync(base)) continue;
-    for (const entry of fs.readdirSync(base)) {
-      const fullPath = path.join(base, entry);
-      try {
-        if (!fs.statSync(fullPath).isDirectory()) continue;
-      } catch {
-        continue;
-      }
-      // For CWD subdirs, only include if they have .claude/ (skills, commands, CLAUDE.md)…
-      if (base === cwd) {
-        if (!fs.existsSync(path.join(fullPath, '.claude'))) continue;
-        // …and skip linked git worktrees — their `.git` is a file, not a dir.
-        // All N worktrees of a repo carry the same `.claude/`; adding each one
-        // duplicates the repo's agents + CLAUDE.md N times and thrashes context.
-        try {
-          const gitPath = path.join(fullPath, '.git');
-          if (fs.existsSync(gitPath) && fs.statSync(gitPath).isFile()) continue;
-        } catch {
-          /* if we can't stat .git, fall through and include the dir */
-        }
-      }
-      out.push(fullPath);
-    }
-  }
-  return out;
-}
 
 async function main(): Promise<void> {
   // Load /workspace/agent/container.json once at startup. Without this call,
