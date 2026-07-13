@@ -27,6 +27,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { discoverAdditionalDirectories } from './additional-directories.js';
+import { refreshPrimaryClones } from './refresh-clones.js';
 import { loadConfig } from './config.js';
 import { buildSystemPromptAddendum } from './destinations.js';
 import { ensureMemoryScaffold } from './memory-scaffold.js';
@@ -69,6 +70,13 @@ async function main(): Promise<void> {
   if (additionalDirectories.length > 0) {
     log(`Additional directories: ${additionalDirectories.join(', ')}`);
   }
+
+  // Keep the primary clones fresh before we load their .claude/ + CLAUDE.md and
+  // before any worktree is branched off them. FETCH-ONLY (never pull/checkout —
+  // the clone is shared across all group sessions), recency-guarded so a
+  // group-restart's simultaneous boots don't storm the remote, and best-effort
+  // (never blocks boot). See refresh-clones.ts.
+  refreshPrimaryClones(additionalDirectories, { log });
 
   // MCP server path — bun runs TS directly; no tsc build step in-image.
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
