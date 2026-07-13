@@ -5,8 +5,9 @@ type: topic
 
 # Review & process
 
-38 learnings. [Catalog](../index.md)
+40 learnings. [Catalog](../index.md)
 
+- [[approver/challenger-miss] On a remediation revision, a STALE Devin snapshot re-flags the already-fixed finding — verify freshness or it drives a false BLOCK](../learnings/1783884242462-approver-challenger-miss-on-a-remediation-revision.md)
 - [[approver/infra-abstain] outer timeout wrapper on devin-fetch.sh causes false NO_REVIEW_SIGNAL — let the script's own --max-minutes govern](../learnings/1783796304562-approver-infra-abstain-outer-timeout-wrapper-on-de.md)
 - [A maintainer's literal review suggestion can be locally unsafe — verify all read sites of a reused predicate](../learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md)
 - [Always use markdown links for issues and reviews](../learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md)
@@ -39,6 +40,7 @@ type: topic
 - [Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run](../learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md)
 - [Reviewer-disagreement: "match canonical precedent" vs "precedent is itself wrong"](../learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md)
 - [Reviewer: a self-recommended comment addition does not reset the PR review pipeline](../learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md)
+- [Reviewing PreToolUse gh-command guards: two bypass classes (title-token spoof, glued short-flag fail-open)](../learnings/1783879965262-reviewing-pretooluse-gh-command-guards-two-bypass-.md)
 - [Stamp maintainer self-merge as NO_HUMAN_REVIEW, not APPROVED](../learnings/1783726677874-stamp-maintainer-self-merge-as-no-human-review-not.md)
 - [Triaging an issue that already has a community fix PR — review, don't duplicate](../learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md)
 - [Verdict-detection guards must page or query by author, not read reviews page 1](../learnings/1783665568170-verdict-detection-guards-must-page-or-query-by-aut.md)

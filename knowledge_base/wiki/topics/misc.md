@@ -5,10 +5,14 @@ type: topic
 
 # Uncategorized
 
-167 learnings. [Catalog](../index.md)
+175 learnings. [Catalog](../index.md)
 
 - [@copilot may resolve conflicts on bot-authored PRs — check remote tip before pushing your own](../learnings/1782711499913-copilot-may-resolve-conflicts-on-bot-authored-prs-.md)
 - [[approver/challenger-miss] Revision fixup can fix the flagged side while the OTHER changed file's concern stays byte-identical — diff R0↔R1 per-file before trusting "author addressed it"](../learnings/1783801380207-approver-challenger-miss-revision-fixup-can-fix-th.md)
+- [[approver/challenger] Signature/serialization-format changes across a versioned bridge must bump the version constant](../learnings/1783881950122-approver-challenger-signature-serialization-format.md)
+- [[approver/critique-mustfix] Approval-message verdict prose must not overclaim past the challenger's own hedges](../learnings/1783876835715-approver-critique-mustfix-approval-message-verdict.md)
+- [[approver/critique-mustfix] Re-pin and re-check live PR head/draft state before recording — HEAD can move mid-run](../learnings/1783881964285-approver-critique-mustfix-re-pin-and-re-check-live.md)
+- [[approver/human-disagreement] Large samples/experiment PRs self-merge past the size-cap abstain — the tier_eligible cap systematically abstains on a class humans fast-track](../learnings/1783918446960-approver-human-disagreement-large-samples-experime.md)
 - [[approver/infra-abstain] a2a thread-edge fallback can silently drop dispatches when the named edge is gone](../learnings/1783805788005-approver-infra-abstain-a2a-thread-edge-fallback-ca.md)
 - [A corrupted tool-result turn taints its own verifications](../learnings/1783468158790-a-corrupted-tool-result-turn-taints-its-own-verifi.md)
 - [A coworker can't edit a PEER coworker's GitHub comment even under the same bot identity (HTTP 403)](../learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md)
@@ -86,6 +90,7 @@ type: topic
 - [Filing a neutral design-discussion issue split off from a PR (maintainer wants analysis before solution)](../learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md)
 - [Find last-good emsdk version for an emsdk-install-latest regression from the green run log](../learnings/1780624123110-find-last-good-emsdk-version-for-an-emsdk-install-.md)
 - [Fixes/Closes link verification must accept the qualified cross-repo form](../learnings/1781072527758-fixes-closes-link-verification-must-accept-the-qua.md)
+- [float3/vec3 CUDA slowdown is swizzle-base re-evaluation, not float3 layout](../learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md)
 - [Follow-up refactor issues may target code not yet on master](../learnings/1781606753707-follow-up-refactor-issues-may-target-code-not-yet-.md)
 - [Follow-up/tracking issue premise can outrun its prerequisite PR — verify the PR is actually MERGED](../learnings/1783029023011-follow-up-tracking-issue-premise-can-outrun-its-pr.md)
 - [force-with-lease "stale info" — refresh the remote-tracking ref first](../learnings/1782765717544-force-with-lease-stale-info-refresh-the-remote-tra.md)
@@ -104,6 +109,7 @@ type: topic
 - [GPU is available (NVIDIA L40S) — don't assume "no GPU"; toolchain may need install](../learnings/1781607246297-gpu-is-available-nvidia-l40s-don-t-assume-no-gpu-t.md)
 - [GPU-free render-test regression via a real CPU device in gfx-unit-test](../learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md)
 - [hasOption(DiagnosticColor) IS reliable on the getTargetCode composite path (unlike Optimization on getEntryPointCode)](../learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md)
+- [Heartbeat pre-check pending_summons is inflated by button spam — dedup by thread_id before working](../learnings/1783923415924-heartbeat-pre-check-pending-summons-is-inflated-by.md)
 - [if constexpr does NOT discard branches in a non-template function (dead-code-to-type-checked conversions)](../learnings/1783059299573-if-constexpr-does-not-discard-branches-in-a-non-te.md)
 - [In maintainer design discussions, the bot should be reticent — and stand down instantly (and silently) when asked](../learnings/1782480236370-in-maintainer-design-discussions-the-bot-should-be.md)
 - [Latent adjacent defect found by code-reading: don't file a speculative tracking issue while the covering fix is an unmerged PR](../learnings/1782156945737-latent-adjacent-defect-found-by-code-reading-don-t.md)
@@ -118,6 +124,7 @@ type: topic
 - [Never fabricate downstream chain events (PR numbers/reports)](../learnings/1782981166747-never-fabricate-downstream-chain-events-pr-numbers.md)
 - [NVAPI render-tests silently "ignored" — submodule→FetchContent migration left render-test path stale](../learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fetc.md)
 - [Operator override that bypasses your parent — confirm on operator edge AND nudge parent, or it goes stale](../learnings/1781686753503-operator-override-that-bypasses-your-parent-confir.md)
+- [Patch your own posted comment when a downstream refinement refutes it](../learnings/1783885801139-patch-your-own-posted-comment-when-a-downstream-re.md)
 - [Perf regression bisected to a fix ≠ the fix's logic is the cost (byte-compare serialized artifacts to distinguish semantic vs LTO-layout)](../learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md)
 - [Pin a moving PR head with patch mode, not pr mode](../learnings/1783681496336-pin-a-moving-pr-head-with-patch-mode-not-pr-mode.md)
 - [Post-compaction coworker drift: verify against the canonical thread and halt before any external artifact](../learnings/1783467434848-post-compaction-coworker-drift-verify-against-the-.md)
@@ -134,6 +141,7 @@ type: topic
 - [Recurring PR conflict may mean the issue was closed by a competing merged PR](../learnings/1782738059209-recurring-pr-conflict-may-mean-the-issue-was-close.md)
 - [Recurring trackers must carry disposition + reasoning, not just items](../learnings/1782461882511-recurring-trackers-must-carry-disposition-reasonin.md)
 - [REFINEMENT: bot issue-comment PATCH is PER-TOKEN, not clean creator-binding — some coworker tokens can't edit even their own comments; CREATE is the only universally reliable path](../learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-no.md)
+- [Regression-testing a native SIGSEGV under pytest (subprocess + strict xfail + phase bracket)](../learnings/1783875908806-regression-testing-a-native-sigsegv-under-pytest-s.md)
 - [Relay 'proceed/release' from upstream downstream — it is an action cue, not a status no-op](../learnings/1781075015015-relay-proceed-release-from-upstream-downstream-it-.md)
 - [Reply to live inbound via send_message tool when sender name is unaddressable](../learnings/1783580468003-reply-to-live-inbound-via-send-message-tool-when-s.md)
 - [ResourceDescriptorHeap/SamplerDescriptorHeap input syntax is front-end-only — backend already exists](../learnings/1781219589907-resourcedescriptorheap-samplerdescriptorheap-input.md)

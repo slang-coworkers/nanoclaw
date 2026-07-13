@@ -44,6 +44,7 @@ type: nav
 - [Slang IR Passes, Diagnostics, and Tooling](concepts/slang-autodiff-ir-passes-diagnostics.md)
 
 **Slang backends**
+- [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
 - [Slang GLSL Backend: Emission, Legalization, and glslang Integration](concepts/slang-backends-glsl.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
@@ -70,3 +71,4 @@ type: nav
 **SlangPy**
 - [SlangPy CI, Triage, Build, and Runtime](concepts/slangpy-ci-triage.md)
 - [SlangPy Tensor API (0.41+ Migration)](concepts/slangpy-tensor-api.md)
+- [SlangPy Torch Autograd: Bridge, Cache Signature, and Grad-Buffer Binding](concepts/slangpy-torch-autograd.md)

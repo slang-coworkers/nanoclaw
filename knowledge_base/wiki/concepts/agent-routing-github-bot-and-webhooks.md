@@ -138,7 +138,13 @@ On a no-PR hold (design-gated refusal, won't-fix), only ONE tier touches the iss
 
 <!-- fold-20260711 -->
 
-**Source learnings (31):**
+## Filing an Upstream Issue Triggers a Duplicate Webhook Triage Session (2026-07-13 fold)
+
+A distinct duplicate-footprint hazard from the held-no-PR race above: when our own `slangpy-<n>/upstream-slang` escalation session FILES a new `shader-slang/slang` issue via `gh issue create`, the `issue_opened` webhook fires and the orchestrator ALSO dispatches a fresh triage session on the canonical `gh-issue-shader-slang/slang-<n>` thread — so two sessions of the same agent converge on one issue within the same minute (observed twice: slang#12070 and slang#12071, both 2026-07-12). The escalation session, in one shot, typically already did ALL of triage: filed the issue, applied labels + Issue Type, posted the verified 5-bullet verdict (recorded in `.gh-comments/shader-slang-slang-<n>.id`), dispatched slang-fixer with the full briefing, and reported up. So the webhook-minted session MUST NOT post a 2nd comment, re-apply labels, or re-dispatch the fixer (duplicate fixer sessions = work done twice on two wirings). Detect fast BEFORE any mutating step: `gh api .../issues/N/comments --jq '.[-1]|"\(.user.login)\t\(.created_at)"'` (newest is `nv-slang-bot[bot]` ~same minute as issue creation → a sibling already triaged), `ls /workspace/agent/.gh-comments/OWNER-REPO-N.id` + the persisted escalation memo (same agent, shared `/workspace/agent`), and `git ls-remote`/`gh pr list --search N` for fixer branch/PR state. The webhook session's legitimate value-add is an independent from-scratch ToT re-verification of the repro reported up on the canonical thread — WITHOUT duplicating the external artifacts, which is exactly what "verify, don't relay" wants. Verify the existing verdict comment's numbers still hold at HEAD before deciding not to re-post; only re-post if HEAD changed the verdict ([slang escalation session that files an upstream issue also triggers a duplicate webhook triage session — don't double-post/double-dispatch](../learnings/1783886221663-slang-escalation-session-that-files-an-upstream-is.md)).
+
+<!-- fold-20260713 -->
+
+**Source learnings (32):**
 - [Verifying GitHub webhook payloads before acting](../learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md)
 - [Always post the PR review when explicitly requested via webhook](../learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md)
 - [GitHub bot identity is nv-slang-bot[bot]](../learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md)
@@ -170,4 +176,5 @@ On a no-PR hold (design-gated refusal, won't-fix), only ONE tier touches the iss
 - [slang non-ASCII header CI guard is bot-shippable via extras/formatting.sh (no .yml edit)](../learnings/1783665750293-slang-non-ascii-header-ci-guard-is-bot-shippable-v.md)
 - [Held-no-PR is triage's GitHub footprint; fixer posting its own hold comment races + duplicates](../learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md)
 - [CORRECTION: nv-slang-bot often CANNOT edit/delete its own GitHub issue comments (403) -- prevent, don't consolidate](../learnings/1783708188779-correction-nv-slang-bot-often-cannot-edit-delete-i.md)
+- [slang escalation session that files an upstream issue also triggers a duplicate webhook triage session — don't double-post/double-dispatch](../learnings/1783886221663-slang-escalation-session-that-files-an-upstream-is.md)
 _Catalog: [[wiki/index.md]]_

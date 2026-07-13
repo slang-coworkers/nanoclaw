@@ -70,8 +70,14 @@ Before triage recommends a fix — and as a fixer's first step before branching 
 
 A `CHANGES_REQUESTED` review with an approving/neutral body and zero inline comments is a decline-to-merge signal, not a request for code changes. Before treating it as an edit request, fetch the review body and inline comments (`gh api repos/<o>/<r>/pulls/<n>/reviews` + `/comments`). If the body is positive and comments are empty, reply once acknowledging the no-merge verdict and close the chain upstream with no code change. ([CHANGES_REQUESTED with a 'looks good' body and zero inline comments is a no-merge signal, not an edit request](../learnings/1782512263705-changes-requested-with-a-looks-good-body-and-zero-.md))
 
+## Bot Comment Login Form & Content-Correction Hygiene (2026-07-13 fold)
+
+The "edit if last commenter is self, else post fresh" guard commonly tests `if [ "$LOGIN" = "nv-slang-bot[bot]" ]`, but `gh api repos/<r>/issues/<n>/comments --jq '.[-1].user.login'` returns **`nv-slang-bot`** (NO `[bot]` suffix) for the bot's own comments via the REST issues/comments API — so the guard NEVER matches and every "refresh the 5-bullet" step POSTs a new comment instead of PATCHing (observed on #1052: three near-identical triage comments piled up). Match `nv-slang-bot` (bare) or use a suffix-tolerant test (`case "$LOGIN" in nv-slang-bot|nv-slang-bot\[bot\]) PATCH ;; *) POST ;; esac`); the `[bot]` form appears in GraphQL/events but not this REST path — verify with `--jq '.[-1].user.login'` before trusting either. This affects ALL `*-github` skills carrying the `[bot]`-suffixed guard ([gh API comment login is 'nv-slang-bot' not 'nv-slang-bot[bot]' — edit-if-self guard mismatch](../learnings/1783878154169-gh-api-comment-login-is-nv-slang-bot-not-nv-slang-.md)).
+
+The edit-in-place hygiene rule extends to **content corrections**: when you've posted a causal claim/verdict as CONFIRMED and a later stage in the chain refutes exactly that claim, you MUST patch your own comment in-place to mark the refuted detail and defer to the authoritative write-up — the reader hits the top comment first, and a stale CONFIRMED claim contradicting a correct cross-link below it makes the public trail internally inconsistent. Edit ONLY your own comment id; keep the parts that survived (a verified workaround); point to the authoritative source rather than re-litigating. Observed on slangpy#1055: the triager's top comment stated "vector/scalar divide is the trigger" as CONFIRMED; the upstream re-verify refined it to "the LOOP is the trigger, not the divide" (slang#12071), and the triager proactively re-PATCHed to mark that causal detail refuted while leaving the other tier's cross-link comment untouched ([patch your own posted comment when a downstream refinement refutes it](../learnings/1783885801139-patch-your-own-posted-comment-when-a-downstream-re.md)).
+
 ---
-**Source learnings (22):**
+**Source learnings (24):**
 - [GitHub commit authorship (bot user id, co-author trailer)](../learnings/1780558703304-CONSOLIDATED-github-commit-authorship.md)
 - [Read auto-memory feedback files before authoring commits](../learnings/1779895141195-read-auto-memory-feedback-files-before-authoring-c.md)
 - [Bot-owned vs human-contributor PR: fix/issue-* branch name is NOT proof of ownership](../learnings/1780903497625-bot-owned-vs-human-contributor-pr-fix-issue-branch.md)
@@ -96,4 +102,6 @@ A `CHANGES_REQUESTED` review with an approving/neutral body and zero inline comm
 - [CHANGES_REQUESTED with a "looks good" body and zero inline comments is a no-merge signal](../learnings/1782512263705-changes-requested-with-a-looks-good-body-and-zero-.md)
 - [Verify a fix PR's closing reference matches the tracked issue (title Fix #N doesn't auto-close)](../learnings/1782936185036-verify-a-fix-pr-s-closing-reference-matches-the-tr.md)
 - [PR-description prose fixes-N hijacks auto-close for the wrong issue; commit subject doesn't auto-close](../learnings/1782951523566-pr-description-prose-fixes-n-closes-the-wrong-issu.md)
+- [gh API comment login is 'nv-slang-bot' not 'nv-slang-bot[bot]' — edit-if-self guard mismatch](../learnings/1783878154169-gh-api-comment-login-is-nv-slang-bot-not-nv-slang-.md)
+- [patch your own posted comment when a downstream refinement refutes it](../learnings/1783885801139-patch-your-own-posted-comment-when-a-downstream-re.md)
 _Catalog: [[wiki/index.md]]_

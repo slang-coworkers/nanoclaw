@@ -3,7 +3,7 @@ title: "Skills, ncl CLI, and Slang-Specific Mechanics"
 type: concept
 group: agent-fixer-codex-skills
 tags: [ncl, cli, slang-rhi, ci, zero-initialize, include-cycle, coworker-lifecycle]
-source_count: 4
+source_count: 5
 ---
 
 # Skills, ncl CLI, and Slang-Specific Mechanics
@@ -20,6 +20,8 @@ Use `mcp__nanoclaw__create_agent` (admin-only) for new agents instead. The MCP p
 
 **Cross-group `--id` scope enforcement is inconsistent across commands.** For non-admin coworkers (scope = `group`), `ncl groups config get/update --id <other>` is rejected parse-time (before the approval flow); `ncl destinations add --target-id <other>` goes for approval normally (because `--target-id` is a separate field). Practical implication: a coworker can create + forward-wire a child group but cannot configure it — admin must drive `config update --id <child>` from their scope. Key source refs: `src/cli/resources/groups.ts:60`, `src/cli/crud.ts:253-257`, `src/db/container-configs.ts`.
 
+**An agent-initiated `ncl groups restart --id <other-group>` CANNOT restart another group.** The restart handler branches on caller: when `ctx.caller === 'agent'` it calls `killContainer(ctx.sessionId, …)` — killing the CALLER's OWN session and IGNORING `--id`/`--message`; only a HOST caller (operator in the host shell) reaches the group-wide `restartAgentGroupContainers`. Worse, approval replay preserves the original `caller:'agent'` context, so an agent-minted `restart --id <other> --message "…"` that the operator approves still misfires onto the requesting agent's own session with `--id`/`--message` dropped — which explains prior "restart requested but nothing happened" symptoms (observed for slang-fixer thrash-recovery on #12070/#12071/#12073). `mcp__nanoclaw__request_restart` also only restarts the CALLER's own container. Remedy for a cross-group restart: escalate to the operator to run from the HOST shell `ncl groups restart --id <target> [--message "<resume>"]` — prefer plain (no `--message`, kills only running containers, each respawns on next inbound) over `--message` (writes on_wake to every running session, risks clobbering an unrelated one); re-hand the resume memo via normal a2a on the canonical thread instead ([agent ncl restart can't target another group](../learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md)).
+
 ## slang-rhi CI Runs on Draft PRs
 
 `shader-slang/slang-rhi` runs its full CI build matrix on **draft PRs** ([slang-rhi runs full CI matrix (incl. tests) on draft PRs](../learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draft-.md)). Tests execute inline within the `build` matrix jobs (via `./slang-rhi-tests -check-devices`) — there is no separate test job. This matters because headless containers cannot build `slang-rhi-tests` locally (GLFW needs X11/RandR; `enum-strings.h` is build-generated), so CI is the only arbiter for runner-specific behavior (e.g. macOS Metal-timer). When validating a slang-rhi fix, watch the draft PR's `build (<os>, <arch>, <compiler>, <config>)` matrix job — no ready-flip required. Caveat: the CI-babysitter sweep only covers non-draft PRs; it will not auto-report a draft's CI result.
@@ -35,8 +37,9 @@ When adding a new public header under `include/` that is `#include`d by `slang.h
 Fix: put `#include "slang.h"` **before** the new header's own `#ifndef` guard. Then on a newheader-first include, the nested `slang.h` re-enters the new header at slang.h's include line (where `NEWHEADER_H` isn't defined yet) and declares the prototypes ahead of the wrappers; `slang.h`'s own `#ifndef SLANG_H` breaks the recursion. Match the `#ifndef` guard convention (not `#pragma once`). Public headers auto-install via the `include/slang*.h` glob in `source/slang/CMakeLists.txt` — a new `slang-*.h` needs no CMake edit. Verify cheaply with `g++ -std=c++17 -fsyntax-only -Iinclude` on 1-line TUs per header.
 
 ---
-**Source learnings (4):**
+**Source learnings (5):**
 - [ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked](../learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md)
+- [agent ncl restart can't target another group](../learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md)
 - [slang-rhi runs full CI matrix (incl. tests) on draft PRs](../learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draft-.md)
 - [slang -zero-initialize forces IDefaultInitializable on synthesized closures](../learnings/1781240588042-slang-zero-initialize-forces-idefaultinitializable.md)
 - [Slang public-header include cycle: include slang.h outside your own guard](../learnings/1782759769387-slang-public-header-include-cycle-include-slang-h-.md)

@@ -92,6 +92,10 @@ Before force-pushing an amended commit to your `fix/issue-<n>` branch, always `g
 
 When two branches each bump the same version counter (e.g. `k_maxSupportedModuleVersion` 22→23), git **collapses both to a single 23** on merge with no conflict — it can't see that two independent increments were intended. Manually correct to the summed value (24). Surfaced resolving #11541 ([1783089145425-merge-hazard-two-branches-bumping-a-sh](../learnings/1783089145425-merge-hazard-two-branches-bumping-a-shared-version.md)).
 
+## gh via OneCLI can be down while direct curl still works (2026-07-13 fold)
+
+Extends the "gh auth status lies" finding above with a concrete bypass. When `gh` fails with `app_not_connected` / "GitHub is not connected in OneCLI" (HTTP 401) and `gh auth status` reports the GH_TOKEN "invalid", the token is often fine — the failure is the OneCLI proxy being disconnected, not the credential. **Workaround:** bypass OneCLI and hit `https://api.github.com` directly with `curl -H "Authorization: Bearer $GH_TOKEN"`; reads and writes (POST/PATCH comments) both succeed. `gh auth status` lies because the bot's GH_TOKEN is a GitHub *App installation* token — `GET /user` returns 403 for App tokens (no user identity), which is what `gh auth status` probes. Verify the token instead with `GET /repos/<owner>/<repo>` (returns 200); then post with `jq -Rsn --arg b "$BODY" '{body:$b}' | curl -s -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -X POST ".../issues/N/comments" --data @-` (201 = posted). This saved a full triage from being blocked on GitHub observability ([gh via OneCLI can be down while direct curl to GitHub API still works](../learnings/1783873229538-gh-via-onecli-can-be-down-while-direct-curl-to-git.md)).
+
 ---
 **Source learnings (25):**
 - [CONSOLIDATED: GitHub auth & ops in agent containers](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)
@@ -119,4 +123,5 @@ When two branches each bump the same version counter (e.g. `k_maxSupportedModule
 - [Pushing workflow-file changes: App token lacks workflows perm → fork + REST cross-fork PR](../learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md)
 - [Bot App token lacks 'workflows' permission → workflow-file PRs must go cross-fork via slang-coworkers](../learnings/1783522205653-bot-app-token-lacks-workflows-permission-workflow-.md)
 - [gh auth status shows GH_TOKEN invalid but gh api succeeds via onecli-gateway proxy](../learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api-s.md)
+- [gh via OneCLI can be down while direct curl to GitHub API still works](../learnings/1783873229538-gh-via-onecli-can-be-down-while-direct-curl-to-git.md)
 _Catalog: [[wiki/index.md]]_

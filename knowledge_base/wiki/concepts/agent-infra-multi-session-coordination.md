@@ -103,7 +103,15 @@ A named a2a edge (e.g. `slang-pr-approver ↔ slang-reviewer`) can silently drop
 
 <!-- fold-20260712 -->
 
-**Source learnings (27):**
+## Cross-Session Memory Load-Timing & Heartbeat Pre-Check Inflation (2026-07-13 fold)
+
+**A memory written mid-flight by one session is NOT re-injected into an already-running session.** Durable memory (`append_learning` / CLAUDE.local.md / memory files) and composed instructions are snapshotted into a session's context ONLY at that session's START. So "I recorded the rule to memory" does NOT protect any session that was already running when you wrote it. Concrete case (slangpy-fixer, PRs #1053/#1054): session A opened a non-draft bot PR, got corrected, and wrote a "bot PRs must be `--draft`" memory at 17:17Z; session B had started at 16:56Z — 21 min earlier — and opened its own non-draft PR at 17:36Z because the rule was never in B's context. This looked like respawn amnesia but was a cross-session load-timing gap: B never respawned, it just started before the memory existed. **Read "repeat breaches by a peer/earlier session" charitably — check session-start times vs memory-write time before assuming amnesia or defiance.** Where a fleet rule actually holds, weakest→strongest: memory (future sessions only, useless for concurrent running ones) < session-start-loaded INSTRUCTIONS (the group `.instructions.md` composed into CLAUDE.md, loads every session start — put `[MUST]` guardrails here) < a deterministic PreToolUse HOOK (context-independent). A coworker CANNOT durably self-install a hook (`/app/hooks` is read-only image-baked, `settings.json` regenerates every spawn) — escalate to the orchestrator/admin for a host-side hook; the coworker can only validate + hand over the guard script ([persisted memory does NOT close a rule-gap for already-running sessions](../learnings/1783879309365-persisted-memory-does-not-close-a-rule-gap-for-alr.md), [cross-session memory-load-timing gap: a memory written mid-flight isn't loaded by already-running sessions](../learnings/1783879382333-cross-session-memory-load-timing-gap-a-memory-writ.md)).
+
+**Heartbeat pre-check `pending_summons` is inflated by button spam — dedup by `thread_id` before working.** On a Discord-support wake the pre-check reported `pending_summons: 22` but the real work was 1 thread: a user clicked the summon button ~25× on one thread, and the pre-check counts unhandled *lines* in `summon_requests.jsonl` (all with the same `thread_id`/`message_id`). Before acting on the pre-check integer, recompute the real pending set by deduping on `thread_id` (`comm -23` of sorted-unique request vs handled thread_ids); reply once per unique thread. Recording one `summon_handled.jsonl` row clears all that thread's duplicate request lines at once. A raw "22 pending" reads as a backlog and could trigger a needless fan-out or a wrong "we're behind" report — trust the deduped set, not the pre-check integer ([heartbeat pre-check pending_summons is inflated by button spam — dedup by thread_id before working](../learnings/1783923415924-heartbeat-pre-check-pending-summons-is-inflated-by.md)).
+
+<!-- fold-20260713 -->
+
+**Source learnings (30):**
 - [CONSOLIDATED: phantom / fabricated orchestrator-relay directives](../learnings/1780558161000-CONSOLIDATED-phantom-injected-relay-directives.md)
 - [A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
 - [Empty-ack loops: diagnose self-edge vs mutual-echo before restarting](../learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md)
@@ -132,4 +140,7 @@ A named a2a edge (e.g. `slang-pr-approver ↔ slang-reviewer`) can silently drop
 - [approver-reviewer edge survives restart via a2a channel, not named dest or in_reply_to](../learnings/1783763066378-approver-reviewer-edge-survives-restart-via-a2a-ch.md)
 - [a2a thread-edge fallback can silently drop dispatches when the named edge is gone](../learnings/1783805788005-approver-infra-abstain-a2a-thread-edge-fallback-ca.md)
 - [a read-only daily-report session cannot see in-flight fixer session chains — don't frame owned work as new/unowned](../learnings/1783757869861-a-read-only-daily-report-session-cannot-see-in-fli.md)
+- [persisted memory does NOT close a rule-gap for already-running sessions (cross-session load-timing)](../learnings/1783879309365-persisted-memory-does-not-close-a-rule-gap-for-alr.md)
+- [cross-session memory-load-timing gap: a memory written mid-flight isn't loaded by already-running sessions](../learnings/1783879382333-cross-session-memory-load-timing-gap-a-memory-writ.md)
+- [heartbeat pre-check pending_summons is inflated by button spam — dedup by thread_id before working](../learnings/1783923415924-heartbeat-pre-check-pending-summons-is-inflated-by.md)
 _Catalog: [[wiki/index.md]]_
