@@ -92,6 +92,10 @@ slang-fixer:
   description: "Slang issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
   project: slang
   extends: slang-writer
+  invariants:
+    # Always-in-context so it survives compaction (unlike the workflow step).
+    # Unioned with the inherited slang-writer/slang-common invariants.
+    - container/spines/slang/invariants/peer-review.md
   workflows:
     - slang-fix-issue
   # Fixer reads triage's diagnosis, commits to a plan, edits source, ships
