@@ -15,6 +15,8 @@ A target for `extends:` and a splice point for cross-cutting overlays — agents
 
 ## Steps
 
+0. **Track** {#track} — Seed a TodoWrite list with the concrete workflow's steps (not this stub's) and mark each complete as you go. Skip only for a one-shot with no multi-step body.
+
 1. **Understand** {#understand} — Read the inbound message. Identify what's asked, what artifacts exist, the success criterion. If ambiguous, ask once before working.
 
 2. **Setup** {#setup} — Establish workspace state for the task: claim active-work, ready the repo/files you'll touch, recall any useful session memory.

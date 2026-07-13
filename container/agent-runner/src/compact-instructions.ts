@@ -4,7 +4,7 @@
  * Claude Code captures the stdout of PreCompact shell hooks and passes it
  * as `customInstructions` to the compaction prompt. This ensures the
  * compaction summary preserves message routing context that the agent needs
- * to correctly address responses.
+ * to correctly address responses, plus any in-flight TodoWrite checklist.
  *
  * Invoked by the PreCompact hook in .claude-shared/settings.json:
  *   "command": "bun /app/src/compact-instructions.ts"
@@ -26,7 +26,10 @@ const instructions = [
   '2. Preserve the chronological message/reply sequence of recent exchanges.',
   '   The agent needs to see: who said what, in what order, and from which destination.',
   '',
-  '3. At the END of the compaction summary, include this verbatim reminder:',
+  '3. If a TodoWrite checklist is active, preserve its items and their status',
+  '   (pending / in_progress / completed) verbatim.',
+  '',
+  '4. At the END of the compaction summary, include this verbatim reminder:',
   '   "You MUST wrap all responses in <message to="name">...</message> blocks.',
   `   Available destinations: ${names.length > 0 ? names.map((n) => `\`${n}\``).join(', ') : '(none)'}."`,
 ];
