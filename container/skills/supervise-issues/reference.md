@@ -223,11 +223,19 @@ find /workspace/extra/ephemeral/prod-groups -mindepth 2 -maxdepth 3 -name .git -
 - Surface `worktree-vol: <N>GB free` in every board rollup.
 - **Every tick**: run the GC scan. Resolve worktree issue+PR states, pass them to
   `scripts/worktree-gc.py`, and dispatch save-then-remove for the REAP set plus build-only reclaim
-  for anything the script puts in `reclaim` (STALE-OPEN under pressure). This is lightweight (a few
+  for anything the script puts in `reclaim`. This is lightweight (a few
   `gh` calls) and prevents closed-issue worktrees — and dead-open build trees — from accumulating
   between pressure events.
+- **The script's `reclaim` list widens with pressure — always dispatch the whole list.** Below
+  `PRESSURE_GATE_GB` it holds STALE-OPEN (idle > 14d) builds; below `CRITICAL_GATE_GB`
+  (`summary.critical: true`, ENOSPC-imminent) it also includes **idle KEEP builds** — open PRs
+  touched within 14d but idle > `CRITICAL_IDLE_DAYS` with no running session, i.e. the 7 GB fixer
+  builds a routine tick can't touch. These are still **build-only** reclaims: dispatch
+  `rm -rf <dir>/build` to the owning coworker (below); the worktree, branch, and PR survive and the
+  coworker rebuilds on resume. Do NOT hand-judge which to spare — the script already excluded
+  running sessions and too-fresh chains.
 - **Free < 10 GB** → disk pressure: escalate to the operator immediately in addition to the
-  routine GC. If the reap set is empty or too small to clear the pressure, the escalation **must**
+  routine GC. If the reclaim list is empty or too small to clear the pressure, the escalation **must**
   say so and point at the operator-only docker reclaim (below) — worktrees are usually not the
   largest lever, and silence reads as "nothing more to reclaim" when there is.
 

@@ -22,6 +22,13 @@ uncommitted work, and the PR are untouched, so a still-live PR can still land
 (the worktree survives). It fires only under pressure and only until the target
 free is met, oldest-PR-first, so a healthy disk churns nothing.
 
+CRITICAL tier: below CRITICAL_GATE_GB (ENOSPC-imminent) the build-reclaim pool
+widens to also include idle KEEP builds — open PRs touched within 14d but idle
+> CRITICAL_IDLE_DAYS with no running session (the 7GB fixer builds routine
+pressure can't touch). Still build-only, still never the worktree. This is the
+lever the 2026-07-13 emergency lacked: at <5GB free the crash risk outweighs
+one rebuild's churn.
+
 Pure I/O split (mirrors pull-universe.sh → scan.py): the caller resolves each
 worktree's gh state and passes it in as JSON; `classify()` and `select()` are
 pure and tested by test_worktree_gc.py. Input schema (stdin or --in):
@@ -50,6 +57,8 @@ import sys
 STALE_OPEN_IDLE_DAYS = 14   # PR untouched longer than this + no running session → STALE-OPEN
 PRESSURE_GATE_GB = 25       # only reclaim STALE-OPEN builds when free < this
 TARGET_FREE_GB = 40         # stop reclaiming once free would reach this
+CRITICAL_GATE_GB = 5        # below this = ENOSPC-imminent: widen reclaim to idle KEEP builds too
+CRITICAL_IDLE_DAYS = 2      # under critical pressure, a KEEP build idle > this is reclaimable
 
 
 def classify(wt, running_dirs):
@@ -88,11 +97,27 @@ def select(payload):
 
     reclaim = []
     under_pressure = free < PRESSURE_GATE_GB
+    critical = free < CRITICAL_GATE_GB
     if under_pressure:
-        # Only STALE-OPEN with a build/ to reclaim; oldest (most idle) first so
-        # the chains most likely truly abandoned are hit before borderline ones.
+        # Build-reclaim pool, oldest-PR-first (chains most likely truly abandoned
+        # go first). Under routine pressure: only STALE-OPEN (idle > 14d) builds.
+        # Under CRITICAL pressure (ENOSPC-imminent): also include idle KEEP builds
+        # — an open PR touched within 14d but idle > CRITICAL_IDLE_DAYS with no
+        # running session. This is the 7GB-fixer-build case a routine tick can't
+        # touch; at <5GB free the crash risk outweighs the churn of one rebuild.
+        # Reclaim is ALWAYS build/-only — the worktree, branch, PR are untouched;
+        # cmake regenerates on resume. select() stays pure; the caller dispatches
+        # the rm to the owning fixer.
         cands = [w for w in tiers["STALE-OPEN"] if w.get("has_build")]
-        cands.sort(key=lambda w: w.get("pr_idle_days", 0), reverse=True)
+        if critical:
+            idle_keep = [
+                w for w in tiers["KEEP"]
+                if w.get("has_build")
+                and w.get("dir") not in running
+                and (w.get("pr_idle_days") or 0) > CRITICAL_IDLE_DAYS
+            ]
+            cands += idle_keep
+        cands.sort(key=lambda w: w.get("pr_idle_days") or 0, reverse=True)
         projected = free
         for w in cands:
             if projected >= TARGET_FREE_GB:
@@ -103,6 +128,7 @@ def select(payload):
     summary = {
         "free_gb": free,
         "under_pressure": under_pressure,
+        "critical": critical,
         "counts": {k: len(v) for k, v in tiers.items()},
         "reclaim_count": len(reclaim),
         "reclaim_gb": round(sum(w.get("size_gb", 0) for w in reclaim), 1),
@@ -110,6 +136,8 @@ def select(payload):
             "STALE_OPEN_IDLE_DAYS": STALE_OPEN_IDLE_DAYS,
             "PRESSURE_GATE_GB": PRESSURE_GATE_GB,
             "TARGET_FREE_GB": TARGET_FREE_GB,
+            "CRITICAL_GATE_GB": CRITICAL_GATE_GB,
+            "CRITICAL_IDLE_DAYS": CRITICAL_IDLE_DAYS,
         },
     }
     return {"tiers": tiers, "reclaim": reclaim, "summary": summary}
