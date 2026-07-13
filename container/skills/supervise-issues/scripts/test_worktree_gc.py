@@ -107,6 +107,48 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(out["summary"]["thresholds"]["STALE_OPEN_IDLE_DAYS"], 14)
         self.assertEqual(out["summary"]["thresholds"]["PRESSURE_GATE_GB"], 25)
         self.assertEqual(out["summary"]["thresholds"]["TARGET_FREE_GB"], 40)
+        self.assertEqual(out["summary"]["thresholds"]["CRITICAL_GATE_GB"], 5)
+        self.assertEqual(out["summary"]["thresholds"]["CRITICAL_IDLE_DAYS"], 2)
+
+
+class TestCriticalTier(unittest.TestCase):
+    def test_routine_pressure_does_not_touch_keep_builds(self):
+        # 10G free (< 25 routine, but >= 5 critical): idle KEEP build stays KEEP,
+        # NOT reclaimed. This is the 12:10-tick case — nothing safe to reclaim.
+        out = wg.select({"free_gb": 10, "running_dirs": [],
+                         "worktrees": [wt("k", idle=3, size=7)]})
+        self.assertEqual(out["summary"]["counts"]["KEEP"], 1)
+        self.assertFalse(out["summary"]["critical"])
+        self.assertEqual(out["reclaim"], [])
+
+    def test_critical_pressure_reclaims_idle_keep_build(self):
+        # 2G free (< 5 critical): a KEEP build idle > 2d with no running session
+        # becomes reclaimable — the 7GB-fixer-build emergency lever.
+        out = wg.select({"free_gb": 2, "running_dirs": [],
+                         "worktrees": [wt("k", idle=3, size=7)]})
+        self.assertTrue(out["summary"]["critical"])
+        self.assertEqual([w["dir"] for w in out["reclaim"]], ["k"])
+
+    def test_critical_never_reclaims_running_keep(self):
+        # Even critical + idle: a running session pins KEEP, never reclaimed.
+        out = wg.select({"free_gb": 1, "running_dirs": ["k"],
+                         "worktrees": [wt("k", idle=9, size=7)]})
+        self.assertEqual(out["reclaim"], [])
+
+    def test_critical_respects_idle_floor(self):
+        # KEEP build idle only 1d (< CRITICAL_IDLE_DAYS): not reclaimed even at 1G.
+        out = wg.select({"free_gb": 1, "running_dirs": [],
+                         "worktrees": [wt("fresh", idle=1, size=7)]})
+        self.assertEqual(out["reclaim"], [])
+
+    def test_critical_prefers_stale_open_then_idle_keep_oldest_first(self):
+        # Mixed: STALE-OPEN (idle 40) + idle KEEP (idle 5). Both eligible under
+        # critical; ordered most-idle first regardless of tier.
+        out = wg.select({"free_gb": 1, "running_dirs": [],
+                         "worktrees": [wt("keep5", idle=5, size=7),
+                                       wt("stale40", idle=40, size=7)]})
+        self.assertEqual([w["dir"] for w in out["reclaim"]][0], "stale40")
+        self.assertEqual(set(w["dir"] for w in out["reclaim"]), {"stale40", "keep5"})
 
 
 if __name__ == "__main__":
