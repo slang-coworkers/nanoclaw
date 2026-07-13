@@ -78,6 +78,20 @@ def _post_summon_disabled() -> bool:
     return os.environ.get("DISCORD_POST_SUMMON", "0") != "1"
 
 
+def _forward_followups_disabled() -> bool:
+    """Return True when slang-mcp should NOT forward OP follow-ups in on_message.
+
+    Default is True — on prod the always-on feedback_collector.py daemon is the
+    canonical forwarder (this module's Gateway is per-MCP-session and reaped
+    after ~10 min idle, so it can't reliably catch follow-ups). Forwarding
+    follows the same ownership axis as summon-posting: only installs that run
+    slang-mcp as the poster (DISCORD_POST_SUMMON=1, i.e. no daemon / lego /
+    hot-failover) forward here. Keeping exactly one forwarder prevents a
+    duplicate public reply when both processes' Gateways are momentarily warm.
+    """
+    return os.environ.get("DISCORD_POST_SUMMON", "0") != "1"
+
+
 # ── Per-thread continuation state helpers ───────────────────────────────────
 # State is sourced from two append-only audit files in the feedback dir:
 #   summon_requests.jsonl — written when a user clicks "Get Bot Help"
@@ -219,7 +233,7 @@ async def discord_rest_read_messages(channel_id: str, limit: int = 20) -> Dict[s
         return {"error": f"Discord REST request failed: {str(e)}"}
 
 
-async def _post_to_dashboard(content: str) -> bool:
+async def _post_to_dashboard(content: str, thread_id: str | None = None) -> bool:
     """Forward an event to the dashboard ingress to wake the target agent."""
     if not DASHBOARD_INGRESS_URL:
         return False
@@ -227,6 +241,11 @@ async def _post_to_dashboard(content: str) -> bool:
     if DASHBOARD_SECRET:
         headers["Authorization"] = f"Bearer {DASHBOARD_SECRET}"
     body = {"group": SUMMON_TARGET_GROUP, "content": content}
+    # thread_id routes each Discord thread to its own per-thread agent session
+    # (wiring is session_mode=per-thread); without it every thread collapses
+    # into the group's single thread_id=null catch-all session.
+    if thread_id:
+        body["thread_id"] = thread_id
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -316,7 +335,7 @@ class SummonView(discord.ui.View):
             f"\n"
             f"Use this exact phrasing — users see it on every first reply."
         )
-        posted = await _post_to_dashboard(prompt)
+        posted = await _post_to_dashboard(prompt, thread_id=thread_id)
 
         if posted:
             button.label = "Bot summoned!"
@@ -540,6 +559,13 @@ async def init_discord_client():
         if not channel.parent_id or str(channel.parent_id) not in WATCHED_FORUM_IDS:
             return
 
+        # Ownership gate: on prod the feedback_collector.py daemon forwards
+        # follow-ups (its Gateway is always warm). Only forward here when this
+        # install has no daemon canonicalized (DISCORD_POST_SUMMON=1). Prevents
+        # a duplicate wake when both Gateways are momentarily warm.
+        if _forward_followups_disabled():
+            return
+
         # OP-only continuation: only the thread author's follow-ups wake the bot.
         # Other members can read along, but a knowledgeable bystander can't
         # rack up the OP's reply cap or steer the bot off-topic.
@@ -583,7 +609,7 @@ async def init_discord_client():
         # the POST so simultaneous user messages can't both squeak past the
         # gate by reading the same pre-increment count.
         _record_thread_event(thread_id, "bot_reply")
-        posted = await _post_to_dashboard(prompt)
+        posted = await _post_to_dashboard(prompt, thread_id=thread_id)
         if posted:
             logger.info(
                 f"Forwarded follow-up to dashboard ingress for thread {channel.name} "

@@ -1,13 +1,19 @@
 """Discord feedback collector and summon button service.
 
-Standalone process that:
+Standalone always-on daemon that:
 1. Auto-posts a "Get Bot Help" button on new forum threads
 2. Handles summon button clicks — POSTs to dashboard ingress, saves request log
-3. Continues conversation: forwards human follow-up replies in summoned threads
-   to the agent, capped at MAX_BOT_REPLIES_PER_THREAD (default 15) bot replies.
+3. Continues conversation: forwards OP follow-up replies in summoned threads to
+   the agent (when this daemon owns forwarding — see _forward_followups_here),
+   capped at MAX_BOT_REPLIES_PER_THREAD (default 15) bot replies.
 4. Handles feedback button clicks (Resolved/Helpful/Not Helpful). Resolved ends
    the conversation early.
 5. Captures human replies in watched forum threads to thread_replies.jsonl.
+
+On prod this daemon is the canonical follow-up forwarder because slang-mcp's
+Discord Gateway is per-MCP-session and reaped after ~10 min idle by supergateway
+--stateful; this daemon holds a permanent Gateway. slang-mcp/discord.py keeps
+the same forwarding on_message for lego / no-daemon installs (DISCORD_POST_SUMMON=1).
 """
 
 import asyncio
@@ -37,6 +43,27 @@ DASHBOARD_SECRET = os.environ.get("DASHBOARD_SECRET", "").strip()
 SUMMON_TARGET_GROUP = os.environ.get("SUMMON_TARGET_GROUP", "slang-discord-support")
 MAX_BOT_REPLIES_PER_THREAD = int(os.environ.get("MAX_BOT_REPLIES_PER_THREAD", "15"))
 THREAD_STATE_FILE = os.path.join(FEEDBACK_DIR, "thread_state.jsonl")
+
+
+def _forward_followups_here() -> bool:
+    """Return True when THIS daemon should forward OP follow-ups to the agent.
+
+    Prod runs this always-on daemon alongside slang-mcp; slang-mcp's Discord
+    Gateway is per-MCP-session and gets reaped after ~10 min idle, so its
+    forwarding on_message is unreliable for unsolicited follow-ups. This daemon
+    holds a permanent Gateway, so it owns forwarding on prod.
+
+    To avoid BOTH processes forwarding the same message (a duplicate wake while
+    slang-mcp's Gateway happens to be warm), forwarding follows the same
+    prod-vs-lego ownership axis as summon-button posting: when
+    DISCORD_POST_SUMMON=1 the install has no daemon canonicalized (lego /
+    hot-failover) and slang-mcp owns both posting and forwarding, so this daemon
+    stays audit-only. Default (unset/0) = prod → this daemon forwards.
+    DISCORD_READ_ONLY=1 (lego) hard-disables forwarding regardless.
+    """
+    if os.environ.get("DISCORD_READ_ONLY") == "1":
+        return False
+    return os.environ.get("DISCORD_POST_SUMMON", "0") != "1"
 
 
 # ── Per-thread state ────────────────────────────────────────────────────────
@@ -106,11 +133,16 @@ def _load_thread_state() -> None:
 
 # ── Dashboard ingress POST ──────────────────────────────────────────────────
 
-async def _post_to_dashboard(content: str) -> bool:
+async def _post_to_dashboard(content: str, thread_id: str | None = None) -> bool:
     headers = {"Content-Type": "application/json"}
     if DASHBOARD_SECRET:
         headers["Authorization"] = f"Bearer {DASHBOARD_SECRET}"
     body = {"group": SUMMON_TARGET_GROUP, "content": content}
+    # thread_id routes each Discord thread to its own per-thread agent session
+    # (the wiring is session_mode=per-thread). Without it every thread collapses
+    # into the group's single thread_id=null catch-all session.
+    if thread_id:
+        body["thread_id"] = thread_id
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -169,6 +201,10 @@ class SummonView(discord.ui.View):
         logger.info(f"Summon request saved for thread: {thread_name}")
 
         _record_thread_event(thread_id, "summoned")
+        # Pre-count the summon's own reply toward the cap, matching slang-mcp's
+        # SummonView. Both processes read the same thread_state.jsonl, so the
+        # bot_reply accounting must agree or the 15-reply cap drifts.
+        _record_thread_event(thread_id, "bot_reply")
 
         thread_url = (
             f"https://discord.com/channels/{interaction.guild_id}/{interaction.channel_id}"
@@ -200,7 +236,7 @@ class SummonView(discord.ui.View):
             f"\n"
             f"Use this exact phrasing — users see it on every first reply."
         )
-        posted = await _post_to_dashboard(prompt)
+        posted = await _post_to_dashboard(prompt, thread_id=thread_id)
 
         if posted:
             logger.info(f"Dashboard ingress accepted summon for thread: {thread_name}")
@@ -361,9 +397,14 @@ async def main():
     #     it cannot reliably catch thread-create events before an agent has
     #     touched it. feedback_collector is an always-on daemon, so summon
     #     buttons get posted reliably for every new forum thread.
-    #   - Continuation forwarding (on_message → POST to dashboard) lives in
-    #     slang-mcp/discord.py with the summoned/resolved/cap gates. This
-    #     service only does audit logging in on_message.
+    #   - Continuation forwarding (on_message → POST to dashboard) ALSO lives
+    #     here on prod (gated by _forward_followups_here()). slang-mcp's Gateway
+    #     is per-MCP-session and reaped after ~10 min idle by supergateway
+    #     --stateful, so its forwarding on_message misses follow-ups that land
+    #     during a quiet window. This daemon holds a permanent Gateway, so it is
+    #     the reliable forwarder. slang-mcp's on_message stays as the lego /
+    #     no-daemon path (DISCORD_POST_SUMMON=1); the gate keeps exactly one
+    #     process forwarding so a warm slang-mcp Gateway can't double-forward.
 
     @client.event
     async def on_thread_create(thread: discord.Thread):
@@ -394,14 +435,80 @@ async def main():
 
     @client.event
     async def on_message(message: discord.Message):
-        # Audit-only: capture human replies in watched threads to thread_replies.jsonl.
-        # Do NOT forward — slang-mcp's discord.py handles forwarding (with gates).
+        # Two jobs: (1) forward OP follow-ups to the agent when this daemon owns
+        # forwarding (prod), and (2) always audit-log human replies to
+        # thread_replies.jsonl.
         if message.author.bot:
             return
-        if not isinstance(message.channel, discord.Thread):
+        channel = message.channel
+        if not isinstance(channel, discord.Thread):
             return
-        if message.channel.parent_id and str(message.channel.parent_id) in WATCHED_FORUM_IDS:
-            _save_thread_reply(message)
+        if not channel.parent_id or str(channel.parent_id) not in WATCHED_FORUM_IDS:
+            return
+
+        # Audit every human reply first — this must happen regardless of the
+        # forwarding gates below, so the drop-analysis record stays complete.
+        _save_thread_reply(message)
+
+        if not _forward_followups_here():
+            return  # slang-mcp owns forwarding on this install (lego / read-only)
+
+        thread_id = str(channel.id)
+
+        # Continuation gates — silent skips, not errors. Mirror slang-mcp's
+        # on_message so behavior is identical whichever process forwards.
+        #
+        # OP-only: only the thread author's follow-ups wake the bot. A
+        # knowledgeable bystander can't rack up the OP's reply cap or steer the
+        # bot off-topic.
+        if channel.owner_id and message.author.id != channel.owner_id:
+            return
+        state = thread_state[thread_id]
+        if not state.summoned:
+            return  # bot was never summoned in this thread; do not auto-engage
+        if state.resolved:
+            return  # OP marked the thread resolved; conversation ended
+        if state.bot_reply_count >= MAX_BOT_REPLIES_PER_THREAD:
+            return  # cap reached; bot has tapped out
+
+        is_final = (state.bot_reply_count + 1) >= MAX_BOT_REPLIES_PER_THREAD
+        final_clause = (
+            "\n\nThis will be your FINAL allowed reply in this thread. End your "
+            "message with a polite single-line note telling the user that further "
+            "questions should be opened in a new thread."
+            if is_final else ""
+        )
+        prompt = (
+            f"New message in Discord thread.\n"
+            f"Thread: {channel.name} (ID: {thread_id})\n"
+            f"Author: {message.author.name}\n"
+            f"Content: {message.content[:500]}\n"
+            f"\n"
+            f"Read the full thread via mcp__slang-mcp__discord_read_messages "
+            f"(thread ID {thread_id}) and reply with mcp__slang-mcp__discord_send_message "
+            f"(set add_feedback_buttons: true).\n"
+            f"\n"
+            f"MANDATORY research before drafting if the follow-up asks a substantive "
+            f"question (not just thanks/clarification): at least one "
+            f"`mcp__deepwiki__ask_question` against the relevant shader-slang repo, "
+            f"and a `mcp__slang-mcp__github_*` call for related issues / source. "
+            f"Cite sources inline. Even if you think you know the answer, verify — "
+            f"Slang evolves and your training lags.\n"
+            f"{final_clause}"
+        )
+
+        # Pre-record the upcoming bot reply toward the cap BEFORE the POST, so
+        # two near-simultaneous OP messages can't both read the same
+        # pre-increment count and squeak past the cap.
+        _record_thread_event(thread_id, "bot_reply")
+        posted = await _post_to_dashboard(prompt, thread_id=thread_id)
+        if posted:
+            logger.info(
+                f"Forwarded follow-up for thread {channel.name} "
+                f"(bot_reply_count was {state.bot_reply_count - 1}, final={is_final})"
+            )
+        else:
+            logger.error(f"Failed to forward follow-up for thread {channel.name}")
 
     await client.start(token)
 
