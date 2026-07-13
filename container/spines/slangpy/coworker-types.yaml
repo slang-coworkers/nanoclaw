@@ -76,6 +76,10 @@ slangpy-fixer:
   description: "SlangPy issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
   project: slangpy
   extends: slangpy-writer
+  invariants:
+    # Always-in-context so it survives compaction (unlike the workflow step).
+    # Unioned with the inherited slangpy-writer/slangpy-common invariants.
+    - container/spines/slangpy/invariants/peer-review.md
   workflows:
     - slangpy-implement
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
