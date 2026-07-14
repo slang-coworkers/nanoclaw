@@ -404,7 +404,9 @@ async function loadFunnel() {
   const ip = snap.issuePartition;
   const partHtml = ip && ip.counts ? funnelFlowHtml(ip, snap.rows || []) : '';
 
-  if (board) board.innerHTML = partHtml;
+  // PR-approver (Verity) shadow-mode ledger — ALL decisions, not just the bot-
+  // authored PRs that appear in the funnel spine. Appended below the partition.
+  if (board) board.innerHTML = partHtml + funnelApproverPanel(snap.approverDecisions || []);
 
   // nv-slang-bot contribution table (separate snapshot: /api/bot-contributions).
   if (detail) {
@@ -423,6 +425,83 @@ async function loadFunnel() {
       detail.innerHTML = '';
     }
   }
+}
+
+// PR-approver (Verity) shadow-mode decision ledger. Unlike the funnel row table
+// — which is gated by pr_session_mappings and so only lists bot-authored PRs —
+// this shows EVERY decision Verity recorded, including the human-authored PRs it
+// reviewed in shadow mode. `decisions` is snap.approverDecisions (newest first,
+// one row per PR). Counts by decision are shown as a header summary.
+function funnelApproverPanel(decisions) {
+  if (!Array.isArray(decisions) || decisions.length === 0) return '';
+  // Approve = green, block = red, abstain = muted. Matches the funnel row cell
+  // (funnelIssueTableHtml's approverColor); literal hex here since the palette
+  // object is scoped to funnelFlowHtml.
+  const decisionColor = {
+    WOULD_APPROVE: '#3fb950',
+    BLOCK: '#e5534b',
+    ABSTAIN_POLICY: 'var(--text-muted)',
+    ABSTAIN_INFRA: 'var(--text-muted)',
+  };
+  // PR-state pill color (matches the funnel palette): merged=green, open=blue,
+  // closed=grey.
+  const stateColor = { merged: '#3fb950', open: '#1f6feb', closed: '#6e7681' };
+  const by = {};
+  for (const d of decisions) by[d.decision] = (by[d.decision] || 0) + 1;
+  const order = ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY', 'ABSTAIN_INFRA'];
+  const summary = order
+    .filter((k) => by[k])
+    .map((k) => `<span style="color:${decisionColor[k]}">${k} ${by[k]}</span>`)
+    .join('<span style="color:var(--border)"> · </span>');
+  const rows = decisions
+    .map((d) => {
+      const repo = (d.repo || '').split('/').pop();
+      const prUrl = `https://github.com/${d.repo}/pull/${d.pr}`;
+      const prLink = `<a href="${esc(prUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(repo)} #${d.pr}</a>`;
+      // Author tag: bot = the bot's own PR (also in the funnel spine); human =
+      // a contributor PR Verity reviewed in shadow mode. null when unfetched.
+      const authorTag =
+        d.authoredByBot === true
+          ? '<span style="color:var(--text-muted);font-size:10px"> · bot</span>'
+          : d.authoredByBot === false
+            ? '<span style="color:var(--text-muted);font-size:10px"> · human</span>'
+            : '';
+      const decCell = `<span style="color:${decisionColor[d.decision] || 'var(--text-muted)'}">${esc(d.decision)}</span>`;
+      const human = d.human ? `<span style="color:var(--text-muted)"> → ${esc(d.human)}</span>` : '';
+      const st = d.prState || '';
+      const draft = d.isDraft ? ' <span style="color:var(--text-muted);font-size:10px">(draft)</span>' : '';
+      const stateCell = st
+        ? `<span style="color:${stateColor[st] || 'var(--text-muted)'}">${esc(st)}</span>${draft}`
+        : '<span style="color:var(--text-muted)">—</span>';
+      return `<tr>
+        <td style="padding:3px 10px 3px 0">${prLink}${authorTag}</td>
+        <td style="padding:3px 10px">${decCell}${human}</td>
+        <td style="padding:3px 10px">${stateCell}</td>
+        <td style="padding:3px 10px;color:var(--text-muted);font-size:10px"><code>${esc(d.reason || '—')}</code></td>
+        <td style="padding:3px 10px;color:var(--text-muted);font-size:10px">${esc(d.mode || '')}</td>
+        <td style="text-align:right;padding:3px 10px;color:var(--text-muted);font-size:10px">${d.decidedAt ? formatTime(d.decidedAt) : ''}</td>
+      </tr>`;
+    })
+    .join('');
+  return `<div style="margin-top:20px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:14px;font-weight:700">PR Approver — Verity <span style="font-weight:400;color:var(--text-muted);font-size:11px">(shadow mode)</span></span>
+        <span style="font-size:11px">${summary}</span>
+        <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${decisions.length} PRs decided</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Every PR Verity decided — including human-authored PRs (not just the bot's own). Shadow decisions never post to GitHub.</div>
+      <table style="border-collapse:collapse;font-size:12px;width:100%;max-width:820px">
+        <thead><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase">
+          <th style="text-align:left;padding:3px 10px 3px 0">PR</th>
+          <th style="text-align:left;padding:3px 10px">Decision → Human</th>
+          <th style="text-align:left;padding:3px 10px">PR State</th>
+          <th style="text-align:left;padding:3px 10px">Reason</th>
+          <th style="text-align:left;padding:3px 10px">Mode</th>
+          <th style="text-align:right;padding:3px 10px">Decided</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 // Table of nv-slang-bot's per-repo commits / additions / deletions, from the
