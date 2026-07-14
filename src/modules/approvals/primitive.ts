@@ -59,6 +59,12 @@ const APPROVAL_OPTIONS: RawOption[] = [
 export interface ApprovalHandlerContext {
   session: Session;
   payload: Record<string, unknown>;
+  /**
+   * The verified approval row — the grant an approved continuation carries
+   * when it re-enters its guarded entry point. Still live here; resolution
+   * deletes it after the handler returns, so a grant executes exactly once.
+   */
+  approval: PendingApproval;
   /** User ID of the admin who approved. Empty string if unknown. */
   userId: string;
   /** Send a system chat message to the requesting agent's session. */
@@ -283,6 +289,10 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
         platform_message_id: null,
       });
     } catch (err) {
+      // nv-main keeps upstream's fail-closed delete in the DM-only case, but
+      // this fork has a dashboard that can surface a persisted pending row, so
+      // the row is retained (via updatePendingApprovalDelivery above) rather
+      // than deleted — an admin can still act on it from the dashboard.
       log.error('Failed to deliver approval card — row persisted for dashboard', { action, approvalId, err });
       notifyAgent(session, `${action} pending — DM delivery failed, awaiting admin review via dashboard.`);
       return;

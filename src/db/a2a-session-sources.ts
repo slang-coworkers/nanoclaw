@@ -75,3 +75,55 @@ export function getSourceFor(recipientSessionId: string): A2aSessionSource | und
     | A2aSessionSource
     | undefined;
 }
+
+/** Upper bound on the ancestor walk — also caps the guard's lineage check. */
+export const ANCESTOR_HOP_LIMIT = 16;
+
+/**
+ * Walk `a2a_session_sources` upward from `startSessionId`, returning the
+ * closest ancestor row whose `source_agent_group_id` matches the target — or
+ * null when the target is not in the session's source ancestry (peer /
+ * unrelated / top-level session). Bounded by ANCESTOR_HOP_LIMIT and a visited
+ * set so corrupt cycles drop instead of looping.
+ *
+ * This is the single source of truth for a2a lineage: the router uses it to
+ * deliver a reply into the ancestor's existing session, and the a2a.send guard
+ * uses it (via `isAncestorGroup`) to authorize an upward reply that has no
+ * explicit destination row. Keeping ONE implementation ensures the guard's
+ * authorization decision and the router's delivery target can never diverge.
+ */
+export function findAncestorSource(startSessionId: string, targetAgentGroupId: string): A2aSessionSource | null {
+  const visited = new Set<string>([startSessionId]);
+  let cursor = getSourceFor(startSessionId);
+  let hops = 0;
+  while (cursor && hops < ANCESTOR_HOP_LIMIT) {
+    if (cursor.source_agent_group_id === targetAgentGroupId) {
+      return cursor;
+    }
+    if (visited.has(cursor.source_session_id)) {
+      log.warn('a2a ancestor walk: cycle detected, dropping', {
+        startSessionId,
+        targetAgentGroupId,
+        cycleAt: cursor.source_session_id,
+      });
+      return null;
+    }
+    visited.add(cursor.source_session_id);
+    cursor = getSourceFor(cursor.source_session_id);
+    hops++;
+  }
+  return null;
+}
+
+/**
+ * True when `targetAgentGroupId` is a genuine ancestor of the session chain
+ * rooted at `startSessionId` — i.e. the sender is somewhere downstream of the
+ * target in an a2a delegation chain. This is the lineage-authorization
+ * predicate: a child may reply upward to an ancestor without an explicit
+ * `agent_destinations` row, because the delegation chain itself proves reply
+ * privilege. A non-ancestor target returns false → the guard falls through to
+ * the strict destination-row check.
+ */
+export function isAncestorGroup(startSessionId: string, targetAgentGroupId: string): boolean {
+  return findAncestorSource(startSessionId, targetAgentGroupId) !== null;
+}

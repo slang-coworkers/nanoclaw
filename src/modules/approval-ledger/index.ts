@@ -14,6 +14,7 @@
  */
 import { getDb } from '../../db/connection.js';
 import { registerDeliveryAction } from '../../delivery.js';
+import { unguarded } from '../../guard/index.js';
 import { log } from '../../log.js';
 import type { Session } from '../../types.js';
 import { isValidDecision, recordHumanVerdict, upsertDecision } from './store.js';
@@ -62,7 +63,7 @@ registerDeliveryAction('record_decision', async (content: Record<string, unknown
     // own arrival if absent. Kept as the container-reported decision time.
     decidedAt: str(content.ts) ?? new Date().toISOString(),
   });
-});
+}, unguarded('record_decision appends to the approval-decision ledger — audit record, not a privileged mutation'));
 
 registerDeliveryAction('record_human_verdict', async (content: Record<string, unknown>, _session: Session) => {
   const repo = str(content.repo);
@@ -82,4 +83,4 @@ registerDeliveryAction('record_human_verdict', async (content: Record<string, un
       commit: commitSha.slice(0, 12),
     });
   }
-});
+}, unguarded('record_human_verdict stamps the human review outcome onto an existing ledger row — audit record'));

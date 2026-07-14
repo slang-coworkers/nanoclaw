@@ -48,10 +48,7 @@ function destinationList(): string {
 /**
  * Resolve a destination name to routing fields.
  *
- * If `to` is omitted, use the session's default reply routing (channel +
- * thread the conversation is in) — the agent replies in place.
- *
- * If `to` is specified, look up the named destination. If it resolves to
+ * Look up the explicitly named destination. If it resolves to
  * the same channel the session is bound to, the session's thread_id is
  * preserved so replies land in the correct thread.
  *
@@ -71,6 +68,9 @@ function resolveRouting(
   to: string | undefined,
   explicitThreadId: string | null,
 ): { channel_type: string; platform_id: string; thread_id: string | null; resolvedName: string } | { error: string } {
+  // nv-main keeps `to` OPTIONAL (upstream made it required): the fork's
+  // chain-communication model relies on a bare send defaulting to the current
+  // conversation + thread propagation (see CLAUDE.md "Sending messages").
   if (!to) {
     // Default: reply to whatever thread/channel this session is bound to.
     const session = getSessionRouting();

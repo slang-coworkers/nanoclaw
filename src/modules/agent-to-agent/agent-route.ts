@@ -23,7 +23,7 @@ import path from 'path';
 
 import { isSafeAttachmentName } from '../../attachment-safety.js';
 import { ensureContainedInboxDir, isPathInside } from '../../inbox-safety.js';
-import { getSourceFor, recordSource, type A2aSessionSource } from '../../db/a2a-session-sources.js';
+import { findAncestorSource, recordSource, type A2aSessionSource } from '../../db/a2a-session-sources.js';
 import { getAgentGroup } from '../../db/agent-groups.js';
 import { recordDroppedMessage } from '../../db/dropped-messages.js';
 import {
@@ -37,10 +37,11 @@ import { getSession } from '../../db/sessions.js';
 import { wakeContainer } from '../../container-runner.js';
 import { log } from '../../log.js';
 import { openInboundDb, resolveSession, sessionDir, writeSessionMessage } from '../../session-manager.js';
-import type { Session } from '../../types.js';
+import { GuardDenyError, guard } from '../../guard/index.js';
+import type { PendingApproval, Session } from '../../types.js';
 import { requestApproval } from '../approvals/index.js';
 import { evaluateEchoDrop, extractText } from '../runaway/echo-drop.js';
-import { hasDestination } from './db/agent-destinations.js';
+import { A2A_MESSAGE_GATE_ACTION, a2aSend } from './guard.js';
 import { getMessagePolicy } from './db/agent-message-policies.js';
 
 /**
@@ -426,53 +427,15 @@ function resolvePinnedTarget(
 }
 
 /**
- * Maximum a2a chain depth to walk when looking for an ancestor session.
- * Real chains are shallow (orchestrator → triager → fixer → reviewer is 4
- * sessions / 3 hops). The cap exists purely to bound runaway walks if
- * `a2a_session_sources` ever holds a corrupt cycle.
+ * Ancestor walk — delegates to the shared `findAncestorSource` in
+ * `db/a2a-session-sources.ts`, which is ALSO what the a2a.send guard consults
+ * (via `isAncestorGroup`). Sharing one implementation guarantees the guard's
+ * lineage-authorization decision and this router's delivery target can never
+ * diverge: if the guard allows an upward reply on lineage grounds, this walk
+ * finds the same ancestor row to deliver into. Bounded by ANCESTOR_HOP_LIMIT +
+ * a visited-set cycle guard inside the shared helper.
  */
-const ANCESTOR_HOP_LIMIT = 16;
-
-/**
- * Walk `a2a_session_sources` upward from `startSessionId`, looking for the
- * closest ancestor whose `source_agent_group_id` matches the target.
- *
- * Returns the matching `A2aSessionSource` row when found — its
- * `source_session_id` is the ancestor session to deliver into and
- * `source_thread_id` is the thread the ancestor used to delegate downward
- * (i.e. the thread the ancestor knows this conversation by).
- *
- * Returns null when:
- *   - the start session has no a2a source (it's a top-level / channel-side
- *     session), OR
- *   - no hop in the chain matches the target (the target is a peer or
- *     unrelated group, not an ancestor).
- *
- * Bounded by ANCESTOR_HOP_LIMIT and a visited set so corrupt cycles are
- * dropped instead of looping.
- */
-function findAncestorRoute(startSessionId: string, targetAgentGroupId: string): A2aSessionSource | null {
-  const visited = new Set<string>([startSessionId]);
-  let cursor = getSourceFor(startSessionId);
-  let hops = 0;
-  while (cursor && hops < ANCESTOR_HOP_LIMIT) {
-    if (cursor.source_agent_group_id === targetAgentGroupId) {
-      return cursor;
-    }
-    if (visited.has(cursor.source_session_id)) {
-      log.warn('a2a ancestor walk: cycle detected, dropping', {
-        startSessionId,
-        targetAgentGroupId,
-        cycleAt: cursor.source_session_id,
-      });
-      return null;
-    }
-    visited.add(cursor.source_session_id);
-    cursor = getSourceFor(cursor.source_session_id);
-    hops++;
-  }
-  return null;
-}
+const findAncestorRoute = findAncestorSource;
 
 /**
  * Deliver an a2a outbound as a reply into the ancestor session identified
@@ -565,18 +528,70 @@ async function deliverAncestorReply(
   if (freshAncestor) await wakeContainer(freshAncestor);
 }
 
-export async function routeAgentMessage(msg: RoutableAgentMessage, session: Session): Promise<void> {
+export async function routeAgentMessage(
+  msg: RoutableAgentMessage,
+  session: Session,
+  opts: { grant?: PendingApproval } = {},
+): Promise<void> {
   const targetAgentGroupId = msg.platform_id;
   if (!targetAgentGroupId) {
     throw new Error(`agent-to-agent message ${msg.id} is missing a target agent group id`);
   }
-  // Initial delivery enforces the per-edge message gate; the gate's own
-  // approve-handler (applyA2aMessageGate) re-enters performAgentRoute directly
-  // with the gate disabled so an approved message is delivered, not re-held.
-  await performAgentRoute(msg, session, targetAgentGroupId, true);
+
+  // Authorization + per-edge gate go through the guard seam (guard.ts a2aSend).
+  // Its decision carries the full a2a contract: self-send allow, LINEAGE allow
+  // (child→ancestor with no destination row — see isAncestorGroup), destination
+  // ACL deny, target-exists deny, message-policy hold. An approved replay
+  // carries the grant (opts.grant) — the policy hold is satisfied, but the
+  // structural checks re-run live, so revoking a destination between hold and
+  // approve still blocks delivery.
+  //
+  // Session resolution + delivery stay in performAgentRoute (the fork's layered
+  // Layer-0..3 routing). Because the guard has already authorized here, it is
+  // called with enforceGate=false so its own (now-redundant) inline gate never
+  // double-fires.
+  const decision = guard(a2aSend, {
+    actor: { kind: 'agent', agentGroupId: session.agent_group_id, sessionId: session.id },
+    resource: { from: session.agent_group_id, to: targetAgentGroupId },
+    payload: { id: msg.id, platform_id: targetAgentGroupId, content: msg.content, in_reply_to: msg.in_reply_to ?? '' },
+    grant: opts.grant ?? null,
+  });
+
+  if (decision.effect === 'deny') {
+    throw new GuardDenyError(decision.reason);
+  }
+
+  if (decision.effect === 'hold') {
+    const sourceName = getAgentGroup(session.agent_group_id)?.name ?? session.agent_group_id;
+    const targetName = getAgentGroup(targetAgentGroupId)?.name ?? targetAgentGroupId;
+    await requestApproval({
+      session,
+      agentName: sourceName,
+      action: A2A_MESSAGE_GATE_ACTION,
+      approverUserId: decision.approverUserId,
+      title: 'Message approval',
+      question: buildGateQuestion(sourceName, targetName, msg.content),
+      payload: {
+        id: msg.id,
+        platform_id: targetAgentGroupId,
+        content: msg.content,
+        in_reply_to: msg.in_reply_to,
+      },
+    });
+    log.info('Agent message held for approval', {
+      from: session.agent_group_id,
+      to: targetAgentGroupId,
+      msgId: msg.id,
+    });
+    return;
+  }
+
+  await performAgentRoute(msg, session, targetAgentGroupId, false);
 }
 
-export const A2A_MESSAGE_GATE_ACTION = 'a2a_message_gate';
+// Re-exported for back-compat: callers (index.ts, tests) import the gate
+// action name from here; its definition lives in guard.ts.
+export { A2A_MESSAGE_GATE_ACTION };
 
 const GATE_CARD_BODY_MAX = 1500;
 
@@ -692,59 +707,13 @@ export async function performAgentRoute(
     }
   }
 
-  // Authorization check: a fresh peer-to-peer write needs an explicit
-  // destination row. Skipped on explicit-reply paths because the resolved
-  // target session IS the conversation's originator — it talked to us
-  // first, so reply privilege is implicit (same reasoning as lineage on
-  // the ancestor-walk path above).
-  if (
-    !explicitTarget &&
-    targetAgentGroupId !== session.agent_group_id &&
-    !hasDestination(session.agent_group_id, 'agent', targetAgentGroupId)
-  ) {
-    throw new Error(
-      `unauthorized agent-to-agent: ${session.agent_group_id} has no destination for ${targetAgentGroupId}`,
-    );
-  }
+  // Authorization + the per-edge message gate are enforced by the guard seam
+  // in routeAgentMessage (guard.ts a2aSend) BEFORE this function is called —
+  // including the lineage allow (child→ancestor with no destination row). This
+  // body is delivery-only; `enforceGate` is retained for signature/back-compat
+  // but the gate no longer lives here. A defensive target-exists check stays.
   if (!getAgentGroup(targetAgentGroupId)) {
     throw new Error(`target agent group ${targetAgentGroupId} not found for message ${msg.id}`);
-  }
-
-  // Message gate: a fresh authorized peer send may still require per-edge
-  // approval (the a2a message-gate feature). Hold the message and return (not
-  // throw) so the delivery loop consumes the outbound row; applyA2aMessageGate
-  // re-enters performAgentRoute with enforceGate=false on approve. Exempt
-  // explicit replies — same reasoning as the destination check above: a reply
-  // within an established edge is implicitly authorized, and gating it would
-  // stall the chain mid-conversation. (A gate only ever fires here when the
-  // destination check above already passed, so an approved re-delivery re-auths
-  // cleanly.)
-  if (enforceGate && !explicitTarget && targetAgentGroupId !== session.agent_group_id) {
-    const policy = getMessagePolicy(session.agent_group_id, targetAgentGroupId);
-    if (policy) {
-      const sourceName = getAgentGroup(session.agent_group_id)?.name ?? session.agent_group_id;
-      const targetName = getAgentGroup(targetAgentGroupId)?.name ?? targetAgentGroupId;
-      await requestApproval({
-        session,
-        agentName: sourceName,
-        action: A2A_MESSAGE_GATE_ACTION,
-        approverUserId: policy.approver,
-        title: 'Message approval',
-        question: buildGateQuestion(sourceName, targetName, msg.content),
-        payload: {
-          id: msg.id,
-          platform_id: targetAgentGroupId,
-          content: msg.content,
-          in_reply_to: msg.in_reply_to,
-        },
-      });
-      log.info('Agent message held for approval', {
-        from: session.agent_group_id,
-        to: targetAgentGroupId,
-        msgId: msg.id,
-      });
-      return;
-    }
   }
 
   // Layer 3: deliver — using the explicit target resolved at Layer 1, the

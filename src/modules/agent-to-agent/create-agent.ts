@@ -1,22 +1,25 @@
 /**
- * `create_agent` delivery-action handler.
+ * `create_agent` delivery-action bodies.
  *
  * SECURITY: `create_agent` writes to the CENTRAL DB (agent_groups,
  * container_configs, agent_destinations) and scaffolds host filesystem state —
  * a privileged operation a confined container is otherwise architecturally
  * barred from. The container's MCP tool gate is inside the (untrusted)
  * container and is trivially bypassed by writing the outbound system row
- * directly, so authorization MUST be enforced host-side. Trusted owner agent
- * groups (CLI scope 'global') create directly; every other (confined) group
- * requires admin approval via `requestApproval` — matching `ncl groups create`
- * (access: 'approval') and the self-mod actions. `applyCreateAgent` runs the
- * creation on approve; `performCreateAgent` is the shared body.
+ * directly, so authorization MUST be enforced host-side: the delivery
+ * registry wraps this action with the guard, whose `agents.create` decision
+ * (./guard.ts) is the old cli_scope branch verbatim — trusted global-scope
+ * groups allow, everything else (including unknown config, fail-closed)
+ * holds for admin approval. On approve the continuation re-enters the
+ * wrapped action with the approval row as its grant and `createAgent` runs.
+ * `performCreateAgent` is the module-private body.
  *
- * Lego additions: spawns the new agent group, wires bidirectional
+ * Lego additions (nv-main): spawns the new agent group, wires bidirectional
  * agent_destinations rows, projects the new destination into the parent's
  * running container, validates coworker_type against the coworker-types
  * registry, applies the instruction_overlay parameter, and wires the new
- * coworker into the conversation that created it.
+ * coworker into the conversation that created it. These are threaded through
+ * the full create_agent `content` object into `performCreateAgent`.
  */
 import fs from 'fs';
 import path from 'path';
@@ -31,7 +34,7 @@ import {
   getMessagingGroupByPlatform,
   createMessagingGroupAgent,
 } from '../../db/messaging-groups.js';
-import { getContainerConfig, updateContainerConfigScalars } from '../../db/container-configs.js';
+import { getContainerConfig } from '../../db/container-configs.js';
 import { getSession } from '../../db/sessions.js';
 import { wakeContainer } from '../../container-runner.js';
 import { initGroupFilesystem } from '../../group-init.js';
@@ -45,7 +48,7 @@ import {
   getDestinationByName,
   normalizeName,
 } from './db/agent-destinations.js';
-import { requestApproval, type ApprovalHandler } from '../approvals/index.js';
+import { requestApproval } from '../approvals/index.js';
 import { writeDestinations } from './write-destinations.js';
 
 function notifyAgent(session: Session, text: string): void {
@@ -67,45 +70,32 @@ function notifyAgent(session: Session, text: string): void {
   }
 }
 
-/**
- * Delivery-action entry.
- *
- * Authorization depends on the calling group's CLI scope:
- *   - `global` (set by init-first-agent for trusted owner agent groups):
- *     create immediately. create_agent is the intended primitive for these
- *     privileged agents, and an approval tap on every sub-agent spawn would be
- *     needless friction.
- *   - anything else (the default `group` scope — the realistic
- *     prompt-injection victim): require an admin to approve before any
- *     central-DB write. `applyCreateAgent` runs on approve.
- * Unknown/missing config fails closed to the approval path.
- */
-export async function handleCreateAgent(content: Record<string, unknown>, session: Session): Promise<void> {
+/** Guard precheck: malformed requests are answered without ever creating a hold. */
+export function validateCreateAgent(content: Record<string, unknown>, session: Session): boolean {
   const name = typeof content.name === 'string' ? content.name : '';
-  const instructions = typeof content.instructions === 'string' ? content.instructions : null;
-
   if (!name) {
     notifyAgent(session, 'create_agent failed: name is required.');
-    return;
+    return false;
   }
-
-  const sourceGroup = getAgentGroup(session.agent_group_id);
-  if (!sourceGroup) {
+  if (!getAgentGroup(session.agent_group_id)) {
     notifyAgent(session, 'create_agent failed: source agent group not found.');
     log.warn('create_agent failed: missing source group', { sessionAgentGroup: session.agent_group_id, name });
-    return;
+    return false;
   }
+  return true;
+}
 
-  const cliScope = getContainerConfig(session.agent_group_id)?.cli_scope ?? 'group';
-  if (cliScope === 'global') {
-    // Trusted owner agent group — create directly, then notify (+wake) it.
-    await performCreateAgent(name, instructions, content, session, sourceGroup, (text) => notifyAgent(session, text));
-    return;
-  }
+/** Guard hold: card the requesting group's admin chain. */
+export async function requestCreateAgentHold(content: Record<string, unknown>, session: Session): Promise<void> {
+  const name = typeof content.name === 'string' ? content.name : '';
+  const instructions = typeof content.instructions === 'string' ? content.instructions : null;
+  const sourceGroup = getAgentGroup(session.agent_group_id);
+  if (!sourceGroup) return;
 
   // Carry the full create_agent params (coworkerType, overlays, agentProvider,
   // instructionOverlay, allowedMcpTools, routing, internalOnly, …) through the
-  // approval so applyCreateAgent reconstructs the identical request on approve.
+  // approval so the approved replay reconstructs the identical request: the
+  // guard re-enters createAgent with this payload as its `content`.
   await requestApproval({
     session,
     agentName: sourceGroup.name,
@@ -116,36 +106,26 @@ export async function handleCreateAgent(content: Record<string, unknown>, sessio
   });
 }
 
-/**
- * Approval handler: performs the creation once an admin approves a request from
- * a confined (non-global) agent group. `session` is the requesting parent.
- */
-export const applyCreateAgent: ApprovalHandler = async ({ session, payload, notify }) => {
-  const content = payload as Record<string, unknown>;
-  const name = typeof payload.name === 'string' ? payload.name : '';
-  const instructions = typeof payload.instructions === 'string' ? payload.instructions : null;
-
-  if (!name) {
-    notify('create_agent approved but the request had no name.');
-    return;
-  }
-
+/** Guard allow body: performs the creation (fresh global-scope call or approved replay). */
+export async function createAgent(content: Record<string, unknown>, session: Session): Promise<void> {
+  const name = typeof content.name === 'string' ? content.name : '';
+  const instructions = typeof content.instructions === 'string' ? content.instructions : null;
   const sourceGroup = getAgentGroup(session.agent_group_id);
-  if (!sourceGroup) {
-    notify('create_agent approved but the source agent group no longer exists.');
-    log.warn('create_agent apply failed: missing source group', { sessionAgentGroup: session.agent_group_id, name });
-    return;
-  }
+  if (!name || !sourceGroup) return; // precheck already answered the requester
 
-  await performCreateAgent(name, instructions, content, session, sourceGroup, notify);
-};
+  // Thread the full `content` so the lego params (coworkerType, overlays,
+  // instructionOverlay, agentProvider, allowedMcpTools, routing, internalOnly)
+  // reach performCreateAgent. On an approved replay `content` is the stored
+  // hold payload, so those params survive the approval round-trip.
+  await performCreateAgent(name, instructions, content, session, sourceGroup, (text) => notifyAgent(session, text));
+}
 
 /**
  * Core creation: writes the new agent group + bidirectional destinations and
  * scaffolds its filesystem, then reports via `notify`. Authorization is the
- * CALLER's responsibility (the global-scope shortcut in handleCreateAgent or
- * admin approval via applyCreateAgent) — never call this from an unauthorized
- * path, as it performs privileged central-DB writes a confined container is
+ * CALLER's responsibility (the guard's agents.create decision) — never call
+ * this from an unauthorized path, as it performs privileged central-DB
+ * writes a confined container is
  * otherwise barred from.
  */
 async function performCreateAgent(
@@ -279,20 +259,24 @@ async function performCreateAgent(
   };
   createAgentGroup(newGroup);
 
-  // A subagent inherits its creator's provider. Provider is a DB property; the
-  // child is created provider-agnostic, then stamped with the parent's runtime
-  // so a single-provider install (e.g. codex-only, where claude isn't
-  // authenticated) doesn't spawn a child on a runtime it can't reach. The
-  // operator can still flip a child later with `ncl groups config update
-  // --provider`. claude (the built-in default) leaves the column unset.
-  const parentProvider = getContainerConfig(sourceGroup.id)?.provider ?? undefined;
-  // Pass provider (for the provider-aware scaffold) but NOT instructions — the
-  // fork writes .instructions.md itself below, so passing instructions here too
-  // would double-write the seed.
+  // A subagent inherits its creator's EFFECTIVE provider so a single-provider
+  // install (e.g. codex-only, where claude isn't authenticated) never spawns a
+  // child on a runtime it can't reach. The operator can flip a child later with
+  // `ncl groups config update --provider`.
+  //
+  // NOTE (upstream-sync): took upstream's ONE-STEP provider stamp. The child's
+  // config row is fresh here (createAgentGroup just made the group; no row yet),
+  // so initGroupFilesystem → ensureContainerConfig(providerHint) stamps the
+  // parent's provider directly — nv-main's separate updateContainerConfigScalars
+  // call was redundant with that and is dropped. We still do NOT pass
+  // `instructions` here: the fork writes .instructions.md itself below (overlay +
+  // seed), so passing it would double-write the seed.
+  // `?? 'claude'` (not undefined): the child inherits the parent's EFFECTIVE
+  // provider, so a claude parent pins the child to claude explicitly rather
+  // than letting ensureContainerConfig fall back to the instance-wide
+  // DEFAULT_AGENT_PROVIDER (which could be codex on a codex-default install).
+  const parentProvider = getContainerConfig(sourceGroup.id)?.provider ?? 'claude';
   initGroupFilesystem(newGroup, { provider: parentProvider });
-  if (parentProvider) {
-    updateContainerConfigScalars(newGroup.id, { provider: parentProvider });
-  }
 
   // Resolve instruction overlay — prepended to .instructions.md (the fork's
   // instruction surface; CLAUDE.md is system-composed from templates + it).
@@ -442,7 +426,7 @@ async function performCreateAgent(
     log.warn('Failed to refresh adapter conversations after create_agent', { err: refreshErr });
   }
 
-  // Notify back to the creator (global path) or the approver (approval path)
+  // Notify the creator (global-scope allow) or the approver (approved replay)
   // via the caller-supplied notify callback.
   notify(
     `Agent "${localName}" created. You can now message it with <message to="${localName}">...</message>.${creationNote ? `\n${creationNote}` : ''}`,

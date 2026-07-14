@@ -30,6 +30,7 @@ import { discoverAdditionalDirectories } from './additional-directories.js';
 import { refreshPrimaryClones } from './refresh-clones.js';
 import { loadConfig } from './config.js';
 import { buildSystemPromptAddendum } from './destinations.js';
+import { getTaskSeriesId } from './db/session-routing.js';
 import { ensureMemoryScaffold } from './memory-scaffold.js';
 // Providers barrel — each enabled provider self-registers on import.
 // Provider skills append imports to providers/index.ts.
@@ -56,11 +57,17 @@ async function main(): Promise<void> {
 
   log(`Starting v2 agent-runner (provider: ${providerName})`);
 
-  // Build the system context instructions.
-  // Claude Code loads CLAUDE.md natively from the filesystem; Codex loads it
-  // in its own provider (codex.ts:composeBaseInstructions). index.ts only
-  // provides the routing addendum — CLAUDE.md ownership lives in the provider.
-  const instructions = buildSystemPromptAddendum();
+  // Runtime-generated system-prompt addendum: agent identity (name) plus the
+  // live destinations map and session-mode (chat vs isolated task run).
+  // Everything else lives in CLAUDE.md, loaded natively by Claude Code from the
+  // filesystem; Codex loads it in its own provider (codex.ts:composeBaseInstructions).
+  // index.ts only provides this routing addendum — CLAUDE.md ownership lives in
+  // the provider. Per-group memory lives in CLAUDE.local.md (auto-loaded).
+  const taskId = getTaskSeriesId();
+  const instructions = buildSystemPromptAddendum(
+    config.assistantName || undefined,
+    taskId ? { kind: 'task', taskId } : { kind: 'chat' },
+  );
 
   // Discover additional directories: /workspace/extra/* (host-mounted) and
   // /workspace/agent/* subdirs with their own .claude/ (cloned repos), skipping
