@@ -1544,32 +1544,60 @@ interface ContextStats {
 // on purpose — that's where compaction risk lives and where the signal matters.
 const CONTEXT_HIST_BUCKETS = [0.25, 0.5, 0.75, 0.9, Infinity];
 const MAX_CONTEXT_FILES_PER_GROUP = 400; // bound the scan on very long-lived groups
-interface PerFileContext {
-  mtimeMs: number;
-  peak: number; // max (input + cache_read + cache_creation) across assistant turns
+// Period windows for the Context column — the SAME day-based windows the cost
+// columns use (see the ccusage refresh + `within` at the cost path). 'all' = no
+// filter. Keeping the cutoffs identical (via ccusageSinceDate) means the two
+// columns agree on window boundaries by construction.
+type ContextPeriod = '1d' | '7d' | '30d' | 'all';
+const CONTEXT_PERIODS: ContextPeriod[] = ['1d', '7d', '30d', 'all'];
+// Signal with no/invalid timestamp buckets here — never passes `>=` a real
+// YYYYMMDD cutoff, so it lands only in 'all'.
+const MISSING_TS_KEY = '00000000';
+// One transcript day's worth of signal, keyed YYYYMMDD. Per-day granularity is
+// exactly enough to reconstruct any of the day-based period windows without
+// re-reading the (append-only, mtime-cached) file.
+interface DayContextAgg {
+  peak: number; // max (input + cache_read + cache_creation) across that day's assistant turns
   compactions: number;
   auto: number;
   manual: number;
   preTokensSum: number;
+}
+interface PerFileContext {
+  mtimeMs: number;
+  days: Map<string, DayContextAgg>; // YYYYMMDD -> that day's aggregate
   maxWindow: number; // max model context window seen in this file (0 if none)
   hadSignal: boolean;
+}
+// "2026-07-10T19:20:34.405Z" -> "20260710". Matches the cost columns' YYYYMMDD
+// format; ISO YYYY-MM-DD is fixed-width big-endian, so lexical `>=` == numeric.
+// No Date parsing.
+function isoDayKey(ts: unknown): string | null {
+  if (typeof ts !== 'string' || ts.length < 10) return null;
+  return ts.slice(0, 10).replace(/-/g, '');
+}
+function contextDayAgg(out: PerFileContext, key: string): DayContextAgg {
+  let d = out.days.get(key);
+  if (!d) {
+    d = { peak: 0, compactions: 0, auto: 0, manual: 0, preTokensSum: 0 };
+    out.days.set(key, d);
+  }
+  return d;
 }
 // Per-file cache keyed by path: transcripts are append-only, so a file whose mtime
 // is unchanged never needs re-parsing. Only the active session file (which grows
 // each turn) is re-read on a given cycle.
 const perFileContextCache = new Map<string, PerFileContext>();
-const contextStatsCache = new Map<string, ContextStats>();
+// Per group, one ContextStats per period ('1d'|'7d'|'30d'|'all'); null when the
+// group has no in-window signal for that period.
+const contextStatsCache = new Map<string, Record<ContextPeriod, ContextStats | null>>();
 
 function scanFileContext(path: string, mtimeMs: number): PerFileContext {
   const cached = perFileContextCache.get(path);
   if (cached && cached.mtimeMs === mtimeMs) return cached;
   const out: PerFileContext = {
     mtimeMs,
-    peak: 0,
-    compactions: 0,
-    auto: 0,
-    manual: 0,
-    preTokensSum: 0,
+    days: new Map(),
     maxWindow: 0,
     hadSignal: false,
   };
@@ -1587,10 +1615,11 @@ function scanFileContext(path: string, mtimeMs: number): PerFileContext {
       }
       if (r.type === 'system' && r.subtype === 'compact_boundary') {
         const m = (r.compactMetadata || {}) as { trigger?: string; preTokens?: number };
-        out.compactions++;
-        if (m.trigger === 'manual') out.manual++;
-        else out.auto++;
-        out.preTokensSum += m.preTokens || 0;
+        const d = contextDayAgg(out, isoDayKey(r.timestamp) ?? MISSING_TS_KEY);
+        d.compactions++;
+        if (m.trigger === 'manual') d.manual++;
+        else d.auto++;
+        d.preTokensSum += m.preTokens || 0;
         out.hadSignal = true;
         continue;
       }
@@ -1598,11 +1627,13 @@ function scanFileContext(path: string, mtimeMs: number): PerFileContext {
       if (r.type === 'assistant' && msg?.usage) {
         const u = msg.usage;
         const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
-        if (ctx > out.peak) out.peak = ctx;
+        const d = contextDayAgg(out, isoDayKey(r.timestamp) ?? MISSING_TS_KEY);
+        if (ctx > d.peak) d.peak = ctx;
         // Track the LARGEST window across models used — a session's effective
         // context is the 1M Opus window whenever any turn runs on it, even if a
         // later turn hands off to a 200k model (sonnet/haiku/gpt). Scaling to the
         // last-seen model would understate the window and inflate the peak %.
+        // File-level (period-independent): the % scale stays fixed across periods.
         if (msg.model) out.maxWindow = Math.max(out.maxWindow, modelMaxContext(msg.model));
         out.hadSignal = true;
       }
@@ -1614,12 +1645,59 @@ function scanFileContext(path: string, mtimeMs: number): PerFileContext {
   return out;
 }
 
+// Per-period accumulator over a group's sessions. One per ContextPeriod.
+interface ContextAcc {
+  peaks: number[];
+  compactions: number;
+  auto: number;
+  manual: number;
+  preTokensSum: number;
+  preTokensCount: number;
+  sessions: number;
+}
+function newContextAcc(): ContextAcc {
+  return { peaks: [], compactions: 0, auto: 0, manual: 0, preTokensSum: 0, preTokensCount: 0, sessions: 0 };
+}
+// Fold one accumulator into a ContextStats. maxContext is passed in (fixed across
+// periods) so the % scale/histogram bucketing stay comparable when toggling
+// periods. Math mirrors the original single-period build. null when no sessions.
+function buildContextStats(a: ContextAcc, maxContext: number, capped: boolean): ContextStats | null {
+  if (a.sessions === 0) return null;
+  const avgPeakContext = a.peaks.length ? a.peaks.reduce((x, y) => x + y, 0) / a.peaks.length : 0;
+  const histogram = new Array(CONTEXT_HIST_BUCKETS.length).fill(0);
+  for (const p of a.peaks) {
+    const pct = maxContext > 0 ? p / maxContext : 0;
+    const bi = CONTEXT_HIST_BUCKETS.findIndex((t) => pct < t);
+    histogram[bi < 0 ? CONTEXT_HIST_BUCKETS.length - 1 : bi]++;
+  }
+  return {
+    sessions: a.sessions,
+    compactions: a.compactions,
+    autoCompactions: a.auto,
+    manualCompactions: a.manual,
+    avgPreTokens: a.preTokensCount ? Math.round(a.preTokensSum / a.preTokensCount) : 0,
+    avgPeakContext: Math.round(avgPeakContext),
+    avgPeakPct: maxContext > 0 ? Math.round((avgPeakContext / maxContext) * 100) : 0,
+    maxContext,
+    histogram,
+    capped,
+  };
+}
+
 function refreshContextStatsCache(): void {
   if (!db) return;
   try {
     const groups = db.prepare('SELECT id, folder FROM agent_groups').all() as { id: string; folder: string }[];
     const sessionsDir = join(getDataDir(), 'v2-sessions');
     const livePaths = new Set<string>();
+    // Day cutoffs, computed once per refresh — identical to the cost columns
+    // (see the ccusage refresh). '' = no filter for 'all'.
+    const cutoffs: Record<ContextPeriod, string> = {
+      '1d': ccusageSinceDate(0),
+      '7d': ccusageSinceDate(7),
+      '30d': ccusageSinceDate(30),
+      all: '',
+    };
     for (const group of groups) {
       const claudeShared = join(sessionsDir, group.id, '.claude-shared');
       let files = collectClaudeJsonlFiles(claudeShared);
@@ -1641,53 +1719,65 @@ function refreshContextStatsCache(): void {
       const capped = withMtime.length > MAX_CONTEXT_FILES_PER_GROUP;
       const chosen = withMtime.slice(0, MAX_CONTEXT_FILES_PER_GROUP);
 
-      const peaks: number[] = [];
-      let compactions = 0,
-        auto = 0,
-        manual = 0,
-        preTokensSum = 0,
-        preTokensCount = 0,
-        sessions = 0,
-        groupMaxWindow = 0;
+      const acc: Record<ContextPeriod, ContextAcc> = {
+        '1d': newContextAcc(),
+        '7d': newContextAcc(),
+        '30d': newContextAcc(),
+        all: newContextAcc(),
+      };
+      // Widest window the coworker ever ran on, over ALL signal files — the fixed
+      // % scale shared by every period (1M for Opus fleets).
+      let groupMaxWindow = 0;
       for (const { f, m } of chosen) {
         livePaths.add(f);
         const fc = scanFileContext(f, m);
         if (!fc.hadSignal) continue;
-        sessions++;
-        if (fc.peak > 0) peaks.push(fc.peak);
-        compactions += fc.compactions;
-        auto += fc.auto;
-        manual += fc.manual;
-        preTokensSum += fc.preTokensSum;
-        preTokensCount += fc.compactions;
         if (fc.maxWindow > groupMaxWindow) groupMaxWindow = fc.maxWindow;
+        for (const period of CONTEXT_PERIODS) {
+          const since = cutoffs[period];
+          let sessionPeak = 0,
+            comp = 0,
+            au = 0,
+            man = 0,
+            preSum = 0,
+            inWindow = false;
+          for (const [key, d] of fc.days) {
+            // 'all' keeps every day (incl. MISSING_TS_KEY); dated periods require
+            // key >= cutoff — MISSING_TS_KEY ('00000000') never qualifies.
+            if (period !== 'all' && !(key >= since)) continue;
+            inWindow = true;
+            if (d.peak > sessionPeak) sessionPeak = d.peak;
+            comp += d.compactions;
+            au += d.auto;
+            man += d.manual;
+            preSum += d.preTokensSum;
+          }
+          if (!inWindow) continue; // session has no activity in this window — not counted
+          const a = acc[period];
+          a.sessions++;
+          if (sessionPeak > 0) a.peaks.push(sessionPeak);
+          a.compactions += comp;
+          a.auto += au;
+          a.manual += man;
+          a.preTokensSum += preSum;
+          a.preTokensCount += comp;
+        }
       }
-      if (sessions === 0) {
+      // Fall back to the model default if no model was ever identified.
+      const maxContext = groupMaxWindow || modelMaxContext('unknown');
+      const rec: Record<ContextPeriod, ContextStats | null> = {
+        '1d': buildContextStats(acc['1d'], maxContext, capped),
+        '7d': buildContextStats(acc['7d'], maxContext, capped),
+        '30d': buildContextStats(acc['30d'], maxContext, capped),
+        all: buildContextStats(acc.all, maxContext, capped),
+      };
+      // rec.all is the superset — null there means no signal in any window, the
+      // same condition the old `sessions === 0` delete guarded.
+      if (!rec.all) {
         contextStatsCache.delete(group.id);
         continue;
       }
-      // Widest window the coworker actually ran on (1M for Opus fleets); fall back
-      // to the model default if no model was ever identified.
-      const maxContext = groupMaxWindow || modelMaxContext('unknown');
-      const avgPeakContext = peaks.length ? peaks.reduce((a, b) => a + b, 0) / peaks.length : 0;
-      const histogram = new Array(CONTEXT_HIST_BUCKETS.length).fill(0);
-      for (const p of peaks) {
-        const pct = maxContext > 0 ? p / maxContext : 0;
-        const bi = CONTEXT_HIST_BUCKETS.findIndex((t) => pct < t);
-        histogram[bi < 0 ? CONTEXT_HIST_BUCKETS.length - 1 : bi]++;
-      }
-      contextStatsCache.set(group.id, {
-        sessions,
-        compactions,
-        autoCompactions: auto,
-        manualCompactions: manual,
-        avgPreTokens: preTokensCount ? Math.round(preTokensSum / preTokensCount) : 0,
-        avgPeakContext: Math.round(avgPeakContext),
-        avgPeakPct: maxContext > 0 ? Math.round((avgPeakContext / maxContext) * 100) : 0,
-        maxContext,
-        histogram,
-        capped,
-      });
+      contextStatsCache.set(group.id, rec);
     }
     // Evict per-file cache entries for transcripts no longer in any group's window.
     if (perFileContextCache.size > livePaths.size * 2 + 1000) {
@@ -7056,14 +7146,19 @@ export async function handleRequest(
     if (!requireAuth(req, res)) return;
     const period = (url.searchParams.get('period') || 'all') as keyof typeof ccusageCache;
     const periodData = ccusageCache[period] || ccusageCache.all || emptyCcusagePeriod;
+    // `period` is typed over ccusageCache's keys (which include 'lastRefresh');
+    // narrow to a real Context period, defaulting anything else to 'all'.
+    const ctxPeriod: ContextPeriod = CONTEXT_PERIODS.includes(period as ContextPeriod)
+      ? (period as ContextPeriod)
+      : 'all';
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({
         daily: periodData.combined,
-        byCoworker: periodData.byGroup.map((g) => ({
-          ...g,
-          contextStats: contextStatsCache.get(g.groupId) ?? null,
-        })),
+        byCoworker: periodData.byGroup.map((g) => {
+          const rec = contextStatsCache.get(g.groupId);
+          return { ...g, contextStats: rec ? (rec[ctxPeriod] ?? rec.all ?? null) : null };
+        }),
         period,
         lastRefresh: ccusageCache.lastRefresh,
       }),
