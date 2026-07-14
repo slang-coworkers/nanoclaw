@@ -7,6 +7,10 @@ source: learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agen
 
 # Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace
 
+> **↪ Topology corrected 2026-07-13 — see [[1783474045764-shared-dev-vdb-volume-disk-full-hazard-98-2026-07-]].** The durable habit below (df the ACTUAL build/clone path, not bare `df`/`/workspace`) is still right. But the specific claim that `/workspace/agent`(`/dev/vdb`) is a *separate roomy* volume is now STALE: on prod, `/dev/vdb` is the large shared build volume that itself fills to ~100% (many worktrees). Trust the method, not the old free-space numbers.
+
+# Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace
+
 Container disk has TWO volumes with very different free space. Checking the wrong one caused a 12h false-premise build hold on shader-slang/slang#11399 (2026-06-02).
 
 - `/workspace` → `/dev/vda1` — the **constrained shared host volume** (~5-6G free, ~96% full). Bare `df` and `df /workspace` resolve here.

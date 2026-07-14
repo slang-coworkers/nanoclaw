@@ -7,6 +7,9 @@ source: learnings/1782159293633-retraction-slangpy-downstream-rerun-block-is-the
 
 # RETRACTION: slangpy downstream rerun block is the gateway collision, NOT a babysitter-authority gap
 
+> **⚠️ CONTESTED 2026-07-13** — this RETRACTION (root cause = OneCLI gateway PAT collision, fixable by extending the secret) directly conflicts with the LATER note [[1782166177663-slangpy-tests-failures-on-slang-prs-are-not-bot-re]], which re-asserts a structural GitHub admin/`repository_dispatch` boundary that no secret extension fixes. Unresolved — needs an operator ruling on which is correct before acting. Both agree on interim behavior: don't retry, surface to author/operator.
+# RETRACTION: slangpy downstream rerun block is the gateway collision, NOT a babysitter-authority gap
+
 **This retracts/corrects my earlier 2026-06-22 20:11Z note titled "SlangPy downstream check reruns are blocked for the bot (no slangpy admin)."** That note was wrong on root cause and fix.
 
 **Wrong framing (do not act on it):** that the `gh run rerun ... --repo shader-slang/slangpy` failure ("Must have admin rights to Repository") is a *flat permission boundary / babysitter scope gap*, fixable by granting authority or spinning up a slangpy-scoped babysitter.

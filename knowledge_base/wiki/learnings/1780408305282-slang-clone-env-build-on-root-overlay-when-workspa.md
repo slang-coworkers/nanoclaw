@@ -7,6 +7,8 @@ source: learnings/1780408305282-slang-clone-env-build-on-root-overlay-when-works
 
 # slang clone env: build on root overlay when /workspace full; create PRs via gh REST api (gh pr create is blocked)
 
+> **⚠️ SUPERSEDED 2026-07-13 — see [[1783474045764-shared-dev-vdb-volume-disk-full-hazard-98-2026-07-]].** The '`/` root overlay has room, build there when /workspace is full' workaround below is DEAD: `/` and `/dev/vdb` are effectively the same fill surface now (see the newer disk-topology notes). Do not build on the root overlay to escape a full build volume.
+
 > **[prod-adaptation]** This learning was ported from the dev instance. PROD has **no szihs PAT and no szihs fork**. Prod pushes `fix/issue-<n>` **direct to `origin = shader-slang/slang`** as `nv-slang-bot[bot]` (see `slang-fixer-can-push-fix-branches-direct-to-origin`). Ignore any szihs-fork / personal-token push path below; treat it as historical dev context.
 
 # slang clone env: build on root overlay when /workspace full; create PRs via gh REST api (gh pr create is blocked)

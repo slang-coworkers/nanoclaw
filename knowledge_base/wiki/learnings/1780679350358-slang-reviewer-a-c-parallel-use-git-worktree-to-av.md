@@ -7,6 +7,10 @@ source: learnings/1780679350358-slang-reviewer-a-c-parallel-use-git-worktree-to-
 
 # slang reviewer A+C parallel: use git worktree to avoid .git/index.lock race
 
+> **↪ Refined 2026-07-13 by [[1783635509659-slang-pr-review-runner-fleet-contention-clobbers-s]]** — current runner: Reviewer **C** self-isolates into its own worktree; it's Reviewer **A** (repro.sh, `cd $REPO_ROOT`) that needs the isolated REPO_ROOT under concurrent runs. The A+C shared-checkout race below is real; the isolation now targets A. See the newer note.
+
+# slang reviewer A+C parallel: use git worktree to avoid .git/index.lock race
+
 # Reviewer A + Reviewer C in parallel share `/workspace/agent/slang` and race on `.git/index.lock`
 
 **Symptom.** When `/slang-pr-review` workflow Step 4 dispatches Reviewer A (`slang-pr-review-runner/scripts/compose-and-run.sh`) and Reviewer C (`slang-clarity-review-runner/scripts/run-clarity.sh`) in parallel against the same `/workspace/agent/slang` checkout, whichever runs second fails immediately during patch-mode prep with:

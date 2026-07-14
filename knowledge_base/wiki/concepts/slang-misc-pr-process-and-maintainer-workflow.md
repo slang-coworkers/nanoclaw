@@ -3,7 +3,7 @@ title: "Slang PR Process, Maintainer Workflow, and Issue Lifecycle"
 type: concept
 group: slang-grab-bag
 tags: [maintainer, PR-process, merge-queue, CI, GitHub-Actions, issue-lifecycle, bot-permissions, regression-verification, declined-issues, superseded-PRs]
-source_count: 21
+source_count: 28
 ---
 
 # Slang PR Process, Maintainer Workflow, and Issue Lifecycle
@@ -65,7 +65,11 @@ On a P0 flaky-test/merge-queue-stopper (#11814), a correct fix was diagnosed and
 When triaging an asymmetry with a "good" leg and a "bad" leg, the fix should lift the *bad* leg to the good — not lower the good leg to the bad, even when lowering is the smaller/lower-risk diff. On slang#12004 (the sampler-vs-texture `[noinline]` SPIR-V param asymmetry), PR #12027's Approach A — specialize scalar `SamplerState` params like textures so both pass by bindless index — was **CLOSED UNMERGED and explicitly rejected** by the maintainer: *"we don't want to make changes to the SamplerState side. Passing the sampler-state as descriptors should be considered downgrading."* The key insight, which was NOT obvious from the code and which the triage guessed wrong: the sampler passed by-value as a loaded `OpTypeSampler` is the DESIRED form, and the texture passed by-index-and-reloaded is the WORKAROUND (from #3252, for old driver bugs). So the principled direction is Approach B (revert the texture index workaround → both by value), not A. The triage memo *did* enumerate B and flag it as the reporter's preference + a maintainer call, but RECOMMENDED A as "fastest correct fix that doesn't regress adjacent surfaces" — a framing that under-weighted that A is itself a quality regression (downgrade) even if behavior-symmetric. Lesson: lead by asking which leg is the better codegen and default the recommendation toward converging on THAT, flagging the risk of touching the older invariant, rather than defaulting to the low-risk-but-downgrading direction. B is NOT authorized here ("no plan to remove the workaround"; removal scheduled only if proven driver-safe) — do NOT re-open with B unilaterally; relaxing the #3252 texture-always-specialize invariant is maintainer-owned and explicitly deferred. Chain outcome was still clean: the PR surfaced the exact A-vs-B tradeoff on the real invariant so maintainers could decide with full framing ([slang#12004 OUTCOME — Approach A rejected as "downgrading"; sampler-as-descriptor is the desired form, not the bug](../learnings/1783635981424-slang-12004-outcome-approach-a-rejected-as-downgra.md)).
 
 ---
-**Source learnings (24):**
+## Triage/Process Boundaries and Park-Lifecycles (2026-07-14 fold)
+
+A rename/branding request has no engineering surface — classify feature-request, park at triage, and do NOT dispatch a fixer or self-close (a rename is a project-governance call) ([triage of rename/branding requests: governance, not engineering](../learnings/1783935538903-triage-of-rename-branding-requests-governance-not-.md)). Docs for a *compiler-limitation* bug belong in the compiler repo, not the transparent wrapper: a SlangPy docs note (PR #1060) was closed by the maintainer, who directed it to the Slang docs instead ([docs for a compiler-limitation bug belong in the compiler repo](../learnings/1783943839130-docs-for-a-compiler-limitation-bug-belong-in-the-c.md)). Two lifecycle validations: slang#12058's ASan fix was landed by the maintainer's own PR while our fixer was auth-down — cleanly validating the triage and showing a stalled fixer's late draft gets reaped by the maintainer ([triage validated by maintainer's own merged fix](../learnings/1783977766628-triage-validated-by-maintainer-s-own-merged-fix-a-.md)); and slang#12054 shows a **park is not a dead end** — a contributor-self-fix park flipped to a maintainer-authorized bot draft that merged, a clean full lifecycle ([slang#12054 SHIPPED: park-for-self-fix flipped to bot draft](../learnings/1783981181191-slang-12054-shipped-park-for-self-fix-that-flipped.md)).
+
+**Source learnings (28):**
 - [tfoley is Theresa Foley](../learnings/1777487718343-slang-compiler-tess-foley-name.md)
 - [maintainer handoff verify live PR state](../learnings/1779622726384-slang-maintainer-handoff-verify-on-pr-state-agains.md)
 - [verify commit-vs-tag ancestry before attributing regression](../learnings/1780401515127-slang-precompiled-slang-module-import-triggers-loc.md)
@@ -91,4 +95,9 @@ When triaging an asymmetry with a "good" leg and a "bad" leg, the fix should lif
 
 - [P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build](../learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)
 - [slang#12004 OUTCOME — Approach A rejected as "downgrading"; sampler-as-descriptor is the desired form](../learnings/1783635981424-slang-12004-outcome-approach-a-rejected-as-downgra.md)
+- [Triage of rename/branding requests — governance, not engineering](../learnings/1783935538903-triage-of-rename-branding-requests-governance-not-.md)
+- [Docs for a compiler-limitation bug belong in the compiler repo, not the wrapper repo (SlangPy → Slang)](../learnings/1783943839130-docs-for-a-compiler-limitation-bug-belong-in-the-c.md)
+- [Triage validated by maintainer's own merged fix; a stalled fixer's late draft gets reaped by the maintainer (slang#12058)](../learnings/1783977766628-triage-validated-by-maintainer-s-own-merged-fix-a-.md)
+- [slang#12054 SHIPPED: park-for-self-fix that flipped to maintainer-authorized bot draft — full lifecycle worked](../learnings/1783981181191-slang-12054-shipped-park-for-self-fix-that-flipped.md)
+
 _Catalog: [[wiki/index.md]]_

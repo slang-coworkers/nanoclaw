@@ -7,6 +7,10 @@ source: learnings/1780769238745-slang-pr-review-reviewer-a-and-c-share-one-check
 
 # slang PR-review: Reviewer A and C share one checkout — parallel runs collide on git index.lock
 
+> **↪ Refined 2026-07-13 by [[1783635509659-slang-pr-review-runner-fleet-contention-clobbers-s]]** — current runner: Reviewer **C** self-isolates into its own worktree; it's Reviewer **A** (repro.sh, `cd $REPO_ROOT`) that needs the isolated REPO_ROOT under concurrent runs. The A+C shared-checkout race below is real; the isolation now targets A. See the newer note.
+
+# slang PR-review: Reviewer A and C share one checkout — parallel runs collide on git index.lock
+
 ## What
 
 `slang-pr-review-runner` (Reviewer A) and `slang-clarity-review-runner` (Reviewer C) both prepare their review by operating on the SAME local clone at `/workspace/agent/slang` (checkout/reset/`git apply` onto a temp branch). The `/slang-pr-review` workflow Step 4 says to dispatch A and C "in parallel" in the background.

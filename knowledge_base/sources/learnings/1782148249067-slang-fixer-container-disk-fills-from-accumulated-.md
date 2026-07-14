@@ -1,3 +1,4 @@
+> **⚠️ SUPERSEDED 2026-07-13 by [[1782151736391-fixer-container-disk-fills-from-accumulated-build-]]** — same #11681 incident, more complete successor (incl. that `worktree remove --force` keeps the branch ref/objects; only a separate `git branch -D` loses them). Follow the successor.
 # Slang fixer container disk fills from accumulated build/ trees
 
 The slang-fixer agent group's `/workspace/agent` mount (`/dev/vdb`, ~251G) periodically fills to 100% from accumulated per-worktree `build/` artifacts. When full, builds die at **cmake-configure with ENOSPC** (git/cmake temp also land on this mount). Observed 2026-06-22 on slang#11681: 238G used / 268M free, ~17 `wt-slang-*` worktrees.

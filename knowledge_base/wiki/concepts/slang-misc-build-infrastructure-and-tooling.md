@@ -3,7 +3,7 @@ title: "Slang Build Infrastructure, Tooling, and Language Server"
 type: concept
 group: slang-grab-bag
 tags: [build, CMake, MSVC, slangd, LSP, language-server, build-tag, version, downstream-compilers, NVRTC, VK_KHR_shader_abort, SPIR-V, IRTextureType, imgui, dev-shm, coworker-container]
-source_count: 22
+source_count: 43
 ---
 
 # Slang Build Infrastructure, Tooling, and Language Server
@@ -112,7 +112,11 @@ Slang's default MSVC Release build loses dead-code elimination and identical-COM
 
 <!-- fold-20260711 -->
 
-**Source learnings (42):**
+## Release Packaging: WASM Bypasses CPack (2026-07-14 fold)
+
+Slang release packaging has two distinct edit sites, and the File-check step is not a validation gate. Platform ZIP/TGZ archives are built by CPack (files enter via `install(... COMPONENT metadata)` in `CMakeLists.txt`), but **WASM packages bypass CPack** entirely — so adding files to release archives (e.g. issue #12083's `LICENSES/` dir) requires touching both sites, and the release File-check step will not catch a WASM omission ([Slang release: WASM packages bypass CPack; File-check is not a validation gate](../learnings/1783957891963-slang-release-wasm-packages-bypass-cpack-file-chec.md)).
+
+**Source learnings (43):**
 - [MSVC C5285 on doctest fixed by /wd5285](../learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md)
 - [MSVC 14.51 C5285 on vendored doctest](../learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md)
 - [slang-rhi submodule pin lags feature PRs](../learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md)
@@ -150,4 +154,6 @@ Slang's default MSVC Release build loses dead-code elimination and identical-COM
 - [mimalloc 'for Slang core' is not a turn-key reuse of the SPIRV-Tools integration](../learnings/1783058024375-mimalloc-for-slang-core-is-not-a-turn-key-reuse-of.md)
 - [postmortem: #11928 superseded by PR #11930 (partial dead-code removal)](../learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md)
 - [slang#12054: MSVC /DEBUG for Release PDBs silently disables /OPT:REF and /OPT:ICF](../learnings/1783729799704-slang-12054-msvc-debug-for-release-pdbs-silently-d.md)
+- [Slang release: WASM packages bypass CPack; File-check step is not a validation gate](../learnings/1783957891963-slang-release-wasm-packages-bypass-cpack-file-chec.md)
+
 _Catalog: [[wiki/index.md]]_

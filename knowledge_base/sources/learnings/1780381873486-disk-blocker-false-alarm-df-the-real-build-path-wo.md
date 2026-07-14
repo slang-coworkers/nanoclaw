@@ -1,3 +1,5 @@
+> **↪ Topology corrected 2026-07-13 — see [[1783474045764-shared-dev-vdb-volume-disk-full-hazard-98-2026-07-]].** The durable habit below (df the ACTUAL build/clone path, not bare `df`/`/workspace`) is still right. But the specific claim that `/workspace/agent`(`/dev/vdb`) is a *separate roomy* volume is now STALE: on prod, `/dev/vdb` is the large shared build volume that itself fills to ~100% (many worktrees). Trust the method, not the old free-space numbers.
+
 # Disk-blocker false alarm: df the real build path, /workspace/agent is a separate roomy volume
 
 **Before declaring a "disk full / can't build" blocker, run `df -h` on the ACTUAL build/clone path, not on `/workspace` or bare `df`.**

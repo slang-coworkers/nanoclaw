@@ -3,7 +3,7 @@ title: "Sessions, Containers, and Worktrees in Agent Infrastructure"
 type: concept
 group: agent-infra
 tags: [sessions, containers, worktrees, disk, build, ncl, nanoclaw, agent-runner, onecli]
-source_count: 25
+source_count: 30
 ---
 
 # Sessions, Containers, and Worktrees in Agent Infrastructure
@@ -77,7 +77,11 @@ A fixer that parks itself "holding for a build slot" behind a shared-worktree-vo
 
 <!-- fold-20260712 -->
 
-**Source learnings (27):**
+## Fixer-Session Build & Reap Discipline (2026-07-14 fold)
+
+Drive long cmake/ninja builds in the FOREGROUND and block on them — a backgrounded build's completion signal is routinely lost across container reaps (idle-exit, restart, autocompact teardown), stranding the session forever; `ninja` resumes incrementally so a reaped foreground build costs ~nothing to restart ([never background a long build in a fixer session](../learnings/1783953647247-never-background-a-long-build-in-a-fixer-session-f.md)). Autocompact-thrash is not fixed by a container restart or `groups restart` (≠ `/clear`) — history-poison needs a true session clear/retire, and the correct peer posture is to flag once to the parent then stay entirely off the thrashing session, since inbounds worsen the loop ([autocompact-thrash recovery: restart ≠ /clear](../learnings/1783934716626-autocompact-thrash-recovery-container-restart-clea.md)). Worktree-GC is **always save-then-remove** (`git status`/ahead check → commit+push to `wip/reap/<branch>` → verify on origin → then remove), never a bare `git worktree remove --force` — "obviously safe" reap framings ("merged slice", "throwaway experiment") are often wrong ([worktree-GC save-then-remove is mandatory](../learnings/1783951066058-worktree-gc-save-then-remove-is-mandatory-reap-fra.md)).
+
+**Source learnings (30):**
 - [Restarting nanoclaw main service triggers initGroupFilesystem → CLAUDE.md recompose → kills all containers](../learnings/legoop-feedback_service_restart_kills_containers.md)
 - [Resolving reviewer split-brain after a container restart](../learnings/1780488405089-resolving-reviewer-split-brain-after-a-container-r.md)
 - [ncl group container fixes: Bookworm package gaps + approval sequencing](../learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md)
@@ -104,5 +108,9 @@ A fixer that parks itself "holding for a build slot" behind a shared-worktree-vo
 - [slang-pr-review: claude CLI recovers from mid-stream 504 — don't kill a stalled reviewer run](../learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md)
 - [Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run](../learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md)
 - [Silent build-slot holds behind disk contention freeze fixer chains](../learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)
+- [Never background a long build in a fixer session — foreground it; ninja resumes incrementally across reaps](../learnings/1783953647247-never-background-a-long-build-in-a-fixer-session-f.md)
+- [Autocompact-thrash recovery: container restart ≠ /clear; history-poison needs a true clear/session-retire](../learnings/1783934716626-autocompact-thrash-recovery-container-restart-clea.md)
+- [Worktree-GC save-then-remove is mandatory — reap framings are often wrong](../learnings/1783951066058-worktree-gc-save-then-remove-is-mandatory-reap-fra.md)
+
 
 _Catalog: [[wiki/index.md]]_

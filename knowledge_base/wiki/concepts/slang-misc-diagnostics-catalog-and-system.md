@@ -3,7 +3,7 @@ title: "Slang Diagnostics System: Catalog, Definitions, and Rendering"
 type: concept
 group: slang-grab-bag
 tags: [diagnostics, slang-diagnostics.lua, regenerate.py, diagnostics-catalog, warning, FileCheck, rich-diagnostics, pragma-warning, severity, Lua]
-source_count: 22
+source_count: 33
 ---
 
 # Slang Diagnostics System: Catalog, Definitions, and Rendering
@@ -92,7 +92,11 @@ The legacy HLSL `(Struct)0` cast (treated as `Struct s = {}`, default-init not z
 
 <!-- fold-20260711 -->
 
-**Source learnings (32):**
+## E31106/E31107 Synthesized-Group Warning Resolved Upstream (2026-07-14 fold)
+
+E31106/E31107 firing with no source location (slang#11825) was resolved upstream by maintainer PR #11986 — matching our triage's Approach A/C, it *suppresses* the warning on compiler-synthesized parameter groups via a dedicated `IRSynthesizedParameterGroupDecoration`, rather than merely locating it ([slang-11825 E31106/E31107 synthesized-group warning — shipped via PR 11986](../learnings/1783944459990-slang-11825-e31106-e31107-synthesized-group-warnin.md)).
+
+**Source learnings (33):**
 - [Shared diagnostic formatter changes silently regress unrelated exhaustive diag= goldens (masked on draft CI)](../learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md)
 - [stale E30055 catalog test is a syntax error](../learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md)
 - [catalog generated tests have 3 provenance stores](../learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md)
@@ -122,4 +126,6 @@ The legacy HLSL `(Struct)0` cast (treated as `Struct s = {}`, default-init not z
 - [slang#12006 E41017 false-positive on export __global __extern_cpp host-provided globals](../learnings/1783545729206-slang-12006-e41017-false-positive-on-export-global.md)
 - [slang#12007 E36108 'llvm' false-positive is the sm_6_0 alias listing cpp/llvm, NOT auto-available-because-linked](../learnings/1783547031032-slang-12007-e36108-llvm-false-positive-is-the-sm-6.md)
 - [slang (Struct)0 zero-cast is a synthetic special case, no Decl for [deprecated] attribute (#12045)](../learnings/1783690411342-slang-struct-0-zero-cast-is-a-synthetic-special-ca.md)
+- [slang-11825 E31106/E31107 synthesized-group warning — shipped via upstream PR 11986](../learnings/1783944459990-slang-11825-e31106-e31107-synthesized-group-warnin.md)
+
 _Catalog: [[wiki/index.md]]_

@@ -7,6 +7,10 @@ source: learnings/1782586901771-reviewer-a-c-parallel-isolation-use-workspace-ag
 
 # Reviewer A + C parallel isolation: use /workspace/agent/slang-clarity as C's REPO_ROOT
 
+> **↪ Refined 2026-07-13 by [[1783635509659-slang-pr-review-runner-fleet-contention-clobbers-s]]** — current runner: Reviewer **C** self-isolates into its own worktree; it's Reviewer **A** (repro.sh, `cd $REPO_ROOT`) that needs the isolated REPO_ROOT under concurrent runs. The A+C shared-checkout race below is real; the isolation now targets A. See the newer note.
+
+# Reviewer A + C parallel isolation: use /workspace/agent/slang-clarity as C's REPO_ROOT
+
 When running the /slang-pr-review workflow's Reviewer A (slang-pr-review-runner/compose-and-run.sh) and Reviewer C (slang-clarity-review-runner/run-clarity.sh) concurrently, both default `REPO_ROOT=/workspace/agent/slang` and each does `git fetch` + `git checkout -q origin/master` there during setup. Concurrent runs race on `.git/index.lock`/refs.
 
 **Fix that worked:** point Reviewer C at the *separate existing clone* `/workspace/agent/slang-clarity` via `REPO_ROOT=/workspace/agent/slang-clarity bash .../run-clarity.sh ...`, leaving Reviewer A on the default `/workspace/agent/slang`. That clone already has `REVIEW.md` + `.claude/skills/slang-review-clarity-workflow` (clarity skills) and `origin=shader-slang/slang`, so it satisfies run-clarity.sh's preflight with no setup. Simpler than the git-worktree approach the prior learning suggested, and fully isolates the two checkouts.
