@@ -16,8 +16,8 @@ import { createServer } from 'http';
 import { createHash } from 'crypto';
 import { createGzip, createGunzip } from 'zlib';
 import { pipeline } from 'stream/promises';
-import { exec, execSync } from 'child_process';
-import { cpus } from 'os';
+import { exec, execFile, execSync } from 'child_process';
+import { cpus, homedir } from 'os';
 import {
   readFileSync,
   readdirSync,
@@ -2136,12 +2136,84 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
   return entries;
 }
 
+// ---------- ccusage CLI resolution (spawn direct, not via npx) ----------
+//
+// ccusage is NOT a declared dependency — it's pulled on demand by `npx`. The
+// problem: every `npx ccusage …` re-runs npm's exec resolution (a `sh -c npx`
+// → `npm exec ccusage` → node chain), which costs ~1.7s of pure npm/node
+// startup PER CALL on top of ccusage itself (measured: npx 2.48s vs direct
+// node 0.73s — 3.4× ). A single refresh fans out ~30–56 of these; under host
+// load the fan-out ran longer than the 60s refresh interval, batches stacked
+// on top of each other, and the process count spiralled until the event loop
+// wedged. Prior fixes (#484 cleanup, #488 bound fan-out, #617 re-entrancy +
+// concurrency cap) all capped the *number* of calls but never removed the
+// per-call npm-exec tax — so it kept recurring.
+//
+// Fix: resolve ccusage's CLI entrypoint ONCE, then spawn it directly with
+// `node <cli.js> …` (one process, no shell, no npm exec). npx still populates
+// its cache the first time; we locate that cached copy and reuse it. If
+// resolution fails we fall back to the old `npx` path so cost reporting
+// degrades rather than breaks.
+//
+// `null` = not yet resolved; `''` = resolved-and-failed (use npx fallback);
+// non-empty string = absolute path to ccusage's cli.js.
+let ccusageCliPathCache: string | null = null;
+
+/** Locate the cached `ccusage/src/cli.js` under ~/.npm/_npx, warming it via
+ *  npx once if absent. Memoized. Returns '' if it cannot be resolved. */
+function resolveCcusageCli(): string {
+  if (ccusageCliPathCache !== null) return ccusageCliPathCache;
+  const findCli = (): string => {
+    const npxRoot = join(homedir(), '.npm', '_npx');
+    if (!existsSync(npxRoot)) return '';
+    let best = '';
+    let bestMtime = -1;
+    let entries: string[];
+    try {
+      entries = readdirSync(npxRoot);
+    } catch {
+      return '';
+    }
+    for (const hash of entries) {
+      const cli = join(npxRoot, hash, 'node_modules', 'ccusage', 'src', 'cli.js');
+      try {
+        const st = statSync(cli);
+        // Prefer the most recently installed copy so version bumps win.
+        if (st.mtimeMs > bestMtime) {
+          bestMtime = st.mtimeMs;
+          best = cli;
+        }
+      } catch {
+        /* not this hash */
+      }
+    }
+    return best;
+  };
+  let cli = findCli();
+  if (!cli) {
+    // Cold cache — warm it once via npx (blocking, but only ever on first miss),
+    // then re-scan. `--version` is the cheapest command that populates the cache.
+    try {
+      execSync('npx --yes ccusage --version', {
+        timeout: 120000,
+        stdio: 'ignore',
+        env: process.env,
+      });
+    } catch {
+      /* warm-up failed — fall through to '' and let callers use npx directly */
+    }
+    cli = findCli();
+  }
+  ccusageCliPathCache = cli; // '' if still unresolved → npx fallback in callers
+  return ccusageCliPathCache;
+}
+
 function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDayEntry[]> {
   return new Promise((resolve) => {
     // --breakdown and other legacy flags were removed in ccusage 19. Keep
     // the call to the lowest-common-denominator flags that still work.
-    const args = ['ccusage', 'daily', '--json', '--offline'];
-    if (since) args.push('--since', since);
+    const ccusageArgs = ['daily', '--json', '--offline'];
+    if (since) ccusageArgs.push('--since', since);
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
@@ -2159,7 +2231,7 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
     if (!env.CCUSAGE_MODEL_ALIASES) env.CCUSAGE_MODEL_ALIASES = 'claude-sonnet-5=claude-sonnet-4-6';
     else if (!env.CCUSAGE_MODEL_ALIASES.includes('claude-sonnet-5'))
       env.CCUSAGE_MODEL_ALIASES += ',claude-sonnet-5=claude-sonnet-4-6';
-    proc = exec(`npx ${args.join(' ')}`, { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env }, (err, stdout) => {
+    const cb = (err: any, stdout: string) => {
       clearTimeout(timer);
       if (timedOut || err) {
         resolve([]);
@@ -2177,7 +2249,14 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
       } catch {
         resolve([]);
       }
-    });
+    };
+    const opts = { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env };
+    const cli = resolveCcusageCli();
+    // Direct `node <cli.js> …` avoids the ~1.7s npm-exec tax per call. Fall
+    // back to `npx` only if the CLI couldn't be resolved.
+    proc = cli
+      ? execFile(process.execPath, [cli, ...ccusageArgs], opts, cb)
+      : exec(`npx ccusage ${ccusageArgs.join(' ')}`, opts, cb);
   });
 }
 
@@ -2287,8 +2366,8 @@ function normalizeCodexEntry(raw: Record<string, unknown>): CcusageDayEntry {
 // untouched.
 function runCodexCcusage(codexHome: string, since?: string): Promise<CcusageDayEntry[]> {
   return new Promise((resolve) => {
-    const args = ['ccusage', 'codex', 'daily', '--json', '--offline'];
-    if (since) args.push('--since', since);
+    const ccusageArgs = ['codex', 'daily', '--json', '--offline'];
+    if (since) ccusageArgs.push('--since', since);
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
@@ -2297,23 +2376,26 @@ function runCodexCcusage(codexHome: string, since?: string): Promise<CcusageDayE
       }
     }, 35000);
     let proc: any;
-    proc = exec(
-      `npx ${args.join(' ')}`,
-      { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, CODEX_HOME: codexHome } },
-      (err, stdout) => {
-        clearTimeout(timer);
-        if (timedOut || err) {
-          resolve([]);
-          return;
-        }
-        try {
-          const parsed = JSON.parse(stdout);
-          resolve((parsed.daily || []).map(normalizeCodexEntry));
-        } catch {
-          resolve([]);
-        }
-      },
-    );
+    const opts = { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, CODEX_HOME: codexHome } };
+    const cb = (err: any, stdout: string) => {
+      clearTimeout(timer);
+      if (timedOut || err) {
+        resolve([]);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(stdout);
+        resolve((parsed.daily || []).map(normalizeCodexEntry));
+      } catch {
+        resolve([]);
+      }
+    };
+    const cli = resolveCcusageCli();
+    // Direct `node <cli.js> codex …` avoids the npm-exec tax; npx only on
+    // fallback when the CLI path couldn't be resolved.
+    proc = cli
+      ? execFile(process.execPath, [cli, ...ccusageArgs], opts, cb)
+      : exec(`npx ccusage ${ccusageArgs.join(' ')}`, opts, cb);
   });
 }
 
