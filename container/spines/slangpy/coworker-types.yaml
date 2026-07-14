@@ -49,6 +49,8 @@ slangpy-writer:
   invariants:
     # Writer-only code-style / PR / commit rules.
     - container/spines/slangpy/invariants/code-changes.md
+    # Code-comment discipline (add value, be concise, comment ≠ commit message).
+    - container/spines/slangpy/invariants/comments.md
   context:
     # Pulled in here so writers can install additional skills, but readers
     # don't pay for the registry instructions.
@@ -91,6 +93,8 @@ slangpy-reviewer:
   invariants:
     # Reviewers enforce code-change rules during review.
     - container/spines/slangpy/invariants/code-changes.md
+    # Reviewers flag comment noise / commit-message prose leaking into source.
+    - container/spines/slangpy/invariants/comments.md
     # Review-output rules — only loaded for slangpy-reviewer (not the fixer or
     # other writers, who don't post reviews).
     - container/spines/slangpy/invariants/review-output.md
