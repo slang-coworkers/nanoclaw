@@ -294,18 +294,72 @@ async function main() {
   // the funnel shows the most recent). Absent table (pre-migration-929 DB) is
   // tolerated so the funnel still renders on an un-migrated instance.
   const approverByPr = new Map<string, { decision: string; human: string | null }>();
+  // Standalone approver ledger for the dashboard's dedicated Verity panel. Unlike
+  // `rows[]` (gated by pr_session_mappings — a webhook-routing table only bot-
+  // authored PRs are in), this surfaces EVERY decision Verity recorded, including
+  // the human-authored PRs it reviewed in shadow mode. One entry per PR, latest
+  // decision wins. See dashboard funnelApproverPanel(). NOT the PR spine.
+  interface ApproverDecision {
+    repo: string;
+    pr: number;
+    decision: string;
+    reason: string | null;
+    human: string | null;
+    mode: string;
+    decidedAt: string;
+    // Enriched from GitHub below (null when the PR fetch fails / is uncached):
+    prState: string | null; // open | closed | merged
+    isDraft: boolean | null;
+    prAuthor: string | null;
+    authoredByBot: boolean | null; // true = nv-slang-bot's own PR (in the funnel spine); false = human-authored
+  }
+  const approverByPrFull = new Map<string, ApproverDecision>();
   try {
     const decisions = db
       .prepare(
-        `SELECT repo, pr_number AS pr, decision, human_verdict AS human, decided_at
+        `SELECT repo, pr_number AS pr, decision, reason_code AS reason, human_verdict AS human,
+                mode, decided_at AS decidedAt
          FROM approval_decisions ORDER BY decided_at ASC`,
       )
-      .all() as Array<{ repo: string; pr: number; decision: string; human: string | null }>;
+      .all() as Array<{
+      repo: string;
+      pr: number;
+      decision: string;
+      reason: string | null;
+      human: string | null;
+      mode: string;
+      decidedAt: string;
+    }>;
     // ASC order + overwrite → last (newest) decision per PR wins.
-    for (const d of decisions) approverByPr.set(`${d.repo}#${d.pr}`, { decision: d.decision, human: d.human });
+    for (const d of decisions) {
+      if (!orgAllowed(d.repo)) continue;
+      if (REPO_FILTER && d.repo !== REPO_FILTER) continue;
+      approverByPr.set(`${d.repo}#${d.pr}`, { decision: d.decision, human: d.human });
+      approverByPrFull.set(`${d.repo}#${d.pr}`, {
+        ...d,
+        prState: null,
+        isDraft: null,
+        prAuthor: null,
+        authoredByBot: null,
+      });
+    }
   } catch {
-    // approval_decisions table not present — leave the map empty.
+    // approval_decisions table not present — leave the maps empty.
   }
+  // Enrich each decided PR with its live GitHub state (merged/open/closed +
+  // draft + author). Uses the same cached gh() the spine uses, so a warm disk
+  // cache mostly avoids extra calls. "what it decided AND what state" — the
+  // panel's whole point. A failed/uncached fetch leaves the fields null.
+  for (const d of approverByPrFull.values()) {
+    const pr = gh(d.repo, `pulls/${d.pr}`);
+    if (!pr) continue;
+    d.prState = pr.merged ? 'merged' : pr.state ?? null;
+    d.isDraft = typeof pr.draft === 'boolean' ? pr.draft : null;
+    d.prAuthor = pr.user?.login ?? null;
+    d.authoredByBot = d.prAuthor ? d.prAuthor === BOT_LOGIN : null;
+  }
+  // Newest decision first for display.
+  const approverDecisions = [...approverByPrFull.values()].sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : -1));
 
   const rows: Row[] = [];
   const seenIssues = new Set<string>();
@@ -598,6 +652,7 @@ async function main() {
     engagedNoPr, // corrected residue: bot triaged but produced no live bot PR
     issuePartition, // per-issue funnel (denominator = ALL filed issues in window)
     rows,
+    approverDecisions, // ALL Verity shadow-mode decisions (incl. human-authored PRs); not gated by the PR spine
   };
 
   // --out <path>: write the snapshot to a file for the dashboard panel to serve
