@@ -6,15 +6,32 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 337 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 159 |
-| `nv-slang` | slang project spine, skills, workflows | 118 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 56 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 339 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 161 |
+| `nv-slang` | slang project spine, skills, workflows | 120 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 57 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 37 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-14
+
+### nv-main (2 PRs)
+- **#921** `fix(funnel): emit standalone approverDecisions[] for all Verity decisions`
+- **#919** `fix(channels): restore dropped dashboard barrel self-registration import`
+
+### nv-dashboard (2 PRs)
+- **#922** `feat(dashboard): dedicated PR-approver (Verity) shadow-decision panel`
+- **#936** `fix(dashboard): make Context histogram respect the 1d/7d/30d/all period selector`
+
+### nv-slang (2 PRs)
+- **#934** `feat(slang): add code-comment discipline as a spine invariant`
+- **#920** `fix(slang-mcp): forward Discord follow-ups from the always-on daemon`
+
+### nv-slangpy (1 PRs)
+- **#935** `feat(slangpy): add code-comment discipline as a spine invariant`
 
 ## 📅 2026-07-13
 
