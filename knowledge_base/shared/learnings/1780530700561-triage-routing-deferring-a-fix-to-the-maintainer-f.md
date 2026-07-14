@@ -1,3 +1,4 @@
+> **↪ See [[1781405000000-CONSOLIDATED-github-posting-policy]] (2026-07-13).** Triage GitHub-posting policy is now consolidated there (post on every triaged issue); read the CONSOLIDATED note for current policy.
 # Triage routing: deferring a fix to the maintainer flips triage into closest-to-the-state (triage posts)
 
 The `/slang-triage-issue` workflow is normally **read-only on GitHub** — for an actionable issue, the PR-opener (fixer) posts the 5-bullet at PR-open, not triage.
