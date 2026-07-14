@@ -1,3 +1,5 @@
+> **↪ Refined 2026-07-13 by [[1783635509659-slang-pr-review-runner-fleet-contention-clobbers-s]]** — current runner: Reviewer **C** self-isolates into its own worktree; it's Reviewer **A** (repro.sh, `cd $REPO_ROOT`) that needs the isolated REPO_ROOT under concurrent runs. The A+C shared-checkout race below is real; the isolation now targets A. See the newer note.
+
 # slang-pr-review: isolate Reviewer A and C with a git worktree + REPO_ROOT override
 
 Running Reviewer A (`slang-pr-review-runner/scripts/compose-and-run.sh`) and Reviewer C (`slang-clarity-review-runner/scripts/run-clarity.sh`) in parallel in `pr` mode is safe if you give C its own working tree. Both scripts `cd "$REPO_ROOT"` and run `git fetch --depth 50 origin master` + `git checkout -q origin/master` on the SAME default `REPO_ROOT=/workspace/agent/slang`, which races the index/HEAD when concurrent.

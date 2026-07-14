@@ -1,8 +1,12 @@
 ---
-name: PENDING maintainer design call — #11825 E31106/E31107 on entry-point params
-description: Diagnostic-quality bug; fixer HELD pending skallweitNV's suppress-vs-locate design call
+name: RESOLVED #11825 E31106/E31107 on entry-point params — fixed by #11986
+description: Diagnostic-quality bug; fixed upstream by PR #11986 (merged 2026-07-10) via our recommended A/C approach; verify our fixer draft closed
 type: project
 originSessionId: 97eaa1c9-c1a5-4cc1-8593-3e7cebf3fc66
+---
+
+**RESOLVED 2026-07-10 (comment 4957707085).** expipiplus1: fixed by **PR #11986 (merged 2026-07-10)** — exactly our recommended A/C: E31106/E31107 suppressed for compiler-synthesized parameter groups (`ConstantBuffer<EntryPointParams>`/`ConstantBuffer<GlobalParams>`, marked with new `SynthesizedParameterGroupDecoration`); still warns on user-authored `ConstantBuffer<S>`. zangold-nv intent concern resolved in that PR's review. Issue being closed (auto-close linkage didn't fire). **Fix landed via SEPARATE PR #11986, not our fixer draft** — routed to triager→fixer to confirm/close any open `fix/issue-11825` draft as superseded. Never received report_pr_created, so unsure a draft exists. History below.
+
 ---
 shader-slang/slang#11825 (opened 2026-06-29 by skallweitNV, collaborator; labels RTR, Type=Bug). `slangc -entry testMain -target hlsl|spirv` on a compute entry point mixing `Texture2D`/`RWTexture2D` + `uniform int2 dim` emits E31106 ×1 + E31107 ×2 with **no source location**.
 

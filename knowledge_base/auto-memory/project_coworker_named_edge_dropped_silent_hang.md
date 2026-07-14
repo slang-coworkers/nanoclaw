@@ -7,7 +7,11 @@ metadata:
   originSessionId: beb5496a-e417-4c00-93d7-b335f9d39609
 ---
 
-A coworker's **named a2a destination to a peer can silently disappear** between sessions. Observed 2026-07-11 on `slang-pr-approver`: its named `slang-reviewer` (and `slang-fixer`) destinations were gone after a ~20h gap, leaving only `orchestrator`, dashboard, and `agent-mg-a2a-*` channels. The approver fell back to reaching the reviewer via the `in_reply_to` thread-edge (dead-parent recovery path).
+A coworker's **named a2a destination to a peer can silently disappear** between sessions — and it **RECURS on every long session gap**, not just once. Observed 2026-07-11 on `slang-pr-approver`: its named `slang-reviewer` (and `slang-fixer`) destinations were gone after a ~20h gap, leaving only `orchestrator`, dashboard, and `agent-mg-a2a-*` channels. Re-wired via `wire_agents`. Then **dropped AGAIN after a ~42h gap on 2026-07-13** — same PR #12060 chain — confirming the named a2a edge does not survive session teardown/reconstitution and must be re-wired after each long gap.
+
+**Interim reachability:** the `in_reply_to` thread-edge fallback works as a stopgap (the reviewer received the discard/hold over it both times), so a dropped edge does NOT block the chain — it just isn't the durable/preferred channel. Don't panic-escalate; re-wire when convenient and let the coworker use the fallback meanwhile.
+
+**Bigger picture (2026-07-13):** the edge drop combines with [[feedback_in_session_monitors_dont_survive_teardown]] — a long gap defeats BOTH reachability (edge gone) AND in-session delivery guards (Monitor killed). The durable fix is to stop depending on either surviving a gap: move the guard to a host-level `schedule_task` cron (survives teardown) and treat edge re-wiring as a cheap per-gap chore. Once the cron owns dispatch/liveness, the edge is off the critical path.
 
 **Symptom / why it matters:** This correlated with a **~19.5h silent doc-delivery hang** on PR #12060 — a settled-head review dispatch appears to have never durably landed on the reviewer, so no `combined-review.md` ever came back. The thread-edge fallback is NOT a sanctioned dispatch channel; don't trust it for fresh delegation.
 

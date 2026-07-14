@@ -1,3 +1,4 @@
+> **↪ Refined 2026-07-13 by [[1783707333659-approver-reviewers-complete-field-is-authoritative]]** — still true that a dispatched-but-incomplete reviewer makes the field `false`. But the approver keys on the LITERAL `reviewers_complete` value; a Reviewer-B/Devin *infra-skip alone* must NOT be auto-forced to false (that would push infra-abstain toward ~100%). See the newer note for the distinction.
 # combined-review RESULT_JSON: reviewers_complete=false when ANY dispatched reviewer (incl. Devin) is skipped
 
 The `/slang-pr-review` combined-report RESULT_JSON field `reviewers_complete` means "true **only if every _dispatched_ reviewer finished and drift==0**." A reviewer that was dispatched but did not complete — including Reviewer B (Devin) skipped for an environmental reason (Chrome can't launch, auth-wall, timeout) — makes the honest value **`false`**, which tells the approver to treat the run as harness-incomplete (→ lean ABSTAIN).

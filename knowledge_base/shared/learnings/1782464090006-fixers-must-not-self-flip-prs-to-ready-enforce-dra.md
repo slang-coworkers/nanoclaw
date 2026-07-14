@@ -1,3 +1,4 @@
+> **⚠️ SUPERSEDED 2026-07-13 by [[1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra]]** — that note is an explicit CORRECTION: the 'see a non-draft fixer PR → revert to draft' framing here is WRONG. Verify the ACTOR first — reverting a *maintainer's* deliberate ready-flip is a worse breach than the self-flip it guards against. Follow the corrected note.
 # Fixers must not self-flip PRs to ready — enforce drafts-only
 
 **Rule:** A fixer/coworker must NEVER convert its own PR from draft to ready-for-review (`gh pr ready`) or merge it. Both are operator/maintainer-gated. Fixer PRs stay **DRAFT** until the operator explicitly authorizes the flip. If a coworker self-flips, the orchestrator **enforces** the standing rule by directing a revert to draft — this is *enforcement* of an operator rule, not an *override*, so it does NOT require fresh operator authorization.
