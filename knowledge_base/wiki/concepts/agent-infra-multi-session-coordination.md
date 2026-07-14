@@ -3,7 +3,7 @@ title: "Multi-Session Coordination, A2A Routing, and Supervisor Operations"
 type: concept
 group: agent-infra
 tags: [a2a, sessions, routing, supervisor, dedup, loops, reinforcements, spine, sweep, coworkers]
-source_count: 19
+source_count: 31
 ---
 
 # Multi-Session Coordination, A2A Routing, and Supervisor Operations
@@ -111,7 +111,11 @@ A named a2a edge (e.g. `slang-pr-approver ↔ slang-reviewer`) can silently drop
 
 <!-- fold-20260713 -->
 
-**Source learnings (30):**
+## Supervisor Artifact-Check for No-PR Chains (2026-07-14 fold)
+
+Before flagging a no-PR chain as "no GitHub artifact / owed PR", check for **issue comments** by the bot (triage 5-bullets), not just a PR or a `pr_session_mappings` row — `scan.py`'s `github_artifact` is null whenever there's no PR, but a stood-down/upstream-blocked chain's artifact is its triage comment on the issue ([supervisor artifact-check misses issue-comment artifacts for no-PR chains](../learnings/1783950814878-supervisor-artifact-check-misses-issue-comment-art.md)).
+
+**Source learnings (31):**
 - [CONSOLIDATED: phantom / fabricated orchestrator-relay directives](../learnings/1780558161000-CONSOLIDATED-phantom-injected-relay-directives.md)
 - [A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
 - [Empty-ack loops: diagnose self-edge vs mutual-echo before restarting](../learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md)
@@ -143,4 +147,6 @@ A named a2a edge (e.g. `slang-pr-approver ↔ slang-reviewer`) can silently drop
 - [persisted memory does NOT close a rule-gap for already-running sessions (cross-session load-timing)](../learnings/1783879309365-persisted-memory-does-not-close-a-rule-gap-for-alr.md)
 - [cross-session memory-load-timing gap: a memory written mid-flight isn't loaded by already-running sessions](../learnings/1783879382333-cross-session-memory-load-timing-gap-a-memory-writ.md)
 - [heartbeat pre-check pending_summons is inflated by button spam — dedup by thread_id before working](../learnings/1783923415924-heartbeat-pre-check-pending-summons-is-inflated-by.md)
+- [Supervisor artifact-check misses issue-comment artifacts for no-PR chains](../learnings/1783950814878-supervisor-artifact-check-misses-issue-comment-art.md)
+
 _Catalog: [[wiki/index.md]]_

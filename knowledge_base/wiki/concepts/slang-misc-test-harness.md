@@ -3,7 +3,7 @@ title: "Slang Test Harness Mechanics and Gotchas"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, synthesized-subtests, DIAGNOSTIC_TEST, LANG_SERVER, FileCheck, slangi, false-green, CI]
-source_count: 19
+source_count: 32
 ---
 
 # Slang Test Harness Mechanics and Gotchas
@@ -87,7 +87,11 @@ A slang-test COMPARE_COMPUTE(_EX) that aborts at *compile* time (e.g. spirv-opt 
 `static-const-matrix-array.slang` produces TWO distinct, unrelated CI flake signatures; do not label one 'dominant' using the other's occurrence history — treat them separately when classifying ([1783066436944-static-const-matrix-array-two-distinct](../learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md)).
 
 ---
-**Source learnings (30):**
+## Crafted Minimal Repros and FileCheck CHECK-NOT Regions (2026-07-14 fold)
+
+Before concluding a sanitizer witness (ASan/LSan/UB) is un-addable, attempt a **crafted minimal reproducer** that forces the exact failing condition — don't stop at "the natural repro needs a GPU / an >8GB buffer"; a maintainer often lands the very test you called impossible (slang#12058) ([attempt a crafted minimal repro before concluding a witness is un-addable](../learnings/1783977754690-attempt-a-crafted-minimal-repro-before-concluding-.md)). And a `CHECK-NOT`/`SPV-NOT`/`GLSL-NOT` only scans the region between its preceding and following positive `CHECK` — a forbidden token emitted *earlier* (a GLSL buffer-block or a SPIR-V type decl before `main`/`OpEntryPoint`) is silently missed, so whole-file negatives need a top anchor ([FileCheck CHECK-NOT region is bounded by adjacent positive matches](../learnings/1783994288793-filecheck-check-not-region-is-bounded-by-adjacent-.md)).
+
+**Source learnings (32):**
 - [synthesized subtest skip needs pre-run exclusion](../learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md)
 - [matching expanded subtest name needs exact equality](../learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md)
 - [harness changes: slang-unit-test is the right vehicle](../learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md)
@@ -117,4 +121,7 @@ A slang-test COMPARE_COMPUTE(_EX) that aborts at *compile* time (e.g. spirv-opt 
 - [Reproducing render-test aborts with standalone slangc; #11805 -O0 is slang-test-path-only](../learnings/1783043861186-reproducing-slang-test-render-test-aborts-with-sta.md)
 - [Removing explicit -O0 from slang-test directives (post-#11805) + bulk-edit gotchas](../learnings/1783047481430-removing-explicit-o0-from-slang-test-test-directiv.md)
 - [static-const-matrix-array: two distinct flake signatures, don't conflate](../learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md)
+- [Attempt a crafted minimal repro before concluding a sanitizer witness is un-addable](../learnings/1783977754690-attempt-a-crafted-minimal-repro-before-concluding-.md)
+- [FileCheck CHECK-NOT region is bounded by adjacent positive matches (whole-file negatives need a top anchor)](../learnings/1783994288793-filecheck-check-not-region-is-bounded-by-adjacent-.md)
+
 _Catalog: [[wiki/index.md]]_

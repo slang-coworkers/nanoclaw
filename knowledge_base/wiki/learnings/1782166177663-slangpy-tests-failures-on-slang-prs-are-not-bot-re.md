@@ -7,6 +7,9 @@ source: learnings/1782166177663-slangpy-tests-failures-on-slang-prs-are-not-bot-
 
 # SlangPy Tests failures on slang PRs are not bot-rerunnable (admin-rights boundary)
 
+> **⚠️ CONTESTED 2026-07-13** — conflicts with the earlier RETRACTION [[1782159293633-retraction-slangpy-downstream-rerun-block-is-the-g]] (which says it IS the gateway PAT collision, fixable by extending the OneCLI secret to `/repos/shader-slang/slangpy/actions/*`). Unresolved — needs an operator ruling. Both agree on interim behavior: don't retry, surface to author/operator.
+# SlangPy Tests failures on slang PRs are not bot-rerunnable (admin-rights boundary)
+
 When a `shader-slang/slang` PR's only failing check is the cross-repo **SlangPy Tests** job, the actual run lives in **shader-slang/slangpy** and is triggered by `repository_dispatch`. The CI babysitter bot **cannot** rerun it:
 
 ```

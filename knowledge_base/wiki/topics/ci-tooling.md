@@ -5,8 +5,17 @@ type: topic
 
 # CI, build & tooling
 
-69 learnings. [Catalog](../index.md)
+83 learnings. [Catalog](../index.md)
 
+- [[approver/calibration] Confirmed-correct ABSTAIN: deferred to a mid-cycle maintainer who then APPROVED the exact decision commit (#12065)](../learnings/1783960819826-approver-calibration-confirmed-correct-abstain-def.md)
+- [[approver/calibration] Protected-path ABSTAIN_POLICY on trivial CI runner-pins is correctly drawn — merged unchanged](../learnings/1783942538159-approver-calibration-protected-path-abstain-policy.md)
+- [[approver/challenger-miss] Devin narrative echoes PR description and cites superseded locations — do not treat as coverage](../learnings/1783957900263-approver-challenger-miss-devin-narrative-echoes-pr.md)
+- [[approver/clause-gap] Debounced settled head can expand scope into a protected path — never decide on the opening commit](../learnings/1783927363514-approver-clause-gap-debounced-settled-head-can-exp.md)
+- [[approver/clause-gap] Re-decide a synchronize by diffing head vs your LAST-APPROVED SHA (gh api compare) — and pre-existing exemption covers factual (not just cosmetic) findings the PR didn't touch](../learnings/1783970228393-approver-clause-gap-re-decide-a-synchronize-by-dif.md)
+- [[approver/critique-mustfix] Re-harvest AGAIN right before record_decision — slow prod reviews post seconds after your window](../learnings/1783962571176-approver-critique-mustfix-re-harvest-again-right-b.md)
+- [[approver/human-agreement] master-merge churn: pin the PR-diff hash, re-verify structural claims when the base moves, treat pipeline-incompleteness as an explicit judgment](../learnings/1784008035954-approver-human-agreement-master-merge-churn-pin-th.md)
+- [[approver/infra-abstain] Confirmed: wait out the IN_PROGRESS production review before Devin-only; and debounce a head that moves mid-decision](../learnings/1783935971762-approver-infra-abstain-confirmed-wait-out-the-in-p.md)
+- [[approver/infra-abstain] Sustained force-push burst starves head-current decisions → ABSTAIN_INFRA](../learnings/1783958614926-approver-infra-abstain-sustained-force-push-burst-.md)
 - [A maintainer merging master into your PR branch can silently fix the root cause — rebuild+retest after any base move](../learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md)
 - [A required draft-PR ci.yml workflow_dispatch can itself priority-yield](../learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md)
 - [An infra-unblock nudge is not an override of a decision-based hold — verify the actual trigger](../learnings/1782719314130-an-infra-unblock-nudge-is-not-an-override-of-a-dec.md)
@@ -27,6 +36,7 @@ type: topic
 - [CI GPU-OOM that passes on rerun is usually peak concurrent VRAM, not a leak](../learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md)
 - [CI-integrity bug class: a detected failure is logged but never folded into the recorded test result (stale init=Success leaks through)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
 - [CI: flake-class vs deterministic-hang, and the two-sweep escalation threshold](../learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md)
+- [Cite cross-repo flake occurrences by run-id, not the babysat PR number](../learnings/1783930550138-cite-cross-repo-flake-occurrences-by-run-id-not-th.md)
 - [CMake CACHE PATH absolutizes relative -D values against the cmake CWD — pass :STRING to keep them relative](../learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md)
 - [COMPARE_COMPUTE filecheck-buffer: use -output-using-type or CI (cpu+llvm) dumps HEX while local (gcc cpu) dumps decimal](../learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md)
 - [Coworker bots may not modify .github/workflows — flag before building](../learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md)
@@ -58,6 +68,10 @@ type: topic
 - [Pushing code commits is NOT a user-facing write — it's always allowed, draft or ready](../learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md)
 - [Reconciling an environmental-cause retraction against a test-config fix (map symptom→code path)](../learnings/1780509076354-reconciling-an-environmental-cause-retraction-agai.md)
 - [Release-CI Setup failures: bisect the workflow file's own history, not just the source-commit range](../learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md)
+- [sgl_tests _Exit fix (#1064) suppresses LeakSanitizer end-of-run report — non-blocking, ASAN is OFF in CI](../learnings/1783932699675-sgl-tests-exit-fix-1064-suppresses-leaksanitizer-e.md)
+- [sgl_tests exit-code flake (#1062): no minidump exists, fault is post-main teardown, fix with std::_Exit](../learnings/1783932346816-sgl-tests-exit-code-flake-1062-no-minidump-exists-.md)
+- [sgl_tests exit-code flake root cause + tracking issue #1062](../learnings/1783930954720-sgl-tests-exit-code-flake-root-cause-tracking-issu.md)
+- [sgl_tests exit-code flake: maintainer rejected exit-code masking; root-cause path required](../learnings/1783937217747-sgl-tests-exit-code-flake-maintainer-rejected-exit.md)
 - [Shared build volume fills at ~45 worktrees; commit+patch-back, report blocked, never reclaim siblings](../learnings/1783473828121-shared-build-volume-fills-at-45-worktrees-commit-p.md)
 - [Shared diagnostic formatter changes silently regress unrelated exhaustive diag= goldens (masked on draft CI)](../learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md)
 - [SplitBuffer ByteBuffer Vulkan GPU-hang flake (Falcor)](../learnings/1781338076804-splitbuffer-bytebuffer-vulkan-gpu-hang-flake-falco.md)

@@ -1,3 +1,5 @@
+> **↪ Refined 2026-07-13 by [[1783668707884-critique-gate-codex-reply-re-verify-must-not-conta]]** — the root cause is a literal `STAGE:` line in the codex-reply prompt tripping the pin-check (round not recorded). The "always use a fresh call" advice below is still safe; a reply *without* a `STAGE:` token now also records correctly. See the newer note.
+
 # Critique-gate OUTPUT_REVIEW is sticky within a reused codex thread
 
 **Observed behavior (field report, infra root-cause not yet confirmed):** The codex critique-gate can record `OUTPUT_REVIEW=must-fix` even on a round where codex's actual verdict is **approve**. Reported by slang-triager across shader-slang/slang#11603 deliverables.

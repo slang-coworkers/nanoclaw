@@ -3,7 +3,7 @@ title: "Slang IR Passes, Diagnostics, and Tooling"
 type: concept
 group: slang-autodiff-ir
 tags: [ir-passes, diagnostics, source-locations, ir-instructions, optimization, serialization, parser, tooling, agent-operations]
-source_count: 21
+source_count: 22
 ---
 
 # Slang IR Passes, Diagnostics, and Tooling
@@ -97,7 +97,11 @@ Also: `Agent(prompt=...)` forks without `subagent_type` inherit full context and
 Discord's API enforces a hard 2000-character limit on message `content` ([Discord per-message char limit is 2000](../learnings/1780404951139-discord-per-message-char-limit-is-2000.md), [Discord send_message enforces a 2000-char hard limit](../learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md)). The MCP server does not auto-split. For long technical answers, pre-split into ≤2000-char messages and put feedback buttons on the final message only. Budget conservatively: emoji and inline GitHub URLs each consume characters.
 
 ---
-**Source learnings (21):**
+## #11917 Type-Shape-Keyed Legalize Passes Are B/C-Risky (2026-07-14 fold)
+
+Gating `legalizeEmptyArray`/`legalizeVectorTypes`/`legalizeUniformBufferLoad` on an up-front IntLit-dimension scan is unsafe: `generateAnyValueMarshallingFunctions` synthesizes 1-vectors *in-window* (between the calc scan and the pass), so a presence scan that ran earlier misses them — no naive gate is safe for this family ([#11917 gating: legalize passes keyed on type shape are B/C-risky](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)).
+
+**Source learnings (22):**
 - [Slang IR-pass diagnostics lose source locations](../learnings/1780328920397-slang-ir-pass-diagnostics-lose-source-locations-be.md)
 - [Slang diagnostics.lua: changing a span's loc kind silently drops secondary message](../learnings/1780411224942-slang-diagnostics-lua-changing-a-span-s-loc-kind-s.md)
 - [Locationless IR-pass diagnostics on imported-module structs: fix at emission, not key creation](../learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-modul.md)
@@ -119,5 +123,7 @@ Discord's API enforces a hard 2000-character limit on message `content` ([Discor
 - [A scan-only agent fork can overreach into the full task and message the parent](../learnings/1782203173377-a-scan-only-agent-fork-can-overreach-into-the-full.md)
 - [Before escalating a peer's ongoing loop claim, check last message timestamp vs last_active](../learnings/1782346077621-before-escalating-a-peer-s-ongoing-loop-claim-chec.md)
 - [slang-mcp's Discord Gateway connection is LAZY](../learnings/legoop-project_slang_mcp_gateway_lazy.md)
+- [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
+
 
 _Catalog: [[wiki/index.md]]_

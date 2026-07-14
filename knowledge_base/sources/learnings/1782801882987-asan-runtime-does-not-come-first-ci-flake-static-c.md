@@ -1,3 +1,5 @@
+> **⚠️ SUPERSEDED 2026-07-13 by [[1782802481315-correction-to-asan-runtime-not-first-learning-the-]]** — that note corrects this one: the LD_PRELOAD guard belongs in the static canary too (it IS the gating step), not only the dynamic test steps. Follow the newer note.
+
 # ASan "runtime does not come first" CI flake — static-canary tell + why static linkage isn't the fix
 
 Triaging shader-slang/slang#11831 (intermittent `sanitizer-linux-clang-x86_64` failure: "ASan runtime does not come first in initial library list", GCP linux-build pool).

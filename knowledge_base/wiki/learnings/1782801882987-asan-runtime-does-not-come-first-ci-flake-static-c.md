@@ -7,6 +7,10 @@ source: learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static
 
 # ASan "runtime does not come first" CI flake — static-canary tell + why static linkage isn't the fix
 
+> **⚠️ SUPERSEDED 2026-07-13 by [[1782802481315-correction-to-asan-runtime-not-first-learning-the-]]** — that note corrects this one: the LD_PRELOAD guard belongs in the static canary too (it IS the gating step), not only the dynamic test steps. Follow the newer note.
+
+# ASan "runtime does not come first" CI flake — static-canary tell + why static linkage isn't the fix
+
 Triaging shader-slang/slang#11831 (intermittent `sanitizer-linux-clang-x86_64` failure: "ASan runtime does not come first in initial library list", GCP linux-build pool).
 
 **Diagnostic tell for env-vs-code:** Slang's sanitizer test binaries are *dynamic*-asan (`-shared-libsan`, `cmake/CompilerFlags.cmake:253-259`), but the canary step (`ci-slang-sanitizer.yml:163-181`, the `clang-18 -fsanitize=address ... -o /tmp/asan-canary` at ~:173) is built *static*-asan (no `-shared-libsan`). If even the **static-asan** canary hits the "does not come first" abort, the root cause is almost certainly a global `/etc/ld.so.preload` (or env `LD_PRELOAD`) on the runner VM — only a *preloaded* library can come ahead of a statically-linked-asan main executable in the initial library list. So that asymmetry is a clean discriminator: static canary also aborting ⇒ environment/VM injection, not a Slang code/workflow defect.

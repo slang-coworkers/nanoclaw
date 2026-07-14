@@ -1,0 +1,23 @@
+---
+title: "[approver/critique-mustfix] Debounce window must outlast the burst — a too-short window desyncs the pinned SHA from live-head Devin/gh pr diff"
+type: learning
+topic: review-process
+source: learnings/1783960363272-approver-critique-mustfix-debounce-window-must-out.md
+---
+
+# [approver/critique-mustfix] Debounce window must outlast the burst — a too-short window desyncs the pinned SHA from live-head Devin/gh pr diff
+
+# [approver/critique-mustfix] Debounce window must outlast the burst — a too-short window desyncs the pinned SHA from live-head Devin/`gh pr diff`
+
+**Symptom.** On a `synchronize` re-review of slang#12084, I pinned head `2288983430de` after a **90-second** head-stability poll, then built the review input. The DECISION_REVIEW critique (codex) returned **must-fix**: my synthesized review doc asserted a `github.event.inputs.ref == ''` backfill guard and "head-current Devin" — but an independent `master...2288983430de` compare showed that guard was NOT in `2288983430de`; it appeared in a *later* commit `7a1d4654f8a3`. The maintainer was mid-burst (5 commits at 16:13/16:17/16:18/16:22), and my 90s window closed ~4s before the next push.
+
+**Root cause (two compounding bugs).**
+1. **Debounce too short.** 90s is not a settled window for an actively-iterating author. The prior #12074 learning already prescribes a **~15-min stable** window; I under-applied it. Inter-push gaps here were 1–4 min, so a <4-min quiet window can close mid-burst.
+2. **Pinned SHA ≠ fetched SHA.** `devin-fetch.sh --url <pr-url>` and `gh pr diff <pr>` both resolve the **live PR head at fetch time**, NOT the SHA I pinned in `context.json`. So once the head moves after pinning, Devin reviews a different commit than `eval-clauses.py` (which uses the pinned `commit_sha`). The review doc then mixes evidence from two commits — an audit-trail defect even when the Step-1 clause outcome (here ABSTAIN_POLICY on the protected path) is unchanged.
+
+**How to catch it.** (1) Debounce to a genuinely quiet head before building input: poll head SHA, reset the timer on ANY new SHA, require the quiet gap to exceed the observed inter-push cadence (target ~15 min stable, or at minimum > the largest recent inter-commit gap). (2) After Devin/`gh pr diff` return, RE-VERIFY the live head still equals your pinned SHA (`gh pr view --json headRefOid`); if it moved, your input is contaminated — discard and re-pin. (3) The DECISION_REVIEW critique gate is what caught this — it independently ran `gh` compares against the pinned SHA and found the future-head evidence. Trust a must-fix that says "your artifact cites a commit ≠ the pin."
+
+**Fix.** No bad ledger row resulted — the critique gate blocks `record_decision` before recording, so a contaminated mid-burst pin is discarded cleanly (never recorded). Correct flow: debounce with a window that outlasts the burst → pin the settled head → build input → confirm live head == pin → decide. If the head moved, restart at the new settled head with a fresh workspace; the earlier pin's evidence never carries forward. Related: [[approver-clause-gap-debounced-settled-head-can-exp]] (scope can expand into a protected path across the burst) and the read-only `gh api .../pulls` gate false-positives that recur on these multi-fetch turns.
+
+---
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1783960363272-approver-critique-mustfix-debounce-window-must-out.md`_

@@ -3,7 +3,7 @@ title: "CI Runners & Flake Triage"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, runners, babysitter, rerun, triage, slang]
-source_count: 34
+source_count: 47
 ---
 
 # CI Runners & Flake Triage
@@ -120,7 +120,11 @@ Do NOT infer merge-queue health from the `merge_queue {success, failure}` field 
 
 <!-- fold-20260712 -->
 
-**Source learnings (46):**
+## Citing Cross-Repo Flakes by Run-ID (2026-07-14 fold)
+
+Cite a cross-repo flake by CI **run-id**, not the babysat PR number. When the CI babysitter logs a cross-repo flake, the durable log's `pr` field is whatever slang PR was being babysat at the time — not a tracking issue for the flake. Citing it as provenance ("2nd point since #11680") reads as if that PR tracks the flake when it usually doesn't, and the number 404s in the other repo ([cite cross-repo flake occurrences by run-id, not the babysat PR number](../learnings/1783930550138-cite-cross-repo-flake-occurrences-by-run-id-not-th.md)).
+
+**Source learnings (47):**
 - [Cooperative-vector tests failing deterministically on Windows-release-GPU](../learnings/1780157118768-slang-ci-cooperative-vector-tests-fail-on-windows-.md)
 - [Windows disk-space cluster flake](../learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)
 - [`gh run rerun --failed` cannot fix cross-attempt artifact-not-found](../learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md)
@@ -169,4 +173,6 @@ Do NOT infer merge-queue health from the `merge_queue {success, failure}` field 
 - [Short test-slang failures can hide an nvcc compile error, not an infra flake](../learnings/1783743117364-short-test-slang-failures-can-hide-an-nvcc-compile.md)
 - [Verify a self-filed bot CI issue's root cause at receipts level -- it can be wrong (#12062)](../learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)
 - [Read merge-queue health from recent merge_group runs, not the health-snapshot merge_queue field](../learnings/1783757863607-read-merge-queue-health-from-recent-merge-group-ru.md)
+- [Cite cross-repo flake occurrences by run-id, not the babysat PR number](../learnings/1783930550138-cite-cross-repo-flake-occurrences-by-run-id-not-th.md)
+
 _Catalog: [[wiki/index.md]]_

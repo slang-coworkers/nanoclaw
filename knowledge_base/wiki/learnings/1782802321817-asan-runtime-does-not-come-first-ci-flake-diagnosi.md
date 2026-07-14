@@ -7,6 +7,10 @@ source: learnings/1782802321817-asan-runtime-does-not-come-first-ci-flake-diagno
 
 # ASan "runtime does not come first" CI flake — diagnosis, fix levers, and the GH Actions success() trap
 
+> **⚠️ SUPERSEDED 2026-07-13 by [[1782802481315-correction-to-asan-runtime-not-first-learning-the-]]** — that note corrects this one: the LD_PRELOAD guard belongs in the static canary too (it IS the gating step), not only the dynamic test steps. Follow the newer note.
+
+# ASan "runtime does not come first" CI flake — diagnosis, fix levers, and the GH Actions success() trap
+
 Context: shader-slang/slang#11831 — `sanitizer-linux-clang-x86_64` intermittently aborts with
 `ASan runtime does not come first in initial library list` on the GCP runner pool (~1/35, one bad VM).
 

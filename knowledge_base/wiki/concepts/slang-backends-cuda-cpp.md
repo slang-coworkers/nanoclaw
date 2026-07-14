@@ -3,7 +3,7 @@ title: "Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen"
 type: concept
 group: slang-backends
 tags: [cuda, cpp, c-family-emitter, swizzle, float3, codegen-perf, nvrtc, slang-12073]
-source_count: 6
+source_count: 8
 ---
 
 # Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen
@@ -34,12 +34,19 @@ The CUDA and CPU/C++ targets share one code path — `CPPSourceEmitter` (`source
 - **Confirmation recipe (GPU-free):** `slangc repro.slang -target cuda -entry <e> -stage compute -o k.cu` (or `-target cpp` — same emitter) then count how many times an expensive base appears per `.rgb`/`.xyz`. The whole `float3{...}` initializer is on ONE line, so `grep -c` (counts lines) reports 1 even when the fetch appears 3× — use `grep -o tex2Dfetch | wc -l`. `SLANGPY_PRINT_GENERATED_SHADERS=1` dumps the Slang *wrapper*, not the emitted CUDA C++ — wrong tool ([slang C-family swizzle re-evaluates base per component (CUDA/CPP perf bug)](../learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md)).
 - **Triage meta-lesson:** a layout/alignment fact being true does not make it the cause. When a codegen perf asymmetry has a tidy structural explanation, confirm it by counting operations in the actual emitted target code before recording the mechanism ([float3/vec3 CUDA slowdown is swizzle-base re-evaluation, not float3 layout](../learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md)). NOT related to Metal PR #10031 packed-vec3 (that is buffer-layout stride, a different concern).
 
-**Source learnings (6):**
+## #12073 Swizzle-Base Fix Shipped + C++ Struct-Layout Caveat (2026-07-14 fold)
+
+The #12073 swizzle-base duplication fix shipped (draft PR #12078): a one-spot guard in `CPPSourceEmitter::shouldFoldInstIntoUseSites` returns `false` for a multi-component `IRSwizzle` whose base is the fold candidate, mirroring the existing reshape/cast "multiple references" precedent ([slang #12073 fix: swizzle-base fold guard implemented](../learnings/1783939557238-slang-12073-fix-swizzle-base-fold-guard-implemente.md)). Related C-family layout caveat: `slangc -target cpp` alone is NOT a safe way to share a struct between Slang and C++ — the CPU emitter uses standard C/C++ natural-alignment layout (`CPULayoutRulesImpl`), which does not match std140/std430, so a struct shared with a GPU buffer must be paired with `-fvk-use-c-layout` ([Slang C++ target struct layout != std140/std430](../learnings/1783986652112-slang-c-target-struct-layout-does-not-match-std140.md)).
+
+**Source learnings (8):**
 - [original (now-superseded) triage: float3 loop 3× slower on CUDA, attributed to vec3 layout; keep only the ownership rule](../learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md)
 - [C-family emitter re-evaluates swizzle base once per component; fix directions](../learnings/1783909950787-slang-cuda-cpp-multi-component-swizzle-re-evaluate.md)
 - [CORRECTION: cause is swizzle-base re-evaluation, not vec3 layout; scope is CUDA + CPU/C++](../learnings/1783910402434-correction-slang-float3-cuda-slowdown-is-swizzle-b.md)
 - [#12073 file:line detail, fold-gate miss, principled shouldFoldInstIntoUseSites fix seam](../learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md)
 - [trigger boundary (folded base, not type), f3_epi control, triage meta-lesson](../learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md)
 - [reviewer note: get emitted code / control kernel, don't reason from layout; workaround detail](../learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base.md)
+- [slang #12073 fix: swizzle-base fold guard + implementer-recovery after fixer thrash](../learnings/1783939557238-slang-12073-fix-swizzle-base-fold-guard-implemente.md)
+- [Slang C++ target struct layout does not match std140/std430 — pair with -fvk-use-c-layout](../learnings/1783986652112-slang-c-target-struct-layout-does-not-match-std140.md)
+
 
 _Catalog: [[wiki/index.md]]_

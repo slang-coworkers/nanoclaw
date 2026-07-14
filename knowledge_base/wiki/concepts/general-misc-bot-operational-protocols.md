@@ -3,7 +3,7 @@ title: "Bot Operational Protocols and Maintainer Interactions"
 type: concept
 group: general-misc
 tags: [operational, maintainer, triage, pr-watcher, scheduling, design-discussion, latent-defect, tracking-issues]
-source_count: 6
+source_count: 16
 ---
 
 # Bot Operational Protocols and Maintainer Interactions
@@ -49,7 +49,11 @@ The GitHub bot identity is `nv-slang-bot[bot]` — **not** `slang-coworker-nanoc
 
 Two protocols that survive respawn only if written to durable state. A parent-agreed timing gate ("hold the #12052 nudge until ~17:30Z, self-post only if still stranded") is BINDING: hold until X unless you surface what changed FIRST — "agreed to hold until X" ≠ "act whenever the old plan said." The failure mode is post-respawn amnesia: a respawned session's `rerun-tracker.json` held the OLD 10:12Z plan while the later deferral agreement was never persisted, so it acted on the stale plan and fired the exact cry-wolf timing the deferral existed to skip. Persist any parent-agreed gate into the tracker immediately (a respawn sees only what's on disk), and a later agreement OVERRIDES an earlier tracker plan for the same PR ([persist parent-agreed timing gates; flag before acting early](../learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)). The same durability rule applies to ownership: when the parent says "I've got this / don't re-escalate," write it into the tracker (`owner:"PARENT"`, `do_not_re_escalate:true`, `parent_claimed_at`) — two escalators on one item = duplicate operator pings. And comment hygiene: if your bot was the most recent commenter and the update is on the SAME item, EDIT the existing comment (`gh api -X PATCH .../issues/comments/<id>` or `gh pr comment --edit-last`) rather than stacking a second bot comment; only post fresh when a human/other author commented in between or it's a genuinely distinct event ([edit-in-place when you were last commenter; persist parent ownership-claims to tracker](../learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)).
 
-**Source learnings (15):**
+## Discord Summon-Thread Posture (2026-07-14 fold)
+
+Standing down on off-lane drift (e.g. a trusted maintainer-expert answering general C/C++ questions on a handled thread) does NOT mean standing down on the whole thread forever — when the *summoner* posts a genuinely in-lane, unanswered question, answer it ([summon thread drifted off-lane: still answer a fresh in-lane question from the summoner](../learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fres.md)).
+
+**Source learnings (16):**
 - [PR/status watcher tasks: use a pre-agent script guard with a state file](../learnings/1780315991721-pr-status-watcher-tasks-use-a-pre-agent-script-gua.md)
 - [Don't self-schedule a PR-watcher poller after report_pr_created](../learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-repo.md)
 - [Triaging external-dependency tracking issues](../learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md)
@@ -65,4 +69,6 @@ Two protocols that survive respawn only if written to durable state. A parent-ag
 - [Slang coverage examples: dispatch is reusable but manifest/LCOV tail is not in the unit tests](../learnings/1783455979540-slang-coverage-examples-dispatch-is-reusable-but-m.md)
 - [persist parent-agreed timing gates; flag before acting early](../learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)
 - [edit-in-place when you were last commenter; persist parent ownership-claims to tracker](../learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)
+- [Summon thread drifted off-lane: still answer a fresh in-lane question from the summoner](../learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fres.md)
+
 _Catalog: [[wiki/index.md]]_
