@@ -50,6 +50,8 @@ slang-writer:
   invariants:
     # Writer-only ABI/PR/commit rules. Inherited by slang-fixer.
     - container/spines/slang/invariants/code-changes.md
+    # Code-comment discipline (add value, be concise, comment ≠ commit message).
+    - container/spines/slang/invariants/comments.md
   context:
     # Pulled in here so writers/fixer can install additional skills, but
     # readers/triagers/reviewers don't pay for the registry instructions.
@@ -110,6 +112,8 @@ slang-reviewer:
   invariants:
     # Reviewers enforce code-change rules during PR review.
     - container/spines/slang/invariants/code-changes.md
+    # Reviewers flag comment noise / commit-message prose leaking into source.
+    - container/spines/slang/invariants/comments.md
     # Review-output rules — only loaded for slang-reviewer (not slang-fixer
     # or other writers, who don't post reviews).
     - container/spines/slang/invariants/review-output.md
