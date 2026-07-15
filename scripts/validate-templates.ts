@@ -13,6 +13,7 @@ import {
   composeCoworkerSpine,
   readCoworkerTypes,
   readSkillCatalog,
+  resolveTypeChain,
   type CoworkerTypeEntry,
 } from '../src/claude-composer.js';
 
@@ -163,6 +164,40 @@ function main(): number {
           });
         }
       }
+    }
+  }
+
+  // OUTPUT_REVIEW-presence invariant: gate-critique-on-deliver.sh hardcodes
+  // OUTPUT_REVIEW as the load-bearing stage — the verdict (must be "approve"),
+  // freshness, and attested-hash checks are ALL guarded by
+  // `jq -e 'index("OUTPUT_REVIEW")'`. A type that requires stages WITHOUT
+  // OUTPUT_REVIEW (e.g. [PLAN_REVIEW, CODE_REVIEW]) would gate on stage
+  // existence only — no approve/freshness/hash enforcement at all — silently
+  // degrading the gate to "did these run" with no "is it blessed". Assert on
+  // the RESOLVED chain (extends-walked union), matching exactly what
+  // resolveTypeChain feeds the gate via .critique-required-stages, so a child
+  // that inherits OUTPUT_REVIEW from a base is not falsely flagged. Abstract
+  // bases are skipped — they may leave stages for subtypes to complete.
+  for (const name of typeNames) {
+    if (abstractBases.has(name)) continue;
+    let resolvedStages: Set<string>;
+    try {
+      resolvedStages = new Set(
+        resolveTypeChain(types, name).flatMap((e) => e.requiredCritiqueStages ?? []),
+      );
+    } catch {
+      continue; // cycle / unknown — the compose check above already reports it
+    }
+    if (resolvedStages.size > 0 && !resolvedStages.has('OUTPUT_REVIEW')) {
+      failures.push({
+        typeName: name,
+        message:
+          `required_critique_stages resolves to [${[...resolvedStages].sort().join(', ')}] ` +
+          `but omits OUTPUT_REVIEW. gate-critique-on-deliver.sh hardcodes OUTPUT_REVIEW ` +
+          `as the only verdict/freshness/attestation-gated stage — without it the gate ` +
+          `checks stage existence only and never enforces an "approve" before delivery. ` +
+          `Add OUTPUT_REVIEW to this type's required_critique_stages (or a base it extends).`,
+      });
     }
   }
 
