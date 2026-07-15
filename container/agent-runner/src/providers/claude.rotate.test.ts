@@ -64,6 +64,13 @@ describe('ClaudeProvider.maybeRotateContinuation', () => {
 
   it('rotates an oversized transcript (returns reason, deletes the .jsonl after archiving)', () => {
     process.env.CLAUDE_TRANSCRIPT_ROTATE_BYTES = String(64 * 1024);
+    // Pin the conversations dir to this test's own fresh tmp explicitly (not just
+    // via beforeEach): the sibling "archiving fails" case points this global env
+    // var at a *file* to force EEXIST, and the whole suite shares one process, so
+    // the success path must not inherit a stale blocker value — that would flip
+    // archiving to the rename-aside branch and leave a `.rotated-` copy.
+    const convDir = path.join(tmp, 'conversations');
+    process.env.NANOCLAW_CONVERSATIONS_DIR = convDir;
     const p = writeTranscript('sess-big', 200 * 1024);
     const provider = new ClaudeProvider();
     const reason = provider.maybeRotateContinuation('sess-big', CWD);
@@ -73,7 +80,6 @@ describe('ClaudeProvider.maybeRotateContinuation', () => {
     // Disk is reclaimed: the raw .jsonl is deleted, not left behind as a .rotated- copy.
     expect(fs.readdirSync(dir).some((f) => f.startsWith('sess-big.jsonl.rotated-'))).toBe(false);
     // The readable summary is preserved in the conversations dir.
-    const convDir = process.env.NANOCLAW_CONVERSATIONS_DIR as string;
     expect(fs.existsSync(convDir) && fs.readdirSync(convDir).some((f) => f.endsWith('.md'))).toBe(true);
   });
 
