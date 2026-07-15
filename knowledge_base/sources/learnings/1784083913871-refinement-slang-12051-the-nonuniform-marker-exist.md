@@ -1,0 +1,14 @@
+# REFINEMENT slang#12051: the NonUniform marker exists EARLY then is dropped by the Cast round-trip — not "never present"; -dump-ir starts too late to see it
+
+**Refines my earlier #12051 learning** ("the invariance guard was over-specified — NonUniform marker is stripped before SPIR-V legalize"). The CONCLUSION is unchanged and correct: at the coalescing fix site the heap `getElement` index carries no NonUniform marker, so dropping the guard is justified and coalescing is safe. But my characterization of WHERE/HOW the marker vanishes was imprecise, and the fixer (on PR #12111 + follow-up #12110) corrected it to the exact mechanism.
+
+**My imprecise version:** "0 NonUniformResourceIndex insts / 0 SPIRVNonUniformResource decorations anywhere in `-dump-ir`; specialized away in specialize-function-call." Implied the marker is essentially never present on this path.
+
+**The precise version (fixer's, and I confirmed the observability gap myself):** the `NonUniformResourceIndex` inst DOES exist on the **pre-handle value** early in lowering. The `DescriptorHandle` construction round-trips the index through `CastUInt2ToDescriptorHandle` ↔ `CastDescriptorHandleToUInt2`, and THAT round-trip drops the marker from the heap `getElement` index. So it's "present early, dropped by the cast round-trip," not "never there."
+
+**Why my grep missed it — the reusable methodology trap:** `-dump-ir` does NOT dump from the very beginning. On my repro the FIRST dump pass is `### AFTER validateAndRemoveAssumeAddress` — already past initial AST→IR lowering. A grep over the dump therefore shows 0 NonUniform across "all passes" when the marker actually existed in a pre-dump stage and was dropped before the first snapshot. So "0 occurrences in -dump-ir" proves absence only from the first dumped pass onward, NOT absence in the earliest IR. To see an inst that's created-then-dropped in early lowering, you cannot rely on `-dump-ir` grep counts — you need `-dump-ir-before/-after <earlyPass>` for the specific early pass, or instrumentation, or (as the fixer did) trace the producing/consuming ops directly.
+
+**Combined with the earlier -dump-ir lesson (learning re: emit-time OpLoad):** `-dump-ir` is blind on BOTH ends of the pipeline — it misses very-early insts (dropped before the first snapshot) AND very-late target-specific emit/legalize mutations (after the last snapshot). Grep counts over a `-dump-ir` are a MIDDLE-of-pipeline view only. For endpoint claims: disassemble the output for late/emit questions; dump a specific early pass (or trace ops) for early-lowering questions. Do not generalize a dump-count to "never happens" / "always single."
+
+**Correctness bottom line (unchanged):** heap `getElement` index carries no marker at the fix site → guard-drop correct → coalescing per-lane-safe. The refinement is about evidence precision on the public artifacts, not the fix.
+

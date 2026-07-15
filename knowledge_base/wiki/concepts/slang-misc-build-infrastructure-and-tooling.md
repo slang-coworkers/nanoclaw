@@ -3,7 +3,7 @@ title: "Slang Build Infrastructure, Tooling, and Language Server"
 type: concept
 group: slang-grab-bag
 tags: [build, CMake, MSVC, slangd, LSP, language-server, build-tag, version, downstream-compilers, NVRTC, VK_KHR_shader_abort, SPIR-V, IRTextureType, imgui, dev-shm, coworker-container]
-source_count: 43
+source_count: 46
 ---
 
 # Slang Build Infrastructure, Tooling, and Language Server
@@ -104,6 +104,14 @@ A common 'convert `#if` dead code to `if constexpr` to keep it type-checked' ask
 
 For 'use library allocation wrappers' issues (#11924), separate latent from live and caller-owned from library-owned buffers before acting ([1783057786633-triaging-use-library-allocation-wrappe](../learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md)). 'Use mimalloc for Slang core' (#11925) is **not** a turn-key reuse of the existing SPIRV-Tools mimalloc dependency — the mechanism doesn't transfer ([1783058024375-mimalloc-for-slang-core-is-not-a-turn-](../learnings/1783058024375-mimalloc-for-slang-core-is-not-a-turn-key-reuse-of.md)). And the #11928 dead-code removal (`USE_RIFF`/`DIRECT_FROM_FOSSIL`) was only partially done, superseded by PR #11930 ([1783125158769-postmortem-slang-11928-superseded-by-p](../learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md)).
 
+### mimalloc integration mechanics (#12036/#12101/#12102) — three load-bearing facts
+
+The new `SLANG_ENABLE_MIMALLOC` override from PR #12036 (distinct from the long-existing `SLANG_ENABLE_SPIRV_TOOLS_MIMALLOC`, on master since #8419 — always cross-check merge state with `gh pr view --json mergedAt`, a code-reader that reads the old option wrongly concludes #12036 merged) wires `mimalloc-new-delete.h`, which **overrides only C++ `operator new`/`delete`, NOT C allocation**. Slang core has ~24 raw `::malloc`/`::free`/`::realloc`/`posix_memalign` sites across ~12 files (notably `StandardAllocator` at `slang-allocator.h:41,45`, the default `List<T>` allocator, plus `slang-blob.h`, `slang-memory-arena.cpp`, `ScopedAllocation`, aligned-alloc, etc.). A new/delete-only override that leaves those C paths on the system allocator is a **mixed-allocator hazard** (mimalloc `operator new` freed by system `::free` → heap corruption) — exactly why upstream SPIRV-Tools force-sets `MI_OVERRIDE=0` off-Windows and why #12036 defaults ON only for shared MSVC Windows. Extending it cross-platform (#12101) is a per-platform ABI/default-on **policy decision** (operator-override-only-opt-in vs full mimalloc-for-core / Mechanism B of #11925 vs keep-Windows-only), not a mechanical fix ([mimalloc global new-delete override is C++-only — raw C alloc sites are the cross-platform blocker (#12101/#12036)](../learnings/1784052930371-mimalloc-global-new-delete-override-is-c-only-raw-.md)).
+
+**mimalloc is Slang's ONLY configure-time-download dep** (#12102, promote the silent fetch to a `FATAL_ERROR`): `external/mimalloc` is NOT a submodule — no `.gitmodules` entry on master or the #12036 head — it's fetched on demand via `git clone --depth 1 --branch v2.1.7 ... OUTPUT_QUIET ERROR_QUIET` (`external/CMakeLists.txt:268-281`), whereas every other dep is a submodule that fails fatally via `add_subdirectory()`. The fetch resolves a **mutable, unpinned** git tag under `ERROR_QUIET`, and post-#12036 that checkout links `mimalloc-static` into `slang` replacing global new/delete for the whole compiler DLL — so a moved/compromised tag = arbitrary code in the shipped allocator. Key triage lesson: the "just make it an error" one-liner is NOT standalone — `SLANG_ENABLE_SPIRV_TOOLS_MIMALLOC` defaults ON on Windows, so a bare `FATAL_ERROR` without vendoring the source first breaks fresh Windows clones. The principled fix couples both: **vendor mimalloc as a SHA-pinned submodule, THEN delete the fetch + error on missing source** (the #12036 head's partial `FATAL_ERROR` fires only on download *failure* and does NOT close the hole — a moved-tag fetch still succeeds silently). General pattern: when a build-hardening ask says "turn a silent fetch into an error," first check whether the source is vendored ([mimalloc is Slang's only configure-time-download dep; making it an error is gated on submodule-vendoring first](../learnings/1784053617554-mimalloc-is-slang-s-only-configure-time-download-d.md)).
+
+**There is exactly ONE mimalloc in a Slang build, whatever Slang pins.** When SPIRV-Tools is built as a subdirectory inside Slang it does NOT fetch its own mimalloc: Slang's `external/CMakeLists.txt` sets `mimalloc_SOURCE_DIR = ${MIMALLOC_PATH}` and `SPIRV_TOOLS_USE_MIMALLOC` before `add_subdirectory(spirv-tools)`, and SPIRV-Tools' CMake then does `set(MIMALLOC_DIR ${mimalloc_SOURCE_DIR}) → add_subdirectory(...)` — both link the SAME single `mimalloc-static` target (name unchanged across 2.1.7/2.3.2/3.3.2, so #12036's `target_link_libraries(slang PRIVATE mimalloc-static)` is version-agnostic). The `external/spirv-tools/DEPS` `mimalloc_revision` is a gclient/gn field NEVER read by CMake — inert when spirv-tools builds inside Slang — so "match whatever spirv-tools uses" means reading DEPS for reference only; pinning Slang's `external/mimalloc` to a different commit than DEPS names is NOT a two-versions mismatch. Corollary: mimalloc tags are ANNOTATED (deref with `git ls-remote <repo> 'refs/tags/vX.Y.Z^{}'`) and version-decode via `include/mimalloc.h` `MI_MALLOC_VERSION` (20302 = v2.3.2); a perf regression measured in both 2.3.2 and 3.3.2 reconciled the pin back to v2.1.7 `8c532c32c3` (the original pre-#12036 pin) ([slang external/mimalloc feeds SPIRV-Tools' build; spirv-tools DEPS is NOT a CMake input](../learnings/1784083959740-slang-external-mimalloc-feeds-spirv-tools-build-sp.md)).
+
 ---
 
 ## MSVC /DEBUG for Release PDBs Silently Disables /OPT:REF and /OPT:ICF (#12054)
@@ -116,7 +124,7 @@ Slang's default MSVC Release build loses dead-code elimination and identical-COM
 
 Slang release packaging has two distinct edit sites, and the File-check step is not a validation gate. Platform ZIP/TGZ archives are built by CPack (files enter via `install(... COMPONENT metadata)` in `CMakeLists.txt`), but **WASM packages bypass CPack** entirely — so adding files to release archives (e.g. issue #12083's `LICENSES/` dir) requires touching both sites, and the release File-check step will not catch a WASM omission ([Slang release: WASM packages bypass CPack; File-check is not a validation gate](../learnings/1783957891963-slang-release-wasm-packages-bypass-cpack-file-chec.md)).
 
-**Source learnings (43):**
+**Source learnings (46):**
 - [MSVC C5285 on doctest fixed by /wd5285](../learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md)
 - [MSVC 14.51 C5285 on vendored doctest](../learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md)
 - [slang-rhi submodule pin lags feature PRs](../learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md)
@@ -155,5 +163,8 @@ Slang release packaging has two distinct edit sites, and the File-check step is 
 - [postmortem: #11928 superseded by PR #11930 (partial dead-code removal)](../learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md)
 - [slang#12054: MSVC /DEBUG for Release PDBs silently disables /OPT:REF and /OPT:ICF](../learnings/1783729799704-slang-12054-msvc-debug-for-release-pdbs-silently-d.md)
 - [Slang release: WASM packages bypass CPack; File-check step is not a validation gate](../learnings/1783957891963-slang-release-wasm-packages-bypass-cpack-file-chec.md)
+- [mimalloc global new-delete override is C++-only — raw C alloc sites are the cross-platform blocker (#12101/#12036)](../learnings/1784052930371-mimalloc-global-new-delete-override-is-c-only-raw-.md)
+- [mimalloc is Slang's only configure-time-download dep; making it an error is gated on submodule-vendoring first (#12102)](../learnings/1784053617554-mimalloc-is-slang-s-only-configure-time-download-d.md)
+- [slang external/mimalloc feeds SPIRV-Tools' build; spirv-tools DEPS is NOT a CMake input](../learnings/1784083959740-slang-external-mimalloc-feeds-spirv-tools-build-sp.md)
 
 _Catalog: [[wiki/index.md]]_

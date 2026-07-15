@@ -3,7 +3,7 @@ title: "Slang Generics & Type System"
 type: concept
 group: slang-language-core
 tags: [generics, type-system, witness-tables, conformance, extensions, namespaces, specialization]
-source_count: 33
+source_count: 34
 ---
 
 # Slang Generics & Type System
@@ -47,6 +47,10 @@ A "just assert it" clarity suggestion for an `AggTypeDecl` guard is unsafe becau
 ## Optional<T> and Generic-Container Coercion
 
 Two related gaps in how `Optional<T>` interacts with generics. **`Optional<T>` covariance is unsupported** — Slang does NOT implicitly convert `Optional<Derived>` to `Optional<Base>` even though the single-value `Derived → Base` existential boxing works, and this generalizes: there is no covariant conversion of *any* generic type's type arguments (not Optional, arrays, tuples, or user generics). The mechanism: `tryGetSubtypeWitness(Optional<Derived>, Optional<Base>)` returns null because the generic parameter `T` is invariant/opaque to the facet system, and the one generic-app path in `_coerce` is an equality-modulo-witness fallback that never *recurses coercion* into the args (the gap is an acknowledged TODO at `slang-check-inheritance.cpp`). Fix menu: a targeted bespoke `_coerce` branch for `Optional<A> → Optional<B>` gated on `tryGetSubtypeWitness(A,B)` (reuses existing MakeOptional/existential-boxing IR, no new op — mirrors how the codebase handles every other container coercion), vs a general per-parameter-variance model (language-design project). csyonghe wants it supported, jkwak treats it as nice-to-have sugar → maintainer-owned language decision, draft-only ([slang generic-container covariance unsupported — _coerce has no type-arg recursion (Optional Derived to Base, #7406)](../learnings/1783523269992-slang-generic-container-covariance-unsupported-coe.md)). **`Optional<opaque>` via a generic member escapes the E30902 guard** — returning `none` for `Optional<T>` from a generic struct's member accessor where T binds to a resource/opaque type (e.g. Texture2D) ICEs at SPIR-V emit (`E99997: Unhandled local inst: defaultConstruct`), while the same construct as a generic free function is caught cleanly with E30902. The diagnostic already exists but fires from three front-end sites all gated on `typeTransitivelyContainsOpaqueHandle`, which run at AST-check time when `Optional<T>` still has T *abstract* → the test is false; the concrete `Optional<Texture2D>` only materializes during IR generic specialization, after semantic checking, and nothing re-runs the usable-type check. Sibling #9932 (DescriptorHandle) is NOT a dup fix — DescriptorHandle has a representable zero so its fix made it COMPILE, whereas a bare resource has no default value and maintainers want a DIAGNOSTIC; fix homes are the dedicated `checkForOptionalNoneUsage` pass or `processMakeOptionalNone` (both have a sink) ([slang#7878 Optional-of-opaque via generic member escapes the E30902 front-end guard](../learnings/1783523243524-slang-7878-optional-of-opaque-via-generic-member-e.md)).
+
+## Initializer-List → Vector Coercion Routes Through Ctor Overload Resolution First
+
+`vector<T,N>` is a core-module `DeclRefType<StructDecl>` with EXPLICIT composition constructors (`core.meta.slang:2777-2805` — for `vector<T,4>`: `(T,T,T,T)`, `(vec2,T,T)`, `(T,vec2,T)`, `(T,T,vec2)`, `(vec2,vec2)`, `(vec3,T)`, `(T,vec3)` — crucially NO 3-parameter ctor). `_coerceInitializerList` (`slang-check-conversion.cpp:1378`) tries constructor overload resolution FIRST (`createInvokeExprForExplicitCtor`, :1403) and only falls back to the legacy component-wise reader `_readAggregateValueFromInitializerList` (:998-1053, fills left-to-right, tail-pads missing components with 0) when NO constructor matches the arg count. So the number of init-list *elements* decides which path fires, and that is the source of an observed inconsistency (#12093): `int4 v={1,2,3}` (3 args, no 3-arg ctor → legacy path → `{1,2,3,0}` tail-pad) vs `int4 v={1,int2(2,3)}` (2 args → only the `(vec2,vec2)` ctor applies → scalar `1` implicit-splats to `int2(1,1)` at cost `kConversionCost_ScalarToVector=2`, `slang-ast-support-types.h:172` → `{1,1,2,3}`). Verify GPU-free via `build/Debug/bin/slangi` (CPU interpreter — this is a front-end coercion bug). Disposition is design-gated (reporter skiminki-nv is a maintainer asking a semantics question; every fix changes compiling behavior): candidate fixes are (A) suppress scalar→vector splat when a vector composition ctor is selected from an init-list, (B) component-count flatten before ctor resolution, (C) disallow implicit under-fill. Same "vector is a struct, init-list routes through ctor overload resolution" area as #11730 ([init-list→vector (vec2,vec2) composition ctor splats scalars, diverges from tail-pad](../learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md)).
 
 ## Module Accessibility and Visibility Choke Points
 
@@ -94,7 +98,8 @@ The "explain why each overload candidate was rejected" DX ask (#12035) is NOT gr
 
 <!-- fold-20260711 -->
 
-**Source learnings (38):**
+**Source learnings (39):**
+- [slang init-list→vector: (vec2,vec2) composition ctor splats scalars, diverges from tail-pad path](../learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md)
 - [slang#12035 overload-failure diagnostics — #7857 already built most of the per-candidate machinery](../learnings/1783656901958-slang-12035-overload-failure-diagnostics-7857-alre.md)
 - [Slang any-value-inference recursion: #10686 pointer guard is partial; IRSpecialize-operand path bypasses it](../learnings/1780353989621-slang-any-value-inference-recursion-10686-pointer-.md)
 - [slang type-conformance override=0 always duplicates the (T,I) entry](../learnings/1780414379429-slang-type-conformance-override-0-always-duplicate.md)

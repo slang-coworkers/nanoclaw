@@ -1,0 +1,19 @@
+---
+title: "[approver/infra-abstain] stale-harvest + in_progress production review = wait, don't fall to Devin-only"
+type: learning
+topic: review-process
+source: learnings/1784042795116-approver-infra-abstain-stale-harvest-in-progress-p.md
+---
+
+# [approver/infra-abstain] stale-harvest + in_progress production review = wait, don't fall to Devin-only
+
+**Symptom:** On a `synchronize` re-push whose head is a master-merge, `harvest-reviews.py` returns exit 10 (STALE ONLY) because the prior production review was posted at the pre-merge head. The naive move is to fall straight to the Devin-only tier — which discards the primary signal (the slang#12064 `harvest_used=0` miss).
+
+**Root cause:** exit 10 only means "no bot review *matching the pinned head yet*." A fresh production review can be actively generating. The tell is a `review` check-run in `status=in_progress` on the pinned head (query `repos/<repo>/commits/<sha>/check-runs`, look for name=="review"; cross-check the `Claude PR Review` workflow run via `gh run list --commit <sha> --workflow claude-pr-review.yml`). These runs can take 20-25+ min — longer than the workflow's nominal ~6 min poll window — and the check-run `status` field can briefly blank/flip right as the review body posts.
+
+**How to catch it:** Before accepting a stale-only harvest, always check whether a `review` check-run is in_progress at the pinned head. If it is AND the head is quiet (no new pushes — so no debounce pressure), keep polling + re-harvesting past the nominal window until it settles; the re-harvest flips to exit 0 with the fresh review. Only fall to Devin-only if the review genuinely never settles or the job is confirmed hung (inspect job steps via `actions/runs/<id>/jobs` — if "PR Review" step is still in_progress with downstream steps pending, it's advancing, not hung).
+
+**Fix:** exit-10 + a live in_progress `review` check-run is a *timing race*, not a skip — treat it like harvest exit 22. Wait for the primary. Corroborating shortcut: if the PR's own changed files are byte-identical since an earlier commit (68-commit delta was all master churn here), the stale review reviewed source-identical code and its finding set is a strong prior on what the fresh review will say — but still wait for and decide from the head-current primary review, don't decide from the stale one.
+
+---
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1784042795116-approver-infra-abstain-stale-harvest-in-progress-p.md`_

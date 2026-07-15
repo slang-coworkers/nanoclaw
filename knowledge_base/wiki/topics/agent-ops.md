@@ -5,16 +5,22 @@ type: topic
 
 # NanoClaw / agent operations
 
-180 learnings. [Catalog](../index.md)
+187 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [[approver/challenger] Fixer PR that closes the maintainer's review asks still ABSTAINs while the human reviewer is mid-cycle](../learnings/1783806650503-approver-challenger-fixer-pr-that-closes-the-maint.md)
+- [[approver/clause-gap] Standing decision rides codegen-inert synchronizes; don't re-gate on doc/test/comment churn](../learnings/1784054163587-approver-clause-gap-standing-decision-rides-codege.md)
 - [[approver/critique-mustfix] Critique gate false-positives on read-only `gh api .../pulls` GETs — don't burn denial strikes](../learnings/1783913716215-approver-critique-mustfix-critique-gate-false-posi.md)
 - [[approver/critique-mustfix] Critique gate only records a round when the codex call uses the exact /codex-critique format — freeform codex calls don't count toward delivery](../learnings/1783939165247-approver-critique-mustfix-critique-gate-only-recor.md)
+- [[approver/critique-mustfix] critique gate records only mcp__codex__codex calls, never codex-reply — OUTPUT_REVIEW must be a fresh call](../learnings/1784020599916-approver-critique-mustfix-critique-gate-records-on.md)
+- [[approver/critique-mustfix] OUTPUT_REVIEW must be a FRESH codex call with the canonical reviewer developer-instructions — a codex-reply on the DECISION_REVIEW thread is NOT recorded](../learnings/1784095230054-approver-critique-mustfix-output-review-must-be-a-.md)
 - [[approver/critique-mustfix] OUTPUT_REVIEW must be its own codex call; reason_code=CLEAN for WOULD_APPROVE](../learnings/1783978376082-approver-critique-mustfix-output-review-must-be-it.md)
 - [[approver/critique-mustfix] Per-revision [Approval Decision] delivery is mandatory (dashboard) — distinct from the materiality-gated upstream [Report]](../learnings/1783958368120-approver-critique-mustfix-per-revision-approval-de.md)
+- [[approver/human-agreement] Confirmed: RequiredLoweringPassSet additive-gate slice merged unchanged (2-maintainer agreement)](../learnings/1784076254159-approver-human-agreement-confirmed-requiredlowerin.md)
 - [[approver/human-agreement] Purely-additive "gate = pass handled-set" lowering fixes ship unchanged](../learnings/1783957287484-approver-human-agreement-purely-additive-gate-pass.md)
 - [[approver/human-agreement] RequiredLoweringPassSet gates: stale-false reduces to a producer-vs-governing-scan check](../learnings/1784006091575-approver-human-agreement-requiredloweringpassset-g.md)
+- [[approver/infra-abstain] a slow build+probe on a BLOCK-vs-not pivot can outrun the session and the merge — bound it or record ABSTAIN promptly](../learnings/1784055090518-approver-infra-abstain-a-slow-build-probe-on-a-blo.md)
+- [[approver/infra-abstain] critique-gate false-positives read-only `gh api .../pulls/<n>/reviews` GET](../learnings/1784077601519-approver-infra-abstain-critique-gate-false-positiv.md)
 - [[approver/infra-abstain] Devin timeout (exit 3) on a just-opened PR: re-poll once before ABSTAIN_INFRA — the head-started session often completes clean](../learnings/1783961759956-approver-infra-abstain-devin-timeout-exit-3-on-a-j.md)
 - [[approver/infra-abstain] harvest exit 20 on a fresh external-fork PR is a TIMING race with the Claude PR Review check, not a production-skip — wait, don't fall to Devin-only](../learnings/1783767626000-approver-infra-abstain-harvest-exit-20-on-a-fresh-.md)
 - [[approver/infra] critique-gate hook false-matches read-only `gh api .../pulls/...` GETs as PR-creation — use `gh pr view/diff --json` instead](../learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)
@@ -26,6 +32,7 @@ type: topic
 - [A peer's hold-ack is not compliance — enumerate the full prohibition set; the post-gate is the load-bearing safety](../learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md)
 - [A read-only daily-report session cannot see in-flight fixer session chains — don't frame owned work as new/unowned](../learnings/1783757869861-a-read-only-daily-report-session-cannot-see-in-fli.md)
 - [A scan-only Agent fork can overreach into the full task and message the parent](../learnings/1782203173377-a-scan-only-agent-fork-can-overreach-into-the-full.md)
+- [A supervisor dropped-promise nudge can resolve to STAND-DOWN, not re-wake — re-verify assignee first](../learnings/1784033086075-a-supervisor-dropped-promise-nudge-can-resolve-to-.md)
 - [A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done, not by id string](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
 - [a2a silent-hold: plain-text turn output routes to the peer (echo-loop trap)](../learnings/1782353887467-a2a-silent-hold-plain-text-turn-output-routes-to-t.md)
 - [Agent ncl restart can't target another group](../learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md)
