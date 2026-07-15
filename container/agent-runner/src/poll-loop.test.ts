@@ -1605,7 +1605,7 @@ describe('error result with no <message> envelope', () => {
     const budgetText = 'Spending limit reached. Add your own key at https://example.com/keys';
     const { query, pushes } = makeResultQuery({ type: 'result', text: budgetText, isError: true });
 
-    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
+    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
 
     const out = getUndeliveredMessages();
     expect(out).toHaveLength(1);
@@ -1625,7 +1625,7 @@ describe('error result with no <message> envelope', () => {
     // exchange-hook integration test).
     const { query, pushes } = makeResultQuery({ type: 'result', text: 'bare text, no envelope' });
 
-    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
+    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
 
     const out = getUndeliveredMessages();
     expect(out).toHaveLength(1);
@@ -1639,7 +1639,7 @@ describe('error result with no <message> envelope', () => {
       text: '<message to="discord-test">half a message with no closing tag',
     });
 
-    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, 'prompt', undefined);
+    await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
 
     expect(getUndeliveredMessages()).toHaveLength(0);
     expect(pushes).toHaveLength(1);
@@ -1693,7 +1693,7 @@ describe('task-run turn wiring (real processQuery)', () => {
     }
     const query: AgentQuery = { push: () => {}, end: () => {}, events: events(), abort: () => {} };
 
-    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, 'prompt', undefined);
+    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
 
     const logs = taskLogRows();
     expect(logs).toHaveLength(1);
@@ -1739,7 +1739,7 @@ describe('task-run turn wiring (real processQuery)', () => {
       abort: () => {},
     };
 
-    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, 'prompt', undefined);
+    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
 
     const nudges = pushes.filter((p) => p.includes('If and only if'));
     expect(nudges).toHaveLength(2);
