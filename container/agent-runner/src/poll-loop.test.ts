@@ -682,6 +682,108 @@ describe('end-to-end with mock provider', () => {
   });
 });
 
+describe('a2a transient bounce (Part a — do not ack a bounced handoff)', () => {
+  // A hand-rolled query that yields a single isError result with the given
+  // text, then ends — the minimal driver for processQuery's result branch.
+  function erroringQuery(text: string): AgentQuery {
+    const events: AsyncIterable<ProviderEvent> = {
+      async *[Symbol.asyncIterator]() {
+        yield { type: 'init', continuation: 'mock-session-err' } as ProviderEvent;
+        yield { type: 'result', text, isError: true } as ProviderEvent;
+      },
+    };
+    return { push() {}, end() {}, abort() {}, events };
+  }
+
+  const a2aRouting = {
+    platformId: 'ag-source-group',
+    channelType: 'agent' as const,
+    threadId: 'gh-issue-o/r-12097',
+    inReplyTo: undefined,
+  };
+
+  function ackStatus(id: string): string | undefined {
+    const row = getOutboundDb()
+      .prepare('SELECT status FROM processing_ack WHERE message_id = ?')
+      .get(id) as { status: string } | undefined;
+    return row?.status;
+  }
+
+  it('marks a transient-auth a2a error bounced-transient, NOT completed', async () => {
+    insertMessage('h1', 'chat', { text: '[Triage handoff] …' });
+    const result = await processQuery(
+      erroringQuery('Not logged in · Please run /login'),
+      a2aRouting,
+      ['h1'],
+      'mock',
+    );
+    expect(ackStatus('h1')).toBe('bounced-transient');
+    expect(result.bouncedIds).toContain('h1');
+    // The trigger row is still visible as pending work (not consumed) …
+    // getPendingMessages filters out ANY acked id, so the redrive path relies on
+    // the HOST clearing the bounce ack — here we just assert the ack value.
+    // And no auth-error notice was delivered to the peer.
+    expect(getUndeliveredMessages()).toHaveLength(0);
+  });
+
+  it('marks a novel a2a error bounced-unknown', async () => {
+    insertMessage('h2', 'chat', { text: '[handoff]' });
+    const result = await processQuery(
+      erroringQuery('Error: something totally novel happened'),
+      a2aRouting,
+      ['h2'],
+      'mock',
+    );
+    expect(ackStatus('h2')).toBe('bounced-unknown');
+    expect(result.bouncedIds).toContain('h2');
+  });
+
+  it('does NOT bounce a permanent (403 billing) a2a error — delivers as today', async () => {
+    insertMessage('h3', 'chat', { text: '[handoff]' });
+    const result = await processQuery(
+      erroringQuery('Error: 403 billing_error: credit balance too low'),
+      a2aRouting,
+      ['h3'],
+      'mock',
+    );
+    expect(ackStatus('h3')).toBe('completed');
+    expect(result.bouncedIds ?? []).not.toContain('h3');
+    // Permanent error IS surfaced to the peer (unchanged deliverErrorResult path).
+    expect(getUndeliveredMessages()).toHaveLength(1);
+  });
+
+  it('does NOT bounce a transient error on a NON-a2a channel', async () => {
+    insertMessage('h4', 'chat', { text: 'user asked something' });
+    const result = await processQuery(
+      erroringQuery('Not logged in · Please run /login'),
+      { platformId: 'chan-1', channelType: 'discord', threadId: 't', inReplyTo: undefined },
+      ['h4'],
+      'mock',
+    );
+    expect(ackStatus('h4')).toBe('completed');
+    expect(result.bouncedIds ?? []).not.toContain('h4');
+    expect(getUndeliveredMessages()).toHaveLength(1); // error delivered to user
+  });
+
+  it('a successful a2a turn still completes normally', async () => {
+    insertMessage('h5', 'chat', { text: '[handoff]' });
+    const okQuery: AgentQuery = {
+      push() {},
+      end() {},
+      abort() {},
+      events: {
+        async *[Symbol.asyncIterator]() {
+          yield { type: 'init', continuation: 'ok' } as ProviderEvent;
+          yield { type: 'result', text: '<message to="peer">done</message>' } as ProviderEvent;
+        },
+      },
+    };
+    const result = await processQuery(okQuery, a2aRouting, ['h5'], 'mock');
+    expect(ackStatus('h5')).toBe('completed');
+    expect(result.bouncedIds ?? []).toHaveLength(0);
+  });
+});
+
 describe('new_session predicate (default-on: opt-out via new_session:false)', () => {
   // Post-default-on (PR #107): fresh session is the default for recurring
   // task batches. Only explicit `new_session: false` opts out. The shared

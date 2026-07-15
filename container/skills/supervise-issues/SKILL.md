@@ -110,7 +110,12 @@ and we haven't answered → `awaiting_us` (stuck now, nudge immediately, regardl
 human comment is and without waiting for any stale window). **Exception — bot-last is ambiguous:**
 a fixer-owned chain with no PR and no human-owned disposition that has gone silent is a promise we
 still owe, not a handoff → `awaiting_us`, nudge the fixer (reference.md → *Classification states*,
-fixer-owned carve-out; root cause of slang#12002).
+fixer-owned carve-out; root cause of slang#12002). **Bounce limb (additive):** a fixer-owned, no-PR
+chain whose owning container is `stopped` with an error-class last outbound (`last_outbound_error_class`
+∈ transient|unknown) has *bounced* — it will not self-recover, so it is `awaiting_us` even if the
+silence clock is still fresh (the #12097 shape). `scan.py` emits the decision as `action` (`nudge` iff
+`needs_nudge`, else `none`) plus an enum `non_nudge_reason` on non-nudge rows — you act on those
+fields in Step 3, you do not re-derive the call.
 
 ### 2b. CI check (PR-bearing chains)
 
@@ -139,16 +144,30 @@ cases are containers that exited mid-task and need a wake. Route by `thread_id` 
 <message to="<coworker>" thread_id="gh-issue-<owner>/<repo>-<num>">[Supervisor nudge — gh-issue-X/Y-N] No outbound for {duration}. Are you blocked? Reply: status, blocker, ETA. If your container restarted and you lost context, re-read your task memory and resume.</message>
 ```
 
-**[MUST] `needs_nudge=true` from `scan.py` is authoritative — send the nudge.** Every row with
-`needs_nudge=true` gets exactly one message this tick. Do **not** suppress it because a coworker
-session exists on the thread and you narrate the chain as "fixer dispatched" / "already assigned" /
-"in progress." `scan.py` already accounts for live work: a `running` container that acted within the
-working window is classified `fixing`/`pr_open` with `needs_nudge=false`. So a chain that reaches
-Step 3 *still* flagged `awaiting_us`/`needs_nudge` has a **dead or stalled** container (exited
-mid-task, idle-exited, or killed at the ceiling) — the "dispatched" story is exactly the stall being
-mistaken for progress (the #12059 miss: a killed fixer left `awaiting_us` on the board but was never
-woken because the tick narrated it as dispatched). The board row and the nudge are not
+**[MUST] Act on `scan.py`'s `action` field — it is mechanically enforced, not advisory.** Each row
+carries `action: 'nudge' | 'none'`. `action` is a strict 1:1 with `needs_nudge` — there is **no
+`suppress` action and no way to turn off a nudge row.** Every `action='nudge'` row gets **exactly one**
+message this tick. Do **not** skip it because a coworker session exists on the thread and you narrate
+the chain as "fixer dispatched" / "already assigned" / "in progress" / "queued" / "auth-blocked" —
+prose is not a suppression mechanism. `scan.py` already accounts for live work (a `running` container
+that acted within the working window is `fixing`/`pr_open`, `action='none'`) and for genuine human
+ownership (a human-owned disposition never reaches `needs_nudge`; it surfaces as `action='none'` with
+an enum `non_nudge_reason`). So a row that reaches Step 3 as `action='nudge'` has a **dead or stalled**
+container or a **bounced handoff** (exited mid-task, idle-exited, killed at the ceiling, or an a2a
+handoff that errored on a transient auth/provider outage — the #12097 shape, flagged via
+`last_outbound_error_class`). The "dispatched"/"queued" story is exactly the stall being mistaken for
+progress (the #12059 miss: a killed fixer left `awaiting_us` on the board, never woken because the
+tick narrated it as dispatched; and the #12097 miss: a bounced handoff parked as "queued; self-heals"
+— it does not, unless the host redrive is deployed). The board row and the nudge are not
 alternatives — write the row **and** send the nudge; a dead session wakes on the inbound.
+
+**[MUST] Fails-loudly reconciliation.** After the nudge pass, count the nudges you actually sent this
+tick and compare to `summary.must_nudge` from `scan.py`. If `sent_nudges != must_nudge`, the tick is
+**NOT clean**: emit a `[SUPERVISOR INVARIANT VIOLATION]` line naming every `action='nudge'` thread
+that did not receive a nudge, and escalate via `ask_user_question`. This is the hard backstop that
+makes "never suppress a nudge row" checkable instead of a request the LLM can rationalize around
+(PR #901's wording alone was violated — #12097). Never report a tick as clean while
+`sent_nudges < must_nudge`.
 
 CI rebase nudge (from Step 2b — to the fixer, keyed on the chain's thread):
 

@@ -55,9 +55,14 @@ OUTPUT (stdout), a JSON object:
 {
   "now": "...",
   "rows": [ {thread,repo,issue,pr,state,ball,delta,last_activity_by_us,
-             needs_nudge,nudge_reason,github_artifact,disposition,mis_threaded} ],
+             needs_nudge,nudge_reason,action,non_nudge_reason,escalate,
+             github_artifact,disposition,last_outbound_error_class,
+             stopped_session_count,mis_threaded} ],
+  # action = 'nudge' iff needs_nudge else 'none' (strict 1:1; no 'suppress').
+  # non_nudge_reason = enum-like token on 'none' rows (human-owned:<disp> |
+  #   pr-open | running | fresh-dispatch | awaiting-human | terminal), else null.
   "summary": {"in_flight","new","updated","same","awaiting_us","silent",
-              "needs_nudge","escalate","closed"},
+              "needs_nudge","must_nudge","escalate","closed"},
   "state": { ...next supervisor-state.json (merged, snapshots refreshed)... }
 }
 
@@ -178,6 +183,39 @@ def any_session_running(chain, sessions_by_id):
     return False
 
 
+def stopped_session_count(chain, sessions_by_id):
+    """How many of this chain's sessions have a stopped container.
+
+    A `stopped` container is one that exited — the sweep may respawn it on the
+    next inbound, but right now nothing is running. `any_session_running` treats
+    a stopped session identically to an absent one (it only branches on
+    =='running'); this counts them so a stalled chain whose owning container
+    died is visible for prioritization/explainability (NOT a nudge gate).
+    """
+    n = 0
+    for sid in chain.get("sessions", []):
+        s = sessions_by_id.get(sid)
+        if s and s.get("container_status") == "stopped":
+            n += 1
+    return n
+
+
+def any_stopped_errored(chain, sessions_by_id):
+    """A session on this chain is stopped AND its last outbound classed as an error.
+
+    Stopped-ness is derived from live session data (`container_status`, always
+    present via `ncl sessions list`). `last_outbound_error_class` is set by
+    pull-universe.sh from the newest outbound text (transient|unknown|permanent|
+    None). Together they are the strongest "the handoff bounced" signal the
+    supervisor can see — but it is additive prioritization only; the #12097
+    nudge does NOT depend on it (scan already reached the right call for #12097
+    via the silence clock — see we_owe_next_step).
+    """
+    return stopped_session_count(chain, sessions_by_id) > 0 and (
+        chain.get("last_outbound_error_class") in ("transient", "unknown")
+    )
+
+
 # Dispositions where a HUMAN (maintainer, external contributor, reporter) genuinely
 # owns the next step, or the chain is terminal — bot-last there is a correct wait, not
 # a stalled promise. Any other bot-last chain a fixer owns is ours to drive.
@@ -208,7 +246,48 @@ def we_owe_next_step(chain, sessions_by_id, silent_age):
     )
     if not has_fixer:
         return False  # triage-only chain -> bot-last legitimately awaits a human
+    # Additive limb (does NOT weaken the existing condition): a fixer-owned chain
+    # whose owning container is stopped with an error-class last outbound has
+    # BOUNCED — it will not self-recover on its own, so it is ours to wake even if
+    # the silence clock is still fresh. This is the #12097 shape (transient auth
+    # bounce). Belt-and-suspenders with the host a2a-redrive; the supervisor is
+    # the fallback for handoffs that surface as issue chains.
+    if any_stopped_errored(chain, sessions_by_id):
+        return True
     return silent_age is not None and silent_age >= SILENT_S
+
+
+def compute_non_nudge_reason(chain, sessions_by_id, ball, state, needs_nudge):
+    """Deterministic, enum-like reason a NON-nudge row is not being nudged.
+
+    Only meaningful when needs_nudge is False (a nudge row's `action` is always
+    'nudge' and carries no non_nudge_reason). The value is a closed token set —
+    NOT free prose — so the board is auditable and the LLM cannot recreate the
+    same "narrate-it-away" ambiguity that stranded #12097 in a prose field.
+
+    Tokens:
+      human-owned:<disp>  human-owned disposition genuinely owns the next step
+      pr-open             a PR/owed artifact exists; CI/Step-2b owns the nudge
+      running             a live container acted within the working window
+      awaiting-human      we spoke last, no fixer-owed promise outstanding
+      fresh-dispatch      dispatched/working; inside the fresh/working window
+      terminal            not in-flight (closed/archived)
+    """
+    if needs_nudge:
+        return None
+    disp = (chain.get("disposition") or "").lower()
+    for tok in HUMAN_OWNED_DISPOSITION:
+        if tok in disp:
+            return f"human-owned:{tok}"
+    if chain.get("pr"):
+        return "pr-open"
+    if state in ("fixing", "pr_open") and any_session_running(chain, sessions_by_id):
+        return "running"
+    if state in ("dispatched", "working"):
+        return "fresh-dispatch"
+    if ball == "human":
+        return "awaiting-human"
+    return "terminal"
 
 
 def classify(now, chain, sessions_by_id, bot_logins):
@@ -295,6 +374,12 @@ def run(payload):
         "in_flight": 0, "new": 0, "updated": 0, "same": 0,
         "awaiting_us": 0, "silent": 0, "needs_nudge": 0, "escalate": 0,
         "closed": 0,
+        # must_nudge = number of action='nudge' rows this tick. The §3
+        # fails-loudly check compares the nudges the LLM actually sent against
+        # this count; a mismatch is a SUPERVISOR INVARIANT VIOLATION. It equals
+        # needs_nudge by construction (action is 1:1 with needs_nudge) but is
+        # emitted separately as the explicit reconciliation target.
+        "must_nudge": 0,
     }
 
     for thread in sorted(live_keys):
@@ -346,6 +431,19 @@ def run(payload):
 
         escalate = state == "silent" and (age_seconds(now, last_by_us) or 0) >= ESCALATE_S
 
+        # Action plan — the mechanical enforcement surface (SKILL.md §3).
+        # `action` is a strict 1:1 function of `needs_nudge`: True -> 'nudge',
+        # False -> 'none'. There is DELIBERATELY no 'suppress' action — a nudge
+        # row can never be turned off downstream. The human-owned case does not
+        # need one: we_owe_next_step already returns False for it, so it never
+        # reaches needs_nudge=True and surfaces here as action='none' with a
+        # 'human-owned:<disp>' non_nudge_reason. This closes the prose-override
+        # hole that stranded #12097 (PR #901's wording alone was insufficient).
+        action = "nudge" if needs_nudge else "none"
+        non_nudge_reason = compute_non_nudge_reason(
+            chain, sessions_by_id, ball, state, needs_nudge
+        )
+
         rows.append({
             "thread": thread,
             "repo": chain.get("repo"),
@@ -357,9 +455,13 @@ def run(payload):
             "last_activity_by_us": last_by_us,
             "needs_nudge": needs_nudge,
             "nudge_reason": reason,
+            "action": action,
+            "non_nudge_reason": non_nudge_reason,
             "escalate": escalate,
             "github_artifact": github_artifact(chain),
             "disposition": chain.get("disposition") or prior.get("disposition"),
+            "last_outbound_error_class": chain.get("last_outbound_error_class"),
+            "stopped_session_count": stopped_session_count(chain, sessions_by_id),
             "mis_threaded": mis_threaded(thread, chain),
         })
 
@@ -385,6 +487,7 @@ def run(payload):
             counts["silent"] += 1
         if needs_nudge:
             counts["needs_nudge"] += 1
+            counts["must_nudge"] += 1
         if escalate:
             counts["escalate"] += 1
 

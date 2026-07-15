@@ -12,11 +12,13 @@ import {
   getPendingMessages,
   markProcessing,
   markCompleted,
+  markBounced,
   markScriptSkipped,
   getMessageInBySeq,
   type MessageInRow,
 } from './db/messages-in.js';
-import { writeMessageOut } from './db/messages-out.js';
+import { classifyTurnError } from './transient-error.js';
+import { hasIdenticalSend, writeMessageOut } from './db/messages-out.js';
 import { getInboundDb, touchHeartbeat, clearStaleProcessingAcks } from './db/connection.js';
 import {
   clearContinuation,
@@ -429,8 +431,9 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // Publish the batch's in_reply_to so MCP tools (send_message, send_file)
     // can stamp it on outbound rows — needed for a2a return-path routing.
     setCurrentInReplyTo(routing.inReplyTo);
+    let queryResult: QueryResult | undefined;
     try {
-      const result = await processQuery(
+      queryResult = await processQuery(
         query,
         routing,
         processingIds,
@@ -442,8 +445,8 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         continuation,
       );
       // Don't overwrite the stored chat continuation with a task's ephemeral session.
-      if (!newSessionBatch && result.continuation && result.continuation !== continuation) {
-        continuation = result.continuation;
+      if (!newSessionBatch && queryResult.continuation && queryResult.continuation !== continuation) {
+        continuation = queryResult.continuation;
         setContinuation(config.providerName, continuation);
       }
     } catch (err) {
@@ -478,8 +481,11 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     }
 
     // Ensure completed even if processQuery ended without a result event
-    // (e.g. stream closed unexpectedly).
-    markCompleted(processingIds);
+    // (e.g. stream closed unexpectedly). EXCLUDE any ids marked as a transient
+    // a2a bounce — completing them here would clobber the 'bounced-*' marker
+    // back to 'completed' and permanently consume the un-actioned handoff.
+    const bounced = new Set(queryResult?.bouncedIds ?? []);
+    markCompleted(processingIds.filter((id) => !bounced.has(id)));
     log(`Completed ${ids.length} message(s)`);
   }
 }
@@ -579,6 +585,11 @@ function formatMessagesWithCommands(messages: MessageInRow[], nativeSlashCommand
 
 interface QueryResult {
   continuation?: string;
+  // Trigger ids that were marked as a transient a2a bounce (markBounced) this
+  // turn instead of completed. The outer poll loop must EXCLUDE these from its
+  // fallback markCompleted, or it would clobber the bounce marker back to
+  // 'completed' and permanently consume the un-actioned handoff.
+  bouncedIds?: string[];
 }
 
 export async function processQuery(
@@ -599,6 +610,9 @@ export async function processQuery(
   // Once-per-turn guard for the task-run "<message> block was not delivered"
   // nudge — mirrors unwrappedNudged for chat turns.
   let taskBlockNudged = false;
+  // Trigger ids marked as a transient a2a bounce this turn (see the result
+  // branch). Returned so the outer loop's fallback markCompleted skips them.
+  const bouncedIds: string[] = [];
   // Prompt queue for the exchange hook — each result event consumes the
   // oldest unanswered prompt, except a wrapping-retry result, which answers
   // the same prompt again. Unused (and unmaintained) when the provider
@@ -788,14 +802,37 @@ export async function processQuery(
         // Claude session with no prior context.
         if (!skipPersistContinuation) setContinuation(providerName, event.continuation);
       } else if (event.type === 'result') {
-        // A result — with or without text — means the turn is done. Mark
-        // the initial batch completed now so the host sweep doesn't see
-        // stale 'processing' claims while the query stays open for
-        // follow-up pushes. The agent may have responded via MCP
-        // (send_message) mid-turn, or the message may not need a response
-        // at all — either way the turn is finished.
-        markCompleted(initialBatchIds);
-        if (event.text) {
+        // A result — with or without text — means the turn is done. We normally
+        // mark the initial batch completed (at the BOTTOM of this branch) so the
+        // host sweep doesn't see stale 'processing' claims while the query stays
+        // open for follow-up pushes.
+        // EXCEPTION — a2a bounce (#943): a FAILED turn (structured isError) that
+        // classifies transient/unknown on an a2a edge must NOT be ack'd (that
+        // permanently consumes an un-actioned handoff — the #12097 bug). We skip
+        // dispatch entirely (do NOT relay the auth blip to the peer) and leave
+        // the trigger un-acked so the host redrive sweep re-arms it. Permanent
+        // errors and non-a2a channels fall through to the normal dispatch path.
+        let bounced = false;
+        const bounceClass =
+          event.isError === true && event.text && routing.channelType === 'agent'
+            ? classifyTurnError(event.text)
+            : 'permanent';
+        if (event.isError === true && event.text && routing.channelType === 'agent' && bounceClass !== 'permanent') {
+          markBounced(initialBatchIds, bounceClass === 'transient' ? 'bounced-transient' : 'bounced-unknown');
+          bouncedIds.push(...initialBatchIds);
+          bounced = true;
+          log(
+            `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` +
+              event.text.slice(0, 80),
+          );
+          notifyExchangeComplete(onExchangeComplete, {
+            prompt: archivePrompts[0] ?? initialPrompt,
+            result: event.text,
+            continuation: queryContinuation ?? initialContinuation,
+            status: 'error',
+          });
+          archivePrompts.shift();
+        } else if (event.text) {
           const { sent, hasUnwrapped, danglingOpen, gateRefusals, taskBlocks } = dispatchResultText(
             event.text,
             routing,
@@ -815,10 +852,8 @@ export async function processQuery(
           if (routing.taskRun && !taskBlockNudged) autoAppendTaskLog(event.text);
           if (sent === 0 && event.isError === true && !routing.taskRun) {
             // Non-retryable error turn (e.g. a 403 billing_error) with no
-            // <message> envelope: deliver the notice instead of dropping it as
-            // scratchpad, and skip the re-wrap nudge — it would just re-hammer
-            // the failing gateway turn after turn.
-            deliverErrorResult(event.text, routing);
+            // <message> envelope, on a non-task channel: deliver the notice
+            // instead of dropping it as
             notifyExchangeComplete(onExchangeComplete, {
               prompt: archivePrompts[0] ?? initialPrompt,
               result: event.text,
@@ -861,7 +896,13 @@ export async function processQuery(
             // not the nudge text.
             if (!willRetryWrapping && !willRetryTaskBlocks) archivePrompts.shift();
           }
-        } else archivePrompts.shift();
+        } else {
+          archivePrompts.shift();
+        }
+        // Ack the turn as completed UNLESS it was a transient a2a bounce (left
+        // pending above for the host redrive). This replaces the former
+        // unconditional markCompleted at the top of the branch.
+        if (!bounced) markCompleted(initialBatchIds);
       }
     }
   } catch (err) {
@@ -878,7 +919,7 @@ export async function processQuery(
     clearInterval(pollHandle);
   }
 
-  return { continuation: queryContinuation };
+  return { continuation: queryContinuation, bouncedIds };
 }
 
 function notifyExchangeComplete(
@@ -1594,6 +1635,14 @@ function sendToDestination(
 ): void {
   const platformId = dest.type === 'channel' ? dest.platformId! : dest.agentGroupId!;
   const channelType = dest.type === 'channel' ? dest.channelType! : 'agent';
+  // Task runs: an explicitly-addressed final-text block that duplicates an MCP
+  // send the agent already made this turn is a turn-final echo — drop it here,
+  // where the duplication originates (#943). `taskRun` is the upstream-sync
+  // rename of the fork's former `taskFire`.
+  if (routing.taskRun && hasIdenticalSend(platformId, channelType, body)) {
+    log(`Dropping turn-final echo of an already-sent task message to ${dest.name}`);
+    return;
+  }
   // Resolve thread_id per-destination from the most recent inbound message
   // that came from this same channel+platform. In agent-shared sessions,
   // different destinations have different thread contexts — using a single

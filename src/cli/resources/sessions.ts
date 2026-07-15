@@ -65,6 +65,12 @@ registerResource({
           type: 'boolean',
           description: 'Return untruncated text. Default false (truncates each text to 300 chars).',
         },
+        {
+          name: 'reverse',
+          type: 'boolean',
+          description:
+            'Sort newest-first so --limit N returns the most recent N rows (default false = chronological). Use --limit 1 --reverse for the last message.',
+        },
       ],
       handler: async (args) => readSessionMessages(args as unknown as ReadOpts),
     },

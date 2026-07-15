@@ -160,6 +160,30 @@ export function markScriptSkipped(skips: Array<{ id: string; reason: string }>):
   })();
 }
 
+/**
+ * Mark trigger messages as a transient a2a bounce — the turn errored on a
+ * transient/unknown provider fault (auth outage, gateway 5xx, …) and produced
+ * no delivered output, so the handoff was NOT actioned. We write a distinct
+ * processing_ack status instead of 'completed' so:
+ *   - the host's syncProcessingAcks (which only maps completed/failed/
+ *     script-skip:error) leaves the trigger `messages_in` row PENDING, and
+ *   - the host redrive sweep (redriveBouncedA2a) can find these rows by status
+ *     and re-arm them with an outage-scale backoff, or dead-letter on exhaustion.
+ * `status` is 'bounced-transient' (long retry budget) or 'bounced-unknown'
+ * (short budget → fast dead-letter). Container startup deliberately does NOT
+ * clear these (only 'processing'), so the host stays the sole re-arm authority.
+ */
+export function markBounced(ids: string[], status: 'bounced-transient' | 'bounced-unknown'): void {
+  if (ids.length === 0) return;
+  const db = getOutboundDb();
+  const stmt = db.prepare(
+    'INSERT OR REPLACE INTO processing_ack (message_id, status, status_changed) VALUES ($id, $status, $ts)',
+  );
+  db.transaction(() => {
+    for (const id of ids) stmt.run({ $id: id, $status: status, $ts: new Date().toISOString() });
+  })();
+}
+
 /** Mark a single message as failed — writes to processing_ack in outbound.db. */
 export function markFailed(id: string): void {
   getOutboundDb()

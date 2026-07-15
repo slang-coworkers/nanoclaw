@@ -32,10 +32,14 @@ import fs from 'fs';
 import { ensureEgressNetwork } from './egress-lockdown.js';
 import { getActiveSessions, getSession, isTaskThread, updateSession } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
+import { getSourceFor } from './db/a2a-session-sources.js';
 import {
   clearOrphanProcessingAcks,
   countDueMessages,
+  deleteBouncedClaims,
   deleteOrphanProcessingClaims,
+  getBouncedClaims,
+  getBouncedTriggerRow,
   getContainerState,
   getMessageForRetry,
   getProcessingClaims,
@@ -76,6 +80,19 @@ export const CLAIM_STUCK_MS = 60 * 1000;
 const SERVICE_START_MS = Date.now();
 const MAX_TRIES = 5;
 const BACKOFF_BASE_MS = 5000;
+
+// --- a2a bounce-redrive budgets (see redriveBouncedA2a) ------------------
+// A bounced a2a handoff (recipient turn errored on a transient/unknown provider
+// fault) is re-armed on its OWN budget, separate from the generic MAX_TRIES
+// path above — a transient auth outage can last far longer than the ~2.5 min
+// the generic path allows, so these ceilings are deliberately much larger.
+// 'bounced-transient' (known outage signature) gets the long budget;
+// 'bounced-unknown' (isError but unrecognized) gets a short one so a truly
+// permanent failure that dodged the denylist cannot hide for hours.
+const A2A_MAX_TRIES = 12;
+const A2A_UNKNOWN_MAX_TRIES = 2;
+const A2A_BACKOFF_BASE_MS = 60_000; // 1 min, doubling …
+const A2A_BACKOFF_CAP_MS = 3_600_000; // … capped at 1h per step (multi-hour total).
 
 /**
  * Parse a timestamp that may be in SQLite datetime('now') format
@@ -325,6 +342,9 @@ async function sweepSession(session: Session): Promise<void> {
     // skips messages already scheduled for a future retry.
     if (!alive && outDb) {
       resetStuckProcessingRows(inDb, outDb, session, 'container not running');
+      // 4b. Redrive bounced a2a handoffs (transient/unknown provider errors).
+      // Also !alive-gated so the host is the sole outbound.db writer here.
+      redriveBouncedA2a(inDb, outDb, session);
     }
 
     // 5. Recurrence fanout for completed recurring tasks.
@@ -422,6 +442,179 @@ export function _resetStuckProcessingRowsForTesting(
   reason: string,
 ): void {
   resetStuckProcessingRows(inDb, outDb, session, reason, outDb);
+}
+
+/**
+ * Redrive bounced a2a handoffs (Part b of the a2a-redrive fix).
+ *
+ * The container marks a transient/unknown a2a bounce with a distinct
+ * processing_ack status ('bounced-transient'|'bounced-unknown') instead of
+ * 'completed', which leaves the trigger `messages_in` row `pending`
+ * (syncProcessingAcks ignores those statuses). Here — ONLY when the container
+ * is dead (temporal single-writer, mirroring resetStuckProcessingRows) — we:
+ *
+ *   1. re-arm the still-pending trigger with an outage-scale backoff (so it
+ *      re-delivers to the SAME recipient session on a later wake — no re-route,
+ *      no duplicate row, no echo-drop interaction), OR
+ *   2. dead-letter it (notify the delegator session, else escalate to an admin)
+ *      once its per-class budget is spent.
+ *
+ * Recovery lives entirely in the session layer — no GitHub dependency.
+ */
+type DeadLetterFn = (
+  recipientSession: Session,
+  row: { id: string; tries: number; sourceSessionId: string | null; threadId: string | null },
+  status: string,
+) => void;
+
+function redriveBouncedA2a(
+  inDb: Database.Database,
+  outDb: Database.Database,
+  session: Session,
+  // Injectable seams for unit testing — production passes neither.
+  writableOutDb?: Database.Database,
+  deadLetter: DeadLetterFn = (s, r, st) =>
+    deadLetterBouncedHandoff(s, r, st).catch((err) =>
+      log.error('a2a dead-letter delivery failed', { sessionId: s.id, messageId: r.id, err }),
+    ),
+): void {
+  const claims = getBouncedClaims(outDb);
+  if (claims.length === 0) return;
+  const now = Date.now();
+  const handled: string[] = [];
+
+  for (const { message_id, status } of claims) {
+    const row = getBouncedTriggerRow(inDb, message_id);
+    if (!row) {
+      // Trigger no longer pending (already re-armed/failed/gone) — clear the
+      // stale marker so it doesn't linger.
+      handled.push(message_id);
+      continue;
+    }
+    // Idempotency: already scheduled for a future retry — leave the marker; a
+    // later tick (after process_after elapses) will clear it. Same guard as
+    // resetStuckProcessingRows.
+    if (row.processAfter && parseSqliteUtc(row.processAfter) > now) continue;
+    // Only a2a edges are redriven here. A non-'agent' bounce should not exist
+    // (the container only bounces on channelType==='agent'), but guard anyway.
+    if (row.channelType !== 'agent') {
+      handled.push(message_id);
+      continue;
+    }
+
+    const maxTries = status === 'bounced-transient' ? A2A_MAX_TRIES : A2A_UNKNOWN_MAX_TRIES;
+    if (row.tries < maxTries) {
+      const backoffMs = Math.min(A2A_BACKOFF_CAP_MS, A2A_BACKOFF_BASE_MS * Math.pow(2, row.tries));
+      // Re-arm FIRST (sets a future process_after + tries++), THEN clear the
+      // marker below — ordering is load-bearing: clearing the ack makes the row
+      // pollable again, so process_after must already be in the future or it
+      // would re-fire with no backoff.
+      retryWithBackoff(inDb, message_id, Math.floor(backoffMs / 1000));
+      handled.push(message_id);
+      log.info('Re-armed bounced a2a handoff', {
+        sessionId: session.id,
+        messageId: message_id,
+        status,
+        tries: row.tries,
+        backoffMs,
+      });
+    } else {
+      // Budget spent — dead-letter and fail the trigger so it stops redriving.
+      markMessageFailed(inDb, message_id);
+      handled.push(message_id);
+      log.warn('Bounced a2a handoff dead-lettered after max redrive tries', {
+        sessionId: session.id,
+        messageId: message_id,
+        status,
+        tries: row.tries,
+      });
+      // Fire-and-forget the escalation — never let a delivery failure abort the
+      // sweep (mirrors the recurrence/notify pattern).
+      deadLetter(session, row, status);
+    }
+  }
+
+  // Clear the handled markers — ONLY the ids we acted on this pass (never a
+  // blanket clear). Safe: container is dead (caller gates on !alive), so we are
+  // the sole writer. Tests pass an already-open writable handle; production
+  // opens one (the read-only outDb the sweep holds can't DELETE).
+  if (handled.length > 0) {
+    const ownsDb = !writableOutDb;
+    let rw: Database.Database | null = writableOutDb ?? null;
+    try {
+      if (!rw) rw = openOutboundDbRw(session.agent_group_id, session.id);
+      const cleared = deleteBouncedClaims(rw, handled);
+      if (cleared > 0) log.info('Cleared bounced a2a markers', { sessionId: session.id, cleared });
+    } catch (err) {
+      log.warn('Failed to clear bounced a2a markers', { sessionId: session.id, err });
+    } finally {
+      if (ownsDb) rw?.close();
+    }
+  }
+}
+
+/** Test-only shim: run redriveBouncedA2a with injected writable DB + dead-letter spy. */
+export function _redriveBouncedA2aForTesting(
+  inDb: Database.Database,
+  outDb: Database.Database,
+  session: Session,
+  deadLetter: DeadLetterFn,
+): void {
+  redriveBouncedA2a(inDb, outDb, session, outDb, deadLetter);
+}
+
+/**
+ * Dead-letter a bounced handoff: notify the delegating session if it is still
+ * alive (self-heal one hop up the chain), else escalate to an admin as a
+ * notification (NOT an approval gate). Includes enough context to re-drive
+ * safely: recipient group/session, source session, thread, message id, retries.
+ */
+async function deadLetterBouncedHandoff(
+  recipientSession: Session,
+  row: { id: string; tries: number; sourceSessionId: string | null; threadId: string | null },
+  status: string,
+): Promise<void> {
+  const sourceSessionId = row.sourceSessionId ?? getSourceFor(recipientSession.id)?.source_session_id ?? null;
+  const detail =
+    `[a2a-redrive] Handoff to ${recipientSession.agent_group_id} (session ${recipientSession.id}` +
+    `${row.threadId ? `, thread ${row.threadId}` : ''}) bounced ${row.tries}× on transient/unknown ` +
+    `provider errors (${status}) and was NOT delivered. Original message ${row.id}. ` +
+    `Re-drive the handoff or escalate — it will not self-recover.`;
+
+  const { notifyAgent, pickApprover, pickApprovalDelivery } = await import('./modules/approvals/primitive.js');
+
+  if (sourceSessionId) {
+    const sourceSession = getSession(sourceSessionId);
+    if (sourceSession && sourceSession.status === 'active') {
+      // Self-heal one hop up the chain: let the delegator re-drive or escalate.
+      notifyAgent(sourceSession, detail);
+      return;
+    }
+  }
+
+  // No live delegator — escalate to an admin as a plain chat notification (NOT
+  // an approval gate). Reuse the same approver resolution + DM delivery the
+  // approvals primitive uses, but send a chat, not an ask_question card.
+  const approvers = pickApprover(recipientSession.agent_group_id);
+  const delivery = await pickApprovalDelivery(approvers, '');
+  if (delivery) {
+    const { getDeliveryAdapter } = await import('./delivery.js');
+    const adapter = getDeliveryAdapter();
+    if (adapter) {
+      await adapter.deliver(
+        delivery.messagingGroup.channel_type,
+        delivery.messagingGroup.platform_id,
+        null,
+        'chat',
+        JSON.stringify({ text: detail }),
+      );
+      return;
+    }
+  }
+  log.error('a2a dead-letter: no delegator session and no admin to escalate to', {
+    sessionId: recipientSession.id,
+    messageId: row.id,
+  });
 }
 
 function resetStuckProcessingRows(

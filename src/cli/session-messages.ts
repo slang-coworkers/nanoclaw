@@ -26,6 +26,7 @@ export interface ReadOpts {
   kind?: string;
   include_system?: boolean;
   full?: boolean;
+  reverse?: boolean;
 }
 
 export interface TranscriptRow {
@@ -57,6 +58,7 @@ export async function readSessionMessages(opts: ReadOpts): Promise<TranscriptRow
   const kindFilter = opts.kind ? String(opts.kind) : undefined;
   const includeSystem = Boolean(opts.include_system);
   const full = Boolean(opts.full);
+  const reverse = Boolean(opts.reverse);
 
   const inPath = inboundDbPath(session.agent_group_id, session.id);
   const outPath = outboundDbPath(session.agent_group_id, session.id);
@@ -71,7 +73,11 @@ export async function readSessionMessages(opts: ReadOpts): Promise<TranscriptRow
   let filtered = merged;
   if (!includeSystem) filtered = filtered.filter((r) => r.kind !== 'system');
 
-  filtered.sort((a, b) => a.seq - b.seq);
+  // Ascending by seq is the default (chronological transcript). `reverse` sorts
+  // newest-first so `--limit N --reverse` returns the most recent N rows — the
+  // only way to fetch the last outbound (a plain `--limit 1` returns the OLDEST
+  // row, then slices from offset 0).
+  filtered.sort((a, b) => (reverse ? b.seq - a.seq : a.seq - b.seq));
 
   return filtered.slice(offset, offset + limit);
 }

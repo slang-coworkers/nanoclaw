@@ -262,6 +262,80 @@ export function deleteOrphanProcessingClaims(outDb: Database.Database): number {
   return outDb.prepare("DELETE FROM processing_ack WHERE status = 'processing'").run().changes;
 }
 
+export interface BouncedClaim {
+  message_id: string;
+  status: 'bounced-transient' | 'bounced-unknown';
+}
+
+/**
+ * Return processing_ack rows the container marked as a transient a2a bounce
+ * (markBounced in the agent-runner). These are handoffs whose recipient turn
+ * errored on a transient/unknown provider fault and delivered nothing — the
+ * trigger `messages_in` row is still `pending` (syncProcessingAcks ignores these
+ * statuses). The host redrive sweep re-arms them; see redriveBouncedA2a.
+ */
+export function getBouncedClaims(outDb: Database.Database): BouncedClaim[] {
+  return outDb
+    .prepare("SELECT message_id, status FROM processing_ack WHERE status IN ('bounced-transient', 'bounced-unknown')")
+    .all() as BouncedClaim[];
+}
+
+/**
+ * Delete SPECIFIC bounced-claim rows by id on an already-open writable handle.
+ * Only the ids passed are removed — never a blanket clear — so an unrelated
+ * bounce that arrived concurrently is left for the next sweep. Only call when
+ * the container is NOT running (single-writer). Returns rows deleted.
+ */
+export function deleteBouncedClaims(outDb: Database.Database, ids: string[]): number {
+  if (ids.length === 0) return 0;
+  const stmt = outDb.prepare('DELETE FROM processing_ack WHERE message_id = ?');
+  let n = 0;
+  const tx = outDb.transaction((list: string[]) => {
+    for (const id of list) n += stmt.run(id).changes;
+  });
+  tx(ids);
+  return n;
+}
+
+/**
+ * Fetch the fields needed to redrive/dead-letter a bounced a2a trigger: its
+ * retry counter, backoff gate, the a2a edge type, and the lineage back to the
+ * delegating session (source_session_id). Returns undefined if the row is no
+ * longer pending (already re-armed, completed, or failed).
+ */
+export function getBouncedTriggerRow(
+  db: Database.Database,
+  messageId: string,
+):
+  | {
+      id: string;
+      tries: number;
+      processAfter: string | null;
+      channelType: string | null;
+      sourceSessionId: string | null;
+      threadId: string | null;
+      platformId: string | null;
+    }
+  | undefined {
+  return db
+    .prepare(
+      `SELECT id, tries, process_after AS processAfter, channel_type AS channelType,
+              source_session_id AS sourceSessionId, thread_id AS threadId, platform_id AS platformId
+         FROM messages_in WHERE id = ? AND status = 'pending'`,
+    )
+    .get(messageId) as
+    | {
+        id: string;
+        tries: number;
+        processAfter: string | null;
+        channelType: string | null;
+        sourceSessionId: string | null;
+        threadId: string | null;
+        platformId: string | null;
+      }
+    | undefined;
+}
+
 export interface ContainerState {
   current_tool: string | null;
   tool_declared_timeout_ms: number | null;

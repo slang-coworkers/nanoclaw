@@ -85,11 +85,23 @@ echo "pull-universe: $CHAIN_COUNT chains to fetch" >&2
 # quoted subscripts like t['issue'] closed the bash single-quote early.
 # THREADS is passed via a file (argv-safe); INCLUDE_CLOSED via env.
 printf '%s' "$THREADS" > "$TMPD/threads.json"
-INCLUDE_CLOSED="$INCLUDE_CLOSED" python3 - "$TMPD/threads.json" <<'PY' > "$TMPD/chains.json"
+
+# Load prior supervisor-state now (not just at Step 5) so Step 4b can rehydrate
+# each chain's disposition from the last tick — without it scan.py's
+# HUMAN_OWNED_DISPOSITION gate always sees None and over-flags (see SKILL.md §3).
+STATE="{}"
+if [[ -n "$STATE_FILE" && -f "$STATE_FILE" ]]; then
+  STATE=$(cat "$STATE_FILE")
+fi
+printf '%s' "$STATE" > "$TMPD/state.json"
+
+INCLUDE_CLOSED="$INCLUDE_CLOSED" python3 - "$TMPD/threads.json" "$TMPD/state.json" <<'PY' > "$TMPD/chains.json"
 import json, sys, subprocess, re, os
 
 with open(sys.argv[1]) as _f:
     threads = json.load(_f)
+with open(sys.argv[2]) as _f:
+    prior_state = json.load(_f)
 include_closed = os.environ["INCLUDE_CLOSED"] == "true"
 bot_logins = {"nv-slang-bot[bot]", "nv-slang-bot"}
 BATCH_SIZE = 50
@@ -134,23 +146,71 @@ def gh_graphql(query):
         print(f"pull-universe: graphql error: {r.stderr[:200]}", file=sys.stderr)
     return None
 
+# Mirror of container/agent-runner/src/transient-error.ts classifyTurnError.
+# Keep these signature lists in sync with that module — this is explainability
+# for the supervisor board (last_outbound_error_class), the host redrive is the
+# authoritative actor. Returns 'transient' | 'unknown' | 'permanent' | None.
+_PERMANENT_SIGNATURES = (
+    "billing_error", "invalid api key", "invalid_request_error",
+    "permission_error", "authentication_error: invalid",
+)
+_TRANSIENT_SIGNATURES = (
+    "not logged in", "please run /login", "econnrefused", "etimedout",
+    "socket hang up", "bad gateway", "overloaded_error",
+    "502", "503", "504", "service unavailable", "gateway timeout",
+)
+
+def classify_error_text(text):
+    if not text:
+        return None
+    low = text.lower()
+    # Only classify text that actually looks like an error notice, so a normal
+    # reply that happens to contain "login" is not mislabeled.
+    is_errorish = low.startswith("error:") or "please run /login" in low or "not logged in" in low
+    if not is_errorish and not any(s in low for s in _TRANSIENT_SIGNATURES):
+        return None
+    if any(s in low for s in _PERMANENT_SIGNATURES):
+        return "permanent"
+    if any(s in low for s in _TRANSIENT_SIGNATURES):
+        return "transient"
+    return "unknown" if is_errorish else None
+
 def ncl_last_outbound(sess_ids):
+    """Return (latest_ts, latest_text, latest_kind) for the newest OUTBOUND row
+    across the chain's sessions.
+
+    Previously this discarded text/kind AND used `--limit 1` without `--reverse`,
+    which returns the OLDEST merged row — so it never actually saw the last
+    outbound (an a2a handoff bounce was invisible). We now pull the most recent
+    rows newest-first (`--reverse`) and take the newest row whose direction is
+    'out', keeping its text so scan.py can derive an error class for
+    prioritization (last_outbound_error_class).
+    """
     latest = None
+    latest_text = None
+    latest_kind = None
     for sid in sess_ids:
-        out = run(["ncl", "sessions", "messages", "--id", sid, "--limit", "1", "--json"])
+        out = run(["ncl", "sessions", "messages", "--id", sid,
+                   "--limit", "10", "--reverse", "--full", "--json"])
         if not out:
             continue
         try:
             data = json.loads(out)
             msgs = data.get("data") or data if isinstance(data, list) else data.get("data", [])
             if isinstance(msgs, list):
+                # Rows arrive newest-first; take the first 'out' row per session.
                 for m in msgs:
+                    if m.get("direction") != "out":
+                        continue
                     ts = m.get("timestamp")
                     if ts and (latest is None or ts > latest):
                         latest = ts
+                        latest_text = m.get("text")
+                        latest_kind = m.get("kind")
+                    break
         except (json.JSONDecodeError, TypeError):
             pass
-    return latest
+    return latest, latest_text, latest_kind
 
 # Group threads by repo
 by_repo = {}
@@ -474,8 +534,21 @@ for i, t in enumerate(threads):
             "is_bot": c["is_bot"], "kind": "comment",
         })
 
-    # Last outbound from our sessions (ncl — local, not GH)
-    chain["our_last_outbound"] = ncl_last_outbound(sess_ids)
+    # Last outbound from our sessions (ncl — local, not GH). Keep the newest
+    # outbound's text so we can derive an error class (a bounced a2a handoff
+    # shows up as an error-shaped last outbound — the #12097 shape).
+    lo_ts, lo_text, _lo_kind = ncl_last_outbound(sess_ids)
+    chain["our_last_outbound"] = lo_ts
+    chain["last_outbound_text"] = lo_text
+    chain["last_outbound_error_class"] = classify_error_text(lo_text)
+
+    # Rehydrate disposition from the prior tick so scan.py's HUMAN_OWNED gate
+    # fires on live data (pull-universe never populated this before → the gate
+    # always saw None and over-flagged). Current-tick disposition is agent-
+    # supplied later (§1a); the prior value is the durable carrier.
+    prior_snap = prior_state.get(thread, {}) if isinstance(prior_state, dict) else {}
+    if isinstance(prior_snap, dict) and prior_snap.get("disposition"):
+        chain["disposition"] = prior_snap["disposition"]
 
     chains[thread] = chain
 
@@ -484,14 +557,11 @@ json.dump(chains, sys.stdout)
 PY
 
 # --- 5. Assemble the full scan.py input ---
-STATE="{}"
-if [[ -n "$STATE_FILE" && -f "$STATE_FILE" ]]; then
-  STATE=$(cat "$STATE_FILE")
-fi
+# STATE was already loaded and written to $TMPD/state.json before Step 4b (so
+# disposition could be rehydrated per chain); reuse that same file here.
 
 # Read the big blobs from files (not argv) to avoid "Argument list too long".
 printf '%s' "$GH_SESSIONS" > "$TMPD/gh_sessions.json"
-printf '%s' "$STATE" > "$TMPD/state.json"
 
 NOW="$NOW" python3 - "$TMPD/gh_sessions.json" "$TMPD/chains.json" "$TMPD/state.json" <<'PY'
 import json, sys, os

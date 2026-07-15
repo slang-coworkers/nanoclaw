@@ -164,3 +164,24 @@ export function getUndeliveredMessages(): MessageOutRow[] {
     )
     .all() as MessageOutRow[];
 }
+
+/**
+ * True when an outbound row already exists for (platformId, channelType) with
+ * the same text and no in_reply_to — i.e. the agent already sent this exact
+ * message via the MCP tool this turn. Used by sendToDestination to drop a
+ * turn-final <message> echo of an already-sent task message (#943). Restored
+ * on the upstream sync: nv-main re-added it in #943, and it coexists with the
+ * one-door task-delivery change as defense-in-depth.
+ */
+export function hasIdenticalSend(platformId: string, channelType: string, text: string): boolean {
+  const row = getOutboundDb()
+    .prepare(
+      `SELECT 1 FROM messages_out
+        WHERE platform_id = $platform_id AND channel_type = $channel_type
+          AND (in_reply_to IS NULL OR in_reply_to = '')
+          AND json_extract(content, '$.text') = $text
+        LIMIT 1`,
+    )
+    .get({ $platform_id: platformId, $channel_type: channelType, $text: text });
+  return row != null;
+}

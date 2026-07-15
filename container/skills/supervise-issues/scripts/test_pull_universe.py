@@ -37,6 +37,17 @@ def load_gh_graphql():
     return mod
 
 
+def load_classify_error_text():
+    """Extract classify_error_text() (+ its signature-list module globals) from
+    the Step-4b heredoc and compile it standalone."""
+    src = SCRIPT.read_text()
+    start = src.index("_PERMANENT_SIGNATURES")
+    end = src.index("def ncl_last_outbound")
+    mod = types.ModuleType("pu_classify")
+    exec(compile(src[start:end], "classify_error_text", "exec"), mod.__dict__)
+    return mod.classify_error_text
+
+
 class FakeCompleted:
     def __init__(self, returncode, stdout, stderr=""):
         self.returncode = returncode
@@ -83,6 +94,66 @@ class GraphqlSalvage(unittest.TestCase):
         # data: null with only errors -> nothing to salvage.
         self._patch(FakeCompleted(1, '{"data": null, "errors": [{"message": "x"}]}'))
         self.assertIsNone(self.mod.gh_graphql("{ q }"))
+
+
+class ErrorClassification(unittest.TestCase):
+    """last_outbound_error_class feeds scan.py's stopped+errored bounce limb.
+    Mirror of container/agent-runner/src/transient-error.ts — a bounced a2a
+    handoff (the #12097 shape) must classify as transient; a genuine 403 as
+    permanent; a novel error as unknown; and a NORMAL reply as None (no false
+    positive that would trigger a spurious nudge)."""
+
+    def setUp(self):
+        self.cet = load_classify_error_text()
+
+    def test_not_logged_in_is_transient(self):
+        self.assertEqual(self.cet("Not logged in · Please run /login"), "transient")
+
+    def test_wrapped_error_result_is_transient(self):
+        self.assertEqual(
+            self.cet("Error: Claude Code returned an error result: Not logged in · Please run /login"),
+            "transient")
+
+    def test_billing_403_is_permanent(self):
+        self.assertEqual(self.cet("Error: 403 billing_error: credit balance too low"), "permanent")
+
+    def test_novel_error_is_unknown(self):
+        self.assertEqual(self.cet("Error: something totally novel happened"), "unknown")
+
+    def test_normal_reply_mentioning_login_is_not_an_error(self):
+        # The critical false-positive guard: a real reply that happens to say
+        # "login" must NOT class as an error (would trigger a spurious nudge).
+        self.assertIsNone(self.cet("Here is my normal reply about a login button"))
+
+    def test_fix_report_is_not_an_error(self):
+        self.assertIsNone(self.cet("[Fix Report] shader-slang/slang#12097: done"))
+
+    def test_empty_is_none(self):
+        self.assertIsNone(self.cet(""))
+        self.assertIsNone(self.cet(None))
+
+
+class DispositionRehydration(unittest.TestCase):
+    """pull-universe.sh must rehydrate each chain's disposition from the prior
+    supervisor-state before scan.py classifies it — without it the HUMAN_OWNED
+    gate always sees None and over-flags (the Tick-86 105->1 reconciliation
+    noise that gave the LLM license to park the real #12097 nudge). We pin the
+    rehydration expression the Step-4b block uses."""
+
+    def test_step4b_rehydrates_prior_disposition(self):
+        # Structural assertion: the Step-4b heredoc reads prior_state and copies
+        # a prior snapshot's disposition onto the chain. This guards the wiring
+        # (the heavy end-to-end path needs live ncl/gh and is covered by the
+        # skill's own smoke run).
+        src = SCRIPT.read_text()
+        self.assertIn("prior_state = json.load", src)
+        self.assertIn('prior_snap.get("disposition")', src)
+        self.assertIn('chain["disposition"] = prior_snap["disposition"]', src)
+        # And the state file is written BEFORE Step 4b runs (not only at Step 5).
+        step4b = src.index("INCLUDE_CLOSED=\"$INCLUDE_CLOSED\" python3")
+        state_write = src.index('printf \'%s\' "$STATE" > "$TMPD/state.json"')
+        self.assertLess(state_write, step4b,
+                        "state.json must be written before Step 4b for rehydration")
 
 
 if __name__ == "__main__":
