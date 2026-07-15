@@ -6,10 +6,11 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 
-import { deleteOrphanProcessingClaims, getProcessingClaims } from './db/session-db.js';
+import { deleteOrphanProcessingClaims, getBouncedClaims, getProcessingClaims } from './db/session-db.js';
 import {
   ABSOLUTE_CEILING_MS,
   CLAIM_STUCK_MS,
+  _redriveBouncedA2aForTesting,
   _resetStuckProcessingRowsForTesting,
   decideStuckAction,
   parseSqliteUtc,
@@ -367,6 +368,167 @@ describe('parseSqliteUtc', () => {
     // bare string returns different values depending on the host TZ.)
     const bare = '2026-04-20T12:00:00';
     expect(parseSqliteUtc(bare)).toBe(Date.parse(bare + 'Z'));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// a2a bounce redrive (Part b). The container marks a bounced handoff with a
+// distinct processing_ack status; the host re-arms the still-pending trigger
+// with an outage-scale backoff, or dead-letters once the per-class budget is
+// spent. Tested via the _redriveBouncedA2aForTesting shim (injected writable DB
+// + dead-letter spy) so we touch no filesystem or delivery modules.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function makeA2aSessionDbs(): { inDb: Database.Database; outDb: Database.Database } {
+  const inDb = new Database(':memory:');
+  inDb.exec(`
+    CREATE TABLE messages_in (
+      id                TEXT PRIMARY KEY,
+      seq               INTEGER UNIQUE,
+      kind              TEXT NOT NULL,
+      timestamp         TEXT NOT NULL,
+      status            TEXT DEFAULT 'pending',
+      process_after     TEXT,
+      tries             INTEGER DEFAULT 0,
+      trigger           INTEGER NOT NULL DEFAULT 1,
+      platform_id       TEXT,
+      channel_type      TEXT,
+      thread_id         TEXT,
+      source_session_id TEXT,
+      content           TEXT NOT NULL
+    );
+  `);
+  const outDb = new Database(':memory:');
+  outDb.exec(`
+    CREATE TABLE processing_ack (
+      message_id     TEXT PRIMARY KEY,
+      status         TEXT NOT NULL,
+      status_changed TEXT NOT NULL
+    );
+  `);
+  return { inDb, outDb };
+}
+
+function insertBounce(
+  inDb: Database.Database,
+  outDb: Database.Database,
+  id: string,
+  status: 'bounced-transient' | 'bounced-unknown',
+  opts: { tries?: number; channelType?: string; processAfter?: string; sourceSessionId?: string } = {},
+) {
+  inDb
+    .prepare(
+      `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, tries, channel_type, thread_id, source_session_id, content)
+       VALUES (?, ?, 'chat', ?, 'pending', ?, ?, ?, 'gh-issue-o/r-12097', ?, '{}')`,
+    )
+    .run(
+      id,
+      Math.floor(Math.random() * 1e9),
+      new Date().toISOString(),
+      opts.processAfter ?? null,
+      opts.tries ?? 0,
+      opts.channelType ?? 'agent',
+      opts.sourceSessionId ?? 'sess-source',
+    );
+  outDb.prepare('INSERT INTO processing_ack VALUES (?, ?, ?)').run(id, status, new Date().toISOString());
+}
+
+function inRow(inDb: Database.Database, id: string) {
+  return inDb.prepare('SELECT status, tries, process_after FROM messages_in WHERE id = ?').get(id) as {
+    status: string;
+    tries: number;
+    process_after: string | null;
+  };
+}
+
+const noopDeadLetter = () => {};
+
+describe('redriveBouncedA2a', () => {
+  it('re-arms a transient bounce with backoff and clears the marker', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    insertBounce(inDb, outDb, 'h1', 'bounced-transient', { tries: 0 });
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+
+    const row = inRow(inDb, 'h1');
+    expect(row.status).toBe('pending'); // still claimable — NOT failed/completed
+    expect(row.tries).toBe(1);
+    expect(row.process_after).not.toBeNull();
+    // process_after is in the future (backoff applied) …
+    expect(parseSqliteUtc(row.process_after!)).toBeGreaterThan(Date.now());
+    // … and the marker was cleared only after re-arming.
+    expect(getBouncedClaims(outDb)).toEqual([]);
+  });
+
+  it('dead-letters a transient bounce once A2A_MAX_TRIES is spent', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    insertBounce(inDb, outDb, 'h2', 'bounced-transient', { tries: 12 }); // >= A2A_MAX_TRIES
+    const calls: string[] = [];
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), (_s, r) => calls.push(r.id));
+
+    expect(inRow(inDb, 'h2').status).toBe('failed');
+    expect(calls).toEqual(['h2']);
+    expect(getBouncedClaims(outDb)).toEqual([]);
+  });
+
+  it('dead-letters an UNKNOWN bounce fast (A2A_UNKNOWN_MAX_TRIES=2)', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    // 2 tries already spent → unknown budget exhausted, transient would not be.
+    insertBounce(inDb, outDb, 'h3', 'bounced-unknown', { tries: 2 });
+    const calls: string[] = [];
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), (_s, r) => calls.push(r.id));
+
+    expect(inRow(inDb, 'h3').status).toBe('failed');
+    expect(calls).toEqual(['h3']);
+  });
+
+  it('unknown bounce still re-arms while under its small budget', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    insertBounce(inDb, outDb, 'h3b', 'bounced-unknown', { tries: 1 }); // < 2
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+    expect(inRow(inDb, 'h3b').status).toBe('pending');
+    expect(inRow(inDb, 'h3b').tries).toBe(2);
+  });
+
+  it('is idempotent: a bounce already scheduled for the future is left alone', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    const future = new Date(Date.now() + 60_000).toISOString();
+    insertBounce(inDb, outDb, 'h4', 'bounced-transient', { tries: 3, processAfter: future });
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+
+    // tries NOT bumped, marker left in place for a later tick.
+    expect(inRow(inDb, 'h4').tries).toBe(3);
+    expect(getBouncedClaims(outDb).map((c) => c.message_id)).toEqual(['h4']);
+  });
+
+  it('backoff is capped at 1h per step', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    // tries=10 → 60s * 2^10 ≈ 17h uncapped; must cap at 1h.
+    insertBounce(inDb, outDb, 'h5', 'bounced-transient', { tries: 10 });
+    const before = Date.now();
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+    const pa = parseSqliteUtc(inRow(inDb, 'h5').process_after!);
+    expect(pa - before).toBeLessThanOrEqual(3_600_000 + 5_000); // cap + slack
+    expect(pa - before).toBeGreaterThan(3_500_000);
+  });
+
+  it('does nothing when there are no bounced claims', () => {
+    const { inDb, outDb } = makeA2aSessionDbs();
+    // A normal completed row must be ignored (not a bounce).
+    inDb
+      .prepare(
+        "INSERT INTO messages_in (id, seq, kind, timestamp, status, channel_type, content) VALUES ('ok', 1, 'chat', ?, 'pending', 'agent', '{}')",
+      )
+      .run(new Date().toISOString());
+    outDb.prepare("INSERT INTO processing_ack VALUES ('ok', 'completed', ?)").run(new Date().toISOString());
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+
+    expect(inRow(inDb, 'ok').status).toBe('pending');
+    expect(inRow(inDb, 'ok').tries).toBe(0);
   });
 });
 
