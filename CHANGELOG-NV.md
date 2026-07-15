@@ -6,15 +6,43 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 339 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 161 |
-| `nv-slang` | slang project spine, skills, workflows | 120 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 57 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 37 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 346 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 165 |
+| `nv-slang` | slang project spine, skills, workflows | 122 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 58 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 39 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-15
+
+### nv-main (7 PRs)
+- **#943** `fix(a2a): redrive bounced handoffs + mechanical supervisor enforcement`
+- **#942** `Sync nv-main with upstream/main da9a74fc (2026-07-14) — guard-seam + a2a lineage port`
+- **#948** `feat(welcome): combined interactive + coworker/lego onboarding`
+- **#949** `fix(agent-runner): align poll-loop test processQuery calls to nv-main signature`
+- **#950** `test(validate-templates): guard the critique-gate stage contract at author time`
+- **#952** `refactor(memory): adopt upstream memory-session-hook shape on nv-main`
+- **#955** `Sync nv-main with upstream/main a11ad11 (2026-07-15)`
+
+### nv-dashboard (4 PRs)
+- **#937** `fix(dashboard): spawn ccusage directly (node cli.js), not via npx — kill the fan-out pileup`
+- **#930** `Sync nv-dashboard with upstream/main da9a74fc (2026-07-14)`
+- **#951** `fix(dashboard): render ask_question cards + wire option buttons in thread view`
+- **#945** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (2 PRs)
+- **#928** `Sync nv-slang with upstream/main da9a74fc (2026-07-14)`
+- **#946** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#927** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#929** `Sync nv-nanoclaw with upstream/main da9a74fc (2026-07-14)`
+- **#947** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-07-14
 
