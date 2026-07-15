@@ -1,10 +1,14 @@
 ---
 name: project_12023_compileperf_sweep_abstain_policy
-description: "#12023 compile-perf complexity sweep — reviewed R1+R2, both ABSTAIN_POLICY (CI-workflow protected-path gate), maintainer owns merge, TERMINAL @ 33be104"
+description: "#12023 compile-perf complexity sweep — R1/R2/R4 ABSTAIN_POLICY (CI protected-path gate); MERGED 07-14 w/ human APPROVE = agreement, not false-safe. CLOSED"
 metadata:
   node_type: memory
   type: project
   originSessionId: 2478fc41-f5cb-4054-a278-e865cb82091a
+---
+
+**✅ MERGED & CLOSED (2026-07-14T12:05Z, merge commit `bee6400c`).** Merged by author jvepsalainen-nv; human COLLABORATOR expipiplus1 APPROVED @ 06:26Z; `reviewDecision=APPROVED`. Merged **with both `.github/workflows/` files still edited** — exactly what every revision abstained on. **Calibration: agreement, not false-safe** — our ABSTAIN_POLICY (never WOULD_APPROVE) is the *designed* "human must look" path for protected-path changes; ABSTAIN rows are excluded from agreement scoring. Approver stamped `record_human_verdict=APPROVED` on all 3 decision rows (`a5c5b3e7cfe0`, `33be1040cdaa`, `790de4aa7c1b`) and filed an `[approver/human-agreement]` learning: protected-path ABSTAIN that merges with paths intact + human approval = correct terminal call; keep the deterministic-hold for structural-clause abstains. Review value confirmed: the 🟡 nits (CI `|| echo` masking, `∝N^0.00` degenerate fit, "scaling null" term, untested `linfit`/`powfit`) were **all fixed by the author** in "Address review:" commits before merge. Any further webhooks on this merged PR → no-op.
+
 ---
 
 shader-slang/slang **PR #12023** "compile-perf: complexity sweep — scaling curves, floor+slope fits, sweep report" — maintainer-authored (jvepsalainen-nv), head `compile-perf-scaling-sweep` → `master`, label `pr: non-breaking`, 14 files / +1160−58. Python compile-perf **tooling only**, no compiler code. Supersedes draft #11674.
