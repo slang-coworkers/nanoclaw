@@ -37,7 +37,7 @@ You can act across groups, but only when the user explicitly asks you to act on 
 
 ### Resuming a specific recipient session
 
-When you wake a peer to continue work _another_ chain handed off, routing keys on `(recipient agent group, messaging group, thread id)`. Your wake uses a different messaging group than the chain that queued the work, so without intervention the recipient gets a fresh session — no inbox, no context. Use `target_session_id` on `send_message` / `send_file` to pin the wake to the recipient's existing session.
+When you wake a peer to continue work _another_ chain handed off, routing keys on `(recipient agent group, messaging group, thread id)`. Your wake uses a different messaging group than the chain that dispatched the work, so without intervention the recipient gets a fresh session — no inbox, no context. Use `target_session_id` on `send_message` / `send_file` to pin the wake to the recipient's existing session.
 
 **Discovery flow:**
 

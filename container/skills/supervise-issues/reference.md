@@ -148,7 +148,23 @@ is computed deterministically in `scan.py::we_owe_next_step` and was the root ca
 bot-last read as `awaiting_human` forever). Human-owned dispositions that keep a bot-last chain
 parked: `active:human-debate`, `stood-down:external-PR`, `advisory:maintainer-driving`,
 `triaged:awaiting-pickup`, `closed-by-us` (matched on the tokens `human-debate`, `external-pr`,
-`maintainer-driving`, `awaiting-pickup`, `closed-by-us`, `stood-down`, `advisory`).
+`maintainer-driving`, `awaiting-pickup`, `closed-by-us`, `stood-down`, `advisory`). These
+dispositions are **rehydrated by `pull-universe.sh` from the prior tick's state** before
+classification — without that, the gate saw `None` every tick and over-flagged (the Tick-86 105→1
+reconciliation noise).
+
+**Bounce limb (additive to the carve-out).** The silence-clock condition is *relaxed* when the
+owning container is `stopped` **and** its last outbound classed as an error
+(`last_outbound_error_class` ∈ `transient`|`unknown`, set by `pull-universe.sh` from the newest
+outbound text, mirroring the container's `transient-error.ts`). Such a chain has *bounced* — an a2a
+handoff that errored on a transient auth/provider outage (the #12097 shape) — and will not
+self-recover, so it flips to `awaiting_us` even inside the fresh window. This is belt-and-suspenders
+with the **host-side a2a redrive** (once that ships): the host re-drives bounced handoffs directly in
+the session layer; the supervisor is the fallback for bounces that surface as issue chains. `scan.py`
+emits the per-row decision as `action` (`nudge` iff `needs_nudge`, else `none`) with an enum
+`non_nudge_reason` (`human-owned:<disp>` | `pr-open` | `running` | `fresh-dispatch` |
+`awaiting-human` | `terminal`); Step 3 acts on `action`, and `summary.must_nudge` is the
+fails-loudly reconciliation target.
 
 ## GitHub-comment existence test (Step 5)
 
@@ -326,8 +342,13 @@ Save-then-remove is mandatory — even merged-PR worktrees often hold untracked 
 `remove --force` would destroy (reviewer worktrees in particular carry ad-hoc review notes). Track
 `gcRequestedAt` per worktree; if still on disk after 2 clean dispatches, escalate with the `du`/`df`
 numbers + the worktree list. A woken long-idle coworker may reply `Error: No conversation found with
-session ID …` on its first turn — self-healing (the runner clears the stale continuation and the
-host re-delivers); treat as "in progress, recheck next tick," not as `gc done`.
+session ID …` on its first turn — this specific stale-continuation case self-heals (the runner
+clears the stale continuation and the host re-delivers); treat as "in progress, recheck next tick,"
+not as `gc done`. **This is the only "self-healing" error** — do not generalize it: a handoff that
+bounced on a transient auth/provider outage surfaces as a `stopped` container with an error-class
+last outbound and is a **nudge row** (see the bounce limb above), not a self-healer to wait out. The
+host-side a2a redrive (when deployed) handles bounces in the session layer; the supervisor still
+nudges the ones that surface as chains.
 
 ## CI status + rebase nudge
 

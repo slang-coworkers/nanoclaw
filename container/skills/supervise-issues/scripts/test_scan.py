@@ -318,6 +318,109 @@ class NextStepOwnership(unittest.TestCase):
         self.assertFalse(r["needs_nudge"])
 
 
+class ActionPlan(unittest.TestCase):
+    """SKILL.md §3 mechanical enforcement: scan.py emits a per-row `action`
+    that is a STRICT 1:1 with needs_nudge — 'nudge' | 'none', never 'suppress'.
+    A nudge row can never be turned off downstream (the prose-override hole that
+    stranded #12097; PR #901's wording alone was insufficient). Non-nudge rows
+    carry an enum-like `non_nudge_reason`, never free prose. `summary.must_nudge`
+    is the reconciliation target for the §3 fails-loudly check."""
+
+    def _fixer_chain(self, disp=None, pr=None, folder="slang-fixer"):
+        return {
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-o/r-12002",
+                          "container_status": "stopped", "group_folder": folder}],
+            "chains": {"gh-issue-o/r-12002": {
+                "repo": "o/r", "issue": 12002, "sessions": ["s1"],
+                "our_last_outbound": "2026-06-21T12:00:00Z",
+                "pr": pr, "disposition": disp,
+                "comments": [
+                    {"author": "nv-slang-bot[bot]", "at": "2026-06-21T12:00:00Z", "is_bot": True},
+                ],
+            }},
+        }
+
+    def test_every_row_has_action(self):
+        out = run_scan(self._fixer_chain())
+        for r in out["rows"]:
+            self.assertIn(r["action"], ("nudge", "none"))
+            # No 'suppress' escape hatch exists anywhere.
+            self.assertNotEqual(r["action"], "suppress")
+
+    def test_needs_nudge_iff_action_nudge(self):
+        # The invariant, pinned across a mixed board: action=='nudge' <=> needs_nudge.
+        out = run_scan(self._fixer_chain())
+        for r in out["rows"]:
+            self.assertEqual(r["action"] == "nudge", bool(r["needs_nudge"]))
+
+    def test_nudge_row_has_no_non_nudge_reason(self):
+        r = row_for(run_scan(self._fixer_chain()), "gh-issue-o/r-12002")
+        self.assertEqual(r["action"], "nudge")
+        self.assertIsNone(r["non_nudge_reason"])
+
+    def test_human_owned_is_action_none_with_enum_reason(self):
+        # Human-owned disposition is NOT a suppressed nudge — it never becomes a
+        # nudge row. It surfaces as action='none' with a deterministic token.
+        r = row_for(run_scan(self._fixer_chain(disp="active: human-debate")),
+                    "gh-issue-o/r-12002")
+        self.assertFalse(r["needs_nudge"])
+        self.assertEqual(r["action"], "none")
+        self.assertEqual(r["non_nudge_reason"], "human-owned:human-debate")
+
+    def test_must_nudge_counts_nudge_rows(self):
+        out = run_scan(self._fixer_chain())
+        n = sum(1 for r in out["rows"] if r["action"] == "nudge")
+        self.assertEqual(out["summary"]["must_nudge"], n)
+        # By construction must_nudge == needs_nudge (action is 1:1).
+        self.assertEqual(out["summary"]["must_nudge"], out["summary"]["needs_nudge"])
+
+
+class StoppedErroredBounce(unittest.TestCase):
+    """The #12097 shape: a fixer-owned, no-PR chain whose owning container is
+    STOPPED and whose last outbound classed as a transient error (an a2a handoff
+    that bounced on an auth outage). This must be action='nudge' even if the
+    silence clock is still fresh — the container will not self-recover. Additive
+    to we_owe_next_step; complements the host-side a2a redrive."""
+
+    def _bounced_chain(self, error_class="transient", container_status="stopped",
+                       our_last_outbound="2026-06-26T11:58:00Z"):
+        # our_last_outbound only 2 min stale (WELL inside SILENT_S) — proves the
+        # nudge comes from the bounce limb, not the silence clock. Stopped-ness is
+        # read from the session's container_status (as in production), not a
+        # chain-level flag.
+        return {
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-shader-slang/slang-12097",
+                          "container_status": container_status, "group_folder": "slang-fixer"}],
+            "chains": {"gh-issue-shader-slang/slang-12097": {
+                "repo": "shader-slang/slang", "issue": 12097, "sessions": ["s1"],
+                "our_last_outbound": our_last_outbound,
+                "pr": None, "disposition": None,
+                "last_outbound_error_class": error_class,
+                "comments": [
+                    {"author": "nv-slang-bot[bot]", "at": our_last_outbound, "is_bot": True},
+                ],
+            }},
+        }
+
+    def test_bounced_fixer_chain_is_nudged_even_when_fresh(self):
+        r = row_for(run_scan(self._bounced_chain()), "gh-issue-shader-slang/slang-12097")
+        self.assertEqual(r["state"], "awaiting_us")
+        self.assertTrue(r["needs_nudge"])
+        self.assertEqual(r["action"], "nudge")
+        self.assertEqual(r["last_outbound_error_class"], "transient")
+        self.assertEqual(r["stopped_session_count"], 1)
+
+    def test_no_error_class_does_not_flip_fresh_chain(self):
+        # A stopped session with a clean (non-error) last outbound and fresh
+        # silence must NOT be nudged by the bounce limb — only by the clock.
+        r = row_for(run_scan(self._bounced_chain(error_class=None)),
+                    "gh-issue-shader-slang/slang-12097")
+        self.assertFalse(r["needs_nudge"])
+        self.assertEqual(r["action"], "none")
+
+
 class ClosedIssueArchival(unittest.TestCase):
     """We supervise OPEN issues only. A chain whose issue is CLOSED (pull-universe
     emits it as a minimal stub with issue_open:false) must be archived, never
