@@ -1,0 +1,16 @@
+---
+name: project_11323_casttovoid_drop_before_emit
+description: "#11323 / fixes #11315 — drop kIROp_CastToVoid before emit; maintainer-directed rebase done, MERGEABLE, awaiting CI + skiminki-nv"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: a5790b77-160e-4f43-8acc-cc66ac7dd6c3
+---
+
+**shader-slang/slang PR #11323** (`Fixes #11315`) — `(void)expr;` casts lower to `kIROp_CastToVoid`, which no emit backend handles → SPIR-V direct emit aborts ("Unhandled local inst in spirv-emit: castToVoid"), source emit aborts ("unexpected IR opcode during code emit"). Fix = new `eliminateCastToVoid` pass in `linkAndOptimizeIR`, run after transform passes but before metadata collection + unsupported-inst check, so both source-emit and SPIR-V paths benefit from one call site. Semantically a no-op (result type void; operand survives independently if side-effecting, else DCE'd).
+
+- **Author nv-slang-bot[bot]; PROD-instance branch** `dev/slang-fixer/fix-11315-cast-to-void` (per [[project_dup_pr_cross_instance]]: `dev/slang-fixer/*`=prod, `fix/issue-*`=dev). Open since 2026-05-28. Non-draft. Base master. Assignees = maintainers **jvepsalainen-nv + skiminki-nv**; requested reviewer bmillsNV. Canonical thread `gh-issue-shader-slang/slang-11323`.
+- **2026-07-15 01:13 — MAINTAINER-DIRECTED REBASE COMPLETE (fixer msg 36680; Main-verified structural facts via `github_get_pull_request` + `_reviews`).** skiminki-nv asked to resolve conflicts + add a byte-exact test. Fixer: rebased the 2 existing PR commits onto master (base ad69c2e9f8), resolved 1 conflict in `slang-emit.cpp` (eliminateCastToVoid now precedes master's new descriptor_handle layout block + the `collectMetadata(targetProgram,*metadata)` signature + checkUnsupportedInst), 2nd rebase onto fresher master clean, added 3rd commit = skiminki's byte-exact test `tests/spirv/11315-nodiscard-void-cast.slang` (+45). Force-pushed HEAD `ed53107b56`. PR was CONFLICTING/DIRTY → now MERGEABLE; `mergeStateStatus=BEHIND` (master since moved to a8874f6a1e — BEHIND ≠ conflict, doesn't block; the ask was resolve-conflicts, done).
+- **✅ NO dismissal risk realized (Main-verified):** `pulls/11323/reviews` is EMPTY — no formal approval existed, so the force-push dismissed nothing. (The force-push-after-approval hazard I've been watching all session did NOT apply here.) Code push (rebase + test) is not gated [[feedback_pushes_not_gated]]; no ready-flip, no merge (both gated, bot did neither). `report_pr_created` registered.
+- **Tests (fixer):** new test PASS 2/2; negative control (drop the `(void)` cast) → `error[E30059]` discarded-result fires, proving the cast silences `[NoDiscard]`; original repro 2/2; broader `tests/spirv/` 507/507 (12 harness-ignored config/directive skips — L40S present, not no-device). clang-format-17 clean. codex PLAN/CODE/OUTPUT approve (OUTPUT caught + fixer corrected a false "no-device" claim, incl. 2 public follow-up comments). Peer reviewer skipped — maintainer-directed sync on an already-open/reviewed PR, not a fresh fix.
+- **NEXT:** await CI (non-draft push auto-triggers pull_request CI, no manual dispatch) + skiminki-nv. Webhook-driven. Reply posted #issuecomment-4975514799. **Terminal = maintainer merge** (operator/maintainer-gated). Reopens on CI result / skiminki comment / merge.
