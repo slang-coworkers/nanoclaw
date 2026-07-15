@@ -16,6 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import type { MemorySessionHookRegistration } from '../memory/session-hook.js';
 import { registerProvider } from './provider-registry.js';
 import type { AgentProvider, AgentQuery, McpServerConfig, ProviderEvent, ProviderOptions, QueryInput } from './types.js';
 import {
@@ -244,6 +245,10 @@ export class CodexProvider implements AgentProvider {
     this.model = (options.env?.CODEX_MODEL as string | undefined) ?? 'gpt-5.4-mini';
     this.additionalDirectories = options.additionalDirectories;
   }
+
+  // Codex manages its own session memory; the shared session-start hook is a
+  // Claude-native mechanism and does not apply here.
+  registerMemorySessionHook(_hook: MemorySessionHookRegistration): void {}
 
   isSessionInvalid(err: unknown): boolean {
     const msg = err instanceof Error ? err.message : String(err);

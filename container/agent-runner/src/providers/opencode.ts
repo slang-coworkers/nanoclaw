@@ -2,6 +2,7 @@ import * as fs from 'fs';
 
 import { createOpencodeClient, createOpencodeServer, type OpencodeClient } from '@opencode-ai/sdk';
 
+import type { MemorySessionHookRegistration } from '../memory/session-hook.js';
 import { registerProvider } from './provider-registry.js';
 import type { AgentProvider, AgentQuery, ProviderEvent, ProviderOptions, QueryInput } from './types.js';
 import { mcpServersToOpenCodeConfig } from './mcp-to-opencode.js';
@@ -204,6 +205,10 @@ export class OpenCodeProvider implements AgentProvider {
   constructor(options: ProviderOptions = {}) {
     this.options = options;
   }
+
+  // OpenCode manages its own session memory; the shared session-start hook is a
+  // Claude-native mechanism and does not apply here.
+  registerMemorySessionHook(_hook: MemorySessionHookRegistration): void {}
 
   isSessionInvalid(err: unknown): boolean {
     const msg = err instanceof Error ? err.message : String(err);
