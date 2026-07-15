@@ -6448,6 +6448,38 @@ function renderCwThread() {
       if (m.cardType === 'card') {
         return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
       }
+      // Ask question card — render with option buttons if still pending.
+      // Mirrors the main-feed branch in renderCwMessages; the thread view
+      // fetches from the same /api/messages endpoint, so cardType/questionId/
+      // options/isPending are already populated. Without this branch the card
+      // fell through to plain text and the operator saw no buttons — leaving a
+      // timeout:0 ask_user_question wedged forever.
+      if (m.cardType === 'ask_question' && m.questionId && m.options && m.options.length > 0) {
+        const questionText = m.displayContent || m.content || '';
+        if (m.isPending) {
+          const btns = m.options
+            .map((opt) => {
+              const label = typeof opt === 'string' ? opt : opt.label || opt.value || String(opt);
+              const value = typeof opt === 'string' ? opt : opt.value || opt.label || String(opt);
+              return `<button class="question-btn" data-qid="${esc(m.questionId)}" data-option="${esc(value)}" style="background:#3B82F6;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(label)}</button>`;
+            })
+            .join('');
+          return `<div class="cw-msg assistant">
+          <div class="cw-msg-bubble" style="border-left:3px solid #3B82F6;padding-left:8px">
+            ${md(questionText)}
+            <div style="margin-top:8px">${btns}</div>
+          </div>
+          <div class="cw-msg-time">${time} <span style="font-size:7px;color:#3B82F6;font-style:italic">question</span></div>
+        </div>`;
+        }
+        return `<div class="cw-msg assistant">
+        <div class="cw-msg-bubble" style="border-left:3px solid #555;padding-left:8px;opacity:0.7">
+          ${md(questionText)}
+          <div style="margin-top:4px;font-size:9px;color:#666">(answered)</div>
+        </div>
+        <div class="cw-msg-time">${time} <span style="font-size:7px;color:#555;font-style:italic">question</span></div>
+      </div>`;
+      }
       const attachHtml = renderMessageAttachmentsHtml(m.attachments);
       // Dispatch badge: when an outbound message contains <message to="X"
       // thread_id="Y">, render a clickable "→ X" link that resolves the
@@ -6564,9 +6596,53 @@ function renderCwThread() {
     msgsEl.addEventListener('click', handleThreadLoadMore);
     // Copy / Link hover-toolbar buttons on thread rows — same handler as the
     // main feed. (Reply isn't offered in-thread, so no reply branch here.)
-    msgsEl.addEventListener('click', (e) => {
+    msgsEl.addEventListener('click', async (e) => {
       if (e.target.closest('#cw-thread-more')) return; // handled above
-      handleCwMsgActionClick(e);
+      if (handleCwMsgActionClick(e)) return;
+      // ── Question option buttons ──
+      // Mirrors the main-feed handler in renderCwMessages. Without this, the
+      // ask_question card rendered above would show buttons that do nothing in
+      // the thread view — the operator could see the question but not answer it.
+      const questionBtn = e.target.closest('.question-btn');
+      if (questionBtn) {
+        const qid = questionBtn.dataset.qid;
+        const option = questionBtn.dataset.option;
+        if (!qid || !option) return;
+        if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
+        if (cwState._inflightApprovals.has(qid)) return;
+        cwState._inflightApprovals.add(qid);
+        const card = questionBtn.closest('.cw-msg');
+        const allBtns = card ? card.querySelectorAll('.question-btn') : [questionBtn];
+        allBtns.forEach((b) => {
+          b.disabled = true;
+        });
+        questionBtn.textContent = 'Submitting…';
+        try {
+          const res = await fetch('/api/questions/respond', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ questionId: qid, selectedOption: option }),
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            questionBtn.textContent = errData.error || 'Error';
+            allBtns.forEach((b) => {
+              b.disabled = false;
+            });
+          }
+        } catch {
+          questionBtn.textContent = 'Error';
+          allBtns.forEach((b) => {
+            b.disabled = false;
+          });
+        } finally {
+          setTimeout(() => {
+            cwState._inflightApprovals.delete(qid);
+            if (cwState.thread) fetchCwThread(cwState.thread.parentId);
+          }, 1000);
+        }
+        return;
+      }
     });
   }
   if (wasAtBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
