@@ -5,6 +5,7 @@
 //
 // Exit code 0 = all types compose cleanly, 1 = one or more failed.
 
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -38,6 +39,33 @@ function findAbstractBases(types: Record<string, CoworkerTypeEntry>): Set<string
     for (const parent of parents) bases.add(parent);
   }
   return bases;
+}
+
+// Extract the critique STAGE vocabulary from the codex-critique skill's prompt
+// menu — the single line `STAGE: <A | B | C>`. This is the vocabulary the
+// agent is actually taught to emit; the tracking hook keys on the STAGE marker
+// and the delivery gate keys on the resulting recorded stages. A coworker type
+// that declares `required_critique_stages: [X]` where X is absent from this
+// menu will gate on a stage the agent was never told how to run (the
+// DECISION_REVIEW drift that surfaced only as a live approver escalation).
+// Returns null if the skill or its menu line can't be found — that's a
+// structural problem the caller reports rather than silently passing.
+function readCritiqueStageVocabulary(skillPath: string): Set<string> | null {
+  let body: string;
+  try {
+    body = fs.readFileSync(skillPath, 'utf-8');
+  } catch {
+    return null;
+  }
+  const m = body.match(/^STAGE:\s*<([^>]+)>/m);
+  if (!m) return null;
+  const vocab = new Set(
+    m[1]
+      .split('|')
+      .map((s) => s.trim())
+      .filter((s) => /^[A-Z_]+$/.test(s)),
+  );
+  return vocab.size > 0 ? vocab : null;
 }
 
 function main(): number {
@@ -97,6 +125,45 @@ function main(): number {
         `If this workflow inherits its steps from a parent, declare \`extends: <parent>\` ` +
         `in frontmatter to opt out of this check.`,
     });
+  }
+
+  // Critique-stage vocabulary cross-check: every stage a coworker type
+  // requires (`required_critique_stages:` in coworker-types.yaml) must appear
+  // in the codex-critique skill's STAGE menu. Without this, a type can declare
+  // a stage the base skill never documents — the delivery gate then blocks on
+  // a stage the agent was never taught to run, which previously surfaced only
+  // as a production approver escalation (missing DECISION_REVIEW guidance).
+  const critiqueSkill = catalog['codex-critique'];
+  if (critiqueSkill) {
+    const vocab = readCritiqueStageVocabulary(critiqueSkill.path);
+    if (!vocab) {
+      failures.push({
+        typeName: 'codex-critique',
+        message:
+          `Could not extract the STAGE vocabulary from ${critiqueSkill.path}. ` +
+          `Expected a prompt line shaped \`STAGE: <A | B | C>\` (see the "## Prompt" ` +
+          `section). The required_critique_stages cross-check depends on it.`,
+      });
+    } else {
+      for (const name of typeNames) {
+        const declared = types[name].requiredCritiqueStages;
+        if (!declared || declared.length === 0) continue;
+        const unknown = declared.filter((s) => !vocab.has(s));
+        if (unknown.length > 0) {
+          failures.push({
+            typeName: name,
+            message:
+              `required_critique_stages references stage(s) absent from the ` +
+              `codex-critique STAGE menu: ${unknown.join(', ')}. ` +
+              `The delivery gate would block this coworker on a stage the agent ` +
+              `was never taught to run. Add the stage to the \`STAGE: <…>\` menu ` +
+              `and the "when to invoke" table in ` +
+              `container/skills/codex-critique/SKILL.md (known vocabulary: ` +
+              `${[...vocab].sort().join(', ')}).`,
+          });
+        }
+      }
+    }
   }
 
   const skillCount = Object.keys(catalog).length;
