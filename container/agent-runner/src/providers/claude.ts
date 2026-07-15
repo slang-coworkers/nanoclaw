@@ -5,6 +5,7 @@ import path from 'path';
 import { query as sdkQuery, type HookCallback, type PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 
 import { clearContainerToolInFlight, setContainerToolInFlight } from '../db/connection.js';
+import type { MemorySessionHookRegistration } from '../memory/session-hook.js';
 import { resolveEnvInherit } from './codex-app-server.js';
 import { TIMEZONE, formatLocalStamp } from '../timezone.js';
 import { registerProvider } from './provider-registry.js';
@@ -386,9 +387,58 @@ function transcriptRotateAgeMs(): number {
   return days > 0 ? days * 86_400_000 : Infinity;
 }
 
+function claudeConfigDir(): string {
+  return process.env.CLAUDE_CONFIG_DIR || path.join(process.env.HOME || os.homedir(), '.claude');
+}
+
 function claudeProjectsDir(): string {
-  const base = process.env.CLAUDE_CONFIG_DIR || path.join(process.env.HOME || os.homedir(), '.claude');
-  return path.join(base, 'projects');
+  return path.join(claudeConfigDir(), 'projects');
+}
+
+// Wire the shared memory tree into Claude's native SessionStart hook: write a
+// hooks.SessionStart entry into settings.json that runs the memory hook command
+// on the given sources. Idempotent — any prior entry for the same command (or a
+// legacy alias) is stripped before re-adding, so repeated boots don't stack
+// duplicate hooks.
+function writeMemorySessionHook(hook: MemorySessionHookRegistration): void {
+  const configDir = claudeConfigDir();
+  const settingsFile = path.join(configDir, 'settings.json');
+  fs.mkdirSync(configDir, { recursive: true });
+
+  const parsed: unknown = fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) : {};
+  if (!isRecord(parsed)) throw new Error(`${settingsFile} must contain a JSON object`);
+
+  const hooks = parsed.hooks === undefined ? {} : parsed.hooks;
+  if (!isRecord(hooks)) throw new Error(`${settingsFile} hooks must be a JSON object`);
+
+  const sessionStart = hooks.SessionStart === undefined ? [] : hooks.SessionStart;
+  if (!Array.isArray(sessionStart)) throw new Error(`${settingsFile} hooks.SessionStart must be an array`);
+
+  const memoryCommands = new Set([hook.command, ...hook.legacyCommands]);
+  const nextSessionStart = sessionStart
+    .map((entry) => removeMemoryCommands(entry, memoryCommands))
+    .filter((entry) => entry !== undefined);
+  nextSessionStart.push({
+    matcher: hook.sources.join('|'),
+    hooks: [{ type: 'command', command: hook.command, timeout: 10 }],
+  });
+
+  hooks.SessionStart = nextSessionStart;
+  parsed.hooks = hooks;
+  fs.writeFileSync(settingsFile, JSON.stringify(parsed, null, 2) + '\n');
+}
+
+function removeMemoryCommands(value: unknown, commands: ReadonlySet<string>): unknown {
+  if (!isRecord(value) || !Array.isArray(value.hooks)) return value;
+  const hooks = value.hooks.filter((hook) => {
+    if (!isRecord(hook)) return true;
+    return typeof hook.command !== 'string' || !commands.has(hook.command);
+  });
+  return hooks.length > 0 ? { ...value, hooks } : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 /**
@@ -467,6 +517,7 @@ export class ClaudeProvider implements AgentProvider {
   private model?: string;
   private effort?: string;
   private fallbackModel?: string;
+  private memorySessionHook?: MemorySessionHookRegistration;
 
   constructor(options: ProviderOptions = {}) {
     this.assistantName = options.assistantName;
@@ -497,6 +548,11 @@ export class ClaudeProvider implements AgentProvider {
     this.mcpServers = resolved;
     this.extraAllowedTools = parseAllowedMcpTools(this.env);
     this.blockedTools = computeBlockedTools(this.env, this.extraAllowedTools);
+  }
+
+  registerMemorySessionHook(hook: MemorySessionHookRegistration): void {
+    writeMemorySessionHook(hook);
+    this.memorySessionHook = hook;
   }
 
   isSessionInvalid(err: unknown): boolean {
