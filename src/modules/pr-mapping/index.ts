@@ -20,50 +20,54 @@ import type { Session } from '../../types.js';
 import { postRegisterPr } from './register-client.js';
 import { upsertPrMapping } from './store.js';
 
-registerDeliveryAction('map_pr_session', async (content: Record<string, unknown>, session: Session) => {
-  const repo = typeof content.repo === 'string' ? content.repo : null;
-  const prNumber = typeof content.pr_number === 'number' ? content.pr_number : null;
+registerDeliveryAction(
+  'map_pr_session',
+  async (content: Record<string, unknown>, session: Session) => {
+    const repo = typeof content.repo === 'string' ? content.repo : null;
+    const prNumber = typeof content.pr_number === 'number' ? content.pr_number : null;
 
-  if (!repo || prNumber == null) {
-    log.warn('map_pr_session: missing repo or pr_number', { content });
-    return;
-  }
+    if (!repo || prNumber == null) {
+      log.warn('map_pr_session: missing repo or pr_number', { content });
+      return;
+    }
 
-  if (!INSTANCE_SLUG) {
-    log.warn('map_pr_session: INSTANCE_SLUG unset — cannot register mapping', { repo, pr: prNumber });
-    return;
-  }
+    if (!INSTANCE_SLUG) {
+      log.warn('map_pr_session: INSTANCE_SLUG unset — cannot register mapping', { repo, pr: prNumber });
+      return;
+    }
 
-  const write = {
-    repo,
-    prNumber,
-    ownerInstance: INSTANCE_SLUG,
-    agentGroupId: session.agent_group_id,
-    sessionId: session.id,
-    threadId: session.thread_id,
-  };
-
-  if (PR_MAPPINGS_LOCAL) {
-    upsertPrMapping(getDb(), write);
-    log.info('PR→session mapping recorded (local)', {
+    const write = {
       repo,
-      pr: prNumber,
-      session: session.id,
+      prNumber,
+      ownerInstance: INSTANCE_SLUG,
+      agentGroupId: session.agent_group_id,
+      sessionId: session.id,
       threadId: session.thread_id,
-      owner: INSTANCE_SLUG,
-    });
-  }
+    };
 
-  if (INTERNAL_REGISTER_URL && INTERNAL_REGISTER_SECRET) {
-    // Fire-and-forget per the design contract. A failure here just means
-    // future webhooks for this PR will fall through to orchestrator
-    // dispatch — correct, not optimal.
-    void postRegisterPr(INTERNAL_REGISTER_URL, INTERNAL_REGISTER_SECRET, write).catch((err: unknown) => {
-      log.warn('map_pr_session: register POST failed', {
+    if (PR_MAPPINGS_LOCAL) {
+      upsertPrMapping(getDb(), write);
+      log.info('PR→session mapping recorded (local)', {
         repo,
         pr: prNumber,
-        error: String(err),
+        session: session.id,
+        threadId: session.thread_id,
+        owner: INSTANCE_SLUG,
       });
-    });
-  }
-}, unguarded('map_pr_session records a PR→session routing mapping — no privileged central-DB mutation'));
+    }
+
+    if (INTERNAL_REGISTER_URL && INTERNAL_REGISTER_SECRET) {
+      // Fire-and-forget per the design contract. A failure here just means
+      // future webhooks for this PR will fall through to orchestrator
+      // dispatch — correct, not optimal.
+      void postRegisterPr(INTERNAL_REGISTER_URL, INTERNAL_REGISTER_SECRET, write).catch((err: unknown) => {
+        log.warn('map_pr_session: register POST failed', {
+          repo,
+          pr: prNumber,
+          error: String(err),
+        });
+      });
+    }
+  },
+  unguarded('map_pr_session records a PR→session routing mapping — no privileged central-DB mutation'),
+);
