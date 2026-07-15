@@ -3,7 +3,7 @@ title: "Slang Reflection API"
 type: concept
 group: slang-language-core
 tags: [reflection, reflection-json, type-layout, binding, program-layout, slang-deprecated-h]
-source_count: 8
+source_count: 9
 ---
 
 # Slang Reflection API
@@ -36,6 +36,10 @@ Emitted shader stride and reflection-reported stride can disagree. For `RWStruct
 
 The peer session concurrent-reset trap: a shared checkout can be reset by concurrent sessions mid-task; use `git worktree add` to isolate a fixed-commit verification ([Verifying Slang per-target buffer layout: measure emitted AND reflection separately; use a pinned worktree + full build](../learnings/1782325331597-verifying-slang-per-target-buffer-layout-measure-e.md)).
 
+## Existential (StructuredBuffer&lt;Interface&gt;) Size: Reflection Reads the AST Attribute, Emit Reads a Later IR Pass (#12092)
+
+For a `StructuredBuffer<Interface>` whose interface has NO explicit `[anyValueSize(N)]`, reflection and the emitted SPIR-V disagree on element size — and it is a genuine phase-ordering bug, not a misread. REFLECTION size is a FRONT-END/AST computation: `_createTypeLayout` (`slang-type-layout.cpp:5982`) sets `fixedExistentialValueSize = 16` and overrides it ONLY from the AST `findModifier<AnyValueSizeAttribute>()` (:5983-5987), then adds a 16-byte RTTI/witness header (:6020) → no attribute = 16+16 = 32; exposed via `spReflectionTypeLayout_GetSize`. The EMITTED size comes from a LATER IR pass, `inferAnyValueSizeWhereNecessary` (`slang-ir-any-value-inference.cpp:419-511`, scheduled at `slang-emit.cpp:1500`, AFTER reflection), which takes the MAX `getNaturalSizeAndAlignment` over conformers and writes an `IRAnyValueSizeDecoration`; the emitted box reads that decoration + 16-byte header → e.g. a `float4x4` conformer (64) → ArrayStride 80. THE GAP: reflection reads the AST attribute only and never consults the IR `IRAnyValueSizeDecoration`; the inferred size is never propagated back into the reflection TypeLayout. Discriminator that settles the fix contract: an explicit `[anyValueSize(N)]` large enough makes BOTH sides read N (they AGREE); "explicit but too small" already diagnoses `TypeDoesNotFitAnyValueSize` (:443) — so divergence is SPECIFICALLY the inferred/no-attribute case, and a solid explicit `[anyValueSize(N)]` is the user workaround. Reproduce GPU-free: `slangc repro.slang -target spirv-asm | grep ArrayStride` shows the emitted stride; `-reflection-json` does NOT surface existential element size — only the C++ reflection API `getSize()` does. A root-cause fix (reflection reports the inferred size) is DESIGN-GATED: is the fixed default a deliberate ABI value, or should reflection track the inferred size? Genuine maintainer call ([reflection existential size (32) vs emitted ArrayStride (80) — front-end/IR phase split (#12092)](../learnings/1784022520457-slang-reflection-existential-size-32-vs-emitted-ar.md)).
+
 ## findFieldIndexByName: Qualified Lookup and Duplicate Globals
 
 `spReflectionTypeLayout_findFieldIndexByName` returns the first matching field and stops — a second same-named global from a different module is unreachable by name alone. However, its `matchName` comparator already supports qualified lookup (`Module.var` or `Module::var`) by matching the last segment against the var name and walking `getParentDecl` for qualifiers — so qualified lookup may already resolve the specific module's global. Both duplicates are always reachable by index via `getFieldCount`/`getFieldByIndex` ([Slang reflection findFieldIndexByName already supports qualified module.var lookup](../learnings/1782456046812-slang-reflection-findfieldindexbyname-already-supp.md)).
@@ -45,7 +49,8 @@ The peer session concurrent-reset trap: a shared checkout can be reset by concur
 `include/slang-deprecated.h` is NOT purely deprecated. The entire `spReflection*` family (~168 functions) and `spGetReflection` live there as the **active C backing** for the modern C++ reflection wrappers. PR #5301 (2024-10-16) moved the whole `sp*` C interface out of `slang.h` and added `#include "slang-deprecated.h"` immediately before the `namespace slang` C++ wrapper block, so the wrapper inline methods still compile. The genuinely-legacy API in that file is the `ICompileRequest` workflow (spCreateSession, spCompile, etc.) ([slang include/slang-deprecated.h holds the ACTIVE reflection C-API (not just deprecated stuff)](../learnings/1782754805883-slang-include-slang-deprecated-h-holds-the-active-.md)).
 
 ---
-**Source learnings (8):**
+**Source learnings (9):**
+- [slang reflection existential size (32) vs emitted ArrayStride (80) — front-end/IR phase split (#12092)](../learnings/1784022520457-slang-reflection-existential-size-32-vs-emitted-ar.md)
 - [Slang reflection: TypeReflection* pointer identity is not safe across ProgramLayout vs module reflection](../learnings/1780993688372-slang-reflection-typereflection-pointer-identity-i.md)
 - [Localizing slangc -reflection-json crash on failed compile (#11683) + REFLECTION test directive gotcha](../learnings/1782146682704-localizing-slangc-reflection-json-crash-on-failed-.md)
 - [slang 11683 reflection-json crash is broad scope and NOT a regression](../learnings/1782203064448-slang-11683-reflection-json-crash-is-broad-scope-a.md)

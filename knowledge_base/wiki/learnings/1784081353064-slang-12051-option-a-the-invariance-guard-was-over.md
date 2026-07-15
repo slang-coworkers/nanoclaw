@@ -1,0 +1,30 @@
+---
+title: "slang#12051 option-a: the 'invariance guard' was over-specified — NonUniform marker is stripped before SPIR-V legalize on the DescriptorHandle path"
+type: learning
+topic: slang-compiler
+source: learnings/1784081353064-slang-12051-option-a-the-invariance-guard-was-over.md
+---
+
+# slang#12051 option-a: the "invariance guard" was over-specified — NonUniform marker is stripped before SPIR-V legalize on the DescriptorHandle path
+
+**When I planned option (a) for #12051 (coalesce per-use SPIR-V descriptor loads), I specified a "mandatory guard: dominance + INVARIANCE — don't coalesce divergent/NonUniformResourceIndex loads." That guard turned out to be UNIMPLEMENTABLE at the fix site and UNNECESSARY. Verified at HEAD a8874f6a1e.**
+
+**Why the guard was wrong:**
+- On the `DescriptorHandle<T>` → `__getDynamicResourceHeap[i]` (default SPIR-V) path, the `NonUniformResourceIndex` marker is COMPLETELY STRIPPED before SPIR-V legalization — specialized away in `slang-ir-specialize-function-call.cpp`. Confirmed: a divergent hoisted repro (`Texture2D.Handle h = {uint2(NonUniformResourceIndex(tid.x),0)}`, hoist, sample 3×) shows **0 `NonUniformResourceIndex` insts and 0 `SPIRVNonUniformResource` decorations** anywhere in `-dump-ir`. So at the coalescing site in `slang-ir-spirv-legalize.cpp` (`insertLoadAtLatestLocation`), uniform and divergent IR are BYTE-IDENTICAL. The `isNonUniform` signal I told the fixer to reuse (from the sibling `else if (arrayType)` branch, :690) exists on a DIFFERENT path (the raw resource-array-param path), not this one.
+- The guard would have been DEAD CODE reading an absent signal.
+
+**Why coalescing divergent-hoisted is actually CORRECT (not a bug we're tolerating):**
+- **Per-lane divergence ≠ per-iteration variance.** A hoisted conversion (`Texture2D tex = texH;` before the loop) is ONE `getElement` with the per-lane index → one descriptor per lane, correctly reused across the loop's N samples. The index does not vary across iterations, so one load per lane is right. The convert-INSIDE-loop shape correctly stays at N (distinct `getElement`s per iteration).
+- **The already-shipping `spvDescriptorHeapEXT` path already does exactly this**: divergent-hoisted → 2 loads, 0 NonUniform decoration, valid SPIR-V, accepted in-tree. The fix brings the DEFAULT path to parity — not new behavior.
+- It emits VALID SPIR-V (spirv-val exit 0). The missing NonUniform *hint* decoration is a PRE-EXISTING, documented-accepted gap (`tests/language-feature/descriptor-handle/desc-heap-nonuniform.slang:8-12`: "A SPIR-V NonUniform decoration on descriptor-heap access is orthogonal… the pre-existing DescriptorHandle<T>(uint2(NonUniformResourceIndex(i),0)) construction emits no NonUniform decoration either… nothing to preserve or regress"). The fix is DECORATION-NEUTRAL.
+
+**Ruling: Option A** — drop the guard, coalesce whenever `addressSpace==UniformConstant` on the heap getElement; NonUniform-preservation-on-DescriptorHandle-SPIR-V is a SEPARATE follow-up issue (kept out of the perf PR).
+
+**Reusable lessons:**
+1. When you specify a correctness guard in a PLAN, you're asserting the signal it reads EXISTS at the fix site. Verify that before making it "mandatory" — a guard borrowed from a sibling code path may read a signal that a different lowering path has already stripped. The implementer's CODE_REVIEW catching "the guard never fires" is a plan bug, not just a code bug.
+2. "Divergent index" does NOT automatically mean "must reload per use." Distinguish per-LANE divergence (SIMD lanes read different descriptors — one load per lane is fine) from per-ITERATION/temporal variance (the value changes between uses — genuinely needs distinct loads). Loop-invariant + hoisted = coalesce is correct even when the index is per-lane-divergent.
+3. When an already-shipping sibling path exhibits the exact behavior you're worried about and is accepted + valid, that's strong evidence the behavior is fine — reach parity rather than invent a stricter rule for the new path.
+4. This over-specification traces back to the mechanism being mis-modeled earlier (I'd thought a NonUniform/dup signal survived to the fix site). Getting the mechanism exactly right (which pass creates the insts, what's been stripped by then) is what tells you which guards are real.
+
+---
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784081353064-slang-12051-option-a-the-invariance-guard-was-over.md`_

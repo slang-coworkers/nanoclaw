@@ -3,7 +3,7 @@ title: "Build System, Runtime Libraries & Debug Workflows"
 type: concept
 group: slang-tooling
 tags: [cmake, dxc, llvm, glibc, ld_library_path, sanitizer, build, prebuilt, disk, falcor, sccache, ci]
-source_count: 25
+source_count: 26
 ---
 
 # Build System, Runtime Libraries & Debug Workflows
@@ -160,8 +160,12 @@ Removing a SUMMARY-mode entry does NOT unmask a co-located leak on a different p
 
 `slangc -v` prints a git-describe string (e.g. `2026.10.2-33-g5230a81f2`) that is **baked at CMake CONFIGURE time**, not at compile time. An incremental rebuild (`cmake --build` after new source, without reconfiguring) recompiles the changed code but leaves the version string stale — so never use `slangc -v` to identify which commit a binary was built from ([slangc -v version string is stale on incremental builds — don't use it to identify a binary's commit](../learnings/1782864395490-slangc-v-version-string-is-stale-on-incremental-bu.md)).
 
+## Re-run submodule update after every rebase in a worktree (gitlink staleness)
+
+Run `git submodule update --init --recursive` **after every rebase** in a Slang worktree, not just at worktree creation. A rebase that moves your base onto newer master frequently bumps submodule gitlinks (`external/vulkan`, `external/slang-rhi`, `external/spirv-*`, etc.), but the rebase does NOT check out the new submodule commits — your worktree keeps the OLD ones and the build fails with errors that look unrelated to your change (e.g. `error: 'VkPhysicalDeviceShaderFloat8FeaturesEXT' does not name a type` in slang-rhi's vk-api.h, seen on slang#11315 / PR #11323). A fresh-worktree `git submodule update --init --recursive` can also silently MISS a submodule (`fatal error: fast_float/fast_float.h: No such file` — only 5 submodules listed; fix with an explicit `git submodule update --init external/fast_float`). The gitlink-vs-checkout drift is invisible in `git status` (submodules show clean at the recorded ref only if updated); diagnose by comparing `git ls-tree HEAD external/vulkan` (recorded gitlink) against `git -C external/vulkan rev-parse HEAD` (checked-out) — a mismatch means stale. Shortcut: `slangc` does NOT link `slang-rhi`, so a `--target slangc` build sidesteps the slang-rhi/vulkan-headers mismatch entirely when you only need slangc to verify a compile-only test (SIMPLE/filecheck/DIAGNOSTIC directives) ([Re-run submodule update after every rebase in a worktree (gitlink bumps go stale)](../learnings/1784078101643-re-run-submodule-update-after-every-rebase-in-a-wo.md)).
+
 ---
-**Source learnings (29):**
+**Source learnings (30):**
 - [slangc Debug-build LD_LIBRARY_PATH order matters when prebuilt lib is colocated](../learnings/1779369251370-slangc-debug-build-ld-library-path-order-matters-w.md)
 - [DXC v1.10.2605.2 prebuilts require GLIBC 2.38 (blocks Ubuntu 22.04 CI)](../learnings/1779429443648-dxc-v1-10-2605-2-prebuilts-require-glibc-2-38-bloc.md)
 - [slang-llvm prebuilt ABI skew breaks master ToT builds (createLLVMBuilder_V2 vs _V3)](../learnings/1780320688142-slang-llvm-prebuilt-abi-skew-breaks-master-tot-bui.md)
@@ -192,4 +196,5 @@ Removing a SUMMARY-mode entry does NOT unmask a co-located leak on a different p
 - [Shared build volume fills at ~45 worktrees; commit+patch-back, report blocked, never reclaim siblings](../learnings/1783473828121-shared-build-volume-fills-at-45-worktrees-commit-p.md)
 - [Shared /dev/vdb volume disk-full hazard (98%, 2026-07-08)](../learnings/1783474045764-shared-dev-vdb-volume-disk-full-hazard-98-2026-07-.md)
 - [Disk-full on fixer /dev/vdb: reap grant often frees nothing; disk self-recovers](../learnings/1783473857394-disk-full-on-fixer-dev-vdb-reap-grant-often-frees-.md)
+- [Re-run submodule update after every rebase in a worktree (gitlink bumps go stale)](../learnings/1784078101643-re-run-submodule-update-after-every-rebase-in-a-wo.md)
 _Catalog: [[wiki/index.md]]_
