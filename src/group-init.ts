@@ -3,16 +3,19 @@ import path from 'path';
 
 import { DATA_DIR, DEFAULT_AGENT_PROVIDER, GROUPS_DIR } from './config.js';
 import { ensureContainerConfig } from './db/container-configs.js';
+import { stageGroupPersona } from './group-persona.js';
 import { log } from './log.js';
+import { migrateClaudeMemorySettings } from './migrate-claude-memory-settings.js';
 import { providerProvidesAgentSurfaces } from './providers/provider-container-registry.js';
 import type { AgentGroup } from './types.js';
 
 const DEFAULT_SETTINGS_JSON =
   JSON.stringify(
     {
+      autoMemoryEnabled: false,
       env: {
         CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
-        CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
+        CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
       },
       hooks: {
         PreCompact: [
@@ -42,9 +45,8 @@ const DEFAULT_SETTINGS_JSON =
  * Source code and skills are shared RO mounts — not copied per-group.
  * Skill symlinks are synced at spawn time by container-runner.ts.
  *
- * The composed `CLAUDE.md` is NOT written here — it's regenerated on every
- * spawn by `composeGroupClaudeMd()` (see `claude-md-compose.ts`). Initial
- * per-group instructions (if provided) seed `CLAUDE.local.md`.
+ * The provider project document is regenerated on every spawn. Initial
+ * standing instructions are staged once in the provider-neutral prepend file.
  */
 export function initGroupFilesystem(
   group: AgentGroup,
@@ -72,43 +74,8 @@ export function initGroupFilesystem(
     initialized.push('groupDir');
   }
 
-  // Seed instructions land in the provider's OWN memory surface. Default
-  // (Claude) surfaces auto-load CLAUDE.local.md natively. A surfaces-owning
-  // provider must never see stale CLAUDE.* files in its workspace — its seed
-  // goes into the memory scaffold's conventional landing file instead
-  // (memory/memories/imported-agent-memory.md): the container-side scaffold
-  // preserves pre-existing files, and the doctrine tells the agent to read
-  // that file on its first turn.
-  //
-  // Creation stays provider-agnostic: a DM-agent creator drops the seed in a
-  // neutral `.seed.md`, and placement is deferred to here (the first spawn,
-  // where the DB-resolved provider is known). Once placed it's consumed.
-  // `opts.instructions` still wins for any caller that passes it inline.
-  const neutralSeedFile = path.join(groupDir, '.seed.md');
-  const seed =
-    opts?.instructions ??
-    (fs.existsSync(neutralSeedFile) ? fs.readFileSync(neutralSeedFile, 'utf-8').trimEnd() : undefined);
-
-  if (defaultSurfaces) {
-    const claudeLocalFile = path.join(groupDir, 'CLAUDE.local.md');
-    if (!fs.existsSync(claudeLocalFile)) {
-      fs.writeFileSync(claudeLocalFile, seed ? seed + '\n' : '');
-      initialized.push('CLAUDE.local.md');
-    }
-  } else if (seed) {
-    const seedFile = path.join(groupDir, 'memory', 'memories', 'imported-agent-memory.md');
-    if (!fs.existsSync(seedFile)) {
-      fs.mkdirSync(path.dirname(seedFile), { recursive: true });
-      fs.writeFileSync(seedFile, seed + '\n');
-      initialized.push('memory/memories/imported-agent-memory.md');
-    }
-  }
-
-  // The neutral seed is single-use — drop it once the surface it belonged in
-  // has been resolved, so it can't re-seed after the operator edits theirs.
-  if (fs.existsSync(neutralSeedFile)) {
-    fs.rmSync(neutralSeedFile);
-    initialized.push('.seed.md consumed');
+  if (opts?.instructions && stageGroupPersona(groupDir, opts.instructions)) {
+    initialized.push('instructions.prepend.md');
   }
 
   // Ensure container_configs row exists in the DB. Idempotent — no-op if
@@ -130,8 +97,8 @@ export function initGroupFilesystem(
     if (!fs.existsSync(settingsFile)) {
       fs.writeFileSync(settingsFile, DEFAULT_SETTINGS_JSON);
       initialized.push('settings.json');
-    } else {
-      ensurePreCompactHook(settingsFile, initialized);
+    } else if (migrateClaudeMemorySettings(settingsFile)) {
+      initialized.push('settings.json (reconciled Claude settings)');
     }
 
     // Skills directory — created empty here; symlinks are synced at spawn
@@ -150,34 +117,5 @@ export function initGroupFilesystem(
       id: group.id,
       steps: initialized,
     });
-  }
-}
-
-const PRE_COMPACT_COMMAND = 'bun /app/src/compact-instructions.ts';
-
-/**
- * Patch an existing settings.json to add the PreCompact hook if missing.
- * Runs on every group init so pre-existing groups pick up the hook.
- */
-function ensurePreCompactHook(settingsFile: string, initialized: string[]): void {
-  try {
-    const raw = fs.readFileSync(settingsFile, 'utf-8');
-    const settings = JSON.parse(raw);
-
-    // Check if there's already a PreCompact hook with our command.
-    const existing = settings.hooks?.PreCompact as unknown[] | undefined;
-    if (existing && JSON.stringify(existing).includes(PRE_COMPACT_COMMAND)) return;
-
-    // Add the hook, preserving existing hooks.
-    if (!settings.hooks) settings.hooks = {};
-    if (!settings.hooks.PreCompact) settings.hooks.PreCompact = [];
-    settings.hooks.PreCompact.push({
-      hooks: [{ type: 'command', command: PRE_COMPACT_COMMAND }],
-    });
-
-    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
-    initialized.push('settings.json (added PreCompact hook)');
-  } catch {
-    // Don't break init if settings.json is malformed — it'll use whatever's there.
   }
 }
