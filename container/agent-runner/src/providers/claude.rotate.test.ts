@@ -85,9 +85,21 @@ describe('ClaudeProvider.maybeRotateContinuation', () => {
     // rather than deleting unrecoverable history.
     const blocker = path.join(tmp, 'conv-blocker');
     fs.writeFileSync(blocker, 'x');
+    // NANOCLAW_CONVERSATIONS_DIR is process-global and Bun runs test files
+    // concurrently in one process. Pointing it at a file to force the failure
+    // path must not leak into a sibling test's archive step (which would make
+    // that test see EEXIST and fall to the rename branch). Scope the override
+    // to just the call below, restoring the valid dir immediately after.
+    const validConvDir = process.env.NANOCLAW_CONVERSATIONS_DIR;
     process.env.NANOCLAW_CONVERSATIONS_DIR = blocker;
-    const provider = new ClaudeProvider();
-    const reason = provider.maybeRotateContinuation('sess-noarchive', CWD);
+    let reason: string | null;
+    try {
+      const provider = new ClaudeProvider();
+      reason = provider.maybeRotateContinuation('sess-noarchive', CWD);
+    } finally {
+      if (validConvDir === undefined) delete process.env.NANOCLAW_CONVERSATIONS_DIR;
+      else process.env.NANOCLAW_CONVERSATIONS_DIR = validConvDir;
+    }
     expect(reason).toContain('MB');
     expect(fs.existsSync(p)).toBe(false);
     const dir = path.dirname(p);
