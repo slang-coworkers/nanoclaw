@@ -21,6 +21,8 @@ export interface DestinationEntry {
   agentGroupId?: string;
 }
 
+export type SessionMode = { kind: 'chat' } | { kind: 'task'; taskId: string };
+
 interface DestRow {
   name: string;
   display_name: string | null;
@@ -105,7 +107,7 @@ export function findByRouting(
  * per-agent-group and changes when the operator renames an agent, while
  * the shared base is identical across all agents.
  */
-export function buildSystemPromptAddendum(assistantName?: string): string {
+export function buildSystemPromptAddendum(assistantName?: string, mode: SessionMode = { kind: 'chat' }): string {
   const sections: string[] = [];
 
   if (assistantName) {
@@ -118,25 +120,19 @@ export function buildSystemPromptAddendum(assistantName?: string): string {
     );
   }
 
-  sections.push(buildDestinationsSection());
+  sections.push(buildDestinationsSection(mode));
 
   return sections.join('\n\n');
 }
 
-function buildDestinationsSection(): string {
+function buildDestinationsSection(mode: SessionMode): string {
   const all = getAllDestinations();
   const lines = ['## Sending messages', ''];
 
   if (all.length === 0) {
-    return [
-      '## Sending messages',
-      '',
-      'You currently have no configured destinations. You cannot send messages until an admin wires one up.',
-    ].join('\n');
-  }
-
-  // Single-destination shortcut: the agent just writes its response normally.
-  if (all.length === 1) {
+    lines.push('You currently have no configured destinations. You cannot send messages until an admin wires one up.');
+    if (mode.kind === 'chat') return lines.join('\n');
+  } else if (all.length === 1) {
     const d = all[0];
     lines.push(
       `Your messages are delivered to \`${d.name}\`${destinationLabel(d)}. Just write your response directly — no special wrapping needed.`,
@@ -147,7 +143,18 @@ function buildDestinationsSection(): string {
       lines.push(`- \`${d.name}\`${destinationLabel(d)}`);
     }
   }
+
   lines.push('');
+
+  if (mode.kind === 'task') {
+    lines.push(
+      'This is an isolated task run with no attached chat. Only notify someone when the task asks you to. For a user-visible message, call `send_message({ to: "name", text: "..." })`; for a file, call `send_file` with `to`. Always pass the explicit named destination.',
+      '',
+      `Your final output is not sent to the user. End with a concise work-log summary. It is recorded automatically in \`tasks/${mode.taskId}.md\`. Read that file when you need context from earlier runs. Use \`ncl tasks append-log --msg "…"\` only for optional mid-run notes.`,
+    );
+    return lines.join('\n');
+  }
+
   lines.push(
     'This list is regenerated at the top of every message you process — if the admin tells you they just created a new coworker, trust the list above rather than asking for a container restart. No restart is needed for the agent to see newly-wired coworkers.',
   );
@@ -158,7 +165,11 @@ function buildDestinationsSection(): string {
   lines.push('Use `<internal>...</internal>` to make scratchpad intent explicit.');
   lines.push('');
   lines.push(
-    'To send a message mid-response (e.g., an acknowledgment before a long task), call the `send_message` MCP tool with the `to` parameter set to a destination name.',
+    'The `send_message` MCP tool is the same delivery, available mid-turn — handy for a quick acknowledgment ("on it") before a slow tool call. Always pass its explicit `to` destination. Each `send_message` call and each final-response `<message>` block lands as its own message in the conversation, so they read as a sequence rather than as one combined reply.',
+  );
+  lines.push('');
+  lines.push(
+    'For a short turn, do not narrate. For longer work, send one acknowledgment and then updates only at meaningful milestones, especially before slow operations. Never narrate micro-steps; finish with the outcome, not a play-by-play.',
   );
   return lines.join('\n');
 }

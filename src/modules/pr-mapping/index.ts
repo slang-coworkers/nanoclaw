@@ -14,6 +14,7 @@
 import { INSTANCE_SLUG, INTERNAL_REGISTER_URL, INTERNAL_REGISTER_SECRET, PR_MAPPINGS_LOCAL } from '../../config.js';
 import { getDb } from '../../db/connection.js';
 import { registerDeliveryAction } from '../../delivery.js';
+import { unguarded } from '../../guard/index.js';
 import { log } from '../../log.js';
 import type { Session } from '../../types.js';
 import { postRegisterPr } from './register-client.js';
@@ -65,4 +66,4 @@ registerDeliveryAction('map_pr_session', async (content: Record<string, unknown>
       });
     });
   }
-});
+}, unguarded('map_pr_session records a PR→session routing mapping — no privileged central-DB mutation'));

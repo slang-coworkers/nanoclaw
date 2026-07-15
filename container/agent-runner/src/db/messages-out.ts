@@ -166,10 +166,12 @@ export function getUndeliveredMessages(): MessageOutRow[] {
 }
 
 /**
- * True if a deliberate send with this exact destination + text already exists
- * (an MCP send_message row from the current turn). Used by the task-fire
- * final-text dispatcher to drop the turn-final <message> echo of a send the
- * agent already made — the dedup happens where the duplication originates.
+ * True when an outbound row already exists for (platformId, channelType) with
+ * the same text and no in_reply_to — i.e. the agent already sent this exact
+ * message via the MCP tool this turn. Used by sendToDestination to drop a
+ * turn-final <message> echo of an already-sent task message (#943). Restored
+ * on the upstream sync: nv-main re-added it in #943, and it coexists with the
+ * one-door task-delivery change as defense-in-depth.
  */
 export function hasIdenticalSend(platformId: string, channelType: string, text: string): boolean {
   const row = getOutboundDb()
