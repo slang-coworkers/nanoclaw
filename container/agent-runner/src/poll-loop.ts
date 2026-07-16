@@ -155,30 +155,39 @@ export function taskOptsOutOfNewSession(m: { kind: string; content: string }): b
 
 /**
  * Decide whether a THROWN turn error (outer-catch path) should bounce the a2a
- * trigger for host redrive, and with which marker.
+ * trigger for host redrive.
  *
  * The structured-isError bounce in processQuery only fires when the provider
  * YIELDS a result event. A transport death — the SDK's readMessages stream
  * erroring mid-read (e.g. "Connection closed mid-response", ECONNRESET) — is
  * re-raised as a thrown Error instead and lands in runPollLoop's outer catch,
- * bypassing that bounce (the #12108 drop). This mirrors the result-branch
- * decision for the thrown path so both are covered and unit-testable:
+ * bypassing that bounce (the #12108 drop). This re-arms those for host redrive.
+ *
+ * CRITICAL asymmetry with the result branch: that branch is gated on
+ * `event.isError === true`, which PROVES the provider turn itself failed and
+ * produced no output — so it can safely bounce even an `unknown` error. The
+ * thrown path has NO such proof. A throw reaching this catch can be a genuine
+ * provider transport death OR a LOCAL runner exception raised AFTER
+ * dispatchResultText already wrote outbound rows (e.g. a downstream throw in
+ * the result branch). Bouncing the latter would redrive the trigger and
+ * DUPLICATE already-delivered peer messages. So the thrown path only bounces
+ * errors we POSITIVELY recognize as transient provider/transport shapes
+ * (classifyTurnError === 'transient'); `unknown` and `permanent` both fall
+ * through to the unchanged relay+complete path. This is allowlist-driven on
+ * purpose — an unrecognized throw is treated as possibly-local, not redriven.
  *
  *   - non-`agent` channel  → null  (never bounce; deliver the notice as today)
- *   - permanent error text → null  (403/billing/invalid-key: relay, don't redrive)
- *   - transient error text → 'bounced-transient'
- *   - unknown error text   → 'bounced-unknown'  (small budget → fast dead-letter)
+ *   - transient error text → 'bounced-transient'  (known provider/transport outage)
+ *   - unknown / permanent  → null  (may be a local post-delivery throw — do NOT redrive)
  *
- * Returns the markBounced status, or null when the turn must NOT bounce.
+ * Returns 'bounced-transient' to bounce, or null when the turn must NOT bounce.
  */
 export function classifyThrownBounce(
   channelType: string | null,
   errMsg: string,
-): 'bounced-transient' | 'bounced-unknown' | null {
+): 'bounced-transient' | null {
   if (channelType !== 'agent') return null;
-  const cls = classifyTurnError(errMsg);
-  if (cls === 'permanent') return null;
-  return cls === 'transient' ? 'bounced-transient' : 'bounced-unknown';
+  return classifyTurnError(errMsg) === 'transient' ? 'bounced-transient' : null;
 }
 
 /**

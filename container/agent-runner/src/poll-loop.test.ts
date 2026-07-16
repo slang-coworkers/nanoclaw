@@ -817,8 +817,14 @@ describe('a2a transient bounce (Part a2 — THROWN error path, #12108)', () => {
     );
   });
 
-  it('bounces a novel thrown error as unknown (small budget → fast dead-letter)', () => {
-    expect(classifyThrownBounce('agent', 'Error: something totally novel happened')).toBe('bounced-unknown');
+  it('does NOT bounce a novel/unknown thrown error — may be a local post-delivery throw', () => {
+    // Unlike the structured-isError branch (gated on event.isError === true,
+    // which proves a provider turn failure), a thrown error has no proof it
+    // came from the provider vs. a local runner exception AFTER partial
+    // delivery. Bouncing an unknown throw could redrive + duplicate already-
+    // sent peer messages, so the thrown path only bounces POSITIVELY-recognized
+    // transient shapes. A novel throw falls through to relay + complete.
+    expect(classifyThrownBounce('agent', 'Error: something totally novel happened')).toBeNull();
   });
 
   it('does NOT bounce a permanent (403 billing) thrown error — relay + complete as today', () => {
