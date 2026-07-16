@@ -1,0 +1,22 @@
+---
+name: project_12121_slangtest_forward_x_compiler_args
+description: "#12121 slang-test forward -X<compiler> in COMPARE_COMPUTE — PR #12128 APPROVED+ready, awaiting merge"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 70af83c9-7fb7-4901-b471-703fd593f550
+---
+
+shader-slang/slang #12121 — slang-test should forward `-X<compiler>` options in COMPARE_COMPUTE tests. Filed + SELF-ASSIGNED by jkwak-work (maintainer) 2026-07-15. Category: enhancement / dev-tooling, severity low, P3, test-infra (slang-test + render-test). Issue body already carries root cause + suggested fix.
+
+**Routing — UPDATED 2026-07-15:** Initially STAND DOWN (maintainer self-assigned). Then jkwak-work commented `@nv-slang-bot, please make a PR for this` (comment 4985101498) → explicit "make a PR" AUTH overrides stand-down (same as [[project_12099_profile_capability_conflict_diag]]). Authorized THROUGH the triager (edge-holder, holds memo, owns fixer wire) on canonical thread `gh-issue-shader-slang/slang-12121`; triager hands off to slang-fixer. GitHub posting authorized (real bot mention). Triager's earlier verified verdict on GitHub: comment 4982808584. See [[feedback_route_authorizations_through_dispatch_owner]], [[feedback_no_double_dispatch_peer_wired]].
+
+**Mechanism:** SIMPLE→slangc constructs `DownstreamArgs(context)` → all pass-through names registered → `-Xdxc` accepted. COMPARE_COMPUTE→render-test `Options()` registers ONLY "slang" (options.h:108) then `stripDownstreamArgs(args,0)` → `-Xdxc` rejected as unknown before Slang sees it. Wrapper `-Xslang... -Xdxc -Vd -X.` works because render-test forwards the "slang" bucket to `globalSession->parseCommandLineArguments`, which re-strips.
+
+**LOAD-BEARING SUBTLETY (if a PR lands, verify this):** Approach A is TWO parts. (1) construct render-test's `DownstreamArgs` with the `CommandLineContext` already built at options.cpp:89 so all names register; (2) forward EVERY bucket (not just "slang") down to the Slang session in `_compileProgramImpl` (slang-support.cpp:54). Part (1) alone → args land in an unread bucket → **silently dropped → false-pass** (shared learning 1782373627011 "render-test COMPARE_COMPUTE is not slangc"). render-test reads only `getArgsByName("slang")` at slang-support.cpp:54 and render-test-main.cpp:1950.
+
+Triage memo: /workspace/inbox/a2a-1784132164019-774rw0/triage-12121.md. HEAD analyzed 694022a11.
+
+**FIX LANDED (draft) 2026-07-15:** slang-fixer opened **PR #12128** (https://github.com/shader-slang/slang/pull/12128), OPEN + isDraft=true, branch `fix/issue-12121`, `Closes #12121`, 4 files +54/−2, pr:non-breaking. Approach A implemented (both parts). codex CODE_REVIEW approve — caught a block-form grammar bug, fixer switched to opaque single-option pairs. Author ran local NVRTC discriminator (`-Xnvrtc <bogus>` → downstream fails/empty vs baseline `0 1 2 3`) confirming Part 1 accept + Part 2 no-silent-drop. DXC/D3D12 regression = Windows-only → CI-gated (draft CI red = benign priority-yield, not real failure). Issue comment 4985133679 refreshed in place → "triaged → fix in draft PR #12128, held pending review." slang-reviewer peer review dispatched (advisory while draft; triager relays when it lands). HELD on maintainer jkwak-work review/flip-ready; draft-only per guardrail. report_pr_created(#12128) CONFIRMED fired at PR-open; routing verified live (github.ci_failed for head_sha 2f47037f routed to fixer session — benign draft priority-yield, not a real failure; no orphans). **SCOPE UPDATE:** bulk migration of the 56 wrapper-form COMPARE_COMPUTE tests is now IN the PR (earlier "follow-up, not this PR" footnote is stale — widens blast radius; note at review/approval time). slang-reviewer peer verdict is advisory while draft; triager surfaces only a blocking verdict or the ready/merge outcome.
+
+**APPROVED + READY 2026-07-15:** maintainer jkwak-work APPROVED (review 4708773362 @ commit `893fc349f6` = current HEAD, not stale) and flipped #12128 non-draft. 59 files (4 core fix + 56-file bulk migration jkwak pulled in + options.h). No outstanding review threads. Real pull_request CI now running (Linux in progress, Windows-GPU/DXC queued — exercises the migrated `-Xdxc` tests). Merge is maintainer/operator-owned, held at merge gate. Fixer stood down cleanly (no further pushes — would auto-dismiss approval); watches CI via webhook, relays only real CI failure or merge. Triager forwards final [Triage Resolution] + refreshes issue comment on merge. Only-remaining-state: awaiting merge.

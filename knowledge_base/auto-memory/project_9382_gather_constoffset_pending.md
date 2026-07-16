@@ -1,14 +1,23 @@
 ---
-name: CLOSED (maintainer design call) — #9382 Gather const-offset over-declares ImageGatherExtended
-description: slang#9382 draft PR #11655 CLOSED unmerged by jkwak-work 2026-07-08 (design-direction, not defect); issue stays OPEN as maintainer design thread (jkwak/csyonghe/skiminki); fixer held, branch preserved, re-dispatch only on convergence
+name: RE-DISPATCHED (backend-IR path) — #9382 Gather const-offset over-declares ImageGatherExtended
+description: slang#9382 — jkwak gave concrete direction 2026-07-16 (comment 4986908901): close old PRs + fresh PR on backend-IR path (new gather IR op, emit-time constness, NO asm-walk, NO _constoffset helper); triager driving, fixer released; PR stays draft
 type: project
 originSessionId: c87f17be-487a-47d5-be99-2d349a875808
 ---
-shader-slang/slang#9382 — `Texture2D.Gather(s, uv, int2(2,1))` emits SPIR-V `Offset` + `OpCapability ImageGatherExtended` for a compile-time-constant offset when it should use `ConstOffset` (no cap). Draft PR **#11655** (branch `fix/issue-9382` @ `d5f5d1e2f9`) was the IR-legalization fix.
+shader-slang/slang#9382 — `Texture2D.Gather(s, uv, int2(2,1))` emits SPIR-V `Offset` + `OpCapability ImageGatherExtended` for a compile-time-constant offset when it should use `ConstOffset` (no cap).
 
-**TERMINAL — PR #11655 CLOSED unmerged 2026-07-08** by jkwak-work (closing comment #4910412519 → cites his issue comment #4835358167). Verified: PR `state=closed`, `merged_at=null`; issue #9382 `state=open`. This is a **maintainer design-direction call, not a defect** in the fix. jkwak favors a `_constoffset`-suffixed core-module helper over the emit-time / IR-legalize approach, and handed the final mechanism decision to @csyonghe / @skiminki-nv. Issue #9382 stays **open as their maintainer-owned design thread** — we do not touch it.
+**RE-OPENED 2026-07-16 — maintainer gave concrete direction.** jkwak-work commented on issue #9382 (comment 4986908901, real `@nv-slang-bot` mention): close existing PRs, then create a NEW PR on the **backend-IR approach** — "remove the function body from the frontend such as *.meta.slang files, and re-implement the behavior on the backend by adding a new IR"; the backend figures out offset constness and decides which capability to request. This IS the previously-scoped Option C. Routed to slang-triager on canonical thread `gh-issue-shader-slang/slang-9382` with `<github-post-authorized />`. **Triager progress 07-16 (msg #70):** re-triaged @HEAD 623227f86e; **slang-fixer DISPATCHED** on canonical thread (memo msg 79 + triage-9382.md carrying exact HEAD line numbers, AVOID list, -O0 gate); **GitHub artifact posted** = issue #9382 comment 4987047721. Awaiting fixer's fresh draft PR (`Closes #9382`, report_pr_created) + [Fix Report], which triager forwards up. Triager's own architecture memo independently concluded Option C is the ONLY valid path (runtime-offset support ∧ no asm-walk ∧ valid at -O0) — no design ambiguity.
 
-**Fixer action on closure (correct, do not second-guess):** no GitHub reply (closure posed no question, added no new content; a comment mid-design-discussion is noise and posting uninvited into a maintainer-to-maintainer thread is forbidden). Worktree + sentinel reaped. Branch `fix/issue-9382` @ d5f5d1e2f9 **preserved on origin** in case discussion picks the IR/emit path and re-dispatches. No empty-ack sent back to fixer.
+**PR-close step — verified state @HEAD 623227f86e (do NOT blanket-close):**
+- **#11655** (our prior draft, `fix/issue-9382` @ d5f5d1e2f9) — already CLOSED by jkwak 07-08. Branch preserved on origin.
+- **#9410** (Copilot) — already CLOSED 07-07.
+- **#9741** — still OPEN but **authored/assigned to jkwak-work himself** (his own stale draft). Do NOT unilaterally close a maintainer's own PR; triager will surface, not force.
+
+**Implementation direction (fixer released, PR stays DRAFT):** first-class gather IR op + C++ emit selecting `ConstOffset`/no-cap vs `Offset`/`ImageGatherExtended` from the offset operand's constness at emit/IR time. Remove `OpCapability ImageGatherExtended` + `Offset` authoring from the two singular `__texture_gather_offset` `spirv_asm` blocks in `hlsl.meta.slang`.
+- ⚠️ **AVOID (jkwak explicitly rejected):** (a) iterating instructions inside the `spirv_asm` block (old #11655 `processImageGatherOffset`); (b) the `__requireImageGatherExtended` helper (invalid at -O0).
+- The classifier `isConstantGatherOffset` (IR literal OR `MakeVector`/`MakeVectorFromScalar` of literals; NOT `MakeArray`) is reusable — but must run in the backend/emit for the new IR op, NOT by walking the asm block.
+- **Validation gate (hard):** 3 variants must pass `-target spirv SLANG_RUN_SPIRV_VALIDATION=1` at **-O0** (spirv-asm masks pre-fold invalid state): `int2(2,1)` + `int2(1)` splat → ConstOffset/no-cap; `int2(uv)` runtime → Offset/+cap. Regression test on all three.
+- Separate out-of-scope latent bug already flagged: scalar `__texture_gatherCmp_offset` hard-codes ConstOffset on a non-constexpr offset.
 
 **Design journey (why it landed here):**
 1. Original fix = IR-legalize pass (conditional `ConstOffset`/`Offset` by constness). 3 reviewers APPROVE_WITH_NITS, 0 bugs.

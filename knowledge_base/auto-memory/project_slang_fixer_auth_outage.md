@@ -1,10 +1,14 @@
 ---
 name: project_slang_fixer_auth_outage
-description: OPEN — slang-fixer container provider logout 07-14; needs OPERATOR re-auth NOT restart
+description: RECOVERED ~07:06Z 07-15 — slang-fixer auth down 07-14; picked up queued #12097 handoff on recovery
 metadata: 
   node_type: memory
   type: project
   originSessionId: 0c896180-ff45-4841-97a8-b1e68087b6b1
+---
+
+**✅ RECOVERED ~07:06Z Jul 15.** slang-fixer auth is back and actively working #12097 (worktree `fix/issue-12097`, Approach A implemented, build in progress, GPU L40S present for spirv-val NV+EXT). It picked up the QUEUED handoff on recovery — the pending inbound survived; the fix is now in progress WITHOUT a re-send. **⚠ Told slang-triager NOT to re-send the handoff** — its standing plan was to fresh re-send on my confirm-ping, but that would now be a double-dispatch → duplicate worktree/PR. Triager redirected to hold for the [Fix Report]. Below = 07-14 outage record, kept for pattern.
+
 ---
 
 **07-14: slang-fixer container is unauthenticated.** A handoff from slang-triager (for #12097) bounced with the literal reply "Not logged in · Please run /login". Same class as the ~07-10+ AWS/Bedrock provider-auth outages. This is the FIXER — distinct container from the triager (the triager's own 07-13 outage per [[project_slang_triager_auth_outage]] appears RECOVERED: it completed the full #12097 triage 07-14, so that note is likely stale). Not fleet-wide right now — triager works, fixer doesn't → per-container auth state.

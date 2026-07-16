@@ -7,6 +7,10 @@ metadata:
   originSessionId: ddab6188-0f28-4222-8b37-6ae1cbb4b414
 ---
 
+**✅✅ MERGED 2026-07-16 (TERMINAL — chain closed).** mergeCommit `89443da3`, `mergedBy` jkwak-work, `reviewDecision: APPROVED`. Between the approver's decided head `cd2530568bc2` and the merged head only two more bare `Merge branch 'master'` commits landed — the fix's own files merged **byte-identical** to the approved diff (`ef2f5cf7…`), 🟡/🔵 nits correctly left non-blocking. Approver's **WOULD_APPROVE (CLEAN)** = merge outcome ⇒ **agreement, no false-safe, vindicated**; human verdict re-recorded via `record_human_verdict`. The whole stranded/merge-queue-eviction saga below is now moot — it landed. Nothing further.
+
+---
+
 **#12052** ("Fix #12049: specializing a generic entry point can't see primary-file extension conformances", branch `fix/issue-12049`, **bot-authored, APPROVED, all 46 head checks green**). jkwak-work actively drove it (enabled auto-merge 07-11 00:56Z, added to merge queue 04:29Z), then it was **evicted 04:29:51Z** by the tracked **#11955** cpu-LLVM SIGSEGV-at-exit flake (batched with queue-mates; NOT this PR's code). Has NOT auto-requeued — past the ~15h GitHub-auto budget (recalibrated off #11934's 14.5h recovery). Verified still stranded 07-11 22:04Z: `isInMergeQueue:false`, `mergeStateStatus:BLOCKED`, `merged:false`, head green.
 
 **Why it can't self-rescue:** bot token lacks push to the protected `gh-readonly-queue/*` branch → bot (and Main, same nv-slang-bot token) **cannot** `enqueuePullRequest`. Only a human/maintainer can. **Exact fix:** `gh pr merge 12052 --repo shader-slang/slang --merge-queue`.

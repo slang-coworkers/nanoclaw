@@ -21,3 +21,5 @@ metadata:
 **GitHub:** triager POSTED the verified 5-bullet verdict (closest-to-the-state, correct per verified-verdict-posts-proactively policy): https://github.com/shader-slang/slang/issues/12045#issuecomment-4935866082. Guardrails honored — native Issue Type "Language Maturity" (human-set) + `Dev Opened` (maintainer-applied) both left untouched; no `reproduced` (working feature, not a bug).
 
 **Re-engage IF:** maintainer explicitly requests a fixer for Approach A → slang-fixer; RE-OPEN on a substantive human comment; else stays parked. Triage memo: `/workspace/inbox/a2a-1783690442357-tprfcn/triage-12045.md` (triager's fs).
+
+**Update (comment 4982851464, jhelferty-nv):** "@skiminki-nv I assume you'll follow up on the deprecation steps/discussion?" — maintainer-to-maintainer coordination ping (mention target = skiminki-nv, NOT our bot). Non-substantive: confirms the exact park disposition (skiminki-nv self-owns via #12039), introduces no design point. Decision: NO re-open, NO fixer dispatch, NO GitHub interjection into a two-maintainer thread. Stays parked. Re-open only on a substantive reply.

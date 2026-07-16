@@ -101,7 +101,7 @@ The pin only narrows session selection within an already-authorized recipient �
 - **Always pass `coworkerType`** — sets skills, MCP allowlist, workflows (from `container/{spines,skills}/*/coworker-types.yaml`). Omitting falls back to `default` (base spine only); ask the user when not obvious.
 - `name` is a destination both ways: `send_message({ to: "<name>" })`; replies arrive `from="<name>"`.
 - `instructions` → `groups/<name>/.instructions.md`, appended after the typed spine each wake. Cover role, who it takes tasks from (you, by name), how it reports back. Don't restate base/typed behavior.
-- **Fire-and-forget:** returns immediately; messages queue until the container is up.
+- **Fire-and-forget:** returns immediately; the message is delivered when the recipient's container next wakes. A handoff is **not** a fire-and-*forget-about-it*: if a recipient turn errors on a transient auth/provider outage, the host redrives that handoff with bounded backoff and dead-letters it to escalation if it never succeeds — it does not silently vanish, but nor does it magically "self-heal." **Never tell yourself a stalled handoff is "queued / will self-heal on recovery" as a reason to stop driving it** — if you own a chain and the recipient went dark, that is yours to chase (a nudge or re-send), not a background process's.
 
 ### Fan-out: N independent items → N messages, N fresh threads
 
@@ -403,7 +403,7 @@ You can act across groups, but only when the user explicitly asks you to act on 
 
 ### Resuming a specific recipient session
 
-When you wake a peer to continue work _another_ chain handed off, routing keys on `(recipient agent group, messaging group, thread id)`. Your wake uses a different messaging group than the chain that queued the work, so without intervention the recipient gets a fresh session — no inbox, no context. Use `target_session_id` on `send_message` / `send_file` to pin the wake to the recipient's existing session.
+When you wake a peer to continue work _another_ chain handed off, routing keys on `(recipient agent group, messaging group, thread id)`. Your wake uses a different messaging group than the chain that dispatched the work, so without intervention the recipient gets a fresh session — no inbox, no context. Use `target_session_id` on `send_message` / `send_file` to pin the wake to the recipient's existing session.
 
 **Discovery flow:**
 
