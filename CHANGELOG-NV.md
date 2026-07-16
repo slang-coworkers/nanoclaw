@@ -6,15 +6,28 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 346 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 349 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 165 |
-| `nv-slang` | slang project spine, skills, workflows | 122 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 58 |
+| `nv-slang` | slang project spine, skills, workflows | 123 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 59 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 39 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-16
+
+### nv-main (3 PRs)
+- **#961** `fix(agent-runner): stop test poll-loops leaking across files (fixes the /clear-abort CI flake)`
+- **#960** `fix(agent-runner): bounce a2a handoffs that fail via the THROWN-error path (#12108)`
+- **#962** `feat(codex-critique): flag comment-noise as must-fix during code review`
+
+### nv-slang (1 PRs)
+- **#963** `feat(slang): comment invariant — design rationale belongs in the PR body, not source`
+
+### nv-slangpy (1 PRs)
+- **#964** `feat(slangpy): comment invariant — design rationale belongs in the PR body, not source`
 
 ## 📅 2026-07-15
 
