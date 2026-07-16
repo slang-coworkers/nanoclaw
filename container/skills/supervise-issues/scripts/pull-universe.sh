@@ -155,8 +155,10 @@ _PERMANENT_SIGNATURES = (
     "permission_error", "authentication_error: invalid",
 )
 _TRANSIENT_SIGNATURES = (
-    "not logged in", "please run /login", "econnrefused", "etimedout",
-    "socket hang up", "bad gateway", "overloaded_error",
+    "not logged in", "please run /login", "econnrefused", "econnreset",
+    "etimedout", "connection closed mid-response", "connection refused",
+    "connection reset", "socket connection was closed", "socket hang up",
+    "unable to connect to api", "bad gateway", "overloaded_error",
     "502", "503", "504", "service unavailable", "gateway timeout",
 )
 

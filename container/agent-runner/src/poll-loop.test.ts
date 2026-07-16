@@ -10,6 +10,7 @@ import { formatMessages, extractRouting } from './formatter.js';
 import {
   checkCritiqueGate,
   checkRoutingGate,
+  classifyThrownBounce,
   dispatchResultText,
   isCorruptionError,
   isNewSessionBatch,
@@ -781,6 +782,60 @@ describe('a2a transient bounce (Part a — do not ack a bounced handoff)', () =>
     const result = await processQuery(okQuery, a2aRouting, ['h5'], 'mock');
     expect(ackStatus('h5')).toBe('completed');
     expect(result.bouncedIds ?? []).toHaveLength(0);
+  });
+});
+
+describe('a2a transient bounce (Part a2 — THROWN error path, #12108)', () => {
+  // The structured-isError bounce above only fires when a result event is
+  // YIELDED. A transport death (stream errors mid-read) is THROWN and lands in
+  // runPollLoop's outer catch instead. classifyThrownBounce is the pure
+  // decision that catch uses, so it carries the same guarantees, unit-tested
+  // here without driving the full loop.
+
+  it('bounces the #12108 connection-closed transport death as transient', () => {
+    // The exact string from the Jul-16 slang-12108 drop.
+    expect(
+      classifyThrownBounce(
+        'agent',
+        'Error: Claude Code returned an error result: API Error: Connection closed mid-response. The response above may be incomplete.',
+      ),
+    ).toBe('bounced-transient');
+  });
+
+  it('bounces ECONNRESET / socket-closed transport deaths as transient', () => {
+    expect(classifyThrownBounce('agent', 'Error: API Error: Unable to connect to API (ECONNRESET)')).toBe(
+      'bounced-transient',
+    );
+    expect(
+      classifyThrownBounce('agent', 'Error: API Error: The socket connection was closed unexpectedly'),
+    ).toBe('bounced-transient');
+  });
+
+  it('bounces a known auth transient (parity with the structured path) as transient', () => {
+    expect(classifyThrownBounce('agent', 'Error: Not logged in · Please run /login')).toBe(
+      'bounced-transient',
+    );
+  });
+
+  it('does NOT bounce a novel/unknown thrown error — may be a local post-delivery throw', () => {
+    // Unlike the structured-isError branch (gated on event.isError === true,
+    // which proves a provider turn failure), a thrown error has no proof it
+    // came from the provider vs. a local runner exception AFTER partial
+    // delivery. Bouncing an unknown throw could redrive + duplicate already-
+    // sent peer messages, so the thrown path only bounces POSITIVELY-recognized
+    // transient shapes. A novel throw falls through to relay + complete.
+    expect(classifyThrownBounce('agent', 'Error: something totally novel happened')).toBeNull();
+  });
+
+  it('does NOT bounce a permanent (403 billing) thrown error — relay + complete as today', () => {
+    expect(classifyThrownBounce('agent', 'Error: 403 billing_error: credit balance too low')).toBeNull();
+  });
+
+  it('does NOT bounce a transient thrown error on a NON-a2a channel', () => {
+    expect(
+      classifyThrownBounce('discord', 'Error: API Error: Connection closed mid-response.'),
+    ).toBeNull();
+    expect(classifyThrownBounce('dashboard', 'Error: Not logged in · Please run /login')).toBeNull();
   });
 });
 

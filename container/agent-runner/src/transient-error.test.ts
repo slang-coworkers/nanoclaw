@@ -22,6 +22,25 @@ describe('classifyTurnError', () => {
     expect(classifyTurnError('overloaded_error: the model is overloaded')).toBe('transient');
   });
 
+  test('transport-death (mid-response stream errors) are transient (#12108)', () => {
+    // These only ever surface via the SDK's THROWN error path — a response
+    // stream that dies mid-read never yields a clean structured result. Each
+    // must classify transient so the outer-catch bounce redrives it instead of
+    // silently acking the a2a handoff completed (the #12108 drop).
+    expect(
+      classifyTurnError(
+        'Error: Claude Code returned an error result: API Error: Connection closed mid-response. The response above may be incomplete.',
+      ),
+    ).toBe('transient');
+    expect(classifyTurnError('Error: API Error: Unable to connect to API (ECONNRESET)')).toBe('transient');
+    expect(classifyTurnError('Error: API Error: Unable to connect to API (ConnectionRefused)')).toBe(
+      'transient',
+    );
+    expect(classifyTurnError('Error: API Error: The socket connection was closed unexpectedly')).toBe(
+      'transient',
+    );
+  });
+
   test('a 403 billing_error is permanent (never redrive)', () => {
     expect(classifyTurnError('Error: 403 billing_error: credit balance too low')).toBe('permanent');
   });
