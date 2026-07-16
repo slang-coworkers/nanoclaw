@@ -1,6 +1,6 @@
 ---
 name: project_12069_endian_ptrsize_whitelist_parked
-description: "#12069 endian/ptr-size arch whitelist in slang.h — triaged bug/low/P3, held drafts-only for maintainer"
+description: "#12069 endian/ptr-size arch whitelist in slang.h — MAINTAINER GO (jkwak-work), draft PR authorized, hybrid B-then-A"
 metadata: 
   node_type: memory
   type: project
@@ -9,7 +9,9 @@ metadata:
 
 shader-slang/slang **#12069** (ilyakurdyukov, external) — "Stop determining byte order and pointer size from architecture whitelists." Config block in `include/slang.h` (ptr `466-469`, endianness `471-493`, guard `511-514`). Verified at HEAD `8f0c3515d`.
 
-**Disposition: TRIAGED → PARKED, drafts-only, HOLD for maintainer sign-off. No fix dispatched.** Classification bug (latent portability)/low/**P3**/core–public-ABI-header.
+**Disposition (2026-07-15): MAINTAINER GO — draft PR authorized.** jkwak-work (core maintainer) commented on the issue (cmt 4984853208): "please make a PR as suggested." Released the park; re-dispatched fixer THROUGH slang-triager for the hybrid B-then-A **DRAFT** PR. Stays DRAFT — maintainer authorizing the PR ≠ flip-to-ready; no ready/merge without a further explicit go. Real `@nv-slang-bot` mention → github-post-authorized.
+
+Prior state: triaged/parked drafts-only. Classification bug (latent portability)/low/**P3**/core–public-ABI-header.
 
 3 claims all VERIFIED by slang-triager:
 1. gcc+clang predefine `__BYTE_ORDER__`/`__ORDER_LITTLE_ENDIAN__`, `__SIZEOF_POINTER__`, `__LP64__`/`_LP64` (`__POINTER_WIDTH__` is **clang-only**; **MSVC provides none** → needs `_WIN64` special-case).
