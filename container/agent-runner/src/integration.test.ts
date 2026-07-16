@@ -302,20 +302,34 @@ describe('poll loop integration', () => {
 
 });
 
-// Helper: run poll loop until aborted or timeout
+// Helper: run poll loop until aborted or timeout.
+//
+// The promise returned by the old helper settled as soon as the abort/timeout
+// race arm fired, while the real runPollLoop kept an active query open. Those
+// orphan loops kept polling later tests' freshly-created DBs and could steal the
+// /clear row from the active-query abort test. Drain the real loop after abort so
+// each test owns exactly one live poll loop.
 async function runPollLoopWithTimeout(provider: MockProvider, signal: AbortSignal, timeoutMs: number): Promise<void> {
-  return Promise.race([
-    runPollLoop({
-      provider,
-      providerName: 'mock',
-      cwd: '/tmp',
-      signal,
-    }),
-    new Promise<void>((_, reject) => {
-      signal.addEventListener('abort', () => reject(new Error('aborted')));
-    }),
-    new Promise<void>((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
-  ]);
+  const loop = runPollLoop({
+    provider,
+    providerName: 'mock',
+    cwd: '/tmp',
+    signal,
+    activePollIntervalMs: 10,
+  });
+  loop.catch(() => {});
+
+  try {
+    await Promise.race([
+      loop,
+      new Promise<void>((_, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      }),
+      new Promise<void>((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+    ]);
+  } finally {
+    if (signal.aborted) await loop.catch(() => {});
+  }
 }
 
 async function waitFor(condition: () => boolean, timeoutMs: number): Promise<void> {

@@ -241,6 +241,8 @@ export interface PollLoopConfig {
    * polling forever and stealing messages from the next test's DB.
    */
   signal?: AbortSignal;
+  /** Test seam: shorten active-query follow-up polling without changing prod. */
+  activePollIntervalMs?: number;
 }
 
 /**
@@ -443,6 +445,8 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         config.provider.onExchangeComplete?.bind(config.provider),
         prompt,
         continuation,
+        config.signal,
+        config.activePollIntervalMs,
       );
       // Don't overwrite the stored chat continuation with a task's ephemeral session.
       if (!newSessionBatch && queryResult.continuation && queryResult.continuation !== continuation) {
@@ -479,6 +483,12 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     } finally {
       clearCurrentInReplyTo();
     }
+
+    // A caller-requested stop is not a completed turn. If the query already
+    // produced a result, processQuery handled its normal ack; otherwise leave the
+    // processing claim for the next container/test loop to reset instead of
+    // consuming an unanswered message.
+    if (config.signal?.aborted) return;
 
     // Ensure completed even if processQuery ended without a result event
     // (e.g. stream closed unexpectedly). EXCLUDE any ids marked as a transient
@@ -602,6 +612,8 @@ export async function processQuery(
   onExchangeComplete: ((exchange: ProviderExchange) => void) | undefined = undefined,
   initialPrompt = '',
   initialContinuation: string | undefined = undefined,
+  signal?: AbortSignal,
+  activePollIntervalMs = ACTIVE_POLL_INTERVAL_MS,
 ): Promise<QueryResult> {
   let queryContinuation: string | undefined;
   let done = false;
@@ -631,6 +643,8 @@ export async function processQuery(
   let pollInFlight = false;
   let endedForCommand = false;
   let corruptionStreak = 0;
+  const onSignalAbort = () => query.abort();
+  signal?.addEventListener('abort', onSignalAbort, { once: true });
   const pollHandle = setInterval(() => {
     if (done || pollInFlight || endedForCommand) return;
     pollInFlight = true;
@@ -784,7 +798,7 @@ export async function processQuery(
         pollInFlight = false;
       }
     })();
-  }, ACTIVE_POLL_INTERVAL_MS);
+  }, activePollIntervalMs);
 
   try {
     for await (const event of query.events) {
@@ -917,6 +931,7 @@ export async function processQuery(
   } finally {
     done = true;
     clearInterval(pollHandle);
+    signal?.removeEventListener('abort', onSignalAbort);
   }
 
   return { continuation: queryContinuation, bouncedIds };
