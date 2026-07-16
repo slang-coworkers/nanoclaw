@@ -154,6 +154,34 @@ export function taskOptsOutOfNewSession(m: { kind: string; content: string }): b
 }
 
 /**
+ * Decide whether a THROWN turn error (outer-catch path) should bounce the a2a
+ * trigger for host redrive, and with which marker.
+ *
+ * The structured-isError bounce in processQuery only fires when the provider
+ * YIELDS a result event. A transport death — the SDK's readMessages stream
+ * erroring mid-read (e.g. "Connection closed mid-response", ECONNRESET) — is
+ * re-raised as a thrown Error instead and lands in runPollLoop's outer catch,
+ * bypassing that bounce (the #12108 drop). This mirrors the result-branch
+ * decision for the thrown path so both are covered and unit-testable:
+ *
+ *   - non-`agent` channel  → null  (never bounce; deliver the notice as today)
+ *   - permanent error text → null  (403/billing/invalid-key: relay, don't redrive)
+ *   - transient error text → 'bounced-transient'
+ *   - unknown error text   → 'bounced-unknown'  (small budget → fast dead-letter)
+ *
+ * Returns the markBounced status, or null when the turn must NOT bounce.
+ */
+export function classifyThrownBounce(
+  channelType: string | null,
+  errMsg: string,
+): 'bounced-transient' | 'bounced-unknown' | null {
+  if (channelType !== 'agent') return null;
+  const cls = classifyTurnError(errMsg);
+  if (cls === 'permanent') return null;
+  return cls === 'transient' ? 'bounced-transient' : 'bounced-unknown';
+}
+
+/**
  * Default-on fresh-session policy for recurring task batches:
  *   - Empty batch: false (defensive — no spurious fresh sessions).
  *   - Any chat in the batch: false (mixed batches preserve chat history).
@@ -434,6 +462,10 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // can stamp it on outbound rows — needed for a2a return-path routing.
     setCurrentInReplyTo(routing.inReplyTo);
     let queryResult: QueryResult | undefined;
+    // Trigger ids bounced via the THROWN-error path (outer catch) this turn.
+    // Kept separate from queryResult.bouncedIds because a throw means
+    // processQuery never returned a result to carry them.
+    let thrownBouncedIds: string[] = [];
     try {
       queryResult = await processQuery(
         query,
@@ -466,20 +498,43 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         clearContinuation(config.providerName);
       }
 
-      // Write error response so the user knows something went wrong
-      writeMessageOut({
-        id: generateId(),
-        kind: 'chat',
-        platform_id: routing.platformId,
-        channel_type: routing.channelType,
-        thread_id: routing.threadId,
-        content: JSON.stringify({ text: `Error: ${errMsg}` }),
-      });
+      // a2a bounce on the THROWN-error path (#12108). The structured-isError
+      // bounce in processQuery only fires when the provider YIELDS a result
+      // event. But a transport death — the SDK's readMessages stream erroring
+      // mid-read (e.g. "Connection closed mid-response", ECONNRESET) — is
+      // re-raised as `Error("Claude Code returned an error result: <text>")`
+      // and lands HERE instead, bypassing that bounce. Without this, such a
+      // turn relayed the raw error to the peer and was acked completed
+      // (tries=0), permanently consuming an un-actioned a2a handoff — the exact
+      // #12108 drop. classifyThrownBounce mirrors the result-branch decision:
+      // on an `agent` edge a transient/unknown error bounces (trigger left
+      // un-acked for the host redrive sweep, blip NOT relayed to the peer);
+      // permanent errors and non-a2a channels fall through to the unchanged
+      // write-error-and-complete path.
+      const thrownBounce = classifyThrownBounce(routing.channelType, errMsg);
+      if (thrownBounce) {
+        markBounced(processingIds, thrownBounce);
+        thrownBouncedIds = processingIds;
+        log(
+          `a2a thrown-error bounce (${thrownBounce}) — trigger left pending for host redrive: ` +
+            errMsg.slice(0, 80),
+        );
+      } else {
+        // Write error response so the user knows something went wrong
+        writeMessageOut({
+          id: generateId(),
+          kind: 'chat',
+          platform_id: routing.platformId,
+          channel_type: routing.channelType,
+          thread_id: routing.threadId,
+          content: JSON.stringify({ text: `Error: ${errMsg}` }),
+        });
 
-      // The batch is still acked completed below (no redelivery). Without
-      // this line the only log trace of the errored turn is "Query error"
-      // followed by a "Completed" line that reads like success.
-      log(`Errored batch will be acked completed — ${processingIds.length} message(s), no redelivery`);
+        // The batch is still acked completed below (no redelivery). Without
+        // this line the only log trace of the errored turn is "Query error"
+        // followed by a "Completed" line that reads like success.
+        log(`Errored batch will be acked completed — ${processingIds.length} message(s), no redelivery`);
+      }
     } finally {
       clearCurrentInReplyTo();
     }
@@ -493,8 +548,10 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // Ensure completed even if processQuery ended without a result event
     // (e.g. stream closed unexpectedly). EXCLUDE any ids marked as a transient
     // a2a bounce — completing them here would clobber the 'bounced-*' marker
-    // back to 'completed' and permanently consume the un-actioned handoff.
-    const bounced = new Set(queryResult?.bouncedIds ?? []);
+    // back to 'completed' and permanently consume the un-actioned handoff. This
+    // covers both bounce paths: the structured-result bounce (queryResult.
+    // bouncedIds) and the thrown-error bounce (thrownBouncedIds) above.
+    const bounced = new Set([...(queryResult?.bouncedIds ?? []), ...thrownBouncedIds]);
     markCompleted(processingIds.filter((id) => !bounced.has(id)));
     log(`Completed ${ids.length} message(s)`);
   }

@@ -39,12 +39,27 @@ const PERMANENT_SIGNATURES = [
 // Known transient outages — safe to redrive on the long budget. These are the
 // proxy/gateway/auth-outage shapes that recover on their own within minutes-to-
 // hours (the class the #12097 auth outage fell into).
+//
+// Two arrival shapes land here (see poll-loop.ts): a STRUCTURED isError result
+// yielded by the provider, and a THROWN error whose message the SDK builds as
+// "Claude Code returned an error result: <text>" when the response stream dies
+// mid-read. The transport-death shapes below (connection closed mid-response,
+// ECONNRESET, socket-closed-unexpectedly, connection refused/timed out) only
+// ever surface via the thrown path — a mid-response disconnect never produces a
+// clean structured result — so they must be classified transient here for the
+// outer-catch bounce to redrive them instead of silently completing the handoff.
 const TRANSIENT_SIGNATURES = [
   'not logged in',
   'please run /login',
   'econnrefused',
+  'econnreset',
   'etimedout',
+  'connection closed mid-response',
+  'connection refused',
+  'connection reset',
+  'socket connection was closed',
   'socket hang up',
+  'unable to connect to api',
   'bad gateway',
   'gateway timeout',
   'service unavailable',
