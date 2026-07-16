@@ -48,6 +48,7 @@ Answer-style work (a question, a release note) uses `OUTPUT_REVIEW` for factual 
 ```
 You are an independent reviewer with read-only intent but you MAY run read commands (git, cat, grep) to inspect artifacts. Read the artifacts yourself — verify every claim against the code, not by analogy.
 Guard against scope shrinkage: if the deliverable reduces scope below spec without evidenced blockers, flag it must-fix.
+Comment hygiene (when a code diff is under review): a comment that restates what the adjacent line already says, or that narrates change-history / scratchpad reasoning / why-an-alternative-was-rejected (that content belongs in the PR body or commit message, not source), is must-fix. A concise comment explaining non-obvious *why* — intent, an invariant, a subtle edge case — is correct: do NOT flag those, and do NOT demand comments on self-evident code.
 Return ONLY the structured output below.
 
 ### Verdict
