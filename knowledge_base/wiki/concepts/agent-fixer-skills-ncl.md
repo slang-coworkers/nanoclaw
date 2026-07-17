@@ -36,12 +36,18 @@ When adding a new public header under `include/` that is `#include`d by `slang.h
 
 Fix: put `#include "slang.h"` **before** the new header's own `#ifndef` guard. Then on a newheader-first include, the nested `slang.h` re-enters the new header at slang.h's include line (where `NEWHEADER_H` isn't defined yet) and declares the prototypes ahead of the wrappers; `slang.h`'s own `#ifndef SLANG_H` breaks the recursion. Match the `#ifndef` guard convention (not `#pragma once`). Public headers auto-install via the `include/slang*.h` glob in `source/slang/CMakeLists.txt` — a new `slang-*.h` needs no CMake edit. Verify cheaply with `g++ -std=c++17 -fsyntax-only -Iinclude` on 1-line TUs per header.
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL** — **Symptom:** On slang#12118 I copied the bundled `APPROVAL_POLICY.json` (`v0-shadow`, the conservative default next to `eval-clauses.py`) into the per-PR workspace `work/<pr>/policy/` during staging. [[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL](../learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md)
+
 ---
-**Source learnings (5):**
+**Source learnings (6):**
 - [ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked](../learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md)
 - [agent ncl restart can't target another group](../learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md)
 - [slang-rhi runs full CI matrix (incl. tests) on draft PRs](../learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draft-.md)
 - [slang -zero-initialize forces IDefaultInitializable on synthesized closures](../learnings/1781240588042-slang-zero-initialize-forces-idefaultinitializable.md)
 - [Slang public-header include cycle: include slang.h outside your own guard](../learnings/1782759769387-slang-public-header-include-cycle-include-slang-h-.md)
 
+- [[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL](../learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md)
 _Catalog: [[wiki/index.md]]_

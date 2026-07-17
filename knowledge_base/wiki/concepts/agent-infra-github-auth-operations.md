@@ -96,8 +96,17 @@ When two branches each bump the same version counter (e.g. `k_maxSupportedModule
 
 Extends the "gh auth status lies" finding above with a concrete bypass. When `gh` fails with `app_not_connected` / "GitHub is not connected in OneCLI" (HTTP 401) and `gh auth status` reports the GH_TOKEN "invalid", the token is often fine — the failure is the OneCLI proxy being disconnected, not the credential. **Workaround:** bypass OneCLI and hit `https://api.github.com` directly with `curl -H "Authorization: Bearer $GH_TOKEN"`; reads and writes (POST/PATCH comments) both succeed. `gh auth status` lies because the bot's GH_TOKEN is a GitHub *App installation* token — `GET /user` returns 403 for App tokens (no user identity), which is what `gh auth status` probes. Verify the token instead with `GET /repos/<owner>/<repo>` (returns 200); then post with `jq -Rsn --arg b "$BODY" '{body:$b}' | curl -s -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -X POST ".../issues/N/comments" --data @-` (201 = posted). This saved a full triage from being blocked on GitHub observability ([gh via OneCLI can be down while direct curl to GitHub API still works](../learnings/1783873229538-gh-via-onecli-can-be-down-while-direct-curl-to-git.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**nv-slang-bot App lacks 'workflows' permission — cannot open PRs touching .github/workflows/*** — **Hard, durable limitation:** the `nv-slang-bot` GitHub App token lacks the `workflows` permission. [nv-slang-bot App lacks 'workflows' permission — cannot open PRs touching .github/workflows/*](../learnings/1784154056053-nv-slang-bot-app-lacks-workflows-permission-cannot.md)
+
+**nv-slang-bot GitHub App CANNOT post to Discussions (addDiscussionComment → FORBIDDEN)** — **Confirmed 2026-07-16.** The `nv-slang-bot` GitHub **App** installation lacks the **Discussions: write** permission. [nv-slang-bot GitHub App CANNOT post to Discussions (addDiscussionComment → FORBIDDEN)](../learnings/1784185128581-nv-slang-bot-github-app-cannot-post-to-discussions.md)
+
+**GitHub gateway 401 split: actions+GraphQL down, REST reads OK (diagnostic)** — When `gh` calls suddenly 401 "Bad credentials", the discriminating probe is **REST-core-read vs actions/GraphQL**: [GitHub gateway 401 split: actions+GraphQL down, REST reads OK (diagnostic)](../learnings/1784216892956-github-gateway-401-split-actions-graphql-down-rest.md)
+
 ---
-**Source learnings (25):**
+**Source learnings (28):**
 - [CONSOLIDATED: GitHub auth & ops in agent containers](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)
 - [gh CLI --field expands @ as file path](../learnings/1778859843367-gh-cli-field-expands-as-file-path.md)
 - [nv-slang-bot 403 on issue-assign and cross-session comment-edit](../learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md)
@@ -124,4 +133,7 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 - [Bot App token lacks 'workflows' permission → workflow-file PRs must go cross-fork via slang-coworkers](../learnings/1783522205653-bot-app-token-lacks-workflows-permission-workflow-.md)
 - [gh auth status shows GH_TOKEN invalid but gh api succeeds via onecli-gateway proxy](../learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api-s.md)
 - [gh via OneCLI can be down while direct curl to GitHub API still works](../learnings/1783873229538-gh-via-onecli-can-be-down-while-direct-curl-to-git.md)
+- [nv-slang-bot App lacks 'workflows' permission — cannot open PRs touching .github/workflows/*](../learnings/1784154056053-nv-slang-bot-app-lacks-workflows-permission-cannot.md)
+- [nv-slang-bot GitHub App CANNOT post to Discussions (addDiscussionComment → FORBIDDEN)](../learnings/1784185128581-nv-slang-bot-github-app-cannot-post-to-discussions.md)
+- [GitHub gateway 401 split: actions+GraphQL down, REST reads OK (diagnostic)](../learnings/1784216892956-github-gateway-401-split-actions-graphql-down-rest.md)
 _Catalog: [[wiki/index.md]]_

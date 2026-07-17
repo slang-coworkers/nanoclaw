@@ -96,12 +96,19 @@ Also: `Agent(prompt=...)` forks without `subagent_type` inherit full context and
 
 Discord's API enforces a hard 2000-character limit on message `content` ([Discord per-message char limit is 2000](../learnings/1780404951139-discord-per-message-char-limit-is-2000.md), [Discord send_message enforces a 2000-char hard limit](../learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md)). The MCP server does not auto-split. For long technical answers, pre-split into ≤2000-char messages and put feedback buttons on the final message only. Budget conservatively: emoji and inline GitHub URLs each consume characters.
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**[approver/gating-safety] On-demand builtin loading can widen a null-deref surface when a fix swaps decl-owned state for context-owned state** — **Symptom:** slang#12136 ("Load autodiff builtins on demand") splits diff.meta.slang into a lazily-loaded supplement. [[approver/gating-safety] On-demand builtin loading can widen a null-deref surface when a fix swaps decl-owned state for context-owned state](../learnings/1784184038640-approver-gating-safety-on-demand-builtin-loading-c.md)
+
+**[approver/gating-safety] Lazy autodiff-module load (slang#12136) crashes on IDifferentiable-CONSTRAINED types with no trigger — gap#1 is real (SIGSEGV), not advisory** — **PR:** slang#12136 "Load autodiff builtins on demand" (jvepsalainen-nv, issue-12113). [[approver/gating-safety] Lazy autodiff-module load (slang#12136) crashes on IDifferentiable-CONSTRAINED types with no trigger — gap#1 is real (SIGSEGV), not advisory](../learnings/1784186366576-approver-gating-safety-lazy-autodiff-module-load-s.md)
+
 ---
 ## #11917 Type-Shape-Keyed Legalize Passes Are B/C-Risky (2026-07-14 fold)
 
 Gating `legalizeEmptyArray`/`legalizeVectorTypes`/`legalizeUniformBufferLoad` on an up-front IntLit-dimension scan is unsafe: `generateAnyValueMarshallingFunctions` synthesizes 1-vectors *in-window* (between the calc scan and the pass), so a presence scan that ran earlier misses them — no naive gate is safe for this family ([#11917 gating: legalize passes keyed on type shape are B/C-risky](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)).
 
-**Source learnings (22):**
+**Source learnings (24):**
 - [Slang IR-pass diagnostics lose source locations](../learnings/1780328920397-slang-ir-pass-diagnostics-lose-source-locations-be.md)
 - [Slang diagnostics.lua: changing a span's loc kind silently drops secondary message](../learnings/1780411224942-slang-diagnostics-lua-changing-a-span-s-loc-kind-s.md)
 - [Locationless IR-pass diagnostics on imported-module structs: fix at emission, not key creation](../learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-modul.md)
@@ -126,4 +133,6 @@ Gating `legalizeEmptyArray`/`legalizeVectorTypes`/`legalizeUniformBufferLoad` on
 - [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
 
 
+- [[approver/gating-safety] On-demand builtin loading can widen a null-deref surface when a fix swaps decl-owned state for context-owned state](../learnings/1784184038640-approver-gating-safety-on-demand-builtin-loading-c.md)
+- [[approver/gating-safety] Lazy autodiff-module load (slang#12136) crashes on IDifferentiable-CONSTRAINED types with no trigger — gap#1 is real (SIGSEGV), not advisory](../learnings/1784186366576-approver-gating-safety-lazy-autodiff-module-load-s.md)
 _Catalog: [[wiki/index.md]]_

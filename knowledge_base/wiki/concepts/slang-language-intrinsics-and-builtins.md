@@ -60,6 +60,11 @@ On the CPU/LLVM backend `SLANG_LLVM` gates OUT the native `_Float16` block in `p
 
 When a fix drops/changes a capability atom (e.g. `texture_sm_4_1_samplerless` → `texture_sm_4_1`) on the readonly `.Load`/subscript methods of `_Texture` in `hlsl.meta.slang`, also audit the `glsl.meta.slang` `texelFetch` wrappers that mirror those methods — they carry their own atom and drift out of sync otherwise ([1782898835005-fixing-a-capability-require-atom-on-a-](../learnings/1782898835005-fixing-a-capability-require-atom-on-a-texture-meth.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**Slang #11493 fast-path: user operator on builtin operands — maintainer wants ERROR not honor** — **Context:** Issue #11877 — since #11493, the builtin-operator fast path (`convertToBuiltinArithmeticOp`, slang-check-expr.cpp) rewrites `a OP b` on builtin scalar/vector/matrix operands to a `BuiltinOperatorExpr` before overload resolution, silently dropping a user `operator*(float4x4,float4x4)`. [Slang #11493 fast-path: user operator on builtin operands — maintainer wants ERROR not honor](../learnings/1784156401458-slang-11493-fast-path-user-operator-on-builtin-ope.md)
+
 ---
 
 ## Dot-Form __intrinsic_asm on a void Method Discards a Value-Returning Target Op (#12059)
@@ -68,7 +73,7 @@ In hlsl.meta.slang, `__intrinsic_asm ".Method"` (dot-prefix) on a `[mutating] vo
 
 <!-- fold-20260711 -->
 
-**Source learnings (12):**
+**Source learnings (13):**
 - [Slang variable-pointers signature-walk fix: only (GroupShared, parameter) is a fail-without-fix regression test](../learnings/1780972705906-slang-variable-pointers-signature-walk-fix-only-gr.md)
 - [Slang flag-enum compound-assign gap: ILogical vs __BuiltinLogicalType operators](../learnings/1781621242788-slang-flag-enum-compound-assign-gap-ilogical-vs-bu.md)
 - [slang #9382 Gather ConstOffset — naive fix unsafe; two stale draft PRs exist](../learnings/1781713033202-slang-9382-gather-constoffset-naive-fix-unsafe-two.md)
@@ -84,4 +89,5 @@ In hlsl.meta.slang, `__intrinsic_asm ".Method"` (dot-prefix) on a `[mutating] vo
 - [Slang capability RFC #9210 — current system facts that shape any triage (verified @33f9ed0ce)](../learnings/1783523347890-slang-capability-rfc-9210-current-system-facts-tha.md)
 - [slang CPU-half struct has only operator float — half→int cast fails (11996)](../learnings/1783511746989-slang-cpu-half-struct-has-only-operator-float-half.md)
 - [slang#12059 HLSL CoopMat fill/Splat -- dot-form intrinsic on void method discards value-returning target op](../learnings/1783725139961-slang-12059-hlsl-coopmat-fill-splat-dot-form-intri.md)
+- [Slang #11493 fast-path: user operator on builtin operands — maintainer wants ERROR not honor](../learnings/1784156401458-slang-11493-fast-path-user-operator-on-builtin-ope.md)
 _Catalog: [[wiki/index.md]]_

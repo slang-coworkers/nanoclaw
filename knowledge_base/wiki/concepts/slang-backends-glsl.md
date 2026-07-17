@@ -66,6 +66,11 @@ The GLSL backend (`-target glsl` / `-emit-spirv-via-glsl`) emits a half-float li
 
 Two entangled GLSL-profile findings. A spurious `E41012 profile implicitly upgraded` on a **combined** `Sampler2D.Load()` under `-profile glsl_450` comes from a static `[require]` being out of sync with the emit-time `isCombined` gate ([Spurious E41012 profile-upgrade warning: static [require] out of sync with emit-time isCombined gate (samplerless)](../learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md)). Crucially, that E41012 is emitted by `slang-check-shader.cpp` (`ProfileImplicitlyUpgraded`), **not** the IR late-require pass — a misattribution seen in PR #11876's own test comment and a prior learning ([E41012 from a [require] attribute comes from slang-check-shader.cpp (ProfileImplicitlyUpgraded), NOT IRLateRequireCapability](../learnings/1782895560951-e41012-from-a-require-attribute-comes-from-slang-c.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**GLSL FRem fix: use branchless sign*mod, not the scalar fmod ternary (vector-safe)** — Fixing slang#12046 F1 (GLSL `%`/`kIROp_FRem` emitted floor-modulus `mod()` instead of truncated remainder), the triage-suggested fix was to mirror the stdlib GLSL `fmod` intrinsic's scalar ternary `((x<0.0)?-mod(-x,abs(y)):mod(x,abs(y)))` (hlsl.meta.slang). [GLSL FRem fix: use branchless sign*mod, not the scalar fmod ternary (vector-safe)](../learnings/1784161580195-glsl-frem-fix-use-branchless-sign-mod-not-the-scal.md)
+
 ---
 
 ## FRem->mod() Sign Bug; Metal fmod Sign-Flip Is Redundant (#12046)
@@ -74,7 +79,7 @@ Slang `%`(float) and `fmod()` are both truncation remainder (sign follows divide
 
 <!-- fold-20260711 -->
 
-**Source learnings (17):**
+**Source learnings (18):**
 - [`-emit-spirv-via-glsl` tests that rely on glslang to "already do the right thing" need verification](../learnings/1779619281300-slang-via-glsl-test-premise-verify-with-downstream.md)
 - [Triaging "GLSL gl_* builtin missing" reports](../learnings/1781162369496-triaging-glsl-gl-builtin-missing-reports-check-cas.md)
 - [slang-glslang: add an opt-out via dedicated CMake escape-hatch](../learnings/1781975592365-slang-glslang-add-an-opt-out-via-dedicated-cmake-e.md)
@@ -92,4 +97,5 @@ Slang `%`(float) and `fmod()` are both truncation remainder (sign follows divide
 - [Spurious E41012 profile-upgrade: static [require] out of sync with emit-time isCombined gate (#11874)](../learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md)
 - [E41012 from a [require] attribute comes from slang-check-shader.cpp (ProfileImplicitlyUpgraded), NOT IR late-require](../learnings/1782895560951-e41012-from-a-require-attribute-comes-from-slang-c.md)
 - [slang mod/rem emission: FRem-to-GLSL-mod is a real bug; Metal fmod sign-flip is redundant (#12046)](../learnings/1783694537132-slang-mod-rem-emission-frem-to-glsl-mod-is-a-real-.md)
+- [GLSL FRem fix: use branchless sign*mod, not the scalar fmod ternary (vector-safe)](../learnings/1784161580195-glsl-frem-fix-use-branchless-sign-mod-not-the-scal.md)
 _Catalog: [[wiki/index.md]]_

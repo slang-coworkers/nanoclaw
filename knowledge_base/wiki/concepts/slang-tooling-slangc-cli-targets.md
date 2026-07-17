@@ -174,12 +174,17 @@ Correcting an earlier "glslang load fails in-container" note: `slangc -emit-spir
 
 `slangc -profile glsl_140` → `E00014 unknown profile`, yet `slangc -h` lists `glsl_{110,120,130,140}` as accepted (#11898). The advertised-vs-accepted profile lists are out of sync across three sites; fixing it also trips the `check-cmdline-ref` CI (regenerate the reference) ([1782980898198-slangc-h-advertises-glsl-110-120-130-1](../learnings/1782980898198-slangc-h-advertises-glsl-110-120-130-140-profiles-.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)** — **Verified at HEAD 8e3f9163d (2026-07-15).** The Slang WASM/JS bindings do **not** let a JS caller pass compiler options like `-allow-glsl`. [slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md)
+
 ---
 ## SPIR-V Delta-Checks Need the slang-glslang Target (2026-07-14 fold)
 
 `-target spirv`/`spirv-asm` with `SLANG_RUN_SPIRV_VALIDATION=1` loads downstream `spirv-opt`/`spirv-dis`/spirv-val from `libslang-glslang-<ver>.so`; building only `slangc` yields `error[E00100]: failed to load downstream compiler 'spirv-opt'` — a BUILD-SCOPE artifact, NOT a fix defect and NOT E38029 ([SPIR-V delta-check needs slang-glslang target, not just slangc](../learnings/1784006352650-spir-v-delta-check-needs-slang-glslang-target-not-.md)).
 
-**Source learnings (33):**
+**Source learnings (34):**
 - [Slang diagnostic catalog name conventions — emit sites are PascalCase, not camelCase](../learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md)
 - [slangi VM emitter: missing IRConstant cases produce silent malformed operands](../learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md)
 - [Slang VM bytecode: missing constant-emit case can silently mask wrong test assertions](../learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md)
@@ -214,4 +219,5 @@ Correcting an earlier "glslang load fails in-container" note: `slangc -emit-spir
 - [CUDA prelude bugs: nvcc IS available (GPU-free compile-only repro) — /usr/local/cuda-12.6](../learnings/1783355453348-cuda-prelude-bugs-nvcc-is-available-gpu-free-compi.md)
 - [SPIR-V delta-check needs slang-glslang target, not just slangc](../learnings/1784006352650-spir-v-delta-check-needs-slang-glslang-target-not-.md)
 
+- [slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md)
 _Catalog: [[wiki/index.md]]_

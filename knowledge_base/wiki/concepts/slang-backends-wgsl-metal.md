@@ -66,8 +66,19 @@ The Metal source emitter is the **lone** C-like backend that prints floating-poi
 
 Slang's WGSL emitter puts `break;` as the last statement of every switch `case`/`default`. A reporter called it invalid; first analysis said valid-but-redundant and downgraded #11946 to cosmetic ([WGSL trailing break in switch cases is VALID (redundant), not invalid — verify validator claims via DeepWiki when WebSearch is down](../learnings/1783296818057-wgsl-trailing-break-in-switch-cases-is-valid-redun.md)). That was then corrected: it **is** a real bug because **older naga rejects** it — verify validator claims across toolchain VERSIONS, not just current source ([CORRECTION: WGSL redundant switch-case break IS a real bug (older naga rejects) — verify across toolchain VERSIONS, not just current source](../learnings/1783300097186-correction-wgsl-redundant-switch-case-break-is-a-r.md)). The tempting suppression gate `!supportsSwitchFallThrough()` is **wrong**: HLSL/FXC also returns false yet still requires the break, so that predicate is not a proxy for 'target needs a switch-case break' ([1783300771712-slang-supportsswitchfallthrough-is-not](../learnings/1783300771712-slang-supportsswitchfallthrough-is-not-a-proxy-for.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**Metal fmod IS Remainder (MSL spec §6.6): trunc vs floor is the Modulus/Remainder discriminator** — FOLLOW-UP to shader-slang/slang#12046 (maintainer jkwak-work disputed the F3 finding 4x). [Metal fmod IS Remainder (MSL spec §6.6): trunc vs floor is the Modulus/Remainder discriminator](../learnings/1784148445380-metal-fmod-is-remainder-msl-spec-6-6-trunc-vs-floo.md)
+
+**CORRECTION: slang#11985 original emit-4.0-vs-std3.1 diagnosis WAS right; my 'macOS-26 driver race' reconciliation over-corrected** — **Follow-up correcting a prior learning** ([[learning: slang#11985 Metal diagnosis was plausible-but-wrong: inferred attribute→gpu-printing link the log never supported]]). [CORRECTION: slang#11985 original emit-4.0-vs-std3.1 diagnosis WAS right; my "macOS-26 driver race" reconciliation over-corrected](../learnings/1784154087503-correction-slang-11985-original-emit-4-0-vs-std3-1.md)
+
+**[approver/false-safe] Metal intrinsic token-count change breaks untouched Metal COUNT tests; ci_green clause is blind to check-runs** — **PR:** shader-slang/slang #12130 @ a891de261b27 (bot fixer PR for #12046, Devin-only tier). [[approver/false-safe] Metal intrinsic token-count change breaks untouched Metal COUNT tests; ci_green clause is blind to check-runs](../learnings/1784164727628-approver-false-safe-metal-intrinsic-token-count-ch.md)
+
+**CORRECTION slang#11999 — the 'conflated' metal4.0 signature WAS the root cause; don't dismiss without the reproducing env** — **This corrects my earlier learning "slang#11999 gpu-printing macOS flake — verify CI signature, don't trust bot conflation." That learning's core reclassification was WRONG.** Keep the verify-the-logs discipline; [CORRECTION slang#11999 — the "conflated" metal4.0 signature WAS the root cause; don't dismiss without the reproducing env](../learnings/1784185814547-correction-slang-11999-the-conflated-metal4-0-sign.md)
+
 ---
-**Source learnings (20):**
+**Source learnings (24):**
 - [Slang per-target stride for `StructuredBuffer<float3, ScalarDataLayout>` — WGSL is the outlier](../learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md)
 - [Coverage wave-aggregate tests — CUDA/Metal FileCheck asserting `WaveActiveCountBits` passes for the wrong reason](../learnings/1780935575501-coverage-wave-aggregate-tests-cuda-metal-filecheck.md)
 - [WGSL emit: static-const arrays must be var<private> (not const) for runtime indexing](../learnings/1781624737396-wgsl-emit-static-const-arrays-must-be-var-private-.md)
@@ -88,4 +99,8 @@ Slang's WGSL emitter puts `break;` as the last statement of every switch `case`/
 - [slang#12096 macos-26 Metal-4 fix belongs in slang-rhi (OS-version capability inference) — LATER SUPERSEDED](../learnings/1784051017162-slang-12096-macos-26-metal-4-fix-belongs-in-slang-.md)
 - [slang#12096 ↔ #11999 share the same metallib_4_0-from-OS root](../learnings/1784062178778-slang-12096-11999-share-the-same-metallib-4-0-from.md)
 - [slang#12096 fix is ADVANCE-to-metal4.0 in Slang-core (-std derivation), NOT slang-rhi retreat](../learnings/1784062749848-slang-12096-fix-is-advance-to-metal4-0-in-slang-co.md)
+- [Metal fmod IS Remainder (MSL spec §6.6): trunc vs floor is the Modulus/Remainder discriminator](../learnings/1784148445380-metal-fmod-is-remainder-msl-spec-6-6-trunc-vs-floo.md)
+- [CORRECTION: slang#11985 original emit-4.0-vs-std3.1 diagnosis WAS right; my 'macOS-26 driver race' reconciliation over-corrected](../learnings/1784154087503-correction-slang-11985-original-emit-4-0-vs-std3-1.md)
+- [[approver/false-safe] Metal intrinsic token-count change breaks untouched Metal COUNT tests; ci_green clause is blind to check-runs](../learnings/1784164727628-approver-false-safe-metal-intrinsic-token-count-ch.md)
+- [CORRECTION slang#11999 — the 'conflated' metal4.0 signature WAS the root cause; don't dismiss without the reproducing env](../learnings/1784185814547-correction-slang-11999-the-conflated-metal4-0-sign.md)
 _Catalog: [[wiki/index.md]]_

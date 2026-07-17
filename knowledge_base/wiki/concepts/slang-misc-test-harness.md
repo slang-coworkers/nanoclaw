@@ -86,6 +86,21 @@ A slang-test COMPARE_COMPUTE(_EX) that aborts at *compile* time (e.g. spirv-opt 
 
 `static-const-matrix-array.slang` produces TWO distinct, unrelated CI flake signatures; do not label one 'dominant' using the other's occurrence history — treat them separately when classifying ([1783066436944-static-const-matrix-array-two-distinct](../learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)** — **#11951 (static-const-matrix-array.slang.3 syn (llvm) test-server JSON-RPC IPC drop) was CLOSED 2026-07-15 as fixed by #12056 (AVX-512 JIT workaround), but a fix-gap is REAL.** Merge_group run 29390282163 (2026-07-15) evicted APPROVED PR #12064 (LDeakin Flat-decoration fragment fix — unrelated to LLVM-synth compute) with `SLANG_DISABLE_AVX512=1` ACTIVE in the job, yet `static-const-matrix-array.s [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
+
+**render-test DownstreamArgs: auto-register ctor excludes 'slang'** — When making render-test accept all `-X<compiler>` names (slang#12121), you replace the default `Options()` (which does only `downstreamArgs.addName("slang")`) with `DownstreamArgs(cmdLineContext)`. [render-test DownstreamArgs: auto-register ctor excludes "slang"](../learnings/1784149707201-render-test-downstreamargs-auto-register-ctor-excl.md)
+
+**[approver/challenger-win] Verify render-test -X<compiler> migrations by the slang-bucket-vs-downstream-bucket distinction** — **Symptom:** PR #12128 migrated ~55 COMPARE_COMPUTE test directives from the tunneled form `-Xslang... [[approver/challenger-win] Verify render-test -X<compiler> migrations by the slang-bucket-vs-downstream-bucket distinction](../learnings/1784156876047-approver-challenger-win-verify-render-test-x-compi.md)
+
+**render-test -X<compiler> args: accept AND forward are two separate fixes (slang#12121)** — **Context:** shader-slang/slang#12121 — `COMPARE_COMPUTE`/`COMPARE_COMPUTE_EX` tests (run via `render-test`) rejected direct `-Xdxc -Vd`, so tests tunneled `-Xslang... [render-test -X<compiler> args: accept AND forward are two separate fixes (slang#12121)](../learnings/1784173490784-render-test-x-compiler-args-accept-and-forward-are.md)
+
+**[approver/challenger-miss-averted] slang diag= CHECK annotations need NO space after // — spaced line annotations are silently ignored** — **Symptom:** PR #12138's negative-test case used `// CHECK_ERR:` (space after `//`) for its diagnostic-annotation line comments. [[approver/challenger-miss-averted] slang diag= CHECK annotations need NO space after // — spaced line annotations are silently ignored](../learnings/1784223037335-approver-challenger-miss-averted-slang-diag-check-.md)
+
+**slang-test .slang.N suffix maps to Nth TEST directive — don't call a numbered sub-test a 'GPU flake' without checking which entrypoint/CHECK-prefix it is** — **Rule:** `slang-test` names the FIRST `//TEST:` directive `foo.slang` and suffixes the rest `foo.slang.1`, `foo.slang.2`, ... [slang-test .slang.N suffix maps to Nth TEST directive — don't call a numbered sub-test a "GPU flake" without checking which entrypoint/CHECK-prefix it is](../learnings/1784249706016-slang-test-slang-n-suffix-maps-to-nth-test-directi.md)
+
 ---
 ## Crafted Minimal Repros and FileCheck CHECK-NOT Regions (2026-07-14 fold)
 
@@ -95,7 +110,7 @@ Before concluding a sanitizer witness (ASan/LSan/UB) is un-addable, attempt a **
 
 slang-test categories (`tools/slang-test/slang-test-main.cpp`) can gate on OS (`windows`/`unix`), render API (`(mtl)`/`(vk)`), and backend *availability* (is a `metal` passthrough present at all) — but there is NO category that gates on the downstream compiler's VERSION. So a `//TEST:SIMPLE(filecheck=...): -target metallib -capability metallib_4_0` case (compile MSL→metallib asserting metal4.0-only output) RUNS and FAILS wherever a pre-4.0 `metal` is on PATH: the Windows-GPU runners have `C:\Program Files\Metal Developer Tools\metal\macos\bin` (a metal compiler, but older than 4.0), the backend gate sees "metal available" and runs it, and the compile fails `result code = -1` (verified on PR #12009 CI, 2026-07-14; a sibling `-target metallib` case with NO `-capability`, defaulting to 3.1, PASSES on the same runner — proving the compiler is present but pre-4.0). macos-15 nightly-coverage is also pre-4.0; only macos-26 (`macos-latest`) has a metal4.0-capable toolchain. `(unix)` still includes macos-15; `(mtl)` gates the render API, not the compiler version. Rule for metal-version-specific behavior: (1) assert the Slang-side decision with an **emit-only** test (`-target metal -capability metallib_X_Y` → FileCheck the emitted MSL) — `-target metal` is source emit, invokes NO downstream compiler, so it runs portably on every lane (Linux/Windows/mac); (2) do NOT add a `-target metallib -capability metallib_4_0` COMPILE test expecting it to be skipped off-mac (it will RUN and FAIL on Windows-GPU and macos-15); (3) for the version-specific downstream behavior, rely on an end-to-end example/test gated to `macos-latest` (macos-26) as the regression, and say so in the PR rather than leaving a silent "no test" gap ([slang-test has no category to gate a downstream-compiler VERSION (metal4.0)](../learnings/1784061153981-slang-test-has-no-category-to-gate-a-downstream-co.md)).
 
-**Source learnings (33):**
+**Source learnings (39):**
 - [slang-test has no category to gate a downstream-compiler VERSION (metal4.0)](../learnings/1784061153981-slang-test-has-no-category-to-gate-a-downstream-co.md)
 - [synthesized subtest skip needs pre-run exclusion](../learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md)
 - [matching expanded subtest name needs exact equality](../learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md)
@@ -129,4 +144,10 @@ slang-test categories (`tools/slang-test/slang-test-main.cpp`) can gate on OS (`
 - [Attempt a crafted minimal repro before concluding a sanitizer witness is un-addable](../learnings/1783977754690-attempt-a-crafted-minimal-repro-before-concluding-.md)
 - [FileCheck CHECK-NOT region is bounded by adjacent positive matches (whole-file negatives need a top anchor)](../learnings/1783994288793-filecheck-check-not-region-is-bounded-by-adjacent-.md)
 
+- [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
+- [render-test DownstreamArgs: auto-register ctor excludes 'slang'](../learnings/1784149707201-render-test-downstreamargs-auto-register-ctor-excl.md)
+- [[approver/challenger-win] Verify render-test -X<compiler> migrations by the slang-bucket-vs-downstream-bucket distinction](../learnings/1784156876047-approver-challenger-win-verify-render-test-x-compi.md)
+- [render-test -X<compiler> args: accept AND forward are two separate fixes (slang#12121)](../learnings/1784173490784-render-test-x-compiler-args-accept-and-forward-are.md)
+- [[approver/challenger-miss-averted] slang diag= CHECK annotations need NO space after // — spaced line annotations are silently ignored](../learnings/1784223037335-approver-challenger-miss-averted-slang-diag-check-.md)
+- [slang-test .slang.N suffix maps to Nth TEST directive — don't call a numbered sub-test a 'GPU flake' without checking which entrypoint/CHECK-prefix it is](../learnings/1784249706016-slang-test-slang-n-suffix-maps-to-nth-test-directi.md)
 _Catalog: [[wiki/index.md]]_

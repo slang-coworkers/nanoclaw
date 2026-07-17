@@ -126,6 +126,17 @@ When deciding whether a shader-slang/slang PR is "ours" (bot-driven, route to a 
 
 Re-confirmed operator rule (superseding 2026-06-16, re-confirmed on #11898 2026-07-02): the operator-gated GitHub actions are **exactly two — `gh pr ready` and `gh pr merge`.** Comments, labels, replies, reactions post freely on the bot's authority (verify at HEAD first) ([1782986948807-gated-github-set-is-only-gh-pr-ready-m](../learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**Edit nv-slang-bot comments via GraphQL updateIssueComment, not REST PATCH** — Editing an existing `nv-slang-bot[bot]` issue/PR comment: the REST `PATCH /repos/{o}/{r}/issues/comments/{id}` route returns 403 "Must have admin rights to Repository." under the babysitter's GitHub App installation token (which also fails `gh api user` with "Resource not accessible by integration"). [Edit nv-slang-bot comments via GraphQL updateIssueComment, not REST PATCH](../learnings/1784096631139-edit-nv-slang-bot-comments-via-graphql-updateissue.md)
+
+**GitHub pr_closed/pr_synchronize webhooks are claims, verify vs live GitHub before propagating** — **Rule:** A `github.pr_closed` / `pr_synchronize` / `pr_ready_for_review` webhook (source `unknown:github`) is a **claim to verify, not ground truth**. [GitHub pr_closed/pr_synchronize webhooks are claims, verify vs live GitHub before propagating](../learnings/1784114457146-github-pr-closed-pr-synchronize-webhooks-are-claim.md)
+
+**Bot-authored PR reds already BLOCK'd by approver = owned/in-fix, don't re-surface** — ## Rule When the CI babysitter finds a **deterministic, legitimate (self-inflicted) regression on a `nv-slang-bot` PR**, do NOT report it as an unhandled/external regression before checking whether it's already owned. [Bot-authored PR reds already BLOCK'd by approver = owned/in-fix, don't re-surface](../learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md)
+
+**Mermaid flowcharts for GitHub diagnosis comments: lint + render gotchas** — When a Slang maintainer asks for a mermaid flowchart in a GitHub issue/PR comment (design-discussion visualization), two non-obvious things bit me on #10027: [Mermaid flowcharts for GitHub diagnosis comments: lint + render gotchas](../learnings/1784186351938-mermaid-flowcharts-for-github-diagnosis-comments-l.md)
+
 ---
 
 ## Auth Probes Mislead; the Workflow-YAML Escape Hatch
@@ -144,7 +155,7 @@ A distinct duplicate-footprint hazard from the held-no-PR race above: when our o
 
 <!-- fold-20260713 -->
 
-**Source learnings (32):**
+**Source learnings (36):**
 - [Verifying GitHub webhook payloads before acting](../learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md)
 - [Always post the PR review when explicitly requested via webhook](../learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md)
 - [GitHub bot identity is nv-slang-bot[bot]](../learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md)
@@ -177,4 +188,8 @@ A distinct duplicate-footprint hazard from the held-no-PR race above: when our o
 - [Held-no-PR is triage's GitHub footprint; fixer posting its own hold comment races + duplicates](../learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md)
 - [CORRECTION: nv-slang-bot often CANNOT edit/delete its own GitHub issue comments (403) -- prevent, don't consolidate](../learnings/1783708188779-correction-nv-slang-bot-often-cannot-edit-delete-i.md)
 - [slang escalation session that files an upstream issue also triggers a duplicate webhook triage session — don't double-post/double-dispatch](../learnings/1783886221663-slang-escalation-session-that-files-an-upstream-is.md)
+- [Edit nv-slang-bot comments via GraphQL updateIssueComment, not REST PATCH](../learnings/1784096631139-edit-nv-slang-bot-comments-via-graphql-updateissue.md)
+- [GitHub pr_closed/pr_synchronize webhooks are claims, verify vs live GitHub before propagating](../learnings/1784114457146-github-pr-closed-pr-synchronize-webhooks-are-claim.md)
+- [Bot-authored PR reds already BLOCK'd by approver = owned/in-fix, don't re-surface](../learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md)
+- [Mermaid flowcharts for GitHub diagnosis comments: lint + render gotchas](../learnings/1784186351938-mermaid-flowcharts-for-github-diagnosis-comments-l.md)
 _Catalog: [[wiki/index.md]]_

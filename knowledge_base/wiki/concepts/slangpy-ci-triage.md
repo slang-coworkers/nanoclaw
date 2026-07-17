@@ -107,6 +107,11 @@ On prod, the 6 slang/slangpy coworker group dirs (`groups/slang-fixer`, `groups/
 
 Reusable facts for the slangpy-samples repo/PR family. MDL material `.slang` files (e.g. `mdl_ceramic_material.slang`, 3492 lines of Itanium-mangled machine-generated MDL target code) are vendored/generated -- do NOT hand-review them; only the tail hand-written `IMaterialInstance` wrapper (~190 lines) is glue. Verify LFS objects actually resolve (a dangling pointer = non-runnable sample): extract `oid`/`size` from the ~130-byte pointer files and POST to the repo's `info/lfs/objects/batch` endpoint -- `actions.download` present means the object exists. Zero CI is the norm for anything under `experiments/` (only `examples/` entries in `test_examples.py` get coverage), so an examples->experiments rename loses no coverage if the demo wasn't already a test entry -- check `git show main:tests/examples/test_examples.py` ([slangpy-samples utracer experiment (PR #53): MDL files are generated/vendored; verify LFS + rename cleanliness](../learnings/1783721228354-slangpy-samples-utracer-experiment-pr-53-mdl-files.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**SlangPy macOS wheels link via nanobind curated symbol allow-list, not libpython** — When a SlangPy (or SGL/nanobind) macOS wheel fails at LINK time with `Undefined symbols for architecture arm64: "_PySomething"`, the cause is almost always a CPython C-API symbol missing from nanobind's **curated undefined-symbol allow-list**, NOT a missing libpython link. [SlangPy macOS wheels link via nanobind curated symbol allow-list, not libpython](../learnings/1784158586412-slangpy-macos-wheels-link-via-nanobind-curated-sym.md)
+
 ---
 
 ## Crashing Regression Tests, Native-SIGSEGV Testing & CI Flake (2026-07-13 fold)
@@ -131,7 +136,7 @@ Reusable facts for the slangpy-samples repo/PR family. MDL material `.slang` fil
 
 The `sgl_tests` teardown exit-code flake (#1062) is a distinct class: doctest prints a green `[doctest] Status: SUCCESS!` then the *process* exits nonzero during post-`main` teardown (`static_shutdown`/`close_all_devices` GPU-resource destruction), which `tools/ci.py`'s `run_command` turns into a `RuntimeError` reddening the cross-repo *SlangPy Tests* check on unrelated slang PRs ([sgl_tests exit-code flake root cause + tracking issue #1062](../learnings/1783930954720-sgl-tests-exit-code-flake-root-cause-tracking-issu.md)). The candidate fix is `std::fflush(nullptr); std::_Exit(result)` to bypass teardown ([#1062: no minidump, post-main teardown, fix with std::_Exit](../learnings/1783932346816-sgl-tests-exit-code-flake-1062-no-minidump-exists-.md)), but two evidence legs need correcting: crashpad is neither producing a minidump NOR armed in the C++ binary, so an empty `.crashpad/reports/` says nothing about fault location ([CORRECTION: crashpad is not armed; empty reports/ uninformative](../learnings/1783932949420-correction-to-1062-learning-crashpad-is-not-armed-.md)), and `_Exit` suppresses the (CI-disabled, non-blocking) LeakSanitizer end-of-run report ([_Exit fix #1064 suppresses LeakSanitizer report](../learnings/1783932699675-sgl-tests-exit-fix-1064-suppresses-leaksanitizer-e.md)). Maintainer @skallweitNV **rejected exit-code masking** — a teardown flake needs a root-cause fix, not `_Exit(result)` ([maintainer rejected exit-code masking](../learnings/1783937217747-sgl-tests-exit-code-flake-maintainer-rejected-exit.md)). Two related CI-hang corrections: a deliberately-crashing GPU test lands in an unkillable D-state process, so hard-guard on the CI env instead of probing crashpad ([CORRECTION: crashing GPU test wedges CI (unkillable)](../learnings/1783931282447-correction-a-deliberately-crashing-gpu-test-wedges.md)); and the separate slangpy#1051/#1053 6-hour hang was ultimately the known **CUDA-OOM cascade** from `pytest -n auto` opening 4 concurrent GPU contexts, NOT the crash-test ([CORRECTION #2: 6h hang was CUDA-OOM cascade](../learnings/1783974986070-correction-2-slangpy-1051-pr-1053-the-6h-ci-hang-w.md)).
 
-**Source learnings (34):**
+**Source learnings (35):**
 - [slangpy CI flake triage: re-symbolize the existing .dmp before designing fixes](../learnings/1779545587070-slangpy-ci-flake-triage-re-symbolize-the-existing-.md)
 - [slangpy Python id() ≠ C++ IModule* identity](../learnings/1779891890025-slangpy-python-id-c-imodule-identity.md)
 - [SlangPy create_buffer struct_size is a silent backend-layout footgun](../learnings/1780598190908-slangpy-create-buffer-struct-size-is-a-silent-back.md)
@@ -168,4 +173,5 @@ The `sgl_tests` teardown exit-code flake (#1062) is a distinct class: doctest pr
 - [CORRECTION: a deliberately-crashing GPU test wedges SlangPy CI (unkillable process) — hard-guard on CI env, don't probe crashpad](../learnings/1783931282447-correction-a-deliberately-crashing-gpu-test-wedges.md)
 - [CORRECTION #2 (slangpy#1051/PR#1053): the 6h CI hang was the known CUDA-OOM cascade, NOT the crashing test](../learnings/1783974986070-correction-2-slangpy-1051-pr-1053-the-6h-ci-hang-w.md)
 
+- [SlangPy macOS wheels link via nanobind curated symbol allow-list, not libpython](../learnings/1784158586412-slangpy-macos-wheels-link-via-nanobind-curated-sym.md)
 _Catalog: [[wiki/index.md]]_

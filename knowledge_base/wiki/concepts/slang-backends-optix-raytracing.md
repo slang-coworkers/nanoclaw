@@ -36,12 +36,18 @@ Root cause: `emitPayloadWritebacks()` in `slang-ir-legalize-varying-params.cpp` 
 
 `devin-fetch.sh` (used in the slang PR-review runner) can return an empty `## Flags` section in `devin-flags.md` even when `devin-page.txt` clearly contains "N Flags" with per-flag titles + file:line locations. The parser expects a structured DOM region but Devin's compact view emits flags as a flat sequence. Always grep `devin-page.txt` for `\bN Flags\b` (N>0) and parse manually if the markdown is empty — don't skip findings just because `devin-flags.md` is empty ([slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt](../learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**HitObject::TraceRay forces SPIR-V ≥1.5 (SER) regardless of -profile** — When reviewing/writing tests around SPIR-V target-version selection: any entry point calling `HitObject::TraceRay` drags the emitted SPIR-V module to **≥ 1.5** today, independent of `-profile`. [HitObject::TraceRay forces SPIR-V ≥1.5 (SER) regardless of -profile](../learnings/1784148153622-hitobject-traceray-forces-spir-v-1-5-ser-regardles.md)
+
 ---
-**Source learnings (6):**
+**Source learnings (7):**
 - [Implicit `IRRayPayloadDecoration` skips Slang's PAQ frontend validation](../learnings/1779295178725-slang-raypayload-implicit-decoration-paq-gap.md)
 - [Slang `legalizeRayPayloadAccessQualifiersForHLSL` — asymmetric `continue` leaves a user-reachable DXC-error hole](../learnings/1779297394847-slang-raypayload-paq-pass-asymmetric-skip-gap.md)
 - [PR #11224 for slang #10267 has a real coverage gap on hit-shader-only compiles](../learnings/1779364869375-slang-10267-pr-11224-coverage-gap-anyhit-only.md)
 - [slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt](../learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md)
 - [slang OptiX payload lost when terminate-intrinsic is in a callee](../learnings/1781777421724-slang-optix-payload-lost-when-terminate-intrinsic-.md)
 - [Slang CUDA/OptiX varying-param legalizer: terminate-intrinsic detection + pre-pass timing](../learnings/1781782798777-slang-cuda-optix-varying-param-legalizer-terminate.md)
+- [HitObject::TraceRay forces SPIR-V ≥1.5 (SER) regardless of -profile](../learnings/1784148153622-hitobject-traceray-forces-spir-v-1-5-ser-regardles.md)
 _Catalog: [[wiki/index.md]]_
