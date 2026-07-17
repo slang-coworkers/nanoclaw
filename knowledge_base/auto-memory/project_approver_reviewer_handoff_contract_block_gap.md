@@ -1,0 +1,24 @@
+---
+name: project_approver_reviewer_handoff_contract_block_gap
+description: Stale approver Verity overlay routes to slang-reviewer delegate path (unstamped doc) contradicting the deployed harvest+Devin skill → ABSTAIN_INFRA on #12055; fix=retire overlay delegate path
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 49ccc0be-2a22-4f98-b231-8119c4665deb
+---
+
+**Approver-pipeline defect, surfaced by #12055 (2026-07-16). FIXED — Option 1 APPLIED + VERIFIED post-restart (07-16 07:44).** Approver edited `.instructions.md` Verity overlay: 6 targeted replacements removing all slang-reviewer delegate language, now matching deployed harvest+Devin self-synthesis; all six invariants preserved verbatim (no-GitHub-write, critique-gating, R0-pinning, human-outcome join, never-round-up, untrusted-input). Behavioral lines now: *"you do not dispatch another coworker to review; the workflow harvests the bot review + runs Devin, synthesizes ONE doc you decide from"*; missing-input invariant reworded to *"no bot review to harvest AND no Devin signal → ABSTAIN naming the artifact"* (`NO_REVIEW_SIGNAL`). `request_restart` done; recomposed `CLAUDE.md:527-568` grep-confirmed carrying new text, only the corrected negative invariant remains. Overlay and `SKILL.md` no longer contradict — the unstamped-doc path is retired; contract-block gap can no longer be triggered from approver instructions. **Open watch item (approver tracking, not blocking):** harvest assumes a harvestable bot review exists on GitHub; if a live PR has nothing to harvest AND Devin yields nothing → approver emits `NO_REVIEW_SIGNAL`/ABSTAIN_INFRA and flags Main as a **reviewer-webhook routing gap** (Main owns reviewer webhook routing), NOT re-dispatch. Below is the original diagnosis (retained for context).
+
+---
+
+**Original diagnosis (RESOLVED-DIRECTION: Option 1):** Mechanism (approver byte-verified on-disk): `eval-clauses.py:168-172` marks `commit_match` **UNEVALUABLE** when the staged `review-doc.md` result block omits `commit_id`; `_result_block` keys on the `_approver_result:true` sentinel. #12055's staged block was `{verdict,bugs,gaps,questions,diff_hash,reviewers_complete}` — no `_approver_result`, no `commit_id` → forced **ABSTAIN_INFRA** (`CLAUSE_UNEVALUABLE:commit_match`) even though the approver independently byte-verified head-currency. Per "run the script; never a workaround," it did NOT hand-pass or inject fields.
+
+**Root cause = a contradiction between the approver's OWN instruction sources, NOT a defect on every delegate PR forever:**
+- **Deployed `slang-pr-approver/SKILL.md` (synced 07-15) + `/slang-pr-approve` workflow (composed 07-16):** *"You build the review input yourself — harvest the bot review + run Devin, synthesize ONE doc. You never dispatch another coworker to review."* This self-synthesis path **already stamps `_approver_result:true` + `commit_id = commit_sha` by construction** (SKILL.md:26-32; eval-clauses.py:59). **No gap on this path.**
+- **`.instructions.md` "Verity" overlay (dated 07-09, older):** still says *"the review is done by slang-reviewer … it sends the review doc back to you."* That delegate path produced #12055's unstamped 3-reviewer doc.
+
+**ORCHESTRATOR DECISION 07-16 = Option 1 (retire the delegate path).** The deployed skill (07-15) + workflow (07-16) are the newest, authoritative, recomposed-layer expression of intent; the 07-09 overlay is stale and contradicts them. Canonical model = **harvest bot review + run Devin, self-synthesize one stamped doc; approver never dispatches slang-reviewer for its own decision input.** Fix is in the approver's own domain: edit `.instructions.md` to retire the slang-reviewer delegate language + match harvest+Devin → `request_restart` → verify. NOT Option 2 (stamp-on-handoff) — that path lives in external `shader-slang/slang-skills` (approver `gh` read-only) and keeps a path the deployed skill explicitly retired. Watch item handed to approver: confirm the reviewer's GitHub COMMENT-review is still produced under harvest+Devin (reviewer runs on its own draft→ready/synchronize webhook, approver harvests it from GitHub) so there's a bot review TO harvest; if that trigger path is missing, flag it — separate follow-up, doesn't change the model call.
+
+Distinct co-factor on #12055: Reviewer B (Devin) lost to session teardown → `reviewers_complete=false`, which independently also forces abstain (incomplete panel can't round up). Either defect alone triggers it — the overlay fix removes defect (1), not (2).
+
+Impact framing for reports: ABSTAIN_INFRA here is a **pipeline-quality alert, NOT a code-risk signal**. The PR's human merge path (maintainer/reviewer APPROVE) is fully intact and unaffected — the shadow verdict never gates ([[feedback_approver_never_posts_route_reviewer]]). See [[project_11984_debugsource_bom_pending]] for the instance.
