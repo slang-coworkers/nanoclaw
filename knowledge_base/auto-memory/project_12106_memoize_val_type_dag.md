@@ -6,6 +6,8 @@ metadata:
   originSessionId: 4e47c40b-fa0c-4b84-aab8-e1567d09c30d
 ---
 
+**TERMINAL — MERGED 2026-07-16T03:28Z** (merge commit `c8d02ae5`, merged head = R3 `1aa6f887`). Human `csyonghe` APPROVED at exact R3 SHA (00:57Z) → **agreement** with approver WOULD_APPROVE; genuine non-author human approval on the merged commit (not a bare self-merge; saipraveenb25 self-merged after). Per-commit verdicts recorded: R3 `1aa6f887`=APPROVED (agreement); R1 `d0a7a16`=SUPERSEDED_CHANGES_REQUESTED (**BLOCK vindicated** — author's next commit "Keep Val lowering cache environment-local" removed the exact cross-env cache the BLOCK implicated); R2 `e2dd5be`=SUPERSEDED_BY_LATER_REVISION. Full BLOCK→fix→APPROVE trajectory held end-to-end; R1 false-safe-averted call (static+bot CLEAN, CI-red overrode → BLOCK) confirmed correct. Shadow mode — nothing posted to GitHub. Chain closed.
+
 PR #12106 "Memoize shared Val and type DAG traversals" (saipraveenb25). Sibling/follow-up to #12098 (memoize Val substitutions). slang-pr-approver, shadow-mode/ledger-only.
 
 Three per-commit ledger rows (operative head = R3 `1aa6f887`, WOULD_APPROVE):
