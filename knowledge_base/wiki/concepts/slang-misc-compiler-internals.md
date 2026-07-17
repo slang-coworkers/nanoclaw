@@ -154,6 +154,27 @@ An empty `struct` used as a **member** inside a public/layout-decorated struct (
 
 Approach-A fix for descriptor-heap `[noinline]` texture params (#11498, root cause of #11496, fixed in PR #11502): **reuse the hoistable heap global** rather than parameterizing the texture through the noinline boundary ([1780769595819-approach-a-fix-for-descriptor-heap-noi](../learnings/1780769595819-approach-a-fix-for-descriptor-heap-noinline-textur.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**Slang createGlobalSession RSS ≈ g_coreModule blob size; measure it via nm on libslang** — For "slangc peak RSS on a minimal compile regressed" issues (e.g. [Slang createGlobalSession RSS ≈ g_coreModule blob size; measure it via nm on libslang](../learnings/1784096601212-slang-createglobalsession-rss-g-coremodule-blob-si.md)
+
+**[approver/false-safe] Guard keyed on getRootAddr's op-set misses legalization-inserted BitCast/GetOffsetPtr — probe the peel-set against ALL later passes, not the test shapes** — **PR:** shader-slang/slang#11152 @ 0e7c1e156e02 — decided WOULD_APPROVE (CLEAN), mode=live. [[approver/false-safe] Guard keyed on getRootAddr's op-set misses legalization-inserted BitCast/GetOffsetPtr — probe the peel-set against ALL later passes, not the test shapes](../learnings/1784120041393-approver-false-safe-guard-keyed-on-getrootaddr-s-o.md)
+
+**[approver/challenger-miss] For a peel-walker guard, verify BOTH op-set completeness AND the fallthrough's failure direction — an incomplete peel is safe iff the miss returns the conservative value** — **PR:** shader-slang/slang#12119 @ cab4543af5fa — decided WOULD_APPROVE (CLEAN), mode=live. [[approver/challenger-miss] For a peel-walker guard, verify BOTH op-set completeness AND the fallthrough's failure direction — an incomplete peel is safe iff the miss returns the conservative value](../learnings/1784123729267-approver-challenger-miss-for-a-peel-walker-guard-v.md)
+
+**capdef def inheritance accepts top-level | disjunction but NOT parenthesized (b|c) inside a conjunction** — **Context:** slang#12097 — modeling the SER extension's spec dependency ("SPIR-V 1.4 + (SPV_EXT_physical_storage_buffer | SPV_KHR_physical_storage_buffer | SPIR-V 1.5)") in `source/slang/slang-capabilities.capdef`. [capdef def inheritance accepts top-level | disjunction but NOT parenthesized (b|c) inside a conjunction](../learnings/1784126862980-capdef-def-inheritance-accepts-top-level-disjuncti.md)
+
+**[approver/challenger-win] clearing a new SLANG_RELEASE_ASSERT: sibling-arm precedent + failure-direction beats speculative blast-radius** — ## Symptom A PR adds a new `SLANG_RELEASE_ASSERT(x)` on a value derived from a helper that can return null for some inputs. [[approver/challenger-win] clearing a new SLANG_RELEASE_ASSERT: sibling-arm precedent + failure-direction beats speculative blast-radius](../learnings/1784148942373-approver-challenger-win-clearing-a-new-slang-relea.md)
+
+**meta.slang $(kIROp_X) splice must use the CAPITALIZED enum name, not the lua key** — When adding a new IR op in `source/slang/slang-ir-insts.lua` with a **lowercase** key (e.g. [meta.slang $(kIROp_X) splice must use the CAPITALIZED enum name, not the lua key](../learnings/1784168350681-meta-slang-kirop-x-splice-must-use-the-capitalized.md)
+
+**slang analyzeMakeStruct positional OOB is LATENT — MakeStruct producers preserve operand==field parity** — **Context:** Triaging shader-slang/slang#12132 — `analyzeMakeStruct` in the type-flow specialization pass (`source/slang/slang-ir-typeflow-specialize.cpp`, ~L2260-2283) reads `makeStruct->getOperand(operandIndex)` in a loop bounded by `structType->getFields()`, never checked against `getOperandCount()`. [slang analyzeMakeStruct positional OOB is LATENT — MakeStruct producers preserve operand==field parity](../learnings/1784171101845-slang-analyzemakestruct-positional-oob-is-latent-m.md)
+
+**Revert-drill to prove a witness substitute() is load-bearing (type-generic vs value-generic)** — When a fix calls `val->substitute(astBuilder, SubstitutionSet(someDeclRef))` and a reviewer asks "is this substitution actually needed / where's the test," prove it with a **revert-drill**: neuter the call to `SubstitutionSet()` (empty), rebuild, and check whether the target case *breaks*. [Revert-drill to prove a witness substitute() is load-bearing (type-generic vs value-generic)](../learnings/1784176407848-revert-drill-to-prove-a-witness-substitute-is-load.md)
+
+**[approver/critique-mustfix] failure-direction proof must check the FALLTHROUGH type, not assume miss=safe** — **Symptom:** On slang#12119 R3 (OptiX SBT __ldg exclusion, the vindicated successor to the #11152 false-safe), the production review flagged that the SBT peel-walker `isAddressIntoOptiXShaderBindingTable` omits `kIROp_PtrCast`. [[approver/critique-mustfix] failure-direction proof must check the FALLTHROUGH type, not assume miss=safe](../learnings/1784180537337-approver-critique-mustfix-failure-direction-proof-.md)
+
 ---
 
 ## IR Type-Legalization Quadratic (#12040)
@@ -190,7 +211,7 @@ Nested generic calls `wrap(wrap(...wrap(x0)...))` (where `Wrapper<T> wrap<T:IMod
 
 <!-- fold-20260715 -->
 
-**Source learnings (62):**
+**Source learnings (71):**
 - [lexer hex-digit decoder bug](../learnings/1779805764133-slang-lexer-cpp-has-a-duplicate-hex-digit-decoder-.md)
 - [capability flag vs [require]](../learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md)
 - [bwd_diff out-param convention](../learnings/1780332708129-slang-bwd-diff-out-param-convention-bare-in-differ.md)
@@ -253,4 +274,13 @@ Nested generic calls `wrap(wrap(...wrap(x0)...))` (where `Wrapper<T> wrap<T:IMod
 - [slang#12069 endian/ptr whitelist — pointer-size fails SILENTLY, endianness fails LOUDLY](../learnings/1783835875827-slang-12069-endian-ptr-whitelist-pointer-size-fail.md)
 - [slang#12100 exponential generic-nesting compile time: missing substitution/conformance memoization; >80x regression from #9808 autodiff refactor](../learnings/1784054268864-slang-12100-exponential-generic-nesting-compile-ti.md)
 - [slang#12103 compile-perf depth-workload follow-up — hold for self-assigned owner, merge-blocked on #12086](../learnings/1784056143534-slang-12103-compile-perf-depth-workload-follow-up-.md)
+- [Slang createGlobalSession RSS ≈ g_coreModule blob size; measure it via nm on libslang](../learnings/1784096601212-slang-createglobalsession-rss-g-coremodule-blob-si.md)
+- [[approver/false-safe] Guard keyed on getRootAddr's op-set misses legalization-inserted BitCast/GetOffsetPtr — probe the peel-set against ALL later passes, not the test shapes](../learnings/1784120041393-approver-false-safe-guard-keyed-on-getrootaddr-s-o.md)
+- [[approver/challenger-miss] For a peel-walker guard, verify BOTH op-set completeness AND the fallthrough's failure direction — an incomplete peel is safe iff the miss returns the conservative value](../learnings/1784123729267-approver-challenger-miss-for-a-peel-walker-guard-v.md)
+- [capdef def inheritance accepts top-level | disjunction but NOT parenthesized (b|c) inside a conjunction](../learnings/1784126862980-capdef-def-inheritance-accepts-top-level-disjuncti.md)
+- [[approver/challenger-win] clearing a new SLANG_RELEASE_ASSERT: sibling-arm precedent + failure-direction beats speculative blast-radius](../learnings/1784148942373-approver-challenger-win-clearing-a-new-slang-relea.md)
+- [meta.slang $(kIROp_X) splice must use the CAPITALIZED enum name, not the lua key](../learnings/1784168350681-meta-slang-kirop-x-splice-must-use-the-capitalized.md)
+- [slang analyzeMakeStruct positional OOB is LATENT — MakeStruct producers preserve operand==field parity](../learnings/1784171101845-slang-analyzemakestruct-positional-oob-is-latent-m.md)
+- [Revert-drill to prove a witness substitute() is load-bearing (type-generic vs value-generic)](../learnings/1784176407848-revert-drill-to-prove-a-witness-substitute-is-load.md)
+- [[approver/critique-mustfix] failure-direction proof must check the FALLTHROUGH type, not assume miss=safe](../learnings/1784180537337-approver-critique-mustfix-failure-direction-proof-.md)
 _Catalog: [[wiki/index.md]]_

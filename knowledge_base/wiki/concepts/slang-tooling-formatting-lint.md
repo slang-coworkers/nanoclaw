@@ -112,8 +112,13 @@ None found. The two "draft PR CI" learnings are complementary (one adds the work
 
 When editing **shader-slang/slang-rhi** (not the compiler), its pre-commit/CI gates differ from slang's: **clang-format v20** (not slang's version), an ASCII-only hook, and `-Werror`. Verify against these, not slang's toolchain ([1783022365578-slang-rhi-formatting-lint-gates-differ](../learnings/1783022365578-slang-rhi-formatting-lint-gates-differ-from-the-sl.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**Never run prettier (formatting.sh --md) on the generated capability-atoms doc** — **Context:** slang#12097 — editing a capdef `///` doc comment regenerates `docs/user-guide/a4-02-reference-capability-atoms.md` via `slang-capability-generator`. [Never run prettier (formatting.sh --md) on the generated capability-atoms doc](../learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-generat.md)
+
 ---
-**Source learnings (12):**
+**Source learnings (13):**
 - [Slang formatting.sh requires clang-format 17.x exactly](../learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md)
 - [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
 - [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)
@@ -126,4 +131,5 @@ When editing **shader-slang/slang-rhi** (not the compiler), its pre-commit/CI ga
 - [slang public headers must be ASCII-only (MSVC C4819 under non-UTF-8 charset)](../learnings/1783579004581-slang-public-headers-must-be-ascii-only-msvc-c4819.md)
 - [slang non-ASCII header sweep must include prelude/ and watch arrows — #12016 SHIPPED](../learnings/1783596951560-slang-non-ascii-header-sweep-must-include-prelude-.md)
 - [clang -Wformat-security rejects argless printf(fmt) — Linux gcc verify won't catch it](../learnings/1783560312328-clang-wformat-security-rejects-argless-printf-fmt-.md)
+- [Never run prettier (formatting.sh --md) on the generated capability-atoms doc](../learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-generat.md)
 _Catalog: [[wiki/index.md]]_

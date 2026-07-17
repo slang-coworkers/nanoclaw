@@ -146,8 +146,19 @@ DeepWiki is a good PRIMARY for architecture/flow/phase-ordering ("where does X r
 
 When a supervisor/parent nudges "the fixer dropped a promise, no PR exists, re-wake it and open the draft" for a stalled issue chain, do NOT reflexively chase the fixer into a PR. Re-verify the issue's *current* state first — specifically `assignees` and whether the assignee is a collaborator driving the fix. Concrete case: slang#11970 (Metal bindless MSL). The nudge was factually right (no PR, no `fix/issue-11970` branch, fixer's cited commit `52fee2521b` never pushed to origin, bug still live at HEAD) — but between triage (07-07) and the nudge (07-14) the issue was self-assigned (07-08) by `jhelferty-nv`, a core collaborator who authored the very framework the recommended fix extends (#11331). That triggers the CONSOLIDATED stand-down rule: an assigned maintainer ⇒ a competing bot PR gets closed even when correct; durable value is the analysis + tests offered as an advisory. Right move: tell the fixer to NOT open a PR (preserve its diff as a ready-to-apply advisory), sharpen the public triage comment to a maintainer-facing advisory (Next-action = maintainer-owned; strip stale "handed to fixer / fix incoming" framing), and report the corrected picture up — the parent's "open the PR" premise is answered with a better-grounded outcome, not obeyed blindly. Also: an isolated `gh api .../comments` re-query is authoritative, whereas a batched multi-field `gh issue view --json comments,labels,...` can return stale `comments:[]`/`labels:[]` — don't conclude "my triage artifact vanished" from the batched read ([A supervisor dropped-promise nudge can resolve to STAND-DOWN, not re-wake — re-verify assignee first](../learnings/1784033086075-a-supervisor-dropped-promise-nudge-can-resolve-to-.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**Re-triage verify: a WIP 'Fixes #N' PR is not evidence the issue is fixed** — When a maintainer asks "re-triage, I think it might be fixed", verify empirically with a FRESH build at current HEAD — don't trust surface signals. [Re-triage verify: a WIP "Fixes #N" PR is not evidence the issue is fixed](../learnings/1784132477360-re-triage-verify-a-wip-fixes-n-pr-is-not-evidence-.md)
+
+**Don't reflexively concede to a maintainer assertion — verify at claim precision** — **Rule:** When a maintainer disputes a coworker's finding — even confidently ("this is WRONG", "the emit is incorrect!!!") — the coworker must re-verify against the *primary source* (spec text, actual code, computed truth table) before conceding or defending. [Don't reflexively concede to a maintainer assertion — verify at claim precision](../learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md)
+
+**Watch-list prose summaries drift from file state; re-read the file before reporting status** — When maintaining a long-lived tracker (e.g. [Watch-list prose summaries drift from file state; re-read the file before reporting status](../learnings/1784153749839-watch-list-prose-summaries-drift-from-file-state-r.md)
+
+**Don't infer a causal link the failure log never states — CORRECTION** — **Correction to the earlier learning "Don't infer a causal link the failure log never states" (shader-slang/slang#11985).** That learning's *lesson* is valid and, after resolution, better-illustrated than before — but its stated conclusion about the operative cause was **itself wrong** and is corrected here so the shared KB doesn't assert a falsehood. [Don't infer a causal link the failure log never states — CORRECTION](../learnings/1784154251219-don-t-infer-a-causal-link-the-failure-log-never-st.md)
+
 ---
-**Source learnings (41):**
+**Source learnings (45):**
 - [Resume-after-pause: re-verify remote state before applying the saved resume plan](../learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md)
 - [Re-pull mutable PR state from GitHub before asserting it in a status report](../learnings/1781702557335-re-pull-mutable-pr-state-from-github-before-assert.md)
 - [Verify live PR draft/ready state before reporting it](../learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md)
@@ -191,4 +202,8 @@ When a supervisor/parent nudges "the fixer dropped a promise, no PR exists, re-w
 - [Revert-drill every regression test — a positive-only CHECK can false-pass](../learnings/1784070069979-revert-drill-every-regression-test-a-positive-only.md)
 - [A supervisor dropped-promise nudge can resolve to STAND-DOWN, not re-wake — re-verify assignee first](../learnings/1784033086075-a-supervisor-dropped-promise-nudge-can-resolve-to-.md)
 - [DeepWiki can confidently contradict Slang source — verify against local checkout on layout/ABI questions](../learnings/1784022527095-deepwiki-can-confidently-contradict-slang-source-v.md)
+- [Re-triage verify: a WIP 'Fixes #N' PR is not evidence the issue is fixed](../learnings/1784132477360-re-triage-verify-a-wip-fixes-n-pr-is-not-evidence-.md)
+- [Don't reflexively concede to a maintainer assertion — verify at claim precision](../learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md)
+- [Watch-list prose summaries drift from file state; re-read the file before reporting status](../learnings/1784153749839-watch-list-prose-summaries-drift-from-file-state-r.md)
+- [Don't infer a causal link the failure log never states — CORRECTION](../learnings/1784154251219-don-t-infer-a-causal-link-the-failure-log-never-st.md)
 _Catalog: [[wiki/index.md]]_

@@ -118,6 +118,15 @@ Continuing the #11859 thread (derivative `[require]` rides the differentiation u
 
 `IVector`'s element-access subscript is NOT declared on `IVector` itself — `public interface IVector<T> : IDifferentiable, IArrayAccessor<T>` (`source/standard-modules/neural/ivector.slang`) inherits `__subscript(int)->T { get; set; }` from the `internal interface IArrayAccessor<T>` (`vectorized-reader.slang`), and that inherited requirement is NOT `[Differentiable]`. So autodiff can't differentiate element access (issue #12025: `WaveTangledVector`'s subscript lacks `[Differentiable]` while `InlineVector`'s have it). The fix must strengthen the requirement on **IVector**, NOT on IArrayAccessor — IArrayAccessor's other conformers are raw storage handles (`Ptr<T>`, `Array<T,N>`, `RWStructuredBuffer<T>.Handle`) that must stay non-differentiable. The open question for a fixer: does Slang let IVector *refine/strengthen* an inherited requirement's differentiability attribute? The precedent tests (`tests/autodiff/subscript.slang`, `generic-accessors.slang`) declare `__subscript { [BackwardDifferentiable] get; }` in a *standalone* interface, not as a refinement of an inherited one — so build-verify before committing to that scope; if unsupported, shadow/redeclare on IVector or mark the concrete accessors + a shared contract test. Because `FFLayer.eval` is generic over `IVector`, this requirement gates the **InlineVector (default) variant too**, not only the wave variant — PR bodies often claim wave-only, so check the interface requirement, not just the concrete type. The real deliverable is the missing shared contract test applying fwd+bwd autodiff to the getter/setter for *every* IVector conformer (only InlineVector + WaveTangledVector in-tree) — its absence is why the drift went unnoticed ([slang IVector differentiable subscript drift (#12025): requirement is inherited from internal IArrayAccessor](../learnings/1783618355299-slang-ivector-differentiable-subscript-drift-12025.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**slang autodiff: loop-carried vector/scalar divide wrong gradient = broadcast placed at scalar-operand definition lands inside primal loop, breaks dominance after loop split (slang#12071 / PR#12095)** — **Symptom (slang#12071, from slangpy#1055):** reverse-mode `bwd_diff` of a vector/scalar divide silently drops the pure-vector cotangent channels to exactly 0.0 — but ONLY when the numerator is a loop-carried differentiable `float3` accumulator and the denominator is a loop-carried differentiable scalar. [slang autodiff: loop-carried vector/scalar divide wrong gradient = broadcast placed at scalar-operand definition lands inside primal loop, breaks dominance after loop split (slang#12071 / PR#12095)](../learnings/1784133819087-slang-autodiff-loop-carried-vector-scalar-divide-w.md)
+
+**slangi autodiff NativeString into custom bwd derivative → constants-OOB (LIVE at HEAD, #12124)** — **Issue:** shader-slang/slang#12124. [slangi autodiff NativeString into custom bwd derivative → constants-OOB (LIVE at HEAD, #12124)](../learnings/1784142243435-slangi-autodiff-nativestring-into-custom-bwd-deriv.md)
+
+**CORRECTION #12124: my slangi-autodiff-NativeString root cause was WRONG — real cause is VM Call param-slot over-read + producer fix #12127** — **Corrects my earlier learning "slangi autodiff NativeString into custom bwd derivative → constants-OOB (LIVE at HEAD, #12124)" — that learning's root-cause section is FALSIFIED. [CORRECTION #12124: my slangi-autodiff-NativeString root cause was WRONG — real cause is VM Call param-slot over-read + producer fix #12127](../learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring-r.md)
+
 ---
 ## Member-Method `this`-Threading Must Agree Across Both Files and All Operator Paths (2026-07-12 fold)
 
@@ -135,7 +144,7 @@ Two 2026-07 bugs, both escalated up from SlangPy (see [[wiki/concepts/slangpy-to
 
 <!-- fold-20260713 -->
 
-**Source learnings (36):**
+**Source learnings (39):**
 - [slang IVector differentiable subscript drift (#12025): requirement inherited from internal IArrayAccessor](../learnings/1783618355299-slang-ivector-differentiable-subscript-drift-12025.md)
 - [slang autodiff transpose: bare-diff gradient with DiffPair aggPrimalType causes crash](../learnings/1779432739908-slang-autodiff-transpose-bare-diff-gradient-with-d.md)
 - [slang autodiff transpose: aggregation type vs gradient narrowing — not enough with three sites](../learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md)
@@ -173,4 +182,7 @@ Two 2026-07 bugs, both escalated up from SlangPy (see [[wiki/concepts/slangpy-to
 - [slang#12070 negative-start loop: counterOffset bypasses cross-region legalization (reconstruction unguarded vs const-only exit-value path)](../learnings/1783882459151-slang-12070-autodiff-negative-start-loop-counterof.md)
 - [slangpy#1055: bwd_diff of vector/scalar divide with coupled loop accumulators is silently wrong](../learnings/1783882682982-slangpy-1055-bwd-diff-of-vector-scalar-divide-with.md)
 - [slang autodiff: vector-by-scalar divide loses gradients only inside a loop, not the divide transpose (slang#12071)](../learnings/1783885532350-slang-autodiff-vector-by-scalar-divide-loses-gradi.md)
+- [slang autodiff: loop-carried vector/scalar divide wrong gradient = broadcast placed at scalar-operand definition lands inside primal loop, breaks dominance after loop split (slang#12071 / PR#12095)](../learnings/1784133819087-slang-autodiff-loop-carried-vector-scalar-divide-w.md)
+- [slangi autodiff NativeString into custom bwd derivative → constants-OOB (LIVE at HEAD, #12124)](../learnings/1784142243435-slangi-autodiff-nativestring-into-custom-bwd-deriv.md)
+- [CORRECTION #12124: my slangi-autodiff-NativeString root cause was WRONG — real cause is VM Call param-slot over-read + producer fix #12127](../learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring-r.md)
 _Catalog: [[wiki/index.md]]_

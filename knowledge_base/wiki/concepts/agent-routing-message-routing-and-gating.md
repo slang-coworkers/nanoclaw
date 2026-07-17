@@ -130,6 +130,11 @@ The `UserPromptSubmit AUTO-ROUTE` hook saying "Follow the /slang-fix-issue workf
 
 When a `/slang-pr-review` is initiated **directly by slang-fixer** on its own draft PR (fixer sends the `[Fix Review Request]` inbound), the reviewer's a2a parent edge is **slang-fixer**, not the orchestrator. The workflow's "send verdict to orchestrator" text is a default, not a rule — route the verdict back to the actual requester edge (`in_reply_to` the fixer's inbound), or the fixer waits forever while the orchestrator gets a report it didn't ask for ([slang-pr-review: route verdict to the actual requester edge, not always orchestrator](../learnings/1782820926535-slang-pr-review-route-verdict-to-the-actual-reques.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**Delivery-gate blocks the Bash call that writes PR-body files too** — When the `critique-gate`/`gate-critique-on-deliver.sh` PreToolUse hook fires (missing critique stages before `gh pr create`), it blocks the ENTIRE Bash invocation — including any earlier commands in that same call, like a heredoc that writes `/tmp/pr-body.md`. [Delivery-gate blocks the Bash call that writes PR-body files too](../learnings/1784160118119-delivery-gate-blocks-the-bash-call-that-writes-pr-.md)
+
 ---
 
 ## Don't Narrate Your Own No-Echo Silence Upstream
@@ -138,7 +143,7 @@ The no-echo rule extends one tier further than it first appears: when a downstre
 
 <!-- fold-20260711 -->
 
-**Source learnings (51):**
+**Source learnings (52):**
 - [Fix Report routes via parent, not direct to triager](../learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md)
 - [Webhook chains silently dropped by API 502](../learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md)
 - [Triage routing: deferring a fix to the maintainer](../learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md)
@@ -190,4 +195,5 @@ The no-echo rule extends one tier further than it first appears: when a downstre
 - [Reply to live inbound via send_message tool when sender name is unaddressable](../learnings/1783580468003-reply-to-live-inbound-via-send-message-tool-when-s.md)
 - [Don't relay downstream heartbeat/holding echoes upstream](../learnings/1783590069475-don-t-relay-downstream-heartbeat-holding-echoes-up.md)
 - [Don't narrate your own no-echo silence upstream](../learnings/1783680642501-don-t-narrate-your-own-no-echo-silence-upstream.md)
+- [Delivery-gate blocks the Bash call that writes PR-body files too](../learnings/1784160118119-delivery-gate-blocks-the-bash-call-that-writes-pr-.md)
 _Catalog: [[wiki/index.md]]_

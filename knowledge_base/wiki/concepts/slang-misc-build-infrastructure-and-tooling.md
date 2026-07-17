@@ -112,6 +112,11 @@ The new `SLANG_ENABLE_MIMALLOC` override from PR #12036 (distinct from the long-
 
 **There is exactly ONE mimalloc in a Slang build, whatever Slang pins.** When SPIRV-Tools is built as a subdirectory inside Slang it does NOT fetch its own mimalloc: Slang's `external/CMakeLists.txt` sets `mimalloc_SOURCE_DIR = ${MIMALLOC_PATH}` and `SPIRV_TOOLS_USE_MIMALLOC` before `add_subdirectory(spirv-tools)`, and SPIRV-Tools' CMake then does `set(MIMALLOC_DIR ${mimalloc_SOURCE_DIR}) → add_subdirectory(...)` — both link the SAME single `mimalloc-static` target (name unchanged across 2.1.7/2.3.2/3.3.2, so #12036's `target_link_libraries(slang PRIVATE mimalloc-static)` is version-agnostic). The `external/spirv-tools/DEPS` `mimalloc_revision` is a gclient/gn field NEVER read by CMake — inert when spirv-tools builds inside Slang — so "match whatever spirv-tools uses" means reading DEPS for reference only; pinning Slang's `external/mimalloc` to a different commit than DEPS names is NOT a two-versions mismatch. Corollary: mimalloc tags are ANNOTATED (deref with `git ls-remote <repo> 'refs/tags/vX.Y.Z^{}'`) and version-decode via `include/mimalloc.h` `MI_MALLOC_VERSION` (20302 = v2.3.2); a perf regression measured in both 2.3.2 and 3.3.2 reconciled the pin back to v2.1.7 `8c532c32c3` (the original pre-#12036 pin) ([slang external/mimalloc feeds SPIRV-Tools' build; spirv-tools DEPS is NOT a CMake input](../learnings/1784083959740-slang-external-mimalloc-feeds-spirv-tools-build-sp.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**Editing source/slang-llvm/ — default build fetches a PREBUILT libslang-llvm.so, so your edit is NOT compiled locally** — **Rule:** A change to any file under `source/slang-llvm/` (e.g. [Editing source/slang-llvm/ — default build fetches a PREBUILT libslang-llvm.so, so your edit is NOT compiled locally](../learnings/1784096455719-editing-source-slang-llvm-default-build-fetches-a-.md)
+
 ---
 
 ## MSVC /DEBUG for Release PDBs Silently Disables /OPT:REF and /OPT:ICF (#12054)
@@ -124,7 +129,7 @@ Slang's default MSVC Release build loses dead-code elimination and identical-COM
 
 Slang release packaging has two distinct edit sites, and the File-check step is not a validation gate. Platform ZIP/TGZ archives are built by CPack (files enter via `install(... COMPONENT metadata)` in `CMakeLists.txt`), but **WASM packages bypass CPack** entirely — so adding files to release archives (e.g. issue #12083's `LICENSES/` dir) requires touching both sites, and the release File-check step will not catch a WASM omission ([Slang release: WASM packages bypass CPack; File-check is not a validation gate](../learnings/1783957891963-slang-release-wasm-packages-bypass-cpack-file-chec.md)).
 
-**Source learnings (46):**
+**Source learnings (47):**
 - [MSVC C5285 on doctest fixed by /wd5285](../learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md)
 - [MSVC 14.51 C5285 on vendored doctest](../learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md)
 - [slang-rhi submodule pin lags feature PRs](../learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md)
@@ -167,4 +172,5 @@ Slang release packaging has two distinct edit sites, and the File-check step is 
 - [mimalloc is Slang's only configure-time-download dep; making it an error is gated on submodule-vendoring first (#12102)](../learnings/1784053617554-mimalloc-is-slang-s-only-configure-time-download-d.md)
 - [slang external/mimalloc feeds SPIRV-Tools' build; spirv-tools DEPS is NOT a CMake input](../learnings/1784083959740-slang-external-mimalloc-feeds-spirv-tools-build-sp.md)
 
+- [Editing source/slang-llvm/ — default build fetches a PREBUILT libslang-llvm.so, so your edit is NOT compiled locally](../learnings/1784096455719-editing-source-slang-llvm-default-build-fetches-a-.md)
 _Catalog: [[wiki/index.md]]_

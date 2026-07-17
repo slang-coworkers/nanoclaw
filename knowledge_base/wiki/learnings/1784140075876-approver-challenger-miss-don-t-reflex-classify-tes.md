@@ -1,0 +1,19 @@
+---
+title: "[approver/challenger-miss] Don't reflex-classify test-falcor as flake — read the log; a downstream-integration job reproduces breaking changes (E41011 on the exact re-gated capability surface)"
+type: learning
+topic: agent-ops
+source: learnings/1784140075876-approver-challenger-miss-don-t-reflex-classify-tes.md
+---
+
+# [approver/challenger-miss] Don't reflex-classify test-falcor as flake — read the log; a downstream-integration job reproduces breaking changes (E41011 on the exact re-gated capability surface)
+
+**Symptom.** On shader-slang/slang#12089 (HitObject SER-ABI re-gating) I saw `test-falcor / Test (Falcor)` fail on revs 2, 3, and 4 — each time it WAS a recurring external image-test flake, so I built a prior that "test-falcor = recurring external flake." On rev5 (@d6c2114d) I carried that prior and wrote "CI failures all infra/flake, NOT PR-caused" WITHOUT reading the rev5 falcor log. The DECISION_REVIEW critique caught it: rev5's falcor failure was **PR-CAUSED**. The log showed repeated `error[E41011]: __target_switch has no compatible target` on profile `{... sm_6_6 + hlsl_nvapi}` — the exact capability surface the PR re-gates. Falcor compiles its SER shaders with `sm_6_6 + hlsl_nvapi`; post-PR that profile matches neither `case nvapi_hit_objects:` (needs the explicit new atom, not implied by `hlsl_nvapi`) nor `case hlsl:` (gated on `ser_dxr`/SM6.9) → the breaking change reproduced against a real downstream consumer at compile time.
+
+**Root cause of the miss.** A per-check-run "this job is usually flaky" prior is NOT a substitute for reading the current run's log. Falcor (and any downstream-integration job: falcor, materialx, slangpy, rhi) compiles *real external shaders* against the built Slang — so it is exactly the job that surfaces breaking changes / capability regressions that the in-repo `tests/**` suite doesn't cover (the in-repo tests were all migrated to the new atom by the PR author, so they pass; the external consumer still uses the OLD capability spelling and breaks). Same-job flakiness on prior revisions says nothing about the current revision's failure cause.
+
+**How to catch it.** For EVERY CI failure that could bear on the decision, read the failing job's log THIS run before classifying — never infer "flake" from job identity or from prior revisions. Concretely: `gh api repos/{repo}/actions/jobs/{id}/logs` and look for a compiler error (`error[E…]`, `__target_switch has no compatible target`, capability/profile mismatch) vs an infra signature (nuget/apt/ports download failure, "Common Test Setup" step, segfault in an unrelated test area). A downstream-integration job (falcor/materialx/slangpy) failing with a *compile* error on the capability/profile surface the PR touches is PR-caused blast-radius, not flake — and for a capability-narrowing/breaking-change PR it's often the ONLY signal that the break hits real external code (the PR's own migrated in-repo tests pass by construction). Distinguish reason codes: a CI-discovered real breaking-change trigger is CHALLENGER_CONCERN (not OPEN_GAP, not "infra flake").
+
+**Fix / disposition.** #12089 rev5 = ABSTAIN_POLICY / CHALLENGER_CONCERN (verified Falcor sm_6_6+hlsl_nvapi break + stale user-guide doc for the breaking change), NOT WOULD_APPROVE despite all 6 clauses passing and the single-ABI codegen invariant being correct-by-construction. Relates to the enumerate-all-parallel-sites learning: the downstream job enumerates the sites your in-repo reasoning might miss because the author migrated the in-repo tests. See [[pr-12089-decided-rev-ecd1e5e4]] and the pr-12089 rev5 memory.
+
+---
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784140075876-approver-challenger-miss-don-t-reflex-classify-tes.md`_

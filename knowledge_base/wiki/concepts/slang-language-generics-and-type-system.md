@@ -90,6 +90,15 @@ PR #11493 (`61ad43dbc`, first in v2026.11) added `SemanticsExprVisitor::convertT
 
 The "explain why each overload candidate was rejected" DX ask (#12035) is NOT greenfield — issue #7857 already built most of the per-candidate machinery. The `OverloadCandidate` struct (`slang-check-impl.h:377-456`) carries a coarse per-candidate `Status` enum (Unchecked → ArityChecked → FixityChecked → TypeChecked → DirectionChecked → VisibilityChecked → Applicable, + GenericArgumentInferenceFailed), the first un-coercible arg (`argMismatchArgIndex/ExpectedType/ActualType`, recorded in `recordArgMismatch` @ `slang-check-overload.cpp:877-886`, only when bare types differ — skips l-value/inout qualifier-only mismatches), `conversionCostSum` (the existing ranking metric for *applicable* candidates), and `genericInferenceFailure`. The "no applicable overload" emitter (`:3520-3611`) already sorts `bestCandidates` by status and prints `argument N does not match: expected 'X', got 'Y'` per candidate when an arg mismatch was recorded. The GAP: only the type-coercion rejection reason is surfaced — arity mismatch (count recomputed but not stored per-candidate), inaccessibility (`InvisibleOverloadCandidate` note E40014 exists but only in the *ambiguous* branch @ :3692, never the no-applicable branch), failed generic constraint, and direction/inout mismatch all show just the bare signature. Diagnostic text lives in `source/slang/slang-diagnostics.lua:3896-3958` (rich struct-based, not the legacy defs header); `bestCandidates` holds only the tied-furthest-progressing set (`AddOverloadCandidateInner` @ :2461-2540 filters strictly-worse out), so a full "rank ALL candidates by proximity" feature may need candidate-retention changes on the hot resolution path. So #12035 splits cleanly: (A) fix-ready near-term slice = emit the remaining rejection reasons reusing the #7857 pattern; (B) design-gated = true proximity ranking needs a heuristic-definition decision ([slang#12035 overload-failure diagnostics — #7857 already built most of the per-candidate machinery](../learnings/1783656901958-slang-12035-overload-failure-diagnostics-7857-alre.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**slang#9153 public-by-default structs — semantics-only at getDeclVisibility, mirror the interface rule** — **Task:** scope Feature #9153 — "public struct ⇒ members public by default", gated on language version ≥ 2026 (maintainer jkwak-work authorized Proposal 1). [slang#9153 public-by-default structs — semantics-only at getDeclVisibility, mirror the interface rule](../learnings/1784153822100-slang-9153-public-by-default-structs-semantics-onl.md)
+
+**slang#12049 SHIPPED — Approach A confirmed: entry-point -specialize conformance scoped to getModule()+getModuleDependencies()** — # slang#12049 SHIPPED (PR #12052 merged 2026-07-16) — the triaged Approach A landed verbatim [slang#12049 SHIPPED — Approach A confirmed: entry-point -specialize conformance scoped to getModule()+getModuleDependencies()](../learnings/1784167461042-slang-12049-shipped-approach-a-confirmed-entry-poi.md)
+
+**slang link-time assoc-type resolution: two resolvers differ on TransitiveSubtypeWitness (#12134)** — When triaging link-time `export`/`extern` wrapper associated-type resolution in Slang (the #9580 / #12131 / #12134 cluster), there are **two distinct requirement-resolution entry points that behave differently on transitivity** — this is load-bearing for any base-interface / transitive fix: [slang link-time assoc-type resolution: two resolvers differ on TransitiveSubtypeWitness (#12134)](../learnings/1784248435373-slang-link-time-assoc-type-resolution-two-resolver.md)
+
 ---
 
 ## Generic Entry-Point -specialize Can't See Primary-File Extension Conformances (#12049)
@@ -98,7 +107,7 @@ The "explain why each overload candidate was rejected" DX ask (#12035) is NOT gr
 
 <!-- fold-20260711 -->
 
-**Source learnings (39):**
+**Source learnings (42):**
 - [slang init-list→vector: (vec2,vec2) composition ctor splats scalars, diverges from tail-pad path](../learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md)
 - [slang#12035 overload-failure diagnostics — #7857 already built most of the per-candidate machinery](../learnings/1783656901958-slang-12035-overload-failure-diagnostics-7857-alre.md)
 - [Slang any-value-inference recursion: #10686 pointer guard is partial; IRSpecialize-operand path bypasses it](../learnings/1780353989621-slang-any-value-inference-recursion-10686-pointer-.md)
@@ -138,4 +147,7 @@ The "explain why each overload candidate was rejected" DX ask (#12035) is NOT gr
 - [slang#10471 module accessibility — maintainer-blessed design; both parts semantic-check-only](../learnings/1783523027176-slang-10471-module-accessibility-maintainer-blesse.md)
 - [Lambda name synthesis omits disambiguator at module scope (_slang_Lambda_ collision)](../learnings/1783407191560-lambda-name-synthesis-omits-disambiguator-at-modul.md)
 - [slang#12049 -- generic entry-point -specialize can't see primary-file extension conformances (ad-hoc lookup starved)](../learnings/1783701731376-slang-12049-generic-entry-point-specialize-can-t-s.md)
+- [slang#9153 public-by-default structs — semantics-only at getDeclVisibility, mirror the interface rule](../learnings/1784153822100-slang-9153-public-by-default-structs-semantics-onl.md)
+- [slang#12049 SHIPPED — Approach A confirmed: entry-point -specialize conformance scoped to getModule()+getModuleDependencies()](../learnings/1784167461042-slang-12049-shipped-approach-a-confirmed-entry-poi.md)
+- [slang link-time assoc-type resolution: two resolvers differ on TransitiveSubtypeWitness (#12134)](../learnings/1784248435373-slang-link-time-assoc-type-resolution-two-resolver.md)
 _Catalog: [[wiki/index.md]]_

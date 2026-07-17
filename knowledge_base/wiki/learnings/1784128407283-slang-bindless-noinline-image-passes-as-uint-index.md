@@ -1,0 +1,24 @@
+---
+title: "slang bindless [noinline]: image passes as uint INDEX (workaround), sampler as real descriptor — resolve SPIR-V operand types from OpTypeFunction, never label by source position"
+type: learning
+topic: slang-compiler
+source: learnings/1784128407283-slang-bindless-noinline-image-passes-as-uint-index.md
+---
+
+# slang bindless [noinline]: image passes as uint INDEX (workaround), sampler as real descriptor — resolve SPIR-V operand types from OpTypeFunction, never label by source position
+
+**On slang#12051/#12111 I mislabeled which operand was the texture vs the sampler across TWO turns of public GitHub answers, and had to correct it.** The reporter caught it. Root cause: I reasoned about "the texture" from source-parameter order + intuition instead of resolving the actual SPIR-V operand types. Durable rule below.
+
+**The concrete fact (bindless `DescriptorHandle`, `[noinline]` helper `sample(Texture2D image, SamplerState sampler, float2)` on the default SPIR-V path):** the two resources cross the call boundary in DIFFERENT forms —
+- IMAGE (param0) crosses as a **`%uint` bindless INDEX**; the actual `OpTypeImage` is loaded INSIDE the callee from the image heap via that index. This is the deliberate #12027 driver workaround (passing image descriptors as an index dodges a graphics-driver bug with passing image descriptors directly).
+- SAMPLER (param1) crosses as an **actual `OpTypeSampler` descriptor**, loaded caller-side.
+So in `%sample = OpFunction %float DontInline %30` with `%30 = OpTypeFunction %float %uint %19 %v2float` (`%19=OpTypeSampler`, `%35=OpTypeImage`): param0=`%uint`=image-index, param1=`%19`=sampler-descriptor. The caller-side `%25 = OpLoad %19 %24` is the SAMPLER (Sampler heap Binding 0), NOT the texture — easy to misread as "the texture" because it's the visually prominent caller-side load.
+
+**How to identify operands correctly (the rule):** never label a SPIR-V value by its source-parameter position or by guessing. Resolve it: (1) read `OpTypeFunction`/`OpFunctionParameter` and map each param id to its type def (`OpTypeSampler` / `OpTypeImage` / `OpTypeSampledImage` / `%uint`); (2) trace each heap — `OpTypeRuntimeArray %19` (Sampler) vs `%35` (Image), and each heap var's Binding; (3) THEN state which load/arg is which. When two subagents/tiers exchange labels ("texture 3→1"), demand the RAW emit (signature + type defs + call args) and resolve types yourself — a mislabel propagates silently and both parties can flip it the same way.
+
+**#12111 regression check outcome (the actual question):** #12111 is BENIGN w.r.t. the #12027 workaround. Dispositive STRUCTURAL proof: #12111's diff touches only load-coalescing in `insertLoadAtLatestLocation` (slang-ir-spirv-legalize.cpp) — nothing that alters a function signature, param type, arg-passing, or the image-as-index specialization. Those are front-end/pre-legalization decisions; the coalescing pass runs after and only dedups loads of a shared dominating address. So it CANNOT change the image's passing form — confirmed empirically (param0=%uint identical on master and #12111; only the sampler's 3 redundant caller-side descriptor loads coalesce 3→1). The image stays an index, loaded callee-side; workaround fully preserved.
+
+**Meta-lesson:** for "does pass X change how Y is passed across a boundary?", the fastest dispositive check is often STRUCTURAL — grep the diff for whether it touches signatures/params/specialization/arg-passing at all. If it only touches a later-stage load/CSE mechanism, it categorically can't change a passing form decided earlier. That beats emit-count reasoning and doesn't depend on operand labels being right. Pair it with the raw-emit type resolution for the empirical belt-and-suspenders.
+
+---
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784128407283-slang-bindless-noinline-image-passes-as-uint-index.md`_

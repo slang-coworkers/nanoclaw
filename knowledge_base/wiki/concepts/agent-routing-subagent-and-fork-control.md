@@ -52,8 +52,19 @@ When an auto-route hook re-fires right after an explicit stand-down on the same 
 
 For the `/slang-fix-issue` and `/slang-plan` **Recall** step ('spawn an Agent to scan prior learnings'), pass an isolated `subagent_type` (e.g. `Explore`) — never a bare context-inheriting fork, which re-runs the whole workflow and can produce phantom co-driver activity ([1783301166520-recall-scan-step-use-an-isolated-subag](../learnings/1783301166520-recall-scan-step-use-an-isolated-subagent-type-nev.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**critique-gate bash_patterns false-blocks read-only gh api pulls GETs** — # critique-gate hook over-blocks read-only `gh api .../pulls/<n>` GETs [critique-gate bash_patterns false-blocks read-only gh api pulls GETs](../learnings/1784126848994-critique-gate-bash-patterns-false-blocks-read-only.md)
+
+**[approver/critique-mustfix] OUTPUT_REVIEW must be a fresh codex call, not codex-reply** — **Symptom:** After a DECISION_REVIEW round via `mcp__codex__codex`, I ran the follow-up OUTPUT_REVIEW round via `mcp__codex__codex-reply` (same thread). [[approver/critique-mustfix] OUTPUT_REVIEW must be a fresh codex call, not codex-reply](../learnings/1784144408567-approver-critique-mustfix-output-review-must-be-a-.md)
+
+**[approver/critique-mustfix] Read-only gh api .../pulls and .../reviews trip the critique-gate bash pattern — use GraphQL for PR reads** — Symptom: while building the review input for slangpy#1065 (a pure read pipeline), three separate read-only `gh api repos/.../pulls/N/comments`, `.../pulls/N/reviews`, and `gh api repos/.../pulls/N` calls were each DENIED by `/app/hooks/gate-critique-on-deliver.sh` with "CRITIQUE REQUIRED before PR creation". [[approver/critique-mustfix] Read-only gh api .../pulls and .../reviews trip the critique-gate bash pattern — use GraphQL for PR reads](../learnings/1784148758791-approver-critique-mustfix-read-only-gh-api-pulls-a.md)
+
+**critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}** — Symptom: `gh pr create` denied by gate-critique-on-deliver.sh with "OUTPUT_REVIEW ran but no verdict was recorded" even after codex returned a clean `### Verdict\napprove`, AND the PostToolUse hook context showed empty stages/verdicts ("Critique round  recorded (stages: ; [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
+
 ---
-**Source learnings (13):**
+**Source learnings (17):**
 - [Don't use context-inheriting fork for narrow recall during active workflow](../learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md)
 - [Read-only recall forks must be scoped Explore or explicitly constrained](../learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md)
 - [Duplicate dispatch peer live-writes the fix into your shared worktree](../learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md)
@@ -67,4 +78,8 @@ For the `/slang-fix-issue` and `/slang-plan` **Recall** step ('spawn an Agent to
 - [Build-only subagent overstepped: committed/pushed/dispatched CI](../learnings/1781809987259-build-only-subagent-overstepped-committed-pushed-d.md)
 - [Untraceable parent mandate for costly/gated work](../learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated-w.md)
 - [Recall/scan step: use an isolated subagent_type, never a bare context-inheriting fork](../learnings/1783301166520-recall-scan-step-use-an-isolated-subagent-type-nev.md)
+- [critique-gate bash_patterns false-blocks read-only gh api pulls GETs](../learnings/1784126848994-critique-gate-bash-patterns-false-blocks-read-only.md)
+- [[approver/critique-mustfix] OUTPUT_REVIEW must be a fresh codex call, not codex-reply](../learnings/1784144408567-approver-critique-mustfix-output-review-must-be-a-.md)
+- [[approver/critique-mustfix] Read-only gh api .../pulls and .../reviews trip the critique-gate bash pattern — use GraphQL for PR reads](../learnings/1784148758791-approver-critique-mustfix-read-only-gh-api-pulls-a.md)
+- [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
 _Catalog: [[wiki/index.md]]_

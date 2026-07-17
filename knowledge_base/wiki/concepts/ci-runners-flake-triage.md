@@ -98,6 +98,25 @@ When a maintainer sees `@shader-slang/dev` (the team) added as a reviewer on a b
 
 `bash scripts/pull-universe.sh … | python3 scripts/scan.py` exits 1 with `syntax error near unexpected token '('` at ~line 145, and scan.py then reports `stdin is not a tty` — a bash-quoting bug in pull-universe.sh (a sibling to the earlier argv-overflow issue) that aborts the supervise tick ([1782995331984-supervise-issues-pull-universe-sh-bash](../learnings/1782995331984-supervise-issues-pull-universe-sh-bash-quoting-bug.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**Verify passed-vs-FAILED before citing a test signature in an escalation** — When citing a specific test as the failure signature in an escalation/GitHub comment, grep the run log for the `FAILED test:` line specifically — NOT just any mention of the test name. [Verify passed-vs-FAILED before citing a test signature in an escalation](../learnings/1784096353229-verify-passed-vs-failed-before-citing-a-test-signa.md)
+
+**[approver/challenger-miss] aarch64 build red on a slang PR is usually Setup-stage infra-flake, not a compile error — classify by cross-platform + cross-PR** — **Symptom:** shader-slang/slang#12123 (test-only, single .cpp) tasked with a CI-failed event. [[approver/challenger-miss] aarch64 build red on a slang PR is usually Setup-stage infra-flake, not a compile error — classify by cross-platform + cross-PR](../learnings/1784138142765-approver-challenger-miss-aarch64-build-red-on-a-sl.md)
+
+**[approver/challenger-miss] Don't reflex-classify test-falcor as flake — read the log; a downstream-integration job reproduces breaking changes (E41011 on the exact re-gated capability surface)** — **Symptom.** On shader-slang/slang#12089 (HitObject SER-ABI re-gating) I saw `test-falcor / Test (Falcor)` fail on revs 2, 3, and 4 — each time it WAS a recurring external image-test flake, so I built a prior that "test-falcor = recurring external flake." On rev5 (@d6c2114d) I carried that prior and wrote "CI failures all infra/flake, NOT PR-caused" WITHOUT reading the rev5 falcor log. [[approver/challenger-miss] Don't reflex-classify test-falcor as flake — read the log; a downstream-integration job reproduces breaking changes (E41011 on the exact re-gated capability surface)](../learnings/1784140075876-approver-challenger-miss-don-t-reflex-classify-tes.md)
+
+**[approver/challenger-win] compile-perf native tools compiled out-of-band by bench.py escape CMake CI — a Windows include-order 🔴 is real and CI-invisible** — **Symptom.** PR #12125 (shader-slang/slang, jvepsalainen-nv, compile-perf memory-footprint tracking) added a new `tools/compile-perf/native/api-driver.cpp` that includes `<psapi.h>` *before* `<windows.h>`. [[approver/challenger-win] compile-perf native tools compiled out-of-band by bench.py escape CMake CI — a Windows include-order 🔴 is real and CI-invisible](../learnings/1784147373872-approver-challenger-win-compile-perf-native-tools-.md)
+
+**A closed CI-flake issue can harbor a real latent bug in the same code path — investigate alt-root-cause comments on their merits (slang #11951 → PR #12114)** — shader-slang/slang#11951 was a merge-queue flake (`static-const-matrix-array.slang.3 syn (llvm)` test-server RPC drop), closed by maintainer after PR #12056 fixed the actual cause (AVX-512 illegal-instruction in the LLVM JIT on virtualized hosts → test-server child crash → JSON-RPC `waitForResult()/hasMessage()` drop). [A closed CI-flake issue can harbor a real latent bug in the same code path — investigate alt-root-cause comments on their merits (slang #11951 → PR #12114)](../learnings/1784152131245-a-closed-ci-flake-issue-can-harbor-a-real-latent-b.md)
+
+**SLANG-WINDOWS-2 is an image-baked pool name, not a physical host — resolve runners by runner_name** — On the Slang CI **Windows GPU test tier** (`["Windows","self-hosted","GCP-T4"]`, ci.yml:467–504), the GitHub Actions log field **`Machine name: 'SLANG-WINDOWS-2'` is an image-baked OS computer name shared across many ephemeral GCP-T4 VMs — it is NOT a physical-host discriminator.** Do not attribute "same physical runner" from matching "Machine name". [SLANG-WINDOWS-2 is an image-baked pool name, not a physical host — resolve runners by runner_name](../learnings/1784161547411-slang-windows-2-is-an-image-baked-pool-name-not-a-.md)
+
+**Nightly MDL Perf Test = compile-time perf gate, not a GPU/corpus test** — The `Nightly MDL Perf Test` workflow (shader-slang/slang) is a **front-end compile-time perf gate**, not a GPU/correctness or MDL-corpus runtime test. [Nightly MDL Perf Test = compile-time perf gate, not a GPU/corpus test](../learnings/1784184423207-nightly-mdl-perf-test-compile-time-perf-gate-not-a.md)
+
+**CI health_snapshots.jsonl feed can be badly stale — don't assert live queue health from it** — The `health_snapshots.jsonl` CI-queue feed (raw.githubusercontent.com/shader-slang/slang-ci-analytics/main/health_snapshots.jsonl) used by the daily-report CI-health step can be **months stale**. [CI health_snapshots.jsonl feed can be badly stale — don't assert live queue health from it](../learnings/1784189757200-ci-health-snapshots-jsonl-feed-can-be-badly-stale-.md)
+
 ---
 
 ## Merge-Group-Only ASan Overflow: a Caller Bug, Not the Callee (#12058)
@@ -138,7 +157,7 @@ The compile-perf tracker's peak-RSS metric (#12112 bullet 1) is NOT greenfield: 
 
 <!-- fold-20260715 -->
 
-**Source learnings (50):**
+**Source learnings (58):**
 - [Cooperative-vector tests failing deterministically on Windows-release-GPU](../learnings/1780157118768-slang-ci-cooperative-vector-tests-fail-on-windows-.md)
 - [Windows disk-space cluster flake](../learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)
 - [`gh run rerun --failed` cannot fix cross-attempt artifact-not-found](../learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md)
@@ -192,4 +211,12 @@ The compile-perf tracker's peak-RSS metric (#12112 bullet 1) is NOT greenfield: 
 - [Daily-report CI: health_snapshots.jsonl last line can be badly stale — cross-check with Actions API](../learnings/1784017364046-daily-report-ci-health-snapshots-jsonl-last-line-c.md)
 - [compile-perf tracker already captures rss_kb but it's dead on the Windows perf runner and never surfaced](../learnings/1784095582129-compile-perf-tracker-already-captures-rss-kb-but-i.md)
 
+- [Verify passed-vs-FAILED before citing a test signature in an escalation](../learnings/1784096353229-verify-passed-vs-failed-before-citing-a-test-signa.md)
+- [[approver/challenger-miss] aarch64 build red on a slang PR is usually Setup-stage infra-flake, not a compile error — classify by cross-platform + cross-PR](../learnings/1784138142765-approver-challenger-miss-aarch64-build-red-on-a-sl.md)
+- [[approver/challenger-miss] Don't reflex-classify test-falcor as flake — read the log; a downstream-integration job reproduces breaking changes (E41011 on the exact re-gated capability surface)](../learnings/1784140075876-approver-challenger-miss-don-t-reflex-classify-tes.md)
+- [[approver/challenger-win] compile-perf native tools compiled out-of-band by bench.py escape CMake CI — a Windows include-order 🔴 is real and CI-invisible](../learnings/1784147373872-approver-challenger-win-compile-perf-native-tools-.md)
+- [A closed CI-flake issue can harbor a real latent bug in the same code path — investigate alt-root-cause comments on their merits (slang #11951 → PR #12114)](../learnings/1784152131245-a-closed-ci-flake-issue-can-harbor-a-real-latent-b.md)
+- [SLANG-WINDOWS-2 is an image-baked pool name, not a physical host — resolve runners by runner_name](../learnings/1784161547411-slang-windows-2-is-an-image-baked-pool-name-not-a-.md)
+- [Nightly MDL Perf Test = compile-time perf gate, not a GPU/corpus test](../learnings/1784184423207-nightly-mdl-perf-test-compile-time-perf-gate-not-a.md)
+- [CI health_snapshots.jsonl feed can be badly stale — don't assert live queue health from it](../learnings/1784189757200-ci-health-snapshots-jsonl-feed-can-be-badly-stale-.md)
 _Catalog: [[wiki/index.md]]_

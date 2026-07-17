@@ -96,6 +96,13 @@ A coworker's background watch process (`&`-spawned poll loop, PID-tracked watche
 
 Do NOT probe a mutating `ncl` verb by appending `help`/`--help` (e.g. `ncl groups restart help`) — on approval-gated mutating verbs the dispatcher can treat the invocation as the *action* and fire a real pending approval rather than print help. Observed: `ncl groups restart help`, run purely to inspect the flag surface, returned `error (approval-pending): Approval request sent to admin` and later executed a real group-restart. To learn a verb's flags, use `ncl help` or `ncl <resource> help` (resource-level, never the mutating verb spelled out); reserve typing `restart`/`delete`/`update`/`create`/`grant`/`revoke` for when you actually intend the mutation. Corollary: there is **no surgical per-session restart** in `ncl sessions` (read-only), so do not reach for `ncl groups restart --id <group>` to fix a single thrashing session (whole-group collateral) — the correct recovery is a fresh append-only sub-thread dispatch (new clean-context session, resume-from-disk). And remember Main cannot deny a stray approval (`ncl approvals` is read-only; approvals route to the human operator) — surface it explicitly with the desired decision, since a mis-approve is possible ([ncl mutating-verb help/probes can dispatch the real approval-gated action](../learnings/1783650441468-ncl-mutating-verb-help-probes-can-dispatch-the-rea.md)).
 
+
+## Recent operational learnings (incremental fold 2026-07-17)
+
+**Track dispatched-work ETAs; a blown ETA is a dropped-task signal, not a reason to keep holding** — # Don't passively "hold for" overdue dispatched work — chase at ETA [Track dispatched-work ETAs; a blown ETA is a dropped-task signal, not a reason to keep holding](../learnings/1784154058484-track-dispatched-work-etas-a-blown-eta-is-a-droppe.md)
+
+**PR-thread vs issue-thread divergence spawns duplicate same-identity fixer sessions** — **Pattern:** A fixer working an issue-keyed chain (`gh-issue-<owner>/<repo>-<ISSUE#>`) opens a PR, then a later comment/event lands on that **PR** and the host stamps it `gh-issue-<owner>/<repo>-<PR#>` (the PR number, since an unmapped issue_comment uses the PR/issue number verbatim). [PR-thread vs issue-thread divergence spawns duplicate same-identity fixer sessions](../learnings/1784172984625-pr-thread-vs-issue-thread-divergence-spawns-duplic.md)
+
 ---
 ## A2A Edge Durability and Report-Session Visibility Limits (2026-07-12 fold)
 
@@ -115,7 +122,7 @@ A named a2a edge (e.g. `slang-pr-approver ↔ slang-reviewer`) can silently drop
 
 Before flagging a no-PR chain as "no GitHub artifact / owed PR", check for **issue comments** by the bot (triage 5-bullets), not just a PR or a `pr_session_mappings` row — `scan.py`'s `github_artifact` is null whenever there's no PR, but a stood-down/upstream-blocked chain's artifact is its triage comment on the issue ([supervisor artifact-check misses issue-comment artifacts for no-PR chains](../learnings/1783950814878-supervisor-artifact-check-misses-issue-comment-art.md)).
 
-**Source learnings (31):**
+**Source learnings (33):**
 - [CONSOLIDATED: phantom / fabricated orchestrator-relay directives](../learnings/1780558161000-CONSOLIDATED-phantom-injected-relay-directives.md)
 - [A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
 - [Empty-ack loops: diagnose self-edge vs mutual-echo before restarting](../learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md)
@@ -149,4 +156,6 @@ Before flagging a no-PR chain as "no GitHub artifact / owed PR", check for **iss
 - [heartbeat pre-check pending_summons is inflated by button spam — dedup by thread_id before working](../learnings/1783923415924-heartbeat-pre-check-pending-summons-is-inflated-by.md)
 - [Supervisor artifact-check misses issue-comment artifacts for no-PR chains](../learnings/1783950814878-supervisor-artifact-check-misses-issue-comment-art.md)
 
+- [Track dispatched-work ETAs; a blown ETA is a dropped-task signal, not a reason to keep holding](../learnings/1784154058484-track-dispatched-work-etas-a-blown-eta-is-a-droppe.md)
+- [PR-thread vs issue-thread divergence spawns duplicate same-identity fixer sessions](../learnings/1784172984625-pr-thread-vs-issue-thread-divergence-spawns-duplic.md)
 _Catalog: [[wiki/index.md]]_
