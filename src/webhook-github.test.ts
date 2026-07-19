@@ -62,6 +62,8 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
@@ -125,6 +127,8 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_FORWARD_TARGETS: {}, // no targets at all
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
@@ -186,6 +190,8 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
@@ -254,6 +260,8 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
@@ -321,6 +329,8 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'lego', // receiver: ROUTE_ISSUES_TO !== own slug guard not triggered
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
@@ -381,6 +391,8 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
@@ -436,6 +448,8 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
@@ -490,6 +504,8 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
@@ -555,6 +571,8 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({
@@ -617,6 +635,8 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({ prepare: () => ({ get: () => undefined }) }), // no mapping row
@@ -671,6 +691,8 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({
       getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
@@ -728,6 +750,8 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
     vi.doMock('./db/sessions.js', () => ({
@@ -783,6 +807,8 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
     vi.doMock('./db/sessions.js', () => ({
@@ -833,6 +859,8 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
     vi.doMock('./db/sessions.js', () => ({
@@ -885,6 +913,8 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
       ROUTE_READY_PRS_TO: 'lego',
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
@@ -933,6 +963,8 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
       ROUTE_READY_PRS_TO: 'lego',
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
@@ -980,6 +1012,8 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
       ROUTE_READY_PRS_TO: '', // consumer: handle locally
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
@@ -1044,6 +1078,8 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
       ROUTE_READY_PRS_TO: '',
     }));
     vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));

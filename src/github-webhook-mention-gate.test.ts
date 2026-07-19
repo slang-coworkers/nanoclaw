@@ -112,6 +112,8 @@ async function startServer(
     INSTANCE_SLUG: 'prod',
     INTERNAL_REGISTER_SECRET: '',
     ROUTE_ISSUES_TO: '',
+    APPROVER_CI_GATE: false,
+    CI_GATE_REQUIRED_SUITE: '',
     ...config,
   }));
   const deliverGitHubMention = vi.fn(() => 'forwarded');

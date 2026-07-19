@@ -30,6 +30,7 @@
  * injected via OneCLI.
  */
 import {
+  APPROVER_CI_GATE,
   INSTANCE_FORWARD_TARGETS,
   INSTANCE_SLUG,
   INTERNAL_REGISTER_SECRET,
@@ -50,6 +51,7 @@ import { log } from './log.js';
 import { getDecisionSessionsForPr } from './modules/approval-ledger/store.js';
 import { forwardWebhookToPeer } from './modules/pr-mapping/forward.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
+import { parkReviewable } from './modules/pending-reviewable/store.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { inboundDbPath, initSessionFolder } from './session-manager.js';
 import type { AgentGroup, Session } from './types.js';
@@ -139,13 +141,23 @@ export interface GitHubPrReviewableEvent {
   /** GitHub delivery id — propagated on forward AND used in the rowId so each
    * reviewable event (flip / push) re-fires while same-delivery retries dedup. */
   deliveryId?: string;
+  /** PR head sha. Required to park under the CI gate (the head CI must pass on)
+   * and to key the parked row's debounce. Empty when unknown (gate skipped). */
+  headSha?: string;
 }
 
 /**
  * Outcome of a webhook delivery decision. Used by the funnel-entry handler
  * for the JSON response shape and ops log filtering.
  */
-export type DeliveryOutcome = 'local' | 'forwarded' | 'dropped' | 'no-session' | 'no-admin-group';
+export type DeliveryOutcome =
+  | 'local'
+  | 'forwarded'
+  | 'dropped'
+  | 'no-session'
+  | 'no-admin-group'
+  | 'parked'
+  | 'released';
 
 /**
  * Internal helper: write an event payload to the admin (orchestrator) agent
@@ -634,6 +646,36 @@ export function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent): Deliv
     return 'dropped';
   }
 
+  // CI gate: park instead of deliver. A reviewable event does not mint an
+  // approver session until a required CI check_suite reports success for this
+  // head (see the check_suite success handler → releaseParkedReviewable). The
+  // parked row is keyed on (repo, pr) with last-writer-wins, so a burst of
+  // synchronize pushes collapses to one decision on the settled+green head —
+  // this is the debounce that replaces the per-push re-fire (delivery-id rowId).
+  // Requires a head sha to know which CI to wait on; without one we fall through
+  // to immediate delivery rather than park a PR we could never release.
+  if (APPROVER_CI_GATE && event.headSha) {
+    parkReviewable(getDb(), {
+      repo: event.repo,
+      prNumber: event.prNumber,
+      headSha: event.headSha,
+      reason: event.reason,
+      rawEventJson: JSON.stringify({
+        repo: event.repo,
+        prNumber: event.prNumber,
+        prUrl: event.prUrl,
+        title: event.title,
+        author: event.author,
+        reason: event.reason,
+        rawBody: event.rawBody,
+        eventType: event.eventType,
+        deliveryId: event.deliveryId,
+        headSha: event.headSha,
+      }),
+    });
+    return 'parked';
+  }
+
   const eventContent = JSON.stringify({
     event: 'github.pr_ready_for_review',
     repo: event.repo,
@@ -658,6 +700,43 @@ export function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent): Deliv
     mintPerThread: true,
     displayTitle: event.title ? `${event.repo} #${event.prNumber}: ${event.title}` : `${event.repo} #${event.prNumber}`,
   });
+}
+
+/**
+ * Release a PR parked by the CI gate: reconstruct the reviewable event from the
+ * stored JSON and deliver it now (CI has gone green for its head). Called from
+ * the check_suite success handler with the parked row. The reconstructed event
+ * carries no headSha, so re-entering deliverGitHubPrReviewable does NOT re-park
+ * — it flows straight to the orchestrator delivery, minting the one fresh
+ * approver session for this settled+green head.
+ */
+export function releaseParkedReviewable(rawEventJson: string): DeliveryOutcome {
+  let saved: Record<string, unknown>;
+  try {
+    saved = JSON.parse(rawEventJson) as Record<string, unknown>;
+  } catch {
+    log.warn('ci-gate: parked row has unparseable event JSON — cannot release');
+    return 'dropped';
+  }
+  // Deliberately omit headSha so deliverGitHubPrReviewable skips the park branch
+  // and delivers. Peer-forward still applies if ROUTE_READY_PRS_TO is set.
+  const outcome = deliverGitHubPrReviewable({
+    repo: String(saved.repo ?? ''),
+    prNumber: Number(saved.prNumber ?? 0),
+    prUrl: String(saved.prUrl ?? ''),
+    title: String(saved.title ?? ''),
+    author: String(saved.author ?? ''),
+    reason: String(saved.reason ?? 'synchronize'),
+    rawBody: typeof saved.rawBody === 'string' ? saved.rawBody : undefined,
+    eventType: typeof saved.eventType === 'string' ? saved.eventType : undefined,
+    deliveryId: typeof saved.deliveryId === 'string' ? saved.deliveryId : undefined,
+  });
+  log.info('ci-gate: released parked reviewable PR after CI green', {
+    repo: String(saved.repo ?? ''),
+    pr: Number(saved.prNumber ?? 0),
+    outcome,
+  });
+  return outcome === 'local' ? 'released' : outcome;
 }
 
 /**
