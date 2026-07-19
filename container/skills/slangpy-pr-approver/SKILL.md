@@ -137,12 +137,23 @@ deepwiki being unreachable never blocks, excuses, or upgrades a decision.
      CHALLENGER_CONCERN, CRITIQUE_MUSTFIX, ESCALATED (unresolved
      soft-cap escalations land here). Never optimized toward zero.
    The enum never grows per-cause — reason_code carries the detail.
-2. Request critique. Your decision is gated at DECISION_REVIEW (the
+
+   **Early return on `ABSTAIN_*` — do NOT run the full pipeline.** An
+   `ABSTAIN_POLICY` (a Step-1 clause FAIL, or a Step-3 `OPEN_GAP` /
+   `CHALLENGER_CONCERN`) and an `ABSTAIN_INFRA` both mean "a human must look /
+   the pipeline couldn't decide" — they assert nothing about the code, so they
+   are NOT critique-gated. When your decision resolves to either abstain, SKIP
+   the DECISION_REVIEW / OUTPUT_REVIEW critique stages entirely, call
+   `record_decision` directly (the host relaxes the gate for `ABSTAIN_*` rows),
+   send the `[Approval Decision]` message, and STOP. The full critique gate
+   (step 2) applies ONLY to `WOULD_APPROVE` and `BLOCK`.
+2. For `WOULD_APPROVE` / `BLOCK` only — request critique. Your decision is gated
+   at DECISION_REVIEW (the
    derivation: clauses from data, verdict parse matches the review doc,
    the source tier is stated) and OUTPUT_REVIEW (the ledger line + message). You
    cannot author or edit verdict state. A must-fix verdict => revise or
    ABSTAIN. The soft-cap escalates to a human; it never silently passes.
-3. Only after the recorded verdicts exist: call the `record_decision` MCP tool
+3. Only after the recorded verdicts exist (for abstains, immediately): call the `record_decision` MCP tool
    with the fields from step 1 (the ledger append — the host writes the
    `approval_decisions` row; the gate blocks it without verdicts), then send the
    decision message, which MUST carry the `[Approval Decision]` delivery

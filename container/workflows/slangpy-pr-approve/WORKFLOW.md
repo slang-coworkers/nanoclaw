@@ -60,17 +60,19 @@ Parse the byte-exact trailer lines with `grep -oE`: `REPO={repo}`, `PR={pr_numbe
 authoritative); the body also carries the reason (`ready_for_review` | `opened`
 | `synchronize`).
 
-- reason `opened` / `ready_for_review` → the PR's current head is the commit.
-- reason `synchronize` → the host lands this in the SAME PR session
-  (pr_session_mappings): continue the existing thread as a new revision turn —
-  the new head is the commit, note the delta from the previous head, run a
-  fresh harvest + Devin + decision (it supersedes the earlier row for this PR).
-  - **DEBOUNCE bursts.** When `synchronize` events arrive in rapid succession
-    (the author is actively iterating — several pushes within a short window),
-    do NOT re-harvest + re-Devin on every push: that burns a full cycle per
-    push. Wait for the head to settle (no new push for a reasonable quiet
-    window), then pin the settled head and build the input ONCE. One decision
-    per settled revision, not per push.
+- reason `opened` / `ready_for_review` / `synchronize` → the PR's current head
+  is the commit. Each tasking message you receive is already ONE decision to
+  make on that head.
+  - **Debounce + CI gating are the HOST's job now (`APPROVER_CI_GATE`).** When
+    the gate is on, the host parks reviewable PRs and only wakes you once, on the
+    settled head, after required CI has gone green — a burst of `synchronize`
+    pushes collapses to a single wake (last-writer-wins on the parked head), and
+    a red/never-run build never wakes you at all. So you no longer self-debounce
+    a burst or self-check `ci_green_on_sha` against a head that might still be
+    building: by the time you're invoked, the head is settled and CI is green.
+    Just make the one decision for the head in the tasking message. (With the
+    gate OFF, the legacy behavior applies — you may still see rapid re-wakes;
+    decide per settled revision.)
 
 ### Step 1a: stage the PR at its head
 
@@ -82,11 +84,16 @@ the challenger fetch what they need.
 
 ### Step 1b: build the review input (harvest + Devin, then synthesize)
 
-1. **Harvest the posted bot review** (read-only):
+1. **Collect the posted bot reviews — ONCE, up front** (read-only):
    ```
-   scripts/harvest-reviews.py --repo {repo} --pr {pr} --commit {commit_sha} --out work/<pr>-<sha12>
+   scripts/collect-reviews.sh --repo {repo} --pr {pr} --commit {commit_sha} --out work/<pr>-<sha12>
    ```
-   (script is in the `slangpy-pr-approver` skill dir). Branch on its exit code:
+   (script is in the `slangpy-pr-approver` skill dir, alongside `harvest-reviews.py`).
+   Run it once and read its output; do NOT re-harvest per turn. It gathers the
+   primary Claude review and CodeRabbit's review + summary into `review/` and
+   writes `review/harvest.json` in the SAME schema `harvest-reviews.py` produced,
+   so the tiers below and the synthesis step are unchanged (`harvest-reviews.py`
+   remains the fallback/reference; preview with `--dry-run`). Branch on its exit code:
    - `0` — a bot review matching the pinned head was harvested to
      `review/harvest.json` (primary = `github-actions[bot]`, the production
      claude-code-action review; secondary = `coderabbitai[bot]`). Its body is
@@ -114,15 +121,21 @@ the challenger fetch what they need.
      synthesize a doc with `reviewers_complete:false` so the skill records
      ABSTAIN_INFRA (`NO_REVIEW_SIGNAL`), or abstain directly.
 
-2. **Run Devin over the PR head** (best-effort; resolve `devin-fetch.sh` from
-   the `slang-pr-review-runner` skill dir):
-   ```
-   <slang-pr-review-runner>/scripts/devin-fetch.sh --url https://github.com/{repo}/pull/{pr} --out work/<pr>-<sha12>/review
-   ```
-   exit `0` = Devin analysis captured to `review/devin-flags.md`; `2` = auth-wall,
-   `3` = timeout, `4` = transient browser-launch (the script already cleared the
-   stale Chrome profile and retried once — retry later, do NOT call it
-   deterministic) — treat 2/3/4 as Devin-skipped, best-effort.
+2. **Run Devin over the PR head — in a FRESH SUBAGENT, not this session**
+   (best-effort). Devin runs through `agent-browser` (Chromium page dumps,
+   screenshots, retries); inline it bloated context on every re-decision.
+   Dispatch a background `Agent` (same mechanism as Step 0's recall agent):
+
+   > Run `<pr-review-runner>/scripts/devin-fetch.sh --url
+   > https://github.com/{repo}/pull/{pr} --out work/<pr>-<sha12>/review` (runner
+   > is the `nanoclaw-pr-review-runner` skill dir — resolve it; the older name
+   > `slang-pr-review-runner` may not exist). On exit 0, return `review/devin-flags.md`
+   > verbatim capped at ~4KB (head + any 🔴/bug lines). On exit 2/3/4 return
+   > exactly one line `DEVIN_SKIPPED: <reason>`. Never fabricate; never dump page
+   > HTML or screenshots.
+
+   Only the subagent's short reply re-enters this session; treat `DEVIN_SKIPPED:*`
+   as the old 2/3/4 skip. `review/devin-flags.md` still lands on disk for synthesis.
 
 3. **Synthesize `review/review-doc.md`** per the skill's Input contract:
    The result block MUST carry the sentinel first line
