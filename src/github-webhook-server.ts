@@ -11,6 +11,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import {
   APPROVER_CI_GATE,
   CI_GATE_REQUIRED_SUITE,
+  CI_GATE_REQUIRED_CHECK_RUN,
   GITHUB_WEBHOOK_BOT_MENTION,
   GITHUB_WEBHOOK_PORT,
   GITHUB_WEBHOOK_SECRET,
@@ -30,6 +31,7 @@ import {
   verifyTrustedSignature,
 } from './modules/pr-mapping/register-client.js';
 import { handleRegisterPr } from './modules/pr-mapping/register-endpoint.js';
+import { requiredCheckRunGreen } from './modules/pending-reviewable/ci-check.js';
 import { deleteParked, findParkedByHead } from './modules/pending-reviewable/store.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
 import {
@@ -524,6 +526,22 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
         if (!parked) {
           writeJson(res, 200, { ok: true, skipped: true, reason: 'check_suite success but no PR parked at this head' });
           return;
+        }
+        // Precise gate: when CI_GATE_REQUIRED_CHECK_RUN is set, the suite going
+        // green isn't enough — query gh for that specific check-run (e.g.
+        // slang's `check-ci` build roll-up) and only release if it's green.
+        // Any github-actions suite finishing fires this handler; we keep the
+        // parked row and wait for the one where check-ci is actually done.
+        if (CI_GATE_REQUIRED_CHECK_RUN) {
+          const green = await requiredCheckRunGreen(repoFullName, headSha, CI_GATE_REQUIRED_CHECK_RUN);
+          if (!green) {
+            writeJson(res, 200, {
+              ok: true,
+              skipped: true,
+              reason: `check_suite success but required check-run ${CI_GATE_REQUIRED_CHECK_RUN} not green yet`,
+            });
+            return;
+          }
         }
         const outcome = releaseParkedReviewable(parked.rawEventJson);
         deleteParked(getDb(), repoFullName, parked.prNumber);
