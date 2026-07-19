@@ -6,15 +6,37 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 350 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 166 |
-| `nv-slang` | slang project spine, skills, workflows | 124 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 60 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 40 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 354 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 167 |
+| `nv-slang` | slang project spine, skills, workflows | 126 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 62 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 41 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-19
+
+### nv-main (4 PRs)
+- **#975** `Sync nv-main with upstream/main`
+- **#981** `feat(approver): host CI-gate + debounce for reviewable PRs`
+- **#984** `feat(approver): precise CI gate via gh check-run probe`
+- **#985** `fix(approver): per-repo CI_GATE_REQUIRED_CHECK_RUN map`
+
+### nv-dashboard (1 PRs)
+- **#977** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (2 PRs)
+- **#978** `Sync nv-slang with upstream/main`
+- **#982** `feat(slang-pr-approver): collect-once + Devin subagent + abstain early-return`
+
+### nv-slangpy (2 PRs)
+- **#979** `Sync nv-slangpy with upstream/main`
+- **#983** `feat(slangpy-pr-approver): collect-once + Devin subagent + abstain early-return`
+
+### nv-nanoclaw (1 PRs)
+- **#980** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-07-17
 
