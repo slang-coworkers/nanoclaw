@@ -527,18 +527,20 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
           writeJson(res, 200, { ok: true, skipped: true, reason: 'check_suite success but no PR parked at this head' });
           return;
         }
-        // Precise gate: when CI_GATE_REQUIRED_CHECK_RUN is set, the suite going
-        // green isn't enough — query gh for that specific check-run (e.g.
-        // slang's `check-ci` build roll-up) and only release if it's green.
-        // Any github-actions suite finishing fires this handler; we keep the
-        // parked row and wait for the one where check-ci is actually done.
-        if (CI_GATE_REQUIRED_CHECK_RUN) {
-          const green = await requiredCheckRunGreen(repoFullName, headSha, CI_GATE_REQUIRED_CHECK_RUN);
+        // Precise gate: if this repo has a required check-RUN configured, the
+        // suite going green isn't enough — query gh for that specific run (e.g.
+        // slang's `check-ci` build roll-up) and only release if it's green. Any
+        // github-actions suite finishing fires this handler; we keep the parked
+        // row and wait for the one where the named run is actually done. Repos
+        // not in the map fall through on the suite-slug gate above.
+        const requiredRun = CI_GATE_REQUIRED_CHECK_RUN[repoFullName];
+        if (requiredRun) {
+          const green = await requiredCheckRunGreen(repoFullName, headSha, requiredRun);
           if (!green) {
             writeJson(res, 200, {
               ok: true,
               skipped: true,
-              reason: `check_suite success but required check-run ${CI_GATE_REQUIRED_CHECK_RUN} not green yet`,
+              reason: `check_suite success but required check-run ${requiredRun} not green yet`,
             });
             return;
           }
