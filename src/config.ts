@@ -30,6 +30,7 @@ const envConfig = readEnvFile([
   'ROUTE_READY_PRS_TO',
   'APPROVER_CI_GATE',
   'CI_GATE_REQUIRED_SUITE',
+  'CI_GATE_REQUIRED_CHECK_RUN',
   'DEFAULT_AGENT_PROVIDER',
   'CONTAINER_CPU_LIMIT',
   'CONTAINER_MEMORY_LIMIT',
@@ -320,6 +321,21 @@ export const APPROVER_CI_GATE = /^(1|true|yes|on)$/i.test(
 export const CI_GATE_REQUIRED_SUITE = (process.env.CI_GATE_REQUIRED_SUITE || envConfig.CI_GATE_REQUIRED_SUITE || '')
   .trim()
   .toLowerCase();
+
+// Optional precise gate: a specific check-RUN name that must be green before a
+// parked PR releases (e.g. "check-ci" — slang's aggregate build/test roll-up).
+// The check_suite=success webhook wakes the host, but on repos where every
+// Actions workflow shares one app slug, the suite alone can't distinguish the
+// real build from a trivial green. check_run events aren't delivered (only
+// check_suite is), so when this is set the host queries `gh` for the named
+// check-run's conclusion at the head and releases only if it's green. Requires
+// the host's `gh` CLI to be authenticated (read-only api). Unset = gate on the
+// suite slug alone. Case-exact. Example: CI_GATE_REQUIRED_CHECK_RUN=check-ci
+export const CI_GATE_REQUIRED_CHECK_RUN = (
+  process.env.CI_GATE_REQUIRED_CHECK_RUN ||
+  envConfig.CI_GATE_REQUIRED_CHECK_RUN ||
+  ''
+).trim();
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.
