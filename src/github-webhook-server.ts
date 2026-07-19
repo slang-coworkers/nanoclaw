@@ -9,6 +9,8 @@ import crypto from 'crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'http';
 
 import {
+  APPROVER_CI_GATE,
+  CI_GATE_REQUIRED_SUITE,
   GITHUB_WEBHOOK_BOT_MENTION,
   GITHUB_WEBHOOK_PORT,
   GITHUB_WEBHOOK_SECRET,
@@ -28,12 +30,14 @@ import {
   verifyTrustedSignature,
 } from './modules/pr-mapping/register-client.js';
 import { handleRegisterPr } from './modules/pr-mapping/register-endpoint.js';
+import { deleteParked, findParkedByHead } from './modules/pending-reviewable/store.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
 import {
   deliverGitHubIssueOpened,
   deliverGitHubMention,
   deliverGitHubPrEvent,
   deliverGitHubPrReviewable,
+  releaseParkedReviewable,
 } from './webhook-github.js';
 
 const MAX_BODY_SIZE = 512 * 1024; // 512 KB
@@ -327,6 +331,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
           writeJson(res, 400, { error: 'malformed payload' });
           return;
         }
+        const reviewableHead = (reviewablePr?.head as Record<string, unknown> | undefined) ?? {};
         const outcome = deliverGitHubPrReviewable({
           repo: repoFullName,
           prNumber: reviewablePrNumber,
@@ -337,6 +342,7 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
           rawBody,
           eventType: String(eventType),
           deliveryId: String(req.headers['x-github-delivery'] ?? ''),
+          headSha: typeof reviewableHead.sha === 'string' ? reviewableHead.sha : '',
         });
         writeJson(res, 200, { ok: true, outcome });
         return;
@@ -480,10 +486,12 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       return;
     }
 
-    // check_suite — CI run completed. We only act on failures (the "CI fail"
-    // signal); a green run is not work for the fixer. DORMANT until the App is
-    // subscribed to check_suite AND the Checks permission is re-approved per
-    // org — until then GitHub never delivers this event.
+    // check_suite — CI run completed. Two live paths (the App IS subscribed and
+    // the Checks permission IS granted in prod — the failure path below has been
+    // delivering for a while):
+    //   • failure / timed_out → route `github.ci_failed` to the owning fixer.
+    //   • success (+ APPROVER_CI_GATE) → RELEASE a reviewable PR parked pending
+    //     CI, if this suite is the required build suite for the parked head.
     if (eventType === 'check_suite') {
       if (payload.action !== 'completed') {
         writeJson(res, 200, { ok: true, skipped: true, reason: 'check_suite action not completed' });
@@ -491,12 +499,43 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
       }
       const suite = payload.check_suite as Record<string, unknown> | undefined;
       const conclusion = typeof suite?.conclusion === 'string' ? suite.conclusion.toLowerCase() : '';
+      const headSha = typeof suite?.head_sha === 'string' ? suite.head_sha : '';
+
+      // --- CI-green release: the approver CI gate's release trigger ----------
+      if (conclusion === 'success' && APPROVER_CI_GATE && repoFullName && headSha) {
+        // Guard the documented false-safe: a trivial suite (CLA/lint/CodeRabbit)
+        // can go green while the real build never dispatched. Only the required
+        // build suite releases. Match on the suite's App slug or name substring;
+        // when CI_GATE_REQUIRED_SUITE is unset, any success releases (loosest).
+        const app = (suite?.app as Record<string, unknown> | undefined) ?? {};
+        const appSlug = String(app.slug ?? '').toLowerCase();
+        const appName = String(app.name ?? '').toLowerCase();
+        const req_ = CI_GATE_REQUIRED_SUITE;
+        const suiteMatches = !req_ || appSlug === req_ || appName.includes(req_);
+        if (!suiteMatches) {
+          writeJson(res, 200, {
+            ok: true,
+            skipped: true,
+            reason: `check_suite success but not required suite (${appSlug || appName || 'unknown'})`,
+          });
+          return;
+        }
+        const parked = findParkedByHead(getDb(), repoFullName, headSha);
+        if (!parked) {
+          writeJson(res, 200, { ok: true, skipped: true, reason: 'check_suite success but no PR parked at this head' });
+          return;
+        }
+        const outcome = releaseParkedReviewable(parked.rawEventJson);
+        deleteParked(getDb(), repoFullName, parked.prNumber);
+        writeJson(res, 200, { ok: true, outcome, released: { pr: parked.prNumber, head: headSha } });
+        return;
+      }
+
       if (conclusion !== 'failure' && conclusion !== 'timed_out') {
         writeJson(res, 200, { ok: true, skipped: true, reason: `check_suite conclusion ${conclusion || 'none'}` });
         return;
       }
       const suiteId = typeof suite?.id === 'number' ? suite.id : 0;
-      const headSha = typeof suite?.head_sha === 'string' ? suite.head_sha : '';
       const prs = Array.isArray(suite?.pull_requests) ? (suite!.pull_requests as Record<string, unknown>[]) : [];
       const prNumber = prs.length && typeof prs[0]?.number === 'number' ? (prs[0].number as number) : 0;
       if (!repoFullName || !prNumber || !suiteId) {

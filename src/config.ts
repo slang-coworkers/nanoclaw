@@ -28,6 +28,8 @@ const envConfig = readEnvFile([
   'INSTANCE_FORWARD_TARGETS',
   'ROUTE_ISSUES_TO',
   'ROUTE_READY_PRS_TO',
+  'APPROVER_CI_GATE',
+  'CI_GATE_REQUIRED_SUITE',
   'DEFAULT_AGENT_PROVIDER',
   'CONTAINER_CPU_LIMIT',
   'CONTAINER_MEMORY_LIMIT',
@@ -295,6 +297,29 @@ export const ROUTE_ISSUES_TO = (process.env.ROUTE_ISSUES_TO || envConfig.ROUTE_I
 //
 // On lego (the consumer), leave unset so it delivers locally.
 export const ROUTE_READY_PRS_TO = (process.env.ROUTE_READY_PRS_TO || envConfig.ROUTE_READY_PRS_TO || '').trim();
+
+// Host-side CI gate for PR-approver delivery. When on, a reviewable PR
+// (ready_for_review / opened / synchronize) is PARKED (pending_reviewable_prs)
+// instead of immediately minting an approver session; it is released only when
+// a required CI check_suite reports success for the parked head. This both
+// debounces synchronize bursts (one decision on the settled head) and defers
+// the (expensive) approver run until CI is actually green — replacing the
+// in-session `ci_green_on_sha` self-check that was blind to Actions check-runs.
+// Default OFF so existing installs are unaffected until explicitly enabled.
+export const APPROVER_CI_GATE = /^(1|true|yes|on)$/i.test(
+  (process.env.APPROVER_CI_GATE || envConfig.APPROVER_CI_GATE || '').trim(),
+);
+
+// Which check_suite must be green to RELEASE a parked PR. Matches the suite's
+// GitHub App slug (check_suite.app.slug) or, as a fallback, a substring of the
+// app name — case-insensitive. This guards against the documented false-safe
+// where a trivial suite (CLA/lint/CodeRabbit) goes green while the real build
+// never dispatched: only the named build suite counts as "CI passed". When
+// unset, ANY successful check_suite releases (loosest; not recommended for a
+// repo with multiple suites). Example: CI_GATE_REQUIRED_SUITE=github-actions
+export const CI_GATE_REQUIRED_SUITE = (process.env.CI_GATE_REQUIRED_SUITE || envConfig.CI_GATE_REQUIRED_SUITE || '')
+  .trim()
+  .toLowerCase();
 
 // Timezone for scheduled tasks, message formatting, etc.
 // Validates each candidate is a real IANA identifier before accepting.

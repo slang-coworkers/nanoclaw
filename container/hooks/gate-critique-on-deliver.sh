@@ -86,6 +86,22 @@ esac
 
 [ -z "$HIT" ] && exit 0
 
+# ABSTAIN fast-path (PR-approver): an [Approval Decision] whose state is
+# ABSTAIN_POLICY / ABSTAIN_INFRA makes NO positive claim about the code — it
+# routes the PR to a human ("must look" / pipeline couldn't decide). Those
+# states are not critique-gated: only WOULD_APPROVE and BLOCK (the states that
+# assert something) require DECISION_REVIEW + OUTPUT_REVIEW. Relaxing here is
+# safe because an abstain never auto-approves; the worst an agent could do by
+# mislabelling a WOULD_APPROVE as an abstain is decline to approve. Matched on
+# the decision token in the delivered message, anchored so a mid-sentence
+# mention of the word doesn't trip it. CRITIQUE_ABSTAIN_FASTPATH=0 disables.
+if [ "$TOOL" = "mcp__nanoclaw__send_message" ] && [ "${CRITIQUE_ABSTAIN_FASTPATH:-1}" != "0" ]; then
+  if grep -qE '\b(ABSTAIN_POLICY|ABSTAIN_INFRA)\b' <<< "$TEXT" \
+     && ! grep -qE '\b(WOULD_APPROVE|BLOCK)\b' <<< "$TEXT"; then
+    exit 0
+  fi
+fi
+
 STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
 
 # Required-stages enforcement (per-overlay opt-in via .critique-required-stages,
