@@ -1,22 +1,31 @@
 ---
 name: project_12136_load_autodiff_builtins_on_demand
-description: "#12136 load autodiff builtins on demand — BLOCK (verified 🔴 lazy-load SIGSEGV), supersedes ABSTAIN"
+description: "#12136 load autodiff builtins on demand — BLOCK@ecd20386 FIXED; re-decide ABSTAIN_POLICY(size-cap)@04d90845; sanitizer link-fail new"
 metadata:
   node_type: memory
   type: project
   originSessionId: 9e00866d-1161-40f3-983f-d565d8f96442
 ---
 
-# #12136 "Load autodiff builtins on demand" (jvepsalainen-nv) — BLOCK (superseded ABSTAIN)
+# #12136 "Load autodiff builtins on demand" (jvepsalainen-nv)
 
-**FINAL approver verdict 2026-07-16: BLOCK** (reason_code `RED_BUG:autodiff-lazy-load-crash-on-IDifferentiable-constraint`) @ head `ecd203861178867833f75a317a234196d9117447`, mode **live_late**, shadow (ledger row `ecd203861178` updated in place, NOT posted to GitHub). **Supersedes** the earlier fallback-tier ABSTAIN_POLICY on the same commit. Routed pr_ready_for_review → slang-pr-approver only.
+Trajectory: **fallback ABSTAIN → BLOCK (verified 🔴 SIGSEGV) → fix-push → ABSTAIN_POLICY (size-cap short-circuit)**. Routed pr_ready_for_review → slang-pr-approver only, shadow mode (never posts to GitHub).
 
-**Why it flipped ABSTAIN → BLOCK:** First pass, the production claude-code-action (github-actions[bot]) primary review was still IN_PROGRESS through the WAIT window → approver fell back to CodeRabbit+Devin and ABSTAINed on an unverified 🔴. The primary review then **landed** at the same head: verdict 🟡 "0 bugs / 8 gaps", but its MAIN concern (gap #1) = the two lazy-load triggers miss paths needing supplement-only decls. Approver's challenger escalated gap #1 to a **VERIFIED 🔴 SIGSEGV**.
+## R-BLOCK @ ecd203861178 (2026-07-16) — SUPERSEDED, root cause now FIXED
+BLOCK `RED_BUG:autodiff-lazy-load-crash-on-IDifferentiable-constraint`. `IDifferentiable`/`IFloat` used only as a **generic constraint** (or reflected) fired **neither** lazy-load trigger ((a) `[Differentiable]` callable, (b) fwd/bwd/primal-substitute expr) → supplement never loaded → SIGSEGV at `unit-test-function-reflection.cpp:383` (`findTypeByName("MyStruct<float>")`). Verified CI job 87553860992, 8 test-slang jobs red, deterministic. Flipped from fallback ABSTAIN when the production review landed late (its gap #1 = incomplete trigger set; challenger escalated to verified crash). Learning: a late primary review supersedes a fallback ABSTAIN; a "0-bugs" review's own main-concern gap can be a verified crash.
 
-**The real bug (verified in CI, not the null-deref):** `IDifferentiable`/`IFloat` used only as a **generic constraint** (or merely reflected) fires **neither** load trigger — triggers are (a) a `[Differentiable]` callable, (b) fwd_diff/bwd_diff/primal-substitute expr. So the autodiff supplement never loads and downstream machinery that assumes its shape crashes. SIGSEGV at `tools/slang-unit-test/unit-test-function-reflection.cpp:383` (`module->getLayout()->findTypeByName("MyStruct<float>")`). Confirmed in **CI job 87553860992** — **8 test-slang jobs RED across all platforms**, deterministic (not flake/infra). PR-causality airtight: both crashing tests (unit-test-function-reflection.cpp, assoctype-param.slang) are pre-existing and unmodified by the PR.
+## R-ABSTAIN @ 04d908456991 (2026-07-17, live_late) — CURRENT recorded row
+Fix-push. Reason **CLAUSE_FAIL:tier_eligible** — diff grew to **3355 lines > 2000-line size cap** (mostly a source MOVE: diff.meta.slang −1444 / new autodiff-base.meta.slang +1265 + a master merge), so Step-1 short-circuits to ABSTAIN_POLICY (human must eyeball scope) BEFORE the challenger gates. Two verification facts (context, not the recorded reason):
+1. **Prior BLOCK root cause FIXED** — eager base now carries `Array/Optional/Tuple : IDifferentiable` + TensorView/TorchTensor/DiffTensorView/detach/update-helpers/makeArrayFromElement surface; CI confirms the two previously-crashing tests pass, **all 10 test-slang jobs green**.
+2. **NEW PR-caused red CI (sanitizer)** — sanitizer job fails to LINK the PR's new `tools/slang-unit-test/unit-test-lazy-autodiff-module.cpp`: *undefined reference to typeinfo for Slang::Session* — touches polymorphic internal `Slang::Session` via `asInternal()` under `-fno-rtti`; sanitizer's `-Wl,--no-undefined` makes it a hard fail (regular builds link lazily, passed). Real error (not DWARF noise), PR-caused (new file, green at prior head, other PRs' sanitizer green).
 
-**Next-action (maintainer/author):** widen the load-trigger set so the supplement also loads when `IDifferentiable`/`IFloat` appear as a generic constraint, or when reflecting/checking such a type. (Reviewer gap #1 also suggests option (b): keep the pure tensor/torch value types + `Array`/`Optional`/`Tuple : IDifferentiable` extensions in base core, deferring only the diff machinery.)
+**Next-action:** (recorded) diff > size cap → human eyeball scope (mostly relocation). (independent) new unit test must not depend on RTTI/typeinfo for internal `Slang::Session` — access `coreModules` via a non-polymorphic path OR exclude the test from the `-Wl,--no-undefined` sanitizer build; re-run sanitizer to green.
 
-**The 7 other gaps are advisory** (clarity/API/doc/test-coverage), INCLUDING the earlier CodeRabbit 🔴 null-deref at slang-check-decl.cpp:19216/:19215 — the primary review classifies it as a **missing regression test, not a crash**. Author had defended the RELEASE_ASSERT + no-null-guard on-PR (out-of-contract invariant; addMember ownership required); that stands as advisory.
+## ✅ RESOLVED stale-head question (Main + approver, 07-17)
+Confirmed settled: `04d908456991` **IS** the current PR tip (byte-equal to `gh api .../pulls/12136 .head.sha`). Its parents are `b74934ff1eb5` + master merge `4f4ec505761e`, so `d7b8a430d` is **NOT an ancestor** — the `d7b8a430d` production review (and the author's "addressed in d7b8a430d" comment) were against a rebased/parallel tip the branch has since moved OFF. No even-later push exists on the branch. Ancestry check earned its keep: the decision is against the real tip, AND the author's `d7b8a430d` fix claims never landed on this branch tip.
 
-**Note:** `ci_green_on_sha` clause PASSED only because policy `require_ci_green=false`; actual CI is RED — challenger caught it (same class as #12130/#12122). Awaiting human verdict for the join. See [[feedback_approver_never_posts_route_reviewer]].
+**Sanitizer STILL RED at current head** (job 87755069724, single attempt): `sanitizer-linux-clang-x86_64` = failure + `check-ci` aggregator = failure; 10/10 test-slang green. So the `unit-test-lazy-autodiff-module.cpp` typeinfo / `-Wl,--no-undefined` link break is NOT resolved at 04d90845 — the "new PR-caused red CI" context item and its next-action STAND.
+
+Author's (parallel/off-branch) `d7b8a430d` consolidation had claimed: eager/lazy boundary corrected, RELEASE_ASSERT→SlangResult+rich diagnostic (`UnableToLoadAutodiffModule`), idempotent cache merge, null-deref guarded, RSS 208.8→119.0 MiB (−43%). Those claims do NOT apply to the recorded head 04d90845 (different lineage).
+
+Awaiting human verdict for the join. See [[feedback_approver_never_posts_route_reviewer]], [[feedback_verify_pushed_state_by_branch_not_sha]].
