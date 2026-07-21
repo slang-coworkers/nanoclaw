@@ -433,7 +433,7 @@ async function loadFunnel() {
 // reviewed in shadow mode. `decisions` is snap.approverDecisions (newest first,
 // one row per PR). Counts by decision are shown as a header summary.
 function funnelApproverPanel(decisions) {
-  if (!Array.isArray(decisions) || decisions.length === 0) return '';
+  if (!Array.isArray(decisions)) decisions = [];
   // Approve = green, block = red, abstain = muted. Matches the funnel row cell
   // (funnelIssueTableHtml's approverColor); literal hex here since the palette
   // object is scoped to funnelFlowHtml.
@@ -449,9 +449,10 @@ function funnelApproverPanel(decisions) {
   const by = {};
   for (const d of decisions) by[d.decision] = (by[d.decision] || 0) + 1;
   const order = ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY', 'ABSTAIN_INFRA'];
+  // Always show all four categories (zeros included) so the panel reads as a
+  // stable scoreboard, not a list that hides empty states.
   const summary = order
-    .filter((k) => by[k])
-    .map((k) => `<span style="color:${decisionColor[k]}">${k} ${by[k]}</span>`)
+    .map((k) => `<span style="color:${decisionColor[k]}">${k} ${by[k] || 0}</span>`)
     .join('<span style="color:var(--border)"> · </span>');
   const rows = decisions
     .map((d) => {
@@ -483,14 +484,14 @@ function funnelApproverPanel(decisions) {
       </tr>`;
     })
     .join('');
-  return `<div style="margin-top:20px">
-      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap">
-        <span style="font-size:14px;font-weight:700">PR Approver — Verity <span style="font-weight:400;color:var(--text-muted);font-size:11px">(shadow mode)</span></span>
-        <span style="font-size:11px">${summary}</span>
-        <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${decisions.length} PRs decided</span>
-      </div>
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Every PR Verity decided — including human-authored PRs (not just the bot's own). Shadow decisions never post to GitHub.</div>
-      <table style="border-collapse:collapse;font-size:12px;width:100%;max-width:820px">
+  // Default-CLOSED dropdown: the 4-category scoreboard + count live in the
+  // always-visible <summary>; the per-PR ledger is inside <details> and only
+  // expands on click. Native <details> (no `open`) = collapsed by default, no
+  // JS wiring — matches the existing collapsible pattern used elsewhere in the
+  // funnel (e.g. the "All N actionable issues" details).
+  const empty = decisions.length === 0
+    ? '<div style="font-size:11px;color:var(--text-muted);margin:4px 0 0 18px">No approver decisions recorded yet.</div>'
+    : `<table style="border-collapse:collapse;font-size:12px;width:100%;max-width:820px;margin-top:6px">
         <thead><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase">
           <th style="text-align:left;padding:3px 10px 3px 0">PR</th>
           <th style="text-align:left;padding:3px 10px">Decision → Human</th>
@@ -500,7 +501,19 @@ function funnelApproverPanel(decisions) {
           <th style="text-align:right;padding:3px 10px">Decided</th>
         </tr></thead>
         <tbody>${rows}</tbody>
-      </table>
+      </table>`;
+  return `<div style="margin-top:20px">
+      <details>
+        <summary style="cursor:pointer;list-style:revert">
+          <span style="display:inline-flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <span style="font-size:14px;font-weight:700">PR Approver — Verity <span style="font-weight:400;color:var(--text-muted);font-size:11px">(shadow mode)</span></span>
+            <span style="font-size:11px">${summary}</span>
+            <span style="font-size:10px;color:var(--text-muted)">${decisions.length} PRs decided</span>
+          </span>
+        </summary>
+        <div style="font-size:11px;color:var(--text-muted);margin:6px 0 4px">Every PR Verity decided — including human-authored PRs (not just the bot's own). Shadow decisions never post to GitHub.</div>
+        ${empty}
+      </details>
     </div>`;
 }
 
