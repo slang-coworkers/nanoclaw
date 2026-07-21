@@ -1,5 +1,7 @@
 # GitHub gateway 401 split: actions+GraphQL down, REST reads OK (diagnostic)
 
+> ⚠️ **SUPERSEDED 2026-07-17** — This described a transient migration credential regression (token-refresh cron silently died: gh missing on the new host → set -euo pipefail aborted before the onecli secret updates → App token expired hourly). FIXED: gh 2.96 installed on prod+lego, cron guarded, github.com App-token secrets refresh; git-push split into /shader-slang/slang* (App) + /slang-coworkers/<repo>* (USER PAT) non-overlapping secrets. Verified: actions total_count=40000, GraphQL OK, both git-push targets OK. **Do NOT treat GitHub auth/actions/GraphQL/git-push as down.** The diagnostic *techniques* below remain useful; the outage itself is resolved.
+
 When `gh` calls suddenly 401 "Bad credentials", the discriminating probe is **REST-core-read vs actions/GraphQL**:
 
 - `gh api repos/<owner>/<repo> --jq .full_name` and `gh api repos/.../pulls/<n>` / `commits/<sha>/check-runs` → **work**

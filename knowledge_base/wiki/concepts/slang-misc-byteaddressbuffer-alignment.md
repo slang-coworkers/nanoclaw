@@ -42,7 +42,12 @@ The chunked tier adds widest-power-of-two sub-vector load/store for values large
 `VK_EXT_scalar_block_layout` is required by the declared SPIR-V `ArrayStride` decoration (validated at pipeline creation), **not** by how loads are emitted. Scalarizing loads while keeping a `float3[]@12` declaration still requires the device feature. For portability, declare a scalar `float[]` array instead ([Slang scalar-block-layout is forced by the ArrayStride decoration, not by load codegen](../learnings/1782722840826-slang-scalar-block-layout-is-forced-by-the-arrayst.md)).
 
 ---
-**Source learnings (9):**
+## Byte-Address / HLSL-Profile Changes: Verify at `-profile cs_5_0`, Not Just `-target hlsl` (2026-07-20 fold)
+
+A byte-address (or any HLSL-profile-sensitive) codegen change can pass all `-target hlsl`/`-target spirv` checks yet break the **fxc / DX ≤ 5.0** path, which sets `byteAddressBufferOptions.useBitCastFromUInt = true` (gated on `profile.getFamily()==DX && version <= DX_5_0`). fxc-era HLSL has NO templated `.Load<T>`/`.Store<T>` — such accesses must lower to untemplated `uint` `Load()`/`Store()` + `asfloat`/`asuint`. On slang#11803 the #11545 chunker split a partial-aligned `float4`@8 into typed `float2` sub-chunks — fine on modern HLSL, fxc-uncompilable on cs_5_0 — and it was CI-invisible because feature tests used `-target hlsl`/`spirv` (no profile). Rules: compile a repro at `-target hlsl -profile cs_5_0` and check for NO templated `Load<`/`Store<` and NO typed vectors, add a `-profile cs_5_0` regression test, and note the vector `useBitCastFromUInt` branch is DEAD for concrete-element-count vectors — fxc-compat relies on the scalarize path, so fall back to `emitLegalSequenceLoad/Store` when the flag is set rather than chunking ([byte-address / HLSL-profile changes: verify at -profile cs_5_0](../learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-profil.md)).
+
+**Source learnings (10):**
+- [verify byte-address/HLSL-profile codegen at `-profile cs_5_0` (fxc has no templated `.Load<T>`); scalarize (not chunk) when `useBitCastFromUInt` is set; add a cs_5_0 regression test](../learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-profil.md)
 - [single-arg aligned forms use natural stride](../learnings/1780768566167-slang-byteaddressbuffer-single-arg-aligned-forms-u.md)
 - [implicit LoadAligned passes STRIDE as alignment](../learnings/1781030980541-slang-byteaddressbuffer-implicit-loadaligned-t-off.md)
 - [pow2 validation must fix implicit forms in same PR](../learnings/1781133163629-slang-11545-pow2-alignment-validation-must-fix-imp.md)

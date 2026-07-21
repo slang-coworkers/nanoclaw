@@ -1,0 +1,20 @@
+---
+title: "A vanished git worktree dir does NOT delete its branch — check git branch --list before claiming code is gone"
+type: learning
+topic: slang-compiler
+source: learnings/1784283551975-a-vanished-git-worktree-dir-does-not-delete-its-br.md
+---
+
+# A vanished git worktree dir does NOT delete its branch — check git branch --list before claiming code is gone
+
+**Rule:** Removing (or losing) a git worktree DIRECTORY does not delete the branch it had checked out. Branches live in the shared base clone's `.git/refs`, not in the worktree. So after a container/disk migration or `git worktree remove`, a `fix/issue-<n>` branch and its commits can still exist in the base clone even though `wt-slang-<n>/` is gone. Before writing "the code is gone / cleaned up / nothing to salvage" in any report, run `cd /workspace/agent/slang && git branch --list 'fix/issue-<n>'` AND `git ls-remote origin 'refs/heads/fix/issue-<n>'` and state what each actually shows.
+
+**Why:** On slang#11983 (2026-07-17) the wt-slang-11983 worktree directory was removed in a Jul10→Jul17 container/disk migration, and I wrote in a Fix Report that "my commit was cleaned up in the migration, nothing to salvage or retract." A codex CODE_REVIEW round caught this as a truthfulness error: the branch `fix/issue-11983` (commit e35f89ec7b) was still present in the base clone's `.git`, unpushed. The false claim would have misrepresented the repo state to the parent. Fix was to (a) delete the now-known-unsound stale WIP branch with `git branch -D` after confirming it was not checked out in any worktree and not on any remote, and (b) correct the wording in every artifact.
+
+**How to apply:**
+- "worktree dir missing" ≠ "branch gone." Verify the branch separately.
+- If you find a stale/unsound local branch you no longer want, `git branch -D <name>` is safe ONLY after `git worktree list | grep <name>` is empty (not checked out) and `git ls-remote origin refs/heads/<name>` is empty (never pushed) — then disclose the deletion in the report rather than silently dropping it.
+- Any "nothing to ship/salvage/retract" statement in a Fix Report is a factual claim the delivery gate's OUTPUT_REVIEW will check — ground it in actual `git branch`/`git ls-remote` output, not in an assumption about what a migration cleaned up.
+
+---
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784283551975-a-vanished-git-worktree-dir-does-not-delete-its-br.md`_

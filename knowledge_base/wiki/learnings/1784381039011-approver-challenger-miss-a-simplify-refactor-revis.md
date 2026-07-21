@@ -1,0 +1,27 @@
+---
+title: "[approver/challenger-miss] a 'simplify'/refactor revision can preserve the headline fix while silently regressing a sibling correctness distinction — diff the REMOVED abstraction's semantics, not just the target fix"
+type: learning
+topic: misc
+source: learnings/1784381039011-approver-challenger-miss-a-simplify-refactor-revis.md
+---
+
+# [approver/challenger-miss] a "simplify"/refactor revision can preserve the headline fix while silently regressing a sibling correctness distinction — diff the REMOVED abstraction's semantics, not just the target fix
+
+## Symptom
+On shader-slang/slang#12147 R5 ("Simplify separate debug output validation"), the orchestrator's key question was "does the simplify preserve the R4 blocking-bug fix (E00114 graceful diagnostic + regression test)?" I verified YES on both — the `debugArtifactCount > 1 → SLANG_FAIL + E00114` block was byte-identical, the counting path unchanged, and the multi-target regression test untouched — and I initially cleared the revision as WOULD_APPROVE (CLEAN), explicitly arguing "stdout-collision semantics preserved; symmetric normalization ⇒ no one-sided asymmetry possible." That clear was WRONG.
+
+## Root cause
+The "simplify" reverted R4's `OutputDestination { path; bool isStdout; }` abstraction back to plain `String` comparison. R4 had used `isStdout` to encode a DELIBERATE correctness distinction: the same spelling `-` means STDOUT for artifact/debug/reflection output (`_writeArtifact` → `writeArtifactToStandardOutput`) but a FILE literally named `-` for coverage-manifest/depfile output (`_getExplicitCoverageManifestPath` returns the raw string → `File::writeAllBytes("-", ...)`; R4 even had a comment: "`-` has no stdout meaning for `-coverage-manifest-output`"). R4's `_areOutputDestinationsEquivalent` returned false for a stdout-`-` vs a file-`-` (genuinely different destinations). R5's plain-string `_areOutputPathsEquivalent("-", "-")` collapses them → a spurious E00111 collision, rejecting a config R4 allowed (`-separate-debug-info-output - -coverage-manifest-output -`). My "symmetric normalization" reasoning was fallacious: the asymmetry was never in the normalization function — it was in the SEMANTIC MEANING of `-` per output kind, which the removed abstraction carried and the refactor dropped.
+
+## How to catch it
+1. On a "simplify"/"refactor"/"cleanup" revision, "the target fix survives" is necessary but NOT sufficient. A refactor that removes an abstraction can preserve the headline behavior while dropping a DELIBERATE distinction the abstraction encoded. Explicitly ask: "what did the removed type/helper represent, and is every distinction it captured still enforced?"
+2. Diff the removed abstraction's semantics against its plain replacement. Here: `OutputDestination.isStdout` distinguished stdout-`-` from file-`-`; the plain-`String` replacement cannot. Enumerate the inputs where the two representations diverge (a `-` that means stdout vs a `-` that means a file) and check each.
+3. A comment in the PRE-refactor code ("`-` has no stdout meaning for X") is a flashing sign that a distinction exists — if the refactor removes the code carrying that comment, verify the distinction is preserved elsewhere or flag its loss.
+4. Run the DECISION_REVIEW critique gate whenever you're about to clean-approve a refactor of previously-scrutinized logic — an independent reviewer hunting for "what did the abstraction remove" catches what "the fix still works" misses. codex caught this after I'd cleared it.
+5. Direction matters for severity: verify whether the regression is a false-POSITIVE (over-strict, spurious rejection — recoverable) or a false-NEGATIVE (missed collision → silent overwrite/corruption — a 🔴). Here it was stricter-only (false-positive), which kept it at ABSTAIN, not BLOCK. Always run that check explicitly.
+
+## Fix
+Downgraded WOULD_APPROVE → ABSTAIN_POLICY (CHALLENGER_CONCERN): a verified regression (deliberate R4 distinction silently undone, bot-missed, CI-invisible) but a false-positive diagnostic on a pathological trigger (a file literally named `-`), recoverable, ~nil blast radius, NOT a crash — too real to clean-approve, too mild to assert as a hard 🔴 BLOCK. Surfaced for human adjudication (fix the regression vs. accept as pathological-input laxity). The blocking multi-artifact fix from R4 remains fully preserved and unaffected. Lesson generalizes: for any refactor revision, the review question is not only "does the fix survive?" but "does every distinction the refactored-away code encoded survive?"
+
+---
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784381039011-approver-challenger-miss-a-simplify-refactor-revis.md`_

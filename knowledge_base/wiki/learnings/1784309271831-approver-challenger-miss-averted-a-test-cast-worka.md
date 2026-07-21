@@ -1,0 +1,21 @@
+---
+title: "[approver/challenger-miss-averted] a test-cast workaround fixes the broken test but not the over-broad change; scope+suppression-bypass gaps are CI-invisible WOULD_APPROVE→ABSTAIN discriminators"
+type: learning
+topic: ci-tooling
+source: learnings/1784309271831-approver-challenger-miss-averted-a-test-cast-worka.md
+---
+
+# [approver/challenger-miss-averted] a test-cast workaround fixes the broken test but not the over-broad change; scope+suppression-bypass gaps are CI-invisible WOULD_APPROVE→ABSTAIN discriminators
+
+**Symptom:** shader-slang/slang PR #12141 R3 followed a BLOCK on R2. R2's regression was that a new `forwardDiagnostics()` call on the constructor SUCCESS path (slang-check-conversion.cpp) surfaced previously-swallowed `warning[E30081]` implicit-narrowing warnings, breaking pre-existing `tests/glsl/integer_pack.slang (vk)`. R3 "fixed" it by adding explicit `(uint16_t)/(int16_t)/(uint8_t)` casts to that ONE test — so E30081 no longer fires there — but left the `forwardDiagnostics()` call unchanged/unscoped. CI at R3 went fully green (regression test now passes, rhi stays green, 0 failures). A CI-only approver would read green + "regression fixed" and record WOULD_APPROVE. That would miss a real gap.
+
+**Root cause / general rule:** when a PR's root change is over-broad (here: forwarding raw temp-sink diagnostics for EVERY struct/vector explicit-ctor coercion, not just the vec4 case it targets), and the follow-up revision fixes only the specific test that tripped it rather than scoping the change, the latent surface remains for every OTHER (and future) consumer. CI is green only because the in-tree tests don't exercise the remaining trigger. Two things a challenger must check that CI cannot:
+1. **Did the fix scope the root change, or just silence the one symptom?** Diff the revision: if the source-side over-broad construct is unchanged and only a test was adjusted (casts, expectation edits), the blast radius is undiminished.
+2. **Suppression-bypass by construction.** A `diagnoseRaw(severity, bufferedText)` re-emission (slang-diagnostic-sink.cpp) writes already-formatted text at a forced severity and has NO `DiagnosticInfo`/id left — so per-id `-Wno-<id>` / `#pragma warning` / severity-override state (applied only at first-raise) cannot be re-applied. Any "re-emit a captured sink's buffer" pattern bypasses user suppression and can escalate a mixed buffer to Error. This is invisible to CI unless a test specifically compiles with `-Wno-*` through that path (none did).
+
+**How to catch it:** the production PRIMARY review (github-actions[bot]) flagged exactly this as its top 🟡 gap ("forwarding surfaces argument-coercion warnings for all initializer→ctor coercions, not just vec4; also bypasses per-id -Wno-*/#pragma warning") — a strong signal to verify in source rather than defer to green CI. Verify the mechanism directly (read the lambda + the diagnoseRaw impl), don't infer from CI. The reinforcing tells: the PR's own reviewer also flagged "behavior change with no owned regression test" and "no -warnings-as-errors test of the promote-then-forward path" — i.e. the paths that WOULD catch the over-broad forwarding are untested.
+
+**Fix:** ABSTAIN_POLICY (OPEN_GAP) — NOT WOULD_APPROVE (verified over-broad + suppression-bypassing change; plausible trigger, real blast radius, not false-negative-safe: it can make previously-clean/suppressed/warning-only compiles newly warn or error), and NOT BLOCK (no reproduced 🔴; CI green; the earlier regression is genuinely fixed). This is the middle rung: a green-CI revision can still be a hold when a primary-review scope gap is real but latent. next-action: scope the forwarding to the intended diagnostic (or re-raise through the normal severity/suppression path instead of raw buffer re-emission) + add the missing -warnings-as-errors test. Calibration across the 3 revisions of one PR: BLOCK (rhi break) → BLOCK (E30081 regression) → ABSTAIN/OPEN_GAP (contained but one latent scope gap) — the approver's job is to track the residual, not rubber-stamp "the last thing I flagged is fixed."
+
+---
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784309271831-approver-challenger-miss-averted-a-test-cast-worka.md`_

@@ -113,7 +113,12 @@ A fixer chain going silent for many hours with an active-but-`stopped` container
 - The "fixers must not self-flip PRs" rule ([Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)) was corrected by ([Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)): the bot never self-flipped; a maintainer did — VERIFY THE ACTOR before directing a revert.
 
 ---
-**Source learnings (37):**
+## Triage Dup-Check Must Search for an Existing `Fixes #N` PR (2026-07-20 fold)
+
+The `gh` dup-check during triage MUST also `gh pr list -R <repo> --search "<issue#>" --state all` — the assignee may already own an in-flight `Fixes #N` PR. If one exists (especially a human's), do NOT reflexively forward to slang-fixer: that authors a competing PR against a live human-owned branch (double-dispatch). Surface it as a routing decision to the parent (park at triaged / help unblock / ping author) rather than defaulting to Step-8 "forward to fixer — always." Case: slang#10584 had a stalled human draft PR #10666 (`Fixes #10584`, CI red, unaddressed review) — held forward, reported the routing decision up ([triage: gh-search for an existing Fixes-#N PR before forwarding to fixer](../learnings/1784380560521-triage-gh-search-for-an-existing-fixes-n-pr-before.md)).
+
+**Source learnings (38):**
+- [triage must `gh pr list --search "<issue#>"` for an existing `Fixes #N` PR before forwarding to fixer; a human-owned in-flight PR → routing decision to parent, not double-dispatch](../learnings/1784380560521-triage-gh-search-for-an-existing-fixes-n-pr-before.md)
 - [tools/gfx/ is legacy code paralleling slang-rhi](../learnings/1778749638138-slang-fixer-tools-gfx-is-legacy-code-paralleling-s.md)
 - [Devin Review done-detector false positives](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md)
 - [Verify discovery and resolution separately in parser-ambiguity triage](../learnings/1780064743810-verify-discovery-and-resolution-separately-in-pars.md)
