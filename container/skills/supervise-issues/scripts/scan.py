@@ -106,6 +106,27 @@ def age_seconds(now, value):
     return (now - ts).total_seconds()
 
 
+def session_dispatch_ts(chain):
+    """Earliest dispatch time for the chain, from the oldest session id.
+
+    Session ids are minted `sess-<ms>-<rand>` at the moment the a2a dispatch
+    creates the session, so the smallest embedded epoch-ms dates the chain's
+    dispatch. It is already in scan's inputs (no extra query) and lets us age a
+    chain that has produced ZERO activity-by-us — otherwise invisible to the
+    silence clock, which is null until our first outbound/push/bot-comment.
+    Returns an aware datetime, or None when no session id parses (non-standard
+    ids / tests), in which case callers fall back to prior 'dispatched' behavior.
+    """
+    best = None
+    for sid in chain.get("sessions", []):
+        parts = str(sid).split("-")
+        if len(parts) >= 3 and parts[0] == "sess" and parts[1].isdigit():
+            ts = datetime.fromtimestamp(int(parts[1]) / 1000, tz=timezone.utc)
+            if best is None or ts < best:
+                best = ts
+    return best
+
+
 def is_bot_author(comment, bot_logins):
     """A comment is ours if it says so, else if its author is a known bot login."""
     if isinstance(comment.get("is_bot"), bool):
@@ -318,8 +339,31 @@ def classify(now, chain, sessions_by_id, bot_logins):
 
     # ball == 'none' — no GitHub conversation yet; fall back to the silence clock.
     if silent_age is None:
-        # We have never acted and there's no activity — brand-new / dispatched.
-        return ("dispatched", ball, last_by_us, False, "")
+        # We have produced NO activity-by-us (no outbound, no push, no bot
+        # comment). A brand-new dispatch is legitimately quiet — but a chain that
+        # has held a session for a long time with zero activity AND no resumable
+        # artifact has stalled at the handoff: its triage/fix turn bounced before
+        # writing anything, so the silence clock stays null and the chain hid as
+        # 'fresh' forever. Root cause of slang#12165 — the triager turn bounced
+        # (bounced-transient, zero outbound, no issue comment) yet the retry
+        # container read as "triager RUNNING — fresh, not stuck" tick after tick.
+        # Age against the dispatch time (oldest session id's ms) instead. Liveness
+        # is NOT progress: a 'running' container whose message bounced is still
+        # stuck, so we deliberately do NOT let any_session_running suppress this.
+        if github_artifact(chain):
+            # Something landable exists; the PR / CI / §2b paths own its nudge.
+            return ("dispatched", ball, last_by_us, False, "")
+        dts = session_dispatch_ts(chain)
+        dispatch_age = (now - dts).total_seconds() if dts is not None else None
+        if dispatch_age is None or dispatch_age < WORKING_S:
+            return ("dispatched", ball, last_by_us, False, "")
+        if dispatch_age < ESCALATE_S:
+            return ("silent", ball, last_by_us, True,
+                    "dispatched ≥ working window, zero activity/artifact by us "
+                    "— handoff likely bounced; wake owning tier")
+        return ("silent", ball, last_by_us, True,
+                "dispatched ≥ 4h, zero activity/artifact by us — handoff "
+                "bounced; escalate to operator")
     if silent_age < FRESH_DISPATCH_S:
         return ("dispatched", ball, last_by_us, False, "")
     if silent_age < WORKING_S:
@@ -429,7 +473,14 @@ def run(payload):
         else:
             delta = "same"
 
-        escalate = state == "silent" and (age_seconds(now, last_by_us) or 0) >= ESCALATE_S
+        # Effective age escalates on the dispatch clock when we never acted
+        # (last_by_us is None) — else a bounced-at-dispatch chain would nudge but
+        # never escalate, since age_seconds(None) is None -> 0.
+        eff_age = age_seconds(now, last_by_us)
+        if eff_age is None:
+            dts = session_dispatch_ts(chain)
+            eff_age = (now - dts).total_seconds() if dts is not None else None
+        escalate = state == "silent" and (eff_age or 0) >= ESCALATE_S
 
         # Action plan — the mechanical enforcement surface (SKILL.md §3).
         # `action` is a strict 1:1 function of `needs_nudge`: True -> 'nudge',

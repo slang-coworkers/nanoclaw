@@ -9,6 +9,7 @@ import json
 import subprocess
 import sys
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 SCAN = str(Path(__file__).resolve().parent / "scan.py")
@@ -36,6 +37,13 @@ def row_for(out, thread):
         if r["thread"] == thread:
             return r
     raise AssertionError(f"no row for {thread} in {[r['thread'] for r in out['rows']]}")
+
+
+def _sid_at(iso):
+    """A session id whose embedded ms encodes `iso` — scan derives the dispatch
+    clock from the oldest `sess-<ms>-<rand>` id."""
+    ms = int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp() * 1000)
+    return f"sess-{ms}-tstz"
 
 
 class NewChainDiscovery(unittest.TestCase):
@@ -204,6 +212,49 @@ class StateAndEscalation(unittest.TestCase):
         r = row_for(out, "gh-issue-o/r-6")
         self.assertFalse(r["needs_nudge"])
         self.assertIn(r["state"], ("working", "pr_open"))
+
+    def test_bounced_dispatch_zero_activity_is_nudged(self):
+        # slang#12165: a triage dispatch that bounced (bounced-transient, zero
+        # outbound, no issue comment) held a session ~7h with NO activity-by-us and
+        # no artifact, while a retry container was still 'running' (idle). It must
+        # be nudged + escalated on the dispatch clock — not read as fresh/RUNNING
+        # forever. Liveness (container_status=='running') is not progress.
+        sid = _sid_at("2026-06-26T05:00:00Z")  # dispatched ~7h before NOW
+        out = run_scan({
+            "state": {},
+            "sessions": [{"id": sid, "thread_id": "gh-issue-o/r-12165",
+                          "container_status": "running", "group_folder": "slang-triager"}],
+            "chains": {"gh-issue-o/r-12165": {
+                "repo": "o/r", "issue": 12165, "sessions": [sid],
+                "our_last_outbound": None, "our_last_push": None,
+                "comments": [], "pr": None, "issue_open": True,
+            }},
+        })
+        r = row_for(out, "gh-issue-o/r-12165")
+        self.assertTrue(r["needs_nudge"], r)
+        self.assertEqual(r["action"], "nudge")
+        self.assertEqual(r["state"], "silent")
+        self.assertTrue(r["escalate"], r)
+        self.assertEqual(out["summary"]["escalate"], 1)
+
+    def test_fresh_dispatch_zero_activity_left_alone(self):
+        # The mirror guard: a genuinely fresh dispatch (< working window) with no
+        # activity yet must NOT draw a false nudge from the dispatch-age fallback.
+        sid = _sid_at("2026-06-26T11:45:00Z")  # dispatched 15 min before NOW
+        out = run_scan({
+            "state": {},
+            "sessions": [{"id": sid, "thread_id": "gh-issue-o/r-778",
+                          "container_status": "running", "group_folder": "slang-triager"}],
+            "chains": {"gh-issue-o/r-778": {
+                "repo": "o/r", "issue": 778, "sessions": [sid],
+                "our_last_outbound": None, "our_last_push": None,
+                "comments": [], "pr": None, "issue_open": True,
+            }},
+        })
+        r = row_for(out, "gh-issue-o/r-778")
+        self.assertFalse(r["needs_nudge"], r)
+        self.assertEqual(r["non_nudge_reason"], "fresh-dispatch", r)
+        self.assertEqual(r["state"], "dispatched", r)
 
 
 class DeltaAndState(unittest.TestCase):
