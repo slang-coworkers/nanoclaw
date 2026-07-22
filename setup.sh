@@ -176,6 +176,100 @@ check_build_tools() {
   log "Build tools: $HAS_BUILD_TOOLS"
 }
 
+# --- Fork composition (nv-* merge train) ---
+#
+# A stock nanoclaw clone has no nv-* branches on origin, so this is a NO-OP and
+# `bash setup.sh` behaves exactly like upstream. A fork clone (the nv-coworkers
+# checkout) gets nv-main merged in here — BEFORE install_deps, so the composed
+# package.json/pnpm-lock.yaml drive the frozen install. Optional project
+# overlays (nv-slang, …) are offered later by the wizard's project-integrations
+# step. This is step (b) of the clone → setup.sh(nv-main) → wizard(projects) flow.
+#
+# The nv-main merge is inlined here rather than delegated to
+# setup/merge-train.sh, because on a fresh nv-coworkers clone that script does
+# not exist yet (it arrives WITH nv-main). Keep fork_is_owned() in sync with the
+# is_owned() in setup/merge-train.sh and .github/workflows/ci.yml.
+
+# Files nv-main is canonical for — safe to take from nv-main's side on conflict.
+fork_is_owned() {
+  case "$1" in
+    package.json|pnpm-lock.yaml) return 0 ;;
+    tsconfig.json|vitest.config.ts|vitest.setup.ts) return 0 ;;
+    versions.json) return 0 ;;
+    .github/*) return 0 ;;
+    .claude/skills/*) return 0 ;;
+    src/*) return 0 ;;
+    scripts/*) return 0 ;;
+    setup/*|setup.sh) return 0 ;;
+    docs/*) return 0 ;;
+    container/agent-runner/*) return 0 ;;
+    container/hooks/*) return 0 ;;
+    container/config/*) return 0 ;;
+    container/cli-tools.json|container/cli-tools.test.ts|container/install-cli-tools.sh) return 0 ;;
+    container/spines/base/*) return 0 ;;
+    container/skills/spine-base/*) return 0 ;;
+    container/skills/base/*) return 0 ;;
+    container/Dockerfile|container/build.sh|container/entrypoint.sh) return 0 ;;
+    CLAUDE.md|README.md|CONTRIBUTING.md|LICENSE|.gitignore) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+compose_fork() {
+  command -v git >/dev/null 2>&1 || return 0
+  cd "$PROJECT_ROOT" || return 0
+  git rev-parse --git-dir >/dev/null 2>&1 || return 0
+  # Fork detection: only a fork remote carries nv-main. Vanilla → return here.
+  git ls-remote --exit-code --heads origin nv-main >/dev/null 2>&1 || return 0
+
+  git fetch origin nv-main >>"$LOG_FILE" 2>&1 || {
+    log "compose_fork: could not fetch origin/nv-main — skipping"
+    return 0
+  }
+  if git merge-base --is-ancestor origin/nv-main HEAD 2>/dev/null; then
+    log "compose_fork: origin/nv-main already merged — skipping"
+    return 0
+  fi
+
+  log "compose_fork: merging origin/nv-main into $(git rev-parse --abbrev-ref HEAD)"
+  echo "Composing coworker infrastructure (merging nv-main)…"
+  # A merge commit needs an identity; only set a fallback if none is configured.
+  git config user.name  >/dev/null 2>&1 || git config user.name  "nanoclaw-setup"
+  git config user.email >/dev/null 2>&1 || git config user.email "setup@nanoclaw.local"
+
+  if ! git merge origin/nv-main --no-edit >>"$LOG_FILE" 2>&1; then
+    conflicts="$(git diff --name-only --diff-filter=U)"
+    unexpected=""
+    for f in $conflicts; do
+      fork_is_owned "$f" || unexpected="$unexpected $f"
+    done
+    if [ -n "$unexpected" ]; then
+      git merge --abort
+      echo "setup.sh: cannot auto-compose nv-main — conflicts outside nv-main's owned set:" >&2
+      printf '  %s\n' $unexpected >&2
+      echo "Resolve manually: git merge origin/nv-main   (see logs/bootstrap.log)" >&2
+      exit 1
+    fi
+    for f in $conflicts; do
+      if git checkout origin/nv-main -- "$f" 2>/dev/null; then
+        git add -- "$f"
+      else
+        git rm -f -- "$f" >/dev/null 2>&1 || rm -f "$f"
+        git add -A -- "$f"
+      fi
+    done
+    git commit --no-edit >>"$LOG_FILE" 2>&1
+  fi
+
+  # The merge just rewrote setup.sh itself (nv-main is canonical for it). bash
+  # reads scripts incrementally, so continuing in this process could execute a
+  # mix of old and new bytes — re-exec the freshly merged copy. NANOCLAW_COMPOSED
+  # guards against re-entry (the re-run sees nv-main already merged anyway).
+  log "compose_fork: re-exec after merge"
+  export NANOCLAW_COMPOSED=1
+  exec bash "$PROJECT_ROOT/setup.sh" "$@"
+}
+
 # --- Main ---
 
 log "=== Bootstrap started ==="
@@ -193,6 +287,14 @@ if [ "$NODE_OK" = "false" ]; then
     log "install-node.sh failed"
   fi
 fi
+
+# Compose the fork (merge nv-main) BEFORE installing deps, so the frozen install
+# resolves the composed lockfile. No-op on a stock clone; on a fork clone this
+# may re-exec setup.sh once (guarded by NANOCLAW_COMPOSED).
+if [ "${NANOCLAW_COMPOSED:-}" != "1" ]; then
+  compose_fork "$@"
+fi
+
 install_deps
 check_build_tools
 

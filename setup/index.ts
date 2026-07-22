@@ -25,6 +25,7 @@ const STEPS: Record<
   auth: () => import('./auth.js'),
   'provider-auth': () => import('./provider-auth.js'),
   'cli-agent': () => import('./cli-agent.js'),
+  'project-integrations': () => import('./project-integrations.js'),
   // >>> nanoclaw:setup-steps
   // <<< nanoclaw:setup-steps
 };

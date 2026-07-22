@@ -112,6 +112,7 @@ assets/**
 bin/**
 migrate-v2*.sh
 nanoclaw.sh
+setup.sh
 uninstall.sh
 
 # Upstream-tracking utility + migration skills (absorbed via sync; not overlay-owned):

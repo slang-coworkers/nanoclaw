@@ -15,9 +15,11 @@
  *   NANOCLAW_AGENT_PROVIDER preselect the setup provider and skip the picker
  *                          (for packaged flows). Example: claude.
  *   NANOCLAW_SKIP          comma-separated step names to skip
- *                          (environment|container|onecli|auth|mounts|
+ *                          (environment|projects|container|onecli|auth|mounts|
  *                           service|cli-agent|timezone|channel|
  *                           verify|first-chat)
+ *   NANOCLAW_PROJECTS      preselect project overlays (e.g. slang,slangpy) and
+ *                          skip the project-integrations multiselect
  *
  * Timezone is auto-detected after the CLI agent step. UTC resolves are
  * confirmed with the user, and free-text replies fall through to a
@@ -33,6 +35,7 @@ import k from 'kleur';
 
 import { BACK_TO_CHANNEL_SELECTION } from './lib/back-nav.js';
 import { runChannelSkill } from './channels/run-channel-skill.js';
+import { run as runProjectIntegrationsStep } from './project-integrations.js';
 import { pingCliAgent, type PingResult } from './lib/agent-ping.js';
 import { getSetupProvider, listSetupProviders } from './providers/registry.js';
 import { applyProviderSkill } from './providers/install.js';
@@ -180,6 +183,15 @@ async function main(): Promise<void> {
         'See logs/setup-steps/ for details, then retry.',
       );
     }
+  }
+
+  // Optional project overlays (Slang, SlangPy, …) merged before the container
+  // image is built below, so the composed spines/skills are baked in. Silent
+  // no-op on a stock install (no project branches on origin). Set
+  // NANOCLAW_SKIP=projects to bypass, NANOCLAW_PROJECTS=slang,slangpy to
+  // preselect non-interactively.
+  if (!skip.has('projects')) {
+    await runProjectIntegrationsStep();
   }
 
   if (!skip.has('container')) {
