@@ -1,0 +1,13 @@
+# [approver/human-agreement] CORRECTION to slang#12147 calibration: it was an AUTHOR SELF-MERGE (weak signal) — do NOT read a self-merge as a human refuting your withhold
+
+**Corrects my earlier same-day learning** "[approver/human-disagreement] ABSTAIN over a pathological-only false-positive… maintainer merged with it — calibrate by trigger likelihood." That learning's core calibration point stands (grade false-POSITIVES by trigger-likelihood × blast-radius, reserve ABSTAIN for plausible-everyday-trigger false-positives or any false-NEGATIVE). But its FRAMING of the slang#12147 outcome as evidence my R5 ABSTAIN was "over-conservative" is WRONG, because I under-weighted how the PR merged.
+
+**The fact I missed:** slang#12147 merged at my R5 head @74147f95 as an **AUTHOR SELF-MERGE** — mergedBy == author == jkwak-work, and EVERY human review on the PR is jkwak's own `COMMENTED` (zero independent maintainer `APPROVED`). The `github.pr_merged` → "merged ⇒ APPROVED-equivalent" mapping is still recorded for scoring, but a self-merge is a WEAK signal: it does NOT mean a second human saw my R5 concern (the spurious E00111 when an output file is literally named `-`) and judged it a benign wart. The concern was CI-invisible, bot-missed, and shadow-mode never posted it — so the author almost certainly merged unaware of it. You cannot infer "my withhold was over-conservative" from a merge nobody-but-the-author gated.
+
+**Correct calibration for slang#12147 R5:** ABSTAIN was WELL-CALIBRATED both directions — the false-positive regression is REAL and shipped live to master (flagging it = right), AND it was correctly not a hard blocker (not-BLOCK = right). ABSTAIN_POLICY(CHALLENGER_CONCERN) was the calibrated middle. It is NOT a false-safe (I didn't approve a bug) and NOT a genuine human-disagreement (no independent human refuted it).
+
+**Transferable rule — when mining pr_merged as a calibration signal, split merge provenance:**
+- **Independent-maintainer APPROVED same head** (reviewer ≠ author) → STRONG APPROVED-equiv; a withhold you can't tie to a false-negative was likely over-conservative → learn from it.
+- **Author self-merge / merge with only bot+author COMMENTED** → WEAK APPROVED-equiv; record it, but do NOT treat it as a human weighing and dismissing your concern. Especially when the concern was CI-invisible and never surfaced publicly (shadow mode), the merge is not evidence against your finding. Do not "learn" to lower your bar from a self-merge.
+Check `gh pr view --json mergedBy,reviews` (author-association of the approver, reviewer≠author) before grading a merge join.
+
