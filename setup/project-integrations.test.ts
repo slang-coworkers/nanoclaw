@@ -11,6 +11,15 @@ describe('PROJECTS catalog', () => {
       expect(proj.label.length).toBeGreaterThan(0);
     }
   });
+
+  it('offers slang, slangpy, dashboard, and nanoclaw', () => {
+    expect(PROJECTS.map((p) => p.value).sort()).toEqual(['dashboard', 'nanoclaw', 'slang', 'slangpy']);
+  });
+
+  it('dashboard is the only default-selected overlay', () => {
+    const defaults = PROJECTS.filter((p) => p.default).map((p) => p.value);
+    expect(defaults).toEqual(['dashboard']);
+  });
 });
 
 describe('parseProjectsEnv', () => {
@@ -32,12 +41,13 @@ describe('parseProjectsEnv', () => {
 
   it('ignores unknown tokens and tolerates whitespace', () => {
     const got = parseProjectsEnv(' slang , nope , dashboard ');
-    expect(got?.map((p) => p.value)).toEqual(['slang', 'dashboard']);
+    expect(got?.map((p) => p.value)).toEqual(['dashboard', 'slang']);
   });
 
   it('preserves catalog order regardless of input order', () => {
-    const got = parseProjectsEnv('dashboard,slang');
-    expect(got?.map((p) => p.value)).toEqual(['slang', 'dashboard']);
+    // catalog order is dashboard, slang, slangpy, nanoclaw — input order ignored
+    const got = parseProjectsEnv('slang,dashboard');
+    expect(got?.map((p) => p.value)).toEqual(['dashboard', 'slang']);
   });
 });
 
@@ -90,8 +100,8 @@ describe('runProjectIntegrations', () => {
         return branch === 'nv-dashboard' ? 1 : 0; // dashboard "conflicts"
       },
     });
-    // All three were attempted — a failure does not short-circuit.
-    expect(calls).toEqual(['nv-slang', 'nv-slangpy', 'nv-dashboard']);
+    // All three were attempted (in catalog order) — a failure does not short-circuit.
+    expect(calls).toEqual(['nv-dashboard', 'nv-slang', 'nv-slangpy']);
     expect(res.merged).toEqual(['nv-slang', 'nv-slangpy']);
     expect(res.failed).toEqual(['nv-dashboard']);
   });

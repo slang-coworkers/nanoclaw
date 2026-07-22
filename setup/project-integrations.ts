@@ -30,14 +30,24 @@ export interface ProjectOption {
   branch: string;
   label: string;
   hint?: string;
+  /** Pre-selected in the wizard multiselect (the user can still toggle it off). */
+  default?: boolean;
 }
 
 /**
  * The project overlays offered at setup time. Data-driven — add a row to extend.
- * Slang / SlangPy are clean additive overlays; Dashboard edits shared host src
- * and may need manual conflict resolution, hence the hint.
+ * Dashboard (the observability viewer) is pre-selected by default; the others
+ * are opt-in. Slang / SlangPy / NanoClaw are clean additive overlays; Dashboard
+ * edits shared host src and may need manual conflict resolution, hence the hint.
  */
 export const PROJECTS: ProjectOption[] = [
+  {
+    value: 'dashboard',
+    branch: 'nv-dashboard',
+    label: 'Dashboard (viewer)',
+    hint: 'observability viewer — selected by default; may need manual conflict resolution',
+    default: true,
+  },
   {
     value: 'slang',
     branch: 'nv-slang',
@@ -51,10 +61,10 @@ export const PROJECTS: ProjectOption[] = [
     hint: 'multi-agent support for shader-slang/slangpy',
   },
   {
-    value: 'dashboard',
-    branch: 'nv-dashboard',
-    label: 'Dashboard (viewer)',
-    hint: 'observability viewer — may need manual conflict resolution',
+    value: 'nanoclaw',
+    branch: 'nv-nanoclaw',
+    label: 'NanoClaw coworkers',
+    hint: 'agents for developing nanoclaw itself',
   },
 ];
 
@@ -145,13 +155,16 @@ async function selectInteractively(
   const selected = await p.multiselect({
     message:
       'Which project integrations do you want to add?\n' +
-      styleText('dim', '  space to select, enter to confirm — or enter with none to skip') +
+      styleText('dim', '  space to toggle, enter to confirm — defaults pre-selected') +
       '\n',
     options: options.map((proj) => ({
       value: proj.value,
       label: proj.label,
       hint: proj.hint,
     })),
+    // Pre-select the defaults (e.g. Dashboard) among the available options; the
+    // user can toggle any of them off before confirming.
+    initialValues: options.filter((proj) => proj.default).map((proj) => proj.value),
     required: false,
   });
 
