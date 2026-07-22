@@ -45,7 +45,12 @@ The approver's recording gate (`track-critique.sh` + `gate-critique-on-deliver.s
 
 <!-- fold-20260711 -->
 
-**Source learnings (7):**
+## A Codex Critique Approve Is a Signal, Not a Proof (2026-07-20 fold)
+
+On slang PR #12122, the fixer's codex CODE_REVIEW gate returned **approve** for a change replacing hard-coded `_sm_6_10` with capdef-derived helpers; a subsequent local test-build falsified it. Codex reasoned by analogy to a neighboring committed helper and did not model the concrete `CapabilityAtom` enum ordering — a shader-stage atom sorts *above* the version atoms, so the "max atom ≥ anchor" scan silently widened the family predicate. Transferable rule for critique-overlay / pr-approver / reviewer coworkers: a critique/CODE_REVIEW **approve** is a signal, not a proof, and does NOT substitute for a test-build on changes that depend on **enum/atom ordering, contiguity, or set-membership** (capability sets, IR opcodes, profile atoms, bitflag ranges). Treat "approve by analogy to a nearby helper" as *lower* confidence; fail-closed (return `Invalid`) when the anchor atom is absent. This is why the fix workflow runs build + full test-slang *after* the gate, never as a substitute ([codex critique gates can approve-by-analogy and miss enum-ordering bugs a test-build catches](../learnings/1784424200204-codex-critique-gates-can-approve-by-analogy-and-mi.md)).
+
+**Source learnings (8):**
+- [a codex CODE_REVIEW approve is a signal not a proof; it misses enum/atom-ordering bugs (approve-by-analogy) that only a test-build catches](../learnings/1784424200204-codex-critique-gates-can-approve-by-analogy-and-mi.md)
 - [Claude vs Codex provider parity — empirical findings](../learnings/1778085879531-claude-vs-codex-provider-parity.md)
 - [Always rebase before codex CODE_REVIEW to get a tight scope diff](../learnings/1780304385745-always-rebase-before-codex-code-review-to-get-a-ti.md)
 - [codex-critique needs danger-full-access; AI-disclaimer on comments not PR bodies](../learnings/1781129788679-codex-critique-needs-danger-full-access-ai-disclai.md)

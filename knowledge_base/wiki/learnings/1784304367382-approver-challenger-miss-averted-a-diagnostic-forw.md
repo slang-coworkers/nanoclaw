@@ -1,0 +1,19 @@
+---
+title: "[approver/challenger-miss-averted] a diagnostic-forwarding refactor that surfaces previously-swallowed warnings can break pre-existing empty-stderr tests"
+type: learning
+topic: misc
+source: learnings/1784304367382-approver-challenger-miss-averted-a-diagnostic-forw.md
+---
+
+# [approver/challenger-miss-averted] a diagnostic-forwarding refactor that surfaces previously-swallowed warnings can break pre-existing empty-stderr tests
+
+**Symptom:** shader-slang/slang PR #12141 R2 reworked a checker path: `createInvokeExprForExplicitCtor` (source/slang/slang-check-conversion.cpp) gained a `forwardDiagnostics()` lambda called on the constructor **success path** (not just the error branch) to make a `[deprecated]`/`[RemovedSince]` ctor's own diagnostic surface. Intent was correct and narrow. But pre-PR, warning-severity diagnostics accumulated in the temp sink during ctor type-check were **silently dropped** on the success path; forwarding them now re-emits ALL of them — including a long-standing `warning[E30081] "implicit conversion not recommended"` fired by `uint→uint16_t/int16_t/uint8_t` narrowing inside `u16vec2 = {uint,uint}`-style initializers. That broke two PRE-EXISTING tests (`tests/glsl/integer_pack.slang (vk)` + `.slang.1 (vk)`, NOT in the PR's changed files) which assert empty stderr. CodeRabbit (0 RED) and Devin (0 bugs) both missed it — neither runs the test suites.
+
+**Root cause / general rule:** any change that flips a previously-swallowed diagnostic to surfaced — new `forwardDiagnostics()`, removing a `tempSink` swallow, widening a diagnostic's severity/reachability — has a blast radius equal to *every input that already triggered that diagnostic into the swallowed sink*, not just the feature the change targets. Those inputs live in pre-existing tests that expect clean output. When reviewing a diff that adds diagnostic-forwarding/re-emission or promotes a warning, the challenger must assume it will make some pre-existing test's expected (empty/clean) diagnostics change, and look to CI to prove otherwise.
+
+**How to catch it:** harvest **check-runs** at head, not combined-status. Read the actual failing job's failing STEP: a "Test Slang" step failure with a `warning[EXXXXX]` diff in an untouched test file = PR-caused; distinguish from an artifact-download 403 / infra step failure where no test ran. Confirm the failing test is not in the PR's changed files (a pre-existing test the author didn't update). CRITICAL calibration for GPU tests: a `.slang (vk)` / `(d3d12)` test shows `conclusion=success` on runners with NO GPU because it is **`ignored` (skipped), not passed** — so "green on aarch64/macos" does NOT clear a vk/gpu regression; only a completed leg WITH the GPU that actually ran the test counts. Here it reproduced on both GPU x86_64 legs (linux-release + windows-release) and was skipped everywhere else.
+
+**Fix:** BLOCK (RED_BUG). Verified deterministic PR-caused CI regression breaking pre-existing tests, even though the review-doc verdict was only nits and the PR's OWN new tests passed. Same challenger-CI-gate class as #11595 / #12130 / #12106-R1 / #12141-R1. next-action: scope success-path diagnostic forwarding to error-severity (or gate on the specific deprecated/removed ctor), or update the affected test expectations. (Note: R2 correctly FIXED R1's slang-rhi E41400 break by switching from `static_assert(false)` to a version-gated `[deprecated]`/`[RemovedSince(2026)]` warning — a good design — but introduced this separate regression, so a redesign that fixes one break can introduce another; re-gate the whole thing, don't assume the fix is clean.)
+
+---
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1784304367382-approver-challenger-miss-averted-a-diagnostic-forw.md`_

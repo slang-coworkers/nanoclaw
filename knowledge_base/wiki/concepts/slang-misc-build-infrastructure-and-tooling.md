@@ -3,7 +3,7 @@ title: "Slang Build Infrastructure, Tooling, and Language Server"
 type: concept
 group: slang-grab-bag
 tags: [build, CMake, MSVC, slangd, LSP, language-server, build-tag, version, downstream-compilers, NVRTC, VK_KHR_shader_abort, SPIR-V, IRTextureType, imgui, dev-shm, coworker-container]
-source_count: 46
+source_count: 48
 ---
 
 # Slang Build Infrastructure, Tooling, and Language Server
@@ -129,7 +129,16 @@ Slang's default MSVC Release build loses dead-code elimination and identical-COM
 
 Slang release packaging has two distinct edit sites, and the File-check step is not a validation gate. Platform ZIP/TGZ archives are built by CPack (files enter via `install(... COMPONENT metadata)` in `CMakeLists.txt`), but **WASM packages bypass CPack** entirely — so adding files to release archives (e.g. issue #12083's `LICENSES/` dir) requires touching both sites, and the release File-check step will not catch a WASM omission ([Slang release: WASM packages bypass CPack; File-check is not a validation gate](../learnings/1783957891963-slang-release-wasm-packages-bypass-cpack-file-chec.md)).
 
-**Source learnings (47):**
+### macOS release signing failure was a greedy version-parse bug, not an expired cert (#12143)
+
+The macOS release build's "Sign and notarize binaries" failure starting at tag v2026.12.0.1 was framed by jkwak as an expired signing cert, but triage proved a **workflow version-parsing bug**. `release.yml:217` re-derives the version from the resolved dylib filename with a greedy regex `sed -E 's/.*\.0\.([0-9]+(\.[0-9]+)*)\.dylib$/\1/'`. The real file is `libslang-compiler.0.${SLANG_VERSION_NUMERIC}.dylib`, and `SLANG_VERSION_NUMERIC` accepts N dotted components; for a 4-component tag the file is `libslang-compiler.0.2026.12.0.1.dylib`, where greedy `.*\.0\.` matches through the interior `.0.` and extracts `version=1`, so the rebuilt binaries array points at a nonexistent `libslang-compiler.0.1.dylib` and the sign loop's else `exit 1`s **before** codesign runs. Latent since PR #8926; failures began exactly at the first 4-component tag. The `"0 valid identities found"` line is a **red herring** — it comes from `security find-identity -v` at :177, which runs before cert import (:189) and gives zero signal on cert validity because the job dies earlier. Immediate fix: anchor the parse on the fixed prefix, `sed -E 's/^libslang-compiler\.0\.(.*)\.dylib$/\1/'`. Two lessons this reinforces: (1) it's another workflow-file bug the bot can't PR (no `workflows` permission, same as #11985/#12062), so it routes to a human/maintainer, not slang-fixer — the same routing consequence already noted for the RelWithDebInfo/common-setup change above; (2) method — when a CI failure is framed as cause X, read the actual failing step's script and reproduce with a 30-second `sed` (the error string `0.1.dylib` itself encoded the real bug), rather than accepting the initial framing ([slang release.yml macOS signing: greedy version-parse breaks on 4-component tags](../learnings/1784270564328-slang-release-yml-macos-signing-greedy-version-par.md)).
+
+## generator() Tools Are EXCLUDE_FROM_ALL — Not Built by the Default/Debug Preset (2026-07-21 fold)
+
+A tool registered via the `generator(...)` macro in `tools/CMakeLists.txt` is `EXCLUDE_FROM_ALL` and its only reverse-dependency is the `all-generators` custom target — which has no `ALL` keyword, so nothing in a normal build depends on it. `cmake --workflow --preset debug` (configure `default` + build the default `ALL`) does NOT build generator tools; the `generators` preset that builds `all-generators` runs only in the WASM/emscripten CI branch. Consequence: if a CI step (or the standard debug/release build) needs a generator tool's binary, it will be absent — `find build/generators -name <tool>` returns empty. Danger: a build subagent that runs `--target <tool>` explicitly produces it and masks the gap; only a plain default build reveals it. Verify a generator-backed CI step by doing a *plain* `cmake --build --preset debug --target slang-test` (NOT `--target <tool>`) and checking the binary appears. Fix (in-tree convention): make a real ALL-graph target depend on it. `REQUIRED_BY <t>` uses `add_dependencies(<t> …)` which requires `<t>` to already exist — the existing `REQUIRED_BY slang-test` precedents work because they're defined *after* the `slang-test` target (~:284), so a `generator()` call near the top of the file can't use it (configure error "Cannot add target-level dependencies to non-existent target slang-test"). Instead add `add_dependencies(slang-test <tool>)` *after* the slang-test definition (~:311), guarded `if(TARGET <tool> AND NOT SLANG_GENERATORS_PATH)` (generators are imported when cross-compiling). Found via slang#12157 — a CI enforce step called a generator tool a reviewer proved was never built in the debug path ([Slang generator() tools are EXCLUDE_FROM_ALL — not built by the default/debug preset](../learnings/1784567879388-slang-generator-tools-are-exclude-from-all-not-bui.md)).
+
+**Source learnings (49):**
+- [`generator()` tools are EXCLUDE_FROM_ALL, not built by `--preset debug`; make a real ALL-graph target depend via `add_dependencies(slang-test <tool>)` after slang-test def](../learnings/1784567879388-slang-generator-tools-are-exclude-from-all-not-bui.md)
 - [MSVC C5285 on doctest fixed by /wd5285](../learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md)
 - [MSVC 14.51 C5285 on vendored doctest](../learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md)
 - [slang-rhi submodule pin lags feature PRs](../learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md)
@@ -173,4 +182,5 @@ Slang release packaging has two distinct edit sites, and the File-check step is 
 - [slang external/mimalloc feeds SPIRV-Tools' build; spirv-tools DEPS is NOT a CMake input](../learnings/1784083959740-slang-external-mimalloc-feeds-spirv-tools-build-sp.md)
 
 - [Editing source/slang-llvm/ — default build fetches a PREBUILT libslang-llvm.so, so your edit is NOT compiled locally](../learnings/1784096455719-editing-source-slang-llvm-default-build-fetches-a-.md)
+- [slang release.yml macOS signing: greedy version-parse breaks on 4-component tags — not an expired cert](../learnings/1784270564328-slang-release-yml-macos-signing-greedy-version-par.md)
 _Catalog: [[wiki/index.md]]_

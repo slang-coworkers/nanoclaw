@@ -1,0 +1,24 @@
+---
+title: "[approver/challenger-miss-averted] Metal direct-encoder-operand needs no useResource — Devin residency false-positive"
+type: learning
+topic: slang-compiler
+source: learnings/1784338866210-approver-challenger-miss-averted-metal-direct-enco.md
+---
+
+# [approver/challenger-miss-averted] Metal direct-encoder-operand needs no useResource — Devin residency false-positive
+
+**Symptom:** On slang-rhi#800 (Implement dispatchComputeIndirect for Metal, fknfilewalker), Devin flagged one 🔴: "Indirect compute dispatch can crash on Metal devices without a residency set" (metal-command.cpp:864). The reasoning: the indirect argument buffer is passed to `dispatchThreadgroups(indirectBuffer,...)` but is NOT added to the per-encoder `useResources` fallback used when `!m_device->m_hasResidencySet`, so on non-residency-set devices it might not be resident → crash. A naive parse (doc verdict = REQUEST_CHANGES from a 🔴) would have recorded BLOCK.
+
+**Root cause of the false positive:** Devin conflated two distinct Metal residency categories. In Metal, a resource passed **directly** to an encoder method — `setBuffer`, `setTexture`, `dispatchThreadgroups(threadgroups,...)`, AND `dispatchThreadgroups(indirectBuffer:offset:threadsPerThreadgroup:)` — is made resident **automatically** because the encoder sees the reference. `useResource`/`useResources` is required ONLY for resources the encoder cannot statically observe: those accessed via GPU pointers dereferenced inside argument buffers. The indirect arg buffer is a direct encoder operand, not a pointer-accessed one.
+
+**How to catch it (transferable):** For any slang-rhi Metal 🔴 claiming "resource not made resident / missing useResource", check WHICH residency category the resource is in before treating it as blocking:
+1. Directly bound to an encoder slot / passed as an encoder-method argument (`setBuffers`, `setTexture`, `dispatchThreadgroups(indirectBuffer,...)`) → **auto-resident, no useResource needed.**
+2. Written as a GPU address (`getDeviceAddress()`) into argument-buffer memory that a shader dereferences → **needs useResource on the `!m_hasResidencySet` fallback.**
+The codebase encodes exactly this invariant: `addUsedResource`/`addUsedRWResource` are called ONLY in the argument-buffer-writing path (`src/metal/metal-shader-object.cpp:555-573`, where `bufferPtr = getDeviceAddress()+offset` is memcpy'd into arg-buffer memory), NEVER for directly-bound `setBuffer` operands (register-slot path, lines 259-275). The class doc `src/metal/metal-command.h:42-50` states useResources exists because the RHI API exposes GPU addresses accessed through argument buffers that hazard-tracking/residency can't see. Additionally, on the residency-set path (default GPUFamilyApple6+, all `macos-latest` CI runners) EVERY buffer is globally registered via `registerResource` at creation (`metal-buffer.cpp:86`), so it is resident regardless.
+
+**Verification sources used:** (1) Apple's `useResource(_:usage:)` docs confirm direct encoder operands (incl. the indirect-buffer dispatch overload) are auto-resident; useResource is only for GPU-side indirection. (2) The codebase's own `addUsedResource` call sites. Both independently refute the bug.
+
+**Fix (procedure):** A refuted 🔴 does NOT justify BLOCK. But shadow-mode never rounds a doc's 🔴 up to WOULD_APPROVE, so the decision was ABSTAIN_POLICY/CHALLENGER_CONCERN — also carried by a genuine residual test-gap (see companion learning). Trace the exact Metal residency category before blocking on an automated reviewer's residency claim.
+
+---
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784338866210-approver-challenger-miss-averted-metal-direct-enco.md`_

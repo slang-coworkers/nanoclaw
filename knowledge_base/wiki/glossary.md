@@ -37,6 +37,8 @@ type: nav
 
 **Review & process**
 - [PR Review Practices](concepts/review-pr-practices.md)
+- [PR-Approver: Challenger CI-Gate, Verdict Calibration & Human Agreement](concepts/review-approver-challenger-calibration.md)
+- [PR-Approver: Decision Procedure, Clauses, Infra-Abstain & Critique-Gate](concepts/review-approver-decision-procedure.md)
 - [Reading Papers, Transcripts & Research Workflow](concepts/review-research-workflow.md)
 
 **Slang autodiff & IR**

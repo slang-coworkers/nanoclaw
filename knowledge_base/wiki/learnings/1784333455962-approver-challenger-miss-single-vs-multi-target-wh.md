@@ -1,0 +1,26 @@
+---
+title: "[approver/challenger-miss] single-vs-multi-target whole-program forcing hides the reachable RELEASE_ASSERT trigger"
+type: learning
+topic: ci-tooling
+source: learnings/1784333455962-approver-challenger-miss-single-vs-multi-target-wh.md
+---
+
+# [approver/challenger-miss] single-vs-multi-target whole-program forcing hides the reachable RELEASE_ASSERT trigger
+
+## Symptom
+On shader-slang/slang#12147 R3, the challenger needed to prove whether `SLANG_RELEASE_ASSERT(debugArtifactCount == 1)` (source/slang/slang-end-to-end-request.cpp:766) is a reachable compiler abort. The production bot (github-actions[bot]) had downgraded to 🟡 and dismissed the assert; Devin flagged it "appears unreachable"; the author added a comment claiming "Direct-SPIR-V output is whole-program, so its entry points share that target's one separate-debug artifact." My first challenger pass AND both Step-0 recall subagents independently proposed a **single-target** trigger (`-target spirv`, 2 entry points, no `-o`, or two `-o` files) and asserted debugArtifactCount==2 → BLOCK. All three were WRONG about the trigger.
+
+## Root cause
+For a **single** SPIR-V target, slang forces whole-program (count==1) on every path:
+- no-`-o` single target → the parser SYNTHESIZES a stdout `RawOutput` (slang-options.cpp:4566, guarded by `m_rawOutputs==0 && m_rawTargets==1`), which then hits the direct-SPIR-V inference (:4676) and forces `GenerateWholeProgram=true`.
+- two-`-o` single target → the 2nd `-o` hits `DuplicateOutputPathsForTarget` error (:4719) before the validator.
+So the bot's 🟡 dismissal is actually CORRECT for the common single-target case. The assert IS reachable, but only via a **multi-target** invocation: `slangc test.slang -target spirv -target glsl -entry vsMain -stage vertex -entry fsMain -stage fragment -separate-debug-info -separate-debug-info-output dbg.spv`. Two targets make `m_rawTargets.getCount()==2`, which SKIPS the single-target synthesis guard at :4566, leaving `m_rawOutputs` empty → nothing forces whole-program → the SPIRV target stays per-EP (`GenerateWholeProgram` default FALSE: getDefault→CompilerOptionValue() intValue 0, compiler-options.cpp:251; getBoolOption returns default when unset, header:268) → 2 dbg-bearing artifacts → count==2 → abort. The non-SPIR-V target's `SeparateDebugInfoUnsupportedForTarget` is a WARNING (diagnostics.lua:208), not an abort, so it doesn't stop the validator.
+
+## How to catch it
+When a RELEASE_ASSERT guards `count == 1` over per-target/per-entry-point artifacts, DON'T stop at the first plausible trigger — enumerate what forces the count DOWN to 1 and find the invocation that BYPASSES it. Whole-program forcing in slang has exactly three writers: `-whole-program` (options.cpp:3363/4528), the `-o`-bound direct-SPIR-V inference (:4676→:4727), and the single-target no-`-o` stdout-output synthesis (:4566, requires `m_rawTargets==1`). The synthesis's `count==1` guard is the tell: **multi-target sidesteps it.** Also: recall subagents and the production bot can CONVERGE on the same wrong trigger (single-target here) — convergence is not correctness. A DECISION_REVIEW critique that adversarially hunts for the gate the finders missed is what caught it; run it whenever the challenger is OVERRIDING a lenient doc verdict on a reachability argument, because the whole override rests on the trigger being real.
+
+## Fix
+Challenger override 🟡→BLOCK (RED_BUG) stands: reachable release-mode abort via the multi-target route, CI-invisible (no multi-target multi-entry test). The correct source-side fix is to replace the assert with a diagnostic for `debugArtifactCount > 1`, mirroring the sibling `_validateCoverageManifestOutputPaths` which already diagnoses the same `>1` case gracefully (`CoverageManifestOutputMultipleArtifacts`) — the asymmetry between the two sibling validators is the original smell. R1/R2's BLOCK conclusion was right; their documented single-target trigger was wrong and is corrected to multi-target.
+
+---
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1784333455962-approver-challenger-miss-single-vs-multi-target-wh.md`_
