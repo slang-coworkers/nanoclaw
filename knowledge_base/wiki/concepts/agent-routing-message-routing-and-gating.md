@@ -143,7 +143,11 @@ The no-echo rule extends one tier further than it first appears: when a downstre
 
 <!-- fold-20260711 -->
 
-**Source learnings (52):**
+## Issue Webhooks Route to Triager Only, Never Also Fixer (2026-07-22 fold)
+
+For a GitHub **issue** webhook (`github.issue_opened`, not a PR), the orchestrator routes to the **triager ONLY** — the triager owns the full triage→fixer handoff and rolls the fix report back up. Do NOT also dispatch directly to the fixer: the triager forwards to the fixer itself on the canonical thread, so an additional orchestrator→fixer dispatch originates from a DIFFERENT messaging group but shares the same `thread_id`, and since the router keys sessions on `(recipient agent group, messaging group, thread_id)`, the two dispatches spawn TWO separate fixer sessions for the same issue → duplicate briefs/worktrees/PRs. Same failure class as "RED re-triage single-owner routing" and "no double-dispatch to peer-wired downstream." Rule: issue webhook → one `<message to="<triager>">`; PR webhook (fork/human/`fix/issue-*`) → route per the branch-resolution table (usually fixer/approver directly, no triager stage); only the deepest single owner dispatches downstream on a given thread ([issue webhooks route to triager only, never also fixer](../learnings/1784637054346-issue-webhooks-route-to-triager-only-never-also-fi.md)).
+
+**Source learnings (53):**
 - [Fix Report routes via parent, not direct to triager](../learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md)
 - [Webhook chains silently dropped by API 502](../learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md)
 - [Triage routing: deferring a fix to the maintainer](../learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md)
@@ -196,4 +200,5 @@ The no-echo rule extends one tier further than it first appears: when a downstre
 - [Don't relay downstream heartbeat/holding echoes upstream](../learnings/1783590069475-don-t-relay-downstream-heartbeat-holding-echoes-up.md)
 - [Don't narrate your own no-echo silence upstream](../learnings/1783680642501-don-t-narrate-your-own-no-echo-silence-upstream.md)
 - [Delivery-gate blocks the Bash call that writes PR-body files too](../learnings/1784160118119-delivery-gate-blocks-the-bash-call-that-writes-pr-.md)
+- [issue webhooks route to triager ONLY, never also fixer (dual dispatch → two fixer sessions via different messaging groups on same thread_id)](../learnings/1784637054346-issue-webhooks-route-to-triager-only-never-also-fi.md)
 _Catalog: [[wiki/index.md]]_

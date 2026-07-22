@@ -3,7 +3,7 @@ title: "Slang Intrinsics & Builtins"
 type: concept
 group: slang-language-core
 tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector]
-source_count: 12
+source_count: 14
 ---
 
 # Slang Intrinsics & Builtins
@@ -37,6 +37,8 @@ Extending the `specializeAddressSpace` recovery pass to DXIL was empirically fal
 ## Builtin Vector Type Representation
 
 `vector<float,3>` (and other builtin vector/matrix types) ARE `DeclRefType<StructDecl>` — `isDeclRefTypeOf<StructDecl>(float3)` is true. This means initializer-list-to-vector coercion goes through `createInvokeExprForExplicitCtor` (the struct-explicit-ctor branch of `_coerceInitializerList`), not `createCtorInvokeExprForAbstractType`. When overload resolution's `canCoerce` probe passes `outExpr == nullptr`, the viability check inside `createInvokeExprForExplicitCtor` is nested inside an `if (outExpr)` guard and returns `false` even though the coercion is valid — causing `{float2, float}` to fail as a function argument while succeeding in declarations. The fix is to un-nest the `return true` so viability is reported independently of `outExpr` ([slang #11730 — builtin vector is a DeclRefType&lt;StructDecl&gt;; init-list arg-coercion bug = if(outExpr) guard on createInvokeExprForExplicitCtor](../learnings/1782733705823-slang-11730-builtin-vector-is-a-declreftype-lt-str.md)).
+
+Because vector composition constructors resolve through this same explicit-ctor machinery, a call like `float4(float2 barycentrics, 1.f)` (3 supplied components) compiles today NOT via legacy component-fill tail-padding to `(x,y,1,0)`, but by implicit-splatting the scalar `1.f` to `float2(1,1)` (cost `kConversionCost_ScalarToVector`) and resolving the `__init(vector<T,2> xy, vector<T,2> zw)` ctor (`core.meta.slang:2796`) → `(x,y,1,1)`. The semantics-preserving downstream fix (slang-rhi#798) is therefore `float4(barycentrics, 1.f, 1.f)`, which resolves `__init(vector<T,2> xy, T z, T w)` (`:2784`) to the identical `(x,y,1,1)` — deliberately `1.f, 1.f` not `1.f, 0.f`, to preserve the current w=1 splat behavior rather than "fix" it to zero-fill (this is a ray-tracing test that must keep validating the same thing). That one-liner is the cross-repo unblock for shadow-BLOCK'd #12141, whose `static_assert(false)` hard-disables `(vec2,T)`/`(T,vec2)` ctors for `vector<T,4>` and would otherwise turn the original 3-component call into E41400 ([slang-rhi#798 float4(float2,1.f) splat vs tail-pad — semantics-preserving fix adds explicit w](../learnings/1784281175141-slang-rhi-798-float4-float2-1-f-splat-vs-tail-pad-.md)). The scalar-splat-vs-tail-pad divergence is the same design-gated area analyzed as #12093 (see the init-list → vector coercion discussion in [[wiki/concepts/slang-language-generics-and-type-system.md]]).
 
 ## Texture `[require]` capability atoms, samplerless, and the E41012 profile-upgrade warning
 
@@ -73,7 +75,18 @@ In hlsl.meta.slang, `__intrinsic_asm ".Method"` (dot-prefix) on a `[mutating] vo
 
 <!-- fold-20260711 -->
 
-**Source learnings (13):**
+## Deriving a Family's Latest-Version Capability Atom: `getElements()[count-2]` (2026-07-20 fold)
+
+To derive a target family's latest version atom from a `_*_latest` capdef alias (avoiding hard-coded `_sm_6_10`), mirror the existing `getLatestSpirvAtom()`/`getLatestMetalAtom()` pattern EXACTLY: `elements[elements.getCount() - 2]` (the `-1` element is the trailing shader-stage atom). A materialized `CapabilitySet` for a version alias includes a stage atom (`vertex`/`compute`/…), and stage atoms sort ABOVE all version atoms in the enum; `getElements()` returns them sorted, so the highest *version* atom is at `[count-2]`. A "max atom ≥ familyAnchor" scan is WRONG (grabs the stage atom, widening the family predicate to swallow other families' atoms); a "walk contiguously up, stop at first gap" scan is WORSE — it SEGFAULTS (`UIntSet::contains` past the populated range + `atom+1` walks invalid values). Also: `isSpirvExtensionAtom` and the family range-predicates are internal `namespace Slang` funcs with no `SLANG_API`, so a `slang-unit-test` C++ caller fails to link — test them through observable command-line behavior in a `.slang` test instead ([capability latest-version-atom helper must use getElements()[count-2]](../learnings/1784424625402-slang-capability-latest-version-atom-helper-must-u.md)).
+
+
+## "Mirror the Fast Path Exactly" Is a Code-Sharing Requirement (2026-07-22 fold)
+
+On slang#11877 PR #12162 (a `pr: breaking change` adding a declaration-site diagnostic that must reject exactly what the builtin-operator fast path shadows), reviewers made a HIGH-priority gate of this: any logic whose correctness rests on "this stays identical to that other site" must be a SHARED function both sites call, not two copies that match today with a `// matches the fast path` comment. The per-operator element-eligibility ladder (bitwise/shift→int; equality→int|float|bool; logical-not→bool; arithmetic→int|float) was written 3× (fast-path binary, fast-path unary, the new decl check) — matching but unpinned, so a future fast-path change would silently drift them with no failing test. Fix: extract ONE predicate `isBuiltinOperationKindEligibleForBaseType(BuiltinOperationKind, BaseType)` co-located with the operator→kind mapping (`getBuiltinOperationKindFromString`), reachable from all callers (often a base class like `SemanticsVisitor`). Transferable rules: catching yourself writing "// matches X" is the signal to extract; harden the shared predicate with explicit cases + `SLANG_UNEXPECTED` (`[[noreturn]]`) rather than a plausible-value `default:`; the one genuinely-NEW (non-mirror) branch is where tests are most needed (here the instance-method `this`-receiver operand logic had zero coverage while the mirrored parts were tested); and extracting into a widely-included header means a broad recompile + regression sweep (behavior-neutral: 4294/4294) ([when a check must "mirror the fast path", SHARE the predicate, don't re-implement + comment it](../learnings/1784627727954-slang-when-a-check-must-mirror-the-fast-path-share.md)).
+
+**Source learnings (16):**
+- [latest-version capability atom = `getElements()[count-2]` (`-1` is the stage atom, which sorts above version atoms); "max ≥ anchor" scan is wrong, contiguity-walk segfaults; internal predicates lack `SLANG_API` (test via `.slang` behavior)](../learnings/1784424625402-slang-capability-latest-version-atom-helper-must-u.md)
+- [slang-rhi#798 float4(float2,1.f) splat vs tail-pad — scalar splat resolves (vec2,vec2) ctor to (x,y,1,1); semantics-preserving fix adds explicit w](../learnings/1784281175141-slang-rhi-798-float4-float2-1-f-splat-vs-tail-pad-.md)
 - [Slang variable-pointers signature-walk fix: only (GroupShared, parameter) is a fail-without-fix regression test](../learnings/1780972705906-slang-variable-pointers-signature-walk-fix-only-gr.md)
 - [Slang flag-enum compound-assign gap: ILogical vs __BuiltinLogicalType operators](../learnings/1781621242788-slang-flag-enum-compound-assign-gap-ilogical-vs-bu.md)
 - [slang #9382 Gather ConstOffset — naive fix unsafe; two stale draft PRs exist](../learnings/1781713033202-slang-9382-gather-constoffset-naive-fix-unsafe-two.md)
@@ -90,4 +103,5 @@ In hlsl.meta.slang, `__intrinsic_asm ".Method"` (dot-prefix) on a `[mutating] vo
 - [slang CPU-half struct has only operator float — half→int cast fails (11996)](../learnings/1783511746989-slang-cpu-half-struct-has-only-operator-float-half.md)
 - [slang#12059 HLSL CoopMat fill/Splat -- dot-form intrinsic on void method discards value-returning target op](../learnings/1783725139961-slang-12059-hlsl-coopmat-fill-splat-dot-form-intri.md)
 - [Slang #11493 fast-path: user operator on builtin operands — maintainer wants ERROR not honor](../learnings/1784156401458-slang-11493-fast-path-user-operator-on-builtin-ope.md)
+- [when a check must "mirror the fast path" (#12162), SHARE the predicate (isBuiltinOperationKindEligibleForBaseType), don't re-implement + comment](../learnings/1784627727954-slang-when-a-check-must-mirror-the-fast-path-share.md)
 _Catalog: [[wiki/index.md]]_

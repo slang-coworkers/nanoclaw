@@ -3,7 +3,7 @@ title: "Slang Autodiff & Differentiation: Internals, Bugs, and Design Rules"
 type: concept
 group: slang-autodiff-ir
 tags: [autodiff, differentiation, transpose, derivative-variants, purity, capability, member-methods, performance, witness-tables]
-source_count: 22
+source_count: 40
 ---
 
 # Slang Autodiff & Differentiation: Internals, Bugs, and Design Rules
@@ -94,6 +94,10 @@ The merged Slice-1 PR #11594 implemented the constexpr parameter contract but ad
 
 Tests for diagnostics emitted by `slang-ir-check-differentiability` use `//TEST:SIMPLE(filecheck=CHECK):` with `-target hlsl -stage compute -entry main`, matching the convention of existing tests like #11286 — NOT `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` ([slang autodiff: missing-no_diff diagnostic tests use //TEST:SIMPLE(filecheck=CHECK), not //DIAGNOSTIC_TEST](../learnings/1780300985125-slang-autodiff-missing-no-diff-diagnostic-tests-us.md)). Follow the in-tree neighbor convention; the general-case directive is documented but diverges from the established autodiff-test pattern.
 
+## Confirming a Silent-Wrong Gradient: Inspect Emitted C++
+
+When probing whether an autodiff case produces a *silently-wrong* gradient (vs a diagnostic, vs correct), two traps defeat the obvious probes: a bare `fwd_diff(...)` whose result is unused gets **dead-code-eliminated** (`slangc -target hlsl` emits `computeMain(){ return; }` and tells you nothing), and `slangi` INTERPRET may **hard-fault** ("VM pointer access does not belong to a known section or parameter", exit 5) on a malformed pointer-shaped derivative rather than printing a value. The robust technique: (1) force the result observable — write `r.d` into an `RWStructuredBuffer` so it survives DCE; (2) emit `-target cpp -O0` and READ the generated forward-derivative function — a correct derivative constructs the result pair as `{ primal, differential_0 }` (a real tangent), while a broken one shows a hardcoded `{ *ptr, 0.0f }` differential, i.e. a silent zero gradient; (3) always run a CONTROL that should work (a trivial `fwd_diff(sq)`, or the same read through a VALUE `get` accessor) to prove autodiff is healthy and only the case-under-test breaks. Concrete case #12031 (merged a8d13d6): differentiating a read through a user-defined `ref` subscript accessor silently returns 0 — the emitted `s_fwd_readRefCell_0` does `{ *_S7, 0.0f }`, dereferencing the ref-accessor's pointer-returning derivative call and discarding its `.d` (the pointer/value confusion the PR's own later-reverted err-41037 was meant to catch). Build note: to build a PR tip in isolation, `git worktree add --detach <sha>` then `git submodule update --init --recursive --depth 1` (worktrees do NOT inherit submodule checkouts — miniz will be missing, CMake fails with "could not find TARGET miniz"), configure `-DSLANG_ENABLE_TESTS=OFF -DSLANG_ENABLE_SLANG_RHI=OFF -DSLANG_ENABLE_GFX=OFF` for slangc+slangi only, and run the build+probe SYNCHRONOUSLY in-turn — backgrounding the build and ending the turn lets container teardown kill it ([Confirming a silent-wrong-gradient: inspect emitted C++ when DCE hides it and the interpreter faults](../learnings/1784293240745-confirming-a-silent-wrong-gradient-inspect-emitted.md)).
+
 ## IR Classifier / Analysis Changes: Gate on Full-Suite CI
 
 For IR-level classifier or lowering changes, do NOT declare a fix verified on a narrow test sweep (e.g. `tests/diagnostics/` only) ([Gate Slang IR/classifier fix verdicts on full-suite CI](../learnings/1782450782359-gate-slang-ir-classifier-fix-verdicts-on-full-suit.md)). A classifier broadening that passes a 601-test `diagnostics/` sweep and earns a peer APPROVE can still produce false positives caught only in `tests/bugs/`. The specific example: classifying a store's value operand as a *read* spuriously emitted E41016 for `self.self = &self;` (storing an address is not reading the pointed-to location). Holding fixer PRs as drafts pending full-suite CI is what makes early catches possible.
@@ -144,7 +148,8 @@ Two 2026-07 bugs, both escalated up from SlangPy (see [[wiki/concepts/slangpy-to
 
 <!-- fold-20260713 -->
 
-**Source learnings (39):**
+**Source learnings (40):**
+- [Confirming a silent-wrong-gradient: inspect emitted -target cpp -O0 forward-derivative ({primal,0.0f} = silent zero); force observable to defeat DCE, run a control (#12031)](../learnings/1784293240745-confirming-a-silent-wrong-gradient-inspect-emitted.md)
 - [slang IVector differentiable subscript drift (#12025): requirement inherited from internal IArrayAccessor](../learnings/1783618355299-slang-ivector-differentiable-subscript-drift-12025.md)
 - [slang autodiff transpose: bare-diff gradient with DiffPair aggPrimalType causes crash](../learnings/1779432739908-slang-autodiff-transpose-bare-diff-gradient-with-d.md)
 - [slang autodiff transpose: aggregation type vs gradient narrowing — not enough with three sites](../learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md)

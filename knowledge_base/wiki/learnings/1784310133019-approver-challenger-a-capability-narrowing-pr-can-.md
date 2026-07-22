@@ -1,0 +1,19 @@
+---
+title: "[approver/challenger] A capability-narrowing PR can EXPOSE pre-existing mixed-ABI on sites it doesn't touch — flipping the default type re-gates behavior of unedited methods (attributable → BLOCK)"
+type: learning
+topic: agent-ops
+source: learnings/1784310133019-approver-challenger-a-capability-narrowing-pr-can-.md
+---
+
+# [approver/challenger] A capability-narrowing PR can EXPOSE pre-existing mixed-ABI on sites it doesn't touch — flipping the default type re-gates behavior of unedited methods (attributable → BLOCK)
+
+**Symptom.** shader-slang/slang#12089 rev6 (@fbbe0c40): a PR that adds an explicit `nvapiHitObjects` capability atom and re-gates ~18 HitObject `__target_switch` arms from coarse `hlsl_nvapi` to the new atom, flipping the DEFAULT HitObject *type* on `sm_6_9 + hlsl_nvapi` from `NvHitObject` (NVAPI) to `dx::HitObject` (native). The production review found — and I + codex verified — that FOUR HitObject LSS accessors (`GetSpherePositionAndRadius`, `GetLssPositionsAndRadii`, `IsSphereHit`, `IsLssHit`) were NOT re-gated (they're pre-existing, `[require(cuda_hlsl, raytracing_lss_ho)]`, `case hlsl: __intrinsic_asm ".GetSphereObjectPositionAndRadius"` — NVAPI method-call intrinsics). Result: on `sm_6_9 + hlsl_nvapi` the type emits native `dx::HitObject` while these methods emit NVAPI accessors → mixed-ABI HLSL — the exact defect class the PR exists to eliminate, reintroduced for the LSS subset. Decision: BLOCK / RED_BUG.
+
+**Key insight (attribution).** The buggy methods are PRE-EXISTING and the PR does NOT edit them — a tempting reason to call it a latent issue and downgrade to ABSTAIN/CHALLENGER_CONCERN. But the PR is the PROXIMATE CAUSE: by changing the type-selection predicate (coarse `hlsl_nvapi` → explicit `nvapiHitObjects`), it transforms these unchanged methods from MATCHED at base (pre-PR type was NvHitObject on hlsl_nvapi, methods NVAPI — consistent) to MIXED at head (post-PR type native, methods still NVAPI). A defect a PR *exposes by changing global behavior* is attributable to that PR even when the buggy lines are untouched → BLOCK is correct when it's a verified reachable 🔴 and Step-1 clauses pass.
+
+**How to catch it (challenger, capability-narrowing / default-flipping PRs).** When a PR narrows a capability atom or flips a type-selection default, the risk isn't only the arms it re-gated — it's every OTHER method/site keyed on the OLD coarse capability that it did NOT re-gate. Enumerate ALL methods on the affected type (not just the ones in the diff): for each, does its `case hlsl:`/`[require(...)]` still assume the old coarse-capability behavior? A method whose `case hlsl:` emits a vendor-flavored intrinsic (e.g. NVAPI `.Foo`) but which is `require(hlsl)`-callable regardless of the resolved type ABI is a mixed-ABI candidate under the new default. This extends the prior "enumerate parallel no-operand sites" learning: also enumerate parallel sites the re-gating simply MISSED (here LSS accessors keyed on a different capability `raytracing_lss_ho`, so a naive "grep for hlsl_nvapi" wouldn't surface them).
+
+**Chain calibration (#12089, 6 revs):** rev1 CHALLENGER_CONCERN (no CI) → rev2 CLAUSE_FAIL:ci_green (check-cmdline-ref) → rev3/4/5-e0401d6d CLAUSE_FAIL:no_protected_paths (CMakeLists) → rev5-final CHALLENGER_CONCERN (falcor sm_6_6+hlsl_nvapi break, 🟡 review) → rev6 BLOCK/RED_BUG (LSS mixed-ABI, 🔴 review). Each revision peeled one blocker and the next-deepest issue surfaced — the shadow approver tracked the escalation/de-escalation correctly (ABSTAIN→BLOCK when a 🟡 became a verified 🔴). See [[pr-12089-decided-rev-d6c2114d]].
+
+---
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784310133019-approver-challenger-a-capability-narrowing-pr-can-.md`_

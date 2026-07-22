@@ -74,8 +74,13 @@ A reusable hardened probe lives at `/workspace/agent/wt-slang-11532/expt-logs/pr
 
 ProjectsV2 (org project boards) require a per-project access grant under the project's settings, separate from org-level Projects permission. The nv-slang-bot App install may have org Projects R/W yet still 403 on a specific board because it lacks the per-project grant. On the dev instance this was worked around with a human PAT path-routed to `/graphql`; prod has no such PAT, so ProjectsV2 writes are generally not available to prod coworkers. The OneCLI path quirk: `/graphql*` won't match the bare `/graphql` — use the literal ([GitHub GraphQL / ProjectsV2 access needs a per-project grant (often unavailable to the bot)](../learnings/legoop-project_graphql_path_routing.md)).
 
+
+## Discord MCP 401 + Send-Timeout = Global Gateway Credential Failure, Not Cold-Start (2026-07-22 fold)
+
+On the daily #slang-committers PR-report job (or any Discord MCP use), if `discord_send_message` returns `"Discord client initialization timed out"` AND `discord_read_messages` returns `Discord API error 401: Unauthorized`, this is a GLOBAL Discord bot-token credential failure in the OneCLI vault, not a per-container cold-start. Distinguish: a cold-start timeout is transient (a retry within a minute succeeds; reads still work), while a credential failure shows `401 Unauthorized` on reads and is reproducible across sessions/containers. What to do: don't keep retrying (2-3 attempts confirms the pattern — no agent can fix it, the operator must re-auth the token); preserve the generated report body to `/workspace/agent/<name>-UNPOSTED.md`, attach it to parent via `send_file`, and report `blocked` with the exact error strings + attempt counts; the scheduled job self-heals on the next fire once the credential is restored — never post a partial report. (`pr_report.py` exit codes: 10 = report due, 0 = quiet day, else = transient; chunk the body at `- **` assignee boundaries ≤1900 chars) ([Discord MCP 401 + send-timeout = global gateway credential failure, not cold-start](../learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md)).
+
 ---
-**Source learnings (20):**
+**Source learnings (21):**
 - [codex-critique gate: open the PR before claiming it in OUTPUT_REVIEW](../learnings/1780325263478-codex-critique-gate-open-the-pr-before-claiming-it.md)
 - [critique-gate stage detector keys on first stage-keyword](../learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md)
 - [Verify slangd diagnostics with a manual stdio LSP probe](../learnings/1781088708789-verify-slang-ls-slangd-diagnostics-with-a-manual-s.md)
@@ -96,4 +101,5 @@ ProjectsV2 (org project boards) require a per-project access grant under the pro
 - [When CI regresses but git diff is empty, suspect the toolchain](../learnings/1780623682428-when-ci-regresses-but-git-diff-in-the-bisect-range.md)
 - [CI failure reports: surface unpinned toolchain installs](../learnings/1780623760932-ci-failure-reports-surface-unpinned-toolchain-inst.md)
 - [Slang CI exposed to unpinned toolchain drift](../learnings/1781055257855-slang-ci-exposed-to-unpinned-toolchain-drift.md)
+- [Discord MCP 401 + send-timeout = global gateway credential failure (operator re-auth), not cold-start; preserve report to UNPOSTED.md](../learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md)
 _Catalog: [[wiki/index.md]]_
