@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1594 agent learnings**, synthesized into **46 concept pages**.
+Standalone wiki built from **1645 agent learnings**, synthesized into **46 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -83,11 +83,11 @@ Standalone wiki built from **1594 agent learnings**, synthesized into **46 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (817)
-- [NanoClaw / agent operations](topics/agent-ops.md) (232)
-- [CI, build & tooling](topics/ci-tooling.md) (137)
-- [Review & process](topics/review-process.md) (111)
-- [Uncategorized](topics/misc.md) (297)
+- [Slang compiler & language](topics/slang-compiler.md) (840)
+- [NanoClaw / agent operations](topics/agent-ops.md) (240)
+- [CI, build & tooling](topics/ci-tooling.md) (142)
+- [Review & process](topics/review-process.md) (113)
+- [Uncategorized](topics/misc.md) (310)
 
 ## All learnings (chronological)
 
@@ -1685,3 +1685,54 @@ Standalone wiki built from **1594 agent learnings**, synthesized into **46 conce
 - [Discord MCP 401 + send-timeout = global gateway credential failure, not cold-start](learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md)
 - [Devin out-dir reuse can smuggle stale flags from a different PR](learnings/1784697016109-devin-out-dir-reuse-can-smuggle-stale-flags-from-a.md)
 - [Emit-switch accept-set + a legalization guard that mirrors it must share ONE predicate (comparison-sampler drift)](learnings/1784697407327-emit-switch-accept-set-a-legalization-guard-that-m.md)
+- [Discord MCP 401 across all channels = token outage, not transient](learnings/1784708358394-discord-mcp-401-across-all-channels-token-outage-n.md)
+- [[approver/calibration] Devin-only ABSTAIN on slang#11475 R3 later corroborated by the delayed primary production review of the SAME head — 0 correctness bugs, matching gap set](learnings/1784723580509-approver-calibration-devin-only-abstain-on-slang-1.md)
+- [[approver/infra-abstain] A primary review that posts AFTER you decide (unchanged head) → refresh the row on the primary tier](learnings/1784723964060-approver-infra-abstain-a-primary-review-that-posts.md)
+- [[approver/challenger] Verify a claimed fix in SOURCE at the settled head — a fixer's later push can resolve a withhold, and a stale bot/Devin flag pointing at the fixed lines is refuted, not confirmed](learnings/1784724233457-approver-challenger-verify-a-claimed-fix-in-source.md)
+- [[approver/human-agreement] WOULD_APPROVE-vindicated-merged-head-byte-identical-via-master-merge-syncs](learnings/1784725443219-approver-human-agreement-would-approve-vindicated-.md)
+- [[approver/infra-abstain] Merge confirms: bot-authored test-only device-enablement takeover is a repeatedly-safe shape](learnings/1784726873588-approver-infra-abstain-merge-confirms-bot-authored.md)
+- [[approver/challenger] CLA/mechanical force-push does not clear a standing CHANGES_REQUESTED — same withhold posture](learnings/1784731375990-approver-challenger-cla-mechanical-force-push-does.md)
+- [[approver/human-agreement] ABSTAIN_POLICY on standing CR → human APPROVED = clean withhold resolution, NOT false-safe](learnings/1784732395517-approver-human-agreement-abstain-policy-on-standin.md)
+- [SlangPy coverage automation status + verify "completed" claims vs main not PR branches](learnings/1784734562681-slangpy-coverage-automation-status-verify-complete.md)
+- [[approver/clause-gap] Fork-head PRs from trusted MEMBERs abstain on head_provenance under v0-shadow](learnings/1784735771677-approver-clause-gap-fork-head-prs-from-trusted-mem.md)
+- [[approver/infra-abstain] Devin agent-browser hang recovered by bounded-timeout retry — avoid false ABSTAIN_INFRA](learnings/1784735780656-approver-infra-abstain-devin-agent-browser-hang-re.md)
+- [Human-cred PR merge during actions:write outage ≠ bot write recovery](learnings/1784736496164-human-cred-pr-merge-during-actions-write-outage-bo.md)
+- [Critique gate false-positives on read-only gh api /pulls/ calls](learnings/1784737519525-critique-gate-false-positives-on-read-only-gh-api-.md)
+- [Triaging an "add X support" feature issue — search for an existing Fixes-#N PR before treating it as fresh work](learnings/1784739008680-triaging-an-add-x-support-feature-issue-search-for.md)
+- [slang-rhi #787 texture-shared-cuda.vulkan flake is a missing-sync bug, not numeric tolerance](learnings/1784741714597-slang-rhi-787-texture-shared-cuda-vulkan-flake-is-.md)
+- [groupshared param by-ref regresses CUDA emit (vk-only inline pass masks it)](learnings/1784741954379-groupshared-param-by-ref-regresses-cuda-emit-vk-on.md)
+- [SlangPy CI wedge triage: gh run wall-clock false positives and step-level distinction](learnings/1784742134828-slangpy-ci-wedge-triage-gh-run-wall-clock-false-po.md)
+- [Run filecheck .slang tests through real slang-test (copy libslang-llvm.so), never a simulator](learnings/1784743223082-run-filecheck-slang-tests-through-real-slang-test-.md)
+- [[approver/clause-gap] nanoclaw-changelog-docs-PR-6of6-clauses-pass-still-OUT_OF_SCOPE-not-INFRA](learnings/1784745354331-approver-clause-gap-nanoclaw-changelog-docs-pr-6of.md)
+- [Diagnostic pass placement tradeoff: type-name rendering vs dead-code false-positives (SPIR-V legalize)](learnings/1784747930488-diagnostic-pass-placement-tradeoff-type-name-rende.md)
+- [Fixer stalls forever waiting on background-subagent completion notification across teardown](learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)
+- [Verify FileCheck CHECK directives by ordered-matching emitted output when FileCheck is absent locally](learnings/1784751927211-verify-filecheck-check-directives-by-ordered-match.md)
+- [[approver/human-disagreement] Fork-head abstain on slangpy#918 merged unchanged — calibration evidence to relax allow_fork_head for trusted members](learnings/1784752014622-approver-human-disagreement-fork-head-abstain-on-s.md)
+- [Slang #7669 Metal StructuredBuffer binding loss already fixed by #11607 (verify-at-HEAD caught it)](learnings/1784753556178-slang-7669-metal-structuredbuffer-binding-loss-alr.md)
+- [slang#8002 __constref ParameterBlock/opaque ICE — copied address-only value escapes global-only legalization](learnings/1784754145569-slang-8002-constref-parameterblock-opaque-ice-copi.md)
+- [fvk-bind-globals non-default set collides split-out globals resources onto CB binding (slang#10668)](learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md)
+- [critique-gate false-trips on no-artifact refusals; use a non-gated label](learnings/1784755033543-critique-gate-false-trips-on-no-artifact-refusals-.md)
+- [groupshared by-ref param: Metal addr-space + WGSL inline-ordering gotchas (#10641)](learnings/1784756124264-groupshared-by-ref-param-metal-addr-space-wgsl-inl.md)
+- [[approver/human-agreement] ABSTAIN(OPEN_GAP) on a maintainer-flagged design fork, then MERGED at your exact head with a formal Approve = clean withhold resolution (fork decided by humans), NOT a false-safe](learnings/1784756558331-approver-human-agreement-abstain-open-gap-on-a-mai.md)
+- [SlangPy Slang-side Tensor has no public raw-buffer accessor (0.43.0)](learnings/1784757017182-slangpy-slang-side-tensor-has-no-public-raw-buffer.md)
+- [A follow-up issue editing a file only introduced by an open PR must fold into that PR, not a rival PR off master](learnings/1784758259762-a-follow-up-issue-editing-a-file-only-introduced-b.md)
+- [Build subagents will EDIT your source when a new assert fires — drive assert-bearing builds yourself](learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)
+- [Renaming spirv_asm %registers in .meta.slang: block-scoped only — %result/%6 also live in __intrinsic_asm LLVM strings](learnings/1784760040459-renaming-spirv-asm-registers-in-meta-slang-block-s.md)
+- [SLANG_USE_SYSTEM_* has no bundled fallback — QUIET ≠ fallback; verify at the add_subdirectory gate](learnings/1784761099055-slang-use-system-has-no-bundled-fallback-quiet-fal.md)
+- [slang-12191 E55215 post-OpKill dead-code diagnostic — triage nuances](learnings/1784762307830-slang-12191-e55215-post-opkill-dead-code-diagnosti.md)
+- [DescriptorHandle is uint64-native under spvBindlessTextureNV (not uint2) — and test a reviewer's proposed alt before agreeing](learnings/1784762549887-descriptorhandle-is-uint64-native-under-spvbindles.md)
+- [Diagnostic no-loc on ConstantBuffer descriptor-handle: loc dropped by std140 re-synthesis, not frontend](learnings/1784762842417-diagnostic-no-loc-on-constantbuffer-descriptor-han.md)
+- [slang-test injects -O0 by default; SPIRV validation runs pre-opt](learnings/1784762873836-slang-test-injects-o0-by-default-spirv-validation-.md)
+- [[approver/human-agreement] BLOCK→fixer-applies-my-fix→APPROVED-merge is a vindication; but merge-join onto an earlier BUGGY commit is NOT (guard the false-safe)](learnings/1784765736898-approver-human-agreement-block-fixer-applies-my-fi.md)
+- [On resume, git-gh state beats replayed transcript (stale-replay reconciliation)](learnings/1784765800190-on-resume-git-gh-state-beats-replayed-transcript-s.md)
+- [Docs-of-record PRs (licenses/deps/pin-policy) need per-cell source verification](learnings/1784765808308-docs-of-record-prs-licenses-deps-pin-policy-need-p.md)
+- [slangpy-samples auth + rebase mechanics (App installation token)](learnings/1784768440116-slangpy-samples-auth-rebase-mechanics-app-installa.md)
+- [[approver/critique-mustfix] ABSTAIN [Approval Decision] message must not contain the literal tokens WOULD_APPROVE/BLOCK](learnings/1784769386692-approver-critique-mustfix-abstain-approval-decisio.md)
+- [Slang PR review: concurrent runs clobber shared checkout tmp/, causing wrong-PR reviews](learnings/1784771691413-slang-pr-review-concurrent-runs-clobber-shared-che.md)
+- [SPIR-V direct-resource-param gate: relaxing isIllegalSPIRVParameterType by "not-rejected-by-GLSL" leaks feedback/unknown/array textures (#12195)](learnings/1784772370437-spir-v-direct-resource-param-gate-relaxing-isilleg.md)
+- [Build subagent false-report + concurrent-ninja collision corrupts build dir](learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md)
+- [CB source-loc drop is IR-level real but MASKED on master by statement-granularity OpLine (verify observables yourself)](learnings/1784778798903-cb-source-loc-drop-is-ir-level-real-but-masked-on-.md)
+- [Slang bindless/descriptor-heap path is selected at specializeTargetSwitch, not the spirv-legalize gates](learnings/1784780629812-slang-bindless-descriptor-heap-path-is-selected-at.md)
+- [slang-12196 entry-point [require] never reaches specializeTargetSwitch (bindless half of #11631)](learnings/1784782055293-slang-12196-entry-point-require-never-reaches-spec.md)
+- [precise qualifier ignored on direct SPIR-V in default fp-mode (issue 12198) — NoContraction gate reads global mode only](learnings/1784785437426-precise-qualifier-ignored-on-direct-spir-v-in-defa.md)
+- [RayQuery return-by-value miscompile = opaque value-copy, not missing return-dest transform (verify via disasm)](learnings/1784785541306-rayquery-return-by-value-miscompile-opaque-value-c.md)

@@ -117,7 +117,11 @@ A fixer chain going silent for many hours with an active-but-`stopped` container
 
 The `gh` dup-check during triage MUST also `gh pr list -R <repo> --search "<issue#>" --state all` — the assignee may already own an in-flight `Fixes #N` PR. If one exists (especially a human's), do NOT reflexively forward to slang-fixer: that authors a competing PR against a live human-owned branch (double-dispatch). Surface it as a routing decision to the parent (park at triaged / help unblock / ping author) rather than defaulting to Step-8 "forward to fixer — always." Case: slang#10584 had a stalled human draft PR #10666 (`Fixes #10584`, CI red, unaddressed review) — held forward, reported the routing decision up ([triage: gh-search for an existing Fixes-#N PR before forwarding to fixer](../learnings/1784380560521-triage-gh-search-for-an-existing-fixes-n-pr-before.md)).
 
-**Source learnings (38):**
+## Feature-Issue Vehicle Search and Folding a Follow-Up Into Its Introducing PR (2026-07-23 fold)
+
+Two triage-routing rules about resolution vehicles. When triaging an "add X support" feature issue, run `gh pr list --search "<keywords>" --state all` early — such issues frequently already have a stalled **bot-owned draft PR carrying `Fixes #N`** (e.g. #9038's takeover of #9085); the correct verdict is "resume/finish the existing PR" and, because a 2-week-old takeover may still own a live session, flag the parent for the routing call rather than unilaterally forwarding fresh work (a legitimate override of the always-forward-to-fixer default) ([triaging an add-X feature issue — search for an existing Fixes-#N PR before treating it as fresh work](../learnings/1784739008680-triaging-an-add-x-support-feature-issue-search-for.md)). And when a docs/feature follow-up edits a file that **only an open, unmerged PR introduces** (verify with `git show origin/master:<path>`), the vehicle is to fold the new content into that PR with `Closes #<followup>`, NOT a rival PR off master that would conflict — and re-check the PR's draft/ready state at triage time, since a stale "draft" assumption changes the auto-close analysis ([a follow-up issue editing a file only introduced by an open PR must fold into that PR, not a rival PR off master](../learnings/1784758259762-a-follow-up-issue-editing-a-file-only-introduced-b.md)).
+
+**Source learnings (40):**
 - [triage must `gh pr list --search "<issue#>"` for an existing `Fixes #N` PR before forwarding to fixer; a human-owned in-flight PR → routing decision to parent, not double-dispatch](../learnings/1784380560521-triage-gh-search-for-an-existing-fixes-n-pr-before.md)
 - [tools/gfx/ is legacy code paralleling slang-rhi](../learnings/1778749638138-slang-fixer-tools-gfx-is-legacy-code-paralleling-s.md)
 - [Devin Review done-detector false positives](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md)
@@ -158,4 +162,6 @@ The `gh` dup-check during triage MUST also `gh pr list -R <repo> --search "<issu
 - [Fixer silence from teardown-killed background build ≠ dropped chain](../learnings/1783471609043-fixer-silence-from-teardown-killed-background-buil.md)
 - [Peer 'not addressable / blocked' can mean session logged-out — operator /login blocker, don't re-dispatch](../learnings/1783565846208-peer-not-addressable-blocked-can-mean-session-logg.md)
 
+- [triaging 'add X support' — search for an existing bot-owned Fixes-#N draft PR first; flag routing to parent, don't forward fresh (double-dispatch risk)](../learnings/1784739008680-triaging-an-add-x-support-feature-issue-search-for.md)
+- [fold a follow-up that edits an open PR's newly-introduced file INTO that PR (Closes #N), not a rival PR off master; re-check draft/ready state at triage](../learnings/1784758259762-a-follow-up-issue-editing-a-file-only-introduced-b.md)
 _Catalog: [[wiki/index.md]]_

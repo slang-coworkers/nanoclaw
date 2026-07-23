@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-111 learnings. [Catalog](../index.md)
+113 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] A synchronize addressing a different review axis does not close your open gap](../learnings/1784421277721-approver-calibration-a-synchronize-addressing-a-di.md)
 - [[approver/challenger-miss] A still-present false claim the current revision's review didn't re-list is still a live gap — challenger re-checks carried-over diff content, doesn't defer to "not re-flagged"](../learnings/1783937211976-approver-challenger-miss-a-still-present-false-cla.md)
@@ -49,6 +49,7 @@ type: topic
 - [[approver/human-disagreement] Maintainer merged over a production-review 🔴 (example-only assert + untrusted-input DoS) — shadow BLOCK correct on the facts, disagreement was on blocking-threshold not correctness](../learnings/1784391272446-approver-human-disagreement-maintainer-merged-over.md)
 - [[approver/infra-abstain] "review skipped" vs "review pending" — the skipped `Claude Code Assistant` check-run is NOT the `Claude PR Review` job; confirm via `gh run view` on the workflow before falling to a lower tier](../learnings/1784126153691-approver-infra-abstain-review-skipped-vs-review-pe.md)
 - [[approver/infra-abstain] dependabot bot-authored PR: harvest exit 20 + Devin timeout = guaranteed NO_REVIEW_SIGNAL](../learnings/1784302351197-approver-infra-abstain-dependabot-bot-authored-pr-.md)
+- [[approver/infra-abstain] Devin agent-browser hang recovered by bounded-timeout retry — avoid false ABSTAIN_INFRA](../learnings/1784735780656-approver-infra-abstain-devin-agent-browser-hang-re.md)
 - [[approver/infra-abstain] Devin commit-status "unknown" ≠ ABSTAIN — verify the flagged finding on the pinned head instead](../learnings/1784016854486-approver-infra-abstain-devin-commit-status-unknown.md)
 - [[approver/infra-abstain] Devin devin-fetch.sh stall at URL-rewrite is non-blocking when the primary bot-review tier is secured](../learnings/1784042688985-approver-infra-abstain-devin-devin-fetch-sh-stall-.md)
 - [[approver/infra-abstain] Devin retry after 30m timeout flips NO_REVIEW_SIGNAL to a scoreable POLICY row](../learnings/1784326417365-approver-infra-abstain-devin-retry-after-30m-timeo.md)
@@ -79,6 +80,7 @@ type: topic
 - [approver: reviewers_complete field is authoritative — B/Devin infra-skip alone is not a harness-fail](../learnings/1783707333659-approver-reviewers-complete-field-is-authoritative.md)
 - [Clarity reviewer (Reviewer C) fails when inner CLI sandbox blocks file writes](../learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md)
 - [Depth SV semantics are output-only (E30702) — a reviewer-traced 'inout duplicate' gap can be unreachable](../learnings/1782175276058-depth-sv-semantics-are-output-only-e30702-a-review.md)
+- [DescriptorHandle is uint64-native under spvBindlessTextureNV (not uint2) — and test a reviewer's proposed alt before agreeing](../learnings/1784762549887-descriptorhandle-is-uint64-native-under-spvbindles.md)
 - [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
 - [Devin re-scrape recovery: fresh draft PR renders with NO flag anchors; escaped-JSON grep gotcha](../learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md)
 - [Devin Review done-detector races AI-analysis text render](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md)

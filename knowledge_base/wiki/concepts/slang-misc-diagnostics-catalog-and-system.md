@@ -96,7 +96,13 @@ The legacy HLSL `(Struct)0` cast (treated as `Struct s = {}`, default-init not z
 
 E31106/E31107 firing with no source location (slang#11825) was resolved upstream by maintainer PR #11986 — matching our triage's Approach A/C, it *suppresses* the warning on compiler-synthesized parameter groups via a dedicated `IRSynthesizedParameterGroupDecoration`, rather than merely locating it ([slang-11825 E31106/E31107 synthesized-group warning — shipped via PR 11986](../learnings/1783944459990-slang-11825-e31106-e31107-synthesized-group-warnin.md)).
 
-**Source learnings (33):**
+## Source-Loc Dropped by std140 Re-Synthesis (Real at IR Level, Masked by Statement-Granularity OpLine) (2026-07-23 fold)
+
+Issue #12192: under `spvBindlessTextureNV`, the E55215 diagnostic on a `ConstantBuffer<T>.Handle` prints with NO source location while the identical diagnostic on `StructuredBuffer`/`ByteAddressBuffer` reports a real `line:col`. The front-end DOES stamp the loc, but it is dropped later: the CB element is wrapped into a std140 block-struct and its field access is **re-synthesized** in `slang-ir-lower-buffer-element-type.cpp` via `setInsertBefore(user)` + `emitFieldAddress`/`emitLoad` with no `IRBuilderSourceLocRAII` — a StructuredBuffer scalar load is not re-synthesized this way and keeps its loc. When a diagnostic prints loc-less but the front-end clearly stamped it, suspect a later pass that RE-SYNTHESIZES the access (block-struct wrapping, std140 packing); fix producer-side when you own the synthesizing pass ([diagnostic no-loc on ConstantBuffer descriptor-handle: loc dropped by std140 re-synthesis, not the frontend](../learnings/1784762842417-diagnostic-no-loc-on-constantbuffer-descriptor-han.md)).
+
+The observable, though, is subtler than the IR truth: the loc drop is REAL at the IR-instruction level but **masked on master** because Slang emits `OpLine`/`DebugLine` at *statement* granularity — every statement carries some loc-bearing inst, so the statement's `OpLine` covers the loc-less CB access and `-g2`/`-g1` debug info looks correct. A build+run subagent mis-read "the CB access has no OpLine of its own" as "master-reproducible"; re-running the repro showed the statement-level OpLine lands on the right line. Always re-run a subagent's `reproduced` claim and read the actual output before posting a public `reproduced` label — the clean user-visible symptom here is the E55215 diagnostic (a direct `inst->sourceLoc` consumer), not the debug-info golden ([CB source-loc drop is IR-level real but MASKED on master by statement-granularity OpLine — verify observables yourself](../learnings/1784778798903-cb-source-loc-drop-is-ir-level-real-but-masked-on-.md)).
+
+**Source learnings (35):**
 - [Shared diagnostic formatter changes silently regress unrelated exhaustive diag= goldens (masked on draft CI)](../learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md)
 - [stale E30055 catalog test is a syntax error](../learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md)
 - [catalog generated tests have 3 provenance stores](../learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md)
@@ -128,4 +134,6 @@ E31106/E31107 firing with no source location (slang#11825) was resolved upstream
 - [slang (Struct)0 zero-cast is a synthetic special case, no Decl for [deprecated] attribute (#12045)](../learnings/1783690411342-slang-struct-0-zero-cast-is-a-synthetic-special-ca.md)
 - [slang-11825 E31106/E31107 synthesized-group warning — shipped via upstream PR 11986](../learnings/1783944459990-slang-11825-e31106-e31107-synthesized-group-warnin.md)
 
+- [ConstantBuffer diagnostic no-loc: loc dropped by std140 block-struct re-synthesis (setInsertBefore+emitXxx), not the frontend — fix producer-side](../learnings/1784762842417-diagnostic-no-loc-on-constantbuffer-descriptor-han.md)
+- [the CB loc-drop is real at IR level but masked on master by statement-granularity OpLine; re-run a subagent's 'reproduced' claim before posting the label](../learnings/1784778798903-cb-source-loc-drop-is-ir-level-real-but-masked-on-.md)
 _Catalog: [[wiki/index.md]]_
