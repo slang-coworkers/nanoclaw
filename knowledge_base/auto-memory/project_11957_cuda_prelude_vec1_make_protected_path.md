@@ -7,7 +7,11 @@ metadata:
   originSessionId: cc5170bf-011a-445b-8823-14178472d699
 ---
 
+**TERMINAL — MERGED @ `b184085c` (2026-07-17 11:03Z); human verdict APPROVED recorded, decision VINDICATED.**
+
 shader-slang/slang PR **#11957** — "Fix CUDA prelude vec1 make helpers to return the vector struct" (author jvepsalainen-nv). Approver decision @ head `f79b61d4059d`: **ABSTAIN_POLICY** — `CLAUSE_FAIL:no_protected_paths`.
+
+**Outcome (calibration):** `expipiplus1` (external human COLLABORATOR, not the author) APPROVED the final head `418c5382934a` — genuine external review, not a self-merge. The abstain deferred the CI-config edit to a human and exactly that human review happened + approved. Withhold-on-protected-path well-calibrated: never false-safe (approver never approved), not over-caution (triggered review was real). Transferable learning: a clean primary review still correctly abstains on a protected `.github` path.
 
 **Why:** Primary production review (`github-actions[bot]`) is CLEAN (0 findings) on the settled head, but the PR touches `.github/workflows/ci-slang-test.yml` (matches `.github/**` protected glob). Clause FAIL is terminal → challenger skipped; clean review does NOT override protected-path policy. System working as intended — CI-config edit needs a human maintainer.
 

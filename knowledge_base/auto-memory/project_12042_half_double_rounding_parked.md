@@ -21,7 +21,10 @@ shader-slang/slang#12042 — `half` rounding on CPU/C++ target incurs double rou
 
 **Dedup:** unique. #11996 is the intentional-split parent (not a dup). My initial dedup pointer to #11990 was **misdirected** (that's IArray 64-bit indexing, not fp16). #11985 = Metal CI flake, unrelated. #11837/#10531/#6608 etc. = different fp16 concerns.
 
-**GitHub footprint:** verdict POSTED by triager — issue #12042 [comment 4934104299](https://github.com/shader-slang/slang/issues/12042#issuecomment-4934104299). Chain closed at triaged/parked; triager will re-open on a substantive human comment.
+**GitHub footprint:** initial verdict POSTED by triager — [comment 4934104299](https://github.com/shader-slang/slang/issues/12042#issuecomment-4934104299).
 
-**Next:** re-engage on maintainer comment/PR. Do NOT auto-dispatch a fixer. triager owns GitHub verdict (closest-to-state); Main does not post here.
+**RE-OPEN #1 (07-17):** reporter **skiminki-nv** commented ([4995146326](https://github.com/shader-slang/slang/issues/12042#issuecomment-4995146326)) — substantive, not ack. Confirms framing; leans **Approach B** (emulation lib), notes **MSVC has no `std::float16_t`** (sharpens cross-build-host determinism concern: stdlib-only would double-round `half` on Windows but not GCC builds); self-frames **low-priority/worth-tracking**; adds fp8/BF16 scope. Triager re-evaluated at HEAD 5c30d437f, posted fresh delta ack [4999669537](https://github.com/shader-slang/slang/issues/12042#issuecomment-4999669537), **chain re-PARKED**. A human added `Dev Reviewed` label (left untouched, authoritative).
+- **Verified correction on fp8/BF16:** BF16/FloatE4M3/FloatE5M2 have **ZERO CPU representation today** — capability-gated to SPIR-V/CUDA only (`core.meta.slang:1705-1751`), no prelude struct, no emitter type-name mapping. So fp8/BF16 = **future feature, NOT an existing CPU double-rounding bug** like half. Takeaway framed: make the chosen rounding strategy type-generic to cover fp8/BF16 if/when CPU emulation is added. Kept tracked on THIS issue (offered to split a dedicated tracker if maintainers prefer).
+
+**Next:** re-engage only on a fresh substantive human/maintainer comment or PR. Do NOT auto-dispatch a fixer (reporter himself says low-priority). triager owns GitHub verdict (closest-to-state); Main does not post here.
 Memo: `/workspace/inbox/a2a-1783677013009-x3o1xo/triage-12042.md` (triager fs).

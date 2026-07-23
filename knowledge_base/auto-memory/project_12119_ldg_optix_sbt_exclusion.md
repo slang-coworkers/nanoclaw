@@ -1,6 +1,6 @@
 ---
 name: project_12119_ldg_optix_sbt_exclusion
-description: "slang#12119 shape-independent __ldg exclusion for OptiX SBT — R3 ABSTAIN hold VINDICATED, R4 @7d12d5a8 WOULD_APPROVE after author added +kIROp_PtrCast; awaiting human merge join"
+description: "slang#12119 __ldg OptiX SBT exclusion — TERMINAL: MERGED b593edc 07-21, jkwak-work APPROVED; R4 WOULD_APPROVE=agreement, R3 ABSTAIN vindicated"
 metadata: 
   node_type: memory
   type: project
@@ -19,4 +19,8 @@ R1/R2 challenger note (still valid for those heads): new `isAddressIntoOptiXShad
 
 Challenger ran the exact op-set completeness probe the **#11152 false-safe failed**: new `isAddressIntoOptiXShaderBindingTable` peel-set is a strict superset of `getRootAddr`, covers every SBT-reachable forwarding op. `lowerBufferElementTypeToStorageType` emits a `BitCast→Add→BitCast` where `kIROp_Add` is NOT peeled, but resolved (a) unreachable for SBT uniforms (that path is `AddressSpace::UserPointer`+unsized-array-gated; SBT is default-AS `ConstantBuffer` `FieldAddress` chain) and (b) failure-direction-safe (walker miss → returns `false`/mutable → no `__ldg`, opposite of #11152). Sole producer of `kIROp_CUDALDG` is this pass; failure direction cannot miscompile (removes `__ldg`, observable at FileCheck). Correct producer-layer fix, vindicated by #11152 postmortem — cf. [[project_11323_casttovoid_closed_wronglayer]].
 
-**WATCH (R4 join, head 7d12d5a8224b):** merge → agreement (WOULD_APPROVE ≡ APPROVED-equiv) AND stamps R3 as a vindicated correctness hold (the R2→R3-ABSTAIN→R4-fix→APPROVE arc = #11152 discipline working end-to-end). Human owns merge; shadow → no posting either tier. All 4 ledger rows (R1/R2/R3/R4) stand per revision-chain rule.
+**TERMINAL — MERGED 2026-07-21T22:21Z** (mergeCommit b593edc384, merged by szihs). human_verdict=**APPROVED** (jkwak-work APPROVED, reviewDecision=APPROVED — genuine independent maintainer approval, not self-merge) stamped against R4 (7d12d5a8224b) and R3 (f4fa4942590d).
+
+**SHA-verify-first caught a non-clean join:** merged head is **e5c7b14f3209, NOT R4 head 7d12d5a8224b** (5 days + rebase-onto-master later; R4→merged = +34/−1, almost all `.github/**` CI churn). Approver did NOT blind-stamp R4's SHA as merged — verified the load-bearing SBT walker `isAddressIntoOptiXShaderBindingTable` byte-identical at merged head to R4 (same peel set incl. `kIROp_PtrCast`), so R4's decision content is exactly what merged. Only content deltas vs R4: doc-comment rewordings (CodeRabbit nit) + one unrelated test (`cuda-prelude-vec1-make.cu`, scope-adjacent nvcc vec1-make regression, not SBT). Stamped verdict against R4/R3 (rows whose content merged), not the never-decided e5c7b14f.
+
+**Outcome:** R4 WOULD_APPROVE = calibration agreement (HIT). R3 ABSTAIN(OPEN_GAP) VINDICATED — author landed exactly the `+kIROp_PtrCast` one-liner R3 named, then merged APPROVED. The R2→R3-ABSTAIN→R4-fix→merge-APPROVED arc = #11152 discipline paid off end-to-end. All 4 ledger rows stand with human verdicts on R3/R4. Shadow throughout — nothing posted either tier. Chain terminal.

@@ -11,6 +11,8 @@ shader-slang/slang **#12069** (ilyakurdyukov, external) — "Stop determining by
 
 **Disposition (2026-07-15): MAINTAINER GO — draft PR authorized.** jkwak-work (core maintainer) commented on the issue (cmt 4984853208): "please make a PR as suggested." Released the park; re-dispatched fixer THROUGH slang-triager for the hybrid B-then-A **DRAFT** PR. Stays DRAFT — maintainer authorizing the PR ≠ flip-to-ready; no ready/merge without a further explicit go. Real `@nv-slang-bot` mention → github-post-authorized.
 
+**Real-world repro (2026-07-xx, cmt 5021997787):** k0tran (external) built shader-slang on **loongarch64** and had to manually `#define SLANG_LITTLE_ENDIAN` + `SLANG_PTR_IS_64` — empirical confirmation of Claim 3 (loongarch64 = an unlisted 64-bit arch, exactly as memo predicted) + external demand to upstream/release. Strengthens the fix case; PR should demonstrate loongarch64 "just works" via compiler-macro-primary detection (no manual defines). Does NOT change the gate (k0tran ≠ maintainer; jkwak already authorized draft). k0tran follow-up (cmt 5022116510) also wants **riscv64** — same unlisted-64-bit class, already covered by compiler-macro path (no new design point, no re-dispatch). Fix value spans the whole `__LP64__`/`__BYTE_ORDER__` family (loongarch64 + riscv64 confirmed external interest).
+
 Prior state: triaged/parked drafts-only. Classification bug (latent portability)/low/**P3**/core–public-ABI-header.
 
 3 claims all VERIFIED by slang-triager:
