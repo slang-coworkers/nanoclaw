@@ -1,0 +1,142 @@
+/**
+ * Behavioral tests for setup.sh's compose_fork() — the fork-bootstrap step that
+ * merges nv-main on a fork clone. Run under host vitest so the shell logic is
+ * CI-protected. Each case copies the REAL setup.sh into a synthetic repo (so its
+ * self-derived PROJECT_ROOT points at the throwaway clone, and the re-exec finds
+ * a setup.sh), then runs it with NANOCLAW_COMPOSE_ONLY=1 to stop after
+ * composition without the pnpm install/build tail.
+ */
+import { describe, it, expect } from 'vitest';
+import { spawnSync } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const SETUP_SH = path.resolve(HERE, '..', 'setup.sh');
+
+const ENV = {
+  ...process.env,
+  GIT_AUTHOR_NAME: 't',
+  GIT_AUTHOR_EMAIL: 't@t',
+  GIT_COMMITTER_NAME: 't',
+  GIT_COMMITTER_EMAIL: 't@t',
+  NANOCLAW_COMPOSE_ONLY: '1',
+};
+
+function git(cwd: string, ...args: string[]): string {
+  const r = spawnSync('git', args, { cwd, encoding: 'utf-8', env: ENV });
+  if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);
+  return r.stdout;
+}
+
+/** Seed a bare origin (base → nv-main + work branches); setup.sh is committed so
+ *  the clone has it and compose_fork's re-exec target exists. */
+function buildOrigin(root: string, withNvMain = true): string {
+  const seed = path.join(root, withNvMain ? 'seed' : 'vseed');
+  fs.mkdirSync(seed);
+  git(seed, 'init', '-q', '-b', 'base', '.');
+  fs.mkdirSync(path.join(seed, 'src'));
+  fs.mkdirSync(path.join(seed, 'groups', 'main'), { recursive: true });
+  fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'base\n');
+  fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'base\n');
+  fs.copyFileSync(SETUP_SH, path.join(seed, 'setup.sh'));
+  git(seed, 'add', '-A');
+  git(seed, 'commit', '-qm', 'base');
+
+  if (withNvMain) {
+    git(seed, 'branch', 'nv-main');
+    git(seed, 'branch', 'work-owned');
+    git(seed, 'branch', 'work-unowned');
+    git(seed, 'checkout', '-q', 'nv-main');
+    fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'MAIN\n');
+    fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'MAIN\n');
+    git(seed, 'commit', '-qam', 'nv-main');
+    git(seed, 'checkout', '-q', 'work-owned');
+    fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'WORK\n');
+    git(seed, 'commit', '-qam', 'owned');
+    git(seed, 'checkout', '-q', 'work-unowned');
+    fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'WORK\n');
+    git(seed, 'commit', '-qam', 'unowned');
+    git(seed, 'checkout', '-q', 'base');
+  }
+  const origin = path.join(root, withNvMain ? 'origin.git' : 'vanilla.git');
+  git(root, 'clone', '-q', '--bare', seed, origin);
+  return origin;
+}
+
+function cloneOn(root: string, origin: string, branch: string): string {
+  const dir = path.join(root, 'clone');
+  git(root, 'clone', '-q', origin, dir);
+  git(dir, 'config', 'user.name', 't');
+  git(dir, 'config', 'user.email', 't@t');
+  git(dir, 'checkout', '-q', branch);
+  return dir;
+}
+
+function runSetup(repo: string) {
+  return spawnSync('bash', [path.join(repo, 'setup.sh')], { cwd: repo, encoding: 'utf-8', env: ENV });
+}
+
+function withRepo(prefix: string, fn: (root: string) => void) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  try {
+    fn(root);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+describe('setup.sh compose_fork', () => {
+  it('is a no-op on a stock clone (no nv-main on origin)', () => {
+    withRepo('cf-vanilla-', (root) => {
+      const origin = buildOrigin(root, false);
+      const repo = cloneOn(root, origin, 'base');
+      const before = git(repo, 'rev-parse', 'HEAD').trim();
+      const res = runSetup(repo);
+      expect(res.status).toBe(0);
+      expect(git(repo, 'rev-parse', 'HEAD').trim()).toBe(before); // nothing merged
+    });
+  });
+
+  it('skips when nv-main is already merged (idempotent)', () => {
+    withRepo('cf-idem-', (root) => {
+      const origin = buildOrigin(root);
+      const repo = cloneOn(root, origin, 'nv-main'); // HEAD already == nv-main
+      const before = git(repo, 'rev-parse', 'HEAD').trim();
+      const res = runSetup(repo);
+      expect(res.status).toBe(0);
+      expect(git(repo, 'rev-parse', 'HEAD').trim()).toBe(before);
+    });
+  });
+
+  it('merges nv-main and resolves an OWNED conflict to nv-main on a fork clone', () => {
+    withRepo('cf-owned-', (root) => {
+      const origin = buildOrigin(root);
+      const repo = cloneOn(root, origin, 'work-owned');
+      const res = runSetup(repo);
+      expect(res.status).toBe(0);
+      expect(fs.readFileSync(path.join(repo, 'src', 'foo.ts'), 'utf-8')).toBe('MAIN\n');
+      // nv-main is now an ancestor of HEAD (the merge landed).
+      const anc = spawnSync('git', ['merge-base', '--is-ancestor', 'origin/nv-main', 'HEAD'], {
+        cwd: repo,
+        env: ENV,
+      });
+      expect(anc.status).toBe(0);
+    });
+  });
+
+  it('aborts on an UNOWNED conflict (exit 1, clean tree)', () => {
+    withRepo('cf-unowned-', (root) => {
+      const origin = buildOrigin(root);
+      const repo = cloneOn(root, origin, 'work-unowned');
+      const res = runSetup(repo);
+      expect(res.status).toBe(1);
+      // Merge fully aborted: no staged/modified tracked files (ignore the
+      // untracked logs/ dir setup.sh creates for its own bootstrap log).
+      expect(git(repo, 'status', '--porcelain', '--untracked-files=no').trim()).toBe('');
+      expect(res.stderr).toMatch(/owned set/);
+    });
+  });
+});

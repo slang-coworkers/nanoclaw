@@ -1,0 +1,127 @@
+/**
+ * Behavioral tests for setup/merge-train.sh's conflict resolver, run under the
+ * host vitest suite so the shell logic is CI-protected (the script is not
+ * otherwise covered by typecheck/lint). Each case builds a throwaway git repo
+ * with a bare "origin" and asserts the merge/resolve/abort behavior.
+ *
+ * MERGE_TRAIN_NO_INSTALL=1 skips the pnpm install/build tail so the merge logic
+ * runs without the Node toolchain.
+ */
+import { describe, it, expect } from 'vitest';
+import { spawnSync } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const MERGE_TRAIN = path.join(HERE, 'merge-train.sh');
+
+const ENV = {
+  ...process.env,
+  GIT_AUTHOR_NAME: 't',
+  GIT_AUTHOR_EMAIL: 't@t',
+  GIT_COMMITTER_NAME: 't',
+  GIT_COMMITTER_EMAIL: 't@t',
+  MERGE_TRAIN_NO_INSTALL: '1',
+};
+
+function git(cwd: string, ...args: string[]): string {
+  const r = spawnSync('git', args, { cwd, encoding: 'utf-8', env: ENV });
+  if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);
+  return r.stdout;
+}
+
+/**
+ * Build a bare origin with: base → nv-main (edits an OWNED src file + an
+ * UNOWNED groups file) and two work branches that diverge on each, so a merge
+ * of nv-main conflicts on exactly one file per branch. Returns the origin path.
+ */
+function buildOrigin(root: string): string {
+  const seed = path.join(root, 'seed');
+  fs.mkdirSync(seed);
+  git(seed, 'init', '-q', '-b', 'base', '.');
+  fs.mkdirSync(path.join(seed, 'src'));
+  fs.mkdirSync(path.join(seed, 'groups', 'main'), { recursive: true });
+  fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'base\n');
+  fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'base\n');
+  git(seed, 'add', '-A');
+  git(seed, 'commit', '-qm', 'base');
+  git(seed, 'branch', 'nv-main');
+  git(seed, 'branch', 'work-owned');
+  git(seed, 'branch', 'work-unowned');
+
+  git(seed, 'checkout', '-q', 'nv-main');
+  fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'MAIN\n');
+  fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'MAIN\n');
+  git(seed, 'commit', '-qam', 'nv-main changes');
+
+  git(seed, 'checkout', '-q', 'work-owned'); // diverges on src/ (owned)
+  fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'WORK\n');
+  git(seed, 'commit', '-qam', 'work owned');
+
+  git(seed, 'checkout', '-q', 'work-unowned'); // diverges on groups/ (unowned)
+  fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'WORK\n');
+  git(seed, 'commit', '-qam', 'work unowned');
+
+  git(seed, 'checkout', '-q', 'base');
+  const origin = path.join(root, 'origin.git');
+  git(root, 'clone', '-q', '--bare', seed, origin);
+  return origin;
+}
+
+function cloneOn(root: string, origin: string, name: string, branch: string): string {
+  const dir = path.join(root, name);
+  git(root, 'clone', '-q', origin, dir);
+  git(dir, 'config', 'user.name', 't');
+  git(dir, 'config', 'user.email', 't@t');
+  git(dir, 'checkout', '-q', branch);
+  return dir;
+}
+
+function runMergeTrain(cwd: string, branch: string) {
+  return spawnSync('bash', [MERGE_TRAIN, branch], { cwd, encoding: 'utf-8', env: ENV });
+}
+
+describe('merge-train.sh resolver', () => {
+  it('auto-resolves an OWNED (src/) conflict to nv-main and succeeds', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-owned-'));
+    try {
+      const origin = buildOrigin(root);
+      const repo = cloneOn(root, origin, 'c', 'work-owned');
+      const res = runMergeTrain(repo, 'nv-main');
+      expect(res.status).toBe(0);
+      expect(fs.readFileSync(path.join(repo, 'src', 'foo.ts'), 'utf-8')).toBe('MAIN\n');
+      expect(git(repo, 'diff', '--name-only', '--diff-filter=U').trim()).toBe('');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('aborts on an UNOWNED (groups/) conflict, leaving a clean tree', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-unowned-'));
+    try {
+      const origin = buildOrigin(root);
+      const repo = cloneOn(root, origin, 'c', 'work-unowned');
+      const res = runMergeTrain(repo, 'nv-main');
+      expect(res.status).toBe(1);
+      expect(git(repo, 'status', '--porcelain').trim()).toBe('');
+      expect(res.stderr).toMatch(/owned set/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('is a no-op when the branch is already merged (idempotent)', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-idem-'));
+    try {
+      const origin = buildOrigin(root);
+      const repo = cloneOn(root, origin, 'c', 'nv-main'); // HEAD already == nv-main
+      const res = runMergeTrain(repo, 'nv-main');
+      expect(res.status).toBe(0);
+      expect(res.stdout).toMatch(/already merged/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

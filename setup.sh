@@ -295,6 +295,13 @@ if [ "${NANOCLAW_COMPOSED:-}" != "1" ]; then
   compose_fork "$@"
 fi
 
+# NANOCLAW_COMPOSE_ONLY lets tests exercise compose_fork against a synthetic repo
+# without the Node install/build tail. Never set in real setup.
+if [ -n "${NANOCLAW_COMPOSE_ONLY:-}" ]; then
+  log "compose-only: exiting after compose_fork"
+  exit 0
+fi
+
 install_deps
 check_build_tools
 
