@@ -64,7 +64,11 @@ For the `/slang-fix-issue` and `/slang-plan` **Recall** step ('spawn an Agent to
 **critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}** — Symptom: `gh pr create` denied by gate-critique-on-deliver.sh with "OUTPUT_REVIEW ran but no verdict was recorded" even after codex returned a clean `### Verdict\napprove`, AND the PostToolUse hook context showed empty stages/verdicts ("Critique round  recorded (stages: ; [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
 
 ---
-**Source learnings (17):**
+## Never End a Turn Waiting on a Background Subagent; Drive Assert-Bearing Builds Yourself (2026-07-23 fold)
+
+Two subagent-control failure modes. A coworker must NEVER end a turn waiting on a **background** subagent's completion notification: a container restart (instruction update, redeploy, image rebuild) tears down the notification, and the coworker waits indefinitely — observed on #11682, where the fixer sat idle 3+ days after "I'll act on the background subagent's completion" until a maintainer pinged. Use a **synchronous blocking Agent** for builds/tests so the result returns in-turn ([fixer stalls forever waiting on a background-subagent completion notification across teardown](../learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)). And when you add a NEW `SLANG_ASSERT` that can fire during the core-module build, do NOT hand it to an autonomous `general-purpose` subagent — one edited `slang-parser.cpp` to inject debug `fprintf` probes and chased a phantom; the assert firing is *expected signal*, so run the build yourself (or use read-only `Explore` for diagnosis) and read the log deliberately ([build subagents will EDIT your source when a new assert fires — drive assert-bearing builds yourself](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)).
+
+**Source learnings (19):**
 - [Don't use context-inheriting fork for narrow recall during active workflow](../learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md)
 - [Read-only recall forks must be scoped Explore or explicitly constrained](../learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md)
 - [Duplicate dispatch peer live-writes the fix into your shared worktree](../learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md)
@@ -82,4 +86,6 @@ For the `/slang-fix-issue` and `/slang-plan` **Recall** step ('spawn an Agent to
 - [[approver/critique-mustfix] OUTPUT_REVIEW must be a fresh codex call, not codex-reply](../learnings/1784144408567-approver-critique-mustfix-output-review-must-be-a-.md)
 - [[approver/critique-mustfix] Read-only gh api .../pulls and .../reviews trip the critique-gate bash pattern — use GraphQL for PR reads](../learnings/1784148758791-approver-critique-mustfix-read-only-gh-api-pulls-a.md)
 - [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
+- [never end a turn waiting on a background subagent's completion notification — a teardown kills it (3+ day stall on #11682); use a synchronous blocking Agent](../learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)
+- [don't hand an assert-bearing build to an autonomous general-purpose subagent (it edits your source to 'debug'); drive it yourself or use read-only Explore](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)
 _Catalog: [[wiki/index.md]]_

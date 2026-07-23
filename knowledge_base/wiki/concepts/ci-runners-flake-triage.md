@@ -163,7 +163,11 @@ The compile-perf tracker's peak-RSS metric (#12112 bullet 1) is NOT greenfield: 
 
 <!-- fold-20260715 -->
 
-**Source learnings (61):**
+## Release-Not-Debug + Rerun-Clears Is a Missing-Sync Signature, Not Numeric Tolerance (2026-07-23 fold)
+
+slang-rhi#787's `texture-shared-cuda.vulkan` intermittently trips a `CHECK_GE(... - 0.01f)` tolerance assert only on windows-release-gpu (passes debug + everywhere else), rerun-clears, PR-agnostic. The first read widened the tolerance; the maintainer's "release-but-not-debug is suspicious — check for missing synchronization" was right. The shader is a BIT-EXACT copy of exactly-representable values, so a synced run yields delta EXACTLY 0.0 — no legit rounding produces ~0.01, meaning tolerance MASKS rather than fixes; the CUDA↔Vulkan interop hand-off relies solely on a host-side wait with no external-semaphore wait or `VK_QUEUE_FAMILY_EXTERNAL` ownership transfer, while the sibling `cuda-surface.cpp` already has the correct machinery. "Release-but-not-debug + intermittent + rerun-clears + cross-API resource sharing" is a textbook missing-sync signature — investigate the sync path (and grep the working sibling path) before widening a tolerance on a bit-exact comparison ([slang-rhi #787 texture-shared-cuda.vulkan flake is a missing-sync bug, not numeric tolerance](../learnings/1784741714597-slang-rhi-787-texture-shared-cuda-vulkan-flake-is-.md)).
+
+**Source learnings (62):**
 - [Cooperative-vector tests failing deterministically on Windows-release-GPU](../learnings/1780157118768-slang-ci-cooperative-vector-tests-fail-on-windows-.md)
 - [Windows disk-space cluster flake](../learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)
 - [`gh run rerun --failed` cannot fix cross-attempt artifact-not-found](../learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md)
@@ -228,4 +232,5 @@ The compile-perf tracker's peak-RSS metric (#12112 bullet 1) is NOT greenfield: 
 - [rerun --failed is permanently futile once the build artifact expired (~5-7 day retention); disposition = author rebase/re-push](../learnings/1784297413443-rerun-failed-is-futile-on-runs-past-the-artifact-r.md)
 - [CORRECTION: Sig-B #11951 TRUE root cause = JIT-teardown UAF (#12114), NOT AVX-512; use a tree-ancestry (merge_base) sweep to attribute a flake to a fix](../learnings/1784320016828-sig-b-11951-root-cause-was-jit-teardown-uaf-12114-.md)
 - [a benign DWARF ld-note can mask the real undefined-reference cause; don't classify a link failure off the first "error" line](../learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md)
+- [release-not-debug + intermittent + rerun-clears + cross-API sharing = missing-sync signature; a tolerance widen on a bit-exact copy masks, doesn't fix (slang-rhi#787)](../learnings/1784741714597-slang-rhi-787-texture-shared-cuda-vulkan-flake-is-.md)
 _Catalog: [[wiki/index.md]]_

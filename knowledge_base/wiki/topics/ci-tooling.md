@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-137 learnings. [Catalog](../index.md)
+142 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] -Og debug-build guard: subtractive NOT-MSVC guard can't regress prior-green; -Wmaybe-uninitialized gap clears as future-proofing when PR adds no C++](../learnings/1784288671711-approver-calibration-og-debug-build-guard-subtract.md)
 - [[approver/calibration] build-flag PR: clear a "-Werror CI break" gap by checking the affected config is actually green](../learnings/1784270606102-approver-calibration-build-flag-pr-clear-a-werror-.md)
@@ -38,6 +38,7 @@ type: topic
 - [[approver/clause-gap] Verify the head actually moved before honoring a "synchronize" re-decision tasking — a comment can masquerade as a push](../learnings/1784269782291-approver-clause-gap-verify-the-head-actually-moved.md)
 - [[approver/confirmed-safe] A CI-driven BLOCK on a memoization PR was vindicated by the author's next-revision fix — and the fix diff pinpoints the cache](../learnings/1784093692254-approver-confirmed-safe-a-ci-driven-block-on-a-mem.md)
 - [[approver/confirmed-safe] Trivial-fwd-derivative zeroed-primal fix (#11670) merged APPROVED at my exact decision head — 3-way agreement, repeated master-merges were safe re-decides](../learnings/1784066119880-approver-confirmed-safe-trivial-fwd-derivative-zer.md)
+- [[approver/critique-mustfix] ABSTAIN [Approval Decision] message must not contain the literal tokens WOULD_APPROVE/BLOCK](../learnings/1784769386692-approver-critique-mustfix-abstain-approval-decisio.md)
 - [[approver/critique-mustfix] Approver artifacts: cite line refs at pinned head + count check-runs paginated](../learnings/1784288128413-approver-critique-mustfix-approver-artifacts-cite-.md)
 - [[approver/critique-mustfix] don't equate total check-runs with CI matrix legs; state the count you verified](../learnings/1784282781009-approver-critique-mustfix-don-t-equate-total-check.md)
 - [[approver/critique-mustfix] Re-harvest AGAIN right before record_decision — slow prod reviews post seconds after your window](../learnings/1783962571176-approver-critique-mustfix-re-harvest-again-right-b.md)
@@ -55,6 +56,7 @@ type: topic
 - [[approver/human-disagreement] confirmed: protected-path (.github/**) ABSTAIN_POLICY on compile-perf/CI-tooling PRs is well-calibrated — these draw a long human review cycle even when the bot review is clean of bugs](../learnings/1784111097033-approver-human-disagreement-confirmed-protected-pa.md)
 - [[approver/human-disagreement] Protected .github/** CI-workflow PRs: ABSTAIN_POLICY is the right call and merges confirm it (agreement-neutral, not false-safe)](../learnings/1784033516739-approver-human-disagreement-protected-github-ci-wo.md)
 - [[approver/human-disagreement] widening a coercion's viability interacts with overload resolution — probe for silent-ambiguity blast radius](../learnings/1784048815957-approver-human-disagreement-widening-a-coercion-s-.md)
+- [[approver/infra-abstain] A primary review that posts AFTER you decide (unchanged head) → refresh the row on the primary tier](../learnings/1784723964060-approver-infra-abstain-a-primary-review-that-posts.md)
 - [[approver/infra-abstain] Confirmed: wait out the IN_PROGRESS production review before Devin-only; and debounce a head that moves mid-decision](../learnings/1783935971762-approver-infra-abstain-confirmed-wait-out-the-in-p.md)
 - [[approver/infra-abstain] Devin timeout + bot-authored PR = NO_REVIEW_SIGNAL despite clean CI](../learnings/1784695299892-approver-infra-abstain-devin-timeout-bot-authored-.md)
 - [[approver/infra-abstain] Sustained force-push burst starves head-current decisions → ABSTAIN_INFRA](../learnings/1783958614926-approver-infra-abstain-sustained-force-push-burst-.md)
@@ -68,8 +70,10 @@ type: topic
 - [Attributing check-cmdline-ref CI failures (not master-doc drift by default)](../learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)
 - [Bot-PR: lone red workflow_dispatch run with build/test skipped is a no-op, read the rollup](../learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md)
 - [Build subagent auto-relaunch on failure → concurrent-build archive corruption](../learnings/1784659482124-build-subagent-auto-relaunch-on-failure-concurrent.md)
+- [Build subagent false-report + concurrent-ninja collision corrupts build dir](../learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md)
 - [Build subagent that bails mid-build often leaves its detached cmake running — check before relaunching](../learnings/1781624196085-build-subagent-that-bails-mid-build-often-leaves-i.md)
 - [Build subagents relaunch builds — use run_in_background you control instead](../learnings/1784660385128-build-subagents-relaunch-builds-use-run-in-backgro.md)
+- [Build subagents will EDIT your source when a new assert fires — drive assert-bearing builds yourself](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)
 - [Build-only subagent overstepped: committed/pushed/dispatched-CI/edited-PR-body — verify every claim](../learnings/1781809987259-build-only-subagent-overstepped-committed-pushed-d.md)
 - [CHANGES_REQUESTED ≠ edit list — read the review body + inline count, not just reviewDecision](../learnings/1783731922642-changes-requested-edit-list-read-the-review-body-i.md)
 - [CI babysitter: CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
@@ -111,6 +115,7 @@ type: topic
 - [Never fabricate PR numbers or CI state in tracker rows](../learnings/1782986994116-never-fabricate-pr-numbers-or-ci-state-in-tracker-.md)
 - [Never push after a maintainer approval unless required — a post-approval commit auto-dismisses the approval; re-verify reviewDecision at HEAD before reporting "approved"](../learnings/1784048061144-never-push-after-a-maintainer-approval-unless-requ.md)
 - [On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add](../learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md)
+- [On resume, git-gh state beats replayed transcript (stale-replay reconciliation)](../learnings/1784765800190-on-resume-git-gh-state-beats-replayed-transcript-s.md)
 - [P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build](../learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)
 - [Parallel fix/issue-* chains can grab the same OptionKind/enum value off a shared base → duplicate-case build break; self-heals via append-renumber](../learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md)
 - [Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace](../learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md)

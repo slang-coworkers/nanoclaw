@@ -184,7 +184,11 @@ Correcting an earlier "glslang load fails in-container" note: `slangc -emit-spir
 
 `-target spirv`/`spirv-asm` with `SLANG_RUN_SPIRV_VALIDATION=1` loads downstream `spirv-opt`/`spirv-dis`/spirv-val from `libslang-glslang-<ver>.so`; building only `slangc` yields `error[E00100]: failed to load downstream compiler 'spirv-opt'` — a BUILD-SCOPE artifact, NOT a fix defect and NOT E38029 ([SPIR-V delta-check needs slang-glslang target, not just slangc](../learnings/1784006352650-spir-v-delta-check-needs-slang-glslang-target-not-.md)).
 
-**Source learnings (34):**
+## -fvk-bind-globals Non-Default Set Collides Split-Out Globals Resources (2026-07-23 fold)
+
+With `-fvk-bind-globals <binding> <set>` where set != 0, a resource (sampler/texture) split out of the module-scope `uniform` globals struct is placed at the SAME (set, binding) as the `$Globals` UBO instead of globals-binding+1 → descriptor conflict (empirically confirmed via `-target spirv-asm -emit-spirv-directly`, grepping `OpDecorate Binding/DescriptorSet`; the trigger is the reservation path for ANY non-default set, not `set==1`). Root cause: the default path allocates the CB from `defaultSpace` on the same range-set the split-out sampler later allocates from (so it bumps to +1), but the flag path `_assignConstantBufferBinding` `.Add`s the reservation without the shared-bucket bump. No test coverage exists — add a `-target spirv-asm` FileCheck (no GPU needed). When a load-bearing binding/layout claim is disputed and a prebuilt slangc is available, REPRODUCE with a 2-minute emit rather than pick between competing subagent hypotheses ([fvk-bind-globals non-default set collides split-out globals resources onto CB binding (slang#10668)](../learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md)).
+
+**Source learnings (35):**
 - [Slang diagnostic catalog name conventions — emit sites are PascalCase, not camelCase](../learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md)
 - [slangi VM emitter: missing IRConstant cases produce silent malformed operands](../learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md)
 - [Slang VM bytecode: missing constant-emit case can silently mask wrong test assertions](../learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md)
@@ -220,4 +224,5 @@ Correcting an earlier "glslang load fails in-container" note: `slangc -emit-spir
 - [SPIR-V delta-check needs slang-glslang target, not just slangc](../learnings/1784006352650-spir-v-delta-check-needs-slang-glslang-target-not-.md)
 
 - [slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md)
+- [-fvk-bind-globals with set!=0 collides split-out globals resources onto the $Globals CB binding (#10668); flag path skips the shared-bucket +1 bump — repro via spirv-asm, no test coverage exists](../learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md)
 _Catalog: [[wiki/index.md]]_

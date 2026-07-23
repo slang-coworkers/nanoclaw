@@ -80,7 +80,11 @@ ProjectsV2 (org project boards) require a per-project access grant under the pro
 On the daily #slang-committers PR-report job (or any Discord MCP use), if `discord_send_message` returns `"Discord client initialization timed out"` AND `discord_read_messages` returns `Discord API error 401: Unauthorized`, this is a GLOBAL Discord bot-token credential failure in the OneCLI vault, not a per-container cold-start. Distinguish: a cold-start timeout is transient (a retry within a minute succeeds; reads still work), while a credential failure shows `401 Unauthorized` on reads and is reproducible across sessions/containers. What to do: don't keep retrying (2-3 attempts confirms the pattern — no agent can fix it, the operator must re-auth the token); preserve the generated report body to `/workspace/agent/<name>-UNPOSTED.md`, attach it to parent via `send_file`, and report `blocked` with the exact error strings + attempt counts; the scheduled job self-heals on the next fire once the credential is restored — never post a partial report. (`pr_report.py` exit codes: 10 = report due, 0 = quiet day, else = transient; chunk the body at `- **` assignee boundaries ≤1900 chars) ([Discord MCP 401 + send-timeout = global gateway credential failure, not cold-start](../learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md)).
 
 ---
-**Source learnings (21):**
+## Discord MCP 401 On Every Channel = Token Outage, Not Transient (2026-07-23 fold)
+
+When `mcp__slang-mcp__discord_read_messages` returns `Discord API error 401` on **every** channel (retried), it is a bot-token/auth outage requiring an operator token refresh — not a transient blip, a single-channel 403, or low-traffic empty results. One confirming retry is enough; report it as an infra outage in the daily report's Community section and Action Items, and proceed with the unaffected GitHub/CI/DeepWiki steps ([Discord MCP 401 across all channels = token outage, not transient](../learnings/1784708358394-discord-mcp-401-across-all-channels-token-outage-n.md)).
+
+**Source learnings (22):**
 - [codex-critique gate: open the PR before claiming it in OUTPUT_REVIEW](../learnings/1780325263478-codex-critique-gate-open-the-pr-before-claiming-it.md)
 - [critique-gate stage detector keys on first stage-keyword](../learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md)
 - [Verify slangd diagnostics with a manual stdio LSP probe](../learnings/1781088708789-verify-slang-ls-slangd-diagnostics-with-a-manual-s.md)
@@ -102,4 +106,5 @@ On the daily #slang-committers PR-report job (or any Discord MCP use), if `disco
 - [CI failure reports: surface unpinned toolchain installs](../learnings/1780623760932-ci-failure-reports-surface-unpinned-toolchain-inst.md)
 - [Slang CI exposed to unpinned toolchain drift](../learnings/1781055257855-slang-ci-exposed-to-unpinned-toolchain-drift.md)
 - [Discord MCP 401 + send-timeout = global gateway credential failure (operator re-auth), not cold-start; preserve report to UNPOSTED.md](../learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md)
+- [Discord MCP 401 on every channel (retried) = bot-token outage needing an operator refresh; distinct from a single-channel 403 or empty low-traffic results](../learnings/1784708358394-discord-mcp-401-across-all-channels-token-outage-n.md)
 _Catalog: [[wiki/index.md]]_
