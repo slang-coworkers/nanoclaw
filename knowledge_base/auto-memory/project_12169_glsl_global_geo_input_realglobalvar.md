@@ -1,0 +1,41 @@
+---
+name: project_12169_glsl_global_geo_input_realglobalvar
+description: "slang#12169 GLSL global-scope geo array-of-struct input → realGlobalVar assert; triaged→fixer"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: cce94fc1-4c8e-45d9-908c-6de4d1d2d932
+---
+
+# shader-slang/slang#12169 — GLSL global-scope geometry input asserts `realGlobalVar`
+
+Opened 2026-07-21 by **pdeayton-nv**. Canonical thread `gh-issue-shader-slang/slang-12169`.
+
+**Repro:** `in triangle CoarseVertex coarseVertices[3];` (GLSL-style global-scope geo input, **array-of-struct**) → `slangc repro.slang -target spirv` aborts:
+`slang-ir-glsl-legalize.cpp(4401): realGlobalVar` (E99997 InternalError). Env `v2026.13.1-62-g6a244fee2`.
+
+**Triage verdict (slang-triager, 07-21):** bug / medium / IR GLSL-SPIR-V varying legalization / P2. REPRODUCED at HEAD; fires with `-O0` and on `-target glsl` too → inside IR legalize pass, not SPIR-V-specific. Trigger isolated empirically: plain-struct + array-of-vector globals compile; **only array-of-struct** crashes. Same shape works as entry-point param → legalize gap, not unsupported form. Labeled `reproduced` + Type=Bug.
+
+**Premature-close link:** this is `failure2.slang` from #9058. PR #11678 (`Fixes #9058`) fixed only the reordered-param `failure1.slang` and closed #9058. Tracking fresh under #12169; reopening #9058 is maintainer's call (bot won't auto-reopen).
+
+**Solution space (triage memo `triage-12169.md`):** A (recommended) broaden `as<IRStructType>` guard at glsl-legalize :4358 to route array-of-aggregate through `tryReplaceUsesOfStageInput`; B producer-side key fix; C diagnostic fallback.
+
+**Fix (slang-fixer, 07-21):** draft **PR #12170** open, held pending review. 2 files +40/−36 in `slang-ir-glsl-legalize.cpp` `legalizeEntryPointParameterForGLSL`: discriminate global-scope varying-input legalization on scalarized `flavor == tuple` instead of `as<IRStructType>(globalVarType)` → plain-struct AND array-of-struct both route through `tryReplaceUsesOfStageInput`; removed dead tuple key-match + unused locals; new regression test. Repro PASSes post-fix on spirv + glsl targets; broad suite 0 fails. Codex PLAN/CODE/OUTPUT approve. Approach A (consumer-side); B/C rejected. `report_pr_created(12170)` confirmed → webhooks route to fixer session. `ci_failed` webhook = benign draft priority-yield (cosmetic red), not real.
+
+**State (07-21):** Orchestrator dispatched **slang-reviewer** (correctness pass) against PR #12170 — fixer couldn't reach reviewer (no session/edge). Topology tiered: orch relays findings back to fixer.
+
+**Reporter engagement + head advance (07-22):** pdeayton-nv (issue author, nv eng) is reviewing the PR directly and drove TWO test-strengthening rounds — head advanced `f324a17` → `331129755a` (data-flow CHECKs: OpAccessChain→OpLoad→OpStore capture chain) → **`6596ec7650`** (FileCheck catch: SIMPLE `-target spirv` runs `-O0`, CHECKs must follow the roundtrip-through-`v` chain, not the folded spirv-asm form — real slang-test now 2/2 PASS; lesson logged as shared learning: run real slang-test w/ copied libslang-llvm.so, never a hand-rolled simulator). Fix code (`flavor==tuple` discriminant) UNCHANGED across all three; edits are test-only. codex CODE_REVIEW re-approved each.
+
+**⚠️ slang-reviewer SILENT HANG:** session `sess-1784607205081-krigyl` — acked 07-21 04:19 (~20-30min ETA vs head f324a17), NO verdict since. Orch nudge 07-22 02:32 woke container (last_active updated) but produced NO output (verified via `ncl sessions messages`: seq4 in, no seq5 out). Heavy 3-subagent+Devin job likely exceeded turn wall-clock, died w/ logs lost (--rm). Chain is NOT blocked on it: fix independently verified via codex 3-gate + triager diff-read + pdeayton-nv direct review + slang-test 2/2. Merge gate = human ready-flip (pdeayton-nv engaged), NOT this proactive safety-net. Orch made one fresh reviewer attempt vs head 6596ec7650.
+
+**Reviewer verdict LANDED (07-22 18:21, msg 46 + combined-review.md):** **APPROVE_WITH_NITS — 0 bugs, 2 gaps** (all 3 reviewers A/B/C complete, drift-clean). Reviewed head 331129755a (diff sha256 c7e369d59b3e); fix source byte-identical at 6596ec7650 (test-only delta) → verdict holds. All 4 correctness sub-reviewers (code-quality/IR-correctness/security/cross-backend) + Devin confirm behavior-preserving, no bug. Two NON-BLOCKING nits: (1) **clarity C001** (High conf) — retained `else` branch at glsl-legalize ~:4362 now reached for every non-`tuple` flavor but only handles `address`, silently `continue`s past `value`/`typeAdapter`/`none`; `typeAdapter` IS top-level-producible; add SLANG_ASSERT or contract comment (reviewer: "same shape that hid the original null-realGlobalVar assert"). (2) **test-coverage gap** — repro struct single-field → field-matching trivial; no global-scope test for the 2 preserved shapes (add ≥2-field struct asserting both Input vars + array-of-vector `in triangle float4 p[3];` for the `address` path). Relayed both to slang-fixer as recommended-not-blocking + attached combined-review.md. NO GitHub post (draft/held, unauthorized — reviewer correctly withheld). Merge gate = human ready-flip (pdeayton-nv driving). Reviewer edge no longer hung.
+
+**All nits addressed (07-22 18:48, fixer msg 52) → head `17688f0e84`:** test broadened to 3 flavor-discriminated shapes (array-of-multi-field-struct w/ per-field SOA — CoarseVertex now position+color; array-of-vector guarding preserved `address` path; standalone multi-field struct tuple path), each w/ end-to-end input→output data-flow capture on SPIR-V+GLSL, 6 FileCheck buffers. Source = comments-only (flavor-routing rationale; tuple-leaves-for-DCE vs address-splices-and-deallocates asymmetry; else-`continue` explained — verified top-level `typeAdapter` producible, comment notes those uses already rewritten by param-level tryReplaceUsesOfStageInput rather than assert-impossible). Verified real slang-test 6/6 (test) + 81/81 (tests/cross-compile). codex CODE_REVIEW re-approved (3 rounds — kept catching field captures stopping at `v` not binding through to output store; all now end-to-end). Fixer posted PR reply mapping each nit→fix. `ci_failed` on new head = benign priority-yield.
+
+**Orch decision: NO re-review** — fix logic byte-unchanged from what all 3 reviewers cleared; new head only adds the reviewer's own requested comments + broader test. Correctness verdict stands, all nits closed.
+
+**Reporter round 2 (07-22 20:25, fixer msg 56) → head `e1a1159ba7`:** pdeayton-nv posted 3 more PR notes; fixer verified all against compiler + addressed. NOTABLY corrected 2 reviewer points: (1) dropped `mainPlainStruct` standalone-struct case — proven INVALID GS input shape (scalar/standalone GS input rejected by glslang `'in': type must be an array` via `-emit-spirv-via-glsl`; the direct-SPIR-V path wrongly accepts it). Array-of-struct (tuple) + array-of-vector (address) cases remain, both compile clean via `-emit-spirv-via-glsl` EXIT 0. (2) "for later DCE" comment was FACTUALLY WRONG — verified tuple-path proxy global array + init stores DO persist in emitted `-O0`/`-O2` GLSL; reworded to drop false DCE promise. codex re-approved; slang-test 4/4 (this test) + 79/79 (cross-compile). Fixer logged learning: geometry-input tests must be checked through `-emit-spirv-via-glsl` (direct-SPIR-V accepts scalar GS inputs glslang rejects). Orch: still no re-review (fix logic unchanged; deltas = 1 invalid-test removal w/ evidence + 1 comment correction).
+
+**✅ APPROVED (07-22 20:35, fixer msg 60):** pdeayton-nv flipped PR #12170 **ready-for-review (no longer draft)** + **approved** ("Thanks, looks good now."). `reviewDecision: APPROVED` pinned to HEAD `e1a1159ba7` (matches exactly, not stale). Real `pull_request` CI now executing on non-draft head — pre-checks all green, `wait-for-human-priority` genuine SUCCESS, build/test in progress. Fixer STOPPED manual CI dispatch (auto run is now the real signal). Fixer guardrails: will NOT push (any commit dismisses the approval) + will NOT merge/re-flip (merge maintainer-driven). Posted no-ping ack on PR.
+
+**TERMINAL-for-now: hold at `e1a1159ba7`, APPROVED, awaiting maintainer MERGE. Fully webhook-driven — if CI surfaces a real failure, fixer reproduces/fixes (needs re-approval); else nothing outstanding.**

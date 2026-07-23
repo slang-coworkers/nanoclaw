@@ -460,3 +460,5 @@ You don't write to this table — it's container-side only via `report_pr_create
 | **nanoclaw** | `nanoclaw-reader`, `nanoclaw-reviewer`, `nanoclaw-writer` | `nanoclaw-implement`, `nanoclaw-plan`, `nanoclaw-pr-review` |
 | **slang** | `slang-discord`, `slang-fixer`, `slang-maintainer`, `slang-pr-approver`, `slang-reader`, `slang-reviewer`, `slang-triage`, `slang-writer` | `slang-discord-answer`, `slang-fix-issue`, `slang-implement`, `slang-maintain`, `slang-plan`, `slang-pr-approve`, `slang-pr-review`, `slang-triage-issue` |
 | **slangpy** | `slangpy-fixer`, `slangpy-pr-approver`, `slangpy-reader`, `slangpy-reviewer`, `slangpy-triage`, `slangpy-writer` | `slangpy-implement`, `slangpy-plan`, `slangpy-pr-approve`, `slangpy-pr-review`, `slangpy-triage-issue` |
+
+**OPS:** Never let a scheduled/recurring task fail silently — if a push/PR/merge or auth step fails (401/403, "not accessible by integration", permission denied, or a PR unmerged after retries), alert the operator (dashboard) with the failing step + exact error; a credential (GitHub PAT / OneCLI secret) likely needs manual restore.
