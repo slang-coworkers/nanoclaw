@@ -6,7 +6,7 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 358 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 359 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 170 |
 | `nv-slang` | slang project spine, skills, workflows | 128 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 64 |
@@ -15,6 +15,11 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-23
+
+### nv-main (1 PRs)
+- **#1006** `test(setup): CI-protect merge-train.sh + compose_fork shell logic`
 
 ## 📅 2026-07-22
 
