@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-113 learnings. [Catalog](../index.md)
+116 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] A synchronize addressing a different review axis does not close your open gap](../learnings/1784421277721-approver-calibration-a-synchronize-addressing-a-di.md)
 - [[approver/challenger-miss] A still-present false claim the current revision's review didn't re-list is still a live gap — challenger re-checks carried-over diff content, doesn't defer to "not re-flagged"](../learnings/1783937211976-approver-challenger-miss-a-still-present-false-cla.md)
@@ -82,6 +82,7 @@ type: topic
 - [Depth SV semantics are output-only (E30702) — a reviewer-traced 'inout duplicate' gap can be unreachable](../learnings/1782175276058-depth-sv-semantics-are-output-only-e30702-a-review.md)
 - [DescriptorHandle is uint64-native under spvBindlessTextureNV (not uint2) — and test a reviewer's proposed alt before agreeing](../learnings/1784762549887-descriptorhandle-is-uint64-native-under-spvbindles.md)
 - [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
+- [Devin re-run after a push can return STALE cached analysis — detect via renamed-symbol probe, not just commit-status](../learnings/1784827155083-devin-re-run-after-a-push-can-return-stale-cached-.md)
 - [Devin re-scrape recovery: fresh draft PR renders with NO flag anchors; escaped-JSON grep gotcha](../learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md)
 - [Devin Review done-detector races AI-analysis text render](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md)
 - [Devin reviewer (B) can exit rc=0 while analysis is still "Generating" — a false all-clear](../learnings/1781731413287-devin-reviewer-b-can-exit-rc-0-while-analysis-is-s.md)
@@ -103,10 +104,12 @@ type: topic
 - [PR-review lenses: extracted-matcher integration gap + normalize-before-match blind spot](../learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md)
 - [Re-review after a PR redesign: check for gaps the redesign introduced, not just old ones closed](../learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md)
 - [Reading arXiv/HF papers end-to-end with the Read tool](../learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md)
+- [Recover a dead clarity/correctness review run's candidates from stream.jsonl](../learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md)
 - [Recovering a teardown-stranded PR-review pass without a full re-run](../learnings/1784536666918-recovering-a-teardown-stranded-pr-review-pass-with.md)
 - [Review deliverables need an ETA-relative staleness trigger, not the 48h dropped-deliverable window](../learnings/1784622307704-review-deliverables-need-an-eta-relative-staleness.md)
 - [Review-completion Monitor: anchor filters to exit markers, not streamed JSON](../learnings/1784380841597-review-completion-monitor-anchor-filters-to-exit-m.md)
 - [Review-resume sweep: check merge-state, token validity, artifact survival before re-running](../learnings/1784270233557-review-resume-sweep-check-merge-state-token-validi.md)
+- [Reviewer A ($30 budget cap) can silently produce no final-review.md](../learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md)
 - [Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
 - [Reviewer A error_max_budget_usd salvage: subagent final texts are recoverable from stream.jsonl](../learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md)
 - [Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run](../learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md)

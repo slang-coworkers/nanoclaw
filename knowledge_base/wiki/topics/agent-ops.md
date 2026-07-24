@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-240 learnings. [Catalog](../index.md)
+246 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [[approver/calibration] check-ci-is-aggregation-gate-not-independent-failure](../learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gate-.md)
@@ -48,7 +48,9 @@ type: topic
 - [[approver/infra-abstain] Verity delegate-path vs deployed harvest+Devin skill contradiction — the real root of the contract-block gap](../learnings/1784187372743-approver-infra-abstain-verity-delegate-path-vs-dep.md)
 - [[approver/infra] critique-gate hook false-matches read-only `gh api .../pulls/...` GETs as PR-creation — use `gh pr view/diff --json` instead](../learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)
 - [[approver/infra] gh GraphQL 401 at OneCLI gateway but REST gh api works — probe REST before ABSTAIN_INFRA; critique-gate hook false-positives on read-only /pulls reads](../learnings/1784270369731-approver-infra-gh-graphql-401-at-onecli-gateway-bu.md)
+- [[approver/infra] read-only `gh api .../pulls/<n>/reviews|comments` trips the critique-gate PR-creation hook — use gh pr view / GraphQL](../learnings/1784867719312-approver-infra-read-only-gh-api-pulls-n-reviews-co.md)
 - [[approver/output-review] Volatile GitHub fields (mergeStateStatus) are not decision-relevant — drop the value, keep the durable gate](../learnings/1784421284355-approver-output-review-volatile-github-fields-merg.md)
+- [A "proves the gate works" test is vacuous unless the tested path actually feeds the gated input](../learnings/1784857152467-a-proves-the-gate-works-test-is-vacuous-unless-the.md)
 - [A compacted fixer can schedule autonomous actions from stale state — re-anchor and demand fallback cancellation](../learnings/1783477748732-a-compacted-fixer-can-schedule-autonomous-actions-.md)
 - [A fixer's hold-ack doesn't guarantee it stopped — verify branch/worktree state](../learnings/1781366452370-a-fixer-s-hold-ack-doesn-t-guarantee-it-stopped-ve.md)
 - [A forked Agent (no subagent_type) inherits full context and may run the whole task, not the scoped prompt](../learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-cont.md)
@@ -74,6 +76,7 @@ type: topic
 - [Bot (GitHub App) cannot open a PR into a personal fork — use master-base + cherry-pick fallback](../learnings/1781015587691-bot-github-app-cannot-open-a-pr-into-a-personal-fo.md)
 - [Bot enqueuePullRequest blocked for ALL PRs, not just forks](../learnings/1782260121429-bot-enqueuepullrequest-blocked-for-all-prs-not-jus.md)
 - [Branch name fix/issue-N on an external fork can fool "ours" PR classification](../learnings/1780903498636-branch-name-fix-issue-n-on-an-external-fork-can-fo.md)
+- [C++ versioned-struct inheritance: non-standard-layout ≠ non-aggregate; use base-slicing not offsetof](../learnings/1784851897134-c-versioned-struct-inheritance-non-standard-layout.md)
 - [Chain-routing gate: fresh peer delegations carrying handoff/report markers still require in_reply_to](../learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md)
 - [Check for existing bot comment before posting GitHub triage artifact (cross-tier double-post risk)](../learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md)
 - [claude-vs-codex-provider-parity](../learnings/1778085879531-claude-vs-codex-provider-parity.md)
@@ -207,6 +210,7 @@ type: topic
 - [Routing a decl through shared declarator machinery silently broadens accepted grammar — review the whole declarator surface, not the target form](../learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md)
 - [rtk token-compression proxy evaluated 2026-06-03 and rejected for all groups; not enabled anywhere](../learnings/legoop-project_rtk_evaluated_rejected.md)
 - [Scheduled diagnostic tasks re-diagnose persistent state inconsistently across fresh sessions](../learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md)
+- [send_message to=parent can fail as unaddressable — send_file and message-block still route](../learnings/1784828845885-send-message-to-parent-can-fail-as-unaddressable-s.md)
 - [Session reap deletes worktree mid-build — commit tests+code BEFORE the long build](../learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-tes.md)
 - [Silent build-slot holds behind disk contention freeze fixer chains](../learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)
 - [Spurious chain-routing-gate REFUSED inbound — don't fabricate, verify then escalate](../learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-t-.md)
@@ -223,8 +227,10 @@ type: topic
 - [Supervisor tick 97 — scan.py over-flag reverted again (skill re-sync); raw 15→0](../learnings/1784680848889-supervisor-tick-97-scan-py-over-flag-reverted-agai.md)
 - [synchronize-webhook-can-fire-on-comment-updated-at-bump](../learnings/1784269837644-synchronize-webhook-can-fire-on-comment-updated-at.md)
 - [Triage + GitHub artifact: fixed-via-PR exception resolves the "don't post interim verdict" vs "artifact MUST land" tension](../learnings/1780769170857-triage-github-artifact-fixed-via-pr-exception-reso.md)
+- [Triage handoff to a CONTRIBUTOR-ASSIGNED issue: flag to Main first, don't auto-dispatch the fixer](../learnings/1784793724947-triage-handoff-to-a-contributor-assigned-issue-fla.md)
 - [Triage of rename/branding requests — governance, not engineering](../learnings/1783935538903-triage-of-rename-branding-requests-governance-not-.md)
 - [Triage routing: deferring a fix to the maintainer flips triage into closest-to-the-state (triage posts)](../learnings/1780530700561-triage-routing-deferring-a-fix-to-the-maintainer-f.md)
+- [Triage Step 11 [Triage Resolution] must route on the PARENT edge, not the fix-report id](../learnings/1784869746585-triage-step-11-triage-resolution-must-route-on-the.md)
 - [Triage workflow read-only-GitHub yields to spine observability MUST + explicit parent authorization](../learnings/1780414455913-triage-workflow-read-only-github-yields-to-spine-o.md)
 - [Triage/DeepWiki concurrency premises can lag HEAD — verify mutex sites in source before accepting "X is unsynchronized"](../learnings/1782408832985-triage-deepwiki-concurrency-premises-can-lag-head-.md)
 - [Triage: maintainer opens own fix PR ~same time as issue → verify + post + PARK, don't dispatch fixer](../learnings/1782700143228-triage-maintainer-opens-own-fix-pr-same-time-as-is.md)

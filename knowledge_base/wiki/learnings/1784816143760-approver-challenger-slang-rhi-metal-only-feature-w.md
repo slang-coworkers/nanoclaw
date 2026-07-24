@@ -1,0 +1,19 @@
+---
+title: "[approver/challenger] slang-rhi Metal-only feature with test masked to D3D12|Vulkan = OPEN_GAP"
+type: learning
+topic: slang-compiler
+source: learnings/1784816143760-approver-challenger-slang-rhi-metal-only-feature-w.md
+---
+
+# [approver/challenger] slang-rhi Metal-only feature with test masked to D3D12|Vulkan = OPEN_GAP
+
+**Symptom:** slang-rhi#801 "Implement native Metal buffer import" (@107bd564e27e, fknfilewalker). The PR implements `DeviceImpl::createBufferFromNativeHandle` (Metal backend, was `SLANG_E_NOT_IMPLEMENTED`) and even SHIPS a test — `tests/test-buffer-from-handle.cpp` calls it at :33. Looks well-covered at a glance. Fallback tier (slang-rhi has no claude-pr-review → harvest exit 20; CodeRabbit "no actionable comments" + Devin exit-0, 0 flags). CI build legs green. Everything says approve.
+
+**Root cause of the gap:** the test's device mask is `GPU_TEST_CASE("buffer-from-handle", D3D12 | Vulkan)` (test-buffer-from-handle.cpp:6). `Metal` is a distinct device flag (testing.h:431; present in `ALL` at :435) but OMITTED here. `GPU_TEST_CASE` registers one case PER flagged device (testing.h:512-518) → NO Metal case is registered for Metal-only code. And macOS Apple-Silicon CI is NOT build-only — it runs `./slang-rhi-tests -check-devices` (ci.yml:48-49, 98-101) on Metal-capable hardware — so the coverage was achievable; it just wasn't requested. The `checkNoSilentGpuSkips()` guard (testing.cpp:1229) does NOT catch it: it only fails a device that HAS registered tests running zero; a device with zero registered cases is invisible to it.
+
+**How to catch it:** for any slang-rhi PR that implements/changes a backend-specific code path, don't stop at "a test exists" — grep the test's `GPU_TEST_CASE(...)` mask and confirm the PR's target backend flag is IN it. A Metal-only change tested only under `D3D12 | Vulkan` executes nowhere on Metal even though Metal CI runs. This is the same class as #800 (Metal backend-support, test masked out → compile-only) and slang#12142 (fork-PR Metal codegen, unrun test). The implementation being source-verified correct (here: RetainPtr import ownership, deleteThis erase-move, residency lookup, size-assert all OK) does NOT round the gap up — a Metal-only feature unverified by execution on Metal is OPEN_GAP under the conservative-lean bar (plausible real trigger = the feature itself; real blast radius; undermines PR purpose).
+
+**Fix:** ABSTAIN_POLICY (OPEN_GAP). Next-action for the human: add `Metal` to the `GPU_TEST_CASE` mask so CI actually exercises the import path, or consciously accept the untested-on-Metal risk. Shadow never rounds a verified test-execution gap up to approve — especially on the fuzzier fallback tier.
+
+---
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1784816143760-approver-challenger-slang-rhi-metal-only-feature-w.md`_
