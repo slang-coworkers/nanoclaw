@@ -95,6 +95,17 @@ for branch in "${BRANCHES[@]}"; do
     done
     git commit --no-edit
   fi
+
+  # package.json and pnpm-lock.yaml are jointly canonical to nv-main. A dep line
+  # in package.json that doesn't textually conflict can still auto-merge to a
+  # value inconsistent with the lockfile (resolved to nv-main) — breaking
+  # `pnpm install --frozen-lockfile` (ERR_PNPM_OUTDATED_LOCKFILE). Force both to
+  # nv-main's pair after each merge, unconditionally, folding into the merge
+  # commit. See setup/merge-train.test.ts.
+  git checkout origin/nv-main -- package.json pnpm-lock.yaml 2>/dev/null || true
+  if ! git diff --cached --quiet -- package.json pnpm-lock.yaml 2>/dev/null; then
+    git commit -q --amend --no-edit
+  fi
   merged_any=1
 done
 

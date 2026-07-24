@@ -45,15 +45,28 @@ function buildOrigin(root: string): string {
   fs.mkdirSync(path.join(seed, 'groups', 'main'), { recursive: true });
   fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'base\n');
   fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'base\n');
+  // package.json + lockfile so the pin (package.json/pnpm-lock.yaml → nv-main)
+  // has something to reconcile.
+  fs.writeFileSync(
+    path.join(seed, 'package.json'),
+    JSON.stringify({ dependencies: { a: '1.0.0', z: '1.0.0' } }, null, 2) + '\n',
+  );
+  fs.writeFileSync(path.join(seed, 'pnpm-lock.yaml'), 'lock: base\n');
   git(seed, 'add', '-A');
   git(seed, 'commit', '-qm', 'base');
   git(seed, 'branch', 'nv-main');
   git(seed, 'branch', 'work-owned');
   git(seed, 'branch', 'work-unowned');
+  git(seed, 'branch', 'work-deps');
 
   git(seed, 'checkout', '-q', 'nv-main');
   fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'MAIN\n');
   fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'MAIN\n');
+  fs.writeFileSync(
+    path.join(seed, 'package.json'),
+    JSON.stringify({ dependencies: { a: '2.0.0', z: '1.0.0' } }, null, 2) + '\n',
+  );
+  fs.writeFileSync(path.join(seed, 'pnpm-lock.yaml'), 'lock: nv-main\n');
   git(seed, 'commit', '-qam', 'nv-main changes');
 
   git(seed, 'checkout', '-q', 'work-owned'); // diverges on src/ (owned)
@@ -63,6 +76,15 @@ function buildOrigin(root: string): string {
   git(seed, 'checkout', '-q', 'work-unowned'); // diverges on groups/ (unowned)
   fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'WORK\n');
   git(seed, 'commit', '-qam', 'work unowned');
+
+  // work-deps adds a dependency nv-main lacks — package.json auto-merges (no
+  // textual conflict) to a state inconsistent with nv-main's lockfile.
+  git(seed, 'checkout', '-q', 'work-deps');
+  fs.writeFileSync(
+    path.join(seed, 'package.json'),
+    JSON.stringify({ dependencies: { a: '1.0.0', extra: '9.9.9', z: '1.0.0' } }, null, 2) + '\n',
+  );
+  git(seed, 'commit', '-qam', 'work adds a dep');
 
   git(seed, 'checkout', '-q', 'base');
   const origin = path.join(root, 'origin.git');
@@ -93,6 +115,21 @@ describe('merge-train.sh resolver', () => {
       expect(res.status).toBe(0);
       expect(fs.readFileSync(path.join(repo, 'src', 'foo.ts'), 'utf-8')).toBe('MAIN\n');
       expect(git(repo, 'diff', '--name-only', '--diff-filter=U').trim()).toBe('');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('pins package.json + pnpm-lock.yaml to nv-main even when package.json auto-merges', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-pin-'));
+    try {
+      const origin = buildOrigin(root);
+      const repo = cloneOn(root, origin, 'c', 'work-deps'); // adds a dep nv-main lacks
+      const res = runMergeTrain(repo, 'nv-main');
+      expect(res.status).toBe(0);
+      // Both files match nv-main exactly → frozen install would be consistent.
+      expect(git(repo, 'diff', 'origin/nv-main', '--', 'package.json', 'pnpm-lock.yaml').trim()).toBe('');
+      expect(fs.readFileSync(path.join(repo, 'pnpm-lock.yaml'), 'utf-8')).toBe('lock: nv-main\n');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
