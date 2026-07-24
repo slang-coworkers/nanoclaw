@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1645 agent learnings**, synthesized into **46 concept pages**.
+Standalone wiki built from **1688 agent learnings**, synthesized into **46 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -83,11 +83,11 @@ Standalone wiki built from **1645 agent learnings**, synthesized into **46 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (840)
-- [NanoClaw / agent operations](topics/agent-ops.md) (240)
-- [CI, build & tooling](topics/ci-tooling.md) (142)
-- [Review & process](topics/review-process.md) (113)
-- [Uncategorized](topics/misc.md) (310)
+- [Slang compiler & language](topics/slang-compiler.md) (864)
+- [NanoClaw / agent operations](topics/agent-ops.md) (246)
+- [CI, build & tooling](topics/ci-tooling.md) (143)
+- [Review & process](topics/review-process.md) (116)
+- [Uncategorized](topics/misc.md) (319)
 
 ## All learnings (chronological)
 
@@ -1736,3 +1736,46 @@ Standalone wiki built from **1645 agent learnings**, synthesized into **46 conce
 - [slang-12196 entry-point [require] never reaches specializeTargetSwitch (bindless half of #11631)](learnings/1784782055293-slang-12196-entry-point-require-never-reaches-spec.md)
 - [precise qualifier ignored on direct SPIR-V in default fp-mode (issue 12198) — NoContraction gate reads global mode only](learnings/1784785437426-precise-qualifier-ignored-on-direct-spir-v-in-defa.md)
 - [RayQuery return-by-value miscompile = opaque value-copy, not missing return-dest transform (verify via disasm)](learnings/1784785541306-rayquery-return-by-value-miscompile-opaque-value-c.md)
+- [Conditional-flag ICE (#11782) repros need only a plain enclosing generic — not autodiff/higher-order/set-spec](learnings/1784793304583-conditional-flag-ice-11782-repros-need-only-a-plai.md)
+- [Triage handoff to a CONTRIBUTOR-ASSIGNED issue: flag to Main first, don't auto-dispatch the fixer](learnings/1784793724947-triage-handoff-to-a-contributor-assigned-issue-fla.md)
+- [NRVO for opaque non-copyable returns must be scoped to opaque HANDLES, not all [__NonCopyableType]](learnings/1784798335581-nrvo-for-opaque-non-copyable-returns-must-be-scope.md)
+- [[approver/critique-mustfix] A refuted/false-positive bot-🔴 lands at ABSTAIN_POLICY, not BLOCK — Step 4's "verified" qualifier governs, not Step 2's mechanical map](learnings/1784814885802-approver-critique-mustfix-a-refuted-false-positive.md)
+- [[approver/challenger] slang-rhi Metal-only feature with test masked to D3D12|Vulkan = OPEN_GAP](learnings/1784816143760-approver-challenger-slang-rhi-metal-only-feature-w.md)
+- [Reviewer A ($30 budget cap) can silently produce no final-review.md](learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md)
+- [metallib TEST directive ≠ FileCheck discrimination; both are needed](learnings/1784816898155-metallib-test-directive-filecheck-discrimination-b.md)
+- [Never read merge-queue / auto-merge state from a WebFetch page summary — use gh --json](learnings/1784817132922-never-read-merge-queue-auto-merge-state-from-a-web.md)
+- [Slang -debug-info-include-source (#12181/#12202): second IRDebugSource producer + LLVM target-agnostic gaps](learnings/1784822669473-slang-debug-info-include-source-12181-12202-second.md)
+- [Slang SPIR-V debug tests need [shader("compute")]/-entry or they silently test the fallback path, not the primary](learnings/1784822694362-slang-spir-v-debug-tests-need-shader-compute-entry.md)
+- [formatting.sh silently no-ops when clang-format is absent (ephemeral install)](learnings/1784826314203-formatting-sh-silently-no-ops-when-clang-format-is.md)
+- [Devin re-run after a push can return STALE cached analysis — detect via renamed-symbol probe, not just commit-status](learnings/1784827155083-devin-re-run-after-a-push-can-return-stale-cached-.md)
+- [slangc help-text edits require regenerating command-line-slangc-reference.md (CI diff-checks it)](learnings/1784827777508-slangc-help-text-edits-require-regenerating-comman.md)
+- [Slang PR-review: recover torn-down Reviewer A findings from stream.jsonl subagents](learnings/1784828278697-slang-pr-review-recover-torn-down-reviewer-a-findi.md)
+- [-g0 (DebugInfoLevel::None) emits exactly OpSource/OpName/OpMemberName in SPIR-V](learnings/1784828289031-g0-debuginfolevel-none-emits-exactly-opsource-opna.md)
+- [send_message to=parent can fail as unaddressable — send_file and message-block still route](learnings/1784828845885-send-message-to-parent-can-fail-as-unaddressable-s.md)
+- [Granular SpvOpt pass selection — RegisterPassesFromFlags is the clean primitive (issue #12204)](learnings/1784829679560-granular-spvopt-pass-selection-registerpassesfromf.md)
+- [Slang docs routing: docs/design is hand-maintained, docs/generated/design is regenerated](learnings/1784830597951-slang-docs-routing-docs-design-is-hand-maintained-.md)
+- [SPIR-V OpSource language token is env-dependent (Slang vs Unknown) — FileCheck trap on aarch64 CI](learnings/1784830837048-spir-v-opsource-language-token-is-env-dependent-sl.md)
+- [aarch64-only test-slang CHECK fails = env token, not arch bug or golden-shift](learnings/1784830954472-aarch64-only-test-slang-check-fails-env-token-not-.md)
+- [This env HAS a GPU (NVIDIA L40S) — but coop-vec is NOT runnable (driver lacks VK_NV_cooperative_vector)](learnings/1784831657952-this-env-has-a-gpu-nvidia-l40s-but-coop-vec-is-not.md)
+- [[approver/human-agreement] full-arc vindication: R3 ABSTAIN(OPEN_GAP) merged only AFTER the author implemented the exact next-action (copy sink severity-overrides + add -Wno test); BLOCK→BLOCK→ABSTAIN→merge](learnings/1784838040864-approver-human-agreement-full-arc-vindication-r3-a.md)
+- [slang-test spirv FileCheck: -g2 embeds source-as-OpString and matches your own comments](learnings/1784838497425-slang-test-spirv-filecheck-g2-embeds-source-as-ops.md)
+- [[approver/human-agreement] CORRECTION to full-arc-vindication #12141: PARTIAL gap closure (suppression-bypass fixed, broad-forwarding retained), not "whole gap fixed" or "end-to-end agreement"](learnings/1784838665378-approver-human-agreement-correction-to-full-arc-vi.md)
+- [A doc-vs-behavior bug can fix either side — measure the behavior-fix cost before assuming code is the "real" fix (slang #11682)](learnings/1784844793184-a-doc-vs-behavior-bug-can-fix-either-side-measure-.md)
+- [[approver/challenger-miss] "matches GLSL/shaderc" ≠ desired Slang behavior — a compile-time diagnostic relaxation is a DESIGN call maintainers may reject even when the code is correct](learnings/1784845286053-approver-challenger-miss-matches-glsl-shaderc-desi.md)
+- [Byte-exact .slang test fixtures need `text eol=lf` in .gitattributes or they fail on Windows CI (CRLF)](learnings/1784845596400-byte-exact-slang-test-fixtures-need-text-eol-lf-in.md)
+- [Recover a dead clarity/correctness review run's candidates from stream.jsonl](learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md)
+- [SLANG_ASSERT becomes __builtin_assume in release — never pair it with a runtime if() on the same condition](learnings/1784846626233-slang-assert-becomes-builtin-assume-in-release-nev.md)
+- [SLANG_ASSERT(x); if(x)... is a release-build UB trap (ASSERT expands to ASSUME)](learnings/1784847485639-slang-assert-x-if-x-is-a-release-build-ub-trap-ass.md)
+- [Slang SPIR-V: emitting a bare fileless OpSource alongside file-carrying OpSource creates a spurious 'unnamed' source for extractors](learnings/1784851566899-slang-spir-v-emitting-a-bare-fileless-opsource-alo.md)
+- [C++ versioned-struct inheritance: non-standard-layout ≠ non-aggregate; use base-slicing not offsetof](learnings/1784851897134-c-versioned-struct-inheritance-non-standard-layout.md)
+- [Slang PR review: gh token invalid → patch-mode fallback for public repo](learnings/1784856118074-slang-pr-review-gh-token-invalid-patch-mode-fallba.md)
+- [Verify cited CI run against live GitHub before trusting a release-report notification](learnings/1784856735494-verify-cited-ci-run-against-live-github-before-tru.md)
+- [A "proves the gate works" test is vacuous unless the tested path actually feeds the gated input](learnings/1784857152467-a-proves-the-gate-works-test-is-vacuous-unless-the.md)
+- [Empty-ack ping-pong: bare text is the fuel, seq-alternation is not proof of inbound-driven](learnings/1784859331988-empty-ack-ping-pong-bare-text-is-the-fuel-seq-alte.md)
+- [Kind-dependent SPIR-V representation change: audit ALL width consumers + the constant-emit path (slang DescriptorHandle option-a)](learnings/1784859574140-kind-dependent-spir-v-representation-change-audit-.md)
+- [[approver/infra] read-only `gh api .../pulls/<n>/reviews|comments` trips the critique-gate PR-creation hook — use gh pr view / GraphQL](learnings/1784867719312-approver-infra-read-only-gh-api-pulls-n-reviews-co.md)
+- [SlangPy C++ build needs data submodule + LFS fonts (git-lfs absent)](learnings/1784867803689-slangpy-c-build-needs-data-submodule-lfs-fonts-git.md)
+- [SlangPy C++ build needs the `data` LFS submodule + numpy/libcst for stubgen](learnings/1784868284126-slangpy-c-build-needs-the-data-lfs-submodule-numpy.md)
+- [Triage Step 11 [Triage Resolution] must route on the PARENT edge, not the fix-report id](learnings/1784869746585-triage-step-11-triage-resolution-must-route-on-the.md)
+- [SlangPy profiler PR #1063 also had a drain() snapshot-ordering race (#1072)](learnings/1784869755509-slangpy-profiler-pr-1063-also-had-a-drain-snapshot.md)
+- [SGL profiler drain() #1072 fix — snapshot reorder + why its guard tests are probabilistic](learnings/1784870556172-sgl-profiler-drain-1072-fix-snapshot-reorder-why-i.md)

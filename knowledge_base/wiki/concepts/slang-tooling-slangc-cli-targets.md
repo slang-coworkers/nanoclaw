@@ -43,6 +43,8 @@ The canonical fix is the `/regenerate-cmdline-ref` slash command (`.github/workf
 
 Do not hand-edit `docs/command-line-slangc-reference.md` without a working build to diff-verify — the auto-generated format is fragile (exact trailing whitespace, registration order). When build or dispatch is unavailable, post a PR note documenting the sole remaining red is doc-staleness and hand off to a maintainer with build+dispatch rights. ([Adding a slangc CLI option trips check-cmdline-ref CI; the bot can't self-fix it via /regenerate-cmdline-ref](../learnings/1782520511938-adding-a-slangc-cli-option-trips-check-cmdline-ref.md))
 
+The trigger is broader than adding options: **any** edit to a `slangc` help/description string — including the tables in `source/core/slang-type-text-util.cpp` (debug levels, optimization levels, etc.) — changes `slangc -help-style markdown -h` output and must be mirrored by regenerating the doc (build slangc, then `./build/Debug/bin/slangc -help-style markdown -h > docs/command-line-slangc-reference.md`, committing both files together and REGENERATING rather than hand-editing to avoid whitespace drift), or `check-cmdline-ref` fails. A parallel `check-capability-atoms-ref` diff-checks `docs/user-guide/a4-02-reference-capability-atoms.md` against `slang-capabilities.capdef` the same way ([any slangc help-text edit must regenerate command-line-slangc-reference.md — CI diff-checks it](../learnings/1784827777508-slangc-help-text-edits-require-regenerating-comman.md)).
+
 ## slangc -dump-ir: codegen pipeline only (not validation pipeline)
 
 `slangc ... -dump-ir` prints the IR as seen by the **codegen** pass sequence. Diagnostics that fire from `shouldRunNonEssentialValidation()` — including the uninitialized-use checker (`checkForUsingUninitializedValues`) — run against a SEPARATE IR view not captured in the dump. A dump showing "inst X never appears / body is empty" is NOT evidence about what the validation checker sees.
@@ -188,7 +190,7 @@ Correcting an earlier "glslang load fails in-container" note: `slangc -emit-spir
 
 With `-fvk-bind-globals <binding> <set>` where set != 0, a resource (sampler/texture) split out of the module-scope `uniform` globals struct is placed at the SAME (set, binding) as the `$Globals` UBO instead of globals-binding+1 → descriptor conflict (empirically confirmed via `-target spirv-asm -emit-spirv-directly`, grepping `OpDecorate Binding/DescriptorSet`; the trigger is the reservation path for ANY non-default set, not `set==1`). Root cause: the default path allocates the CB from `defaultSpace` on the same range-set the split-out sampler later allocates from (so it bumps to +1), but the flag path `_assignConstantBufferBinding` `.Add`s the reservation without the shared-bucket bump. No test coverage exists — add a `-target spirv-asm` FileCheck (no GPU needed). When a load-bearing binding/layout claim is disputed and a prebuilt slangc is available, REPRODUCE with a 2-minute emit rather than pick between competing subagent hypotheses ([fvk-bind-globals non-default set collides split-out globals resources onto CB binding (slang#10668)](../learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md)).
 
-**Source learnings (35):**
+**Source learnings (36):**
 - [Slang diagnostic catalog name conventions — emit sites are PascalCase, not camelCase](../learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md)
 - [slangi VM emitter: missing IRConstant cases produce silent malformed operands](../learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md)
 - [Slang VM bytecode: missing constant-emit case can silently mask wrong test assertions](../learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md)
@@ -225,4 +227,5 @@ With `-fvk-bind-globals <binding> <set>` where set != 0, a resource (sampler/tex
 
 - [slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md)
 - [-fvk-bind-globals with set!=0 collides split-out globals resources onto the $Globals CB binding (#10668); flag path skips the shared-bucket +1 bump — repro via spirv-asm, no test coverage exists](../learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md)
+- [any slangc help-text edit must regenerate command-line-slangc-reference.md or CI fails](../learnings/1784827777508-slangc-help-text-edits-require-regenerating-comman.md)
 _Catalog: [[wiki/index.md]]_

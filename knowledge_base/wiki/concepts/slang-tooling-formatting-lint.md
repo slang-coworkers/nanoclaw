@@ -21,6 +21,8 @@ This page covers how Slang's `extras/formatting.sh` works, what CI pins for each
 
 This extends to `.meta.slang`: running `clang-format -i` on one is **destructive** — `.meta.slang` is Slang source, not C++, and `extras/formatting.sh` never runs clang-format on it, so `clang-format -i --style=file source/slang/hlsl.meta.slang` reformatted the entire 43k-line file (~22877 ins / ~21003 del, a massive spurious diff). Only ever point clang-format at `.cpp`/`.h`; hand-edit `.meta.slang` comment changes and recover a botched run with `git checkout HEAD -- <file>`. A companion pitfall: `extras/formatting.sh` needs clang-format literally on `$PATH` **inline in the SAME bash call**, since the shell env resets between separate Bash tool invocations — run `PATH="$HOME/.local/bin:$PATH" ./extras/formatting.sh --cpp -- <file>` rather than relying on an `export` from a prior call, and reinstall the pip wheel each fresh session (`pip install clang-format==17.0.6 --break-system-packages`; binary lands at `~/.local/lib/python3.11/site-packages/clang_format/data/bin/clang-format`) ([clang-format via pip wheel: never point it at .meta.slang; PATH must be inline in the same bash call](../learnings/1784332011128-clang-format-via-pip-wheel-never-point-it-at-meta-.md)).
 
+A sharper trap on the scoped `--cpp` path: when clang-format is absent from `$PATH`, `./extras/formatting.sh --cpp` prints "Formatting cpp files..." and **exits 0 without formatting anything** — a silent false-clean, not the early-abort described above — so a `--cpp` run that "passed" earlier can be a no-op after a container restart drops the ephemeral pip install. Before trusting it, confirm the binary exists (`which clang-format` or `~/.local/bin/clang-format --version`); note also that `--modified` finds nothing once you have committed, so a committed file must be formatted by running clang-format on it directly ([extras/formatting.sh --cpp silently no-ops (exit 0) when clang-format is absent from PATH](../learnings/1784826314203-formatting-sh-silently-no-ops-when-clang-format-is.md)).
+
 ([Slang formatting.sh requires clang-format 17.x exactly](../learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md), [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md))
 
 ## clang-format 17: installation, PATH, and PYTHONPATH
@@ -120,7 +122,7 @@ When editing **shader-slang/slang-rhi** (not the compiler), its pre-commit/CI ga
 **Never run prettier (formatting.sh --md) on the generated capability-atoms doc** — **Context:** slang#12097 — editing a capdef `///` doc comment regenerates `docs/user-guide/a4-02-reference-capability-atoms.md` via `slang-capability-generator`. [Never run prettier (formatting.sh --md) on the generated capability-atoms doc](../learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-generat.md)
 
 ---
-**Source learnings (14):**
+**Source learnings (15):**
 - [Slang formatting.sh requires clang-format 17.x exactly](../learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md)
 - [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
 - [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)
@@ -135,4 +137,5 @@ When editing **shader-slang/slang-rhi** (not the compiler), its pre-commit/CI ga
 - [clang -Wformat-security rejects argless printf(fmt) — Linux gcc verify won't catch it](../learnings/1783560312328-clang-wformat-security-rejects-argless-printf-fmt-.md)
 - [Never run prettier (formatting.sh --md) on the generated capability-atoms doc](../learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-generat.md)
 - [clang-format via pip wheel: never point it at .meta.slang (destructive); PATH must be inline in the same bash call](../learnings/1784332011128-clang-format-via-pip-wheel-never-point-it-at-meta-.md)
+- [formatting.sh --cpp silently no-ops (exit 0) when clang-format absent from PATH](../learnings/1784826314203-formatting-sh-silently-no-ops-when-clang-format-is.md)
 _Catalog: [[wiki/index.md]]_

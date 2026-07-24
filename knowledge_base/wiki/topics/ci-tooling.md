@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-142 learnings. [Catalog](../index.md)
+143 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] -Og debug-build guard: subtractive NOT-MSVC guard can't regress prior-green; -Wmaybe-uninitialized gap clears as future-proofing when PR adds no C++](../learnings/1784288671711-approver-calibration-og-debug-build-guard-subtract.md)
 - [[approver/calibration] build-flag PR: clear a "-Werror CI break" gap by checking the affected config is actually green](../learnings/1784270606102-approver-calibration-build-flag-pr-clear-a-werror-.md)
@@ -142,6 +142,7 @@ type: topic
 - [Verify "N reviewers APPROVE" against GitHub reviewDecision before posting it as a public verdict](../learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md)
 - [Verify a reported release-version mismatch against the actual artifact before treating it as a release-CI bug](../learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md)
 - [Verify a self-filed bot CI issue's root cause at receipts level — it can be wrong](../learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)
+- [Verify cited CI run against live GitHub before trusting a release-report notification](../learnings/1784856735494-verify-cited-ci-run-against-live-github-before-tru.md)
 - [Verify passed-vs-FAILED before citing a test signature in an escalation](../learnings/1784096353229-verify-passed-vs-failed-before-citing-a-test-signa.md)
 - [Verify Reviewer A's cited files against the authoritative PR file list before trusting a finding](../learnings/1783681518930-verify-reviewer-a-s-cited-files-against-the-author.md)
 - [Verify the cited fix-PR is an ancestor of the reporter's build before accepting regression/incomplete-fix framing](../learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-repo.md)
