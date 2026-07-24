@@ -261,6 +261,17 @@ compose_fork() {
     git commit --no-edit >>"$LOG_FILE" 2>&1
   fi
 
+  # package.json and pnpm-lock.yaml are jointly canonical to nv-main. A dep line
+  # in package.json that doesn't textually conflict can still auto-merge to a
+  # value inconsistent with the lockfile (which resolved to nv-main) — breaking
+  # `pnpm install --frozen-lockfile` (ERR_PNPM_OUTDATED_LOCKFILE). Force both to
+  # nv-main's pair after the merge, unconditionally, and fold into the merge
+  # commit. See setup/compose-fork.test.ts.
+  git checkout origin/nv-main -- package.json pnpm-lock.yaml 2>/dev/null || true
+  if ! git diff --cached --quiet -- package.json pnpm-lock.yaml 2>/dev/null; then
+    git commit -q --amend --no-edit >>"$LOG_FILE" 2>&1
+  fi
+
   # The merge just rewrote setup.sh itself (nv-main is canonical for it). bash
   # reads scripts incrementally, so continuing in this process could execute a
   # mix of old and new bytes — re-exec the freshly merged copy. NANOCLAW_COMPOSED
