@@ -9,7 +9,9 @@ metadata:
 
 slang-rhi#800 (fknfilewalker) implements `dispatchComputeIndirect` for the Metal backend.
 
-**Approver shadow verdict @ 66846d6959bd (07-18):** ABSTAIN_POLICY / CHALLENGER_CONCERN, ledger-only, nothing posted (shadow-mode; no reviewer in scope — webhook task said route to approver only).
+**Approver shadow verdict — ABSTAIN_POLICY / CHALLENGER_CONCERN, ledger-only (shadow-mode; approver never posts).**
+- R1 @ `66846d6959bd` (07-18).
+- R2 @ `94a90b2a5013` (07-23, synchronize) — SAME verdict. The push was a pure main-merge sync ("Merge branch 'shader-slang:main'…"); **no Metal test leg added**. metal-command.cpp + PR-relevant docs/api.md row byte-identical to R1; Devin's residency 🔴 re-refuted; CodeRabbit clean; 22/22 checks incl. macos aarch64.
 
 - 6/6 clauses PASS. CI 23/23 green incl. macOS aarch64. CodeRabbit clean on pinned head.
 - Impl textbook-correct: mirrors `cmdDispatchCompute`, satisfies removed TODO's barrier requirement.

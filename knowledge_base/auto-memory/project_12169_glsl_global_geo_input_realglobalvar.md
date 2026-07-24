@@ -9,6 +9,11 @@ metadata:
 
 # shader-slang/slang#12169 — GLSL global-scope geometry input asserts `realGlobalVar`
 
+## ✅ TERMINAL — MERGED 07-23
+
+PR #12170 **MERGED into master** by pdeayton-nv, merge commit `4265906358`, 2026-07-23. Issue #12169 auto-closed COMPLETED via `Closes #12169`. Earlier single-test CI red (`gfx-unit-test-tool/computeTrivialD3D11.internal` + wgpu retry-flake) confirmed infra/unrelated to diff — rerun-failed cleared it; PR's own test passed 4/4 on Windows-GPU runner throughout. Fixer cleanup done: removed worktree `wt-slang-12169`, deleted branch `fix/issue-12169`, removed sentinel. Full arc: triage (P2, reproduced, #9058 premature-close identified) → fix (`flavor==tuple` discriminator, Approach A) → 3-reviewer APPROVE_WITH_NITS (all folded) → author approval → merged. Reusable learnings logged by fixer: (1) real-slang-test FileCheck requires copied libslang-llvm.so; (2) geometry inputs must be arrays — verify GS-input tests via `-emit-spirv-via-glsl` (direct -target spirv wrongly accepts scalar GS inputs glslang rejects). Nothing outstanding. History below.
+
+
 Opened 2026-07-21 by **pdeayton-nv**. Canonical thread `gh-issue-shader-slang/slang-12169`.
 
 **Repro:** `in triangle CoarseVertex coarseVertices[3];` (GLSL-style global-scope geo input, **array-of-struct**) → `slangc repro.slang -target spirv` aborts:

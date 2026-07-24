@@ -27,6 +27,8 @@ reflection, autodiff, Metal, mimalloc all hit it) → confirmed test/infra flake
 
 **Ask:** maintainer fix-or-quarantine the GBufferRTTexGrads renderpass.
 
+**07-23 20:11Z IMPACT-REFRESH POSTED (babysitter, comment 5062894889).** Issue OPEN, assigned jkwak-work, zero prior comments → non-duplicative. Babysitter re-derived from durable log (excluded 5 false matches — #12089's Falcor red is author-owned E41011 `hlsl_nvapi` link, GBuffer only "PASSED" there): **44 attributed occurrences / 16 PRs / 07-15→07-23, of which 34 merge-queue evictions across 9 PRs** (#12122 ~13×, #12151 ~12×) + receipts table extending the original 8-row body. Explicit quarantine ask on `test_GBufferRTTexGrads_d3d12`. Babysitter flagged DONE — won't re-post per-sweep; next #12145 update only if cost materially shifts (starts stranding, or count ~doubles). Quarantine ask also standing with operator (not re-pinged per-sweep). Fix-owner = jkwak.
+
 **Routing:** forwarded to `slang-ci-babysitter` (owns CI-flake anchors) to
 register #12145 as canonical anchor for this signature — use for future
 flake-vs-real classification and safe requeues. Bot-authored + maintainer-directed
