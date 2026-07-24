@@ -44,7 +44,90 @@ Result: all 4 reporter repros no longer abort. AS → valid SPIR-V; ConstantBuff
 → clean `E55215`, zero `E99997`; image/sampler + texel-buffer controls unchanged. Repro test
 `tests/language-feature/descriptor-handle/desc-handle-nv-bindless-texture-kinds.slang`.
 
-## Chain state (as of 2026-07-22 ~16:18Z) — OPEN, READY-FOR-REVIEW, held on maintainer merge
+## Chain state (as of 2026-07-23 ~21:05Z) — RE-OPENED for project-lead redesign
+- **csyonghe (Yong He, project lead) posted a redesign proposal @20:59Z** on the unresolved
+  `hlsl.meta.slang` review thread. GitHub reviewDecision STILL `APPROVED` (head `4fbe216b0e`,
+  MERGEABLE) — csyonghe posted a review-thread *comment*, NOT a formal REQUEST_CHANGES — but
+  substantively this **re-opens the design** (supersedes prior "held on merge").
+- **Proposal:** delete the dedicated `spvBindlessTextureNV` target-switch arm; instead special-case
+  `T.kind == Texture/Sampler/CombinedTextureSampler` inside the `spvDescriptorHeapEXT` + default
+  arms — so the NV conversion opcode fires only for texture/sampler kinds AND only when the
+  capability is set, with defined behavior when bindless-texture is/isn't combined with
+  DescriptorHeapEXT. "Fix-the-producer, don't diagnose-downstream" restructure (repo methodology)
+  → would supersede the current E55215-in-legalization shape.
+- **Ownership:** slang-fixer (PR owner) investigating feasibility (can `.meta.slang` branch on the
+  sub-capability; is the non-DescriptorHeapEXT buffer path well-defined) and will reply on-thread
+  with a concrete direction BEFORE touching code (implementing would dismiss pdeayton's approval).
+  Triager NOT running parallel analysis — fixer's surface. Design call = csyonghe + fixer +
+  pdeayton, NOT orchestrator to dispatch.
+- **Issue verdict (cmt 5041198434):** HOLDING refresh — still reads "APPROVED, awaiting merge"
+  (soft now); triager won't churn until redesign direction settles.
+- **Now held on: design-settle → rework → re-approve → merge** (not merge). Triager relays the
+  fixer's direction when it lands.
+
+### Fixer feasibility (2026-07-23 ~21:21Z) — NOT a simple rework; blocker found
+- csyonghe's proposal (route only texture/sampler through NV op, drop E55215) is the cleaner
+  producer-side direction BUT hits a **representation blocker:** under `spvBindlessTextureNV` the
+  `DescriptorHandle` is **uint64 capability-wide for ALL kinds** (baked into emit, legalization,
+  byte-address storage, layout/reflection), while heap/AS paths decode uint2 → non-texture/sampler
+  kinds can't just fall through.
+- **Decision now with project lead csyonghe** (framed on-thread `r3641456739`):
+  (a) make handle width kind-dependent → cross-subsystem audit (potentially large), vs
+  (b) keep uint64-wide + define a uint64→heap-index encoding contract.
+  Fixer holding for csyonghe's (a)/(b) pick; will implement his choice + re-verify (WILL dismiss
+  pdeayton's approval — expected for a real code change). Fixer won't implement speculatively
+  (holds if csyonghe goes quiet).
+- **Scope/risk up:** previously-"clean approved fix" may now need non-trivial redesign; chain
+  duration/risk increased. GitHub reviewDecision still APPROVED but effectively superseded.
+- **Held on csyonghe's design decision** — no human action needed except the lead's call.
+
+### Design decision LANDED (2026-07-23 ~22:37Z): option (a), kind-dependent handle width
+- Per a code-review meeting, jkwak reassigned PR #12186 to **pdeayton-nv** (assignees=[pdeayton-nv],
+  head still `4fbe216b0e`, reviewDecision still APPROVED — no code pushed yet). pdeayton picked
+  **option (a):** make DescriptorHandle SPIR-V representation **kind-dependent** (uint64 only for
+  `spvBindlessTextureNV`-affected kinds, uint2 otherwise). Fixer posted impl plan on-thread
+  `r3641818001`.
+- **Fix-shape-changing finding:** acceleration structures do NOT need uint64 — plain `-target
+  spirv` already lowers an AS handle (uint2) → `OpConvertUToAccelerationStructureKHR` (spirv arm
+  packs `__asuint64((uint2))` itself). So **AS → uint2**, falling through the existing path —
+  which *reverses* what the currently-approved PR does for AS. Fixer verified empirically
+  (corrected a subagent). (Analysis on fixer's own PR code; triager did not re-derive.)
+- **Scope = representation-wide:** one kind→width classifier (single source of truth, IR+AST)
+  feeding the ~6 sites that today decide uint64 capability-wide (emit, legalization,
+  layout/reflection); branch `.meta.slang` casts on `T.kind`; **DELETE the standalone NV arm + the
+  E55215 diagnostic/guard/predicate.** Supersedes the entire current fix shape → will dismiss
+  pdeayton's approval + re-request review (expected).
+- **Held on pdeayton confirming two mapping points** — kind→width (esp. AS→uint2) and whether CUDA
+  stays uint64-wide — BEFORE fixer builds. Fixer won't implement on unconfirmed mapping; holds if
+  pdeayton goes quiet. Next: confirm mapping → implement representation change → re-verify → new
+  review cycle. Verdict (cmt 5041198434) refresh still HELD.
+
+### Option (a) redesign PUSHED (2026-07-24 ~02:22Z) — PR back in DRAFT, held on re-review
+- **Previously-approved diff REPLACED** with the kind-dependent representation. Verified head
+  `f4004c3f90`, `Closes #12185`, **14 files +489/−70**.
+- **PR is DRAFT** (pdeayton-nv converted it @07-23 22:54:40Z, verified via timeline);
+  reviewDecision=REVIEW_REQUIRED, prior APPROVE dismissed. **Draft-hold guardrail applies — issue
+  is the public surface.**
+- **Substance verified (triager, at source):** E55215 genuinely GONE (diagnostics.lua def +
+  legalize guard both 0 matches). Surviving `isBindlessTextureNVEncodableResourceType` repurposed
+  as the **kind→width classifier** (texture/sampler family=uint64, buffers/AS=uint2), feeding
+  emit/legalize/byte-address/layout/reflection. Buffers now compile via the heap path — **abort
+  fixed BY CONSTRUCTION, not diagnosed.** AS→uint2 as predicted.
+- **GitHub:** issue verdict refreshed via **fresh incremental delta cmt 5065523733** (a human
+  jkwak commented since last, so posted new comment rather than editing buried "approved" one):
+  "approach reworked, PR back in draft for re-review, E55215 removed". Nothing re-flipped.
+- **#12191/#12192 likely MOOT** under this design (they were about the removed E55215's
+  dead-code/source-loc); fixer will close once this lands unless maintainers keep them; triager
+  re-triages if a substantive human cmt lands on either.
+- Fixer verified full kind matrix GPU-less + codex green (rounds→44).
+- **Held on maintainer re-review + CI on reworked draft → re-approve → human flips ready → merge.**
+
+### Superseded (was, 2026-07-23 ~13:36Z): APPROVED/held-on-merge
+- PR #12186 was APPROVED@`4fbe216b0e` (pdeayton-nv, binds current head, verified not stale),
+  MERGEABLE after 8 review rounds (jkwak + pdeayton). BLOCKED = Falcor D3D12 flake gate, not review.
+  pdeayton's 2 correctness catches folded: (a) SamplerComparisonState, (b) OpConvertUToImageNV-vs-
+  SampledImage image/combined split. csyonghe's redesign may restructure all of this.
+
 - Classified bug / medium / **P2** / SPIR-V emit. Issue Type `Bug`; `reproduced` applied.
 - **PR #12186 — NON-DRAFT / ready-for-review.** jkwak-work flipped draft→ready @15:54:57Z
   (ReadyForReviewEvent; isDraft=false, reviewDecision=REVIEW_REQUIRED, jkwak COMMENTED not

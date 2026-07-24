@@ -16,3 +16,5 @@ pr_ready_for_review webhook (opened + synchronize back-to-back) → routed to `s
 Correctness basis: aligns table-generated MSL accessors with pre-existing hand-written `is_*_triangle_front_facing` at `hlsl.meta.slang:21842/21863`; non-front-face MSL byte-identical before/after; `strcmp` in meta block proven-buildable (same construct at `:27412`); blast radius nil (no pre-existing Metal test asserts old name).
 
 **Blocker (external):** fork CI is maintainer-gated, not yet approved to run. **Next:** human maintainer approves+runs CI → on merge/close the join records the human verdict against this ledger row. No NanoClaw-side action; chain at rest. Ledger-only, nothing posted to GitHub (shadow).
+
+**07-19 update (cmt 5059977185, jkwak-work):** named reviewer is **@kaizhangNV**, who is at SIGGRAPH this week → **review expected next week (~07-27)**. Pure maintainer-coordination status note; introduces no design point → no re-open, no routing, no GitHub post. Chain stays at rest awaiting kaizhangNV's review/CI next week.

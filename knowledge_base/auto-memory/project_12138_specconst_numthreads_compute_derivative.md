@@ -7,6 +7,8 @@ metadata:
   originSessionId: 39bdf69f-9319-42b7-8dc1-c472afa54de1
 ---
 
+**TERMINAL 07-23: CLOSED-UNMERGED** by jkwak-work (maintainer) after team-meeting design decision. R2 ABSTAIN_POLICY (OPEN_GAP) @9f5ce276 is operative row; join recorded `human_verdict=CHANGES_REQUESTED`. Maintainers rejected on **design grounds** (NOT the flagged gaps): "it is desired behavior to print an error on the default value even when variables might be overridden at runtime"; prescribed fix = *user* changes spec-const default (1→2), not relax the compiler check. ABSTAIN was directionally correct (withheld → agreement, not false-safe) but withheld for the *wrong reason* (unrun CI + test-annotation gap); the real kill was a design judgment — challenger wrongly treated "matches GLSL/shaderc" as establishing correctness. Had CI been green, that read risked a WOULD_APPROVE false-safe. LEARNING: a diagnostic *relaxation* is a language-design call maintainers own — cross-toolchain precedent supports technical feasibility, not desired Slang behavior.
+
 **#12138** (shader-slang/slang, author LDeakin, external fork) — "fix: Allow specialization-constant [numthreads] with compute derivative".
 
 Shadow approval verdict **ABSTAIN_POLICY (OPEN_GAP)** @9f5ce276d0bf, mode=live, policy v0-shadow-relaxed, ledger-only (no GitHub write). First pin 706d2686 superseded mid-flight by 2 test-only follow-up commits — no row for 706d2686.
