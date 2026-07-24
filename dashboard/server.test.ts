@@ -229,7 +229,7 @@ describe('dashboard server', () => {
     return results;
   }
 
-  it('streams state updates over /api/events', async () => {
+  it('streams compact hook deltas over /api/events', async () => {
     const controller = new AbortController();
     const res = await fetch(`${baseUrl}/api/events`, {
       headers: { Accept: 'text/event-stream' },
@@ -241,10 +241,12 @@ describe('dashboard server', () => {
     const reader = res.body?.getReader();
     expect(reader).toBeTruthy();
 
-    // Read the initial state message (may span multiple chunks for large payloads)
+    // The initial snapshot contains core state only; hook history is loaded
+    // separately and live events arrive as compact deltas.
     const [initialPayload] = await readSSEDataMessages(reader!, 1);
     expect(initialPayload.type).toBe('state');
     expect(Array.isArray(initialPayload.data.coworkers)).toBe(true);
+    expect(initialPayload.data.hookEvents).toBeUndefined();
 
     const payload = {
       group: 'telegram_main',
@@ -264,17 +266,26 @@ describe('dashboard server', () => {
       ).status,
     ).toBe(200);
 
-    // Read the next streamed state update
+    // Read the incremental event rather than another full state snapshot.
     const [streamedPayload] = await readSSEDataMessages(reader!, 1);
-    expect(streamedPayload.type).toBe('state');
-    const telegram = streamedPayload.data.coworkers.find((entry: any) => entry.folder === payload.group);
-    expect(telegram.lastToolUse).toBe(payload.tool);
+    expect(streamedPayload.type).toBe('hook-event');
+    expect(streamedPayload.data).toMatchObject({
+      group: payload.group,
+      event: payload.event,
+      tool: payload.tool,
+    });
+    expect(streamedPayload.coworker).toMatchObject({
+      folder: payload.group,
+      lastToolUse: payload.tool,
+      status: 'thinking',
+    });
 
     controller.abort();
     await reader!.cancel().catch(() => {});
   });
 
-  it('stores hook events and exposes live hook state through /api/state', async () => {
+  it('keeps hook bodies out of core state and fetches details lazily', async () => {
+    createDashboardTestDb().close();
     const payload = {
       group: 'telegram_main',
       event: 'PostToolUse',
@@ -297,18 +308,32 @@ describe('dashboard server', () => {
     const stateRes = await fetch(`${baseUrl}/api/state`);
     expect(stateRes.status).toBe(200);
     const state = await stateRes.json();
+    expect(state.hookEvents).toBeUndefined();
 
-    const event = state.hookEvents.find((entry: any) => entry.group === payload.group);
+    const eventsRes = await fetch(`${baseUrl}/api/hook-events?limit=20`);
+    expect(eventsRes.status).toBe(200);
+    const events = await eventsRes.json();
+    const event = events.find((entry: any) => entry.group === payload.group);
     expect(event).toMatchObject({
       group: payload.group,
       event: payload.event,
       tool: payload.tool,
       message: payload.message,
-      tool_input: payload.tool_input,
-      tool_response: payload.tool_response,
       session_id: payload.session_id,
       agent_id: payload.agent_id,
       agent_type: payload.agent_type,
+      has_details: true,
+    });
+    expect(event.tool_input).toBeUndefined();
+    expect(event.tool_response).toBeUndefined();
+    expect(typeof event.id).toBe('number');
+
+    const detailRes = await fetch(`${baseUrl}/api/hook-events/${event.id}`);
+    expect(detailRes.status).toBe(200);
+    expect(await detailRes.json()).toMatchObject({
+      id: event.id,
+      tool_input: payload.tool_input,
+      tool_response: payload.tool_response,
     });
 
     const coworker = state.coworkers.find((entry: any) => entry.folder === payload.group);
@@ -318,6 +343,139 @@ describe('dashboard server', () => {
       status: 'thinking',
     });
     expect(typeof coworker.hookTimestamp).toBe('number');
+  });
+
+  it('keeps large tool output out of snapshots and recent-event summaries', async () => {
+    createDashboardTestDb().close();
+    const marker = 'large-hook-output-marker';
+    const toolResponse = `${marker}:${'x'.repeat(512 * 1024)}`;
+    const postRes = await fetch(`${baseUrl}/api/hook-event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        group: 'large-output-worker',
+        event: 'PostToolUse',
+        tool: 'TaskOutput',
+        tool_response: toolResponse,
+      }),
+    });
+    expect(postRes.status).toBe(200);
+
+    const stateText = await (await fetch(`${baseUrl}/api/state`)).text();
+    expect(stateText).not.toContain(marker);
+    expect(stateText.length).toBeLessThan(100_000);
+
+    const recentText = await (await fetch(`${baseUrl}/api/hook-events?limit=20`)).text();
+    expect(recentText).not.toContain(marker);
+    expect(recentText.length).toBeLessThan(20_000);
+
+    const [event] = JSON.parse(recentText);
+    const historyText = await (await fetch(`${baseUrl}/api/hook-events/history?limit=20`)).text();
+    expect(historyText).not.toContain(marker);
+    expect(historyText.length).toBeLessThan(20_000);
+    expect(JSON.parse(historyText)[0]).toMatchObject({
+      id: event.id,
+      group: 'large-output-worker',
+      group_folder: 'large-output-worker',
+      has_details: true,
+    });
+
+    const detail = await (await fetch(`${baseUrl}/api/hook-events/${event.id}`)).json();
+    expect(detail.tool_response).toBe(toolResponse);
+  });
+
+  it('replays compact hook events after an SSE cursor without another snapshot', async () => {
+    createDashboardTestDb().close();
+    const postHook = (message: string) =>
+      fetch(`${baseUrl}/api/hook-event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          group: 'cursor-worker',
+          event: 'PostToolUse',
+          tool: 'Read',
+          message,
+        }),
+      });
+
+    expect((await postHook('first')).status).toBe(200);
+    const firstCursor = (await (await fetch(`${baseUrl}/api/state`)).json()).lastHookEventId;
+    expect((await postHook('second')).status).toBe(200);
+
+    const controller = new AbortController();
+    const res = await fetch(`${baseUrl}/api/events?snapshot=0&after=${firstCursor}`, {
+      headers: { Accept: 'text/event-stream' },
+      signal: controller.signal,
+    });
+    const reader = res.body!.getReader();
+    const [replayed] = await readSSEDataMessages(reader, 1);
+    expect(replayed).toMatchObject({
+      type: 'hook-event',
+      data: {
+        group: 'cursor-worker',
+        message: 'second',
+      },
+    });
+
+    controller.abort();
+    await reader.cancel().catch(() => {});
+  });
+
+  it('fans out compact hook deltas to many viewers without copying large tool output', async () => {
+    createDashboardTestDb().close();
+    const viewers = await Promise.all(
+      Array.from({ length: 50 }, async () => {
+        const controller = new AbortController();
+        const response = await fetch(`${baseUrl}/api/events?snapshot=0`, {
+          headers: { Accept: 'text/event-stream' },
+          signal: controller.signal,
+        });
+        expect(response.status).toBe(200);
+        return {
+          controller,
+          reader: response.body!.getReader(),
+        };
+      }),
+    );
+
+    try {
+      const marker = 'fanout-large-hook-output-marker';
+      const postResponse = await fetch(`${baseUrl}/api/hook-event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          group: 'fanout-worker',
+          event: 'PostToolUse',
+          tool: 'TaskOutput',
+          message: 'fan-out probe',
+          tool_response: `${marker}:${'x'.repeat(512 * 1024)}`,
+        }),
+      });
+      expect(postResponse.status).toBe(200);
+
+      const messages = await Promise.all(viewers.map(({ reader }) => readSSEDataMessages(reader, 1)));
+      for (const [message] of messages) {
+        expect(message).toMatchObject({
+          type: 'hook-event',
+          data: {
+            group: 'fanout-worker',
+            event: 'PostToolUse',
+            tool: 'TaskOutput',
+            message: 'fan-out probe',
+            has_details: true,
+          },
+        });
+        expect(JSON.stringify(message)).not.toContain(marker);
+      }
+
+      const healthResponse = await fetch(`${baseUrl}/api/health`);
+      expect(healthResponse.status).toBe(200);
+    } finally {
+      for (const { controller, reader } of viewers) {
+        controller.abort();
+        await reader.cancel().catch(() => {});
+      }
+    }
   });
 
   it('returns a coworker to idle after a stop event clears live activity', async () => {

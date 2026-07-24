@@ -95,6 +95,10 @@ let cwState = {
 // --- Live updates ---
 let liveSource = null;
 let pollTimer = null;
+let liveReconnectTimer = null;
+let liveReconnectAttempt = 0;
+let hiddenDisconnectTimer = null;
+let lastHookEventId = 0;
 
 function setLiveStatus(text, color) {
   const dot = document.getElementById('m-live-dot');
@@ -105,12 +109,21 @@ function setLiveStatus(text, color) {
 
 function applyState(data) {
   state = { ...state, ...data };
+  lastHookEventId = Math.max(lastHookEventId, Number(data.lastHookEventId) || 0);
   renderCwList();
   if (cwState.selected) {
     updateChatHeader();
     renderDetail();
   }
   updateTabBadges();
+}
+
+function applyHookEvent(event, coworkerPatch) {
+  const coworkers = (state.coworkers || []).map((coworker) =>
+    coworker.folder === coworkerPatch?.folder ? { ...coworker, ...coworkerPatch } : coworker,
+  );
+  lastHookEventId = Math.max(lastHookEventId, Number(event?.id) || 0);
+  applyState({ coworkers, lastHookEventId });
 }
 
 async function pollState() {
@@ -129,7 +142,7 @@ function startPolling() {
   pollTimer = setInterval(async () => {
     const ok = await pollState();
     if (!ok) setLiveStatus('Reconnecting...', 'var(--yellow)');
-  }, 1000);
+  }, 10000);
 }
 
 function stopPolling() {
@@ -138,18 +151,49 @@ function stopPolling() {
   pollTimer = null;
 }
 
+function scheduleLiveReconnect() {
+  if (liveReconnectTimer || document.hidden) return;
+  const baseDelay = Math.min(30000, 1000 * 2 ** Math.min(liveReconnectAttempt, 5));
+  const delay = baseDelay + Math.floor(Math.random() * 1000);
+  liveReconnectAttempt += 1;
+  liveReconnectTimer = setTimeout(() => {
+    liveReconnectTimer = null;
+    connectLiveUpdates();
+  }, delay);
+}
+
 function connectLiveUpdates() {
   if (!('EventSource' in window)) { startPolling(); return; }
+  if (document.hidden) return;
+  if (liveReconnectTimer) {
+    clearTimeout(liveReconnectTimer);
+    liveReconnectTimer = null;
+  }
   if (liveSource) liveSource.close();
-  liveSource = new EventSource('/api/events');
-  liveSource.onopen = () => { stopPolling(); setLiveStatus('Connected', 'var(--green)'); };
-  liveSource.onmessage = (e) => {
+  const source = new EventSource(`/api/events?snapshot=0&after=${encodeURIComponent(lastHookEventId)}`);
+  liveSource = source;
+  source.onopen = () => {
+    if (liveSource !== source) return;
+    liveReconnectAttempt = 0;
+    stopPolling();
+    setLiveStatus('Connected', 'var(--green)');
+  };
+  source.onmessage = (e) => {
+    if (liveSource !== source) return;
     try {
       const msg = JSON.parse(e.data);
       if (msg.type === 'state') applyState(msg.data);
+      else if (msg.type === 'hook-event') applyHookEvent(msg.data, msg.coworker);
+      else if (msg.type === 'resync') void pollState();
     } catch {}
   };
-  liveSource.onerror = () => { startPolling(); setLiveStatus('Reconnecting...', 'var(--yellow)'); };
+  source.onerror = () => {
+    if (liveSource !== source) return;
+    source.close();
+    liveSource = null;
+    setLiveStatus('Reconnecting...', 'var(--yellow)');
+    scheduleLiveReconnect();
+  };
 }
 
 // --- Helpers ---
@@ -678,3 +722,27 @@ function updateTabBadges() {
   await pollState();
   connectLiveUpdates();
 })();
+
+window.addEventListener('beforeunload', () => {
+  if (liveSource) liveSource.close();
+  if (liveReconnectTimer) clearTimeout(liveReconnectTimer);
+  if (hiddenDisconnectTimer) clearTimeout(hiddenDisconnectTimer);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    hiddenDisconnectTimer = setTimeout(() => {
+      if (!document.hidden) return;
+      if (liveSource) liveSource.close();
+      liveSource = null;
+      if (liveReconnectTimer) clearTimeout(liveReconnectTimer);
+      liveReconnectTimer = null;
+      setLiveStatus('Paused', 'var(--text-muted)');
+    }, 30000);
+    return;
+  }
+
+  if (hiddenDisconnectTimer) clearTimeout(hiddenDisconnectTimer);
+  hiddenDisconnectTimer = null;
+  void pollState().finally(() => connectLiveUpdates());
+});
