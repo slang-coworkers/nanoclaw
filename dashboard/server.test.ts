@@ -12,6 +12,7 @@ import {
   matchContainerName,
   resetTransientDashboardStateForTests,
   resolveCoworkerTypeMetadata,
+  startReadOnlyServer,
   startServer,
   timestampToEpochMs,
 } from './server.js';
@@ -282,6 +283,98 @@ describe('dashboard server', () => {
 
     controller.abort();
     await reader!.cancel().catch(() => {});
+  });
+
+  it('serves shared live telemetry on the read-only port and rejects all input', async () => {
+    createDashboardTestDb().close();
+    const readOnlyServer = startReadOnlyServer(0);
+    await once(readOnlyServer, 'listening');
+    const address = readOnlyServer.address();
+    if (!address || typeof address === 'string') {
+      throw new Error('Expected read-only dashboard server to bind an ephemeral TCP port');
+    }
+    const readOnlyBaseUrl = `http://127.0.0.1:${address.port}`;
+    const streamController = new AbortController();
+    let streamReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+
+    try {
+      const htmlRes = await fetch(`${readOnlyBaseUrl}/`);
+      expect(htmlRes.status).toBe(200);
+      const html = await htmlRes.text();
+      expect(html).toContain('data-dashboard-mode="readonly"');
+      expect(html).toContain('viewer.css');
+
+      const deniedHook = await fetch(`${readOnlyBaseUrl}/api/hook-event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group: 'viewer-worker', event: 'PostToolUse', tool: 'Read' }),
+      });
+      expect(deniedHook.status).toBe(403);
+      expect(await deniedHook.json()).toEqual({ error: 'read-only dashboard' });
+
+      const streamRes = await fetch(`${readOnlyBaseUrl}/api/events?snapshot=0`, {
+        headers: { Accept: 'text/event-stream' },
+        signal: streamController.signal,
+      });
+      expect(streamRes.status).toBe(200);
+      streamReader = streamRes.body?.getReader();
+      expect(streamReader).toBeTruthy();
+
+      const acceptedHook = await fetch(`${baseUrl}/api/hook-event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          group: 'viewer-worker',
+          event: 'PostToolUse',
+          tool: 'Read',
+          message: 'shared telemetry',
+        }),
+      });
+      expect(acceptedHook.status).toBe(200);
+
+      const [streamedHook] = await readSSEDataMessages(streamReader!, 1);
+      expect(streamedHook).toMatchObject({
+        type: 'hook-event',
+        data: {
+          group: 'viewer-worker',
+          event: 'PostToolUse',
+          tool: 'Read',
+          message: 'shared telemetry',
+        },
+      });
+
+      const readOnlyEvents = await (await fetch(`${readOnlyBaseUrl}/api/hook-events?limit=20`)).json();
+      expect(readOnlyEvents).toContainEqual(
+        expect.objectContaining({
+          group: 'viewer-worker',
+          event: 'PostToolUse',
+          tool: 'Read',
+          message: 'shared telemetry',
+        }),
+      );
+
+      for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+        const denied = await fetch(`${readOnlyBaseUrl}/api/chat/send`, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ group: 'viewer-worker', content: 'must not send' }),
+        });
+        expect(denied.status).toBe(403);
+      }
+
+      const css = await (await fetch(`${readOnlyBaseUrl}/viewer.css`)).text();
+      expect(css).toContain('#cw-create-btn');
+      expect(css).toContain('#cw-work-shell');
+    } finally {
+      streamController.abort();
+      await streamReader?.cancel().catch(() => {});
+      await new Promise<void>((resolve, reject) => {
+        readOnlyServer.close((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
   });
 
   it('keeps hook bodies out of core state and fetches details lazily', async () => {

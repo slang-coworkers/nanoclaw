@@ -107,6 +107,17 @@ function injectTimezone(html: Buffer): Buffer {
   return Buffer.from(html.toString('utf8').replace(/(<meta\s+charset="[^"]*">)/i, `$1\n  ${meta}`));
 }
 
+function injectDashboardMode(html: Buffer, readOnly: boolean): Buffer {
+  if (!readOnly) return html;
+  return Buffer.from(
+    html
+      .toString('utf8')
+      .replace(/<html(\s[^>]*)?>/i, (match, attrs = '') => `<html${attrs} data-dashboard-mode="readonly">`)
+      .replace(/(<meta\s+charset="[^"]*">)/i, '$1\n  <meta name="nanoclaw-dashboard-mode" content="readonly">')
+      .replace(/(<\/head>)/i, '  <link rel="stylesheet" href="viewer.css">\n$1'),
+  );
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Session display-title heuristic.
 //
@@ -553,6 +564,7 @@ function postImportGroupInit(
 }
 
 const DASHBOARD_PORT_DEFAULT = '3737';
+const DASHBOARD_READONLY_PORT_DEFAULT = '3739';
 const DASHBOARD_HOST_DEFAULT = '127.0.0.1'; // localhost-only; set to 0.0.0.0 to expose on all interfaces
 const MAX_CONCURRENT_CONTAINERS = Math.max(1, parseInt(process.env.MAX_CONCURRENT_CONTAINERS || '5', 10) || 5);
 const DASHBOARD_INGRESS_PORT_DEFAULT = '3738';
@@ -1111,6 +1123,15 @@ function getDashboardIngressBaseUrl(): string {
 
 function getDashboardPort(): number {
   return parseInt(process.env.DASHBOARD_PORT || readProjectEnvValue('DASHBOARD_PORT') || DASHBOARD_PORT_DEFAULT, 10);
+}
+
+function getDashboardReadOnlyPort(): number {
+  return parseInt(
+    process.env.DASHBOARD_READONLY_PORT ||
+      readProjectEnvValue('DASHBOARD_READONLY_PORT') ||
+      DASHBOARD_READONLY_PORT_DEFAULT,
+    10,
+  );
 }
 
 function getDashboardHost(): string {
@@ -4931,12 +4952,26 @@ async function extractArchiveBuffer(buffer: Buffer): Promise<{ manifest: any; fi
   });
 }
 
+export interface DashboardRequestOptions {
+  readOnly?: boolean;
+}
+
 /** Exported for testing — handles all HTTP requests. */
 export async function handleRequest(
   req: import('http').IncomingMessage,
   res: import('http').ServerResponse,
+  options: DashboardRequestOptions = {},
 ): Promise<void> {
   const url = new URL(req.url || '/', `http://localhost:${getDashboardPort()}`);
+
+  if (options.readOnly && req.method !== 'GET' && req.method !== 'HEAD') {
+    res.writeHead(403, {
+      'Content-Type': 'application/json',
+      Allow: 'GET, HEAD',
+    });
+    res.end('{"error":"read-only dashboard"}');
+    return;
+  }
 
   if (req.method === 'GET' && url.pathname === '/api/auth/status') {
     const secret = getDashboardSecret();
@@ -11501,6 +11536,7 @@ export async function handleRequest(
     if (ext === '.html') {
       content = injectAssetVersions(content);
       content = injectTimezone(content);
+      content = injectDashboardMode(content, Boolean(options.readOnly));
     }
     // Prevent proxy caching of mutable assets (JS, HTML) so code updates are picked up immediately
     if (ext === '.js' || ext === '.html' || ext === '.css') {
@@ -11515,36 +11551,13 @@ export async function handleRequest(
   }
 }
 
-/** Start the dashboard server (binds port, sets up WebSocket, timers). */
-export function startServer(port = getDashboardPort(), host = getDashboardHost()): import('http').Server {
-  // Background boot side effects — the eager MCP inventory scan + 5-min refresh
-  // timer, and the one-shot ccusage warm-up — spawn subprocesses and add memory.
-  // Skip them under VITEST: the composed CI boots this server per test, and the
-  // parallel MCP/ccusage spawns push the ~7GB runner toward OOM. The express
-  // routes below still serve, so endpoint tests are unaffected.
-  let stopWatchingMcpToken: (() => void) | null = null;
-  let mcpRefreshTimer: ReturnType<typeof setInterval> | undefined;
-  if (!process.env.VITEST) {
-    // Load MCP tool inventory eagerly and refresh when the auth proxy rotates the token.
-    void refreshMcpTools();
-    stopWatchingMcpToken = watchMcpManagementToken(() => {
-      void refreshMcpTools();
-    });
-    mcpRefreshTimer = setInterval(() => {
-      void refreshMcpTools();
-    }, 300_000);
-    mcpRefreshTimer.unref?.();
+function createDashboardHttpServer(options: DashboardRequestOptions = {}): import('http').Server {
+  const server = createServer((req, res) => {
+    void handleRequest(req, res, options);
+  });
 
-    // Warm the ccusage cache once at boot so Admin > Overview has a non-zero
-    // snapshot the moment a user lands on the page (one-shot; the on-demand
-    // visibility-signal refresh continues while the panel is open).
-    void refreshCcusageCache().catch(() => {
-      /* swallow — non-fatal; on-demand refresh will retry */
-    });
-  }
-
-  const server = createServer(handleRequest);
-
+  // WebSockets are server-push only. The read-only listener can therefore
+  // share the same live-state channel without exposing a mutation surface.
   server.on('upgrade', (req, socket, head) => {
     const key = req.headers['sec-websocket-key'];
     if (!key) {
@@ -11592,6 +11605,39 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
     socket.on('close', () => wsClients.delete(socket));
     socket.on('error', () => wsClients.delete(socket));
   });
+
+  return server;
+}
+
+/** Start the dashboard server (binds port, sets up WebSocket, timers). */
+export function startServer(port = getDashboardPort(), host = getDashboardHost()): import('http').Server {
+  // Background boot side effects — the eager MCP inventory scan + 5-min refresh
+  // timer, and the one-shot ccusage warm-up — spawn subprocesses and add memory.
+  // Skip them under VITEST: the composed CI boots this server per test, and the
+  // parallel MCP/ccusage spawns push the ~7GB runner toward OOM. The express
+  // routes below still serve, so endpoint tests are unaffected.
+  let stopWatchingMcpToken: (() => void) | null = null;
+  let mcpRefreshTimer: ReturnType<typeof setInterval> | undefined;
+  if (!process.env.VITEST) {
+    // Load MCP tool inventory eagerly and refresh when the auth proxy rotates the token.
+    void refreshMcpTools();
+    stopWatchingMcpToken = watchMcpManagementToken(() => {
+      void refreshMcpTools();
+    });
+    mcpRefreshTimer = setInterval(() => {
+      void refreshMcpTools();
+    }, 300_000);
+    mcpRefreshTimer.unref?.();
+
+    // Warm the ccusage cache once at boot so Admin > Overview has a non-zero
+    // snapshot the moment a user lands on the page (one-shot; the on-demand
+    // visibility-signal refresh continues while the panel is open).
+    void refreshCcusageCache().catch(() => {
+      /* swallow — non-fatal; on-demand refresh will retry */
+    });
+  }
+
+  const server = createDashboardHttpServer();
 
   // Hook events are streamed as compact deltas. The slower core snapshot
   // catches changes from DB/filesystem-backed caches without rebuilding state
@@ -11701,7 +11747,30 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
   return server;
 }
 
+/**
+ * Start the view-only listener. It shares every in-memory cache, SSE client
+ * set, WebSocket client set, and database handle with the interactive server,
+ * but rejects all request bodies and mutation methods before route dispatch.
+ */
+export function startReadOnlyServer(
+  port = getDashboardReadOnlyPort(),
+  host = getDashboardHost(),
+): import('http').Server {
+  const server = createDashboardHttpServer({ readOnly: true });
+  server.listen(port, host, () => {
+    console.log(`  Read-only dashboard: http://${host}:${port}`);
+  });
+  return server;
+}
+
 // Auto-start when run directly (not imported by tests)
 if (!process.env.VITEST) {
-  startServer();
+  const interactivePort = getDashboardPort();
+  const readOnlyPort = getDashboardReadOnlyPort();
+  startServer(interactivePort);
+  if (readOnlyPort === interactivePort) {
+    console.error('[dashboard] DASHBOARD_READONLY_PORT must differ from DASHBOARD_PORT; read-only listener disabled');
+  } else {
+    startReadOnlyServer(readOnlyPort);
+  }
 }

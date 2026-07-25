@@ -51,15 +51,27 @@ All integration patches (channel registration, container-runner hooks, package.j
 ```bash
 npm run build
 npm run dashboard        # Starts on port 3737
-# Open http://localhost:3737
+# Interactive: http://localhost:3737
+# View only:   http://localhost:3739
 ```
+
+The two listeners run in one process and share the same hook ingestion,
+database handles, live state, and SSE/WebSocket fan-out. Containers continue
+to POST hooks only to the interactive listener. The view-only listener rejects
+all non-GET/HEAD requests and removes chat, coworker creation, shell, approval,
+question, configuration, and other mutation controls from the UI.
+
+Override the ports with `DASHBOARD_PORT` and `DASHBOARD_READONLY_PORT`.
+Port `3738` is reserved for the host's internal dashboard ingress.
 
 ### Verify
 
 1. Dashboard loads at `http://localhost:3737`
-2. Pixel office shows with default layout
-3. When an agent runs, events appear in the timeline
-4. Click a character to see its detail panel
+2. View-only dashboard loads at `http://localhost:3739`
+3. Pixel office shows with default layout on both ports
+4. When an agent runs, events appear in both timelines
+5. Click a character to see its detail panel
+6. Confirm the view-only port has no `+ New`, chat, shell, or action controls
 
 ## Quick Reference
 
