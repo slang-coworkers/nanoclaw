@@ -122,6 +122,58 @@ Result: all 4 reporter repros no longer abort. AS → valid SPIR-V; ConstantBuff
 - Fixer verified full kind matrix GPU-less + codex green (rounds→44).
 - **Held on maintainer re-review + CI on reworked draft → re-approve → human flips ready → merge.**
 
+### pdeayton investigation request (2026-07-24, cmt 5072019231) — 2 substantive Qs on the redesign
+pdeayton-nv (PR owner/assignee) @-mentioned the bot to investigate two concerns on the reworked PR:
+1. **Conversion placement:** `uint2(float2(...))` and `bit_cast<uint2>(uint64_t(...))` assert? Does
+   the conversion belong in legalization or the canonical constant evaluator instead?
+2. **Layout mismatch (latent bug exposed by PR?):** `uint2` + `Std430DataLayout` giving `scalar`
+   layout — whereas earlier with uint64, size AND alignment were both 8 in all cases.
+Both probe the representation-wide consequences of the buffer/AS→uint2 change (layout/reflection +
+conversion path). Routed orch→triager→fixer on canonical thread; fixer owns PR + on-thread answer
+(real bot mention = authorized to post). Advances the redesign — NOT a no-op.
+
+### Fixer answered both on-thread (2026-07-24 ~16:56Z+17:05Z self-correction) — investigate-only, NO code change
+PR head unchanged `f4004c3f90` (no push), still DRAFT/REVIEW_REQUIRED. Fixer A/B'd PR-head vs
+master GPU-less w/ spirv-val; passed OUTPUT_REVIEW (caught+fixed 2 overstatements). Triager did not
+re-derive.
+- **Q1 (conversion assert / right layer):** REAL but NARROW. The `castFloatToInt` "Unhandled global
+  inst" abort reproduces on master too WITH CAPABILITY OFF → pre-existing general `emitGlobalInst`
+  gap, NOT PR-caused. Only PR-new edge = width-mismatch `SLANG_RELEASE_ASSERT` at
+  slang-emit-spirv.cpp:2855 (module-scope `static const` handle init from float/bit_cast).
+  Principled home = SCCP, but SCCP folding is scalar/packed-float-gated (sccp.cpp:1026) so vector
+  bit_cast can't fold today → moving needs allowlist + vector folding. **Suggested in-PR (not
+  blocking):** replace :2855 assert with a real diagnostic (the default it'd hit is also an
+  internal-error abort, not graceful); SCCP move = follow-up.
+- **Q2 (latent Std430 layout bug):** NO. std430/std140/cbuffer identical PR↔master; only
+  scalar/natural differs (uint2 align 4 vs uint64 align 8). Decisive: plain-spirv (no cap) already
+  lays a buffer handle uint2@align-4 on BOTH binaries → master's capability was silently flipping
+  buffer-handle layout to uint64; **the PR RESTORES cross-capability consistency.** Emit↔reflection
+  ↔sizeof agree across 6 kinds. **No fix — only a conscious ABI sign-off** from pdeayton that the
+  4-byte-aligned buffer/AS handle packing is intended.
+- **Net:** neither reworks the core approach. **Ball with pdeayton/csyonghe** (accept Q1 in-PR
+  diagnostic suggestion? + ABI sign-off on Q2) → re-review.
+
+### ⚠️ Q2 REVERSED + layout fix PUSHED (2026-07-24 ~17:55Z, head `107f158ffe`)
+- **Q2 was WRONG ("no bug, only ABI sign-off") — it WAS a real bug, now FIXED.** Fixer
+  self-corrected: the earlier no-bug call rested on struct-embedding tests that MASKED it;
+  pdeayton's explicit `alignof(handle, Std430DataLayout)` query surfaced it. **Root:** the
+  `sizeof`/`alignof` peephole ignored the selected layout rule for handles → a uint2 handle
+  returned natural align 4 for std430/std140 queries instead of 8 (natural correctly stayed 4).
+  **Fixed** commit `107f158ffe` (route underlying type through resolved `layoutRules`) + regression
+  test `desc-handle-layout-query-bindless-buffer.slang`. Verified: buffer handle std430/std140=8,
+  natural=4; texture handle (uint64)=8 all rules; pdeayton's `static_assert` now passes.
+  (Lesson echo: recants are common — triager correctly flagged its own prior msg147 relay reversed.)
+- **Q1 → filed as NEW issue #12219** (SCCP vector/composite const-fold follow-up) per pdeayton;
+  narrow pre-existing global-emit gap, NOT PR-caused, NOT a #12186 blocker. Triager independently
+  triaged #12219 as its own chain (parked-at-triaged, reproduced @master). Interim :2855
+  assert→diagnostic still maintainers' call.
+- **PR state:** #12186 head `107f158ffe`, 15 files, still DRAFT/REVIEW_REQUIRED. PR body refreshed
+  from stale E55215 narrative → accurate option-a + layout-fix description. CI red = benign
+  priority-yield (wait-for-human-priority + check-ci; other 33 skipped), not a real failure.
+- **Net:** redesign now ALSO carries a real layout-correctness fix pdeayton's probing found. Core
+  approach intact. Held on pdeayton/csyonghe review of the pushed layout fix + #12219 SCCP decision
+  + interim :2855 call → re-review → merge.
+
 ### Superseded (was, 2026-07-23 ~13:36Z): APPROVED/held-on-merge
 - PR #12186 was APPROVED@`4fbe216b0e` (pdeayton-nv, binds current head, verified not stale),
   MERGEABLE after 8 review rounds (jkwak + pdeayton). BLOCKED = Falcor D3D12 flake gate, not review.

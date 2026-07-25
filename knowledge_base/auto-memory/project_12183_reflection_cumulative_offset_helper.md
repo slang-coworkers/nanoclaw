@@ -53,6 +53,13 @@ not a build directive.
   question (want us to prototype one specifically — on-the-fly-from-a-stack helper,
   or a shader-cursor first cut — else stay parked). No fabricated doc link.
 
+**2026-07-24 — comment 5073187270 by tangent-vector (MEMBER):** asks **@emackey**
+(the reporter) which implementation path best satisfies his request, and for
+use-case/priorities/constraints/trade-offs to guide the decision. This is a
+maintainer↔reporter **requirements-gathering** exchange — NOT addressed to the bot,
+NOT a build directive, forward trigger did NOT fire. Bot action = none (do not
+answer on emackey's behalf; the ball is with emackey). Stays parked-with-advanced-state.
+
 **Forward trigger:** a maintainer picks a specific approach / asks for a prototype /
 says "make a PR" → triager flags Main FIRST (commits an API shape), THEN dispatches
 slang-fixer on the canonical thread. Plain thanks/ack does not re-open. See
