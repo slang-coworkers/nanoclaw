@@ -4,7 +4,7 @@ Known issues and fixes for the dashboard.
 
 ## Connection
 
-- **Dashboard not receiving events**: Hook callbacks POST to `http://127.0.0.1:3737/api/hook-event` — a socat proxy inside the container forwards this to the host gateway. If using a non-default port, set `DASHBOARD_PORT` env var before starting NanoClaw. Also check that the container has host gateway access.
+- **Dashboard not receiving events**: Hook callbacks POST to `http://127.0.0.1:3737/api/hook-event` — a socat proxy inside the container forwards this to the host gateway. If using a non-default port, set `DASHBOARD_PORT` env var before starting NanoClaw. Hooks are ingested only on this interactive port; the view-only listener shares the resulting live state. Also check that the container has host gateway access.
 - **SSE disconnects**: The browser reconnects automatically via `EventSource`. If events stop arriving, check the dashboard server process is still running.
 - **CORS**: The dashboard server serves its own static files — no CORS issues. If you embed the dashboard in another app, you'll need to add CORS headers.
 
@@ -24,4 +24,4 @@ Known issues and fixes for the dashboard.
 
 - **Memory**: The in-memory ring buffer is capped at 200 entries (`MAX_HOOK_EVENTS`). All events are persisted to SQLite with a configurable retention period (`HOOK_RETENTION_DAYS`, default 7). Memory growth from hook events is bounded.
 - **SQLite locking**: Dashboard reads messages from the main NanoClaw DB (opened readonly). The dashboard's own `hook_events` table uses WAL mode. If the main DB is locked, API calls may timeout. This is rare.
-- **Port conflict**: Default port 3737. If another process uses it, set `DASHBOARD_PORT=3738` or similar.
+- **Port conflict**: Interactive defaults to `3737`, the internal host ingress uses `3738`, and the view-only listener defaults to `3739`. Override the public listeners with `DASHBOARD_PORT` and `DASHBOARD_READONLY_PORT`; do not reuse the ingress port.

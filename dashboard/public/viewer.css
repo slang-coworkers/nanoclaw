@@ -1,0 +1,43 @@
+/*
+ * View-only dashboard surface.
+ *
+ * The HTTP listener enforces the security boundary by rejecting every
+ * non-GET/HEAD request. These selectors remove controls that would otherwise
+ * invite an action which the server cannot accept.
+ */
+html[data-dashboard-mode='readonly'] .header h1::after,
+html[data-dashboard-mode='readonly'] .m-header-title::after {
+  content: 'VIEW ONLY';
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border: 1px solid var(--yellow);
+  border-radius: 999px;
+  color: var(--yellow);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+html[data-dashboard-mode='readonly'] #cw-import-btn,
+html[data-dashboard-mode='readonly'] #cw-create-btn,
+html[data-dashboard-mode='readonly'] #cw-delete-btn,
+html[data-dashboard-mode='readonly'] #cw-import-v1-btn,
+html[data-dashboard-mode='readonly'] #cw-overlay-toggle,
+html[data-dashboard-mode='readonly'] #cw-chat-input-area,
+html[data-dashboard-mode='readonly'] .cw-thread-input,
+html[data-dashboard-mode='readonly'] #cw-thread-actions,
+html[data-dashboard-mode='readonly'] #cw-shell-view,
+html[data-dashboard-mode='readonly'] #cw-work-divider,
+html[data-dashboard-mode='readonly'] #cw-work-shell,
+html[data-dashboard-mode='readonly'] #m-chat-input-area,
+html[data-dashboard-mode='readonly'] .approval-btn,
+html[data-dashboard-mode='readonly'] .question-btn,
+html[data-dashboard-mode='readonly'] .cw-msg-action-btn,
+html[data-dashboard-mode='readonly'] .admin-action-btn,
+html[data-dashboard-mode='readonly'] .admin-save-btn,
+html[data-dashboard-mode='readonly'] .admin-refresh-btn,
+html[data-dashboard-mode='readonly'] #config-md-toggle-view {
+  display: none !important;
+}
