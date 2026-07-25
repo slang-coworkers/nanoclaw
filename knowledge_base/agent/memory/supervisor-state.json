@@ -1,16 +1,16 @@
 {
  "_meta": {
-  "tick": 100,
-  "at": "2026-07-24T00:03:18Z",
-  "universe": 510,
-  "in_flight": 179,
-  "closed": 331,
-  "new": 5,
-  "updated": 14,
-  "same": 160,
-  "nudged": 10,
+  "tick": 101,
+  "at": "2026-07-25T00:06:00Z",
+  "universe": 524,
+  "in_flight": 191,
+  "closed": 333,
+  "new": 9,
+  "updated": 10,
+  "same": 172,
+  "nudged": 5,
   "escalated": 0,
-  "worktree_vol_gb_free": 740,
+  "worktree_vol_gb_free": 721,
   "reaped": 0,
   "nudge_replies": 10,
   "corrections": [
@@ -2681,6 +2681,20 @@
    "reason": "issue closed",
    "archivedAt": "2026-07-24T00:03:18Z",
    "githubArtifactUrl": null
+  },
+  "gh-issue-shader-slang/slang-12108": {
+   "issue": 12108,
+   "repo": "shader-slang/slang",
+   "reason": "issue closed",
+   "archivedAt": "2026-07-24T12:02:17Z",
+   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12190"
+  },
+  "gh-issue-shader-slang/slang-12211": {
+   "issue": 12211,
+   "repo": "shader-slang/slang",
+   "reason": "issue closed",
+   "archivedAt": "2026-07-25T00:05:10Z",
+   "githubArtifactUrl": null
   }
  },
  "_ci_backlog_dispatch": {
@@ -2934,7 +2948,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-17T06:43:09.700000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 held maintainer-domain; await jkwak reconciliation (jkwak last 07-17)",
   "nextNote": "fix HELD maintainer-domain; regression test ready; re-verified repros 06-29",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/10027",
@@ -2947,7 +2961,7 @@
   "pr": null,
   "category": "advisory_maintainer",
   "disposition": "advisory:maintainer-driving \u2014 draft PR #10030 link-time entry-point layout (h3r2tic); the #9580 front-end-fix chain relates. reviewer-CC.",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstSeenTick": 79,
   "nudgedAt": [],
   "lastState": "awaiting_human",
@@ -2965,7 +2979,7 @@
   "category": "human_debate",
   "disposition": "advisory:maintainer-driving \u2014 jkwak-work self-assigned module-import feature",
   "firstSeenTick": 78,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [],
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/10471",
   "lastState": "awaiting_human",
@@ -2978,7 +2992,7 @@
   "category": "no_pr",
   "disposition": "diagnose source-location ranges feature; bot last 23:09Z (triaged); ball not in our court",
   "firstSeenTick": 78,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [],
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/10476",
   "lastState": "awaiting_human",
@@ -2988,7 +3002,7 @@
  "gh-issue-shader-slang/slang-10641": {
   "disposition": "awaiting_human \u2014 NUDGED fixer: rebase (CI \u274c stale+BEHIND)",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11709",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-01T00:20:42Z",
    "2026-07-10T17:35:00Z"
@@ -3020,7 +3034,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-23T11:46:04Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: lingering session (bot-last)",
   "nextNote": "newly surfaced by --limit fix; no action pending",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/10660",
@@ -3031,7 +3045,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-17T02:37:56Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11638",
   "disposition": "pr_open reviewer-gated",
   "nextNote": "awaiting review (held drafts-only)",
@@ -3047,7 +3061,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-08T04:34:13Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "working \u2014 DebugGlobalVariable suppression for struct-decomposed globals; bot-last 07-08 03:54Z; sibling of #11982/11983/11984 DebugSource cluster",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/10918",
   "ball": "none",
@@ -3060,7 +3074,7 @@
   }
  },
  "gh-issue-shader-slang/slang-10920": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "_lastState": "silent",
   "_firstSeen": "2026-07-08T00:02:39Z",
   "_lastTick": "2026-07-08T00:02:39Z",
@@ -3076,7 +3090,7 @@
   "disposition": "advisory:maintainer-driving \u2014 PR #10920 szihs assigned; jkwak review 07-07"
  },
  "gh-issue-shader-slang/slang-11004": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastPrState": "OPEN",
   "lastPrIsDraft": false,
   "lastIssueState": "OPEN",
@@ -3109,7 +3123,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-29T19:42:34Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "active:human-debate \u2014 watch \u2014 overlaps #11786",
   "nextNote": "\ud83c\udd95 info provided to jkwak; Needs-reporter-feedback \u2014 watch",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11448",
@@ -3121,7 +3135,7 @@
   "_lastTick": "2026-07-08T00:02:39Z"
  },
  "gh-issue-shader-slang/slang-11487": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastPrState": "OPEN",
   "lastPrIsDraft": false,
   "lastIssueState": "OPEN",
@@ -3156,7 +3170,7 @@
   "lastPr": 11492
  },
  "gh-issue-shader-slang/slang-11501": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastPrState": null,
   "lastIssueState": "OPEN",
   "lastCloserList": [],
@@ -3181,7 +3195,7 @@
   "tick20": "2026-06-10T12:01:00+00:00 \u2014 \ud83d\udd3c ESCALATE-IN-BOARD: no new GitHub activity since tick19 (last comment still maxime-modulopi 18:39:07 06-09, now ~17.4h ago; no new bot/maintainer reply). Per tick19 plan ('if next tick still shows no maintainer movement AND reporter unanswered, escalate the stall to operator in-board'), this tick I surface the stall as an operator decision item in the board: reporter @maxime-modulopi awaiting a response ~17h on a substantive spec-refinement; decision is maintainer-gated (@jkwak-work/@jhelferty-nv/@skiminki-nv tagged on the 18:26 06-08 A/B/C-options artifact). Did NOT push an interim triage post (feedback_triage_github_posting: interim posts can be wrong; posting is terminal-state-only by closest-to-state tier). Operator question: ping the tagged maintainers on-issue, or keep holding? Standing A/B/C artifact remains valid + resumable.",
   "tick19": "2026-06-10T06:01:00+00:00 \u2014 \u2022 same: no new GitHub activity since tick18 (last comment still maxime-modulopi 18:39:07 06-09, ~11.4h ago; no new bot reply). Reporter remains UNANSWERED ~11h on a substantive spec-refinement reply. Decision is maintainer-gated (@jkwak-work/@jhelferty-nv/@skiminki-nv); standing A/B/C-options artifact (18:26) is valid + resumable. HELD: did NOT direct triager to post an interim reporter-ack \u2014 feedback_triage_github_posting (interim triage posts can be wrong; posting is terminal-state-only by closest-to-state tier) + maintainer-gating outweigh a courtesy ack here, and the existing artifact already shows reporters/maintainers where it stands. WATCH: if next tick still shows no maintainer movement AND reporter unanswered, escalate the stall to operator in-board rather than push an interim triage post.",
   "tick18": "2026-06-10T00:02:00+00:00 \u2014 \ud83d\udd3c reporter @maxime-modulopi posted another reply 2026-06-09T18:39:07 (after tick17 board @18:01); slang-triager session re-engaged 18:51 (read it) then stopped. No new bot GitHub reply (last issue comment = maxime 18:39). Standing artifact = the 18:26 A/B/C-options comment (still valid). Decision is maintainer-gated (@jkwak-work/@jhelferty-nv/@skiminki-nv) \u2014 NOT posting an interim reply to the reporter is correct (feedback_triage_github_posting). WATCH: if no maintainer movement AND reporter still unanswered next tick, nudge triager to post a brief reporter-ack. No nudge this tick (triager engaged <6h ago, maintainer-gated).",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastPrState": null,
   "lastIssueState": "OPEN",
   "lastCloserList": [],
@@ -3216,7 +3230,7 @@
   "_lastTick": "2026-07-08T00:02:39Z"
  },
  "gh-issue-shader-slang/slang-11509": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastPrState": "OPEN",
   "lastPrIsDraft": true,
   "lastIssueState": "OPEN",
@@ -3255,14 +3269,14 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-06T18:26:11Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 maintainer-owned; no bot artifact",
   "nextNote": "external feedback collection; no fix work",
   "_lastState": "silent",
   "_lastTick": "2026-07-08T00:02:39Z"
  },
  "gh-issue-shader-slang/slang-11519": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastPrState": null,
   "lastIssueState": "OPEN",
   "lastCloserList": [],
@@ -3305,7 +3319,7 @@
   "_lastTick": "2026-07-08T00:02:39Z"
  },
  "gh-issue-shader-slang/slang-11545": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastPrState": "CLOSED",
   "lastIssueState": "OPEN",
   "lastCloserList": [
@@ -3365,7 +3379,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-25T21:41:21Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 unplanned \u2014 parked",
   "nextNote": "deprioritized by maintainer",
   "_lastState": "silent",
@@ -3375,7 +3389,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-19T06:05:59Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11803",
   "disposition": "pr_open \u2014 reviewer-gated",
   "nextNote": "umbrella slice; held drafts-only",
@@ -3392,7 +3406,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-15T01:13:13.091000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11789",
   "disposition": "advisory:maintainer-driving \u2014 reporter validation; jkwak last 07-15",
   "nextNote": "jkwak LGTM; no-merge-to-ToT policy, not an edit ask",
@@ -3408,7 +3422,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-15T16:13:53Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 maintainer-owned",
   "nextNote": "no code fix",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11612",
@@ -3430,7 +3444,7 @@
   "lastCloserList": [],
   "ownership": "ours",
   "firstSeenTick": 46,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "title": "CoopMat missing SM6.10 functions",
   "nudgedAt": [],
   "note": "tick47: @jkwak-work acked bot triage, lowered P1->P2, \"will revisit as early as I can\". maintainer-driving; no nudge.",
@@ -3455,7 +3469,7 @@
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11617",
   "disposition": "advisory:maintainer-driving \u2014 maxime-modulopi contributor driving; auto-retry owns CI",
   "firstSeenTick": 42,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [],
   "ci": {
    "cell": "\u23f8\ufe0f",
@@ -3472,10 +3486,10 @@
  "gh-issue-shader-slang/slang-11631": {
   "disposition": "advisory: maintainer-driving \u2014 REVIVED (not abandoned): #11633 re-scoped to VERSION-ONLY draft @e82bc51aa5 (codex APPROVE, suites green 529/529); bindless half deferred to follow-up #12196 (OPEN). DRAFT/REVIEW_REQUIRED/BEHIND, no maintainer engaged yet; holding webhook-driven. ABANDON-VS-REVIVE ESCALATION RETIRED.",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11633",
-  "lastObservedActivity": "2026-07-24T00:36:00Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "trackedFirstSeen": "2026-06-28T12:05:00Z",
-  "lastState": "awaiting_us",
-  "lastActivityAt": "2026-07-23T07:37:32.460000Z",
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T00:36:25.718000Z",
   "lastPrState": "OPEN",
   "ci": {
    "cell": "\u2705",
@@ -3498,7 +3512,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-10T19:08:49Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11816",
   "disposition": "awaiting_human \u2014 awaiting review",
   "nextNote": "\ud83d\udd3c PR #11816 maintainer pulled draft\u2192review; awaiting review \u2014 watch",
@@ -3525,7 +3539,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-27T22:20:11Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: lingering session (bot-last)",
   "nextNote": "newly surfaced by --limit fix; no action pending",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11703",
@@ -3537,7 +3551,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T21:33:46Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11709",
   "ci": {
    "cell": "\u2705",
@@ -3548,7 +3562,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-24T04:36:48Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 unplanned \u2014 parked",
   "nextNote": "jkwak+Yong driving",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11722",
@@ -3561,7 +3575,7 @@
   "pr": null,
   "category": "advisory_maintainer",
   "disposition": "advisory:maintainer-driving \u2014 PR #11745 compile-perf Slack notif (jvepsalainen-nv); reviewer-CC.",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstSeenTick": 79,
   "nudgedAt": [],
   "lastState": "awaiting_human",
@@ -3577,7 +3591,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-25T07:56:17Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 do NOT auto-dispatch; await csyonghe go",
   "nextNote": "do NOT auto-dispatch; release only on csyonghe go",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11746",
@@ -3588,7 +3602,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-26T22:18:35Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 maintainer follow-up",
   "nextNote": "fixer HELD pending maintainer design call; verdict posted",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11771",
@@ -3599,7 +3613,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-13T12:32:20.939000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory: maintainer-driving",
   "nextNote": "maintainer iterating on approach",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11774",
@@ -3614,7 +3628,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T08:03:15.869000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 pending external reproducer; szihs last",
   "nextNote": "awaiting reporter reproducer",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11782",
@@ -3628,7 +3642,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-29T12:51:59Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 pending Sai scope ruling",
   "nextNote": "maintainer routing autodiff ICE",
   "gcRequestedAt": [
@@ -3652,7 +3666,7 @@
  "gh-issue-shader-slang/slang-11790": {
   "disposition": "advisory:maintainer-driving \u2014 parked pending #781 + jkwak re-engage",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11792",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [],
   "trackedFirstSeen": "2026-06-28T12:05:00Z",
   "lastState": "awaiting_human",
@@ -3671,7 +3685,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-10T18:04:51Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11816",
   "ci": {
    "cell": "\u26aa",
@@ -3680,9 +3694,9 @@
  },
  "gh-issue-shader-slang/slang-11858": {
   "lastState": "awaiting_human",
-  "lastActivityAt": "2026-07-23T02:13:54.130000Z",
+  "lastActivityAt": "2026-07-24T18:09:43.434000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 skiminki-nv posted own fix PR #11886",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11858",
   "_lastState": "silent",
@@ -3691,7 +3705,7 @@
  "gh-issue-shader-slang/slang-11877": {
   "title": "operator* overload for matrix types silent",
   "issueState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstJournaledAt": "2026-07-01T12:55:00Z",
   "pr": {
    "pr": "11879",
@@ -3715,7 +3729,7 @@
  "gh-issue-shader-slang/slang-11882": {
   "title": "Capability: a primal's own `[require]` is ",
   "issueState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstJournaledAt": "2026-07-01T12:55:00Z",
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T00:31:47.843000Z",
@@ -3735,7 +3749,7 @@
   "pr": null,
   "category": "advisory_maintainer",
   "disposition": "advisory:maintainer-driving \u2014 PR #11906 MaterialX corpus cache (jvepsalainen-nv); reviewer-CC.",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstSeenTick": 79,
   "nudgedAt": [],
   "lastState": "awaiting_human",
@@ -3751,7 +3765,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-07T07:46:47Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11913",
   "ci": {
    "cell": "\u23f8\ufe0f",
@@ -3766,7 +3780,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-15T00:43:20.250000Z",
   "lastPrState": "MERGED",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11920",
   "ci": {
    "cell": "\u23f8\ufe0f",
@@ -3785,7 +3799,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-08T18:51:33Z",
   "lastPrState": "MERGED",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11923",
   "ci": {
    "cell": "\u2705",
@@ -3797,7 +3811,7 @@
  },
  "gh-issue-shader-slang/slang-11927": {
   "disposition": "triaged:awaiting-pickup \u2014 parked pending #11926 (ODR public-header)",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstSeenTick": 69,
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-03T06:23:15Z",
@@ -3807,7 +3821,7 @@
  },
  "gh-issue-shader-slang/slang-11936": {
   "disposition": "advisory:maintainer-driving \u2014 PR #11942 readied by szihs; review-gated",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstSeenTick": 69,
   "ci": {
    "cell": "\u2705",
@@ -3821,7 +3835,7 @@
   "_lastTick": "2026-07-08T00:02:39Z"
  },
  "gh-issue-shader-slang/slang-11940": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "_lastState": "silent",
   "_firstSeen": "2026-07-08T00:02:39Z",
   "_lastTick": "2026-07-08T00:02:39Z",
@@ -3840,7 +3854,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-17T23:00:27.185000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11945",
   "ci": {
    "cell": "\u2705",
@@ -3862,7 +3876,7 @@
   "firstSeenTick": 75,
   "nudgedAt": [],
   "note": "module_link +5% perf regression from #11921. Triager verified only runtime change is save-time-only getRelativePath; by elimination = LTO/code-layout, P3. [Triage Resolution] emitted, fixer handed decision tree. Bot-last=awaiting_human. Container rebuilt mid-session for build 2.1.38, chain confirmed intact.",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastState": "awaiting_human",
   "_lastState": "silent",
   "_lastTick": "2026-07-08T00:02:39Z",
@@ -3870,7 +3884,7 @@
   "lastPrState": null
  },
  "gh-issue-shader-slang/slang-11963": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "_lastState": "silent",
   "_firstSeen": "2026-07-08T00:02:39Z",
   "_lastTick": "2026-07-08T00:02:39Z",
@@ -3886,7 +3900,7 @@
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11965"
  },
  "gh-issue-shader-slang/slang-11966": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "_lastState": "silent",
   "_firstSeen": "2026-07-08T00:02:39Z",
   "_lastTick": "2026-07-08T00:02:39Z",
@@ -3896,7 +3910,7 @@
   "lastPrState": null
  },
  "gh-issue-shader-slang/slang-11970": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "_lastState": "working",
   "_firstSeen": "2026-07-08T00:02:39Z",
   "_lastTick": "2026-07-08T00:02:39Z",
@@ -3915,7 +3929,7 @@
   "nudgeAnswered": "2026-07-11T12:25Z"
  },
  "gh-issue-shader-slang/slang-11981": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "_lastState": "silent",
   "_firstSeen": "2026-07-08T00:02:39Z",
   "_lastTick": "2026-07-08T00:02:39Z",
@@ -3931,7 +3945,7 @@
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12014"
  },
  "gh-issue-shader-slang/slang-11983": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "_lastState": "working",
   "_firstSeen": "2026-07-08T00:02:39Z",
   "_lastTick": "2026-07-08T00:02:39Z",
@@ -3953,7 +3967,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-08T21:44:15Z",
   "lastPrState": "CLOSED",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: awaiting-pickup \u2014 examples-fail-on-warnings; jkwak-requested Feature; no fixer; re-engage on decision/linked PR",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12001",
   "ball": "human",
@@ -3969,7 +3983,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-17T08:43:40.571000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "active: human-debate / needs-maintainer-decision \u2014 IArray subscript 64-bit truncation (bot-filed follow-up to #11967); skiminki hesitant; widen-vs-document; NO fixer; issue body is artifact",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11990",
   "ball": "human",
@@ -3981,7 +3995,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-08T12:07:41Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "working \u2014 HitObject single-source ABI design (szihs-filed 11:23Z); bot posting API inventory item 5; related #11903; peer-wired",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11997",
   "ball": "none",
@@ -3995,7 +4009,7 @@
   "category": "in-flight",
   "disposition": "advisory:maintainer-driving \u2014 PR #12027 jkwak driving; marking Unplanned",
   "firstSeenTick": 78,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [],
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12027",
   "lastState": "awaiting_human",
@@ -4009,11 +4023,11 @@
  "gh-issue-shader-slang/slang-12022": {
   "firstSeenTick": 80,
   "firstSeenAt": "2026-07-10T12:01:00Z",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: awaiting-classification (maintainer-assigned)",
   "nudgedAt": [],
   "lastState": "awaiting_human",
-  "lastActivityAt": "2026-07-10T08:48:27Z",
+  "lastActivityAt": "2026-07-24T21:24:12.238000Z",
   "lastPrState": "OPEN",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12022",
   "ci": {
@@ -4027,7 +4041,7 @@
   "pr": null,
   "category": "advisory_maintainer",
   "disposition": "triaged: Windows CI crash-dump capture; advisory diff-as-comment posted (bot cannot PR workflow files); awaiting maintainer apply. artifact=issue comment.",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstSeenTick": 79,
   "nudgedAt": [],
   "lastState": "awaiting_human",
@@ -4037,7 +4051,7 @@
  "gh-issue-shader-slang/slang-12035": {
   "firstSeenTick": 80,
   "firstSeenAt": "2026-07-10T12:01:00Z",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: awaiting-classification (maintainer-assigned)",
   "nudgedAt": [],
   "lastState": "awaiting_human",
@@ -4047,7 +4061,7 @@
  "gh-issue-shader-slang/slang-12042": {
   "firstSeenTick": 80,
   "firstSeenAt": "2026-07-10T12:01:00Z",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: awaiting-classification (maintainer-assigned)",
   "nudgedAt": [],
   "lastState": "awaiting_human",
@@ -4058,13 +4072,13 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-10T13:34:33Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/12045#issuecomment-4935866082",
   "disposition": "triaged: awaiting-pickup"
  },
  "gh-issue-shader-slang/slang-12062": {
   "lastState": "awaiting_human",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastActivityAt": "2026-07-11T04:50:04Z",
   "lastPrState": null,
   "disposition": "advisory:maintainer-driving \u2014 jhelferty-nv assigned; triage advisory (server-side phantom reviewer)"
@@ -4072,7 +4086,7 @@
  "gh-issue-shader-slang/slang-6319": {
   "title": "Slang successfully compiles to invalid sha",
   "issueState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstJournaledAt": "2026-07-01T12:55:00Z",
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-16T01:33:38.934000Z",
@@ -4091,7 +4105,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-23T11:45:48Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: lingering session (bot-last)",
   "nextNote": "newly surfaced by --limit fix; no action pending",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/6955",
@@ -4102,7 +4116,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-23T21:30:07Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 revisit on demand \u2014 no action",
   "nextNote": "no action until requests land",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/6970",
@@ -4113,7 +4127,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-19T07:15:01.014000Z",
   "lastPrState": "CLOSED",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11657",
   "disposition": "BLOCKER \u2014 abandon-vs-revive escalated to operator. PR #11657 real test-slang fail on win-gpu+linux-sm80/CUDA (PR's own domain, incomplete fix); CUDA case LOCALLY REPRODUCIBLE on fixer L40S, worktree present, BEHIND but MERGEABLE (no conflicts). REVIEW_REQUIRED, nudged 3x, ~2.5wk stale, no maintainer interest. Blocker=ROI not technical; revive ETA ~half-day local+CI. Fixer HOLDING pending operator call.",
   "nextNote": "awaiting review (held drafts-only)",
@@ -4136,7 +4150,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-10T19:02:33Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 jkwak-work self-assigned DebugInfo removal, active in-thread",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/8681#issuecomment-4920660816",
   "nudgedAt": [
@@ -4147,7 +4161,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-29T11:58:09Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: lingering session (bot-last)",
   "nextNote": "newly surfaced by --limit fix; no action pending",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/8822",
@@ -4158,7 +4172,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-17T17:13:18Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: lingering session (bot-last)",
   "nextNote": "newly surfaced by --limit fix; no action pending",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/8870",
@@ -4169,7 +4183,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-17T16:27:47Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: lingering session (bot-last)",
   "nextNote": "newly surfaced by --limit fix; no action pending",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/10877",
@@ -4186,7 +4200,7 @@
   "category": "pr_review_fix",
   "disposition": "advisory:maintainer-driving \u2014 jkwak chose Approach A; diff-ptr-array SPIR-V; re-engaged",
   "firstSeenTick": 78,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-10T18:40:00Z"
   ],
@@ -4196,13 +4210,13 @@
   "lastPrState": null
  },
  "gh-issue-shader-slang/slang-9085": {
-  "lastObservedActivity": "2026-07-24T00:35:00Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "_lastState": "silent",
   "_firstSeen": "2026-07-08T00:02:39Z",
   "_lastTick": "2026-07-08T00:02:39Z",
   "issue_open": true,
-  "lastState": "awaiting_us",
-  "lastActivityAt": "2026-07-23T18:43:57Z",
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T00:35:32.348000Z",
   "lastPrState": "OPEN",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/9085",
   "ci": {
@@ -4218,7 +4232,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-23T11:48:45Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: lingering session (bot-last)",
   "nextNote": "newly surfaced by --limit fix; no action pending",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/9125",
@@ -4231,7 +4245,7 @@
   "category": "no_pr_triaged_feature",
   "disposition": "capability-system-improvements feature epic; bot last (triage verdict posted 15:03Z); ball NOT in our court; maintainer-owned direction",
   "firstSeenTick": 78,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [],
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/9210",
   "lastState": "awaiting_human",
@@ -4240,9 +4254,9 @@
  },
  "gh-issue-shader-slang/slang-9580": {
   "lastState": "awaiting_human",
-  "lastActivityAt": "2026-07-17T23:15:10.147000Z",
+  "lastActivityAt": "2026-07-24T19:13:17.871000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 front-end conforming proposal POSTED (issuecomment-4938724873); jkwak decides insertion point + whether to split the empty-makeStruct IR bug; fixer offered drafts-only on confirm. Webhook-driven.",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12131",
   "nudgedAt": [
@@ -4259,7 +4273,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T08:46:43.030000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 held pending semantics decision; szihs last",
   "nextNote": "\ud83d\udd3c PR #11820 low-urgency rebase candidate (unreviewed draft) \u2014 watch, no nudge",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11820",
@@ -4275,7 +4289,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T20:45:40.044000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 jhelferty-nv assigned; triaged, fix in progress",
   "nextNote": "\ud83c\udd95 maintainer-assigned; decision=error \u2014 awaiting pickup/maintainer",
   "gcRequestedAt": [
@@ -4303,7 +4317,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T22:38:03.081000Z",
   "lastPrState": "CLOSED",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang-rhi/pull/791",
   "ci": {
    "cell": "\u2705\u2935\ufe0f",
@@ -4321,7 +4335,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-06-30T01:40:15Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: lingering session (bot-last)",
   "nextNote": "newly surfaced by --limit fix; no action pending",
   "githubArtifactUrl": "https://github.com/shader-slang/slang-vscode-extension/pull/71",
@@ -4335,7 +4349,7 @@
  "gh-issue-shader-slang/slangpy-1040": {
   "title": "CI GPU test OOM cascade is peak concurrent",
   "issueState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstJournaledAt": "2026-07-01T12:55:00Z",
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T16:59:56.526000Z",
@@ -4346,7 +4360,7 @@
   "_lastTick": "2026-07-08T00:02:39Z"
  },
  "gh-issue-shader-slang/slangpy-806": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastPrState": null,
   "lastIssueState": "OPEN",
   "lastCloserList": [],
@@ -4377,7 +4391,7 @@
   "_lastTick": "2026-07-08T00:02:39Z"
  },
  "gh-issue-shader-slang/slangpy-807": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastPrState": null,
   "lastIssueState": "OPEN",
   "lastCloserList": [],
@@ -4402,7 +4416,7 @@
   "_lastTick": "2026-07-08T00:02:39Z"
  },
  "gh-issue-shader-slang/slangpy-808": {
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastPrState": null,
   "lastIssueState": "OPEN",
   "lastCloserList": [],
@@ -4432,7 +4446,7 @@
   "category": "no_pr",
   "disposition": "advisory:maintainer-driving \u2014 mkeshavaNV assigned; 2D/3D dispatch thread-group-size",
   "firstSeenTick": 78,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [],
   "githubArtifactUrl": "https://github.com/shader-slang/slangpy/issues/844",
   "lastState": "awaiting_human",
@@ -4443,7 +4457,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T18:32:50.195000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: lingering session (bot-last)",
   "nextNote": "newly surfaced by --limit fix; no action pending",
   "githubArtifactUrl": "https://github.com/shader-slang/slangpy-samples/issues/43",
@@ -4454,7 +4468,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T18:35:32.656000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 maintainer-owned",
   "nextNote": "newly surfaced by --limit fix; no action pending",
   "githubArtifactUrl": "https://github.com/shader-slang/slangpy-samples/issues/45",
@@ -4465,7 +4479,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T12:33:19.970000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11475",
   "nudgedAt": [
    "2026-07-22T12:27:11Z"
@@ -4480,14 +4494,14 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-20T12:17:37.347000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 jkwak-work self-assigned endian/ptr-size whitelist"
  },
  "gh-issue-shader-slang/slang-12070": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-13T12:28:06.286000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12072",
   "ci": {
    "cell": "\u2705",
@@ -4498,7 +4512,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-15T16:44:07.074000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "notes": [
    "FYI from slangpy#1055 fixer (07-13): on BUNDLED Slang 2026.5.2, loop-carried float3 accumulator+divide is EXACT when numerator weight independent of denominator (loop_div), WRONG when num&denom share loop weight (G/win_norm) \u2014 i.e. coupling-through-divide matters on 2026.5.2, may be version delta vs ToT. Receipts: repro-1055/repro_divide.py, run_pure_slang_minimal.py. NOT a re-open."
   ],
@@ -4508,21 +4522,21 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-17T16:51:46.483000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 saipraveenb25 assigned; HANDOFF slang#12070/#12072"
  },
  "gh-issue-shader-slang/slangpy-1052": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-12T19:09:37.375000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 closers=[1054] szihs assigned"
  },
  "gh-issue-shader-slang/slangpy-1053": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-14T06:06:35Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slangpy/pull/1053",
   "ci": {
    "cell": "\u26aa",
@@ -4534,7 +4548,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T12:34:10.593000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slangpy/pull/1054",
   "ci": {
    "cell": "\u26aa",
@@ -4549,7 +4563,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-15T16:35:48.565000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-13T12:58:00Z"
   ],
@@ -4561,14 +4575,14 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T17:37:04.923000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 closers=[1057] szihs assigned"
  },
  "gh-issue-shader-slang/slangpy-1058": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-13T13:52:13.189000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-13T12:01:20Z"
   ],
@@ -4581,13 +4595,13 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-13T12:28:21.720000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slangpy-1062": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T17:14:26.230000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 sgl_tests teardown nonzero-exit flake; held slangpy#1064; infra"
  },
  "_gc": {
@@ -4638,7 +4652,7 @@
  "gh-issue-shader-slang/slang-12080": {
   "disposition": "pr_open \u2014 maintainer PR #12080 szihs self-assigned CUDA fwd uniform aggregate",
   "next": "PR #12080 CUDA __grid_constant__; OPEN, bot/CLA-last (review chain)",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstSeenTick": 85,
   "delta": "new",
   "lastState": "awaiting_human",
@@ -4653,7 +4667,7 @@
  "gh-issue-shader-slang/slang-12084": {
   "disposition": "advisory:maintainer-driving \u2014 maintainer PR #12084 jvepsalainen-nv",
   "next": "PR #12084 compile-perf nightly ToT binaries; OPEN, coderabbit-last",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstSeenTick": 85,
   "delta": "new",
   "lastState": "awaiting_human",
@@ -4689,7 +4703,7 @@
  "gh-issue-shader-slang/slangpy-samples-54": {
   "disposition": "advisory:maintainer-driving \u2014 kaizhangNV assigned; Metal support neural UTracer",
   "next": "PR #54 Metal support neural UTracer; kaizhangNV OWN maintainer PR",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "firstSeenTick": 85,
   "delta": "new",
   "lastState": "awaiting_human",
@@ -4705,7 +4719,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T12:31:34.036000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11377",
   "disposition": "advisory:shadow-approver \u2014 BLOCK recorded (RED_BUG slang-ir-util.cpp:3255) @0002f7a81b79 2026-07-14; ledger-only, no supervisor-actionable outbound; head unchanged; awaiting human review; re-activates on pr_review/merge/synchronize webhook",
   "nudgedAt": [
@@ -4720,7 +4734,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T23:30:09.454000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12089",
   "disposition": "advisory:maintainer-driving \u2014 PR ser-abi-single-source authored+assigned szihs; maintainer-owned (ABSTAIN_POLICY)",
   "ci": {
@@ -4732,12 +4746,12 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-14T17:29:26.699000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: maintainer-owned \u2014 jkwak-work assigned; DESIGN-GATED ABI 32-vs-80; no fixer scope"
  },
  "gh-issue-shader-slang/slang-11667": {
   "lastState": "awaiting_human",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastActivityAt": "2026-07-22T12:42:11.777000Z",
   "lastPrState": "OPEN",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11667",
@@ -4752,7 +4766,7 @@
  },
  "gh-issue-shader-slang/slang-12094": {
   "lastState": "awaiting_human",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastActivityAt": "2026-07-22T12:31:28.843000Z",
   "lastPrState": "OPEN",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12094",
@@ -4767,7 +4781,7 @@
  },
  "gh-issue-shader-slang/slang-12095": {
   "lastState": "awaiting_human",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastActivityAt": "2026-07-22T12:33:05.139000Z",
   "lastPrState": "OPEN",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12095",
@@ -4782,7 +4796,7 @@
  },
  "gh-issue-shader-slang/slang-12098": {
   "lastState": "awaiting_human",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastActivityAt": "2026-07-14T18:40:33.135000Z",
   "lastPrState": "OPEN",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12098",
@@ -4794,52 +4808,34 @@
  },
  "gh-issue-shader-slang/slang-12100": {
   "lastState": "awaiting_human",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastActivityAt": "2026-07-14T18:43:28.443000Z",
   "lastPrState": null,
   "disposition": "advisory:maintainer-driving \u2014 jvepsalainen-nv self-assigned generic-nesting compile-perf"
  },
  "gh-issue-shader-slang/slang-12096": {
   "lastState": "awaiting_human",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastActivityAt": "2026-07-14T21:01:34.127000Z",
   "lastPrState": null
  },
  "gh-issue-shader-slang/slang-12101": {
   "lastState": "awaiting_human",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastActivityAt": "2026-07-22T21:35:22.445000Z",
   "lastPrState": null
  },
  "gh-issue-shader-slang/slang-12103": {
   "lastState": "awaiting_human",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "lastActivityAt": "2026-07-14T19:11:43.265000Z",
   "lastPrState": null
- },
- "gh-issue-shader-slang/slang-12108": {
-  "lastState": "awaiting_human",
-  "lastActivityAt": "2026-07-23T23:56:50.030000Z",
-  "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
-  "nudgedAt": [
-   "2026-07-16T00:01:39Z",
-   "2026-07-17T00:05:00Z"
-  ],
-  "disposition": "triaged: maintainer-owned (jkwak self-assigned+driving; SLANG_ASSERT idea his own) \u2014 stood down, no fixer dispatch; enhancement/P3",
-  "nextNote": "CLOSED at triaged (maintainer-owned); R3 gap closed. Value-add: glsl.meta.slang also leaks 53 sites \u2014 *.meta.slang-wide assert must cover glsl. Re-opens on fresh substantive human comment.",
-  "githubCommentUrl": "https://github.com/shader-slang/slang/issues/12108#issuecomment-4997802889",
-  "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12190",
-  "ci": {
-   "cell": "\u2705",
-   "latestRunId": "30050064159"
-  }
  },
  "gh-issue-shader-slang/slang-12110": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-20T09:13:25.759000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12116",
   "ci": {
    "cell": "\u2705",
@@ -4850,27 +4846,27 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-15T21:45:13.196000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 closers=[12125] jvepsalainen-nv"
  },
  "gh-issue-shader-slang/slang-12113": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-16T05:31:24.948000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slang-11029": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-15T20:43:15.050000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 closers=[11030]; saipraveenb25 assigned"
  },
  "gh-issue-shader-slang/slang-12120": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T22:35:27.903000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-23T00:20:00Z"
   ],
@@ -4887,14 +4883,14 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T17:26:14.234000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "pr_open \u2014 closers=[12127]; kaizhangNV assigned; superseded by #12127"
  },
  "gh-issue-shader-slang/slang-12125": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T12:45:26.430000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12125",
   "nudgedAt": [
    "2026-07-22T12:27:11Z"
@@ -4909,7 +4905,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T12:32:16.948000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12127",
   "nudgedAt": [
    "2026-07-22T12:27:11Z"
@@ -4924,14 +4920,14 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-15T22:08:21.825000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 jkiviluoto-nv assigned; CI branch-protection deadlock"
  },
  "gh-issue-shader-slang/slangpy-1067": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-16T00:05:24.706000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 closers=[1068] skallweitNV assigned"
  },
  "_diskEscalation": {
@@ -4949,7 +4945,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-16T01:37:59.657000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 jkwak-work self-assigned, spoke last 07-16"
  },
  "gh-issue-shader-slang/slang-12036/mimalloc-all-platforms": {
@@ -4964,7 +4960,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-16T03:08:49.497000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slang-12134": {
   "discoveredAt": "2026-07-16T15:50:00.000Z",
@@ -4973,7 +4969,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-17T06:01:48.244000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-17T00:05:00Z"
   ],
@@ -4989,7 +4985,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T12:32:24.411000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12136",
   "nudgedAt": [
    "2026-07-22T12:27:11Z"
@@ -5007,14 +5003,14 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-16T10:18:43.156000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 CI-infra flake ANCHOR (aarch64 apt-fetch); slang-ci-babysitter owns, observe-mode; workflow-YAML fix needs maintainer"
  },
  "gh-issue-shader-slang/slang-11967": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-17T08:37:00.873000Z",
   "lastPrState": "MERGED",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12081",
   "ci": {
    "cell": "\u2705",
@@ -5025,14 +5021,14 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-17T07:05:58.035000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 jvepsalainen-nv assigned shallow-generic regr"
  },
  "gh-issue-shader-slang/slang-12142": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T12:35:23.155000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12142",
   "nudgedAt": [
    "2026-07-22T12:27:11Z"
@@ -5047,7 +5043,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-17T06:58:21.127000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang-rhi/pull/797",
   "ci": {
    "cell": "\u26aa",
@@ -5059,7 +5055,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-21T13:02:38.232000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11476",
   "nudgedAt": [
    "2026-07-21T00:15:00Z",
@@ -5075,9 +5071,9 @@
  },
  "gh-issue-shader-slang/slang-12131": {
   "lastState": "awaiting_human",
-  "lastActivityAt": "2026-07-17T23:37:17.536000Z",
+  "lastActivityAt": "2026-07-24T19:03:34Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12131",
   "ci": {
    "cell": "\u2705",
@@ -5088,28 +5084,28 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T20:10:49Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 CI-infra flake ANCHOR (GBufferRTTexGrads_d3d12 0xC0000005); slang-ci-babysitter owns, observe-mode"
  },
  "gh-issue-shader-slang/slang-12150": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-17T23:48:37.438000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged: awaiting-pickup \u2014 P3 debug-info CU-scoping; sequenced after #12148"
  },
  "gh-issue-shader-slang/slangpy-1070": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T17:46:16.320000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 CI-infra flake (GPU Unit Tests Python wedge); infra, unassigned, watch"
  },
  "gh-issue-shader-slang/slang-rhi-800": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T13:55:28.123000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang-rhi/pull/800",
   "disposition": "advisory:external-PR \u2014 PR #800 Metal dispatchComputeIndirect (fknfilewalker); shadow ABSTAIN_POLICY (Metal test-mask gap, Devin residency REFUTED); bot-last (coderabbit 07-18); await human/Metal-HW",
   "ci": {
@@ -5118,10 +5114,10 @@
   }
  },
  "gh-issue-shader-slang/slang-10584": {
-  "lastState": "awaiting_us",
-  "lastActivityAt": "2026-07-23T18:33:31Z",
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T19:55:32Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:35:00Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12194",
   "nudgedAt": [
    "2026-07-24T00:03:18Z"
@@ -5136,7 +5132,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-18T23:27:43.971000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12152",
   "disposition": "advisory:maintainer-driving \u2014 our fix PR #12152 (#9403 hpp) NON-DRAFT OPEN shadow-CLEAN; await human review/merge",
   "ci": {
@@ -5148,7 +5144,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-21T20:56:11Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12156",
   "disposition": "advisory:maintainer-driving \u2014 hpp export docs; PR #12156 GREEN; DISMISSED\u2192REVIEW_REQUIRED; await re-review",
   "ci": {
@@ -5160,7 +5156,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-18T16:50:56.611000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12155",
   "ci": {
    "cell": "\u2705",
@@ -5171,27 +5167,27 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-18T13:03:33.174000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 jkwak-work self-assigned, spoke last 07-18"
  },
  "gh-issue-shader-slang/slang-8785": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-18T12:54:10.818000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 jkwak-work self-assigned, spoke last 07-18"
  },
  "gh-issue-shader-slang/slang-9146": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-18T13:20:44.008000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slang-9401": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T01:57:40.697000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12156",
   "disposition": "advisory:maintainer-driving \u2014 hpp export; PR #12156 GATE1; aarch64 regr; await re-review (jkwak)",
   "ci": {
@@ -5203,7 +5199,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-18T15:03:47.802000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12152",
   "ci": {
    "cell": "\u2705",
@@ -5214,14 +5210,14 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-10T22:17:11Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "closed-by-us \u2014 malformed thread key; real issue #11568 CLOSED by #11798; archive zombie session"
  },
  "gh-issue-shader-slang/slang-11803": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-19T07:11:00.246000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/11803",
   "ci": {
    "cell": "\u2705",
@@ -5232,7 +5228,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-20T17:27:02.323000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12158",
   "ci": {
    "cell": "\u2705",
@@ -5243,7 +5239,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-20T00:10:21.393000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "issue": 12160,
   "repo": "shader-slang/slang",
   "pr": null,
@@ -5254,7 +5250,7 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-20T09:29:03.562000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "issue": 12161,
   "repo": "shader-slang/slang",
   "pr": null,
@@ -5265,14 +5261,14 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-21T17:07:58.655000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged:PARKED \u2014 Metal uniform-ptr indirection; enh/P3 BREAKING; jhelferty-nv assigned"
  },
  "gh-issue-shader-slang/slang-12181": {
   "lastState": "awaiting_human",
-  "lastActivityAt": "2026-07-24T00:06:50.182000Z",
+  "lastActivityAt": "2026-07-24T06:59:09.028000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged:PARKED \u2014 -debug-info-include-source flag; jkwak self-filed+self-assigned, no \"make a PR\"",
   "nudgedAt": [
    "2026-07-23T12:22:40.000Z"
@@ -5284,38 +5280,38 @@
   }
  },
  "gh-issue-shader-slang/slang-12183": {
-  "lastState": "awaiting_human",
-  "lastActivityAt": "2026-07-22T03:29:37.783000Z",
+  "lastState": "awaiting_us",
+  "lastActivityAt": "2026-07-24T18:56:37.378000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged:PARKED \u2014 reflection cumulative-offset helper request; emackey design proposal; maintainer API-shape call"
  },
  "gh-issue-shader-slang/slang-9192": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-21T17:04:58.467000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 spirv-opt perf-delta investigation; jhelferty-nv assigned; rel #12160"
  },
  "gh-issue-shader-slang/slang-9400": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-21T17:21:21.900000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "triaged:PARKED \u2014 loadSerialized dep-source redundant; perf P3; @tangent-vector redesign; jkwak-work owns"
  },
  "gh-issue-shader-slang/slang-torch-48": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-21T18:19:22.483000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "disposition": "advisory:maintainer-driving \u2014 jhelferty-nv release-coordination request (aarch64 slangtorch); not a triageable fix chain"
  },
  "gh-issue-shader-slang/slang-12185": {
   "lastState": "awaiting_human",
-  "lastActivityAt": "2026-07-23T23:36:31Z",
+  "lastActivityAt": "2026-07-24T17:56:35.210000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12186",
   "ci": {
    "cell": "\u2705",
@@ -5329,31 +5325,33 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T21:28:40.980000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slang-12189": {
   "lastState": "awaiting_us",
-  "lastActivityAt": "2026-07-22T23:07:09.532000Z",
+  "lastActivityAt": "2026-07-24T00:38:11.100000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:37:00Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-23T12:22:40.000Z",
    "2026-07-24T00:03:18Z"
   ],
   "disposition": "closing: fix MERGED PR #12178 @e438c5ae (Closes #12189, auto-close did not fire); issue OPEN but has terminal footprint comment 5052453378 naming the fix. Per no-auto-close rule, leave close to a human maintainer (jkwak-work assigned). NOT awaiting_us \u2014 observably resolved.",
-  "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/12189#issuecomment-5052453378"
+  "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/12189#issuecomment-5052453378",
+  "escalatedAt": "2026-07-24T12:13:00Z",
+  "supervisorNote": "2-nudge ceiling hit; escalated to operator (timed out); classified human-owned (jkwak-work assigned, #12178 closes #12176 not this, distinct open doc issue). No 3rd nudge."
  },
  "gh-issue-shader-slang/slang-12191": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T23:20:18.863000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slang-12192": {
-  "lastState": "awaiting_us",
-  "lastActivityAt": "2026-07-23T04:00:35.903000Z",
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T00:35:33.034000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:35:00Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-23T12:22:40.000Z",
    "2026-07-24T00:03:18Z"
@@ -5365,13 +5363,13 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T21:03:15.052000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slang-9038": {
-  "lastState": "awaiting_us",
-  "lastActivityAt": "2026-07-23T19:01:36.610000Z",
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T00:35:19.748000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:35:00Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-23T12:22:40.000Z",
    "2026-07-24T00:03:18Z"
@@ -5383,53 +5381,54 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T15:36:18.614000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slangpy-samples-55": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-22T21:52:36.311000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slang-12196": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T05:06:41.663000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slang-12197": {
   "lastState": "awaiting_human",
-  "lastActivityAt": "2026-07-23T09:53:54.221000Z",
+  "lastActivityAt": "2026-07-24T09:28:32.894000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12200"
  },
  "gh-issue-shader-slang/slang-12198": {
-  "lastState": "awaiting_us",
-  "lastActivityAt": "2026-07-23T19:10:01.488000Z",
-  "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T02:15:43.149000Z",
+  "lastPrState": "OPEN",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-23T12:22:40.000Z",
    "2026-07-24T00:03:18Z"
-  ]
+  ],
+  "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12208"
  },
  "gh-issue-shader-slang/slangpy-samples-50": {
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T18:34:50Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slangpy-samples/pull/50"
  },
  "gh-issue-shader-slang/slang-12159": {
   "gcRequestedAt": "2026-07-23T12:22:40.000Z"
  },
  "gh-issue-shader-slang/slang-11988": {
-  "lastState": "awaiting_us",
-  "lastActivityAt": "2026-07-23T16:56:32.142000Z",
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T00:38:14.134000Z",
   "lastPrState": "CLOSED",
-  "lastObservedActivity": "2026-07-24T00:38:00Z",
-  "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/11988#issuecomment-5064920047",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
+  "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12159",
   "nudgedAt": [
    "2026-07-24T00:03:18Z"
   ],
@@ -5443,13 +5442,13 @@
   "lastState": "awaiting_human",
   "lastActivityAt": "2026-07-23T17:48:52.006000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z"
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  },
  "gh-issue-shader-slang/slang-12204": {
-  "lastState": "pr_open",
-  "lastActivityAt": "2026-07-24T00:01:08Z",
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T04:31:50.801000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12206",
   "ci": {
    "cell": "\u23f3",
@@ -5457,10 +5456,10 @@
   }
  },
  "gh-issue-shader-slang/slang-12205": {
-  "lastState": "awaiting_us",
-  "lastActivityAt": "2026-07-23T18:21:47.735000Z",
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T00:35:44.814000Z",
   "lastPrState": null,
-  "lastObservedActivity": "2026-07-24T00:03:18Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "nudgedAt": [
    "2026-07-24T00:03:18Z"
   ],
@@ -5468,14 +5467,98 @@
   "githubArtifactUrl": "https://github.com/shader-slang/slang/issues/12205"
  },
  "gh-issue-shader-slang/slang-rhi-801": {
-  "lastState": "awaiting_us",
-  "lastActivityAt": "2026-07-23T14:17:34.136000Z",
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T04:35:32.599000Z",
   "lastPrState": "OPEN",
-  "lastObservedActivity": "2026-07-24T00:36:00Z",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
   "githubArtifactUrl": "https://github.com/shader-slang/slang-rhi/pull/801",
   "nudgedAt": [
    "2026-07-24T00:03:18Z"
   ],
   "disposition": "advisory: maintainer-driving \u2014 approver ABSTAIN_POLICY (OPEN_GAP) UNCHANGED @107bd564e27e; jkwak COMMENTED 15:05Z \"LGTM, waiting for skallweitNV\"; gap=createBufferFromNativeHandle never runs on Metal (test masks D3D12|Vulkan). Unblock=add Metal to GPU_TEST_CASE mask OR maintainer accepts untested-on-Metal. Shadow-mode."
+ },
+ "gh-issue-shader-slang/slang-12210": {
+  "lastState": "awaiting_us",
+  "lastActivityAt": "2026-07-24T09:15:15.827000Z",
+  "lastPrState": null,
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
+  "nudgedAt": [
+   "2026-07-24T12:10:00Z"
+  ]
+ },
+ "gh-issue-shader-slang/slang-12212": {
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T15:14:39.093000Z",
+  "lastPrState": "OPEN",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
+  "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/12217"
+ },
+ "gh-issue-shader-slang/slang-12214": {
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T12:35:14.175000Z",
+  "lastPrState": null,
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
+ },
+ "gh-issue-shader-slang/slangpy-1072": {
+  "lastState": "awaiting_us",
+  "lastActivityAt": "2026-07-24T11:32:31.355000Z",
+  "lastPrState": null,
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
+ },
+ "gh-issue-shader-slang/shader-slang.github.io-201": {
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T14:49:36.235000Z",
+  "lastPrState": "OPEN",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
+  "githubArtifactUrl": "https://github.com/shader-slang/shader-slang.github.io/pull/201"
+ },
+ "gh-issue-shader-slang/slang-10842": {
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T22:02:14.369000Z",
+  "lastPrState": "OPEN",
+  "lastObservedActivity": "2026-07-25T00:05:10Z",
+  "githubArtifactUrl": "https://github.com/shader-slang/slang/pull/802"
+ },
+ "gh-issue-shader-slang/slang-12219": {
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T18:01:33.414000Z",
+  "lastPrState": null,
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
+ },
+ "gh-issue-shader-slang/slang-12220": {
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T18:03:15.744000Z",
+  "lastPrState": null,
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
+ },
+ "gh-issue-shader-slang/slang-12221": {
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T18:07:25.387000Z",
+  "lastPrState": null,
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
+ },
+ "gh-issue-shader-slang/slang-12222": {
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T18:21:52.460000Z",
+  "lastPrState": null,
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
+ },
+ "gh-issue-shader-slang/slang-12223": {
+  "lastState": "awaiting_us",
+  "lastActivityAt": "2026-07-24T20:48:43.055000Z",
+  "lastPrState": null,
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
+ },
+ "gh-issue-shader-slang/slang-12226": {
+  "lastState": "dispatched",
+  "lastActivityAt": "2026-07-25T00:05:44.380000Z",
+  "lastPrState": null,
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
+ },
+ "gh-issue-shader-slang/slangpy-1074": {
+  "lastState": "awaiting_human",
+  "lastActivityAt": "2026-07-24T17:18:56.736000Z",
+  "lastPrState": null,
+  "lastObservedActivity": "2026-07-25T00:05:10Z"
  }
 }
