@@ -7,9 +7,11 @@ import Database from 'better-sqlite3';
 
 import {
   compareMessagesAscending,
+  containerExecArgs,
   ensureDashboardChatWiring,
   forceOpenDbForTests,
   matchContainerName,
+  matchContainerNameForRequest,
   resetTransientDashboardStateForTests,
   resolveCoworkerTypeMetadata,
   startServer,
@@ -3194,6 +3196,33 @@ describe('matchContainerName', () => {
   it('returns null when no candidate matches', () => {
     expect(matchContainerName([], 'orchestrator', null, PREFIX)).toBeNull();
     expect(matchContainerName([`${PREFIX}-other-folder-abc-1762512225123`], 'orchestrator', null, PREFIX)).toBeNull();
+  });
+
+  it('folder-scoped Shared Artifacts falls back when the root session container is stopped', () => {
+    const rootSession = 'sess-root-tail';
+    const threadContainer = `${PREFIX}-orchestrator-thread-tail-1762512225123`;
+    expect(
+      matchContainerNameForRequest([threadContainer], 'orchestrator', rootSession, false, PREFIX),
+    ).toBe(threadContainer);
+  });
+
+  it('an explicit thread never falls back to another session container', () => {
+    const requestedSession = 'sess-requested-tail';
+    const otherContainer = `${PREFIX}-orchestrator-other-tail-1762512225123`;
+    expect(
+      matchContainerNameForRequest([otherContainer], 'orchestrator', requestedSession, true, PREFIX),
+    ).toBeNull();
+  });
+
+  it('passes container commands as execFile arguments without host-shell interpolation', () => {
+    const command = `printf '%s\\n' "$HOME" && echo $(uname)`;
+    expect(containerExecArgs('nc-dev-orchestrator-tail-1762512225123', command)).toEqual([
+      'exec',
+      'nc-dev-orchestrator-tail-1762512225123',
+      'bash',
+      '-c',
+      command,
+    ]);
   });
 });
 

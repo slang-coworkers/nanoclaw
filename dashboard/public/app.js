@@ -7696,7 +7696,7 @@ async function renderCwWork(subpath, isDir) {
       return;
     }
     content.innerHTML = `<div style="font-size:0.6875rem;color:var(--text-dim);padding:4px 8px;margin-bottom:4px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card)">
-        Shared artifacts for <strong style="color:var(--text)">${esc(folder)}</strong>. Files are common to main + all thread sessions; shell below follows the currently open chat/thread.
+        Shared artifacts for <strong style="color:var(--text)">${esc(folder)}</strong>. Files are common to main + all thread sessions; shell below uses any live session for this coworker.
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:10px">
       <tr style="border-bottom:1px solid var(--border);color:var(--text-muted)">

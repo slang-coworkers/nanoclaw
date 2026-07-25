@@ -42,6 +42,7 @@ import Database from 'better-sqlite3';
 import { createRequire } from 'node:module';
 
 import { initDb as initSrcDb } from '../src/db/connection.js';
+import { CONTAINER_RUNTIME_BIN } from '../src/container-runtime.js';
 import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/write-destinations.js';
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 
@@ -3365,6 +3366,30 @@ export function matchContainerName(
   return null;
 }
 
+/**
+ * Resolve the container used by a shell request.
+ *
+ * An explicit thread must match its exact session container. A folder-scoped
+ * request (used by Shared Artifacts) prefers the root session container, but
+ * may use any live container for that coworker because every session mounts
+ * the same /workspace/agent directory.
+ */
+export function matchContainerNameForRequest(
+  names: Iterable<string>,
+  folder: string,
+  sessionId: string | null,
+  hasExplicitThread: boolean,
+  prefix: string,
+  knownFolders?: Iterable<string>,
+): string | null {
+  if (sessionId) {
+    const exact = matchContainerName(names, folder, sessionId, prefix, knownFolders);
+    if (exact) return exact;
+  }
+  if (hasExplicitThread) return null;
+  return matchContainerName(names, folder, null, prefix, knownFolders);
+}
+
 function findRunningContainer(
   folder: string,
   sessionId?: string | null,
@@ -3372,6 +3397,19 @@ function findRunningContainer(
 ): string | null {
   const prefix = process.env.CONTAINER_PREFIX || 'nanoclaw';
   return matchContainerName(runningContainers, folder, sessionId ?? null, prefix, knownFolders);
+}
+
+function findRunningContainerForRequest(
+  folder: string,
+  sessionId: string | null,
+  hasExplicitThread: boolean,
+): string | null {
+  const prefix = process.env.CONTAINER_PREFIX || 'nanoclaw';
+  return matchContainerNameForRequest(runningContainers, folder, sessionId, hasExplicitThread, prefix);
+}
+
+export function containerExecArgs(containerName: string, command: string): string[] {
+  return ['exec', containerName, 'bash', '-c', command];
 }
 
 /**
@@ -8426,8 +8464,7 @@ export async function handleRequest(
     const hasExplicitThread = threadId !== null;
     const sessDb = getHookEventsDb();
     const sessionId = sessDb ? sessionIdForThread(sessDb, folder, threadId) : null;
-    const found =
-      findRunningContainer(folder, sessionId) ?? (sessionId || hasExplicitThread ? null : findRunningContainer(folder));
+    const found = findRunningContainerForRequest(folder, sessionId, hasExplicitThread);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({
@@ -8473,9 +8510,7 @@ export async function handleRequest(
       const hasExplicitThread = threadId !== null;
       const sessDb = getHookEventsDb();
       const sessionId = sessDb ? sessionIdForThread(sessDb, folder, threadId) : null;
-      const found =
-        findRunningContainer(folder, sessionId) ??
-        (sessionId || hasExplicitThread ? null : findRunningContainer(folder));
+      const found = findRunningContainerForRequest(folder, sessionId, hasExplicitThread);
       if (!found) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(
@@ -8489,9 +8524,10 @@ export async function handleRequest(
         return;
       }
       // Execute command (timeout 10s, max 64KB output)
-      exec(
-        `docker exec ${found} bash -c ${JSON.stringify(command)}`,
-        { timeout: 10000, maxBuffer: 65536 },
+      execFile(
+        CONTAINER_RUNTIME_BIN,
+        containerExecArgs(found, command),
+        { timeout: 10000, maxBuffer: 65536, encoding: 'utf8' },
         (err, stdout, stderr) => {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(
