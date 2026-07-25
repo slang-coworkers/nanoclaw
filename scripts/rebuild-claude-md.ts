@@ -29,6 +29,11 @@ for (const { rel, coworkerType } of targets) {
       console.log(`ok    ${rel}`);
     }
   } else {
+    // groups/* is gitignored, so groups/main/ doesn't exist on a fresh clone —
+    // and rebuild:claude can run before setup scaffolds it (e.g. the setup
+    // project-integrations step runs merge-train, whose tail calls this). Create
+    // the target dir so the write can't ENOENT.
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, composed);
     console.log(`updated ${rel}`);
   }
