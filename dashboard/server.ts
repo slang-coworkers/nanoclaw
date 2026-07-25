@@ -1226,11 +1226,12 @@ interface DashboardState {
   tasks: any[];
   taskRunLogs: any[];
   registeredGroups: any[];
-  hookEvents: HookEvent[];
   timestamp: number;
+  lastHookEventId: number;
 }
 
 interface HookEvent {
+  id?: number;
   group: string;
   agent_group_id?: string;
   event: string;
@@ -1248,8 +1249,88 @@ interface HookEvent {
   timestamp: number;
 }
 
-// Ring buffer for recent hook events (live state)
-const hookEvents: HookEvent[] = [];
+interface HookEventSummary {
+  id?: number;
+  group: string;
+  agent_group_id?: string;
+  event: string;
+  tool?: string;
+  message?: string;
+  session_id?: string;
+  agent_id?: string;
+  agent_type?: string;
+  tool_use_id?: string;
+  transcript_path?: string;
+  cwd?: string;
+  extra?: Record<string, unknown>;
+  timestamp: number;
+  has_details: boolean;
+}
+
+const HOOK_SUMMARY_MESSAGE_LIMIT = 1_000;
+const HOOK_SUMMARY_EXTRA_FIELDS = 8;
+const HOOK_SUMMARY_EXTRA_VALUE_LIMIT = 256;
+
+function truncateHookSummaryText(value: string | undefined, limit: number): string | undefined {
+  if (!value) return undefined;
+  return value.length <= limit ? value : `${value.slice(0, limit)}…`;
+}
+
+function summarizeHookExtra(extra: Record<string, any> | undefined): Record<string, unknown> | undefined {
+  if (!extra) return undefined;
+  const summary: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(extra).slice(0, HOOK_SUMMARY_EXTRA_FIELDS)) {
+    if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+      summary[key] = value;
+    } else if (typeof value === 'string') {
+      summary[key] = truncateHookSummaryText(value, HOOK_SUMMARY_EXTRA_VALUE_LIMIT);
+    }
+  }
+  return Object.keys(summary).length > 0 ? summary : undefined;
+}
+
+function toHookEventSummary(event: HookEvent, hasDetails = false): HookEventSummary {
+  const summarizedExtra = summarizeHookExtra(event.extra);
+  const message = truncateHookSummaryText(event.message, HOOK_SUMMARY_MESSAGE_LIMIT);
+  return {
+    id: event.id,
+    group: event.group,
+    agent_group_id: event.agent_group_id,
+    event: event.event,
+    tool: event.tool,
+    message,
+    session_id: event.session_id,
+    agent_id: event.agent_id,
+    agent_type: event.agent_type,
+    tool_use_id: event.tool_use_id,
+    transcript_path: event.transcript_path,
+    cwd: event.cwd,
+    extra: summarizedExtra,
+    timestamp: event.timestamp,
+    has_details:
+      hasDetails ||
+      !!event.tool_input ||
+      !!event.tool_response ||
+      message !== event.message ||
+      JSON.stringify(summarizedExtra ?? {}) !== JSON.stringify(event.extra ?? {}),
+  };
+}
+
+function parseHookExtra(value: unknown): Record<string, any> | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'object') return value as Record<string, any>;
+  if (typeof value !== 'string') return undefined;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Keep only compact metadata in memory. Full tool inputs and responses remain
+// in SQLite and are fetched lazily when a timeline row is expanded.
+const hookEvents: HookEventSummary[] = [];
 // In-memory ring buffer cap raised 200 → 5000 on 2026-05-29: an active
 // install with bursty a2a fan-outs (slang chains during a fix run) emits
 // 700-900 events/hour. The old 200 cap meant the timeline-bootstrap state
@@ -1257,24 +1338,10 @@ const hookEvents: HookEvent[] = [];
 // (e.g. issue #11349) wasn't in the bootstrap and required ~70 "Load older"
 // clicks at 100/click to reach. 5000 ≈ 8 h on a busy day.
 //
-// Trade-off: each SSE state-push payload size scales with this cap. Each
-// hook event is ~200-2000 bytes; 5000 events ≈ 2-10 MB of state baseline.
-// The state-dedup + per-client backpressure introduced earlier already
-// guard the wire: identical states aren't re-broadcast (dedup hashes
-// state minus wall-clock data.timestamp), and slow clients drop frames
-// (writableLength threshold). Both make the larger ring buffer cheap.
+// The ring contains summaries only. Full event bodies live in hook_events.
 const MAX_HOOK_EVENTS = 5000;
 
-// Bootstrap-state cap (separate from MAX_HOOK_EVENTS): how many events to
-// include in each SSE state push to clients. Smaller than the ring buffer
-// because the frontend renders one DOM row per event and walks the whole
-// array on each state push — 5000 rows × DOM thrash on every dedup-dirty
-// update spikes the browser's main thread, observed as a 60% CPU pin on
-// the dashboard's Node process and an unresponsive UI tab. Older events
-// reach the UI via the existing "Load older events" button, which calls
-// /api/hook-events/history (capped at 5000) on demand. 500 ≈ 30-45 min of
-// peak activity, plenty for the at-a-glance view.
-const STATE_PUSH_HOOK_EVENTS = 500;
+const RECENT_HOOK_EVENT_LIMIT = 200;
 
 // Hook events DB (write connection, lazy-opened)
 let hookEventsDb: Database.Database | null = null;
@@ -1298,41 +1365,43 @@ function bootstrapHookEvents(): void {
   try {
     const rows = db
       .prepare(
-        `SELECT he.group_folder, ag.id AS agent_group_id, he.event, he.tool, he.tool_use_id, he.message,
-                he.tool_input, he.tool_response, he.session_id, he.agent_id, he.agent_type,
-                he.transcript_path, he.cwd, he.extra, he.timestamp
+        `SELECT he.id, he.group_folder, ag.id AS agent_group_id, he.event, he.tool, he.tool_use_id,
+                substr(he.message, 1, ${HOOK_SUMMARY_MESSAGE_LIMIT}) AS message,
+                he.session_id, he.agent_id, he.agent_type, he.transcript_path, he.cwd,
+                CASE WHEN length(he.extra) <= 2048 THEN he.extra ELSE NULL END AS extra,
+                he.timestamp,
+                CASE WHEN he.tool_input IS NOT NULL
+                        OR he.tool_response IS NOT NULL
+                        OR length(he.message) > ${HOOK_SUMMARY_MESSAGE_LIMIT}
+                        OR length(he.extra) > 2048
+                     THEN 1 ELSE 0 END AS has_details
            FROM hook_events he
            LEFT JOIN agent_groups ag ON ag.folder = he.group_folder
           ORDER BY he.timestamp DESC LIMIT ?`,
       )
       .all(MAX_HOOK_EVENTS) as any[];
     for (const row of rows.reverse()) {
-      const extra = row.extra
-        ? (() => {
-            try {
-              return JSON.parse(row.extra);
-            } catch {
-              return undefined;
-            }
-          })()
-        : undefined;
-      hookEvents.push({
-        group: row.group_folder,
-        agent_group_id: row.agent_group_id || undefined,
-        event: row.event,
-        tool: row.tool || undefined,
-        tool_use_id: row.tool_use_id || undefined,
-        message: row.message || undefined,
-        tool_input: row.tool_input || undefined,
-        tool_response: row.tool_response || undefined,
-        session_id: row.session_id || undefined,
-        agent_id: row.agent_id || undefined,
-        agent_type: row.agent_type || undefined,
-        transcript_path: row.transcript_path || undefined,
-        cwd: row.cwd || undefined,
-        extra,
-        timestamp: row.timestamp,
-      });
+      hookEvents.push(
+        toHookEventSummary(
+          {
+            id: row.id,
+            group: row.group_folder,
+            agent_group_id: row.agent_group_id || undefined,
+            event: row.event,
+            tool: row.tool || undefined,
+            tool_use_id: row.tool_use_id || undefined,
+            message: row.message || undefined,
+            session_id: row.session_id || undefined,
+            agent_id: row.agent_id || undefined,
+            agent_type: row.agent_type || undefined,
+            transcript_path: row.transcript_path || undefined,
+            cwd: row.cwd || undefined,
+            extra: parseHookExtra(row.extra),
+            timestamp: row.timestamp,
+          },
+          !!row.has_details,
+        ),
+      );
     }
   } catch {
     /* DB not ready yet — buffer stays empty, events will arrive live */
@@ -3838,8 +3907,8 @@ function getState(): DashboardState {
     tasks: [],
     taskRunLogs: [],
     registeredGroups,
-    hookEvents: hookEvents.slice(-STATE_PUSH_HOOK_EVENTS),
     timestamp: Date.now(),
+    lastHookEventId: hookEvents.at(-1)?.id ?? 0,
     maxConcurrentContainers: MAX_CONCURRENT_CONTAINERS,
   };
 }
@@ -3856,9 +3925,58 @@ const wsClients = new Set<any>();
 const sseClients = new Set<import('http').ServerResponse>();
 
 let lastBroadcastJson: string | null = null;
+let stateCache:
+  | {
+      data: DashboardState;
+      json: string;
+      envelope: string;
+      dedupJson: string;
+      createdAt: number;
+    }
+  | undefined;
+let stateCacheDirty = true;
 const clientSkipCounts = new WeakMap<any, number>();
-const BACKPRESSURE_THRESHOLD = 2 * 1024 * 1024; // 2MB
-const MAX_CONSECUTIVE_SKIPS = 20; // ~10 seconds at 2 Hz
+const STATE_REFRESH_MS = 5_000;
+const BACKPRESSURE_THRESHOLD = 512 * 1024;
+const MAX_CONSECUTIVE_SKIPS = 5;
+
+function invalidateStateCache(): void {
+  stateCacheDirty = true;
+}
+
+function getStateCache(): NonNullable<typeof stateCache> {
+  const now = Date.now();
+  if (!stateCache || stateCacheDirty || now - stateCache.createdAt >= STATE_REFRESH_MS) {
+    if (!db) db = openDb();
+    const data = getState();
+    const { timestamp: _timestamp, lastHookEventId: _lastHookEventId, ...stableData } = data;
+    stateCache = {
+      data,
+      json: JSON.stringify(data),
+      envelope: JSON.stringify({ type: 'state', data }),
+      dedupJson: JSON.stringify(stableData),
+      createdAt: now,
+    };
+    stateCacheDirty = false;
+  }
+  return stateCache;
+}
+
+function getLiveCoworkerPatch(event: HookEvent): Partial<CoworkerState> & { folder: string } {
+  const hookState = liveHookState.get(event.group);
+  const subagents = Array.from(liveSubagentState.get(event.group)?.values() || [])
+    .sort((a, b) => a.startedAt - b.startedAt)
+    .map((subagent) => ({ ...subagent }));
+  return {
+    folder: event.group,
+    agentGroupId: event.agent_group_id ?? null,
+    status: hookState?.agentActive ? hookState.status || 'working' : 'idle',
+    lastToolUse: hookState?.tool || null,
+    lastNotification: hookState?.notification || null,
+    hookTimestamp: hookState?.ts || event.timestamp,
+    subagents,
+  };
+}
 
 export function resetTransientDashboardStateForTests(): void {
   hookEvents.length = 0;
@@ -3874,6 +3992,8 @@ export function resetTransientDashboardStateForTests(): void {
   wsClients.clear();
   sseClients.clear();
   lastBroadcastJson = null;
+  stateCache = undefined;
+  stateCacheDirty = true;
   try {
     db?.close();
   } catch {
@@ -3910,68 +4030,56 @@ export function forceOpenDbForTests(): void {
 
 function broadcastState(): void {
   if (wsClients.size === 0 && sseClients.size === 0) return;
-  const data = getState() as Record<string, unknown>;
-  const state = JSON.stringify({ type: 'state', data });
+  const cached = getStateCache();
+  if (cached.dedupJson === lastBroadcastJson) return;
+  lastBroadcastJson = cached.dedupJson;
+  broadcastMessageJson(cached.envelope);
+}
 
-  // Skip if state is identical to last broadcast.
-  // The top-level `data.timestamp` is wall-clock and changes every tick — exclude
-  // it from the dedup key so we don't broadcast 1.7 MB just to advance a clock.
-  // Clients still receive the timestamp in the payload they get on real changes.
-  const { timestamp: _ts, ...rest } = data;
-  const dedupKey = JSON.stringify(rest);
-  if (dedupKey === lastBroadcastJson) return;
-  lastBroadcastJson = dedupKey;
+function removeSlowClient(client: any, clients: Set<any>): void {
+  const skipCount = (clientSkipCounts.get(client) ?? 0) + 1;
+  clientSkipCounts.set(client, skipCount);
+  if (skipCount < MAX_CONSECUTIVE_SKIPS) return;
+  try {
+    client.end();
+  } catch {
+    /* ignore */
+  }
+  clients.delete(client);
+}
 
+function broadcastMessageJson(json: string, eventId?: number): void {
+  const wsFrame = createWsFrame(Buffer.from(json));
   for (const ws of wsClients) {
     try {
-      // Check backpressure: if socket has pending data, skip this round
       if (ws.writableLength > BACKPRESSURE_THRESHOLD) {
-        const skipCount = (clientSkipCounts.get(ws) ?? 0) + 1;
-        clientSkipCounts.set(ws, skipCount);
-        if (skipCount >= MAX_CONSECUTIVE_SKIPS) {
-          // Close this client after too many skips
-          try {
-            const closeFrame = createWsFrame(Buffer.alloc(0), 0x8);
-            ws.write(closeFrame);
-          } catch {
-            /* ignore */
-          }
-          ws.end();
-          wsClients.delete(ws);
-        }
+        removeSlowClient(ws, wsClients);
         continue;
       }
-      // Reset skip count on successful send
       clientSkipCounts.set(ws, 0);
-      const buf = Buffer.from(state);
-      const frame = createWsFrame(buf);
-      ws.write(frame);
+      ws.write(wsFrame);
     } catch {
       wsClients.delete(ws);
     }
   }
 
-  const ssePayload = `data: ${state}\n\n`;
+  const ssePayload = `${eventId ? `id: ${eventId}\n` : ''}data: ${json}\n\n`;
   for (const client of sseClients) {
     try {
-      // Check backpressure: if response has pending data, skip this round
       if (client.writableLength > BACKPRESSURE_THRESHOLD) {
-        const skipCount = (clientSkipCounts.get(client) ?? 0) + 1;
-        clientSkipCounts.set(client, skipCount);
-        if (skipCount >= MAX_CONSECUTIVE_SKIPS) {
-          // Close this client after too many skips
-          client.end();
-          sseClients.delete(client);
-        }
+        removeSlowClient(client, sseClients);
         continue;
       }
-      // Reset skip count on successful send
       clientSkipCounts.set(client, 0);
-      client.write(ssePayload);
+      if (!client.write(ssePayload)) removeSlowClient(client, sseClients);
     } catch {
       sseClients.delete(client);
     }
   }
+}
+
+function broadcastHookEvent(event: HookEventSummary, coworker: Partial<CoworkerState> & { folder: string }): void {
+  broadcastMessageJson(JSON.stringify({ type: 'hook-event', data: event, coworker }), event.id);
 }
 
 function createWsFrame(data: Buffer, opcode = 0x1): Buffer {
@@ -4971,10 +5079,6 @@ export async function handleRequest(
       }
       event.extra = Object.keys(extra).length > 0 ? extra : undefined;
 
-      // All events go into ring buffer (including PreToolUse for tool-pair correlation)
-      hookEvents.push(event);
-      if (hookEvents.length > MAX_HOOK_EVENTS) hookEvents.shift();
-
       // Persist to database
       const heDb = getHookEventsDb();
       if (heDb) {
@@ -4987,7 +5091,7 @@ export async function handleRequest(
           }
         }
         try {
-          heDb
+          const insertResult = heDb
             .prepare(
               `INSERT INTO hook_events
             (group_folder, event, tool, tool_use_id, message, tool_input, tool_response,
@@ -5010,6 +5114,7 @@ export async function handleRequest(
               event.extra ? JSON.stringify(event.extra) : null,
               event.timestamp,
             );
+          event.id = Number(insertResult.lastInsertRowid);
           // Stamp sdk_session_routes when the container told us its nano
           // session id. We validate the claim before writing — the header
           // is attacker-addressable, so a bad/stale/custom hook must not
@@ -5101,7 +5206,11 @@ export async function handleRequest(
       }
       updateLiveSubagentState(event);
 
-      broadcastState();
+      const eventSummary = toHookEventSummary(event);
+      hookEvents.push(eventSummary);
+      if (hookEvents.length > MAX_HOOK_EVENTS) hookEvents.shift();
+      invalidateStateCache();
+      broadcastHookEvent(eventSummary, getLiveCoworkerPatch(event));
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('{"ok":true}');
     } catch {
@@ -5115,7 +5224,7 @@ export async function handleRequest(
   if (url.pathname === '/api/state') {
     if (!requireAuth(req, res)) return;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(getState()));
+    res.end(getStateCache().json);
     return;
   }
 
@@ -5259,12 +5368,36 @@ export async function handleRequest(
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
     });
-    res.write(': connected\n\n');
-    res.write(`data: ${JSON.stringify({ type: 'state', data: getState() })}\n\n`);
+    res.write('retry: 5000\n\n: connected\n\n');
     sseClients.add(res);
-    req.on('close', () => {
+
+    if (url.searchParams.get('snapshot') !== '0') {
+      res.write(`data: ${getStateCache().envelope}\n\n`);
+    }
+
+    const cursorValue =
+      url.searchParams.get('after') ||
+      (typeof req.headers['last-event-id'] === 'string' ? req.headers['last-event-id'] : '');
+    const cursor = Number.parseInt(cursorValue, 10);
+    if (Number.isFinite(cursor) && cursor >= 0) {
+      const firstBufferedId = hookEvents.find((event) => event.id !== undefined)?.id;
+      if (firstBufferedId !== undefined && cursor < firstBufferedId - 1) {
+        res.write(`data: ${JSON.stringify({ type: 'resync' })}\n\n`);
+      } else {
+        for (const event of hookEvents) {
+          if (event.id === undefined || event.id <= cursor) continue;
+          const payload = JSON.stringify({ type: 'hook-event', data: event });
+          res.write(`id: ${event.id}\ndata: ${payload}\n\n`);
+        }
+      }
+    }
+
+    const removeClient = () => {
       sseClients.delete(res);
-    });
+    };
+    req.on('close', removeClient);
+    res.socket?.on('close', removeClient);
+    res.socket?.on('error', removeClient);
     return;
   }
 
@@ -5523,12 +5656,10 @@ export async function handleRequest(
     if (!requireAuth(req, res)) return;
     const group = url.searchParams.get('group');
     const filtered = group ? hookEvents.filter((e) => e.group === group) : hookEvents;
-    // Return the bootstrap-sized window so the timeline UI's first paint
-    // doesn't pay the cost of rendering thousands of DOM rows. Older events
-    // are reached via /api/hook-events/history (paginated, capped at
-    // MAX_HOOK_EVENTS). See STATE_PUSH_HOOK_EVENTS rationale near the cap.
+    const requestedLimit = Number.parseInt(url.searchParams.get('limit') || `${RECENT_HOOK_EVENT_LIMIT}`, 10);
+    const limit = Math.max(1, Math.min(requestedLimit || RECENT_HOOK_EVENT_LIMIT, 500));
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(filtered.slice(-STATE_PUSH_HOOK_EVENTS)));
+    res.end(JSON.stringify(filtered.slice(-limit)));
     return;
   }
 
@@ -5580,10 +5711,79 @@ export async function handleRequest(
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     try {
       const rows = heDb
-        .prepare(`SELECT * FROM hook_events ${where} ORDER BY timestamp DESC LIMIT ?`)
-        .all(...params, limit);
+        .prepare(
+          `SELECT id, group_folder, event, tool, tool_use_id,
+                  substr(message, 1, ${HOOK_SUMMARY_MESSAGE_LIMIT}) AS message,
+                  session_id, agent_id, agent_type, transcript_path, cwd,
+                  CASE WHEN length(extra) <= 2048 THEN extra ELSE NULL END AS extra,
+                  timestamp,
+                  CASE WHEN tool_input IS NOT NULL
+                          OR tool_response IS NOT NULL
+                          OR length(message) > ${HOOK_SUMMARY_MESSAGE_LIMIT}
+                          OR length(extra) > 2048
+                       THEN 1 ELSE 0 END AS has_details
+             FROM hook_events ${where}
+            ORDER BY timestamp DESC LIMIT ?`,
+        )
+        .all(...params, limit) as any[];
+      const summaries = rows.map((row) => {
+        const summary = toHookEventSummary(
+          {
+            id: row.id,
+            group: row.group_folder,
+            event: row.event,
+            tool: row.tool || undefined,
+            tool_use_id: row.tool_use_id || undefined,
+            message: row.message || undefined,
+            session_id: row.session_id || undefined,
+            agent_id: row.agent_id || undefined,
+            agent_type: row.agent_type || undefined,
+            transcript_path: row.transcript_path || undefined,
+            cwd: row.cwd || undefined,
+            extra: parseHookExtra(row.extra),
+            timestamp: row.timestamp,
+          },
+          !!row.has_details,
+        );
+        return { ...summary, group_folder: row.group_folder };
+      });
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(rows));
+      res.end(JSON.stringify(summaries));
+    } catch (e: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  const hookEventDetailMatch = url.pathname.match(/^\/api\/hook-events\/(\d+)$/);
+  if (hookEventDetailMatch) {
+    if (!requireAuth(req, res)) return;
+    const heDb = getHookEventsDb();
+    if (!heDb) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end('{"error":"hook event not found"}');
+      return;
+    }
+    try {
+      const row = heDb
+        .prepare('SELECT id, message, tool_input, tool_response, extra FROM hook_events WHERE id = ?')
+        .get(Number.parseInt(hookEventDetailMatch[1], 10)) as any;
+      if (!row) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end('{"error":"hook event not found"}');
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          id: row.id,
+          message: row.message || null,
+          tool_input: row.tool_input || null,
+          tool_response: row.tool_response || null,
+          extra: parseHookExtra(row.extra) || null,
+        }),
+      );
     } catch (e: any) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));
@@ -11363,8 +11563,7 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
 
     wsClients.add(socket);
 
-    const state = JSON.stringify({ type: 'state', data: getState() });
-    socket.write(createWsFrame(Buffer.from(state)));
+    socket.write(createWsFrame(Buffer.from(getStateCache().envelope)));
 
     let buffer = head.length > 0 ? Buffer.from(head) : Buffer.alloc(0);
     socket.on('data', (data: Buffer) => {
@@ -11394,27 +11593,47 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
     socket.on('error', () => wsClients.delete(socket));
   });
 
-  // Poll and broadcast state every 500ms
+  // Hook events are streamed as compact deltas. The slower core snapshot
+  // catches changes from DB/filesystem-backed caches without rebuilding state
+  // on every tool call or for every connected browser.
   const broadcastTimer = setInterval(() => {
-    if (!db) db = openDb();
     broadcastState();
-  }, 500);
+  }, STATE_REFRESH_MS);
   broadcastTimer.unref?.();
+
+  const heartbeatTimer = setInterval(() => {
+    for (const client of sseClients) {
+      try {
+        if (!client.write(': keepalive\n\n')) removeSlowClient(client, sseClients);
+      } catch {
+        sseClients.delete(client);
+      }
+    }
+  }, 20_000);
+  heartbeatTimer.unref?.();
 
   // Expire stale hook state (>30s old)
   const expireTimer = setInterval(() => {
     const now = Date.now();
+    let changed = false;
     for (const [key, val] of liveHookState) {
-      if (now - val.ts > 30000) liveHookState.delete(key);
+      if (now - val.ts > 30000) {
+        liveHookState.delete(key);
+        changed = true;
+      }
     }
     for (const [group, subagents] of liveSubagentState) {
       for (const [agentId, subagent] of subagents) {
         const isExpiredLeaving = subagent.phase === 'leaving' && subagent.exitAt !== null && now > subagent.exitAt;
         const isExpiredActive = subagent.phase !== 'leaving' && now - subagent.lastActivity > SUBAGENT_STALE_MS;
-        if (isExpiredLeaving || isExpiredActive) subagents.delete(agentId);
+        if (isExpiredLeaving || isExpiredActive) {
+          subagents.delete(agentId);
+          changed = true;
+        }
       }
       if (subagents.size === 0) liveSubagentState.delete(group);
     }
+    if (changed) invalidateStateCache();
   }, 5000);
   expireTimer.unref?.();
 
@@ -11457,6 +11676,7 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
     stopWatchingMcpToken?.();
     clearInterval(mcpRefreshTimer);
     clearInterval(broadcastTimer);
+    clearInterval(heartbeatTimer);
     clearInterval(expireTimer);
     clearInterval(retentionTimer);
     for (const client of sseClients) {

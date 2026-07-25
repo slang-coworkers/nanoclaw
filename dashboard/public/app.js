@@ -188,6 +188,11 @@ let selectedCoworker = null;
 let frame = 0;
 let liveSource = null;
 let pollTimer = null;
+let liveReconnectTimer = null;
+let liveReconnectAttempt = 0;
+let hiddenDisconnectTimer = null;
+let lastHookEventId = 0;
+let liveResyncPromise = null;
 let hoveredDesk = -1;
 let timelineFilter = null; // group folder filter for timeline
 let cachedMessages = []; // messages fetched from /api/messages
@@ -197,6 +202,8 @@ let cachedSessions = []; // sessions list from /api/hook-events/sessions
 let timelineNoMoreEvents = false;
 let timelineDisplayLimit = 200;
 let timelineOlderEvents = []; // Events loaded via "Load older" — survive state polls
+const hookEventDetails = new Map();
+const LIVE_HOOK_EVENT_LIMIT = 500;
 
 const Z = PixelSprites.ZOOM;
 const OFFICE_TILE = PixelSprites.TILE;
@@ -1410,7 +1417,10 @@ function updateDetailHooks(cw) {
 }
 
 function applyState(nextState) {
-  state = nextState;
+  const nextHookEvents = Object.prototype.hasOwnProperty.call(nextState, 'hookEvents')
+    ? nextState.hookEvents
+    : state.hookEvents;
+  state = { ...state, ...nextState, hookEvents: nextHookEvents || [] };
   updateTimeline();
   // Live-update coworkers tab sidebar
   if (typeof scheduleCwRefresh === 'function') scheduleCwRefresh();
@@ -1419,7 +1429,7 @@ function applyState(nextState) {
   // poll remains as a fallback. State shape tolerates either .coworkers
   // or .registeredGroups carrying the timestamp.
   if (cwState && cwState.selected) {
-    const cw = (nextState.coworkers || []).find((c) => c.folder === cwState.selected);
+    const cw = (state.coworkers || []).find((c) => c.folder === cwState.selected);
     const ts = cw?.lastMessageTs || cw?.lastActivity || null;
     if (ts && ts !== cwState.lastMainMessageTs) {
       cwState.lastMainMessageTs = ts;
@@ -1466,6 +1476,45 @@ function applyState(nextState) {
   }
 }
 
+function hookEventKey(event) {
+  return event.id ? `id:${event.id}` : `${event.timestamp}|${event.group}|${event.event}|${event.tool_use_id || ''}`;
+}
+
+function mergeHookEvents(events) {
+  const merged = new Map((state.hookEvents || []).map((event) => [hookEventKey(event), event]));
+  for (const event of events || []) {
+    merged.set(hookEventKey(event), event);
+    lastHookEventId = Math.max(lastHookEventId, Number(event.id) || 0);
+  }
+  return Array.from(merged.values())
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .slice(-LIVE_HOOK_EVENT_LIMIT);
+}
+
+function applyHookEvent(event, coworkerPatch) {
+  const nextCoworkers = (state.coworkers || []).map((coworker) =>
+    coworker.folder === coworkerPatch?.folder ? { ...coworker, ...coworkerPatch } : coworker,
+  );
+  applyState({
+    ...state,
+    coworkers: nextCoworkers,
+    hookEvents: mergeHookEvents([event]),
+    lastHookEventId: Math.max(lastHookEventId, Number(event.id) || 0),
+  });
+}
+
+async function loadRecentHookEvents() {
+  try {
+    const res = await fetch('/api/hook-events?limit=200', { cache: 'no-store' });
+    if (!res.ok) return false;
+    const events = await res.json();
+    applyState({ ...state, hookEvents: mergeHookEvents(events) });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function pollState() {
   try {
     const res = await fetch('/api/state', { cache: 'no-store' });
@@ -1480,13 +1529,13 @@ async function pollState() {
 function startPolling() {
   if (pollTimer) return;
   setLiveStatus('Polling Fallback', 'var(--yellow)');
-  pollState();
+  void Promise.all([pollState(), loadRecentHookEvents()]);
   pollTimer = setInterval(async () => {
-    const ok = await pollState();
-    if (!ok) {
+    const [stateOk] = await Promise.all([pollState(), loadRecentHookEvents()]);
+    if (!stateOk) {
       setLiveStatus('Reconnecting...', 'var(--yellow)');
     }
-  }, 1000);
+  }, 10000);
 }
 
 function stopPolling() {
@@ -1495,28 +1544,63 @@ function stopPolling() {
   pollTimer = null;
 }
 
+function scheduleLiveReconnect() {
+  if (liveReconnectTimer || document.hidden) return;
+  const baseDelay = Math.min(30000, 1000 * 2 ** Math.min(liveReconnectAttempt, 5));
+  const delay = baseDelay + Math.floor(Math.random() * 1000);
+  liveReconnectAttempt += 1;
+  liveReconnectTimer = setTimeout(() => {
+    liveReconnectTimer = null;
+    connectLiveUpdates();
+  }, delay);
+}
+
+async function resyncLiveData() {
+  if (liveResyncPromise) return liveResyncPromise;
+  liveResyncPromise = Promise.all([pollState(), loadRecentHookEvents()]).finally(() => {
+    liveResyncPromise = null;
+  });
+  return liveResyncPromise;
+}
+
 function connectLiveUpdates() {
   if (!('EventSource' in window)) {
     startPolling();
     return;
   }
+  if (document.hidden) return;
+  if (liveReconnectTimer) {
+    clearTimeout(liveReconnectTimer);
+    liveReconnectTimer = null;
+  }
   if (liveSource) liveSource.close();
-  liveSource = new EventSource('/api/events');
-  liveSource.onopen = () => {
+  const source = new EventSource(`/api/events?snapshot=0&after=${encodeURIComponent(lastHookEventId)}`);
+  liveSource = source;
+  source.onopen = () => {
+    if (liveSource !== source) return;
+    liveReconnectAttempt = 0;
     stopPolling();
     setLiveStatus('Connected', 'var(--green)');
   };
-  liveSource.onmessage = (e) => {
+  source.onmessage = (e) => {
+    if (liveSource !== source) return;
     try {
       const msg = JSON.parse(e.data);
       if (msg.type === 'state') {
         applyState(msg.data);
+      } else if (msg.type === 'hook-event') {
+        applyHookEvent(msg.data, msg.coworker);
+      } else if (msg.type === 'resync') {
+        void resyncLiveData();
       }
     } catch {}
   };
-  liveSource.onerror = () => {
-    startPolling();
+  source.onerror = () => {
+    if (liveSource !== source) return;
+    source.close();
+    liveSource = null;
     setLiveStatus('Reconnecting...', 'var(--yellow)');
+    scheduleLiveReconnect();
   };
 }
 
@@ -2720,16 +2804,18 @@ const handleTimelineLoadMore = async (e) => {
     }
     for (const row of rows) {
       timelineOlderEvents.push({
-        group: row.group_folder,
+        id: row.id,
+        group: row.group,
+        agent_group_id: row.agent_group_id,
         event: row.event,
         tool: row.tool || undefined,
         tool_use_id: row.tool_use_id || undefined,
         message: row.message || undefined,
-        tool_input: row.tool_input || undefined,
-        tool_response: row.tool_response || undefined,
         session_id: row.session_id || undefined,
         agent_id: row.agent_id || undefined,
         agent_type: row.agent_type || undefined,
+        extra: row.extra || undefined,
+        has_details: !!row.has_details,
         timestamp: row.timestamp,
       });
     }
@@ -2793,12 +2879,12 @@ function updateTimeline() {
   const seenHookKeys = new Set();
   const allHookEvents = [];
   for (const ev of state.hookEvents) {
-    const key = `${ev.timestamp}|${ev.group}|${ev.event}|${ev.tool_use_id || ''}`;
+    const key = hookEventKey(ev);
     seenHookKeys.add(key);
     allHookEvents.push(ev);
   }
   for (const ev of timelineOlderEvents) {
-    const key = `${ev.timestamp}|${ev.group}|${ev.event}|${ev.tool_use_id || ''}`;
+    const key = hookEventKey(ev);
     if (!seenHookKeys.has(key)) allHookEvents.push(ev);
   }
 
@@ -2893,6 +2979,8 @@ function updateTimeline() {
       badgeClass,
       toolInput: ev.tool_input || '',
       toolResponse: ev.tool_response || '',
+      hookEventId: ev.id || null,
+      hasDetails: !!ev.has_details,
       duration,
       sessionId: ev.session_id || '',
     });
@@ -2997,8 +3085,11 @@ function updateTimeline() {
     }
     prevGroup = group;
     const gc = getGroupColor(group);
-    const hasExpand = ev.toolInput || ev.toolResponse;
-    const expandId = `tl-expand-${idx}`;
+    const loadedDetails = ev.hookEventId ? hookEventDetails.get(String(ev.hookEventId)) : null;
+    const toolInput = loadedDetails?.tool_input || ev.toolInput || '';
+    const toolResponse = loadedDetails?.tool_response || ev.toolResponse || '';
+    const hasExpand = ev.hasDetails || toolInput || toolResponse;
+    const expandId = ev.hookEventId ? `tl-expand-hook-${ev.hookEventId}` : `tl-expand-${idx}`;
     htmlParts.push(`<div class="tl-entry" data-event-group="${escAttr(group)}" data-event-time="${String(ev.time)}" data-event-type="${escAttr(ev.type)}">
       <div class="tl-time">${formatTimeFull(ev.time)}</div>
       <div class="tl-line"><div class="tl-dot" style="background:${ev.iconColor}"></div><div class="tl-connector"></div></div>
@@ -3009,15 +3100,20 @@ function updateTimeline() {
           <span class="tl-title">${esc(ev.title)}</span>
           ${ev.duration != null ? `<span class="tl-duration">${formatDuration(ev.duration)}</span>` : ''}
           ${ev.sessionId ? `<span class="tl-session-link" data-session-id="${escAttr(ev.sessionId)}" data-session-group="${escAttr(group)}">${ev.sessionId.slice(0, 8)}</span>` : ''}
-          ${hasExpand ? `<button class="tl-expand-btn" data-target="${expandId}">[+]</button>` : ''}
+          ${hasExpand ? `<button class="tl-expand-btn" data-target="${expandId}"${ev.hookEventId ? ` data-hook-event-id="${ev.hookEventId}"` : ''}>[+]</button>` : ''}
         </div>
         ${ev.prompt ? `<div class="tl-prompt">${esc(ev.prompt.slice(0, 120))}</div>` : ''}
         <div class="tl-detail">${esc(ev.detail)}</div>
         ${
           hasExpand
             ? `<div class="tl-expand-content" id="${expandId}" style="display:none">
-          ${ev.toolInput ? `<div class="tl-code-block"><label>Tool Input</label><pre>${esc(ev.toolInput)}</pre></div>` : ''}
-          ${ev.toolResponse ? `<div class="tl-code-block"><label>Tool Response</label><pre>${esc(ev.toolResponse)}</pre></div>` : ''}
+          ${
+            loadedDetails
+              ? renderHookEventDetails(loadedDetails)
+              : `${toolInput ? `<div class="tl-code-block"><label>Tool Input</label><pre>${esc(toolInput)}</pre></div>` : ''}
+          ${toolResponse ? `<div class="tl-code-block"><label>Tool Response</label><pre>${esc(toolResponse)}</pre></div>` : ''}
+          ${!toolInput && !toolResponse && ev.hookEventId ? '<div class="tl-code-block"><span>Expand to load details</span></div>' : ''}`
+          }
         </div>`
             : ''
         }
@@ -3653,8 +3749,29 @@ function openSessionFlowById(group, sessionId) {
   enterSessionFlow(group, sessionId);
 }
 
+function renderHookEventDetails(details) {
+  const blocks = [];
+  if (details?.message) {
+    blocks.push(`<div class="tl-code-block"><label>Message</label><pre>${esc(details.message)}</pre></div>`);
+  }
+  if (details?.tool_input) {
+    blocks.push(`<div class="tl-code-block"><label>Tool Input</label><pre>${esc(details.tool_input)}</pre></div>`);
+  }
+  if (details?.tool_response) {
+    blocks.push(
+      `<div class="tl-code-block"><label>Tool Response</label><pre>${esc(details.tool_response)}</pre></div>`,
+    );
+  }
+  if (details?.extra) {
+    blocks.push(
+      `<div class="tl-code-block"><label>Extra</label><pre>${esc(JSON.stringify(details.extra, null, 2))}</pre></div>`,
+    );
+  }
+  return blocks.join('') || '<div class="tl-code-block"><span>No additional details</span></div>';
+}
+
 // --- Event delegation for timeline interactions ---
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
   // Expand/collapse toggle for tool_input/tool_response
   const expandBtn = e.target.closest('.tl-expand-btn');
   if (expandBtn) {
@@ -3662,6 +3779,20 @@ document.addEventListener('click', (e) => {
     const target = document.getElementById(targetId);
     if (target) {
       const isVisible = target.style.display !== 'none';
+      const hookEventId = expandBtn.dataset.hookEventId;
+      if (!isVisible && hookEventId && !hookEventDetails.has(hookEventId)) {
+        target.innerHTML = '<div class="tl-code-block"><span>Loading details…</span></div>';
+        try {
+          const res = await fetch(`/api/hook-events/${encodeURIComponent(hookEventId)}`, { cache: 'no-store' });
+          if (!res.ok) throw new Error('detail fetch failed');
+          const details = await res.json();
+          hookEventDetails.set(hookEventId, details);
+          target.innerHTML = renderHookEventDetails(details);
+        } catch {
+          target.innerHTML = '<div class="tl-code-block"><span>Failed to load details</span></div>';
+          return;
+        }
+      }
       target.style.display = isVisible ? 'none' : 'block';
       expandBtn.textContent = isVisible ? '[+]' : '[-]';
     }
@@ -8316,6 +8447,7 @@ async function bootstrapDashboardApp() {
     setLiveStatus('Locked', 'var(--yellow)');
     return;
   }
+  await Promise.all([pollState(), loadRecentHookEvents()]);
   connectLiveUpdates();
   animate();
 }
@@ -8326,6 +8458,26 @@ bootstrapDashboardApp().catch(() => {
 
 window.addEventListener('beforeunload', () => {
   if (liveSource) liveSource.close();
+  if (liveReconnectTimer) clearTimeout(liveReconnectTimer);
+  if (hiddenDisconnectTimer) clearTimeout(hiddenDisconnectTimer);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    hiddenDisconnectTimer = setTimeout(() => {
+      if (!document.hidden) return;
+      if (liveSource) liveSource.close();
+      liveSource = null;
+      if (liveReconnectTimer) clearTimeout(liveReconnectTimer);
+      liveReconnectTimer = null;
+      setLiveStatus('Paused', 'var(--text-muted)');
+    }, 30000);
+    return;
+  }
+
+  if (hiddenDisconnectTimer) clearTimeout(hiddenDisconnectTimer);
+  hiddenDisconnectTimer = null;
+  void resyncLiveData().finally(() => connectLiveUpdates());
 });
 
 // --- Infrastructure Panel ---
