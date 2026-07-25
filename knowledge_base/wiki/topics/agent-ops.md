@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-246 learnings. [Catalog](../index.md)
+252 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [[approver/calibration] check-ci-is-aggregation-gate-not-independent-failure](../learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gate-.md)
@@ -62,6 +62,7 @@ type: topic
 - [A supervisor dropped-promise nudge can resolve to STAND-DOWN, not re-wake — re-verify assignee first](../learnings/1784033086075-a-supervisor-dropped-promise-nudge-can-resolve-to-.md)
 - [A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done, not by id string](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
 - [a2a silent-hold: plain-text turn output routes to the peer (echo-loop trap)](../learnings/1782353887467-a2a-silent-hold-plain-text-turn-output-routes-to-t.md)
+- [Additive review-nit rounds still need CHECK-NOT backing + accurate comments (codex catches self-authored false claims)](../learnings/1784884204062-additive-review-nit-rounds-still-need-check-not-ba.md)
 - [Agent ncl restart can't target another group](../learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md)
 - [Always rebase before codex CODE_REVIEW to get a tight scope diff](../learnings/1780304385745-always-rebase-before-codex-code-review-to-get-a-ti.md)
 - [Approver: critique-gate hook false-positives on read-only `gh api .../pulls`](../learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md)
@@ -77,6 +78,7 @@ type: topic
 - [Bot enqueuePullRequest blocked for ALL PRs, not just forks](../learnings/1782260121429-bot-enqueuepullrequest-blocked-for-all-prs-not-jus.md)
 - [Branch name fix/issue-N on an external fork can fool "ours" PR classification](../learnings/1780903498636-branch-name-fix-issue-n-on-an-external-fork-can-fo.md)
 - [C++ versioned-struct inheritance: non-standard-layout ≠ non-aggregate; use base-slicing not offsetof](../learnings/1784851897134-c-versioned-struct-inheritance-non-standard-layout.md)
+- [capdef internal _atom aliases (incl _*_latest) MUST have a public pair or generator errors 20007](../learnings/1784890869028-capdef-internal-atom-aliases-incl-latest-must-have.md)
 - [Chain-routing gate: fresh peer delegations carrying handoff/report markers still require in_reply_to](../learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md)
 - [Check for existing bot comment before posting GitHub triage artifact (cross-tier double-post risk)](../learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md)
 - [claude-vs-codex-provider-parity](../learnings/1778085879531-claude-vs-codex-provider-parity.md)
@@ -109,6 +111,7 @@ type: topic
 - [Critique gate fires on no-code triage-confirmations too](../learnings/1783523465568-critique-gate-fires-on-no-code-triage-confirmation.md)
 - [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
 - [critique-gate bash_patterns false-blocks read-only gh api pulls GETs](../learnings/1784126848994-critique-gate-bash-patterns-false-blocks-read-only.md)
+- [critique-gate coverage resets on ANY edit after OUTPUT approve — write memory BEFORE the final review](../learnings/1784898493181-critique-gate-coverage-resets-on-any-edit-after-ou.md)
 - [critique-gate false-trips on no-artifact refusals; use a non-gated label](../learnings/1784755033543-critique-gate-false-trips-on-no-artifact-refusals-.md)
 - [Critique-gate OUTPUT_REVIEW is sticky within a reused codex thread](../learnings/1781386183865-critique-gate-output-review-is-sticky-within-a-reu.md)
 - [Critique-gate records verdict from fresh codex calls, not codex-reply rounds](../learnings/1781661845733-critique-gate-records-verdict-from-fresh-codex-cal.md)
@@ -178,6 +181,7 @@ type: topic
 - [Never background a long build in a fixer session — foreground it; ninja resumes incrementally across reaps](../learnings/1783953647247-never-background-a-long-build-in-a-fixer-session-f.md)
 - [Nightly MDL Perf Test = compile-time perf gate, not a GPU/corpus test](../learnings/1784184423207-nightly-mdl-perf-test-compile-time-perf-gate-not-a.md)
 - [nv-* pre-commit hook runs format:fix then re-adds only src/**/*.ts — silently drops other staged files from the commit](../learnings/legoop-feedback_precommit_hook_drops_files.md)
+- [Onboard-repo-to-dashboard issues are ops/infra, not code triage](../learnings/1784913528281-onboard-repo-to-dashboard-issues-are-ops-infra-not.md)
 - [Orchestrator double-dispatch spawns duplicate fixer sessions on one branch](../learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md)
 - [Peer 'not addressable / blocked' can mean session logged-out — operator /login blocker, don't re-dispatch](../learnings/1783565846208-peer-not-addressable-blocked-can-mean-session-logg.md)
 - [Persist parent-agreed timing gates; flag before acting early](../learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)
@@ -238,6 +242,8 @@ type: topic
 - [Untraceable from-parent mandate for costly/gated work — analyze cheaply and surface, don't execute](../learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated-w.md)
 - [Use Explore subagent (not a bare fork) for the learnings-scan step](../learnings/1782329772659-use-explore-subagent-not-a-bare-fork-for-the-learn.md)
 - [Verified GitHub comments/labels are NOT operator-gated — only pr-ready/merge/auto-close are](../learnings/1782894060592-verified-github-comments-labels-are-not-operator-g.md)
+- [Verify a CI run belongs to THIS PR/head before crediting its conclusion](../learnings/1784873907730-verify-a-ci-run-belongs-to-this-pr-head-before-cre.md)
+- [Verify a claimed A2A handoff actually fired — a stale critique gate can silently block the send](../learnings/1784882173077-verify-a-claimed-a2a-handoff-actually-fired-a-stal.md)
 - [Verify a PR's live state before rolling a fixer's PR-state claim upstream — maintainer-side actions go stale fast](../learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md)
 - [Verify a triage's predicate premise at HEAD (revert-drill) before fixing on top of it — #11889 HitObject NVAPI premise was empirically false](../learnings/1782991917563-verify-a-triage-s-predicate-premise-at-head-revert.md)
 - [Verify against source before trusting single-point triage OR contradictory reviewer invariants](../learnings/1782935715651-verify-against-source-before-trusting-single-point.md)

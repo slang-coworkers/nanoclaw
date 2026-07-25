@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-319 learnings. [Catalog](../index.md)
+324 learnings. [Catalog](../index.md)
 
 - [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
@@ -166,10 +166,12 @@ type: topic
 - [deepwiki-can-miss-files-in-large-or-vendored-codebases-cross-check-source](../learnings/1779621016571-deepwiki-can-miss-files-in-large-or-vendored-codeb.md)
 - [Delivering workflow-file changes: diff-as-issue-comment + RelWithDebInfo output-dir](../learnings/1783059878582-delivering-workflow-file-changes-diff-as-issue-com.md)
 - [Descriptor-heap ConstantBuffer miscompile (#11483) = wrong storage class (Uniform not StorageBuffer), NOT missing ArrayStride](../learnings/1783384030612-descriptor-heap-constantbuffer-miscompile-11483-wr.md)
+- [Descriptor-heap ConstantBuffer StorageBuffer flip (#11647) is deliberate — descriptor kind vs pointer addressing class conflated](../learnings/1784939222858-descriptor-heap-constantbuffer-storagebuffer-flip-.md)
 - [Detect groupshared/TGSM codegen bugs on DXIL without a GPU (addrspace(3) vs alloca)](../learnings/1782216962036-detect-groupshared-tgsm-codegen-bugs-on-dxil-witho.md)
 - [Deterministic-ABSTAIN PRs — stop re-running on churn](../learnings/1783972579606-deterministic-abstain-prs-stop-re-running-on-churn.md)
 - [Diagnostic no-loc on ConstantBuffer descriptor-handle: loc dropped by std140 re-synthesis, not frontend](../learnings/1784762842417-diagnostic-no-loc-on-constantbuffer-descriptor-han.md)
 - [DIAGNOSTIC_TEST SIMPLE diag=CHECK: E-code row count = 2× diagnostics (title+span), deduped only if identical](../learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md)
+- [Differentiable property accessor segfaults getFuncType — PropertyDecl is not a CallableDecl](../learnings/1784883686572-differentiable-property-accessor-segfaults-getfunc.md)
 - [Discord per-message char limit is 2000](../learnings/1780404951139-discord-per-message-char-limit-is-2000.md)
 - [Discord send_message enforces a 2000-char hard limit](../learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md)
 - [Do NOT autonomously close issues/PRs — surface to a human maintainer](../learnings/1782280210918-do-not-autonomously-close-issues-prs-surface-to-a-.md)
@@ -239,6 +241,7 @@ type: topic
 - [Merge-queue duplicate-case enum collision: two concurrent PRs appending to the same public enum](../learnings/1782535032557-merge-queue-duplicate-case-enum-collision-two-conc.md)
 - [Mermaid flowcharts for GitHub diagnosis comments: lint + render gotchas](../learnings/1784186351938-mermaid-flowcharts-for-github-diagnosis-comments-l.md)
 - [miniz heap-archive buffers are owned by per-archive callbacks, not global mz_free](../learnings/1783064260282-miniz-heap-archive-buffers-are-owned-by-per-archiv.md)
+- [Module-scope static-const repros need the constant CONSUMED or DCE masks the bug](../learnings/1784915301574-module-scope-static-const-repros-need-the-constant.md)
 - [Mutual empty-ack loop — verify both sides, the reporter isn't silent](../learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md)
 - [Mutual-ack loops between peer-wired coworkers ("Ending silently" ping-pong)](../learnings/1782345863846-mutual-ack-loops-between-peer-wired-coworkers-endi.md)
 - [Never fabricate downstream chain events (PR numbers/reports)](../learnings/1782981166747-never-fabricate-downstream-chain-events-pr-numbers.md)
@@ -287,6 +290,7 @@ type: topic
 - [Sig-B (11951) root cause was JIT-teardown UAF (#12114), not AVX-512 — a real fix-gap can still be mis-attributed](../learnings/1784320016828-sig-b-11951-root-cause-was-jit-teardown-uaf-12114-.md)
 - [Sig-B test-server JSON-RPC drop = AVX-512 JIT SIGILL (11951 resolved by 12056)](../learnings/1784089175111-sig-b-test-server-json-rpc-drop-avx-512-jit-sigill.md)
 - [Slices/shared worktree can be live: verify branch + open slice PRs before adopting (don't trust empty-branch/no-sentinel)](../learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md)
+- [SPV_EXT_descriptor_heap: OpTypeBufferEXT and OpBufferPointerEXT storage classes are INDEPENDENT (no matching rule); DeepWiki wrong](../learnings/1784939925118-spv-ext-descriptor-heap-optypebufferext-and-opbuff.md)
 - [SPV_KHR_abort transitively requires SPV_KHR_constant_data; message is OpConstantDataKHR not a runtime composite](../learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md)
 - [spvDescriptorHeapEXT stride is opaque for AS — load-type must drive runtime-array base type](../learnings/1779962007180-spvdescriptorheapext-stride-is-opaque-for-as-load-.md)
 - [spvDescriptorHeapEXT unified-stride: per-type arrays + symbolic-max construct (#11718)](../learnings/1782264945972-spvdescriptorheapext-unified-stride-per-type-array.md)
@@ -326,3 +330,4 @@ type: topic
 - [Workflow-YAML rename: push is server-rejected — issue-comment diff is the sanctioned outcome](../learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md)
 - [Worktree-GC reap: safe-execution facts (branch refs survive; workflows-perm blocks wip/reap; pipefail bug)](../learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md)
 - [Worktree-GC save-then-remove is mandatory — reap framings are often wrong](../learnings/1783951066058-worktree-gc-save-then-remove-is-mandatory-reap-fra.md)
+- [Zero-filled dylib in test artifact = upload-corruption, rerun-proof](../learnings/1784923930083-zero-filled-dylib-in-test-artifact-upload-corrupti.md)

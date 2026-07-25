@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1688 agent learnings**, synthesized into **46 concept pages**.
+Standalone wiki built from **1712 agent learnings**, synthesized into **46 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -83,11 +83,11 @@ Standalone wiki built from **1688 agent learnings**, synthesized into **46 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (864)
-- [NanoClaw / agent operations](topics/agent-ops.md) (246)
+- [Slang compiler & language](topics/slang-compiler.md) (874)
+- [NanoClaw / agent operations](topics/agent-ops.md) (252)
 - [CI, build & tooling](topics/ci-tooling.md) (143)
-- [Review & process](topics/review-process.md) (116)
-- [Uncategorized](topics/misc.md) (319)
+- [Review & process](topics/review-process.md) (119)
+- [Uncategorized](topics/misc.md) (324)
 
 ## All learnings (chronological)
 
@@ -1779,3 +1779,27 @@ Standalone wiki built from **1688 agent learnings**, synthesized into **46 conce
 - [Triage Step 11 [Triage Resolution] must route on the PARENT edge, not the fix-report id](learnings/1784869746585-triage-step-11-triage-resolution-must-route-on-the.md)
 - [SlangPy profiler PR #1063 also had a drain() snapshot-ordering race (#1072)](learnings/1784869755509-slangpy-profiler-pr-1063-also-had-a-drain-snapshot.md)
 - [SGL profiler drain() #1072 fix — snapshot reorder + why its guard tests are probabilistic](learnings/1784870556172-sgl-profiler-drain-1072-fix-snapshot-reorder-why-i.md)
+- [Verify a CI run belongs to THIS PR/head before crediting its conclusion](learnings/1784873907730-verify-a-ci-run-belongs-to-this-pr-head-before-cre.md)
+- [Daily-report: a fresh draft PR with 0 reviews is NOT proof the review is progressing — check for a landed verdict](learnings/1784881773024-daily-report-a-fresh-draft-pr-with-0-reviews-is-no.md)
+- [Verify a claimed A2A handoff actually fired — a stale critique gate can silently block the send](learnings/1784882173077-verify-a-claimed-a2a-handoff-actually-fired-a-stal.md)
+- [Reuse completed reviewer outputs when head-delta is non-code-only](learnings/1784882724986-reuse-completed-reviewer-outputs-when-head-delta-i.md)
+- [PR #12200 RayQuery-return NRVO review — APPROVE_WITH_NITS, 0 bugs](learnings/1784882737937-pr-12200-rayquery-return-nrvo-review-approve-with-.md)
+- [Differentiable property accessor segfaults getFuncType — PropertyDecl is not a CallableDecl](learnings/1784883686572-differentiable-property-accessor-segfaults-getfunc.md)
+- [Additive review-nit rounds still need CHECK-NOT backing + accurate comments (codex catches self-authored false claims)](learnings/1784884204062-additive-review-nit-rounds-still-need-check-not-ba.md)
+- [capdef internal _atom aliases (incl _*_latest) MUST have a public pair or generator errors 20007](learnings/1784890869028-capdef-internal-atom-aliases-incl-latest-must-have.md)
+- [slang-capability-generator exits 0 despite error diagnostics (issue #12212) + verify tool-exit claims against source not DeepWiki](learnings/1784891885921-slang-capability-generator-exits-0-despite-error-d.md)
+- [Slang replay recording folders collide under parallel test-server processes (no PID in name)](learnings/1784895262564-slang-replay-recording-folders-collide-under-paral.md)
+- [critique-gate coverage resets on ANY edit after OUTPUT approve — write memory BEFORE the final review](learnings/1784898493181-critique-gate-coverage-resets-on-any-edit-after-ou.md)
+- [slang#12186 option-a: layout change RESTORES cap-consistency; module-scope handle const from float/bitcast hits pre-existing global-emit gap](learnings/1784912194039-slang-12186-option-a-layout-change-restores-cap-co.md)
+- [Onboard-repo-to-dashboard issues are ops/infra, not code triage](learnings/1784913528281-onboard-repo-to-dashboard-issues-are-ops-infra-not.md)
+- [Module-scope static-const repros need the constant CONSUMED or DCE masks the bug](learnings/1784915301574-module-scope-static-const-repros-need-the-constant.md)
+- [slang#12186 Q2 UPDATE: explicit alignof(T, Std430DataLayout) query CAN diverge from emitted struct layout — struct-embedding tests MASK it](learnings/1784915310738-slang-12186-q2-update-explicit-alignof-t-std430dat.md)
+- [SPIR-V DebugEntryPoint command-line string: two roots (hardcoded -g2 + no-default serializer switch)](learnings/1784915879616-spir-v-debugentrypoint-command-line-string-two-roo.md)
+- [#language glsl version mis-validates against Slang versions (not isValidGLSLVersion)](learnings/1784916319659-language-glsl-version-mis-validates-against-slang-.md)
+- [Slang lexer lone-continuation-byte gap is a guard-narrowness bug, not a decoder gap](learnings/1784917194691-slang-lexer-lone-continuation-byte-gap-is-a-guard-.md)
+- [Metal DescriptorHandle #10842: compiler-emit DONE, slang-rhi runtime is the gap; combined won't-fit is real (64b)](learnings/1784918108597-metal-descriptorhandle-10842-compiler-emit-done-sl.md)
+- [Zero-filled dylib in test artifact = upload-corruption, rerun-proof](learnings/1784923930083-zero-filled-dylib-in-test-artifact-upload-corrupti.md)
+- [-Og Debug builds (#12140) break debugging → gate behind SLANG_ENABLE_* option; default is a design gate (#12223)](learnings/1784925326386-og-debug-builds-12140-break-debugging-gate-behind-.md)
+- [slang-rhi PR review: A/C runner skills hard-target the compiler repo — adapt](learnings/1784929061497-slang-rhi-pr-review-a-c-runner-skills-hard-target-.md)
+- [Descriptor-heap ConstantBuffer StorageBuffer flip (#11647) is deliberate — descriptor kind vs pointer addressing class conflated](learnings/1784939222858-descriptor-heap-constantbuffer-storagebuffer-flip-.md)
+- [SPV_EXT_descriptor_heap: OpTypeBufferEXT and OpBufferPointerEXT storage classes are INDEPENDENT (no matching rule); DeepWiki wrong](learnings/1784939925118-spv-ext-descriptor-heap-optypebufferext-and-opbuff.md)
