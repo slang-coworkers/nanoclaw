@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-116 learnings. [Catalog](../index.md)
+119 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] A synchronize addressing a different review axis does not close your open gap](../learnings/1784421277721-approver-calibration-a-synchronize-addressing-a-di.md)
 - [[approver/challenger-miss] A still-present false claim the current revision's review didn't re-list is still a live gap — challenger re-checks carried-over diff content, doesn't defer to "not re-flagged"](../learnings/1783937211976-approver-challenger-miss-a-still-present-false-cla.md)
@@ -79,6 +79,7 @@ type: topic
 - [approver/reviewer: debounce live PR head churn, then byte-prove the frozen review still covers the settled head](../learnings/1783682287036-approver-reviewer-debounce-live-pr-head-churn-then.md)
 - [approver: reviewers_complete field is authoritative — B/Devin infra-skip alone is not a harness-fail](../learnings/1783707333659-approver-reviewers-complete-field-is-authoritative.md)
 - [Clarity reviewer (Reviewer C) fails when inner CLI sandbox blocks file writes](../learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md)
+- [Daily-report: a fresh draft PR with 0 reviews is NOT proof the review is progressing — check for a landed verdict](../learnings/1784881773024-daily-report-a-fresh-draft-pr-with-0-reviews-is-no.md)
 - [Depth SV semantics are output-only (E30702) — a reviewer-traced 'inout duplicate' gap can be unreachable](../learnings/1782175276058-depth-sv-semantics-are-output-only-e30702-a-review.md)
 - [DescriptorHandle is uint64-native under spvBindlessTextureNV (not uint2) — and test a reviewer's proposed alt before agreeing](../learnings/1784762549887-descriptorhandle-is-uint64-native-under-spvbindles.md)
 - [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
@@ -98,6 +99,7 @@ type: topic
 - [Never add a reviewer to a draft PR — it spams the human](../learnings/1780690000002-never-add-a-reviewer-to-a-draft-pr-it-spams-the-human.md)
 - [PDF transcript extraction: pymupdf blocks beats llama-index](../learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md)
 - [post-review.sh posts body verbatim — no bot-transparency disclaimer](../learnings/1783665412901-post-review-sh-posts-body-verbatim-no-bot-transpar.md)
+- [PR #12200 RayQuery-return NRVO review — APPROVE_WITH_NITS, 0 bugs](../learnings/1784882737937-pr-12200-rayquery-return-nrvo-review-approve-with-.md)
 - [PR review under invalid GH_TOKEN — review the fetchable branch, don't stall](../learnings/1784595260519-pr-review-under-invalid-gh-token-review-the-fetcha.md)
 - [pr-approver must re-fetch reviews at record time not just staging](../learnings/1784050376318-pr-approver-must-re-fetch-reviews-at-record-time-n.md)
 - [PR-review heuristic: when a fix adds a null-possible invariant + helper, audit ALL structurally-identical sites](../learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md)
@@ -106,6 +108,7 @@ type: topic
 - [Reading arXiv/HF papers end-to-end with the Read tool](../learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md)
 - [Recover a dead clarity/correctness review run's candidates from stream.jsonl](../learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md)
 - [Recovering a teardown-stranded PR-review pass without a full re-run](../learnings/1784536666918-recovering-a-teardown-stranded-pr-review-pass-with.md)
+- [Reuse completed reviewer outputs when head-delta is non-code-only](../learnings/1784882724986-reuse-completed-reviewer-outputs-when-head-delta-i.md)
 - [Review deliverables need an ETA-relative staleness trigger, not the 48h dropped-deliverable window](../learnings/1784622307704-review-deliverables-need-an-eta-relative-staleness.md)
 - [Review-completion Monitor: anchor filters to exit markers, not streamed JSON](../learnings/1784380841597-review-completion-monitor-anchor-filters-to-exit-m.md)
 - [Review-resume sweep: check merge-state, token validity, artifact survival before re-running](../learnings/1784270233557-review-resume-sweep-check-merge-state-token-validi.md)
