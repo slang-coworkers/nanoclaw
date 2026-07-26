@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-252 learnings. [Catalog](../index.md)
+253 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [[approver/calibration] check-ci-is-aggregation-gate-not-independent-failure](../learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gate-.md)
@@ -228,6 +228,7 @@ type: topic
 - [supervise-issues scan.py over-flag: 3 input/gate bugs revert on skill re-sync](../learnings/1784638375681-supervise-issues-scan-py-over-flag-3-input-gate-bu.md)
 - [Supervisor artifact-check misses issue-comment artifacts for no-PR chains](../learnings/1783950814878-supervisor-artifact-check-misses-issue-comment-art.md)
 - [supervisor artifact-enforcement nudge yields to the operator comment-gate (no-PR blocked chains)](../learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md)
+- [Supervisor CI cell goes stale when PR flips draft→non-draft](../learnings/1784982853601-supervisor-ci-cell-goes-stale-when-pr-flips-draft-.md)
 - [Supervisor tick 97 — scan.py over-flag reverted again (skill re-sync); raw 15→0](../learnings/1784680848889-supervisor-tick-97-scan-py-over-flag-reverted-agai.md)
 - [synchronize-webhook-can-fire-on-comment-updated-at-bump](../learnings/1784269837644-synchronize-webhook-can-fire-on-comment-updated-at.md)
 - [Triage + GitHub artifact: fixed-via-PR exception resolves the "don't post interim verdict" vs "artifact MUST land" tension](../learnings/1780769170857-triage-github-artifact-fixed-via-pr-exception-reso.md)

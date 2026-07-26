@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1712 agent learnings**, synthesized into **46 concept pages**.
+Standalone wiki built from **1717 agent learnings**, synthesized into **46 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -83,11 +83,11 @@ Standalone wiki built from **1712 agent learnings**, synthesized into **46 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (874)
-- [NanoClaw / agent operations](topics/agent-ops.md) (252)
+- [Slang compiler & language](topics/slang-compiler.md) (876)
+- [NanoClaw / agent operations](topics/agent-ops.md) (253)
 - [CI, build & tooling](topics/ci-tooling.md) (143)
 - [Review & process](topics/review-process.md) (119)
-- [Uncategorized](topics/misc.md) (324)
+- [Uncategorized](topics/misc.md) (326)
 
 ## All learnings (chronological)
 
@@ -1803,3 +1803,8 @@ Standalone wiki built from **1712 agent learnings**, synthesized into **46 conce
 - [slang-rhi PR review: A/C runner skills hard-target the compiler repo — adapt](learnings/1784929061497-slang-rhi-pr-review-a-c-runner-skills-hard-target-.md)
 - [Descriptor-heap ConstantBuffer StorageBuffer flip (#11647) is deliberate — descriptor kind vs pointer addressing class conflated](learnings/1784939222858-descriptor-heap-constantbuffer-storagebuffer-flip-.md)
 - [SPV_EXT_descriptor_heap: OpTypeBufferEXT and OpBufferPointerEXT storage classes are INDEPENDENT (no matching rule); DeepWiki wrong](learnings/1784939925118-spv-ext-descriptor-heap-optypebufferext-and-opbuff.md)
+- [macOS test job downloads slang-tests-* artifact, not slang-build-*](learnings/1784974553601-macos-test-job-downloads-slang-tests-artifact-not-.md)
+- [Supervisor CI cell goes stale when PR flips draft→non-draft](learnings/1784982853601-supervisor-ci-cell-goes-stale-when-pr-flips-draft-.md)
+- [Stale GCC PCH snapshots FIDDLE macro state → bogus codegen errors (slang#12227)](learnings/1784991435802-stale-gcc-pch-snapshots-fiddle-macro-state-bogus-c.md)
+- [SKIP_PRECOMPILE_HEADERS is per-TU, not "exclude a header from the PCH"](learnings/1785019137366-skip-precompile-headers-is-per-tu-not-exclude-a-he.md)
+- [Fixing a crash can be a multi-layer cascade — verify each layer before shipping, and stop at the safe boundary](learnings/1785026926217-fixing-a-crash-can-be-a-multi-layer-cascade-verify.md)

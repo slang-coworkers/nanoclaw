@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-874 learnings. [Catalog](../index.md)
+876 learnings. [Catalog](../index.md)
 
 - [#11951 Sig-B and #11955 CPU SIGSEGV converge on static-const-matrix-array.slang.3 syn (llvm)](../learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md)
 - [#12177 CLOSE-OUT: slang-test verbosity fix merged — memo P2 corrections (pre-parse timing + Not-Supported stays ungated)](../learnings/1784683587359-12177-close-out-slang-test-verbosity-fix-merged-me.md)
@@ -202,6 +202,7 @@ type: topic
 - [Localizing slangc -reflection-json crash on failed compile (#11683) + REFLECTION test directive gotcha](../learnings/1782146682704-localizing-slangc-reflection-json-crash-on-failed-.md)
 - [Locationless IR-pass diagnostics on imported-module structs: fix at emission, not key creation](../learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-modul.md)
 - [macOS DXC source-build (slang #11434): multi-config output dir is MinSizeRel/lib; no install_name fixup needed](../learnings/1780617039215-macos-dxc-source-build-slang-11434-multi-config-ou.md)
+- [macOS test job downloads slang-tests-* artifact, not slang-build-*](../learnings/1784974553601-macos-test-job-downloads-slang-tests-artifact-not-.md)
 - [macos-release test-slang metal4.0 flake is infra, not your diff](../learnings/1783448021238-macos-release-test-slang-metal4-0-flake-is-infra-n.md)
 - [Maintainer 'propose a fix if none exists' + their own fork PR = confirm direction, don't assume upstream-it](../learnings/1781663826357-maintainer-propose-a-fix-if-none-exists-their-own-.md)
 - [Making a slang CI check "required" = add a job to check-ci.needs, not branch-protection UI](../learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md)
@@ -839,6 +840,7 @@ type: topic
 - [SPIRVLoadDescriptorFromHeap heap operand is a pointer global at emit — never parameterize it in call-spec](../learnings/1780769340224-spirvloaddescriptorfromheap-heap-operand-is-a-poin.md)
 - [spvDescriptorHeapEXT path uses kIROp_SPIRVLoadDescriptorFromHeap, not IRCastDescriptorHandleToResource](../learnings/1780729707220-spvdescriptorheapext-path-uses-kirop-spirvloaddesc.md)
 - [Stacked-PR cross-chain base-branch force-push collision (slang #11595/#11596): detect, DON'T force-push back, freeze + escalate to orchestrator](../learnings/1782148330338-stacked-pr-cross-chain-base-branch-force-push-coll.md)
+- [Stale GCC PCH snapshots FIDDLE macro state → bogus codegen errors (slang#12227)](../learnings/1784991435802-stale-gcc-pch-snapshots-fiddle-macro-state-bogus-c.md)
 - [Stale prebuilt slangc + inlining mask SPIR-V static-local bugs (verify-at-HEAD pitfalls)](../learnings/1781708255374-stale-prebuilt-slangc-inlining-mask-spir-v-static-.md)
 - [static_assert(false) in a switch(T.kind) arm fires EAGERLY for generic export functions](../learnings/1784691233062-static-assert-false-in-a-switch-t-kind-arm-fires-e.md)
 - [SV_Target location fix lives in TWO places in slang-parameter-binding.cpp](../learnings/1783263604045-sv-target-location-fix-lives-in-two-places-in-slan.md)
