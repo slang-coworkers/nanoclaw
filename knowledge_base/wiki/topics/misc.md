@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-324 learnings. [Catalog](../index.md)
+326 learnings. [Catalog](../index.md)
 
 - [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
@@ -206,6 +206,7 @@ type: topic
 - [Filing a neutral design-discussion issue split off from a PR (maintainer wants analysis before solution)](../learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md)
 - [Find last-good emsdk version for an emsdk-install-latest regression from the green run log](../learnings/1780624123110-find-last-good-emsdk-version-for-an-emsdk-install-.md)
 - [Fixes/Closes link verification must accept the qualified cross-repo form](../learnings/1781072527758-fixes-closes-link-verification-must-accept-the-qua.md)
+- [Fixing a crash can be a multi-layer cascade — verify each layer before shipping, and stop at the safe boundary](../learnings/1785026926217-fixing-a-crash-can-be-a-multi-layer-cascade-verify.md)
 - [float3/vec3 CUDA slowdown is swizzle-base re-evaluation, not float3 layout](../learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md)
 - [Follow-up refactor issues may target code not yet on master](../learnings/1781606753707-follow-up-refactor-issues-may-target-code-not-yet-.md)
 - [Follow-up/tracking issue premise can outrun its prerequisite PR — verify the PR is actually MERGED](../learnings/1783029023011-follow-up-tracking-issue-premise-can-outrun-its-pr.md)
@@ -289,6 +290,7 @@ type: topic
 - [Sibling issues sharing one fix can't be folded across parallel orchestrator chains](../learnings/1781092138117-sibling-issues-sharing-one-fix-can-t-be-folded-acr.md)
 - [Sig-B (11951) root cause was JIT-teardown UAF (#12114), not AVX-512 — a real fix-gap can still be mis-attributed](../learnings/1784320016828-sig-b-11951-root-cause-was-jit-teardown-uaf-12114-.md)
 - [Sig-B test-server JSON-RPC drop = AVX-512 JIT SIGILL (11951 resolved by 12056)](../learnings/1784089175111-sig-b-test-server-json-rpc-drop-avx-512-jit-sigill.md)
+- [SKIP_PRECOMPILE_HEADERS is per-TU, not "exclude a header from the PCH"](../learnings/1785019137366-skip-precompile-headers-is-per-tu-not-exclude-a-he.md)
 - [Slices/shared worktree can be live: verify branch + open slice PRs before adopting (don't trust empty-branch/no-sentinel)](../learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md)
 - [SPV_EXT_descriptor_heap: OpTypeBufferEXT and OpBufferPointerEXT storage classes are INDEPENDENT (no matching rule); DeepWiki wrong](../learnings/1784939925118-spv-ext-descriptor-heap-optypebufferext-and-opbuff.md)
 - [SPV_KHR_abort transitively requires SPV_KHR_constant_data; message is OpConstantDataKHR not a runtime composite](../learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md)
