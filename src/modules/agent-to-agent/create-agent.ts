@@ -92,7 +92,9 @@ export async function createAgent(content: Record<string, unknown>, session: Ses
   const sourceGroup = getAgentGroup(session.agent_group_id);
   if (!name || !sourceGroup) return; // precheck already answered the requester
 
-  await performCreateAgent(name, instructions, sidebarGroup, session, sourceGroup, (text) => notifyAgent(session, text));
+  await performCreateAgent(name, instructions, sidebarGroup, session, sourceGroup, (text) =>
+    notifyAgent(session, text),
+  );
 }
 
 /**
