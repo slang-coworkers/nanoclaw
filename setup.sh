@@ -191,28 +191,16 @@ check_build_tools() {
 # is_owned() in setup/merge-train.sh and .github/workflows/ci.yml.
 
 # Files nv-main is canonical for — safe to take from nv-main's side on conflict.
+# SINGLE source of truth: nv-main's path-guard allowlist
+# (.github/nv-path-guard/nv-main.txt), matched with git's OWN gitignore engine —
+# exactly the gitwildmatch syntax .github/nv-path-guard/check.py matches with — so
+# this can NEVER drift from path-guard and a missing entry (the class of bug a
+# hand-maintained list produced, e.g. setup.sh) is impossible. NV_OWNED_LIST is
+# populated by compose_fork once it has fetched origin/nv-main.
+NV_OWNED_LIST=""
 fork_is_owned() {
-  case "$1" in
-    package.json|pnpm-lock.yaml) return 0 ;;
-    tsconfig.json|vitest.config.ts|vitest.setup.ts) return 0 ;;
-    versions.json) return 0 ;;
-    .github/*) return 0 ;;
-    .claude/skills/*) return 0 ;;
-    src/*) return 0 ;;
-    scripts/*) return 0 ;;
-    setup/*|setup.sh) return 0 ;;
-    docs/*) return 0 ;;
-    container/agent-runner/*) return 0 ;;
-    container/hooks/*) return 0 ;;
-    container/config/*) return 0 ;;
-    container/cli-tools.json|container/cli-tools.test.ts|container/install-cli-tools.sh) return 0 ;;
-    container/spines/base/*) return 0 ;;
-    container/skills/spine-base/*) return 0 ;;
-    container/skills/base/*) return 0 ;;
-    container/Dockerfile|container/build.sh|container/entrypoint.sh) return 0 ;;
-    CLAUDE.md|README.md|CONTRIBUTING.md|LICENSE|.gitignore) return 0 ;;
-    *) return 1 ;;
-  esac
+  [ -n "$NV_OWNED_LIST" ] && [ -s "$NV_OWNED_LIST" ] || return 1
+  git -c core.excludesFile="$NV_OWNED_LIST" check-ignore --no-index -q -- "$1"
 }
 
 compose_fork() {
@@ -230,6 +218,11 @@ compose_fork() {
     log "compose_fork: origin/nv-main already merged — skipping"
     return 0
   fi
+
+  # Load nv-main's owned-file allowlist now that origin/nv-main is fetched, so
+  # fork_is_owned() can decide ownership from the single source of truth.
+  NV_OWNED_LIST="$(mktemp)"
+  git show origin/nv-main:.github/nv-path-guard/nv-main.txt > "$NV_OWNED_LIST" 2>/dev/null || true
 
   log "compose_fork: merging origin/nv-main into $(git rev-parse --abbrev-ref HEAD)"
   echo "Composing coworker infrastructure (merging nv-main)…"
@@ -261,14 +254,20 @@ compose_fork() {
     git commit --no-edit >>"$LOG_FILE" 2>&1
   fi
 
-  # package.json and pnpm-lock.yaml are jointly canonical to nv-main. A dep line
-  # in package.json that doesn't textually conflict can still auto-merge to a
-  # value inconsistent with the lockfile (which resolved to nv-main) — breaking
-  # `pnpm install --frozen-lockfile` (ERR_PNPM_OUTDATED_LOCKFILE). Force both to
-  # nv-main's pair after the merge, unconditionally, and fold into the merge
-  # commit. See setup/compose-fork.test.ts.
-  git checkout origin/nv-main -- package.json pnpm-lock.yaml 2>/dev/null || true
-  if ! git diff --cached --quiet -- package.json pnpm-lock.yaml 2>/dev/null; then
+  # The ENTIRE owned set is canonical to nv-main. nv-coworkers tracks upstream,
+  # not nv-main, so it carries stale copies of nv-main-owned files; a stale copy
+  # that AUTO-merges (doesn't conflict) is kept and then dangles against nv-main's
+  # evolved code, or desyncs package.json from the lockfile
+  # (ERR_PNPM_OUTDATED_LOCKFILE). After the merge, overwrite every owned file that
+  # EXISTS on nv-main and differs here to nv-main's version. nv-coworkers-NEW
+  # owned files (absent on nv-main) are left untouched. See setup/compose-fork.test.ts.
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    fork_is_owned "$f" || continue
+    git cat-file -e "origin/nv-main:$f" 2>/dev/null || continue
+    git checkout origin/nv-main -- "$f"
+  done < <(git diff --name-only origin/nv-main HEAD)
+  if ! git diff --cached --quiet 2>/dev/null; then
     git commit -q --amend --no-edit >>"$LOG_FILE" 2>&1
   fi
 
@@ -304,6 +303,13 @@ fi
 # may re-exec setup.sh once (guarded by NANOCLAW_COMPOSED).
 if [ "${NANOCLAW_COMPOSED:-}" != "1" ]; then
   compose_fork "$@"
+fi
+
+# NANOCLAW_COMPOSE_ONLY lets tests exercise compose_fork against a synthetic repo
+# without the Node install/build tail. Never set in real setup.
+if [ -n "${NANOCLAW_COMPOSE_ONLY:-}" ]; then
+  log "compose-only: exiting after compose_fork"
+  exit 0
 fi
 
 install_deps
