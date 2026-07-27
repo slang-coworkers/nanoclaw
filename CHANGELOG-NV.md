@@ -6,15 +6,39 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 361 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 173 |
-| `nv-slang` | slang project spine, skills, workflows | 128 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 64 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 43 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 369 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 174 |
+| `nv-slang` | slang project spine, skills, workflows | 129 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 65 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 44 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-07-27
+
+### nv-main (8 PRs)
+- **#1031** `Sync nv-main with upstream/main`
+- **#1033** `fix(merge-train): roll back the merge if the composed tree doesn't build`
+- **#1036** `fix(ci): composed-merge takes HEAD for nv-main PRs (stop reverting their changes)`
+- **#1035** `feat(create-agent): thread sidebar_group through content (complete nv-main absorption)`
+- **#1034** `feat(setup): LLM-assisted keep-both merge fallback (opt-in NANOCLAW_LLM_MERGE)`
+- **#1037** `fix(compose): canonicalize the whole owned set to nv-main (deterministic dashboard, no resync)`
+- **#1038** `ci(compose-check): validate the real deploy compose onto nv-coworkers`
+- **#1039** `fix(compose): derive is_owned from nv-main.txt (single source of truth)`
+
+### nv-dashboard (1 PRs)
+- **#1032** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PRs)
+- **#1026** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#1027** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#1028** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-07-25
 
