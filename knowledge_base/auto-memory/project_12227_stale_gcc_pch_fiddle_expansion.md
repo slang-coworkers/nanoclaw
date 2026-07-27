@@ -46,7 +46,37 @@ clean-building machine; no `__LINE__` skew; `-Winvalid-pch` on cmd line does not
 `rm build/source/slang/CMakeFiles/slang-common-objects.dir/Debug/cmake_pch.hxx.gch &&
 cmake --build --preset debug`, or configure `-DSLANG_ENABLE_PCH=OFF`.
 
-## State — DRAFT PR #12230 CONTESTED on mechanism, reworking (2026-07-25 22:42)
+## TERMINAL — RESOLVED by maintainer's own root-cause fix #12233 (2026-07-26)
+jkwak-work **merged his own PR #12233** "Exclude FIDDLE headers from GCC PCH"
+(1e0b3a441a, `Fixes #12227`) and **closed the bot draft #12230 unmerged**. His fix omits
+`slang-compiler.h` from the GCC PCH entirely, keeping FIDDLE macro state out of the PCH
+boundary for **all** TUs — not just the 2 the bot's per-TU `SKIP_PRECOMPILE_HEADERS`
+mitigation covered. This is the file-exclusion mechanism he signaled from his first review
+comment (r3651192649), and it covers the clean-Release scope-expansion too. Outcome:
+bot's Approach-A confirmed the diagnosis and the scope-expansion relay fed the final
+framing, but the maintainer landed the better-layered fix himself. Chain closed. Issue
+auto-closes via #12233's Fixes keyword; jkwak owns the merged-PR trail (no bot GitHub post
+needed). Worktree + sentinel cleaned up. NO further action.
+
+## SCOPE EXPANDED — reproduces in CLEAN GCC Release builds too (2026-07-26) [pre-terminal]
+jkwak-work posted CI evidence (issue comment 5082032084) that the same failure signature
+(`slang-ir-insts.h.fiddle:13:22: expected unqualified-id before 'private'` on
+`slang-ir-autodiff-rev.cpp.o` + `-unzip.cpp.o`, `-Winvalid-pch` does NOT fire) reproduces
+in **clean GCC Release** builds on CI — SlangPy dispatch workflows for Slang PRs #12229
+([run 30168089415](https://github.com/shader-slang/slangpy/actions/runs/30168089415), all
+3 attempts) and #12228 ([run 30165485084](https://github.com/shader-slang/slangpy/actions/runs/30165485084)).
+Each attempt does `git clean -ffdx` + fresh clone + `mkdir build` + `cmake --preset default`.
+**Implication:** stale-`.gch`-from-incremental is NOT the complete explanation — a *newly
+generated* PCH in a highly-parallel clean build can be internally inconsistent and consumed
+in the same build (clean-build dependency/order race, or a flaw in how transient FIDDLE
+macro state is captured). Scope now includes clean GCC Release, not only incremental Debug.
+Approach A (two-TU `SKIP_PRECOMPILE_HEADERS`) is now a **mitigation** jkwak agrees "would
+likely avoid these observed failures," but it does NOT address root-cause (how a clean
+build creates a bad PCH) nor guarantee another FIDDLE-consuming TU won't fail. → Forwarded
+into chain 2026-07-26; PR framing should shift fix→mitigation + track a root-cause
+investigation. Merge operator-gated; direction is jkwak's call.
+
+## DRAFT PR #12230 CONTESTED on mechanism, reworking (2026-07-25 22:42)
 Maintainer/assignee jkwak-work pushed back on draft #12230 ([review thread
 r3651192649](https://github.com/shader-slang/slang/pull/12230#discussion_r3651192649)):
 he expected "exclude the FIDDLE **generated files** from the PCH." The fixer's A used
