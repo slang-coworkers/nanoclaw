@@ -77,14 +77,18 @@ function buildOrigin(root: string): string {
   fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'WORK\n');
   git(seed, 'commit', '-qam', 'work unowned');
 
-  // work-deps adds a dependency nv-main lacks — package.json auto-merges (no
-  // textual conflict) to a state inconsistent with nv-main's lockfile.
+  // work-deps: package.json adds a dep nv-main lacks — it auto-merges (no textual
+  // conflict) to {a, extra, z}, which DIFFERS from nv-main's owned package.json,
+  // exercising the general owned-canonical overwrite. src/overlay-only.ts is a
+  // NEW owned file absent on nv-main that must be KEPT.
   git(seed, 'checkout', '-q', 'work-deps');
   fs.writeFileSync(
     path.join(seed, 'package.json'),
     JSON.stringify({ dependencies: { a: '1.0.0', extra: '9.9.9', z: '1.0.0' } }, null, 2) + '\n',
   );
-  git(seed, 'commit', '-qam', 'work adds a dep');
+  fs.writeFileSync(path.join(seed, 'src', 'overlay-only.ts'), 'overlay\n');
+  git(seed, 'add', '-A'); // -am below won't stage the new file
+  git(seed, 'commit', '-qam', 'work adds a dep + a new owned file');
 
   git(seed, 'checkout', '-q', 'base');
   const origin = path.join(root, 'origin.git');
@@ -120,16 +124,19 @@ describe('merge-train.sh resolver', () => {
     }
   });
 
-  it('pins package.json + pnpm-lock.yaml to nv-main even when package.json auto-merges', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-pin-'));
+  it('canonicalizes the owned set to nv-main (overwriting auto-merged copies) while keeping overlay-new owned files', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-owned-canon-'));
     try {
       const origin = buildOrigin(root);
-      const repo = cloneOn(root, origin, 'c', 'work-deps'); // adds a dep nv-main lacks
+      const repo = cloneOn(root, origin, 'c', 'work-deps'); // adds a dep + a new owned file
       const res = runMergeTrain(repo, 'nv-main');
       expect(res.status).toBe(0);
-      // Both files match nv-main exactly → frozen install would be consistent.
-      expect(git(repo, 'diff', 'origin/nv-main', '--', 'package.json', 'pnpm-lock.yaml').trim()).toBe('');
+      // Every owned file that exists on nv-main now matches nv-main exactly —
+      // the auto-merged package.json (which kept the stale dep) is corrected.
+      expect(git(repo, 'diff', 'origin/nv-main', '--', 'package.json', 'pnpm-lock.yaml', 'src/foo.ts').trim()).toBe('');
       expect(fs.readFileSync(path.join(repo, 'pnpm-lock.yaml'), 'utf-8')).toBe('lock: nv-main\n');
+      // ...but the overlay's NEW owned file (absent on nv-main) is kept.
+      expect(fs.readFileSync(path.join(repo, 'src', 'overlay-only.ts'), 'utf-8')).toBe('overlay\n');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
