@@ -191,28 +191,16 @@ check_build_tools() {
 # is_owned() in setup/merge-train.sh and .github/workflows/ci.yml.
 
 # Files nv-main is canonical for — safe to take from nv-main's side on conflict.
+# SINGLE source of truth: nv-main's path-guard allowlist
+# (.github/nv-path-guard/nv-main.txt), matched with git's OWN gitignore engine —
+# exactly the gitwildmatch syntax .github/nv-path-guard/check.py matches with — so
+# this can NEVER drift from path-guard and a missing entry (the class of bug a
+# hand-maintained list produced, e.g. setup.sh) is impossible. NV_OWNED_LIST is
+# populated by compose_fork once it has fetched origin/nv-main.
+NV_OWNED_LIST=""
 fork_is_owned() {
-  case "$1" in
-    package.json|pnpm-lock.yaml) return 0 ;;
-    tsconfig.json|vitest.config.ts|vitest.setup.ts) return 0 ;;
-    versions.json) return 0 ;;
-    .github/*) return 0 ;;
-    .claude/skills/*) return 0 ;;
-    src/*) return 0 ;;
-    scripts/*) return 0 ;;
-    setup/*|setup.sh) return 0 ;;
-    docs/*) return 0 ;;
-    container/agent-runner/*) return 0 ;;
-    container/hooks/*) return 0 ;;
-    container/config/*) return 0 ;;
-    container/cli-tools.json|container/cli-tools.test.ts|container/install-cli-tools.sh) return 0 ;;
-    container/spines/base/*) return 0 ;;
-    container/skills/spine-base/*) return 0 ;;
-    container/skills/base/*) return 0 ;;
-    container/Dockerfile|container/build.sh|container/entrypoint.sh) return 0 ;;
-    CLAUDE.md|README.md|CONTRIBUTING.md|LICENSE|.gitignore) return 0 ;;
-    *) return 1 ;;
-  esac
+  [ -n "$NV_OWNED_LIST" ] && [ -s "$NV_OWNED_LIST" ] || return 1
+  git -c core.excludesFile="$NV_OWNED_LIST" check-ignore --no-index -q -- "$1"
 }
 
 compose_fork() {
@@ -230,6 +218,11 @@ compose_fork() {
     log "compose_fork: origin/nv-main already merged — skipping"
     return 0
   fi
+
+  # Load nv-main's owned-file allowlist now that origin/nv-main is fetched, so
+  # fork_is_owned() can decide ownership from the single source of truth.
+  NV_OWNED_LIST="$(mktemp)"
+  git show origin/nv-main:.github/nv-path-guard/nv-main.txt > "$NV_OWNED_LIST" 2>/dev/null || true
 
   log "compose_fork: merging origin/nv-main into $(git rev-parse --abbrev-ref HEAD)"
   echo "Composing coworker infrastructure (merging nv-main)…"

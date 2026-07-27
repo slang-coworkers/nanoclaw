@@ -28,35 +28,22 @@ BRANCHES=("$@")
 # in sync.
 git fetch origin nv-main "${BRANCHES[@]}"
 
-# OWNED = files git-owned by nv-main that are safe to take from the canonical
-# (nv-main) side on conflict. Mirrors .github/nv-path-guard/nv-main.txt and the
-# is_owned() in ci.yml: host TS (src/**), agent-runner code, base spine/skills,
-# and shared config. Overlay branches carry stale copies of these (they lag
-# nv-main), so a conflict here is the sibling being behind — take nv-main's.
-# A genuine overlay-owned content conflict lands OUTSIDE these paths and still
-# fails loudly (the merge aborts). Keep in sync with ci.yml's is_owned().
+# OWNED = files nv-main is canonical for on conflict. The SINGLE source of truth
+# is nv-main's path-guard allowlist (.github/nv-path-guard/nv-main.txt) — the same
+# file the nv-path-guard workflow enforces. A conflict in that set means a sibling
+# is carrying a stale copy of a nv-main-owned file (overlays track upstream, not
+# nv-main), so take nv-main's. We match with git's OWN gitignore engine, which is
+# exactly the gitwildmatch syntax .github/nv-path-guard/check.py matches with, so
+# is_owned can NEVER drift from path-guard and a missing entry (the class of bug a
+# hand-maintained list produced — e.g. setup.sh) is impossible. ci.yml and
+# setup.sh's compose_fork read the same file the same way.
+NV_OWNED_LIST="$(mktemp)"
+git show origin/nv-main:.github/nv-path-guard/nv-main.txt > "$NV_OWNED_LIST" 2>/dev/null || true
 is_owned() {
-  case "$1" in
-    package.json|pnpm-lock.yaml) return 0 ;;
-    tsconfig.json|vitest.config.ts|vitest.setup.ts) return 0 ;;
-    versions.json) return 0 ;;
-    .github/*) return 0 ;;
-    .claude/skills/*) return 0 ;;
-    src/*) return 0 ;;
-    scripts/*) return 0 ;;
-    setup/*|setup.sh) return 0 ;;
-    docs/*) return 0 ;;
-    container/agent-runner/*) return 0 ;;
-    container/hooks/*) return 0 ;;
-    container/config/*) return 0 ;;
-    container/cli-tools.json|container/cli-tools.test.ts|container/install-cli-tools.sh) return 0 ;;
-    container/spines/base/*) return 0 ;;
-    container/skills/spine-base/*) return 0 ;;
-    container/skills/base/*) return 0 ;;
-    container/Dockerfile|container/build.sh|container/entrypoint.sh) return 0 ;;
-    CLAUDE.md|README.md|CONTRIBUTING.md|LICENSE|.gitignore) return 0 ;;
-    *) return 1 ;;
-  esac
+  # No allowlist (unexpected) → own nothing, so every conflict surfaces loudly
+  # rather than being silently resolved toward nv-main.
+  [ -s "$NV_OWNED_LIST" ] || return 1
+  git -c core.excludesFile="$NV_OWNED_LIST" check-ignore --no-index -q -- "$1"
 }
 
 # Pre-merge tip. A merge can resolve cleanly (all conflicts inside nv-main's

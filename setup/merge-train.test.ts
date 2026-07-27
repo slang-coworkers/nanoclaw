@@ -60,6 +60,14 @@ function buildOrigin(root: string): string {
   git(seed, 'branch', 'work-deps');
 
   git(seed, 'checkout', '-q', 'nv-main');
+  // is_owned() derives the owned set from nv-main's path-guard allowlist (the
+  // same file .github/nv-path-guard/check.py enforces), matched with git's own
+  // gitignore engine. src/** + the shared config are owned; groups/** is not.
+  fs.mkdirSync(path.join(seed, '.github', 'nv-path-guard'), { recursive: true });
+  fs.writeFileSync(
+    path.join(seed, '.github', 'nv-path-guard', 'nv-main.txt'),
+    '.github/**\nsrc/**\npackage.json\npnpm-lock.yaml\n',
+  );
   fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'MAIN\n');
   fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'MAIN\n');
   fs.writeFileSync(
@@ -67,6 +75,7 @@ function buildOrigin(root: string): string {
     JSON.stringify({ dependencies: { a: '2.0.0', z: '1.0.0' } }, null, 2) + '\n',
   );
   fs.writeFileSync(path.join(seed, 'pnpm-lock.yaml'), 'lock: nv-main\n');
+  git(seed, 'add', '-A');
   git(seed, 'commit', '-qam', 'nv-main changes');
 
   git(seed, 'checkout', '-q', 'work-owned'); // diverges on src/ (owned)
