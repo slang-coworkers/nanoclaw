@@ -1,6 +1,71 @@
 import { describe, it, expect } from 'vitest';
 
-import { PROJECTS, parseProjectsEnv, runProjectIntegrations, type ProjectOption } from './project-integrations.js';
+import {
+  PROJECTS,
+  parseProjectsEnv,
+  runProjectIntegrations,
+  composeBranch,
+  type ProjectOption,
+} from './project-integrations.js';
+
+describe('composeBranch (merge tiers)', () => {
+  const ok: () => number = () => 0;
+  const fail =
+    (code: number): (() => number) =>
+    () =>
+      code;
+
+  it('returns 0 on merge-train success; never invokes the LLM tier', async () => {
+    let llm = 0;
+    const r = await composeBranch('nv-x', {
+      runMergeTrain: ok,
+      llmCompose: async () => {
+        llm++;
+        return true;
+      },
+      llmEnabled: true,
+    });
+    expect(r).toBe(0);
+    expect(llm).toBe(0);
+  });
+
+  it('does NOT invoke the LLM when disabled; returns merge-train failure', async () => {
+    let llm = 0;
+    const r = await composeBranch('nv-x', {
+      runMergeTrain: fail(1),
+      llmCompose: async () => {
+        llm++;
+        return true;
+      },
+      llmEnabled: false,
+    });
+    expect(r).toBe(1);
+    expect(llm).toBe(0);
+  });
+
+  it('falls back to the LLM when merge-train fails + enabled; 0 on LLM success', async () => {
+    const calls: string[] = [];
+    const r = await composeBranch('nv-dashboard', {
+      runMergeTrain: fail(1),
+      llmCompose: async (b) => {
+        calls.push(b);
+        return true;
+      },
+      llmEnabled: true,
+    });
+    expect(r).toBe(0);
+    expect(calls).toEqual(['nv-dashboard']);
+  });
+
+  it('returns the merge-train failure code when the LLM also fails', async () => {
+    const r = await composeBranch('nv-x', {
+      runMergeTrain: fail(3),
+      llmCompose: async () => false,
+      llmEnabled: true,
+    });
+    expect(r).toBe(3);
+  });
+});
 
 describe('PROJECTS catalog', () => {
   it('every project maps to an nv-* branch with a unique value', () => {

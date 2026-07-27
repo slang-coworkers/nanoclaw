@@ -12,6 +12,12 @@
  * Non-interactive: NANOCLAW_PROJECTS="slang,slangpy" (comma-separated values or
  * branch names) skips the prompt. Empty/unset with no TTY → no-op.
  *
+ * Merge tiers (see composeBranch): deterministic `merge-train.sh` first, then —
+ * only when NANOCLAW_LLM_MERGE=1 — an LLM-assisted keep-both fallback for
+ * branches merge-train can't compose (e.g. nv-dashboard, whose shared-source
+ * edits is_owned would drop). CI leaves the flag unset, so its composed-state
+ * check stays deterministic.
+ *
  * The orchestration core (`runProjectIntegrations`) takes its selector and
  * merger as injected dependencies so it is unit-testable without a terminal or
  * a real git merge; `run()` wires the real clack + merge-train implementations.
@@ -22,6 +28,8 @@ import { fileURLToPath } from 'url';
 
 import * as p from '@clack/prompts';
 import { styleText } from 'node:util';
+
+import { composeMergeViaClaude } from './lib/claude-assist.js';
 
 export interface ProjectOption {
   /** Stable key used in NANOCLAW_PROJECTS. */
@@ -87,8 +95,31 @@ export function parseProjectsEnv(raw: string | undefined): ProjectOption[] | nul
 
 /** Returns null when the user cancels or picks nothing (both mean "skip"). */
 export type ProjectSelector = () => Promise<ProjectOption[] | null>;
-/** Runs the merge for one branch; returns the process exit status (0 = ok). */
-export type ProjectMerger = (branch: string) => number;
+/** Composes one branch; returns the process exit status (0 = ok). May be async
+ *  (the LLM fallback tier is). */
+export type ProjectMerger = (branch: string) => number | Promise<number>;
+
+/** Tier 1: deterministic merge-train; returns exit status (0 = ok). */
+export type MergeTrainRunner = (branch: string) => number;
+/** Tier 2: LLM-assisted compose; returns true iff the tree is composed + builds. */
+export type LlmComposer = (branch: string) => Promise<boolean>;
+
+/**
+ * Compose one branch across the merge tiers: deterministic `merge-train.sh`
+ * first; if that fails (conflict outside nv-main's owned set, or a merge that
+ * dropped an overlay's edits so it won't build — merge-train rolls back either
+ * way) and the LLM tier is enabled, hand off to Claude to resolve keep-both.
+ * Returns the process exit status (0 = composed). Pure over injected deps.
+ */
+export async function composeBranch(
+  branch: string,
+  deps: { runMergeTrain: MergeTrainRunner; llmCompose: LlmComposer; llmEnabled: boolean },
+): Promise<number> {
+  const status = deps.runMergeTrain(branch);
+  if (status === 0) return 0;
+  if (deps.llmEnabled && (await deps.llmCompose(branch))) return 0;
+  return status;
+}
 
 export interface ProjectIntegrationResult {
   merged: string[];
@@ -113,7 +144,7 @@ export async function runProjectIntegrations(deps: {
   const merged: string[] = [];
   const failed: string[] = [];
   for (const proj of chosen) {
-    const status = deps.merge(proj.branch);
+    const status = await deps.merge(proj.branch);
     if (status === 0) merged.push(proj.branch);
     else failed.push(proj.branch);
   }
@@ -173,13 +204,18 @@ async function selectInteractively(
   return options.filter((proj) => picked.has(proj.value));
 }
 
-/** Real merger: run merge-train.sh for one branch, streaming its output. */
-function mergeViaMergeTrain(branch: string): number {
-  const res = spawnSync('bash', ['setup/merge-train.sh', branch], {
-    cwd: repoRoot(),
-    stdio: 'inherit',
+/**
+ * Real merger: deterministic merge-train.sh, then (opt-in via NANOCLAW_LLM_MERGE)
+ * an LLM-assisted keep-both fallback when merge-train can't compose the branch.
+ * CI leaves the flag unset, so the composed-state check stays deterministic.
+ */
+function mergeViaMergeTrain(branch: string): Promise<number> {
+  const root = repoRoot();
+  return composeBranch(branch, {
+    runMergeTrain: (b) => spawnSync('bash', ['setup/merge-train.sh', b], { cwd: root, stdio: 'inherit' }).status ?? 1,
+    llmCompose: (b) => composeMergeViaClaude(b, root),
+    llmEnabled: process.env.NANOCLAW_LLM_MERGE === '1',
   });
-  return res.status ?? 1;
 }
 
 /**

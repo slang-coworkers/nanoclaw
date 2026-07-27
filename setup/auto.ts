@@ -20,6 +20,9 @@
  *                           verify|first-chat)
  *   NANOCLAW_PROJECTS      preselect project overlays (e.g. slang,slangpy) and
  *                          skip the project-integrations multiselect
+ *   NANOCLAW_LLM_MERGE     =1 enables the LLM-assisted keep-both fallback when
+ *                          merge-train can't compose a project overlay (opt-in;
+ *                          CI leaves it unset to stay deterministic)
  *
  * Timezone is auto-detected after the CLI agent step. UTC resolves are
  * confirmed with the user, and free-text replies fall through to a
