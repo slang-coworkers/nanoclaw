@@ -59,6 +59,19 @@ is_owned() {
   esac
 }
 
+# Pre-merge tip. A merge can resolve cleanly (all conflicts inside nv-main's
+# owned set) yet still produce a tree that doesn't build — e.g. is_owned took
+# nv-main's version of a shared source file, dropping an overlay's intentional
+# edit, and the overlay's *other* (non-conflicting) files now dangle. When that
+# happens we roll the whole merge back to START_HEAD rather than leave a broken
+# commit that a re-run would skip as "already merged" and falsely report merged.
+START_HEAD="$(git rev-parse HEAD)"
+rollback_and_fail() {
+  echo "merge-train: composed tree failed to install/build — rolling back the merge" >&2
+  git reset --hard "$START_HEAD"
+  exit 1
+}
+
 merged_any=0
 for branch in "${BRANCHES[@]}"; do
   if git merge-base --is-ancestor "origin/$branch" HEAD 2>/dev/null; then
@@ -113,15 +126,19 @@ if [ "$merged_any" = "1" ]; then
   # MERGE_TRAIN_NO_INSTALL lets tests exercise the merge/resolve logic above in a
   # synthetic repo without the Node toolchain. Never set in real setup.
   if [ -n "${MERGE_TRAIN_NO_INSTALL:-}" ]; then
+    # test hook: MERGE_TRAIN_FAIL_VALIDATE=1 exercises the rollback path without
+    # the Node toolchain.
+    [ -n "${MERGE_TRAIN_FAIL_VALIDATE:-}" ] && rollback_and_fail
     echo "merge-train: merged (install/build skipped via MERGE_TRAIN_NO_INSTALL)"
     exit 0
   fi
-  # --frozen-lockfile per the supply-chain policy (CLAUDE.md): the merge brought
-  # a consistent package.json + pnpm-lock.yaml, so a frozen install is correct
-  # and a spec/lock mismatch surfaces loudly instead of being papered over.
-  pnpm install --frozen-lockfile
-  pnpm run build
-  npm run rebuild:claude
+  # Validate the composed tree: --frozen-lockfile per the supply-chain policy
+  # (CLAUDE.md), then build + rebuild. If ANY step fails the merge produced a
+  # broken tree — roll it back (see rollback_and_fail) rather than leave a broken
+  # commit + false "already merged" success on the next run.
+  if ! (pnpm install --frozen-lockfile && pnpm run build && npm run rebuild:claude); then
+    rollback_and_fail
+  fi
   echo "merge-train: done — merged, installed, built, and rebuilt CLAUDE.md"
 else
   echo "merge-train: nothing to merge (all branches already present)"

@@ -161,4 +161,27 @@ describe('merge-train.sh resolver', () => {
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('rolls back the merge and fails when the composed tree does not build', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-rollback-'));
+    try {
+      const origin = buildOrigin(root);
+      const repo = cloneOn(root, origin, 'c', 'work-owned');
+      const before = git(repo, 'rev-parse', 'HEAD').trim();
+      // MERGE_TRAIN_FAIL_VALIDATE=1 simulates the post-merge build failing (as
+      // when is_owned drops an overlay's edits, leaving a non-building tree).
+      const res = spawnSync('bash', [MERGE_TRAIN, 'nv-main'], {
+        cwd: repo,
+        encoding: 'utf-8',
+        env: { ...ENV, MERGE_TRAIN_FAIL_VALIDATE: '1' },
+      });
+      expect(res.status).toBe(1);
+      expect(res.stderr).toMatch(/rolling back/);
+      // Fully rolled back — no broken merge commit left for a re-run to skip.
+      expect(git(repo, 'rev-parse', 'HEAD').trim()).toBe(before);
+      expect(git(repo, 'status', '--porcelain', '--untracked-files=no').trim()).toBe('');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
