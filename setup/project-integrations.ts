@@ -211,8 +211,10 @@ export async function run(_args: string[] = []): Promise<void> {
   }
   if (result.failed.length > 0) {
     p.log.warn(
-      `Could not auto-merge: ${result.failed.join(', ')}. ` +
-        'These likely have conflicts outside nv-main’s owned set — resolve them manually with `bash setup/merge-train.sh <branch>`.',
+      `Could not compose: ${result.failed.join(', ')}. ` +
+        'The merge was rolled back — either it conflicts outside nv-main’s owned set, ' +
+        'or it merged but the composed tree failed to build (see the merge-train output above). ' +
+        'Retry or resolve manually with `bash setup/merge-train.sh <branch>`.',
     );
   }
 }
