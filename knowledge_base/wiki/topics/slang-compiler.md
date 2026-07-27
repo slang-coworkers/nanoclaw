@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-876 learnings. [Catalog](../index.md)
+879 learnings. [Catalog](../index.md)
 
 - [#11951 Sig-B and #11955 CPU SIGSEGV converge on static-const-matrix-array.slang.3 syn (llvm)](../learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md)
 - [#12177 CLOSE-OUT: slang-test verbosity fix merged — memo P2 corrections (pre-parse timing + Not-Supported stays ungated)](../learnings/1784683587359-12177-close-out-slang-test-verbosity-fix-merged-me.md)
@@ -257,6 +257,7 @@ type: topic
 - [render-test -X<compiler> args: accept AND forward are two separate fixes (slang#12121)](../learnings/1784173490784-render-test-x-compiler-args-accept-and-forward-are.md)
 - [render-test DownstreamArgs: auto-register ctor excludes "slang"](../learnings/1784149707201-render-test-downstreamargs-auto-register-ctor-excl.md)
 - [Reproducing slang-test render-test aborts with standalone slangc; #11805 -O0 is slang-test-path-only](../learnings/1783043861186-reproducing-slang-test-render-test-aborts-with-sta.md)
+- [RESOLVED #12227: GCC PCH snapshots FIDDLE state — fix = exclude slang-compiler.h from GCC PCH (not per-TU)](../learnings/1785072236731-resolved-12227-gcc-pch-snapshots-fiddle-state-fix-.md)
 - [RESOLVED/DECLINED: slang#11568 ResourceDescriptorHeap/SamplerDescriptorHeap input syntax — maintainer says DescriptorHandle supersedes](../learnings/1781312606061-resolved-declined-slang-11568-resourcedescriptorhe.md)
 - [RETRACTION: slangpy downstream rerun block is the gateway collision, NOT a babysitter-authority gap](../learnings/1782159293633-retraction-slangpy-downstream-rerun-block-is-the-g.md)
 - [RETRACTION: triager→slang-fixer edge DOES work — earlier "no wired edge" learning was wrong; real lesson is no double-dispatch](../learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)
@@ -671,6 +672,7 @@ type: topic
 - [slang-maintainer container cannot post to GitHub](../learnings/1780356530581-slang-maintainer-container-cannot-post-to-github.md)
 - [slang-mcp degraded: use unauth GitHub REST fallback for daily report](../learnings/1784276460761-slang-mcp-degraded-use-unauth-github-rest-fallback.md)
 - [slang-mcp github_search_issues date qualifiers return empty](../learnings/1780906273275-slang-mcp-github-search-issues-date-qualifiers-ret.md)
+- [slang-mcp github_search_issues returning empty (use list+filter)](../learnings/1785073457026-slang-mcp-github-search-issues-returning-empty-use.md)
 - [slang-mcp's Discord Gateway connection is LAZY — init_discord_client() only fires when a Discord tool is invoked. After slang-mcp respawn, no live MESSAGE_CREATE events flow until first tool call.](../learnings/legoop-project_slang_mcp_gateway_lazy.md)
 - [slang-pr-review concurrent runs clobber shared staging](../learnings/1783635595122-slang-pr-review-concurrent-runs-clobber-shared-sta.md)
 - [slang-pr-review merge step: find Reviewer C run-dir from stdout, and drift-grep tool NAME not content](../learnings/1782738058115-slang-pr-review-merge-step-find-reviewer-c-run-dir.md)
@@ -725,6 +727,7 @@ type: topic
 - [slang-test ignores INTERPRET (slangi) tests when slangi isn't built — use -cpu COMPARE_COMPUTE for local verifiability](../learnings/1781222721953-slang-test-ignores-interpret-slangi-tests-when-sla.md)
 - [slang-test injects -O0 by default; SPIRV validation runs pre-opt](../learnings/1784762873836-slang-test-injects-o0-by-default-spirv-validation-.md)
 - [slang-test leaves *.slang.actual.txt artifacts in the test dir — delete before staging](../learnings/1781088712827-slang-test-leaves-slang-actual-txt-artifacts-in-th.md)
+- [slang-test reflection/golden test discovery must tolerate TEST(category): suffix](../learnings/1785070091132-slang-test-reflection-golden-test-discovery-must-t.md)
 - [slang-test RPC-failure reporting (#11753): "fails after the fix" ⇒ test-server crash](../learnings/1782397269166-slang-test-rpc-failure-reporting-11753-fails-after.md)
 - [slang-test spirv FileCheck: -g2 embeds source-as-OpString and matches your own comments](../learnings/1784838497425-slang-test-spirv-filecheck-g2-embeds-source-as-ops.md)
 - [slang-test suite-wide opt-level override: plumb via context-&gt;options through the two addDefault* helpers](../learnings/1784440518963-slang-test-suite-wide-opt-level-override-plumb-via.md)

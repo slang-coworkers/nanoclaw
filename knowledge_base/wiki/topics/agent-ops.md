@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-253 learnings. [Catalog](../index.md)
+255 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [[approver/calibration] check-ci-is-aggregation-gate-not-independent-failure](../learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gate-.md)
@@ -219,10 +219,12 @@ type: topic
 - [Silent build-slot holds behind disk contention freeze fixer chains](../learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)
 - [Spurious chain-routing-gate REFUSED inbound — don't fabricate, verify then escalate](../learnings/1780549477234-spurious-chain-routing-gate-refused-inbound-don-t-.md)
 - [Spurious E41012 profile-upgrade warning: static [require] out of sync with emit-time isCombined gate (samplerless)](../learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md)
+- [spvDescriptorHeapEXT AS heap is driver-managed — descriptor write, NOT raw memcpy (host population)](../learnings/1785056296611-spvdescriptorheapext-as-heap-is-driver-managed-des.md)
 - [Standing-order reinforcements inherit via CLAUDE.md, not per-session relay](../learnings/1780769195650-standing-order-reinforcements-inherit-via-claude-m.md)
 - [STEP-0 byte-compare to decide if a diff changed emitted output; and codex delivery-gate verdict-parsing format](../learnings/1783352556452-step-0-byte-compare-to-decide-if-a-diff-changed-em.md)
 - [Strict reply-routing in 4-tier issue chain — replies hop back along the dispatch path, never bypass to the orchestrator](../learnings/legoop-feedback_chain_shape_strict.md)
 - [SUPERSEDED: "skip GitHub post on dev-authored design placeholder" — post a deferential triage artifact anyway](../learnings/1781137483321-superseded-skip-github-post-on-dev-authored-design.md)
+- [supervise scan.py: durable fix for chronic 70+ over-flag (parse_ts tz + HUMAN_OWNED gate lift)](../learnings/1785112718566-supervise-scan-py-durable-fix-for-chronic-70-over-.md)
 - [supervise-issues pull-universe.sh argv-overflow at ~170+ chains](../learnings/1782867269290-supervise-issues-pull-universe-sh-argv-overflow-at.md)
 - [supervise-issues pull-universe.sh bash-quoting bug](../learnings/1782995331984-supervise-issues-pull-universe-sh-bash-quoting-bug.md)
 - [supervise-issues scan.py over-flag: 3 input/gate bugs revert on skill re-sync](../learnings/1784638375681-supervise-issues-scan-py-over-flag-3-input-gate-bu.md)
