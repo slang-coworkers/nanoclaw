@@ -133,6 +133,65 @@ export async function offerClaudeAssist(
   return true;
 }
 
+/**
+ * LLM-assisted merge fallback (opt-in; the caller gates on NANOCLAW_LLM_MERGE).
+ * Used when deterministic merge-train couldn't compose `branch` — a conflict
+ * outside nv-main's owned set, or a merge whose is_owned resolution dropped an
+ * overlay's shared-source edits so the tree no longer builds. Hands the merge to
+ * Claude to resolve keep-both, then re-validates the build OURSELVES — the build,
+ * not Claude's summary, is the source of truth. Rolls back to the clean
+ * pre-attempt tree on any failure. Returns true iff the tree is composed + builds.
+ */
+export async function composeMergeViaClaude(
+  branch: string,
+  projectRoot: string = process.cwd(),
+): Promise<boolean> {
+  if (!(await ensureClaudeReady(projectRoot))) return false;
+
+  const rev = (args: string): string =>
+    execSync(`git ${args}`, { cwd: projectRoot, encoding: 'utf-8' }).trim();
+  const startHead = rev('rev-parse HEAD');
+  const currentBranch = rev('rev-parse --abbrev-ref HEAD');
+
+  await queryClaudeUnderSpinner(buildMergePrompt(branch, currentBranch, startHead), projectRoot);
+
+  // Source of truth: a committed merge that actually builds. Don't trust Claude's
+  // text — verify the tree.
+  const built =
+    spawnSync('pnpm', ['run', 'build'], { cwd: projectRoot, stdio: 'ignore' }).status === 0;
+  const advanced = rev('rev-parse HEAD') !== startHead;
+  const clean = spawnSync('git', ['diff', '--quiet'], { cwd: projectRoot }).status === 0;
+
+  if (built && advanced && clean) {
+    p.log.success(`Claude composed ${branch} and the tree builds.`);
+    return true;
+  }
+  spawnSync('git', ['merge', '--abort'], { cwd: projectRoot, stdio: 'ignore' });
+  spawnSync('git', ['reset', '--hard', startHead], { cwd: projectRoot, stdio: 'ignore' });
+  p.log.warn(`Claude couldn't compose ${branch} into a building tree — rolled back.`);
+  return false;
+}
+
+function buildMergePrompt(branch: string, currentBranch: string, startHead: string): string {
+  return [
+    `Compose the NanoClaw fork overlay branch \`origin/${branch}\` into \`${currentBranch}\`.`,
+    '',
+    'Steps:',
+    `1. Run: git merge origin/${branch} --no-edit`,
+    `2. Resolve EVERY conflict by keeping BOTH sides' intent. ${branch} is an overlay whose`,
+    "   source edits ADD to nv-main's — they do not replace them. If nv-main and this branch",
+    '   both changed a symbol (e.g. in create-agent.ts, agent-groups.ts), the result must',
+    '   contain both changes. Never drop one side.',
+    '3. For pure-infra files take nv-main outright: package.json, pnpm-lock.yaml, .github/*,',
+    '   tsconfig.json, vitest.config.ts, vitest.setup.ts, versions.json.',
+    '4. Run `pnpm run build`. Fix every TypeScript error — they usually mean a file you kept',
+    '   references a symbol you dropped from another file; restore it so both sides cohere.',
+    '5. When `pnpm run build` exits 0, commit: git commit --no-edit. Do NOT push.',
+    '',
+    `If you cannot make it build, run \`git reset --hard ${startHead}\` and stop.`,
+  ].join('\n');
+}
+
 function isClaudeInstalled(): boolean {
   try {
     execSync('command -v claude', { stdio: 'ignore' });
