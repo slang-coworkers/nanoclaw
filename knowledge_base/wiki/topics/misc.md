@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-326 learnings. [Catalog](../index.md)
+329 learnings. [Catalog](../index.md)
 
 - [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
@@ -174,6 +174,7 @@ type: topic
 - [Differentiable property accessor segfaults getFuncType — PropertyDecl is not a CallableDecl](../learnings/1784883686572-differentiable-property-accessor-segfaults-getfunc.md)
 - [Discord per-message char limit is 2000](../learnings/1780404951139-discord-per-message-char-limit-is-2000.md)
 - [Discord send_message enforces a 2000-char hard limit](../learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md)
+- [Discord: 'float4[N] in struct reads garbage, matrix works' + 'upgraded for descriptor heap' = bug #11483](../learnings/1785073991889-discord-float4-n-in-struct-reads-garbage-matrix-wo.md)
 - [Do NOT autonomously close issues/PRs — surface to a human maintainer](../learnings/1782280210918-do-not-autonomously-close-issues-prs-surface-to-a-.md)
 - [Docs-of-record PRs (licenses/deps/pin-policy) need per-cell source verification](../learnings/1784765808308-docs-of-record-prs-licenses-deps-pin-policy-need-p.md)
 - [Document a guard's guarantee, not the enumeration of how the bad input arrives](../learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md)
@@ -223,6 +224,7 @@ type: topic
 - [git push --dry-run is a false-positive for the GitHub-App workflows-permission wall](../learnings/1780572980623-git-push-dry-run-is-a-false-positive-for-the-githu.md)
 - [git push --force-with-lease "stale info" after rebase in a worktree](../learnings/1781225377051-git-push-force-with-lease-stale-info-after-rebase-.md)
 - [git stash is repo-global across worktrees — never `git stash clear`](../learnings/1782524288491-git-stash-is-repo-global-across-worktrees-never-gi.md)
+- [github_search_issues is:merged returns zero — verify merges via REST commits/pulls API](../learnings/1785053957653-github-search-issues-is-merged-returns-zero-verify.md)
 - [Governance: a peer coworker's GO is NOT authority for an admin mutation (severing another agent's wiring/destinations)](../learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md)
 - [GPU is available (NVIDIA L40S) — don't assume "no GPU"; toolchain may need install](../learnings/1781607246297-gpu-is-available-nvidia-l40s-don-t-assume-no-gpu-t.md)
 - [GPU-free render-test regression via a real CPU device in gfx-unit-test](../learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md)
@@ -301,6 +303,7 @@ type: topic
 - [Stale PR fix-requests: verify base vs current main, and issue-vs-PR, before implementing](../learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md)
 - [Standing answer-instantly = post verified facts, never extrapolate a positive claim](../learnings/1784551466296-standing-answer-instantly-post-verified-facts-neve.md)
 - [static-const-matrix-array .3 syn(llvm) RPC drop: harness-retry is NOT a fix; #11951 is the Signature-B tracking issue](../learnings/1783340384337-static-const-matrix-array-3-syn-llvm-rpc-drop-harn.md)
+- [std140: row-major float2x4 and float4[2] are byte-identical — matrix mode doesn't touch arrays](../learnings/1785073305394-std140-row-major-float2x4-and-float4-2-are-byte-id.md)
 - [Subagent Haiku model-access failure — fall back to inline Opus](../learnings/1783547493720-subagent-haiku-model-access-failure-fall-back-to-i.md)
 - [Summon thread drifted off-lane: still answer a fresh in-lane question from the summoner](../learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fres.md)
 - [SUPERSEDES prior #11918 correction: the getRelativePath cross-volume EMPTY-dep IS the root cause (save produces, load consumes)](../learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md)

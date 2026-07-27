@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-143 learnings. [Catalog](../index.md)
+146 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] -Og debug-build guard: subtractive NOT-MSVC guard can't regress prior-green; -Wmaybe-uninitialized gap clears as future-proofing when PR adds no C++](../learnings/1784288671711-approver-calibration-og-debug-build-guard-subtract.md)
 - [[approver/calibration] build-flag PR: clear a "-Werror CI break" gap by checking the affected config is actually green](../learnings/1784270606102-approver-calibration-build-flag-pr-clear-a-werror-.md)
@@ -68,6 +68,7 @@ type: topic
 - [ASan "runtime does not come first" CI flake — diagnosis, fix levers, and the GH Actions success() trap](../learnings/1782802321817-asan-runtime-does-not-come-first-ci-flake-diagnosi.md)
 - [ASan "runtime does not come first" CI flake — static-canary tell + why static linkage isn't the fix](../learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md)
 - [Attributing check-cmdline-ref CI failures (not master-doc drift by default)](../learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)
+- [Bot App token CANNOT push .github/workflows/* (missing 'workflows' permission) — deliver CI as a patch](../learnings/1785048496087-bot-app-token-cannot-push-github-workflows-missing.md)
 - [Bot-PR: lone red workflow_dispatch run with build/test skipped is a no-op, read the rollup](../learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md)
 - [Build subagent auto-relaunch on failure → concurrent-build archive corruption](../learnings/1784659482124-build-subagent-auto-relaunch-on-failure-concurrent.md)
 - [Build subagent false-report + concurrent-ninja collision corrupts build dir](../learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md)
@@ -93,6 +94,7 @@ type: topic
 - [Coworker bots may not modify .github/workflows — flag before building](../learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md)
 - [Daily-report CI: health_snapshots.jsonl last line can be badly stale — cross-check with Actions API](../learnings/1784017364046-daily-report-ci-health-snapshots-jsonl-last-line-c.md)
 - [DescriptorHandle to ConstantBuffer implicit conversion blocked by ParameterGroupType target guard in _coerce](../learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md)
+- [Diagnosing DescriptorHandle&lt;RaytracingAccelerationStructure&gt; + spvDescriptorHeapEXT crashes](../learnings/1785051051163-diagnosing-descriptorhandle-lt-raytracingaccelerat.md)
 - [Diagnostic/enum codes picked against a stale base collide on master-merge and break ALL platform builds](../learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md)
 - [Disk-blocker false alarm: df the real build path, /workspace/agent is a separate roomy volume](../learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md)
 - [Disk-full build workaround: out-of-source build on /dev/vda1 (/workspace) when /dev/vdb (/workspace/agent) is full](../learnings/1781568134178-disk-full-build-workaround-out-of-source-build-on-.md)
@@ -102,6 +104,7 @@ type: topic
 - [Don't conflate internal a2a review with GitHub reviewDecision in human-facing comments](../learnings/1780509591502-don-t-conflate-internal-a2a-review-with-github-rev.md)
 - [Don't reflexively concede to a maintainer assertion — verify at claim precision](../learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md)
 - [Draft-held fix PR still needs the issue 5-bullet — post it when you decide to hold, not after a nudge](../learnings/1780900630856-draft-held-fix-pr-still-needs-the-issue-5-bullet-p.md)
+- [fiddle:13 'friend' outside class on GCC runner = stale PCH, not poisoned cache](../learnings/1785060680645-fiddle-13-friend-outside-class-on-gcc-runner-stale.md)
 - [Flaky-CI evidence: dedup by run id; JSON-RPC and Falcor symptoms each conflate multiple root causes](../learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)
 - [Furo theme dark-mode code colors — use pygments_dark_style, not CSS overrides](../learnings/1779427288040-furo-theme-dark-mode-code-colors-use-pygments-dark.md)
 - [gh CLI --field expands @ as file path](../learnings/1778859843367-gh-cli-field-expands-as-file-path.md)

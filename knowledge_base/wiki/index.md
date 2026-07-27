@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1717 agent learnings**, synthesized into **46 concept pages**.
+Standalone wiki built from **1728 agent learnings**, synthesized into **46 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -83,11 +83,11 @@ Standalone wiki built from **1717 agent learnings**, synthesized into **46 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (876)
-- [NanoClaw / agent operations](topics/agent-ops.md) (253)
-- [CI, build & tooling](topics/ci-tooling.md) (143)
+- [Slang compiler & language](topics/slang-compiler.md) (879)
+- [NanoClaw / agent operations](topics/agent-ops.md) (255)
+- [CI, build & tooling](topics/ci-tooling.md) (146)
 - [Review & process](topics/review-process.md) (119)
-- [Uncategorized](topics/misc.md) (326)
+- [Uncategorized](topics/misc.md) (329)
 
 ## All learnings (chronological)
 
@@ -1808,3 +1808,14 @@ Standalone wiki built from **1717 agent learnings**, synthesized into **46 conce
 - [Stale GCC PCH snapshots FIDDLE macro state → bogus codegen errors (slang#12227)](learnings/1784991435802-stale-gcc-pch-snapshots-fiddle-macro-state-bogus-c.md)
 - [SKIP_PRECOMPILE_HEADERS is per-TU, not "exclude a header from the PCH"](learnings/1785019137366-skip-precompile-headers-is-per-tu-not-exclude-a-he.md)
 - [Fixing a crash can be a multi-layer cascade — verify each layer before shipping, and stop at the safe boundary](learnings/1785026926217-fixing-a-crash-can-be-a-multi-layer-cascade-verify.md)
+- [Bot App token CANNOT push .github/workflows/* (missing 'workflows' permission) — deliver CI as a patch](learnings/1785048496087-bot-app-token-cannot-push-github-workflows-missing.md)
+- [Diagnosing DescriptorHandle&lt;RaytracingAccelerationStructure&gt; + spvDescriptorHeapEXT crashes](learnings/1785051051163-diagnosing-descriptorhandle-lt-raytracingaccelerat.md)
+- [github_search_issues is:merged returns zero — verify merges via REST commits/pulls API](learnings/1785053957653-github-search-issues-is-merged-returns-zero-verify.md)
+- [spvDescriptorHeapEXT AS heap is driver-managed — descriptor write, NOT raw memcpy (host population)](learnings/1785056296611-spvdescriptorheapext-as-heap-is-driver-managed-des.md)
+- [fiddle:13 'friend' outside class on GCC runner = stale PCH, not poisoned cache](learnings/1785060680645-fiddle-13-friend-outside-class-on-gcc-runner-stale.md)
+- [slang-test reflection/golden test discovery must tolerate TEST(category): suffix](learnings/1785070091132-slang-test-reflection-golden-test-discovery-must-t.md)
+- [RESOLVED #12227: GCC PCH snapshots FIDDLE state — fix = exclude slang-compiler.h from GCC PCH (not per-TU)](learnings/1785072236731-resolved-12227-gcc-pch-snapshots-fiddle-state-fix-.md)
+- [std140: row-major float2x4 and float4[2] are byte-identical — matrix mode doesn't touch arrays](learnings/1785073305394-std140-row-major-float2x4-and-float4-2-are-byte-id.md)
+- [slang-mcp github_search_issues returning empty (use list+filter)](learnings/1785073457026-slang-mcp-github-search-issues-returning-empty-use.md)
+- [Discord: 'float4[N] in struct reads garbage, matrix works' + 'upgraded for descriptor heap' = bug #11483](learnings/1785073991889-discord-float4-n-in-struct-reads-garbage-matrix-wo.md)
+- [supervise scan.py: durable fix for chronic 70+ over-flag (parse_ts tz + HUMAN_OWNED gate lift)](learnings/1785112718566-supervise-scan-py-durable-fix-for-chronic-70-over-.md)
