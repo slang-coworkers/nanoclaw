@@ -296,3 +296,24 @@ describe('create_agent — approved replay (grant-carrying re-entry)', () => {
     expect(mockRequestApproval).not.toHaveBeenCalled();
   });
 });
+
+describe('create_agent — sidebar_group threading (nv-dashboard overlay)', () => {
+  beforeEach(() => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' });
+  });
+
+  it('threads content.group into the new group as sidebar_group', async () => {
+    await runCreateAgent({ name: 'Scout', instructions: 'help', group: 'dashboard:user1' });
+    expect(mockCreateAgentGroup).toHaveBeenCalledWith(expect.objectContaining({ sidebar_group: 'dashboard:user1' }));
+  });
+
+  it('treats "prod" (the shared group) as sidebar_group null', async () => {
+    await runCreateAgent({ name: 'Scout', instructions: 'help', group: 'prod' });
+    expect(mockCreateAgentGroup).toHaveBeenCalledWith(expect.objectContaining({ sidebar_group: null }));
+  });
+
+  it('defaults sidebar_group to null when no group is given', async () => {
+    await runCreateAgent({ name: 'Scout', instructions: 'help' });
+    expect(mockCreateAgentGroup).toHaveBeenCalledWith(expect.objectContaining({ sidebar_group: null }));
+  });
+});

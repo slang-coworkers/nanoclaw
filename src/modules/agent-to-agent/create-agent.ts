@@ -241,6 +241,13 @@ async function performCreateAgent(
 
   const internalOnly = content.internalOnly === true;
   const directChannel = !internalOnly;
+  // Dashboard sidebar grouping: create_agent's `group` scopes the coworker in
+  // the dashboard sidebar — "prod" (or absent) is the shared group, any other
+  // value (e.g. "dashboard:user1") is a per-user sub-group. Threaded through
+  // `content` like the other lego params so the nv-dashboard overlay composes
+  // cleanly instead of re-plumbing this call.
+  const rawGroup = typeof content.group === 'string' ? content.group : null;
+  const sidebarGroup = rawGroup && rawGroup !== 'prod' ? rawGroup : null;
   const newGroup: AgentGroup = {
     id: agentGroupId,
     name,
@@ -255,6 +262,7 @@ async function performCreateAgent(
     overlays: validatedOverlays ? JSON.stringify(validatedOverlays) : null,
     routing: (content.routing as string) || (directChannel ? 'direct' : 'internal'),
     disable_overlays: 0,
+    sidebar_group: sidebarGroup,
     created_at: now,
   };
   createAgentGroup(newGroup);
