@@ -261,14 +261,20 @@ compose_fork() {
     git commit --no-edit >>"$LOG_FILE" 2>&1
   fi
 
-  # package.json and pnpm-lock.yaml are jointly canonical to nv-main. A dep line
-  # in package.json that doesn't textually conflict can still auto-merge to a
-  # value inconsistent with the lockfile (which resolved to nv-main) — breaking
-  # `pnpm install --frozen-lockfile` (ERR_PNPM_OUTDATED_LOCKFILE). Force both to
-  # nv-main's pair after the merge, unconditionally, and fold into the merge
-  # commit. See setup/compose-fork.test.ts.
-  git checkout origin/nv-main -- package.json pnpm-lock.yaml 2>/dev/null || true
-  if ! git diff --cached --quiet -- package.json pnpm-lock.yaml 2>/dev/null; then
+  # The ENTIRE owned set is canonical to nv-main. nv-coworkers tracks upstream,
+  # not nv-main, so it carries stale copies of nv-main-owned files; a stale copy
+  # that AUTO-merges (doesn't conflict) is kept and then dangles against nv-main's
+  # evolved code, or desyncs package.json from the lockfile
+  # (ERR_PNPM_OUTDATED_LOCKFILE). After the merge, overwrite every owned file that
+  # EXISTS on nv-main and differs here to nv-main's version. nv-coworkers-NEW
+  # owned files (absent on nv-main) are left untouched. See setup/compose-fork.test.ts.
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    fork_is_owned "$f" || continue
+    git cat-file -e "origin/nv-main:$f" 2>/dev/null || continue
+    git checkout origin/nv-main -- "$f"
+  done < <(git diff --name-only origin/nv-main HEAD)
+  if ! git diff --cached --quiet 2>/dev/null; then
     git commit -q --amend --no-edit >>"$LOG_FILE" 2>&1
   fi
 

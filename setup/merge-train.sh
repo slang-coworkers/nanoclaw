@@ -109,14 +109,22 @@ for branch in "${BRANCHES[@]}"; do
     git commit --no-edit
   fi
 
-  # package.json and pnpm-lock.yaml are jointly canonical to nv-main. A dep line
-  # in package.json that doesn't textually conflict can still auto-merge to a
-  # value inconsistent with the lockfile (resolved to nv-main) — breaking
-  # `pnpm install --frozen-lockfile` (ERR_PNPM_OUTDATED_LOCKFILE). Force both to
-  # nv-main's pair after each merge, unconditionally, folding into the merge
-  # commit. See setup/merge-train.test.ts.
-  git checkout origin/nv-main -- package.json pnpm-lock.yaml 2>/dev/null || true
-  if ! git diff --cached --quiet -- package.json pnpm-lock.yaml 2>/dev/null; then
+  # The ENTIRE owned set is canonical to nv-main — not just the files that
+  # textually conflicted (resolved above). An overlay carries stale copies of
+  # nv-main-owned files (it tracks upstream, not nv-main); when such a copy
+  # AUTO-merges (doesn't conflict) it is kept, then dangles against nv-main's
+  # evolved code (the nv-dashboard groups.ts / create-agent.ts break) or desyncs
+  # package.json from the lockfile (ERR_PNPM_OUTDATED_LOCKFILE). So after the
+  # merge, overwrite every owned file that EXISTS on nv-main and differs here to
+  # nv-main's version. Overlay-NEW owned files (absent on nv-main — the overlay's
+  # own skills/adapters) are left untouched. See setup/merge-train.test.ts.
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    is_owned "$f" || continue
+    git cat-file -e "origin/nv-main:$f" 2>/dev/null || continue
+    git checkout origin/nv-main -- "$f"
+  done < <(git diff --name-only origin/nv-main HEAD)
+  if ! git diff --cached --quiet 2>/dev/null; then
     git commit -q --amend --no-edit
   fi
   merged_any=1
