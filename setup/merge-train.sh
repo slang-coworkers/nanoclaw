@@ -44,7 +44,7 @@ is_owned() {
     .claude/skills/*) return 0 ;;
     src/*) return 0 ;;
     scripts/*) return 0 ;;
-    setup/*) return 0 ;;
+    setup/*|setup.sh) return 0 ;;
     docs/*) return 0 ;;
     container/agent-runner/*) return 0 ;;
     container/hooks/*) return 0 ;;
