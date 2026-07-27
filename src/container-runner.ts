@@ -29,6 +29,7 @@ import {
   CONTAINER_IMAGE_BASE,
   CONTAINER_INSTALL_LABEL,
   CONTAINER_MEMORY_LIMIT,
+  CONTAINER_PIDS_LIMIT,
   CONTAINER_PREFIX,
   DASHBOARD_PORT,
   DATA_DIR,
@@ -39,7 +40,7 @@ import {
   ONECLI_URL,
   TIMEZONE,
 } from './config.js';
-import { materializeContainerJson } from './container-config.js';
+import { materializeContainerJson, resolveGroupTimezone } from './container-config.js';
 import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
 import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from './egress-lockdown.js';
@@ -745,6 +746,29 @@ export function detectStaleContainers(): Array<{ sessionId: string; agentGroupId
   return stale;
 }
 
+/**
+ * Container hardening flags. Applied to every agent container; no per-group or
+ * per-install override.
+ *
+ * cap-drop and no-new-privileges are inert while containers run under the
+ * `--user` mapping below (the capability sets are already empty and the image
+ * carries no file capabilities) — they are depth against a root-in-container
+ * path. `--init` is not optional: the `--entrypoint bash` override further down
+ * defeats the image's tini, leaving bun as PID 1 with no signal handler, and
+ * Linux discards default-action signals to PID 1. Without docker-init, SIGTERM
+ * is ignored and every stop ends in SIGKILL after the full grace period.
+ */
+export function hardeningArgs(pidsLimit: string): string[] {
+  const args = ['--cap-drop=ALL', '--security-opt', 'no-new-privileges', '--init'];
+
+  // Test >0, not truthiness: cgroups v2 rejects `--pids-limit 0` with EINVAL and
+  // fails the spawn, and '0' is a truthy string. Blank/unparseable means no cap.
+  const pids = Number(pidsLimit);
+  if (Number.isFinite(pids) && pids > 0) args.push('--pids-limit', String(Math.floor(pids)));
+
+  return args;
+}
+
 function resolveProviderContribution(
   session: Session,
   agentGroup: AgentGroup,
@@ -1336,9 +1360,18 @@ async function buildContainerArgs(
   if (CONTAINER_CPU_LIMIT) args.push('--cpus', CONTAINER_CPU_LIMIT);
   if (CONTAINER_MEMORY_LIMIT) args.push('--memory', CONTAINER_MEMORY_LIMIT);
 
+  // Docker defaults /dev/shm to 64m, which silently short-writes past that size.
+  // agent-browser passes --disable-dev-shm-usage, but a third-party puppeteer or
+  // Playwright launcher may not.
+  args.push('--shm-size=1g');
+
+  args.push(...hardeningArgs(CONTAINER_PIDS_LIMIT));
+
   // Environment — only vars read by code we don't own.
   // Everything NanoClaw-specific is in container.json (read by runner at startup).
-  args.push('-e', `TZ=${TIMEZONE}`);
+  // Per-group timezone override (migration 020) → falls back to the install
+  // global; resolveGroupTimezone validates a hand-edited DB value.
+  args.push('-e', `TZ=${resolveGroupTimezone(agentGroup.id)}`);
   args.push('-e', `AGENT_PROVIDER=${provider}`);
   // Two-DB split: container reads inbound.db, writes outbound.db
   args.push('-e', 'SESSION_INBOUND_DB_PATH=/workspace/inbound.db');
