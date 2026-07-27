@@ -19,14 +19,19 @@ jobs:
           git config user.email "ci@nanoclaw"
           BASE="${{ github.base_ref }}"
 
-          # nv-main is the canonical source for every owned infra file, so
-          # conflicts in that set are resolved to ITS content (not HEAD's).
-          # When BASE is a leaf, HEAD starts as the leaf and `--ours` would
-          # keep the leaf's stale package.json while the lockfile auto-merges
-          # nv-main's added deps — a spec/lock mismatch that breaks
-          # `pnpm install --frozen-lockfile`. Fetch nv-main up front so
-          # `git checkout origin/nv-main -- <f>` has the ref even when nv-main
-          # is the BASE (and thus skipped by the merge loop below).
+          # Canonical source for the owned infra set on conflict.
+          #   - PR to a LEAF (nv-dashboard/slang/...): HEAD is the leaf, whose
+          #     owned files are stale copies — take `origin/nv-main`. `--ours`
+          #     would keep the leaf's stale package.json while the lockfile
+          #     auto-merges nv-main's deps, breaking `pnpm install --frozen`.
+          #   - PR to nv-main: HEAD *is* the proposed nv-main. `origin/nv-main`
+          #     is the OLD base, so checking it out would silently REVERT the
+          #     PR's own change to any owned file that a leaf also touches (the
+          #     PR could never be validated). Take HEAD instead.
+          if [ "$BASE" = "nv-main" ]; then OWNED_SRC="HEAD"; else OWNED_SRC="origin/nv-main"; fi
+
+          # Fetch nv-main up front so `git checkout origin/nv-main -- <f>` has
+          # the ref even when nv-main is the BASE (skipped by the merge loop).
           git fetch origin nv-main || { echo "::error::failed to fetch nv-main"; exit 1; }
 
           # nv-main canonically owns the shared infra files (package.json,
@@ -98,22 +103,18 @@ jobs:
               exit 1
             fi
 
-            # All conflicts are owned infra (package.json / lockfiles /
-            # .github/**) — take nv-main's content. nv-main is canonical for
-            # the owned set, so resolve to `origin/nv-main` rather than `--ours`:
-            # `--ours` keeps whichever side HEAD happens to be (the leaf, when
-            # BASE is a leaf), which leaves package.json out of sync with the
-            # auto-merged lockfile. `origin/nv-main` keeps the pair consistent
-            # regardless of merge direction.
+            # All conflicts are owned infra — take the canonical version
+            # ($OWNED_SRC: origin/nv-main for leaf PRs, HEAD for nv-main PRs;
+            # see the comment where OWNED_SRC is set).
             for f in $CONFLICTS; do
-              echo "::notice::$branch: $f conflict — taking nv-main (canonical) version"
-              # A delete/modify conflict (file removed on nv-main, edited on the
-              # leaf) has no nv-main blob to check out — honor the deletion so
-              # the composed merge doesn't strand a half-resolved path.
-              if git checkout origin/nv-main -- "$f" 2>/dev/null; then
+              echo "::notice::$branch: $f conflict — taking $OWNED_SRC (canonical) version"
+              # A delete/modify conflict (file removed on the canonical side,
+              # edited on the other) has no blob to check out — honor the
+              # deletion so the composed merge doesn't strand a half-resolved path.
+              if git checkout "$OWNED_SRC" -- "$f" 2>/dev/null; then
                 git add -- "$f"
               else
-                echo "::notice::$branch: $f absent on nv-main — taking the deletion"
+                echo "::notice::$branch: $f absent on $OWNED_SRC — taking the deletion"
                 git rm -f -- "$f" >/dev/null 2>&1 || rm -f "$f"
                 git add -A -- "$f"
               fi
