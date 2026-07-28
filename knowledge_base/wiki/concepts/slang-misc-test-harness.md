@@ -2,8 +2,8 @@
 title: "Slang Test Harness Mechanics and Gotchas"
 type: concept
 group: slang-grab-bag
-tags: [slang-test, test-harness, synthesized-subtests, DIAGNOSTIC_TEST, LANG_SERVER, FileCheck, slangi, false-green, CI]
-source_count: 40
+tags: [slang-test, test-harness, synthesized-subtests, DIAGNOSTIC_TEST, LANG_SERVER, FileCheck, slangi, false-green, CI, slang-unit-test, linkage, unexported-symbol]
+source_count: 41
 ---
 
 # Slang Test Harness Mechanics and Gotchas
@@ -138,7 +138,11 @@ Four more authoring traps specific to SPIR-V debug/FileCheck tests, all seen on 
 
 When regenerating golden/`.expected` outputs for a systematic change (e.g. adding a field to every reflection-JSON layout, #12225), discover the affected tests with a pattern that tolerates the **category suffix** in the slang-test directive grammar `//TEST[(<category>)]:<COMMAND>` — `//TEST:REFLECTION` *and* `//TEST(64-bit):REFLECTION`, `//TEST(smoke):REFLECTION`, etc. The narrow `//[[:space:]]*TEST:(CPU_)?REFLECTION` (60 hits) misses category-suffixed tests; the correct form inserts an optional group: `//[[:space:]]*TEST(\([^)]*\))?:(CPU_)?REFLECTION` (68 hits). This exact gap made #12225 pass "99/99 local" yet fail `test-slang` **cross-platform** on 8 category-suffixed reflection tests whose `.expected` never got regenerated — so a cross-platform *deterministic* `test-slang` failure right after a golden-output change should be read as **incomplete regeneration, not a real compiler bug**. Companion `.expected` facts: `.expected` is globally gitignored (`*.expected`) so a NEW golden needs `git add -f`; `.32`/`.64` CPU_REFLECTION variants are selected by `SLANG_PTR_IS_32` and no CI job runs 32-bit, so `.32` goldens are unvalidated and drift stale on master; a `.slang` file with no `//TEST` directive is never executed (its `.expected` is orphaned); and reflection tests run via `slang-test <files>` (which writes `.actual` on mismatch — the bless source), not a `bin/` executable ([slang-test reflection/golden discovery must tolerate the TEST(category): suffix](../learnings/1785070091132-slang-test-reflection-golden-test-discovery-must-t.md)).
 
-**Source learnings (56):**
+## Unit-testing an internal (unexported) free function: own-TU + dual-compile, not export (2026-07-27 fold)
+
+When a `slang-unit-test` case needs to call an internal `namespace Slang` free function with no `SLANG_API`/visibility export, it will NOT link — the test module links `libslang-compiler.so` with `-Wl,--no-undefined`, so an unexported symbol is a hard `undefined reference` (hit on #12220 for `classifyCommandLineOption`/`writeCommandLineArgs`). Do NOT export the symbol (ABI creep the maintainers avoid), and do NOT add the whole owning `.cpp` to the test module (its heavy deps cascade into their own undefined references). The established pattern (mirrors `tools/CMakeLists.txt`'s treatment of `slang-repro-validator.cpp`): extract the function into its OWN small self-contained TU depending only on the type it needs — it auto-joins the DLL via the `slang_add_target` glob, and adding it to the `slang-unit-test` target's `target_sources(... PRIVATE ...)` recompiles the same source into the test module. No export, no DLL-boundary call. `slang-unit-test` has `INCLUDE_DIRECTORIES_PRIVATE ${slang_SOURCE_DIR}/source`, so the include is fine — the linkage is the only constraint; this only works if the extracted function is genuinely low-dependency, so design it that way [Unit-testing an internal (unexported) slang free function: own-TU + dual-compile, not export](../learnings/1785203787876-unit-testing-an-internal-unexported-slang-free-fun.md).
+
+**Source learnings (57):**
 - [slang-test golden/.expected discovery must tolerate the TEST(category): suffix — a cross-platform deterministic test-slang fail right after a golden change = incomplete regeneration, not a compiler bug (#12225)](../learnings/1785070091132-slang-test-reflection-golden-test-discovery-must-t.md)
 - [replay recording folders collide under parallel test-servers (no PID in name); B (per-process base dir) fixes the CI flake, A alone doesn't (#12214)](../learnings/1784895262564-slang-replay-recording-folders-collide-under-paral.md)
 - [metallib TEST directive ≠ FileCheck discrimination; both are needed; METAL text check must self-discriminate on non-macOS](../learnings/1784816898155-metallib-test-directive-filecheck-discrimination-b.md)
@@ -195,4 +199,5 @@ When regenerating golden/`.expected` outputs for a systematic change (e.g. addin
 - [copy a prebuilt libslang-llvm.so into your worktree so slang-test runs real FileCheck; a Python simulator can pass where real FileCheck fails](../learnings/1784743223082-run-filecheck-slang-tests-through-real-slang-test-.md)
 - [when FileCheck is absent, verify CHECK lines with an ordered matcher against emitted output; passing count ≠ verified assertions](../learnings/1784751927211-verify-filecheck-check-directives-by-ordered-match.md)
 - [slang-test prepends -O0 (fold CHECKs never match without explicit -O1); SPIRV validation runs pre-opt, so assert on -target spirv-asm post-opt](../learnings/1784762873836-slang-test-injects-o0-by-default-spirv-validation-.md)
+- [unit-testing an internal unexported slang free function: own-TU + dual-compile (glob into DLL + target_sources), not export](../learnings/1785203787876-unit-testing-an-internal-unexported-slang-free-fun.md)
 _Catalog: [[wiki/index.md]]_

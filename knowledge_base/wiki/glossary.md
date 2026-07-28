@@ -64,6 +64,7 @@ type: nav
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
+- [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)
 
 **Slang tooling**
 - [Build System, Runtime Libraries & Debug Workflows](concepts/slang-tooling-build-runtime-libs.md)

@@ -2,8 +2,8 @@
 title: "CI Runners & Flake Triage"
 type: concept
 group: ci-tooling
-tags: [ci, flakes, runners, babysitter, rerun, triage, slang]
-source_count: 61
+tags: [ci, flakes, runners, babysitter, rerun, triage, slang, falcor, gbufferrttexgrads, anchor-issue]
+source_count: 62
 ---
 
 # CI Runners & Flake Triage
@@ -181,7 +181,11 @@ A crucial refinement of the zero-fill signature above: when confirming the corru
 
 A build failure with `slang-ir-insts.h.fiddle:13:22: error: 'friend' used outside of class` (+ `expected unqualified-id before 'private'/'public'` cascading into `invalid use of incomplete type 'IRBuilder'`) on a self-hosted **GCC** Linux runner — while windows-msvc + slang-native build the same tree clean — **looks like** a poisoned/dirty reused-runner workspace (a stale generated `.fiddle` header) inviting a "needs a manual `fiddle/` clean" conclusion. The real root cause (shader-slang/slang **#12227**, fixed by **#12233**) is a **stale GCC precompiled header** expanding FIDDLE-generated `private`/`friend` tokens at *namespace* scope. The distinguisher — and the reason this belongs with the rerun-proof family above: it is NOT runner hygiene, because a *code* PR that only touches PCH/header inclusion turns the leg green (which a one-time cache wipe would not), and `gh run rerun` reuses the same PCH → identical error, so the disposition is **log-as-left / no-rerun**; the difference from a plain flake is the *resolution framing* — "blocked on the code fix landing (clears queue-wide on rebase)," not "wipe the runner cache" ([fiddle:13 'friend' outside class on GCC runner = stale PCH, not poisoned cache](../learnings/1785060680645-fiddle-13-friend-outside-class-on-gcc-runner-stale.md)). See the build-infrastructure concept for the merged CMake fix (exclude `slang-compiler.h` from the GCC PCH, all-TU) and the surprising clean-build reproduction.
 
-**Source learnings (66):**
+## `test_GBufferRTTexGrads_d3d12` is catalogued CI-flake anchor #12145 (2026-07-27 fold)
+
+On a Slang PR, `test-falcor / Test (Falcor)` failing (~17min, so NOT a priority-yield) with `renderpasses/test_GBufferRTTexGrads_d3d12 : FAILED` / `Image tests FAILED` (often with `Error. Unknown VCS root ''`, and `check-ci` reflecting the Falcor red) is catalogued flake anchor **#12145** — a genuine `Mogwai.exe` `0xC0000005` access-violation on that one D3D12 renderpass, proven PR-code-independent across 16+ unrelated PRs and maintainer-owned by jkwak for fix-or-quarantine. Blast-radius check first (don't just assume flake): confirm `test-falcor` is SUCCESS on current master but red on your head AND your change can't affect Falcor codegen. `test-falcor` is NOT a required status check, so this red does not gate merge; don't post a flake-note on an approved PR (noise; #12145 carries the standing quarantine ask), don't rerun-churn or poll, and don't touch the branch if a maintainer approval sits on the current head. A single occurrence on an approved/mergeable PR does not need babysitter routing [test_GBufferRTTexGrads_d3d12 is catalogued CI flake #12145 (not your regression)](../learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md).
+
+**Source learnings (67):**
 - [fiddle:13 'friend' outside class on a GCC runner = stale GCC PCH (#12227/#12233), not a poisoned reused-workspace cache; a PCH-only code PR turning the leg green proves it — rerun-proof, log-as-left](../learnings/1785060680645-fiddle-13-friend-outside-class-on-gcc-runner-stale.md)
 - [macOS test job downloads the slang-tests-* artifact (not slang-build-*) — inspect the RIGHT copy of libslang-compiler.dylib; identical fail across fresh runners = rerun-proof upload corruption (#12216)](../learnings/1784974553601-macos-test-job-downloads-slang-tests-artifact-not-.md)
 - [zero-filled dylib in test artifact = upload-corruption, rerun-proof; post-download SHA can't catch it; needs author re-push (#12216)](../learnings/1784923930083-zero-filled-dylib-in-test-artifact-upload-corrupti.md)
@@ -251,4 +255,5 @@ A build failure with `slang-ir-insts.h.fiddle:13:22: error: 'friend' used outsid
 - [a benign DWARF ld-note can mask the real undefined-reference cause; don't classify a link failure off the first "error" line](../learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md)
 - [release-not-debug + intermittent + rerun-clears + cross-API sharing = missing-sync signature; a tolerance widen on a bit-exact copy masks, doesn't fix (slang-rhi#787)](../learnings/1784741714597-slang-rhi-787-texture-shared-cuda-vulkan-flake-is-.md)
 - [aarch64-only deterministic test-slang CHECK fail = env SPIR-V disasm token, not arch bug](../learnings/1784830954472-aarch64-only-test-slang-check-fails-env-token-not-.md)
+- [test_GBufferRTTexGrads_d3d12 is catalogued CI flake #12145 (not your regression); test-falcor not required, log-as-left](../learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md)
 _Catalog: [[wiki/index.md]]_
