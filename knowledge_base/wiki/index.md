@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1728 agent learnings**, synthesized into **46 concept pages**.
+Standalone wiki built from **1761 agent learnings**, synthesized into **47 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -70,6 +70,7 @@ Standalone wiki built from **1728 agent learnings**, synthesized into **46 conce
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
+- [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)
 
 ### Slang tooling
 - [Build System, Runtime Libraries & Debug Workflows](concepts/slang-tooling-build-runtime-libs.md)
@@ -83,11 +84,11 @@ Standalone wiki built from **1728 agent learnings**, synthesized into **46 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (879)
-- [NanoClaw / agent operations](topics/agent-ops.md) (255)
-- [CI, build & tooling](topics/ci-tooling.md) (146)
-- [Review & process](topics/review-process.md) (119)
-- [Uncategorized](topics/misc.md) (329)
+- [Slang compiler & language](topics/slang-compiler.md) (901)
+- [NanoClaw / agent operations](topics/agent-ops.md) (258)
+- [CI, build & tooling](topics/ci-tooling.md) (149)
+- [Review & process](topics/review-process.md) (121)
+- [Uncategorized](topics/misc.md) (332)
 
 ## All learnings (chronological)
 
@@ -1819,3 +1820,36 @@ Standalone wiki built from **1728 agent learnings**, synthesized into **46 conce
 - [slang-mcp github_search_issues returning empty (use list+filter)](learnings/1785073457026-slang-mcp-github-search-issues-returning-empty-use.md)
 - [Discord: 'float4[N] in struct reads garbage, matrix works' + 'upgraded for descriptor heap' = bug #11483](learnings/1785073991889-discord-float4-n-in-struct-reads-garbage-matrix-wo.md)
 - [supervise scan.py: durable fix for chronic 70+ over-flag (parse_ts tz + HUMAN_OWNED gate lift)](learnings/1785112718566-supervise-scan-py-durable-fix-for-chronic-70-over-.md)
+- [In-turn PR-review polling: bounded blocking Bash calls, never an armed background waiter](learnings/1785143391944-in-turn-pr-review-polling-bounded-blocking-bash-ca.md)
+- [[approver/challenger] slangpy external/slang-rhi submodule bump is reviewable content; fold live maintainer gaps in on the Devin-only tier](learnings/1785150368583-approver-challenger-slangpy-external-slang-rhi-sub.md)
+- [[approver/human-agreement] A human APPROVED commit can predate a later head-current bot finding — record the join but don't round the shadow decision up](learnings/1785151870935-approver-human-agreement-a-human-approved-commit-c.md)
+- [Test re-enable follow-ups can be doubly-gated (disabling PR + fix PR both unmerged)](learnings/1785162937774-test-re-enable-follow-ups-can-be-doubly-gated-disa.md)
+- [[approver/challenger-miss] Whole-TEST_CASE skip can drop deterministic coverage bundled with the flaky assertions](learnings/1785165216238-approver-challenger-miss-whole-test-case-skip-can-.md)
+- [tests/spirv OpName-prefix failures from stale slangc = core-module embedding, not a regression (verify binary provenance first)](learnings/1785167795738-tests-spirv-opname-prefix-failures-from-stale-slan.md)
+- [Stale prebuilt slangc embeds old core module — false tests/spirv failures](learnings/1785167843971-stale-prebuilt-slangc-embeds-old-core-module-false.md)
+- [Slang C/COM API: loadModule returns a BORROWED IModule*, not caller-owned](learnings/1785172765216-slang-c-com-api-loadmodule-returns-a-borrowed-imod.md)
+- [Slang switch: pre-first-case statements silently dropped (E41000 gap), same root as #9999](learnings/1785173842957-slang-switch-pre-first-case-statements-silently-dr.md)
+- [slang bool switch condition asserts on SPIR-V (intLit) — missing bool→int legalization](learnings/1785174386328-slang-bool-switch-condition-asserts-on-spir-v-intl.md)
+- [slang-float-switch-condition-accepted-invalid-codegen-frontend-gap](learnings/1785175092329-slang-float-switch-condition-accepted-invalid-code.md)
+- [slang-switch-nested-case-labels-escape-uniqueness-and-ICE](learnings/1785176032715-slang-switch-nested-case-labels-escape-uniqueness-.md)
+- [SPIR-V OpSwitch case literals are emitted at fixed 32-bit width (breaks 64-bit selectors)](learnings/1785176355400-spir-v-opswitch-case-literals-are-emitted-at-fixed.md)
+- [slang switch #12239 — reject nested case labels in validateCaseStmts, but STOP recursion at inner SwitchStmt](learnings/1785176804780-slang-switch-12239-reject-nested-case-labels-in-va.md)
+- [Maintainer-authored tracking/placeholder issue = watch-only, no GitHub post, no fixer](learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md)
+- [slang-pr-review Reviewer A: "0 bytes / no review produced" guard can be a lie when the run hit the budget cap — recover from stream](learnings/1785186988820-slang-pr-review-reviewer-a-0-bytes-no-review-produ.md)
+- [GL_EXT_texture_shadow_lod bias-form boundary ≠ explicit-LOD boundary (Slang capability atoms)](learnings/1785190567550-gl-ext-texture-shadow-lod-bias-form-boundary-expli.md)
+- [critique-gate: PLAN_REVIEW is required + any side-artifact edit re-arms the OUTPUT gate](learnings/1785191965028-critique-gate-plan-review-is-required-any-side-art.md)
+- [slang-clarity-review-runner script takes flags, not a run-clarity subcommand](learnings/1785192373525-slang-clarity-review-runner-script-takes-flags-not.md)
+- [SampleCmp* capability-atom rename = re-point not rename (texture_shadowlod is shared)](learnings/1785192528373-samplecmp-capability-atom-rename-re-point-not-rena.md)
+- [test_GBufferRTTexGrads_d3d12 is catalogued CI flake #12145 (not your regression)](learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md)
+- [[approver/challenger] slang-rhi Metal tests SKIP on GitHub-hosted macos-latest — green CI never executes the Metal path](learnings/1785193552208-approver-challenger-slang-rhi-metal-tests-skip-on-.md)
+- [slangpy #827 evolved: torch scalar-return emits WTensor&lt;T,0&gt; → Slang ICE (live at HEAD)](learnings/1785194003226-slangpy-827-evolved-torch-scalar-return-emits-wten.md)
+- [slang: reuse isPointerToImmutableLocation / isOpaqueType for constref copy-elision (do not hand-roll)](learnings/1785194352818-slang-reuse-ispointertoimmutablelocation-isopaquet.md)
+- [slangpy#827: Approach A (guard torch return on call_dim>0) regresses aggregate dim-0 returns](learnings/1785197081443-slangpy-827-approach-a-guard-torch-return-on-call-.md)
+- [[approver/human-agreement] R3-ABSTAIN-on-target-neutral-rooting-VINDICATED-closed-for-host-scoped-replacement](learnings/1785201460764-approver-human-agreement-r3-abstain-on-target-neut.md)
+- [Unit-testing an internal (unexported) slang free function: own-TU + dual-compile, not export](learnings/1785203787876-unit-testing-an-internal-unexported-slang-free-fun.md)
+- [Suite-wide spirv-opt (-O3) revives dormant SPIRV-Tools asserts (#12247, revives #11766/#11767)](learnings/1785203893114-suite-wide-spirv-opt-o3-revives-dormant-spirv-tool.md)
+- [Adding a public capability alias requires regenerating TWO CI-checked docs, not just a4-02](learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md)
+- [Slang $P prefix + vector min/max: fix layer, prelude embedding, include-order](learnings/1785207760204-slang-p-prefix-vector-min-max-fix-layer-prelude-em.md)
+- [Reviewer A wrong-PR integrity fail: shared tmp/ staging collision between concurrent runs](learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md)
+- [Slang $P vector-min/max fix leaves matrix sibling crash (PR #12249 review)](learnings/1785210150352-slang-p-vector-min-max-fix-leaves-matrix-sibling-c.md)
+- [Slang #12249 round-2: E55215 diagnostic misses prefix-having vector element types (IPTR/UPTR/narrow-int)](learnings/1785214611295-slang-12249-round-2-e55215-diagnostic-misses-prefi.md)

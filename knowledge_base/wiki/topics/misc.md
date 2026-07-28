@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-329 learnings. [Catalog](../index.md)
+332 learnings. [Catalog](../index.md)
 
 - [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
@@ -40,6 +40,7 @@ type: topic
 - [[approver/challenger-miss] Substitute-override audits must cover every _substituteImplOverride file, not just val.cpp/decl-ref.cpp](../learnings/1784054408743-approver-challenger-miss-substitute-override-audit.md)
 - [[approver/challenger-miss] The pre-existing/attribution test cuts BOTH ways — a fix-commit can newly introduce a gap; and enumerated-exception invariants must be completeness-checked against every scope](../learnings/1784011508988-approver-challenger-miss-the-pre-existing-attribut.md)
 - [[approver/challenger-miss] Val-lowering memoization audit — dispatch==dispatchType, and the module-parent guard is the env-independence proof](../learnings/1784074914750-approver-challenger-miss-val-lowering-memoization-.md)
+- [[approver/challenger-miss] Whole-TEST_CASE skip can drop deterministic coverage bundled with the flaky assertions](../learnings/1785165216238-approver-challenger-miss-whole-test-case-skip-can-.md)
 - [[approver/challenger] a fix that resolves the flagged bug can introduce a new one in its own doc/comment change — re-scan the fix's non-code edits](../learnings/1784440929327-approver-challenger-a-fix-that-resolves-the-flagge.md)
 - [[approver/challenger] a standing bot 🔴 is REFUTED (not honored) when the flagged text/code no longer exists at the pinned head — verify against source both ways](../learnings/1784442969985-approver-challenger-a-standing-bot-is-refuted-not-.md)
 - [[approver/challenger] CLA/mechanical force-push does not clear a standing CHANGES_REQUESTED — same withhold posture](../learnings/1784731375990-approver-challenger-cla-mechanical-force-push-does.md)
@@ -89,6 +90,7 @@ type: topic
 - [[approver/human-agreement] Protected-path ABSTAIN_POLICY vindicated by byte-identical merge — the withhold is agreement, not a miss](../learnings/1784381462983-approver-human-agreement-protected-path-abstain-po.md)
 - [[approver/human-agreement] protected-path-ABSTAIN-confirmed-but-author-self-merge-ships-open-gaps](../learnings/1784437469229-approver-human-agreement-protected-path-abstain-co.md)
 - [[approver/human-agreement] R2 BLOCK → narrowed fix → merge-APPROVED = shadow BLOCK vindicated end-to-end (#12111)](../learnings/1784675820614-approver-human-agreement-r2-block-narrowed-fix-mer.md)
+- [[approver/human-agreement] R3-ABSTAIN-on-target-neutral-rooting-VINDICATED-closed-for-host-scoped-replacement](../learnings/1785201460764-approver-human-agreement-r3-abstain-on-target-neut.md)
 - [[approver/human-agreement] website-content PR OUT_OF_SCOPE confirmed by genuine human approval+merge](../learnings/1784325987979-approver-human-agreement-website-content-pr-out-of.md)
 - [[approver/human-agreement] WOULD_APPROVE-vindicated-merged-head-byte-identical-via-master-merge-syncs](../learnings/1784725443219-approver-human-agreement-would-approve-vindicated-.md)
 - [[approver/human-disagreement] "Diagnose-by-instrumentation" PRs that re-enable a quarantined test are ABSTAIN_POLICY when the test is still red](../learnings/1784049982092-approver-human-disagreement-diagnose-by-instrument.md)
@@ -282,6 +284,7 @@ type: topic
 - [ResourceDescriptorHeap/SamplerDescriptorHeap input syntax is front-end-only — backend already exists](../learnings/1781219589907-resourcedescriptorheap-samplerdescriptorheap-input.md)
 - [Resume-after-pause: re-verify remote state before applying the saved resume plan](../learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md)
 - [Revert-drill every regression test — a positive-only CHECK can false-pass](../learnings/1784070069979-revert-drill-every-regression-test-a-positive-only.md)
+- [SampleCmp* capability-atom rename = re-point not rename (texture_shadowlod is shared)](../learnings/1785192528373-samplecmp-capability-atom-rename-re-point-not-rena.md)
 - [Sanitizer-finding fixes must remove the matching expected-sanitizer-findings.txt suppression in the same PR](../learnings/1782328977641-sanitizer-finding-fixes-must-remove-the-matching-e.md)
 - [scan.py disposition suppression must apply on all ball branches](../learnings/1784464263683-scan-py-disposition-suppression-must-apply-on-all-.md)
 - [Scope conflict across a park/re-engage boundary: resolve from the author's GitHub comment, not memory](../learnings/1783466589004-scope-conflict-across-a-park-re-engage-boundary-re.md)

@@ -2,8 +2,8 @@
 title: "Fixer & Triage Automation"
 type: concept
 group: agent-fixer-codex-skills
-tags: [fixer, triage, github, pr-hygiene, slang, ci, bot-policy]
-source_count: 33
+tags: [fixer, triage, github, pr-hygiene, slang, ci, bot-policy, dependency-graph, watch-only, tracking-placeholder]
+source_count: 35
 ---
 
 # Fixer & Triage Automation
@@ -127,7 +127,11 @@ Two triage-routing rules about resolution vehicles. When triaging an "add X supp
 
 A shader-slang issue titled like "Onboard repo to PR dashboard" (empty body, maintainer-authored, no repro) is an **operational/infrastructure** request about the coworker PR-dashboard / observability system — NOT a compiler/binding/docs task with a fix surface. Don't force a code triage or forward to a fixer: classify subsystem = infra/ops, post a brief triage note, and escalate to the orchestrator to own the dashboard side. Non-obvious fact that saves re-investigation (slangpy#1074): slangpy is likely *already* "onboarded" for the two common meanings — (a) the org PR-attention report (`slang-pr-report`) runs with `DEFAULT_REPOS=""`, surfacing open PRs for all non-archived shader-slang repos with no per-repo step, and (b) slangpy PRs already flow through the triage/fixer/reviewer/pr-approver pipeline as chain tiles. So ask the maintainer to disambiguate (a)/(b)/(c) a different-or-new dashboard + its end-state, rather than a generic "which dashboard?" ([Onboard-repo-to-dashboard issues are ops/infra, not code triage](../learnings/1784913528281-onboard-repo-to-dashboard-issues-are-ops-infra-not.md)).
 
-**Source learnings (42):**
+## Dependency-graph triage: doubly-gated re-enables, and maintainer-tracking placeholders (2026-07-27 fold)
+
+Two triage shapes that need the full context resolved before a disposition. For a **"re-enable disabled tests once X merges" follow-up** (slangpy#1077), don't just check whether the *fix* PR merged — resolve the whole dependency graph: the `doctest::skip()` markers to remove are *added by* a separate disabling PR (#1076), so the issue is **doubly-gated** and needs BOTH #1076 merged (so skips exist to remove) AND the fix #1073 merged; if the fix merges but the disabling PR closes unmerged, the re-enable becomes moot. `gh pr view --json state,mergedAt` on *both*, and note that a fix PR at REVIEW_REQUIRED with green CI + zero reviews is blocked on a human approval, not code [Test re-enable follow-ups can be doubly-gated (disabling PR + fix PR both unmerged)](../learnings/1785162937774-test-re-enable-follow-ups-can-be-doubly-gated-disa.md). And a **maintainer-authored tracking/planning placeholder** (slang#12241 "[Metal RayTracing] Start the implementation - part 1") is WATCH-ONLY / park-at-triaged: NO GitHub comment, NO label change, NO fixer dispatch — close the chain with an upstream `[Triage Resolution]` only. Signals: author is a self-filing+self-assigning core MEMBER/COLLABORATOR, Type/labels already human-set, body is a deferring umbrella placeholder, no reproducer expected. The "post a verified 5-bullet on every triaged issue" rule assumes there's a verdict a human needs; on the maintainer's own fully-triaged placeholder there's nothing to add, so a bot ack is noise. Still do the research to ground the report and catch a mis-shaped "tracking" issue that's actually a latent bug; RE-OPEN only on a fresh substantive human comment [Maintainer-authored tracking/placeholder issue = watch-only, no GitHub post, no fixer](../learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md).
+
+**Source learnings (44):**
 - [onboard-repo-to-dashboard issues are ops/infra not code triage; slangpy likely already onboarded (slang-pr-report DEFAULT_REPOS="" + existing pipeline)](../learnings/1784913528281-onboard-repo-to-dashboard-issues-are-ops-infra-not.md)
 - [triage must `gh pr list --search "<issue#>"` for an existing `Fixes #N` PR before forwarding to fixer; a human-owned in-flight PR → routing decision to parent, not double-dispatch](../learnings/1784380560521-triage-gh-search-for-an-existing-fixes-n-pr-before.md)
 - [tools/gfx/ is legacy code paralleling slang-rhi](../learnings/1778749638138-slang-fixer-tools-gfx-is-legacy-code-paralleling-s.md)
@@ -172,4 +176,6 @@ A shader-slang issue titled like "Onboard repo to PR dashboard" (empty body, mai
 - [triaging 'add X support' — search for an existing bot-owned Fixes-#N draft PR first; flag routing to parent, don't forward fresh (double-dispatch risk)](../learnings/1784739008680-triaging-an-add-x-support-feature-issue-search-for.md)
 - [fold a follow-up that edits an open PR's newly-introduced file INTO that PR (Closes #N), not a rival PR off master; re-check draft/ready state at triage](../learnings/1784758259762-a-follow-up-issue-editing-a-file-only-introduced-b.md)
 - [contributor-assigned issue: flag to parent first, don't auto-dispatch the fixer (check assignees)](../learnings/1784793724947-triage-handoff-to-a-contributor-assigned-issue-fla.md)
+- [test re-enable follow-ups can be doubly-gated (disabling PR + fix PR both unmerged) — resolve the full dependency graph](../learnings/1785162937774-test-re-enable-follow-ups-can-be-doubly-gated-disa.md)
+- [maintainer-authored tracking/placeholder issue = watch-only, no GitHub post, no fixer](../learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md)
 _Catalog: [[wiki/index.md]]_

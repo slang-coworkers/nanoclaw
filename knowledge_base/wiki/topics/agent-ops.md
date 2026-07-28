@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-255 learnings. [Catalog](../index.md)
+258 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [[approver/calibration] check-ci-is-aggregation-gate-not-independent-failure](../learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gate-.md)
@@ -118,6 +118,7 @@ type: topic
 - [critique-gate stage detector keys on the FIRST stage-keyword in the codex prompt — lead with the bare STAGE: line](../learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md)
 - [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
 - [critique-gate: codex-reply re-verify must NOT contain a literal "STAGE:" line](../learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)
+- [critique-gate: PLAN_REVIEW is required + any side-artifact edit re-arms the OUTPUT gate](../learnings/1785191965028-critique-gate-plan-review-is-required-any-side-art.md)
 - [critique-gate: STAGE marker in codex PROMPT + "### Verdict" block in codex RESPONSE, one call per stage](../learnings/1781321980304-critique-gate-stage-marker-in-codex-prompt-verdict.md)
 - [Cross-fork workflow-file PR opens but is POLICY-CLOSED by maintainer — coworker bots can't land .github/workflows changes at all](../learnings/1783546977853-cross-fork-workflow-file-pr-opens-but-is-policy-cl.md)
 - [Cross-session memory-load-timing gap: a memory written mid-flight by another session isn't loaded by already-running sessions](../learnings/1783879382333-cross-session-memory-load-timing-gap-a-memory-writ.md)
@@ -171,6 +172,7 @@ type: topic
 - [Lexer escape-validation must be deferred to the decode layer, not the scan pass (#include paths opt out)](../learnings/1782799753646-lexer-escape-validation-must-be-deferred-to-the-de.md)
 - [Looping self-edge peer session: flag up once, then ignore — ncl mutating verbs blocked without a wired approver](../learnings/1781091162121-looping-self-edge-peer-session-flag-up-once-then-i.md)
 - [Maintainer "assign the PR to me" LOSES to standing operator no-assignee gate on bot PRs — triager can't override](../learnings/1784277158125-maintainer-assign-the-pr-to-me-loses-to-standing-o.md)
+- [Maintainer-authored tracking/placeholder issue = watch-only, no GitHub post, no fixer](../learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md)
 - [May 14 session — landed PRs](../learnings/legoop-project_session_may14.md)
 - [ncl approval gate non-functional — no admin configured to approve](../learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md)
 - [ncl group container fixes — Bookworm package gaps + approval sequencing](../learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md)
@@ -233,6 +235,7 @@ type: topic
 - [Supervisor CI cell goes stale when PR flips draft→non-draft](../learnings/1784982853601-supervisor-ci-cell-goes-stale-when-pr-flips-draft-.md)
 - [Supervisor tick 97 — scan.py over-flag reverted again (skill re-sync); raw 15→0](../learnings/1784680848889-supervisor-tick-97-scan-py-over-flag-reverted-agai.md)
 - [synchronize-webhook-can-fire-on-comment-updated-at-bump](../learnings/1784269837644-synchronize-webhook-can-fire-on-comment-updated-at.md)
+- [Test re-enable follow-ups can be doubly-gated (disabling PR + fix PR both unmerged)](../learnings/1785162937774-test-re-enable-follow-ups-can-be-doubly-gated-disa.md)
 - [Triage + GitHub artifact: fixed-via-PR exception resolves the "don't post interim verdict" vs "artifact MUST land" tension](../learnings/1780769170857-triage-github-artifact-fixed-via-pr-exception-reso.md)
 - [Triage handoff to a CONTRIBUTOR-ASSIGNED issue: flag to Main first, don't auto-dispatch the fixer](../learnings/1784793724947-triage-handoff-to-a-contributor-assigned-issue-fla.md)
 - [Triage of rename/branding requests — governance, not engineering](../learnings/1783935538903-triage-of-rename-branding-requests-governance-not-.md)

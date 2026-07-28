@@ -2,8 +2,8 @@
 title: "SlangPy Torch Autograd: Bridge, Cache Signature, and Grad-Buffer Binding"
 type: concept
 group: slangpy
-tags: [slangpy, torch, autograd, bwd_diff, calldata-cache, difftensor, grad-buffer, bridge]
-source_count: 9
+tags: [slangpy, torch, autograd, bwd_diff, calldata-cache, difftensor, grad-buffer, bridge, wtensor, scalar-return, call-dimensionality]
+source_count: 11
 ---
 
 # SlangPy Torch Autograd: Bridge, Cache Signature, and Grad-Buffer Binding
@@ -42,7 +42,11 @@ Any torch-integration change must exercise BOTH bridge paths. The bridge has a *
 
 **Env quirks (container):** torch not preinstalled in `.venv-slangpy`; driver 565.x needs the cu126 wheel (`pip install --force-reinstall --no-deps torch --index-url .../cu126` — plain reinstall is skipped as already-satisfied). Register the worktree editable with `NO_CMAKE_BUILD=1 pip install -e . --no-build-isolation` to uninstall the site-packages shadow ([slangpy torch fix verification: two bridge paths, native pkg build, env quirks (#1052)](../learnings/1783877917048-slangpy-torch-fix-verification-two-bridge-paths-na.md)).
 
-**Source learnings (9):**
+## Scalar-return + torch-input: the `WTensor<T,0>` ICE and why Approach A is incomplete (#827)
+
+slangpy #827 (originally a Vulkan+torch memory leak, reportedly fixed by #781) evolved into a **live compiler ICE at HEAD**: calling a scalar-returning Slang fn with a torch.Tensor arg on a non-CUDA backend emits `WTensor<T,0>` → `InternalError: didn't find tuple element`. Root cause chain: `calldata.py:207-208` sets `return_type = torch.Tensor` **unconditionally** when a torch tensor is present, *before* `call_dimensionality` is computed; `create_return_value_binding` only applies its `call_dim==0 → ValueRef` default when `return_type is None`, so scalar returns skip ValueRef; the torch marshall then builds `WTensor<T,0>` with zero-length shape/strides → the ICE. Regression from #759, latent since #362 [slangpy #827 evolved: torch scalar-return emits WTensor&lt;T,0&gt; → Slang ICE (live at HEAD)](../learnings/1785194003226-slangpy-827-evolved-torch-scalar-return-emits-wten.md). It's a semantics decision, not a pure bug: Approach A (guard the `return_type` default on `call_dim>0`) and Approach B (support 0-D torch returns end-to-end). **Approach A as specified is INCOMPLETE and regresses** — `call_dim==0` is NOT scalar-exclusive; it also covers whole-tensor/aggregate returns (`float3 add_vectors(...)`), so guarding on `call_dim>0` diverts those to ValueRefMarshall too and breaks 16 existing `test_torchintegration.py` cases (`save_for_backward can only save variables`). The correct discriminator is "scalar element type at dim 0" (ScalarType), not `call_dim>0`; and torch's own convention (verified torch 2.13) is that a logically-scalar op returns a **0-D torch.Tensor**, the consistency argument for Approach B. The ICE itself does not reproduce on every env (L40S CUDA/Vulkan native bridge compiles `WTensor<float,0>` fine), so it's compiler-version-specific [slangpy#827: Approach A (guard torch return on call_dim>0) regresses aggregate dim-0 returns](../learnings/1785197081443-slangpy-827-approach-a-guard-torch-return-on-call-.md).
+
+**Source learnings (11):**
 - [SlangPy delegates loop reverse-mode autodiff to the compiler; bwds body crashes are upstream](../learnings/1783873232594-slangpy-delegates-all-loop-reverse-mode-autodiff-t.md)
 - [#1052: cache signature `[Dn,Sm]` omits requires_grad → silent autograd-hook drop](../learnings/1783875433681-slangpy-torch-call-data-cache-ignores-requires-gra.md)
 - [#1052 verification: native + fallback bridge paths, sig test sites, env quirks](../learnings/1783877917048-slangpy-torch-fix-verification-two-bridge-paths-na.md)
@@ -52,5 +56,7 @@ Any torch-integration change must exercise BOTH bridge paths. The bridge has a *
 - [#1056 verification: has_grad_fields is per-parameter (type name), DeepWiki PrimalTensor claim is primal-only](../learnings/1783881931096-verifying-slangpy-backward-grad-binding-has-grad-f.md)
 - [#1056 fix (PR #1057): unconditional scratch grad buffer on ALL backends, torch-only scope](../learnings/1783886043309-slangpy-1056-fix-no-grad-idifftensor-backward-need.md)
 - [torch-interop tests hardcode device="cuda" under non-CUDA parametrization — correct idiom, not a bug](../learnings/1783886520730-slangpy-torch-interop-tests-hardcode-device-cuda-e.md)
+- [#827 evolved: torch scalar-return emits WTensor<T,0> → Slang ICE (calldata.py:207 unconditional return_type)](../learnings/1785194003226-slangpy-827-evolved-torch-scalar-return-emits-wten.md)
+- [#827 Approach A (guard on call_dim>0) regresses aggregate dim-0 returns; discriminator must be ScalarType, or adopt Approach B](../learnings/1785197081443-slangpy-827-approach-a-guard-torch-return-on-call-.md)
 
 _Catalog: [[wiki/index.md]]_

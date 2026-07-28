@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-146 learnings. [Catalog](../index.md)
+149 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] -Og debug-build guard: subtractive NOT-MSVC guard can't regress prior-green; -Wmaybe-uninitialized gap clears as future-proofing when PR adds no C++](../learnings/1784288671711-approver-calibration-og-debug-build-guard-subtract.md)
 - [[approver/calibration] build-flag PR: clear a "-Werror CI break" gap by checking the affected config is actually green](../learnings/1784270606102-approver-calibration-build-flag-pr-clear-a-werror-.md)
@@ -48,6 +48,7 @@ type: topic
 - [[approver/false-safe] Memoization/caching PRs: a static-CLEAN audit never rounds toward approve — CI on the pinned head is authoritative](../learnings/1784078519306-approver-false-safe-memoization-caching-prs-a-stat.md)
 - [[approver/false-safe] Never record WOULD_APPROVE while CI is still pending on a behavior-changing PR — Devin-clean is not test-clean](../learnings/1784150830548-approver-false-safe-never-record-would-approve-whi.md)
 - [[approver/human-agreement] #12140 -Og debug-build MERGED at decided head — subtractive-guard + no-C++ future-proofing-gap clear VINDICATED](../learnings/1784292544219-approver-human-agreement-12140-og-debug-build-merg.md)
+- [[approver/human-agreement] A human APPROVED commit can predate a later head-current bot finding — record the join but don't round the shadow decision up](../learnings/1785151870935-approver-human-agreement-a-human-approved-commit-c.md)
 - [[approver/human-agreement] author self-merge is a WEAK "APPROVED" signal — a shadow-mode ABSTAIN over a CI-invisible regression is vindicated (not refuted) when the author self-merges it unchanged](../learnings/1784386435249-approver-human-agreement-author-self-merge-is-a-we.md)
 - [[approver/human-agreement] BLOCK on PR-caused red CI vindicated by fix-then-merge trajectory (#12130)](../learnings/1784177389034-approver-human-agreement-block-on-pr-caused-red-ci.md)
 - [[approver/human-agreement] master-merge churn: pin the PR-diff hash, re-verify structural claims when the base moves, treat pipeline-incompleteness as an explicit judgment](../learnings/1784008035954-approver-human-agreement-master-merge-churn-pin-th.md)
@@ -62,6 +63,7 @@ type: topic
 - [[approver/infra-abstain] Sustained force-push burst starves head-current decisions → ABSTAIN_INFRA](../learnings/1783958614926-approver-infra-abstain-sustained-force-push-burst-.md)
 - [A maintainer merging master into your PR branch can silently fix the root cause — rebuild+retest after any base move](../learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md)
 - [A required draft-PR ci.yml workflow_dispatch can itself priority-yield](../learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md)
+- [Adding a public capability alias requires regenerating TWO CI-checked docs, not just a4-02](../learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md)
 - [An infra-unblock nudge is not an override of a decision-based hold — verify the actual trigger](../learnings/1782719314130-an-infra-unblock-nudge-is-not-an-override-of-a-dec.md)
 - [Approver teardown at near-terminal loses unrecorded verdict — orchestrator must reconcile on resume](../learnings/1784445113353-approver-teardown-at-near-terminal-loses-unrecorde.md)
 - [approver: relaxed shadow policy still protects .github/** — CI-touching PRs ABSTAIN_POLICY before the review verdict is even read](../learnings/1783673178930-approver-relaxed-shadow-policy-still-protects-gith.md)
@@ -140,6 +142,7 @@ type: topic
 - [static-const-matrix-array: two distinct flake signatures, don't conflate](../learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md)
 - [Templated operator-wake ≠ explicit scoped override of a considered hold](../learnings/1782734222994-templated-operator-wake-explicit-scoped-override-o.md)
 - [Terminal count/sentinel enums: prefer keeping them IMPLICIT, not explicit+static_assert](../learnings/1782859187073-terminal-count-sentinel-enums-prefer-keeping-them-.md)
+- [test_GBufferRTTexGrads_d3d12 is catalogued CI flake #12145 (not your regression)](../learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md)
 - [Testing the buffer-load-arg (Site 4) heap-load specialization path](../learnings/1780769206960-testing-the-buffer-load-arg-site-4-heap-load-speci.md)
 - [Untracking a checked-in build binary is safe only if nothing consumes the tracked copy](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)
 - [Verify "N reviewers APPROVE" against GitHub reviewDecision before posting it as a public verdict](../learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md)

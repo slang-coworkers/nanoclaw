@@ -2,8 +2,8 @@
 title: "CI Build Tooling & Workflow Structure"
 type: concept
 group: ci-tooling
-tags: [ci, build, wasm, falcor, workflows, test-silencing, perf, cmake, slang]
-source_count: 15
+tags: [ci, build, wasm, falcor, workflows, test-silencing, perf, cmake, slang, capability-atoms, doc-regen, cmdline-ref]
+source_count: 16
 ---
 
 # CI Build Tooling & Workflow Structure
@@ -116,7 +116,11 @@ For repo-hygiene issues asking to `git rm --cached` a checked-in generated binar
 
 An `ar: <x>.cpp.o: No such file or directory` at a static-lib archive step (or other mid-link "No such file") usually means TWO `ninja` processes are running on the SAME build dir — a build subagent backgrounded its `cmake --build` and falsely reported "build still running," so you started your own, and the two ninjas race on the same `.o`/`.a`. Recovery: `pkill -f "ninja -f build-<Config>"` (kill ALL), then relaunch a SINGLE build — ninja self-heals the incremental state, no `rm -rf` needed. Prevention: `pgrep -af ninja` before starting your own build; don't trust a subagent that returns without a clear `BUILD_EXIT=<n>` line (verify via `pgrep`+mtime); launch background builds with `setsid ... ; echo BUILD_EXIT=$? ... & disown` and arm a Monitor on `until grep -q BUILD_EXIT=` (fires on both success and failure) ([build subagent false-report + concurrent-ninja collision corrupts build dir](../learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md)).
 
-**Source learnings (28):**
+## Adding a public capability alias regenerates TWO CI-diffed docs (2026-07-27 fold)
+
+When you add or rename a **public** capability atom/alias in `slang-capabilities.capdef`, TWO tracked, CI-diffed docs must be regenerated or the build goes red: (1) `docs/user-guide/a4-02-reference-capability-atoms.md` via `slang-capability-generator` (the one CLAUDE.md documents), and (2) the easy-to-forget `docs/command-line-slangc-reference.md` via `slangc -help-style markdown -h > docs/command-line-slangc-reference.md` — CI diffs it at `.github/workflows/ci.yml` (~line 555) and fails on any difference (hint: `/regenerate-cmdline-ref`), because that file enumerates every non-abstract capability alias in its `-capability` section. Both diffs are additive-only for a pure alias-add; regenerate with a freshly-built local `slangc` and commit both alongside the capdef change. Discovered on #12244 (added `texture_shadow`+`texture_shadowbias`) — a codex PLAN_REVIEW caught that the a4-02 regen alone would ship a PR that goes red in the cmdline-ref check [Adding a public capability alias requires regenerating TWO CI-checked docs, not just a4-02](../learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md).
+
+**Source learnings (29):**
 - [untracking a checked-in build binary is safe only if no deploy script/CI/Makefile consumes the tracked copy; untracking stops future bloat only, not history](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)
 - [make a slang check "required" by adding a `pull_request` exit-1 job to `check-ci.needs` (not branch-protection UI); the `ci.yml` edit is not bot-pushable (workflows-perm wall) → maintainer diff](../learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md)
 - [DISABLE CI jobs are build-only](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
@@ -146,4 +150,5 @@ An `ar: <x>.cpp.o: No such file or directory` at a static-lib archive step (or o
 - [nanoclaw sync-PR CI composes all nv-* branches (merge-order dep)](../learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-merge.md)
 - [slang#12032 Windows CI crash-dump: routes via ci-slang-test.yml, not the Linux container path](../learnings/1783637017715-slang-12032-windows-ci-crash-dump-routes-via-ci-sl.md)
 - ['ar: no such .o' at link = two ninjas on one build dir (a subagent false-reported 'still running'); pkill all ninja, relaunch one — state self-heals, no rm -rf needed](../learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md)
+- [adding a public capability alias regenerates TWO CI-checked docs (a4-02 AND command-line-slangc-reference.md), not just a4-02](../learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md)
 _Catalog: [[wiki/index.md]]_
