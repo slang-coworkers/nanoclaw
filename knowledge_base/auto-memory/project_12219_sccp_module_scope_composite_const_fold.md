@@ -20,6 +20,10 @@ Split-off from review of PR #12186 (fix for [[project-12185-bindless-texture-nv-
 
 **Triage (slang-triager, 07-24):** EMPIRICALLY REPRODUCED on master, compile-only/no-GPU — both cases incl. capability-off. Type=Bug, `reproduced` applied. Verdict comment id **5072813775**. Title generalized + body rewritten (reproducers kept, proposed-work item 1 widened). Nuance: naive unused-const repro masked by DCE (must consume the constant); #12186's emit-time walker/assert is ABSENT on master → **proposed-work item 3 (retire the walker) is #12186-gated.**
 
-**State: PARKED at triaged+scoped.** Fixer NOT dispatched — maintainer asked to broaden scope, not "make a PR"; reporter says non-blocking to #12186's core fix. Items 1-2 ready-for-fix on master now; item 3 blocked on #12186 merge. Briefing memo `triage-12219.md` held by slang-triager. Dispatch = operator "say the word".
+**State: FIXER DISPATCHED (07-24).** @pdeayton-nv gave the operator go-ahead (comment 5097444164): *"please work on a PR for this issue first, which should then make the PR for 12186 simpler."* This **inverts the dependency** — #12219 now LEADS, #12186 follows. Routed authorization through slang-triager (chain owner, holds `triage-12219.md` briefing w/ approaches A/B/C) to hand off to slang-fixer on thread `gh-issue-shader-slang/slang-12219`.
+
+**Fixer scope = items 1-2 ONLY** (the broadened general fold): extend `isEvaluableOpCode` (sccp.cpp:113) to admit MakeVector/MakeVectorFromScalar + composite/select/representation-wrapper ops; widen scalar/packed-float eval gate (sccp.cpp:1026) to cover vector-valued bitcast/cast/construct. That IS what "makes #12186 simpler." **Item 3 (retire #12186's `tryGetConstantDescriptorHandleBits` walker/assert) is explicitly NOT this PR** — walker absent on master anyway; whole point is #12186 never needs it. Guardrails: draft PR, `Fixes #12219`, `report_pr_created` on open, merge operator-gated.
+
+Prior state (superseded): PARKED at triaged+scoped; fixer not dispatched pending operator "say the word".
 
 Canonical thread: `gh-issue-shader-slang/slang-12219`.

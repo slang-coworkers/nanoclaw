@@ -76,6 +76,26 @@ test masks. Verdict delivered to fixer (fixer's edge — fixer owns weighing nit
   lenses vs real slang-rhi checkout, load-bearing claims independently verified). Flagged for
   transparency. **Fixable-gap for future slang-rhi reviews.**
 
+### Round-2 review-response COMPLETE + PR NOW NON-DRAFT (07-27, head 993c968)
+Fixer's 07-24 turn hit a transient "Internal server error"; recovered/re-engaged by 07-27.
+- **PR #802 flipped to NON-DRAFT by the MAINTAINER** (not us) → public artifact; maintainer actively
+  engaged (replied at PR comment 5097665065; fixer replied + refreshed PR body one pass).
+- Nits addressed: `static_assert(sizeof(MTL::ResourceID)==sizeof(uint64_t))`; removed dead
+  m_device/m_desc; documented fallback residency-set dependency + no-cache + #11540 in class doc;
+  `docs/api.md` Metal getDescriptorHandle → yes for buffer/tex-view/sampler/AS. **G1 =
+  documented-not-wired** (maintainer waived per-handle residency in A1).
+- Gates green: codex CODE_REVIEW=approve, OUTPUT_REVIEW=approve; peer reviewer APPROVE_WITH_NITS.
+- CI auto-running on 993c968 (pre-commit success, ci in-progress; macOS matrix = Metal runtime path).
+- **MERGE still operator-gated** (maintainer already flipped ready). Follow-up webhook-driven, no poller.
+  Maintainer-owned + engaged → may merge on their side.
+
+### Maintainer review landed + 2nd reviewer added (07-27, review 4792318144)
+jhelferty-nv reviewed: **"This looks fine to me"** — positive but a `commented` review, NOT an
+approval → `reviewDecision` stays **REVIEW_REQUIRED**. Added **@skallweitNV** as 2nd reviewer.
+No code action (positive signal + handoff, no changes requested). No bot GitHub reply (jhelferty's
+comment is the footprint; bot ack = noise). **Holding for skallweitNV's review**; resumes on next
+webhook (their review / CI). Merge maintainer-owned + operator-gated; no poller.
+
 ## Maintainer design confirmation (07-24, comment 5073561417; ack 5073581253)
 jhelferty-nv **blessed Approach A** + 3 design points folded into memo:
 1. Handle value = **RAW native id/address** (gpuAddress/gpuResourceID), NOT an allocated/heap
