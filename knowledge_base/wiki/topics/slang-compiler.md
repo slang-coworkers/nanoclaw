@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-901 learnings. [Catalog](../index.md)
+907 learnings. [Catalog](../index.md)
 
 - [#11951 Sig-B and #11955 CPU SIGSEGV converge on static-const-matrix-array.slang.3 syn (llvm)](../learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md)
 - [#12177 CLOSE-OUT: slang-test verbosity fix merged — memo P2 corrections (pre-parse timing + Not-Supported stays ungated)](../learnings/1784683587359-12177-close-out-slang-test-verbosity-fix-merged-me.md)
@@ -155,6 +155,7 @@ type: topic
 - [Device caching silently defeats per-invocation debug-callback bridges in slang-test (false greens)](../learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md)
 - [Devin out-dir reuse can smuggle stale flags from a different PR](../learnings/1784697016109-devin-out-dir-reuse-can-smuggle-stale-flags-from-a.md)
 - [Diagnostic pass placement tradeoff: type-name rendering vs dead-code false-positives (SPIR-V legalize)](../learnings/1784747930488-diagnostic-pass-placement-tradeoff-type-name-rende.md)
+- [DIAGNOSTIC_TEST caret alignment + git-blame .mailmap identity (slang)](../learnings/1785230187967-diagnostic-test-caret-alignment-git-blame-mailmap-.md)
 - [Docs for a compiler-limitation bug belong in the compiler repo, not the wrapper repo (SlangPy → Slang)](../learnings/1783943839130-docs-for-a-compiler-limitation-bug-belong-in-the-c.md)
 - [Draft PR CI on shader-slang/slang: workflow_dispatch bypasses the draft filter (but check-formatting can't)](../learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md)
 - [Draft PRs: ci.yml IS workflow_dispatch-able, but check-formatting.yml is NOT — verify format locally with clang-format 17](../learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md)
@@ -328,6 +329,7 @@ type: topic
 - [slang (Struct)0 zero-cast is a synthetic special case, no Decl for [deprecated] attribute](../learnings/1783690411342-slang-struct-0-zero-cast-is-a-synthetic-special-ca.md)
 - [Slang -debug-info-include-source (#12181/#12202): second IRDebugSource producer + LLVM target-agnostic gaps](../learnings/1784822669473-slang-debug-info-include-source-12181-12202-second.md)
 - [slang -g0 doesn't zero SPIR-V debug info: OpSource/OpName bypass the IRDebug gating path](../learnings/1782145409789-slang-g0-doesn-t-zero-spir-v-debug-info-opsource-o.md)
+- [Slang -g2 DebugLine is statement-marker driven, not per-value-inst sourceLoc](../learnings/1785275556385-slang-g2-debugline-is-statement-marker-driven-not-.md)
 - [slang -g2 spirv-asm FileCheck tests: embedded-source self-match trap + local env gotchas](../learnings/1781176200581-slang-g2-spirv-asm-filecheck-tests-embedded-source.md)
 - [slang -target hpp compute entrypoint emits wrapper BODIES (no _example) — fix is prototypes only, no fwd-decl needed](../learnings/1784382795938-slang-target-hpp-compute-entrypoint-emits-wrapper-.md)
 - [slang -target hpp/cpp "no output file" is usually a crash from a graphics-stage entry point](../learnings/1781783056677-slang-target-hpp-cpp-no-output-file-is-usually-a-c.md)
@@ -431,6 +433,7 @@ type: topic
 - [Slang CUDA/OptiX varying-param legalizer: terminate-intrinsic detection + pre-pass timing](../learnings/1781782798777-slang-cuda-optix-varying-param-legalizer-terminate.md)
 - [Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution](../learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md)
 - [Slang debug -g level silently changes TEXTUAL codegen (folding), not just SPIR-V debug info](../learnings/1784443119965-slang-debug-g-level-silently-changes-textual-codeg.md)
+- [slang descriptor-heap ConstantBuffer: typed-vs-untyped OpBufferPointerEXT — Uniform IS possible via untyped path (glslang), but Slang's typed pipeline makes it non-local](../learnings/1785256702253-slang-descriptor-heap-constantbuffer-typed-vs-unty.md)
 - [slang descriptor-heap unified stride (#11718) — already-supported extension, gap is stride policy not the extension](../learnings/1782264486800-slang-descriptor-heap-unified-stride-11718-already.md)
 - [Slang DescriptorHandle<AccelerationStructure>: two models, heap vs plain bindless](../learnings/1781903775019-slang-descriptorhandle-accelerationstructure-two-m.md)
 - [slang DescriptorHandle<T> → T implicit conversion blocked for ParameterGroupType targets by _coerce guard ordering](../learnings/1782151554268-slang-descriptorhandle-t-t-implicit-conversion-blo.md)
@@ -644,6 +647,7 @@ type: topic
 - [slang#12139 — resolving a two-commit perf confound by workload trigger-path (#12106 memo vs #12052 -specialize)](../learnings/1784270455318-slang-12139-resolving-a-two-commit-perf-confound-b.md)
 - [slang#12186 option-a: layout change RESTORES cap-consistency; module-scope handle const from float/bitcast hits pre-existing global-emit gap](../learnings/1784912194039-slang-12186-option-a-layout-change-restores-cap-co.md)
 - [slang#12186 Q2 UPDATE: explicit alignof(T, Std430DataLayout) query CAN diverge from emitted struct layout — struct-embedding tests MASK it](../learnings/1784915310738-slang-12186-q2-update-explicit-alignof-t-std430dat.md)
+- [slang#12258 MetalLib-3.2 — the -std derivation machinery already exists; only the producer + capdef atom are the gap](../learnings/1785287353987-slang-12258-metallib-3-2-the-std-derivation-machin.md)
 - [slang#6557 loadModuleFromIRBlob-imports-module already fixed by RIFF rewrite (#7041)](../learnings/1783463091677-slang-6557-loadmodulefromirblob-imports-module-alr.md)
 - [slang#7878 Optional-of-opaque via generic member escapes the E30902 front-end guard](../learnings/1783523243524-slang-7878-optional-of-opaque-via-generic-member-e.md)
 - [slang#8002 __constref ParameterBlock/opaque ICE — copied address-only value escapes global-only legalization](../learnings/1784754145569-slang-8002-constref-parameterblock-opaque-ice-copi.md)
@@ -821,6 +825,7 @@ type: topic
 - [SlangPy generated-kernel abstraction fully folds in slang SPIR-V (-O3), but is deferred to nvrtc for CUDA target](../learnings/1781017004302-slangpy-generated-kernel-abstraction-fully-folds-i.md)
 - [slangpy getv/setv→load/store/add: the precise store-vs-add rule (reviewer-verified) — add preserves behavior, not changes it](../learnings/1781609114268-slangpy-getv-setv-load-store-add-the-precise-store.md)
 - [slangpy GPU mem-leak #115/#608 don't reproduce at HEAD; CI OOM is concurrent-peak high-water-mark, not a leak](../learnings/1782324497848-slangpy-gpu-mem-leak-115-608-don-t-reproduce-at-he.md)
+- [slangpy GPU validation in coworker container: CUDA works, Vulkan autodiff fails with NVVM error](../learnings/1785246704737-slangpy-gpu-validation-in-coworker-container-cuda-.md)
 - [SlangPy macOS wheels link via nanobind curated symbol allow-list, not libpython](../learnings/1784158586412-slangpy-macos-wheels-link-via-nanobind-curated-sym.md)
 - [slangpy neural-module 0.41 migration: differentiable vector operator[] gates inline too (slang#12026)](../learnings/1783620159628-slangpy-neural-module-0-41-migration-differentiabl.md)
 - [SlangPy profiler PR #1063 also had a drain() snapshot-ordering race (#1072)](../learnings/1784869755509-slangpy-profiler-pr-1063-also-had-a-drain-snapshot.md)
@@ -855,6 +860,7 @@ type: topic
 - [SPIR-V issues require spirv-val, not just slangc exit code](../learnings/dashboard_slang-triage-1776263007885.md)
 - [SPIR-V OpSource language token is env-dependent (Slang vs Unknown) — FileCheck trap on aarch64 CI](../learnings/1784830837048-spir-v-opsource-language-token-is-env-dependent-sl.md)
 - [SPIR-V OpSwitch case literals are emitted at fixed 32-bit width (breaks 64-bit selectors)](../learnings/1785176355400-spir-v-opswitch-case-literals-are-emitted-at-fixed.md)
+- [SPIR-V OpSwitch case literals must match selector word-count (fix #12240) + delivery-gate needs all 3 codex stages](../learnings/1785233535175-spir-v-opswitch-case-literals-must-match-selector-.md)
 - [SPIR-V SER capability over-requires 1.5; capdef floor edit alone is insufficient](../learnings/1784052492569-spir-v-ser-capability-over-requires-1-5-capdef-flo.md)
 - [spirv-opt crash suppressed via expected-failure list is often droppable via the -O0 default (PR #11805), independent of the upstream fix](../learnings/1783036168133-spirv-opt-crash-suppressed-via-expected-failure-li.md)
 - [spirv-val accepts OpSpecConstantOp(max) over opaque OpConstantSizeOfEXT as an ArrayStrideIdEXT id](../learnings/1782271381546-spirv-val-accepts-opspecconstantop-max-over-opaque.md)
