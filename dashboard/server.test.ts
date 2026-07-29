@@ -125,10 +125,12 @@ function createDashboardTestDb(): Database.Database {
       id TEXT PRIMARY KEY,
       channel_type TEXT NOT NULL,
       platform_id TEXT NOT NULL,
+      instance TEXT NOT NULL,
       name TEXT,
       is_group INTEGER NOT NULL DEFAULT 0,
       unknown_sender_policy TEXT DEFAULT 'strict',
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      UNIQUE(channel_type, platform_id, instance)
     );
     CREATE TABLE IF NOT EXISTS messaging_group_agents (
       id TEXT PRIMARY KEY,
@@ -729,8 +731,8 @@ describe('dashboard server', () => {
        VALUES ('ag-perf', 'PerfHound', 'perfhound-appr-probe', 0, 'direct', ?)`,
     ).run(now);
     db.prepare(
-      `INSERT INTO messaging_groups (id, channel_type, platform_id, created_at)
-       VALUES ('mg-self', 'agent', 'agent:ag-perf:ag-perf', ?)`,
+      `INSERT INTO messaging_groups (id, channel_type, platform_id, instance, created_at)
+       VALUES ('mg-self', 'agent', 'agent:ag-perf:ag-perf', 'agent', ?)`,
     ).run(now);
     db.prepare(
       `INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, session_mode, created_at)
@@ -1081,10 +1083,12 @@ describe('dashboard server', () => {
         id TEXT PRIMARY KEY,
         channel_type TEXT NOT NULL,
         platform_id TEXT NOT NULL,
+        instance TEXT NOT NULL,
         name TEXT,
         is_group INTEGER NOT NULL DEFAULT 0,
         unknown_sender_policy TEXT DEFAULT 'strict',
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        UNIQUE(channel_type, platform_id, instance)
       );
       CREATE TABLE messaging_group_agents (
         id TEXT PRIMARY KEY,
@@ -1212,7 +1216,7 @@ describe('dashboard server', () => {
       'INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, container_config, coworker_type, allowed_mcp_tools, created_at) VALUES (?, ?, ?, 1, NULL, NULL, NULL, NULL, ?)',
     ).run('ag-admin', 'Orchestrator', 'orchestrator', now);
     db.prepare(
-      "INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES ('mg-admin', 'dashboard', 'dashboard:orchestrator', 'Orchestrator', 0, 'public', ?)",
+      "INSERT INTO messaging_groups (id, channel_type, platform_id, instance, name, is_group, unknown_sender_policy, created_at) VALUES ('mg-admin', 'dashboard', 'dashboard:orchestrator', 'dashboard', 'Orchestrator', 0, 'public', ?)",
     ).run(now);
     db.prepare(
       "INSERT INTO messaging_group_agents (id, messaging_group_id, agent_group_id, engage_mode, engage_pattern, sender_scope, session_mode, priority, created_at) VALUES ('mga-admin', 'mg-admin', 'ag-admin', 'always', '@Orchestrator', 'all', 'shared', 0, ?)",
@@ -2633,12 +2637,12 @@ describe('/api/messages — Slack-style thread filtering', () => {
     ).run('ag-thread', 'ThreadAgent', 'thread-agent', now);
 
     db.prepare(
-      'INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)',
-    ).run('mg-dash', 'dashboard', 'dashboard:thread-agent', 'Dashboard', 'public', now);
+      'INSERT INTO messaging_groups (id, channel_type, platform_id, instance, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)',
+    ).run('mg-dash', 'dashboard', 'dashboard:thread-agent', 'dashboard', 'Dashboard', 'public', now);
 
     db.prepare(
-      'INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, 1, ?, ?)',
-    ).run('mg-slack', 'slack', 'slack:C123', 'Slack', 'public', now);
+      'INSERT INTO messaging_groups (id, channel_type, platform_id, instance, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)',
+    ).run('mg-slack', 'slack', 'slack:C123', 'slack', 'Slack', 'public', now);
 
     // Four active sessions under ag-thread:
     //  - dash root (thread_id NULL, mg-dash)
@@ -2752,8 +2756,8 @@ describe('/api/messages — Slack-style thread filtering', () => {
     const db = new Database(DB_PATH);
     const now = new Date().toISOString();
     db.prepare(
-      'INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)',
-    ).run('mg-a2a-thread', 'agent', 'agent:ag-thread:ag-thread', 'A2A self-loop', 'public', now);
+      'INSERT INTO messaging_groups (id, channel_type, platform_id, instance, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)',
+    ).run('mg-a2a-thread', 'agent', 'agent:ag-thread:ag-thread', 'agent', 'A2A self-loop', 'public', now);
     db.prepare(
       "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES (?, 'ag-thread', 'mg-a2a-thread', ?, 'active', 'stopped', NULL, ?)",
     ).run('sess-a2a-self-loop', 'self-loop-thread', now);
@@ -2795,8 +2799,8 @@ describe('/api/messages — Slack-style thread filtering', () => {
     const db = new Database(DB_PATH);
     const now = new Date().toISOString();
     db.prepare(
-      'INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)',
-    ).run('mg-a2a-thread', 'agent', 'agent:ag-thread:ag-thread', 'A2A self-loop', 'public', now);
+      'INSERT INTO messaging_groups (id, channel_type, platform_id, instance, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)',
+    ).run('mg-a2a-thread', 'agent', 'agent:ag-thread:ag-thread', 'agent', 'A2A self-loop', 'public', now);
     db.prepare(
       "INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, container_status, last_active, created_at) VALUES (?, 'ag-thread', 'mg-a2a-thread', ?, 'active', 'stopped', NULL, ?)",
     ).run('sess-a2a-self-loop', 'self-loop-thread', now);
@@ -2988,8 +2992,8 @@ describe('/api/messages — Slack-style thread filtering', () => {
     const db = new Database(DB_PATH);
     const now = new Date().toISOString();
     db.prepare(
-      'INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)',
-    ).run('mg-a2a-multi', 'agent', 'agent:ag-thread:ag-thread', 'A2A multi', 'public', now);
+      'INSERT INTO messaging_groups (id, channel_type, platform_id, instance, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)',
+    ).run('mg-a2a-multi', 'agent', 'agent:ag-thread:ag-thread', 'agent', 'A2A multi', 'public', now);
     for (const [sid, count] of [
       ['sess-multi-a', 2],
       ['sess-multi-b', 3],
@@ -3074,8 +3078,8 @@ describe('/api/a2a-session — read-only inspector (Option C)', () => {
     ).run('ag-reviewer', 'Reviewer', 'reviewer', now);
     // a2a messaging_group scoped to reviewer (the ensureA2aWiring convention).
     db.prepare(
-      'INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)',
-    ).run('mg-a2a-reviewer', 'agent', 'agent:ag-reviewer', 'A2a:reviewer', 'public', now);
+      'INSERT INTO messaging_groups (id, channel_type, platform_id, instance, name, is_group, unknown_sender_policy, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)',
+    ).run('mg-a2a-reviewer', 'agent', 'agent:ag-reviewer', 'agent', 'A2a:reviewer', 'public', now);
     // Two per-thread sessions under reviewer on the a2a mg — one per
     // sender-side thread.
     const sess = (id: string, tid: string) =>

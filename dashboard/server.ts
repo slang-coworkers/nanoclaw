@@ -1021,7 +1021,7 @@ export function ensureDashboardChatWiring(
     };
     wdb
       .prepare(
-        "INSERT INTO messaging_groups (id, channel_type, platform_id, name, is_group, unknown_sender_policy, created_at) VALUES (?, 'dashboard', ?, ?, 0, 'public', ?)",
+        "INSERT INTO messaging_groups (id, channel_type, platform_id, instance, name, is_group, unknown_sender_policy, created_at) VALUES (?, 'dashboard', ?, 'dashboard', ?, 0, 'public', ?)",
       )
       .run(mg.id, platformId, group.name, now);
   }
