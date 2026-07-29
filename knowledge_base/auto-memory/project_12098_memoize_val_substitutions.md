@@ -1,6 +1,6 @@
 ---
 name: project_12098_memoize_val_substitutions
-description: "#12098 Memoize Val substitutions — WOULD_APPROVE CLEAN shadow-mode; maintainer self-merge"
+description: "#12098 Memoize Val substitutions — TERMINAL: WOULD_APPROVE CLEAN → closed-unmerged, superseded by merged #12106; human=CHANGES_REQUESTED (soft false-safe)"
 metadata: 
   node_type: memory
   type: project
@@ -14,3 +14,5 @@ shader-slang/slang **#12098 "Memoize Val substitutions"** — author saipraveenb
 **Shadow mode → ledger-only, no GitHub write.** Maintainer merges it themselves — no action item for me.
 
 **Calibration watch** (only matters if a human requests changes): gap #4 = stack-cache-pointer escape via SubstExpr; plus the release-mode validateContext assert (SLANG_ASSERT no-op). See [[feedback_approver_never_posts_route_reviewer]].
+
+**TERMINAL (2026-07-28) — human-verdict join.** PR **closed-unmerged @ the decision SHA 999b90eb** by the author ("Fixed by a different PR: #12106"). Human reviews: csyonghe ×2 **COMMENTED** (no formal CHANGES_REQUESTED; reviewDecision=REVIEW_REQUIRED). Successor **#12106 merged by csyonghe** — re-architected to "one source of truth: the environment-local cache", discarding #12098's transient `SubstitutionSet::substitutionCache` pointer design. `record_human_verdict=CHANGES_REQUESTED`. Scored as a **soft FALSE-SAFE** (superseded by author's own better design, no shipped defect) — NOT rounded to agreement. **Challenger-miss / training signal:** the challenger cleared exactly gap #4 (transient stack-cache-pointer escape/lifetime via `SubstitutionSet::substitutionCache`) as "undemonstrated future-proofing" — but that is the wiring csyonghe probed live ("field appears never initialized — how is this supposed to work?") and the merged successor removed the design entirely. Lesson: a design/representation gap (transient mutable pointer on an interned value type) must not be cleared just because no test trips it — a green harness ≠ a principled representation; interning-safety ≠ design-soundness. Learning `[approver/false-safe]` filed.

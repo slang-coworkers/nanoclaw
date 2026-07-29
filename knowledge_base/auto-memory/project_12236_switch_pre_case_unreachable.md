@@ -23,4 +23,6 @@ Review: codex CODE+PLAN+OUTPUT all APPROVE (6 rounds). **In MAINTAINER review** 
 
 **Draft flag RESOLVED — no guardrail issue:** fixer DID create it as a draft (correct per [[feedback_drafts_only_guardrail]]); the maintainer deliberately flipped it ready. Not a bot action. **slang-reviewer stood down by Main 07-28** — the internal review req assumed a bot-held draft; maintainer taking it public + requesting real reviewers voids that premise (redundant lane). Merge remains operator/maintainer-gated.
 
-On merge: triager re-reads diff, refreshes issue verdict, forwards final resolution up. #9999 stays a separate design-fork (jhelferty E30606-error vs skiminki E41000-warning) — do not conflate.
+**Review signal (07-28):** skiminki-nv posted **LGTM (COMMENTED, non-blocking — NOT merge auth)**. Internal reviewers: B(Devin) done, C(clarity) done, A(correctness) still settling → all held file-only, no GitHub post, no PR action (stood down; maintainer-driven lane is authoritative). Likely change-request vector = the **warning-vs-error design fork** (same severity split as #9999: could maintainers ask to convert E41000-warning → an error?). If they do, that's a scope change, not a defect in this PR.
+
+On merge: triager re-reads diff, refreshes issue verdict, forwards final resolution up. #9999 stays a separate design-fork (jhelferty E30606-error vs skiminki E41000-warning) — do not conflate. **Merge is maintainer/operator-gated — bot never merges or flips PR state.**

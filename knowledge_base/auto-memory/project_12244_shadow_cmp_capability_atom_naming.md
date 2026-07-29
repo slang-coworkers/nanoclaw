@@ -30,6 +30,12 @@ Bot-filed tracking issue (author nv-slang-bot) at **jkwak-work**'s request, spli
 
 **Re-point accounting (matches table):** 8 overloads→`texture_shadow`, 3→`texture_shadowlod` (hlsl.meta.slang:3144 no-op), 6→`texture_shadowbias`; `sm_5_0` + all `SampleCmpGrad` + offset/status overloads left as-is.
 
-**Next:** await fixer [Fix Report] + PR# → triager forwards [Triage Resolution] on canonical thread. Merge operator-gated.
+**DRAFT PR #12248** (07-28): https://github.com/shader-slang/slang/pull/12248 — branch `fix/issue-12244` @ `482df00ec0`, base master. +35/−17: `slang-capabilities.capdef` (+8), `hlsl.meta.slang` (+17/−17 pure name-only re-point, 0 logic), `docs/user-guide/a4-02-reference-capability-atoms.md` (+8), `docs/command-line-slangc-reference.md` (+2). Closes #12244; `pr: non-breaking`; behavior-neutral by construction (new atoms byte-identical expansions of what they replace). Issue footprint comment 5099408494. Red CI run 30324399550 = benign draft priority-yield, NOT a real failure (real pull_request CI skipped on draft). No tests added (behavior-neutral; 5 SampleCmp suites green locally).
+
+Re-point accounting: 8→`texture_shadow`, 3→`texture_shadowlod` (:3144 no-op), 6→`texture_shadowbias`; sm_5_0 + all SampleCmpGrad + offset/status left as-is.
+
+**Review (07-28, IN FLIGHT):** slang-reviewer running. Reviewer B (Devin) COMPLETE + CLEAN (0 bugs/0 flags/0 informational, confirmed taxonomy). Reviewer A (correctness) + C (clarity) running (~20-30 min). codex CODE/PLAN/OUTPUT approve (PLAN caught the missed 2nd doc regen). Awaiting merged A+C verdict → reviewer posts on PR #12248, reports back on canonical thread.
+
+**Next:** merged review verdict → maintainer approve → flip draft ready + merge (OPERATOR-gated).
 
 Original park: verdict posted #12244#issuecomment-5097654203. Matches self-filed-and-deferred park pattern. See [[feedback_reopen_not_release_parked_feature]].

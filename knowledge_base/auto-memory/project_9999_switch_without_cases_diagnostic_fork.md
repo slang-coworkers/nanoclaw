@@ -18,6 +18,11 @@ metadata:
 
 **Approach-A (dead):** branch `fix/issue-9999` `27afc63068` — E30606 error, verified 2170/2170 — **abandoned** (wrong approach). Kept only as reference.
 
-**AUTHORIZED FIX (dispatched to slang-fixer 07-27):** ONE PR covering **#9999 + #12236** (same root cause). Root: `lowerSwitchCases()` `slang-lower-to-ir.cpp:~9305` silently drops stmts before first case/default → never reach existing E41000 site (~:8228). Fix = make dropped stmts get flagged **E41000** (warning, non-breaking → `pr: non-breaking` label). Regression tests both shapes (no-case body #9999 + stmts-before-first-case-w/-later-cases #12236). Briefing memo `triage-12236.md` staged to fixer. Draft PR `Closes #9999` + `Closes #12236`, held for jhelferty + skiminki review. Drafts-only; NO ready/merge.
+**SPLIT INTO TWO PRs (07-28) — skiminki override of the "one combined PR" plan:**
+- **#12236** (stmts *before first* case, later cases exist) → **PR #12245 ALREADY OPEN** (author nv-slang-bot, assignee **jkwak-work**, non-draft, 07-27 23:51, `Closes #12236`). Came from #12236's own chain (jkwak "Make a PR"). NOT a #9999-chain PR — leave it alone.
+- **#9999** (NO case/default labels *at all* → whole body dropped) = the remaining gap #12245 does NOT cover. skiminki-nv on #9999 comment **5102225383**: do #9999 as a **SEPARATE** PR **AFTER #12245 merges** ("these two PRs are slightly different, probably easier that way with the fixer bots").
+- My earlier "ONE PR covering both, `Closes #9999`+`Closes #12236`" dispatch was **WRONG** — would dup-collide with #12245. **CORRECTED**: fixer told to NOT open combined PR, abandon anything closing #12236, HOLD #9999.
 
-**Next:** fixer implements → draft PR + report_pr_created → [Fix Report]. gh-auth "invalid" = known false-negative (writes work, [[feedback_gh_auth_status_misleading]]). Merge/ready operator-gated ([[feedback_github_writes_operator_authorized]]); drafts-only guardrail. Related: [[project_12236_switch_pre_case_unreachable]].
+**#9999 STATE: blocked-on-#12245-merge.** Resumption trigger = **#12245 merges** → fixer opens separate #9999-only draft PR (`Closes #9999`), builds on #12245's E41000 unreachable-code mechanism, regression-tests no-labels shape, report_pr_created, [Fix Report]. Drafts-only; NO ready/merge (OP-gated, [[feedback_github_writes_operator_authorized]]).
+
+Root (both): `lowerSwitchCases()` `slang-lower-to-ir.cpp:~9305` silently drops pre-first-label stmts → never reach E41000 site (~:8228). Fix = flag them E41000 (warning, non-breaking). Approach-A/E30606 branch `27afc63068` DEAD. gh-auth "invalid"=false-negative ([[feedback_gh_auth_status_misleading]]). Related: [[project_12236_switch_pre_case_unreachable]].

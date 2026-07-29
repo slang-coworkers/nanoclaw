@@ -9,9 +9,19 @@ metadata:
 
 # slang#12237 — Boolean switch condition asserts during SPIR-V emission
 
-**State (2026-07-27):** Triaged & VERIFIED at HEAD `70462843c`; `reproduced` label applied. Fixer HELD — NO PR, NO dispatch — pending author explicit "make a PR" go-ahead. Verdict posted: https://github.com/shader-slang/slang/issues/12237#issuecomment-5094773828 (comment id 5094773828).
+**State (2026-07-28):** DRAFT PR #12254 OPEN — https://github.com/shader-slang/slang/pull/12254 (`Fixes #12237`, `pr: non-breaking`, commit `d831288914`). Double-authorized: jkwak-work ("Make a PR", comment 5097205861) + skiminki-nv ("Do as jkwak asks", comment 5104724338). Fixer DONE + codex-APPROVE on all 3 gate stages.
 
-**Author:** skiminki-nv (MEMBER/maintainer, self-filed). Classic self-file/self-defer pattern (cf. [[project_12223_debug_build_og_debuggability]], [[project_12222_lexer_lone_utf8_continuation_byte]]) — wants a PR only on explicit `@nv-slang-bot Create a PR`. That go-ahead webhook routes back through Main → dispatch slang-fixer on thread `gh-issue-shader-slang/slang-12237` with Approach A.
+**Reviews:**
+- slang-reviewer (bot): Reviewer B/Devin 0/0/0; C 0 correctness + 2 clarity nits; reviewer's own independent source verification = NO bugs (operand rewrite safe — switch is non-hoistable terminator, IRUse::set() in place idiomatic; new getCaseValueUse(i) offset correct; 32-bit int selector valid; SLANG_ASSERT(boolLit) invariant sound — front end coerces case exprs to condition type slang-check-stmt.cpp:425). Reviewer A (correctness/auto-postable) still running as of 14:10Z; consolidated combined-review.md pending. Reviewer gh-write BLOCKED (OneCLI GitHub not connected → patch-mode fallback off git fetch; file-only delivery, no post-authorized marker anyway).
+- HUMAN maintainer (07-28 23:38Z): jkwak-work reviewed "It looks good to me" + assigned skiminki-nv to review/approve. Raised ONE open design Q: "may want to make bool-switch an error based on Slang language version — not sure what the plan is." Fixer replied on PR (comment 5110920503, source-verified): bool IS a currently-valid switch-condition type (`isScalarIntegerType` treats bool as scalar int, slang-check-decl.cpp:12044; works on all non-SPIR-V targets today) — this PR only closes the SPIR-V codegen gap, does NOT change the language. No conflict with sibling #12238/#12246 (that rejects *float* via isValidCompileTimeConstantType which bool satisfies; complementary — mine legalizes bool, #12246 rejects float). Making bool a diagnostic = deliberate lang-version-gated decision, ORTHOGONAL to this fix; offered separate follow-up if maintainers want it. Left direction to jkwak+skiminki. No code change.
+
+**Awaiting:** skiminki-nv formal review/approve. Merge/ready-flip OPERATOR-GATED (drafts-only guardrail). Fixer owns further PR webhooks (verdict/inline/CI). Triage verdict earlier posted: comment 5094773828, `reproduced` label applied.
+
+**Open design thread (watch, not blocking this PR):** whether bool switch conditions should eventually be a language-version-gated diagnostic. Maintainer decision (jkwak+skiminki), separate follow-up if pursued.
+
+**Fix (commit d831288914, 2 src +31, 1 test +37):** `normalizeBoolSwitch()` at top of `processSwitch()` in `slang-ir-spirv-legalize.cpp` — casts bool switch condition → int (`IRIntCast`, emitter lowers via `OpSelect(cond,1,0)`), rewrites each `IRBoolLit` case value → `IRIntLit` (true→1/false→0) in place. New `IRSwitch::getCaseValueUse(i)` accessor. Verified: repro EXIT 0 (was 255) → `OpSelect` + `OpSwitch`; `SLANG_RUN_SPIRV_VALIDATION=1` passes; new test 4/4; broader switch suite (17) unchanged.
+
+**Author:** skiminki-nv (MEMBER/maintainer, self-filed). Classic self-file/self-defer pattern (cf. [[project_12223_debug_build_og_debuggability]], [[project_12222_lexer_lone_utf8_continuation_byte]]) — wanted a PR only on explicit go-ahead, which arrived from BOTH maintainers.
 
 **Bug:** `switch (b)` with bool condition + `case true:`/`case false:` → `assert failure: slang-emit-spirv.cpp: intLit` (line 5435 at HEAD; 5340 in reporter's older a4168d47c6). SPIR-V-ONLY — HLSL/GLSL/CUDA/Metal/CPU all EXIT=0. Category bug / medium / P2 / target-emit(SPIR-V). NOT a regression.
 
