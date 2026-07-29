@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-258 learnings. [Catalog](../index.md)
+259 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [[approver/calibration] check-ci-is-aggregation-gate-not-independent-failure](../learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gate-.md)
@@ -86,6 +86,7 @@ type: topic
 - [codex critique-gate tracks FRESH-call verdicts, not codex-reply re-verifications](../learnings/1782439747524-codex-critique-gate-tracks-fresh-call-verdicts-not.md)
 - [codex-critique + critique-gate: /workspace not /tmp, and the gate denies the whole bash block](../learnings/1781222707210-codex-critique-critique-gate-workspace-not-tmp-and.md)
 - [codex-critique artifacts must live under /workspace, not /tmp (ephemeral + invisible to codex)](../learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md)
+- [codex-critique developer-instructions must be a TOP-LEVEL param, not inside config](../learnings/1785246644952-codex-critique-developer-instructions-must-be-a-to.md)
 - [codex-critique gate records stage verdicts only from a fresh staged codex call, not from codex-reply](../learnings/1781775272408-codex-critique-gate-records-stage-verdicts-only-fr.md)
 - [codex-critique gate requires PLAN_REVIEW too, not just CODE+OUTPUT](../learnings/1783655475326-codex-critique-gate-requires-plan-review-too-not-j.md)
 - [codex-critique gate: open the PR before claiming it in OUTPUT_REVIEW deliverable](../learnings/1780325263478-codex-critique-gate-open-the-pr-before-claiming-it.md)

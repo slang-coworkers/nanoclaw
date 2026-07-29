@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-149 learnings. [Catalog](../index.md)
+150 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] -Og debug-build guard: subtractive NOT-MSVC guard can't regress prior-green; -Wmaybe-uninitialized gap clears as future-proofing when PR adds no C++](../learnings/1784288671711-approver-calibration-og-debug-build-guard-subtract.md)
 - [[approver/calibration] build-flag PR: clear a "-Werror CI break" gap by checking the affected config is actually green](../learnings/1784270606102-approver-calibration-build-flag-pr-clear-a-werror-.md)
@@ -140,6 +140,7 @@ type: topic
 - [spvDescriptorHeapEXT specialization fix: don't parameterize the heap global](../learnings/1780734760813-spvdescriptorheapext-specialization-fix-don-t-para.md)
 - [Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head](../learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md)
 - [static-const-matrix-array: two distinct flake signatures, don't conflate](../learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md)
+- [Surfacing verified counter-evidence to a maintainer can reverse a by-design ruling — don't silently accept OR unilaterally overturn](../learnings/1785278991541-surfacing-verified-counter-evidence-to-a-maintaine.md)
 - [Templated operator-wake ≠ explicit scoped override of a considered hold](../learnings/1782734222994-templated-operator-wake-explicit-scoped-override-o.md)
 - [Terminal count/sentinel enums: prefer keeping them IMPLICIT, not explicit+static_assert](../learnings/1782859187073-terminal-count-sentinel-enums-prefer-keeping-them-.md)
 - [test_GBufferRTTexGrads_d3d12 is catalogued CI flake #12145 (not your regression)](../learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md)

@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-332 learnings. [Catalog](../index.md)
+336 learnings. [Catalog](../index.md)
 
 - [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
@@ -74,6 +74,7 @@ type: topic
 - [[approver/critique-mustfix] Re-pin and re-check live PR head/draft state before recording — HEAD can move mid-run](../learnings/1783881964285-approver-critique-mustfix-re-pin-and-re-check-live.md)
 - [[approver/false-safe] CORRECTION to earlier #12122 challenger-confirmed note — that "safe by construction" claim was WRONG](../learnings/1784150857406-approver-false-safe-correction-to-earlier-12122-ch.md)
 - [[approver/false-safe] Guard keyed on getRootAddr's op-set misses legalization-inserted BitCast/GetOffsetPtr — probe the peel-set against ALL later passes, not the test shapes](../learnings/1784120041393-approver-false-safe-guard-keyed-on-getrootaddr-s-o.md)
+- [[approver/false-safe] PR12098 WOULD_APPROVE but author closed-unmerged for redesigned successor #12106 — challenger cleared the exact cache-wiring axis the maintainer probed](../learnings/1785272574884-approver-false-safe-pr12098-would-approve-but-auth.md)
 - [[approver/gating-safety] On-demand builtin loading can widen a null-deref surface when a fix swaps decl-owned state for context-owned state](../learnings/1784184038640-approver-gating-safety-on-demand-builtin-loading-c.md)
 - [[approver/human-agreement] #11315 arc CLOSED: wrong-layer drop (#11323, I abstained, CHANGES_REQUESTED) → correct-layer producer fix (#12117, I approved, MERGED byte-identical + human APPROVED) — the producer-fix redo of a rejected symptom-patch is a strong clean-approve prior](../learnings/1784194721856-approver-human-agreement-11315-arc-closed-wrong-la.md)
 - [[approver/human-agreement] A same-head human APPROVAL is a JOIN signal, not a reason to flip your OPEN_GAP to WOULD_APPROVE](../learnings/1784281316765-approver-human-agreement-a-same-head-human-approva.md)
@@ -103,6 +104,7 @@ type: topic
 - [[approver/human-disagreement] Large samples/experiment PRs self-merge past the size-cap abstain — the tier_eligible cap systematically abstains on a class humans fast-track](../learnings/1783918446960-approver-human-disagreement-large-samples-experime.md)
 - [[approver/human-disagreement] Latent-bug gaps in dev-only release tooling: maintainers merge them knowingly — ABSTAIN_POLICY aligns, and this class rarely warrants BLOCK](../learnings/1784150237934-approver-human-disagreement-latent-bug-gaps-in-dev.md)
 - [[approver/human-disagreement] Small release-packaging PRs touching .github/**: ABSTAIN_POLICY confirmed correct; CodeRabbit "Major" packaging-robustness nits are non-blocking 🟡, not 🔴](../learnings/1783964691555-approver-human-disagreement-small-release-packagin.md)
+- [[approver/human-disagreement] Temporary maintainer-authored test-disable: bundled-coverage OPEN_GAP is real but low-severity — maintainers merge the trade-off](../learnings/1785282531686-approver-human-disagreement-temporary-maintainer-a.md)
 - [[approver/human-disagreement] Titular-scope-incompleteness OPEN_GAP on internal dev-tooling tends to be over-cautious — maintainers ship net-positive incremental hygiene fixes](../learnings/1784141883615-approver-human-disagreement-titular-scope-incomple.md)
 - [[approver/human-disagreement] VALIDATED ABSTAIN: OPEN_GAP on a false public-docs API claim was fixed by the author before merge — conservative-lean on doc-accuracy defects pays off](../learnings/1784014469307-approver-human-disagreement-validated-abstain-open.md)
 - [[approver/infra-abstain] a2a thread-edge fallback can silently drop dispatches when the named edge is gone](../learnings/1783805788005-approver-infra-abstain-a2a-thread-edge-fallback-ca.md)
@@ -137,6 +139,7 @@ type: topic
 - [Bot-filed migration issues go stale — re-verify every file:line against current main before triaging](../learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md)
 - [Bot-owned vs human-contributor PR: fix/issue-* branch name is NOT proof of ownership](../learnings/1780903497625-bot-owned-vs-human-contributor-pr-fix-issue-branch.md)
 - [Byte-address / HLSL-profile changes: verify at -profile cs_5_0, not just -target hlsl (fxc has no templated .Load<T>)](../learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-profil.md)
+- [Byte-verify a hand-apply patch by post-image blob hash](../learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md)
 - [capdef def inheritance accepts top-level | disjunction but NOT parenthesized (b|c) inside a conjunction](../learnings/1784126862980-capdef-def-inheritance-accepts-top-level-disjuncti.md)
 - [Chain-close protocol: GitHub artifact + A2A report + append_learning, every time](../learnings/1780769194624-chain-close-protocol-github-artifact-a2a-report-ap.md)
 - [CHANGES_REQUESTED with a "looks good" body and zero inline comments is a no-merge signal, not an edit request](../learnings/1782512263705-changes-requested-with-a-looks-good-body-and-zero-.md)
@@ -297,6 +300,7 @@ type: topic
 - [Sig-B test-server JSON-RPC drop = AVX-512 JIT SIGILL (11951 resolved by 12056)](../learnings/1784089175111-sig-b-test-server-json-rpc-drop-avx-512-jit-sigill.md)
 - [SKIP_PRECOMPILE_HEADERS is per-TU, not "exclude a header from the PCH"](../learnings/1785019137366-skip-precompile-headers-is-per-tu-not-exclude-a-he.md)
 - [Slices/shared worktree can be live: verify branch + open slice PRs before adopting (don't trust empty-branch/no-sentinel)](../learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md)
+- [Source-field Internal/Community derivation lives in pr-board-sync.yml (two sites)](../learnings/1785290345255-source-field-internal-community-derivation-lives-i.md)
 - [SPV_EXT_descriptor_heap: OpTypeBufferEXT and OpBufferPointerEXT storage classes are INDEPENDENT (no matching rule); DeepWiki wrong](../learnings/1784939925118-spv-ext-descriptor-heap-optypebufferext-and-opbuff.md)
 - [SPV_KHR_abort transitively requires SPV_KHR_constant_data; message is OpConstantDataKHR not a runtime composite](../learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md)
 - [spvDescriptorHeapEXT stride is opaque for AS — load-type must drive runtime-array base type](../learnings/1779962007180-spvdescriptorheapext-stride-is-opaque-for-as-load-.md)

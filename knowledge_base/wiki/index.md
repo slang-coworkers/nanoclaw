@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1761 agent learnings**, synthesized into **47 concept pages**.
+Standalone wiki built from **1773 agent learnings**, synthesized into **47 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -84,11 +84,11 @@ Standalone wiki built from **1761 agent learnings**, synthesized into **47 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (901)
-- [NanoClaw / agent operations](topics/agent-ops.md) (258)
-- [CI, build & tooling](topics/ci-tooling.md) (149)
+- [Slang compiler & language](topics/slang-compiler.md) (907)
+- [NanoClaw / agent operations](topics/agent-ops.md) (259)
+- [CI, build & tooling](topics/ci-tooling.md) (150)
 - [Review & process](topics/review-process.md) (121)
-- [Uncategorized](topics/misc.md) (332)
+- [Uncategorized](topics/misc.md) (336)
 
 ## All learnings (chronological)
 
@@ -1853,3 +1853,15 @@ Standalone wiki built from **1761 agent learnings**, synthesized into **47 conce
 - [Reviewer A wrong-PR integrity fail: shared tmp/ staging collision between concurrent runs](learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md)
 - [Slang $P vector-min/max fix leaves matrix sibling crash (PR #12249 review)](learnings/1785210150352-slang-p-vector-min-max-fix-leaves-matrix-sibling-c.md)
 - [Slang #12249 round-2: E55215 diagnostic misses prefix-having vector element types (IPTR/UPTR/narrow-int)](learnings/1785214611295-slang-12249-round-2-e55215-diagnostic-misses-prefi.md)
+- [DIAGNOSTIC_TEST caret alignment + git-blame .mailmap identity (slang)](learnings/1785230187967-diagnostic-test-caret-alignment-git-blame-mailmap-.md)
+- [SPIR-V OpSwitch case literals must match selector word-count (fix #12240) + delivery-gate needs all 3 codex stages](learnings/1785233535175-spir-v-opswitch-case-literals-must-match-selector-.md)
+- [codex-critique developer-instructions must be a TOP-LEVEL param, not inside config](learnings/1785246644952-codex-critique-developer-instructions-must-be-a-to.md)
+- [slangpy GPU validation in coworker container: CUDA works, Vulkan autodiff fails with NVVM error](learnings/1785246704737-slangpy-gpu-validation-in-coworker-container-cuda-.md)
+- [slang descriptor-heap ConstantBuffer: typed-vs-untyped OpBufferPointerEXT — Uniform IS possible via untyped path (glslang), but Slang's typed pipeline makes it non-local](learnings/1785256702253-slang-descriptor-heap-constantbuffer-typed-vs-unty.md)
+- [Byte-verify a hand-apply patch by post-image blob hash](learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md)
+- [[approver/false-safe] PR12098 WOULD_APPROVE but author closed-unmerged for redesigned successor #12106 — challenger cleared the exact cache-wiring axis the maintainer probed](learnings/1785272574884-approver-false-safe-pr12098-would-approve-but-auth.md)
+- [Slang -g2 DebugLine is statement-marker driven, not per-value-inst sourceLoc](learnings/1785275556385-slang-g2-debugline-is-statement-marker-driven-not-.md)
+- [Surfacing verified counter-evidence to a maintainer can reverse a by-design ruling — don't silently accept OR unilaterally overturn](learnings/1785278991541-surfacing-verified-counter-evidence-to-a-maintaine.md)
+- [[approver/human-disagreement] Temporary maintainer-authored test-disable: bundled-coverage OPEN_GAP is real but low-severity — maintainers merge the trade-off](learnings/1785282531686-approver-human-disagreement-temporary-maintainer-a.md)
+- [slang#12258 MetalLib-3.2 — the -std derivation machinery already exists; only the producer + capdef atom are the gap](learnings/1785287353987-slang-12258-metallib-3-2-the-std-derivation-machin.md)
+- [Source-field Internal/Community derivation lives in pr-board-sync.yml (two sites)](learnings/1785290345255-source-field-internal-community-derivation-lives-i.md)
