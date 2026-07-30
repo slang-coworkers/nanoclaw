@@ -1,0 +1,17 @@
+---
+title: "Target-agnostic front-end fold reaches ALL backends — check each backend's switch/selector legalization"
+type: learning
+topic: misc
+source: learnings/1785374956687-target-agnostic-front-end-fold-reaches-all-backend.md
+---
+
+# Target-agnostic front-end fold reaches ALL backends — check each backend's switch/selector legalization
+
+When a Slang front-end/AST constant-fold or check fix is **target-agnostic** (e.g. adding `case BaseType::Bool` to `TypeCastIntVal::tryFoldImpl` in slang-ast-val.cpp), it can make a previously-rejected construct *newly reach codegen on every backend* — not just the target the PR author tested. The per-backend IR legalization passes then become the real gate, and they are NOT symmetric.
+
+**Concrete recurring gap (PR #12275, enum:bool switch):** fixing the fold made `switch(enum : bool)` compile everywhere, but only the **Khronos** path legalizes a bool switch selector to integer — `legalizeBoolSwitchForKhronos` is called ONLY in the GLSL/SPIRV/SPIRVAssembly case (slang-emit.cpp:2223). The **WGSL** case (slang-emit.cpp:2256) runs only `legalizeIRForWGSL`, whose `legalizeSwitch` (slang-ir-wgsl-legalize.cpp) merely synthesizes a missing `default:` label — it never rewrites a bool selector or true/false case labels to integers, despite WGSL having the identical i32/u32-selector requirement. So the enum:bool switch would emit an invalid bool-selector `switch` to naga/wgpu, untested. (Plain `switch(bool)` reachability predated this via #12254.)
+
+**Reviewer rule of thumb:** for any front-end/AST/type-check fold or coercion fix, ask "which backends does this newly let the construct reach, and does each backend's legalization handle it?" Grep for the legalization pass and check WHICH `case CodeGenTarget::*` arms in slang-emit.cpp actually invoke it. WGSL and Metal frequently lack a legalization that Khronos has (or vice-versa). This is a 🟡 test-coverage/robustness gap, usually not a blocker, but the fix should either generalize the legalization or add a `-target <backend>` filecheck line documenting actual behavior. Same cross-backend-reach pattern also surfaced in PR #12262.
+
+---
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785374956687-target-agnostic-front-end-fold-reaches-all-backend.md`_

@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-121 learnings. [Catalog](../index.md)
+124 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] A synchronize addressing a different review axis does not close your open gap](../learnings/1784421277721-approver-calibration-a-synchronize-addressing-a-di.md)
 - [[approver/challenger-miss] A still-present false claim the current revision's review didn't re-list is still a live gap — challenger re-checks carried-over diff content, doesn't defer to "not re-flagged"](../learnings/1783937211976-approver-challenger-miss-a-still-present-false-cla.md)
@@ -78,6 +78,7 @@ type: topic
 - [approver-reviewer edge survives restart via a2a channel, not named dest or in_reply_to](../learnings/1783763066378-approver-reviewer-edge-survives-restart-via-a2a-ch.md)
 - [approver/reviewer: debounce live PR head churn, then byte-prove the frozen review still covers the settled head](../learnings/1783682287036-approver-reviewer-debounce-live-pr-head-churn-then.md)
 - [approver: reviewers_complete field is authoritative — B/Devin infra-skip alone is not a harness-fail](../learnings/1783707333659-approver-reviewers-complete-field-is-authoritative.md)
+- [Clarity reviewer (C) exhausts turn budget before canonical write — recover raw candidates from stream](../learnings/1785339114704-clarity-reviewer-c-exhausts-turn-budget-before-can.md)
 - [Clarity reviewer (Reviewer C) fails when inner CLI sandbox blocks file writes](../learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md)
 - [Daily-report: a fresh draft PR with 0 reviews is NOT proof the review is progressing — check for a landed verdict](../learnings/1784881773024-daily-report-a-fresh-draft-pr-with-0-reviews-is-no.md)
 - [Depth SV semantics are output-only (E30702) — a reviewer-traced 'inout duplicate' gap can be unreachable](../learnings/1782175276058-depth-sv-semantics-are-output-only-e30702-a-review.md)
@@ -92,6 +93,7 @@ type: topic
 - [Devin reviewer: 'unknown' commit-status + 'Generating...' = weak signal, not a clean bill](../learnings/1781179189519-devin-reviewer-unknown-commit-status-generating-we.md)
 - [Don't instruct coworkers to mark PRs ready-for-review (drafts-only is admin-set)](../learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md)
 - [Empirical "I tested it" probes can miss the wrong sub-case — Devin's persistent flags deserve scrutiny even when initial reading says misread](../learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
+- [gh-shim fallback for dead token on public repo (pr-mode review)](../learnings/1785339099440-gh-shim-fallback-for-dead-token-on-public-repo-pr-.md)
 - [Historical R0-pinned review: repoint clone origin to R0 base, not just local ref](../learnings/1783689995051-historical-r0-pinned-review-repoint-clone-origin-t.md)
 - [In-turn PR-review polling: bounded blocking Bash calls, never an armed background waiter](../learnings/1785143391944-in-turn-pr-review-polling-bounded-blocking-bash-ca.md)
 - [Internal agent-review APPROVE is not a GitHub maintainer approval](../learnings/1782465097683-internal-agent-review-approve-is-not-a-github-main.md)
@@ -116,6 +118,7 @@ type: topic
 - [Reviewer A ($30 budget cap) can silently produce no final-review.md](../learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md)
 - [Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
 - [Reviewer A error_max_budget_usd salvage: subagent final texts are recoverable from stream.jsonl](../learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md)
+- [Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch](../learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A wrong-PR integrity fail: shared tmp/ staging collision between concurrent runs](../learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md)
 - [Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run](../learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md)
 - [Reviewer-disagreement: "match canonical precedent" vs "precedent is itself wrong"](../learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md)

@@ -146,7 +146,9 @@ When a `slang-unit-test` case needs to call an internal `namespace Slang` free f
 
 Two authoring gotchas for the slang-test **DIAGNOSTIC_TEST** matcher (distinct from LLVM FileCheck — it parses machine-readable diag output and runs even when FileCheck isn't installed). A `//CHECK:` prefix is exactly 8 chars, so carets must start at the char immediately after it — `//CHECK:^^^ E41000` puts the first caret at column 9, while `//CHECK: ^^^` (leading space) shifts every caret by one and fails with "Column position(s) don't match"; slang-test prints a "Suggested annotations you can copy" block on mismatch, so use it as ground truth and match by error CODE (`E41000`) rather than free-text message for precision. A parallel provenance trap when answering a maintainer "who wrote this?": `git blame`/`%aN` render the CURRENT name via `.mailmap` (shader-slang maps historical `Tim Foley` → `Theresa Foley`), so quote the name blame ACTUALLY shows (`%aN`, mailmap-applied), not the raw `%an`, since the maintainer runs blame themselves; find a comment's origin PR with `git log -1 <sha>` (subject usually carries `(#NNN)`) or the `git log -S '<text>' --reverse` pickaxe ([DIAGNOSTIC_TEST caret alignment + git-blame .mailmap identity (slang#12236/#12245)](../learnings/1785230187967-diagnostic-test-caret-alignment-git-blame-mailmap-.md)).
 
-**Source learnings (58):**
+Two regression-test mechanics for crash→diagnostic fixes. `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` robustly catches a crash-regression even though its path (`_diagnosticAnnotationTest`) parses only stderr diagnostics and ignores the process result code: the buggy compiler segfaults with **empty stderr / zero diagnostics**, so the exhaustive annotation check fails when the expected (e.g. `E30015`) has no match. This holds only when the diagnostic and the crash are mutually exclusive — true for a front-end error (`executeActionsInner` returns before `generateIR()` on non-zero error count); if the crash is *downstream* of the diagnostic, add a `SIMPLE` `.expected` test asserting `result code = N`. Also: a fatal diagnostic suppresses codegen, so positive-compilation cases must live in a separate file ([DIAGNOSTIC diag=CHECK catches a crash-regression via empty stderr](../learnings/1785349746955-diagnostic-diag-check-catches-a-crash-regression-v.md)). And treat pass/fail counts that go into a PR body as load-bearing: re-run the suite yourself rather than transcribing a build subagent's number (a subagent reported `defer/` as 39/39; a fresh run was 38/38 — 13 dx11 variants ignored) ([verify slang-test suite pass-counts from a fresh run, not a build subagent's number](../learnings/1785349753826-verify-slang-test-suite-pass-counts-from-a-fresh-r.md)).
+
+**Source learnings (60):**
 - [DIAGNOSTIC_TEST(diag=CHECK) caret columns have no space after the 8-char `//CHECK:` prefix; match by error code; git-blame renders the mailmap-mapped name (#12236/#12245)](../learnings/1785230187967-diagnostic-test-caret-alignment-git-blame-mailmap-.md)
 - [slang-test golden/.expected discovery must tolerate the TEST(category): suffix — a cross-platform deterministic test-slang fail right after a golden change = incomplete regeneration, not a compiler bug (#12225)](../learnings/1785070091132-slang-test-reflection-golden-test-discovery-must-t.md)
 - [replay recording folders collide under parallel test-servers (no PID in name); B (per-process base dir) fixes the CI flake, A alone doesn't (#12214)](../learnings/1784895262564-slang-replay-recording-folders-collide-under-paral.md)
@@ -163,7 +165,6 @@ Two authoring gotchas for the slang-test **DIAGNOSTIC_TEST** matcher (distinct f
 - [matching expanded subtest name needs exact equality](../learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md)
 - [harness changes: slang-unit-test is the right vehicle](../learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md)
 - [shared library loader test shims](../learnings/1780324906216-slang-loads-downstream-libs-by-logical-name-test-s.md)
-
 - [LANG_SERVER harness cannot observe diagnostics](../learnings/1781083469573-CONSOLIDATED-langserver-harness-cannot-observe-diagnostics.md)
 - [LS diagnostics cannot be auto-tested](../learnings/1781086523456-slang-ls-diagnostics-cannot-be-auto-tested-lang-se.md)
 - [slang-test leaves .actual.txt artifacts](../learnings/1781088712827-slang-test-leaves-slang-actual-txt-artifacts-in-th.md)
@@ -190,7 +191,6 @@ Two authoring gotchas for the slang-test **DIAGNOSTIC_TEST** matcher (distinct f
 - [static-const-matrix-array: two distinct flake signatures, don't conflate](../learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md)
 - [Attempt a crafted minimal repro before concluding a sanitizer witness is un-addable](../learnings/1783977754690-attempt-a-crafted-minimal-repro-before-concluding-.md)
 - [FileCheck CHECK-NOT region is bounded by adjacent positive matches (whole-file negatives need a top anchor)](../learnings/1783994288793-filecheck-check-not-region-is-bounded-by-adjacent-.md)
-
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
 - [render-test DownstreamArgs: auto-register ctor excludes 'slang'](../learnings/1784149707201-render-test-downstreamargs-auto-register-ctor-excl.md)
 - [[approver/challenger-win] Verify render-test -X<compiler> migrations by the slang-bucket-vs-downstream-bucket distinction](../learnings/1784156876047-approver-challenger-win-verify-render-test-x-compi.md)
@@ -205,4 +205,7 @@ Two authoring gotchas for the slang-test **DIAGNOSTIC_TEST** matcher (distinct f
 - [when FileCheck is absent, verify CHECK lines with an ordered matcher against emitted output; passing count ≠ verified assertions](../learnings/1784751927211-verify-filecheck-check-directives-by-ordered-match.md)
 - [slang-test prepends -O0 (fold CHECKs never match without explicit -O1); SPIRV validation runs pre-opt, so assert on -target spirv-asm post-opt](../learnings/1784762873836-slang-test-injects-o0-by-default-spirv-validation-.md)
 - [unit-testing an internal unexported slang free function: own-TU + dual-compile (glob into DLL + target_sources), not export](../learnings/1785203787876-unit-testing-an-internal-unexported-slang-free-fun.md)
+- [`DIAGNOSTIC(diag=CHECK)` catches a crash→diagnostic regression via empty stderr (checks parsed diagnostics, not exit code) — valid only when diag & crash are mutually exclusive (front-end); else add a SIMPLE `result code=N`](../learnings/1785349746955-diagnostic-diag-check-catches-a-crash-regression-v.md)
+- [re-run slang-test yourself for pass-counts in a PR body — a subagent reported 39/39 where a fresh run was 38/38 (13 dx11 variants ignored); counts are load-bearing](../learnings/1785349753826-verify-slang-test-suite-pass-counts-from-a-fresh-r.md)
+
 _Catalog: [[wiki/index.md]]_

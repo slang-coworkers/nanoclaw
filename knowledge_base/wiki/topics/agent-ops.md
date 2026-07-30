@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-259 learnings. [Catalog](../index.md)
+264 learnings. [Catalog](../index.md)
 
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [[approver/calibration] check-ci-is-aggregation-gate-not-independent-failure](../learnings/1784420509811-approver-calibration-check-ci-is-aggregation-gate-.md)
@@ -18,6 +18,7 @@ type: topic
 - [[approver/challenger] fork-PR codegen fix with unrun validating test => OPEN_GAP not WOULD_APPROVE](../learnings/1784446531911-approver-challenger-fork-pr-codegen-fix-with-unrun.md)
 - [[approver/challenger] Verify a claimed fix in SOURCE at the settled head — a fixer's later push can resolve a withhold, and a stale bot/Devin flag pointing at the fixed lines is refuted, not confirmed](../learnings/1784724233457-approver-challenger-verify-a-claimed-fix-in-source.md)
 - [[approver/clause-gap] A Step-1 clause FAIL short-circuits to ABSTAIN_POLICY even when the challenger has already verified a BLOCK-class defect — the skill ordering governs, don't invent a "BLOCK overrides clause-fail" exception](../learnings/1784271165403-approver-clause-gap-a-step-1-clause-fail-short-cir.md)
+- [[approver/clause-gap] A synchronize on a no-op merge commit re-triggers the reviewable webhook but leaves PR footprint byte-identical — decide from net diff, re-verify gaps against live source](../learnings/1785319523865-approver-clause-gap-a-synchronize-on-a-no-op-merge.md)
 - [[approver/clause-gap] Fork-head PRs from trusted MEMBERs abstain on head_provenance under v0-shadow](../learnings/1784735771677-approver-clause-gap-fork-head-prs-from-trusted-mem.md)
 - [[approver/clause-gap] Standing decision rides codegen-inert synchronizes; don't re-gate on doc/test/comment churn](../learnings/1784054163587-approver-clause-gap-standing-decision-rides-codege.md)
 - [[approver/critique-mustfix] codex-critique-gate-requires-canonical-developer-instructions-verbatim](../learnings/1784329350850-approver-critique-mustfix-codex-critique-gate-requ.md)
@@ -40,6 +41,7 @@ type: topic
 - [[approver/human-agreement] Purely-additive "gate = pass handled-set" lowering fixes ship unchanged](../learnings/1783957287484-approver-human-agreement-purely-additive-gate-pass.md)
 - [[approver/human-agreement] RequiredLoweringPassSet gates: stale-false reduces to a producer-vs-governing-scan check](../learnings/1784006091575-approver-human-agreement-requiredloweringpassset-g.md)
 - [[approver/human-disagreement] CONFIRMED: maintainers self-merge THROUGH a mechanically-red required aggregate gate when the only red is confirmed infra-flake — a red check-ci is not a merge blocker if it's aarch64-only apt/network](../learnings/1784146233401-approver-human-disagreement-confirmed-maintainers-.md)
+- [[approver/human-disagreement] fork codegen PR with unrun validating test — ABSTAIN(OPEN_GAP) vs human APPROVE is directionally-correct, not a miss](../learnings/1785353094549-approver-human-disagreement-fork-codegen-pr-with-u.md)
 - [[approver/infra-abstain] a slow build+probe on a BLOCK-vs-not pivot can outrun the session and the merge — bound it or record ABSTAIN promptly](../learnings/1784055090518-approver-infra-abstain-a-slow-build-probe-on-a-blo.md)
 - [[approver/infra-abstain] critique-gate false-positives read-only `gh api .../pulls/<n>/reviews` GET](../learnings/1784077601519-approver-infra-abstain-critique-gate-false-positiv.md)
 - [[approver/infra-abstain] Devin timeout (exit 3) on a just-opened PR: re-poll once before ABSTAIN_INFRA — the head-started session often completes clean](../learnings/1783961759956-approver-infra-abstain-devin-timeout-exit-3-on-a-j.md)
@@ -175,6 +177,7 @@ type: topic
 - [Maintainer "assign the PR to me" LOSES to standing operator no-assignee gate on bot PRs — triager can't override](../learnings/1784277158125-maintainer-assign-the-pr-to-me-loses-to-standing-o.md)
 - [Maintainer-authored tracking/placeholder issue = watch-only, no GitHub post, no fixer](../learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md)
 - [May 14 session — landed PRs](../learnings/legoop-project_session_may14.md)
+- [Missing-return severity is target-gated; 202c proposal moves it to language-version gating](../learnings/1785336991633-missing-return-severity-is-target-gated-202c-propo.md)
 - [ncl approval gate non-functional — no admin configured to approve](../learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md)
 - [ncl group container fixes — Bookworm package gaps + approval sequencing](../learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md)
 - [ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked](../learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md)
@@ -189,6 +192,7 @@ type: topic
 - [Peer 'not addressable / blocked' can mean session logged-out — operator /login blocker, don't re-dispatch](../learnings/1783565846208-peer-not-addressable-blocked-can-mean-session-logg.md)
 - [Persist parent-agreed timing gates; flag before acting early](../learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)
 - [Persisted memory does NOT close a rule-gap for already-running sessions (cross-session load-timing)](../learnings/1783879309365-persisted-memory-does-not-close-a-rule-gap-for-alr.md)
+- [PR review-feedback enumeration must query ALL comment types incl issue-comments; szihs feedback lived in issue comments not reviews](../learnings/1785353452935-pr-review-feedback-enumeration-must-query-all-comm.md)
 - [PR takeover from a contributor's personal fork: bot pushes to origin, not the fork](../learnings/1784692103088-pr-takeover-from-a-contributor-s-personal-fork-bot.md)
 - [PR-thread vs issue-thread divergence spawns duplicate same-identity fixer sessions](../learnings/1784172984625-pr-thread-vs-issue-thread-divergence-spawns-duplic.md)
 - [Propagating orchestrator reinforcements to group-locked per-issue sessions](../learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md)
@@ -216,6 +220,7 @@ type: topic
 - [Reviewer: gate the verdict on full-suite CI for broad-blast-radius changes, not static review alone](../learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md)
 - [Routing a decl through shared declarator machinery silently broadens accepted grammar — review the whole declarator surface, not the target form](../learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md)
 - [rtk token-compression proxy evaluated 2026-06-03 and rejected for all groups; not enabled anywhere](../learnings/legoop-project_rtk_evaluated_rejected.md)
+- [SCCP: marking non-IRConstant aggregates as Constant(inst) breaks the pass-wide IRConstant invariant](../learnings/1785338682203-sccp-marking-non-irconstant-aggregates-as-constant.md)
 - [Scheduled diagnostic tasks re-diagnose persistent state inconsistently across fresh sessions](../learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md)
 - [send_message to=parent can fail as unaddressable — send_file and message-block still route](../learnings/1784828845885-send-message-to-parent-can-fail-as-unaddressable-s.md)
 - [Session reap deletes worktree mid-build — commit tests+code BEFORE the long build](../learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-tes.md)
