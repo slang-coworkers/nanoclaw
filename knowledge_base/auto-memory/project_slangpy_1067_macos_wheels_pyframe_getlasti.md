@@ -9,7 +9,13 @@ metadata:
 
 # slangpy#1067 — macOS wheels link-fail cp311+ (_PyFrame_GetLasti)
 
-**State (2026-07-16):** DRAFT PR **#1068** opened by slangpy-fixer (`dev/slangpy-fixer/1067` off `main`@e5e8cb4; `Closes #1067`; `report_pr_created` DONE → webhooks route to fixer; verified isDraft=true). Peer review dispatched to slangpy-reviewer by fixer. Awaiting reviewer verdict → then **human decision** to promote draft→ready. Canonical thread `gh-issue-shader-slang/slangpy-1067`.
+**State (2026-07-29):** RESOLVED on triage/review side — **APPROVED, held as DRAFT pending human merge**. PR **#1068** reviewDecision=APPROVED by **@ccummingsNV (human)**, mergeable=MERGEABLE, `Closes #1067` (issue still OPEN — draft doesn't auto-close). No changes requested, no open review threads.
+**⚠️ NOT yet green on authoritative signal:** macOS `wheels build-only` cp311–cp314 is **workflow_dispatch-only** and will NOT auto-run on merge. Maintainer must trigger it manually + confirm green BEFORE cutting v0.44.0. Fixer surfaced this caveat on the PR.
+**Next HUMAN action (on GitHub):** @skallweitNV / @ccummingsNV → run `wheels build-only` (macos aarch64 cp311–cp314), confirm green, mark #1068 ready, merge before v0.44.0. Issue cmt refreshed (comment-5116278224). CI-coverage gap = #1066.
+**Ownership:** triage chain CLOSED our side. slangpy-fixer REMAINS attached to PR #1068 for synchronize/merge webhooks; reaps worktree on merge/close. Canonical thread `gh-issue-shader-slang/slangpy-1067`.
+
+--- prior state (2026-07-16, draft opened) ---
+DRAFT PR **#1068** opened by slangpy-fixer (`dev/slangpy-fixer/1067` off `main`@e5e8cb4; `Closes #1067`; `report_pr_created` DONE → webhooks route to fixer; verified isDraft=true). Peer review dispatched to slangpy-reviewer by fixer.
 **Fix (fixer, matches triage Approach A + codex-approved PLAN/CODE/OUTPUT):** one line —
 `target_link_options(slangpy_ext PRIVATE "$<$<PLATFORM_ID:Darwin>:LINKER:-U,_PyFrame_GetLasti>")`. No code/submodule change; 3.11+ attribution unchanged.
 **Authoritative green = macOS `wheels build-only` cp311–cp314** (link failure is macOS+Py3.11+-only; NOT reproducible on Linux CI pinned 3.10 or any unit test; fixer did not run native build — no-op off-Darwin + tight disk). Local genex validated standalone; pre-commit passes.

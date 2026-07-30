@@ -21,4 +21,6 @@ metadata:
 
 **Pre-ready-flip gate — RESOLVED:** scratch `pr-body-12197.md` committed at #12200 root was removed; head now `e7dc2baee8`, only 4 source files + 5 tests remain, still OPEN draft + mergeable (triager-verified). Issue-comment EDIT is 403 for the fixer's token but works for the triager's — route consolidations/edits through triager.
 
+**07-24:** Original slang-reviewer dispatch STRANDED (ran as background monitor → died on teardown, ~23h silence, 0 reviews/0 comments on #12200; same failure as #12116/#12162). Re-dispatched slang-reviewer FOREGROUND/in-turn on canonical thread. ALSO human review engaging: jhelferty-nv commented on #12197 `@kaizhangNV Can you take a look?` (cmt 5121317037) — maintainer→maintainer review ping (kaizhangNV = CODEOWNERS reviewer on #12200); NOT a bot mention, NOT a re-open, no bot post, no re-dispatch. Chain now awaiting BOTH advisory (slang-reviewer) + authoritative human (kaizhangNV) review.
+
 Related: [[project_12185_bindless_texture_nv_desc_handle_nonimage]] (sibling DescHandle abort). Sibling non-copyable-copy family (out of scope here): #8002 (__constref ParameterBlock), #7455 (NonCopyable Accessor ICE).
