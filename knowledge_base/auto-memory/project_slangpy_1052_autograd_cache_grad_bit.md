@@ -1,6 +1,6 @@
 ---
 name: project_slangpy_1052_autograd_cache_grad_bit
-description: "slangpy#1052 — torch call-data cache ignored requires_grad; fixed in draft PR #1054, pr-approver WOULD_APPROVE @ebb9f68de (BLOCK remediated: API_VERSION 7→8); ENGINEERING-TERMINAL, maintainer+CLA-gated"
+description: "slangpy#1052 — torch call-data cache ignored requires_grad; fixed in draft PR #1054, pr-approver WOULD_APPROVE @ebb9f68de (BLOCK remediated: API_VERSION 7→8); maintainer ccummingsNV APPROVED 07-29 (survived merge-catchup rebase, live head af81600); ENGINEERING-TERMINAL, CLA-gated (last blocker=license/cla PENDING on bot identity)"
 metadata: 
   node_type: memory
   type: project
@@ -41,4 +41,8 @@ metadata:
 
 **ENGINEERING-TERMINAL, maintainer+CLA-gated:** verified fix in DRAFT PR #1054 (`Fixes #1052`), approver-cleared. Only real blocker = `license/cla` PENDING on bot identity (allowlist, NOT agent-actionable, no operator card per empty-room logic). Awaiting bmillsNV (CODEOWNERS): CLA-clear + CI-green → squash-merge → promote from draft. Never bot self-ready/self-merge. Re-opens on non-flaky CI red or substantive human comment on #1052 (process through chain).
 
-See [[feedback_no_double_dispatch_peer_wired.md]] · [[feedback_drafts_only_guardrail.md]] · [[feedback_route_authorizations_through_dispatch_owner.md]].
+**MAINTAINER APPROVED (2026-07-29, fixer [Report] msg #16):** ccummingsNV (MEMBER) **approved** PR #1054 on HEAD `ebb9f68`; all builds + pre-commit green; no open review threads. Fixer acknowledged the approval on GitHub (comment 5116226822). PR still held as **draft** per drafts-only policy — bot will NOT self-promote/self-merge. Awaiting a maintainer to mark ready + squash-merge. Last blocker unchanged = `license/cla` PENDING for bot author (may need maintainer override; flagged in the GitHub comment) — allowlist matter, NOT agent-actionable. Verdict/approval now human-sourced (ccummingsNV), not just approver-shadow. No further code action from fixer.
+
+**LOOP FULLY CLOSED (2026-07-29, triager terminal roll-up msg #28 → orch canonical-thread msg 83):** fixer did a merge-catchup rebase; live-verified state — head `ebb9f68`→**`af81600`**, `reviewDecision=APPROVED` **survived the rebase**, `isDraft=true`, `mergeable=MERGEABLE`; the `BEHIND` gap is resolved → PR now `BLOCKED` on the expected **CLA + draft gate only** (no code blocker remains). Issue #1052 artifact refreshed in place (caught-up + green + squash-ready). Codex future-cleanup note surfaced (non-blocking). Chain terminal on our side; re-opens only on a substantive human comment on #1052 or a non-flaky CI red arriving by webhook. **Re-verified live @10:10Z (triager [Triage Resolution] msg #40):** ccummingsNV APPROVED @ `ebb9f68` 10:03:07Z, isDraft=true, `reviewDecision=APPROVED`; CI all-green (pre-commit + full build matrix win/linux/macos/all archs) except `license/cla` PENDING. **NEW nuance: `mergeStateStatus=BEHIND`** — branch behind main, needs catch-up/rebase before squash-merge (fixer bot-push, not user-gated) in addition to the CLA + maintainer mark-ready. No operator card (org-side CLA + maintainer mechanics, not operator-actionable; GitHub footprint is the surface).
+
+See [[feedback_no_double_dispatch_peer_wired.md]] · [[feedback_drafts_only_guardrail.md]] · [[feedback_route_authorizations_through_dispatch_owner.md]] · [[feedback_github_writes_operator_authorized.md]].

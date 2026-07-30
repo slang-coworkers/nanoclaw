@@ -1,0 +1,24 @@
+---
+name: project-slangpy-996-carrier-pr-1078
+description: "slangpy#996 fork PR re-carried as bot-owned draft PR"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 10739d1e-ee0c-4bda-9543-04480f3e567a
+---
+
+**slangpy#996 → carrier PR #1078** (2026-07-29). jhelferty-nv (maintainer, with @fangjunzhou's OK) asked nv-slang-bot to re-carry #996 — a PR on @fangjunzhou's fork the bot can't push to — as a new PR from a bot-owned branch in shader-slang/slangpy: rebased onto current master, retaining commit authorship, incorporating @szihs + @ccummingsNV + CodeRabbit feedback.
+
+slangpy-fixer delivered **draft PR #1078** (https://github.com/shader-slang/slangpy/pull/1078), supersedes #996:
+- **Authorship preserved**: `f8b034b` + `52f21ce` authored by Fangjun Zhou (cherry-picked, not squashed); `7739755` bot-authored feedback commit.
+- **@szihs**: RWDiffTensor write test now supplies `grad_in` (writable primal); DiffTensor read test keeps `grad_out` only. Fixer initially misread @szihs as "no feedback" (his input was 2 *issue comments*, not review comments) — codex PLAN_REVIEW caught it; then over-applied to both tests, measurement corrected. Lesson: query issue-comments, not just reviews.
+- **@ccummingsNV**: VALIDATED by CI — arrays-of-tensors genuinely misbehave on Metal. First CI run (07-29 ~20:27) surfaced 6 real Metal wrong-result failures (4 new tests + 2 vectorize-tensor tests). Fixer added Metal skips for all 6 with specific reasons (commit `a40b4d0`) — exactly @ccummingsNV's ask. Tests pass on vulkan/cuda/d3d12. (Initial pre-CI read "no skip needed" was wrong — Metal only fails, not vulkan+cuda.) Windows CI failure was transient infra (270× "Failed to create device", unrelated tests, bot's tests passed on d3d12) → rerun.
+- **CodeRabbit**: removed duplicate `from slangpy.types import Tensor`.
+- Verified: `test_array.py` = 36 passed, 2 pre-existing skips (vulkan+cuda, Debug, L40S). 3 critique stages approved.
+
+- **d3d12** (07-29 ~20:52): fixer's earlier "Windows = infra flake" call was WRONG (self-corrected). Full-log analysis: `test_array_of_tensors_read[d3d12]` creates read-only (shader_resource) tensors, which the d3d12 dispatch path clears as a UAV → device removal → 180+ cascade failures. The poisoning test was one of the bot's own. Fixed by skipping the 2 read tensor-array tests on d3d12 (shader_resource usage is load-bearing for read-only Tensor resolution, can't just be dropped). Lesson: don't declare "infra" from a spot-check of tests that ran *before* yours.
+- **Tracking issue #1079** filed for the underlying Metal wrong-results + d3d12 device-removal bugs; cited in all 6 skip guards (reviewer's should-change).
+
+Commits now: 2 @fangjunzhou + 4 bot (authorship preserved), HEAD `f631657`. **slangpy-reviewer verdict: APPROVE_WITH_NITS (round 3) — all nits closed.** Guardrails honored: draft-only, no reviewers/assignees, not ready/merged; `report_pr_created` registered (#1078 webhooks route to fixer); 5-bullet posted on #996; peer review done. **State (07-29 ~21:16): FULL-MATRIX CI GREEN @f631657 — Linux + macOS/Metal + Windows/d3d12, 0 failing / 0 pending. 2 RWTensor write tests confirmed passing on d3d12 independently. MERGE-READY — human-gated for draft→ready + merge.** Worktree preserved for follow-up webhooks. Fixer owns #1078 webhooks. Pattern: [[project-fork-pr-carrier-fallback]]. Canonical thread `gh-issue-shader-slang/slangpy-996`.
+
+Two self-corrections logged as shared learnings: (1) initial "@szihs no feedback" misread — PLAN_REVIEW critique caught it, direct issue-comments API re-check found the 2 comments incl. grad_in fix; (2) initial "Windows = infra flake" misdiagnosis — tracing the FIRST failure revealed the bot's own read test poisoned the device. Discipline: query issue-comments not just reviews; don't declare "infra" from a spot-check of tests that ran before yours.
