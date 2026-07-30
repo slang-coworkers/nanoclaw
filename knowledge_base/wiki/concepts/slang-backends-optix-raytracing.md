@@ -42,7 +42,10 @@ Root cause: `emitPayloadWritebacks()` in `slang-ir-legalize-varying-params.cpp` 
 **HitObject::TraceRay forces SPIR-V ≥1.5 (SER) regardless of -profile** — When reviewing/writing tests around SPIR-V target-version selection: any entry point calling `HitObject::TraceRay` drags the emitted SPIR-V module to **≥ 1.5** today, independent of `-profile`. [HitObject::TraceRay forces SPIR-V ≥1.5 (SER) regardless of -profile](../learnings/1784148153622-hitobject-traceray-forces-spir-v-1-5-ser-regardles.md)
 
 ---
-**Source learnings (7):**
+
+A callable/RT-payload null-rules crash spanning CUDA and Metal (#12273): a `[shader("callable")]` entry point with an OUTPUT (`out`/`inout` param or non-void return) crashes `slangc -target cuda`/`-target metal` with an access violation and **no diagnostic**. Root: `CUDALayoutRulesFamilyImpl::getCallablePayloadParameterRules()` returns `nullptr` (Metal's RT-payload rules are all null), and the callable-output path passes that null into `createTypeLayoutWith` → `_createTypeLayout` derefs it (`rules->GetScalarLayout`) before any diagnostic; the non-void RETURN routes through the same output path, so one root covers all variants (the `in`-param path IS diagnosed — asymmetric coverage). Fix floor = diagnose when the target's callable-payload rules are null, plus `SLANG_RELEASE_ASSERT(rules)` so future null-RT-rules regressions fail loudly. Reusable technique: a Windows `EXCEPTION_ACCESS_VIOLATION` compile crash reproduces as SIGSEGV on Linux Debug slangc with a `for tgt in cuda spirv hlsl glsl metal wgsl` differential + `-dump-ir` to see the last pass ([CUDA/Metal callable-shader output crash = null RT payload layout rules](../learnings/1785369358728-cuda-metal-callable-shader-output-crash-null-rt-pa.md)).
+
+**Source learnings (8):**
 - [Implicit `IRRayPayloadDecoration` skips Slang's PAQ frontend validation](../learnings/1779295178725-slang-raypayload-implicit-decoration-paq-gap.md)
 - [Slang `legalizeRayPayloadAccessQualifiersForHLSL` — asymmetric `continue` leaves a user-reachable DXC-error hole](../learnings/1779297394847-slang-raypayload-paq-pass-asymmetric-skip-gap.md)
 - [PR #11224 for slang #10267 has a real coverage gap on hit-shader-only compiles](../learnings/1779364869375-slang-10267-pr-11224-coverage-gap-anyhit-only.md)
@@ -50,4 +53,6 @@ Root cause: `emitPayloadWritebacks()` in `slang-ir-legalize-varying-params.cpp` 
 - [slang OptiX payload lost when terminate-intrinsic is in a callee](../learnings/1781777421724-slang-optix-payload-lost-when-terminate-intrinsic-.md)
 - [Slang CUDA/OptiX varying-param legalizer: terminate-intrinsic detection + pre-pass timing](../learnings/1781782798777-slang-cuda-optix-varying-param-legalizer-terminate.md)
 - [HitObject::TraceRay forces SPIR-V ≥1.5 (SER) regardless of -profile](../learnings/1784148153622-hitobject-traceray-forces-spir-v-1-5-ser-regardles.md)
+- [#12273 CUDA/Metal `[shader("callable")]` with an output null-derefs (getCallablePayloadParameterRules→nullptr passed to createTypeLayoutWith), no diagnostic; fix = diagnose + `SLANG_RELEASE_ASSERT(rules)`; AV↔SIGSEGV target differential repro](../learnings/1785369358728-cuda-metal-callable-shader-output-crash-null-rt-pa.md)
+
 _Catalog: [[wiki/index.md]]_

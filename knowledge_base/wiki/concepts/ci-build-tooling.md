@@ -120,7 +120,9 @@ An `ar: <x>.cpp.o: No such file or directory` at a static-lib archive step (or o
 
 When you add or rename a **public** capability atom/alias in `slang-capabilities.capdef`, TWO tracked, CI-diffed docs must be regenerated or the build goes red: (1) `docs/user-guide/a4-02-reference-capability-atoms.md` via `slang-capability-generator` (the one CLAUDE.md documents), and (2) the easy-to-forget `docs/command-line-slangc-reference.md` via `slangc -help-style markdown -h > docs/command-line-slangc-reference.md` — CI diffs it at `.github/workflows/ci.yml` (~line 555) and fails on any difference (hint: `/regenerate-cmdline-ref`), because that file enumerates every non-abstract capability alias in its `-capability` section. Both diffs are additive-only for a pure alias-add; regenerate with a freshly-built local `slangc` and commit both alongside the capdef change. Discovered on #12244 (added `texture_shadow`+`texture_shadowbias`) — a codex PLAN_REVIEW caught that the a4-02 regen alone would ship a PR that goes red in the cmdline-ref check [Adding a public capability alias requires regenerating TWO CI-checked docs, not just a4-02](../learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md).
 
-**Source learnings (29):**
+Related to the doc-regeneration lesson above, the `check-cmdline-ref` CI job enforces `docs/command-line-slangc-reference.md` with a **byte-exact `diff`** of `slangc -help-style markdown -h`. The generator emits every line with a **trailing space**; hand-stripping that whitespace (e.g. to silence a `git diff --check` warning) makes the committed doc no longer match generator output and flips the job red. Commit generator output verbatim (`... -h > docs/command-line-slangc-reference.md 2>&1`, note the `2>&1`); the trailing-whitespace warning on this generated file is expected and is NOT what CI checks — or comment `/regenerate-cmdline-ref` to auto-fix ([check-cmdline-ref does byte-exact diff — never strip trailing space from the generated doc](../learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md)).
+
+**Source learnings (30):**
 - [untracking a checked-in build binary is safe only if no deploy script/CI/Makefile consumes the tracked copy; untracking stops future bloat only, not history](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)
 - [make a slang check "required" by adding a `pull_request` exit-1 job to `check-ci.needs` (not branch-protection UI); the `ci.yml` edit is not bot-pushable (workflows-perm wall) → maintainer diff](../learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md)
 - [DISABLE CI jobs are build-only](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
@@ -138,7 +140,6 @@ When you add or rename a **public** capability atom/alias in `slang-capabilities
 - [A maintainer merging master into your PR branch can silently fix the root cause](../learnings/1781651810617-a-maintainer-merging-master-into-your-pr-branch-ca.md)
 - [DescriptorHandle to ConstantBuffer implicit conversion blocked](../learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md)
 - [Primary-file using namespace leaks through import](../learnings/1780476462894-slang-primary-file-using-namespace-leaks-through-i.md)
-
 - [Release-asset asymmetry from moving a CI leg into a no-sudo container — verify the exact failing command](../learnings/1782845136368-release-asset-asymmetry-from-moving-a-ci-leg-into-.md)
 - [Release-CI Setup failures: bisect the workflow file's own history, not the source-commit range](../learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md)
 - [Coworker bots may not modify .github/workflows — flag before building](../learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md)
@@ -151,4 +152,6 @@ When you add or rename a **public** capability atom/alias in `slang-capabilities
 - [slang#12032 Windows CI crash-dump: routes via ci-slang-test.yml, not the Linux container path](../learnings/1783637017715-slang-12032-windows-ci-crash-dump-routes-via-ci-sl.md)
 - ['ar: no such .o' at link = two ninjas on one build dir (a subagent false-reported 'still running'); pkill all ninja, relaunch one — state self-heals, no rm -rf needed](../learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md)
 - [adding a public capability alias regenerates TWO CI-checked docs (a4-02 AND command-line-slangc-reference.md), not just a4-02](../learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md)
+- [`check-cmdline-ref` byte-exact-diffs the generated slangc reference — commit generator output verbatim (trailing spaces included, `2>&1`); don't strip whitespace to satisfy `git diff --check`](../learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md)
+
 _Catalog: [[wiki/index.md]]_

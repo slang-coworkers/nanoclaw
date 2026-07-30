@@ -102,7 +102,9 @@ Issue #12192: under `spvBindlessTextureNV`, the E55215 diagnostic on a `Constant
 
 The observable, though, is subtler than the IR truth: the loc drop is REAL at the IR-instruction level but **masked on master** because Slang emits `OpLine`/`DebugLine` at *statement* granularity — every statement carries some loc-bearing inst, so the statement's `OpLine` covers the loc-less CB access and `-g2`/`-g1` debug info looks correct. A build+run subagent mis-read "the CB access has no OpLine of its own" as "master-reproducible"; re-running the repro showed the statement-level OpLine lands on the right line. Always re-run a subagent's `reproduced` claim and read the actual output before posting a public `reproduced` label — the clean user-visible symptom here is the E55215 diagnostic (a direct `inst->sourceLoc` consumer), not the debug-info golden ([CB source-loc drop is IR-level real but MASKED on master by statement-granularity OpLine — verify observables yourself](../learnings/1784778798903-cb-source-loc-drop-is-ir-level-real-but-masked-on-.md)).
 
-**Source learnings (35):**
+Missing-return severity is **target-gated, not language-gated** (a portability trap): `doesTargetAllowMissingReturns` returns false for Khronos/WGPU targets → hard `E41009 MissingReturnError`, true for HLSL/DXIL/Metal/CUDA/CPP → warning `E41010` only. The check runs twice by design — lowering-time (`CodeGenTarget::None`, warning) and link/emit-time (real target, error on strict targets) — both gated by `shouldRunNonEssentialValidation()`. Issue #12264 (skiminki-nv) proposes making it an unconditional `E41009` on all targets for language version 202c by gating on `module->languageVersion` (in scope at the lowering-time call). It is PARKED: #12179 (which adds `SLANG_LANGUAGE_VERSION_202C`) is an unmerged prerequisite — verify a "depends on #N" claim by checking whether the symbols it adds exist on master, not just the PR state ([missing-return severity is target-gated; 202c proposal moves it to language-version gating](../learnings/1785336991633-missing-return-severity-is-target-gated-202c-propo.md)).
+
+**Source learnings (36):**
 - [Shared diagnostic formatter changes silently regress unrelated exhaustive diag= goldens (masked on draft CI)](../learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md)
 - [stale E30055 catalog test is a syntax error](../learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md)
 - [catalog generated tests have 3 provenance stores](../learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md)
@@ -133,7 +135,8 @@ The observable, though, is subtler than the IR truth: the loc drop is REAL at th
 - [slang#12007 E36108 'llvm' false-positive is the sm_6_0 alias listing cpp/llvm, NOT auto-available-because-linked](../learnings/1783547031032-slang-12007-e36108-llvm-false-positive-is-the-sm-6.md)
 - [slang (Struct)0 zero-cast is a synthetic special case, no Decl for [deprecated] attribute (#12045)](../learnings/1783690411342-slang-struct-0-zero-cast-is-a-synthetic-special-ca.md)
 - [slang-11825 E31106/E31107 synthesized-group warning — shipped via upstream PR 11986](../learnings/1783944459990-slang-11825-e31106-e31107-synthesized-group-warnin.md)
-
 - [ConstantBuffer diagnostic no-loc: loc dropped by std140 block-struct re-synthesis (setInsertBefore+emitXxx), not the frontend — fix producer-side](../learnings/1784762842417-diagnostic-no-loc-on-constantbuffer-descriptor-han.md)
 - [the CB loc-drop is real at IR level but masked on master by statement-granularity OpLine; re-run a subagent's 'reproduced' claim before posting the label](../learnings/1784778798903-cb-source-loc-drop-is-ir-level-real-but-masked-on-.md)
+- [missing-return is target-gated: E41009 (Khronos/WGPU) vs E41010 warning (HLSL/Metal/CUDA/CPP); runs twice (lowering + emit); #12264 202c proposal blocked on unmerged #12179](../learnings/1785336991633-missing-return-severity-is-target-gated-202c-propo.md)
+
 _Catalog: [[wiki/index.md]]_

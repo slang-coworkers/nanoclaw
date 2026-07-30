@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1773 agent learnings**, synthesized into **47 concept pages**.
+Standalone wiki built from **1813 agent learnings**, synthesized into **47 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -84,11 +84,11 @@ Standalone wiki built from **1773 agent learnings**, synthesized into **47 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (907)
-- [NanoClaw / agent operations](topics/agent-ops.md) (259)
-- [CI, build & tooling](topics/ci-tooling.md) (150)
-- [Review & process](topics/review-process.md) (121)
-- [Uncategorized](topics/misc.md) (336)
+- [Slang compiler & language](topics/slang-compiler.md) (924)
+- [NanoClaw / agent operations](topics/agent-ops.md) (264)
+- [CI, build & tooling](topics/ci-tooling.md) (156)
+- [Review & process](topics/review-process.md) (124)
+- [Uncategorized](topics/misc.md) (345)
 
 ## All learnings (chronological)
 
@@ -1865,3 +1865,43 @@ Standalone wiki built from **1773 agent learnings**, synthesized into **47 conce
 - [[approver/human-disagreement] Temporary maintainer-authored test-disable: bundled-coverage OPEN_GAP is real but low-severity — maintainers merge the trade-off](learnings/1785282531686-approver-human-disagreement-temporary-maintainer-a.md)
 - [slang#12258 MetalLib-3.2 — the -std derivation machinery already exists; only the producer + capdef atom are the gap](learnings/1785287353987-slang-12258-metallib-3-2-the-std-derivation-machin.md)
 - [Source-field Internal/Community derivation lives in pr-board-sync.yml (two sites)](learnings/1785290345255-source-field-internal-community-derivation-lives-i.md)
+- [enum:bool switch fails E39999 — TypeCastIntVal::tryFoldImpl lacks BaseType::Bool case](learnings/1785318110996-enum-bool-switch-fails-e39999-typecastintval-tryfo.md)
+- [[approver/clause-gap] A synchronize on a no-op merge commit re-triggers the reviewable webhook but leaves PR footprint byte-identical — decide from net diff, re-verify gaps against live source](learnings/1785319523865-approver-clause-gap-a-synchronize-on-a-no-op-merge.md)
+- [CORRECTION: enum:bool switch fix arm is (bool)!=0 NOT &1 — verify load-bearing claims before posting](learnings/1785320231054-correction-enum-bool-switch-fix-arm-is-bool-0-not-.md)
+- [SlangPy backward mixed requires_grad — PrimalTensor is the zero-alloc fix, not a scratch grad buffer](learnings/1785320480003-slangpy-backward-mixed-requires-grad-primaltensor-.md)
+- [Verify a reporter's cited doc/spec path before repeating "impl disagrees with the reference"](learnings/1785320946422-verify-a-reporter-s-cited-doc-spec-path-before-rep.md)
+- [MakeVectorFromScalar getScalarValue() reads getOperand(2) but builder emits 1 operand](learnings/1785334765218-makevectorfromscalar-getscalarvalue-reads-getopera.md)
+- [check-cmdline-ref CI does byte-exact diff — never strip trailing space from the generated doc](learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md)
+- [SLANG_ASSERT becomes __builtin_assume in release — never assert a precondition you also guard on](learnings/1785335639560-slang-assert-becomes-builtin-assume-in-release-nev.md)
+- [MakeVectorFromScalar scalar is getOperand(0), NOT getScalarValue() — Lua schema (3 ops) diverges from the 1-operand builder](learnings/1785335653192-makevectorfromscalar-scalar-is-getoperand-0-not-ge.md)
+- [Missing-return severity is target-gated; 202c proposal moves it to language-version gating](learnings/1785336991633-missing-return-severity-is-target-gated-202c-propo.md)
+- [Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch](learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
+- [SCCP: marking non-IRConstant aggregates as Constant(inst) breaks the pass-wide IRConstant invariant](learnings/1785338682203-sccp-marking-non-irconstant-aggregates-as-constant.md)
+- [gh-shim fallback for dead token on public repo (pr-mode review)](learnings/1785339099440-gh-shim-fallback-for-dead-token-on-public-repo-pr-.md)
+- [Clarity reviewer (C) exhausts turn budget before canonical write — recover raw candidates from stream](learnings/1785339114704-clarity-reviewer-c-exhausts-turn-budget-before-can.md)
+- [[approver/human-agreement] recall-predicted-hpp-emitter-fix-WOULD_APPROVE-vindicated-full-arc](learnings/1785339839478-approver-human-agreement-recall-predicted-hpp-emit.md)
+- [RWByteAddressBuffer atomic-via-helper flips whole-module buffer type (shared dedup type inst mutation)](learnings/1785339952123-rwbyteaddressbuffer-atomic-via-helper-flips-whole-.md)
+- [Local Slang Debug preset builds CMAKE_BUILD_TYPE=Release → SLANG_ASSERT is inert (compiles to __builtin_assume); test assert logic in _DEBUG or by reasoning](learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md)
+- [Slang defer bare non-block decl leaks scope → IR-lowering segfault (root cause: parser opens no scope)](learnings/1785345383314-slang-defer-bare-non-block-decl-leaks-scope-ir-low.md)
+- [DIAGNOSTIC diag=CHECK catches a crash-regression via empty stderr (checks parsed diagnostics, not exit code)](learnings/1785349746955-diagnostic-diag-check-catches-a-crash-regression-v.md)
+- [Verify slang-test suite pass-counts from a fresh run, not from a build subagent's number](learnings/1785349753826-verify-slang-test-suite-pass-counts-from-a-fresh-r.md)
+- [buildHash Int branch drops intValue2 — multi-integer compiler options collide on cache key](learnings/1785350469856-buildhash-int-branch-drops-intvalue2-multi-integer.md)
+- [[approver/human-disagreement] fork codegen PR with unrun validating test — ABSTAIN(OPEN_GAP) vs human APPROVE is directionally-correct, not a miss](learnings/1785353094549-approver-human-disagreement-fork-codegen-pr-with-u.md)
+- [PR review-feedback enumeration must query ALL comment types incl issue-comments; szihs feedback lived in issue comments not reviews](learnings/1785353452935-pr-review-feedback-enumeration-must-query-all-comm.md)
+- [slangpy Tensor.with_grads: grad_in only valid for writable primal — read tests use grad_out only, write tests need both](learnings/1785354955971-slangpy-tensor-with-grads-grad-in-only-valid-for-w.md)
+- [SlangPy PR review: use gh pr diff, not local git diff --stat (stale-main trap)](learnings/1785357368357-slangpy-pr-review-use-gh-pr-diff-not-local-git-dif.md)
+- [SlangPy: Tensor usage flag (shader_resource vs UAV) is load-bearing for ARRAY-of-Tensor params, not scalar](learnings/1785359040591-slangpy-tensor-usage-flag-shader-resource-vs-uav-i.md)
+- [D3D12 device-removal cascade can masquerade as CI infra flake — trace the FIRST failure, not a spot-check](learnings/1785359117251-d3d12-device-removal-cascade-can-masquerade-as-ci-.md)
+- [SlangPy Tensor.zeros clears unconditionally — D3D12 device loss on shader_resource-only tensors](learnings/1785359276875-slangpy-tensor-zeros-clears-unconditionally-d3d12-.md)
+- [slangpy#1079 repro tests live only in PR #1078, not on main/CI branch](learnings/1785359638612-slangpy-1079-repro-tests-live-only-in-pr-1078-not-.md)
+- [slangpy#1079 Defect 2 fix: root-cause at Tensor::clear(), not tensor_zeros](learnings/1785363716295-slangpy-1079-defect-2-fix-root-cause-at-tensor-cle.md)
+- [slangpy #1080 Tensor::clear copy-path: copy_destination guaranteed only for device_local; UAV-clear is D3D12-specific](learnings/1785365827665-slangpy-1080-tensor-clear-copy-path-copy-destinati.md)
+- [CUDA/Metal callable-shader output crash = null RT payload layout rules (null-deref, no diagnostic)](learnings/1785369358728-cuda-metal-callable-shader-output-crash-null-rt-pa.md)
+- [Case-less __target_switch in *.meta.slang silently emits an empty body (no diagnostic)](learnings/1785371749664-case-less-target-switch-in-meta-slang-silently-emi.md)
+- [intrinsic-asm $TR marker emits the call return type (fixes tex2Dgather element-vs-4-vector)](learnings/1785372605179-intrinsic-asm-tr-marker-emits-the-call-return-type.md)
+- [CUDA SamplerComparisonState has no prelude typedef (unlike SamplerState) — undefined-type NVRTC failure](learnings/1785373084246-cuda-samplercomparisonstate-has-no-prelude-typedef.md)
+- [CUDA texture Load half-texel gap: loud undefined-template vs #12274 silent-empty](learnings/1785373293265-cuda-texture-load-half-texel-gap-loud-undefined-te.md)
+- [precise local qualifier leaks to 4 C-like targets, not just CUDA/C++ (#12279)](learnings/1785373326278-precise-local-qualifier-leaks-to-4-c-like-targets-.md)
+- [11917 in-pass-scan: #11987 template does NOT transfer to shared-legalizeTypes passes; verify driver hint vs pass's own trigger](learnings/1785373772506-11917-in-pass-scan-11987-template-does-not-transfe.md)
+- [Target-agnostic front-end fold reaches ALL backends — check each backend's switch/selector legalization](learnings/1785374956687-target-agnostic-front-end-fold-reaches-all-backend.md)
+- [WGSL crashes on bool-typed IRIntLit switch case (no BaseType::Bool arm in emitSimpleValueImpl) — legalizeBoolSwitch must run for WGSL too](learnings/1785375838727-wgsl-crashes-on-bool-typed-irintlit-switch-case-no.md)

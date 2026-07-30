@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-150 learnings. [Catalog](../index.md)
+156 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] -Og debug-build guard: subtractive NOT-MSVC guard can't regress prior-green; -Wmaybe-uninitialized gap clears as future-proofing when PR adds no C++](../learnings/1784288671711-approver-calibration-og-debug-build-guard-subtract.md)
 - [[approver/calibration] build-flag PR: clear a "-Werror CI break" gap by checking the affected config is actually green](../learnings/1784270606102-approver-calibration-build-flag-pr-clear-a-werror-.md)
@@ -79,6 +79,7 @@ type: topic
 - [Build subagents will EDIT your source when a new assert fires — drive assert-bearing builds yourself](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)
 - [Build-only subagent overstepped: committed/pushed/dispatched-CI/edited-PR-body — verify every claim](../learnings/1781809987259-build-only-subagent-overstepped-committed-pushed-d.md)
 - [CHANGES_REQUESTED ≠ edit list — read the review body + inline count, not just reviewDecision](../learnings/1783731922642-changes-requested-edit-list-read-the-review-body-i.md)
+- [check-cmdline-ref CI does byte-exact diff — never strip trailing space from the generated doc](../learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md)
 - [CI babysitter: CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
 - [CI babysitter: headline the dominant root-cause when maintainers rerun into a deterministic wall](../learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md)
 - [CI babysitter: identical build error across unrelated PRs = base-branch break, not flake](../learnings/1780790667002-ci-babysitter-identical-build-error-across-unrelat.md)
@@ -94,6 +95,7 @@ type: topic
 - [COMPARE_COMPUTE filecheck-buffer: use -output-using-type or CI (cpu+llvm) dumps HEX while local (gcc cpu) dumps decimal](../learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md)
 - [compile-perf tracker already captures rss_kb but it's dead on the Windows perf runner and never surfaced](../learnings/1784095582129-compile-perf-tracker-already-captures-rss-kb-but-i.md)
 - [Coworker bots may not modify .github/workflows — flag before building](../learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md)
+- [D3D12 device-removal cascade can masquerade as CI infra flake — trace the FIRST failure, not a spot-check](../learnings/1785359117251-d3d12-device-removal-cascade-can-masquerade-as-ci-.md)
 - [Daily-report CI: health_snapshots.jsonl last line can be badly stale — cross-check with Actions API](../learnings/1784017364046-daily-report-ci-health-snapshots-jsonl-last-line-c.md)
 - [DescriptorHandle to ConstantBuffer implicit conversion blocked by ParameterGroupType target guard in _coerce](../learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md)
 - [Diagnosing DescriptorHandle&lt;RaytracingAccelerationStructure&gt; + spvDescriptorHeapEXT crashes](../learnings/1785051051163-diagnosing-descriptorhandle-lt-raytracingaccelerat.md)
@@ -114,6 +116,8 @@ type: topic
 - [Hold unsolicited reviews when repo runs its own PR bot](../learnings/1782464483726-hold-unsolicited-reviews-when-repo-runs-its-own-pr.md)
 - [Implicit CountOf sentinel aliases an option when a concurrent-PR renumber breaks textual value-order](../learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when-a.md)
 - [Internal a2a review ≠ GitHub reviewDecision](../learnings/1782148692608-internal-a2a-review-github-reviewdecision.md)
+- [MakeVectorFromScalar getScalarValue() reads getOperand(2) but builder emits 1 operand](../learnings/1785334765218-makevectorfromscalar-getscalarvalue-reads-getopera.md)
+- [MakeVectorFromScalar scalar is getOperand(0), NOT getScalarValue() — Lua schema (3 ops) diverges from the 1-operand builder](../learnings/1785335653192-makevectorfromscalar-scalar-is-getoperand-0-not-ge.md)
 - [Merge-group build break with green head = merge-time collision, legitimate not flake](../learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md)
 - [Multi-mode CI failure spread = degrading-runner issue, not test-flake](../learnings/1783354616229-multi-mode-ci-failure-spread-degrading-runner-issu.md)
 - [nanoclaw sync-PR CI composes all nv-* branches (merge-order dep)](../learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-merge.md)
@@ -125,6 +129,7 @@ type: topic
 - [Parallel fix/issue-* chains can grab the same OptionKind/enum value off a shared base → duplicate-case build break; self-heals via append-renumber](../learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md)
 - [Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace](../learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md)
 - [Pointer-formation UB (cur+N only compared, deref short-circuit-guarded) is UBSan-flaggable but NOT a realized crash — don't over-call P1](../learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md)
+- [precise local qualifier leaks to 4 C-like targets, not just CUDA/C++ (#12279)](../learnings/1785373326278-precise-local-qualifier-leaks-to-4-c-like-targets-.md)
 - [Pushing code commits is NOT a user-facing write — it's always allowed, draft or ready](../learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md)
 - [Re-push after every amend BEFORE gh pr create — else the PR/CI runs your stale first commit](../learnings/1784316959883-re-push-after-every-amend-before-gh-pr-create-else.md)
 - [Reconciling an environmental-cause retraction against a test-config fix (map symptom→code path)](../learnings/1780509076354-reconciling-an-environmental-cause-retraction-agai.md)
@@ -148,6 +153,7 @@ type: topic
 - [Untracking a checked-in build binary is safe only if nothing consumes the tracked copy](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)
 - [Verify "N reviewers APPROVE" against GitHub reviewDecision before posting it as a public verdict](../learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md)
 - [Verify a reported release-version mismatch against the actual artifact before treating it as a release-CI bug](../learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md)
+- [Verify a reporter's cited doc/spec path before repeating "impl disagrees with the reference"](../learnings/1785320946422-verify-a-reporter-s-cited-doc-spec-path-before-rep.md)
 - [Verify a self-filed bot CI issue's root cause at receipts level — it can be wrong](../learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)
 - [Verify cited CI run against live GitHub before trusting a release-report notification](../learnings/1784856735494-verify-cited-ci-run-against-live-github-before-tru.md)
 - [Verify passed-vs-FAILED before citing a test signature in an escalation](../learnings/1784096353229-verify-passed-vs-failed-before-citing-a-test-signa.md)
