@@ -39,9 +39,24 @@ Fixer verified 3 more issues at HEAD + posted audit on PR → now **4 fixes**:
   fixer canonicalizes by sorted enum key.
 All same subsystem (cache-key completeness), maintainer-requested → NO re-triage (triager confirmed).
 
-**Reviewer HELD:** the 1-line diff @`562ae25121` is now STALE; Main told slang-reviewer to stop that
-pass (kept subsystem grounding). Fixer expanding PR + tests + re-verify; re-dispatch reviewer on the
-fresh diff, then relay verdict fixer→triager→upstream `[Triage Resolution]`.
+**Reviewer HELD then RE-DISPATCHED:** 1-line diff @`562ae25121` was stale (pass discarded, grounding
+kept). Fixer pushed expanded 4-fix diff @`a7f93b0bcd` (branch `fix/issue-12270`, rebased origin/master,
+4 regression tests RED→GREEN, `slang-unit-test-tool` 526/526, codex approves). Main re-dispatched
+slang-reviewer 07-30 on `a7f93b0bcd` — full 3-reviewer pass IN FLIGHT, verdict-only (draft, no post).
+Note: buildHash not DLL-exported → tested via `getEntryPointHash`.
+
+**Maintainer @pdeayton-nv (07-30):** reviewed expanded diff, "looks good, but update PR title" — NO
+code change. Fixer retitled → "Fix #12270: correct CompilerOptionSet hashing of multi-value options".
+
+**✅ TERMINAL-PENDING-MERGE (07-30):** @pdeayton-nv **APPROVED** at HEAD `a7f93b0bcd` (not stale).
+Triager verified via gh: PR #12271 OPEN, isDraft=false (maintainer flipped it), reviewDecision=APPROVED,
+MERGEABLE, `Closes #12270`. Internal slang-reviewer pass now MOOT (human approved directly) — Main
+stood the reviewer down (grounding kept). Only remaining = **human merge** (operator-gated; bot will
+NOT flip/merge/push). Issue verdict cmt 5122051359 refreshed to approved/awaiting-merge. Re-engage
+ONLY on fresh substantive human comment or new CI/review webhook.
+
+**07-31:** 2nd maintainer approval @jkwak-work — strengthens, does NOT change terminal state (trigger =
+merge, not approval count). No re-relay (no-interim-resend). Still awaiting human merge.
 
 Siblings: split from #12257 (serialize-audit, OPEN) at @pdeayton-nv req; shares
 `-fvk-bind-globals` surface w/ [[project_10668_fvk_bind_globals_set_binding_conflict]].
