@@ -9,7 +9,14 @@ metadata:
 
 # #12258 — Upgrade Metal compiler support on Windows to MetalLib 3.2
 
-**State (2026-07-29):** PARKED at triaged. Feature-request/enhancement, P2. Author=**jkwak-work** (maintainer); ASSIGNED to named human **jkiviluoto-nv**; no bot @-mention.
+**State (2026-07-31):** RE-TRIAGED, still PARKED. jkwak-work @-mentioned bot (cmt 5138362381) asking re-triage "because metallib_3_2 atom was added." Triager re-verified @ master HEAD dc9558d57, POSTED refreshed verdict (fresh cmt **5138407484**). Orchestrator HELD fixer (ask=re-assess, NOT "make PR"; residual gap latent; Bucket 2 parks it regardless).
+
+**What landed (PR #12250 "Add Metal support for printf", Lukas Lipp, 2026-07-30):** did MORE than add the atom — rewired Metal `-std` producer to be emit-feature-driven. (a) atom exists `capdef:204` (chain 3_1→3_2→4_0); (b) `-std=metal3.2` wired — producer `slang-code-gen.cpp:786-804` maxes emitter-tracked required version (MetalExtensionTracker) vs caps; `emit-metal.cpp:909` requests metal3.2+`-fmetal-enable-logging` for `printf`→`os_log`; (c) toolchain-independent CI exists (`unit-test-metal-compile-args.cpp` asserts base=3.1, printf→3.2+logging).
+
+**Residual code gap (small + LATENT):** no capability-*selection*-driven bump — `-capability metallib_3_2` ALONE still yields `-std=metal3.1` (producer has `if implies(metallib_4_0)` only, no `else if metallib_3_2`). = issue sub-task 3. Latent: no metal-3.2-only syntax exists today that isn't already feature-tracked → no observable divergence. Fix ≈2 lines at `:790` (orig Approach A), unit-testable w/o Apple toolchain. **RESUME trigger: jkwak/jkiviluoto-nv explicit "make the PR".**
+
+---
+**Original state (2026-07-29):** PARKED at triaged. Feature-request/enhancement, P2. Author=**jkwak-work** (maintainer); ASSIGNED to named human **jkiviluoto-nv**; no bot @-mention.
 
 **Scope split (from triager):**
 - **Bucket 1 — compiler code (fixer-doable, CI-verifiable w/o Apple toolchain):** add `metallib_3_2` capdef atom (`source/slang/slang-capabilities.capdef`, currently jumps `metallib_3_1`→`metallib_4_0`) + emit `-std=metal3.2` from the version *producer* at `source/slang/slang-code-gen.cpp:782-786` (today special-cases `metallib_4_0` only). The `-std=metalX.Y` derivation machinery ALREADY landed via #12096 / PR #12009. Fallback `-std=metal3.1` lives in `source/compiler-core/slang-gcc-compiler-util.cpp`.

@@ -9,6 +9,8 @@ metadata:
 
 # shader-slang/slang#12244 — shadow-comparison texture capability atom naming cleanup
 
+**STATUS 07-30: ✅ MERGED / CLOSED (TERMINAL).** PR #12248 verified (gh) `state=MERGED` by **@jkwak-work**, merge commit **`be27d078706867288523b4c98faca89aadfd9702`** on `master`; issue #12244 CLOSED/COMPLETED (auto-closed via `Closes #12244`). Footprint comment 5099408494 patched in-place to "Resolved — merged". Chain terminal; re-engage ONLY on a fresh substantive human comment (none expected). Final change: `texture_shadow` (=`texture_sm_4_1`) + `texture_shadowbias` (byte-identical mirror of `texture_shadowgrad`) aliases, 17 name-only `[require]` re-points in `hlsl.meta.slang`, both auto-gen capability docs regenerated (additive-only) — behavior-neutral + ABI-safe (both verified). Prior approval was HEAD-bound @482df00ec0. Details below.
+
 Bot-filed tracking issue (author nv-slang-bot) at **jkwak-work**'s request, split off from #9085 (GLSL support for `SampleCmpBias`/`SampleCmpGrad`) review to avoid expanding that PR's scope. Related: #11156 (issue #9074).
 
 **Nature:** enhancement/cleanup · low · P3 · core-module capability atoms (`source/slang/slang-capabilities.capdef` + `source/slang/hlsl.meta.slang`). Behavior-neutral. Type=Bug label left as-is by triager.
@@ -35,6 +37,10 @@ Bot-filed tracking issue (author nv-slang-bot) at **jkwak-work**'s request, spli
 Re-point accounting: 8→`texture_shadow`, 3→`texture_shadowlod` (:3144 no-op), 6→`texture_shadowbias`; sm_5_0 + all SampleCmpGrad + offset/status left as-is.
 
 **Review (07-28, IN FLIGHT):** slang-reviewer running. Reviewer B (Devin) COMPLETE + CLEAN (0 bugs/0 flags/0 informational, confirmed taxonomy). Reviewer A (correctness) + C (clarity) running (~20-30 min). codex CODE/PLAN/OUTPUT approve (PLAN caught the missed 2nd doc regen). Awaiting merged A+C verdict → reviewer posts on PR #12248, reports back on canonical thread.
+
+**GLSL/SPV provenance (07-30, jkwak Q cmt 5128196240 → answer 5128255230, verified at HEAD 7c58a326b):** Bias path uses **`Bias`, never `Lod`** — SPIR-V spells it `Bias` image operand on `OpImageSampleDrefImplicitLod` (the `…ImplicitLod` is the opcode-family name, NOT a Lod operand; Bias/Lod are distinct mutually-exclusive operands); GLSL spells it trailing-bias `texture(…, bias)`. Grad = `Grad`. Only `…Level` forms use `Lod`. Two surfaces: (1) HLSL `SampleCmpBias`/`SampleCmpGrad` methods are `hlsl_spirv`-only (no GLSL lowering); (2) GLSL's own `texture(…Shadow,bias)`/`textureGrad(…Shadow,…)` builtins exist separately (carry `texture_shadowlod`). `GL_EXT_texture_shadow_lod` is the only GLSL extension, and only for LOD forms on 2DArray/Cube/CubeArray shadow types (#11156 split); SPIR-V needs no extension for any comparison-sample op. **This VALIDATES the scope-A `texture_shadowbias` name** (a `…lod`-named atom would misdescribe the bias fn) → NO naming change to PR #12248.
+
+**ABI/compat VERIFIED (07-30, jkwak on-PR Q issue-comment 5131612605 → fixer answer 5131641506, triager independently verified):** NO ABI break. `SlangCapabilityID` is opaque + name-resolved (`findCapability(char const* name)`, slang.h:4189; header explicitly says IDs are NOT version-stable → look up by name); `CapabilityName`/`CapabilityAtom` live only in generated internal headers, never in `include/`; public lookup is a name hash. Inserting the 2 atoms mid-list shifts only internal positional enum values no public API exposes. Nuance (non-blocking): atoms ARE serialized by value into internal IR/`.slang-module` (`IRRequireCapabilityAtomDecoration` reads `intVal`), but that format is already not cross-version-stable (recompiled per compiler version) and every prior capdef addition shifted these same values without being "breaking" — so `pr: non-breaking` conclusion HOLDS + matches established practice.
 
 **Next:** merged review verdict → maintainer approve → flip draft ready + merge (OPERATOR-gated).
 
