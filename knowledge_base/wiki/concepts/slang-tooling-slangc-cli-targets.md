@@ -51,6 +51,8 @@ The trigger is broader than adding options: **any** edit to a `slangc` help/desc
 
 For any diagnostic living in the validation block (uninit-use, missing-returns, recursive-types), use `insttrace.py` on the actual inst or add an ad-hoc `dumpIRToString()` at the checker's call site. Use an empirical "does the fix make the repro warn?" gate rather than a dump-derived mechanism story. ([slangc -dump-ir shows the codegen pipeline, NOT the validation-only pipeline (uninit-use checker)](../learnings/1782440022487-slangc-dump-ir-shows-the-codegen-pipeline-not-the-.md))
 
+A companion trap when writing a `SIMPLE(filecheck=...)` test that asserts on `-dump-ir`/`-dump-ir-before`/`-dump-ir-after` output: the dump is produced ONLY when slangc actually runs the backend, so a module with just an `export`/`export __extern_cpp` function and no `-entry ... -stage ...` and no `-o <file>` exits 0 with EMPTY stdout+stderr — the pass never runs and FileCheck reports "expected string not found." Add `-o /dev/null` (an existing tests/ idiom) or an entry point; conversely, because slang-test's `getOutput` (slang-test-main.cpp:1860) merges the stderr where `-dump-ir` writes into the FileCheck buffer regardless of exit code, a later nonzero-exit compile is NOT a reason a pass can't be FileCheck-tested — "no output requested" is ([-dump-ir emits nothing unless slangc runs the backend (need -o or -entry)](../learnings/1785554892234-dump-ir-emits-nothing-unless-slangc-runs-the-backe.md)).
+
 ## render-test vs slangc: COMPARE_COMPUTE lanes are a different program
 
 A `//TEST(compute):COMPARE_COMPUTE(...):-vk` lane runs under **render-test**, not `slangc`. These programs have different option parsers:
@@ -190,7 +192,7 @@ Correcting an earlier "glslang load fails in-container" note: `slangc -emit-spir
 
 With `-fvk-bind-globals <binding> <set>` where set != 0, a resource (sampler/texture) split out of the module-scope `uniform` globals struct is placed at the SAME (set, binding) as the `$Globals` UBO instead of globals-binding+1 → descriptor conflict (empirically confirmed via `-target spirv-asm -emit-spirv-directly`, grepping `OpDecorate Binding/DescriptorSet`; the trigger is the reservation path for ANY non-default set, not `set==1`). Root cause: the default path allocates the CB from `defaultSpace` on the same range-set the split-out sampler later allocates from (so it bumps to +1), but the flag path `_assignConstantBufferBinding` `.Add`s the reservation without the shared-bucket bump. No test coverage exists — add a `-target spirv-asm` FileCheck (no GPU needed). When a load-bearing binding/layout claim is disputed and a prebuilt slangc is available, REPRODUCE with a 2-minute emit rather than pick between competing subagent hypotheses ([fvk-bind-globals non-default set collides split-out globals resources onto CB binding (slang#10668)](../learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md)).
 
-**Source learnings (36):**
+**Source learnings (37):**
 - [Slang diagnostic catalog name conventions — emit sites are PascalCase, not camelCase](../learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md)
 - [slangi VM emitter: missing IRConstant cases produce silent malformed operands](../learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md)
 - [Slang VM bytecode: missing constant-emit case can silently mask wrong test assertions](../learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md)
@@ -228,4 +230,5 @@ With `-fvk-bind-globals <binding> <set>` where set != 0, a resource (sampler/tex
 - [slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md)
 - [-fvk-bind-globals with set!=0 collides split-out globals resources onto the $Globals CB binding (#10668); flag path skips the shared-bucket +1 bump — repro via spirv-asm, no test coverage exists](../learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md)
 - [any slangc help-text edit must regenerate command-line-slangc-reference.md or CI fails](../learnings/1784827777508-slangc-help-text-edits-require-regenerating-comman.md)
+- [-dump-ir emits nothing unless slangc runs the backend — a filecheck test needs -o /dev/null or -entry/-stage](../learnings/1785554892234-dump-ir-emits-nothing-unless-slangc-runs-the-backe.md)
 _Catalog: [[wiki/index.md]]_
