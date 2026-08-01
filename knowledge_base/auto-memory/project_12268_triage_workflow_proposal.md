@@ -26,6 +26,15 @@ Triager posted one short mapping reply
 ([comment 5135628671](https://github.com/shader-slang/slang/issues/12268#issuecomment-5135628671))
 and closed. No `@nv-slang-bot` ask, no compiler issue → not actionable as a task.
 
+**Round 2 (2026-07-31):** jkwak posted a companion **PR-side** flow
+([comment 5147178374](https://github.com/shader-slang/slang/issues/12268#issuecomment-5147178374))
+— origin (community/bot/team) → P1 draft → P2 auto-assign → P3 review → "sensible?"
+gate → P4 Ready+CI → CI → P5 optional 2nd reviewer → P6 approve → P7 merge queue →
+Merged; with two open questions (Q1: add a "Closed without merge" terminal? Q2: does
+the community path need maintainer workflow-approval before CI?). Triager answered
+([comment 5147233889](https://github.com/shader-slang/slang/issues/12268#issuecomment-5147233889))
+and re-closed informational.
+
 ## Durable fact (the reusable part)
 
 **Our automated triage/fix/review fleet already occupies F2 (reproduce/classify/
@@ -38,6 +47,22 @@ maintainers + scrum leads settle it.
 
 No `status` field *values* were disclosed (generic mechanics only → no
 project-confidentiality concern).
+
+## CORRECTION — fork-PR CI gating is by origin-of-head, NOT by author
+
+Main mis-framed this in Round 2 and the triager corrected it. The accurate fact:
+
+- GitHub public-repo Actions gate **fork-based** PRs from first-time/outside
+  contributors behind a manual "Approve and run workflows" click (Settings→Actions→
+  *Fork PR workflows from outside collaborators*; public default = require approval
+  for first-time contributors).
+- **Our bot fixer does NOT hit that gate.** It opens PRs from **same-repo branches**
+  (`fix/issue-<N>`), which run CI immediately. The gate applies only to
+  **fork-origin** heads.
+- So the distinguishing axis is **origin-of-head (fork vs. same-repo branch)**, NOT
+  who authored the PR. Community = fork → gated; bot/team = same-repo branch → skips
+  the gate. That's why the three lanes converge at auto-assign but only the community
+  lane needs a "maintainer approves workflow run" node before P4→CI.
 
 ## Re-engagement
 

@@ -1,0 +1,12 @@
+# A slangpy test-fixture guard can be the PREREQUISITE that unblocks an upstream slang PR's required check — not a follow-up
+
+**Counterintuitive gate ordering (observed on slang#12289 → slangpy#1083, Jul 2026):** When an upstream slang PR adds a diagnostic that will break a slangpy test module, the instinct is "wait for the slang PR to merge, then fix slangpy." That can be a **deadlock**. If `SlangPy Tests` is a **required=True** check on the slang PR (verify via GraphQL `isRequired` on the PR's status checks), and the slang PR's CI dispatch (`slangpy/.github/workflows/ci-latest-slang.yml`) checks out slangpy's test fixtures from **slangpy main** while building slang from the PR ref, then the slang PR **cannot merge until the slangpy-side fix is already on slangpy main**. The slangpy fix is the *prerequisite*, not the follow-up.
+
+**How it played out:** slang#12289's new E36107 rejects typed `Buffer<uint>` on CUDA; slangpy's `test_buffer.slang` had that entry point in a shared 3-EP module → whole-module-load failure sank 2 CUDA-clean siblings (4 collateral failures) → reddened #12289's required SlangPy Tests check → #12289 BLOCKED. The unblock = land the `#ifndef __TARGET_CUDA__` guard on slangpy main first. Once merged (by the maintainer who requested it), the dispatch re-fired green and #12289 unblocked.
+
+**Practical sequencing that worked (two independent stages, NOT coupled):**
+- **Stage 1** — the guard edit itself is **pin-independent and safe to land immediately** on the current slang pin: the guard-PR's own CI builds slang from master (no E36107 yet) and the offending variant is already `pytest.skip`ped on CUDA, so the guard is a behavioral **no-op today** → green. Land it as soon as the fix mechanism is confirmed; it future-proofs and unblocks the upstream PR.
+- **Stage 2** — the `SGL_SLANG_VERSION` pin bump (`external/CMakeLists.txt:85`) must wait for the slang fix to ship in a **release TAG** (slangpy pulls a prebuilt release tarball `releases/download/v${VER}/…`, not a commit SHA). Bumping before the tag exists = failed download = red CI. This stage is genuinely gated; the guard stage is not.
+
+**Also:** a maintainer explicitly asking "make a PR" (jkwak-work comment) is a sanctioned exception to a drafts-by-default guardrail — open non-draft. But "must merge to unblock" still ≠ "bot self-merges"; the human who requested it merges. And pair a target-guard with a why-comment cross-referencing the paired `pytest.skip` ("must be removed together") so the skip doesn't later read as stale.
+

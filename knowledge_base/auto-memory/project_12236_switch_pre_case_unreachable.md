@@ -9,6 +9,9 @@ metadata:
 
 # slang#12236 — statements before first `case` label not diagnosed as unreachable
 
+**STATUS 07-31: ✅ SHIPPED / TERMINAL — PR #12245 MERGED.** Merged by **jkwak-work** 2026-07-31T21:38:34Z, merge commit `744eb9ed48` into master; issue #12236 auto-CLOSED (`closedBy=[12245]`). Triager verified against gh + re-read merged diff (exact Approach A shape). Reviewed: tangent-vector APPROVED, skiminki-nv LGTM. **Warning-vs-error design fork resolved in the PR's favor — E41000 warning severity kept** (per #12236's explicit ask; spec prose leaned "error" but no change request materialized). `Fixes #12236` only; **#9999 correctly untouched** (still a separate open design-fork). Triager refreshed verdict comment `5094677722` in place to "Fixed (merged)". Chain complete end-to-end: triaged → held → maintainer go-ahead (jkwak "Make a PR") → fixed → reviewed/approved → merged. Re-engage only on a fresh human comment.
+
+
 Filed 2026-07-27 by **skiminki-nv** (`Dev Opened`). In a `switch`, statements written before the first `case`/`default` label are unconditionally unreachable (Slang disallows Duff's-device fallthrough) but are **silently discarded** — no diagnostic. Statements after a `break` *are* correctly reported (E41000). Repro: `slangc -target spirv` on a compute shader with `output[0]=99;` before `case 0:`.
 
 **Triage verdict (slang-triager, 07-27):** Confirmed bug / missing diagnostic. Severity **low / P3**. Component: IR-lowering + diagnostics (frontend). Root cause: `lowerSwitchCases()` at `slang-lower-to-ir.cpp:9305` silently ignores statements before the first case/default (never lowered → never reaches E41000 site at :8228). REPRODUCED @HEAD `70462843c`. Verdict 5-bullet posted → issue comment `5094677722`. Labels added: `reproduced` + `Missing Diagnostic`.
