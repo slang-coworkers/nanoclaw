@@ -38,6 +38,22 @@ Advisory, **no code change**: answer inline with `-fp-mode precise` + escalate t
 - **#12160 OPEN, no PR (design-gated, correct).** Awaiting `jkwak-work` reply → arrives as webhook inbound on this thread → **triager re-engages** (owns the chain).
 - **GUARDRAIL (Main):** design-gated. Any change to DEFAULT fp-mode / #11933 = jkwak-work (fp-mode owner) / human maintainer decision. Drafts-only for any fix PR. Triager owns forward; I do not post on its behalf.
 
+## jkwak-work replied (2026-07-31, comment 5148251032) — info request, NOT yet a design call
+Asked: (1) remind me the fp-precision options; (2) per-option SPIR-V impl state ("not all implemented"); (3) which option is entry-point-only not per-instruction.
+Triager answered @HEAD `5d1077c03` (refreshed from stale a916653b7) from source, comment **5148288817**:
+
+**fp-precision options × SPIR-V support:**
+- `-fp-mode precise` (global/per-target) — ✅ fully honored (emits `NoContraction`, works even at -O0).
+- `-fp-mode fast` — ⚠️ no direct SPIR-V effect; relies on downstream spirv-opt (opt > -O0).
+- `-fp-mode default` — baseline, no `NoContraction` BY DESIGN (#11933).
+- `[precise]` language modifier (per-var/per-func; VarDeclBase‖CallableDecl, `slang-check-modifier.cpp:1799`) — ❌ **SILENT NO-OP on SPIR-V** (IRPreciseDecoration never read in slang-emit-spirv.cpp; honored only in c-like HLSL/GLSL; Metal/WGSL diagnose unsupported).
+- `-denorm-mode-fp16/32/64` (global) — ✅ honored as entry-point execution modes (SPV_KHR_float_controls).
+- internal `IRFloatingPointModeOverrideDecoration` (autodiff-produced, `slang-ir-autodiff-fwd.cpp:2247`) — NOT user-settable.
+
+Part 3 answer: gave both candidates — `[precise]` (coarser than per-inst but a no-op on SPIR-V) and denorm modes (literally entry-point execution modes). **Bottom line on SPIR-V: global `-fp-mode precise` is the ONLY working lever for this bug.**
+
+Chain still OPEN; jkwak-work still owns the design call (reassoc-changing default vs FMA-contraction-only). Triager re-engages on his next reply. #11933 guardrail intact.
+
 ## Handle correction
 fp-mode owner's GitHub login is **`jkwak-work`** (verified assignee of #11933), NOT `jkwak-nv` (invalid login). See [[reference_slang_maintainer_handles]].
 

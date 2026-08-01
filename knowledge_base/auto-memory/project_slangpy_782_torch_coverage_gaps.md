@@ -33,3 +33,16 @@ has MERGED, so the stated reason for dropping DiffPairMarshall testing no longer
 **Next human action:** maintainer decides — merge PR #928 to close most gaps in one
 move, and separately add Python coverage automation (`pytest --cov` + Codecov/threshold)
 if ongoing tracking is wanted. Watch-only; jhelferty-nv owns.
+
+**2026-07-31 — CLOSED.** jhelferty-nv commented "Fixed via #1085" on the issue
+(comment 5145649307, no bot mention / no request). PR **#1085 MERGED** @2026-07-31
+16:16 UTC (author ccummingsNV, `dev/ccummings/tests-fix`) — "Consolidate test
+coverage from #761 and #928 on top of current `main`" (24-file test-only diff;
+pytest 2,649 passed/236 skipped/7 xfailed). This supersedes the stranded #928 and
+lands the torch/tensor coverage tests on main → the enumerated gaps are closed.
+CAVEAT: #1085 adds *tests*, not coverage *automation* — the separate "no
+`pytest --cov`/Codecov gate" gap remains a distinct open maintainer decision;
+"Fixed via #1085" does not claim otherwise. Also #1085 validated with PyTorch NOT
+installed, so torch-specific runtime cases were skipped in CI validation. Chain
+TERMINAL — no GitHub post (unauthorized; maintainer already closed), no fixer.
+Re-engage only on a fresh substantive human comment.

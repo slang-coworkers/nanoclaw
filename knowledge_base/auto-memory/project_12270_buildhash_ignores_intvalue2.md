@@ -56,7 +56,16 @@ NOT flip/merge/push). Issue verdict cmt 5122051359 refreshed to approved/awaitin
 ONLY on fresh substantive human comment or new CI/review webhook.
 
 **07-31:** 2nd maintainer approval @jkwak-work — strengthens, does NOT change terminal state (trigger =
-merge, not approval count). No re-relay (no-interim-resend). Still awaiting human merge.
+merge, not approval count). No re-relay (no-interim-resend).
+
+**✅ MERGED (07-31) — CHAIN CLOSED.** @jkwak-work merged PR #12271, merge commit
+`4ab8be03a3907be8213b8b1cb31a5e08a1fe6c89`; issue #12270 CLOSED/COMPLETED. Triager re-read merged diff
+= 4-fix shape confirmed: (1) buildHash Int branch appends `intValue2`; (2) new `appendDelimitedString`
+length-prefixes strings + `builder.append(v.kind)` so every value self-delimits; (3) sorted-key
+iteration (`keys.sort()`) order-independent; (4) `add()` typo `.intValue2` fix in
+`slang-compiler-options.h`. Tests: 4 API regr RED→GREEN, slang-unit-test-tool 526/526, digest lock
+pass. 2 approvals (@pdeayton-nv + @jkwak-work). Verdict cmt 5122051359 refreshed to fixed/merged.
+Re-engage ONLY on fresh substantive human comment.
 
 Siblings: split from #12257 (serialize-audit, OPEN) at @pdeayton-nv req; shares
 `-fvk-bind-globals` surface w/ [[project_10668_fvk_bind_globals_set_binding_conflict]].
