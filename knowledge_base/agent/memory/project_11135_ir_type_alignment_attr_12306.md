@@ -15,7 +15,22 @@ stacked pair if consumers numerous. Escape hatch: respond if alignment already e
 **Owner chain:** Main → slang-fixer (impl) → slang-reviewer (internal peer review, verdict via Main).
 Canonical thread `gh-issue-shader-slang/slang-11135`.
 
-## ✅ PR-A MERGED (2026-08-01 02:31Z) — TERMINAL
+## ✅✅ CHAIN WRAPPED (2026-08-01 22:22Z) — all fixer deliverables landed
+- **PR-A #12306** — MERGED (`43f979ad08`, `IRTypeAlignmentAttr` stable-name 901 on master).
+- **Version-bump #12315** — ✅ MERGED 2026-08-02 00:56Z (`k_maxSupportedModuleVersion` 27→28, min stays 4,
+  on master; verified via gh API — merged_at set, base master). Last open deliverable → **chain fully TERMINAL.**
+- **PR-B — NO follow-on PR warranted.** Reflection `IRTypeLayout` layer has no ad-hoc consumers to convert;
+  maintainer DECLINED the natural-layout/SPIR-V unification (on-demand `.Load<T>()` sites justified, can't
+  force AST layout there); sole genuine adopter = #11135's own array-stride special-case → replaced with
+  `getElementStrideInBytes()` if/when #11135 reworks onto merged attr (that's #11135's separate PR, NOT ours).
+- **SPIR-V ArrayStride** — verified emitted (#12306 cmt 5153695709), needs no new attr.
+- **Tech-debt issue #12316** — FILED OPEN (never auto-closed), linked #12306 cmt 5153706043; tracks
+  front-end `TypeLayout` vs IR natural-layout policy duplication; tracking-only/not-urgent.
+- **NOT ours / watch-only:** #12315 maintainer merge; #11135's own ongoing draft PR (separate reviews, we
+  don't characterize its mergeability); tech-debt #12316 (maintainer owns open/close). RE-ENGAGE only on a
+  fresh human comment on any of these threads.
+
+## ✅ PR-A MERGED (2026-08-01 02:31Z) — [detail]
 tangent-vector merged **PR #12306** as-is at approved HEAD `bd59d84a4d`, merge commit **`43f979ad08`**.
 `IRTypeAlignmentAttr` (stable name 901) on master. **Version-bump question: maintainer merged WITHOUT
 bumping `k_maxSupportedModuleVersion` (stayed 27) → adjudicated NOT required** for this attr op (despite
@@ -24,11 +39,49 @@ maintainer approval, let him decide" call (correctness reviewer had dropped that
 fixer argued should-fix via #12256; maintainer resolved it his way cleanly). 16 codex + 2 peer-review
 rounds. Worktree + sentinel cleaned. PR-A chain TERMINAL.
 
-**Still open: PR-B (stacked systematic consumption)** — HELD on tangent-vector's scope answer
-(reflection-only consumers vs. large two-system unification with `slang-ir-layout.cpp`) + his response
-to fixer's element-stride due-diligence reply. Parks silently if no response; re-dispatch (Main→fixer)
-only on his answer or operator direction. **Issue #12307** (JSON reflection global-scope, triager) also
-open, design-iterating with tangent-vector.
+## Re-opened 2026-08-01 21:36Z — tangent-vector two directives (both underway)
+1. **Version bump — REQUIRED after all.** Maintainer asked fixer to push the omitted IR module-version
+   bump as a follow-up → resolved the advisory-vs-required question to REQUIRED. Shipped **draft PR #12315**
+   (`k_maxSupportedModuleVersion` 27→28, min stays 4), `pr: non-breaking`, `report_pr_created` done, linked
+   on #12306, codex OUTPUT_REVIEW approved. Draft/operator-gated.
+2. **PR-B (systematic consumption) — SURVEY DONE, reflection-layer has ~NO targets.** Maintainer confirmed
+   he wants the stacked follow-on; fixer's source-verified consumer survey
+   (`/workspace/agent/reports/slang-11135-prb-scope.md`) found: NO IR-level `IRTypeLayout` consumer computes
+   alignment/stride ad-hoc (all just call `getElementTypeLayout()` for traversal); reflection API/JSON stride
+   paths are AST-based (`slang-reflection-api.cpp` reads AST `TypeLayout::uniformAlignment` via `convert()`,
+   line 72/1356 — IR attr not reachable there, out of scope); the ONLY ad-hoc "divining" is the
+   natural-layout/SPIR-V engine (`slang-ir-layout.cpp` + emit-spirv/glsl/wgsl) = the large unification held
+   pending his explicit word; the one genuine adopter is #11135 itself (array element-stride special-case,
+   on ramang-unity's branch not master → #11135 adopts `getElementStrideInBytes()` on rebase onto merged
+   #12306). **So PR-B is either (a) empty at reflection layer, or (b) the broad SPIR-V/natural-layout
+   unification.** DECISION: fixer to post honest (a)/(b) reply to tangent-vector on #12306 asking which —
+   crediting that his SPIR-V-divining prediction was CORRECT (the divining IS there, it's just the big
+   unification). Do NOT open empty PR-B; do NOT start unification unprompted. Held for his answer.
+   If he picks (b): design-sensitive, wants a plan/scope pass before implementation, not a straight dispatch.
+
+## tangent-vector final directives (2026-08-01 ~22:15Z) — PR-B chain essentially wrapped
+- **(b) SPIR-V/natural-layout unification — OFF THE TABLE.** He said explicitly: do NOT convert the
+  on-demand natural-layout sites (`.Load<T>()`-style where concrete `T` isn't known where AST layout is
+  computed — forcing AST layout down there may not be possible). No PR-B unification work.
+- **SPIR-V ArrayStride double-check — DONE (answered #12306 cmt 5153695709).** Slang DOES emit `ArrayStride`
+  on cbuffer array types (`OpDecorate %_arr_float_int_4 ArrayStride 16` for `float b[4]` std140; offsets
+  0/16/80). From explicit `getArrayStride()` on the IR array type (set in buffer-element-type lowering),
+  fallback natural-layout engine. Correct, not default-relying, needs no new attr.
+- **#12315 (version bump) APPROVED @ `bcd851aa29`, flipped non-draft by maintainer.** Operator-gated merge
+  (his merge/authorize; no push, no self-merge — same posture as PR-A).
+- **Tech-debt tracking issue — AUTHORIZED to file (maintainer explicitly requested it).** Tracks the
+  two-layout-path policy duplication (front-end `TypeLayout` vs IR natural-layout engine). Dedup confirmed
+  (no existing issue, REST search). **File OPEN — NEVER auto-close** even though he floated "instantly close
+  as out-of-scope"; open/close is his call. Fixer reports issue# back for tracking + future-webhook routing.
+
+**Infra (2026-08-01, ~21:36Z→persisting ~22:15Z):** `gh` GraphQL (`pr create`/`edit`/`comment`) AND
+`gh search` throwing **401s** — now PERSISTENT (~40min) + wider surface, NOT a transient blip. REST
+(`/issues/comments`, `/pulls`, `/labels`, `search/issues` via `gh api`) works — fixer routing via REST, work
+NOT blocked. Surfaced to operator: recommend GitHub PAT/OneCLI re-login when convenient (401 = re-login, NOT
+restart — see [[project_github_actions_graphql_401_outage]]). Watch board-sync #12062, slang-pr-report,
+supervisor cron (GraphQL-dependent).
+
+**Issue #12307** (JSON reflection global-scope, triager) open, design-iterating with tangent-vector.
 
 ## State (2026-07-31) — [historical] BLOCKER CLEARED, draft, operator-gated
 - **PR-A = draft #12306**, branch `dev/slang-fixer/slang-11135-align-attr`, head **bd59d84a4d**
