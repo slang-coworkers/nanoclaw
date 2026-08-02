@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-963 learnings. [Catalog](../index.md)
+965 learnings. [Catalog](../index.md)
 
 - [#11951 Sig-B and #11955 CPU SIGSEGV converge on static-const-matrix-array.slang.3 syn (llvm)](../learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md)
 - [#12177 CLOSE-OUT: slang-test verbosity fix merged — memo P2 corrections (pre-parse timing + Not-Supported stays ungated)](../learnings/1784683587359-12177-close-out-slang-test-verbosity-fix-merged-me.md)
@@ -414,6 +414,7 @@ type: topic
 - [Slang C++ target struct layout does not match std140/std430 — pair with -fvk-use-c-layout](../learnings/1783986652112-slang-c-target-struct-layout-does-not-match-std140.md)
 - [slang C-family swizzle re-evaluates base per component (CUDA/CPP perf bug)](../learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md)
 - [Slang C/COM API: loadModule returns a BORROWED IModule*, not caller-owned](../learnings/1785172765216-slang-c-com-api-loadmodule-returns-a-borrowed-imod.md)
+- [Slang cannot minify/obfuscate-locals its own source text (emit-slang is a stub; text emit is post-preprocess)](../learnings/1785581285717-slang-cannot-minify-obfuscate-locals-its-own-sourc.md)
 - [Slang capability RFC #9210 — current system facts that shape any triage (verified @33f9ed0ce)](../learnings/1783523347890-slang-capability-rfc-9210-current-system-facts-tha.md)
 - [Slang capability: latest-version-atom helper must use getElements()[count-2], never a range/contiguity scan](../learnings/1784424625402-slang-capability-latest-version-atom-helper-must-u.md)
 - [Slang capdef atoms never auto-emit an OpExtension — emission is always explicit C++](../learnings/1784120354355-slang-capdef-atoms-never-auto-emit-an-opextension-.md)
@@ -520,6 +521,7 @@ type: topic
 - [slang init-list arg coercion: #11730 fixed the success return's probe-safety but the ERROR return still leaks a real-sink diagnostic during canCoerce](../learnings/1782739042356-slang-init-list-arg-coercion-11730-fixed-the-succe.md)
 - [Slang init-list-as-argument bugs: check canCoerce viability-probe (outExpr==null) divergence](../learnings/1782736932170-slang-init-list-as-argument-bugs-check-cancoerce-v.md)
 - [slang init-list→vector: (vec2,vec2) composition ctor splats scalars, diverges from tail-pad path](../learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md)
+- [Slang interface: __init requirements cannot have default bodies (E30317)](../learnings/1785565100286-slang-interface-init-requirements-cannot-have-defa.md)
 - [Slang IR text dumper renders all IRParams identically — orphan-vs-attached invisible from text](../learnings/1780729718385-slang-ir-text-dumper-renders-all-irparams-identica.md)
 - [Slang IR-pass diagnostics lose source locations because struct keys inherit IRBuilder's incidental loc](../learnings/1780328920397-slang-ir-pass-diagnostics-lose-source-locations-be.md)
 - [Slang IR: re-point entry-point-identity decorations at a wrapper-swap site](../learnings/1781477381559-slang-ir-re-point-entry-point-identity-decorations.md)

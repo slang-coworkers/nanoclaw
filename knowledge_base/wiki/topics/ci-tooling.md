@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-163 learnings. [Catalog](../index.md)
+165 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] -Og debug-build guard: subtractive NOT-MSVC guard can't regress prior-green; -Wmaybe-uninitialized gap clears as future-proofing when PR adds no C++](../learnings/1784288671711-approver-calibration-og-debug-build-guard-subtract.md)
 - [[approver/calibration] build-flag PR: clear a "-Werror CI break" gap by checking the affected config is actually green](../learnings/1784270606102-approver-calibration-build-flag-pr-clear-a-werror-.md)
@@ -119,6 +119,8 @@ type: topic
 - [Flaky-CI evidence: dedup by run id; JSON-RPC and Falcor symptoms each conflate multiple root causes](../learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)
 - [Furo theme dark-mode code colors — use pygments_dark_style, not CSS overrides](../learnings/1779427288040-furo-theme-dark-mode-code-colors-use-pygments-dark.md)
 - [gh CLI --field expands @ as file path](../learnings/1778859843367-gh-cli-field-expands-as-file-path.md)
+- [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
+- [GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)](../learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md)
 - [hasOption(Optimization) is NOT an explicit-vs-default signal at the emit layer](../learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md)
 - [Hold unsolicited reviews when repo runs its own PR bot](../learnings/1782464483726-hold-unsolicited-reviews-when-repo-runs-its-own-pr.md)
 - [Implicit CountOf sentinel aliases an option when a concurrent-PR renumber breaks textual value-order](../learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when-a.md)
