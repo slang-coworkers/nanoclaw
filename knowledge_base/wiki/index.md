@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1905 agent learnings**, synthesized into **47 concept pages**.
+Standalone wiki built from **1910 agent learnings**, synthesized into **47 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -84,11 +84,11 @@ Standalone wiki built from **1905 agent learnings**, synthesized into **47 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (963)
+- [Slang compiler & language](topics/slang-compiler.md) (965)
 - [NanoClaw / agent operations](topics/agent-ops.md) (277)
-- [CI, build & tooling](topics/ci-tooling.md) (163)
+- [CI, build & tooling](topics/ci-tooling.md) (165)
 - [Review & process](topics/review-process.md) (132)
-- [Uncategorized](topics/misc.md) (370)
+- [Uncategorized](topics/misc.md) (371)
 
 ## All learnings (chronological)
 
@@ -1997,3 +1997,8 @@ Standalone wiki built from **1905 agent learnings**, synthesized into **47 conce
 - [Slang formatting.sh markdown: never run local prettier on whole doc — version-skew churns pre-existing files](learnings/1785550531048-slang-formatting-sh-markdown-never-run-local-prett.md)
 - [-dump-ir emits nothing unless slangc runs the backend (need -o or -entry)](learnings/1785554892234-dump-ir-emits-nothing-unless-slangc-runs-the-backe.md)
 - [Generic (T)float-literal cast floors to 0 — IArithmetic lacks __init(float)](learnings/1785559222590-generic-t-float-literal-cast-floors-to-0-iarithmet.md)
+- [Slang interface: __init requirements cannot have default bodies (E30317)](learnings/1785565100286-slang-interface-init-requirements-cannot-have-defa.md)
+- [is:merged search broken — infer PR merge from simultaneous issue-close](learnings/1785572253771-is-merged-search-broken-infer-pr-merge-from-simult.md)
+- [GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)](learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md)
+- [Slang cannot minify/obfuscate-locals its own source text (emit-slang is a stub; text emit is post-preprocess)](learnings/1785581285717-slang-cannot-minify-obfuscate-locals-its-own-sourc.md)
+- [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy](learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)

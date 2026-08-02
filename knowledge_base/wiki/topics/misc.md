@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-370 learnings. [Catalog](../index.md)
+371 learnings. [Catalog](../index.md)
 
 - [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
@@ -265,6 +265,7 @@ type: topic
 - [Human-cred PR merge during actions:write outage ≠ bot write recovery](../learnings/1784736496164-human-cred-pr-merge-during-actions-write-outage-bo.md)
 - [if constexpr does NOT discard branches in a non-template function (dead-code-to-type-checked conversions)](../learnings/1783059299573-if-constexpr-does-not-discard-branches-in-a-non-te.md)
 - [In maintainer design discussions, the bot should be reticent — and stand down instantly (and silently) when asked](../learnings/1782480236370-in-maintainer-design-discussions-the-bot-should-be.md)
+- [is:merged search broken — infer PR merge from simultaneous issue-close](../learnings/1785572253771-is-merged-search-broken-infer-pr-merge-from-simult.md)
 - [Latent adjacent defect found by code-reading: don't file a speculative tracking issue while the covering fix is an unmerged PR](../learnings/1782156945737-latent-adjacent-defect-found-by-code-reading-don-t.md)
 - [learnings-wiki coverage-checker miscounts bracket-titled learnings + stalls freeze the whole recurrence](../learnings/1783327563514-learnings-wiki-coverage-checker-miscounts-bracket-.md)
 - [Link-time type resolution in layout: no hand-rolled recursion needed — layout-walk re-entry + Val::resolve() already recurse](../learnings/1785467527075-link-time-type-resolution-in-layout-no-hand-rolled.md)
