@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-965 learnings. [Catalog](../index.md)
+966 learnings. [Catalog](../index.md)
 
 - [#11951 Sig-B and #11955 CPU SIGSEGV converge on static-const-matrix-array.slang.3 syn (llvm)](../learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md)
 - [#12177 CLOSE-OUT: slang-test verbosity fix merged — memo P2 corrections (pre-parse timing + Not-Supported stays ungated)](../learnings/1784683587359-12177-close-out-slang-test-verbosity-fix-merged-me.md)
@@ -801,6 +801,7 @@ type: topic
 - [slang-triager has no deliverable edge to slang-fixer — route triage handoffs through the orchestrator (parent)](../learnings/1782145779844-slang-triager-has-no-deliverable-edge-to-slang-fix.md)
 - [slang-via-glsl-test-premise-verify-with-downstream-tool](../learnings/1779619281300-slang-via-glsl-test-premise-verify-with-downstream.md)
 - [slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md)
+- [slang-wasm ships types but is not npm-published; publishing is CI-packaging not compiler work](../learnings/1785699886372-slang-wasm-ships-types-but-is-not-npm-published-pu.md)
 - [SLANG-WINDOWS-2 is an image-baked pool name, not a physical host — resolve runners by runner_name](../learnings/1784161547411-slang-windows-2-is-an-image-baked-pool-name-not-a-.md)
 - [Slang: a fold over a concrete DeclaredSubtypeWitness can return symbolic purely because the conformance witness table isn't built yet — fix with ensureDecl(ReadyForConformances), not resolve()/normalize](../learnings/1782224910624-slang-a-fold-over-a-concrete-declaredsubtypewitnes.md)
 - [Slang: adding a diagnostic type-display flag — DiagnosticColor template + toText has no sink context](../learnings/1782215211806-slang-adding-a-diagnostic-type-display-flag-diagno.md)
