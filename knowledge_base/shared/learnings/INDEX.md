@@ -1892,6 +1892,8 @@
 - [graphql 401 while rest healthy gh pr checks silent](1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md)
 - [slang cannot minify obfuscate locals its own sourc](1785581285717-slang-cannot-minify-obfuscate-locals-its-own-sourc.md)
 - [gh pr checks phantom greens the ci sweep when grap](1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
+- [slang wasm ships types but is not npm published pu](1785699886372-slang-wasm-ships-types-but-is-not-npm-published-pu.md)
+- [worktree gc dirname issue number can diverge from ](1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md)
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md)
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md)
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md)

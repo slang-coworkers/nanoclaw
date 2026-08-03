@@ -1,0 +1,25 @@
+---
+name: project_12317_slang_web_bundler_plugins
+description: "slang#12317 — feature req: web bundler plugins (webpack/vite/rollup) compiling .slang→WGSL at build time; design-gate HELD pending maintainer npm-publish infra decision"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 4d3688a1-801d-4142-a0b0-b598dcb1c94b
+---
+
+# slang#12317 — Add slang bundler plugins for the web
+
+feat/enhancement · **P3** · component web/WASM-packaging + build/CI (+ WGSL emit dep) · OP **AbdBarho** (external, engaged, offers to contribute) · triaged @ master HEAD `53b76e6d3` (source-read + DeepWiki, no build — packaging/design Q).
+
+**Ask (3 sub-parts, decreasing readiness):**
+1. **`@shader-slang/slang-wasm`** — publish existing WASM tooling to npm. CI already emits `slang-wasm.{js,wasm}` + `interface.d.ts` (via `--emit-tsd`), zipped in `release.yml` :283-292; **NO package.json, NO npm publish anywhere** (grep `npm publish|npmjs|NODE_AUTH_TOKEN` = ZERO). "Allows the ecosystem to start."
+2. **`@shader-slang/slang-unplugin`** — unplugin cross-bundler wrapper w/ reflection→TS-type codegen. Feasible on existing surface: slang-wasm binds `ProgramLayout::toJsonObject()` → metadata→TS needs no new C++ binding. ⚠ but bindings expose NO compiler-OPTION surface (`createSession` takes only int target) — passing compile opts would need a binding extension (shared learning 1784153472052).
+3. lint/format tooling (prettier) — defer.
+
+**Verdict: valuable — HOLD (no auto-fixer) pending maintainer stance.** Approach A is the load-bearing enabler + cleanest first PR (additive CI packaging, zero compiler risk) but gated on a **maintainer/infra decision**, not engineering: create `@shader-slang` npm scope + NPM_TOKEN CI secret + publish cadence (tag-gated vs nightly). B depends on A + a home decision (in-repo vs playground-repo vs new repo — ties into **#8317** "playground+ext in-repo", OPEN). WGSL is officially **experimental/WIP** (README:118/126, 09-targets.md:419; bug cluster #11669/#10232/#10234/#8183) — expectation-set caveat, not a blocker to packaging.
+
+**Related:** #8317 (home decision, OPEN) · #10721 (WASM TS-version pin, CLOSED) · #5998 (build full slang-wasm in CI, CLOSED). #12317 is the FIRST npm-publish/bundler tracking issue.
+
+**State:** triaged → verdict POSTED on GitHub ([#12317 comment-5160027804](https://github.com/shader-slang/slang/issues/12317#issuecomment-5160027804)). Type couldn't be set to Feature (GraphQL mutations token-disabled this session; REST works — flagged in verdict for maintainer). No labels applied (only `pr: new feature` [PR-only] + `WebGPU` [partial] exist; no reproducer → conservative). TERMINAL-HELD maintainer. **RESUME = maintainer stance on npm-publish infra (`@shader-slang` scope + `NPM_TOKEN` + cadence + package home), OR fresh substantive human comment.** Memo: triage-12317.md.
+
+**UPDATE 08-02 (comment-5160500472):** OP AbdBarho built a working **POC independently** — [`slang-loader`](https://github.com/AbdBarho/slang-loader) published to [npm](https://www.npmjs.com/package/slang-loader), with a [working example](https://github.com/AbdBarho/slang-loader/tree/main/example): `import wgsl, { entryPoints } from './scene.slang'` → `device.createShaderModule({code: wgsl})` → render pipeline. Proves Approach B is feasible even without Approach A formalized (they bundled slang-wasm themselves). Substantive human comment → re-opened held chain → forwarded to triager, re-evaluated on merits, POC-ack posted → [comment-5160511955](https://github.com/shader-slang/slang/issues/12317#issuecomment-5160511955) (verd history: 5160027804 original → 5160511955 POC-ack). POC verified via **public** sources (npm registry + repo README — triager's bot gh token is shader-slang/slang-scoped, cross-repo `gh api` 401s). Details: `slang-loader` npm v0.0.2 (published 21:41Z, MIT, unplugin ^3.3.0), `.slang`→WGSL across Vite/webpack/Rollup/esbuild, module exports WGSL + `entryPoints` + full `reflection`, **vendors a pinned slang-wasm artifact (Slang 2026.14.1)**. Confirms Emscripten-VFS + reflection-metadata risks surmountable. **Disposition UNCHANGED — still DESIGN/POLICY-GATE, HELD, no fixer.** The self-vendoring is a concrete argument for maintainer option (a): officially publish `@shader-slang/slang-wasm` from CI so community loaders depend on a versioned pkg instead of re-vendoring, + own an official unplugin — vs (b) bless/point-to a community loader like this one. **RESUME = maintainer answers publish-vs-bless / "make a PR" → release slang-fixer for Approach A (additive CI npm-publish, `pr: non-breaking`, `Fixes #12317`).**
