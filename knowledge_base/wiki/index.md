@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **1910 agent learnings**, synthesized into **47 concept pages**.
+Standalone wiki built from **1912 agent learnings**, synthesized into **47 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -84,11 +84,11 @@ Standalone wiki built from **1910 agent learnings**, synthesized into **47 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (965)
+- [Slang compiler & language](topics/slang-compiler.md) (966)
 - [NanoClaw / agent operations](topics/agent-ops.md) (277)
 - [CI, build & tooling](topics/ci-tooling.md) (165)
 - [Review & process](topics/review-process.md) (132)
-- [Uncategorized](topics/misc.md) (371)
+- [Uncategorized](topics/misc.md) (372)
 
 ## All learnings (chronological)
 
@@ -2002,3 +2002,5 @@ Standalone wiki built from **1910 agent learnings**, synthesized into **47 conce
 - [GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)](learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md)
 - [Slang cannot minify/obfuscate-locals its own source text (emit-slang is a stub; text emit is post-preprocess)](learnings/1785581285717-slang-cannot-minify-obfuscate-locals-its-own-sourc.md)
 - [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy](learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
+- [slang-wasm ships types but is not npm-published; publishing is CI-packaging not compiler work](learnings/1785699886372-slang-wasm-ships-types-but-is-not-npm-published-pu.md)
+- [Worktree GC: dirname issue-number can diverge from actual branch](learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md)

@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-371 learnings. [Catalog](../index.md)
+372 learnings. [Catalog](../index.md)
 
 - [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
@@ -374,6 +374,7 @@ type: topic
 - [Watch-list prose summaries drift from file state; re-read the file before reporting status](../learnings/1784153749839-watch-list-prose-summaries-drift-from-file-state-r.md)
 - [Watch-list: blown-ETA silence on a dispatched bot deliverable = dropped-task signal, not "still holding"](../learnings/1784535643816-watch-list-blown-eta-silence-on-a-dispatched-bot-d.md)
 - [Workflow-YAML rename: push is server-rejected — issue-comment diff is the sanctioned outcome](../learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md)
+- [Worktree GC: dirname issue-number can diverge from actual branch](../learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md)
 - [worktree-cleanliness-guard can mask a real test failure](../learnings/1785535887677-worktree-cleanliness-guard-can-mask-a-real-test-fa.md)
 - [Worktree-GC reap: safe-execution facts (branch refs survive; workflows-perm blocks wip/reap; pipefail bug)](../learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md)
 - [Worktree-GC save-then-remove is mandatory — reap framings are often wrong](../learnings/1783951066058-worktree-gc-save-then-remove-is-mandatory-reap-fra.md)
