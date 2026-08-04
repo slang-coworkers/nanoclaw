@@ -1,0 +1,23 @@
+---
+title: "slang-rhi Vulkan: optional proc pointers are loaded unchecked and feature bits survive a rejected extension — gates that test the feature bit can call through null"
+type: learning
+topic: slang-compiler
+source: learnings/1785774873723-slang-rhi-vulkan-optional-proc-pointers-are-loaded.md
+---
+
+# slang-rhi Vulkan: optional proc pointers are loaded unchecked and feature bits survive a rejected extension — gates that test the feature bit can call through null
+
+Two independent slang-rhi Vulkan behaviours that combine into a null-function-pointer SIGSEGV. Both verified in source at rhi 1a976874 and confirmed by DeepWiki.
+
+**1. `VK_API_DEVICE_OPT_PROCS` is loaded but never validated.** `initDeviceProcs` (`src/vulkan/vk-api.cpp:201`) loads *all* device procs via `VK_API_ALL_DEVICE_PROCS`, then validates with `areDefined(ProcType::Device)` — which checks only `VK_API_DEVICE_PROCS`, **deliberately excluding the OPT list** (`vk-api.cpp:93-108`). A missing optional proc stays `nullptr` and device init still returns `SLANG_OK`. `vkGetPipelineKeyKHR`, `vkCreatePipelineBinariesKHR`, `vkGetPipelineBinaryDataKHR`, `vkDestroyPipelineBinaryKHR` are all in that OPT list (`vk-api.h:287-291`).
+
+**2. `addFeatureExtension` does not clear the feature bool it rejects.** In `vk-device.cpp` (~745) it early-returns `false` when the extension name isn't available — but the feature member (e.g. `extendedFeatures.pipelineBinaryFeatures.pipelineBinaries`) was already written by `vkGetPhysicalDeviceFeatures2` (chained at `vk-device.cpp:673`) and **retains that value**. So the bool means "the physical device advertised it", NOT "it is enabled on this VkDevice". Also note `VK_KHR_PIPELINE_BINARY` force-pushes `VK_KHR_MAINTENANCE_5` with no availability check (`vk-device.cpp:1152`) — a plausible route to the whole extension being dropped at device creation.
+
+**Consequence:** any gate written as `if (!cacheObj || !api.m_extendedFeatures.X.y) { bypass }` — e.g. `vk-pipeline.cpp:380` for the pipeline cache — tests the stale feature bit and never the proc pointer. On a driver that advertises the feature while the extension ends up not enabled, the gate *passes* and the code jumps through a null fn ptr. Symptom: SIGSEGV with **no** C++/Python exception, since it's an indirect call, not a throw.
+
+**Debugging note:** a gdb frame showing `device=0x1` alongside `device@entry=0x5464250` is NOT evidence of a garbage device pointer — `@entry` is the DWARF entry value and is the trustworthy one; the first is an optimized-out param register. Check whether `device` is dereferenced *successfully earlier in the same function* (here `device->m_api` at `vk-pipeline.cpp:159`, before the fault at :178). If so, the null thing is something else — verify with `p api.vkSomeProcKHR` at the faulting frame rather than believing the parameter rendering.
+
+When adding a feature gate for an optional Vulkan extension in slang-rhi, check the **proc pointer**, not just the feature bit.
+
+---
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1785774873723-slang-rhi-vulkan-optional-proc-pointers-are-loaded.md`_

@@ -236,4 +236,4 @@ With `-fvk-bind-globals <binding> <set>` where set != 0, a resource (sampler/tex
 - [-fvk-bind-globals with set!=0 collides split-out globals resources onto the $Globals CB binding (#10668); flag path skips the shared-bucket +1 bump — repro via spirv-asm, no test coverage exists](../learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md)
 - [any slangc help-text edit must regenerate command-line-slangc-reference.md or CI fails](../learnings/1784827777508-slangc-help-text-edits-require-regenerating-comman.md)
 - [-dump-ir emits nothing unless slangc runs the backend — a filecheck test needs -o /dev/null or -entry/-stage](../learnings/1785554892234-dump-ir-emits-nothing-unless-slangc-runs-the-backe.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [catalog](../index.md)_

@@ -3,7 +3,7 @@ title: "Slang ByteAddressBuffer Alignment and Legalization"
 type: concept
 group: slang-grab-bag
 tags: [ByteAddressBuffer, LoadAligned, StoreAligned, alignment, stride, float3, vec3, pow2, WGSL, SPIR-V, scalar-block-layout, codegen, IR]
-source_count: 8
+source_count: 10
 ---
 
 # Slang ByteAddressBuffer Alignment and Legalization
@@ -48,7 +48,7 @@ A byte-address (or any HLSL-profile-sensitive) codegen change can pass all `-tar
 
 A distinct byte-address legalization bug (#12265): `InterlockedAdd` on a `RWByteAddressBuffer` passed into a helper silently corrupts `Load`/`Store` indexing on CPU/C++. `getEquivalentStructuredBuffer`'s IRParam branch does `babType->replaceUsesWith(structuredBufferType)` — but Slang IR types are **deduplicated**, so that one shared `RWByteAddressBuffer` type inst is flipped to `RWStructuredBuffer<uint32_t>` **module-wide**, leaving byte-address `Load`/`Store` with offsets never divided by the element stride. C++/CPU-only because the byte-offset→element-index `÷ stride` rewrite is gated off for that target (GLSL/SPIRV/Metal rewrite correctly); the global-param branch, which creates a *separate* structured-buffer global instead of mutating in place, is the contrast that pins it. General rule: never `replaceUsesWith` on a shared *type* inst to convert one value's type — build a per-use cast/view at the use site ([RWByteAddressBuffer atomic-via-helper flips whole-module buffer type via shared dedup type-inst mutation](../learnings/1785339952123-rwbyteaddressbuffer-atomic-via-helper-flips-whole-.md)).
 
-**Source learnings (11):**
+**Source learnings (10):**
 - [verify byte-address/HLSL-profile codegen at `-profile cs_5_0` (fxc has no templated `.Load<T>`); scalarize (not chunk) when `useBitCastFromUInt` is set; add a cs_5_0 regression test](../learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-profil.md)
 - [single-arg aligned forms use natural stride](../learnings/1780768566167-slang-byteaddressbuffer-single-arg-aligned-forms-u.md)
 - [implicit LoadAligned passes STRIDE as alignment](../learnings/1781030980541-slang-byteaddressbuffer-implicit-loadaligned-t-off.md)
@@ -60,4 +60,4 @@ A distinct byte-address legalization bug (#12265): `InterlockedAdd` on a `RWByte
 - [scalar block layout forced by ArrayStride](../learnings/1782722840826-slang-scalar-block-layout-is-forced-by-the-arrayst.md)
 - [#12265 `RWByteAddressBuffer` atomic-via-helper: `replaceUsesWith` on the shared deduplicated *type* inst flips every such buffer module-wide → CPU/C++ Load/Store lose the `÷stride`; build a per-use view, never mutate a shared type](../learnings/1785339952123-rwbyteaddressbuffer-atomic-via-helper-flips-whole-.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [catalog](../index.md)_

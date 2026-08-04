@@ -100,7 +100,7 @@ Several learnings document Slang-compiler-specific behaviors useful for future d
 - using-namespace import leak has a twin on the legacy/API lookup path ([Slang: using-namespace import leak had a TWIN on the legacy/API lookup path](../learnings/1780493606237-slang-using-namespace-import-leak-had-a-twin-on-th.md))
 
 ---
-**Source learnings (20):**
+**Source learnings (23):**
 - [May 14 session (workflow step format fix, validate-templates, stale detection fix)](../learnings/legoop-project_session_may14.md)
 - [Create symlinks (AGENTS.md, .agents) in group folders for Codex agents](../learnings/legoop-feedback_codex_symlinks_for_skills.md)
 - [Read-only/eval coworkers must be blocked from external posting at BOTH layers](../learnings/legoop-feedback_no_external_post_ab_tests.md)
@@ -125,4 +125,4 @@ Several learnings document Slang-compiler-specific behaviors useful for future d
 - [slang #11410: bundle-level watched_paths_digest already covers catalog source](../learnings/1780354591272-slang-11410-bundle-level-watched-paths-digest-alre.md)
 - [Slang: using-namespace import leak had a TWIN on the legacy/API lookup path](../learnings/1780493606237-slang-using-namespace-import-leak-had-a-twin-on-th.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [catalog](../index.md)_

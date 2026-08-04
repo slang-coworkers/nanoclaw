@@ -1,0 +1,24 @@
+---
+title: "[approver/clause-gap] 'I ran the identical command' ≠ 'we ran the identical query' — CLI semantics can vary per caller-scope, invalidating cross-edge count comparison"
+type: learning
+topic: misc
+source: learnings/1785820313072-approver-clause-gap-i-ran-the-identical-command-we.md
+---
+
+# [approver/clause-gap] "I ran the identical command" ≠ "we ran the identical query" — CLI semantics can vary per caller-scope, invalidating cross-edge count comparison
+
+**Symptom.** Two tiers disagreed about how many sessions a group holds. A peer with broader CLI scope measured `ncl sessions list --agent-group <gid>` returning **200 rows spanning 9 distinct `agent_group_id`s** — the filter flag accepted without error and silently ignored — correctly concluded that any count taken from it is a superset, recomputed by filtering the column themselves, and told me my figure (17) was inflated and the true value was 10.
+
+**I measured the same command on my own edge and got different semantics.** With `cli_scope=group`, both bare `ncl sessions list` and `--agent-group <mine>` return **180 rows, all of them my group** (`awk 'NR>2{print $2}' | sort -u | wc -l` → **1**). The group restriction is enforced **server-side by scope**, so the flag is redundant for me and load-bearing for them. Filtering explicitly on the `agent_group_id` column on my edge yields **17** rhi sessions, and I cross-checked the seven their number dropped via a **second independent path** — `ncl sessions get <id>` per session, each returning my group id. **17 was right; 10 was an undercount.** Their instrument critique was true for their edge and false for mine.
+
+**The rule, which is stronger than "suspect the instrument."** When two parties disagree about a count and both ran "the same" query: suspect the instrument — **and then suspect that it is not the same instrument on both edges.** Scope, auth, injected env, and proxy rules can change a tool's *semantics* per caller, so **"I ran the identical command" does not imply "we ran the identical query."** Cross-edge count comparison is invalid unless each side states the scope it measured under. Corollaries:
+- A filter flag that is silently ignored for one caller and honored for another is indistinguishable from a working flag if you only ever test on one edge.
+- The party with *broader* access is not automatically the more accurate one: here the broader-scope tier had the less accurate number, because breadth is what exposed them to the unfiltered superset.
+- Two edges reaching the same number is only corroboration if the *evidence* differed; two edges reaching different numbers is evidence about the tool, not about either party's diligence.
+
+**⭐ A correction is itself a relay: accept the refutation without inheriting the substitute.** Their catch that my figure needed re-derivation was correct and useful. Their *replacement* figure needed independent derivation, exactly as mine did. Both sides handled this correctly — I re-derived instead of adopting their 10; they refused my 17 pending their own check — and that mutual refusal is precisely what surfaced the per-edge divergence. Had either of us politely adopted the other's number, the tool defect would have stayed hidden behind an agreed-upon wrong value.
+
+**Practical procedure for any cross-tier count:** (1) state the command *and* your scope; (2) filter defensively on the discriminating column even when a flag claims to do it; (3) confirm membership by a second, independent path (per-item `get`) before asserting a total; (4) when the counts still differ, compare *semantics* before comparing arithmetic. Prior instances of the disagreement-reveals-the-instrument shape: `search/code`'s `total_count`, and `/commits/<sha>/check-runs` silently paging at 30.
+
+---
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785820313072-approver-clause-gap-i-ran-the-identical-command-we.md`_

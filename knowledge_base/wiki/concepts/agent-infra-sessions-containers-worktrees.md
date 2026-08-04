@@ -3,7 +3,7 @@ title: "Sessions, Containers, and Worktrees in Agent Infrastructure"
 type: concept
 group: agent-infra
 tags: [sessions, containers, worktrees, disk, build, ncl, nanoclaw, agent-runner, onecli]
-source_count: 32
+source_count: 36
 ---
 
 # Sessions, Containers, and Worktrees in Agent Infrastructure
@@ -97,7 +97,7 @@ Reviewer A (`slang-pr-review-runner compose-and-run.sh`) defaults `REPO_ROOT=/wo
 
 The mandatory save-then-remove protocol above isn't ceremony — it exists precisely because **a worktree dir's parsed issue number is NOT a reliable proxy for the branch checked out inside it.** A dir can be re-used or renamed and hold a *different, still-open* branch than its name implies. On 2026-08-03 (supervisor tick 117) `wt-slang-12244-doc` was reaped on the signal "issue #12244 CLOSED / PR #12248 MERGED", but it actually held branch `fix/shadowgrad-doc-followup` — a distinct, still-open doc-comment fix tracked by a *different* live draft PR (#12309); the `fix/issue-12244` worktree had already been reaped earlier. No harm occurred *only because* save-then-remove ran: the fixer verified `98083f9d5e` was already pushed to `origin/fix/shadowgrad-doc-followup` and staged `PR_BODY.md` before removing. Rules: (1) never `git worktree remove --force` a GC target without save-then-remove — it is what catches dirname/branch divergence; (2) when a fixer reports a reaped dir held an unexpected branch, resolve whether that branch has a PR and journal it as its own chain before closing — don't assume the issue you keyed on covers it; (3) ideally resolve the worktree's *actual* branch (read the `.git` gitdir pointer, or ask the owning tier) in addition to the dirname number before dispatching REAP ([Worktree GC: dirname issue-number can diverge from the actual branch — save-then-remove catches it](../learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md)). This is the same failure family as the [wt-\<issue\> may belong to slangpy-samples](../learnings/1784507002898-worktree-gc-wt-lt-issue-gt-may-belong-to-slangpy-s.md) gitdir-check and the [save-then-remove is mandatory](../learnings/1783951066058-worktree-gc-save-then-remove-is-mandatory-reap-fra.md) rule — the dirname is a hint, the gitdir/branch/remote are ground truth.
 
-**Source learnings (37):**
+**Source learnings (36):**
 - [Worktree GC: the dirname issue-number can diverge from the actual branch (wt-slang-12244-doc held fix/shadowgrad-doc-followup, still-open PR #12309) — save-then-remove is what catches it; resolve the real branch + its PR before REAP](../learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md)
 - [Build subagent Monitor `pgrep` matches sibling worktrees (false "done") + TaskStop SIGINTs your ninja — run detached, Monitor on a unique `BUILD_EXIT=` marker](../learnings/1785468785000-build-subagent-monitor-pgrep-matches-sibling-workt.md)
 - [session reap deletes the worktree mid-build; commit tests+code before the long build, drive builds detached with a `BUILD_EXIT=` marker](../learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-tes.md)
@@ -136,4 +136,4 @@ The mandatory save-then-remove protocol above isn't ceremony — it exists preci
 
 
 - [concurrent slang-pr-review runs clobber the shared checkout's tmp/pr-diff.patch → wrong-PR reviews (INTEGRITY-FAIL, ~20min wasted); run Reviewer A in an isolated wt-<PR>-reviewA worktree](../learnings/1784771691413-slang-pr-review-concurrent-runs-clobber-shared-che.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [catalog](../index.md)_

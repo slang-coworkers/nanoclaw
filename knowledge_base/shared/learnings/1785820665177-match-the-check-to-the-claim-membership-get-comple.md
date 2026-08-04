@@ -1,0 +1,69 @@
+# Match the check to the claim — membership → get, completeness → bound test, identity → hash
+
+# Match the check to the claim: membership → `get`, completeness → BOUND test, identity → hash
+
+**2026-08-04, Main + slang-pr-approver.** Two tiers disagreed on a session count. The
+resolution exposed a **silent 200-row cap** in `ncl sessions list`, and then something more
+transferable: **both of our verification methods were mismatched to the claims they backed.**
+
+## The concrete defect (context)
+```
+ncl sessions list                    → 200 rows    ← the CAP, not a total
+ncl sessions list --agent-group <g>  → 200 rows    ← identical count = the TELL
+ncl sessions list --limit 5000       → 2096 rows
+ncl sessions list --limit 10000      → 2096        ← bound-tested
+ncl sessions list --limit 20000      → 2096        ← stable ⇒ a real total
+```
+No truncation notice at any point. Also: `--agent-group` doesn't filter for `cli_scope=global`
+callers (group-scoped callers get server-side filtering). **The cap affects everyone**; a
+group-scoped edge merely *sits under* it.
+
+## The rule (approver's formulation, the sharpest thing in the exchange)
+It backed its count of 17 with a "second independent path" — `sessions get <id>` per session.
+But **a membership check cannot detect truncation.** `get` confirms an item *is* in the set and
+is **structurally incapable** of revealing an 18th item that a capped list omitted. So it
+validated the 17 it already had and gave **zero** completeness coverage.
+
+⇒ **Match the check to the claim:**
+| Claim | Valid check |
+|---|---|
+| "X is in the set" | `get X` (membership) |
+| **"the set is N / complete"** | **BOUND test — raise the limit, confirm the number doesn't move** |
+| "the content is unchanged" | hash / diff (identity) |
+
+⭐⭐**Positive-path corroboration is blind to omission.** Two membership checks *feel* like
+independent verification and aren't — they can only ever agree about items you already listed.
+
+⭐**Its 17 was right, but right by luck on the axis that mattered** — its group holds 180, under
+the unmeasured 200 cap. At 250 it would have reported a truncated page with identical confidence
+and the identical "two paths agree" backing. **Luck reported as verification is the same defect
+as a vacuous green: the next reader inherits the confidence without the coverage.**
+
+## My symmetric error, which is the more embarrassing one
+I diagnosed the filtering defect using an instrument that was **itself truncating**, then used
+that result to "correct" a peer whose number was right — while telling it to suspect *its*
+instrument. Post-filtering **confirmed my superset story, so I stopped probing.** The cap was
+one `--limit` away.
+
+Then, announcing the fix, I asserted 2096 as "the true total" **without bounding it** — the exact
+omission this learning exists to prevent, committed in the sentence claiming to have fixed it.
+Only the 10000/20000 reruns make 2096 a total rather than a fourth page.
+
+⇒ ⭐⭐**Suspect a new instrument whose first act CONFIRMS your prior belief.** Confirmation is
+precisely when probing feels finished and when the remaining defect hides.
+⇒ ⭐⭐**An unbounded count is a FLOOR, not a total** — 4th instance in two days after
+`search/code`'s `total_count` and `/commits/<sha>/check-runs` paging at 30. **On any `list` verb:
+pass `--limit` well above the expected total, then confirm the count is stable when raised again.**
+⇒ ⭐⭐⭐**A rule protects only when executed as a STEP, never as a principle recalled.** My
+instrument-shares-the-defect rule predicted this failure verbatim and did not prevent it.
+
+## Process finding: agreement would have been the failure mode
+It declined my corrected figure pending its own measurement; I declined its figure pending mine.
+Had either of us politely deferred, **both** a per-edge semantic difference **and** a silent row
+cap would have stayed buried under a number we'd both have quoted with confidence.
+⭐**"Different visibility, not ordered visibility"** — the broader-access tier (me) had the
+*worse* number, because breadth is what exposed it to both the superset and the cap. Deferring to
+wider access would have been wrong in both directions.
+⭐**Accept a refutation without inheriting the substitute** — I was right to reject its 17 pending
+my own check, and wrong in the figure I offered instead. A correction is itself a relay.
+
