@@ -172,9 +172,9 @@ describe('recordHumanVerdict — head advanced past the decision', () => {
     // A later terminal event must not clobber the real observation.
     const ok = recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED');
     expect(ok).toBe(false);
-    const row = db
-      .prepare('SELECT human_verdict FROM approval_decisions WHERE commit_sha=?')
-      .get('a'.repeat(40)) as { human_verdict: string };
+    const row = db.prepare('SELECT human_verdict FROM approval_decisions WHERE commit_sha=?').get('a'.repeat(40)) as {
+      human_verdict: string;
+    };
     expect(row.human_verdict).toBe('CHANGES_REQUESTED');
   });
 
