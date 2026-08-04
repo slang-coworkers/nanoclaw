@@ -6,8 +6,8 @@ import { GROUPS_DIR, TIMEZONE } from '../../config.js';
 import { resolveGroupTimezone } from '../../container-config.js';
 import { getAgentGroup } from '../../db/agent-groups.js';
 import {
-  findTaskSessions,
   getActiveSessions,
+  getActiveSessionsForGroup,
   getSession,
   isTaskThread,
   TASKS_SYSTEM_THREAD_ID,
@@ -93,8 +93,12 @@ function selectedSessions(args: Record<string, unknown>, ctx: CallerContext): Sc
 
   const group = groupArg(args, ctx);
   if (group) {
-    // One session per live task series — the loops below already fan out across them.
-    return findTaskSessions(group).map((s) => ({ id: s.id, agent_group_id: s.agent_group_id }));
+    // Every active session in the group — the loops below filter to kind='task'
+    // rows per inbound DB. Deliberately NOT findTaskSessions(): that only matches
+    // the isolated `system:tasks` threads, so a task parked in an ordinary
+    // session was invisible to every agent caller (and to host `--group`), which
+    // made `tasks list` answer "No tasks." while tasks were live and firing.
+    return getActiveSessionsForGroup(group).map((s) => ({ id: s.id, agent_group_id: s.agent_group_id }));
   }
 
   if (ctx.caller === 'agent') return [];

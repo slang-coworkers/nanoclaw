@@ -171,6 +171,24 @@ export function findTaskSessions(agentGroupId: string): Session[] {
     .all(agentGroupId, TASKS_SYSTEM_THREAD_ID, `${TASKS_SYSTEM_THREAD_ID}:%`) as Session[];
 }
 
+/**
+ * All active sessions for a group, whatever their thread shape.
+ *
+ * Task rows are `messages_in` rows with `kind='task'`, so the only reliable way
+ * to find a group's tasks is to scan its sessions' inbound DBs — which is what
+ * the global (no `--group`) CLI path already does via `getActiveSessions`.
+ * `findTaskSessions` is narrower: it only matches the isolated `system:tasks`
+ * sessions the scheduler creates today, so it silently misses legacy task rows
+ * parked in ordinary sessions (thread_id NULL / a messaging_group_id set).
+ * Group-scoped lookups use this instead so they stay consistent with the
+ * global path rather than reporting "no tasks" for tasks that plainly exist.
+ */
+export function getActiveSessionsForGroup(agentGroupId: string): Session[] {
+  return getDb()
+    .prepare("SELECT * FROM sessions WHERE agent_group_id = ? AND status = 'active' ORDER BY created_at DESC")
+    .all(agentGroupId) as Session[];
+}
+
 export function getActiveSessions(): Session[] {
   return getDb().prepare("SELECT * FROM sessions WHERE status = 'active'").all() as Session[];
 }
