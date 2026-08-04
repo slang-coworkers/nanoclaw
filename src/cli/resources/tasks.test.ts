@@ -24,6 +24,7 @@ const TEST_DIR = '/tmp/nanoclaw-test-cli-tasks';
 import { initTestDb, closeDb, runMigrations, createAgentGroup } from '../../db/index.js';
 import { createSession, findSessionByAgentGroup, getSessionsByAgentGroup, taskThreadId } from '../../db/sessions.js';
 import { countDueMessages } from '../../db/session-db.js';
+import { insertTaskRow } from '../../modules/scheduling/db.js';
 import { inboundDbPath, initSessionFolder } from '../../session-manager.js';
 import { dispatch } from '../dispatch.js';
 import { formatTasksTable } from '../format-tasks.js';
@@ -109,6 +110,32 @@ describe('tasks CLI resource', () => {
     expect(content.prompt).toBe('send a briefing');
     expect(content.prompt).not.toContain('Task delivery contract');
     systemDb.close();
+  });
+
+  it('lists a task parked in an ordinary session, not just isolated system:tasks ones', async () => {
+    // Regression: group-scoped lookups used findTaskSessions(), which only matches
+    // `system:tasks[:series]` threads. A task row living in a plain session (as
+    // legacy rows do) was invisible — `tasks list` answered "No tasks." while the
+    // task was live and firing, so a scheduler watchdog could never re-arm it.
+    const legacy = new Database(inboundDbPath('ag-1', 'chat-1'));
+    insertTaskRow(legacy, {
+      id: 'task-legacy-1',
+      seriesId: 'task-legacy-1',
+      processAfter: '2999-01-01T00:00:00Z',
+      recurrence: '0 */12 * * *',
+      content: JSON.stringify({ prompt: 'supervise issues', script: null, originSessionId: null }),
+    });
+    legacy.close();
+
+    const resp = await dispatch({ id: 'legacy-l', command: 'tasks-list', args: {} }, agentCtx());
+    expect(resp.ok).toBe(true);
+    if (!resp.ok) return;
+    const rows = resp.data as Array<{ series_id: string; session_id: string; recurrence: string }>;
+    const found = rows.find((r) => r.series_id === 'task-legacy-1');
+    expect(found).toBeDefined();
+    expect(found?.session_id).toBe('chat-1');
+    expect(found?.recurrence).toBe('0 */12 * * *');
+    expect(resp.human).not.toBe('No tasks.');
   });
 
   it('tasks-list attaches a server-rendered human table (so the container agent gets it too)', async () => {
