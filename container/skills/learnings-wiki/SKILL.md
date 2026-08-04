@@ -74,8 +74,13 @@ not as a shallow batch. Page frontmatter: `title`, `type: concept`, `group: <gro
 ```bash
 cd /workspace/shared && WIKI_KB_ROOT=/workspace/shared python3 .learnings_wiki.py finalize
 ```
-Rebuilds `index.md` (top **Concepts** section) + `glossary.md`, then prints coverage and any
+Normalizes every concept page's `**Source learnings (N):**` footer (N recomputed from the actual
+rows, duplicate rows for one stem dropped — keeping the longest description), rebuilds `index.md`
+(top **Concepts** section) + `glossary.md`, then prints coverage and any
 `DANGLING`/`UNCOVERED`/`OVERSIZE`/`NO-TLDR`.
+**N is derived, never hand-maintained** — asking synthesis agents to both append a row and bump the
+count produces drift that compounds across folds (measured 2026-08-04: 19 of 47 pages off, including
+pages untouched that day).
 **Target: 0 dangling, 0 uncovered, 0 oversize, 0 missing-TL;DR.** "Covered" means each *live*
 learning is cited by ≥1 concept — an atom marked `superseded_by:` is retired, not a gap.
 
@@ -320,8 +325,53 @@ def _convert_obsidian_links(learn_dir):
     if converted:
         print(f"obsidian→markdown: converted {converted} concept pages")
 
+def _normalize_concept_footers():
+    """Recompute each concept page's **Source learnings (N):** from its actual rows.
+
+    N is DERIVED data, not maintained data. Synthesis agents are told to append
+    footer rows; asking them to also bump N produces drift that accumulates across
+    folds (measured 2026-08-04: 19 of 47 pages off, including pages untouched that
+    day). Duplicate rows for one stem also creep in across folds and inflate the
+    apparent source count, so drop them — keeping the LONGEST description, since
+    the more informative wording usually carries the issue/PR number.
+    """
+    fixed = dups = 0
+    for p in sorted(glob.glob(os.path.join(WIKI, "concepts", "*.md"))):
+        t = open(p, encoding="utf-8").read()
+        m = re.search(r"^\*\*Source learnings \((\d+)\):\*\*", t, re.M)
+        if not m:
+            continue
+        stated = int(m.group(1))
+        head, body = t[:m.end()], t[m.end():]
+        seen, out, removed = {}, [], 0
+        for line in body.split("\n"):
+            hit = re.match(r"^- \[", line) and re.search(r"wiki/learnings/([^)]+)\.md", line)
+            if hit:
+                stem = hit.group(1)
+                if stem in seen:
+                    i = seen[stem]
+                    if len(line) > len(out[i]):
+                        out[i] = line
+                    removed += 1
+                    continue
+                seen[stem] = len(out)
+            out.append(line)
+        n = len(seen)
+        if removed or n != stated:
+            res = re.sub(r"\*\*Source learnings \(\d+\):\*\*",
+                         f"**Source learnings ({n}):**", head) + "\n".join(out)
+            res = re.sub(r"^source_count:\s*\d+\s*$", f"source_count: {n}",
+                         res, count=1, flags=re.M)
+            open(p, "w", encoding="utf-8").write(res)
+            fixed += 1
+            dups += removed
+    if fixed:
+        print(f"footers normalized: {fixed} pages (N recomputed), {dups} duplicate rows dropped")
+
+
 def finalize():
     _convert_obsidian_links(os.path.join(WIKI, "learnings"))
+    _normalize_concept_footers()
     cfiles = sorted(glob.glob(os.path.join(WIKI, "concepts", "*.md")))
     concepts = []
     for p in cfiles:
@@ -356,10 +406,16 @@ def finalize():
     # validate
     pages = glob.glob(os.path.join(WIKI, "**", "*.md"), recursive=True)
     present = {os.path.relpath(p, ROOT).replace(os.sep, "/") for p in pages}
+    # URL-anchored: count links by their (wiki/...) target, independent of the link
+    # TEXT. A learning whose title starts with a bracket (e.g. "[require]", "[bot]")
+    # becomes markdown link text like "[[require] atom…](url)" after obsidian
+    # conversion — valid CommonMark, renders on GitHub, but a text-matching regex
+    # (\[[^\]]*\]) can't see it. Matching on "](url)" alone keeps coverage honest.
+    URL = re.compile(r"\]\((wiki/[^)]+\.md)\)")
     edges, dangling, cited = 0, [], set()
     for p in pages:
         rel = os.path.relpath(p, ROOT).replace(os.sep, "/")
-        for tgt in LINK.findall(open(p, encoding="utf-8").read()):
+        for tgt in URL.findall(open(p, encoding="utf-8").read()):
             edges += 1
             if tgt not in present: dangling.append((rel, tgt))
             if rel.startswith("wiki/concepts/") and tgt.startswith("wiki/learnings/"): cited.add(tgt)
