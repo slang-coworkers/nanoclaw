@@ -75,4 +75,4 @@ When a change makes `groupshared` params pass **by reference** (#10641 / PR #117
 - [#12277 CUDA half-texture `Load`: `!__isHalf<T>()` guard rejecting half3 is NOT overreach — `tex*fetch_int<T>` has no half instantiation at any width; narrowing to {1,2,4} reintroduces the bug](../learnings/1785465186257-cuda-half-texture-load-fix-half3-is-not-overreach-.md)
 - [CUDA whole-module capability check sinks clean sibling entry points — guard the offending shader with `#ifndef __TARGET_CUDA__` (preprocessor runs before E36107); slangpy#1083 unblocked slang#12289 and had to MERGE to green the slang PR](../learnings/1785453604826-guard-test-only-shader-eps-from-cuda-with-ifndef-t.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [catalog](../index.md)_

@@ -3,7 +3,7 @@ title: "SlangPy Tensor API (0.41+ Migration)"
 type: concept
 group: slangpy
 tags: [slangpy, tensor, migration, autodiff, ndarray, api-churn]
-source_count: 7
+source_count: 17
 ---
 
 # SlangPy Tensor API (0.41+ Migration)
@@ -77,7 +77,7 @@ On the Slang side (`import slangpy;`), as of 0.43.0 there is NO public *named* a
 
 **The #1079/#1080 tensor-array + D3D12 device-removal cluster.** A read-only `Tensor` array param (`Tensor<float,1> tensors[4]`) requires each element be created `usage=BufferUsage.shader_resource` (no UAV): the array resolver compares element types by **full_name string**, and a default-UAV tensor stringifies to `RWTensor<...>` ≠ `Tensor<...>` → resolution fails on all backends. This is asymmetric with the scalar path, which adopts the *parameter's* access (`tensorcommon.py`) — so "just drop the shader_resource override to match other tests" is correct for scalars but breaks arrays ([Tensor usage flag (shader_resource vs UAV) is load-bearing for ARRAY-of-Tensor params](../learnings/1785359040591-slangpy-tensor-usage-flag-shader-resource-vs-uav-i.md)). But a `shader_resource`-only tensor then hits a D3D12 device-loss: `Tensor.zeros`/`zeros_like`/`with_grads` all route through `Tensor::clear()` → `clear_buffer`, and the D3D12 `clear_buffer` creates a UAV (`ClearUnorderedAccessViewUint`) that fails on a non-UAV buffer → `RemoveDevice`, poisoning the shared device; Vulkan/CUDA clear via transfer ops and pass silently ([Tensor.zeros clears unconditionally — D3D12 device loss on shader_resource-only tensors](../learnings/1785359276875-slangpy-tensor-zeros-clears-unconditionally-d3d12-.md)). `with_grads(grad_in=...)` additionally requires a **writable** primal — so a DiffTensor READ test uses `grad_out` only while an RWDiffTensor WRITE test needs both `grad_in` and `grad_out`; read the reviewer's wording precisely (szihs named the WRITE test) ([Tensor.with_grads: grad_in only valid for writable primal](../learnings/1785354955971-slangpy-tensor-with-grads-grad-in-only-valid-for-w.md)). The fix (PR #1080) roots at **`Tensor::clear()`**, not `tensor_zeros` — it is the single choke point reached by all three paths, including `zeros_like` grad-clears — diverting non-UAV clears to a host-upload copy-path (`copy_destination`, no UAV); do NOT add the UAV bit (renames Tensor→RWTensor, breaks the string-compare resolution) ([#1079 Defect 2 fix: root-cause at Tensor::clear(), not tensor_zeros](../learnings/1785363716295-slangpy-1079-defect-2-fix-root-cause-at-tensor-cle.md)). The copy-path is provably safe on the default path (`copy_destination` is injected for `device_local` storage regardless of usage) but the UAV requirement is **D3D12-specific** — a uniform divert can regress a non-`device_local` `read_back` tensor (`set_data` throws there) where CUDA/Metal previously succeeded; verify the other backends' clear primitives before assuming a uniform divert is free ([#1080 Tensor::clear copy-path: copy_destination guaranteed only for device_local; UAV-clear is D3D12-specific](../learnings/1785365827665-slangpy-1080-tensor-clear-copy-path-copy-destinati.md)). Repro note: the four `test_array_of_*` tests live ONLY on PR #1078's head, not on main or the CI checkout branch ([slangpy#1079 repro tests live only in PR #1078, not on main/CI branch](../learnings/1785359638612-slangpy-1079-repro-tests-live-only-in-pr-1078-not-.md)).
 
-**Source learnings (18):**
+**Source learnings (17):**
 - [slangpy neural-module 0.41 migration: differentiable vector operator[] gates inline too (slang#12026)](../learnings/1783620159628-slangpy-neural-module-0-41-migration-differentiabl.md)
 - [slangpy API churn: getv/setv→load/store/add rename + create_device has no experimental-features passthrough](../learnings/1781601865188-slangpy-api-churn-getv-setv-load-store-add-rename-.md)
 - [slangpy 0.41 Tensor API migration — official guide + the real store-vs-add rule](../learnings/1781603359888-slangpy-0-41-tensor-api-migration-official-guide-t.md)
@@ -96,4 +96,4 @@ On the Slang side (`import slangpy;`), as of 0.43.0 there is NO public *named* a
 - [#1080 copy-path is safe on the default `device_local` path but the UAV-clear bug is D3D12-specific — a uniform divert can regress a `read_back` tensor (set_data throws); verify each backend's clear primitive](../learnings/1785365827665-slangpy-1080-tensor-clear-copy-path-copy-destinati.md)
 - [#1079 the four `test_array_of_*` repro tests exist ONLY on PR #1078's head, not on main/CI branch — branch off #1078 to reproduce; the stale Metal skips cite CLOSED slang#7606](../learnings/1785359638612-slangpy-1079-repro-tests-live-only-in-pr-1078-not-.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [catalog](../index.md)_

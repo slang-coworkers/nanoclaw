@@ -3,7 +3,7 @@ title: "Slang Build Infrastructure, Tooling, and Language Server"
 type: concept
 group: slang-grab-bag
 tags: [build, CMake, MSVC, slangd, LSP, language-server, build-tag, version, downstream-compilers, NVRTC, VK_KHR_shader_abort, SPIR-V, IRTextureType, imgui, dev-shm, coworker-container, binary-provenance, core-module, stale-slangc]
-source_count: 50
+source_count: 55
 ---
 
 # Slang Build Infrastructure, Tooling, and Language Server
@@ -163,7 +163,7 @@ A **deterministic** `tests/spirv/*.slang` FileCheck failure with a fixed name/pr
 
 A recurring class of web/bundler triage (e.g. #12317 "bundler plugins for the web") hinges on a build-infrastructure fact rather than a compiler capability: **`slang-wasm` already emits everything an npm package needs, but nothing publishes it.** `source/slang-wasm/CMakeLists.txt` links with `--emit-tsd interface.d.ts` + `-sEXPORT_ES6=1 -sMODULARIZE=1`, producing `slang-wasm.js` + `slang-wasm.wasm` + `interface.d.ts`; these are assembled *only* in `.github/workflows/release.yml` (tag-triggered, Linux-only) by manual `cp`/`zip` (~lines 283-292, an `exit 0` bypasses CPack) into `slang-<version>-wasm.zip`. There is **no `package.json` in the source tree** and **no `npm publish`/`NODE_AUTH_TOKEN`/`registry-url` anywhere in `.github/workflows/`** (grep = 0). So "publish `@shader-slang/slang-wasm` to npm" is a *packaging + maintainer-infra* task (npm scope + `NPM_TOKEN` secret + publish cadence) — classify as a design/policy gate and HOLD, don't forward to the fixer as a compiler change. Two adjacent facts sharpen the triage: reflection→TypeScript-type codegen is *already* feasible on the bound surface (`ProgramLayout.toJsonObject()` + `getGlobalParamsTypeLayout`/`VariableLayoutReflection`/`TypeReflection`, backed by `source/slang/slang-reflection-json.cpp`) so an unplugin needs no new C++ — but `createSession` takes only an int target and exposes no compiler-*option* surface, so anything needing compile flags first needs the binding widened; and WGSL/WebGPU is officially experimental/WIP (`README.md:118`,`:126`, `docs/user-guide/09-targets.md:419`) — a status one Explore subagent got backwards, so verify it by direct README read and carry the WIP hedge into the public verdict ([slang-wasm ships types but is not npm-published; publishing is CI-packaging not compiler work](../learnings/1785699886372-slang-wasm-ships-types-but-is-not-npm-published-pu.md)). This is the same "read the build graph / workflow, don't infer capability from the binding" discipline as the [SLANG_USE_SYSTEM_* add_subdirectory-gate](../learnings/1784761099055-slang-use-system-has-no-bundled-fallback-quiet-fal.md) and [binary-provenance](../learnings/1785167795738-tests-spirv-opname-prefix-failures-from-stale-slan.md) folds above.
 
-**Source learnings (60):**
+**Source learnings (55):**
 - [slang-wasm emits js/wasm/interface.d.ts but has NO npm publish (no package.json, no NPM_TOKEN in workflows) — web-packaging asks are maintainer-infra, HOLD not fixer; reflection→TS is already feasible, WGSL is WIP](../learnings/1785699886372-slang-wasm-ships-types-but-is-not-npm-published-pu.md)
 - [RESOLVED #12227 (merged #12233): exclude slang-compiler.h from the GCC PCH for ALL TUs (not per-TU skip); signature also reproduces in CLEAN GCC Release builds, not just incremental](../learnings/1785072236731-resolved-12227-gcc-pch-snapshots-fiddle-state-fix-.md)
 - [stale GCC PCH snapshots FIDDLE macro state → ~400 bogus codegen errors; tell = <command-line>→cmake_pch.hxx include chain; order-only dep + BYPRODUCTS mtimes let the .gch go stale undetected (slang#12227)](../learnings/1784991435802-stale-gcc-pch-snapshots-fiddle-macro-state-bogus-c.md)
@@ -220,4 +220,4 @@ A recurring class of web/bundler triage (e.g. #12317 "bundler plugins for the we
 - [docs/design hand-maintained, docs/generated/design regenerated; route new design docs to docs/design](../learnings/1784830597951-slang-docs-routing-docs-design-is-hand-maintained-.md)
 - [tests/spirv OpName-prefix failures from stale slangc = core-module embedding, not a regression (verify binary provenance)](../learnings/1785167795738-tests-spirv-opname-prefix-failures-from-stale-slan.md)
 - [stale prebuilt slangc embeds old core module → false tests/spirv failures; deterministic + empty-emit-diff = provenance smell](../learnings/1785167843971-stale-prebuilt-slangc-embeds-old-core-module-false.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [catalog](../index.md)_

@@ -1,0 +1,28 @@
+---
+title: "[approver/infra-abstain] CodeRabbit findings live on pulls/N/comments, NOT reviews[].body — a successful harvest can still score 0 findings"
+type: learning
+topic: review-process
+source: learnings/1785778078080-approver-infra-abstain-coderabbit-findings-live-on.md
+---
+
+# [approver/infra-abstain] CodeRabbit findings live on pulls/N/comments, NOT reviews[].body — a successful harvest can still score 0 findings
+
+**Symptom:** On slang-rhi#803 R1 the approver recorded "review signal CLEAN, 0🔴/0🟡/0🔵." The truth: a CodeRabbit review existed at that exact SHA with **11 findings, 2 of them 🟠 Major / Functional Correctness**. "Clean" was computed from an input missing all 11. The decision was unaffected (a Step-1 size-cap clause FAIL short-circuits before review signal) — but the review-signal field is exactly what a human reads to judge how much scrutiny a PR has already had, and **"clean" from a partial harvest is not clean.**
+
+**Root cause — TWO real harvester traps (and one hypothesis that was WRONG):**
+
+1. **ENDPOINT SPLIT — the dangerous one, because it under-reads on a *successful* exit-0 harvest.** A CodeRabbit review object's `body` is frequently **status boilerplate only**: `**Actionable comments posted: 11**` plus collapsed run-config/file-list, containing **zero** severity markers. The harvest path (`collect-reviews.sh` / `harvest-reviews.py`) reads `pulls/N/reviews[].body`, and synthesis counts 🔴/🟠/🟡/🔵 in that body ⇒ the review scores **0 findings** while 11 sit on **`pulls/N/comments`**, a different endpoint that is never queried. Note the treacherous inconsistency: on an adjacent revision of the same PR, CodeRabbit *did* inline one Major into the review body (an "outside diff range" item), so that harvest looked non-clean. Whether you see findings is **CodeRabbit formatting luck, not harvester correctness** — so you cannot infer "body had no markers ⇒ no findings."
+   → **Fix:** to score a CodeRabbit signal, query `pulls/N/comments` as well and tally severities there; treat `Actionable comments posted: N` with N>0 in a body that shows zero markers as a **hard flag that the findings are elsewhere**, never as "clean."
+
+2. **`commit_id` DRIFT on inline comments.** GitHub **rewrites** an inline comment's `commit_id` as the PR head advances. On #803, 8 of 11 findings originally posted against R1 now report `commit_id == R3`; only the 3 whose lines went stale still read R1. Per-commit bucketing keyed on `commit_id` scatters one revision's review across several. → **Use `original_commit_id`** for provenance.
+
+3. **WRONG hypothesis worth recording so nobody re-chases it:** the failure was proposed to be a bot-detection bug — `endswith("[bot]")` matching nothing because GraphQL returns bare `coderabbitai`. **That does not apply to this code path.** Verified three ways: (a) source — both scripts query REST `pulls/N/reviews` and filter with an **exact-match allowlist** `login in ("github-actions[bot]","coderabbitai[bot]")`; there is no `endswith` and no GraphQL call in the harvest path at all; (b) empirical — an adjacent revision exit-0 harvested with `login` recorded verbatim as `coderabbitai[bot]`; (c) the real cause was timing (below). **The suffix asymmetry is still true and still a trap for hand-written checks** — REST `user.login` carries `[bot]` and `user.type == "Bot"`, while GraphQL `author.login` is bare and bot-ness rides on `author.__typename == "Bot"`; note `gh pr view --json reviews` returns an author object with **`login` only — no `type`, no `__typename`**, so there is *no in-band way* to detect a bot from that field set. Don't use it for bot classification.
+
+**The procedural failure that actually caused it (most transferable):** the harvest's exit-22 ("bot still running → WAIT and re-harvest") correctly reported `pending` — the review genuinely did not exist when the last poll ran (last artifact write 07:04:49; review submitted **07:07:42**). On timeout I fell to the weaker Devin-only tier, then spent ~7 minutes synthesizing the doc (07:11:23) and reported (07:12:04) — **without one final cheap re-probe** of a signal I had myself identified as imminent. By report time the review had been public 4.5 minutes. **A timeout is a statement about a past instant, not about the present. When you time out waiting on a signal you expect imminently, re-probe at the LAST moment before committing the artifact that depends on it** — not at the moment the poll loop exits. Corollary: don't let a poll loop's final iterations write their result somewhere other than the artifact of record (mine redirected to a log), or the artifact silently freezes at a stale verdict.
+
+**Also learned:** a **green CodeRabbit commit status does NOT imply a harvestable review object** at that commit — on a later revision the run posted no review and instead updated its walkthrough issue-comment. Don't treat status-green as a harvest precondition or as evidence a review exists.
+
+**Blast radius:** `slangpy-pr-approver`'s harvest scripts are **byte-identical** to slang's (sha256 `cbbb72da0aa2b774c46622c3a7948882ca251abb111764cd5ac5927ca785cd12`), so no bot-detection bug there either — but slangpy is exposed to traps 1 and 2 **more severely**, because CodeRabbit is its ONLY review signal (no production `github-actions[bot]` review to fall back on). Any slangpy row whose CodeRabbit harvest reported 0 findings is a candidate for the same silent under-read and should be audited.
+
+---
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1785778078080-approver-infra-abstain-coderabbit-findings-live-on.md`_

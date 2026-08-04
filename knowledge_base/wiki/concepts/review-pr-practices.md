@@ -3,7 +3,7 @@ title: "PR Review Practices"
 type: concept
 group: review-process
 tags: [pr-review, slang-reviewer, devin, reviewer-a, reviewer-b, reviewer-c, github, draft-pr, convergence, false-positives, a2a-review, fleet-contention, repo-root-isolation, pr-approver, shadow-mode, clause-gap, challenger, critique-gate, abstain-infra, head-pinning, human-calibration, memoization-safety]
-source_count: 251
+source_count: 274
 ---
 
 # PR Review Practices
@@ -459,7 +459,7 @@ Four more operational lessons hardened the pipeline. **Never end a foreground re
 
 Several reviewer-runner operational facts from the #12262/#12263 rounds. **Reviewer A's `INTEGRITY-FAIL` can be a false positive**: its post-run guard reads the FIXED shared path `tmp/pr-diff.patch`, which a concurrent same-container run for a different PR overwrites — so it reports files from the wrong PR. Trust the per-run `<run_dir>/pr-diff.reference` and the `final-review.md` footer `reviewed: <sha> · diff sha256` (captured at start, not shared); also locate your run dir by matching `prompt.txt`'s `PR NUMBER:`, not by mtime ([Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch](../learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md), builds on the shared-tmp collision entry above). **When gh auth is dead on a PUBLIC repo, don't fall back to patch mode** (it drops new files via `git commit -am` and aborts on stale untracked files) — build a tiny read-only `gh` shim over local git (`gh pr diff` → `git diff merge-base..head`, `gh pr view` → prebuilt json) first on PATH, then run the production `pr` mode unchanged; Devin/Reviewer B scrapes the public URL anonymously regardless ([gh-shim fallback for dead token on public repo (pr-mode review)](../learnings/1785339099440-gh-shim-fallback-for-dead-token-on-public-repo-pr-.md)). **Reviewer C (clarity) can exhaust its turn budget right before the canonical write** — don't just re-run (same failure, GC's the worktree); recover the raw candidates from the run's `stream.jsonl` Write-tool inputs (`tmp/review-candidates/pr-<N>-*clarity.md`) and mark `reviewers_complete:false`; bumping the turn/budget cap does not help since investigation depth is the cost ([clarity reviewer C exhausts turn budget before canonical write — recover from stream](../learnings/1785339114704-clarity-reviewer-c-exhausts-turn-budget-before-can.md)). Two enumeration/diff disciplines: PR-feedback enumeration must query the UNION of `reviews`, `reviewThreads`, AND issue-level `comments` — substantive blocking feedback (e.g. szihs on #996) often lives in issue comments that per-node review filters drop ([PR review-feedback enumeration must query ALL comment types incl issue-comments](../learnings/1785353452935-pr-review-feedback-enumeration-must-query-all-comm.md)); and scope a diff from `gh pr diff <n> -R <repo>` (diffs against remote base), never a local `git diff main...head` whose stale local `main` can inflate a 1-file PR to 40 files — the `gh pr diff` sha256 is also the review's `diff_hash` ([use gh pr diff, not local git diff --stat (stale-main trap)](../learnings/1785357368357-slangpy-pr-review-use-gh-pr-diff-not-local-git-dif.md)).
 
-**Source learnings (273):**
+**Source learnings (274):**
 - [benign/valid-output severity calls must check every reachable emit target — validity is target-specific (empty struct valid in SPIR-V, illegal GLSL)](../learnings/1785449256204-benign-valid-output-severity-calls-must-check-ever.md)
 - [severity calibration: doc-vs-behavior conflict is a QUESTION/GAP for maintainer intent, not an autonomous BLOCK (#12304)](../learnings/1785539717795-severity-calibration-doc-vs-behavior-conflict-is-a.md)
 - [review severity: doc-vs-behavior conflict on a maintainer-owned design point is a QUESTION, not a BLOCK](../learnings/1785539785590-review-severity-doc-vs-behavior-conflict-on-a-main.md)
@@ -735,4 +735,4 @@ Several reviewer-runner operational facts from the #12262/#12263 rounds. **Revie
 - [enumerate PR feedback across the UNION of reviews + reviewThreads + issue `comments` — blocking maintainer feedback often lives in issue comments per-node filters drop](../learnings/1785353452935-pr-review-feedback-enumeration-must-query-all-comm.md)
 - [scope a PR from `gh pr diff -R <repo>` (remote base), not local `git diff main...head` (stale local main inflates the change set); the diff sha256 is the review `diff_hash`](../learnings/1785357368357-slangpy-pr-review-use-gh-pr-diff-not-local-git-dif.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [catalog](../index.md)_

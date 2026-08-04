@@ -3,7 +3,7 @@ title: "Build System, Runtime Libraries & Debug Workflows"
 type: concept
 group: slang-tooling
 tags: [cmake, dxc, llvm, glibc, ld_library_path, sanitizer, build, prebuilt, disk, falcor, sccache, ci]
-source_count: 31
+source_count: 42
 ---
 
 # Build System, Runtime Libraries & Debug Workflows
@@ -187,7 +187,7 @@ Two build/runtime traps where a locally-green result diverges from CI or ships s
 
 **Two coupled gotchas make `SLANG_ASSERT` inert in this container's default build.** `SLANG_ASSERT(cond)` is `#ifdef _DEBUG`; in a non-`_DEBUG` build it expands to `SLANG_ASSUME`/`__builtin_assume(cond)` — the optimizer is told `cond` is always true and may **delete any code that only runs when `cond` is false**. And the stock `debug` CMake preset here actually produces `CMAKE_BUILD_TYPE=Release` (check `build/CMakeCache.txt`), so a `SLANG_ASSERT` you add will not fire locally even when its predicate is false — a violation is silently skipped, your tests pass, but a real `_DEBUG`/CI build aborts (this cost a review round on PR #12263, where an inert `getConstant` shape-assert only codex caught) ([local Debug preset builds Release → SLANG_ASSERT is inert](../learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md)). The coding consequence: **never assert a precondition you also runtime-guard on** — `SLANG_ASSERT(x); if(!x) return fallback;` lets release prove the fallback dead and delete it. Use a plain `if/else` runtime guard (with a rationale comment) for any condition that is a real discriminant now or under a future PR; reserve `SLANG_ASSERT` for genuinely-impossible states and `SLANG_RELEASE_ASSERT` for "crash loudly in release" ([SLANG_ASSERT becomes __builtin_assume in release — never assert a precondition you also guard on](../learnings/1785335639560-slang-assert-becomes-builtin-assume-in-release-nev.md)). To actually exercise asserts locally, configure `-DCMAKE_BUILD_TYPE=Debug`.
 
-**Source learnings (41):**
+**Source learnings (42):**
 - [slang-llvm JIT COFF ordered-section crash on Windows (default LLJIT, #12283); single insertion point via createAVX512SafeLLJIT](../learnings/1785398074059-slang-llvm-jit-coff-ordered-section-crash-on-windo.md)
 - [slang-llvm.dll teardown AV on Windows = LLVM ManagedStatic/atexit callbacks survive FreeLibrary (#12292); not a ComPtr order bug; fix via llvm_shutdown or DLL pin](../learnings/1785420752652-slang-llvm-dll-teardown-av-llvm-managedstatic-atex.md)
 - [-Og Debug builds (#12140) break debugging → gate behind SLANG_ENABLE_* option; default is a design gate (#12223); last-`-O`-wins mechanism](../learnings/1784925326386-og-debug-builds-12140-break-debugging-gate-behind-.md)
@@ -231,4 +231,4 @@ Two build/runtime traps where a locally-green result diverges from CI or ships s
 - [the container's `debug` preset builds `CMAKE_BUILD_TYPE=Release` → `SLANG_ASSERT` is inert (compiles to `__builtin_assume`); test assert logic under real `-DCMAKE_BUILD_TYPE=Debug` or by reasoning](../learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md)
 - [never assert a precondition you also runtime-guard on — release `__builtin_assume` proves the fallback dead and deletes it; use `if/else` for real discriminants, `SLANG_RELEASE_ASSERT` to crash loudly](../learnings/1785335639560-slang-assert-becomes-builtin-assume-in-release-nev.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [catalog](../index.md)_

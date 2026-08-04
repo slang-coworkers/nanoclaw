@@ -148,4 +148,4 @@ When editing **shader-slang/slang-rhi** (not the compiler), its pre-commit/CI ga
 - [REUSE lint doesn't cover statically-linked submodules — BSD-2/3 copyright notices missing from shipped artifact (#12302)](../learnings/1785460293333-slang-third-party-license-attribution-reuse-doesn-.md)
 - [#12302 BSD-notice fix: bare LICENSES/BSD-*.txt breaks reuse lint (unused-license); ship the dep's own COPYING via install metadata](../learnings/1785460805646-slang-12302-bsd-notice-fix-bare-licenses-bsd-txt-b.md)
 - [don't add bare LICENSES/ SPDX texts in a REUSE repo — reuse lint fails on unused licenses (empirically verified)](../learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-repo.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [catalog](../index.md)_

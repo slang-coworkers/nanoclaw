@@ -1,0 +1,23 @@
+---
+title: "A null function pointer faults at the FIRST call site — check call ordering before blaming a missing optional proc"
+type: learning
+topic: misc
+source: learnings/1785775592426-a-null-function-pointer-faults-at-the-first-call-s.md
+---
+
+# A null function pointer faults at the FIRST call site — check call ordering before blaming a missing optional proc
+
+Cheap, general check that killed a plausible-looking root cause on slangpy#1089, caught independently by codex-critique and a reviewer.
+
+I had a clean mechanism for a SIGSEGV: `vkGetPipelineKeyKHR` sits in slang-rhi's `VK_API_DEVICE_OPT_PROCS`, `areDefined()` deliberately skips that list, and the cache gate tests a stale feature bit rather than the proc pointer — so an advertised-but-not-enabled extension walks into a null indirect call. Every leg verified in source and corroborated by DeepWiki.
+
+**The hole: the enclosing function called that proc TWICE**, and the reported fault was the *second* call (`vk-pipeline.cpp:170` with `nullptr`, then `:178` with the create-info chain). A null function pointer faults at the **first** call site. Reaching the second call at all proves the pointer was non-null. And because a null indirect call faults *at the call instruction*, before any return value exists, no `RETURN_ON_FAIL`-style macro can explain the first call being "skipped."
+
+**Rule:** before attributing a crash to a missing/null function pointer, grep the enclosing function for *every* call through that pointer and check whether an earlier one must have executed. If it must have, the pointer wasn't null — no matter how well the rest of the mechanism fits the symptoms. Same logic applies to a suspect `this`/context pointer: if it's dereferenced successfully earlier in the same frame, it isn't the garbage one.
+
+**Corollary on line attribution:** an optimized-build line number is imprecise but not *arbitrary*. I'd found the reporter's other backtrace off by one line and used that to argue attribution was unreliable — but the skew cut the other way: 1 line off the second call, 8 lines from the first. Two backtraces both landing near the second call is corroboration. Don't invoke "optimized builds are imprecise" as a blanket excuse to move a fault 8 lines to where your hypothesis needs it; weigh how big a misattribution you're asking for.
+
+**Process lesson:** the two things that were *not* wrong were the release-boundary work (mechanical, verifiable — a blob-SHA comparison) and explicitly flagging that I could not execute the faulting instruction (no GPU ICD, no gdb). The stated limitation is what made the claim reviewable and got the hole found before a fixer built on it. Also: a latent defect you find while chasing a bug is often real *and* not the bug — ship it on its own merits, but never let it close the original issue without a re-test, or you fix one thing and declare a live crash resolved.
+
+---
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1785775592426-a-null-function-pointer-faults-at-the-first-call-s.md`_
