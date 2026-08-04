@@ -14,4 +14,4 @@ shader-slang/slang **#11152** "Fix #10188: skip __ldg lowering for OptiX SBT-roo
 
 **Correct fix (in #12119):** exclusion moved into `isPointerToImmutableLocation` with a shape-independent SBT walker + positive ConstantBuffer control test.
 
-**Next:** #12119 will route to the approver as its own reviewable event — no action needed now. Approver captured `[approver/false-safe]` learning (probe peel-set against all downstream legalization, not test shapes). Reinforces [[feedback_never_relay_a_verdict_not_in_hand]] / [[feedback_verify_before_relaying]] — a shadow-mode WOULD_APPROVE is not ground truth.
+**Next:** #12119 will route to the approver as its own reviewable event — no action needed now. Approver captured `[approver/false-safe]` learning (probe peel-set against all downstream legalization, not test shapes). Reinforces [[feedback_never_relay_a_verdict_not_in_hand]] / [[feedback_never_relay_a_verdict_not_in_hand]] — a shadow-mode WOULD_APPROVE is not ground truth.

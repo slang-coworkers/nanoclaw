@@ -98,7 +98,7 @@ refinement of jkwak's own "make a PR with approach A" ask, NOT a reversal.
 - **2026-07-25:** jkwak-work (assignee, member) directed via `@nv-slang-bot` on issue
   (comment 5079615613): *"make a PR with approach A."* Green-lit — this was the direction
   the park was held on. Same member-owned build-values pattern as
-  [[project-12223-debug-build-og-debuggability]] and #12214.
+  [[project_12223_debug_build_og_debuggability]] and #12214.
 - **Fix = approach A only:** `SKIP_PRECOMPILE_HEADERS ON` on the 2 FIDDLE-heavy TUs
   (`slang-ir-autodiff-rev.cpp` + `slang-ir-autodiff-unzip.cpp`) in
   `source/slang/CMakeLists.txt`, mirroring the `slang-rich-diagnostics.cpp` precedent with

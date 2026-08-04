@@ -17,6 +17,17 @@ Recommended fix = Approach A (producer-side): seed HLSLExport/Public funcs in `p
 
 **State (updated 2026-07-09):** DRAFT PR **#12014** opened — https://github.com/shader-slang/slang/pull/12014 — per maintainer jkwak-work green-light ("make a PR with 'producer-side fix'"). Approach A shipped: new `getDefaultAddressSpaceForExportedFunctionParam` virtual (base=`Generic`, Metal=`ThreadLocal`); `processModule` split-concern seeding of exported funcs; `tests/metal/export-out-param.slang` added. 4 files, +211. Non-Metal byte-identical by construction. `slang-test` export-out-param + out-param regression both PASS; codex gate all-green (PLAN/CODE/OUTPUT); dispatched to slang-reviewer. CI red on draft = priority-yield cosmetic (wait-for-human-priority + check-ci only; builds skipped) — NOT a real failure; real pull_request CI fires on maintainer ready-flip.
 
+## ✅ UPSTREAM RE-VERIFIED 2026-08-03 (Main) — draft genuinely STALE, but 2 of 3 "owed" items were ALREADY DISCHARGED
+
+Issue **#11981 OPEN**. PR **#12014**: `draft:true`, head **`2e8c12db841f`**, **untouched since 07-09T01:47Z (~25 days)**, branch `fix/issue-11981`, author `nv-slang-bot`, assignee+reviewers `jkwak-work`/`juliusikkala`; it is the **ONLY** PR referencing #11981 ⇒ **this stall is REAL** — unlike #12110's, which I had fabricated by triaging on my own note instead of upstream state.
+
+⚠️**Re-checking each owed ITEM individually showed I'd have chased work already done:**
+- ✅ **public 5-bullet footprint IS posted on #11981** — `nv-slang-bot` 07-09T01:52Z, *"Triage → fix in draft PR #12014, held pending review"*, following jkwak's *"Please make a PR with producer-side fix"*.
+- ✅ **bot disclaimer IS present** in the 11,954-char PR body.
+- ❌ **Only genuinely open: `report_pr_created(12014)` was never called** ⇒ that PR's webhook events still fall through to branch-prefix resolution.
+
+⭐**"OWED" markers age too — re-verify each owed ITEM, not just the gate.** A stale owed-list misleads exactly as much as a stale status. Branch `fix/issue-11981` ⇒ fixer-owned by routing convention, but the fixer swept its store and holds no entry ⇒ **unowned live chain**. **RESUME:** have the fixer call `report_pr_created(12014)`, or nudge jkwak on the ~25d-stale draft.
+
 **Held pending maintainer review/ready-flip — bot does NOT flip ready or merge (gated).** Draft-held rule: `Closes #11981` in a draft doesn't surface, so triager tasked (msg157) to post the "triaged → fix in draft PR #12014, held" 5-bullet on the issue for public footprint, and to confirm the fixer called `report_pr_created(12014)`. Peer-wired triager→fixer; do NOT double-dispatch. Was: triage done, comment PATCHED, awaiting [Fix Report] — now [Fix Report] received. Classification: bug / medium / P2.
 
 **⚠️ 2026-07-09 ~08:38 — #12014 `report_pr_created` still OWED by owning session.** The #11969 fixer session confirmed it correctly did NOT call `report_pr_created(12014)` (not its PR). The session that OWNS #12014 (head `2e8c12db84`) must make that call — until it does, #12014 webhook events have no session mapping and fall through to branch-prefix resolution ([[feedback_verify_report_pr_created]]). Verify + route through #11981's owning fixer/triager if the chain stays active.

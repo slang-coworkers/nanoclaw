@@ -26,4 +26,4 @@ metadata:
 
 **2026-07-30 update (comment #5128310021, jkwak):** more validation, NOT a "make a PR" — three consecutive full Debug suites at `-server-count 8` with the proposed allocator: 0 test-server.exe crashes, 0 ADDR32NB aborts, 10,216/10,217 each run; sole failure = pre-existing independent `tests/cpu-program/gfx-smoke.slang (cpu)` teardown AV (repros identically with allocator disabled). Strengthens the fix; does not change disposition. Forwarded to slang-triager on canonical thread; chain remains PARKED (no PR requested yet).
 
-Related: [[reference-slang-maintainer-handles]] (jkwak = jkwak-work).
+Related: [[reference_slang_maintainer_handles]] (jkwak = jkwak-work).

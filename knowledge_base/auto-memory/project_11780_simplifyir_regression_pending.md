@@ -6,6 +6,14 @@ originSessionId: af82972d-16a9-48ce-93a3-15be9834a72f
 ---
 **slang #11780** — simplifyIR perf regression: differentiable numeric builtins (`sin`/`sqrt` on `float`) pull `float`'s dead `IDifferentiable` closure (dzero/dadd/Differential + fwd/bwd derivs) into non-auto-diff shaders. Triaged + reproduced (mechanism) at HEAD `b1bdd88d4` by slang-triager; verified 5-bullet posted to GitHub, Type=Bug + `reproduced` label set. Classification: regression / medium / P2 / IR-linking+specialization + autodiff. Author jvepsalainen-nv.
 
+**✅ TERMINAL — GATE DISCHARGED 2026-07-07 (Main-verified against GitHub 2026-08-03, not against either of my own texts).**
+`#11779` **MERGED** `2026-07-07T13:34:41Z`; issue **#11780 CLOSED** `2026-07-10T01:46:36Z`, `state_reason: completed`.
+⇒ the hold condition *"assist only if requested once #11779 lands"* elapsed **~27 days ago** with no request.
+⛔ No action pending. History below retained for provenance only.
+
+---
+
+
 - **Mechanism:** `sin`/`sqrt` carry no derivative attrs; their `T:__BuiltinFloatingPointType` constraint pulls `float:IFloat` (`IFloat : IDifferentiable`, core.meta.slang:304) + base-witness closure. #9808 dropped the linker's `useAutodiff` gate + marked tables `[KeepAlive]`/`[HLSLExport]` → cloned into non-diff programs, survives simplifyIR #1, not collectible until late `unpinWitnessTables`+DCE (slang-emit.cpp:1250/1446/1472). NB: the `IFloat:IDifferentiable` line itself predates #9808 (#3317, 2023); #9808 only removed the gate.
 - **Scope-split vs #11779 CONFIRMED:** #11779 defers only *unreferenced* differentiable tables (per-compile linkIR floor); #11780's entries are *referenced* via the structural conformance and still cloned on demand (slang-ir-link.cpp:2055-2062) → **NOT subsumed** by #11779.
 

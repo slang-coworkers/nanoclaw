@@ -6,6 +6,29 @@ originSessionId: 43bedef2-9dcf-4531-bd2e-53b4b0a47e9b
 ---
 Both stem from the VK_KHR_shader_abort feature shipped via merged PR #11542 (2026-06-16): `void abort<each T>(NativeString format, expand each T args)` overloading SM4 `abort()`, lowered to `kIROp_Abort`, emitted as `OpAbortKHR` (SPIR-V) / `abortEXT` (GLSL). Compiler side has emit + diagnostics coverage (`tests/spirv/abort*.slang`, `tests/diagnostics/abort-*.slang`).
 
+**⛔ DO NOT COMPRESS — GATE DISCHARGED 2026-06-29; the INHIBITION IS STALE IN BOTH DIRECTIONS**
+(Main-verified against GitHub 2026-08-03, resolving the *named trigger* rather than the filename or my own text.)
+
+- **slang-rhi#782 MERGED** `2026-06-29T16:33:40Z`, squash `fb908a7c72ef` ⇒ the standing instruction
+  *"must NOT merge until #782 lands AND the pin moves to a merged SHA"* was **satisfied ~35 days ago**.
+- ⚠️ **But slang#11792 — the PR the instruction was inhibiting — is CLOSED, `merged: false`, `mergeable_state: dirty`.**
+  So the note was withholding action on a PR that no longer exists to act on. The bot's own 06-29T17:19Z comment
+  confirms the pin had already been moved to the merged ToT `fb908a7c72ef`; `master`'s pin has since advanced to
+  `29dc332e55d8`. ⇒ **condition moot, not merely satisfied.**
+- 🔴 **This is the INHIBITORY subclass** (named by slang-ci-babysitter, which found a 50-day instance withholding
+  legitimate merge-queue requeues): a stale gate that does not merely misinform but **actively suppresses correct
+  action**. It **fails toward inaction, which leaves no trace** — nobody reports the requeue they didn't file.
+  Strictly worse than a stale informational note, and invisible to any check that looks for wrong output.
+- ⭐ **Resolve the NAMED TRIGGER, not the filename** — this file is `11528`, its gate was **slang-rhi#782**, and the
+  trigger was **cross-repo**. Filename resolution would have answered a different question, confirmation-shaped.
+- ⭐ **Then ask whether the gated ARTIFACT still exists.** "Trigger fired" ≠ "condition live"; here the gated PR was
+  closed, so discharging the gate correctly yields *no* follow-up work rather than un-blocked work.
+
+Gap C (operator go/no-go) is unaffected — see below. History retained for provenance.
+
+---
+
+
 ## #11528 Gap C — emit-token conformance bug (PENDING OPERATOR go/no-go → default HOLD)
 Issue #11528 (closed/shipped). Verified by Main at claim-precision (2026-06-23): merged `source/slang/slang-emit-spirv.cpp` emits `OpExtension "SPV_KHR_shader_abort"` (1×; that's the *Vulkan* name) but the SPIR-V registry token is `SPV_KHR_abort` (0× in file) → a module declaring it fails `spirv-val`. Fix = one-line token + a FileCheck/spirv-val test. Flagged on GitHub (issue comment 4784413276). slang-fixer PARKED; operator go/no-go via ask_user_question TIMED OUT 2026-06-23 → defaulted to HOLD (issue closed/shipped + active author jkwak may self-fix). **Do NOT re-dispatch the fixer for Gap C without explicit operator go.**
 

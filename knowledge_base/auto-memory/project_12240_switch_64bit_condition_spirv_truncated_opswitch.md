@@ -16,8 +16,8 @@ metadata:
 **Root cause (emit-side only):** `slang-emit-spirv.cpp:5436` — `kIROp_Switch` in `emitLocalInst` does `emitOperand((SpvWord)intLit->getValue())`, casting to one 32-bit word with no width query. IR is correctly typed (i64 case values); purely the SPIR-V emitter. REPRODUCED @HEAD `70462843c` (Debug slangc + `SLANG_RUN_SPIRV_VALIDATION=1`, no GPU). 32-bit-selector control compiles clean.
 
 **Dedup:** DISTINCT root from siblings — do NOT merge, one fix does not cover multiple:
-- [[project-12237-bool-switch-spirv-assert]] — bool / `processSwitch()` `IRBoolLit` normalization
-- [[project-12238-float-switch-condition-invalid-spirv]] — float / `visitSwitchStmt` `TODO(tfoley)`
+- [[project_12237_bool_switch_spirv_assert]] — bool / `processSwitch()` `IRBoolLit` normalization
+- [[project_12238_float_switch_condition_invalid_spirv]] — float / `visitSwitchStmt` `TODO(tfoley)`
 - #12236 & #9999 — missing-diag (`lowerSwitchCases()`)
 
 **Fix (staged, Approach A, NOT applied):** mirror `emitIntConstant` from64/from32 via `getIntTypeInfo` at the OpSwitch literal site so case literals are emitted at the selector's bit-width; add spirv-validation regression test. Fixer briefing staged in triager memo.
