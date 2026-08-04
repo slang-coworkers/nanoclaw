@@ -22,7 +22,8 @@ being re-derived per query.
 learnings/            L1 raw atoms — one append_learning file each (immutable; never edit)
 sources/learnings/    L2 cleaned, secret-scrubbed, citeable copies + sources/index.md
 wiki/                 L3 synthesized, navigable
-  index.md            catalog: Concepts (grouped) → Topics → all learnings  (READ FIRST)
+  index.md            catalog: Concepts (grouped) → Topics. Small by design — O(concepts),
+                      never one line per learning.  (READ FIRST)
   glossary.md         concept legend
   concepts/<g>-<x>.md synthesized pages: merge related learnings, flag contradictions, cite + cross-link
   topics/<topic>.md   auto-grouped buckets
@@ -55,11 +56,17 @@ This normalizes learnings → `sources/`, writes per-learning pages + topic buck
 **Step 2 — synthesize concept pages (the LLM step).** For each non-empty `.ingest/<group>.txt`,
 spawn a sub-agent (Task tool) that reads that group's source files and writes one or more
 `wiki/concepts/<group>-<subtopic>.md` pages. Each concept page MUST:
+- **open with a `## TL;DR` of ≤40 lines** — the durable rules, no citations. Readers open pages
+  with `limit=60`, so anything a reader must not miss belongs above that line;
+- **stay under 40 KB.** A page above that is silently truncated by the `Read` tool, so its tail
+  never reaches the agent. At the cap, **split by subtopic** (`<group>-<subtopic>-2.md`) — do not
+  keep appending. Growth belongs in page *count*, never page *size*;
 - merge the related learnings into one coherent explanation (don't just concatenate);
 - flag contradictions / supersessions in a dedicated section;
 - cite inline with standard markdown links `[title](wiki/learnings/<stem>.md)` (stem = source filename
   minus the `sources/learnings/` prefix and `.md`);
-- end with a `**Source learnings (N):**` list covering every learning it used.
+- end with a `**Source learnings (N):**` list of the **live** learnings it used — drop rows for
+  atoms you superseded, and recompute N rather than incrementing it.
 Big or `misc` groups: sub-cluster into several pages by topical affinity. Process thoroughly,
 not as a shallow batch. Page frontmatter: `title`, `type: concept`, `group: <group>`, `tags`, `source_count`.
 
@@ -68,8 +75,14 @@ not as a shallow batch. Page frontmatter: `title`, `type: concept`, `group: <gro
 cd /workspace/shared && WIKI_KB_ROOT=/workspace/shared python3 .learnings_wiki.py finalize
 ```
 Rebuilds `index.md` (top **Concepts** section) + `glossary.md`, then prints coverage and any
-`DANGLING`/`UNCOVERED`. **Target: 0 dangling, every learning UNCOVERED-count = 0** (each
-learning cited by ≥1 concept). Fix gaps and re-run.
+`DANGLING`/`UNCOVERED`/`OVERSIZE`/`NO-TLDR`.
+**Target: 0 dangling, 0 uncovered, 0 oversize, 0 missing-TL;DR.** "Covered" means each *live*
+learning is cited by ≥1 concept — an atom marked `superseded_by:` is retired, not a gap.
+
+> **The objective is a bounded encyclopedia, not full coverage.** Chasing "every atom cited"
+> alone forces append-only growth: pages can only ever get longer, and the biggest pages are the
+> most-read ones, so the truncated tail hurts most where it matters most. Retiring an atom
+> (`superseded_by:` + drop its footer row) is a *success*, not a regression.
 
 ## Keeping it up to date (incremental — the day-to-day path)
 
@@ -78,11 +91,17 @@ the routine update is cheap:
 1. `python3 .learnings_wiki.py build` — refresh base; concepts untouched.
 2. `python3 .learnings_wiki.py finalize` — its **`UNCOVERED`** list = exactly the new learnings
    not yet folded into a concept.
-3. Synthesize only those: extend the existing concept page in their theme (add to its synthesis
-   + Source-learnings list; if a new learning supersedes an old note, update the page's
-   *Contradictions / supersessions* section — reconcile, don't just append) — or add a new
-   concept page if it opens a new topic. Don't re-synthesize untouched themes.
-4. Re-run `finalize` → expect 0 dangling, 0 uncovered.
+3. Synthesize only those: fold each into the existing concept page for its theme — **reconcile,
+   don't append**. When a new learning supersedes an older one, rewrite the paragraph to state the
+   current truth, add the old atom's `superseded_by: <new-stem>` frontmatter, and **remove its row
+   from `**Source learnings (N):**`** (recompute N). Near-duplicates collapse into one paragraph
+   citing both. Add a new concept page only if it opens a genuinely new topic — **or if the target
+   page is at the 40 KB cap**, in which case split it by subtopic. Don't re-synthesize untouched themes.
+4. Re-run `finalize` → expect 0 dangling, 0 uncovered, 0 oversize, 0 missing-TL;DR.
+
+**Watch the shape, not just the count.** If total concept-page bytes grow faster than the atom
+count, the fold is inventorying rather than synthesizing — the fix is more supersession and more
+splitting, not a bigger page.
 
 **Full rebuild** (occasionally, when themes drift): `rm -rf wiki/concepts/*`, then run build →
 synthesize **all** groups → finalize. Re-balances themes at full LLM cost.
@@ -272,9 +291,10 @@ def _write_index(entries, by_topic, concepts=None):
     idx += ["## Topics", ""]
     for key in TOPIC_ORDER:
         if by_topic.get(key): idx.append(f"- [{TOPIC_LABEL[key]}](wiki/topics/{key}.md) ({len(by_topic[key])})")
-    idx += ["", "## All learnings (chronological)", ""]
-    for e in sorted(entries, key=lambda e: e["ts"]):
-        idx.append(f"- [{e['title']}](wiki/learnings/{e['stem']}.md)")
+    # NOTE: no per-learning chronological list here. The index is a CATALOG (O(concepts)),
+    # not an inventory (O(learnings)) — an atom-per-line tail made it 433 KB / 98.7% dead
+    # weight and forced every reader to guess a `limit=`. Raw atoms stay enumerable via
+    # `learnings/INDEX.md` and `ls wiki/learnings/`.
     open(os.path.join(WIKI, "index.md"), "w", encoding="utf-8").write("\n".join(idx) + "\n")
 
 def _convert_obsidian_links(learn_dir):
@@ -344,11 +364,29 @@ def finalize():
             if tgt not in present: dangling.append((rel, tgt))
             if rel.startswith("wiki/concepts/") and tgt.startswith("wiki/learnings/"): cited.add(tgt)
     all_learn = {"wiki/learnings/" + os.path.basename(p) for p in learn}
-    uncovered = sorted(all_learn - cited)
+    # A retired atom is DONE, not a gap: an atom whose page carries `superseded_by:` has been
+    # folded and replaced, so it must not re-appear as UNCOVERED forever. Without this, the
+    # only way to reach "0 uncovered" is to append every atom to a concept page and never
+    # remove anything — which is what made pages grow without bound.
+    superseded = {"wiki/learnings/" + os.path.basename(p) for p in learn
+                  if fm(open(p, encoding="utf-8").read(), "superseded_by")}
+    live = all_learn - superseded
+    uncovered = sorted(live - cited)
     print(f"concept pages {len(concepts)} | wiki pages {len(pages)} | links {edges} | dangling {len(dangling)}")
     for r, t in dangling[:10]: print("  DANGLING", r, "->", t)
-    print(f"coverage {len(cited)}/{len(all_learn)}")
+    print(f"coverage {len(cited & live)}/{len(live)} live ({len(superseded)} superseded, excluded)")
     for u in uncovered[:40]: print("  UNCOVERED", u)
+    # Page budget: a concept page must stay readable in ONE bounded Read. Oversize pages are
+    # silently truncated by the Read tool, so the tail of the biggest (= most-read) pages was
+    # never reaching the agent. Report, don't rewrite — splitting is a synthesis decision.
+    PAGE_CAP = 40_000
+    for p in cfiles:
+        t = open(p, encoding="utf-8").read()
+        rel = os.path.relpath(p, ROOT).replace(os.sep, "/")
+        if len(t) > PAGE_CAP:
+            print(f"  OVERSIZE {rel} {len(t)}B > {PAGE_CAP}B — split by subtopic")
+        if "## TL;DR" not in t:
+            print(f"  NO-TLDR  {rel} — add a <=40-line '## TL;DR' at the top")
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "build"
