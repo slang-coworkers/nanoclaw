@@ -136,6 +136,55 @@ describe('recordHumanVerdict', () => {
   });
 });
 
+describe('recordHumanVerdict — head advanced past the decision', () => {
+  it('stamps the latest unstamped decision when the merge head is not a decided commit', () => {
+    // Regression (prod 2026-08-04): a PR decided at head X routinely gains
+    // commits and merges at head Y. The exact-match UPDATE matched nothing,
+    // changed 0 rows and returned false SILENTLY — 22 of 26 unstamped terminal
+    // PRs had advanced this way, leaving a 42% hole in the calibration data.
+    const db = initTestDb();
+    runMigrations(db);
+    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
+    upsertDecision(
+      db,
+      baseWrite({ commitSha: 'b'.repeat(40), decision: 'ABSTAIN_POLICY', decidedAt: '2026-07-09T01:00:00Z' }),
+    );
+
+    // Merged at a head the approver never decided on.
+    const ok = recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED');
+    expect(ok).toBe(true);
+
+    const rows = db
+      .prepare('SELECT commit_sha, human_verdict FROM approval_decisions ORDER BY decided_at ASC')
+      .all() as Array<{ commit_sha: string; human_verdict: string | null }>;
+    // Only the LATEST decision is credited; the superseded R0 stays unstamped.
+    expect(rows[0].human_verdict).toBeNull();
+    expect(rows[1].commit_sha).toBe('b'.repeat(40));
+    expect(rows[1].human_verdict).toBe('MERGED');
+  });
+
+  it('never overwrites a verdict that was already observed', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
+    recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'CHANGES_REQUESTED');
+
+    // A later terminal event must not clobber the real observation.
+    const ok = recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED');
+    expect(ok).toBe(false);
+    const row = db.prepare('SELECT human_verdict FROM approval_decisions WHERE commit_sha=?').get('a'.repeat(40)) as {
+      human_verdict: string;
+    };
+    expect(row.human_verdict).toBe('CHANGES_REQUESTED');
+  });
+
+  it('returns false when no decision exists for the PR at all', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    expect(recordHumanVerdict(db, 'shader-slang/slang', 424242, 'f'.repeat(40), 'MERGED')).toBe(false);
+  });
+});
+
 describe('getDecisionSessionsForPr', () => {
   it('returns the approver session rows that decided a PR, oldest first', () => {
     const db = initTestDb();
