@@ -111,9 +111,25 @@ export function getDecisionSessionsForPr(db: Database.Database, repo: string, pr
 }
 
 /**
- * Stamp the human verdict onto an existing decision row for the join. No-op
- * (returns false) if no decision row exists yet for (repo, pr, commit) — the
- * human review arrived before/without a Verity decision; nothing to join.
+ * Stamp the human verdict onto an existing decision row for the join.
+ *
+ * Exact (repo, pr, commit) first — that is the true join: the human reviewed
+ * the very head the approver decided on.
+ *
+ * Falling back matters because the common case is NOT exact. A PR the approver
+ * decided at head X routinely gains commits and merges at head Y, and the
+ * terminal verdict carries Y. An exact-only UPDATE then matches nothing,
+ * changes 0 rows, and returns false **silently** — the caller has no reason to
+ * suspect anything and the decision is never scored. Measured on the
+ * slang-coworkers prod ledger (2026-08-04): of 26 PRs that reached a terminal
+ * state without ever being stamped, 22 (85%) had advanced past the decided
+ * commit. That single silent no-op was the dominant cause of a 42% hole in the
+ * calibration data.
+ *
+ * So when the exact row is absent, stamp the most recent UNSTAMPED decision for
+ * that PR — the approver's last call is what the outcome actually judges — and
+ * say so in the log. Never overwrite an existing verdict: a real observation
+ * always beats an inferred one.
  */
 export function recordHumanVerdict(
   db: Database.Database,
@@ -137,5 +153,34 @@ export function recordHumanVerdict(
     });
     return true;
   }
-  return false;
+
+  const latest = db
+    .prepare(
+      `SELECT rowid AS rid, commit_sha AS decidedSha FROM approval_decisions
+        WHERE repo=? AND pr_number=? AND human_verdict IS NULL
+        ORDER BY decided_at DESC LIMIT 1`,
+    )
+    .get(repo, prNumber) as { rid: number; decidedSha: string } | undefined;
+
+  if (!latest) {
+    // Genuinely nothing to join: no decision for this PR, or every decision
+    // already carries a verdict. Logged so a missing join is never silent.
+    log.info('human verdict had no unstamped decision to join', {
+      repo,
+      pr: prNumber,
+      commit: commitSha.slice(0, 12),
+      human: humanVerdict,
+    });
+    return false;
+  }
+
+  db.prepare('UPDATE approval_decisions SET human_verdict=? WHERE rowid=?').run(humanVerdict, latest.rid);
+  log.info('approval decision joined to human verdict (head advanced past the decision)', {
+    repo,
+    pr: prNumber,
+    verdictCommit: commitSha.slice(0, 12),
+    decidedCommit: latest.decidedSha.slice(0, 12),
+    human: humanVerdict,
+  });
+  return true;
 }
