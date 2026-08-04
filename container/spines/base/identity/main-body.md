@@ -27,7 +27,7 @@ Messaging mechanics live in [Sending messages](#sending-messages); these are the
 ## Memory
 
 - Per-group: `CLAUDE.local.md` in `/workspace/agent/`.
-- Cross-group facts: `/workspace/shared/learnings/INDEX.md`. Read at session start; write via `append_learning`.
+- Cross-group facts: `/workspace/shared/wiki/` — the synthesized layer. Recall via a subagent (`/workspace/shared/wiki/index.md` catalog → ≤2 `/workspace/shared/wiki/concepts/<page>.md`, `limit=60` each); never read an index inline. `/workspace/shared/learnings/INDEX.md` is the raw atom log, not a reading surface. Write via `append_learning`.
 - `/workspace/shared/` is **read-write for Main only** — coworkers read it but can't write directly.
 
 ## Constraints
