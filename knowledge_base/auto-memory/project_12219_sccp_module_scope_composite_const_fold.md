@@ -7,9 +7,31 @@ metadata:
   originSessionId: f1d7131c-25f1-4b0d-a50b-9a32585f50b6
 ---
 
+
+**⛔ DO NOT COMPRESS — 🔴 OWED FOLLOW-UP, GATE FIRED 2026-08-01 AND WENT UNNOTICED FOR 2 DAYS**
+(Main-verified via GitHub 2026-08-03; surfaced by an *unindexed-file* sweep, NOT by reading this file.)
+
+- **PR #12263 MERGED `2026-08-01T07:09:29Z`; issue #12219 CLOSED `completed` 07:09:30Z.** ⇒ the standing
+  condition *"file the float→int numeric-cast fold follow-up **when #12263 merges**"* **FIRED 2 days ago.**
+- **Not yet filed** — search of open slang issues for a numeric-cast-fold follow-up returns **0**.
+- Companion **#12186 still OPEN** (cross-width bridge deferral; separate chain, [[project_12185_bindless_texture_nv_desc_handle_nonimage]]).
+- **NEXT ACTION (needs a decision, not a unilateral file):** the deferral was pdeayton's scope-narrowing call
+  (PR comment 5120069648) — element-wise FloatCast/IntCast/castFloatToInt folding + general aggregate folding
+  came OUT of #12263. Confirm with the maintainer that the follow-up is still wanted before opening an issue.
+
+🔴 **WHY IT WAS MISSED — this file has NO INDEX ENTRY.** It carries a live owed action, an operator-parked
+slang-skills worktree-isolation proposal, and a ⭐ rule (*trust the specialist's root-cause analysis over a
+parent's symptom-fix*), and **none of it is reachable from `MEMORY.md` or any topic index.**
+⭐⭐ **A refinement or obligation filed ONLY into the project file where it was discovered is functionally
+DISCARDED at the moment of discovery** (slang-fixer's framing, 2026-08-03). Worse than not recording it:
+the store *holds* the obligation, so nothing prompts re-derivation, and the gate silently expires.
+See [[feedback_mechanism_must_predict_observed_coordinates]] (unexecutable-store, 3 instances same day).
+
+---
+
 # #12219 — SCCP: fold module-scope vector/composite constant expressions before SPIR-V emission
 
-Split-off from review of PR #12186 (fix for [[project-12185-bindless-texture-nv-desc-handle-nonimage]]) at **@pdeayton-nv**'s request. Filed by nv-slang-bot. Label: bug.
+Split-off from review of PR #12186 (fix for [[project_12185_bindless_texture_nv_desc_handle_nonimage]]) at **@pdeayton-nv**'s request. Filed by nv-slang-bot. Label: bug.
 
 **What:** ICE (E99997 "Unhandled global inst in spirv-emit") on valid module-scope `static const` vector/composite initializers built from float / `bit_cast` sources. Original framing was narrow (DescriptorHandle constant initializers, uint2/uint64 rep casts); **pdeayton-nv broadened scope 07-24** to the general case: *fold module-scope vector/composite constant exprs containing construction, numeric conversion, bit-casting, selection, and representation-wrapper ops before emission.*
 

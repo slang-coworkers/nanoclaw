@@ -15,6 +15,6 @@ metadata:
 
 **Two deprioritized slang-side follow-ups (NO slang tracking issue filed):**
 1. **Warning diagnostic** — jhelferty explicitly requested twice (warn when requested element stride not honored by target). Motivation weakened once #11578 landed: Metal+HLSL now honor it; genuinely-unhonored cases reduce to CUDA (clean self-consistent drop) + future targets. Maintainer closed parent without green-lighting the draft PR from coworker's checklist → treat as superseded/deprioritized, NOT actively owed. Design Q if ever revived: which stride is authoritative for compare — reflection vs emitted shader-data (they disagreed on SPIR-V).
-2. **SPIR-V reflection-vs-emitted inconsistency** — latent ABI gap: emitted binary honors marker (`ArrayStride 24`, `_1` Offset 8) but reflection API reports 32 (`_1` Offset 16). Harmless in this repro (host over-allocates from reflection → no OOB). Coworker offered to file own issue; jhelferty never answered → NOT filed. Related theme: [[project-12092-reflection-anyvaluesize-stride-mismatch]].
+2. **SPIR-V reflection-vs-emitted inconsistency** — latent ABI gap: emitted binary honors marker (`ArrayStride 24`, `_1` Offset 8) but reflection API reports 32 (`_1` Offset 16). Harmless in this repro (host over-allocates from reflection → no OOB). Coworker offered to file own issue; jhelferty never answered → NOT filed. Related theme: [[project_12092_reflection_anyvaluesize_stride_mismatch]].
 
 Do not re-open or dispatch unless a maintainer explicitly revives the warning or asks to file the SPIR-V item.

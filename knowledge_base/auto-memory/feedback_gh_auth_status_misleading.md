@@ -10,7 +10,35 @@ originSessionId: bf56f147-5db5-4819-84b1-fe7a698a8fad
 
 **How to apply:**
 - To verify GitHub access, hit a **representative org-scoped path**: `gh api repos/shader-slang/slang` (GET) — returns real data when the path works.
-- **Cleanest non-destructive confirmation it's authenticated (not just public read):** `gh api repos/shader-slang/slang --jq '.permissions'`. An authenticated request returns a `permissions` object (e.g. `{"admin":false,...}`); an anonymous public read OMITS the field entirely. Presence of the object = proxy injected the token = writes work via the bot path, regardless of what `gh auth status`/`gh api user` say. All-false values are normal for an App installation token (the 5-field collaborator object ≠ App issues/PR-write perms).
+- ⭐⭐⭐**THERE IS NO PER-CONNECTION "AM I AUTHENTICATED?" ANSWER — injection is PER-PATH at the OneCLI proxy.** `https_proxy` is set to the gateway, so **all** egress (`gh`, `curl`, `urllib`) traverses it, and it injects the credential **only on paths that have a secret rule**. Main-verified 3-way control 2026-08-03 18:3xZ:
+  ```
+  path                          HTTP  X-Ratelimit-Limit  body.message         verdict
+  repos/shader-slang/slang-rhi  200   6000               (none)               rule ⇒ injected + ACCEPTED
+  repos/torvalds/linux          401   <none>             "Bad credentials"    cred FORWARDED and REJECTED
+  repos/microsoft/vscode        401   <none>             "Bad credentials"    same
+  rate_limit                    200   60                 (none)               reached GitHub ANONYMOUSLY
+  ```
+  ⚠️**Two errors corrected in this very table (Main, 2026-08-03 18:3xZ, status+body measured):**
+  (a) `rate_limit` is **200 / limit 60**, NOT 401 — it *does* reach GitHub, anonymously;
+  (b) `torvalds/linux` is **not** "not injected" — 401 `"Bad credentials"` means a credential
+  **was** forwarded and rejected (a genuinely anonymous GET on a public repo returns **200**).
+  ⇒ ⛔**"no `X-Ratelimit-*`" means the request FAILED, not that it went out clean — so a
+  no-rule path is NOT a valid negative control.** ⭐⭐**Distinguish "the control returned
+  nothing" from "the control FAILED": READ THE BODY.** A 401 body, an HTML error page, and a
+  real anonymous 200 are indistinguishable through a header grep. This table had three
+  successive wrong control claims (strip-`Authorization` · no-rule-path · `rate_limit`
+  tiering) — **each assumed a condition it never checked.**
+- ⭐**Correctly-scoped probe — ask "is the credential injected on THE PATH I'm about to use?", never "is my token healthy?":**
+  ```
+  gh api -i repos/<org>/<repo> | grep -iE 'x-ratelimit-limit|x-accepted-github-permissions'
+    X-Ratelimit-Limit: 6000  ⇒ injected on THAT path (+ live Remaining/Used/Reset for quota)
+  ```
+  ⛔**Do NOT read `6000` as "the connection is authenticated"** — it is a statement about one path only. A sibling path can 401 in the same second. ⛔**Do NOT use `gh api rate_limit`** (no rule ⇒ 401/anonymous, and during a OneCLI disconnect it returns an error body with **zero numeric fields**). ⛔**Do NOT test by stripping your own `Authorization` header** — the proxy re-supplies it, so the "control" is not a control; the only valid control is **a path with no secret rule** (`repos/torvalds/linux`).
+  ⚠️ I published the over-broad version of this recipe *and handed it to two coworkers* before controlling it. **Correct a bad recipe on the same edge you sent it.**
+  ⛔**Do NOT use `gh api rate_limit` for this.** During a OneCLI GitHub disconnect it never reaches GitHub — it returns a OneCLI error body (`{connect_url, error:"app_not_connected", provider}`, HTTP 401) with **zero numeric fields**. A recipe phrased as "`rate_limit` limit 60 = anonymous / 6000 = injected" is **unexecutable exactly when you need it**. (I wrote that recipe on 2026-08-03 and had to retract it hours later — see [[project_github_actions_graphql_401_outage]].)
+- **Weaker, and NOT sufficient alone: `gh api repos/shader-slang/slang --jq '.permissions'`.** An authenticated request returns a `permissions` object; an anonymous read of a **private** repo omits it. ⚠️**But on a PUBLIC repo the field can appear regardless**, so presence-of-`.permissions` **can read as authenticated while GraphQL is dead and the token is anonymous-tier** (observed 08-03: `.permissions` present, all-false, alongside `X-Ratelimit-Limit: 6000`). All-false values are normal for an App installation token (the 5-field collaborator object ≠ App issues/PR-write perms) and are **not** a per-repo write signal — see the 2026-06-10 recurrence below.
+- ⭐**`gh api user` → `Resource not accessible by integration` is EXPECTED for a GitHub App installation token** — an App has no `/user`. That failure is a *positive identification of the credential type*, not a bug. Use it to pick the right diagnostic lens (App-token provisioning), never as evidence of an outage.
+- ⚠️**Path-specific injection is the norm, not the exception.** On 08-03 a single token simultaneously had: REST reads ✅ 200 at the 6000 tier · `rate_limit` ❌ OneCLI 401 · GraphQL ❌ 401 Bad credentials. **Never generalize one endpoint's verdict to "the token."** Name the path with every auth claim.
 - **POST/PATCH comments and PR creation on `shader-slang/*` and `slang-coworkers/*` work via the bot path.** Post a 5-bullet with `gh api -X POST repos/<org>/<repo>/issues/<num>/comments -f body=@<file>`.
 - PR push flow: in the clone, `git remote set-url origin https://github.com/<owner>/<repo>.git` (drop baked auth), commit as `nv-slang-bot[bot]` + a single `Co-authored-by:` trailer (no AI attribution), `git push -u origin <branch>`, then `gh pr create`. The proxy injects the token per request.
 - **Exception:** `.github/workflows/*` edits need an elevated PAT, not the bot path. Comment posts and non-workflow PRs do not.

@@ -9,8 +9,113 @@ metadata:
 
 # #12185 — spvBindlessTextureNV InternalError for non-texture/sampler DescriptorHandle
 
+> ⚠️ **CONTROLLING STATE — read this block first; everything below is chronological history and
+> earlier entries may be SUPERSEDED.** (This file exceeded the 24.4KB Read limit; append-only order
+> would otherwise truncate the newest, most authoritative content. See
+> [[project_memory_files_over_read_limit_backlog]].)
+>
+> **As of 2026-08-03 ~23:28Z — ✅APPROVED, NON-DRAFT. Held PURELY on a maintainer merge.**
+> - PR **#12186 non-draft**, head **`65338dbef9`**, 17 files, `Closes #12185`. Review `4849248355` =
+>   **APPROVED by pdeayton-nv @23:11:11Z binding to `65338dbef9`, which IS the current head** ⇒ the
+>   approval is **live, not stale**. `mergeable: true`, `mergeable_state: **behind**`.
+> - 🔒**APPROVAL-LOCKED — do NOT push, rebase, dispatch, or ready-flip.** Any commit or rebase
+>   dismisses pdeayton's approval. `mergeable_state: behind` may need a maintainer **"Update branch"**
+>   first — **the bot cannot do it** (same dismissal). Approval ≠ merge auth; nothing closed.
+> - ⚠️**CI: do NOT read the aggregate red X as a failure.** The real `pull_request` suite
+>   (`83685090805`) has **zero failures** (still settling). The 2 reds on this head are `check-ci` +
+>   `wait-for-human-priority` from the fixer's own earlier **manual dispatch** (suite `83679936584`) —
+>   cumulative history, not this PR's result. (Sibling of the suite-vs-commit basis trap below.)
+> - **On merge:** **#12192 UNPARKS** (it was blocked on this landing) · #12191 likely moot · #12219
+>   already merged as #12263. Then re-read the merged diff against the close-out checks, refresh the
+>   verdict to "merged", forward the final resolution.
+> - Issue verdict `5065523733` refreshed in place → "approved, awaiting maintainer merge" (live body
+>   fetched first, re-fetched after PATCH to confirm: 2961 chars, disclaimer intact). The public verdict
+>   now **states the kind-gating caveat**, so the closed issue won't be read as a type-level guarantee.
+> - ⚠️**TWO WRITERS EDIT THE PUBLIC VERDICT COMMENTS** (the fixer edits them too) ⇒ **fetch before
+>   editing**; never assume the body you last wrote is what's live. ✅**"bot can't PATCH issue comments
+>   (403)" was STALE** — re-probed with an idempotent re-PATCH of `5065523733`: succeeded, `updated_at`
+>   moved, body intact at 2528 chars (the shorter API echo was **CRLF normalization, not truncation**).
+>   ⇒ at close-out **PATCH first and re-fetch to confirm**, don't default to a redundant fresh comment.
+>   Current state: `5041198434` carries a superseded-approach warning (it had still claimed
+>   "approved / awaiting merge" — actively misleading post-redesign); `5065523733` refreshed with the
+>   layout + inlining fixes, stale head SHA dropped. Design trail intact, not rewritten.
+>   ⇒ [[feedback_published_negative_env_claims_need_rederivation]] fired AGAIN — a capability-negative
+>   held for weeks, cleared by one probe.
+>   **The inlining fix SHIPPED:** five case labels present at
+>   `slang-ir-legalize-global-values.cpp:119-123` (`CastUInt2ToDescriptorHandle`,
+>   `CastUInt64ToDescriptorHandle`, `CastDescriptorHandleToUInt2`, `CastDescriptorHandleToUInt64`,
+>   `kIROp_Select`) beside pre-existing `kIROp_BitCast` (:111); new regression test
+>   `desc-handle-nv-bindless-global-width.slang`. 17/17 exit-code-clean under spirv-val (first harness
+>   only grepped stderr — codex caught it; re-run held).
+> - **Outcome: pdeayton's own ~10-line proposal beat all four fixer guard variants AND the
+>   producer-side gating the triager had assessed as the root fix** — the real constraint was
+>   **representation survival**, not emit-side handling. ⭐Worth remembering: the maintainer saw a
+>   simpler layer than either bot tier.
+> - **Kind-gating stays OPEN as a separate semantics question** (gap verified `hlsl.meta.slang:27474-83`
+>   / `:27529-44`). The fixer did NOT claim the fix settles it — it separated *representation survival*
+>   from *expressibility* and stated plainly that a cross-width round-trip **still compiles silently**
+>   (defined, not crashing), so pdeayton/csyonghe decide knowingly whether they want it diagnosed.
+> - CI red = benign priority-yield — only failures are `check-ci` + `wait-for-human-priority`; **every
+>   build/test job `skipped` ⇒ no code/test job executed**, nothing to investigate.
+>   `retry-yielded-bot-ci` reruns.
+> - ⚠️**CI COUNTING BASIS — suite-level ≠ commit-level; comparing them manufactures a phantom
+>   discrepancy at merge.** Head `142627d4d6` carries **12 check-suites**: the cited suite
+>   `83668874200` = 36 runs (33 skipped / 2 failure / 1 success) — exact for that suite; the
+>   **commit-level** query returns **80** runs (2nd 36-run suite `83667598325` concluded `skipped`, ten
+>   single-run suites, + 2 queued app suites github-pages/coderabbitai). Both figures correct, different
+>   questions. ✅Truncation self-check passed: 74+4+2 = 80 = `total_count`
+>   ([[feedback_gh_paginate_401s_on_page2_use_explicit_pages]]).
+> - **Shape that shipped (3 things, nothing else):** option-(a) **kind-dependent handle width**
+>   (uint64 for texture/sampler family, uint2 for buffers+AS) · the `sizeof`/`alignof` layout-rule fix
+>   · the ~10-line `isInlinableGlobalInst` addition. **No diagnostic, no descope, no `.meta.slang`
+>   change.** All four earlier guard variants dropped (E39033 commit dropped, iteration-4 stashed);
+>   ~86 lines of cross-width machinery deleted (proven dead, 0/10 reach) — at close-out confirm the
+>   deletion **and** that no dangling refs to the removed helpers remain. E55215 shape long gone; the
+>   abort is fixed **by construction**, not diagnosed.
+> - **Kind-gating gap** (what the escalation was about): width conversions are capability-gated but
+>   **NOT kind-gated** in both directions (`hlsl.meta.slang:27474-27483` write / `:27529-27544`
+>   read-back, triager-verified at master) ⇒ cross-width use is expressible in the type system. The
+>   inlining fix addresses **representation survival**, NOT this **expressibility** question.
+> - ⚠️**The mechanism is NOT "a surviving runtime `OpBitcast`"** (correcting an earlier expectation —
+>   verifying against that would be wrong): once the initializer chain inlines, **ordinary constant
+>   folding resolves the width outright** (`OpConstant %ulong` → `OpIAdd %ulong`; the malformed
+>   `OpCompositeExtract`-on-a-scalar folds to a `%uint_3` index) ⇒ **no bitcast emitted for the
+>   constant case at all.**
+> - **CLOSE-OUT — re-read the MERGED diff, never progress echoes** (shape churned ~6×):
+>   · Record that cross-width round-trip is now **silently DEFINED, not diagnosed** — satisfies
+>     #12185's text, but is **NOT** a type-level guarantee anyone may infer from the closed issue.
+>   · ⛔**RETIRED CHECK — do NOT run "verify `gh-9916.slang` unmodified"; it FALSE-ALARMS now.**
+>     Written when only the E39033 commit touched it; branch-wide it is **+5/−1** from option-a commit
+>     `6efff26dcb` (opcode-CHECK correction, legitimate). The revert that mattered already happened.
+>   · Lean on the empirical `spirv-val` result, **not** spec prose.
+>   · ⭐**TEST ADEQUACY (pdeayton, 08-03 21:27Z): a single `-O1` lane is INERT for this fix** — at
+>     `-O1` both bitcasts have already folded, so it verifies the end state and can never show the
+>     global initializer was legally sunk. Require **all three lanes**: `-O0` spirv-asm with SSA ids
+>     bound · `-O0` binary via `-o <file>` · `-O1` folded `OpConstant`. **Plus confirm `kIROp_Select`
+>     is genuinely exercised** — it's one of the five ops this PR adds and was riding along untested.
+>     `CHECK-NOT` must be **bounded between positives spanning `OpLabel`…`OpFunctionEnd`**; an
+>     end-of-file-bounded `-NOT` misses a bitcast right before the `OpIAdd` — exactly where the bridge
+>     would reappear. ⇒ [[feedback_optimized_lane_can_be_inert_for_the_fix]]
+> - ⚠️**MEASUREMENT BASIS — do not quote "−100/+4 in `slang-emit-spirv.cpp`" publicly.** That is a
+>   *per-commit* figure; **branch-vs-master is +58/−7** there (`git diff --numstat
+>   origin/master...PR-head`), because the option-a work also adds to that file. Not a defect — a
+>   basis mismatch. Always state which basis a diffstat is on.
+> - ⚠️**TWO LAYERS, DO NOT CONFLATE** — the shipped mechanism (`kIROp_Select` + the four
+>   `Cast*DescriptorHandle*` ops added to `isInlinableGlobalInst`, beside pre-existing `kIROp_BitCast`)
+>   is **representation SURVIVAL**. Whether a cross-width round-trip should be **legal-and-bitcast** or
+>   **type-system-rejected** is **EXPRESSIBILITY** — a semantic call for pdeayton/csyonghe that this
+>   fix does NOT settle. The fixer stated that distinction in its reply rather than claiming otherwise.
+> - Spin-offs: **#12219** (SCCP const-fold, separate chain) · **#12191/#12192 MOOT** (they were about
+>   the removed E55215) · heap-path spirv-opt crash (`const_folding_rules.cpp:129`).
+> - Lessons born here: [[feedback_descope_recheck_original_acceptance_bar]] ·
+>   [[feedback_fix_can_invert_into_overrejection]]
+
 **Repo:** shader-slang/slang · **Author:** pdeayton-nv (MEMBER) · opened 2026-07-22
 **Canonical thread:** `gh-issue-shader-slang/slang-12185`
+
+---
+
+## History (chronological — earlier entries may be superseded by the block above)
 
 With `-capability spvBindlessTextureNV`, converting `DescriptorHandle<T>` → SPIR-V aborts
 (`E99997 InternalError: Unsupported result type for CastDescriptorHandleToResource`, exit 255)
@@ -18,167 +123,30 @@ for ConstantBuffer / StructuredBuffer / RWStructuredBuffer / ByteAddressBuffer *
 RaytracingAccelerationStructure. Image/sampler kinds compile fine. Same cases compile without
 the capability.
 
-## Root cause (triager-verified at source @d148787f2)
-Producer/consumer breadth mismatch:
-- **Producer** `hlsl.meta.slang:27784-27785` — the `case spvBindlessTextureNV:` arm forwards
-  *every* descriptor kind through `__castDescriptorHandleToResource<T>` **unconditionally**
-  (sibling arms all `switch(T.kind)`).
-- **Consumer** `slang-emit-spirv.cpp:5121-5147` — only handles `TextureType`/`SamplerStateType`;
-  `default → SLANG_UNEXPECTED` at 5145.
-- `SPV_NV_bindless_texture` defines uint→image/sampler only; buffers have no encoding (→ should
-  be a graceful diagnostic); AS has `OpConvertUToAccelerationStructureKHR` (already used at
-  slang-emit-spirv ~7490-7497 but not wired into this path).
+## Original root cause (triager-verified @d148787f2) — the reported abort
+Producer/consumer breadth mismatch: producer `hlsl.meta.slang:27784-85` (`case
+spvBindlessTextureNV:`) forwarded **every** descriptor kind through
+`__castDescriptorHandleToResource<T>` unconditionally (sibling arms all `switch(T.kind)`), while
+consumer `slang-emit-spirv.cpp:5121-5147` handled only `TextureType`/`SamplerStateType` →
+`SLANG_UNEXPECTED` at :5145. `SPV_NV_bindless_texture` encodes uint→image/sampler only; buffers have
+no encoding; AS has `OpConvertUToAccelerationStructureKHR` (existed ~:7490-97, not wired in).
+Correction to reporter: he expected AS to work — **AS also aborted**.
 
-## Correction to reporter analysis
-Reporter said AS *should* work; in fact R3/AS **also aborts** currently.
+## 📁 Superseded fix shapes → [[project_12185_superseded_fix_shapes_history]]
+Two abandoned shapes + the escalation that replaced them, moved out to keep this file readable:
+**shape #1** E55215-in-legalization (reached APPROVED @`4fbe216b0e`, then csyonghe re-opened the
+design; E55215 + guard/predicate no longer exist ⇒ #12191/#12192 MOOT, verdict cmt 5041198434 refresh
+held) · **shape #2** the E39033 arc (all four guard variants dropped) · how option (a) was chosen and
+first pushed (`f4004c3f90`) · pdeayton's 2 investigation Qs (Q1 → issue #12219; **Q2's first answer was
+wrong and got corrected** — real layout bug, fixed in `107f158ffe`) · the 08-03 escalation and its
+verified kind-gating crux. **Read the child before re-proposing anything in this space.**
 
-## Fix as landed (draft PR #12186)
-Triager sketched Approach A (meta.slang static_assert). **Fixer chose a different, sound layer:**
-buffer-diagnostic landed in **SPIR-V legalization** — new `E55215` via
-`checkBindlessDescriptorHandleConversion` (op occurs at local+global scope; legalization visits
-all before emit; mirrors existing `TargetDoesNotSupportDescriptorHandle`). **AS wired
-producer-side now** (open design Q resolved = wire now, not defer) → emits
-`OpConvertUToAccelerationStructureKHR`, passes spirv-val.
-
-Result: all 4 reporter repros no longer abort. AS → valid SPIR-V; ConstantBuffer/StructuredBuffer
-→ clean `E55215`, zero `E99997`; image/sampler + texel-buffer controls unchanged. Repro test
-`tests/language-feature/descriptor-handle/desc-handle-nv-bindless-texture-kinds.slang`.
-
-## Chain state (as of 2026-07-23 ~21:05Z) — RE-OPENED for project-lead redesign
-- **csyonghe (Yong He, project lead) posted a redesign proposal @20:59Z** on the unresolved
-  `hlsl.meta.slang` review thread. GitHub reviewDecision STILL `APPROVED` (head `4fbe216b0e`,
-  MERGEABLE) — csyonghe posted a review-thread *comment*, NOT a formal REQUEST_CHANGES — but
-  substantively this **re-opens the design** (supersedes prior "held on merge").
-- **Proposal:** delete the dedicated `spvBindlessTextureNV` target-switch arm; instead special-case
-  `T.kind == Texture/Sampler/CombinedTextureSampler` inside the `spvDescriptorHeapEXT` + default
-  arms — so the NV conversion opcode fires only for texture/sampler kinds AND only when the
-  capability is set, with defined behavior when bindless-texture is/isn't combined with
-  DescriptorHeapEXT. "Fix-the-producer, don't diagnose-downstream" restructure (repo methodology)
-  → would supersede the current E55215-in-legalization shape.
-- **Ownership:** slang-fixer (PR owner) investigating feasibility (can `.meta.slang` branch on the
-  sub-capability; is the non-DescriptorHeapEXT buffer path well-defined) and will reply on-thread
-  with a concrete direction BEFORE touching code (implementing would dismiss pdeayton's approval).
-  Triager NOT running parallel analysis — fixer's surface. Design call = csyonghe + fixer +
-  pdeayton, NOT orchestrator to dispatch.
-- **Issue verdict (cmt 5041198434):** HOLDING refresh — still reads "APPROVED, awaiting merge"
-  (soft now); triager won't churn until redesign direction settles.
-- **Now held on: design-settle → rework → re-approve → merge** (not merge). Triager relays the
-  fixer's direction when it lands.
-
-### Fixer feasibility (2026-07-23 ~21:21Z) — NOT a simple rework; blocker found
-- csyonghe's proposal (route only texture/sampler through NV op, drop E55215) is the cleaner
-  producer-side direction BUT hits a **representation blocker:** under `spvBindlessTextureNV` the
-  `DescriptorHandle` is **uint64 capability-wide for ALL kinds** (baked into emit, legalization,
-  byte-address storage, layout/reflection), while heap/AS paths decode uint2 → non-texture/sampler
-  kinds can't just fall through.
-- **Decision now with project lead csyonghe** (framed on-thread `r3641456739`):
-  (a) make handle width kind-dependent → cross-subsystem audit (potentially large), vs
-  (b) keep uint64-wide + define a uint64→heap-index encoding contract.
-  Fixer holding for csyonghe's (a)/(b) pick; will implement his choice + re-verify (WILL dismiss
-  pdeayton's approval — expected for a real code change). Fixer won't implement speculatively
-  (holds if csyonghe goes quiet).
-- **Scope/risk up:** previously-"clean approved fix" may now need non-trivial redesign; chain
-  duration/risk increased. GitHub reviewDecision still APPROVED but effectively superseded.
-- **Held on csyonghe's design decision** — no human action needed except the lead's call.
-
-### Design decision LANDED (2026-07-23 ~22:37Z): option (a), kind-dependent handle width
-- Per a code-review meeting, jkwak reassigned PR #12186 to **pdeayton-nv** (assignees=[pdeayton-nv],
-  head still `4fbe216b0e`, reviewDecision still APPROVED — no code pushed yet). pdeayton picked
-  **option (a):** make DescriptorHandle SPIR-V representation **kind-dependent** (uint64 only for
-  `spvBindlessTextureNV`-affected kinds, uint2 otherwise). Fixer posted impl plan on-thread
-  `r3641818001`.
-- **Fix-shape-changing finding:** acceleration structures do NOT need uint64 — plain `-target
-  spirv` already lowers an AS handle (uint2) → `OpConvertUToAccelerationStructureKHR` (spirv arm
-  packs `__asuint64((uint2))` itself). So **AS → uint2**, falling through the existing path —
-  which *reverses* what the currently-approved PR does for AS. Fixer verified empirically
-  (corrected a subagent). (Analysis on fixer's own PR code; triager did not re-derive.)
-- **Scope = representation-wide:** one kind→width classifier (single source of truth, IR+AST)
-  feeding the ~6 sites that today decide uint64 capability-wide (emit, legalization,
-  layout/reflection); branch `.meta.slang` casts on `T.kind`; **DELETE the standalone NV arm + the
-  E55215 diagnostic/guard/predicate.** Supersedes the entire current fix shape → will dismiss
-  pdeayton's approval + re-request review (expected).
-- **Held on pdeayton confirming two mapping points** — kind→width (esp. AS→uint2) and whether CUDA
-  stays uint64-wide — BEFORE fixer builds. Fixer won't implement on unconfirmed mapping; holds if
-  pdeayton goes quiet. Next: confirm mapping → implement representation change → re-verify → new
-  review cycle. Verdict (cmt 5041198434) refresh still HELD.
-
-### Option (a) redesign PUSHED (2026-07-24 ~02:22Z) — PR back in DRAFT, held on re-review
-- **Previously-approved diff REPLACED** with the kind-dependent representation. Verified head
-  `f4004c3f90`, `Closes #12185`, **14 files +489/−70**.
-- **PR is DRAFT** (pdeayton-nv converted it @07-23 22:54:40Z, verified via timeline);
-  reviewDecision=REVIEW_REQUIRED, prior APPROVE dismissed. **Draft-hold guardrail applies — issue
-  is the public surface.**
-- **Substance verified (triager, at source):** E55215 genuinely GONE (diagnostics.lua def +
-  legalize guard both 0 matches). Surviving `isBindlessTextureNVEncodableResourceType` repurposed
-  as the **kind→width classifier** (texture/sampler family=uint64, buffers/AS=uint2), feeding
-  emit/legalize/byte-address/layout/reflection. Buffers now compile via the heap path — **abort
-  fixed BY CONSTRUCTION, not diagnosed.** AS→uint2 as predicted.
-- **GitHub:** issue verdict refreshed via **fresh incremental delta cmt 5065523733** (a human
-  jkwak commented since last, so posted new comment rather than editing buried "approved" one):
-  "approach reworked, PR back in draft for re-review, E55215 removed". Nothing re-flipped.
-- **#12191/#12192 likely MOOT** under this design (they were about the removed E55215's
-  dead-code/source-loc); fixer will close once this lands unless maintainers keep them; triager
-  re-triages if a substantive human cmt lands on either.
-- Fixer verified full kind matrix GPU-less + codex green (rounds→44).
-- **Held on maintainer re-review + CI on reworked draft → re-approve → human flips ready → merge.**
-
-### pdeayton investigation request (2026-07-24, cmt 5072019231) — 2 substantive Qs on the redesign
-pdeayton-nv (PR owner/assignee) @-mentioned the bot to investigate two concerns on the reworked PR:
-1. **Conversion placement:** `uint2(float2(...))` and `bit_cast<uint2>(uint64_t(...))` assert? Does
-   the conversion belong in legalization or the canonical constant evaluator instead?
-2. **Layout mismatch (latent bug exposed by PR?):** `uint2` + `Std430DataLayout` giving `scalar`
-   layout — whereas earlier with uint64, size AND alignment were both 8 in all cases.
-Both probe the representation-wide consequences of the buffer/AS→uint2 change (layout/reflection +
-conversion path). Routed orch→triager→fixer on canonical thread; fixer owns PR + on-thread answer
-(real bot mention = authorized to post). Advances the redesign — NOT a no-op.
-
-### Fixer answered both on-thread (2026-07-24 ~16:56Z+17:05Z self-correction) — investigate-only, NO code change
-PR head unchanged `f4004c3f90` (no push), still DRAFT/REVIEW_REQUIRED. Fixer A/B'd PR-head vs
-master GPU-less w/ spirv-val; passed OUTPUT_REVIEW (caught+fixed 2 overstatements). Triager did not
-re-derive.
-- **Q1 (conversion assert / right layer):** REAL but NARROW. The `castFloatToInt` "Unhandled global
-  inst" abort reproduces on master too WITH CAPABILITY OFF → pre-existing general `emitGlobalInst`
-  gap, NOT PR-caused. Only PR-new edge = width-mismatch `SLANG_RELEASE_ASSERT` at
-  slang-emit-spirv.cpp:2855 (module-scope `static const` handle init from float/bit_cast).
-  Principled home = SCCP, but SCCP folding is scalar/packed-float-gated (sccp.cpp:1026) so vector
-  bit_cast can't fold today → moving needs allowlist + vector folding. **Suggested in-PR (not
-  blocking):** replace :2855 assert with a real diagnostic (the default it'd hit is also an
-  internal-error abort, not graceful); SCCP move = follow-up.
-- **Q2 (latent Std430 layout bug):** NO. std430/std140/cbuffer identical PR↔master; only
-  scalar/natural differs (uint2 align 4 vs uint64 align 8). Decisive: plain-spirv (no cap) already
-  lays a buffer handle uint2@align-4 on BOTH binaries → master's capability was silently flipping
-  buffer-handle layout to uint64; **the PR RESTORES cross-capability consistency.** Emit↔reflection
-  ↔sizeof agree across 6 kinds. **No fix — only a conscious ABI sign-off** from pdeayton that the
-  4-byte-aligned buffer/AS handle packing is intended.
-- **Net:** neither reworks the core approach. **Ball with pdeayton/csyonghe** (accept Q1 in-PR
-  diagnostic suggestion? + ABI sign-off on Q2) → re-review.
-
-### ⚠️ Q2 REVERSED + layout fix PUSHED (2026-07-24 ~17:55Z, head `107f158ffe`)
-- **Q2 was WRONG ("no bug, only ABI sign-off") — it WAS a real bug, now FIXED.** Fixer
-  self-corrected: the earlier no-bug call rested on struct-embedding tests that MASKED it;
-  pdeayton's explicit `alignof(handle, Std430DataLayout)` query surfaced it. **Root:** the
-  `sizeof`/`alignof` peephole ignored the selected layout rule for handles → a uint2 handle
-  returned natural align 4 for std430/std140 queries instead of 8 (natural correctly stayed 4).
-  **Fixed** commit `107f158ffe` (route underlying type through resolved `layoutRules`) + regression
-  test `desc-handle-layout-query-bindless-buffer.slang`. Verified: buffer handle std430/std140=8,
-  natural=4; texture handle (uint64)=8 all rules; pdeayton's `static_assert` now passes.
-  (Lesson echo: recants are common — triager correctly flagged its own prior msg147 relay reversed.)
-- **Q1 → filed as NEW issue #12219** (SCCP vector/composite const-fold follow-up) per pdeayton;
-  narrow pre-existing global-emit gap, NOT PR-caused, NOT a #12186 blocker. Triager independently
-  triaged #12219 as its own chain (parked-at-triaged, reproduced @master). Interim :2855
-  assert→diagnostic still maintainers' call.
-- **PR state:** #12186 head `107f158ffe`, 15 files, still DRAFT/REVIEW_REQUIRED. PR body refreshed
-  from stale E55215 narrative → accurate option-a + layout-fix description. CI red = benign
-  priority-yield (wait-for-human-priority + check-ci; other 33 skipped), not a real failure.
-- **Net:** redesign now ALSO carries a real layout-correctness fix pdeayton's probing found. Core
-  approach intact. Held on pdeayton/csyonghe review of the pushed layout fix + #12219 SCCP decision
-  + interim :2855 call → re-review → merge.
-
-### Superseded (was, 2026-07-23 ~13:36Z): APPROVED/held-on-merge
-- PR #12186 was APPROVED@`4fbe216b0e` (pdeayton-nv, binds current head, verified not stale),
-  MERGEABLE after 8 review rounds (jkwak + pdeayton). BLOCKED = Falcor D3D12 flake gate, not review.
-  pdeayton's 2 correctness catches folded: (a) SamplerComparisonState, (b) OpConvertUToImageNV-vs-
-  SampledImage image/combined split. csyonghe's redesign may restructure all of this.
+### Chain-shape summary (detail in the child)
+Reported abort → E55215-in-legalization (APPROVED, then re-opened by the project lead) → option-(a)
+kind-dependent width (`f4004c3f90`) → 2 investigation Qs, one answered wrong then corrected into a
+real layout fix (`107f158ffe`) → descope + 4 E39033 guard variants, all dropped → **escalation → the
+maintainer's own ~10-line `isInlinableGlobalInst` fix, which shipped.** Six shape changes; the
+kind-gating expressibility question is still open for pdeayton/csyonghe.
 
 - Classified bug / medium / **P2** / SPIR-V emit. Issue Type `Bug`; `reproduced` applied.
 - **PR #12186 — NON-DRAFT / ready-for-review.** jkwak-work flipped draft→ready @15:54:57Z
@@ -240,3 +208,33 @@ re-derive.
   forwards to slang-fixer for PR update.
 - **Next human action:** review draft, flip ready, merge. Close-out when #12186 merges.
 - Related (not dup): [[project_12161_nonuniform_descriptorhandle_nonspirv_verify]], #12116, #12051.
+
+## ⚠️ 2026-08-03 ~20:2xZ — #12186 head MOVED; the "MERGED" report was FALSE
+
+GitHub-verified: **#12186 is STILL OPEN and STILL DRAFT — not merged.** But its head moved: was `107f158ffe`, now **`1ea307608a6b`** — 17 files, **+483/−71**, new commit that day 18:33Z *"Inline DescriptorHandle representation casts out of module scope"*.
+
+⚠️**`slang-fixer` reported #12186 as MERGED and banner-ed its `hold-12192` file on that premise — FALSE, and corrected.** The underlying *design* claim is real, though: the diff does carry a kind-dependent representation (**70× `uint64`, 74× `uint2`, 51× `kind`**), so **the E55215 path may still be re-scoped ⇒ re-verify the repro at HEAD before implementing Approach A.**
+
+⭐**A design call can be resolved by a commit, not only by a reply** — so this chain's RESUME has two arms, and the *act* arm must be checked first: **pdeayton's design call (answer), OR #12186 merges / its head moves again ⇒ re-read the diff + re-verify the repro at HEAD before implementing.** Same class as the #12219 discharged-debt trap: chasing a question someone already answered in code wastes a maintainer's turn.
+
+## Operational state (moved from MEMORY.md index, 2026-08-04)
+
+🔒 **APPROVAL-LOCKED.** #12186 carries pdeayton-nv's APPROVE (review `4849248355`, binding to head
+`65338dbef9` — live, not stale) and is **non-draft** with `mergeable_state: behind`.
+**No push / rebase / ready-flip — any new commit dismisses the approval.** The "Update branch"
+button requires a MAINTAINER; we cannot clear `behind` ourselves.
+**RESUME = maintainer merge** (then #12192 UNPARKS and #12191 becomes moot).
+
+⚠️ **An aggregate red X ≠ failure.** The real `pull_request` check suite `83685090805` has **0
+failures**; the reds visible on the PR are cumulative per-head history from an earlier manual
+dispatch. Key CI judgments on `check_suite.id`, never on the commit-level aggregate.
+
+⚠️ **kind-gating stays OPEN.** The cross-width `DescriptorHandle` round-trip is now silently
+**DEFINED, not diagnosed** — whether the type system should instead *reject* a cross-width
+round-trip is an unresolved semantic question. This limitation is stated in the public verdict on
+the PR, so it is disclosed rather than hidden, but it is not fixed.
+
+⛔ The retired check "gh-9916 unmodified" **FALSE-ALARMS** — do not reinstate it.
+
+⭐ pdeayton's ~10-line inlining fix beat all 4 fixer variants *and* the proposed "root fix": the
+real constraint was **representation survival**, not emit handling.

@@ -7,6 +7,18 @@ metadata:
   originSessionId: 19d73093-1ba5-4d4e-baf8-ff12e5bf3744
 ---
 
+
+**✅ TERMINAL — GATE DISCHARGED 2026-07-09 (Main-verified against GitHub 2026-08-03, not against either of my own texts).**
+`#11685` **MERGED** `2026-07-09T14:25:20Z`; issue **#11681 CLOSED** `2026-07-09T14:25:21Z`, `state_reason: completed`.
+⇒ the standing condition *"resolved only once #11685 merges"* is **satisfied**; this memory sat **~26 days past its own
+stated expiry** while still reading as live. ⛔ No action pending. History below retained for provenance only.
+
+⚠️ **Found by an expired-gate sweep, not by reading this file** — a self-expiring note does not expire itself. Grep your
+store for `expires when|once X merges|delete this memory` and resolve each trigger against **ground truth**
+([[feedback_correction_must_sweep_whole_file.md]]).
+
+---
+
 `DescriptorHandle<ConstantBuffer<T>>` did not implicitly convert to `ConstantBuffer<T>` (docs promise it; worked for `RWStructuredBuffer` but not parameter-group types). Root cause: `SemanticsVisitor::_coerce` (`source/slang/slang-check-conversion.cpp`) had a blanket guard rejecting any coercion whose *target* is a `ParameterGroupType`, running before the constructor-conversion search — so the generated `__init(DescriptorHandle<This>)` was never reached for `ConstantBuffer`/`TextureBuffer`. Fix (Approach A→B): remove the over-broad guard entirely (it carried a standing `TODO(tfoley)` doubting its need); parameter-group targets now flow through the normal search. Regression test added.
 
 **Standing state (as of 2026-07-09, MERGE-READY):** PR #11685 (`fix/issue-11681`, `Fixes #11681`) — OPEN, non-draft, MERGEABLE, `reviewDecision=APPROVED`. Tim Foley (`tangent-vector`, the TODO flagger) endorsed the guard removal; jkwak-work re-approved after the churn below (re-approval `4659424154` on current head `9bce564`, verified not-stale). **Merge-ready — only remaining step is the operator/maintainer-owned merge; bot will not flip/merge.** CI at last check: 17 pass / 3 skip / 0 fail / 11 pending (not yet fully green, no failures).

@@ -7,7 +7,7 @@ metadata:
   originSessionId: 6aeeb7f9-1654-419f-808a-f5eb61fb09f3
 ---
 
-**#12141** (shader-slang/slang, author skiminki-nv, fork PR @ c51b47865483) — explicitly disables `(vector<T,2>, T)` and `(T, vector<T,2>)` initializers for `vector<T,4>` via `static_assert(false)` in `core.meta.slang`. Same area as [[project-12093-vector-initlist-coercion-inconsistency]] (vec init-list splat vs tail-pad, GO).
+**#12141** (shader-slang/slang, author skiminki-nv, fork PR @ c51b47865483) — explicitly disables `(vector<T,2>, T)` and `(T, vector<T,2>)` initializers for `vector<T,4>` via `static_assert(false)` in `core.meta.slang`. Same area as [[project_12093_vector_initlist_coercion_inconsistency]] (vec init-list splat vs tail-pad, GO).
 
 **slang-pr-approver verdict: BLOCK (RED_BUG)** — recorded to ledger 07-17, shadow mode (no GitHub write), mode=live, policy v0-shadow-relaxed, critique-gated (DECISION_REVIEW + OUTPUT_REVIEW both approve).
 
@@ -18,7 +18,7 @@ metadata:
 
 **Next-action (human/author):** land bundled slang-rhi shader fix alongside — update `test-ray-tracing-clusters.slang:74` to 4-element vec4 form + bump submodule (upstream slang-rhi first) — or reconsider the hard-disable. **Rebasing onto master does NOT resolve it** (master's slang-rhi shader still uses the disabled form).
 
-Shadow-mode BLOCK: ledger-only, no GitHub post ([[feedback-approver-never-posts-route-reviewer]]). Await human review / author action.
+Shadow-mode BLOCK: ledger-only, no GitHub post ([[feedback_approver_never_posts_route_reviewer]]). Await human review / author action.
 
 **07-17 UPDATE — companion downstream fix FILED:** author skiminki-nv opened **slang-rhi#798** ("test-ray-tracing-clusters.slang passes only 3 components to float4() initializer", labeled Dev Opened) proposing exactly the fix the challenger identified: `test-ray-tracing-clusters.slang:74` `float4(attribs.barycentrics, 1.f)` → `float4(attribs.barycentrics, 1.f, 1.f)` (semantics-preserving; the old `(vec2,scalar)` form duplicated the scalar rather than the expected behavior). This is the slang-rhi-side prerequisite that must land + submodule-bump before #12141's hard-disable can go green. Routed to slang-triager on thread `gh-issue-shader-slang/slang-rhi-798`. Cross-repo landing order: slang-rhi#798 merges → slang submodule bump → then #12141 CI passes.
 

@@ -7,6 +7,30 @@ metadata:
   originSessionId: 855ca28d-867b-4fa2-8862-f10a887c6efe
 ---
 
+
+**⛔ SUPERSEDED / TERMINAL — RESOLVED UPSTREAM 2026-07-23, AND IN THE OPPOSITE DIRECTION FROM THIS FILE'S RECOMMENDATION.**
+(Main-verified via GitHub 2026-08-03, prompted by slang-fixer's repair-side check: *verify a repoint target's content against
+the claim citing it, and go upstream when they disagree.*)
+
+- **Issue #12093 CLOSED `2026-07-23T20:15:31Z`, `state_reason: completed`** — by **PR #12141, MERGED 20:15:30Z, authored by
+  `skiminki-nv`** (10 files, +237/−20): *"`vector<T,4>`: Explicitly **disable** `(vector<T,2>, T)` and `(T, vector<T,2>)`
+  initializers."*
+- 🔴 **This file recommended the INVERSE: ADD those 3-element ctor shapes to `vector<T,4>` (Approach A), tail-padding the 4th
+  component to 0.** The maintainer instead **forbade** the ambiguous spellings outright, reasoning that an implicit `T` →
+  `vector<T,2>` conversion in initializer arguments *"would produce surprising results"* — i.e. he rejected the tail-padding
+  premise the triage read had endorsed as "SOUND and maps to Approach A."
+- ⇒ **Its "Next human action: maintainer gives explicit go/no-go" is DISCHARGED — the answer was no-go on this approach.**
+  ⛔ **DO NOT implement the vec4 ctor additions.** They are now actively contrary to shipped behavior.
+
+⭐⭐ **Why this was nearly missed twice:** the file had **no terminal marker** and its own last line read as a live obligation,
+so both a terminal-marker triage and a gate re-check would have passed it as live. Only the **upstream leg** settles it — and
+the specific hazard is that the *direction* reversed: a stale file whose recommendation is merely outdated wastes time, but one
+whose recommendation now **contradicts shipped code** would produce a regression if acted on.
+⭐ **A maintainer resolving an issue is not the same as adopting your approach** — cf.
+[[project_12223_debug_build_og_debuggability]] (direction adopted ≠ our shape accepted). History retained below.
+
+---
+
 shader-slang/slang#12093 — `int4 v={1,int2(2,3)}` → `{1,1,2,3}` (scalar `1` splatted to `int2(1,1)`) vs `int4 v={1,2,3}` → `{1,2,3,0}` (tail-pad-by-0). Two init-list paths, two behaviors.
 
 **Author:** skiminki-nv (maintainer, asking a *semantics* question — same person owns umbrella #12046). frontend / semantic checker / P2 / medium.

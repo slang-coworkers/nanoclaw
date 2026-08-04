@@ -7,18 +7,23 @@ metadata:
   originSessionId: a85f5681-dc13-4c7e-9900-af66e4a8d19f
 ---
 
+**✅ APPROVED 08-03 17:19:13Z — csyonghe, BOUND TO CURRENT HEAD `f3b5b511886d` (Main-VERIFIED via reviews API, not just the webhook).** This is the language-change sign-off **skiminki-nv asked for**. PR #12246 live state: `OPEN`, **non-draft** (a maintainer flipped it — not the bot), `reviewDecision=APPROVED`, label `pr: breaking change`, `mergeable: true`, `mergeable_state: blocked` (branch-protection/up-to-date, NOT conflicts).
+- **Shipped:** Approach A as specified — `visitSwitchStmt` rejects a non-integer/enum selector with new error **E30607** + early return (resolves the `TODO(tfoley)`); **bool left to #12237**, enum accepted, **uint64 → separate #12240**. Tests: new repro passes; diagnostics **707/707**, enums **38/38**, switch **74/74**, zero regressions. codex CODE+PLAN+OUTPUT approve.
+- **🔴 MAIN CORRECTION to the fixer's caveat — CI *HAS* run a real pass.** Fixer reported "CI has **not** run a full build/test pass; the recorded runs were the cosmetic draft priority-yield." **Main verified check-runs on `f3b5b51188`: 27 success / 3 skipped / 0 failures** ⇒ that is a **genuine build/test pass**, not a priority-yield. The fixer's caveat was based on stale observation from when the PR was still a draft (a maintainer has since flipped it non-draft, which triggers real `pull_request` CI). **Consequence: nobody needs to chase CI before merge — it's green.** Relayed the correction to the fixer.
+- **Fixer FREEZING pushes on this branch** — any further commit (even comment-only) would auto-dismiss csyonghe's approval; it will take no code action unless explicitly asked, in which case the approval is knowingly re-set. Correct posture. **Next: human merge only (operator-gated; bot will not flip/merge).**
+
 shader-slang/slang#12238 — "Non-integral (float) switch condition is accepted and produces invalid SPIR-V". Author **skiminki-nv** (NVIDIA member; Issue Type `Language Maturity` human-set; label `Dev Opened`). Triaged 2026-07-27, REPRO @HEAD `70462843c`. bug/**P2**; frontend sema type-check gap → invalid codegen (cross-target).
 
 **Bug:** front-end ACCEPTS float-typed `switch` condition; only emits `warning[E30081]` (on the case label, not the condition), then lowers an inconsistent IR `switch(%f: Float, ... 1: Int)` — float selector + int labels. On `-target spirv` → invalid `OpSwitch` (selector not scalar int) → SPIR-V validation fail → `internal error[E99999]`. **NOT SPIR-V-specific:** GLSL/CUDA/C++ also emit `switch(float(...))` (invalid); SPIR-V just catches it. Reporter wants a **type error** at the switch.
 
 **Root:** `SemanticsStmtVisitor::visitSwitchStmt` `source/slang/slang-check-stmt.cpp:406-407` — `// TODO(tfoley): need to coerce condition to an integral type...`; condition only `CheckExpr`'d, never coerced/validated to integral. Case labels ARE coerced to condition type + `checkConstantIntVal` in `visitCaseStmt` (:414-443, warning fires here). No "switch condition must be integral" diagnostic exists.
 
-**DESIGN-FORK (maintainer pick required) — mirrors [[project-9999-switch-without-cases-diagnostic-fork]] E30606-vs-E41000:**
+**DESIGN-FORK (maintainer pick required) — mirrors [[project_9999_switch_without_cases_diagnostic_fork]] E30606-vs-E41000:**
 - **A (reject, reporter's pref):** new type-error diag at :406-407 if condition non-integral. Fastest correct fix; kills invalid codegen on all targets; clean diag replaces E99999. Potential **breaking change** for HLSL-legacy implicit float→int switch (no *working* SPIR-V broken — already E99999 today). Must scope "integral" to include enum.
 - **B (coerce, resolves TODO / matches HLSL):** coerce condition to int at :407. Non-breaking, valid codegen. But silent float truncation; does NOT satisfy reporter's stated expectation.
 - **C (codegen legalize selector):** REJECTED — wrong layer (consumer-side patch of malformed front-end IR; per-backend/incomplete).
 
-**Sibling [[project-12236-switch-pre-case-unreachable]] cluster context — NOT a dup:**
+**Sibling [[project_12236_switch_pre_case_unreachable]] cluster context — NOT a dup:**
 - **#12237 (closest sibling, same author):** "Boolean switch condition asserts during SPIRV emission." Non-integral selector too, but bool ABORTS in emission (lossless→accept natural) vs float PASSES THROUGH to invalid OpSwitch (lossy→reporter wants reject). Distinct roots, likely-different resolutions. **Shared-root opportunity:** resolving `TODO(tfoley)` at visitSwitchStmt:406 (enforce "condition must be integral") is one policy point covering BOTH — flag to maintainer as unifying, keep issues separate.
 - #9999 / #12236 (switch missing-diag): DIFFERENT root (`lowerSwitchCases()`). Not this bug. #12222 (lexer): unrelated.
 

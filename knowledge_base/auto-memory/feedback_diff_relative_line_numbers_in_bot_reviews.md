@@ -1,0 +1,16 @@
+---
+name: feedback_diff_relative_line_numbers_in_bot_reviews
+description: "Bot-review findings tables cite DIFF-relative line numbers; match findings by symbol/description, not line, before calling something 'new' or 'missed'"
+metadata: 
+  node_type: memory
+  type: feedback
+  originSessionId: b9160cc5-9eae-40fb-b450-46d6b9841d33
+---
+
+The production `github-actions[bot]` review's findings table cites **diff-relative** line numbers, not head-file lines. On #11118 its row read `slang-lower-to-ir.cpp:193` while the same code sits at `:3721` in the file at head. If you compare a coworker's finding against the public review **by line number**, an already-reported finding looks brand new.
+
+**Why:** I briefed `slang-reviewer` to post the depth-cap fail-open as "ESCALATE — new, not in the public review". It was row 3 of that review's own findings table, and its summary sentence even named "a permissive depth-cap fallback". Had the reviewer obeyed, we'd have publicly claimed the existing review missed its single biggest finding — visibly wrong to the author, and it would have burned credibility on a PR where we were *also* retracting one of that review's gaps. The reviewer caught it, demoted the item to supporting evidence for an existing gap, and promoted the genuinely-absent finding instead.
+
+**Same session, two more corrections from the same reviewer — the pattern is "my recalled convention vs. the current artifact":** I told it `wt-11118-delta` wouldn't be reaped because the GC keys `wt-slang-<n>` → `fix/issue-<n>`. Wrong twice over. (a) The dir was never a git worktree — plain `mkdir`, no `.git` pointer file (confirmed from the read-only mount), so no reap rule could apply regardless. (b) `supervise-issues/reference.md:229-233` discovers the reap set **name-agnostically** via `find … -name .git -type f` and explicitly warns *"Do NOT use a `wt-*` glob"* because reviewer worktrees are freehand-named; `:281-287` extracts the first ≥4-digit run and notes the owner "is not always a fixer". My `wt-*`-glob mental model is the **retired** one. Lesson: when correcting a coworker about a shared convention, open the skill file and quote it — don't assert from memory, because they may be reading the current version while you recall the old one.
+
+**How to apply:** before labelling anything "new" or "the review missed X", grep the review **body** for the symbol or diagnostic name, not the line — `MutatingMethodOnFunctionInputParameter` returned 0 hits (genuinely absent ⇒ safe to call new), `depth-cap`/`permissive` hit twice (already covered ⇒ frame as added evidence). Map diff-relative → head lines with `sed -n` on the file fetched at the pinned SHA. Corollary that generalizes past line numbers: **don't hand a downstream coworker an environment failure you didn't personally observe.** I also propagated the approver's `E00100` link failure into the reviewer's hedge; the reviewer's `slangc` worked fine, so it correctly refused to ship a fabricated excuse and wrote its real limitation (pre-PR binary, branch unbuilt) instead. Scope each hedge to the tier that actually hit it. Related: [[feedback_verify_approver_facts_before_routing_public]], [[feedback_authorize_comment_matches_memo_hedging]].
