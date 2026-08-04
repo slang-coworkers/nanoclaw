@@ -309,6 +309,30 @@ async function sweepSession(session: Session): Promise<void> {
     }
     // MODULE-HOOK:critique-escalation:end
 
+    // 1b. Reclaim bounced claims BEFORE the wake below. Ordering is
+    // load-bearing, and the reason is subtle:
+    //
+    // A `bounced-*` processing_ack hides its message from the container's poll
+    // (getPendingMessages filters on ackedIds) while messages_in stays
+    // 'pending'. The container's own startup cleanup only clears
+    // status='processing' (clearStaleProcessingAcks), so a container restart can
+    // never reclaim a bounced row — only this path can.
+    //
+    // Left in step 4, it was unreachable in EVERY state: container up => the
+    // !alive gate skips it; container down => step 2 sees the still-due hidden
+    // message, spawns a container, and `alive` flips true before step 4 is
+    // reached. The message that needs healing is exactly what arms the wake that
+    // suppresses the healing. Observed in prod 2026-07-17..08-04: a `*/5` task
+    // frozen 18 days behind one bounced-transient ack, tries stuck at 0, while
+    // the container truthfully logged "0 pending" on every poll.
+    //
+    // Still gated on the container being down: this DELETEs from outbound.db,
+    // and exactly-one-writer per file is the invariant that makes the two-DB
+    // split safe.
+    if (outDb && !isContainerRunning(session.id)) {
+      redriveBouncedA2a(inDb, outDb, session);
+    }
+
     // 2. Wake a container if work is due and nothing is running. Ordered
     // before the crashed-container cleanup so a fresh container gets a chance
     // to clean its own orphan processing_ack rows on startup (see
@@ -342,9 +366,8 @@ async function sweepSession(session: Session): Promise<void> {
     // skips messages already scheduled for a future retry.
     if (!alive && outDb) {
       resetStuckProcessingRows(inDb, outDb, session, 'container not running');
-      // 4b. Redrive bounced a2a handoffs (transient/unknown provider errors).
-      // Also !alive-gated so the host is the sole outbound.db writer here.
-      redriveBouncedA2a(inDb, outDb, session);
+      // Bounced-claim redrive moved to step 1b — see the note there. Running it
+      // here made it unreachable whenever the bounced message was itself due.
     }
 
     // 5. Recurrence fanout for completed recurring tasks.
@@ -495,10 +518,20 @@ function redriveBouncedA2a(
     // later tick (after process_after elapses) will clear it. Same guard as
     // resetStuckProcessingRows.
     if (row.processAfter && parseSqliteUtc(row.processAfter) > now) continue;
-    // Only a2a edges are redriven here. A non-'agent' bounce should not exist
-    // (the container only bounces on channelType==='agent'), but guard anyway.
+    // Non-a2a bounce (channel_type NULL — e.g. a scheduled task, which never
+    // sets platform/channel/thread). No a2a backoff applies, but clearing the
+    // claim is exactly what unblocks it: the row is still 'pending', so once the
+    // ack is gone the container's next poll sees it again. Logged because this
+    // is the only signal that a task turn bounced and was reclaimed — it was
+    // silent before, which is why an 18-day freeze left no trace.
     if (row.channelType !== 'agent') {
       handled.push(message_id);
+      log.info('Reclaimed non-a2a bounced claim', {
+        sessionId: session.id,
+        messageId: message_id,
+        status,
+        tries: row.tries,
+      });
       continue;
     }
 
