@@ -515,6 +515,36 @@ describe('redriveBouncedA2a', () => {
     expect(pa - before).toBeGreaterThan(3_500_000);
   });
 
+  it('reclaims a bounced TASK claim (channel_type NULL) so the container can poll it again', () => {
+    // Regression (prod 2026-07-17..08-04): a `*/5` task bounced transiently and
+    // its ack row survived 18 days. getPendingMessages filters on ackedIds, so
+    // the container reported "0 pending" forever while messages_in stayed
+    // 'pending' and tries stayed 0; handleRecurrence only advances a series on
+    // completion, so the whole schedule froze. Tasks never set
+    // platform/channel/thread, so channel_type is NULL — not the 'agent' edge.
+    const { inDb, outDb } = makeA2aSessionDbs();
+    const past = new Date(Date.now() - 3_600_000).toISOString();
+    inDb
+      .prepare(
+        `INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, tries, channel_type, thread_id, source_session_id, content)
+         VALUES ('task-frozen', 5242, 'task', ?, 'pending', ?, 0, NULL, NULL, NULL, '{}')`,
+      )
+      .run(new Date().toISOString(), past);
+    outDb
+      .prepare("INSERT INTO processing_ack VALUES ('task-frozen', 'bounced-transient', ?)")
+      .run(new Date().toISOString());
+
+    _redriveBouncedA2aForTesting(inDb, outDb, fakeSession(), noopDeadLetter);
+
+    // The claim is gone — that is what makes the row pollable again.
+    expect(getBouncedClaims(outDb)).toEqual([]);
+    // The row itself is untouched: still pending and still due, so the next
+    // poll picks it up. No a2a backoff applies to a task.
+    const row = inRow(inDb, 'task-frozen');
+    expect(row.status).toBe('pending');
+    expect(row.process_after).toBe(past);
+  });
+
   it('does nothing when there are no bounced claims', () => {
     const { inDb, outDb } = makeA2aSessionDbs();
     // A normal completed row must be ignored (not a bounce).
