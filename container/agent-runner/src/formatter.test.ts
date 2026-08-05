@@ -28,18 +28,25 @@ function insertMessage(
   id: string,
   kind: string,
   content: object,
-  opts?: { timestamp?: string; thread_id?: string | null; channel_type?: string | null; platform_id?: string | null },
+  opts?: {
+    timestamp?: string;
+    processAfter?: string;
+    thread_id?: string | null;
+    channel_type?: string | null;
+    platform_id?: string | null;
+  },
 ) {
   const timestamp = opts?.timestamp ?? new Date().toISOString();
   getInboundDb()
     .prepare(
-      `INSERT INTO messages_in (id, kind, timestamp, status, content, thread_id, channel_type, platform_id)
-       VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)`,
+      `INSERT INTO messages_in (id, kind, timestamp, status, process_after, content, thread_id, channel_type, platform_id)
+       VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
       kind,
       timestamp,
+      opts?.processAfter ?? null,
       JSON.stringify(content),
       opts?.thread_id ?? null,
       opts?.channel_type ?? null,
@@ -68,6 +75,7 @@ describe('context timezone header', () => {
     insertMessage('m1', 'chat', { sender: 'Alice', text: 'hello' });
     const result = formatMessages(getPendingMessages());
     expect(result).toContain(`<context timezone="${TIMEZONE}"`);
+    expect(result).not.toContain('current_time=');
   });
 
   it('includes the header even when the message list is empty', () => {
@@ -166,10 +174,22 @@ describe('timestamp formatting', () => {
 });
 
 describe('task timestamps', () => {
-  it('renders task time in the user TZ, same as chat rows', () => {
+  it('falls back to creation time for legacy rows without process_after', () => {
     insertMessage('t1', 'task', { prompt: 'do the thing' }, { timestamp: '2026-01-05T12:00:00.000Z' });
     const result = formatMessages(getPendingMessages());
     expect(result).toContain(`time="${formatLocalTime('2026-01-05T12:00:00.000Z', TIMEZONE)}"`);
+  });
+
+  it('renders the scheduled time plus the current run time', () => {
+    const created = '2026-01-04T12:00:00.000Z';
+    const scheduled = '2026-01-05T12:00:00.000Z';
+    insertMessage('t1', 'task', { prompt: "prepare today's brief" }, { timestamp: created, processAfter: scheduled });
+
+    const result = formatMessages(getPendingMessages());
+
+    expect(result).toContain(`time="${formatLocalTime(scheduled, TIMEZONE)}"`);
+    expect(result).not.toContain(`time="${formatLocalTime(created, TIMEZONE)}"`);
+    expect(result).toMatch(/current_time="(?:Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday), [^"]+"/);
   });
 });
 

@@ -14,6 +14,7 @@ container/agent-runner/**
 container/hooks/**
 container/Dockerfile
 container/build.sh
+container/pull.sh
 container/entrypoint.sh
 container/config/**
 

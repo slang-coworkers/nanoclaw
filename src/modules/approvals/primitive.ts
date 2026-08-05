@@ -256,6 +256,7 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
     platform_id: null,
     platform_message_id: null,
     title,
+    question,
     options_json: JSON.stringify(normalizedOptions),
     approver_user_id: approverUserId ?? null,
   });

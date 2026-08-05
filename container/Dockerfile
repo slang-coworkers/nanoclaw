@@ -3,8 +3,12 @@
 # Runs Claude Agent SDK in isolated Linux VM with browser automation.
 #
 # Runtime split:
-#   - agent-runner (our TypeScript code): Bun
-#   - globally-installed Node CLIs (claude-code, agent-browser, vercel): pnpm + Node
+#   - agent-runner (our TypeScript code): Bun, bind-mounted at /app/src by host
+#   - globally-installed Node CLIs (claude-code, agent-browser): pnpm + Node
+#
+# Source is never baked in — /app/src is a per-group bind mount provided at
+# runtime (see src/container-runner.ts; writable, so an agent can modify its
+# own runner). Source-only changes never require an image rebuild.
 
 FROM node:22-slim
 
@@ -17,7 +21,7 @@ ARG INSTALL_CJK_FONTS=false
 
 # Pin versions for reproducibility. Bump deliberately — unpinned installs mean
 # every rebuild silently picks up the latest and can break in lockstep across
-# all users. The global Node CLIs (claude-code, agent-browser, vercel) are
+# all users. The global Node CLIs (claude-code, agent-browser) are
 # pinned in cli-tools.json so a skill can add one with a json-merge; Bun (the
 # runtime) is pinned here because it installs from a different source.
 # codex is fork-only (not in cli-tools.json) — pinned here for the separate install below.
@@ -208,3 +212,22 @@ WORKDIR /workspace/agent
 # Only applies to a bare `docker run` — the host spawn overrides ENTRYPOINT and
 # passes --init instead (see hardeningArgs in src/container-runner.ts).
 ENTRYPOINT ["/usr/bin/tini", "--", "/app/entrypoint.sh"]
+
+# ---- Provenance labels -------------------------------------------------------
+# LAST on purpose. An ARG invalidates every layer below it, so declaring these
+# up with the other build-args would make an otherwise-cached rebuild redo
+# `bun install` and the pnpm global CLIs on every existing install, for two
+# pieces of metadata. Labels have no filesystem effect, so they cost nothing here.
+#
+# Which lockfile the baked /app/node_modules came from: /app/src is mounted from
+# the host checkout at every spawn, so an image and a checkout whose lockfiles
+# disagree fail as a missing module inside a `--rm` container with no logs.
+# container/pull.sh checks this before retagging. build.sh passes it; a bare
+# `docker build` leaves it empty, which the pull path treats as unverifiable.
+#
+# image-source defaults to `local` so anything built from this file is honest
+# unless its builder says otherwise — the retag cannot forge it after the fact.
+ARG AGENT_RUNNER_LOCK_SHA256=
+LABEL dev.nanoclaw.agent-runner-lock-sha256="${AGENT_RUNNER_LOCK_SHA256}"
+ARG IMAGE_SOURCE=local
+LABEL dev.nanoclaw.image-source="${IMAGE_SOURCE}"
