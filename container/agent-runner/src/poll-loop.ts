@@ -786,6 +786,9 @@ export async function processQuery(
           routing = followUpRouting;
         }
 
+        // Accumulated context must not engage a warm query by itself.
+        if (!newMessages.some((m) => m.trigger === 1)) return;
+
         const newIds = newMessages.map((m) => m.id);
         markProcessing(newIds);
 
