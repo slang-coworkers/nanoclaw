@@ -22,6 +22,7 @@ import { hasIdenticalSend, writeMessageOut } from './db/messages-out.js';
 import { getInboundDb, touchHeartbeat, clearStaleProcessingAcks } from './db/connection.js';
 import {
   clearContinuation,
+  getContinuationAgeMs,
   clearCurrentInReplyTo,
   migrateLegacyContinuation,
   setContinuation,
@@ -208,6 +209,18 @@ export function isNewSessionBatch(keep: Array<{ kind: string; content: string }>
   return keep.length > 0 && keep.every((m) => m.kind === 'task') && !keep.some(taskOptsOutOfNewSession);
 }
 
+/**
+ * Idle cap for providers with no transcript of their own to rotate. Mirrors the
+ * Claude age knob's default and its disable semantics (non-positive = off).
+ */
+function continuationMaxIdleMs(): number {
+  const raw = process.env.CONTINUATION_MAX_IDLE_DAYS;
+  if (raw === undefined || raw.trim() === '') return 14 * 86_400_000;
+  const days = Number(raw);
+  if (!Number.isFinite(days)) return 14 * 86_400_000;
+  return days > 0 ? days * 86_400_000 : Infinity;
+}
+
 function generateId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -305,7 +318,24 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // long-lived hub keeps trying to reload an ever-growing .jsonl, hangs the
   // first turn, and gets killed before it can reply (then repeats forever).
   if (continuation) {
-    const rotateReason = config.provider.maybeRotateContinuation?.(continuation, config.cwd);
+    let rotateReason = config.provider.maybeRotateContinuation?.(continuation, config.cwd);
+    // Providers whose history lives server-side legitimately omit that hook
+    // (providers/types.ts) — there is no local transcript to measure. They were
+    // therefore never rotated at all, at any age. Codex resumed a thread last
+    // touched seven weeks earlier on 2026-07-17, returned task_complete with
+    // last_agent_message null, and the thread went silent.
+    //
+    // Only applied when the provider has no rotation of its own, so a
+    // file-based provider can never be double-rotated by this. Idle age comes
+    // from session_state's existing per-write timestamp — no new bookkeeping,
+    // and no size cap: bytes are meaningless when the transcript is not local.
+    if (!rotateReason && !config.provider.maybeRotateContinuation) {
+      const ageMs = getContinuationAgeMs(config.providerName);
+      const maxIdleMs = continuationMaxIdleMs();
+      if (ageMs !== null && ageMs > maxIdleMs) {
+        rotateReason = `continuation idle ${(ageMs / 86_400_000).toFixed(1)}d > ${(maxIdleMs / 86_400_000).toFixed(0)}d cap`;
+      }
+    }
     if (rotateReason) {
       log(`Rotating session — ${rotateReason}; starting fresh`);
       clearContinuation(config.providerName);
@@ -946,11 +976,23 @@ export async function processQuery(
             archivePrompts.shift();
           } else {
             const willRetryWrapping = hasUnwrapped && !unwrappedNudged;
+            // A turn that delivered nothing by ANY path is not "completed" — the
+            // thread simply goes silent, with no error to notice. Codex reaches
+            // here routinely: it can emit turn/completed with last_agent_message
+            // null (observed 2026-07-17: 7.5s turn, zero output, ack completed,
+            // thread dead), and it never sets isError, so the branch above can
+            // never catch it. Claude has the same hole structurally.
+            // `sent === 0` is the safe discriminator: a reply sent via
+            // mcp__nanoclaw__send_message increments it, so agents that answer
+            // without final text are unaffected. Task runs legitimately produce
+            // no chat message (they append to a run log), so they are excluded.
+            const deliveredNothing = sent === 0 && !event.text?.trim() && !routing.taskRun;
             notifyExchangeComplete(onExchangeComplete, {
               prompt: archivePrompts[0] ?? initialPrompt,
               result: event.text,
               continuation: queryContinuation ?? initialContinuation,
-              status: hasUnwrapped || willRetryTaskBlocks ? 'undelivered' : 'completed',
+              status:
+                hasUnwrapped || willRetryTaskBlocks || deliveredNothing ? 'undelivered' : 'completed',
             });
             if (willRetryWrapping) {
               unwrappedNudged = true;

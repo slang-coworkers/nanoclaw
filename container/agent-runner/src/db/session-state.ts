@@ -79,6 +79,24 @@ export function clearContinuation(providerName: string): void {
 }
 
 /**
+ * Milliseconds since this continuation was last written, or null if unset or
+ * unparseable.
+ *
+ * `setContinuation` runs on every turn, so this measures IDLE time — how long
+ * since the thread was last used — not how old the thread is. That is the
+ * signal that matters for a provider whose history lives server-side: a thread
+ * used daily is fine however old, while one untouched for weeks is the risk.
+ */
+export function getContinuationAgeMs(providerName: string): number | null {
+  const row = getOutboundDb()
+    .prepare('SELECT updated_at FROM session_state WHERE key = ?')
+    .get(continuationKey(providerName)) as { updated_at: string } | undefined;
+  if (!row) return null;
+  const age = Date.now() - new Date(row.updated_at).getTime();
+  return Number.isFinite(age) ? age : null;
+}
+
+/**
  * The a2a reply stamp: the id of the first inbound message in the batch the
  * agent is currently processing. The poll loop publishes it at batch start;
  * MCP tools (`send_message`, `send_file`) read it and stamp it onto outbound
