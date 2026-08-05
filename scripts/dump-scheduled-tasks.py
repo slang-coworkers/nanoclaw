@@ -58,12 +58,12 @@ def series_ids(repo):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", default=os.path.expanduser("~/slang-coworkers-prod/nanoclaw"))
-    ap.add_argument("--out", default=None, help="JSON output (default <repo>/config-examples/scheduled-tasks.<slug>.json)")
+    ap.add_argument("--out", default=None, help="JSON output (default <repo>/docs/scheduled-tasks.<slug>.json)")
     ap.add_argument("--md", default=None, help="optional human-readable markdown output")
     args = ap.parse_args()
 
     slug = os.environ.get("INSTANCE_SLUG") or os.path.basename(os.path.dirname(args.repo)) or "instance"
-    out = args.out or os.path.join(args.repo, "config-examples", f"scheduled-tasks.{slug}.json")
+    out = args.out or os.path.join(args.repo, "docs", f"scheduled-tasks.{slug}.json")
 
     ids = series_ids(args.repo)
     if not ids:

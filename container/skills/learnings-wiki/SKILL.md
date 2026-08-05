@@ -133,13 +133,13 @@ recurring task once.
 > the TL;DR requirement, and the per-run work bound, and the wiki resumes growing without
 > bound while every source file still looks correct.
 >
-> **Copy the canonical prompt** from `config-examples/scheduled-tasks.<instance>.json`
+> **Copy the canonical prompt** from `docs/scheduled-tasks.<instance>.json`
 > (series `task-1782828347850-4m9u23` on slang-coworkers-prod) rather than re-writing it.
 > Regenerate that snapshot with `scripts/dump-scheduled-tasks.py` after any change, so the
 > live definition and the committed one stay in sync.
 
 ```
-schedule_task(prompt="<the canonical fold prompt — see config-examples/scheduled-tasks.*.json>",
+schedule_task(prompt="<the canonical fold prompt — see docs/scheduled-tasks.*.json>",
               recurrence="0 6 * * *",            # daily; the fold is incremental and cheap
               script="<gate: exit wakeAgent:false unless learnings/ changed since last build>")
 ```
