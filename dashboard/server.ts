@@ -5419,6 +5419,61 @@ export async function handleRequest(
   }
 
   // API: funnel recompute status — polled by the client while a refresh runs.
+  if (url.pathname === '/api/kb-health') {
+    if (!requireAuth(req, res)) return;
+    // Reads whatever the 05:45 cron last wrote. Never computes inline: the scan walks
+    // every group's session transcripts and takes minutes, which would stall the request.
+    const shared = join(getDataDir(), 'shared');
+    const digestPath = join(shared, 'KB-HEALTH.md');
+    const histPath = join(shared, '.kb-health.json');
+    const doctorPath = join(shared, '.kb-doctor.txt');
+    let history: any[] = [];
+    try {
+      history = JSON.parse(readFileSync(histPath, 'utf-8'));
+    } catch {
+      history = [];
+    }
+    const latest = history.length ? history[history.length - 1] : null;
+    let digest = '';
+    try {
+      digest = readFileSync(digestPath, 'utf-8');
+    } catch {
+      digest = '';
+    }
+    let drift: string[] = [];
+    try {
+      drift = readFileSync(doctorPath, 'utf-8')
+        .split('\\n')
+        .filter((l: string) => l.startsWith('DRIFT'));
+    } catch {
+      drift = [];
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        available: Boolean(latest),
+        generatedAt: latest?.generated_at ?? null,
+        windowDays: latest?.window_days ?? null,
+        cost: latest?.cost ?? null,
+        value: latest?.value ?? null,
+        shape: latest?.shape ?? null,
+        atoms: latest?.atoms ?? null,
+        topPages: latest?.top_pages ?? [],
+        driftCount: drift.length,
+        drift,
+        digest,
+        trend: history.slice(-30).map((h: any) => ({
+          date: h.date,
+          tokens: h.cost?.tokens_total ?? 0,
+          atoms: h.atoms?.total ?? 0,
+          conceptBytes: h.shape?.concept_bytes ?? 0,
+          overCap: h.shape?.pages_over_cap ?? 0,
+        })),
+      }),
+    );
+    return;
+  }
+
   if (url.pathname === '/api/funnel/status') {
     if (!requireAuth(req, res)) return;
     res.writeHead(200, { 'Content-Type': 'application/json' });
