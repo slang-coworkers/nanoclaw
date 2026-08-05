@@ -114,15 +114,33 @@ synthesize **all** groups → finalize. Re-balances themes at full LLM cost.
 ## Run autonomously (orchestrator only)
 
 The orchestrator (admin/Main group — the only one with RW on `/workspace/shared`) registers a
-recurring task once:
+recurring task once.
+
+> [!IMPORTANT]
+> **Do not register this from a one-line prompt.** The task prompt is where the fold's
+> *objective* lives — the bounded-encyclopedia rules above are not enforced by the builder,
+> they are instructions the synthesising agent follows. A generic
+> `prompt="Run /learnings-wiki …"` silently drops the supersession rule, the 40 KB page cap,
+> the TL;DR requirement, and the per-run work bound, and the wiki resumes growing without
+> bound while every source file still looks correct.
+>
+> **Copy the canonical prompt** from `config-examples/scheduled-tasks.<instance>.json`
+> (series `task-1782828347850-4m9u23` on slang-coworkers-prod) rather than re-writing it.
+> Regenerate that snapshot with `scripts/dump-scheduled-tasks.py` after any change, so the
+> live definition and the committed one stay in sync.
+
 ```
-schedule_task(prompt="Run /learnings-wiki to incrementally rebuild the learnings wiki",
-              recurrence="0 6 * * 1",            # weekly; tune as needed
+schedule_task(prompt="<the canonical fold prompt — see config-examples/scheduled-tasks.*.json>",
+              recurrence="0 6 * * *",            # daily; the fold is incremental and cheap
               script="<gate: exit wakeAgent:false unless learnings/ changed since last build>")
 ```
 The pre-task `script` gate (bash, 30s) should `echo '{\"wakeAgent\": false}'` when no learnings
-are newer than `wiki/index.md`, so idle weeks cost nothing. On a burst of new learnings, trigger
+are newer than `wiki/index.md`, so idle days cost nothing. On a burst of new learnings, trigger
 sooner.
+
+The prod task also carries a **PART B** that syncs `wiki/`, `sources/` and `learnings/` to the
+public `knowledge_base` mirror and opens/merges the PR. That half is instance-specific — it is
+in the canonical prompt, not in this skill.
 
 ## Embedded builder script
 
