@@ -1,5 +1,6 @@
 ---
 name: project_11984_debugsource_bom_pending
+description: "slang#11984 (pdeayton-nv): -g2 embeds a #line-referenced file's DebugSource via a raw disk re-read that bypasses SourceFile's BOM strip, so a UTF-8 BOM survives into OpString and misaligns text vs line/col by one code point; fix routed the fresh-read fallback through a shared decodeContentBlob. TERMINAL: PR #12055 MERGED 2026-07-16T10:25:14Z (Main-verified live 08-04), issue auto-closed. ⚠ FILENAME AND BODY BOTH SAY 'pending'/'mergedAt=null' — that was true on 07-10 and is now STALE; trust this description. Shadow approver row is ABSTAIN_INFRA (pipeline defect, excluded from agreement scoring), not a code-risk signal."
 metadata: 
   node_type: memory
   type: project

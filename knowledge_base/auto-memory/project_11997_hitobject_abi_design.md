@@ -1,5 +1,6 @@
 ---
 name: project_11997_hitobject_abi_design
+description: "slang#11997: maintainer @szihs design issue for a single source-of-truth HitObject ABI (native DXR SM6.9 vs NVAPI) behind an explicit `nvapi_hit_objects` capability; supersedes the #11903/#11907 chain. Triager delivered the maintainer-requested full HitObject API inventory (bucketed native/NVAPI/divergent) as comment 4914543116. State: HELD awaiting szihs on 3 unresolved design questions (Invoke 2-arg vs 3-arg bottleneck, atom naming, migration); no fixer to dispatch. ⚠ Contains one flagged UNVERIFIED hypothesis (sphere/LSS methods as a second latent mixed-ABI instance) — hypothesis, not finding."
 metadata: 
   node_type: memory
   type: project

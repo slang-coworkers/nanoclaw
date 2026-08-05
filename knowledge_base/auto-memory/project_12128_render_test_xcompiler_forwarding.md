@@ -1,5 +1,6 @@
 ---
 name: project_12128_render_test_xcompiler_forwarding
+description: "slang PR #12128 (bot branch fix/issue-12121): accept and forward -X<compiler> options in render-test COMPARE_COMPUTE tests. Shadow-mode ledger decision WOULD_APPROVE/CLEAN at R2 893fc349f61a (Devin-only fallback tier; R1 never recorded). TERMINAL: MERGED 2026-07-16 by jkwak-work (814ab6dda9) at a merged head byte-identical to the decided R2 head, with an explicit head-current human APPROVE — WOULD_APPROVE vindicated, chain closed."
 metadata: 
   node_type: memory
   type: project

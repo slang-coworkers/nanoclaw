@@ -1,5 +1,6 @@
 ---
 name: project-12145-gbufferrttexgrads-d3d12-access-violation
+description: "slang#12145: durable CI-flake anchor for renderpasses/test_GBufferRTTexGrads_d3d12 crashing Mogwai.exe with 0xC0000005 on D3D12 only; discriminator is that HSigmoid passes, so it is not the known fp16-tolerance red. Dominant merge-queue evictor (16 distinct PRs / 7 days). State: OPEN, assignee jkwak-work, untouched 9 days, ZERO fix PRs — ESCALATED TO OPERATOR 08-03 because the bot's channel is exhausted. ⛔ Do NOT dispatch a fixer (Infra + workflow YAML the bot cannot push); refreshes must EDIT comment 5062894889 in place, never post a second. ⛔ The babysitter's prior 'top signature' rankings were BROKEN (138 of 143 'rerun' records were non-actions; corrected 7d = 40 true reruns / 28 PRs), though #12145's dominance holds under the corrected method. ⚠ It is HOST-INDEPENDENT — fails on SLANGWIN4 too, so a #12145 red on a SLANGWIN5 run is not SLANGWIN5 evidence."
 metadata: 
   node_type: memory
   type: project

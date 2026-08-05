@@ -1,5 +1,6 @@
 ---
 name: project_9999_switch_without_cases_diagnostic_fork
+description: "slang#9999: a switch body with statements but no case/default label compiles silently and the body is discarded (root: lowerSwitchCases in slang-lower-to-ir.cpp drops pre-first-label stmts before the E41000 site). Design fork RESOLVED 07-27 — jhelferty conceded to skiminki: warning E41000 by extending unreachable-code detection. ⛔ Approach-A (dedicated error E30606, branch 27afc63068) is SCRAPPED/DEAD, and the earlier 'one combined PR closing #9999 + #12236' dispatch was WRONG (would collide with existing PR #12245). State: #9999 blocked-on-#12245-merge; resume = #12245 merges, then a separate #9999-only draft PR. ⛔ Also: a 2026-06-29 bot promise of a draft PR was never fulfilled."
 metadata: 
   node_type: memory
   type: project

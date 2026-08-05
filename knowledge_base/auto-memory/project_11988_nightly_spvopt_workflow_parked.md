@@ -1,5 +1,6 @@
 ---
 name: project_11988_nightly_spvopt_workflow_parked
+description: "slang#11988: add a nightly slang-test workflow running the suite with SpvOpt enabled. State per file: PIECE #1 MERGED — jkwak's own PR #12187 ('-OX' slang-test flag, `Fixes #11988`) merged 2026-07-22; our draft #12159 closed unmerged; jkwak then REOPENED because the nightly workflow itself is missing. PIECE #2 (workflow YAML) remains, bot cannot push (App lacks workflows perm) — standing git-apply diff in comment 5014780707, `git apply --check` clean. No bot action pending; re-open only on fresh human comment. ⛔ The originally-assumed `-default-optimization-level` interface was NOT what shipped."
 metadata: 
   node_type: memory
   type: project

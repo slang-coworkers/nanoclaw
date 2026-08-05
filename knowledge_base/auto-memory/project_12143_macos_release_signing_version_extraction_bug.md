@@ -1,5 +1,6 @@
 ---
 name: project_12143_macos_release_signing_version_extraction_bug
+description: "slang#12143: macOS release signing fails since tag v2026.12.0.1. ⛔ The filed framing (expired Khronos signing cert) was CORRECTED by triage — real cause was a greedy sed at .github/workflows/release.yml:217 mis-parsing 4-component versions; the cert remains UNVERIFIED, not disproven (the run dies before codesign). RESOLVED 07-18: PR #12149 (gtong-nv) merged 3292090b36 applying the prefix-anchored Approach-A one-liner, jkwak hand-closed the issue; diagnosis vindicated. Open separate track: cert validity, first exercised by the next tagged macOS release. Bot could not fix it (workflows perm)."
 metadata: 
   node_type: memory
   type: project

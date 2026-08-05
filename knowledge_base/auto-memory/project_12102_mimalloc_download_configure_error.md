@@ -1,5 +1,6 @@
 ---
 name: project_12102_mimalloc_download_configure_error
+description: "slang#12102: external/CMakeLists.txt silently git-clones mimalloc on a mutable unpinned tag that post-#12036 supplies the whole-DLL allocator; fix = vendor as a SHA-pinned submodule, delete the fetch, FATAL_ERROR on missing source. TERMINAL: PR #12107 MERGED 2026-07-15 (c5d4d76e67), issue auto-closed; approver WOULD_APPROVE at the exact merged head. ⛔ Pin churned four times — v2.1.7 -> v3.3.2 -> v2.3.2 (spirv-tools DEPS) -> FINAL v2.1.7 8c532c32 after pdeayton reported perf regressions in 2.3.2/3.3.2; earlier pins and the 'two mimalloc versions' coupling worry are superseded/disproven. ⛔ Also: `file(DOWNLOAD ... EXPECTED_HASH)` is DEFERRED-fatal (error raised, execution continues, configure still exits 1) — the 'fatals AT the call so the handler is unreachable' reading was falsified by job log + A/B."
 metadata: 
   node_type: memory
   type: project

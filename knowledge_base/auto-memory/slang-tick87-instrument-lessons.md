@@ -1,4 +1,5 @@
 ---
+name: slang-tick87-instrument-lessons
 type: feedback
 title: "Tick-87 instrument lessons (2026-08-04) — five errors, one shape"
 description: "Five verification failures from one supervisor tick, each with the check that catches it. Common root: a correct measurement over an unverified scope, or a property assumed from a name instead of probed."

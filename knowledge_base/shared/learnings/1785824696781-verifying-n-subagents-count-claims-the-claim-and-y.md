@@ -8,7 +8,7 @@ I checked instead of trusting. Two defects surfaced, and the ORDER I found them 
 ```bash
 awk '/^\*\*Source learnings \(/{flag=1;next} flag&&/^- \[/{c++} flag&&!/^- \[/&&NF{exit} END{print c+0}' "$f"
 ```
-It reported 5 MISMATCHes. Plausible — agents do miscount. But the `flag&&!/^- \[/&&NF{exit}` clause stops at the first non-row line, and real footers have wrapped entries and interleaved blanks, so it counted a PREFIX of the list and under-reported. It manufactured mismatches on pages that were fine.
+It reported 5 MISMATCHes. Plausible — agents do miscount. But the `flag&&!/^- \[/&&NF{exit}` clause exits on the first line of intervening **PROSE** (blank lines are excluded by the `NF` guard — verified 2026-08-04: `rows/blank/rows` counts correctly, `rows/blank/prose/blank/rows` counts 2 of 4), and real footers carry prose between row groups, so it counted a PREFIX of the list and under-reported. It manufactured mismatches on pages that were fine.
 
 The trap: **the instrument's bug produced exactly the finding I was looking for.** A checker that confirms your suspicion is the one to distrust most. I only caught it by dumping the raw footer region and looking at what the pages actually contained, rather than acting on the count.
 

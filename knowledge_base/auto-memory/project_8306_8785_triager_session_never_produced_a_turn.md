@@ -1,6 +1,6 @@
 ---
 name: project_8306_8785_triager_session_never_produced_a_turn
-description: "slang#8306 + #8785: jkwak-work asked @nv-slang-bot to triage 07-18; 17d silence. Sessions EXIST and are `running` with in=1/out=0 — dispatch landed, turn never happened. 08-04 nudge woke #8306 (out=1 in ~60s) but #8785 STILL out=0 under an identical nudge ⇒ per-session stall, reproduced. Cause UNKNOWN — do not guess."
+description: "slang#8306 + #8785: jkwak-work asked @nv-slang-bot to triage 07-18; 17d silence. CHARACTERIZED 08-04: webhook DELIVERED ON TIME (session created + in-row + my out-row all 07-18 13:03), never consumed, then REPLAYED at 10:49 with NO new inbound. So it is deferred CONSUMPTION, not late DELIVERY — the triager's 'arrived 17d late' read is wrong at the layer it names, and its dedup-on-arrival remedy would not have helped. Root cause of the re-serve UNKNOWN — do not guess. Two earlier claims here were refuted (per-session stall; out==0 unconditional) — read the corrections before citing. Instruments: `ncl sessions messages` hides system rows by default (fake seq gaps) and caps at 500; `sessions list --limit 2000` returns exactly 2000 = paged."
 metadata:
   node_type: memory
   type: project
@@ -45,6 +45,27 @@ Both sessions received a **byte-identical-shaped supervisor nudge at 00:22:36Z**
 - **Not the container** — `running` on both.
 
 ⚠️ **The triager cannot diagnose this and correctly refused to try.** Its context is the #12181 chain; those two inbounds are not in its window, and it said so: *"no record, cause unknown"* rather than inventing a mechanism. **That was the right call** — and it correctly named the session layer as *my* instrument, not its. It is proceeding on my relay of the issue content without needing a re-dispatch.
+
+## ✅ 2026-08-04 10:49 — the 17-day gap is now CHARACTERIZED (not yet caused): DELIVERED ON TIME, NEVER CONSUMED, REPLAYED TODAY
+
+Both triager sessions emitted an outbound at **10:49** describing *"the original Jul 18 webhook arriving out of order (~17d late)"*. **That diagnosis is wrong at the layer it names**, and the distinction is load-bearing because the triager proposed a remedy from it (*"per-issue dedup on arrival"*).
+
+**Delivery was NOT late.** Four independent facts, each from a different field:
+1. Triager session `45qr7w` **`created_at` = 07-18 13:03** — the router creates a session *when a message arrives*.
+2. Its webhook row is **`in` seq 2, ts 07-18 13:03** — matching creation.
+3. **My own** session `9dlpoe` holds the matching **`out` seq 3 at 07-18 13:03** — the dispatch was written then.
+4. My **00:22 nudge today observed the row already present** (`in=1 / out=0`) — so it predates 10:49 by ≥10h and cannot have been inserted then.
+
+**The 10:49 turn had NO new inbound.** Newest inbound in `45qr7w` is seq 10 (00:53); in the #8785 twin, seq 14 (00:54). Verified with `--include-system --limit 500`. The turn fired with nothing delivered to it.
+
+⇒ **Hypothesis (NOT established): the original un-acked row was re-served on a container poll** — i.e. a **replay**, consistent with the two-DB model where `getPendingMessages` keys on `delivered`. **Cause of the re-serve at 10:49 is UNKNOWN — do not publish the mechanism as fact.** What *is* established is the symptom shape: **an inbound row can sit unconsumed for 17 days in a session reporting `container_status: running`, then surface later timestamped with its original arrival time.**
+
+⭐⭐**Why the triager's remedy would not have helped:** arrival was never duplicated — *consumption* was deferred. Dedup-on-arrival sits upstream of the actual failure and would have suppressed nothing. ⭐⭐**A replayed row is indistinguishable from a late arrival FROM THE CONSUMER'S SEAT** — the agent sees a correctly-timestamped old event and can only conclude "this got here late." Only the session/delivery layer (Main's instrument) can tell the two apart, which is why this correction had to come from here and why the triager was right not to guess.
+
+### ⭐ Instrument lessons from this measurement
+- ⭐⭐**`ncl sessions messages` FILTERS system-kind rows by default.** The host uses **even** seq, the container **odd**; with system rows hidden, the even series shows gaps (12/14/16/18 absent) that read as *deleted rows*. I nearly concluded rows were missing. **Pass `--include-system` before any claim about which rows exist.** Also default `--limit` is 50 with a **hard cap of 500** — not 2000.
+- ⭐⭐**`ncl sessions list --limit 2000` returned EXACTLY 2000 rows** — a round number at the boundary ⇒ **paged, not complete**. Fine for the membership lookup I used it for (found 4 sessions for these 2 threads); **useless for any "no other session exists" claim.** Same wrong-units/page-vs-population trap as the 30/100/250 defaults.
+- ✅**A same-thread MULTI-TIER read is the cheap discriminator here:** my session and the triager's hold the two ends of the same hop. Comparing `out` ts on my side to `in` ts on theirs dates the delivery without any log access.
 
 ## RESUME
 

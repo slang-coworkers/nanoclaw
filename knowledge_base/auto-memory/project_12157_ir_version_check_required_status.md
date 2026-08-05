@@ -1,5 +1,6 @@
 ---
 name: project-12157-ir-version-check-required-status
+description: "slang#12157: make the IR-instruction version-bump check a required status check (advisory script exits 0; poster job runs on workflow_run so no PR-head status). Design pivoted twice — expipiplus1 confirmed the check was advisory ON PURPOSE (enforce would false-positive on reorder/comment edits), then jkwak-work mandated a C++ tool (not shell) wired into ci-slang-build{,-container}.yaml. CHAIN CLOSED BOTH SIDES 2026-08-04: PR #12158 DRAFT at cb213cb05a, F2 (additive-gate fail-open) closed structurally, F1 (build wiring) only PARTIAL because nothing invokes the wrapper and that half is maintainer-only; resume items are all jkwak's. ⛔ Corrections: the 15-day 'held on a maintainer' framing was WRONG (blocked on us — the reviewer's REQUEST_CHANGES was never on GitHub, 0 reviews/0 comments verified); a 'chain is dead, no live sessions' measurement was WRONG (ncl sessions list is 200-row capped and ignores --agent-group); the 'orphan / force-push' branch story is inference, not what the compare API shows; k_min/k_max are ADVISORY DOC ONLY, never enforced at load."
 metadata: 
   node_type: memory
   type: project
@@ -59,3 +60,51 @@ metadata:
   - Warning implemented by **PR #7821** "Add CI to check ir module versioning", author **@expipiplus1**, merged 2025-07-22, reviewed/merged by **@k3wlbuddy**. Advisory-by-design from the FIRST commit (`::warning::`+`exit 0` script + `on: workflow_run` poster both present initially; poster later renamed `comment-ir-version-check.yml`→`check-ir-version.yml` in #11828). Never flipped enforcing→passive.
   - Intent record is SILENT — #7821 has empty body, no linked issue, single-line commit, no review text. Told jkwak plainly (didn't invent intent).
   - Who to ask: @expipiplus1 (author, owns intent) primary; @k3wlbuddy secondary.
+- **08-04 MAIN VERIFY-AT-HEAD (mine, independent — not relayed from triager msg 74):** PR #12158 head = `2565211fad1591bda5c63dad2e452ab221635164`, **UNMOVED since 2026-07-20T16:52:36Z**, still DRAFT/open, base master, `mergeable_state: behind`, 1 commit / 4 files / +521-0. **⇒ The 07-20 rework in response to REQUEST_CHANGES NEVER LANDED.** Both reviewer findings re-verified BY ME in the pushed source at head:
+  - **Finding 1 STILL PRESENT.** `tools/CMakeLists.txt` registers the tool via two `generator(slang-ir-version-check ...)` calls (lines 81, 89) whose macro body sets `EXCLUDE_FROM_ALL` + `REQUIRED_BY all-generators` (:44-49). The only `add_dependencies` in the file are `slang-test slang-neural-module slang-workgraph-module` (:309) and `copy-gfx-slang-modules` (:317) — **neither names `slang-ir-version-check`.** The prescribed fix `add_dependencies(slang-test slang-ir-version-check)` is absent ⇒ debug build emits no binary ⇒ wrapper `find` empty ⇒ exit 1 on EVERY PR.
+  - **Finding 2 STILL PRESENT.** `slang-ir-version-check-main.cpp:380-390`: `if (removedKeys.getCount() > 0) { …note…; return 0; }` — the early return is intact, evaluated BEFORE the additive check at :393-410 ⇒ an unrelated new instruction rides in on any PR that also removes/renames. The ID-based rewrite was never applied (no `baseIds`/`stableId` symbols in the file).
+  - **PR body still carries the WRONG build claim** (line 28 "so the tool builds under `all-generators`" and line 44 "built by the existing `all-generators` dependency of the debug build, so no extra build step is needed") — the exact claim the reviewer refuted. Body must be corrected with the fix, or a maintainer reads a false readiness signal.
+  - Known-gap disclosure (operand-count) IS present in body line 20 ⇒ that condition of mine still met.
+- **08-04 zero-review finding, endpoint-split (⭐`pulls/{n}/reviews` alone is blind):** `pulls/12158/reviews` = **0**, `pulls/12158/comments` (inline) = **0**, `issues/12158/comments` = **0**. Non-zero controls: `pulls/12303/reviews` = 3, `issues/12303/comments` = 1 ⇒ the three zeros are real, not an auth/endpoint artifact. **⇒ The REQUEST_CHANGES verdict the chain has been held on for 15 days IS NOT ON GITHUB** — it exists only on the internal reviewer↔triager edge. Issue #12157 itself has 9 comments (last `5024498475`, 07-20T16:18Z, ours) and is assigned jkwak-work, `Dev Opened`, updated 07-31T18:04Z. ⚠️**Public footprint therefore stops at 07-20:** neither the reviewer's two blockers nor the 15-day hold is visible to jkwak — he pivoted the design on 07-20 and has had no status since.
+- **08-04 ORPHAN claim — triager's conclusion CONFIRMED, its stated evidence CORRECTED.** Triager said `merge-base cd0715be3 2565211fa` = `c6a261068` ⇒ "common point is master, not the branch." True and load-bearing: `cd0715be3`'s parent is `c6a2610682`, head's parent is `6a244fee29`, and `compare/cd0715be3...2565211fad` = `{status: diverged, ahead_by 3, behind_by 1, merge_base c6a261068}`. **But "orphan, survives only in GitHub's PR-refs cache" and "force-push replacement" are the triager's inference, not something the compare API shows** — `diverged` with `behind_by: 1` is equally consistent with a branch reset/rebuild. ⭐**`git log cd0715be3..HEAD` IS misleading here (no linear path) — that operational warning stands regardless of which mechanism produced the divergence.** Use `origin/master...FETCH_HEAD`.
+- **08-04 SESSION LIVENESS — chain is FULLY ALIVE (4 sessions), and my first measurement said the opposite.** `ncl sessions list` is capped at 200 rows AND ignores `--agent-group` for global scope; the bare-list grep returned **0 hits for 12157** and I was one step from telling the triager its dispatch had nowhere to land. Bounded (`--limit 10000` → 2124 rows, stable): **4 live sessions on `gh-issue-shader-slang/slang-12157`** — fixer `ag-1780667166439-vmjrwe` **running** last-active 08-04 10:48; triager `ag-1780667166418-apezq5` **running** 10:50; main `ag-1776713211742-1w6l4e` **running** 10:55; reviewer `ag-1780667168475-a9tac8` stopped (07-20 17:22). Non-zero control: `12246` → 2 hits. ⇒ **the fixer session is live and was active 2 min before the triager's message** — the handoff edge is intact, nothing to re-establish. Full lesson + recurrence stamp: [[feedback_ncl_sessions_list_agent_group_flag_not_filtering]].
+- **⇒ CHAIN STATE: LIVE and blocked ON US, not on a maintainer.** Was misfiled in the parked index (now flagged 🔴). The 15-day stall is a *fixer rework that never produced a commit*, not a maintainer wait. RESUME = fixer pushes fresh SHA fixing findings 1+2 + corrects the PR-body build claim → triager re-verifies from scratch → then public status to jkwak on the issue (he is owed one; his 07-20 pivot got no follow-up). Deferred items unchanged: k_min gate (jkwak fork a/b), operand-count detection.
+
+## ✅ CHAIN CLOSED BOTH SIDES 2026-08-04 13:2xZ — held on jkwak-work, nothing queued for the fixer
+
+**Final state, Main-verified at close:** #12158 head `cb213cb05a33c09257900737b0ad5047b1c81f24`, DRAFT,
+open, `updated 2026-08-04T13:21:18Z`; issue #12157 has **10** comments (footprint comment `5178165722`
+patched IN PLACE three times, never stacked); `closingIssuesReferences` = **0** (positive control
+#12303 → 1) ⇒ auto-close disarmed and the disarm verified by effect, not by reading the prose.
+
+- **F2 (additive-gate fail-open) — CLOSED.** Any stable-name key-set delta is enforced against
+  `k_maxSupportedModuleVersion` (`main.cpp:390-404`); the removed-key note is demoted to advisory
+  below it (`:410`). Closed *structurally* rather than by the reviewer's prescribed ID-tracking — no
+  `baseIds`/`stableId` machinery needed, since enforcing on any delta subsumes the bypass.
+- **F1 (build wiring) — PARTIAL, and correctly NOT closable by us.** `add_dependencies(slang-test
+  slang-ir-version-check)` landed guarded at `tools/CMakeLists.txt:314-315`, so the binary builds in
+  the normal debug path (`SLANG_GENERATORS_PATH` is set only on cross-compile paths —
+  `ci-slang-build.yml:173`, `release.yml:143/154`, `cmake-options-build.yml:162`). **Nothing invokes
+  the wrapper**, and that half is maintainer-only: pushing `.github/workflows/*` is refused
+  server-side for a GitHub App at receive time, invisible to `push --dry-run`
+  ([[project_bot_workflows_permission]]). **F1 closes only when jkwak applies the workflow diff and
+  its run passes.**
+- **RESUME (jkwak's, all three):** (1) apply the `ci-slang-build.yml` + `ci-slang-build-container.yml`
+  diff carried in the PR body; (2) the `k_min` a/b fork — doc-convention vs. a real deserializer gate;
+  (3) the **deletion gap** scope call. Deletion-gap follow-up deliberately NOT started — offered as
+  an option, his decision.
+- **Deletion gap (the fixer's own narrowing, triager-audited hardest because it cut below what both
+  tiers had asserted):** the stable-names table is **append-only**, so a true instruction *deletion*
+  is invisible to this tool. Confirmed **empirically** — the vendored `external/lua` builds in
+  seconds (`cd external/lua && make MYCFLAGS="-DLUA_USE_POSIX" MYLIBS=""`), and the checker reports
+  **5 retired entries on master at exit 0**. ⭐**That retired a FALSE CAPABILITY NEGATIVE:
+  "not on `$PATH`" is a fact about `$PATH`, never about the repo — `external/` vendors
+  build-in-seconds tooling.**
+- **The auto-close was re-armed by the disclaimer explaining the disarm** — `resolve #12157` inside a
+  *negated* sentence, because GitHub's parser has no notion of negation. ⭐⭐**Closing-keyword TEXT and
+  EFFECT are INDEPENDENT ⇒ verify the EFFECT (`closingIssuesReferences` + positive control), never the
+  prose.** Filed fleet-wide by the triager as
+  `1785848502267-a-negated-sentence-still-arms-github-s-closing-key.md`; **I placed the back-reference
+  on the companion note `1781072527758`** (the inverse trap: bare-`#` regex → false *negatives* on the
+  qualified `Fixes owner/repo#N` form), since `/workspace/shared/` is write-only to me — see
+  [[reference_shared_learnings_correction_is_two_actor]] §RECURRENCE.

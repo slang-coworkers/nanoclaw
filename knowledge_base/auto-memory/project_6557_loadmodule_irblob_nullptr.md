@@ -1,5 +1,6 @@
 ---
 name: project_6557_loadmodule_irblob_nullptr
+description: "slang#6557: loadModuleFromIRBlob returns nullptr on import because buildHash folded the load-only UseUpToDateBinaryModule policy flag into the module content digest, so an offline-serialized module's digest mismatched. Fix in PR #12068 (`Closes #6557`). State: @pdeayton-nv APPROVED and flipped it ready himself 2026-07-14 — OPEN, non-draft, MERGEABLE, not merged as of the last note; merge is the maintainer's. ⛔ The fixer's 'DRAFT-HELD, awaiting operator ready-flip' report is STALE — no operator decision is pending."
 metadata: 
   node_type: memory
   type: project

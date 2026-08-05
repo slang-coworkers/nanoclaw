@@ -1,5 +1,6 @@
 ---
 name: project_8125_empty_struct_cuda_infllight
+description: "slang#8125: an empty struct in a module's public interface makes the C-like (CPU/CUDA) emitter emit a real 1-byte member while reflection reports size 0 -> offset mismatch / SIGSEGV / CUDA_ERROR_ILLEGAL_ADDRESS. After ~5 reaped-mid-build non-landings and 3 public jkwak status-chases, DRAFT PR #12304 landed 07-31 (remove the 4-line PublicModifier->addPublicDecoration block + else-if fix, branch fix/issue-8125-v2); jkwak APPROVED and flipped it ready 07-31 23:09 — now in CODEOWNERS (pdeayton-nv) + CI, merge maintainer-gated. ⛔ Landmines: do NOT re-recommend the global removeEmptyStructFields pass (#11657, CI-rejected and closed); #10788 is CLOSED (adopt/close tasks dropped); the reviewer's REQUEST_CHANGES on lost plain-public host visibility was OVER-STRONG — that behavior change is INTENDED per csyonghe, and docs/cpu-target.md:210 is the stale artifact; an earlier '9 nv-slang-bot commits in the branch' claim was a FALSE POSITIVE from querying branch ancestry instead of pulls/<n>/commits. Residuals: stale cpu-target.md; Layout-retention gap leaves the mechanism open for non-public spellings."
 metadata: 
   node_type: memory
   type: project

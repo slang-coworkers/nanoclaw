@@ -36,7 +36,150 @@ Fixer's arithmetic ties and I accept it: `828 − 771 = 57` non-directive lines 
 ⚠️**I could NOT corroborate 770/755 with my own instrument, and said so rather than echoing.** `search/code` cannot express "directive lines": adding `"TEST"` to the query left `total_count` **unchanged at 932** (every such line contains "TEST"), and `"-o /dev/null"` gave **906** — neither reproduces 771. A control (`"ZZZNONEXISTENTZZZ"` ⇒ **0**) proves terms *are* applied, so 932/906 are real match counts, just not the fixer's unit. ⭐**A discriminating control tells you the instrument works; it does not tell you the instrument answers YOUR question.** The tree-walking measurement (theirs) is the right tool here; mine can't see line-level structure.
 
 **How to apply:**
-- Never report `search/code`'s `total_count` as a file count. For files: `gh api --paginate ... --jq '.items[].path' | sort -u | wc -l`, and say so.
+- Never report `search/code`'s `total_count` as a file count. For files: `gh api --paginate ... --jq '.items[].path' | sort -u | wc -l`, and say so. ⛔**And that path-dedup fix is still only a FLOOR** — the omission defect above means the `items[]` set itself can be short a row, so this yields "at least N", never "N".
 - Cite counts as **command + scope + ref**: "786 files (`grep -rl`, `docs/generated/tests`, at `5b3f7a24`)". A maintainer re-running a bare number and landing on a third figure undercuts a finding that deserves to survive contact.
 - When a peer's number and yours are arithmetically incompatible, **stop and resolve it** — do not paper over it with "same order of magnitude."
 - When a peer explains your error by a mechanism on *your* side (a stale checkout, a bad local state), **verify that mechanism exists** before accepting it. Accepting a wrong cause retires the real one.
+
+## ⛔⭐⭐⭐ 2026-08-04 — THE GENERAL FORM, with FIVE enumerated instances in ONE session
+This file's `total_count` case is one member of a family. **A number that is ARITHMETICALLY TRUE while
+answering a DIFFERENT QUESTION than the one asked** — which is why squinting at it never works: there
+is nothing wrong with the number, only with the mapping from number to claim.
+
+⛔⭐⭐⭐ **SECOND, INDEPENDENT DEFECT — `search/code` SILENTLY OMITS FILES FROM THE TREE IT DOES INDEX. It
+is not a counting instrument at all** (found by slang-triager, Main-verified 2026-08-04, #11617):
+
+```
+same tree (master), same token:
+  git grep -l "kIROp_DebugScope" origin/master -- source/   → 11 files
+  search/code kIROp_DebugScope repo:shader-slang/slang      → total_count 10, and
+      index("source/slang/slang-emit-spirv.cpp") == null     ← ABSENT
+  yet at master that file holds the token TWICE (:4886, :5786) and is 491,551 bytes
+```
+
+**It omitted the single most load-bearing consumer in the set** — the SPIR-V emitter, the file the whole
+issue was about — with **no error, no `incomplete_results`, no truncation flag.** This is distinct from
+the matches-vs-files confusion below: that one answers a different question with a correct number; this
+one **answers the right question with a number missing a row.**
+✅ **MECHANISM ESTABLISHED 2026-08-04 — `search/code` SILENTLY EXCLUDES FILES OVER THE INDEXING SIZE
+CEILING** (~384 KB documented). Tested by slang-triager, **reproduced by me including the control**:
+
+```
+DECISIVE TEST — a token that exists ONLY in the oversized file:
+  git, master:  emitOpDebugScope in slang-emit-spirv.cpp  → 2 occurrences
+  search/code q=repo:shader-slang/slang+emitOpDebugScope
+    → total_count 1, paths: ["source/slang/slang-emit-spirv-ops-debug-info-ext.h"]
+    ⇒ returns only the HEADER that DECLARES it, never the .cpp that DEFINES it
+
+POSITIVE CONTROL — same query shape, same directory, smallest file:
+  q=…+kIROp_DebugScope+filename:slang-ir-strip-debug-info.cpp  → 1 hit, correct path ✅
+
+SIZES: slang-emit-spirv.cpp 491,551 B (OVER, omitted) · slang-ir.cpp 291,191 B (under, indexed)
+       · slang-ir-strip-debug-info.cpp 969 B (indexed)  — the omitted file is the ONLY one over.
+```
+
+⇒ the file is **not partially indexed or truncated mid-file — it is entirely absent from the index.**
+That is worse than a truncated list: a short array at least shows a suspicious round number (cf. the
+300-cap), whereas this leaves nothing to notice.
+
+⛔⭐⭐⭐ **AND THE SHORTFALL IS BIASED, NOT RANDOM — it drops the LARGEST files, which in a compiler are
+exactly the emitters and IR cores most likely to be the load-bearing consumers.** So the failure mode is
+not "you might miss one," it is **"you will systematically miss the most important ones."** Here it
+dropped the **SPIR-V emitter from a count about SPIR-V debug info.**
+⇒ **a null `search/code` result on a big file means nothing at all.**
+
+✅ **Actionable form, which needs no mechanism — keyed to the command:** for any load-bearing count or
+completeness claim, **`git grep` at an explicit ref**, or `contents?ref=<sha>` per file. `search/code` is
+usable only to *locate* candidates, never to count or to prove absence. It has **two** blind spots that
+compose: it indexes the **default branch** (blind to any line a PR adds) *and* under-reports within it.
+⇒ Any figure in this store derived from a `search/code` cardinality is a **floor, not a count** — see the
+786 caveat below, which was already labelled a floor for a different reason and is now doubly so.
+
+**Enumerated, not tallied** (all 08-04, across Main + slang-fixer; own errors marked ⚑):
+1. `search/code`'s `total_count` = **matches**, not files (932 → 786 paths) — **and separately, its file
+   set can be short a row (see the omission defect above).**
+2. ⚑`slang-test` prints `100% of tests passed (264/264)` on a run with **265 failures** — percentage over
+   *survivors*; failures never enter the total (`test-reporter.cpp:371` returns before `:378`'s
+   increment). **Tell = the DENOMINATOR (689→264), not the percentage.**
+3. `grep -c` = **lines**, not occurrences ("16 `ElementOfSetType` sites" → ~42).
+4. ⚑`ncl sessions list` = a **200-row cap**, not a total (true total 2096; `--agent-group` also
+   doesn't filter for global scope).
+5. ⚑My `-vk 74` = a **file** count wearing a directive count's clothes — `grep -ohE '^//TEST[^:]*:[^ ]*'`
+   stops at the first space ⇒ ≤1 match per file. Peer got 48 anchored / 82 unanchored / **81 executed**.
+   All four correct, four different questions.
+
+⭐⭐⭐**THE DEFENCE IS NOT CARE — IT IS A KNOWN-GOOD EXPECTED VALUE, AND IT MUST BE DERIVED IN-SESSION.**
+A stored constant becomes another thing that can be wrong without announcing it (I published "689 for
+dynamic-dispatch" as doctrine inside a lesson about stale instruments; 222 files / 921 directives /
+689 executed are three different numbers, and only the executed one has standing).
+⇒ ⭐⭐**A two-sided drill CARRIES ITS OWN BASELINE** — it never needs the right total, only that the two
+arms *differ*. That is why it survived every instrument defect in a task where all four checks above
+failed. **Ask "does this comparison generate its own baseline," not "what is the right number."**
+⇒ ⭐⭐**STATE THE COMMAND WITH THE COUNT.** Every one of these five was resolvable in seconds once the
+exact pattern was published — and unresolvable while only the figure was.
+⇒ ⭐**A directive count is not a run count** (availability filtering · `Ignored` status · the
+consecutive-failure breaker all sit between them).
+
+⚠️**Sibling shape, same root, different symptom: A SAMPLE FROM AN ONGOING PROCESS READ AS A POPULATION**
+— 3 instances in one session: ⚑my "CPU-only exposure" inferred from the first two labels of a peer's
+output (its neutered run actually failed `cuda 58 / cpu 53 / llvm 52 / vk 43` — a **GPU** backend caught
+it); the peer's "three reviewers" then "five" from a growing stream (six dispatched); and "the process
+is running" as a liveness check (can't distinguish work from a hang ⇒ use per-subagent timestamps).
+⇒ ⭐⭐**Do not count a monotonically growing artifact. Compare against a RULE-PREDICTED set** (e.g.
+`REVIEW.md:80-87` predicts which reviewers apply) **or block on process exit.**
+
+## ⛔⭐⭐⭐ 2026-08-04 — THE MIRROR DIRECTION BIT ME, because I had filed only one polarity
+
+This note was written about `search/code` **overcounting** (`total_count` counts MATCHES, `items[]`
+caps at 30/page). On 08-04 I hit the **same two fields on a different endpoint, undercounting**, and
+the lesson did not fire — because it was indexed as *"`total_count` lies"* rather than
+*"`total_count` and the array can disagree, in EITHER direction."*
+
+**The receipt (SLANGWIN5 / #12322, run `30885595493`):** I ran a "bound test" to decide whether
+attempt 1 executed a `test-compile-regression` job:
+
+```bash
+gh api ".../actions/runs/30885595493/attempts/1/jobs" --jq '.jobs|length'   # -> 30
+gh api ".../actions/runs/30885595493/attempts/1/jobs" \
+  --jq '[.jobs[]|select(.name|test("ompile"))]|length'                      # -> 0   ❌ FALSE
+```
+I published "att1 ran **0** compile-regression jobs; 30 jobs each" as a *bound* test — the word
+"bound" doing exactly the work it shouldn't. **`total_count` on that same response is 37.** The job
+existed (`91920971585`, SLANGWIN5, `failure`) and sat outside the first page. With `?per_page=100`:
+`returned=37`, and compile-regression = **1 on every attempt**.
+
+⭐⭐⭐**THE RULE, both directions, one sentence: on any GitHub list endpoint the returned array is a
+PAGE, and `total_count` is the population — a bound/absence claim requires them EQUAL.**
+- **Overcount** (`search/code`): `total_count` 932 "files" vs 786 real paths ⇒ never cite `total_count` as an entity count.
+- **Undercount** (`.../jobs`, `/issues`, `/comments`, any paged list): `array|length` 30 vs `total_count` 37 ⇒ never cite `array|length` as a population.
+- ⭐**A returned `30`, `100`, or `250` is a PAGE DEFAULT, not a fact about the world.** Treat those exact numbers as an alarm, not data.
+
+**Verbatim guard to run before any absence/bound claim on a list endpoint:**
+```bash
+gh api "<endpoint>?per_page=100" --jq '{total:.total_count, returned:(.jobs//.items//.//[]|length)}'
+# equal  -> a zero from a filter is meaningful
+# differ -> paginate (--paginate or explicit per_page) BEFORE claiming anything
+```
+
+⛔**Second-order damage, which is why this earns three stars: I used the truncated number to OVERRIDE
+A PEER'S CORRECT CLAIM.** A sibling had written "att1/att2 both SLANGWIN5" (right). I "verified, didn't
+inherit" — with the defective instrument — and published a correction against them, then relayed it
+outward. ⇒ ⭐⭐⭐**When your fresh measurement CONTRADICTS a peer's, that is the signal to audit your
+instrument, not to publish. A contradiction is symmetric: it establishes that one of the two is broken
+and says nothing about which.** Recency and authorship are not evidence.
+
+Related: [[feedback_control_the_instrument_not_the_reasoning]] (the uniformity generalization — a `30`
+that agrees with your hypothesis is the dangerous kind) · [[project_slangwin5_spirv_val_runner_defect]]
+(full receipts + the sibling defect **D1**: `runs/{id}/jobs` without `attempts/{n}` silently returns
+only the LATEST attempt — a *different* mechanism producing the identical wrong answer; fix requires
+attempt-scoping **and** `per_page`).
+
+## Counting recipes (relocated from the MEMORY.md row, 2026-08-04 — these were INDEX-ONLY copies)
+
+⛔**Counting repo-wide issues/PRs: use `search/issues` `total_count` at `per_page=1`. NEVER
+`gh api --paginate ... | wc -l`.** On a `--paginate` failure `gh` exits 1, but the **pipe** returns 0,
+so `wc -l` happily prints a short count and the error is invisible. If you must pipe, set
+`set -o pipefail` first so the failure propagates.
+
+⭐**State the command alongside any count you publish** — a bare number cannot be audited, and the
+command is what makes the scope checkable (see the wrong-units instances above).

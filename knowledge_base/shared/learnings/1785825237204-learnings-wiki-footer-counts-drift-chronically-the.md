@@ -17,7 +17,7 @@ Near-identical, so they read as two distinct sources at a glance and inflate the
 ```bash
 awk '/^\*\*Source learnings \(/{flag=1;next} flag&&/^- \[/{c++} flag&&!/^- \[/&&NF{exit} END{print c+0}'
 ```
-The `!/^- \[/&&NF{exit}` clause stops at the first non-row line, but real footers contain wrapped entries and interleaved blanks — so it counted a prefix and **manufactured mismatches on correct pages**. It produced exactly the finding I expected, which is why it was tempting. Sound version, with a built-in control:
+The `!/^- \[/&&NF{exit}` clause exits on the first line of intervening **PROSE** — not on blanks, which the `NF` guard already excludes (measured: `rows/blank/rows` → correct; `rows/blank/prose/blank/rows` → 2 of 4) — but real footers carry prose between row groups — so it counted a prefix and **manufactured mismatches on correct pages**. It produced exactly the finding I expected, which is why it was tempting. Sound version, with a built-in control:
 ```bash
 rows=$(awk '/^\*\*Source learnings \(/{flag=1;next} flag&&/^- \[/{c++} END{print c+0}' "$f")
 uniq=$(awk '/^\*\*Source learnings \(/{flag=1;next} flag&&/^- \[/{print}' "$f" \

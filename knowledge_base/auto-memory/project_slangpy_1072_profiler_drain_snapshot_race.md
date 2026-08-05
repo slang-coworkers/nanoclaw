@@ -10,7 +10,7 @@ metadata:
 ## ⚡ CONTROLLING STATE — read this first
 
 *This row is append-only: its newest and most authoritative content sits furthest from the top, and the file is
-~47KB — past the ~24.4KB `Read` limit. The conclusions below are restated **in full** rather than pointed at,
+~47KB — past the ~24.4KB `Read` limit. ⚠️*(The `~24.4KB Read limit` premise was FALSIFIED 2026-08-04 — see [[project_memory_files_over_read_limit_backlog]]. The restate-in-full practice still stands on its own merit: conclusions up front beat pointing into a long append-only file.)* The conclusions below are restated **in full** rather than pointed at,
 because a forward pointer would resolve to bytes a truncated read already dropped. **Do not tidy this block away
 as redundant — the duplication IS the point.***
 

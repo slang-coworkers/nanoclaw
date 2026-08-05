@@ -1,5 +1,6 @@
 ---
 name: project_11029_constexpr_param_autodiff_not_fixed
+description: "slang#11029: [BackwardDerivative] fn with a constexpr int param loses constexpr rate in the synthesized backward-prop wrapper -> E41402; regression from the autodiff refactor. Empirically re-verified NOT fixed at HEAD 694022a11 (spirv + hlsl). Maintainer-owned: jkwak's own PR #11030 is the fix path, reassigned to @saipraveenb25 post-SIGGRAPH. Chain closed at verified verdict; do NOT dispatch a bot fixer."
 metadata: 
   node_type: memory
   type: project

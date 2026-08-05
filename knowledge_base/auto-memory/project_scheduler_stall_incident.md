@@ -1,5 +1,6 @@
 ---
 name: project_scheduler_stall_incident
+description: "NanoClaw host defect: a host restart/rebuild leaves overdue recurring occurrences `pending, tries=0`, and since handleRecurrence only mints the next occurrence when the current one completes, the whole series freezes (all 3 daily tasks froze 07-03, found 07-06). Compensating control deployed: a 6-hourly scheduler watchdog (task-1783328238990-qikxwn) that re-arms overdue tasks — explicitly NOT the root fix, which remains SCOPED but NOT DEPLOYED (needs host-side deploy by a human). ⛔ The original handleRecurrence proximate cause was SUPERSEDED by a more precise one in maintainer PR nanoclaw#860: seq-starvation — orphaned always-due cli_response/question_response sidecar rows fill the ORDER BY seq DESC LIMIT window so a lower-seq task row is never fetched. Reviewed correct/minimal; the handleRecurrence advance may still be worth it as defense-in-depth."
 metadata: 
   node_type: memory
   type: project

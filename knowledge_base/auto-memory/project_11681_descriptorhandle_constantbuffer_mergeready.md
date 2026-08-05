@@ -15,7 +15,7 @@ stated expiry** while still reading as live. ⛔ No action pending. History belo
 
 ⚠️ **Found by an expired-gate sweep, not by reading this file** — a self-expiring note does not expire itself. Grep your
 store for `expires when|once X merges|delete this memory` and resolve each trigger against **ground truth**
-([[feedback_correction_must_sweep_whole_file.md]]).
+([[feedback_correction_must_sweep_whole_file]]).
 
 ---
 

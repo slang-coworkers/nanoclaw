@@ -1,5 +1,6 @@
 ---
 name: project_9580_glsl_legalize_layout_mismatch
+description: "slang#9580: GLSL varying-legalization crash (SLANG_ASSERT slang-ir-glsl-legalize.cpp:2166 structTypeLayout) when an entry point returns an associated type of an `export` struct — the entry-point result layout is never refreshed after link-time specialization. Bisected to PR #8603. ⛔ The earlier 'adopt contributor branch #10030' plan was REVERSED — that back-end/IR approach was rejected as wrong by construction; the accepted fix is front-end (resolveLinkTimeAssociatedType before the lookupExternDeclRefType sites), and the '#12131 WOULD_APPROVE, await merge' state is likewise SUPERSEDED. Current: PR #12131 non-draft, rework at ced217320c, reviewDecision CHANGES_REQUESTED (tangent-vector sticky), jkwak DEFERRED the issue ~2 sprints on 07-31. Spinoffs #12132 (makeStruct) and #12134 (base-interface residual)."
 metadata: 
   node_type: memory
   type: project

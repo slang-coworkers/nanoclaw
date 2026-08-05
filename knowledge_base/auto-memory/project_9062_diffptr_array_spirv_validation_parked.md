@@ -1,5 +1,6 @@
 ---
 name: project_9062_diffptr_array_spirv_validation_parked
+description: "slang#9062: re-enable spirv-validation in tests/autodiff/diff-ptr-type-array.slang — Slang emits an illegal OpCompositeConstruct building an array of logical StorageBuffer pointers; every legalization predicate inspects only the array's direct element type, so a struct wrapping RWStructuredBuffer slips through (structural blindness, pass ordering verified). Reproduced on ToT bfe6a7f14. ⚠ FILENAME SAYS 'parked' AND THE BODY CONTRADICTS IT: state was FIXER BUILDING Approach A (SPIR-V-target legalization at processConstructor), authorization doubly confirmed by jkwak ('go with Approach A' + explicit PR request). Approach B (recurse struct fields) is the alternative; C rejected. Re-query the upstream for current liveness — a filename is not a lifecycle state."
 metadata: 
   node_type: memory
   type: project

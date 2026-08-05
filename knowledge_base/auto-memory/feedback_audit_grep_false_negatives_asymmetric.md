@@ -9,6 +9,51 @@ metadata:
 
 # A verification grep's FALSE NEGATIVE is asymmetrically dangerous — it reads as "content is gone"
 
+## ⛔⭐⭐⭐ A CLEANLINESS CHECK AFTER A RETRACTION IS THE LAST PLACE TO TRUST A LITERAL GREP (08-04)
+
+**The corrected text deliberately CONTAINS the retracted phrase, inside its own annotation.** So a naive
+check has two ways to lie, and they point opposite directions:
+- it **matches your own fix** and reports the file DIRTY (false positive), or
+- it **misses a sibling instance** worded differently and reports CLEAN (false negative).
+
+⭐⭐⭐**Both failures have ONE cause: the pattern is scoped to a SENTENCE while the defect is scoped to a
+CLAIM.** The triager hit the false-negative half — a literal grep returned 0, true for that exact string
+and worthless as evidence, because a second "honest status" block carried the same claim in different
+words **across a line break**. It had fixed the instance in front of it and assumed it was the only one.
+I hit the false-positive half in the same hour: a ±200-char annotation window reported three
+**already-fixed** sites as dirty. **The window size itself manufactures findings.**
+
+### The four-part instrument (use all four; any one alone lies)
+1. **Collapse whitespace over the WHOLE FILE first** — `re.sub(r"\\s+"," ",text)` — so a line break
+   cannot hide a match. (Third time line-wrap caused a false zero in one session.)
+2. **Search SEMANTIC VARIANTS, not the literal sentence** — I used 6 regexes and got **8** hits where my
+   earlier single pattern surfaced 3; all 8 were already annotated, but the extra 5 were invisible to it.
+3. **Classify annotated-vs-dirty over a WIDE window (±330 chars)** — too narrow flags your own fixes.
+4. **Carry a NON-ZERO control**, so a final zero is distinguishable from a broken pattern.
+
+⇒ ⭐⭐**A zero from a literal grep on a just-corrected file is the least informative measurement in this
+store.** Ask *"could this pattern match the fix, and could the defect exist in words I did not type?"* —
+if either answer is yes, the zero means nothing.
+
+## ⛔⭐⭐⭐ REQUIRED RIGOUR SCALES WITH THE ACTION, NOT WITH THE COST OF THE CHECK (08-04)
+
+Same false zero, two blast radii: on a **verification** grep it costs a moment's doubt; on a
+**pre-deletion** grep it **destroys content whose only copy was that line** (I came one edit from
+trimming four lessons whose sole copy was an index row). ⇒ **The collapse-and-squeeze ladder is not
+hygiene — it is a PRECONDITION for destructive operations specifically.** Ask *"what do I do if this
+returns zero?"* before running it: if the answer is *delete / shorten / overwrite*, the zero must be
+ladder-confirmed **and** carry a non-zero control. If the answer is *re-check*, a bare grep is fine.
+
+## ⚠️ EMOJI IN AN ANCHOR PATTERN: variation selectors break exact-match edits
+
+A string-replace anchored on text containing `⚠️`/emoji can fail because the file holds a **variation
+selector** (U+FE0F) the typed pattern lacks — visually identical, byte-different. The triager hit this;
+the edit **aborted on its shape assert** rather than silently no-op'ing. ⇒ **anchor on ASCII-only
+substrings**, or match by measured line offset, never on a decorated phrase. (Cf. a stale anchor, which
+does not fail at all — see [[feedback_a_guard_can_be_inert_and_read_as_passing]] §"a write that does
+nothing does not fail".)
+
+
 **When this fires:** any time I grep to confirm content survived an edit, split, or move — i.e. the
 *positive* half of the sweep ([[feedback_correction_must_sweep_whole_file]]). The rule there says to
 verify moved content landed; **this** note is about the instrument I verify it with.
@@ -477,6 +522,78 @@ being reachable, and nothing about the check's own output says so.
 
 **The set, complete — four ways a stored check reports a pass it hasn't earned:** wrong file set ·
 non-discriminating pattern · unarmed absence (no proof it looked) · **correct command, moved subject.**
+
+## ⭐⭐⭐ M9, FIFTH FORM — a CODE LOCATOR is a stored check, and `grep -c '<key>' == 1` is an UNSOUND uniqueness gate
+
+Found 2026-08-04 on the #9401 chain (three agents, three consecutive corrections). The four M9 forms
+above are about *absence* checks. This is about a **locator** — a stored pointer to code — which is the
+same object: a command whose answer a future reader will trust without re-deriving.
+
+**The rot, measured at HEAD `0864e60`.** Our published GATE-2 citation
+`slang-end-to-end-request.cpp:733-751` (written 07-18, **re-propagated by me 08-04 while correcting
+someone else**) now lands on unrelated debug-artifact/sidecar code. Truth:
+`EndToEndCompileRequest::generateOutput(TargetProgram*)` = `:904`, the whole-program-vs-entry-point
+branch = `:911`.
+
+**The proposed cure was a mechanism key — right instinct, unsound gate.** The triager replaced the
+number with a grep key, gated on **`grep -c '<key>' <file>` must return 1**. But `grep -c` counts
+**LINES, not occurrences** — this file already says so in §*PRESENCE vs COUNT* — so **two hits on one
+line pass the gate**. It happened to be safe here (7 lines = 7 occurrences by `grep -o`), which is
+precisely what makes it dangerous: ⭐⭐**the gate passed for the right answer for the wrong reason, so
+nothing in this instance could ever have exposed the flaw.** Sound form:
+
+```bash
+grep -c  'KEY' f            # LINES  — the unsound gate
+grep -o  'KEY' f | wc -l    # OCCURRENCES — the sound one
+# disagreement between the two is ITSELF the signal
+```
+
+**And "a private helper invoked once is unique" is FALSE as a heuristic** — measured in that one file:
+
+| Key | Hits | |
+|---|---|---|
+| `GenerateWholeProgram` (option name) | **7** | consulted at every site that honors it ⇒ 4 visually identical `if` lines |
+| `_getWholeProgramPath` | **4** | private, underscored, **not** unique |
+| `_getWholeProgramResult` | **3** | private, underscored, **not** unique |
+| `_createWholeProgramResult` | **1** | ✅ the GATE-2 locator (`:913`; `else` arm `_createEntryPointResult` `:919`) |
+
+⇒ The reliable predicate is not *private helper* but **measured unique**. **Publish the hit count beside
+the key** — that is the load-bearing act; the naming heuristic that predicts it is not.
+
+⭐⭐ **The asymmetry that makes this class worse than the rot it replaces:** a stale **line number** lands
+on visibly-wrong code and **announces itself**. An ambiguous **grep key** returns plausible hits and
+**does not**. Trading a loud failure for a silent one is a regression even when the pointer is "more
+robust" — same shape as this note's stale-header-vs-deleted-trigger and false-negative asymmetries.
+
+### ⭐⭐⭐ THE CORRECTION SLOT DOESN'T CARE WHO'S OCCUPYING IT — three consecutive corrections, three defects of the repaired class
+
+The recursion above is four-for-four *within one agent's session*. This instance runs **across a
+correction chain between two agents**, each fixing the previous and introducing the same class:
+
+| # | Actor | The fix | The defect shipped **with** it |
+|---|---|---|---|
+| 1 | triager | swept rejected GATE-1 compiler work out of a stale file | retired **GATE-2** as *"dead — presupposed GATE-1"*, killing the chain's only live resume trigger. **False dependency:** GATE-2 was published as decoration-**independent** 13 days earlier |
+| 2 | **mine** | restored GATE-2 with the independence proof | shipped the **rotted line citation** `:733-751` inside the restoration |
+| 3 | triager | fixed my rotted citation with a mechanism key | shipped the **unsound `grep -c` gate** (and an over-tight "private ⇒ unique" heuristic) |
+
+⇒ **On learning X was rejected, verify Y was actually DERIVED from X before retiring Y — proximity is
+not derivation.** Y sat *near* rejected material in the same file, which is the whole mechanism.
+⇒ **A correction pass that deletes a live trigger is worse than the stale header it fixed:** the stale
+header announces itself; the deleted trigger is silent. (Ties to
+[[feedback_correction_unapplied_until_every_restatement_fixed]]'s stale-trigger class and to the
+*fix-inherits-the-burden-of-proof* row in [[slang-evidence-lessons-measurement-rows]].)
+⇒ ⭐⭐⭐**A fix inherits the burden of proof of what it fixes — not the credibility of the defect it
+repairs.** Including when the fix is someone else's correction *of you*: my #2 above was made in the
+posture of correcting an over-correction, which is exactly when scrutiny lapses.
+
+**What actually worked, all three times:** run the instrument against the artifact and **publish the
+number** so the next reader confirms instead of trusting. Not one of the three was caught by re-reading
+the argument.
+
+⚠️ **Meta, and the reason this section exists rather than a new file:** the `grep -c`-counts-lines
+defect was **already filed in this very note** (§*PRESENCE vs COUNT*, and in the `#11917` index row) —
+and I accepted a gate built on it anyway. That is this note's own **meta-lesson** firing verbatim:
+*having the rule filed does not execute it; store the command, not the caution.*
 
 ## ⭐⭐⭐ THE VERDICT — a stored verification command is CODE
 

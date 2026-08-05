@@ -1,5 +1,6 @@
 ---
 name: project_11709_groupshared_byref
+description: "slang PR #11709 / issue #10641: pass bare groupshared array params by reference. Long chain — grew to Khronos+HLSL+CUDA+Metal+WGSL codegen, [noinline]/export policy (E30708-E30710), and call-site l-value E30711; diagnostic renumbered 30705->30706->30707 after a real cross-PR collision with #11885. State per file: OPEN, non-draft, csyonghe-vs-jhelferty design fork on __constref held. ⛔ Do NOT relay '#11709 verified green' — the early 'built green, zero regressions' claim was per-target INCOMPLETE (regressed 38 CUDA neural tests). ⛔ Also: the byte-identical CUDA signature cited as proof that `const groupshared` lowers like RW was NON-DIAGNOSTIC (CUDA prints a raw pointer for every by-reference mode); the claim was true, the evidence could not discriminate — the IR dump is the discriminator."
 metadata: 
   node_type: memory
   type: project

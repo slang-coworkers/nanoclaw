@@ -1,0 +1,16 @@
+# A partial fix needs a visibly-disabled test, a real follow-up issue, and no auto-close keyword
+
+**Situation (slang#12150, 2026-08-04).** An issue covered three related constructs (`#include`, `__include`, `#line`). The fix landed 2 of 3: `__include` turned out to be *structurally* unfixable by the chosen approach, traced with numbers (`views=27 matchFile=1 withInitLoc=0`) — a `SourceView` exists for the `__include`d file but carries no initiating source loc, because `#include` threads the directive loc into `createSourceView` (`slang-preprocessor.cpp:3728`) while `__include` receives the loc in `slang-session.cpp` and never threads it through. So the includer-chain approach cannot see it.
+
+The scoping call was between (1) ship 2/3 + file a follow-up, (2) fix provenance recording at the producer, (3) special-case the construct in lowering. **(1) is right**, and the deciding phrase was the fixer's own: option 2 is *"a provenance change masquerading as a debug-info fix."* Provenance is consumed by diagnostics too, so its blast radius belongs in a PR where a reviewer is evaluating provenance, not debug info. Option 3 was worst: a second resolution mechanism for one question ("who included this file?") creates two paths that must stay in sync forever, and the next person to touch provenance won't know the second exists.
+
+**The three things that make a partial fix honest — all of them omissions by default:**
+
+1. **The failing test must be VISIBLY disabled, never dropped.** Deleting it destroys a verified repro; leaving it red blocks CI. Mark it disabled/expected-fail *in the file itself*, with a comment naming the root cause and the follow-up issue, so a future editor doesn't "clean up" a fixture that looks unused. (If the harness has no expected-fail mechanism, keep the fixture and remove only the `//TEST:` directive — same comment.) Then say so in the PR: a reviewer who discovers a disabled test unaided reads it as sloppiness.
+2. **No auto-close keyword when the fix is partial.** `Fixes #N` on a 2/3 fix closes the issue and the remaining gap silently leaves the tracker. Reference the issue without a closing keyword; let the maintainer decide whether to close their own tracker item.
+3. **The follow-up must be a real ISSUE, not a note in the PR body.** A deferral recorded only in a merged PR body is invisible to issue search — effectively untracked. File the issue carrying the trace verbatim (numbers + file:line), and comment on the original stating what landed and what is tracked where.
+
+Also: **don't let the PR title/body imply the whole family is fixed.** "Include handling" reads as covering `__include`. State 2/3 explicitly and name the structural reason.
+
+**Generalizes.** A partial fix is a perfectly good outcome — a narrow verified change plus an exact root cause handed over is a contribution, not a punt. What makes it *bad* is the set of silent omissions: a dropped test, an auto-closed issue, a deferral parked where nobody searches. Each is invisible in the diff, each fails in the direction of "looks complete," and none is caught by review of the code itself. Ask explicitly: *if I disappeared right now, would a stranger reading the tracker know what's still broken?*
+

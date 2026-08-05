@@ -1,6 +1,6 @@
 ---
 name: project_8785_amplification_shader_payload_docs_wrong
-description: "slang#8785 amplification shader + payload — TRIAGED 08-04 after 17d. BOTH the docs AND the compiler are wrong (an earlier verdict saying 'docs wrong, not the compiler' was RETRACTED — see the SUPERSEDED section). The documented `out payload T` form ICEs: spirv assert slang-ir-glsl-legalize.cpp:5235 (getArgCount()==4), metal assert slang-ir-legalize-varying-params.cpp:4566, and the RELEASE build SIGSEGVs (exit 139) because SLANG_ASSERT->SLANG_ASSUME makes the violated invariant UB; hlsl/glsl exit 0 but emit writes into a read-only cbuffer/push-constant (dxc 1.9 rejects). TRUE TRIGGER = the DispatchMesh payload arg is an entry-point PARAMETER (forced uniform); the `payload` modifier is a RED HERRING — bare `out T p` ICEs too. Root = slang-check-shader.cpp:2118-2155 stage switch omits Stage::Amplification. Supported forms today: `groupshared` global or a plain local. A1 docs fix is CROSS-REPO (shader-slang.github.io docs/coming-from-glsl.md:942-954,959) and UNOWNED; GAP1 multi-thread payload race NOT filed."
+description: "slang#8785 amplification shader + payload — TRIAGED 08-04 after 17d. BOTH the docs AND the compiler are wrong (an earlier verdict saying 'docs wrong, not the compiler' was RETRACTED — see the SUPERSEDED section). The documented `out payload T` form ICEs: spirv assert slang-ir-glsl-legalize.cpp:5235 (getArgCount()==4), metal assert slang-ir-legalize-varying-params.cpp:4566, and the RELEASE build SIGSEGVs (exit 139) because SLANG_ASSERT->SLANG_ASSUME makes the violated invariant UB; hlsl/glsl exit 0 but emit writes into a read-only cbuffer/push-constant (dxc 1.9 rejects). TRUE TRIGGER = the DispatchMesh payload arg is an entry-point PARAMETER (forced uniform); the `payload` modifier is a RED HERRING — bare `out T p` ICEs too. Root = slang-check-shader.cpp:2118-2155 stage switch omits Stage::Amplification. Supported forms today: `groupshared` global or a plain local. A1 docs fix is CROSS-REPO and now FILED as shader-slang.github.io#210 (open, 0 comments, bot-authored, created 08-04T00:52:11Z; target docs/coming-from-glsl.md:942-954,959); GAP1 multi-thread payload race NOT filed. GAP1's mechanism was RETRACTED once: it is NOT 'no OpControlBarrier' (EmitMeshTasksEXT implies a barrier) but SILENT ALIASING of a per-thread local onto one workgroup-shared TaskPayloadWorkgroupEXT slot — last writer wins. Classification is P1/high, NOT the P2/medium an earlier draft carried."
 metadata:
   node_type: memory
   type: project
@@ -9,7 +9,11 @@ metadata:
 
 ## State
 
-**slang#8785** *"Amplification shader and payload"* — open, assignee `jkwak-work`, Type=Bug (human-set, untouched), no labels. Comment history: bmillsNV 2025-10-23 (original ask: write an amplification shader, confirm Slang supports it incl. payload) → jkwak-work 2026-07-18 (*"@nv-slang-bot, can you triage this?"*) → **17 days silence** → **bot verdict `5173197689` @ 08-04 00:30:21Z** (Main-verified **fresh**; jkwak's was the last comment). Classification: **documentation (primary) + missing-diagnostic (secondary) / medium / P2** / frontend sema + mesh-amplification. No `reproduced` label — no mesh-shader GPU, stated publicly.
+**slang#8785** *"Amplification shader and payload"* — open, assignee `jkwak-work`, Type=Bug (human-set, untouched), label **`reproduced`** (applied 08-04). Comment history: bmillsNV 2025-10-23 (original ask: write an amplification shader, confirm Slang supports it incl. payload) → jkwak-work 2026-07-18 (*"@nv-slang-bot, can you triage this?"*) → **17 days silence** → **bot verdict `5173197689` @ 08-04 00:30:21Z** (jkwak's was the last comment before it). Classification: **bug / high / P1** / front-end sema + IR specialization + docs.
+
+⚠️ **This paragraph previously restated the SUPERSEDED verdict** (*"no labels … medium / P2 … no `reproduced` label — no mesh-shader GPU"*) while the retraction sat 2 sections below it, at §"❌ VERDICT REPLACED". A reader landing on `## State` — the first section — got the wrong classification and never reached the correction. Per [[feedback_correction_unapplied_until_every_restatement_fixed]]: **POSITION decides which restatement is read**; the sweep must cover the *earliest* statement, not just append a retraction. Corrected in place 08-04 from live state (`labels:["reproduced"]`, `comments:3`, `state:open`, `type:Bug`).
+
+⚠️ **Verification timestamps in this memo are stale, and that is a fact about the instrument, not the artifact.** §"VERDICT REPLACED" records `updated_at` **00:36:25Z**; live now reads **00:50:15Z** — a *later* edit (the aliasing correction, which is present in the live body). Nothing is wrong with the earlier read; it was true at 00:36. Per [[feedback_a_live_artifact_read_is_a_measurement_with_a_timestamp]]: **re-read before restating, and never treat a recorded `updated_at` as current.**
 
 ## ❌ VERDICT REPLACED 08-04 00:36Z — it is a **P1 CRASH**, not a docs bug. "Both are wrong, independently."
 
@@ -176,7 +180,7 @@ can apply it directly. ⚠️ **No coworker is wired to `shader-slang.github.io`
 `slang`, `slang-rhi`, `slangpy` only) ⇒ nobody on the fleet can open that docs PR; #210 is
 human-owned by construction. Both 17-day stale requests remain cleared.
 
-Related: [[project_8306_embed_core_glsl_module_slang_dll]], [[project_8306_8785_triager_session_never_produced_a_turn]] (the 17-day silence, still separately unexplained).
+Related: [[project_8306_embed_core_glsl_module_slang_dll]], [[project_8306_8785_triager_session_never_produced_a_turn]] (the 17-day silence — **now CHARACTERIZED 08-04 as delivered-on-time / never-consumed / REPLAYED at 10:49 with no new inbound, NOT a late arrival**; root cause of the re-serve still unknown, do not guess).
 
 ## GAP 1 — CORRECTED framing: silent aliasing, NOT a missing barrier (2026-08-04)
 
