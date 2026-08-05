@@ -946,11 +946,23 @@ export async function processQuery(
             archivePrompts.shift();
           } else {
             const willRetryWrapping = hasUnwrapped && !unwrappedNudged;
+            // A turn that delivered nothing by ANY path is not "completed" — the
+            // thread simply goes silent, with no error to notice. Codex reaches
+            // here routinely: it can emit turn/completed with last_agent_message
+            // null (observed 2026-07-17: 7.5s turn, zero output, ack completed,
+            // thread dead), and it never sets isError, so the branch above can
+            // never catch it. Claude has the same hole structurally.
+            // `sent === 0` is the safe discriminator: a reply sent via
+            // mcp__nanoclaw__send_message increments it, so agents that answer
+            // without final text are unaffected. Task runs legitimately produce
+            // no chat message (they append to a run log), so they are excluded.
+            const deliveredNothing = sent === 0 && !event.text?.trim() && !routing.taskRun;
             notifyExchangeComplete(onExchangeComplete, {
               prompt: archivePrompts[0] ?? initialPrompt,
               result: event.text,
               continuation: queryContinuation ?? initialContinuation,
-              status: hasUnwrapped || willRetryTaskBlocks ? 'undelivered' : 'completed',
+              status:
+                hasUnwrapped || willRetryTaskBlocks || deliveredNothing ? 'undelivered' : 'completed',
             });
             if (willRetryWrapping) {
               unwrappedNudged = true;
