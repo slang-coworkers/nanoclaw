@@ -233,6 +233,74 @@ function composeBaseInstructions(
 
 // ── Provider ────────────────────────────────────────────────────────────────
 
+/** Size trigger for dropping a Codex thread. Mirrors CLAUDE_TRANSCRIPT_ROTATE_BYTES. */
+function codexRotateBytes(): number {
+  return Number(process.env.CODEX_ROLLOUT_ROTATE_BYTES) || 12 * 1024 * 1024;
+}
+
+/**
+ * Age trigger, measured from the thread's start. A non-positive override
+ * disables it and lets size alone govern, matching the Claude knob.
+ */
+function codexRotateAgeMs(): number {
+  const raw = process.env.CODEX_ROLLOUT_ROTATE_AGE_DAYS;
+  if (raw === undefined || raw.trim() === '') return 14 * 86_400_000;
+  const days = Number(raw);
+  if (!Number.isFinite(days)) return 14 * 86_400_000;
+  return days > 0 ? days * 86_400_000 : Infinity;
+}
+
+/**
+ * Rollouts live at `<codexHome>/sessions/YYYY/MM/DD/rollout-<stamp>-<threadId>.jsonl`.
+ * The container bind-mounts the session's `codex/` dir as `~/.codex`, so resolve
+ * against HOME first and fall back to the cwd-relative copy for host-side tests.
+ */
+function findRolloutPath(continuation: string, cwd: string): string | null {
+  const roots = [
+    path.join(process.env.HOME || '/home/node', '.codex', 'sessions'),
+    path.join(cwd, 'codex', 'sessions'),
+  ];
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    // sessions/<year>/<month>/<day>/rollout-*-<threadId>.jsonl
+    for (const y of safeReaddir(root)) {
+      for (const m of safeReaddir(path.join(root, y))) {
+        for (const d of safeReaddir(path.join(root, y, m))) {
+          const dir = path.join(root, y, m, d);
+          for (const f of safeReaddir(dir)) {
+            if (f.startsWith('rollout-') && f.endsWith(`-${continuation}.jsonl`)) {
+              return path.join(dir, f);
+            }
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function safeReaddir(dir: string): string[] {
+  try {
+    return fs.readdirSync(dir);
+  } catch {
+    return [];
+  }
+}
+
+/** `rollout-2026-05-27T15-20-51-<uuid>.jsonl` → epoch ms, or null if unparseable. */
+function rolloutStartMs(rolloutPath: string): number | null {
+  const m = /rollout-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-/.exec(path.basename(rolloutPath));
+  if (m) {
+    const ms = Date.parse(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`);
+    if (Number.isFinite(ms)) return ms;
+  }
+  try {
+    return fs.statSync(rolloutPath).birthtimeMs || null;
+  } catch {
+    return null;
+  }
+}
+
 export class CodexProvider implements AgentProvider {
   readonly supportsNativeSlashCommands = false;
 
@@ -253,6 +321,56 @@ export class CodexProvider implements AgentProvider {
   isSessionInvalid(err: unknown): boolean {
     const msg = err instanceof Error ? err.message : String(err);
     return STALE_THREAD_RE.test(msg);
+  }
+
+  /**
+   * Drop a thread that has grown too large or too old, so the next turn starts
+   * clean. Claude has had this since the cold-resume failure mode was first hit;
+   * Codex had no rotation at all and would resume a thread indefinitely.
+   *
+   * That is not theoretical: on 2026-07-17 a Codex group resumed a thread last
+   * touched on 2026-05-27 — seven weeks stale — appended the new prompt to that
+   * rollout, and returned `task_complete` with `last_agent_message: null`. The
+   * turn produced nothing and the thread went silent.
+   *
+   * Age comes from the rollout FILENAME (`rollout-<ISO-ish>-<threadId>.jsonl`),
+   * which records when the thread started — the same "first entry" semantics
+   * Claude uses, without reading the file.
+   */
+  maybeRotateContinuation(continuation: string, cwd: string): string | null {
+    const rollout = findRolloutPath(continuation, cwd);
+    if (!rollout) return null;
+
+    let size: number;
+    try {
+      size = fs.statSync(rollout).size;
+    } catch {
+      return null;
+    }
+
+    const maxBytes = codexRotateBytes();
+    const startMs = rolloutStartMs(rollout);
+    const maxAgeMs = codexRotateAgeMs();
+    const ageMs = startMs === null ? 0 : Date.now() - startMs;
+
+    let reason: string | null = null;
+    if (size > maxBytes) {
+      reason = `codex rollout ${(size / 1_048_576).toFixed(1)}MB > ${(maxBytes / 1_048_576).toFixed(0)}MB cap`;
+    } else if (startMs !== null && ageMs > maxAgeMs) {
+      reason = `codex rollout ${(ageMs / 86_400_000).toFixed(1)}d old > ${(maxAgeMs / 86_400_000).toFixed(0)}d cap`;
+    }
+    if (!reason) return null;
+
+    // Move it out of the resume path rather than deleting: the transcript is
+    // still the only record of that thread once the container is gone.
+    try {
+      fs.renameSync(rollout, `${rollout}.rotated-${Date.now()}`);
+    } catch (err) {
+      console.error(
+        `[codex-provider] Failed to move rotated rollout aside: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    return reason;
   }
 
   query(input: QueryInput): AgentQuery {
