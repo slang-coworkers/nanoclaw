@@ -197,16 +197,40 @@ else
 fi
 
 if [ -n "$DENIAL_REASON" ]; then
-  # Denial cap → graduated escalation. After 3 denies in a single session the
-  # gate no longer silently fails open: it writes an escalation request file
-  # (the host sweep turns it into an admin approval card) and keeps denying
-  # until an admin approves the bypass, rejects it, or the request times out.
-  # The timeout backstop preserves the original anti-thrash contract — a
-  # broken approval path must not wedge the agent forever.
-  # CRITIQUE_ESCALATION=0 restores the legacy fail-open cap.
+  # Denial cap → escalation. After 3 denies in a single session the gate writes
+  # an escalation request file and KEEPS DENYING. The host sweep reads that
+  # file and either self-heals it (drives the agent to run the critique it
+  # skipped) or, for a critique that ran and returned must-fix, asks an admin.
+  #
+  # The gate does NOT open on its own. There is deliberately no timeout release
+  # here: the previous 30-minute fail-open meant an agent could satisfy the
+  # requirement by waiting, and because container stderr dies with the
+  # container (--rm) the host never learned it had happened. Enforcement is now
+  # released only by an explicit, one-shot, TTL'd admin approval — or by the
+  # CRITIQUE_ESCALATION=0 kill switch, which is recorded like any other release.
   DENIALS=$(jq -r '.critique_gate_denials // 0' "$STATE" 2>/dev/null || echo 0)
+  ESC_FILE="${CRITIQUE_ESCALATION_FILE:-$(dirname "$STATE")/critique-escalation.json}"
+  NOW_EPOCH=$(date +%s)
+  NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+  # Record an enforcement release into the escalation file, which is on the
+  # session bind-mount and therefore visible to the host. Anything that opens
+  # the gate must leave a durable trace; stderr is not one.
+  stamp_failed_open() {
+    _why="$1"
+    if [ -f "$ESC_FILE" ]; then
+      jq --arg at "$NOW_ISO" --arg why "$_why" '. + {failed_open_at: $at, failed_open_why: $why}' \
+        "$ESC_FILE" > "$ESC_FILE.tmp" 2>/dev/null && mv "$ESC_FILE.tmp" "$ESC_FILE" || true
+    else
+      jq -n --arg at "$NOW_ISO" --arg why "$_why" --arg reason "$DENIAL_REASON" --arg hit "$HIT" \
+        '{requested_at: 0, reason: $reason, hit: $hit, failed_open_at: $at, failed_open_why: $why}' \
+        > "$ESC_FILE" 2>/dev/null || true
+    fi
+  }
+
   if [ "$DENIALS" -ge 3 ]; then
     if [ "${CRITIQUE_ESCALATION:-1}" = "0" ]; then
+      stamp_failed_open "CRITIQUE_ESCALATION=0 kill switch"
       cat >&2 << EOF
 [critique-gate soft-fail] Allowing $HIT despite unresolved requirement
 ($DENIAL_REASON). The gate denied this session 3 times already; further
@@ -215,12 +239,41 @@ the workflow / overlay setup needs review.
 EOF
       exit 0
     fi
+    # Admin bypass — ONE-SHOT and time-limited. It used to be a latched
+    # boolean that nothing ever cleared, so a single approval stood the gate
+    # open for the rest of the session's life (sessions here live for weeks).
+    # Consume it on use and honour its expiry.
     BYPASS=$(jq -r '.critique_gate_bypass_approved // false' "$STATE" 2>/dev/null || echo false)
     if [ "$BYPASS" = "true" ]; then
-      echo "[critique-gate] Delivery allowed by admin-approved bypass (requirement still unmet: $DENIAL_REASON)." >&2
-      exit 0
+      BYPASS_EXP=$(jq -r '.critique_gate_bypass_expires_at // 0' "$STATE" 2>/dev/null || echo 0)
+      case "$BYPASS_EXP" in *[!0-9]*|'') BYPASS_EXP=0 ;; esac
+      if [ "$BYPASS_EXP" -gt 0 ] && [ "$NOW_EPOCH" -ge "$BYPASS_EXP" ]; then
+        # Expired grant: clear it and fall through to the normal denial path.
+        jq '. + {critique_gate_bypass_approved: false, critique_gate_bypass_expired_at: '"$NOW_EPOCH"'}' \
+          "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" || true
+        echo "[critique-gate] Admin bypass EXPIRED unused — requirement still enforced." >&2
+      else
+        jq '. + {critique_gate_bypass_approved: false, critique_gate_bypass_consumed_at: '"$NOW_EPOCH"'}' \
+          "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" || true
+        stamp_failed_open "admin bypass consumed (one-shot)"
+        echo "[critique-gate] Delivery allowed by admin-approved bypass, now CONSUMED (requirement still unmet: $DENIAL_REASON)." >&2
+        exit 0
+      fi
     fi
+    # A rejection answers the request it was made about — not every future one.
+    # Unscoped, this latched forever and also suppressed re-escalation, so one
+    # old "no" silently decided every later delivery in the session.
     REJECTED=$(jq -r '.critique_gate_bypass_rejected // false' "$STATE" 2>/dev/null || echo false)
+    REJECTED_REQ=$(jq -r '.critique_gate_bypass_rejected_request // 0' "$STATE" 2>/dev/null || echo 0)
+    case "$REJECTED_REQ" in *[!0-9]*|'') REJECTED_REQ=0 ;; esac
+    CUR_REQ=0
+    if [ -f "$ESC_FILE" ]; then
+      CUR_REQ=$(jq -r '.requested_at // 0' "$ESC_FILE" 2>/dev/null || echo 0)
+      case "$CUR_REQ" in *[!0-9]*|'') CUR_REQ=0 ;; esac
+    fi
+    if [ "$REJECTED" = "true" ] && [ "$REJECTED_REQ" != "$CUR_REQ" ]; then
+      REJECTED=false   # stale rejection from an earlier, unrelated escalation
+    fi
     if [ "$REJECTED" = "true" ]; then
       cat >&2 << EOF
 CRITIQUE REQUIRED before $HIT — an admin REJECTED the bypass request.
@@ -232,40 +285,46 @@ your parent instead of delivering.
 EOF
       exit 2
     fi
-    ESC_FILE="${CRITIQUE_ESCALATION_FILE:-$(dirname "$STATE")/critique-escalation.json}"
-    NOW_EPOCH=$(date +%s)
     if [ -f "$ESC_FILE" ]; then
-      REQUESTED_AT=$(jq -r '.requested_at // 0' "$ESC_FILE" 2>/dev/null || echo 0)
-      case "$REQUESTED_AT" in *[!0-9]*|'') REQUESTED_AT=0 ;; esac
-      TIMEOUT="${CRITIQUE_ESCALATION_TIMEOUT_SECS:-1800}"
-      if [ "$REQUESTED_AT" -gt 0 ] && [ $(( NOW_EPOCH - REQUESTED_AT )) -ge "$TIMEOUT" ]; then
+      # An escalation is already open for this session. The gate stays shut
+      # while the host works it — self-healing it (the usual case) or asking an
+      # admin. Waiting does not clear it; running the critique does.
+      ATTEMPTS=$(jq -r '.self_heal_attempts // 0' "$ESC_FILE" 2>/dev/null || echo 0)
+      case "$ATTEMPTS" in *[!0-9]*|'') ATTEMPTS=0 ;; esac
+      FORWARDED=$(jq -r '.forwarded_at // ""' "$ESC_FILE" 2>/dev/null || echo "")
+      if [ -n "$FORWARDED" ]; then
         cat >&2 << EOF
-[critique-gate escalation timeout] Allowing $HIT: the human-approval request
-has been pending for over ${TIMEOUT}s with no decision. Unresolved
-requirement: $DENIAL_REASON. The approval path needs review.
-EOF
-        exit 0
-      fi
-      cat >&2 << EOF
-CRITIQUE REQUIRED before $HIT — escalated, awaiting human approval.
+CRITIQUE REQUIRED before $HIT — escalated to an admin, awaiting their decision.
 
 Reason: $DENIAL_REASON.
 
-An admin has been asked to approve or reject this delivery. Satisfy the
-requirement with /codex-critique or wait for the decision; do not retry the
-delivery in a tight loop.
+The gate will NOT time out or open on its own. Satisfy the requirement with
+/codex-critique — that clears it immediately and retracts the request — or
+wait for the admin decision. Do not retry the delivery in a tight loop.
 EOF
+      else
+        cat >&2 << EOF
+CRITIQUE REQUIRED before $HIT — denial cap reached (self-heal attempt $ATTEMPTS).
+
+Reason: $DENIAL_REASON.
+
+Run /codex-critique for the stage named above, then retry. The gate will NOT
+open on its own; there is no timeout. If you genuinely cannot run the
+critique, say why in this session and an admin will be asked.
+EOF
+      fi
       exit 2
     fi
     jq -n --arg reason "$DENIAL_REASON" --arg hit "$HIT" --argjson at "$NOW_EPOCH" --argjson denials "$DENIALS" \
       '{requested_at: $at, reason: $reason, hit: $hit, denials: $denials}' > "$ESC_FILE" 2>/dev/null || true
     cat >&2 << EOF
-CRITIQUE REQUIRED before $HIT — denial cap reached; requesting human approval.
+CRITIQUE REQUIRED before $HIT — denial cap reached; escalation opened.
 
 Reason: $DENIAL_REASON.
 
-A bypass request has been sent to an admin. Satisfy the requirement with
-/codex-critique, or wait for the admin decision.
+Run /codex-critique for the stage named above, then retry the $HIT. The gate
+does not time out and will not open on its own. If you cannot run the
+critique, say why in this session — after repeated attempts an admin is asked.
 EOF
     exit 2
   fi

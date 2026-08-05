@@ -360,22 +360,43 @@ describe('graduated escalation at the denial cap', () => {
   });
   const escFile = () => path.join(tmpRoot, 'critique-escalation.json');
 
-  it('at the cap: denies, requests human approval, writes the escalation file', () => {
+  const readEsc = (): Record<string, unknown> =>
+    JSON.parse(fs.readFileSync(escFile(), 'utf-8')) as Record<string, unknown>;
+  const readState = (): Record<string, unknown> =>
+    JSON.parse(fs.readFileSync(stateFile, 'utf-8')) as Record<string, unknown>;
+
+  it('at the cap: denies and opens an escalation file', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
     const result = run(denyPayload());
     expect(result.status).toBe(2);
-    expect(result.stderr).toContain('requesting human approval');
-    const esc = JSON.parse(fs.readFileSync(escFile(), 'utf-8')) as { requested_at: number; reason: string };
+    expect(result.stderr).toContain('escalation opened');
+    const esc = readEsc() as { requested_at: number; reason: string };
     expect(esc.requested_at).toBeGreaterThan(0);
     expect(esc.reason).toContain('no critique rounds');
-    // Second attempt while pending: still denied — no silent fail-open.
+    // Second attempt while the escalation is open: still denied.
     const again = run(denyPayload());
     expect(again.status).toBe(2);
-    expect(again.stderr).toContain('awaiting human approval');
+    expect(again.stderr).toContain('denial cap reached');
   });
 
-  it('admin-approved bypass allows the delivery', () => {
+  it('NEVER times out to fail-open — an old, undecided escalation stays denied', () => {
+    // This is the enforcement regression test. The gate used to allow the
+    // delivery once CRITIQUE_ESCALATION_TIMEOUT_SECS (30 min) elapsed, which
+    // meant an agent could satisfy the requirement by waiting.
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
+    fs.writeFileSync(
+      escFile(),
+      JSON.stringify({ requested_at: Math.floor(Date.now() / 1000) - 86_400, reason: 'x', forwarded_at: 'ts' }),
+    );
+    const result = run(denyPayload());
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('will NOT time out');
+    expect(readEsc().failed_open_at).toBeUndefined();
+  });
+
+  it('admin-approved bypass allows the delivery ONCE, then consumes itself', () => {
     activateOverlay();
     fs.writeFileSync(
       stateFile,
@@ -383,35 +404,80 @@ describe('graduated escalation at the denial cap', () => {
     );
     const result = run(denyPayload());
     expect(result.status).toBe(0);
-    expect(result.stderr).toContain('admin-approved bypass');
+    expect(result.stderr).toContain('CONSUMED');
+    // The grant is spent, and the release is recorded for the host to see.
+    expect(readState().critique_gate_bypass_approved).toBe(false);
+    expect(readState().critique_gate_bypass_consumed_at).toBeGreaterThan(0);
+    expect(readEsc().failed_open_at).toBeTruthy();
+    // A second delivery is denied again — it is not a standing grant.
+    const again = run(denyPayload());
+    expect(again.status).toBe(2);
   });
 
-  it('admin-rejected bypass keeps denying', () => {
+  it('an EXPIRED bypass does not allow the delivery', () => {
     activateOverlay();
     fs.writeFileSync(
       stateFile,
-      JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3, critique_gate_bypass_rejected: true }),
+      JSON.stringify({
+        critique_rounds: 0,
+        critique_gate_denials: 3,
+        critique_gate_bypass_approved: true,
+        critique_gate_bypass_expires_at: Math.floor(Date.now() / 1000) - 60,
+      }),
     );
+    const result = run(denyPayload());
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('EXPIRED');
+    expect(readState().critique_gate_bypass_approved).toBe(false);
+  });
+
+  it('admin-rejected bypass keeps denying the request it answered', () => {
+    activateOverlay();
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 0,
+        critique_gate_denials: 3,
+        critique_gate_bypass_rejected: true,
+        critique_gate_bypass_rejected_request: 5000,
+      }),
+    );
+    fs.writeFileSync(escFile(), JSON.stringify({ requested_at: 5000, reason: 'x' }));
     const result = run(denyPayload());
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('REJECTED');
   });
 
-  it('times out to fail-open when no decision lands', () => {
+  it('a rejection from an EARLIER escalation does not answer a new one', () => {
+    // Unscoped, the rejected flag latched forever: one old "no" silently
+    // decided every later delivery in the session and suppressed re-escalation.
     activateOverlay();
-    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
-    fs.writeFileSync(escFile(), JSON.stringify({ requested_at: Math.floor(Date.now() / 1000) - 3600, reason: 'x' }));
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 0,
+        critique_gate_denials: 3,
+        critique_gate_bypass_rejected: true,
+        critique_gate_bypass_rejected_request: 5000,
+      }),
+    );
+    fs.writeFileSync(escFile(), JSON.stringify({ requested_at: 9999, reason: 'x' }));
     const result = run(denyPayload());
-    expect(result.status).toBe(0);
-    expect(result.stderr).toContain('escalation timeout');
+    expect(result.status).toBe(2);
+    // Still denied (enforcement holds), but as a live escalation rather than
+    // as an answered-and-closed rejection.
+    expect(result.stderr).not.toContain('an admin REJECTED');
   });
 
-  it('CRITIQUE_ESCALATION=0 restores the legacy fail-open cap', () => {
+  it('CRITIQUE_ESCALATION=0 still fails open, but now records the release', () => {
     activateOverlay();
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3 }));
     const result = run(denyPayload(), { CRITIQUE_ESCALATION: '0' });
     expect(result.status).toBe(0);
     expect(result.stderr).toContain('soft-fail');
+    // Container stderr dies with the container; the stamp is how the host learns.
+    expect(readEsc().failed_open_at).toBeTruthy();
+    expect(readEsc().failed_open_why).toContain('kill switch');
   });
 });
 
