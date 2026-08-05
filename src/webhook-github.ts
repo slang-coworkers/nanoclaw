@@ -51,7 +51,7 @@ import { log } from './log.js';
 import { getDecisionSessionsForPr } from './modules/approval-ledger/store.js';
 import { forwardWebhookToPeer } from './modules/pr-mapping/forward.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
-import { parkReviewable } from './modules/pending-reviewable/store.js';
+import { deleteParked, parkReviewable } from './modules/pending-reviewable/store.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { inboundDbPath, initSessionFolder } from './session-manager.js';
 import type { AgentGroup, Session } from './types.js';
@@ -841,6 +841,20 @@ export function deliverGitHubPrEvent(event: GitHubPrEvent): DeliveryOutcome {
   // addition to the fixer routing below. Independent side-channel.
   if (event.event === 'github.pr_merged' || event.event === 'github.pr_closed') {
     notifyApproverOfTerminalPr(event, eventContent);
+    // GC the CI-gate park slot. A parked reviewable row is released only by a
+    // later check_suite=success for its head — which a finished PR will never
+    // emit — so without this the row is immortal. Prod 2026-08-05 had 112 parked
+    // rows of which 74 (71 merged, 3 closed) could never fire again; the table
+    // only ever grew. Terminal is the one moment we know the wait is pointless.
+    try {
+      deleteParked(getDb(), event.repo, event.prNumber);
+    } catch (err) {
+      log.warn('github-webhook: parked-row GC failed (non-fatal)', {
+        repo: event.repo,
+        pr: event.prNumber,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   const mapped = deliverMappedPrEvent({
