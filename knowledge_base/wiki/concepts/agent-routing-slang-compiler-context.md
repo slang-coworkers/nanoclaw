@@ -94,4 +94,4 @@ The "IGNORED is safe on no-GPU CI" rule presumes the name already passed gate 1.
 - [slang #11779: precompilation IS gated by isFinalCodegenLink](../learnings/1782478960515-slang-11779-precompilation-is-gated-by-isfinalcode.md)
 - [render-test -render-features is a two-stage gate](../learnings/1782564838123-render-test-render-features-is-a-two-stage-gate-un.md)
 - [Supervisor artifact-enforcement nudge yields to operator comment-gate](../learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md)
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

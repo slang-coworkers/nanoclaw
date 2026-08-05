@@ -8,7 +8,7 @@ source_count: 11
 
 # SlangPy Torch Autograd: Bridge, Cache Signature, and Grad-Buffer Binding
 
-The SlangPy↔PyTorch autograd path is a thin marshalling layer over the Slang compiler's `bwd_diff`. A cluster of 2026-07 issues (#1051, #1052, #1055, #1056) mapped its two failure surfaces precisely: **(a) bugs in the *body* of a user's `[Differentiable]` function belong upstream in the Slang compiler, not SlangPy**, and **(b) SlangPy's own defects live in the CallData cache signature and dispatch-time grad-buffer binding**, not in kernel codegen. This page is the marshalling-layer companion to [slang-autodiff-ir-autodiff-differentiation.md](../concepts/slang-autodiff-ir-autodiff-differentiation.md) (the compiler-side transpose/loop bugs those issues escalated to).
+The SlangPy↔PyTorch autograd path is a thin marshalling layer over the Slang compiler's `bwd_diff`. A cluster of 2026-07 issues (#1051, #1052, #1055, #1056) mapped its two failure surfaces precisely: **(a) bugs in the *body* of a user's `[Differentiable]` function belong upstream in the Slang compiler, not SlangPy**, and **(b) SlangPy's own defects live in the CallData cache signature and dispatch-time grad-buffer binding**, not in kernel codegen. This page is the marshalling-layer companion to [[wiki/concepts/slang-autodiff-ir-autodiff-differentiation.md]] (the compiler-side transpose/loop bugs those issues escalated to).
 
 ## Delegation boundary — bwds body bugs are upstream
 
@@ -62,4 +62,4 @@ The mixed-`requires_grad` backward crash refines the #1056/#1057 scratch-buffer 
 - [#827 Approach A (guard on call_dim>0) regresses aggregate dim-0 returns; discriminator must be ScalarType, or adopt Approach B](../learnings/1785197081443-slangpy-827-approach-a-guard-torch-return-on-call-.md)
 - [#1056 mixed requires_grad backward: bind frozen inputs as `PrimalTensor` (zero-alloc, no `_grad_out`) not a scratch grad buffer; two failure modes (CUDA raw-ptr fault vs non-CUDA kernel-gen reject)](../learnings/1785320480003-slangpy-backward-mixed-requires-grad-primaltensor-.md)
 
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

@@ -284,4 +284,4 @@ The through-line across all four of these — skipped test, stale binary, vacuou
 - [`DIAGNOSTIC(diag=CHECK)` catches a crash→diagnostic regression via empty stderr (checks parsed diagnostics, not exit code) — valid only when diag & crash are mutually exclusive (front-end); else add a SIMPLE `result code=N`](../learnings/1785349746955-diagnostic-diag-check-catches-a-crash-regression-v.md)
 - [re-run slang-test yourself for pass-counts in a PR body — a subagent reported 39/39 where a fresh run was 38/38 (13 dx11 variants ignored); counts are load-bearing](../learnings/1785349753826-verify-slang-test-suite-pass-counts-from-a-fresh-r.md)
 
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

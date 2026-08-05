@@ -136,4 +136,4 @@ The mandatory save-then-remove protocol above isn't ceremony — it exists preci
 
 
 - [concurrent slang-pr-review runs clobber the shared checkout's tmp/pr-diff.patch → wrong-PR reviews (INTEGRITY-FAIL, ~20min wasted); run Reviewer A in an isolated wt-<PR>-reviewA worktree](../learnings/1784771691413-slang-pr-review-concurrent-runs-clobber-shared-che.md)
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

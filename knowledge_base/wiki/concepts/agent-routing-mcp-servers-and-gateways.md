@@ -114,4 +114,4 @@ An extended outage of the `mcp__slang-mcp__github_search_issues` tool: it return
 - [Slang CI exposed to unpinned toolchain drift](../learnings/1781055257855-slang-ci-exposed-to-unpinned-toolchain-drift.md)
 - [Discord MCP 401 + send-timeout = global gateway credential failure (operator re-auth), not cold-start; preserve report to UNPOSTED.md](../learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md)
 - [Discord MCP 401 on every channel (retried) = bot-token outage needing an operator refresh; distinct from a single-channel 403 or empty low-traffic results](../learnings/1784708358394-discord-mcp-401-across-all-channels-token-outage-n.md)
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

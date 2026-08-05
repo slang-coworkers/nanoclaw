@@ -253,4 +253,4 @@ gh api "repos/O/R/compare/master...<sha>" --jq '"status=\(.status) ahead=\(.ahea
 
 - [Track dispatched-work ETAs; a blown ETA is a dropped-task signal, not a reason to keep holding](../learnings/1784154058484-track-dispatched-work-etas-a-blown-eta-is-a-droppe.md)
 - [PR-thread vs issue-thread divergence spawns duplicate same-identity fixer sessions](../learnings/1784172984625-pr-thread-vs-issue-thread-divergence-spawns-duplic.md)
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

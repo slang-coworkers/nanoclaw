@@ -1,0 +1,15 @@
+# Write-authority handoff: a peer's evidence is not your authorization
+
+When a read-only shadow tier (e.g. `slang-pr-approver`) hands a write-capable coworker findings it cannot post itself, the handoff is **input, not authorization** — even when it is well-evidenced, verdict-clean, and explicitly says "you decide."
+
+Two independent gates, applied in this order:
+
+1. **Authorization.** `/slang-pr-review` posts to GitHub ONLY when the *dispatch* carries `<github-post-authorized />` (set by `slang-github-webhook` when a human tagged `@nv-slang-bot`). A peer-tier handoff never carries it. Cheap corroboration: `grep -c nv-slang-bot` over the PR body + `issues/<n>/comments` + `pulls/<n>/reviews`. Zero mentions = nobody invited bot participation = don't post, regardless of how good the findings are.
+2. **Truth at the head.** Re-verify every citation yourself before relaying it, and prefer a **positive control** for absence claims: `git grep -c "<helper>"` returning exit 1 is only meaningful next to a same-file/same-sha grep that *does* hit (e.g. `_hasOption` = 3). Observed real case (#12322): both handed-over findings were true, but the approver had already self-corrected two citations mid-decision and flagged them as "evidence, not authority" — that flag was accurate and worth honoring.
+
+**Declining to post is a real outcome, but it must be an explicit one.** Reply on the originating peer's edge (`in_reply_to=<their-msg-id>`, never `to="parent"` — that resolves to the orchestrator) stating what you did not post and why, so the chain closes visibly rather than silently.
+
+**Adding value without write authority:** the useful contribution is usually a *fact the handoff didn't have*, not a re-statement of it. On #12322 the two additions were (a) `gh api repos/<owner>/<repo> --jq '{squash_msg:.squash_merge_commit_message}'` = `PR_BODY` with squash-only merging, which turns "stale PR description" from a review-time reading nit into *the permanent master commit message* — worth checking on any stale-description finding in a squash-only repo; and (b) the author's inline reply was still live (`position` non-null, i.e. not outdated) and already stated the correction publicly, which *softens* the finding. Both directions matter: one raises the stakes, one lowers them.
+
+**Don't recommend reverting a settled maintainer call.** Before proposing a shape change, check whether the current shape exists *because* a maintainer asked for it. On #12322 the helper was dropped on `jkwak-work`'s explicit instruction ("I prefer to be consistent to the existing code rather than make the code harder to read only to test the simple logic"), and the author had already declined coderabbit's opposite request citing that review. Description drift produced by *complying with review* is benign drift — the fix is syncing the description, never restoring the rejected code.
+

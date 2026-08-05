@@ -15,7 +15,7 @@ source: learnings/1784172984625-pr-thread-vs-issue-thread-divergence-spawns-dupl
 
 **How to apply:**
 - **Do NOT kill a duplicate session whose work is already done + approved** — killing orphans its worktree and loses state. Leave both; let the completed one idle out.
-- **Detect:** `ncl sessions list --agent-group <fixer-group-id>` and look for two rows with the same agent group but different thread_ids that both reference the same PR/issue (one `...-<ISSUE#>`, one `...-<PR#>`).
+- **Detect:** `ncl sessions list --agent-group-id <fixer-group-id>` and look for two rows with the same agent group but different thread_ids that both reference the same PR/issue (one `...-<ISSUE#>`, one `...-<PR#>`).
 - **Prevent going forward:** propagate the ORIGINAL canonical issue thread (`gh-issue-...-<ISSUE#>`) on every dispatch about that fix, and have the edge-owner (triager) confirm which single session is live for the PR before forwarding new PR events. Converge future events onto that one session (pin via `target_session_id` when waking).
 
 Related: no double-dispatch to peer-wired downstream; taskless-fixer review-CC loop; propagate the canonical webhook thread unchanged.

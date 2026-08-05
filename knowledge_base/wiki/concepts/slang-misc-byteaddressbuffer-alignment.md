@@ -60,4 +60,4 @@ A distinct byte-address legalization bug (#12265): `InterlockedAdd` on a `RWByte
 - [scalar block layout forced by ArrayStride](../learnings/1782722840826-slang-scalar-block-layout-is-forced-by-the-arrayst.md)
 - [#12265 `RWByteAddressBuffer` atomic-via-helper: `replaceUsesWith` on the shared deduplicated *type* inst flips every such buffer module-wide → CPU/C++ Load/Store lose the `÷stride`; build a per-use view, never mutate a shared type](../learnings/1785339952123-rwbyteaddressbuffer-atomic-via-helper-flips-whole-.md)
 
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

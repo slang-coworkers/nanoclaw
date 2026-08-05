@@ -10,6 +10,26 @@ source_count: 274
 
 The Slang coworker review pipeline runs three parallel reviewers — Reviewer A (correctness, `slang-pr-review-runner`), Reviewer B (Devin via `devin-fetch.sh`), and Reviewer C (clarity, `slang-clarity-review-runner`) — and merges their findings into a single `combined-review.md`. This page consolidates all operational lessons about running that pipeline correctly, interpreting results, avoiding common traps, and maintaining proper GitHub-vs-internal review hygiene.
 
+⚠️ **This page is over the 40 KB page cap and its tail may be truncated on read.** The TL;DR below carries the durable rules so they survive a bounded read; a subtopic split is pending.
+
+## TL;DR
+
+- **Every reviewer fails toward CLEAN.** Devin exit 0 is not a signal; Reviewer A can emit a 0-byte or budget-capped output; Reviewer C can skip environmentally. **Verify each reviewer produced findings before treating "no findings" as a result** — an absent reviewer and a clean reviewer are byte-identical downstream.
+- **Watch the ARTIFACT, not the subagent.** A Devin subagent returns before `devin-fetch.sh` finishes; a detached reviewer's completion is proven by its exit marker, never by streamed JSON. Anchor monitors to exit markers.
+- **Read the full page dump, not the summary file.** `devin-flags.md` can have an EMPTY `## Flags` section while `devin-page.txt` from the same run shows real findings — synthesizing from the summary records a false "0 findings" and carries a false-clean prior into the challenger.
+- **Reviewer A needs an isolated checkout.** Fleet contention on a shared repo root corrupts runs; `$30` is too low a budget cap and produces silent truncation. Use fresh per-run out-dirs to avoid `/tmp` collisions.
+- **Two bots agreeing measures shared priors, not correctness.** Independent bots flagging the same item is weak corroboration; read the human review thread before scoring any structure/maintainability gap.
+- **A bot finding a named maintainer already overruled ON THIS PR is not an open gap** — but **lead with the technical grounds**, never the maintainer's preference. Maintainer preference is supporting context; a repo guideline is not cleared by taste alone.
+- **A refuted 🔴 does not become WOULD_APPROVE**, and a standing human `CHANGES_REQUESTED` caps the verdict at ABSTAIN. Never round up.
+- **A mid-iteration `diff_hash` mismatch is expected under debounce**, not a bug. Pin the head, byte-prove reviews against it, and re-verify a stale secondary reviewer's flags at the current head.
+- **Re-review scope: redesign gaps and self-recommended nits do not reset the pipeline.** Additive nit rounds are fine; a full re-run is not.
+- **The review signal is endpoint-split across three surfaces** (`pulls/N/reviews`, `pulls/N/comments`, `issues/N/comments`) and the harvest reads one. That split is a property of GitHub's data model, so **every consumer inherits the blind spot independently — fixing one instance is not fixing the class.**
+- **A GitHub post gates on the literal marker, not on prose.** Post only in COMMENT state; never APPROVE/REQUEST_CHANGES from a runner.
+- **Empirical probes can test the wrong sub-case.** A probe that varies the intended factor while holding the confound constant reads as decisive and proves nothing — name the factor and the confound before citing a control.
+- **In an artifact where claims cite `file:line`, the UNCITED SENTENCE IS THE DEFECT** — in a document whose norm is citation, the citation outlier is where an inference got restated as an observation. Run that self-check mechanically over your own draft.
+- **Recording is not routing.** Documenting a blocking infra defect any number of times never reaches a file only an operator can edit. The record serves the next agent; the escalation serves the fix — do both.
+- **A stale webhook dispatch on an already-decided PR is a no-op plus a report, never a re-decision.** `record_decision` is idempotent per `(repo, pr, sha)`, so re-deciding CLOBBERS a human-joined calibration row with a verdict contaminated by post-hoc information.
+
 ## Reviewer B (Devin) Reliability
 
 Devin (Reviewer B) is best-effort and must be self-verified before it contributes to any verdict.
@@ -735,4 +755,4 @@ Several reviewer-runner operational facts from the #12262/#12263 rounds. **Revie
 - [enumerate PR feedback across the UNION of reviews + reviewThreads + issue `comments` — blocking maintainer feedback often lives in issue comments per-node filters drop](../learnings/1785353452935-pr-review-feedback-enumeration-must-query-all-comm.md)
 - [scope a PR from `gh pr diff -R <repo>` (remote base), not local `git diff main...head` (stale local main inflates the change set); the diff sha256 is the review `diff_hash`](../learnings/1785357368357-slangpy-pr-review-use-gh-pr-diff-not-local-git-dif.md)
 
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

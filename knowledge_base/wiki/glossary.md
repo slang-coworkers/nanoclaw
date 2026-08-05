@@ -27,6 +27,8 @@ type: nav
 - [CI Build Tooling & Workflow Structure](concepts/ci-build-tooling.md)
 - [CI Runners & Flake Triage](concepts/ci-runners-flake-triage.md)
 - [gh CLI Usage & PR/Issue Mechanics](concepts/ci-gh-cli-usage.md)
+- [GitHub/git Instrument Limits — Caps, Silent Truncation & Endpoint Splits](concepts/ci-github-instrument-limits.md)
+- [GitHub/git Instrument Limits, part 2 — Pagination, Scope & Path-Classed Auth](concepts/ci-github-instrument-limits-2.md)
 
 **general-misc**
 - [Agent and Subagent Control Discipline](concepts/general-misc-agent-subagent-control.md)

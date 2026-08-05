@@ -18,7 +18,7 @@ Coworker-nudge ONLY when a chain is stuck *inside* the o→t→f→r pipeline �
 - **PR-complete-but-review-stale** (PR open, awaiting maintainer): not a coworker-nudge. Post a **polite, ONE-TIME** GitHub ping to the assignee/reviewer; if no assignee, post a "standing down for maintainer to drive" comment.
 
 ## 3. How to nudge (concrete)
-1. Find the stuck session: `ncl sessions list --agent-group <coworker-ag> --limit 2000 | grep 'gh-issue-<o>/<r>-<N>'`; `ncl sessions messages --id <sess> --limit 3` (last row inbound-with-no-reply ⇒ stuck).
+1. Find the stuck session: `ncl sessions list --agent-group-id <coworker-ag> --limit 2000 | grep 'gh-issue-<o>/<r>-<N>'`; `ncl sessions messages --id <sess> --limit 3` (last row inbound-with-no-reply ⇒ stuck).
 2. Dispatch into that EXISTING session: `send_message({ to:"<coworker>", text:"[Supervisor nudge — gh-issue-<o>/<r>-<N>] No outbound for <dur>. Blocked? status/blocker/ETA.", target_session_id:"<sess-id>" })`. `target_session_id` resumes with context (falls through if stale). Or `<message to="<coworker>" thread_id="gh-issue-<o>/<r>-<N>">…`.
 3. Track `nudgedAt` in supervisor-state.json; **max 2 nudges then escalate** — never loop.
 
