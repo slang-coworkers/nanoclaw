@@ -1,5 +1,6 @@
 ---
 name: project_11844_bitfield_init_verified
+description: "slang#11844: `Test t = {}` on a struct mixing bitfields with a trailing normal field leaves the synthesized $bit_field_backing_0 word uninitialized (E41021 + garbage); root cause = backing field created with null initExpr after ctor signature collection. State: our draft PR #11848 CLOSED unmerged, superseded by maintainer PR #11968 (identical files, `Closes #11844`, not yet merged as of the last note); issue stays OPEN. ⛔ jhelferty-nv's 'might be a false positive' was REFUTED by re-audit of emitted code. ⚠ Filename says 'verified' — that refers to the bug repro, not to a landed fix."
 metadata: 
   node_type: memory
   type: project

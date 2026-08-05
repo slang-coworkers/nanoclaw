@@ -1,5 +1,6 @@
 ---
 name: project_11152_ldg_optix_sbt_false_safe
+description: "slang PR #11152 (skip __ldg lowering for OptiX SBT-rooted loads, fixes #10188): author CLOSED it unmerged 07-15 and reworked as OPEN PR #12119. ⛔ The approver's WOULD_APPROVE/CLEAN at 0e7c1e156e02 was a FALSE-SAFE — do not restate it as a clean verdict: the guard peels only GEP/FieldAddress/NodeOutputRecordGEP, not the BitCast/GetOffsetPtr legalization inserts, so it was bypassable and #10188 stayed latent."
 metadata: 
   node_type: memory
   type: project

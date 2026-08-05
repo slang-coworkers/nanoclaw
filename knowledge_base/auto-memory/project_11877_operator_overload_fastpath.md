@@ -1,5 +1,6 @@
 ---
 name: project_11877_operator_overload_fastpath
+description: "slang#11877: user-defined global `operator OP` on builtin scalar/vector/matrix types silently dropped since v2026.11 (first-bad #11493, author csyonghe). ⛔ Three retractions: the triager's 'predates #11493' bisect was WRONG (cached slangc version string); the verdict comment mis-attributed #11493 to @skiminki-nv (corrected in place); a bot comment claiming `import glsl;` works flag-free from JS was WRONG/untested. Approach A (#11879) REJECTED by jkwak; state = diagnostic draft PR #12162 open, maintainer-gated; JS/WASM enableGLSL gap flagged, Discussion reply blocked by missing App Discussions:write perm."
 metadata: 
   node_type: memory
   type: project

@@ -10,6 +10,21 @@ metadata:
 
 # slang-rhi#800 — evidence and method post-mortem
 
+## ⛔ Landed from the `MEMORY.md` index row, 2026-08-04 (was INDEX-ONLY — no other copy)
+
+These were carried only in the index pointer row, which measured **397 B past the asserted 24.4KB
+injection bound** and would have been lost if the index truncates on load:
+
+- **207 registered / 0 executed** across **3 counting methods** — the headline derivation.
+- ⚠️⭐⭐**NEITHER COUNT WAS RECOMPUTED; BOTH WERE MARKER-COUNTS.** This is the load-bearing caveat:
+  the figures come from counting registration/execution *markers*, not from re-running the suite, so
+  they bound the claim rather than prove it. **Cite from this file, never from memory.**
+- **3 retractions self-backing inline**, named so a reader can find them: **Apple6 residency
+  polarity** (❌never cite `SLANG_RHI_METAL_NO_RESIDENCY_SET`) · **print-vs-emission order** ·
+  **"fallback unexercised"**.
+- ⭐⭐**Suspect YOUR reconstruction when a peer's numbers look impossible** — the rule this
+  post-mortem produced.
+
 Split from [[project_slang_rhi_800_metal_dispatch_indirect]] on 2026-08-03: a controlling block that documents *why each retraction was retracted* grows without bound, because every correction adds a layer and no layer can be
 deleted (a future rewrite must trip over its absence). **Rule adopted, from `slang-pr-approver`: the controlling
 block carries CONCLUSIONS and DO-NOT-REINTRODUCE markers only; all derivations live here.**

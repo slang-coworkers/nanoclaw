@@ -52,5 +52,5 @@ deliverable is the index entry) and
 this used a pattern whose control returned 0, so its "absent" was meaningless until
 re-run).
 
-Related: [[feedback_correction_must_sweep_whole_file.md]] (sweep for where else a claim
+Related: [[feedback_correction_must_sweep_whole_file]] (sweep for where else a claim
 lives), [[slang-routing-lessons-index]] (maintainer handles: jkwak = **jkwak-work**).

@@ -1,5 +1,6 @@
 ---
 name: project_12106_memoize_val_type_dag
+description: "slang PR #12106 'Memoize shared Val and type DAG traversals' (saipraveenb25). TERMINAL: MERGED 2026-07-16 (c8d02ae5) at the approver's decided R3 head 1aa6f887, with a genuine non-author human APPROVE (csyonghe) at that exact SHA = agreement. Three per-commit shadow rows: R1 d0a7a16 BLOCK (generic-specialization miscompile, vindicated — the author's next commit removed the exact cross-env mapValToGlobalValue cache), R2 e2dd5be and R3 WOULD_APPROVE. Shadow mode, nothing posted to GitHub. Chain closed."
 metadata: 
   node_type: memory
   type: project

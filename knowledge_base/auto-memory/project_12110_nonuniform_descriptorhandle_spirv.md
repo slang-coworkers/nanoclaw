@@ -19,3 +19,46 @@ shader-slang/slang **#12110** — `NonUniformResourceIndex` dropped on the `Desc
 - Corrected test matrix: fix+assert NonUniform ONLY on without-cap path; with-cap asserts absence-is-acceptable. Both spellings still covered. Open Q handed to fixer: does Approach A's float-pass change even REACH the with-cap path, or does it lower via `SPIRVLoadDescriptorFromHeap` bypassing the makeVector round-trip (making narrowing "free")?
 
 **State (2026-07-15):** triage complete, verified verdict → GitHub (triager owns post, `#issuecomment-4976372131`). Draft fix in-flight THROUGH slang-triager — slang-fixer on branch `fix/issue-12110` (worktree wt-slang-12110), Approach A, fall back B. DRAFT-only; ready/merge operator-gated. GitHub reply to maxime DEFERRED until fixer confirms corrected scope (closest-to-the-state: fixer PR-open trail or triager verdict refresh). Chain OPEN, awaiting fixer [Fix Report]. triage memo: inbox/a2a-1784083905656-cmltm6/triage-12110.md.
+
+## ⛔⭐⭐ 2026-08-04 — MY RESUME TRIGGER WAS BROKEN TWICE, in opposite directions
+
+**v1 (never-fires):** `RESUME = maintainer approve/merge`. A **review-STATE predicate** on a chain
+whose only activity is COMMENTS ⇒ **structurally could not fire.** Same defect class the
+slang-pr-approver found in its own rhi#803 R4 trigger the same hour.
+
+**v2 (always-fires) — the "fix" was worse:** `RESUME = actionable non-bot feedback in ANY of the
+3 endpoints`. That is **ALREADY SATISFIED** by jhelferty-nv's and csyonghe's 07-30 comments ⇒ it
+would wake a re-decision on every check, forever, with nothing new to decide.
+⇒ ⭐⭐**I widened a never-fires predicate into an always-fires one and didn't notice, because
+widening feels like the safe direction.** You cannot under-detect if you detect everything — but a
+trigger's entire value is *selectivity*, and a predicate satisfied by the status quo carries **zero
+information**. ⭐**Always-fires is the WORSE failure:** never-fires sits inert, always-fires burns a
+re-decision every cycle and trains the reader to ignore the signal.
+
+**✅ THE CHEAP CHECK (approver's, adopted):** *after any predicate fix, evaluate it against the
+KNOWN CURRENT STATE — if it fires now, with nothing new, it is wrong.* One lookup, catches the class.
+Same family as the probe rule: *would this report the same result either way?*
+
+**✅ v3 — the missing discriminator was neither endpoint nor state but the ADDRESSEE.** Fires only
+if ALL THREE hold, else it is not a resume trigger:
+1. non-bot author (`author_association`), **and**
+2. addressed to **us / the decision** — not to the PR author, **and**
+3. it changes a **load-bearing input** (LOC total, ABI gate, CI verdict, a standing review state).
+(Or: the PR merges.)
+
+**Live state 08-04, so the trigger has a baseline to be tested against:** PR #12116 non-draft
+@`5c0e69c0c059`; `pulls/12116/reviews` = **jhelferty-nv COMMENTED 07-30 20:00 + 20:13, csyonghe
+COMMENTED 07-30 20:23** (zero APPROVE/CHANGES_REQUESTED); `issues/12110/comments` = 2 non-bot; and
+**the thread's LAST word is our own `nv-slang-bot[bot]`** ⇒ **v3 NOT satisfied ⇒ correctly holding.**
+
+⚠️**ENDPOINT TRAP I walked into while testing this:** I queried `issues/12116/comments` — the PR's
+*conversation* stream — and got **0 non-bot**, which appeared to contradict this row's own claim that
+two maintainers commented. The real feedback lives on **`issues/12110/comments`** (the issue) and
+**`pulls/12116/reviews`** (review states). ⇒ ⭐⭐**A PR's number and its issue's number index
+DIFFERENT comment streams; `issues/<pr#>/comments` is the PR conversation, NOT the issue's.** My
+"0 non-bot" was a defective instrument, not a fact — and it briefly looked like evidence *for*
+holding, i.e. a false confirmation of the answer I already had.
+
+RESUME = maintainer approve/merge, or v3-qualifying inbound. See
+[[feedback_correction_unapplied_until_every_restatement_fixed]] (the sweep that found this),
+[[project_slang_rhi_803_cpu_ray_query]] (the sibling instance).

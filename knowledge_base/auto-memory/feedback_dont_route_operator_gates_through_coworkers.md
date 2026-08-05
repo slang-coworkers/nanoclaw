@@ -19,4 +19,4 @@ Two compounding mistakes: (1) a **maintainer approval ≠ merge authorization** 
 - When a maintainer has already approved, prefer the **no-bot path**: say plainly that the maintainer/operator can flip + merge directly. Don't insert a bot authorization step that doesn't need to exist.
 - Endorse the downstream non-actions that protect a binding approval: no rebase on `behind` when a push would auto-dismiss a fresh approval and GitHub resolves it at merge; no self ready-flip.
 
-See [[feedback_github_writes_operator_authorized.md]] (which gates are operator-only), [[feedback_route_authorizations_through_dispatch_owner]] (route work authorizations through the dispatch owner), [[project_slang_rhi_805_license_readme_mismatch]].
+See [[feedback_github_writes_operator_authorized]] (which gates are operator-only), [[feedback_route_authorizations_through_dispatch_owner]] (route work authorizations through the dispatch owner), [[project_slang_rhi_805_license_readme_mismatch]].

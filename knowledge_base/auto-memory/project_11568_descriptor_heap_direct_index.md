@@ -1,5 +1,6 @@
 ---
 name: project_11568_descriptor_heap_direct_index
+description: "slang#11568 direct-index ResourceDescriptorHeap: jkwak-work's webhook ask (06-27) to base a PR on #11723 was correctly redirected by triage. Real blocker: generic `__subscript(uint) -> DescriptorHandle<T>` is UNINFERABLE (E39999) — OverloadResolveContext lacks the needed context. (Description added 2026-08-04 by main-2026-08-04; file is sibling-owned, body untouched — a file with no description is invisible to any session scanning descriptions to decide what to open.)"
 metadata: 
   node_type: memory
   type: project

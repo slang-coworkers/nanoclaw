@@ -1,6 +1,6 @@
 ---
 name: Re-open ≠ release on a parked feature chain
-description: A maintainer reply re-opens a parked feature chain's discussion but does NOT auto-release the fixer; release only on actual design convergence
+description: A maintainer reply re-opens a parked feature chain's discussion but does NOT auto-release the fixer; release only on actual design convergence — and a DECISION can be a REFUSAL, which is terminal, not a release
 type: feedback
 originSessionId: 57080bfc-af22-4c9e-9553-17bf6b0b3722
 ---
@@ -8,8 +8,22 @@ On a feature chain parked for maintainer design buy-in, a substantive maintainer
 
 **Why:** On shader-slang/slang-vscode-extension#70 (2026-06-22), the chain's own park-release condition was phrased loosely as "a maintainer comment via webhook re-opens active work and releases the fixer." A maintainer (`jhelferty-nv`) then replied — but only floated alternatives (an editor setting `slang.defaultVersion` vs. a shared `.slang-config` mechanism for slangd+slangc) and deferred the call to core maintainers `@jkwak-work`/`@csyonghe`. The design got *broader*, not decided. Reflexively releasing the fixer would have implemented an un-agreed design, defeating the entire point of the park.
 
-**How to apply:** When a parked feature chain gets a maintainer reply, classify it before acting:
-- **Decision** (picks name + mechanism + precedence/semantics) → release the fixer.
+**How to apply:** When a parked feature chain gets a maintainer reply, classify it before acting. ⭐**Read the POLARITY of a decision before its EXISTENCE — the two-branch version of this classifier silently assumed every decision was a *yes*:**
+- **Decision — GRANT** (picks name + mechanism + precedence/semantics) → release the fixer.
+- ⭐**Decision — REFUSAL** ("won't do", "tabling this", "not planned") → **TERMINAL. Do not release, do not dispatch, do not post.** The park-release trigger has fired and consumed itself; the chain is closed by the answer, not waiting for a better one. Record the *stated precondition* for any future reversal if the maintainer gave one, and note that only a maintainer — never the reporter re-asking — can meet it.
 - **Discussion / alternative-floating / deferral-to-others** → keep the fixer parked. Optionally post a verified, decision-*supporting* clarification (cost/scope tradeoffs) that explicitly defers the choice to maintainers — never one that pushes a design. Wait for actual convergence.
 
-Watch for chains (often set by the triager) whose stated release condition is "any maintainer comment re-opens and releases" — tighten it to "a maintainer comment that actually decides the design."
+⭐**A refusal is the easiest branch to misread as its opposite**, because it satisfies every surface test for "substantive maintainer engagement": a MEMBER wrote prose, on the issue, addressing the design. A trigger phrased as *"re-engage on maintainer comment"* matches it perfectly and points the wrong way. **Test the verdict, not the engagement.**
+
+⛔🔴**RETRACTED — I published a discriminator here and it is WRONG; so was its replacement. See [[feedback_state_reason_is_not_polarity_either]] before using any metadata test for polarity.**
+~~`closed_at == comment.created_at && closed_by == comment.user` is the signature of a decisive refusal.~~ **Refuted by slang-triager with slang#12058** (MINE-verified at source): same conjunction, `state_reason: completed`, body *"Closing after the fix is merged to ToT: PR #12060"*. It detects **deliberateness, not polarity** — and misreads a merge as a rejection, the inverse of the error this lesson exists to prevent. **It survives only as a *deliberate-vs-drive-by* test, never as a refusal test.**
+⛔**And the replacement — "polarity lives in `state_reason`" — is ALSO refuted (mine, measured):** `not_planned` carries ≥4 meanings in this repo — maintainer declines (#12077) · **reporter self-closes a live segfault saying he'll reopen (#11034)** · reporter satisfied by a workaround (#9801) · *"closing as not-a-bug"*, i.e. report invalid (#11319). Population is **186 `not_planned` / 3758 `completed`**, so the branch is common, not rare.
+✅**What actually carries polarity: THE COMMENT BODY. Quote the sentence.** No metadata field settles it. Cheap routing signals first, none sufficient alone: **`author == closed_by` ⇒ reporter self-close, not a maintainer refusal** (catches the #11034/#9801 shape immediately); closing comment's `author_association` (`MEMBER`/`OWNER`); whether the closer is the **assignee** (`swoods-nv` was both on #12077).
+
+⭐**On a refusal, silence is the correct output — say nothing on GitHub.** The maintainer answered the reporter directly and publicly on the issue; a bot comment restating a MEMBER's decision to the person he addressed adds nothing and reads as noise (see [[feedback_holding_echoes_are_noise]]). Note also that a maintainer comment addressed to the *reporter* carries **no bot mention ⇒ no posting authorization** in the first place. Update memory, close the chain, do not reply.
+
+Watch for chains (often set by the triager) whose stated release condition is "any maintainer comment re-opens and releases" — tighten it to "a maintainer comment that actually decides the design **, and check whether it decides FOR or AGAINST**."
+
+**Second instance, 2026-08-04 — slang#12077 (PDF docs distribution), the REFUSAL branch.** Chain parked at triaged with release condition *"re-engage on maintainer comment / design decision webhook"* — pointing at this very lesson. Assignee+MEMBER `swoods-nv` replied to the reporter that the language and module references change weekly, so *"there's too much flux to create something that's as ossified as a PDF"*, and tabled it until those references are *"more substantially complete"* — closing `not_planned` in the same second. The two-branch classifier had no home for this: it is unambiguously a decision (not alternatives, not a deferral to others), so the *Decision* branch said **release the fixer** — into implementing a feature the maintainer had just declined. See [[project_12077_pdf_docs_distribution_parked]] (filename says "parked"; the state is terminal).
+
+⚠️**EVIDENCE BASE: 2 cases, one per polarity** — #70 (2026-06-22, discussion misread as decision) and #12077 (2026-08-04, refusal misread as grant). Both are *the same underlying defect*: **the release trigger was written to match the ARRIVAL of maintainer input, while the decision it gates depends on that input's CONTENT.** That mechanism is structural and readable, which is why this reads as a rule rather than prose — but the GRANT branch itself has still never been exercised, so *"picks name + mechanism + semantics → release"* remains the untested half. Re-derive it the first time it fires.

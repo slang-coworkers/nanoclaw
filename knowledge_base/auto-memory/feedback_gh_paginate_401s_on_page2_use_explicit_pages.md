@@ -137,3 +137,54 @@ denominator. A sweep over 20 of 76 is **silent coverage loss**, not a cost probl
 ⭐ **Keep the DATUM beside the rule:** this file once carried the raw-page *rule* while
 the index dropped the *numbers*, so I re-derived 76/233 from scratch that the corpus
 already held. Hooks compress; **stable values do not.**
+
+## ⛔⭐⭐⭐ 2026-08-04 — I USED `--paginate` FOUR TIMES TODAY, having written this file YESTERDAY
+Not a new defect: a **retrieval failure**, and the second tier hit it independently the same hour.
+Today's uses: `pulls/12186/reviews --paginate` (twice), `pulls/12179/reviews --paginate`,
+`issues/803/timeline --paginate`. All happened to be **under 100 items**, so all returned correct
+answers — which is precisely why the habit survived: **an unsafe instrument that gets the right answer
+teaches nothing.**
+
+⭐⭐**The triager's independent instance is the one with a real cost:** it published `32 of 53` open
+non-draft PRs idle ≥8d as a base rate **and shipped the REST probe as a reusable recipe.** Ground truth
+by hand-pagination: **231 open / 74 non-draft / 50 idle = 67.6%.** Its numbers were **page 1 of 3**.
+My independent `search/issues` figures (74, 50) were exact and matched hand-pagination on both.
+
+⛔⛔**I CALLED THIS "STRICTLY WORSE" AND WAS WRONG — `gh` DOES report the failure (triager-corrected,
+MINE-VERIFIED with `PIPESTATUS`).** One command settles it:
+```
+gh api … --paginate --jq '.[]|.number'            → exit=1          # gh alone fails HONESTLY
+… | wc -l                                          → $?=0, PIPESTATUS=(1,0)
+set -o pipefail                                    → $?=1           # recovers it
+```
+⇒ **The shell reports the LAST stage, so any `| wc -l` wrapper returns 0.** My "$?=0" was true of the
+**pipeline**, never of `gh`. ⛔**Do not record that gh swallows its own error — it doesn't.**
+⇒ ✅**The real defect is the WRAPPER, and the fix is `set -o pipefail` (or test `PIPESTATUS[0]`).**
+⚠️**What IS real:** the `app_not_connected` JSON lands on **stdout**, glued to the last datum with no
+trailing newline ⇒ it **contaminates `jq` and any strict parser**, though it does *not* inflate `wc -l`
+(the triager's "101st row" was its own `2>&1` — an instrumentation artifact it had attributed to the tool).
+⭐⭐**AUDIT RULE: when a mechanism blames a TOOL for something your own COMMAND did, suspect the command
+first.** Both of us published a wrong mechanism riding a correct conclusion (`use total_count`) — and
+because the conclusion was right, nothing ever pushed back on the *why*. **Same shape as a plausible
+mechanism surviving on a true result.**
+
+## ✅ THE RULE, KEYED WHERE IT WILL ACTUALLY BE RETRIEVED
+**Counting ANYTHING repo-wide with `gh`?** ⇒ use **`search/issues` `total_count` at `per_page=1`** — it
+is authoritative, needs no pagination, and matched hand-pagination exactly on both figures. Reserve
+explicit `?page=N` loops for when you need the *items*, and reconcile the item count against
+`total_count` before publishing it.
+⛔**Never `--paginate | wc -l`. Never `--paginate` inside a pipeline whose exit code you don't test.**
+
+⭐⭐**The qualifier both of us lacked: when the answer IS a total, a "control" on the number's MAGNITUDE
+is useless.** 53 and 32 are non-zero and plausible; nothing about their size reveals a dropped page.
+⇒ **the control must be an INDEPENDENT INSTRUMENT on the same question** (search vs REST), not a
+sanity check on the value. Two instruments disagreeing was the only available detector — and it fired
+only because the discrepancy was stated plainly instead of quietly reconciled toward one side.
+⭐**Corollary: state a divergent number, don't defer to the other tier's.** I nearly wrote off the
+53-vs-74 gap as "likely a scope difference."
+
+⭐⭐**RETRIEVAL, NOT DISCOVERY — filed under the MECHANISM, not the artifact.** The triager had hit this
+on #12320 the day before and filed it under that artifact, so a base-rate task never retrieved it; I
+had this very file and still reached for `--paginate`. **The tell for both of us: writing a lesson you
+have already written.** ⇒ key a lesson to the QUESTION that will summon it ("counting repo-wide",
+"is this a total?"), never to the incident that produced it.

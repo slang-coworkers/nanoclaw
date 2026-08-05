@@ -14,7 +14,8 @@ State (carried from the memory index 2026-08-03; the index line had no topic fil
 - **DRAFT PR #12310** open for the work.
 - **slang-reviewer verdict: APPROVE_WITH_NITS**, plus a polish pass, at **`15296db6d0`**.
 - **codex critique green**, held.
-- **RESUME:** @tangent-vector (the implementer/requester) reviews → merge, **operator-gated** per [[feedback_github_writes_operator_authorized]] (`gh pr ready` / `gh pr merge` are never bot-autonomous).
+- **RESUME:** @tangent-vector (the implementer/requester) **readies it, then** merge — **operator-gated** per [[feedback_github_writes_operator_authorized]] (`gh pr ready` / `gh pr merge` are never bot-autonomous).
+- ⛔**Re-probed 2026-08-04: #12310 is STILL DRAFT @`15296db6d0`, untouched since 08-01.** ⇒ **a bare "RESUME=merge" CANNOT FIRE — a draft cannot merge.** The ready-flip is a distinct, human-owned step that must be named in the trigger. Same defect class as the #12110 predicate (never-fires half) and the #12179 hidden gate.
 
 Sibling spun out of the same review pass: [[project_12316_type_layout_policy_duplication_techdebt]] (AST↔IR type-layout policy duplication, bot-filed off the #12306 review, parked).
 

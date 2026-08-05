@@ -47,6 +47,27 @@ Same root as the `Explore`-retains-`Bash` and `gh`-401-is-path-classed errors of
 **assuming a property from a name or a surface instead of probing that property specifically.** Here
 the assumed property is "a file-read returns the file."
 
+⛔⭐⭐**The `Explore` refutation, VERBATIM — recorded here because the EVIDENCE IS THE LITERAL STRING
+and `Bash`'s ABSENCE FROM IT is the whole proof:**
+
+> `Explore`: **All tools except Agent, Artifact, ExitPlanMode, Edit, Write, NotebookEdit**
+
+⇒ **`Bash` is RETAINED**, so `gh api --method POST` works from an `Explore` subagent. "Read-only"
+scopes to the **local filesystem, not the network.** A paraphrase ("Explore is read-only") does NOT
+preserve this — the refutation only survives as the enumerated list, because the claim is about what
+is *missing* from it.
+
+**Why it is duplicated here (2026-08-04):** an audit found **6 files in my store asserting the
+corrected conclusion and only 1 holding the grant** — five escaped conclusions and a single point of
+failure. One compaction of that holder and the belief stands with nothing to re-establish it, at
+which point the next reader re-derives "Explore can't write" *from the name* — exactly how the
+original error started. This is the belief that already caused one wrong exclusion: I used
+"my agents were `Explore`-typed ⇒ no `gh` surface" to rule out my own fan-out as the source of an
+unexplained bot comment. ⭐⭐⭐**A refutation whose evidence is a verbatim string must be stored
+verbatim in more than one place; paraphrase silently destroys it.** See
+[[feedback_a_size_figure_names_a_file_check_which_one]] for the severity rule (losing a refutation
+beats losing an assertion).
+
 Related: [[feedback_search_code_total_count_is_not_a_file_count]] ·
 [[feedback_consistency_is_not_completeness_in_review]] ·
 [[reference_slang_mcp_is_an_independent_github_instrument]]

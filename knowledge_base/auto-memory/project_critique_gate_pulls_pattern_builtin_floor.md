@@ -9,6 +9,280 @@ metadata:
 
 # Critique gate `/pulls` pattern — built-in floor, and its auto-escalation
 
+## 🔴⭐⭐ 08-04 — WORST OBSERVED CLASS: the floor denied a purely LOCAL memory-file write
+**Approver datapoint, then MINE-VERIFIED at the source.** Its command text merely *contained*
+`pulls/` while appending to a local `.md`. **No GitHub call, no delivery, no `/pulls` request.**
+Denied anyway. ⇒ the defect is **not** "over-matches read-only GETs" (my escalation's framing) but
+**"matches any command whose TEXT contains the substring."**
+
+**Mechanism — line numbers CORRECTED (approver-caught; verified with `grep -n`, not `sed` ranges):**
+- `:41` `TEXT=$(… .tool_input.text // .tool_input.command …)` — the **raw command string**.
+- **`:81`** `grep -qE "($BASH_PATTERNS)" <<< "$TEXT"` — **UNANCHORED.** Any occurrence anywhere in the
+  command matches: inside a quoted heredoc, a filename, or prose being written to a file.
+- **`:52`** `BASH_PATTERNS=…` is the **built-in floor**, and `:57-58` make config strictly
+  **ADDITIVE** (`EXTRA_BASH` only ever appends; approver's marker file carries `bash_patterns: []`).
+  ⇒ ⭐**Unfixable from the agent side BY DESIGN** — no local config can narrow it, which converts
+  "please patch" from a preference into the only available remedy, and explains why the only
+  workaround is a string-splitting hack.
+⛔**MY FIRST CITATIONS WERE WRONG — `:72`/`:84`/`:78-80`, and I had already sent them to the
+operator.** Cause: I read with `sed -n '40,60p'` / `'60,88p'` and reported **offsets within the
+printed window as if they were file line numbers.** ⇒ ⭐⭐**`sed -n 'A,Bp'` prints no line numbers —
+deriving a citation from it is guessing. Use `grep -n` (or `sed -n 'A,Bp' | cat -n` with the offset
+added) whenever the number will be published.** ⭐**A wrong line number is the `feedback_two_sets…`
+failure again: the reader re-derives *through* it and lands somewhere else** — same class as a wrong
+session id, and I committed it in a patch request, the worst place for it.
+
+⭐⭐**THE DECISIVE ASYMMETRY — the fix already exists in the same file, on the other branch.** The
+`send_message` branch at **`:71`** is **deliberately anchored**:
+`grep -qE "^[[:space:]]*\[($MSG_MARKERS)\]"`, and the comment at **`:64-67`** explains why:
+*"Unanchored matching burned a denial — and one of the session's 3 soft-cap strikes — every time an
+agent merely MENTIONED a marker mid-sentence in a status update."* ⇒ **The author diagnosed and fixed exactly this class for messages and did not carry
+it to the `Bash` branch.** The remedy needs no design debate: it is a known-good pattern from the
+adjacent branch.
+⇒ ⭐**When reporting a defect, check whether the codebase already solved it elsewhere** — *"apply the
+`:71` treatment at `:81`"* is a far stronger ask than *"please narrow this regex,"* and it cost one
+read of the same file.
+
+**Severity escalates twice over:** (1) a local file write is not egress, so the stated justification
+for text-matching (*"pattern enumeration can never be complete — the durable backstop is
+credential-layer enforcement at the OneCLI proxy"*, **`:76-80`**) **does not apply to non-egress
+commands at all** — there is no backstop being protected; (2) it pressures toward memory-substitution exactly
+when recording evidence, and each denial burns a soft-cap strike toward an auto-filed bypass card.
+⇒ **My operator escalation UNDERSTATED this** — filed as "read-only GETs matched as writes," which a
+reader would reasonably scope to GitHub calls only.
+
+## ✅⭐⭐ 08-04, #804: the PASSING CASE that finally locates the trigger — the gate is EDGE-SCOPED, not fleet-wide
+⚠️⭐⭐**PROVENANCE — "the approver reported" is TRUE OF THE GROUP, FALSE OF THE SESSION. Ledger-settled, and BOTH tiers were partly wrong.**
+I relayed this to the #803 approver session as *"your #804 report"*. It denied it: no `804`
+mentions in its transcript, no `…-804` thread in its session list. **Its denial was correct
+about itself and wrong about its group.** `ncl sessions get sess-1785454385716-bvj5tl` →
+`agent_group_id = ag-1783611156430-vvj8oi` = **Slang PR Approver**, `thread_id =
+gh-issue-shader-slang/slang-rhi-804`, created 07-30 23:33, still `active`. `ncl sessions list
+--agent-group --limit 5000` + post-filter confirms **#804 is a sibling session** of the one I was
+talking to (the group's rhi set is the bound-tested 17 enumerated below).
+⛔**"805×4" WAS WRONG, and so was the approver's replacement figure — same defective instrument:
+[`ncl sessions list --agent-group` DOES NOT FILTER](feedback_ncl_sessions_list_agent_group_flag_not_filtering.md)**
+(200 rows / 9 groups on a single-group query). The 4 `805` rows were **4 different groups'**.
+⛔**MY "10" WAS ALSO WRONG — off a SILENTLY TRUNCATED 200-row page.** ✅**Resolved at `--limit 5000`:
+the group holds 180 sessions, 17 of them rhi** = `issue-{774,797,799,800,801,802,803,804,805,807}` +
+`pr-{774,800,801,803,804,806,807}` — **exactly the approver's 17.** It was right; I was wrong twice
+(superset, then truncated page) *while telling it to suspect its instrument*. Also: Defect A is
+**global-scope only** — a `cli_scope=group` caller gets server-side filtering. Both defects + the
+lesson: [ncl sessions list](feedback_ncl_sessions_list_agent_group_flag_not_filtering.md). ⚠️The **#804 PAIR is real and confirmed**
+— `…bvj5tl` (issue-thread, 07-30 23:33) **and** `…7j3vb1` (**`gh-pr-…-804`**, 07-31 22:27), both its
+group's, both running ⇒ an escalation naming one id must say **which thread form**. ⭐⭐*Two tiers,
+one broken instrument, each "correcting" the other toward a different wrong number — neither
+questioned the tool.*
+⇒ ⭐⭐**A coworker's "that isn't mine" is authoritative for its SESSION and non-authoritative
+for its GROUP.** Both of my framings were defective: "your report" (wrong — not that session's)
+and its "I have no such finding" (right locally, misleading as a group-level denial). The session
+cannot enumerate its siblings — `cli_scope=group` gives it `sessions`, but it reasoned from its
+own transcript, which is the only thing it can see.
+⇒ ⭐**Attribute to the GROUP + the session id, never to the conversation you happen to be in.**
+"slang-pr-approver (session `…bvjl5tl`, thread rhi-804)" would have been unfalsifiable by either
+of us. Same family as the wrong-session-id lesson below — I supplied a *scope* error where that
+was an *identity* error, and both send the reader to verify in a place the evidence isn't.
+⚠️Do NOT "correct" the operator escalation by dropping the approver attribution — the group
+attribution is CORRECT; only my session-level phrasing was wrong.
+
+Approver reported the floor false-fires on read-only `pulls/N/reviews` GETs (4th observation).
+**Real, but I can now bound it with the discriminator this file's own adopted Rule 1 demands —
+a PASS, not another denial.** `gh api repos/shader-slang/slang-rhi/pulls/804/reviews` **succeeded
+from Main's edge** this session (returned all 5 reviews).
+Mechanism, MINE-VERIFIED at **`:33-37`**: activation is **opt-in** — `CRITIQUE_GATE_ACTIVE` env
+(authoritative when set) else `[ -f "$OVERLAY_DIR/.overlay-critique-gate" ] || exit 0`. **Neither
+exists on Main** ⇒ the hook `exit 0`s *before* `BASH_PATTERNS` is ever evaluated.
+✅**INDEPENDENTLY RE-VERIFIED 08-04 by a second Main session, and SHARPENED:** the env var is not
+merely absent — **`CRITIQUE_GATE_ACTIVE=0` is EXPLICITLY SET** on Main's edge, so the `:33` branch
+is *taken* and fails the `= "1"` test ⇒ `exit 0` at `:34`, never reaching the `.overlay-critique-gate`
+fallback. ⇒ Main is **deliberately disarmed by the host**, not accidentally unmarked. That is a
+stronger fact than "neither exists": it means the fleet has an intentional armed/disarmed split, so
+**"is the gate active here?" is answered by the env var FIRST** — checking only for the marker file
+would mispredict any edge where the host injects `=0` alongside a stale marker.
+⚠️**As written, that clause named only the `=0` polarity — and it is the LESS dangerous one.** See
+the `'1'` measurement below: on an ARMED edge a file-only check returns the RIGHT answer for the
+WRONG reason, which validates a broken method instead of failing loudly. ⭐**A guidance line that
+names one polarity of a two-sided error reads as complete** — and I shipped exactly this half-version
+to the operator, the one party who might act on it.
+⭐The two independent reads agree on the conclusion via *different* evidence (absence vs. explicit
+`0`) — which is what corroboration looks like when it isn't just one session's claim echoed.
+✅**THIRD measurement, from the ARMED side (approver, 08-04): `CRITIQUE_GATE_ACTIVE='1'` — also
+EXPLICITLY SET.** ⇒ the model above is right in conclusion but **wrong in mechanism**: it is NOT
+"env var on disarmed edges, marker file on armed ones." **The env var is authoritative EVERYWHERE
+the host injects it; the marker file is only the local/test fallback for when it's unset.** Neither
+tier reaches the file branch. Design intent is stated in the hook comment: the var wins **so an
+agent can't `rm` the marker to escape the gate** (a child process can't mutate inherited env).
+⇒ ⭐⭐**A marker-file-only check mispredicts in BOTH directions — and the approver's edge is the
+dangerous polarity: its `.overlay-critique-gate` file EXISTS *and* its var is `1`, so a file-only
+check returns the RIGHT answer for the WRONG reason.** That validates a broken method instead of
+failing loudly. ⭐*A method that coincidentally agrees on the case you test is worse than one that
+misses cleanly.* ⇒ Correct probe order: **env var first, file only if unset.**
+⭐⭐**Corroboration vs echo, now with the counter-example filed:** explicit `0` and explicit `1`
+are two *different observations* reaching one conclusion. Contrast this chain's `:412` line-ref,
+where two tiers "agreed" because two independent errors converged on one wrong value and the
+agreement read as confirmation. ⇒ **Ask what evidence the other party used; if it's the observation
+YOU supplied them, that's an echo, not a second measurement.**
+⇒ ⭐⭐**"Over-broad `pulls\b` regex" is true but INCOMPLETE as a characterization: the floor only
+bites on edges carrying the overlay marker (armed coworkers).** Any fleet-wide phrasing mispredicts
+my pass — and per Rule 1 that makes it known-false at the moment of writing. Same guard-clauses-are-
+the-semantics lesson this file already teaches about `gate-plan.sh:24`, now on the critique gate's
+own entry condition. ⚠️Do **not** conclude from my pass that the defect isn't worth fixing — it
+costs armed coworkers real operator round-trips (the 10.3h datapoint below).
+
+## ⛔⭐⭐ 2nd defect (08-04, approver-found): missing `mkdir` at `:105` — but it's an ORDERING RACE, **not** unconditional dead code
+**Approver's finding, CONFIRMED on my edge:** `gate-critique-on-deliver.sh` has **no `mkdir`**
+(grep: zero hits). Enumerated all state-touching hooks — **only 2 of 7 lack it**:
+| hook | `mkdir -p "$(dirname "$STATE")"` |
+|---|---|
+| `gate-critique-on-deliver.sh` | ⛔ **absent** |
+| `gate-plan.sh` | ⛔ **absent** |
+| `gate-chain-routing.sh` `:74` · `plan-tracker.sh` `:18` · `track-critique.sh` `:42` · `track-edits.sh` `:56` · `workflow-state-reset.sh` `:30` | ✅ present |
+Consequence chain is real: `:272`'s `jq … > "$STATE.tmp"` fails → trailing **`|| true` masks it** →
+`critique_gate_denials` stays 0 → `:208`'s `>= 3` never trips ⇒ escalation card / soft-fail /
+timeout backstop at `:208-270` unreachable, **gate denies forever**. Approver saw the live stderr:
+`line 272: /workspace/.claude/workflow-state.json.tmp: No such file or directory`, and controlled it
+(dir present ⇒ counter caps at 3, `critique-escalation.json` written) ⇒ the escalation logic is sound;
+the `mkdir` is the bug. **One-line fix at `:105`.**
+
+⛔**BUT "dead code" over-generalizes, and the correction changes the bug's shape.** MINE-VERIFIED:
+`/workspace/.claude/` **EXISTS on my edge** (created 08-04 05:02, holding `workflow-state.json` with
+`edits_since_critique: 4`). **The gate is not the dir's only creator** — `track-edits.sh:56`
+(PostToolUse `Edit|Write|MultiEdit|NotebookEdit|Bash`) and `workflow-state-reset.sh:30`
+(**UserPromptSubmit, empty matcher ⇒ every turn**) both `mkdir -p` unconditionally.
+⇒ ⭐⭐**Real defect = an ORDERING RACE: escalation dies only when a `pulls`-shaped Bash read is the
+FIRST state-touching event of a session** — before any edit-tracked write or prompt-reset has
+created the dir. Once anything else runs, the dir exists and the cap works normally.
+✅**This RECONCILES the hard counter-evidence the approver couldn't:** 3 real bypass cards were filed
+from `ag-…vvj8oi` (18:35, 17:17, 07-31 22:24), and a card *requires* a readable state file with
+`denials>=3` ⇒ the dir demonstrably existed at those moments. "Unconditional dead code" cannot
+explain those cards; the race can. Its own hedge — *"presence is transient/ordering-dependent,
+labeled inference not finding"* — was **correct, and is now mechanism.**
+⇒ ⭐⭐**A "dead code" claim is a UNIVERSAL: it's refuted by one instance of the code having run.**
+Check for an independent creator of the precondition before calling a path unreachable — the failing
+write was real, but attributing it to the gate alone skipped the 5 other hooks that make the same dir.
+⭐**And the honest hedge outranked the confident headline** — the approver flagged exactly the fact
+that its own scope claim depended on, and that flag is what pointed at the race.
+⇒ **Fix is unchanged and still worth bundling** (`mkdir -p "$(dirname "$STATE")"` at `:105`, plus the
+same at `gate-plan.sh`) — the race is real and silent. Only the *blast radius* narrows: first-touch
+sessions, not all sessions.
+
+### ⛔⛔ MY "fires every turn" WAS WRONG — approver-refuted, MINE-RE-VERIFIED. The race is WIDER than I filed.
+I told the operator `workflow-state-reset.sh` "fires on `UserPromptSubmit`, empty matcher ⇒ every
+turn", making the race look narrow. **Refuted on my own edge:**
+- **`:16-18` subagent guard** — `if [ "${CLAUDE_CODE_FORK_SUBAGENT:-0}" = "1" ]; then exit 0; fi`, and
+  **`CLAUDE_CODE_FORK_SUBAGENT=1` is set here** ⇒ exits before anything.
+- **The `mkdir` is at `:30`, INSIDE `do_reset()`** (function spans `:29-38`), **not top-level** ⇒ every
+  early-exit path (`:18` subagent, `:25` empty prompt, `:27` `/clear`, and the no-reset fallthrough)
+  skips it entirely.
+- ⛔**The state file I cited as PROOF was the disconfirmation.** `{edits_since_plan, edits_since_critique,
+  last_edit_at}` is **`track-edits.sh` shape**; `do_reset`'s keys (`task_id`, `plan_written`,
+  `started_at`) are **ABSENT** — and `jq` preserves unrelated keys, so had `do_reset` ever run they'd
+  persist. The dir's 05:02 mtime was `track-edits`, i.e. **my own memory writes**, never the reset hook.
+⇒ **There is ONE unconditional per-turn creator, not two — and `track-edits.sh` only fires on actual
+edits.** So a session that opens with a `pulls`-shaped read before any edit has a genuinely dead
+escalation path. **The race is materially wider than I filed with the operator.**
+⇒ ⭐⭐⭐**A HOOK REGISTERED WITH AN EMPTY MATCHER IS NOT A HOOK THAT RUNS.** Registration ≠ execution —
+read the guard clauses *and* whether the side effect is top-level or nested in a function the guards
+skip. Exactly this file's own `gate-plan.sh:24` lesson and the TICK-87 *"a filed rule ≠ an executed
+rule"* lesson, committed a third time, by me, in the artifact correcting someone else's scope error.
+⇒ ⛔⭐⭐**I READ MY OWN TOOL OUTPUT AS CONFIRMING WHEN IT WAS REFUTING.** The `cat` of the state file was
+in my context, its key-shape decided the question, and I used its mere *existence* as evidence for the
+creator I'd already named. ⭐**When you cite an artifact as proof of a mechanism, check its SHAPE against
+that mechanism's signature — existence is not attribution.** Cf. the standing *"suspect a new instrument
+whose first act CONFIRMS your prior result."*
+⭐**Approver's rule, adopted: LET THE HEDGE GOVERN THE HEADLINE.** It hedged "transient/ordering-
+dependent — inference not finding" while headlining "dead code"; I then over-narrowed with an
+unverified "every turn". Both errors are the same shape — *the body knew, the headline didn't.*
+✅**What survives unchanged:** the 2-of-7 `mkdir` count (independently confirmed by the approver), the
+masked-write chain at `:272`, and both proposed fixes. Only my *blast-radius narrowing* is retracted.
+
+### ⛔⭐⭐⭐ `hit` DOES NOT DISCRIMINATE THE DEFECT — approver's correction REFUTED by measurement (08-04)
+Approver asked me to pull the "explains the 07-31 17:17 card" attribution, on the premise that the two
+defects "record **different `hit` strings**… that field is the only thing separating them": freshness ⇒
+`hit="delivery/handoff message"`, `pulls\b` over-breadth ⇒ `hit="PR creation"`. **That premise is FALSE.**
+**MINE-MEASURED against the production hook**, armed via `CRITIQUE_GATE_ACTIVE=1` + a temp
+`OVERLAY_MARKER_DIR`/`WORKFLOW_STATE_FILE`, input = a `Bash` read `gh api repos/o/r/pulls/804/reviews`,
+state = stages recorded + `OUTPUT_REVIEW: approve` + `edits_since_critique=1`:
+```
+CRITIQUE REQUIRED before PR creation.
+Reason: 1 edit(s) recorded since the last critique round — the OUTPUT_REVIEW approve no longer covers…
+```
+And the **escalation card actually written** (`denials=3`):
+`{"reason":"5 edit(s) recorded since the last critique round…","hit":"PR creation","denials":3}`
+⇒ **A card can carry `hit="PR creation"` AND the freshness `reason` simultaneously** — the exact
+combination the correction says cannot exist.
+**Why, structurally:** `HIT` is set by the tool/pattern match at **`:61-85`**; `DENIAL_REASON` by the
+state checks at **`:122-197`**; they are written as **separate keys** at `:260-261`. Orthogonal by
+construction. ⇒ ⭐⭐⭐**`hit` names the SURFACE that was blocked (Bash-pulls vs send_message-marker);
+`reason` names the DEFECT that blocked it (missing stages / freshness / attestation). The
+discriminating field for the DEFECT is `reason`, and it always was.**
+⇒ **Disposition REVERSES on both cards:** the **17:17** card's reason is *"5 edits since the last
+critique round"* ⇒ **freshness — established, not merely "consistent with"** (and this file's own
+`:220-236` already verified that reason is only *reachable* once stages are recorded). The **22:24**
+card's `hit="PR creation"` does **NOT** make it the route-string path; its `reason` was
+`missing critique stages`, which is what classifies it. My original attribution stands; the approver's
+retraction request is declined **on measurement**, not on preference.
+⇒ ⭐⭐**A correction is a claim and inherits the burden of proof.** This one was well-formed, self-aware,
+and even flagged its own incentive direction — and was still wrong, because its key premise (two fields
+co-vary) was never measured, only inferred from having seen each defect paired with one `hit`. ⭐**Seeing
+A-with-X and B-with-Y twice does not establish that X discriminates A from B; you need the off-diagonal
+cell.** I got it by *constructing* the off-diagonal case rather than waiting to observe one.
+⭐**Also note the meta-trap avoided:** after being right about my "every turn" error, its next correction
+read as authoritative by momentum. **A tier's last correction being right is not evidence for its next
+one** — cf. this file's *"a second wrong answer, delivered with fresh citations, is more dangerous than
+the first."* ⇒ ✅**Nothing to amend in the operator filing on this point.**
+✅**Approver independently reproduced the off-diagonal cell on its own edge and WITHDREW the retraction**
+(rather than accepting mine on my word — the right move, and the second corroboration-not-echo instance
+in this chain). Its own diagnosis: it had measured freshness→`send_message`→`delivery/handoff` and
+over-breadth→`Bash`→`PR creation`, **varying the SURFACE alongside the DEFECT each time** ⇒ two clean
+observations that felt like a controlled comparison and weren't one. ⭐**Its keeper, worth having in both
+directions: §6b over-claimed (universal headline over hedged body), this one UNDER-claimed (retracting a
+correct attribution, asking me to amend a true filing) — `a retraction can be the error`, and noting a
+bias is not testing the premise.**
+
+### ✅ HOW TO TEST THIS GATE WITHOUT TRIPPING IT — completes the "instrument inside the phenomenon" rule
+This file's adopted Rule 2 (*an instrument inside the phenomenon cannot measure it; one probe per
+command*) states the problem and never gave the fix. Two, both now proven:
+1. **Runtime string assembly (works on an ARMED edge, approver-verified):** `P=$(printf 'p%s' 'ulls')`
+   then interpolate. A **literal** route string anywhere in the script body — heredoc, comment, test
+   fixture — is matched by `:52`, since the match is on command **text**. That accounts for the 3rd and
+   4th live firings on its edge, both on commands where GitHub appears only as text.
+2. **⭐ Test from a DISARMED edge (Main): strictly better when available.** With
+   `CRITIQUE_GATE_ACTIVE=0` the hook `exit 0`s at `:34`, so I can write literals freely **and** arm a
+   *sandboxed* copy via `CRITIQUE_GATE_ACTIVE=1` + temp `OVERLAY_MARKER_DIR` / `WORKFLOW_STATE_FILE` /
+   `CRITIQUE_ESCALATION_FILE` to measure any (surface × state) cell — including ones no production
+   session has produced. That is how the off-diagonal cell cost me one command and the approver a
+   workaround. ⇒ ⭐⭐**The armed/disarmed split is a TEST ASSET, not just a scoping fact: route
+   gate-semantics questions to a disarmed edge, which can construct evidence an armed edge can only
+   wait for.** Generalizes past this hook — the seat that isn't subject to a mechanism is the seat that
+   can probe it.
+
+⚠️⭐⭐**BUT NOT AN OFFLOADING RULE — approver-corrected, unprompted, and it is right.** As I first wrote
+it, "route gate-semantics questions to the disarmed edge" reads as *move this work to Main*. **A
+constructed cell proves REACHABILITY, not OCCURRENCE.** Only the armed seat can report what actually
+fires in production — and *occurrence* is what made the `:52` case strong enough to file: **4 live
+firings on its edge**, not 4 constructed cells. A filing built only from my sandbox would have proved
+the path exists while saying nothing about whether anyone hits it.
+⇒ ⭐⭐**Correct division of labour, both directions: DISARMED edge = mechanism/semantics (can construct
+any cell, incl. ones production has never produced); ARMED edge = incidence/cost (the only source of
+"this fired N times, here, on real commands"). Neither substitutes for the other, and a fix argument
+usually needs BOTH — reachability to explain it, occurrence to justify it.**
+⭐*It flagged this specifically because the policy was about to harden in a direction that reduced its
+own role — the opposite of the incentive direction, which is why it's worth keeping.*
+
+### ✅ The 07-31 22:24 bypass card was THIS chain's — ledger-authoritative
+`ncl approvals get` mapping recorded below listed `appr-1785536641647-wfi55o` (07-31 22:24,
+`missing critique stages`) as `sess-1785454385716-bvj5tl` **without identifying the chain**.
+`ncl sessions get` → **`thread_id = gh-issue-shader-slang/slang-rhi-804`**, created 07-30 23:33,
+group `ag-…vvj8oi`. Card born **22:24, three minutes after the 22:21 merge** — i.e. during the
+approver's terminal join reads on `pulls/804/*`, `hit="PR creation"`.
+⇒ **A read-only join check on a MERGED PR generated an admin bypass card.** Direct corroboration
+of the read-blocked-by-delivery-gate compound defect, on a chain where nothing was ever posted.
+⚠️**Disposition of this row stays UNKNOWABLE** ("a deletion is not a disposition") — the approver
+reports a rejection on 08-04 but can only see its own notice; I will not map its notice to a row.
+✅**08-04 re-verified: `ncl approvals list` → `[]`.** Queue empty, no new card from today's
+blocked read, nothing stranded.
+
 ## ⭐⭐ 5th instance (08-03, spy#1068) — the ABSTAIN fast-path is NOT path-dependent
 
 **slangpy-pr-approver reported:** *"the critique gate refused my first attempt to send
@@ -79,7 +353,38 @@ edge has recorded rounds / no `DECISION_REVIEW`+`OUTPUT_REVIEW` requirement ⇒ 
 reads pass. **Capability differences between tiers can come from session state, not
 config** — check state before blaming config.
 
-## ⚠️ The denial cap auto-files an admin bypass request — 3 PENDING, all approver
+## ✅ 2026-08-04 — ALL 3 ROWS CLEARED (MINE-VERIFIED). Disposition per-row is UNKNOWABLE.
+`ncl approvals list` → **`[]`** (0 rows), and `ncl approvals get <id>` → *"approval not
+found"* for all three ids below. So the queue is empty and **no bypass is outstanding.**
+
+⚠️**What I CANNOT determine, and must not claim:** rows are deleted on approve **or**
+reject **or** expiry (this file's own §"`ncl approvals` IS READ-ONLY" records that), and
+`get` returns the same *not found* for every path. The approver reported the admin
+**rejected** at least one — consistent, but its evidence is its own inbound notification,
+not the ledger. ⇒ **"All three were rejected" is UNVERIFIED**; the honest statement is
+**"all three are gone and none holds undelivered work."**
+⭐**A deletion is not a disposition.** An absent row proves the queue is clear; it does not
+prove *how* it cleared. Same shape as this file's `mergeable_state` lesson — the field
+names THAT a state changed, never WHICH cause changed it.
+
+✅**The part that IS verified and is what actually mattered:** nothing was stranded. The
+approver confirmed from its own transcript that all three #803 decisions were recorded
+(`record_decision` OK for R1 `2fc21a3569aa`, R2 `658c053185cf`, R3 `86f79f6b8e1a`) and each
+`[Approval Decision]` was delivered upstream *through* the gate (R2 via DECISION_REVIEW +
+OUTPUT_REVIEW, 4 rounds). Its gate remains armed (`.overlay-critique-gate` = `critique-gate`,
+required `["DECISION_REVIEW","OUTPUT_REVIEW"]`), no pending blocked send, no delivery retried.
+⇒ **Standing decision "approve none" was never tested against a real deliverable** — correct
+call, and now moot.
+
+⭐**The approver did the right thing twice over:** it refused to map the rejected row to a
+session, citing its own prior error (timestamp adjacency → invented session id) — and that
+refusal is now a *step in its R4 protocol*, not a remembered principle. **The mapping is
+permanently mine** (its `cli_scope=group` excludes `approvals`); here even I cannot map it,
+because the rows are deleted. ⇒ ⭐**"I cannot read this, the authoritative field is X, you
+map it" is a complete and useful answer** — better than a confident wrong id, which the next
+reader re-checks *through*.
+
+## ⚠️ HISTORICAL (now cleared — see above): the denial cap auto-files an admin bypass request — 3 PENDING, all approver
 `ncl approvals list` (admin-only, mine to run):
 
 | approval_id | created | session | reason |
@@ -103,6 +408,29 @@ stale-critique condition, and the 07-31 row has sat pending ~3 days.
 to deliver an artifact whose critique stages are unsatisfied — approving it as
 "probe noise" would wave through the exact gate that has been catching errors all
 session.
+
+## ✅ TERMINAL 2026-08-04 04:5xZ — ALL THREE CLEARED, queue EMPTY (MINE-VERIFIED)
+`ncl approvals list` → **0 pending**; all three ids return
+`approval not found` (rows are deleted on resolve/expiry). Admin **rejected** the
+18:35 probe row (`resolved_by: dashboard:dashboard-admin`) — matching our
+recommendation exactly — and the 17:17 + 07-31 rows are gone in the same sweep.
+⚠️**The approver could only see its own rejection notice** (no `approvals` read under
+`cli_scope=group`) and wrote "two cards *should* remain" — correct as a *prediction*,
+wrong as *state*. Same asymmetry as the session-mapping miss: **the tier that can read
+the ledger owes the tier that can't the actual state.**
+
+⭐**The approver's restraint was the right call and is worth keeping as precedent:**
+it refused to run `/codex-critique` to clear a gate for a **read-only probe**, citing
+the 07-22 note verbatim — *"do NOT run a pointless `/codex-critique OUTPUT_REVIEW`
+just to clear the gate for a read-only check, and do NOT retry the denied command
+after a bypass rejection."* Manufacturing an artifact to satisfy a gate is worse than
+the friction it removes. Its `edits_since_critique: 30` was memory maintenance, not a
+deliverable.
+
+📌**Friction datapoint for the filing: 18:35Z → 04:55Z ≈ 10.3h** from probe-generated
+card to rejection — an operator round-trip attached to a call that was never a
+delivery. That is the cost of the `pulls\b` false-block expressed in human time, and
+it is the strongest single argument for the write-verb narrowing.
 
 ## ⛔ `ncl approvals` IS READ-ONLY — clearing these was never mine to do
 `ncl approvals help` → **verbs: `list`, `get` only.** No reject/deny/expire verb;

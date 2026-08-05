@@ -1,5 +1,6 @@
 ---
 name: project_11669_getdimensions_wgsl_parked
+description: "slang#11669: Sampler2D.GetDimensions miscompiles to WGSL/Metal — combined-sampler legalization shifts operands while intrinsic strings index out-params positionally. State per file: FIXED, PR #11816 OPEN non-draft, awaiting maintainer (jhelferty-nv CHANGES_REQUESTED addressed, no re-approval) — not merge-authorized. Fix = new $q skip-sampler marker, Metal+WGSL only. Resume only on #11816 webhook."
 metadata: 
   node_type: memory
   type: project

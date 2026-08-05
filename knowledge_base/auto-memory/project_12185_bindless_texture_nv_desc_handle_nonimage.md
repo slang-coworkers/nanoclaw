@@ -10,27 +10,47 @@ metadata:
 # #12185 — spvBindlessTextureNV InternalError for non-texture/sampler DescriptorHandle
 
 > ⚠️ **CONTROLLING STATE — read this block first; everything below is chronological history and
-> earlier entries may be SUPERSEDED.** (This file exceeded the 24.4KB Read limit; append-only order
+> earlier entries may be SUPERSEDED.** (This file exceeded the 24.4KB Read limit; ⚠️*(The `~24.4KB Read limit` premise was FALSIFIED 2026-08-04 — see [[project_memory_files_over_read_limit_backlog]]. The restate-in-full practice still stands on its own merit: conclusions up front beat pointing into a long append-only file.)* append-only order
 > would otherwise truncate the newest, most authoritative content. See
 > [[project_memory_files_over_read_limit_backlog]].)
 >
 > **As of 2026-08-03 ~23:28Z — ✅APPROVED, NON-DRAFT. Held PURELY on a maintainer merge.**
 > - PR **#12186 non-draft**, head **`65338dbef9`**, 17 files, `Closes #12185`. Review `4849248355` =
 >   **APPROVED by pdeayton-nv @23:11:11Z binding to `65338dbef9`, which IS the current head** ⇒ the
->   approval is **live, not stale**. `mergeable: true`, `mergeable_state: **behind**`.
+>   approval is **live, not stale**. `mergeable: true`, `mergeable_state: **blocked**` (was `behind`
+>   @23:28Z) = **branch staleness + required-check bookkeeping, NOT a code defect** — needs a
+>   maintainer **"Update branch"**.
+> - ⛔⛔**STALE-REPLAY TRIPWIRE — inbounds arrive DAYS-to-WEEKS late, verbatim, out of order.** Any
+>   message mentioning **E55215** · **`4fbe216b0e`** · **`f4004c3f90`** · **`107f158ffe`** · **"8 review
+>   rounds"** · **"approved / awaiting merge" (pre-redesign)** is **HISTORY** ⇒ check its timestamp, then
+>   settle with one live probe (E55215 has **0 matches** at head — it was removed in the redesign).
+>   **Do NOT let such a message move this block; acting on one would regress a verified state — and a
+>   public verdict — to an abandoned approach.** Fired twice in one session, at two tiers.
+>   ⇒ [[feedback_stale_replayed_inbound_can_regress_state]]
 > - 🔒**APPROVAL-LOCKED — do NOT push, rebase, dispatch, or ready-flip.** Any commit or rebase
 >   dismisses pdeayton's approval. `mergeable_state: behind` may need a maintainer **"Update branch"**
 >   first — **the bot cannot do it** (same dismissal). Approval ≠ merge auth; nothing closed.
-> - ⚠️**CI: do NOT read the aggregate red X as a failure.** The real `pull_request` suite
->   (`83685090805`) has **zero failures** (still settling). The 2 reds on this head are `check-ci` +
->   `wait-for-human-priority` from the fixer's own earlier **manual dispatch** (suite `83679936584`) —
->   cumulative history, not this PR's result. (Sibling of the suite-vs-commit basis trap below.)
+> - ✅**CI is now GENUINELY CLEAN** (08-04 13:18Z, 128 rows = `total_count`): **82 success / 46 skipped
+>   / 0 failures**; legacy `license/cla` + `SlangPy Tests` pass; combined `success`. The two
+>   formerly-red jobs (`check-ci`, `test-falcor`) now succeed in both suites — a sibling **reran** them,
+>   and **a rerun creates no commit ⇒ the approval is unaffected.** ⚠️Supersedes the earlier
+>   "80/46/2" reading; that older tally was correct-at-the-time (both failures were cumulative
+>   per-head history from a **manual-dispatch** suite, not the `pull_request` suite) — sibling of the
+>   suite-vs-commit basis trap below.
+> - ⚠️**An auth failure can surface AS A DATA ROW.** The first tally was corrupted by a OneCLI
+>   `app_not_connected` error appearing as a **pseudo-row**, inflating the counts. Cure: re-probe auth on
+>   **the exact path** (got 200, `X-Ratelimit-Limit: 6000`), then page explicitly with a sum-check.
+>   ⇒ a transport error that parses as data is indistinguishable from data unless you sum-check.
 > - **On merge:** **#12192 UNPARKS** (it was blocked on this landing) · #12191 likely moot · #12219
 >   already merged as #12263. Then re-read the merged diff against the close-out checks, refresh the
 >   verdict to "merged", forward the final resolution.
-> - Issue verdict `5065523733` refreshed in place → "approved, awaiting maintainer merge" (live body
->   fetched first, re-fetched after PATCH to confirm: 2961 chars, disclaimer intact). The public verdict
->   now **states the kind-gating caveat**, so the closed issue won't be read as a type-level guarantee.
+> - ⚠️**The LIVE public verdict is a SIBLING's comment `5179347248`** (12:53Z, edited 13:12Z) — posted by
+>   another session under the same `nv-slang-bot[bot]` identity, verified accurate and better-sourced,
+>   and it **supersedes** ours. Our `5065523733` was PATCHed to point at it ("superseded by the newer
+>   update below"); the sibling's was left untouched. ⇒ **before posting here, enumerate the comments
+>   and read any bot comment you don't recognize — "I was last" is unverifiable under a shared
+>   identity** ([[feedback_tell_the_footprint_owner_when_you_post_yourself]]). Both carry the
+>   **kind-gating caveat**, so the closed issue won't be read as a type-level guarantee.
 > - ⚠️**TWO WRITERS EDIT THE PUBLIC VERDICT COMMENTS** (the fixer edits them too) ⇒ **fetch before
 >   editing**; never assume the body you last wrote is what's live. ✅**"bot can't PATCH issue comments
 >   (403)" was STALE** — re-probed with an idempotent re-PATCH of `5065523733`: succeeded, `updated_at`
@@ -219,8 +239,13 @@ GitHub-verified: **#12186 is STILL OPEN and STILL DRAFT — not merged.** But it
 
 ## Operational state (moved from MEMORY.md index, 2026-08-04)
 
+⚠️ **`mergeable_state` re-probed 2026-08-04: now `blocked` (was `behind`).** Per the #12148 lesson, that
+value names only *that a requirement is unmet*, never **which** — so do **NOT** infer "needs Update
+branch" from it any more. ⚠️**The first poll returned `unknown`: GitHub computes merge state LAZILY.
+Re-poll until it resolves; never record `unknown` as a state.**
+
 🔒 **APPROVAL-LOCKED.** #12186 carries pdeayton-nv's APPROVE (review `4849248355`, binding to head
-`65338dbef9` — live, not stale) and is **non-draft** with `mergeable_state: behind`.
+`65338dbef9` — live, not stale) and is **non-draft** (was `mergeable_state: behind`, now `blocked`).
 **No push / rebase / ready-flip — any new commit dismisses the approval.** The "Update branch"
 button requires a MAINTAINER; we cannot clear `behind` ourselves.
 **RESUME = maintainer merge** (then #12192 UNPARKS and #12191 becomes moot).

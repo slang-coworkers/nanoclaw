@@ -36,6 +36,26 @@ for existing E41010; see #10307 for a core-module fn already tripping E41009 on 
 `SLANG_LANGUAGE_VERSION_NEXT`, `isSlang202cOrLater()`, `-std 202c`/`next` are ENTIRELY ABSENT
 from master. A #12264 fix cannot compile against master until #12179 lands.
 
+⚠️ **#12179's OWN gate — re-probed 2026-08-04 (moved here from the MEMORY.md index; this is the only
+copy).** #12179 is **non-draft with 0 approving reviews**; its only non-`COMMENTED` review is
+jkwak-work's — and ⛔**"DISMISSED" had the POLARITY BACKWARDS: he APPROVED it** ("Looks good to me");
+**skiminki-nv dismissed his OWN approval** 07-24 while reworking for the 202c rename, to prevent an
+accidental merge. ⇒ the author *knows* a re-review is owed.
+⛔**"bmillsNV silent 14 days" was ALSO WRONG** — the timeline is `convert_to_draft` 07-23 →
+`review_dismissed` (author) 07-24 → `ready_for_review` **07-27**, so **reviewer-idle starts 07-27 = 8d**;
+the 14 measured across a draft round-trip the AUTHOR drove. And `reviewed-by:bmillsNV` = **0** repo-wide
+(vs `commenter:` 396; control `reviewed-by:szihs` = 119) ⇒ he does not submit formal reviews and holds 85
+open review-requests — a repo-wide assignment pattern, not a per-PR stall.
+✅**NOT STALLED — WITHIN REPO NORM. Nudge DECIDED AGAINST 08-04 (Main), no GitHub footprint.**
+**BASE RATE: 50 of 74 open non-draft PRs idle ≥8d** (triager measured 32/53 — different scope, **same
+conclusion**; ⭐a base-rate argument survives an imprecise denominator, a threshold argument does not).
+⇒ ⭐⭐⭐**A NUDGE IS JUSTIFIED BY DEVIATION FROM THE REPO'S NORM, NEVER BY AN ABSOLUTE DAY COUNT.**
+⚠️This issue's own body says *"Depends on #12179"* verbatim, and both dependents are skiminki-nv's OWN
+issues ⇒ a nudge would tell him what he wrote himself.
+✅**The surviving true half:** "#12179 merges" is not a self-firing trigger — it has a human gate
+(needs an approving review; 0 today). **Name the gate, not just the milestone** (#12110 lesson).
+⛔**Do NOT re-arm on elapsed days** — re-arm only if idle time exceeds the repo median, or the author asks.
+
 **State:** PARK-at-triaged, **NO fixer dispatch**. Reasons: hard unmet dep (#12179 OPEN) +
 author is MEMBER driving it himself (owns prereq too) + two open maintainer design forks
 (slangi enforcement point; core-module 202c sequencing). Verdict posted on issue

@@ -181,6 +181,32 @@ direction and our **#12234 closed unmerged**. The row still reads *"HELD, with a
 so **nothing looks wrong** — but the named event can no longer occur, and a live tripwire attached to
 it (his `Fixes #12233` is a one-digit typo, so #12223 will not auto-close) would never fire.
 
+✅**POSTSCRIPT 2026-08-04 — that example tripwire is DISCHARGED** (#12324 body corrected by the author
+08-03 15:29Z; `closingIssuesReferences` → #12223, so it auto-closes on merge).
+
+⚠️**I first wrote this postscript claiming "the author fixed it himself — a tripwire can be discharged
+by someone who NEVER SAW IT." I checked, and that mechanism is FALSE.** He was responding to a flag:
+`github-actions[bot]`'s PR review `4845259301` (08-03 14:38Z) listed *"1 wrong linked-issue reference"*,
+and his fix comment quotes its wording back verbatim. **Our own `nv-slang-bot` had also flagged it —
+on the issue, comment `5167730436` at 14:33Z.** ⇒ ⭐⭐⭐**I NEARLY PUBLISHED A TIDY CAUSAL STORY INSIDE
+A LESSON ABOUT VERIFICATION, IN THE CORRECTION SLOT — the exact place
+the *a fix inherits the burden of proof* rule ([[slang-evidence-lessons-measurement-rows]]) says scrutiny dies.** The plausible mechanism cost one
+API call to refute.
+
+⭐⭐**The REAL lesson is worse than a stale trigger: the stored instruction "flag the typo when #12324
+merges" was ALREADY REDUNDANT AT THE MOMENT IT WAS WRITTEN (~15:07Z) — we had posted that exact flag
+34 minutes earlier (14:33Z).** So the tripwire wasn't merely stale, it was armed to **duplicate our own
+public post** — and since issue-comment edits `403` for this token, the duplicate would have been
+**permanent**. ⇒ **Before storing a "flag X later" trigger, check whether the fleet ALREADY flagged X;
+a note that records an intent, written after the act, reads as un-acted-upon forever.** Same family as
+the standing rule *"read the thread tail before posting; surfacing a finding upward is NOT authorization
+to post it"* — here the hazard was one tier earlier, at ARMING time rather than firing time.
+
+⇒ **Re-verify a tripwire's PREDICATE at fire time against the live artifact, not the note that armed
+it** ([[feedback_a_live_artifact_read_is_a_measurement_with_a_timestamp]]). Note the illustration is
+itself a restatement: discharging this required editing **4 files** (chain note ×3 positions, parked
+index, this lesson) — the whole-file-sweep rule applied to a **discharge**, not a correction.
+
 ⇒ **When the resolution path changes, REWRITE the trigger; do not just append the new state.** Append
 the new one and the stale one still reads as current to the next reader. Mark the old explicitly:
 `⚠️SUPERSEDED trigger — do not act on it` + `✅CURRENT RESUME = …`.

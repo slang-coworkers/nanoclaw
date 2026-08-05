@@ -74,6 +74,31 @@ Cheap, in-source, already prescribed by the header:
 ⇒ ⭐**The false-negative I escalated is the harmless direction; the under-reported
 false-POSITIVE-pass (#3) is the one with teeth.** I led with the loud one.
 
+## ⛔⭐⭐ 08-04 PROVENANCE RE-CHECK — "known since 06-24" was TRUE BUT MISLEADING; the silence is the finding
+Applying the approver's *verify the provenance of every published number* rule to my own severity
+claim. The instrument checks out: **11 files mention gate-audit, all 11 carry a parseable date in the
+filename**, so it does emit what I claimed. Full distribution, not just endpoints:
+`06-24 ×1 · 07-02 ×1 · 07-08 ×1 · 07-09 ×2 · 07-11 ×1 · 07-12 ×1 · 07-14 ×1 · 07-17 ×2 · 07-19 ×1`.
+
+⛔**But my framing — "~4 weeks of known cosmetic noise," "known since 06-24" — implied an ONGOING
+problem. Mentions STOP at 07-19, and there are 557 log files after 07-19 with ZERO mentions.** That is
+a real denominator, so the silence is *evidence*, not missing data.
+⇒ ⭐⭐**A date RANGE without a denominator hides whether a problem is live or historical.** "First seen
+06-24" and "last seen 07-19, then 557 clean files" support opposite decisions — and I published the
+one that argued for the wrong reading, using the range to mean *"long-standing, low-severity"* when it
+actually says *"went quiet 16 days ago."*
+⇒ ⭐**Report the LAST occurrence plus the clean denominator after it, never the first occurrence.** For
+a recurring-defect claim, recency and silence-since are load-bearing; the start date is trivia.
+
+⚠️**What this does NOT establish — and the trap I nearly walked into:** that the defect is fixed. The
+mtime race at `gate-audit.ts:59-81` is still in the source, unchanged, and **slang-fixer hit it TODAY
+(08-04)** — a fresh instance I was holding in hand while reading the silence as improvement. Honest
+reading: **the defect is LIVE; the 07-19→08-04 log silence means coworkers stopped remarking on it,
+not that it stopped firing.**
+⇒ ⭐⭐**A silence in COMMENTARY is not a silence in the PHENOMENON.** Log mentions measure who
+complained, not what happened — the same category error as `rate_limit` measuring the proxy's rule
+table rather than GitHub.
+
 ## Standing rules earned
 1. ⭐⭐**Find the emitter before naming the defect.** One `grep` over `/app/hooks/`
    (5 seconds) would have prevented an entire wrong escalation. I had the file open —

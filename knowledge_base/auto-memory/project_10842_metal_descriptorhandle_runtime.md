@@ -1,5 +1,5 @@
 ---
-name: ""
+name: project_10842_metal_descriptorhandle_runtime
 description: "slang#10842 DescriptorHandle support on Metal; re-triaged 07-24; parked maintainer-owned GPU-gated"
 metadata: 
   node_type: memory
@@ -19,7 +19,7 @@ metadata:
 ## ⚡ CONTROLLING STATE — read this first
 
 *This row is append-only: its newest and most authoritative content sits furthest from the top, and the file is
-38KB — past the ~24.4KB `Read` limit. So the conclusions are restated here in full rather than pointed at, because
+38KB — past the ~24.4KB `Read` limit. ⚠️*(The `~24.4KB Read limit` premise was FALSIFIED 2026-08-04 — see [[project_memory_files_over_read_limit_backlog]]. The restate-in-full practice still stands on its own merit: conclusions up front beat pointing into a long append-only file.)* So the conclusions are restated here in full rather than pointed at, because
 a pointer would resolve to bytes a truncated read already dropped. Do not tidy this block away as redundant.*
 
 - **Status:** NOT approved-to-merge. slang#12096 is a **HOLD**; `jkwak-work` owns it. Fixer must not pick it up
@@ -395,7 +395,7 @@ merge/close. **skallweitNV updating the branch = active human engagement on the 
 3rd synchronize webhook. Head 4144455d → **c09d12c0**. Tripwire (`src/metal/**`+`tests/**`) FIRED,
 so I inspected rather than debouncing blind — correct call, because a **real inbound** was hiding here:
 - **skallweitNV review `4843509387` = CHANGES_REQUESTED, body = "Needs testing" (13 chars), 0 inline
-  comments.** Not an edit list (cf. [[feedback_changes_requested_read_body.md]]) — the ask is
+  comments.** Not an edit list (cf. [[feedback_changes_requested_read_body]]) — the ask is
   *get the feature executed*, nothing to change in code. `reviewDecision` blocks; `mergeable_state=blocked`.
 - **This independently VINDICATES the approver's ABSTAIN_POLICY/OPEN_GAP.** The human Metal reviewer
   reached the *same* conclusion the shadow-mode approver did, from the same premise (untested runtime

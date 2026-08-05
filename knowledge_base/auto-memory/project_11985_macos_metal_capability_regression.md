@@ -1,5 +1,6 @@
 ---
 name: project_11985_macos_metal_capability_regression
+description: "slang#11985 intermittent macOS CI failure. ⛔ Heavy retraction history — do NOT restate: the original capability-attribute diagnosis was publicly RETRACTED, then the 'macOS-26 Metal driver/runtime race' reconciliation was itself an OVER-CORRECTION. Resolved truth (merged #12009): deterministic per-OS collision — slang-rhi advertises metallib_4_0 on macOS>=26 so Slang emits the metal4.0-only attribute while the downstream compiler is hard-coded -std=metal3.1. Also ⛔ the 'Approach A is a functional no-op' Vulkan-headers framing was DISPROVEN by build (submodule v1.4.307 too old). State: Metal cause resolved; closure gated only on a maintainer-authored revert of #12075 (bot lacks workflows perm)."
 metadata: 
   node_type: memory
   type: project

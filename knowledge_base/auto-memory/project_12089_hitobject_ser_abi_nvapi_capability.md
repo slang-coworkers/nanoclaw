@@ -1,5 +1,6 @@
 ---
 name: project_12089_hitobject_ser_abi_nvapi_capability
+description: "slang PR #12089 (szihs, maintainer-authored re-do of the SER-ABI approach, `Fixes #11903`). Six shadow-mode approver rows across rev1-rev6: CHALLENGER_CONCERN, ci_green_on_sha, no_protected_paths x2, CHALLENGER_CONCERN, then rev6 BLOCK/RED_BUG at head fbbe0c40 — four NVAPI-only HitObject LSS accessors never re-gated, so sm_6_9+hlsl_nvapi emits native dx::HitObject with NVAPI accessors (mixed ABI). Persistent Falcor E41011 break on sm_6_6+hlsl_nvapi + stale SER doc. ⛔ The rev2-rev4 'test-falcor is an external flake' classification was CORRECTED — it is PR-caused. Nothing posted (shadow mode); expect a further nvapiHitObjects->nvapiHitObject rename."
 metadata: 
   node_type: memory
   type: project

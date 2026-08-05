@@ -1,15 +1,29 @@
 ---
 name: project_9401_hpp_export_docs_mismatch
-description: "shader-slang/slang#9401 -target hpp export/docs mismatch — triaged P3, docs-only fix routing to fixer"
+description: "shader-slang/slang#9401 -target hpp export/docs mismatch — ✅TERMINAL: docs-only PR #12242 merged 2026-07-31, issue auto-closed. Only GATE-2 (-whole-program) awaits a reporter reply. Read the DISCHARGE block at the top before any row below it."
 metadata: 
   node_type: memory
   type: project
   originSessionId: 0574abae-931e-41dc-9682-6e980e9d381d
 ---
 
-# #9401 `-target hpp` export requires entrypoint + docs mismatch — TRIAGED → fixer
+# #9401 `-target hpp` export requires entrypoint + docs mismatch — ✅ TERMINAL (merged 2026-07-31)
 
-Maintainer **jkwak-work** requested triage (2026-07-18, issuecomment-5011335733). Chain: orchestrator → slang-triager → slang-fixer (docs PR).
+> ## ⛔ DISCHARGED — read this before ANY row below
+>
+> **MINE-VERIFIED 2026-08-04 via GitHub API (not relayed):** PR **#12242 `merged_at=2026-07-31T03:35:43Z`**, `state=closed`, head `fix/issue-9401-hostscope`, base `master`, assignee jkwak-work, label `pr: non-breaking`. Issue **#9401 `state=closed`, `closed_at=2026-07-31T03:35:44Z`** (the 1-second `merged_at`→`closed_at` window is the normal auto-close lag, not a failure).
+>
+> **Shipped = DOCS-ONLY, one file (`docs/cpu-target.md`).** Every compiler/test change explored on this branch was **REVERTED** before merge. The reported behavior is **INTENDED, not a bug**: `export` (not `public`) is what preserves a symbol into host C++ output; `public` is visibility only; `__extern_cpp` supplies the unmangled name. Per csyonghe (issuecomment-5135718535) → jkwak agreeing (issuecomment-5136229007).
+>
+> ⛔**Therefore: every row below discussing a COMPILER-SIDE fix — `HLSLExportDecoration`+`KeepAliveDecoration` on the `ExternCppModifier` arm, GATE-1, the `!isImported` guard, the `isPublic` drop, #12156 — is HISTORICAL DESIGN DEBATE THAT WAS DECIDED AGAINST. Do not implement, resurrect, or cite any of it as pending.** #12156 was CLOSED UNMERGED.
+>
+> **Only genuinely open thread:** GATE-2 (emitting with no entry point). Disposition = **use `-whole-program`**, which already works; jkwak told reporter @NBickford-NV directly (issuecomment-5136252442, 07-30). **RESUME TRIGGER = @NBickford-NV replying that `-whole-program` is insufficient.** No step of ours until then; nothing owed on GitHub.
+>
+> ⛔⭐⭐**GATE-2 IS INDEPENDENT OF GATE-1 — do NOT sweep it into the rejected bucket.** A peer's 08-04 correction pass marked GATE-2 *"dead (it presupposed the rejected GATE-1)"*. That premise is **refuted by our own published analysis** (issuecomment-5011526623, verbatim): GATE-2 is *"a **separate** gate, and no decoration removes it"* — proof of decoration-independence is that `export __extern_cpp` **already** carries `HLSLExportDecoration`+`KeepAliveDecoration` and **still** emits nothing with no entry point and no `-whole-program`, while `-whole-program` emits it with no entry point at all. GATE-2 lives in `generateOutput`, a different mechanism from GATE-1's linking-root path entirely. ⚠️**Locate it by MECHANISM, not line number — the number ROTTED:** the old `slang-end-to-end-request.cpp:733-751` citation (published 07-18, and re-propagated by ME on 08-04) now points at unrelated debug-artifact/sidecar code. **MINE-verified at HEAD `0864e60`:** `EndToEndCompileRequest::generateOutput(TargetProgram*)` = **`:904`**, whole-program-vs-entry-point branch = **`:911`**. ⛔**And `grep GenerateWholeProgram` alone is NOT a unique key — 5 hits in that one file (`:428`, `:855`, `:911`, `:981`, `:1192`) plus the setter `:1369`; only the `:911` one inside `generateOutput(TargetProgram*)` is GATE-2.** Correct locator = **`GenerateWholeProgram` scoped to the `generateOutput(TargetProgram*)` definition**. **The disposition (no code change now, use `-whole-program`) is correct; the word "dead" and the dependency reason are not** — "dead" erases a live resume trigger. ⭐⭐**Over-correction by false dependency: on learning X was rejected, verify Y was actually DERIVED from X before retiring Y — and a correction pass that deletes a live trigger is worse than the stale header it fixed.** See [fix-inherits-burden-of-proof](slang-evidence-lessons-measurement-rows.md).
+>
+> ⚠️**Provenance note (2026-08-04):** my copy of this file already carried the correct terminal row at line 86 (`✅ TERMINAL … mergeCommit e84ea3e96c…`) and the stale-framing correction at line 90, mtime `2026-08-03 20:10Z`. The triager reported finding this file frozen at *"Chain OPEN. Draft PR #12242 UP"* — i.e. **a DIFFERENT, older copy in its own store**. ⭐⭐**Sibling agents hold divergent copies of the same topic file; "I corrected it" from a peer does NOT mean YOUR copy was wrong, nor that theirs is now right.** What was actually stale in MY copy was the **frontmatter `description` + H1 title** ("triaged P3, docs-only fix routing to fixer" / "TRIAGED → fixer") — the two fields a reader hits FIRST — while the body 40+ rows down was correct. That is precisely the [correction-unapplied-until-every-restatement](feedback_correction_unapplied_until_every_restatement_fixed.md) failure: **position decides which claim is read, and an accurate body does not rescue a stale header.**
+
+Maintainer **jkwak-work** requested triage (2026-07-18, issuecomment-5011335733). Chain: orchestrator → slang-triager → slang-fixer (docs PR). **Historical record below; see the DISCHARGE block above for current state.**
 
 - **Classification:** bug (docs + behavior/UX) / **low / P3** / docs+CPU-C++-hpp-emit+frontend-visibility.
 - **Two problems:** (1) `docs/cpu-target.md:216-225` sample malformed (missing `int` return type; uses `public`); (2) exported fns only appear in `-target hpp` header when marked `export` (not `public`) with ≥1 entry point.

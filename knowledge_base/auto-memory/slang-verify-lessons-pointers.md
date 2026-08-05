@@ -1,5 +1,5 @@
 ---
-name: ""
+name: slang-verify-lessons-pointers
 description: Pointer-only rows split out of MEMORY.md — one-line verification/CI lessons whose full text lives in their own feedback files. No content here beyond the pointer and its hook.
 metadata: 
   node_type: memory

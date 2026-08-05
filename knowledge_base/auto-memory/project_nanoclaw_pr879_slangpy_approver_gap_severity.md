@@ -13,6 +13,6 @@ Four changes: (1) **behavioral** — non-pre-existing 🟡 gaps move from mechan
 
 Sibling of [[project_nanoclaw_pr875_approver_mounted_policy]] / [[project_nanoclaw_pr876_slangpy_approver_mounted_policy]] / [[project_nanoclaw_pr877_approver_learning_loop]].
 
-**Routing:** `pr_ready_for_review` webhook said "route to *-pr-approver" — advisory only. This is nanoclaw coworker-INFRA (outside any approver's policy scope; approvers cover shader-slang/slang{,py} CODE PRs) AND would be self-review of the slangpy-approver's own decision procedure. Reviewed INLINE per [[feedback_webhook_dispatch_by_event.md]] + established #874-877 practice.
+**Routing:** `pr_ready_for_review` webhook said "route to *-pr-approver" — advisory only. This is nanoclaw coworker-INFRA (outside any approver's policy scope; approvers cover shader-slang/slang{,py} CODE PRs) AND would be self-review of the slangpy-approver's own decision procedure. Reviewed INLINE per [[feedback_webhook_dispatch_by_event]] + established #874-877 practice.
 
 **Verdict:** LGTM + 1 nit (debounce "quiet window" unquantified — fine for LLM-judged step). CI green (ci + label). Comment posted via REST (GraphQL addComment blocked as usual): PR#879 issuecomment-4934963401. Maintainer owns merge; did NOT auto-merge/route. Terminal unless human replies.

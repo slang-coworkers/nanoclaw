@@ -1,5 +1,5 @@
 ---
-name: ""
+name: project_slangpy_827_torch_scalar_return_wtensor0_crash
 description: P1 live crash regression on scalar-return torch interop; original Vulkan VRAM leak unverifiable; A-vs-B semantics fork maintainer-gated
 metadata: 
   node_type: memory

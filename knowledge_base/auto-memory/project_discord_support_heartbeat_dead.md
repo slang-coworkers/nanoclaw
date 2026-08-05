@@ -1,5 +1,6 @@
 ---
 name: project_discord_support_heartbeat_dead
+description: "slang-discord-support had no autonomous wake since ~mid-May — its */5 heartbeat task was never registered, so non-button Discord events (thread @mention follow-ups, new channel questions) never woke it; only the 'Need help?' button minted a summon. RESOLVED 2026-07-07/08: task-1783463591538-d3s5gm re-armed and autonomous cron firing confirmed (heartbeat-last-ts self-advancing, wakeAgent:false on quiet = correct), 6 stale June summons backfilled. ⚠ FILENAME SAYS 'dead' — it is FIXED. Standing caveats: Main's scheduler watchdog does NOT cover this group; do NOT reuse thread_id discord-support-followup-sweep-20260707 (poisoned, unroutable, 565+ unresponded rows); calm-heartbeat silence is not failure; this agent's GitHub MCP is read-only with an invalid token so issue filing must route to slang-triager. Spinoffs #11980, #11981."
 metadata: 
   node_type: memory
   type: project

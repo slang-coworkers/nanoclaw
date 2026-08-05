@@ -26,8 +26,35 @@ metadata:
   - **Reversal corroborated STRUCTURALLY, not just from prose:** this PR would add the repo's **FIRST** submodule — `.gitmodules` **404s on `main`**; at head `external/tinybvh` is mode **`160000` (gitlink)** while all five pre-existing `external/` entries are **`040000` vendored trees**. skallweitNV's ask has direct precedent: **13 fetch sites via `cmake/FetchPackage.cmake`, incl. `CMakeLists.txt:642,648` `FetchContent_Declare(glfw GIT_REPOSITORY … GIT_TAG …)`** — a git-source analogue ⇒ the fix is **mechanically available**. Current R3 wiring **hard-fails at `CMakeLists.txt:828-838`** if the submodule isn't initialized. **Verdict unchanged** (3,391 > 2,000; FetchContent won't move that).
   - **⚠️ IRONIC CORROBORATION:** **CodeRabbit's `!external/**` path filter EXCLUDED `external/tinybvh` from review** ⇒ the submodule change got **ZERO bot scrutiny**, and it is the exact change a maintainer is now contesting. (A path filter is another "absence manufactured by tooling.")
 - **⚠️ TOOLING CAVEAT (true for `gh pr view`, NOT for the harvest path — see correction above):** `gh pr view --json reviews` renders `coderabbitai` **WITHOUT** the `[bot]` suffix ⇒ an `endswith("[bot]")` filter **false-negatives and can miscount a bot as human** — and that is exactly the field driving "is there a non-bot review?" (which selects live vs live_late mode). **Use GraphQL `__typename: Bot` or the issues timeline instead.** Inbound scan: 7 reviews, all `COMMENTED`, no CHANGES_REQUESTED, none APPROVED; non-author human `jkwak-work` present ⇒ live_late. 🔴**"no standing blocker" was WRONG and is RETRACTED** — see the 3-endpoint block below. (Main counted 17 inline comments, approver counted review *objects* — different units, both consistent.)
-- **⭐⭐ THREE endpoints, not two — an actionable directive can carry NO review state at all.** `reviews[]` is still 7/all-`COMMENTED` and will report "clean" **indefinitely** while a live change request stands. skallweitNV (MEMBER) posted **two** `issues/803/comments`: `10:05:23Z` bandwidth/design gate, and **`16:50:10Z` "we want to keep slang-rhi free from using git submodules. Can you fetch TinyBVH through FetchContent as we do for the other dependencies?"** — a change request with **no review object**. ⇒ trigger phrasing "non-bot actionable **review**" is itself defective: a review-state predicate **cannot fire** on stateless feedback. Correct form: **actionable non-bot feedback in ANY of the three endpoints** (`pulls/{n}/reviews` · `pulls/{n}/comments` · `issues/{n}/comments`).
-- **Holding triggers:** #12282 merges · **FetchContent rework lands** · **actionable non-bot feedback in ANY of the 3 endpoints** · diff <2,000 · merge/close. ⚠️skallweitNV's bandwidth gate is a **tripwire, not a condition #12282 can satisfy** — it does not clear on that merge.
+- **⭐⭐ THREE endpoints, not two — an actionable directive can carry NO review state at all.** `reviews[]` is still 7/all-`COMMENTED` and will report "clean" **indefinitely** while a live change request stands. skallweitNV (MEMBER) posted **two** `issues/803/comments`: `10:05:23Z` bandwidth/design gate, and **`16:50:10Z` "we want to keep slang-rhi free from using git submodules. Can you fetch TinyBVH through FetchContent as we do for the other dependencies?"** — a change request with **no review object**. ⇒ trigger phrasing "non-bot actionable **review**" is itself defective: a review-state predicate **cannot fire** on stateless feedback. Scan **all three endpoints** (`pulls/{n}/reviews` · `pulls/{n}/comments` · `issues/{n}/comments`) — ⛔but **"actionable non-bot feedback in ANY of the 3" is NOT the trigger; that phrasing is ALWAYS-FIRES** (already satisfied by the 08-03 comments). **The trigger is the v3 three-part test below — endpoint coverage is the SCAN, not the predicate.**
+- ⛔⭐⭐**THE "CORRECT FORM" ON LINE 29 IS *ALSO* DEFECTIVE — it is ALWAYS-FIRES.** "actionable non-bot
+  feedback in ANY of the 3 endpoints" is **already satisfied** by skallweitNV's 08-03 comments ⇒ it
+  would wake a re-decision every check, forever, with nothing new to decide. **I fixed never-fires
+  into always-fires and the widening felt safe.** ⭐**Always-fires is the WORSE half:** never-fires
+  sits inert; always-fires burns a re-decision each cycle and trains the reader to ignore the signal.
+  ✅**Missing discriminator = the ADDRESSEE.** That 16:50 comment opens **`@WeakKnight`** — a change
+  request **to the contributor**, actionable *for the PR*, not an inbound to our decision.
+  ✅**MANDATORY after ANY predicate edit: evaluate it against KNOWN CURRENT STATE — if it fires now
+  with nothing new, it is wrong.** One lookup, catches the whole class (it caught this and #12110).
+- **Holding triggers (v3 — ALL THREE required, else no trigger):** (1) non-bot `author_association` ·
+  (2) addressed to **us / the decision**, not to the PR author, and **not our own bot's prior output**
+  · (3) changes a **load-bearing input** (LOC total, ABI gate, CI verdict, standing review state).
+  **Or:** #12282 merges · FetchContent rework lands · diff <2,000 · merge/close.
+  ⚠️skallweitNV's bandwidth gate is a **tripwire, not a condition #12282 can satisfy** — it does not
+  clear on that merge. ⭐*"is it addressed to us?" and "is it FROM us?" fail differently — test both.*
+- **✅ 08-04 ENDPOINT SET VERIFIED COMPLETE via a THIRD instrument (Main).** The approver reached "no
+  same-repo linked issue" by REST body/cross-ref scan after GraphQL 401'd. Confirmed with a genuinely
+  different instrument — **`issues/803/timeline`** (`connected` / `cross-referenced` events):
+  **exactly 1 relevant event, `cross-referenced src=12282 repo=shader-slang/slang`; ZERO `connected`;
+  zero same-repo links.** ⇒ `issues/803` and `pulls/803` index the same conversation ⇒ **the
+  3-endpoint scan keyed on `803` is COMPLETE.** Re-check if a same-repo `Fixes #N` is ever added.
+  ⭐**`issues/N/timeline` is the REST substitute for GraphQL `closingIssuesReferences`.**
+- ⛔⛔**SELF-RETRACTED 10:12Z — I CALLED A TRANSIENT OUTAGE A STANDING CAPABILITY.** `gh api graphql` returned `Bad credentials` on my edge ~09:4xZ and **`{viewer:{login:nv-slang-bot[bot]}}` at 10:12Z** — recovered with no action by me; the triager reports `updateIssue` working in its session too. ⇒ ⭐⭐⭐**a capability probe is a MEASUREMENT WITH A TIMESTAMP, not a property of the edge** — I turned one failed call into "unavailable fleet-wide" and shipped that phrasing to a peer as the CORRECT way to say it. ⭐⭐**The tell was in my own store: [[project_github_actions_graphql_401_outage]] records this exact endpoint recovering before** ⇒ a known-intermittent failure is the last thing to call standing. ⭐**Right form: "GraphQL 401'd at <time>; re-probe before relying on it."** ✅SURVIVES: path-CLASSING is real (REST / GraphQL / introspection fail independently) and `issues/N/timeline` is still a good REST substitute. ⛔DOES NOT: any claim GraphQL is permanently down. ⚠️Original scoped note follows —
+  `gh api graphql` → `Bad credentials` **on Main's edge too**. Per [[slang-tick87-instrument-lessons]]
+  §1 the 401 is **PATH-CLASSED and fleet-wide** (REST works · GraphQL 401s · `auth status` /
+  `rate_limit` 401s). ⇒ ⭐**Never attribute a fleet-wide capability gap to your own edge** — it invites
+  the next tier to "try it over there" and burns a round-trip. Say *"GraphQL is unavailable
+  fleet-wide; used REST path X."*
 - **Carried forward in the row:** R2's fallback findings remain an **UNVERIFIED must-verify list** if the cap ever clears — and **per-symbol gating must be re-checked then**: `cpu-device.cpp:36` is inside the feature `#ifdef` (mooted while OFF) but **`cpu-command.cpp:336` is UNCONDITIONAL.**
 
 Fork PR `WeakKnight:cpu-ray-tracing`. Approver verdict **ABSTAIN_POLICY
@@ -80,13 +107,45 @@ WeakKnight 4, jkwak-work 2) — all `COMMENTED`, **no CHANGES_REQUESTED**:
 
 `mergeable_state: behind` (not blocked).
 
-## RESUME triggers
-- **slang#12282 merges** ⇒ ABI header lands in a Slang release ⇒ pin bump makes
-  the feature compilable ⇒ real coverage becomes possible. This is the big one.
-- A **non-bot CHANGES_REQUESTED / APPROVED** review appears (scan `pulls/803/reviews`
-  every synchronize — debounce the re-run, never the inbound scan).
+## RESUME triggers — ⚠️v3, after BOTH earlier versions proved unfireable
+⛔**v1 could NEVER fire** ("non-bot actionable *review*" — a review-state predicate
+can't match a stateless directive). ⛔**v2 is ALWAYS SATISFIED** ("actionable non-bot
+feedback in ANY of the 3 endpoints" — skallweitNV's 16:50Z comment meets it right
+now, so it would wake an R4 with nothing new to decide). ⭐⭐**Fixing an
+under-firing predicate produced an over-firing one; the correction direction FELT
+safe both times.** After any predicate fix, **test it against KNOWN-CURRENT state: if
+it fires now with nothing new, it's wrong** (the same test that caught #12110's).
+
+✅**v3 — the missing discriminator is the ADDRESSEE, not the endpoint or the state.
+All three parts, in order:**
+1. **Non-bot author** — check `user.type != "Bot"` / `author_association`, **never**
+   an `endswith("[bot]")` test on a `gh pr view --json reviews` login (suffix is
+   stripped there ⇒ false negative).
+2. **Addressed to the DECISION, not to the contributor.** MINE-VERIFIED: the 16:50Z
+   comment opens literally `@WeakKnight` (assoc `MEMBER`) — a change request **to the
+   author**, actionable *for the PR*, not an inbound for the *approval decision*. A
+   decision-relevant inbound is a maintainer verdict, a reviewer asking **us**
+   something, or a human overriding the abstain.
+3. **Changes a load-bearing input** — LOC total, the ABI gate (`slang-cpp-ray-query.h`),
+   CI, or a standing verdict.
+
+**Terminal-event triggers need their GATE named** (both were wrong *when written*, not
+merely stale): MINE-VERIFIED **slang#12282 = 9 reviews, ALL `COMMENTED`, 0 APPROVED**;
+**#803 = 7 reviews, ALL `COMMENTED`, 0 APPROVED**. Neither is awaiting a merge button —
+both await a **first approving review**. So:
+- **slang#12282: a reviewer APPROVES → it merges** ⇒ ABI header ships ⇒ pin bump makes
+  the feature compilable. This is the big one. ❌not "when #12282 merges".
+- **#803: a reviewer APPROVES → merge/close.** ❌not "merge/close".
+- **skallweitNV's FetchContent rework lands** (submodule → `FetchContent`).
 - Diff drops **below 2,000 LOC** (would flip `tier_eligible`) — unlikely.
-- Merge/close.
+⚠️skallweitNV's separate **bandwidth/design gate** is NOT cleared by #12282 merging.
+
+⏱️**CI at head is SETTLED and fully green — re-probed 2026-08-04 05:4xZ / re-verified
+by me: 21 check-runs, all `completed`, 20 success + 1 skipped, zero in_progress.**
+❌The row previously said "CI still mid-flight" in the present tense from a 17:20Z
+reading — **~18h stale.** Doesn't move the verdict (the size cap stands alone), but
+⭐**a present-tense claim in a durable row silently ages into a false one: timestamp
+every observation or re-probe it.**
 
 Do **not** re-dispatch the approver on further synchronizes while the total
 stays >2,000 and no **actionable non-bot feedback in ANY of the 3 endpoints**

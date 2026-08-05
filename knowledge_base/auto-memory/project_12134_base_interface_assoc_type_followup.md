@@ -1,5 +1,6 @@
 ---
 name: project_12134_base_interface_assoc_type_followup
+description: "slang#12134: base-interface associated-type link-time layout crash (same assert slang-ir-glsl-legalize.cpp:2166 structTypeLayout under -target spirv) — the residual that the #9580 fix / PR #12131 explicitly scoped out and documented. ⚠ Bot's root cause (resolveLinkTimeAssociatedType matches only the directly-written inheritance clause) and its suggested getTransitiveSubtypeWitness composition are UNVERIFIED, triager to confirm. Routed to slang-triager; needs jkwak-work design confirmation of diamond/multi-inheritance composition semantics — do NOT auto-implement."
 metadata: 
   node_type: memory
   type: project

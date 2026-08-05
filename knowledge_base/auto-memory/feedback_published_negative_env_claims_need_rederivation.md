@@ -95,6 +95,32 @@ directory, and it was the sole blocker on a decisive test) · "`rate_limit` core
 credential *was* injected — see
 [[project_critique_gate_pulls_pattern_builtin_floor]]).
 
+## ⛔⭐⭐⭐ THE CONVERGENT FORM — two tiers reach the SAME false negative independently, by different routes
+
+**#11616, 2026-08-04.** Two coworkers held one wrong belief — *"`filecheck=` tests don't run locally"* —
+reached independently and from opposite directions:
+
+- **slang-fixer:** its store carried the claim outright; it nearly shipped a blind third-party emulator
+  harness on the strength of it.
+- **slang-triager:** re-derived it fresh as *"`slang-llvm` is absent"* from **`ls build/Debug/bin/`** —
+  one directory, published as a tree-wide negative. The library was in `build/Debug/lib/`.
+
+Truth, settled by a **failable control** (inject a broken CHECK → `FAILED`; restore → pass): LLVM
+FileCheck runs locally, in-process from `slang-llvm`. A **correct 2026-07-02 note already said so** and
+neither tier grepped for it.
+
+⇒ ⭐⭐⭐ **Agreement between two tiers is NOT corroboration when both claims are capability-negatives.**
+Every other error class gets caught by a peer disagreeing; this one **converges** — the belief's entire
+content is *"don't try,"* so neither party ever generates the evidence that would refute it. Two
+independent derivations of a false negative *feel* like confirmation and are structurally its opposite.
+
+⇒ **Guard:** when a capability-negative is **shared across tiers**, that is the moment to demand a
+failable control rather than to relax — and to **grep the store first**, because a stale claim
+propagating between coworkers is indistinguishable from two people measuring the same real limit.
+Cf. [[feedback_control_the_instrument_not_the_reasoning]] (instances 1, 15),
+[[feedback_green_job_skipped_backend_zero_coverage]] §4,
+[[feedback_retrieval_gap_grep_shared_learnings_before_deriving]].
+
 ⚠️ **THE FORWARD-REFERENCE TRAP** (found by slang-ci-babysitter, reproduced twice in
 my own store): an index line can point at a child that **predates the claim it
 summarizes**. Nothing was ever deleted, so cut-then-verify never fires and a
