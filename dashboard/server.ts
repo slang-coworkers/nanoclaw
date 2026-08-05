@@ -5418,7 +5418,6 @@ export async function handleRequest(
     return;
   }
 
-  // API: funnel recompute status — polled by the client while a refresh runs.
   if (url.pathname === '/api/kb-health') {
     if (!requireAuth(req, res)) return;
     // Reads whatever the 05:45 cron last wrote. Never computes inline: the scan walks
@@ -5474,6 +5473,7 @@ export async function handleRequest(
     return;
   }
 
+  // API: funnel recompute status — polled by the client while a refresh runs.
   if (url.pathname === '/api/funnel/status') {
     if (!requireAuth(req, res)) return;
     res.writeHead(200, { 'Content-Type': 'application/json' });
