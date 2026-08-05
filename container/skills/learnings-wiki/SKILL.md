@@ -211,6 +211,19 @@ TOPICS = [
      ["ci","flake","build","runner","glibc","furo","gh-cli","prebuilt","cmake"]),
     ("review-process", "Review & process",
      ["review","reviewer","devin","empirical","papers","arxiv","pdf","markdown"]),
+    # The approver/challenger corpus is the largest single cluster in the KB and had no
+    # vocabulary here at all — "approver" alone appears in 202 atoms, none of which matched
+    # any keyword above, so they all fell through to misc.
+    ("review-approval", "PR review, approval & calibration",
+     ["approver","approval","challenger","abstain","verdict","calibrat","mustfix","must-fix",
+      "clause","critique","disagreement","agreement","self-merge","protected-path","gate-pass",
+      "would_approve","decision.json","harvest"]),
+    # Epistemics: how a claim is established, not what the claim is about. Cuts across every
+    # other topic, which is why keyword overlap alone kept scattering it.
+    ("verification", "Verification & evidence discipline",
+     ["verify","verified","unverified","evidence","claim","correction","retract","supersed",
+      "false-positive","false positive","probe","bisect","reproduce","repro ","confirmed",
+      "assumption","overclaim"]),
 ]
 # concept groups for the LLM synthesis step (theme keywords -> 12 groups)
 GROUPS = [
@@ -246,10 +259,16 @@ def title_of(text, stem):
     return s[:1].upper() + s[1:]
 def yesc(s): return s.replace('"', "'")
 def classify(hay, table, default):
+    """Best match, not first match. Scored by distinct keyword hits, ties broken by table
+    order. First-match-wins made bucketing depend on list position: `review-process` sat
+    last, so any review atom that also said "slang" or "session" was claimed by an earlier
+    bucket — 249 of ~350 review atoms were mis-filed that way."""
+    best, best_score = default, 0
     for key, *rest in table:
-        kws = rest[-1]
-        if any(k in hay for k in kws): return key
-    return default
+        score = sum(1 for k in rest[-1] if k in hay)
+        if score > best_score:
+            best, best_score = key, score
+    return best
 
 def build():
     concepts_dir = os.path.join(WIKI, "concepts") + os.sep
@@ -270,7 +289,10 @@ def build():
         text, n = scrub(open(path, encoding="utf-8", errors="replace").read()); scrubbed += n
         title = title_of(text, stem)
         hay = (stem + " " + title).lower()
-        topic = classify(hay, [(k, kw) for k, _, kw in TOPICS], "misc")
+        # An explicit `topic:` on the L1 atom wins. build() rewrites every wiki/learnings
+        # page, so without this a hand- or LLM-corrected topic is silently reverted on the
+        # next run and the keyword table can never be overridden for a specific atom.
+        topic = fm(text, "topic") or classify(hay, [(k, kw) for k, _, kw in TOPICS], "misc")
         group = classify(hay, GROUPS, "misc")
         ts = (re.match(r"^(\d{10,})-", stem) or [None, ""])[1] if re.match(r"^(\d{10,})-", stem) else ""
         open(os.path.join(SRC, stem + ".md"), "w", encoding="utf-8").write(text if text.endswith("\n") else text + "\n")
@@ -474,6 +496,41 @@ def finalize():
             print(f"  OVERSIZE {rel} {len(t)}B > {PAGE_CAP}B — split by subtopic")
         if "## TL;DR" not in t:
             print(f"  NO-TLDR  {rel} — add a <=40-line '## TL;DR' at the top")
+    _report_uncategorised(learn)
+
+
+def _report_uncategorised(learn):
+    """Surface the taxonomy's blind spot instead of letting it accumulate silently.
+
+    The topic table is hand-maintained, so it only stays useful if something reports when
+    the corpus has outgrown it. Without this, `misc` reached 31% of all atoms and its
+    dominant term ("approver", 202 atoms) had no keyword anywhere in the table — invisible
+    because nothing ever counted it. The recurring terms below ARE the proposal for the
+    next category; add them to TOPICS when one keeps climbing.
+    """
+    STOP = set("""the a an of to in on for and or is are be with from that this it its by as at not no into
+when what which how why can cannot must should will would only just also then than there their them they
+you your our we us if else while does did done doing use used using make makes made get gets got has have
+had was were been being about after before over under out up down off same each per via across between
+during both any all some more most less least new old first last next prev""".split())
+    misc, total, terms = [], 0, collections.Counter()
+    for p in learn:
+        total += 1
+        if (fm(open(p, encoding="utf-8").read(), "topic") or "misc") != "misc":
+            continue
+        slug = re.sub(r"^\d{13}-", "", os.path.basename(p))[:-3]
+        misc.append(slug)
+        for w in re.split(r"[^a-z0-9]+", slug.lower()):
+            if len(w) > 3 and w not in STOP and not w.isdigit():
+                terms[w] += 1
+    if not total:
+        return
+    pct = 100 * len(misc) // total
+    print(f"uncategorised {len(misc)}/{total} ({pct}%)"
+          + ("  <- taxonomy is behind; consider a new topic" if pct > 15 else ""))
+    if pct > 15:
+        top = ", ".join(f"{w}({n})" for w, n in terms.most_common(12))
+        print(f"  recurring in misc: {top}")
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "build"
