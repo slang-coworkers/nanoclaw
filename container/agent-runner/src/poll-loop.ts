@@ -22,6 +22,7 @@ import { hasIdenticalSend, writeMessageOut } from './db/messages-out.js';
 import { getInboundDb, touchHeartbeat, clearStaleProcessingAcks } from './db/connection.js';
 import {
   clearContinuation,
+  getContinuationAgeMs,
   clearCurrentInReplyTo,
   migrateLegacyContinuation,
   setContinuation,
@@ -305,7 +306,24 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // long-lived hub keeps trying to reload an ever-growing .jsonl, hangs the
   // first turn, and gets killed before it can reply (then repeats forever).
   if (continuation) {
-    const rotateReason = config.provider.maybeRotateContinuation?.(continuation, config.cwd);
+    let rotateReason = config.provider.maybeRotateContinuation?.(continuation, config.cwd);
+    // Providers whose history lives server-side legitimately omit that hook
+    // (providers/types.ts) — there is no local transcript to measure. They were
+    // therefore never rotated at all, at any age. Codex resumed a thread last
+    // touched seven weeks earlier on 2026-07-17, returned task_complete with
+    // last_agent_message null, and the thread went silent.
+    //
+    // Only applied when the provider has no rotation of its own, so a
+    // file-based provider can never be double-rotated by this. Idle age comes
+    // from session_state's existing per-write timestamp — no new bookkeeping,
+    // and no size cap: bytes are meaningless when the transcript is not local.
+    if (!rotateReason && !config.provider.maybeRotateContinuation) {
+      const ageMs = getContinuationAgeMs(config.providerName);
+      const maxIdleMs = continuationMaxIdleMs();
+      if (ageMs !== null && ageMs > maxIdleMs) {
+        rotateReason = `continuation idle ${(ageMs / 86_400_000).toFixed(1)}d > ${(maxIdleMs / 86_400_000).toFixed(0)}d cap`;
+      }
+    }
     if (rotateReason) {
       log(`Rotating session — ${rotateReason}; starting fresh`);
       clearContinuation(config.providerName);
