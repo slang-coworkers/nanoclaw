@@ -565,6 +565,126 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
     expect(parsed.review_state).toBe('changes_requested');
   });
 
+  it('GCs the CI-gate park slot when the PR reaches a terminal state', async () => {
+    // A parked reviewable row is released only by a later check_suite=success
+    // for its head — which a merged/closed PR never emits — so without this GC
+    // the row is immortal. Prod 2026-08-05: 112 parked, 74 of them for PRs that
+    // had already finished. The table only ever grew.
+    const deleted: Array<{ repo: string; pr: number }> = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: true,
+      CI_GATE_REQUIRED_SUITE: '',
+    }));
+    vi.doMock('./modules/pending-reviewable/store.js', () => ({
+      parkReviewable: () => undefined,
+      deleteParked: (_db: unknown, repo: string, pr: number) => deleted.push({ repo, pr }),
+    }));
+    // No approver decided this PR — the learning-loop side-channel no-ops, so
+    // this test isolates the GC.
+    vi.doMock('./modules/approval-ledger/store.js', () => ({ getDecisionSessionsForPr: () => [] }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => undefined,
+      getAgentGroup: () => undefined,
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/x.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubPrEvent } = await import('./webhook-github.js');
+    deliverGitHubPrEvent({
+      repo: 'shader-slang/slang',
+      prNumber: 12141,
+      event: 'github.pr_merged',
+      rowId: 'gh-merged-1',
+      payload: {},
+      rawBody: '{"action":"closed"}',
+      eventType: 'pull_request',
+      deliveryId: 'm-1',
+    });
+
+    expect(deleted).toEqual([{ repo: 'shader-slang/slang', pr: 12141 }]);
+  });
+
+  it('does NOT GC the park slot on a non-terminal PR event', async () => {
+    const deleted: Array<{ repo: string; pr: number }> = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'lego',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: true,
+      CI_GATE_REQUIRED_SUITE: '',
+    }));
+    vi.doMock('./modules/pending-reviewable/store.js', () => ({
+      parkReviewable: () => undefined,
+      deleteParked: (_db: unknown, repo: string, pr: number) => deleted.push({ repo, pr }),
+    }));
+    vi.doMock('./modules/approval-ledger/store.js', () => ({ getDecisionSessionsForPr: () => [] }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({ prepare: () => ({ get: () => undefined }) }),
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => undefined,
+      getAgentGroup: () => undefined,
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/x.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubPrEvent } = await import('./webhook-github.js');
+    deliverGitHubPrEvent({
+      repo: 'shader-slang/slang',
+      prNumber: 12141,
+      event: 'github.pr_review',
+      rowId: 'gh-review-1',
+      payload: { review_state: 'commented' },
+      rawBody: '{"action":"submitted"}',
+      eventType: 'pull_request_review',
+      deliveryId: 'r-9',
+    });
+
+    expect(deleted).toEqual([]); // the PR is still live; its park slot must survive
+  });
+
   it('forwards to the foreign owner instance', async () => {
     vi.doMock('./config.js', () => ({
       INSTANCE_FORWARD_TARGETS: { lego: peerUrl },
