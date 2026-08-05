@@ -69,6 +69,31 @@ export function revokeContainerToken(token: string): void {
   tokens.delete(token);
 }
 
+/**
+ * Re-scope every live token belonging to a group, without respawning it.
+ *
+ * `registerContainerToken` snapshots the allow-list into the token at spawn, so
+ * editing `agent_groups.allowed_mcp_tools` alone changes nothing for a container
+ * that is already running — the operator would have to restart it, killing work
+ * in flight. This applies the new list to the running container immediately.
+ *
+ * Returns the number of tokens re-scoped (0 if the group has none live).
+ */
+export function updateContainerTokenScope(groupFolder: string, allowedMcpTools: string[]): number {
+  const scopedNames = allowedMcpTools
+    .filter((t) => t.startsWith('mcp__') && !t.startsWith('mcp__nanoclaw__'))
+    .map((t) => t.split('__').slice(1).join('__'));
+  let n = 0;
+  for (const entry of tokens.values()) {
+    if (entry.groupFolder !== groupFolder) continue;
+    // Mutate in place: the container holds the bearer token itself, so the token
+    // string must not change — only what it authorises.
+    entry.allowedTools = new Set(scopedNames);
+    n++;
+  }
+  return n;
+}
+
 // ── Tool discovery ──────────────────────────────────────────────────────────
 
 /** Cached tool inventories per MCP server, keyed by server name. */

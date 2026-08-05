@@ -5,7 +5,8 @@ import { buildAgentGroupImage, killContainer, wakeContainer } from '../../contai
 import { restartAgentGroupContainers } from '../../container-restart.js';
 import { createAgentGroup, getAgentGroupByFolder } from '../../db/agent-groups.js';
 import { getDb, hasTable } from '../../db/connection.js';
-import { getAgentGroup } from '../../db/agent-groups.js';
+import { getAgentGroup, updateAgentGroup } from '../../db/agent-groups.js';
+import { getDiscoveredToolInventory, updateContainerTokenScope } from '../../mcp-auth-proxy.js';
 import { getSession } from '../../db/sessions.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import {
@@ -97,6 +98,102 @@ registerResource({
   // DELETE violates FK constraints (#2525).
   operations: { list: 'open', get: 'open', update: 'approval' },
   customOperations: {
+    'mcp-tools get': {
+      access: 'open',
+      description:
+        'Show a group\'s MCP tool allow-list alongside the tools each wired MCP server actually exposes. ' +
+        'A null allow-list means unrestricted (every discovered tool is callable). Use --id <agent-group-id>.',
+      handler: async (args) => {
+        const id = String(args.id ?? '');
+        if (!id) throw new Error('--id is required');
+        const group = getAgentGroup(id);
+        if (!group) throw new Error(`No agent group ${id}`);
+        let allowed: string[] | null = null;
+        if (group.allowed_mcp_tools) {
+          try {
+            const parsed = JSON.parse(group.allowed_mcp_tools);
+            allowed = Array.isArray(parsed) ? parsed.map(String) : null;
+          } catch {
+            allowed = null;
+          }
+        }
+        // Discovery is already done by the proxy at server start; this only reads
+        // the cache, so it needs no MCP handshake of its own.
+        const inventory = getDiscoveredToolInventory();
+        const discovered = Object.values(inventory).flat();
+        return {
+          agent_group_id: id,
+          folder: group.folder,
+          restricted: allowed !== null,
+          allowed_mcp_tools: allowed,
+          // nanoclaw's own tools are never proxy-scoped, so they are never
+          // restrictable here — surfacing them would imply otherwise.
+          discovered_by_server: inventory,
+          blocked: allowed === null ? [] : discovered.filter((t) => !allowed!.includes(t)),
+        };
+      },
+    },
+    'mcp-tools set': {
+      access: 'approval',
+      description:
+        'Replace a group\'s MCP tool allow-list and re-scope its RUNNING container immediately (no restart). ' +
+        '--id <agent-group-id> --tools \'["mcp__server__tool", …]\', or --tools null to remove all restriction. ' +
+        'An agent may never change its OWN allow-list.',
+      handler: async (args, ctx) => {
+        const id = String(args.id ?? '');
+        if (!id) throw new Error('--id is required');
+
+        // No principal may widen its own permissions. Without this an agent in
+        // group scope reaches its own row via the pre-handler `--id` auto-fill,
+        // and a human approving a routine-looking card would be granting a
+        // self-escalation. A privilege change must come from a different
+        // principal — Main acting on a coworker, or a human operator.
+        if (ctx?.caller === 'agent' && ctx.agentGroupId === id) {
+          throw new Error(
+            'An agent cannot change its own MCP tool allow-list. Ask the admin/Main group to make this change.',
+          );
+        }
+        // Cross-group changes are admin-only. Group-scoped callers are additionally
+        // rejected by dispatch, but fail closed here rather than relying on it.
+        if (ctx?.caller === 'agent') {
+          const caller = getAgentGroup(ctx.agentGroupId);
+          if (!caller?.is_admin) {
+            throw new Error('Only an admin agent group may change another group\'s MCP tool allow-list.');
+          }
+        }
+
+        const group = getAgentGroup(id);
+        if (!group) throw new Error(`No agent group ${id}`);
+
+        const raw = args.tools;
+        let tools: string[] | null;
+        if (raw === undefined) throw new Error('--tools is required (a JSON array, or null to unrestrict)');
+        if (raw === null || raw === 'null') {
+          tools = null;
+        } else {
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (!Array.isArray(parsed)) throw new Error('--tools must be a JSON array of tool names, or null');
+          tools = parsed.map(String);
+          const bad = tools.filter((t) => !t.startsWith('mcp__'));
+          if (bad.length) throw new Error(`Not MCP tool names: ${bad.join(', ')}`);
+        }
+
+        updateAgentGroup(id, { allowed_mcp_tools: tools === null ? null : JSON.stringify(tools) });
+        // The DB row governs the next spawn; this governs the container running
+        // right now. Without it the change silently does nothing until restart.
+        const rescoped = tools === null ? 0 : updateContainerTokenScope(group.folder, tools);
+        return {
+          agent_group_id: id,
+          folder: group.folder,
+          allowed_mcp_tools: tools,
+          live_containers_rescoped: rescoped,
+          note:
+            tools === null
+              ? 'Restriction removed. Running containers keep their current scope until respawn.'
+              : `Applied to ${rescoped} running container(s); also persisted for future spawns.`,
+        };
+      },
+    },
     create: {
       access: 'approval',
       description:
