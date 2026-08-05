@@ -30,6 +30,13 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # Only the publishing line gates on the pin. A fork's nv-* branches carry
+    # this pin as a reference to a digest that was already verified on `main`
+    # — they have no OIDC role for the publisher's registry and no signer
+    # identity, so every step below would fail on a missing credential rather
+    # than on anything about the image. Trust is inherited from the verified
+    # `main` merge, not re-established without the keys to do it.
+    if: github.base_ref == 'main'
     permissions:
       contents: read
       id-token: write # OIDC for the pull-only ECR role
@@ -48,9 +55,15 @@ jobs:
             # not auto-bumped: the entries must move together, and a bot that
             # bumps them independently can leave the architectures on bytes
             # from two different builds.
+            #
+            # `|| true` on the grep: "no agent-image key at this ref" is a
+            # legitimate answer (the commit that first introduces the pin has
+            # none at its base), and an empty string is how the caller expects
+            # to hear it. Without this, grep's exit 1 trips `pipefail` and kills
+            # the step before it can classify the change.
             git show "$1:versions.json" 2>/dev/null \
               | tr -d '\n' \
-              | grep -o '"agent-image"[[:space:]]*:[[:space:]]*"[^"]*"' \
+              | { grep -o '"agent-image"[[:space:]]*:[[:space:]]*"[^"]*"' || true; } \
               | head -n1 | sed 's/.*:[[:space:]]*"//; s/"$//'
           }
           NEW="$(read_pin "${{ github.event.pull_request.head.sha }}")"
