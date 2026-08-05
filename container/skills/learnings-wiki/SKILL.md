@@ -35,10 +35,16 @@ coworker groups mount it read-only and cannot build the wiki.
 
 ## Query (navigate, don't vector-search)
 
-1. Read `wiki/index.md` → pick the relevant **concept** page (the synthesized answer).
-2. Open it; follow its inline markdown links (`[title](wiki/...)`) by reading the linked files.
-3. No page fits? `Grep` `sources/learnings/` for keywords, read the top hits, answer **with citations**.
-Use `wiki/glossary.md` for a quick term → page jump.
+Your cwd is `/workspace/agent`; the KB root is `/workspace/shared`. Links inside the wiki are
+relative to that root, so **always prefix `/workspace/shared/`** — a bare `wiki/index.md` or
+`sources/` does not resolve.
+
+1. Read `/workspace/shared/wiki/index.md` → pick the relevant **concept** page.
+2. Open it (`limit=60` reaches the `## TL;DR`); follow its links — `](wiki/concepts/x.md)` means
+   `/workspace/shared/wiki/concepts/x.md`.
+3. No page fits? `Grep` `/workspace/shared/sources/learnings/` for keywords, read the top hits,
+   answer **with citations**.
+Use `/workspace/shared/wiki/glossary.md` for a quick term → page jump.
 
 ## Build / rebuild
 
@@ -61,6 +67,9 @@ spawn a sub-agent (Task tool) that reads that group's source files and writes on
 - **stay under 40 KB.** A page above that is silently truncated by the `Read` tool, so its tail
   never reaches the agent. At the cap, **split by subtopic** (`<group>-<subtopic>-2.md`) — do not
   keep appending. Growth belongs in page *count*, never page *size*;
+- **split the largest over-cap pages first**, not just the one you folded into. Each run,
+  `ls -S wiki/concepts/*.md | head -5` and bring the biggest down, even if this run's learnings
+  never touched them — otherwise the biggest and most-read pages stay over cap indefinitely;
 - merge the related learnings into one coherent explanation (don't just concatenate);
 - flag contradictions / supersessions in a dedicated section;
 - cite inline with standard markdown links `[title](wiki/learnings/<stem>.md)` (stem = source filename
@@ -305,7 +314,11 @@ def _write_index(entries, by_topic, concepts=None):
            "# Slang-Coworkers Learnings Wiki", "",
            f"Standalone wiki built from **{len(entries)} agent learnings**"
            + (f", synthesized into **{len(concepts)} concept pages**" if concepts else "") + ".", "",
-           "**Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.", ""]
+           "**Navigate:** concept (synthesized) → its linked learnings.", "",
+           "> Links below are relative to the KB root. In a container that root is `/workspace/shared/`,",
+           "> and your cwd is `/workspace/agent` — so read `](wiki/concepts/x.md)` as",
+           "> `/workspace/shared/wiki/concepts/x.md`. Keyword fallback:",
+           "> `grep -ril <term> /workspace/shared/sources/learnings/`.", ""]
     if concepts:
         idx += ["## Concepts (synthesized)", ""]
         for g, items in by_group.items():

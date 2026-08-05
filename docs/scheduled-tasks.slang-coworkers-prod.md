@@ -409,8 +409,16 @@ PART A — synth (follow the /learnings-wiki skill's INCREMENTAL path):
    - Near-duplicates collapse into ONE paragraph citing both.
    - PAGE CAP 40 KB. Create a new concept page if a learning opens a genuinely new topic, OR if the target page is at the cap — then SPLIT by subtopic (<group>-<subtopic>-2.md). Never let a page exceed 40 KB: past ~56 KB the Read tool silently truncates it and the tail never reaches the reader. Growth belongs in page COUNT, never page SIZE.
    - Every concept page must open with a "## TL;DR" of <=40 lines (durable rules, no citations). Backfill it on any page you touch.
-4. BOUNDED WORK PER RUN — do not attempt the whole backlog in one night. Cap this run at ~40 uncovered folded, at most 2 page splits, and at most 5 TL;DR backfills. Report what remains.
-5. Re-run python3 .learnings_wiki.py finalize — confirm 0 dangling, uncovered decreasing, and OVERSIZE / NO-TLDR counts not increasing.
+4. SPLIT THE WORST OFFENDERS FIRST — independent of where this run's learnings landed.
+   Before finishing, run: ls -S wiki/concepts/*.md | head -5 (largest first). Split the TWO
+   LARGEST pages that exceed 40 KB even if today's atoms did not touch them. Splitting only the
+   page you happened to fold into leaves the biggest — and most-read — pages permanently over
+   cap: on 2026-08-05 the run split a 26 KB page while review-pr-practices.md sat at 237 KB and
+   both approver pages at ~178 KB. Those are the pages readers lose the tail of, so they are the
+   ones that must come down first.
+
+5. BOUNDED WORK PER RUN — do not attempt the whole backlog in one night. Cap this run at ~40 uncovered folded, at most 2 page splits, and at most 5 TL;DR backfills. Report what remains.
+6. Re-run python3 .learnings_wiki.py finalize — confirm 0 dangling, uncovered decreasing, and OVERSIZE / NO-TLDR counts not increasing.
 
 PART B — git sync to knowledge_base + land on nv-coworkers (repo: /workspace/agent/nanoclaw-kb, fork slang-coworkers/nanoclaw).
 NOTE: do NOT use the naive `cp -r src/ dest/` — when the dest dir already exists it nests into dest/<name>/<name>. And do NOT `git push origin nv-coworkers` directly: the day's base sync is usually already merge-committed, so a direct push is a non-fast-forward (and force-push to a shared branch is forbidden). Use branch → PR → REST-merge (the bot 403s on GraphQL `gh pr create`/`gh pr merge`).
