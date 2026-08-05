@@ -1,0 +1,73 @@
+# syntax=docker/dockerfile:1
+#
+# Derived agent image: the hardened upstream base + this fork's layers.
+#
+# Why this exists. `container/pull.sh` downloads the hardened image and then
+# REFUSES to tag it:
+#
+#   Agent-runner lock drift — refusing to tag this image.
+#     image     <sha of upstream's bun.lock>
+#     checkout  <sha of container/agent-runner/bun.lock>
+#
+# The base bakes /app/node_modules from the lockfile it was built with, while
+# `src/container-runner.ts` mounts /app/src from THIS checkout at spawn time.
+# Pair upstream's node_modules with our source and a container dies on a missing
+# module — inside `--rm`, so the logs are gone. The guard is correct; the answer
+# is to reinstall against our lock and re-stamp the label, which is what this
+# does. The fork's other additions are re-applied here too.
+#
+# Measured against the pinned base (2026-08-05): it runs as non-root `node`
+# (uid 1000), WORKDIR /workspace/group, ENTRYPOINT ["/usr/bin/tini","--",
+# "/app/entrypoint.sh"], and already ships `agent-browser` and `ncl` but NOT
+# `codex` or `claude-trace`. Those two are what this fork adds.
+#
+# Build via `container/build-derived.sh`.
+
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# Installing global CLIs and rewriting /app needs root. The base deliberately
+# runs as `node`, so switch up here and switch back at the end — leaving the
+# runtime identity exactly as the hardened base set it. Without this the build
+# fails with EACCES on /root/.npmrc.
+USER root
+
+# ---- fork-only global CLIs ---------------------------------------------------
+# Reuse the fork's installer so pins match a local build instead of drifting to
+# "latest". The base already has agent-browser and claude-code; the entry that
+# matters here is @mariozechner/claude-trace.
+COPY cli-tools.json install-cli-tools.sh /tmp/
+RUN --mount=type=cache,target=/root/.cache/pnpm \
+    sh /tmp/install-cli-tools.sh /tmp/cli-tools.json
+
+# codex is fork-only (not in cli-tools.json) — pinned, same as the local build.
+ARG CODEX_VERSION=0.139.0
+RUN --mount=type=cache,target=/root/.cache/pnpm \
+    pnpm install -g "@openai/codex@${CODEX_VERSION}"
+
+# ---- agent-runner: the whole reason this image exists -------------------------
+WORKDIR /app
+COPY agent-runner/package.json agent-runner/bun.lock ./
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile && \
+    rm -f node_modules/@anthropic-ai/claude-agent-sdk-linux-x64-musl/claude
+COPY agent-runner/ ./
+# Files copied as root must stay readable by the runtime user.
+RUN chown -R node:node /app
+
+# ---- claude-trace wrapper (lego observability) --------------------------------
+COPY claude-trace-wrap /usr/local/bin/claude-trace-wrap
+RUN chmod +x /usr/local/bin/claude-trace-wrap
+
+# ---- restore the base's runtime identity -------------------------------------
+# ENTRYPOINT is inherited from the base and deliberately not redeclared.
+USER node
+WORKDIR /workspace/group
+
+# ---- lock label --------------------------------------------------------------
+# LAST on purpose: an ARG invalidates every layer below it. Re-stamping with OUR
+# lock sha is what lets pull.sh/build.sh accept this image for this checkout.
+ARG AGENT_RUNNER_LOCK_SHA256=
+LABEL dev.nanoclaw.agent-runner-lock-sha256="${AGENT_RUNNER_LOCK_SHA256}"
+ARG IMAGE_SOURCE=derived
+LABEL dev.nanoclaw.image-source="${IMAGE_SOURCE}"
