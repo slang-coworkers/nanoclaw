@@ -6,15 +6,47 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 369 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 174 |
-| `nv-slang` | slang project spine, skills, workflows | 129 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 65 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 44 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 388 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 178 |
+| `nv-slang` | slang project spine, skills, workflows | 131 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 67 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 46 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-05
+
+### nv-main (13 PRs)
+- **#1092** `critique-gate: self-heal stale/missing escalations, close the fail-open`
+- **#1086** `Sync nv-main with upstream/main`
+- **#1083** `feat(scripts): verify-only drift check for nv-main-owned files`
+- **#1082** `feat(ncl): mcp-tools get/set — read and change a group's MCP tool allow-list`
+- **#1081** `fix(codex): silent turns — deliver-nothing detection + stale-thread rotation`
+- **#1079** `fix(approval-ledger): stamp the human verdict host-side, not via an agent turn`
+- **#1078** `feat(scripts): regression-quality — quality axis for coworker autonomy`
+- **#1077** `fix(webhook): GC the CI-gate park slot when a PR reaches a terminal state`
+- **#1076** `feat(scripts): kb-doctor — report drift between git and what production runs`
+- _+4 more: #1075, #1074, #1071, #1052_
+
+### nv-dashboard (4 PRs)
+- **#1048** `Sync nv-dashboard with upstream/main`
+- **#1046** `fix(dashboard): supply instance on dashboard messaging_group insert`
+- **#1080** `feat(dashboard): GET /api/kb-health — surface KB cost, shape and drift`
+- **#1088** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (2 PRs)
+- **#1049** `Sync nv-slang with upstream/main`
+- **#1089** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (2 PRs)
+- **#1050** `Sync nv-slangpy with upstream/main`
+- **#1090** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#1051** `Sync nv-nanoclaw with upstream/main`
+- **#1091** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-07-27
 
