@@ -105,7 +105,7 @@ export function getDecisionSessionsForPr(db: Database.Database, repo: string, pr
   return db
     .prepare(
       `SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict
-       FROM approval_decisions WHERE repo=? AND pr_number=? ORDER BY decided_at ASC`,
+       FROM approval_decisions WHERE repo=? AND pr_number=? ORDER BY datetime(decided_at) ASC, rowid ASC`,
     )
     .all(repo, prNumber) as DecisionSessionRow[];
 }
@@ -128,8 +128,21 @@ export function getDecisionSessionsForPr(db: Database.Database, repo: string, pr
  *
  * So when the exact row is absent, stamp the most recent UNSTAMPED decision for
  * that PR — the approver's last call is what the outcome actually judges — and
- * say so in the log. Never overwrite an existing verdict: a real observation
- * always beats an inferred one.
+ * say so in the log.
+ *
+ * FIRST VERDICT WINS, on both paths. The exact UPDATE carries the same
+ * `human_verdict IS NULL` guard as the fallback, so the invariant holds
+ * globally rather than only where the head happened to advance. Without it the
+ * two paths disagree on identical human behaviour — a reviewer requests
+ * changes and then merges with no new commits, and the later MERGED silently
+ * overwrites the CHANGES_REQUESTED, erasing the only evidence that the
+ * approver's call was wrong. That is precisely the signal this ledger exists to
+ * capture, so it is never overwritten.
+ *
+ * `join_mode` records which path stamped the row ('exact' | 'head_advanced'),
+ * so precision can be reported split by whether the head moved. If the
+ * head_advanced group ever scores materially better than exact, the
+ * merge-outcome over-credit bias has arrived and it is visible in one query.
  */
 export function recordHumanVerdict(
   db: Database.Database,
@@ -140,8 +153,9 @@ export function recordHumanVerdict(
 ): boolean {
   const res = db
     .prepare(
-      `UPDATE approval_decisions SET human_verdict=@humanVerdict
-       WHERE repo=@repo AND pr_number=@prNumber AND commit_sha=@commitSha`,
+      `UPDATE approval_decisions SET human_verdict=@humanVerdict, join_mode='exact'
+       WHERE repo=@repo AND pr_number=@prNumber AND commit_sha=@commitSha
+         AND human_verdict IS NULL`,
     )
     .run({ humanVerdict, repo, prNumber, commitSha });
   if (res.changes > 0) {
@@ -150,15 +164,22 @@ export function recordHumanVerdict(
       pr: prNumber,
       commit: commitSha.slice(0, 12),
       human: humanVerdict,
+      joinMode: 'exact',
     });
     return true;
   }
 
+  // `datetime()` + rowid is load-bearing. decided_at is agent-supplied and
+  // unvalidated (an optional MCP arg passed through raw), so a bare TEXT sort
+  // mis-orders offset forms ('…14:00:00+02:00' sorts above '…12:30:00Z') and
+  // truncated fractions ('Z' > '.'), and an exact tie would credit the FIRST
+  // row — the opposite of "latest". Prod carries proof this is not theoretical:
+  // slang#11530 holds a decision stamped 730h AFTER its own merge.
   const latest = db
     .prepare(
       `SELECT rowid AS rid, commit_sha AS decidedSha FROM approval_decisions
         WHERE repo=? AND pr_number=? AND human_verdict IS NULL
-        ORDER BY decided_at DESC LIMIT 1`,
+        ORDER BY datetime(decided_at) DESC, rowid DESC LIMIT 1`,
     )
     .get(repo, prNumber) as { rid: number; decidedSha: string } | undefined;
 
@@ -174,13 +195,17 @@ export function recordHumanVerdict(
     return false;
   }
 
-  db.prepare('UPDATE approval_decisions SET human_verdict=? WHERE rowid=?').run(humanVerdict, latest.rid);
+  db.prepare("UPDATE approval_decisions SET human_verdict=?, join_mode='head_advanced' WHERE rowid=?").run(
+    humanVerdict,
+    latest.rid,
+  );
   log.info('approval decision joined to human verdict (head advanced past the decision)', {
     repo,
     pr: prNumber,
     verdictCommit: commitSha.slice(0, 12),
     decidedCommit: latest.decidedSha.slice(0, 12),
     human: humanVerdict,
+    joinMode: 'head_advanced',
   });
   return true;
 }

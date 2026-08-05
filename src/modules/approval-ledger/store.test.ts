@@ -163,6 +163,54 @@ describe('recordHumanVerdict — head advanced past the decision', () => {
     expect(rows[1].human_verdict).toBe('MERGED');
   });
 
+  it('does not overwrite on the EXACT path either — first verdict wins', () => {
+    // Reviewer finding on #1069: the exact UPDATE had no `human_verdict IS NULL`
+    // guard, so identical human behaviour produced different ground truth purely
+    // by whether commits landed in between — a reviewer requesting changes and
+    // then merging with no new commits had the CHANGES_REQUESTED silently
+    // replaced by MERGED, erasing the evidence of a false approve.
+    const db = initTestDb();
+    runMigrations(db);
+    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40) }));
+    expect(recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'CHANGES_REQUESTED')).toBe(true);
+    // Same sha again — the head did NOT advance, so this takes the exact path.
+    expect(recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'MERGED')).toBe(false);
+    const row = db
+      .prepare('SELECT human_verdict, join_mode FROM approval_decisions WHERE commit_sha=?')
+      .get('a'.repeat(40)) as { human_verdict: string; join_mode: string };
+    expect(row.human_verdict).toBe('CHANGES_REQUESTED');
+    expect(row.join_mode).toBe('exact');
+  });
+
+  it('records join_mode so precision can be split by whether the head moved', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
+    recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED');
+    const row = db.prepare('SELECT join_mode FROM approval_decisions WHERE commit_sha=?').get('a'.repeat(40)) as {
+      join_mode: string;
+    };
+    expect(row.join_mode).toBe('head_advanced');
+  });
+
+  it('picks the latest by datetime(), not lexicographic text, and breaks ties by rowid', () => {
+    // decided_at is agent-supplied and unvalidated, so a bare TEXT sort mis-orders
+    // offset forms and truncated fractions, and an exact tie credits the FIRST row.
+    const db = initTestDb();
+    runMigrations(db);
+    // '…14:00:00+02:00' is 12:00:00Z — EARLIER than 12:30:00Z — but sorts above it as text.
+    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T14:00:00+02:00' }));
+    upsertDecision(db, baseWrite({ commitSha: 'b'.repeat(40), decision: 'BLOCK', decidedAt: '2026-07-09T12:30:00Z' }));
+    recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED');
+    const rows = db.prepare('SELECT commit_sha, human_verdict FROM approval_decisions').all() as Array<{
+      commit_sha: string;
+      human_verdict: string | null;
+    }>;
+    const stamped = rows.find((r) => r.human_verdict !== null);
+    // The genuinely-latest decision is the 12:30Z BLOCK, not the offset-form row.
+    expect(stamped?.commit_sha).toBe('b'.repeat(40));
+  });
+
   it('never overwrites a verdict that was already observed', () => {
     const db = initTestDb();
     runMigrations(db);

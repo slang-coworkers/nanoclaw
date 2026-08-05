@@ -11,8 +11,12 @@ import type { Migration } from './index.js';
  * `map_pr_session`).
  *
  * `human_verdict` is filled later — when a live `github.pr_review` (or a
- * terminal merged/closed event) arrives on the PR's session — so decision vs.
- * ground truth can be joined on (repo, commit_sha). It stays NULL until then.
+ * terminal merged/closed event) arrives on the PR's session. The join prefers
+ * (repo, pr, commit_sha), but that exact match is the MINORITY case: a PR
+ * routinely gains commits after the approver decides and ends at a head no
+ * decision row holds, so the outcome is credited to the most recent unstamped
+ * decision for that PR instead (`join_mode` records which path was taken —
+ * see migration 931). It stays NULL until joined.
  *
  * PK is (repo, pr, commit_sha): one decision per reviewed revision. A re-run
  * on the same commit (re-review, corrected derivation) is INSERT OR REPLACE —
