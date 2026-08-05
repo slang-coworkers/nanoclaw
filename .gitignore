@@ -67,3 +67,4 @@ slang_kb/
 # npm lockfile: this project uses pnpm exclusively (pnpm-workspace.yaml +
 # minimumReleaseAge). A stray package-lock.json bypasses that supply-chain gate.
 package-lock.json
+__pycache__/

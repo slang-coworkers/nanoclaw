@@ -20,7 +20,7 @@ You are the **{{vars.project}} specialist** and first line of engineering. Hand 
 2. **Recall** {#recall} — Spawn an `Agent` subagent to scan prior triage learnings; wiki-first, raw fallback:
 
    ```
-   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it with limit=100 (concepts section only — the file is large), identify concept pages relevant to <target>, read up to 2 concept pages and follow their links to cited learnings if needed. If no concept fits, Grep wiki/ for keywords. IF NO wiki/ dir: fall back to Grep /workspace/shared/learnings/ for keywords and reading at most 3 hits. Return ≤5 bullets — title, 1-line summary, file path. No hits → 'no prior hits'.")
+   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it (it is a small catalog); open at most 2 concept pages with limit=60 to reach their `## TL;DR`. Links inside the wiki are relative to /workspace/shared, so `](wiki/concepts/x.md)` means `/workspace/shared/wiki/concepts/x.md`, identify concept pages relevant to <target>, read up to 2 concept pages and follow their links to cited learnings if needed. If no concept fits, Grep /workspace/shared/wiki/ for keywords. IF NO wiki/ dir: fall back to Grep /workspace/shared/learnings/ for keywords and reading at most 3 hits. Return ≤5 bullets — title, 1-line summary, file path. No hits → 'no prior hits'.")
    ```
 
 3. **Research** {#research} — Fan out via subagents; cost is your context, not wall clock. Three pillars: local code (subagents read the mounted checkout — authoritative, don't re-fetch), DeepWiki (architecture/flow/limitations), `gh` CLI (duplicates, prior PRs, cross-repo). (Project workflows override this with their component/layer paths and DeepWiki repo.)
