@@ -609,7 +609,7 @@ const recordHumanVerdict: McpToolDefinition = {
   tool: {
     name: 'record_human_verdict',
     description:
-      'Stamp the human review outcome onto an existing approval_decisions row for (repo, pr, commit_sha), for agreement scoring (PR-approver coworkers only). No-op host-side if no decision row exists yet.',
+      'Stamp the human review outcome onto an existing approval_decisions row for (repo, pr, commit_sha), for agreement scoring (PR-approver coworkers only). Prefers the exact commit; if the PR advanced past every decided head (the common case for a merge), the host credits your most recent UNSTAMPED decision for that PR instead. An already-stamped verdict is never overwritten — the first human signal wins. No-op only when this PR has no unstamped decision at all.',
     inputSchema: {
       type: 'object' as const,
       properties: {

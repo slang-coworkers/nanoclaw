@@ -81,14 +81,10 @@ registerDeliveryAction(
       log.warn('record_human_verdict: missing repo/pr_number/commit_sha/human_verdict', { content });
       return;
     }
-    const joined = recordHumanVerdict(getDb(), repo, prNumber, commitSha, humanVerdict);
-    if (!joined) {
-      log.info('record_human_verdict: no decision row to join (human review preceded a Verity decision)', {
-        repo,
-        pr: prNumber,
-        commit: commitSha.slice(0, 12),
-      });
-    }
+    // `false` now means "no UNSTAMPED decision for this PR" — either none was
+    // ever recorded, or every one already carries a verdict (first-wins). The
+    // store logs the specifics on both branches, so don't restate them here.
+    recordHumanVerdict(getDb(), repo, prNumber, commitSha, humanVerdict);
   },
   unguarded('record_human_verdict stamps the human review outcome onto an existing ledger row — audit record'),
 );
