@@ -375,6 +375,14 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
           merged,
           pr_url: typeof pr?.html_url === 'string' ? pr.html_url : '',
           merged_by: mergedBy,
+          // The head the PR actually ended on. Carried so the deterministic
+          // verdict join can tell "we judged the final commit" (exact) from "the
+          // PR moved past every head we judged" (head_advanced) — which is the
+          // whole point of join_mode. Without it every join looks exact.
+          head_sha:
+            typeof (pr?.head as Record<string, unknown> | undefined)?.sha === 'string'
+              ? String((pr!.head as Record<string, unknown>).sha)
+              : '',
         },
         rawBody,
         eventType: String(eventType),
