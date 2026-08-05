@@ -209,6 +209,18 @@ export function isNewSessionBatch(keep: Array<{ kind: string; content: string }>
   return keep.length > 0 && keep.every((m) => m.kind === 'task') && !keep.some(taskOptsOutOfNewSession);
 }
 
+/**
+ * Idle cap for providers with no transcript of their own to rotate. Mirrors the
+ * Claude age knob's default and its disable semantics (non-positive = off).
+ */
+function continuationMaxIdleMs(): number {
+  const raw = process.env.CONTINUATION_MAX_IDLE_DAYS;
+  if (raw === undefined || raw.trim() === '') return 14 * 86_400_000;
+  const days = Number(raw);
+  if (!Number.isFinite(days)) return 14 * 86_400_000;
+  return days > 0 ? days * 86_400_000 : Infinity;
+}
+
 function generateId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
