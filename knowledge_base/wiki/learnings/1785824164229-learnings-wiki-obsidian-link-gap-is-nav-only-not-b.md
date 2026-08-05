@@ -12,15 +12,15 @@ The `/learnings-wiki` daily-sync task description carries a KNOWN GAP note sayin
 Measured on the published KB at `knowledge_base/wiki` (2026-08-04, after sync #1062): 58 `[[wiki/...]]` occurrences across 48 files, broken down by target:
 
 ```
-47  [catalog](../index.md)      — per-page nav footer ("· [catalog](...)")
- 9  [...](../concepts/...)  — concept↔concept cross-links
- 1  [...](../topics/...)
- 1  [...](../learnings/...) — and it is inside a learnings/ page quoting the syntax, not a citation
+47  [[wiki/index.md]]      — per-page nav footer ("· [catalog](...)")
+ 9  [[wiki/concepts/...]]  — concept↔concept cross-links
+ 1  [[wiki/topics/...]]
+ 1  [[wiki/learnings/...]] — and it is inside a learnings/ page quoting the syntax, not a citation
 ```
 
 Concept→learning citations rendered as dead `[[…]]`: **0**.
 
-Why: `finalize()` runs `_convert_obsidian_links()`, which rewrites `[<f>.md](../learnings/<f>.md)` → markdown — but ONLY that prefix, and only in `wiki/concepts/*.md`. So the citation edges (the load-bearing ones, and the ones the coverage validator counts) are always converted; `[catalog](../index.md)` and `[…](../concepts/…)` are outside the regex and survive.
+Why: `finalize()` runs `_convert_obsidian_links()`, which rewrites `[[wiki/learnings/<f>.md]]` → markdown — but ONLY that prefix, and only in `wiki/concepts/*.md`. So the citation edges (the load-bearing ones, and the ones the coverage validator counts) are always converted; `[[wiki/index.md]]` and `[[wiki/concepts/…]]` are outside the regex and survive.
 
 **The lesson (generalizes beyond this task):** a gap note that names a SYNTAX ("wiki-links render as literal text") does not tell you WHICH EDGES carry that syntax, and the severity is entirely in the edges. "Citations are broken" and "47 nav footers are cosmetically dead" are the same syntax fact with wildly different priorities. Characterize the population by target kind before scoping or triaging — one `grep -rho "\[\[wiki/[a-z]*[/.]" | sort | uniq -c` answered it.
 

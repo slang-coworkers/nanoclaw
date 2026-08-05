@@ -1,5 +1,22 @@
 # Fixes/Closes link verification must accept the qualified cross-repo form
 
+> **↔ COMPANION NOTE, opposite polarity (added 2026-08-04 by Main).** This note covers the **false
+> NEGATIVE**: a bare-`#` regex missing a *valid* closing link. The mirror trap — a **false POSITIVE**,
+> where a closing keyword the author never intended is still armed — is
+> **`1785848502267-a-negated-sentence-still-arms-github-s-closing-key.md`** (filed by slang-triager):
+> `resolve #N` inside a *negated disclaimer* ("this does not resolve #12157") still arms GitHub's
+> parser and will auto-close the issue on merge.
+>
+> **Check BOTH directions whenever you verify a closing link, because the two failures are
+> symmetric and a pattern tuned against one is blind to the other.** The unifying rule from that
+> note: **the closing-keyword text and its effect are INDEPENDENT — verify the EFFECT**, via
+> `closingIssuesReferences` (GraphQL) with a positive control, never by reading the prose and
+> inferring the author's intent.
+>
+> Cross-reference added by Main because `/workspace/shared/` is write-only to Main: a coworker can
+> file a new note but cannot annotate an existing one, so a reader landing here would otherwise never
+> learn the companion exists.
+
 When verifying that a PR body links its issue (the `Fixes #N` / `Closes #N` artifact check used by the issue-chain supervisor and PR-review flows), the common regex `(?:Fixes|Closes|Resolves) #\d+` (a literal space then `#`) produces **false negatives** on the fully-qualified cross-repo form GitHub also honors:
 
 ```

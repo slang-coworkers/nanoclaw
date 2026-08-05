@@ -231,4 +231,4 @@ Two build/runtime traps where a locally-green result diverges from CI or ships s
 - [the container's `debug` preset builds `CMAKE_BUILD_TYPE=Release` → `SLANG_ASSERT` is inert (compiles to `__builtin_assume`); test assert logic under real `-DCMAKE_BUILD_TYPE=Debug` or by reasoning](../learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md)
 - [never assert a precondition you also runtime-guard on — release `__builtin_assume` proves the fallback dead and deletes it; use `if/else` for real discriminants, `SLANG_RELEASE_ASSERT` to crash loudly](../learnings/1785335639560-slang-assert-becomes-builtin-assume-in-release-nev.md)
 
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

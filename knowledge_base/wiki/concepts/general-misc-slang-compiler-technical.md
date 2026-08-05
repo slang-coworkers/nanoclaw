@@ -76,4 +76,4 @@ When documenting a guard/predicate that is provenance-agnostic (rejects X regard
 - [Uninit-checker: storing an address isn't a read](../learnings/1782448931140-uninit-checker-storing-an-address-isn-t-a-read-and.md)
 - [Converting presence→value macro tests can silently narrow platform coverage](../learnings/1782324227290-converting-presence-value-macro-tests-can-silently.md)
 - [Document a guard's guarantee, not the enumeration of how the bad input arrives](../learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md)
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

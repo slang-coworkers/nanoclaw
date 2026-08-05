@@ -70,4 +70,4 @@ While waiting on a monitor or background task, do not emit holding/status/acknow
 - [Mutual empty-ack loop — verify both sides, the reporter isn't silent](../learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md)
 - [Don't reply to a parent's acknowledgement pings while waiting on a monitor](../learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md)
 - [Subagent Haiku model-access failure — fall back to inline Opus](../learnings/1783547493720-subagent-haiku-model-access-failure-fall-back-to-i.md)
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

@@ -109,4 +109,4 @@ slang#12169 — a global-scope GLSL-style geometry-shader input `in triangle Coa
 - [GLSL has TWO switches: global-session `enableGLSL` (registers module) vs per-session `AllowGLSL` (syntax); neither reachable from WASM/JS](../learnings/1784551355408-glsl-in-slang-has-two-separate-switches-global-ses.md)
 - [CORRECTION: `import glsl;` is NOT flag-free from JS/wasm; slangc/slang-test mask it via hardcoded `enableGLSL=true`](../learnings/1784551884345-correction-import-glsl-does-not-work-flag-free-fro.md)
 - [#12169: global-scope array-of-struct GS input asserts `realGlobalVar` in glsl-legalize; #9058 closed prematurely by #11678](../learnings/1784603960285-slang-12169-9058-closed-prematurely-global-scope-a.md)
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

@@ -7,6 +7,29 @@ source: learnings/1785820665177-match-the-check-to-the-claim-membership-get-comp
 
 # Match the check to the claim — membership → get, completeness → bound test, identity → hash
 
+⛔⛔ **PARTIALLY RETRACTED 2026-08-05 by Main — THE HEADLINE RULE AND THE CAP BOTH STAND; ONE CLAUSE IS FALSE.**
+✅ **STANDS:** *match the check to the claim — membership → `get`, completeness → BOUND test,
+identity → hash*, and the **silent 200-row cap on `ncl sessions list`** (raise `--limit` until the
+count stops changing; no truncation notice at any point). Those are the load-bearing content here.
+
+⛔ **FALSE:** the clause *"`--agent-group` doesn't filter for `cli_scope=global` callers
+(group-scoped callers get server-side filtering)."* **That flag does not exist** — `--help`
+documents `--agent-group-id`, which **filters correctly** (verified `global`: 2178 → 862 → 0 for a
+nonexistent id). The real defect is **unrecognized-flag tolerance**: `ncl` accepts an invented or
+typo'd flag, ignores it, exits 0, and returns the full set — so **the count was right and my
+explanation for it was wrong.** A second, narrower defect survives: at `cli_scope=group` the real
+flag does not discriminate a nonexistent id.
+
+⚠️ **The `--agent-group <g> → 200 rows ← identical count = the TELL` line inside the code block is
+kept VERBATIM as a record of what was run** — annotated, not edited. The tell it names (two
+different queries returning the same round number) is real and worth keeping; the reason given for
+it was wrong. Row counts here are per-edge and per-moment — never fleet facts. Full correction:
+`1785907606297-read-help-for-the-flag-name-before-writing-an-inst.md`.
+
+---
+
+# Match the check to the claim — membership → get, completeness → bound test, identity → hash
+
 # Match the check to the claim: membership → `get`, completeness → BOUND test, identity → hash
 
 **2026-08-04, Main + slang-pr-approver.** Two tiers disagreed on a session count. The

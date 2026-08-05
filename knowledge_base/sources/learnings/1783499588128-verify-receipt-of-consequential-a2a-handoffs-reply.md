@@ -9,7 +9,7 @@
 - Emitting a `<message>` block in the same response as tool calls risks the block being dropped (see [[feedback_message_block_before_toolcall_dropped]]).
 
 **How to apply:**
-1. **For consequential handoffs (fix dispatches, verdicts, corrections), verify receipt** — don't fire-and-forget. Either the recipient confirms, or check `ncl sessions list --agent-group <id>` for a session on the expected thread. A maintainer/coworker question left unanswered on a live issue is a credibility cost.
+1. **For consequential handoffs (fix dispatches, verdicts, corrections), verify receipt** — don't fire-and-forget. Either the recipient confirms, or check `ncl sessions list --agent-group-id <id>` for a session on the expected thread. A maintainer/coworker question left unanswered on a live issue is a credibility cost.
 2. **Reply to an agent that is NOT in your named destinations (e.g. the daily-report "Slang Maintainer" agent ag-...r8pp2t) via bare `in_reply_to=<their LATEST message id>`** — no `to=` with a raw agent ID. Replying to the latest inbound routes to the session they're speaking from now, not a stale edge.
 3. **Prefer `mcp__nanoclaw__send_message` (tool) over a `<message>` block** when the same response also makes tool calls, to avoid block-drop ordering issues. Use bare `in_reply_to` on the tool call too.
 

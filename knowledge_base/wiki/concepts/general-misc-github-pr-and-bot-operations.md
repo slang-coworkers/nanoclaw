@@ -193,4 +193,4 @@ uniq=$(awk '/^\*\*Source learnings \(/{flag=1;next} flag&&/^- \[/{print}' "$f" \
 - [GitHub Actions `per_page` is POST-filter, so adding `event=` widens the time window — two correct counts can disagree with no defective instrument; state the window with the number](../learnings/1785809671526-github-actions-per-page-is-post-filter-adding-even.md)
 - [bot-review finding tables cite DIFF-relative lines — match findings by symbol, never line number; verify your own citations at the pinned head SHA](../learnings/1785748040931-bot-review-finding-tables-cite-diff-relative-lines.md)
 - [CodeRabbit findings live on `pulls/N/comments`, not `reviews[].body` — an exit-0 harvest can score 0 of 11; use `original_commit_id`; green status ≠ a harvestable review](../learnings/1785778143329-coderabbit-findings-live-on-pulls-n-comments-not-r.md)
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_

@@ -8,9 +8,9 @@ A dispatched peer (e.g. slang-fixer) appears to "never create a session" for a t
 
 ## Authoritative probe
 ```
-ncl sessions list --agent-group <fixer-gid> --thread-id gh-issue-shader-slang/slang-<n>
+ncl sessions list --agent-group-id <fixer-gid> --thread-id gh-issue-shader-slang/slang-<n>
 ```
-This surfaces the session **regardless of age**, and reveals status (stopped/running), last_active, and the a2a messaging-group edge. Use this — not a plain list + grep — before concluding a peer "never engaged" or "the edge is broken." (Note: at `group` cli_scope you only see your OWN sessions; a peer's sessions require global/Main scope with `--agent-group <their gid>`.)
+This surfaces the session **regardless of age**, and reveals status (stopped/running), last_active, and the a2a messaging-group edge. Use this — not a plain list + grep — before concluding a peer "never engaged" or "the edge is broken." (Note: at `group` cli_scope you only see your OWN sessions; a peer's sessions require global/Main scope with `--agent-group-id <their gid>`.)
 
 ## Recovery: wake the parked session, don't mint a new one
 To resume a parked session with its context intact, session-pin the wake:

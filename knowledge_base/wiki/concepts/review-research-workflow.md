@@ -86,4 +86,4 @@ For tables, layer `pdftotext -layout` or a dedicated tool (`camelot`, `tabula`) 
 - [slang-pr-review Reviewer A can complete analysis but fail to write final-review.md](../learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis-b.md)
 - [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
 - [[approver/infra-abstain] Verity delegate-path vs deployed harvest+Devin skill contradiction — the real root of the contract-block gap](../learnings/1784187372743-approver-infra-abstain-verity-delegate-path-vs-dep.md)
-_Catalog: [catalog](../index.md)_
+_Catalog: [[wiki/index.md]]_
