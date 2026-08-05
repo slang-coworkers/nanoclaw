@@ -101,7 +101,7 @@ registerResource({
     'mcp-tools get': {
       access: 'open',
       description:
-        'Show a group\'s MCP tool allow-list alongside the tools each wired MCP server actually exposes. ' +
+        "Show a group's MCP tool allow-list alongside the tools each wired MCP server actually exposes. " +
         'A null allow-list means unrestricted (every discovered tool is callable). Use --id <agent-group-id>.',
       handler: async (args) => {
         const id = String(args.id ?? '');
@@ -136,7 +136,7 @@ registerResource({
     'mcp-tools set': {
       access: 'approval',
       description:
-        'Replace a group\'s MCP tool allow-list and re-scope its RUNNING container immediately (no restart). ' +
+        "Replace a group's MCP tool allow-list and re-scope its RUNNING container immediately (no restart). " +
         '--id <agent-group-id> --tools \'["mcp__server__tool", …]\', or --tools null to remove all restriction. ' +
         'An agent may never change its OWN allow-list.',
       handler: async (args, ctx) => {
@@ -158,7 +158,7 @@ registerResource({
         if (ctx?.caller === 'agent') {
           const caller = getAgentGroup(ctx.agentGroupId);
           if (!caller?.is_admin) {
-            throw new Error('Only an admin agent group may change another group\'s MCP tool allow-list.');
+            throw new Error("Only an admin agent group may change another group's MCP tool allow-list.");
           }
         }
 
