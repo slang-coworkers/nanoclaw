@@ -48,7 +48,7 @@ import {
   updateSessionTitle,
 } from './db/sessions.js';
 import { log } from './log.js';
-import { getDecisionSessionsForPr } from './modules/approval-ledger/store.js';
+import { getDecisionSessionsForPr, recordHumanVerdict } from './modules/approval-ledger/store.js';
 import { forwardWebhookToPeer } from './modules/pr-mapping/forward.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
 import { deleteParked, parkReviewable } from './modules/pending-reviewable/store.js';
@@ -770,6 +770,45 @@ function notifyApproverOfTerminalPr(event: GitHubPrEvent, eventContent: string):
   try {
     const rows = getDecisionSessionsForPr(getDb(), event.repo, event.prNumber);
     if (rows.length === 0) return;
+
+    // Stamp the verdict HERE, deterministically, before waking anyone.
+    //
+    // The outcome is a fact the host already holds: github-webhook-server picks
+    // `pr_merged` vs `pr_closed` straight off the payload, and the decision rows
+    // are loaded above. Yet the join used to depend on an LLM turn choosing to
+    // call the `record_human_verdict` MCP tool after being woken — so a bounced,
+    // distracted, or summarising turn silently lost the record. That put the
+    // measurement of whether the approver can replace a human inside the
+    // approver's own best-effort behaviour.
+    //
+    // Mapping is the one the approver SKILL.md already specifies: merged =>
+    // APPROVED-equivalent, closed-unmerged => CHANGES_REQUESTED-equivalent.
+    // recordHumanVerdict is first-verdict-wins, so an earlier real observation
+    // (e.g. a human's CHANGES_REQUESTED on pr_review) is never overwritten, and
+    // the agent's own later call becomes a harmless no-op — the two paths can
+    // coexist. The agent is still woken below, but now only for the half that
+    // genuinely needs judgment: distilling the learning.
+    try {
+      // The PR's final head, when the payload carries it. Passing the real head
+      // is what lets recordHumanVerdict distinguish exact from head_advanced; a
+      // missing head falls through to the fallback path, which is the honest
+      // answer when we cannot tell.
+      const headSha = typeof event.payload.head_sha === 'string' ? event.payload.head_sha : '';
+      recordHumanVerdict(
+        getDb(),
+        event.repo,
+        event.prNumber,
+        headSha,
+        event.event === 'github.pr_merged' ? 'MERGED' : 'CLOSED_UNMERGED',
+      );
+    } catch (err) {
+      log.warn('github-webhook: deterministic verdict join failed (non-fatal)', {
+        repo: event.repo,
+        pr: event.prNumber,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     const seen = new Set<string>();
     for (const row of rows) {
       if (!row.thread_id) continue;

@@ -685,6 +685,141 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
     expect(deleted).toEqual([]); // the PR is still live; its park slot must survive
   });
 
+  it('stamps the human verdict deterministically, without waiting for an agent turn', async () => {
+    // The join used to require the woken LLM to choose to call the
+    // record_human_verdict MCP tool, so a bounced or distracted turn silently
+    // lost the record — the measurement of whether the approver can replace a
+    // human sat inside the approver's own best-effort behaviour. The host has
+    // the outcome (pr_merged vs pr_closed) and the decision rows already.
+    const joins: Array<{ repo: string; pr: number; sha: string; verdict: string }> = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
+    }));
+    vi.doMock('./modules/approval-ledger/store.js', () => ({
+      getDecisionSessionsForPr: () => [
+        { agent_group_id: 'g-app', session_id: 's-app', thread_id: null, commit_sha: 'a'.repeat(40) },
+      ],
+      recordHumanVerdict: (_db: unknown, repo: string, pr: number, sha: string, verdict: string) => {
+        joins.push({ repo, pr, sha, verdict });
+        return true;
+      },
+    }));
+    vi.doMock('./modules/pending-reviewable/store.js', () => ({
+      parkReviewable: () => undefined,
+      deleteParked: () => undefined,
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({ prepare: () => ({ get: () => undefined }) }) }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => undefined,
+      getAgentGroup: () => undefined,
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/x.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubPrEvent } = await import('./webhook-github.js');
+    deliverGitHubPrEvent({
+      repo: 'shader-slang/slang',
+      prNumber: 12034,
+      event: 'github.pr_merged',
+      rowId: 'gh-merged-2',
+      // The PR ended on a head the approver never decided ('f'…), which is the
+      // common case — recordHumanVerdict resolves that to head_advanced.
+      payload: { state: 'merged', merged: true, head_sha: 'f'.repeat(40) },
+      rawBody: '{"action":"closed"}',
+      eventType: 'pull_request',
+      deliveryId: 'm-2',
+    });
+
+    // No agent was woken (thread_id null ⇒ the learning delivery is skipped),
+    // yet the verdict is still recorded.
+    expect(joins).toEqual([{ repo: 'shader-slang/slang', pr: 12034, sha: 'f'.repeat(40), verdict: 'MERGED' }]);
+  });
+
+  it('maps a closed-unmerged PR to CHANGES_REQUESTED-equivalent', async () => {
+    const joins: Array<{ verdict: string }> = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
+    }));
+    vi.doMock('./modules/approval-ledger/store.js', () => ({
+      getDecisionSessionsForPr: () => [
+        { agent_group_id: 'g-app', session_id: 's-app', thread_id: null, commit_sha: 'a'.repeat(40) },
+      ],
+      recordHumanVerdict: (_d: unknown, _r: string, _p: number, _s: string, verdict: string) => {
+        joins.push({ verdict });
+        return true;
+      },
+    }));
+    vi.doMock('./modules/pending-reviewable/store.js', () => ({
+      parkReviewable: () => undefined,
+      deleteParked: () => undefined,
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({ prepare: () => ({ get: () => undefined }) }) }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => undefined,
+      findSessionByAgentThread: () => undefined,
+      getSession: () => undefined,
+      createSession: () => undefined,
+      updateSessionTitle: () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: () => undefined,
+      getAgentGroupByFolder: () => undefined,
+      getAgentGroup: () => undefined,
+    }));
+    vi.doMock('./db/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: () => undefined,
+    }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/x.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    const { deliverGitHubPrEvent } = await import('./webhook-github.js');
+    deliverGitHubPrEvent({
+      repo: 'shader-slang/slang',
+      prNumber: 12035,
+      event: 'github.pr_closed',
+      rowId: 'gh-closed-2',
+      payload: { state: 'closed', merged: false, head_sha: 'b'.repeat(40) },
+      rawBody: '{"action":"closed"}',
+      eventType: 'pull_request',
+      deliveryId: 'c-2',
+    });
+
+    expect(joins).toEqual([{ verdict: 'CLOSED_UNMERGED' }]);
+  });
+
   it('forwards to the foreign owner instance', async () => {
     vi.doMock('./config.js', () => ({
       INSTANCE_FORWARD_TARGETS: { lego: peerUrl },
