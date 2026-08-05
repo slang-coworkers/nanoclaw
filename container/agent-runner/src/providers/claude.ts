@@ -74,18 +74,25 @@ export function classifyRateLimitEvent(
 // - AskUserQuestion: SDK returns a placeholder instead of blocking on a
 //   real answer — we have mcp__nanoclaw__ask_user_question that persists
 //   the question and blocks on the real reply.
+// - SendMessage: addresses Claude Code's own in-session subagents, which are
+//   unrelated to NanoClaw agent groups — but the name reads as the obvious
+//   way to message another agent, so an agent that just called
+//   mcp__nanoclaw__create_agent reaches for it and gets "No agent named 'x'
+//   is currently addressable". mcp__nanoclaw__send_message is the real
+//   agent-to-agent path (it resolves the destination map in inbound.db).
 // - EnterPlanMode / ExitPlanMode / EnterWorktree / ExitWorktree: Claude
 //   Code UI affordances; in a headless container they'd appear stuck.
 // - DesignSync: desktop design-tool integration — nothing to sync with in a
 //   headless container (~9.3KB/turn schema).
 // - ReportFindings: code-review-reporting UI affordance with no headless
 //   host surface to receive it (~1.9KB/turn schema).
-const SDK_DISALLOWED_TOOLS = [
+export const SDK_DISALLOWED_TOOLS = [
   'CronCreate',
   'CronDelete',
   'CronList',
   'ScheduleWakeup',
   'AskUserQuestion',
+  'SendMessage',
   'EnterPlanMode',
   'ExitPlanMode',
   'EnterWorktree',
@@ -100,7 +107,10 @@ const SDK_DISALLOWED_TOOLS = [
 // in container.json directly) is reachable to the agent — without this,
 // the SDK's allowedTools filter silently drops every MCP namespace not
 // listed here.
-const BASE_TOOL_ALLOWLIST = [
+//
+// Exported because claude.tool-collisions.test.ts asserts this list never
+// re-admits a tool named in SDK_DISALLOWED_TOOLS (upstream 81b18a9f).
+export const TOOL_ALLOWLIST = [
   'Bash',
   'Read',
   'Write',
@@ -114,7 +124,6 @@ const BASE_TOOL_ALLOWLIST = [
   'TaskStop',
   'TeamCreate',
   'TeamDelete',
-  'SendMessage',
   'TodoWrite',
   'ToolSearch',
   'Skill',
@@ -655,7 +664,7 @@ export class ClaudeProvider implements AgentProvider {
           ? { type: 'preset' as const, preset: 'claude_code' as const, append: instructions }
           : undefined,
         allowedTools: [
-          ...BASE_TOOL_ALLOWLIST,
+          ...TOOL_ALLOWLIST,
           ...Object.keys(this.mcpServers).map(mcpAllowPattern),
           ...this.extraAllowedTools,
         ],
