@@ -3,12 +3,36 @@ title: "Sessions, Containers, and Worktrees in Agent Infrastructure"
 type: concept
 group: agent-infra
 tags: [sessions, containers, worktrees, disk, build, ncl, nanoclaw, agent-runner, onecli]
-source_count: 36
+source_count: 37
 ---
 
 # Sessions, Containers, and Worktrees in Agent Infrastructure
 
-This page covers the runtime mechanics of NanoClaw agent containers: how sessions map to containers, worktree isolation and hazards, disk management, container config, GPU availability, and observability tools.
+This page covers the runtime mechanics of NanoClaw agent containers: how sessions map to containers, worktree isolation and hazards, disk management, container config, GPU availability, publish/mirror jobs, and observability tools.
+
+## TL;DR
+- **A service restart is a fleet-wide kill.** Restarting the nanoclaw main service recomposes every group's CLAUDE.md, and the sweep then kills every running container as `claude-md-stale`. Batch fixes into one restart, never restart during active sessions, and scope narrow where possible (dashboard-only service; `pkill` the MCP subprocess).
+- **After a restart, pre-restart beliefs about live processes are void.** A recovery fork inherits the filesystem snapshot but not the processes; a monitor you armed will never fire, and a peer in another container namespace cannot disarm your timers.
+- **Commit tests and code IMMEDIATELY, before any long build.** A session reap deletes the worktree with its uncommitted edits and leaves no stash or dangling object to recover. A commit on the fix branch is crash-safe; amend freely afterwards.
+- **Never background a long build inside a fixer session** — the completion signal is routinely lost across reaps. Either foreground it (ninja resumes incrementally, so a reaped build costs almost nothing) or run it detached from your shell with a `BUILD_EXIT=` marker.
+- **A build watch must key on a signal unique to THIS build.** A bare `pgrep -f 'cmake --build'` matches any sibling worktree and fires a false completion; `TaskStop` on a build subagent SIGINTs your own ninja. Monitor for the `BUILD_EXIT=` marker plus the specific binary existing.
+- **Bound every hold.** A fixer parked "waiting for a build slot" produces no outbound and is indistinguishable from a dead container — chains have gone ~97h silent that way. Poll with a deadline and emit a blocker plus ETA.
+- **Worktree GC is always save-then-remove:** check status and ahead-count, commit and push to a `wip/reap/<branch>`, verify it on origin, then remove. "Obviously safe" reap framings are frequently wrong, and save-then-remove is the step that catches them.
+- **The dirname is a hint; the gitdir, branch, and remote are ground truth.** A `wt-<issue>` dir can hold a different still-open branch, or belong to an entirely different repo. Read the `.git` pointer before dispatching a reap.
+- **A vanished worktree directory does not delete its branch.** Commits live in the base clone's refs — run `git branch --list` and `git ls-remote` and state what each shows before writing "the code is gone."
+- **`git worktree remove --force` keeps the branch ref; `git branch -D` is what loses work.** Delete a local branch only after it is not checked out anywhere and was never pushed, and disclose the deletion.
+- **`git stash` is repo-global across worktrees.** `git stash clear` wipes every sibling's stashes; use `git reset --hard HEAD` for your own changes. Recovery is via `git fsck --unreachable --no-reflogs` plus `git stash store`.
+- **Reclaim `build/` directories, not worktrees.** Each Debug build is ~6–7.6 GB and is fully regenerable; `container_status=stopped` does not mean a sibling worktree is abandoned.
+- **`df` the exact build path.** `/workspace/agent` is a separate, roomier mount from `/workspace`, and post-reset disk can swing wildly — a disk blocker is often a measurement artifact.
+- **The root overlay is ephemeral.** Symlinking a build directory there is a valid last resort, but a container restart wipes it entirely.
+- **Codex shares `/workspace` but not `/tmp`, and `/tmp` is wiped between Bash invocations.** Any artifact another process must read lives under `/workspace`.
+- **Isolate parallel reviewers and builds in their own worktrees.** Shared checkouts race on `.git/index.lock` and clobber shared staging paths, so a concurrent run can make a reviewer silently read the wrong PR's diff.
+- **A container reset can corrupt submodule working trees while HEAD and the gitlink look fine.** Fix with `git submodule update --init --recursive --force` rather than debugging CMake, and re-install pip-installed tools — they do not survive a reset.
+- **`ncl sessions list` returns a capped, oldest-first page**, so the newest sessions are truncated out. Verify a handoff with `--thread-id`, never by grepping the bare list.
+- **Verify container capabilities empirically.** Coworker containers do have an NVIDIA GPU despite docs saying otherwise, yet the Vulkan and CUDA `slang-test` paths still do not work — `nvidia-smi` succeeding is not the same as a target being usable.
+- **Remove all broken container-config entries in one batch.** They stay dormant until the first rebuild, each rebuild burns an approval, and a `--rebuild` racing pending approvals regenerates from the stale snapshot.
+- **A mirror step copies whatever is in the source, including things that appeared after the recipe was written.** Assert the staged tree contains no nested VCS or scratch directories before publishing, and compare its file count against the committed tree.
+- **A redaction check validates only the encoding it can read.** Compressed, encoded, or binary payloads inside a scrubbed tree pass every text-level check by construction — "grep found no matches" is not "nothing sensitive is published."
 
 ## Container Lifecycle and Restarts
 
@@ -97,7 +121,18 @@ Reviewer A (`slang-pr-review-runner compose-and-run.sh`) defaults `REPO_ROOT=/wo
 
 The mandatory save-then-remove protocol above isn't ceremony — it exists precisely because **a worktree dir's parsed issue number is NOT a reliable proxy for the branch checked out inside it.** A dir can be re-used or renamed and hold a *different, still-open* branch than its name implies. On 2026-08-03 (supervisor tick 117) `wt-slang-12244-doc` was reaped on the signal "issue #12244 CLOSED / PR #12248 MERGED", but it actually held branch `fix/shadowgrad-doc-followup` — a distinct, still-open doc-comment fix tracked by a *different* live draft PR (#12309); the `fix/issue-12244` worktree had already been reaped earlier. No harm occurred *only because* save-then-remove ran: the fixer verified `98083f9d5e` was already pushed to `origin/fix/shadowgrad-doc-followup` and staged `PR_BODY.md` before removing. Rules: (1) never `git worktree remove --force` a GC target without save-then-remove — it is what catches dirname/branch divergence; (2) when a fixer reports a reaped dir held an unexpected branch, resolve whether that branch has a PR and journal it as its own chain before closing — don't assume the issue you keyed on covers it; (3) ideally resolve the worktree's *actual* branch (read the `.git` gitdir pointer, or ask the owning tier) in addition to the dirname number before dispatching REAP ([Worktree GC: dirname issue-number can diverge from the actual branch — save-then-remove catches it](../learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md)). This is the same failure family as the [wt-\<issue\> may belong to slangpy-samples](../learnings/1784507002898-worktree-gc-wt-lt-issue-gt-may-belong-to-slangpy-s.md) gitdir-check and the [save-then-remove is mandatory](../learnings/1783951066058-worktree-gc-save-then-remove-is-mandatory-reap-fra.md) rule — the dirname is a hint, the gitdir/branch/remote are ground truth.
 
-**Source learnings (36):**
+## A Nested `.git` in a Mirrored Tree Is a Scrub Bypass the Scrubber Cannot See (2026-08-06 fold)
+
+The gitdir-is-ground-truth lesson above has a mirror image in publish jobs: **a nested `.git` inside a tree you are about to publish is a PII-scrub bypass, and no text-level check can detect it.** Measured 2026-08-06 on the nightly `knowledge_base` sync (slang-coworkers/nanoclaw → `nv-coworkers`): the auto-memory source store `/home/node/.claude/projects/-workspace-agent/memory/` **had become a git repo** — it was a plain directory when the sync recipe was written — and the recipe's mirror step (`rm -rf <dest>; mkdir -p <dest>; cp -rL <src>/. <dest>/`) faithfully copied `.git/` along with everything else.
+
+**Why that defeats the scrub.** `scrub_kb_pii.py` rewrites *working-tree text files*. Objects under `.git/objects` are zlib-compressed blobs: the scrubber cannot read them, cannot match a regex against them, and **reports success**. Committing a mirrored `.git` therefore publishes the **full unscrubbed history** of every memory file, including content the scrubber redacted in the working copy — and the recipe's verification step (`grep -rhoE '<email regex>' knowledge_base`) is blind for exactly the same reason. The general rule: **a scrub or redaction check validates only the encoding it can read.** Compressed, encoded, or binary payloads inside the scrubbed tree pass every text-level check *by construction*, so "grep found no emails" is never "no emails are published."
+
+**The tell was a count, not a grep.** Baseline was ~520 files; the mirror produced **10,011**, and breaking that down by destination isolated 772 files under `knowledge_base/auto-memory/.git`. So **compare the mirror's file count against `git ls-tree -r --name-only HEAD <path> | wc -l` before staging** — here HEAD 8529 → disk 9238 after cleanup = exactly 709 additions with 0 deletions, which is what made the diff trustworthy. Fix applied (merged as PR #1094): `rm -rf knowledge_base/auto-memory/.git` plus `find knowledge_base -type d -name __pycache__ -exec rm -rf {} +`, run after the mirror and *before* the scrub.
+
+Two durable rules. **The exclusion belongs in the mirror step itself** — `cp` then prune, or a copy that skips VCS dirs — not in one operator's memory of having done it once: the source `.git` is live and `cp -rL` will copy it again every night, and a fix that must be remembered by the next run is not a fix (the same shape as the reindex work that had to be re-derived). And for **any** publish-to-public-repo job, assert before staging that the tree carries no nested VCS or scratch dirs — `find <dest> -type d \( -name .git -o -name node_modules -o -name __pycache__ -o -name .venv \)` must come back empty. A source that was a plain directory when the recipe was authored can silently become a repo later, and the recipe has no way to notice ([a nested `.git` in a mirrored tree is a PII-scrub bypass](../learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md)).
+
+**Source learnings (37):**
+- [a nested `.git` in a mirrored tree is a PII-scrub bypass the scrubber cannot see](../learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md) — compressed git objects pass every text-level scrub and grep check; prune VCS dirs inside the mirror step and gate on a file-count diff.
 - [Worktree GC: the dirname issue-number can diverge from the actual branch (wt-slang-12244-doc held fix/shadowgrad-doc-followup, still-open PR #12309) — save-then-remove is what catches it; resolve the real branch + its PR before REAP](../learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md)
 - [Build subagent Monitor `pgrep` matches sibling worktrees (false "done") + TaskStop SIGINTs your ninja — run detached, Monitor on a unique `BUILD_EXIT=` marker](../learnings/1785468785000-build-subagent-monitor-pgrep-matches-sibling-workt.md)
 - [session reap deletes the worktree mid-build; commit tests+code before the long build, drive builds detached with a `BUILD_EXIT=` marker](../learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-tes.md)
@@ -136,4 +171,4 @@ The mandatory save-then-remove protocol above isn't ceremony — it exists preci
 
 
 - [concurrent slang-pr-review runs clobber the shared checkout's tmp/pr-diff.patch → wrong-PR reviews (INTEGRITY-FAIL, ~20min wasted); run Reviewer A in an isolated wt-<PR>-reviewA worktree](../learnings/1784771691413-slang-pr-review-concurrent-runs-clobber-shared-che.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

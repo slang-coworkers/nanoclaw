@@ -179,4 +179,4 @@ A maintainer's by-design ruling is authoritative but not immune to new evidence.
 - [doc-vs-behavior bug: measure behavior-fix cost before assuming code is the real fix (#11682)](../learnings/1784844793184-a-doc-vs-behavior-bug-can-fix-either-side-measure-.md)
 - [merge-queue failed_checks eviction CLEARS auto-merge — post-eviction autoMergeRequest=null is the eviction's doing; disposition = manual-requeue, not self-recovering](../learnings/1785485875128-merge-queue-failed-checks-eviction-clears-auto-mer.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

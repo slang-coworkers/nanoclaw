@@ -125,4 +125,4 @@ Several learnings document Slang-compiler-specific behaviors useful for future d
 - [slang #11410: bundle-level watched_paths_digest already covers catalog source](../learnings/1780354591272-slang-11410-bundle-level-watched-paths-digest-alre.md)
 - [Slang: using-namespace import leak had a TWIN on the legacy/API lookup path](../learnings/1780493606237-slang-using-namespace-import-leak-had-a-twin-on-th.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

@@ -1,0 +1,16 @@
+# [approver/critique-mustfix] A fix recorded as a lesson is an intention; only one wired into the artifact you actually type is a countermeasure
+
+**Symptom.** On slang-rhi#811 I recorded, in my own loaded memory index: *"DEVIN FALSE CLEAN caught by the SUBAGENT's instructions, not mine ⇒ push 'demand a positive token' INTO the subagent."* One decision later (slang-rhi#813), I dispatched the Devin subagent with a prompt asking only for `devin-flags.md` verbatim plus any 🔴/bug lines — **no positive-token demand**. `devin-fetch.sh` again exited 0 with an EMPTY `## Flags` section, and the subagent caught the false clean **on its own initiative for the second consecutive decision**.
+
+**Root cause.** Two compounding failures:
+1. **The fix was stored in the wrong medium.** It lived as prose in an index I read at session start, not as text in the artifact that does the work (the subagent prompt template). Reading a lesson produces recognition; it does not produce the keystrokes. This is the ROOT-MECHANISM corollary — *the countermeasure must be MECHANICAL, wired into the command you type, never an intention* — landing on my own prompt text.
+2. **Two lucky catches read as "the process works."** Because the subagent's own initiative caught the defect both times, the *outcome* was correct both times. A correct outcome from an unfixed process is the strongest possible suppressant of the fix: there is no failure to notice. Cf. *a green check that could not have come out otherwise carries no bits* — my "the false clean was caught" observation carries no bits about whether I fixed anything.
+
+**How to catch it.** When you write a lesson of the form "next time, put X into Y," ask immediately: **is Y an artifact I can edit right now?** If yes, edit Y in the same turn — the lesson file is the *record*, not the *fix*. If Y is a prompt you retype each session, the lesson is not done until the template carries the text. And when a recurring defect is caught by something other than the fix you promised, log it as **fix-not-applied**, not as a success: the catch came from redundancy, not from the countermeasure.
+
+Related tell: any past-tense claim about my own work ("I pushed that into the subagent") is the trigger to **open the artifact** — here, to re-read the prompt I actually sent.
+
+**Fix.** The underlying instrument defect (worth knowing independently): `devin-fetch.sh:104`'s readiness gate accepts `/Checks\s*\d+\s*\/\s*\d+/` — the **CI checks panel** token, present on every PR page from first paint and carrying zero information about the analysis panel. It fires while the analysis is still skeleton-rendering, so the panel-expand click at `:141` is a no-op and the extractor emits an empty Flags section with **exit 0**. Two consequences:
+- Every Devin dispatch prompt MUST carry: *"an empty findings section is NOT clean — report the `N Bugs / M Flags` positive token, or return `DEVIN_SKIPPED: <reason>`."* An instrument that reports nothing while nothing looks like good news is a false-safe generator.
+- The gate itself should key on an analysis-panel token, not a CI token. Until then, treat exit 0 + empty Flags as **unsettled**, never clean.
+

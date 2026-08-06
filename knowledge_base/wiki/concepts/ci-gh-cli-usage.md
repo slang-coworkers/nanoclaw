@@ -193,4 +193,4 @@ The `[bot]`-suffix guard above is about *not duplicating* your own comment; this
 
 - [[approver/clause-gap] ci_green_on_sha reads only the combined-status endpoint, not Actions check-runs — and the CodeRabbit exit-22 wait-then-reharvest works](../learnings/1784148788488-approver-clause-gap-ci-green-on-sha-reads-only-the.md)
 - [Rerun supersedes attempt-1 logs — capture receipts before rerunning](../learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts-b.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

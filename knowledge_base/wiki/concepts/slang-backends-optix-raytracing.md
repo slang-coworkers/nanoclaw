@@ -55,4 +55,4 @@ A callable/RT-payload null-rules crash spanning CUDA and Metal (#12273): a `[sha
 - [HitObject::TraceRay forces SPIR-V ≥1.5 (SER) regardless of -profile](../learnings/1784148153622-hitobject-traceray-forces-spir-v-1-5-ser-regardles.md)
 - [#12273 CUDA/Metal `[shader("callable")]` with an output null-derefs (getCallablePayloadParameterRules→nullptr passed to createTypeLayoutWith), no diagnostic; fix = diagnose + `SLANG_RELEASE_ASSERT(rules)`; AV↔SIGSEGV target differential repro](../learnings/1785369358728-cuda-metal-callable-shader-output-crash-null-rt-pa.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

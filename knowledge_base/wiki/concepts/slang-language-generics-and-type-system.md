@@ -168,4 +168,4 @@ While fixing `defaultGetDescriptorFromHandle` in hlsl.meta.slang (#12185), a `st
 - [slang#12049 SHIPPED — Approach A confirmed: entry-point -specialize conformance scoped to getModule()+getModuleDependencies()](../learnings/1784167461042-slang-12049-shipped-approach-a-confirmed-entry-poi.md)
 - [slang link-time assoc-type resolution: two resolvers differ on TransitiveSubtypeWitness (#12134)](../learnings/1784248435373-slang-link-time-assoc-type-resolution-two-resolver.md)
 - [static_assert(false) in a switch(T.kind) arm fires EAGERLY for generic export functions (#12185); diagnose at IR-emit consumer instead](../learnings/1784691233062-static-assert-false-in-a-switch-t-kind-arm-fires-e.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

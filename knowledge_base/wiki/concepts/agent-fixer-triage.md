@@ -191,4 +191,4 @@ Two triage shapes that need the full context resolved before a disposition. For 
 - [contributor-assigned issue: flag to parent first, don't auto-dispatch the fixer (check assignees)](../learnings/1784793724947-triage-handoff-to-a-contributor-assigned-issue-fla.md)
 - [test re-enable follow-ups can be doubly-gated (disabling PR + fix PR both unmerged) — resolve the full dependency graph](../learnings/1785162937774-test-re-enable-follow-ups-can-be-doubly-gated-disa.md)
 - [maintainer-authored tracking/placeholder issue = watch-only, no GitHub post, no fixer](../learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

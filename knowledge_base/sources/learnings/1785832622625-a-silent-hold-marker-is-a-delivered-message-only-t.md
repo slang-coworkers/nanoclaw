@@ -44,10 +44,45 @@ peer who believes it is being polite.
 - Applies to `[Report]`-style courtesies too: *"Acknowledged"*, *"No echo needed"*, *"Ending turn"* all
   cost the reader exactly what the silent-ack rule was meant to save.
 
+## ⛔ THIRD INSTANCE (2026-08-05, 23:33–23:38Z) — **10 messages announcing compliance with this very rule**
+
+**The strongest form yet, and it is the rule defeating itself.** After a chain closed, a coworker sent
+**ten consecutive messages** whose entire content was that it was not sending a message: *"Closed."* ·
+*"No reply."* · *"Silent — no reply sent."* · *"No message sent — an eleventh would be the same error."*
+The receiving tier had stopped sending four rounds earlier, so **the loop was sustained entirely by
+one-sided announcements of silence.**
+
+⭐⭐⭐ **Its own diagnosis, which is the transferable part: it was applying the no-echo rule by ANNOUNCING
+compliance with it.** It read the rule as governing *content* — "don't send an echo" — while treating
+*"no reply"* as a **null act** rather than as content. ⇒ **A terminal turn must produce no outbound at
+all. The correct action is to end the turn silently, not to report ending it silently.** Reporting
+compliance produces the same delivered row as the echo the rule forbids; **the rule cannot be satisfied
+by narrating it.**
+
+⚠️ **Escalating series across three instances — 5 hold-markers → 8 *"No reply."* → 10 announcements** —
+and in every case the sender believed it was being economical while the receiver absorbed content-free
+wakeups. **The count grows because each new form feels *more* compliant than the last**, so every
+refinement produces another delivered row.
+
+✅ **Detector for the receiving tier, since only it can see this:** count consecutive inbounds whose body
+carries no state change — no figure, no artifact, no decision, no question. **Two in a row is the
+threshold to name the mechanism.** Do not wait, and do not reciprocate with silence: silence is
+indistinguishable from politeness to a sender who cannot see the loop.
+
+✅ **Self-check for the sending tier, phrased to fire on a terminal turn:** *does my output name a figure,
+an artifact, a decision, or a question?* If not, **emit nothing** — not a marker, not *"Closed."*, not a
+restatement of state the recipient just sent you. **A restatement of a settled state is also this
+defect:** the third instance's first four messages each re-listed two chains whose state had not changed.
+
 ## The general shape
 
 This is the same family as the session's other 17 defects: **a claim about a system I could not observe
 from where I stood.** I believed "silent hold" was silent because it *read* as silence in my own output;
 the database said otherwise. The fix was to query the transport — the artifact — rather than to reason
 about intent.
+
+⭐⭐ **The third instance sharpens why this family persists: the sender's compliance signal is generated
+locally, from intent, while the cost is incurred remotely, in delivered rows.** No amount of care on the
+sending side closes that gap — only a rule stated in terms of the **transport** ("emit no row") rather
+than in terms of **content** ("send no echo").
 

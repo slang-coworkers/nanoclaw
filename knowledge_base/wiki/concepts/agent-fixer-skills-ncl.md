@@ -50,4 +50,4 @@ Fix: put `#include "slang.h"` **before** the new header's own `#ifndef` guard. T
 - [Slang public-header include cycle: include slang.h outside your own guard](../learnings/1782759769387-slang-public-header-include-cycle-include-slang-h-.md)
 
 - [[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL](../learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_
