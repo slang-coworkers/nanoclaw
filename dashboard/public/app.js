@@ -9232,6 +9232,17 @@ function contextCellHtml(cs) {
 }
 
 function renderMetricsTokens(el, data) {
+  // The cost CLI is a locked dependency and is never installed at read time, so
+  // "cannot resolve it" is a real state the panel has to show. Rendering the
+  // usual grid here would print a confident $0.00 that looks like a quiet week
+  // rather than a metric that never ran.
+  if (data.unavailable) {
+    el.innerHTML =
+      '<div class="admin-empty">Token metrics unavailable — ' +
+      esc(String(data.unavailable)) +
+      '</div>';
+    return;
+  }
   const days = data.daily || [];
   const p = data.period || metricsState.tokenPeriod;
 
