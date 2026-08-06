@@ -119,6 +119,13 @@ jobs:
         working-directory: container/agent-runner
         run: bun install --frozen-lockfile
 
+      # scripts/check-nv-owned-drift.sh resolves nv-main ownership through
+      # .github/nv-path-guard/ownership.py — the same pathspec matcher the
+      # nv-path-guard workflow uses, so the two can never disagree about what
+      # nv-main owns. setup/nv-owned-drift.test.ts exercises it here.
+      - name: Install pathspec (path-guard matcher, used by the drift tests)
+        run: pip install pathspec
+
       - name: Build (needed for fetch-skills + tests)
         run: pnpm run build
 

@@ -9,6 +9,9 @@ changed between origin/<base-branch> and HEAD isn't matched by the allowlist.
 
 Lines starting with # are comments. Blank lines ignored.
 If the config file doesn't exist, emits a warning and exits 0 (not a failure).
+
+Pattern loading and matching live in `ownership.py` so this and
+`scripts/check-nv-owned-drift.sh` cannot drift apart about what a branch owns.
 """
 from __future__ import annotations
 
@@ -16,7 +19,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pathspec
+from ownership import build_spec, load_patterns
 
 
 def main() -> int:
@@ -31,16 +34,12 @@ def main() -> int:
         print(f"::warning::no path-guard config at {config_path}; skipping")
         return 0
 
-    patterns = [
-        line.strip()
-        for line in config_path.read_text().splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
-    ]
+    patterns = load_patterns(config_path)
     if not patterns:
         print(f"::warning::{config_path} has no patterns; skipping")
         return 0
 
-    spec = pathspec.PathSpec.from_lines("gitwildmatch", patterns)
+    spec = build_spec(patterns)
 
     # Use merge-base to match what GitHub shows as the PR diff.
     merge_base = subprocess.check_output(

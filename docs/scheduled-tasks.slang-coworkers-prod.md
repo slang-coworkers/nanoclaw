@@ -329,7 +329,7 @@ STEP 2 — mirror the four live sources into knowledge_base/ (clear+copy so dele
   /home/node/.claude/projects/-workspace-agent/memory/  -> knowledge_base/auto-memory
   Then docs: rm -rf knowledge_base/agent/docs; mkdir -p knowledge_base/agent/docs; for f in /workspace/agent/*.md; do cp -L "$f" knowledge_base/agent/docs/; done
 
-STEP 3 — SCRUB clear PII (redacts real emails + any secrets/tokens; intentionally LEAVES GitHub @handles and internal URLs per admin): 
+STEP 3 — SCRUB clear PII (redacts real emails + any secrets/tokens; intentionally LEAVES GitHub @handles and internal URLs per admin):
   python3 /workspace/agent/scrub_kb_pii.py --apply knowledge_base
   Then sanity-check no raw emails remain: grep -rhoE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' knowledge_base | grep -viE 'noreply|users\.noreply|@example\.|@anthropic\.com|placeholder@' | sort -u  (should be empty)
 
@@ -378,7 +378,7 @@ STEP 4 — Post the question (rotation Mondays only). The new maintainer named t
 
   IF the post is rejected (channel not in the allowlist / read-only / any error): DO NOT retry-spam. Instead notify dashboard-admin via `mcp__nanoclaw__send_message(to="slang-maintainer-dashboard")` with the question text so a human can post it, and note the failure.
 
-STEP 5 — Record the pending term. In the rotation memory file, add/update the row for the term starting tomorrow with maintainer = "pending (asked TODAY)". 
+STEP 5 — Record the pending term. In the rotation memory file, add/update the row for the term starting tomorrow with maintainer = "pending (asked TODAY)".
 
 STEP 6 — Brief status to dashboard-admin (inline markdown): whether you posted, what you reconciled, and the current known maintainer.
 ```

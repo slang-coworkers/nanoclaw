@@ -16,6 +16,8 @@ import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(HERE, '..', 'scripts', 'check-nv-owned-drift.sh');
+/** The shared pathspec matcher the script (and CI's path-guard) resolve ownership with. */
+const MATCHER = path.join(HERE, '..', '.github', 'nv-path-guard', 'ownership.py');
 
 const ENV = {
   ...process.env,
@@ -88,6 +90,10 @@ function cloneOn(root: string, origin: string, name: string, branch: string): st
   git(dir, 'fetch', '-q', 'origin', 'nv-main:refs/remotes/origin/nv-main');
   fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
   fs.copyFileSync(SCRIPT, path.join(dir, 'scripts', 'check-nv-owned-drift.sh'));
+  // Left untracked on purpose: both survive the branch switches below, and
+  // neither shows up in `git diff <ref> HEAD` as a candidate path.
+  fs.mkdirSync(path.join(dir, '.github', 'nv-path-guard'), { recursive: true });
+  fs.copyFileSync(MATCHER, path.join(dir, '.github', 'nv-path-guard', 'ownership.py'));
   return dir;
 }
 
@@ -181,18 +187,95 @@ describe('scripts/check-nv-owned-drift.sh', () => {
     });
   });
 
-  it('exits 0 with a message when the ref is unavailable', () => {
-    withRepo('overlay', (dir) => {
-      const r = run(dir, '--ref', 'origin/no-such-branch');
-      expect(r.status).toBe(0);
-      expect(r.stdout).toContain('not available locally');
-    });
-  });
-
   it('exits 2 on bad usage', () => {
     withRepo('overlay', (dir) => {
       expect(run(dir, '--bogus').status).toBe(2);
       expect(run(dir, '--ref').status).toBe(2);
+    });
+  });
+});
+
+/**
+ * Fail-closed cases. A verify-only safety check that exits 0 when it could not
+ * run is worse than no check at all — callers read the 0 as "nothing drifted".
+ * Each case removes one input the check needs and asserts it refuses to answer.
+ */
+describe('scripts/check-nv-owned-drift.sh — fails closed on missing inputs', () => {
+  it('exits 2 when the ref is unavailable instead of reporting green', () => {
+    withRepo('overlay', (dir) => {
+      const r = run(dir, '--ref', 'origin/no-such-branch');
+      expect(r.status).toBe(2);
+      expect(r.stdout + r.stderr).toContain('nothing to compare against');
+    });
+  });
+
+  it('exits 2 when the ref carries no ownership allowlist', () => {
+    withRepo('overlay', (dir) => {
+      // Rewrite origin/nv-main without the allowlist: ownership is now
+      // undeterminable, so every path would be judged unowned and the check
+      // would print an unearned "ok".
+      git(dir, 'checkout', '-q', '-B', 'tmp-nv-main', 'origin/nv-main');
+      git(dir, 'rm', '-q', '-f', '.github/nv-path-guard/nv-main.txt');
+      git(dir, 'commit', '-qm', 'drop allowlist');
+      git(dir, 'update-ref', 'refs/remotes/origin/nv-main', 'HEAD');
+      git(dir, 'checkout', '-q', 'overlay');
+
+      const r = run(dir);
+      expect(r.status).toBe(2);
+      expect(r.stdout + r.stderr).toContain('ownership is undeterminable');
+    });
+  });
+
+  it('exits 2 when the ownership allowlist is empty', () => {
+    withRepo('overlay', (dir) => {
+      // Comments-only is the same thing as empty: nv-main would own nothing and
+      // every comparison would trivially pass.
+      git(dir, 'checkout', '-q', '-B', 'tmp-nv-main', 'origin/nv-main');
+      fs.writeFileSync(path.join(dir, '.github', 'nv-path-guard', 'nv-main.txt'), '# owned by nv-main\n\n');
+      // Targeted add: `-A` would track the untracked helper copies, and switching
+      // back to overlay would then delete them out of the worktree.
+      git(dir, 'add', '--', '.github/nv-path-guard/nv-main.txt');
+      git(dir, 'commit', '-qm', 'empty allowlist');
+      git(dir, 'update-ref', 'refs/remotes/origin/nv-main', 'HEAD');
+      git(dir, 'checkout', '-q', 'overlay');
+
+      const r = run(dir);
+      expect(r.status).toBe(2);
+      expect(r.stdout + r.stderr).toContain('no patterns');
+    });
+  });
+});
+
+describe('scripts/check-nv-owned-drift.sh — ownership comes only from the allowlist', () => {
+  it('does not call a path owned because an ambient .gitignore matches it', () => {
+    withRepo('overlay', (dir) => {
+      // groups/** is absent from nv-main.txt, so nv-main does not own it, and
+      // CI's path-guard (pathspec over the allowlist alone) agrees. The old
+      // matcher ran `git -c core.excludesFile=<allowlist> check-ignore`, which
+      // ALSO consults the repo's .gitignore — so this one line was enough to
+      // classify an unowned overlay file as nv-main-owned drift, giving the
+      // verifier a broader owned set than CI's from the same source of truth.
+      fs.writeFileSync(path.join(dir, '.gitignore'), 'groups/\n');
+
+      const r = run(dir);
+      const out = r.stdout + r.stderr;
+      expect(out).not.toContain('groups/main/notes.txt');
+      // …and the check has not gone blind: the real silent revert still fires.
+      expect(r.status).toBe(1);
+      expect(out).toContain('src/owned.ts');
+    });
+  });
+
+  it('ignores .git/info/exclude too', () => {
+    withRepo('overlay', (dir) => {
+      // The other ambient source the old `check-ignore` call consulted. Per-clone
+      // and untracked, so it differed developer to developer — the drift check
+      // could disagree with CI *and* with the next machine that ran it.
+      fs.writeFileSync(path.join(dir, '.git', 'info', 'exclude'), 'groups/**\n');
+
+      const r = run(dir);
+      expect(r.stdout + r.stderr).not.toContain('groups/main/notes.txt');
+      expect(r.status).toBe(1);
     });
   });
 });
