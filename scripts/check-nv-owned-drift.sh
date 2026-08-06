@@ -24,10 +24,16 @@
 #                                                        # local mod (repeatable)
 #   NV_DRIFT_ALLOW="a.ts b.ts" bash scripts/check-nv-owned-drift.sh
 #
+# FAILS CLOSED. Every input this needs to answer the question is checked up
+# front: the ref, nv-main's allowlist on that ref, the shared matcher, and
+# `pathspec`. If any is missing the answer is exit 2, never a green "ok". A
+# safety check that reports success when it could not run is worse than no check
+# — it is a check everyone believes.
+#
 # Exit codes:
-#   0  no drift (or nothing to compare against)
+#   0  no drift
 #   1  drift found — owned files differ from <ref> and are not allowlisted
-#   2  usage / preflight failure
+#   2  usage / preflight failure (including: cannot determine ownership)
 
 set -euo pipefail
 
@@ -43,7 +49,7 @@ while [ $# -gt 0 ]; do
       [ $# -ge 2 ] || { echo "--allow needs a value" >&2; exit 2; }
       ALLOW+=("$2"); shift 2 ;;
     -h|--help)
-      sed -n '2,30p' "$0"; exit 0 ;;
+      sed -n '2,36p' "$0"; exit 0 ;;
     *)
       echo "unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -62,24 +68,46 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 cd "$PROJECT_ROOT"
 
 if ! git rev-parse --verify --quiet "$REF" >/dev/null; then
-  echo "$REF is not available locally — nothing to compare against (try: git fetch origin nv-main)."
-  exit 0
+  echo "::error::$REF is not available locally — there is nothing to compare against, so" >&2
+  echo "this check cannot tell you whether anything drifted. Fetch it and re-run:" >&2
+  echo "  git fetch origin nv-main" >&2
+  exit 2
 fi
 
-# Ownership comes from the SAME single source of truth setup.sh and
-# merge-train.sh use: nv-main's path-guard allowlist, matched with git's own
-# gitignore engine (the gitwildmatch syntax .github/nv-path-guard/check.py
-# uses). Read it from the REF, not the worktree — a silently-reverted allowlist
-# would otherwise get a say in judging itself.
-OWNED_LIST="$(mktemp)"
-trap 'rm -f "$OWNED_LIST"' EXIT
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+OWNED_LIST="$WORK/nv-main.txt"
+
+# Ownership DATA comes from the SAME single source of truth setup.sh and
+# merge-train.sh use: nv-main's path-guard allowlist, read from the REF rather
+# than the worktree — a silently-reverted allowlist must not get a say in
+# judging itself.
 if ! git show "$REF:.github/nv-path-guard/nv-main.txt" >"$OWNED_LIST" 2>/dev/null; then
-  echo "No .github/nv-path-guard/nv-main.txt on $REF — cannot determine ownership; skipping."
-  exit 0
+  echo "::error::no .github/nv-path-guard/nv-main.txt on $REF — ownership is undeterminable." >&2
+  echo "Without it every path would be judged unowned and this check would report a green" >&2
+  echo "it did not earn. Fetch a $REF that carries the allowlist and re-run." >&2
+  exit 2
+fi
+if ! grep -qEv '^[[:space:]]*(#|$)' "$OWNED_LIST"; then
+  echo "::error::$REF's .github/nv-path-guard/nv-main.txt has no patterns — nv-main would" >&2
+  echo "own nothing and every comparison would trivially pass." >&2
+  exit 2
 fi
 
-is_owned() {
-  git -c core.excludesFile="$OWNED_LIST" check-ignore --no-index -q -- "$1"
+# Ownership MATCHING is the shared gitwildmatch matcher CI's path-guard uses
+# (.github/nv-path-guard/check.py imports the same module). It sees the allowlist
+# and nothing else. The previous `git -c core.excludesFile=… check-ignore` also
+# consulted the repo's .gitignore, .git/info/exclude, and the global excludes, so
+# an ambient ignore rule could classify a path as nv-main-owned when NO line in
+# nv-main.txt matched it — a broader owned set than CI's, from the same file.
+MATCHER="$PROJECT_ROOT/.github/nv-path-guard/ownership.py"
+if [ ! -f "$MATCHER" ]; then
+  echo "::error::missing $MATCHER — cannot evaluate ownership the way CI does." >&2
+  exit 2
+fi
+command -v python3 >/dev/null 2>&1 || {
+  echo "::error::python3 not found — required to evaluate ownership with CI's matcher." >&2
+  exit 2
 }
 
 is_allowed() {
@@ -90,8 +118,8 @@ is_allowed() {
   return 1
 }
 
-drift=()
-allowed=()
+CANDIDATES="$WORK/candidates"
+: >"$CANDIDATES"
 while IFS= read -r f; do
   [ -z "$f" ] && continue
   # The path-guard allowlists are ownership METADATA, not code. Each branch
@@ -103,7 +131,20 @@ while IFS= read -r f; do
   case "$f" in
     .github/nv-path-guard/*) continue ;;
   esac
-  is_owned "$f" || continue
+  printf '%s\n' "$f" >>"$CANDIDATES"
+done < <(git diff --name-only "$REF" HEAD)
+
+# One batch call: the matcher's answer, or no answer at all.
+OWNED="$WORK/owned"
+if ! python3 "$MATCHER" "$OWNED_LIST" <"$CANDIDATES" >"$OWNED"; then
+  echo "::error::could not evaluate ownership — refusing to report a result." >&2
+  exit 2
+fi
+
+drift=()
+allowed=()
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
   # Only files that EXIST on the ref can have been reverted against it. Files
   # absent there are the overlay's own additions — legitimately local.
   git cat-file -e "$REF:$f" 2>/dev/null || continue
@@ -112,7 +153,7 @@ while IFS= read -r f; do
   else
     drift+=("$f")
   fi
-done < <(git diff --name-only "$REF" HEAD)
+done <"$OWNED"
 
 if [ ${#allowed[@]} -gt 0 ]; then
   echo "Allowlisted local mods (not drift):"
