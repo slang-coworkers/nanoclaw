@@ -429,27 +429,33 @@ async function loadFunnel() {
         const j = await r.json().catch(() => ({}));
         detail.innerHTML = `<div style="color:var(--text-muted);font-size:11px;margin-top:16px">nv-slang-bot contributions: no snapshot yet. ${esc(j.hint || '')}</div>`;
       }
-      // Regression quality is a SEPARATE snapshot (its own host cron), so it gets
-      // its own fetch and must APPEND — replacing would take the bot-contributions
-      // panel down with it whenever this snapshot is absent.
-      try {
-        const rq = await fetch('/api/regression-quality');
-        if (rq.ok) {
-          detail.innerHTML += regressionQualityHtml(await rq.json());
-        } else {
-          const jq = await rq.json().catch(() => ({}));
-          detail.innerHTML +=
-            '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Regression quality: no snapshot yet. ' +
-            esc(jq.hint || '') + '</div>';
-        }
-      } catch (e) {
-        detail.innerHTML +=
-          '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Regression quality: failed to load.</div>';
-      }
       const btn = detail.querySelector('[data-action="refresh-botc"]');
       if (btn) btn.addEventListener('click', () => triggerBotcRefresh(btn));
     } catch {
       detail.innerHTML = '';
+    }
+
+    // Regression quality is a genuinely INDEPENDENT snapshot with its own host
+    // cron, so it gets its own try/catch and its own container. Nesting it in
+    // the block above meant a bot-contributions network error or malformed body
+    // jumped to that catch, skipped this fetch entirely and cleared the pane —
+    // the two panels have no reason to fail together.
+    const rqBox = document.createElement('div');
+    detail.appendChild(rqBox);
+    try {
+      const rq = await fetch('/api/regression-quality');
+      if (rq.ok) {
+        rqBox.innerHTML = regressionQualityHtml(await rq.json());
+      } else {
+        const jq = await rq.json().catch(() => ({}));
+        rqBox.innerHTML =
+          '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Regression quality: no snapshot yet. ' +
+          esc(jq.hint || '') +
+          '</div>';
+      }
+    } catch (e) {
+      rqBox.innerHTML =
+        '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Regression quality: failed to load.</div>';
     }
   }
 }
@@ -556,7 +562,7 @@ function funnelApproverPanel(decisions) {
 function reviewCyclesHtml(rc) {
   if (!rc || (!rc.bot && !rc.human)) return '';
   const cell = (c) => {
-    if (!c) return '<td colspan="4" style="padding:2px 12px;color:var(--text-muted)">—</td>';
+    if (!c) return '<td colspan="5" style="padding:2px 12px;color:var(--text-muted)">—</td>';
     // null (not 0) when nothing was reviewed: "no data", never "0 rounds".
     const mean =
       c.meanRounds === null || c.meanRounds === undefined
@@ -569,7 +575,9 @@ function reviewCyclesHtml(rc) {
       '<td style="text-align:right;padding:2px 12px">' + mean + '</td>' +
       '<td style="text-align:right;padding:2px 12px">' + (c.reviewedPrs || 0) + '</td>' +
       '<td style="text-align:right;padding:2px 12px' + warn + '">' + cov + '</td>' +
-      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' + (c.unreviewedPrs || 0) + '</td>'
+      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' + (c.unreviewedPrs || 0) + '</td>' +
+      '<td style="text-align:right;padding:2px 12px' + (c.unknownPrs ? ';color:var(--warn,#c90)' : ';color:var(--text-muted)') + '">' +
+        (c.unknownPrs || 0) + '</td>'
     );
   };
   const th = (l, r) =>
@@ -580,15 +588,17 @@ function reviewCyclesHtml(rc) {
   return (
     '<div style="margin-top:16px">' +
     '<div style="font-weight:600;margin-bottom:4px">Human review cost ' +
-    '<span style="font-weight:400;color:var(--text-muted)">— merged PRs only</span></div>' +
+    '<span style="font-weight:400;color:var(--text-muted)">— Verity-decided merged PRs</span></div>' +
     '<table style="border-collapse:collapse;font-size:10px">' +
-    '<tr>' + th('author') + th('mean rounds', 1) + th('reviewed', 1) + th('coverage', 1) + th('unreviewed', 1) + '</tr>' +
+    '<tr>' + th('author') + th('mean CR rounds', 1) + th('reviewed', 1) + th('coverage', 1) + th('unreviewed', 1) + th('unknown', 1) + '</tr>' +
     '<tr><td style="padding:2px 12px">bot</td>' + cell(rc.bot) + '</tr>' +
     '<tr><td style="padding:2px 12px">human</td>' + cell(rc.human) + '</tr>' +
     '</table>' +
     '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
-    'Mean is over <i>reviewed</i> PRs only. Low coverage does <b>not</b> mean the rest were clean — ' +
-    'it means little of the work was reviewed at all.' +
+    'Counts human <b>change-request</b> rounds (CHANGES_REQUESTED), not every review — a PR reviewed ' +
+    'only with COMMENTED scores zero. Mean is over <i>reviewed</i> PRs only; <b>unknown</b> are lookup ' +
+    'failures excluded from coverage, so a high coverage beside a high unknown is not reassurance. ' +
+    'Population is PRs the approver recorded, not every merged PR.' +
     (excl.length ? '<br>Excluded: ' + excl.join(' · ') : '') +
     '</div></div>'
   );
@@ -605,6 +615,21 @@ function regressionQualityHtml(rq) {
   const attributed = rq.issues - (rq.unattributed || 0);
   const cov = Math.round((attributed / rq.issues) * 100);
   const months = Object.keys(rq.by_month || {}).sort().slice(-6);
+  // Snapshot age. The route stamps snapshotMtime from the file's mtime because
+  // the producer writes no timestamp of its own; without this a cron that quietly
+  // died still renders as current data.
+  let freshness = '';
+  if (rq.snapshotMtime) {
+    const ageH = (Date.now() - new Date(rq.snapshotMtime).getTime()) / 3600000;
+    const stale = ageH > 36; // a daily cron that missed more than one run
+    const label = ageH < 1 ? 'just now' : ageH < 48 ? Math.round(ageH) + 'h ago' : Math.round(ageH / 24) + 'd ago';
+    freshness =
+      ' · snapshot ' +
+      (stale ? '<b style="color:var(--warn,#c90)">' + label + ' (stale)</b>' : label);
+  } else {
+    freshness = ' · <span style="color:var(--warn,#c90)">age unknown</span>';
+  }
+
   const th = (l, r) =>
     '<th style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 10px;border-bottom:1px solid var(--border)">' + l + '</th>';
   const td = (v, r) => '<td style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 10px">' + v + '</td>';
@@ -625,7 +650,7 @@ function regressionQualityHtml(rq) {
     '<div style="margin-top:20px">' +
     '<div style="font-weight:600;margin-bottom:4px">Regression quality ' +
     '<span style="font-weight:400;color:var(--text-muted)">— ' + esc(rq.repo || '') +
-    ' · label "' + esc(rq.label || 'regression') + '"</span></div>' +
+    ' · label "' + esc(rq.label || 'regression') + '"' + freshness + '</span></div>' +
     '<div style="margin-bottom:6px;padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
     '<b>Attribution coverage ' + cov + '%</b> (' + attributed + '/' + rq.issues + '). ' +
     'The rest cite no causal reference, so the bot/human split below is a <b>floor, not a total</b>.' +

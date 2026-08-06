@@ -5386,8 +5386,13 @@ export async function handleRequest(
       return;
     }
     try {
+      const snap = JSON.parse(readFileSync(p, 'utf-8'));
+      // The producer writes no timestamp, so a cron that quietly stopped would
+      // keep serving the same JSON with HTTP 200 forever and look current. Stamp
+      // it from the file mtime so the client can show (and age) it.
+      snap.snapshotMtime = statSync(p).mtime.toISOString();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(JSON.parse(readFileSync(p, 'utf-8'))));
+      res.end(JSON.stringify(snap));
     } catch {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'snapshot unreadable' }));
