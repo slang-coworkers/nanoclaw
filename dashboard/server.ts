@@ -2227,76 +2227,78 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
   return entries;
 }
 
-// ---------- ccusage CLI resolution (spawn direct, not via npx) ----------
+// ---------- ccusage CLI resolution (locked dependency, never npx) ----------
 //
-// ccusage is NOT a declared dependency — it's pulled on demand by `npx`. The
-// problem: every `npx ccusage …` re-runs npm's exec resolution (a `sh -c npx`
-// → `npm exec ccusage` → node chain), which costs ~1.7s of pure npm/node
-// startup PER CALL on top of ccusage itself (measured: npx 2.48s vs direct
-// node 0.73s — 3.4× ). A single refresh fans out ~30–56 of these; under host
-// load the fan-out ran longer than the 60s refresh interval, batches stacked
-// on top of each other, and the process count spiralled until the event loop
-// wedged. Prior fixes (#484 cleanup, #488 bound fan-out, #617 re-entrancy +
-// concurrency cap) all capped the *number* of calls but never removed the
-// per-call npm-exec tax — so it kept recurring.
+// ccusage is a PINNED, LOCKFILE-RESOLVED dependency (`"ccusage": "20.0.19"` in
+// package.json). It is resolved out of this project's own node_modules and from
+// nowhere else.
 //
-// Fix: resolve ccusage's CLI entrypoint ONCE, then spawn it directly with
-// `node <cli.js> …` (one process, no shell, no npm exec). npx still populates
-// its cache the first time; we locate that cached copy and reuse it. If
-// resolution fails we fall back to the old `npx` path so cost reporting
-// degrades rather than breaks.
+// It used to be pulled on demand by `npx`, which had two problems.
 //
-// `null` = not yet resolved; `''` = resolved-and-failed (use npx fallback);
-// non-empty string = absolute path to ccusage's cli.js.
+// The one that was already fixed: every `npx ccusage …` re-ran npm's exec
+// resolution (a `sh -c npx` → `npm exec ccusage` → node chain) costing ~1.7s of
+// npm/node startup PER CALL (measured: npx 2.48s vs direct node 0.73s). A
+// refresh fans out ~30–56 of these; under host load the fan-out outran the 60s
+// refresh interval, batches stacked, and the event loop wedged. (#484 cleanup,
+// #488 bound fan-out, #617 re-entrancy cap all capped the NUMBER of calls but
+// never removed the per-call npm-exec tax.)
+//
+// The one that was NOT fixed, and is why this was rewritten: `npx --yes`
+// DOWNLOADS AND EXECUTES whatever the registry currently serves. Despite #937's
+// title, it still warmed its cache with `npx --yes ccusage --version` and still
+// fell back to `npx ccusage …`. So merely opening dashboard cost data could
+// fetch and run an arbitrary current npm release ON THE HOST, as the host user,
+// bypassing both the lockfile and this repo's 3-day release-age quarantine —
+// and it made the panel depend on registry reachability at read time.
+//
+// Both are gone. No runtime-install path remains: if the local dependency does
+// not resolve we report the metric unavailable (see `ccusageUnavailableReason`)
+// instead of reaching for the network.
+//
+// `ccusage`'s `bin` is `./src/cli.js` and it publishes no `exports` map, so the
+// subpath resolves directly. That cli.js is a thin launcher that spawns the
+// platform-native binary from an exact-pinned optional dependency
+// (`@ccusage/ccusage-<platform>-<arch>@20.0.19`); it has no download path of its
+// own, and prints a bounded error when the native package is absent.
+//
+// `null` = not yet resolved; `''` = resolved-and-failed; non-empty = abs path.
 let ccusageCliPathCache: string | null = null;
 
-/** Locate the cached `ccusage/src/cli.js` under ~/.npm/_npx, warming it via
- *  npx once if absent. Memoized. Returns '' if it cannot be resolved. */
+/**
+ * Why this is surfaced rather than swallowed: an unresolvable CLI used to
+ * degrade to `npx`, so the panel always had something to show. With the fallback
+ * gone, staying silent would render as "$0.00 everywhere" — indistinguishable
+ * from a genuinely idle install. Callers read this to say "metric unavailable".
+ */
+let ccusageUnavailableReason: string | null = null;
+
+const ccusageRequire = createRequire(import.meta.url);
+
+/** Resolve `ccusage/src/cli.js` from this project's node_modules. Memoized.
+ *  Returns '' if the dependency is not installed — never installs anything. */
 function resolveCcusageCli(): string {
   if (ccusageCliPathCache !== null) return ccusageCliPathCache;
-  const findCli = (): string => {
-    const npxRoot = join(homedir(), '.npm', '_npx');
-    if (!existsSync(npxRoot)) return '';
-    let best = '';
-    let bestMtime = -1;
-    let entries: string[];
-    try {
-      entries = readdirSync(npxRoot);
-    } catch {
-      return '';
-    }
-    for (const hash of entries) {
-      const cli = join(npxRoot, hash, 'node_modules', 'ccusage', 'src', 'cli.js');
-      try {
-        const st = statSync(cli);
-        // Prefer the most recently installed copy so version bumps win.
-        if (st.mtimeMs > bestMtime) {
-          bestMtime = st.mtimeMs;
-          best = cli;
-        }
-      } catch {
-        /* not this hash */
-      }
-    }
-    return best;
-  };
-  let cli = findCli();
-  if (!cli) {
-    // Cold cache — warm it once via npx (blocking, but only ever on first miss),
-    // then re-scan. `--version` is the cheapest command that populates the cache.
-    try {
-      execSync('npx --yes ccusage --version', {
-        timeout: 120000,
-        stdio: 'ignore',
-        env: process.env,
-      });
-    } catch {
-      /* warm-up failed — fall through to '' and let callers use npx directly */
-    }
-    cli = findCli();
+  try {
+    ccusageCliPathCache = ccusageRequire.resolve('ccusage/src/cli.js');
+    ccusageUnavailableReason = null;
+  } catch (err) {
+    ccusageCliPathCache = '';
+    ccusageUnavailableReason =
+      'ccusage is not installed in this checkout — run `pnpm install --frozen-lockfile`' +
+      ` (${err instanceof Error ? err.message.split('\n')[0] : String(err)})`;
   }
-  ccusageCliPathCache = cli; // '' if still unresolved → npx fallback in callers
   return ccusageCliPathCache;
+}
+
+/**
+ * Non-null means the cost numbers are not merely zero — they are ABSENT.
+ * Endpoints echo this so the UI can distinguish "no spend" from "never ran";
+ * without it, an install whose CLI cannot resolve renders a confident $0.00.
+ * Resolution is memoized, so this is free after the first call.
+ */
+function ccusageUnavailable(): string | null {
+  resolveCcusageCli();
+  return ccusageUnavailableReason;
 }
 
 function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDayEntry[]> {
@@ -2343,11 +2345,15 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
     };
     const opts = { timeout: 30000, maxBuffer: 10 * 1024 * 1024, env };
     const cli = resolveCcusageCli();
-    // Direct `node <cli.js> …` avoids the ~1.7s npm-exec tax per call. Fall
-    // back to `npx` only if the CLI couldn't be resolved.
-    proc = cli
-      ? execFile(process.execPath, [cli, ...ccusageArgs], opts, cb)
-      : exec(`npx ccusage ${ccusageArgs.join(' ')}`, opts, cb);
+    if (!cli) {
+      // No npx fallback by design — see the resolution block above. The caller
+      // renders "metric unavailable" from ccusageUnavailableReason.
+      clearTimeout(timer);
+      resolve([]);
+      return;
+    }
+    // Direct `node <cli.js> …`: one process, no shell, no npm exec.
+    proc = execFile(process.execPath, [cli, ...ccusageArgs], opts, cb);
   });
 }
 
@@ -2482,11 +2488,14 @@ function runCodexCcusage(codexHome: string, since?: string): Promise<CcusageDayE
       }
     };
     const cli = resolveCcusageCli();
-    // Direct `node <cli.js> codex …` avoids the npm-exec tax; npx only on
-    // fallback when the CLI path couldn't be resolved.
-    proc = cli
-      ? execFile(process.execPath, [cli, ...ccusageArgs], opts, cb)
-      : exec(`npx ccusage ${ccusageArgs.join(' ')}`, opts, cb);
+    if (!cli) {
+      // No npx fallback by design — see the resolution block above.
+      clearTimeout(timer);
+      resolve([]);
+      return;
+    }
+    // Direct `node <cli.js> codex …`: one process, no shell, no npm exec.
+    proc = execFile(process.execPath, [cli, ...ccusageArgs], opts, cb);
   });
 }
 
@@ -7666,6 +7675,7 @@ export async function handleRequest(
         }),
         period,
         lastRefresh: ccusageCache.lastRefresh,
+        unavailable: ccusageUnavailable(),
       }),
     );
     return;
@@ -7705,7 +7715,7 @@ export async function handleRequest(
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
     });
-    res.end(JSON.stringify({ dailyCosts, lastRefresh: ccusageCache.lastRefresh }));
+    res.end(JSON.stringify({ dailyCosts, lastRefresh: ccusageCache.lastRefresh, unavailable: ccusageUnavailable() }));
     return;
   }
 
