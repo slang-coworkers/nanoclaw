@@ -32,6 +32,25 @@ function notifyAgent(session: Session, text: string): void {
   }
 }
 
+/**
+ * Render one learning atom as a file that ends with exactly one newline and
+ * carries no trailing whitespace.
+ *
+ * `body` is agent-authored markdown and almost always already ends with a
+ * newline, so the previous `` `# ${title}\n\n${body}\n` `` produced a blank
+ * line at EOF. `git diff --check` reports that as an error, and because these
+ * atoms are the L1 source the wiki builder copies into `sources/`, the single
+ * extra byte was duplicated across the whole knowledge base — ~2,600 of the
+ * diagnostics on the KB tree trace back to this one template.
+ *
+ * Exported for the test; there is no other caller.
+ */
+export function renderLearning(title: string, body: string): string {
+  const lines = [`# ${title}`, '', ...body.split('\n')].map((line) => line.replace(/[ \t]+$/, ''));
+  while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+  return lines.map((line) => `${line}\n`).join('');
+}
+
 export async function handleAppendLearning(content: Record<string, unknown>, session: Session): Promise<void> {
   const title = content.title as string;
   const body = content.content as string;
@@ -48,7 +67,7 @@ export async function handleAppendLearning(content: Record<string, unknown>, ses
     .replace(/^-+|-+$/g, '')
     .slice(0, 50);
   const filename = `${Date.now()}-${slug}.md`;
-  fs.writeFileSync(path.join(sharedDir, filename), `# ${title}\n\n${body}\n`);
+  fs.writeFileSync(path.join(sharedDir, filename), renderLearning(title, body));
 
   // Rebuild INDEX.md
   const files = fs

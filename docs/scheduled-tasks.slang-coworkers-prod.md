@@ -566,4 +566,3 @@ Heartbeat wake. A pre-check script has already run and its JSON output (wakeAgen
 
 Run `date -u` before claiming any current time.
 ```
-
