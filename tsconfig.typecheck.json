@@ -1,0 +1,31 @@
+{
+  // Typecheck-only view of the repo. SEPARATE from tsconfig.json on purpose:
+  // that file is the BUILD config (`pnpm run build` → `tsc`), with
+  // `rootDir: ./src`, `outDir: ./dist` and `declaration: true`. Widening its
+  // `include` to reach setup/ and scripts/ would make the build try to emit
+  // them into dist/, and rootDir would reject them outright. So the gate gets
+  // its own config that inherits the same strictness and emits nothing.
+  //
+  // Run it through `scripts/typecheck-gate.mjs`, never bare: the gate compares
+  // against scripts/typecheck-baseline.txt so pre-existing errors do not block,
+  // while any NEW one does.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // Files live outside ./src now, so the build's rootDir cannot apply.
+    "rootDir": ".",
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  // src/ was already covered by the build config; setup/ (98 files) and
+  // scripts/ (38) never were. container/agent-runner has its own tsconfig and
+  // its own CI step — it is not listed here, but several scripts/ and setup/
+  // files import it, so tsc loads it transitively anyway.
+  //
+  // setup/types/optional-modules.d.ts comes in under `setup`; it lives there
+  // rather than at a new top-level types/ because nv-main already owns setup/**
+  // (.github/nv-path-guard/nv-main.txt) and the stubs exist for setup's files.
+  "include": ["src*", "setup", "scripts"],
+  "exclude": ["node_modules", "dist"]
+}

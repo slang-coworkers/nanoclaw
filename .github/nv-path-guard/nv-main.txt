@@ -56,6 +56,11 @@ pnpm-lock.yaml
 pnpm-workspace.yaml
 .npmrc
 tsconfig.json
+# The typecheck-only view of the same tree. Separate from tsconfig.json because
+# that one is the BUILD config (rootDir ./src, outDir dist, declaration) and
+# cannot reach setup/ or scripts/ without breaking the build. Same owner as the
+# tsconfig it extends — nowhere else can be canonical for it.
+tsconfig.typecheck.json
 vitest.config.ts
 vitest.setup.ts
 .github/**

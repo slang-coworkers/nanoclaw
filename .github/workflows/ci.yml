@@ -168,6 +168,13 @@ jobs:
       - name: Typecheck host
         run: pnpm exec tsc --noEmit
 
+      # The step above only sees src/ — the project tsconfig is include:["src*"],
+      # so setup/ (98 files) and scripts/ (38) were never typechecked by anything.
+      # This widens the net and blocks NEW errors while carrying the pre-existing
+      # ones in scripts/typecheck-baseline.txt, which may only shrink.
+      - name: Typecheck gate (setup/ + scripts/, ratcheted)
+        run: node scripts/typecheck-gate.mjs
+
       - name: Typecheck container
         run: pnpm exec tsc -p container/agent-runner/tsconfig.json --noEmit
 
