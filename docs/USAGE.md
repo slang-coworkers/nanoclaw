@@ -50,6 +50,7 @@ Click any coworker in the sidebar. Messages go directly — Orchestrator is not 
 | Maintainer | `*/10 * * * *` (heartbeat) | CI health + Discord new messages pre-check; wakes agent only when actionable |
 | Discord Support | `*/5 * * * *` (heartbeat) | Discord channel scan, pending summons, CI thresholds; wakes only when needed |
 | Funnel refresh | `17 */6 * * *` (crontab) | Dashboard funnel panel data refresh (`reports/funnel.json`) |
+| Skills refresh | `37 * * * *` (crontab) | `scripts/refresh-skills-cron.sh` — fetches external skills from `shader-slang/slang-skills` into `container/skills/`, then mirrors them into every group's bind-mounted `.claude-shared/`. Running containers pick the new skills up with no restart |
 
 The heartbeat scripts run lightweight shell checks (Discord API, CI health snapshot, summon requests) and only wake the agent when thresholds are crossed or actionable items exist. This minimizes API credit consumption.
 
