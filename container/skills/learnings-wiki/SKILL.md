@@ -264,6 +264,19 @@ GROUP_LABEL = {
 def fm(text, key):
     m = re.search(rf"^{key}:\s*\"?(.*?)\"?\s*$", text, re.M)
     return m.group(1).strip() if m else ""
+def norm(text):
+    """Exactly one trailing newline, no trailing whitespace on any line.
+
+    The L1 atoms are agent-authored and routinely end with a blank line, which
+    `git diff --check` reports as an error at EOF. This used to only guarantee
+    *at least* one newline, so every offending atom was copied verbatim into
+    `sources/` and the defect was duplicated across the KB rather than healed.
+    Normalizing here means a rebuild cleans the existing corpus.
+    """
+    lines = [line.rstrip() for line in (text or "").splitlines()]
+    while lines and not lines[-1]:
+        lines.pop()
+    return "".join(line + "\n" for line in lines)
 def stem_of(f): return re.sub(r"\.md$", "", f)
 def title_of(text, stem):
     for line in text.splitlines():
@@ -354,7 +367,7 @@ def build():
         topic = fm(text, "topic") or classify(hay, [(k, kw) for k, _, kw in TOPICS], "misc")
         group = classify(hay, GROUPS, "misc")
         ts = (re.match(r"^(\d{10,})-", stem) or [None, ""])[1] if re.match(r"^(\d{10,})-", stem) else ""
-        open(os.path.join(SRC, stem + ".md"), "w", encoding="utf-8").write(text if text.endswith("\n") else text + "\n")
+        open(os.path.join(SRC, stem + ".md"), "w", encoding="utf-8").write(norm(text))
         body = re.sub(r"^\s*#\s+.*\n", "", text, count=1).lstrip("\n").rstrip()
         # Carry supersession forward. Same precedence as `topic` above: an explicit marker
         # on the L1 atom wins, else the harvested lineage. Without this the marker is
@@ -364,7 +377,9 @@ def build():
                 f"source: learnings/{fn}"] + ([f"superseded_by: {sup}"] if sup else []) + [
                 "---", "", f"# {title}", "", body, "",
                 "---", f"_Topic: [{TOPIC_LABEL.get(topic, topic)}](wiki/topics/{topic}.md) · [catalog](wiki/index.md) · source: `sources/learnings/{stem}.md`_", ""]
-        open(os.path.join(WIKI, "learnings", stem + ".md"), "w", encoding="utf-8").write("\n".join(page))
+        # norm(), not a bare join: `body` is embedded verbatim and its interior
+        # lines carry the source atom's trailing spaces.
+        open(os.path.join(WIKI, "learnings", stem + ".md"), "w", encoding="utf-8").write(norm("\n".join(page)))
         entries.append({"stem": stem, "title": title, "topic": topic, "ts": ts})
         clusters.setdefault(group, []).append(stem)
 

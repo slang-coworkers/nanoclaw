@@ -97,8 +97,15 @@ def render_md(slug, tasks):
         if t.get("script"):
             L += ["Pre-task gate:", "", "```bash", str(t["script"]).strip(), "```", ""]
         L += ["Prompt:", "", "```", str(t.get("prompt", "")).strip(), "```", ""]
-    body = "\n".join(L) + "\n"
-    return "".join(line.rstrip() + "\n" for line in body.splitlines())
+    # Right-strip every line, then drop the trailing blank line the per-task
+    # block structure leaves behind (each block ends with ""). `"\n".join(L)`
+    # already terminates the last real line, so the extra "\n" this used to
+    # append produced a blank line at EOF — which `git diff --check` reports as
+    # an error, and which is how the committed snapshot landed flagged.
+    lines = [line.rstrip() for line in "\n".join(L).splitlines()]
+    while lines and not lines[-1]:
+        lines.pop()
+    return "".join(line + "\n" for line in lines)
 
 
 def stage(dest, text):
