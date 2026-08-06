@@ -43,8 +43,8 @@ fi
 # /api/regression-quality serves reports/regression-quality.json cached and never
 # recomputes). Companion to reviewCycles, which funnel.ts already embeds in
 # funnel.json above. Read-only gh API calls; same proxy-stripped env.
-# NOTE: this one is python3, not tsx — the hardened image drops python3, which is
-# why container/Dockerfile.derived reinstalls it and build-derived.sh gates on it.
+# NOTE: python3, not tsx. This cron runs on the HOST, where python3 is present
+# (the kb-health cron uses it too) — no container image is involved.
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] regression-quality refresh start" >> "$LOG"
 if /usr/bin/python3 scripts/regression-quality.py --json reports/regression-quality.json >> "$LOG" 2>&1; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] regression-quality refresh ok" >> "$LOG"

@@ -34,6 +34,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { REVIEW_PAGE_CAP, aggregateReviewCycles, countHumanReview, fetchAllReviewsWith } from './funnel-metrics.js';
 import { initDb } from '../src/db/connection.js';
 import { getDb } from '../src/db/connection.js';
 import { DATA_DIR } from '../src/config.js';
@@ -46,13 +47,14 @@ const INSTALL_BY_OWNER: Record<string, string> = {
 };
 const BOT_LOGIN = 'nv-slang-bot[bot]';
 
-// Deliberately broader than BOT_LOGIN. For "was this PR ours?" only nv-slang-bot
-// counts, but for "did a HUMAN pay review attention?" any automated reviewer
-// (github-actions, dependabot, Copilot, a coworker fork's own app) is not human
-// cost. GitHub suffixes App identities with "[bot]", which covers the general case.
-const EXTRA_BOT_LOGINS = new Set(['devin-ai-integration', 'copilot-pull-request-reviewer']);
-const isBotLogin = (login: string): boolean =>
-  login.endsWith('[bot]') || EXTRA_BOT_LOGINS.has(login.replace(/\[bot\]$/, ''));
+// Review-cost helpers live in funnel-metrics.ts so they can be unit-tested —
+// this file calls main() at import, so a test importing it would run the funnel.
+const fetchAllReviews = (repo: string, pr: number): any[] | null =>
+  fetchAllReviewsWith(
+    (page) => gh(repo, `pulls/${pr}/reviews?per_page=100&page=${page}`),
+    (n) =>
+      console.error(`  WARNING ${repo}#${pr}: hit the ${REVIEW_PAGE_CAP}-page review cap at ${n}; counts are a floor`),
+  );
 
 // Repos whose issues form the denominator of the issue partition (the per-issue
 // pass below). The PR spine discovers repos from pr_session_mappings, but the
@@ -383,15 +385,11 @@ async function main() {
     // How much HUMAN review did this PR cost? Same cached gh(), so a warm disk
     // cache makes this nearly free. Reviews by a bot, and self-reviews (GitHub
     // does record those), are not human cost and are excluded.
-    const reviews = gh(d.repo, `pulls/${d.pr}/reviews?per_page=100`);
-    if (Array.isArray(reviews)) {
-      const human = reviews.filter((r: any) => {
-        const login = r?.user?.login ?? '';
-        return login && !isBotLogin(login) && login !== d.prAuthor;
-      });
-      // Rounds, not comments: nine line-comments inside one review is ONE round.
-      d.humanReviewRounds = human.filter((r: any) => r?.state === 'CHANGES_REQUESTED').length;
-      d.humanReviewers = new Set(human.map((r: any) => r.user.login)).size;
+    const reviews = fetchAllReviews(d.repo, d.pr);
+    if (reviews) {
+      const { rounds, reviewers } = countHumanReview(reviews, d.prAuthor);
+      d.humanReviewRounds = rounds;
+      d.humanReviewers = reviewers;
     }
   }
   // Newest decision first for display.
@@ -719,44 +717,10 @@ async function main() {
 
   // ── human review cost, aggregated from the enriched approver ledger ──────────
   // Companion to Autonomy (how much ships) and regression-quality (does it hold
-  // up): what did that throughput cost a human reviewer?
-  //
-  // THE TRAP THIS ENCODES: a PR merged with NO human review scores zero rounds,
-  // which reads as flawless but actually means unreviewed. Averaging those in
-  // makes a bot look better the less anyone looks at its work — exactly backwards.
-  // So the mean is taken over REVIEWED PRs only, and `unreviewed` + `coveragePct`
-  // are reported beside it so the denominator can never hide. Same discipline as
-  // regression-quality's attribution coverage.
-  const reviewCycles = (() => {
-    const acc = {
-      bot: { reviewed: 0, unreviewed: 0, rounds: 0, unknown: 0 },
-      human: { reviewed: 0, unreviewed: 0, rounds: 0, unknown: 0 },
-    };
-    for (const d of approverDecisions) {
-      if (d.authoredByBot === null) continue; // author unknown — can't classify
-      const k = d.authoredByBot ? 'bot' : 'human';
-      if (d.humanReviewers === null || d.humanReviewRounds === null) {
-        acc[k].unknown++; // fetch failed/uncached — NOT the same as "zero review"
-      } else if (d.humanReviewers === 0) {
-        acc[k].unreviewed++;
-      } else {
-        acc[k].reviewed++;
-        acc[k].rounds += d.humanReviewRounds;
-      }
-    }
-    const shape = (k: 'bot' | 'human') => {
-      const a = acc[k];
-      const decided = a.reviewed + a.unreviewed;
-      return {
-        reviewedPrs: a.reviewed,
-        unreviewedPrs: a.unreviewed,
-        unknownPrs: a.unknown,
-        meanRounds: a.reviewed ? Math.round((a.rounds / a.reviewed) * 100) / 100 : null,
-        coveragePct: decided ? Math.round((a.reviewed / decided) * 100) : null,
-      };
-    };
-    return { bot: shape('bot'), human: shape('human') };
-  })();
+  // up): what did that throughput cost a human reviewer? The aggregation lives in
+  // funnel-metrics.ts, where the traps it encodes (unreviewed != clean, a failed
+  // fetch != zero, merged-only scope) are covered by fixture tests.
+  const reviewCycles = aggregateReviewCycles(approverDecisions);
 
   const snapshot = {
     generatedAt: STAMP,
