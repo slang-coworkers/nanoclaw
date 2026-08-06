@@ -65,6 +65,38 @@ describe('critique-gate card: reason clamping stays reachable', () => {
   });
 });
 
+describe('reason clamping covers non-critique cards too', () => {
+  it('the generic branches render a clamped reason, not the raw text', () => {
+    // safeReason feeds install_packages / request_rebuild / add_mcp_server /
+    // cli_command / fallback. Clamping only the critique branch left the
+    // wall-of-text problem in place for every other action type.
+    expect(app).toContain('${esc(shownGenericReason)}');
+    expect(app).toContain('genericNeedsClamp');
+  });
+
+  it('appends the generic toggle after md(), which escapes its input', () => {
+    expect(app).toContain('${md(desc)}${genericReasonToggle}');
+  });
+});
+
+describe('escalation strip', () => {
+  it('is fetched and rendered', () => {
+    expect(app).toContain('/api/approvals/escalations');
+    expect(app).toContain('renderEscalationStrip()');
+  });
+
+  it('throttles the fetch — the message poll runs every 3s', () => {
+    expect(app).toContain('cwState._escFetchedAt');
+    expect(app).toMatch(/_escFetchedAt[\s\S]{0,200}60_000/);
+  });
+
+  it('surfaces enforcement releases explicitly, not just a total', () => {
+    // A container-side fail-open creates no approval card, so this strip is
+    // the only place it is ever visible in the UI.
+    expect(app).toContain('enforcement release');
+  });
+});
+
 describe('critique-gate card: expansion survives the poll re-render', () => {
   it('tracks expansion in cwState, not the DOM, on both surfaces', () => {
     // fetchCwMessages polls every 3s and re-runs the renderers; DOM-only
