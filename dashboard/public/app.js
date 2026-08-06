@@ -416,7 +416,9 @@ async function loadFunnel() {
   // reviewCycles rides inside the funnel snapshot, so it needs no extra fetch.
   if (board)
     board.innerHTML =
-      partHtml + reviewCyclesHtml(snap.reviewCycles) + funnelApproverPanel(snap.approverDecisions || []);
+      partHtml +
+      reviewCyclesHtml(snap.reviewCycles) +
+      funnelApproverPanel(snap.approverDecisions || [], snap.approverLedger);
 
   // nv-slang-bot contribution table (separate snapshot: /api/bot-contributions).
   if (detail) {
@@ -465,7 +467,7 @@ async function loadFunnel() {
 // this shows EVERY decision Verity recorded, including the human-authored PRs it
 // reviewed in shadow mode. `decisions` is snap.approverDecisions (newest first,
 // one row per PR). Counts by decision are shown as a header summary.
-function funnelApproverPanel(decisions) {
+function funnelApproverPanel(decisions, ledger) {
   if (!Array.isArray(decisions)) decisions = [];
   // Approve = green, block = red, abstain = muted. Matches the funnel row cell
   // (funnelIssueTableHtml's approverColor); literal hex here since the palette
@@ -487,6 +489,24 @@ function funnelApproverPanel(decisions) {
   const summary = order
     .map((k) => `<span style="color:${decisionColor[k]}">${k} ${by[k] || 0}</span>`)
     .join('<span style="color:var(--border)"> · </span>');
+
+  // PROVENANCE. Until migration 934 lands, record_decision was reachable by any
+  // container with authorization living only in the tool's description text, so
+  // these rows can include writes of unknown origin. Once 934 has run, the
+  // producer filters to trusted provenance — and a filtered count and an
+  // unfiltered count would otherwise render IDENTICALLY. Say which one this is.
+  // Same principle as regression-quality's complete:false: never let a narrowed
+  // or degraded population look like a clean one.
+  const provenance =
+    ledger && ledger.provenanceFiltered === true
+      ? '<span style="color:var(--text-muted);font-weight:400"> · trusted only' +
+        (Array.isArray(ledger.trustedProvenance) && ledger.trustedProvenance.length
+          ? ' (' + ledger.trustedProvenance.map(esc).join(', ') + ')'
+          : '') +
+        '</span>'
+      : ledger && ledger.provenanceFiltered === false
+        ? '<span style="color:var(--warn,#c90);font-weight:400"> · UNFILTERED — includes rows of unknown origin</span>'
+        : '<span style="color:var(--text-muted);font-weight:400"> · provenance unknown</span>';
   const rows = decisions
     .map((d) => {
       const repo = (d.repo || '').split('/').pop();
@@ -541,7 +561,7 @@ function funnelApproverPanel(decisions) {
           <span style="display:inline-flex;align-items:baseline;gap:10px;flex-wrap:wrap">
             <span style="font-size:14px;font-weight:700">PR Approver — Verity <span style="font-weight:400;color:var(--text-muted);font-size:11px">(shadow mode)</span></span>
             <span style="font-size:11px">${summary}</span>
-            <span style="font-size:10px;color:var(--text-muted)">${decisions.length} PRs decided</span>
+            <span style="font-size:10px;color:var(--text-muted)">${decisions.length} PRs decided${provenance}</span>
           </span>
         </summary>
         <div style="font-size:11px;color:var(--text-muted);margin:6px 0 4px">Every PR Verity decided — including human-authored PRs (not just the bot's own). Shadow decisions never post to GitHub.</div>
