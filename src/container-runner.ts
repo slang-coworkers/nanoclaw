@@ -1716,28 +1716,16 @@ env_key = "NVIDIA_API_KEY"
 [projects."/workspace/agent"]
 trust_level = "trusted"
 TOML_EOF
-cat > ~/.codex/hooks.json <<'HOOKS_EOF'
-{
-  "hooks": {
-    "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh SessionStart", "timeout": 5 }] }
-    ],
-    "UserPromptSubmit": [
-      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh UserPromptSubmit", "timeout": 5 }] }
-    ],
-    "PreToolUse": [
-      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh PreToolUse", "timeout": 5 }] }
-    ],
-    "PostToolUse": [
-      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh PostToolUse", "timeout": 5 }] },
-      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "bash /app/hooks/pr-auto-map.sh", "timeout": 5 }] }
-    ],
-    "Stop": [
-      { "hooks": [{ "type": "command", "command": "bash /app/hooks/codex-dashboard-hook.sh Stop", "timeout": 5 }] }
-    ]
-  }
-}
-HOOKS_EOF
+# NOTE: hooks are deliberately NOT written here any more. They used to be
+# emitted as ~/.codex/hooks.json, which lands in Codex's USER config layer —
+# where every command hook needs per-hook, content-hash trust before it may
+# fire, and an untrusted one is skipped SILENTLY. Containers are --rm, so that
+# trust never exists and the hooks were a permanent no-op: the dashboard simply
+# showed no events for Codex groups. They now ship in the MANAGED layer as
+# /etc/codex/requirements.toml, baked into the image from container/
+# codex-hooks.toml, which reports trustStatus "managed". Do not reintroduce a
+# hooks.json here — with allow_managed_hooks_only it is ignored, and without it
+# it reappears as a duplicate hooks/list entry per event.
 exec bun run /app/src/index.ts`,
   );
 

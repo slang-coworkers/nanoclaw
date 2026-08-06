@@ -57,9 +57,18 @@ RUN --mount=type=cache,target=/root/.cache/pnpm \
     sh /tmp/install-cli-tools.sh /tmp/cli-tools.json
 
 # codex is fork-only (not in cli-tools.json) — pinned, same as the local build.
-ARG CODEX_VERSION=0.139.0
+# KEEP THIS IN LOCKSTEP WITH container/Dockerfile. When they drift, the derived
+# image ships a different codex than the base build while both claim to be "the"
+# pinned version — which is exactly the two-versions-in-one-image confusion that
+# cost a debugging session (a scan of the older copy showed no hook trust fields
+# and looked like it contradicted the newer one).
+ARG CODEX_VERSION=0.146.1
 RUN --mount=type=cache,target=/root/.cache/pnpm \
     pnpm install -g "@openai/codex@${CODEX_VERSION}"
+
+# Managed-layer Codex hooks — see container/codex-hooks.toml. The hardened base
+# has no /etc/codex, so this creates it.
+COPY codex-hooks.toml /etc/codex/requirements.toml
 
 # ---- agent-runner: the whole reason this image exists -------------------------
 WORKDIR /app

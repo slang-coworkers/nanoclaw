@@ -1,0 +1,121 @@
+# Codex lifecycle hooks — installed to /etc/codex/requirements.toml (the MANAGED
+# config layer) by container/Dockerfile and container/Dockerfile.derived.
+#
+# WHY THE MANAGED LAYER, NOT ~/.codex/hooks.json
+#
+# Codex enforces TWO independent trust layers. Project trust (`trust_level =
+# "trusted"`, which container-runner.ts already sets for /workspace/agent) governs
+# whether Codex will run code at all. Separately, every non-managed command hook
+# must be reviewed and trusted AGAINST ITS CONTENT HASH before it may fire. An
+# untrusted hook is skipped SILENTLY: no attempt, no rejection, nothing in
+# Codex's own logs.
+#
+# Our agent containers run with --rm, so every spawn is a fresh filesystem and
+# any persisted per-hook trust starts empty. A user-layer hook can therefore
+# NEVER become trusted here — it is a permanent silent no-op by construction,
+# not a first-run prompt someone can accept.
+#
+# Measured on lego with codex 0.139.0, hooks/list on the user-layer file:
+#     "source":"user", "isManaged":false, "trustStatus":"untrusted"
+# and the same hook declared here:
+#     "source":"system", "isManaged":true,  "trustStatus":"managed"
+# Confirmed identical on 0.146.1, so this survives the version bump.
+#
+# Things that do NOT work, so nobody re-tries them:
+#   - Pre-seeding a trust store. There is none. $CODEX_HOME holds state_5/
+#     logs_2/goals_1/memories_1.sqlite and none has a trust or hook table, or any
+#     column holding a sha256:.
+#   - Granting trust over the app-server protocol. hooks/list is the ONLY hooks/*
+#     method; there is no hooks/trust.
+#   - `bypass_hook_trust` as a -c override or config key. It is accepted (empty
+#     stderr) but leaves trustStatus "untrusted".
+#   - `--dangerously-bypass-hook-trust`. Exists only on `codex exec` and the
+#     interactive CLI, NOT on `app-server` or `mcp-server` — both of which we use.
+#
+# EVENT-NAME CASING IS LOAD-BEARING. Keys are PascalCase; Codex normalises
+# "Stop" -> eventName "stop". Writing them camelCase makes them NOT DISCOVERED AT
+# ALL (hooks/list returns an empty array) — the opposite of the intuitive fix.
+#
+# The hook scripts live at /app/hooks, which container-runner.ts bind-mounts
+# read-only from container/hooks/ at spawn time; they are not baked into the image.
+
+# Only hooks from the managed layer may run. This file is the single source of
+# truth, so a stray ~/.codex/hooks.json (agent-authored or left by an older
+# image) cannot add or duplicate a hook. Without this, a user-layer copy of the
+# same hook shows up as a SECOND hooks/list entry — harmless only for as long as
+# it stays untrusted, and a double-fire the moment anything trusts it.
+allow_managed_hooks_only = true
+
+[[hooks.SessionStart]]
+  [[hooks.SessionStart.hooks]]
+  type = "command"
+  command = "bash /app/hooks/codex-dashboard-hook.sh SessionStart"
+  timeout = 5
+
+[[hooks.UserPromptSubmit]]
+  [[hooks.UserPromptSubmit.hooks]]
+  type = "command"
+  command = "bash /app/hooks/codex-dashboard-hook.sh UserPromptSubmit"
+  timeout = 5
+
+[[hooks.PreToolUse]]
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/codex-dashboard-hook.sh PreToolUse"
+  timeout = 5
+
+[[hooks.PostToolUse]]
+  [[hooks.PostToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/codex-dashboard-hook.sh PostToolUse"
+  timeout = 5
+
+# PR auto-mapping rides on Bash tool calls only.
+[[hooks.PostToolUse]]
+matcher = "Bash"
+  [[hooks.PostToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/pr-auto-map.sh"
+  timeout = 5
+
+[[hooks.Stop]]
+  [[hooks.Stop.hooks]]
+  type = "command"
+  command = "bash /app/hooks/codex-dashboard-hook.sh Stop"
+  timeout = 5
+
+# ---- events codex 0.139+ exposes that we had never wired ----------------------
+# The full 0.139/0.146 HookEventName enum is preToolUse, permissionRequest,
+# postToolUse, preCompact, postCompact, sessionStart, userPromptSubmit,
+# subagentStart, subagentStop, stop. We previously wired only the first five of
+# ours; compaction and subagent activity were invisible on the dashboard.
+
+[[hooks.PermissionRequest]]
+  [[hooks.PermissionRequest.hooks]]
+  type = "command"
+  command = "bash /app/hooks/codex-dashboard-hook.sh PermissionRequest"
+  timeout = 5
+
+[[hooks.PreCompact]]
+  [[hooks.PreCompact.hooks]]
+  type = "command"
+  command = "bash /app/hooks/codex-dashboard-hook.sh PreCompact"
+  timeout = 5
+
+[[hooks.PostCompact]]
+  [[hooks.PostCompact.hooks]]
+  type = "command"
+  command = "bash /app/hooks/codex-dashboard-hook.sh PostCompact"
+  timeout = 5
+
+[[hooks.SubagentStart]]
+  [[hooks.SubagentStart.hooks]]
+  type = "command"
+  command = "bash /app/hooks/codex-dashboard-hook.sh SubagentStart"
+  timeout = 5
+
+[[hooks.SubagentStop]]
+  [[hooks.SubagentStop.hooks]]
+  type = "command"
+  command = "bash /app/hooks/codex-dashboard-hook.sh SubagentStop"
+  timeout = 5

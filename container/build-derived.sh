@@ -108,6 +108,23 @@ fi
 echo "  OK  ($REQUIRED_BINS)"
 
 echo
+# Codex hooks must be in the MANAGED layer or they never fire — silently. Same
+# failure signature as a missing jq: agent replies normally, dashboard timeline
+# is empty, nothing logs a reason. Check the file landed AND is readable by the
+# runtime user (it is COPY'd as root into a base that runs as `node`).
+echo "verifying managed codex hooks…"
+if ! $RUNTIME run --rm --entrypoint sh "${IMAGE_NAME}:${TAG}" -c \
+  '[ -r /etc/codex/requirements.toml ] && grep -q "allow_managed_hooks_only" /etc/codex/requirements.toml'; then
+  {
+    echo "  /etc/codex/requirements.toml is missing or unreadable by the runtime user."
+    echo "  Codex hooks would fall back to the user layer, where they are UNTRUSTED"
+    echo "  and skipped silently — no dashboard events, no error."
+  } >&2
+  exit 1
+fi
+echo "  OK  (/etc/codex/requirements.toml present and readable)"
+
+echo
 echo "verifying the stamped label matches this checkout…"
 GOT="$($RUNTIME inspect "${IMAGE_NAME}:${TAG}" \
   --format '{{index .Config.Labels "dev.nanoclaw.agent-runner-lock-sha256"}}')"

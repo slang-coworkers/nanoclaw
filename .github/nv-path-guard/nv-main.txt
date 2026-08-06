@@ -161,6 +161,9 @@ container/workflows/base/**
 container/cli-tools.json
 container/cli-tools.test.ts
 container/install-cli-tools.sh
+# Codex lifecycle hooks, installed to /etc/codex/requirements.toml (the managed
+# config layer — the user layer leaves them untrusted and silently skipped).
+container/codex-hooks.toml
 # Top-level version manifest.
 versions.json
 

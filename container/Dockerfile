@@ -172,6 +172,13 @@ RUN --mount=type=cache,target=/root/.cache/pnpm \
 RUN --mount=type=cache,target=/root/.cache/pnpm \
     pnpm install -g "@openai/codex@${CODEX_VERSION}"
 
+# Codex lifecycle hooks go in the MANAGED config layer. A hook in the user layer
+# (~/.codex/hooks.json) needs per-hook content-hash trust before it may fire and
+# is skipped SILENTLY without it — and our --rm containers can never accumulate
+# that trust, so user-layer hooks are a permanent no-op. See container/
+# codex-hooks.toml for the full rationale and the measurements behind it.
+COPY codex-hooks.toml /etc/codex/requirements.toml
+
 # ---- agent-runner ------------------------------------------------------------
 WORKDIR /app
 
