@@ -17,9 +17,19 @@ wg = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(wg)
 
 
-def wt(dir, issue="OPEN", pr="OPEN", idle=None, size=6.7, has_build=True):
-    return {"dir": dir, "issue_state": issue, "pr_state": pr,
-            "pr_idle_days": idle, "size_gb": size, "has_build": has_build}
+OMIT = object()  # build_size=OMIT → the payload carries no build_size_gb at all
+
+
+def wt(dir, issue="OPEN", pr="OPEN", idle=None, size=6.7, has_build=True,
+       build_size=None):
+    """`size` is the WHOLE worktree; `build_size` is the build/ dir the reclaim
+    actually deletes. It defaults to a realistic ~60% of the worktree so the two
+    are never accidentally interchangeable in a test."""
+    w = {"dir": dir, "issue_state": issue, "pr_state": pr,
+         "pr_idle_days": idle, "size_gb": size, "has_build": has_build}
+    if build_size is not OMIT:
+        w["build_size_gb"] = round(size * 0.6, 2) if build_size is None else build_size
+    return w
 
 
 class TestClassify(unittest.TestCase):
@@ -71,25 +81,28 @@ class TestSelect(unittest.TestCase):
         payload = {
             "free_gb": 2, "running_dirs": [],
             "worktrees": [
-                wt("young", idle=15, size=6),
-                wt("oldest", idle=40, size=6),
-                wt("middle", idle=25, size=6),
+                wt("young", idle=15, size=6, build_size=4),
+                wt("oldest", idle=40, size=6, build_size=4),
+                wt("middle", idle=25, size=6, build_size=4),
             ],
         }
         out = wg.select(payload)
         dirs = [w["dir"] for w in out["reclaim"]]
-        # free 2 → target 40 needs +38G → 7 would be needed but only 3 exist (18G);
-        # all three selected, ordered most-idle first.
+        # free 2 → target 40 needs +38G; only 12G of build/ exists, so all three
+        # are selected, ordered most-idle first.
         self.assertEqual(dirs, ["oldest", "middle", "young"])
 
     def test_reclaim_stops_once_target_met(self):
         payload = {
             "free_gb": 20, "running_dirs": [],
-            "worktrees": [wt(f"w{i}", idle=30 + i, size=10) for i in range(5)],
+            "worktrees": [wt(f"w{i}", idle=30 + i, size=10, build_size=6) for i in range(5)],
         }
         out = wg.select(payload)
-        # free 20, target 40 → need +20G → two 10G builds, then stop.
-        self.assertEqual(out["summary"]["reclaim_count"], 2)
+        # free 20, target 40 → need +20G. Each reclaim frees the 6G build/, NOT
+        # the 10G worktree, so it takes four — not the two the old whole-worktree
+        # math projected, which would have stopped 8G short of the target.
+        self.assertEqual(out["summary"]["reclaim_count"], 4)
+        self.assertEqual(out["summary"]["reclaim_gb"], 24.0)
 
     def test_reclaim_skips_worktrees_without_build(self):
         out = wg.select({"free_gb": 2, "running_dirs": [],
@@ -149,6 +162,69 @@ class TestCriticalTier(unittest.TestCase):
                                        wt("stale40", idle=40, size=7)]})
         self.assertEqual([w["dir"] for w in out["reclaim"]][0], "stale40")
         self.assertEqual(set(w["dir"] for w in out["reclaim"]), {"stale40", "keep5"})
+
+
+class TestBuildSizeAccounting(unittest.TestCase):
+    """A reclaim deletes `<worktree>/build` and nothing else. Counting the whole
+    worktree as reclaimed let a plan claim it had reached TARGET_FREE_GB after
+    freeing a fraction of that — the supervisor then stopped deleting while the
+    filesystem was still under ENOSPC pressure."""
+
+    def test_reclaim_gb_counts_build_not_worktree(self):
+        out = wg.select({"free_gb": 2, "running_dirs": [],
+                         "worktrees": [wt("a", idle=40, size=20, build_size=3)]})
+        self.assertEqual(out["summary"]["reclaim_gb"], 3.0)
+
+    def test_projection_advances_by_build_size_only(self):
+        # One 30G worktree with a 5G build. The old math projected 2 + 30 = 32
+        # and stopped; the truth is 2 + 5 = 7, still far under the 40G target.
+        out = wg.select({"free_gb": 2, "running_dirs": [],
+                         "worktrees": [wt("a", idle=40, size=30, build_size=5)]})
+        self.assertEqual(out["summary"]["projected_free_gb"], 7.0)
+        self.assertTrue(out["summary"]["projection_is_lower_bound"])
+
+    def test_a_gc_run_that_frees_less_than_the_worktree_keeps_going(self):
+        # Four idle chains, 25G each but only 5G of build/. Reaching 40 from 5
+        # needs 35G, and 20G is all there is — every one is selected rather than
+        # the first stopping the loop.
+        out = wg.select({
+            "free_gb": 5, "running_dirs": [],
+            "worktrees": [wt(f"w{i}", idle=30 + i, size=25, build_size=5) for i in range(4)],
+        })
+        self.assertEqual(out["summary"]["reclaim_count"], 4)
+        self.assertEqual(out["summary"]["reclaim_gb"], 20.0)
+        # And it is honest that this does not clear the pressure.
+        self.assertLess(out["summary"]["projected_free_gb"], wg.TARGET_FREE_GB)
+
+    def test_unmeasured_build_counts_as_zero_not_as_the_worktree(self):
+        # `build_size_gb` absent: contributes nothing to the projection, so the
+        # loop keeps selecting. Over-projecting here is what stopped the old run
+        # early; under-projecting only costs an extra rebuild.
+        out = wg.select({
+            "free_gb": 2, "running_dirs": [],
+            "worktrees": [wt("unmeasured", idle=40, size=30, build_size=OMIT),
+                          wt("measured", idle=30, size=10, build_size=6)],
+        })
+        self.assertEqual([w["dir"] for w in out["reclaim"]], ["unmeasured", "measured"])
+        self.assertEqual(out["summary"]["reclaim_gb"], 6.0)
+        self.assertEqual(out["summary"]["unmeasured_builds"], 1)
+
+    def test_malformed_build_size_is_not_trusted(self):
+        # A null, a string, a negative, and a bool are all "no measurement", not
+        # a licence to fall back to size_gb.
+        for bad in (None, "4.2", -3, True):
+            w = wt("a", idle=40, size=30, build_size=OMIT)
+            w["build_size_gb"] = bad
+            out = wg.select({"free_gb": 2, "running_dirs": [], "worktrees": [w]})
+            self.assertEqual(out["summary"]["reclaim_gb"], 0.0, f"build_size={bad!r}")
+            self.assertEqual(out["summary"]["projected_free_gb"], 2.0, f"build_size={bad!r}")
+
+    def test_healthy_disk_still_reclaims_nothing(self):
+        out = wg.select({"free_gb": 50, "running_dirs": [],
+                         "worktrees": [wt("a", idle=40, size=30, build_size=20)]})
+        self.assertEqual(out["reclaim"], [])
+        self.assertEqual(out["summary"]["reclaim_gb"], 0.0)
+        self.assertEqual(out["summary"]["projected_free_gb"], 50.0)
 
 
 if __name__ == "__main__":
