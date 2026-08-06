@@ -5356,12 +5356,71 @@ async function fetchCwMessages(append = false) {
   }
 }
 
+// Agent-authored reason text is unbounded — agents routinely write several
+// paragraphs, and the card rendered every character, turning the approval
+// queue into a wall of prose. Clamp with an inline expander.
+const REASON_CLAMP = 300;
+function clampedReason(text, id) {
+  const t = String(text || '');
+  if (t.length <= REASON_CLAMP) return esc(t);
+  const cut = t.slice(0, REASON_CLAMP);
+  return (
+    `<span id="rs-${esc(id)}">${esc(cut)}…</span>` +
+    `<span id="rf-${esc(id)}" style="display:none">${esc(t)}</span> ` +
+    `<a href="#" class="reason-more" data-rid="${esc(id)}" style="font-size:9px">show more</a>`
+  );
+}
+
+// Escalation provenance: how this got to a human at all. There is deliberately
+// no "opens in N minutes" countdown — the gate no longer opens on a timer, so
+// the useful context is what was already tried, not how long until it gives up.
+function critiqueProvenance(item) {
+  const bits = [];
+  if (item.escalationClass === 'failed') {
+    bits.push('critique ran and returned <b>must-fix</b>');
+  } else if (item.selfHealAttempts) {
+    bits.push(`agent asked <b>${item.selfHealAttempts}×</b> to run the critique, did not`);
+  }
+  if (item.denials) bits.push(`${item.denials} gate denials`);
+  bits.push('gate is <b>held shut</b> until you decide');
+  return `<div style="font-size:9px;color:#8b949e;margin-top:5px">${bits.join(' · ')}</div>`;
+}
+
 function renderApprovalItem(item) {
   const coworkerHeader = item.coworkerName
     ? `<div style="font-size:9px;color:#10b981;font-weight:600;margin-bottom:4px">@${esc(item.coworkerName)}</div>`
     : '';
   const safeReason = item.reason ? `\n\n*Reason:* ${esc(item.reason)}` : '';
   let desc;
+  if (item.action === 'critique_gate_bypass') {
+    // Critique-gate cards used to fall through to the generic branch below,
+    // rendering as a bare title ("Critique gate stuck — bypass requested") —
+    // no PR, no session, nothing to decide on. Everything needed to act is in
+    // the payload; this branch surfaces it and links both ends.
+    const target = item.prUrl
+      ? `[${esc(item.repo || '')}#${esc(item.prNumber)}](${esc(item.prUrl)})`
+      : esc(item.repo || 'no PR mapped');
+    const sessionLink = item.sessionId
+      ? ` · [session](?session=${encodeURIComponent(item.sessionId)})`
+      : '';
+    const surface = item.hit ? ` · blocked: ${esc(item.hit)}` : '';
+    const reasonHtml = item.reason
+      ? `<div style="margin-top:6px;font-size:10px"><b>Unmet:</b> ${clampedReason(item.reason, item.approvalId)}</div>`
+      : '';
+    return `<div class="cw-msg assistant">
+    <div class="cw-msg-bubble" style="border-left:3px solid #f59e0b;padding-left:8px">
+      ${coworkerHeader}
+      ${md(`**${esc(item.title || 'Critique gate')}**\n\n${target}${sessionLink}${surface}`)}
+      ${reasonHtml}
+      ${critiqueProvenance(item)}
+      <div style="margin-top:8px">
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Approve" style="background:#238636;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;cursor:pointer;font-size:10px">Approve once</button>
+        <button class="approval-btn" data-qid="${esc(item.approvalId)}" data-decision="Reject" style="background:#da3633;color:#fff;border:none;border-radius:3px;padding:4px 14px;cursor:pointer;font-size:10px">Reject</button>
+      </div>
+    </div>
+    <div class="cw-msg-time">${formatTime(item.createdAt)} <span style="font-size:7px;color:#f59e0b;font-style:italic">critique gate</span></div>
+  </div>`;
+  }
   if (item.action === 'install_packages') {
     desc = `**Install packages:** ${(item.packages || []).map((p) => esc(p)).join(', ')}${safeReason}`;
   } else if (item.action === 'request_rebuild') {
@@ -5816,6 +5875,20 @@ function renderCwMessages() {
           // most recent a2a session for this recipient.
           const senderThreadId = a2aBtn.dataset.sourceThread || '';
           openA2aInspector({ recipientAgGroupId: recipientAg, senderThreadId, recipientName });
+        }
+        return;
+      }
+      // ── "show more" on a clamped approval reason ──
+      const reasonMore = e.target.closest('.reason-more');
+      if (reasonMore) {
+        e.preventDefault();
+        const rid = reasonMore.dataset.rid;
+        const short = document.getElementById(`rs-${rid}`);
+        const full = document.getElementById(`rf-${rid}`);
+        if (short && full) {
+          short.style.display = 'none';
+          full.style.display = 'inline';
+          reasonMore.remove();
         }
         return;
       }
