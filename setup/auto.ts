@@ -296,7 +296,7 @@ async function main(): Promise<void> {
       s.start(`Checking remote OneCLI at ${remoteHost}…`);
       const healthy = await pollHealth(remoteHost, 5000);
       if (!healthy) {
-        s.stop(`Couldn't reach OneCLI at ${remoteHost}.`, 1);
+        s.error(`Couldn't reach OneCLI at ${remoteHost}.`);
         await fail(
           'onecli',
           `Couldn't reach OneCLI at ${remoteHost}.`,
@@ -431,7 +431,7 @@ async function main(): Promise<void> {
       try {
         ({ blockers } = await applyProviderSkill(skillDir, process.cwd()));
       } catch (err) {
-        s.stop(`Couldn't install ${agentProvider}.`, 1);
+        s.error(`Couldn't install ${agentProvider}.`);
         const message = err instanceof Error ? err.message : String(err);
         await fail(
           `add-${agentProvider}`,
@@ -441,7 +441,7 @@ async function main(): Promise<void> {
         return; // unreachable — fail() exits — but narrows blockers for TS
       }
       if (blockers.length) {
-        s.stop(`Couldn't install ${agentProvider}.`, 1);
+        s.error(`Couldn't install ${agentProvider}.`);
         await fail(
           `add-${agentProvider}`,
           `Couldn't install ${agentProvider}.`,
@@ -845,7 +845,7 @@ async function confirmAssistantResponds(): Promise<PingResult> {
   } else {
     const msg =
       result === 'socket_error' ? "Couldn't reach the NanoClaw service." : "Your assistant didn't reply in time.";
-    s.stop(`${k.bold(fitToWidth(msg, suffix))}${k.dim(suffix)}`, 1);
+    s.error(`${k.bold(fitToWidth(msg, suffix))}${k.dim(suffix)}`);
   }
   return result;
 }

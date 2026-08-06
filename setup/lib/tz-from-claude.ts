@@ -62,11 +62,10 @@ export async function resolveTimezoneViaClaude(
     );
     return resolved;
   }
-  s.stop(
+  s.error(
     `${fitToWidth("Couldn't interpret that as a timezone.", suffix)}${k.dim(
       suffix,
     )}`,
-    1,
   );
   return null;
 }
