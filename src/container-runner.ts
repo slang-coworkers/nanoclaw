@@ -56,6 +56,7 @@ import {
   getDiscoveredToolInventory,
   getDiscoveredToolAnnotations,
 } from './mcp-auth-proxy.js';
+import { resolveMcpAllowlist } from './mcp-allowlist.js';
 import { validateAdditionalMounts } from './modules/mount-security/index.js';
 // Provider host-side config barrel — each provider that needs host-side
 // container setup self-registers on import.
@@ -326,34 +327,17 @@ export function resolveOverlayHookFlags(agentGroup: AgentGroup): { hasPlan: bool
   return { hasPlan: true, hasCritique: true };
 }
 
+/**
+ * The tools this group's container may call, per the single allow-list policy
+ * in mcp-allowlist.ts — the same resolver `ncl groups mcp-tools get/set` reads,
+ * so what an operator is shown is what the next spawn enforces.
+ *
+ * The coworker manifest is passed in because this path already resolves it
+ * (behind the registry fingerprint cache) and would otherwise re-read the
+ * registry on every spawn.
+ */
 export function resolveAllowedMcpTools(agentGroup: AgentGroup): string[] {
-  if (agentGroup.is_admin) {
-    const adminOverride = process.env.ADMIN_MCP_TOOLS || '';
-    if (adminOverride) {
-      return adminOverride
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
-    }
-    const inv = getDiscoveredToolInventory();
-    const allTools = Object.values(inv).flat();
-    return allTools.length > 0 ? allTools : [];
-  }
-
-  if (agentGroup.allowed_mcp_tools) {
-    try {
-      const parsed = JSON.parse(agentGroup.allowed_mcp_tools);
-      if (Array.isArray(parsed)) return parsed.filter(Boolean);
-    } catch {
-      /* not JSON, fall through to comma-split */
-    }
-    return agentGroup.allowed_mcp_tools
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
-  }
-
-  return resolveTypeManifest(agentGroup).tools;
+  return resolveMcpAllowlist(agentGroup, resolveTypeManifest(agentGroup).tools).tools;
 }
 
 export function getActiveContainerCount(): number {

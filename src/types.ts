@@ -9,7 +9,11 @@ export interface AgentGroup {
   agent_provider: string | null;
   container_config: string | null; // JSON: { additionalMounts, timeout }
   coworker_type: string | null; // coworker-types.yaml key, e.g. "slang-reader" or "slang-writer"
-  allowed_mcp_tools: string | null; // JSON: string[] of allowed MCP tool names
+  // MCP tool policy — resolved ONLY through src/mcp-allowlist.ts, which owns
+  // the three states: NULL = inherited (coworker-type manifest, or every
+  // discovered tool for an admin group), '*' = unrestricted, JSON string[] =
+  // an explicit list. NULL and '*' are NOT the same thing.
+  allowed_mcp_tools: string | null;
   overlays: string | null; // JSON: string[] of overlay names (e.g. ["critique-gate", "buddy-monitor"])
   routing: string; // 'direct' | 'internal'
   disable_overlays: number; // 0 | 1 — when 1, skip overlay hook injection

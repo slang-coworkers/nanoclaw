@@ -6,6 +6,7 @@ import { restartAgentGroupContainers } from '../../container-restart.js';
 import { createAgentGroup, getAgentGroupByFolder } from '../../db/agent-groups.js';
 import { getDb, hasTable } from '../../db/connection.js';
 import { getAgentGroup, updateAgentGroup } from '../../db/agent-groups.js';
+import { parseAllowlistFlag, resolveMcpAllowlist } from '../../mcp-allowlist.js';
 import { getDiscoveredToolInventory, updateContainerTokenScope } from '../../mcp-auth-proxy.js';
 import { getSession } from '../../db/sessions.js';
 import { writeSessionMessage } from '../../session-manager.js';
@@ -101,43 +102,52 @@ registerResource({
     'mcp-tools get': {
       access: 'open',
       description:
-        "Show a group's MCP tool allow-list alongside the tools each wired MCP server actually exposes. " +
-        'A null allow-list means unrestricted (every discovered tool is callable). Use --id <agent-group-id>.',
+        "Show a group's EFFECTIVE MCP tool allow-list — what the next spawn will actually enforce — " +
+        'alongside the tools each wired MCP server exposes. `state` is one of `explicit` (a list stored ' +
+        'on the group), `inherited` (no list; the coworker-type manifest governs, or every discovered ' +
+        'tool for an admin group) or `unrestricted`. Use --id <agent-group-id>.',
       handler: async (args) => {
         const id = String(args.id ?? '');
         if (!id) throw new Error('--id is required');
         const group = getAgentGroup(id);
         if (!group) throw new Error(`No agent group ${id}`);
-        let allowed: string[] | null = null;
-        if (group.allowed_mcp_tools) {
-          try {
-            const parsed = JSON.parse(group.allowed_mcp_tools);
-            allowed = Array.isArray(parsed) ? parsed.map(String) : null;
-          } catch {
-            allowed = null;
-          }
-        }
+        // Same resolver the spawn path uses, so the displayed policy is the
+        // enforced policy. Reporting a stored NULL as "unrestricted, nothing
+        // blocked" was wrong for every non-admin group: the runtime falls back
+        // to the coworker-type manifest, which restricts.
+        const resolved = resolveMcpAllowlist(group);
         // Discovery is already done by the proxy at server start; this only reads
         // the cache, so it needs no MCP handshake of its own.
         const inventory = getDiscoveredToolInventory();
-        const discovered = Object.values(inventory).flat();
         return {
           agent_group_id: id,
           folder: group.folder,
-          restricted: allowed !== null,
-          allowed_mcp_tools: allowed,
+          state: resolved.state,
+          origin: resolved.origin,
+          restricted: resolved.state !== 'unrestricted',
+          stored_allow_list: group.allowed_mcp_tools ?? null,
+          effective_tools: resolved.tools,
           // nanoclaw's own tools are never proxy-scoped, so they are never
           // restrictable here — surfacing them would imply otherwise.
           discovered_by_server: inventory,
-          blocked: allowed === null ? [] : discovered.filter((t) => !allowed!.includes(t)),
+          blocked: resolved.blocked,
         };
       },
     },
     'mcp-tools set': {
       access: 'approval',
+      // Denied outright for a self-targeting agent — never held for approval.
+      // Under `cli_scope: 'group'` the dispatcher auto-fills `--id` with the
+      // caller's own group, so without this an agent that omits `--id` gets a
+      // human asked to approve its own privilege change, and the request is
+      // only rejected AFTER they say yes.
+      denySelfTarget: true,
       description:
         "Replace a group's MCP tool allow-list and re-scope its RUNNING container immediately (no restart). " +
-        '--id <agent-group-id> --tools \'["mcp__server__tool", …]\', or --tools null to remove all restriction. ' +
+        '--id <agent-group-id> --tools \'["mcp__server__tool", …]\' for an explicit list, ' +
+        '--tools inherit to fall back to the coworker-type manifest (the default), ' +
+        '--tools unrestricted to allow every discovered tool. ' +
+        "NOTE: 'inherit' is NOT 'unrestricted' — it restricts to the type manifest. " +
         'An agent may never change its OWN allow-list.',
       handler: async (args, ctx) => {
         const id = String(args.id ?? '');
@@ -165,32 +175,26 @@ registerResource({
         const group = getAgentGroup(id);
         if (!group) throw new Error(`No agent group ${id}`);
 
-        const raw = args.tools;
-        let tools: string[] | null;
-        if (raw === undefined) throw new Error('--tools is required (a JSON array, or null to unrestrict)');
-        if (raw === null || raw === 'null') {
-          tools = null;
-        } else {
-          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          if (!Array.isArray(parsed)) throw new Error('--tools must be a JSON array of tool names, or null');
-          tools = parsed.map(String);
-          const bad = tools.filter((t) => !t.startsWith('mcp__'));
-          if (bad.length) throw new Error(`Not MCP tool names: ${bad.join(', ')}`);
-        }
+        const stored = parseAllowlistFlag(args.tools);
+        updateAgentGroup(id, { allowed_mcp_tools: stored });
 
-        updateAgentGroup(id, { allowed_mcp_tools: tools === null ? null : JSON.stringify(tools) });
-        // The DB row governs the next spawn; this governs the container running
-        // right now. Without it the change silently does nothing until restart.
-        const rescoped = tools === null ? 0 : updateContainerTokenScope(group.folder, tools);
+        // Resolve through the same policy the next spawn will use, then apply
+        // THAT to the container running right now. The old code re-scoped only
+        // for an explicit list and reported `0` otherwise, which left a live
+        // container on its previous scope while the operator was told the
+        // restriction had been removed.
+        const resolved = resolveMcpAllowlist({ ...group, allowed_mcp_tools: stored });
+        const rescoped = updateContainerTokenScope(group.folder, resolved.tools);
         return {
           agent_group_id: id,
           folder: group.folder,
-          allowed_mcp_tools: tools,
+          state: resolved.state,
+          origin: resolved.origin,
+          stored_allow_list: stored,
+          effective_tools: resolved.tools,
+          blocked: resolved.blocked,
           live_containers_rescoped: rescoped,
-          note:
-            tools === null
-              ? 'Restriction removed. Running containers keep their current scope until respawn.'
-              : `Applied to ${rescoped} running container(s); also persisted for future spawns.`,
+          note: `Effective policy: ${resolved.state} (${resolved.origin}). Applied to ${rescoped} running container(s); also persisted for future spawns.`,
         };
       },
     },
