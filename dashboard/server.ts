@@ -5460,7 +5460,11 @@ export async function handleRequest(
     const shared = join(getDataDir(), 'shared');
     const digestPath = join(shared, 'KB-HEALTH.md');
     const histPath = join(shared, '.kb-health.json');
-    const doctorPath = join(shared, '.kb-doctor.txt');
+    // Structured artifact written by scripts/kb-doctor.py (schema 1). The old
+    // `.kb-doctor.txt` is deliberately NOT read as a fallback: nothing ever wrote
+    // it, and falling back to it silently restores driftCount: 0 — the exact bug
+    // this replaces. If the JSON is absent we report UNAVAILABLE, not clean.
+    const doctorPath = join(shared, '.kb-doctor.json');
     let history: any[] = [];
     try {
       history = JSON.parse(readFileSync(histPath, 'utf-8'));
@@ -5474,14 +5478,67 @@ export async function handleRequest(
     } catch {
       digest = '';
     }
-    let drift: string[] = [];
+    // Four states, and THREE of them are not "clean". The previous reader had
+    // exactly one outcome — an empty array — for missing file, unreadable file,
+    // and genuinely-no-drift alike, so a broken checker was indistinguishable
+    // from a healthy repo.
+    //
+    // Note `complete: false` can coexist with `status: "drift"` — drift was found
+    // AND something else could not run. `status` alone is worst-of and would hide
+    // the second half, so both are surfaced.
+    const DOCTOR_STALE_HOURS = 36; // daily 05:45 cron; >36h means a run was missed
+    let doctor: {
+      available: boolean;
+      status: string | null;
+      complete: boolean | null;
+      generatedAt: string | null;
+      ageHours: number | null;
+      stale: boolean;
+      driftCount: number | null;
+      unknownCount: number | null;
+      drift: string[];
+      unknown: string[];
+      reason: string | null;
+    } = {
+      available: false,
+      status: null,
+      complete: null,
+      generatedAt: null,
+      ageHours: null,
+      stale: false,
+      driftCount: null,
+      unknownCount: null,
+      drift: [],
+      unknown: [],
+      reason: 'no drift report',
+    };
     try {
-      drift = readFileSync(doctorPath, 'utf-8')
-        .split('\\n')
-        .filter((l: string) => l.startsWith('DRIFT'));
+      const raw = JSON.parse(readFileSync(doctorPath, 'utf-8'));
+      if (raw?.schema !== 1) {
+        // An unrecognised schema is unavailable, never assumed clean.
+        doctor.reason = `unsupported kb-doctor schema: ${String(raw?.schema)}`;
+      } else {
+        const ageH = raw.generatedAt ? (Date.now() - new Date(raw.generatedAt).getTime()) / 3600000 : null;
+        doctor = {
+          available: true,
+          status: raw.status ?? null,
+          complete: raw.complete ?? null,
+          generatedAt: raw.generatedAt ?? null,
+          ageHours: ageH === null ? null : Math.round(ageH * 10) / 10,
+          stale: ageH !== null && ageH > DOCTOR_STALE_HOURS,
+          // Count comes from the producer's own tally. Deriving it by filtering
+          // report strings is what produced the original defect.
+          driftCount: raw.counts?.drift ?? null,
+          unknownCount: raw.counts?.unknown ?? null,
+          drift: Array.isArray(raw.drift) ? raw.drift : [],
+          unknown: Array.isArray(raw.unknown) ? raw.unknown : [],
+          reason: null,
+        };
+      }
     } catch {
-      drift = [];
+      doctor.reason = 'no drift report';
     }
+    const drift = doctor.drift;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({
@@ -5493,8 +5550,11 @@ export async function handleRequest(
         shape: latest?.shape ?? null,
         atoms: latest?.atoms ?? null,
         topPages: latest?.top_pages ?? [],
-        driftCount: drift.length,
+        // Kept for existing consumers, but sourced from the producer's count —
+        // null when unavailable, so "unknown" can never render as zero.
+        driftCount: doctor.driftCount,
         drift,
+        doctor,
         digest,
         trend: history.slice(-30).map((h: any) => ({
           date: h.date,
