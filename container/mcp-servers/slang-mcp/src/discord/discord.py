@@ -31,6 +31,13 @@ intents.message_content = True
 intents.members = True
 
 from ..config import IsDebug  # noqa: E402
+from .reply_capacity import (  # noqa: E402
+    EVENT_ACCEPTED,
+    EVENT_FAILED,
+    EVENT_PENDING,
+    fold_rows,
+    new_reservation_id,
+)
 
 # ── Event Forwarding Config ─────────────────────────────────────────────────
 
@@ -126,11 +133,19 @@ def _has_summon(thread_id: str) -> bool:
 
 
 def _read_thread_state(thread_id: str) -> dict:
-    """Replay thread_state.jsonl events and return current state for thread."""
-    state = {"resolved": False, "bot_reply_count": 0}
+    """Replay thread_state.jsonl events and return current state for thread.
+
+    `bot_reply_count` is the CHARGED count — delivered replies plus
+    reservations still in flight — folded by reply_capacity.py, the same
+    module the feedback_collector daemon folds with. A forward whose ingress
+    POST failed is refunded and does not count. Shape is unchanged, so the
+    admission gates below read it exactly as before.
+    """
+    state = {"resolved": False, "bot_reply_count": 0, "failed_reply_count": 0}
     path = _feedback_path("thread_state.jsonl")
     if not os.path.exists(path):
         return state
+    rows = []
     try:
         with open(path) as f:
             for line in f:
@@ -148,26 +163,51 @@ def _read_thread_state(thread_id: str) -> dict:
                     state["resolved"] = True
                 elif e == "unresolved":
                     state["resolved"] = False
-                elif e == "bot_reply":
-                    state["bot_reply_count"] += 1
+                else:
+                    rows.append(row)
     except Exception:
         pass
+    cap = fold_rows(rows, thread_id).get(thread_id)
+    if cap is not None:
+        state["bot_reply_count"] = cap.charged()
+        state["failed_reply_count"] = cap.failed
     return state
 
 
-def _record_thread_event(thread_id: str, event: str) -> None:
+def _record_thread_event(thread_id: str, event: str, reservation_id: str | None = None) -> None:
     """Append an event to thread_state.jsonl."""
     path = _feedback_path("thread_state.jsonl")
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    row = {
+        "thread_id": thread_id,
+        "event": event,
+        "ts": datetime.now(timezone.utc).isoformat(),
+    }
+    if reservation_id:
+        row["reservation_id"] = reservation_id
     try:
         with open(path, "a") as f:
-            f.write(json.dumps({
-                "thread_id": thread_id,
-                "event": event,
-                "ts": datetime.now(timezone.utc).isoformat(),
-            }) + "\n")
+            f.write(json.dumps(row) + "\n")
     except Exception as e:
         logger.error(f"Failed to record thread event {event} for {thread_id}: {e}")
+
+
+def _reserve_reply(thread_id: str) -> str:
+    """Charge one reply BEFORE POSTing and return its reservation id.
+
+    Mirror of the daemon's helper — see reply_capacity.py for why the charge
+    has to precede the POST and why it must be refundable.
+    """
+    rid = new_reservation_id()
+    _record_thread_event(thread_id, EVENT_PENDING, rid)
+    return rid
+
+
+def _settle_reply(thread_id: str, reservation_id: str, delivered: bool) -> None:
+    """Keep the charge on delivery; refund it (durably) on failure."""
+    _record_thread_event(
+        thread_id, EVENT_ACCEPTED if delivered else EVENT_FAILED, reservation_id
+    )
 
 
 # ── REST-based Discord API (no Gateway needed, works through OneCLI proxy) ──
@@ -299,10 +339,12 @@ class SummonView(discord.ui.View):
         with open(os.path.join(FEEDBACK_DIR, "summon_requests.jsonl"), "a") as f:
             f.write(entry + "\n")
 
-        # Mark thread as summoned and pre-record the upcoming first reply
-        # toward the cap. on_message gates rely on these events.
+        # Mark thread as summoned and reserve the upcoming first reply against
+        # the cap. on_message gates rely on these events. The reservation is
+        # settled after the POST — a failed ingress refunds it, so re-clicking
+        # "try again" during an outage no longer burns the thread's quota.
         _record_thread_event(thread_id, "summoned")
-        _record_thread_event(thread_id, "bot_reply")
+        reservation = _reserve_reply(thread_id)
 
         thread_name = getattr(interaction.channel, "name", "?")
         thread_url = (
@@ -336,12 +378,17 @@ class SummonView(discord.ui.View):
             f"Use this exact phrasing — users see it on every first reply."
         )
         posted = await _post_to_dashboard(prompt, thread_id=thread_id)
+        _settle_reply(thread_id, reservation, posted)
 
         if posted:
             button.label = "Bot summoned!"
             button.style = discord.ButtonStyle.green
             button.disabled = True
         else:
+            logger.error(
+                f"Dashboard ingress refused summon for thread {thread_name}; "
+                f"reservation {reservation} refunded (no quota consumed)"
+            )
             button.label = "Couldn't reach bot — try again"
             button.style = discord.ButtonStyle.red
             button.disabled = False
@@ -583,7 +630,11 @@ async def init_discord_client():
         if state["bot_reply_count"] >= MAX_BOT_REPLIES_PER_THREAD:
             return  # cap reached; bot has tapped out
 
-        is_final = (state["bot_reply_count"] + 1) >= MAX_BOT_REPLIES_PER_THREAD
+        # Reserve first: the charge has to precede the POST for admission to be
+        # atomic (see reply_capacity.py), and `is_final` then reads the same
+        # post-reservation number the next admission will see.
+        reservation = _reserve_reply(thread_id)
+        is_final = _read_thread_state(thread_id)["bot_reply_count"] >= MAX_BOT_REPLIES_PER_THREAD
         final_clause = (
             "\n\nThis will be your FINAL allowed reply in this thread. End your "
             "message with a polite single-line note telling the user that further "
@@ -605,18 +656,21 @@ async def init_discord_client():
             f"{final_clause}"
         )
 
-        # Pre-record the upcoming bot reply toward the cap. We do this before
-        # the POST so simultaneous user messages can't both squeak past the
-        # gate by reading the same pre-increment count.
-        _record_thread_event(thread_id, "bot_reply")
         posted = await _post_to_dashboard(prompt, thread_id=thread_id)
+        _settle_reply(thread_id, reservation, posted)
         if posted:
             logger.info(
                 f"Forwarded follow-up to dashboard ingress for thread {channel.name} "
-                f"(bot_reply_count was {state['bot_reply_count']}, final={is_final})"
+                f"(replies charged: {_read_thread_state(thread_id)['bot_reply_count']}"
+                f"/{MAX_BOT_REPLIES_PER_THREAD}, final={is_final})"
             )
         else:
-            logger.error(f"Failed to forward follow-up for thread {channel.name}")
+            # Refunded, not absorbed: a retry costs nothing, and the
+            # reply_failed row makes the outage visible in the audit log.
+            logger.error(
+                f"Failed to forward follow-up for thread {channel.name}; "
+                f"reservation {reservation} refunded (no quota consumed)"
+            )
 
 
     # Start the client
