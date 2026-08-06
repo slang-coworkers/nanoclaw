@@ -48,6 +48,13 @@ container/agent-runner/src/mcp-tools/**.md
 # Top-level config / docs / tooling:
 package.json
 pnpm-lock.yaml
+# The install policy that governs pnpm-lock.yaml — same owner as the lockfile it
+# constrains. Missing until the F01 fix needed to edit them, which is itself the
+# argument for listing them: the supply-chain settings (minimumReleaseAge,
+# onlyBuiltDependencies, minReleaseAge) belong exactly where package.json and
+# pnpm-lock.yaml already live, and nowhere else can be canonical for them.
+pnpm-workspace.yaml
+.npmrc
 tsconfig.json
 vitest.config.ts
 vitest.setup.ts

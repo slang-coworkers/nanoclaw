@@ -114,6 +114,15 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.12
+
+      # Before the install, because the install is what the policy governs.
+      # The three-day quarantine sat inert for months — `minimumReleaseAge` was
+      # nested under a `pnpm:` key that pnpm ignores in silence — and nothing
+      # could tell the difference between enforced and decorative. This probes
+      # pnpm for the answer instead of reading the file and assuming.
+      - name: Assert the release-age policy is visible to pnpm
+        run: bash scripts/check-release-age-policy.sh
+
       - run: pnpm install --frozen-lockfile
       - name: Install agent-runner deps (Bun)
         working-directory: container/agent-runner
