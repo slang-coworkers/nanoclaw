@@ -313,7 +313,17 @@ export function reconcileBypassState(session: Session, dirOverride?: string): vo
         divergence(
           `a bypass was CONSUMED under grant ${consumedGrantId}, which this host never issued for this session`,
         );
-      } else if (!consumed.consumed_at) {
+      } else if (consumed.consumed_at) {
+        // The stamp is cleared every pass, so any stamp we see is a NEW
+        // consumption. A second one against an already-spent grant means the
+        // grant was replayed — the agent re-set `approved` and spent it again
+        // between sweeps. Silently ignoring it (the obvious "already recorded,
+        // nothing to do" reading) would let a replay through with no event at
+        // all, which is precisely the case one-shot exists to prevent.
+        divergence(
+          `grant ${consumedGrantId} was CONSUMED AGAIN (already spent at ${consumed.consumed_at}) — replayed waiver`,
+        );
+      } else {
         markBypassGrantConsumed(consumed.grant_id, nowIso);
       }
     } else {

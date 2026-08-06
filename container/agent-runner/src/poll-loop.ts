@@ -1485,18 +1485,42 @@ export function checkCritiqueGate(
     // hook path was fixed — and this is the more common delivery path.
     if (state.critique_gate_bypass_approved === true) {
       const expiresAt = num(state.critique_gate_bypass_expires_at);
-      if (expiresAt > 0 && nowS >= expiresAt) {
+      // A grant with no usable expiry is NOT an unlimited grant. Treating a
+      // missing or non-numeric value as "no expiry" would let a forged flag
+      // with no expiry at all defeat the TTL entirely — fail closed instead.
+      if (expiresAt <= 0 || nowS >= expiresAt) {
         patchGateState(statePath, {
           critique_gate_bypass_approved: false,
           critique_gate_bypass_expired_at: nowS,
         });
-        // Expired grant: fall through to the normal denial path below.
+        // Expired (or unusable) grant: fall through to the denial path below.
       } else {
         patchGateState(statePath, {
           critique_gate_bypass_approved: false,
           critique_gate_bypass_consumed_grant_id: state.critique_gate_bypass_grant_id ?? null,
           critique_gate_bypass_consumed_at: nowS,
         });
+        // The one-shot property depends on that write. If it did not land the
+        // grant is still `approved` and would be reusable on every subsequent
+        // delivery, so refuse rather than allow — a denied delivery is
+        // recoverable, a permanently reusable waiver is not.
+        let stillApproved = true;
+        try {
+          const after = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as {
+            critique_gate_bypass_approved?: boolean;
+          };
+          stillApproved = after.critique_gate_bypass_approved === true;
+        } catch {
+          stillApproved = true; // unreadable → assume the worst
+        }
+        if (stillApproved) {
+          return {
+            blocked: true,
+            reason:
+              `[critique-gate] REFUSED — the admin bypass could NOT be recorded as consumed, so allowing it ` +
+              `would leave a reusable waiver (${denialReason}).`,
+          };
+        }
         stampFailedOpen(escPath, denialReason, 'admin bypass consumed (one-shot)');
         return { blocked: false };
       }

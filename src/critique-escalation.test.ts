@@ -506,6 +506,25 @@ describe('host-authoritative bypass ledger', () => {
     expect(eventKinds()).toContain('state_divergence');
   });
 
+  it('flags a REPLAYED grant — consumed a second time between sweeps', () => {
+    writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, GRANT);
+    const stamp = (): void => {
+      writeState({
+        ...readState(),
+        critique_gate_bypass_approved: false,
+        critique_gate_bypass_consumed_grant_id: GRANT,
+        critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+      });
+    };
+    stamp();
+    reconcileBypassState(session, dir); // first, legitimate consumption
+    recordEventMock.mockClear();
+    stamp(); // agent re-set approved and spent the same grant again
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).toContain('state_divergence');
+  });
+
   it('flags a CONSUMED bypass the host never granted — the forgery that SUCCEEDS', () => {
     // The gate clears `approved` before allowing delivery, so a successful
     // forgery leaves only a consumption stamp. Gating this behind the

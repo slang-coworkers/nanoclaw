@@ -1238,8 +1238,20 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
     );
   };
 
+  it('a bypass with NO expiry is not an unlimited bypass — it is refused', () => {
+    // Treating a missing expiry as "no expiry" would let a forged flag with no
+    // expiry at all defeat the TTL entirely.
+    cappedState({ critique_gate_bypass_approved: true });
+    expect(gate().blocked).toBe(true);
+    expect(readState().critique_gate_bypass_approved).toBe(false);
+  });
+
   it('admin-approved bypass allows delivery ONCE, then consumes itself', () => {
-    cappedState({ critique_gate_bypass_approved: true, critique_gate_bypass_grant_id: 'appr-1' });
+    cappedState({
+      critique_gate_bypass_approved: true,
+      critique_gate_bypass_grant_id: 'appr-1',
+      critique_gate_bypass_expires_at: Math.floor(Date.now() / 1000) + 3600,
+    });
     expect(gate().blocked).toBe(false);
     // Spent: flag cleared, consumption attributed to the granting approval.
     expect(readState().critique_gate_bypass_approved).toBe(false);
