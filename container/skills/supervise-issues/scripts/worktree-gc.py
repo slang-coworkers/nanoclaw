@@ -29,6 +29,20 @@ pressure can't touch). Still build-only, still never the worktree. This is the
 lever the 2026-07-13 emergency lacked: at <5GB free the crash risk outweighs
 one rebuild's churn.
 
+MEASURE `build/`, NOT THE WORKTREE. Every reclaim deletes `<worktree>/build` and
+nothing else, so `build_size_gb` — not `size_gb` — is what a reclaim frees.
+Discovery used to report the whole-worktree `du` as the reclaimable amount, and
+the projection added that, so a plan could claim it had reached TARGET_FREE_GB
+after deleting a fraction of it and STOP while the filesystem was still under
+ENOSPC pressure. A worktree whose `build/` was never measured counts as ZERO
+here: under-projecting keeps the supervisor deleting, over-projecting is what
+made it stop early.
+
+The projection is a LOWER BOUND, never a result. `summary.projected_free_gb`
+says what the plan would free if every build is exactly its measurement; the
+caller must re-measure ACTUAL free space with `df` after each deletion and stop
+on that, never on the projection (see reference.md → *Worktree GC*).
+
 Pure I/O split (mirrors pull-universe.sh → scan.py): the caller resolves each
 worktree's gh state and passes it in as JSON; `classify()` and `select()` are
 pure and tested by test_worktree_gc.py. Input schema (stdin or --in):
@@ -37,11 +51,15 @@ pure and tested by test_worktree_gc.py. Input schema (stdin or --in):
     "free_gb": 2,
     "running_dirs": ["wt-slang-12073", ...],   # dirs with a live/running session
     "worktrees": [
-      {"dir": "wt-slang-11511", "size_gb": 6.7, "has_build": true,
-       "issue_state": "OPEN", "pr_state": "OPEN", "pr_idle_days": 34},
+      {"dir": "wt-slang-11511", "size_gb": 6.7, "build_size_gb": 4.1,
+       "has_build": true, "issue_state": "OPEN", "pr_state": "OPEN",
+       "pr_idle_days": 34},
       ...
     ]
   }
+
+`size_gb` is the whole worktree and is reported only. `build_size_gb` is the
+`build/` directory alone and is the ONLY figure the reclaim math uses.
 
 Output: {"tiers": {...}, "reclaim": [...], "summary": {...}} — `reclaim` is the
 ordered STALE-OPEN build-reclaim dispatch list (empty unless under pressure).
@@ -83,10 +101,25 @@ def classify(wt, running_dirs):
     return "KEEP"
 
 
+def build_gb(wt):
+    """GB a reclaim of this worktree actually frees: its `build/` directory ONLY.
+
+    `size_gb` is the whole worktree — source, .git, and build — and deleting
+    `build/` frees none of the rest. An UNMEASURED build counts as 0.0 rather
+    than falling back to `size_gb`, because the two errors are not symmetric:
+    under-projecting only makes the supervisor keep deleting, while
+    over-projecting makes it declare the target met and stop with the disk still
+    full. That asymmetry is the whole finding."""
+    v = wt.get("build_size_gb")
+    if isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0:
+        return float(v)
+    return 0.0
+
+
 def select(payload):
     """Classify every worktree, then — only under disk pressure — pick the
-    STALE-OPEN build-reclaim set oldest-PR-first until free would reach
-    TARGET_FREE_GB. Pure: no filesystem, no gh calls."""
+    STALE-OPEN build-reclaim set oldest-PR-first until the PROJECTED free would
+    reach TARGET_FREE_GB. Pure: no filesystem, no gh calls."""
     free = payload.get("free_gb", 0)
     running = set(payload.get("running_dirs", []))
     worktrees = payload.get("worktrees", [])
@@ -96,6 +129,7 @@ def select(payload):
         tiers[classify(wt, running)].append(wt)
 
     reclaim = []
+    projected = free
     under_pressure = free < PRESSURE_GATE_GB
     critical = free < CRITICAL_GATE_GB
     if under_pressure:
@@ -118,12 +152,12 @@ def select(payload):
             ]
             cands += idle_keep
         cands.sort(key=lambda w: w.get("pr_idle_days") or 0, reverse=True)
-        projected = free
         for w in cands:
             if projected >= TARGET_FREE_GB:
                 break
             reclaim.append(w)
-            projected += w.get("size_gb", 0)
+            # build/ only — the reclaim deletes nothing else.
+            projected += build_gb(w)
 
     summary = {
         "free_gb": free,
@@ -131,7 +165,17 @@ def select(payload):
         "critical": critical,
         "counts": {k: len(v) for k, v in tiers.items()},
         "reclaim_count": len(reclaim),
-        "reclaim_gb": round(sum(w.get("size_gb", 0) for w in reclaim), 1),
+        # Sum of build/ sizes — what deleting this list would actually free.
+        "reclaim_gb": round(sum(build_gb(w) for w in reclaim), 1),
+        # Reclaims whose build/ was never measured. They are still dispatched
+        # (deleting them can only help); they simply contribute 0 to the
+        # projection, so a non-zero count here means reclaim_gb understates.
+        "unmeasured_builds": sum(1 for w in reclaim if build_gb(w) == 0.0),
+        # A LOWER BOUND on where free space lands, never a result: re-measure
+        # with `df` after each deletion and stop on the MEASURED number. Trusting
+        # this figure is how a run stopped while still under ENOSPC pressure.
+        "projected_free_gb": round(projected, 1),
+        "projection_is_lower_bound": True,
         "thresholds": {
             "STALE_OPEN_IDLE_DAYS": STALE_OPEN_IDLE_DAYS,
             "PRESSURE_GATE_GB": PRESSURE_GATE_GB,

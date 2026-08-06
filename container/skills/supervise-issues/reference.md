@@ -231,9 +231,18 @@ df -BG --output=avail /workspace/extra/ephemeral | tail -1 | tr -dc '0-9'   # GB
 # exactly the worktrees and never the base checkouts. Do NOT use a `wt-*` glob: fixer
 # worktrees are named `wt-slang-<n>`, but reviewer ones are freehand (`slang-<n>-verify`,
 # `slang-prNNNNN-r2`, `slang-clarity-*`, `wt-<n>-review`) and a glob silently misses them.
+#
+# Measure BOTH: the whole worktree (reporting only) and `build/` (what a reclaim
+# actually deletes). Reporting the whole-worktree `du` as the reclaimable amount is
+# what let the GC claim the target was met after freeing a fraction of it.
+# Emits: <size_gb>\t<build_size_gb>\t<dir>, biggest build first.
 find /workspace/extra/ephemeral/prod-groups -mindepth 2 -maxdepth 3 -name .git -type f \
-  -not -path '*/.*/*' 2>/dev/null \
-  | sed 's#/\.git$##' | while read -r wt; do echo "$(du -sh "$wt" | cut -f1)  $wt"; done | sort -rh
+  -not -path '*/.*/*' 2>/dev/null | sed 's#/\.git$##' | while read -r wt; do
+    tot=$(du -sk "$wt" 2>/dev/null | cut -f1)
+    bld=0; [ -d "$wt/build" ] && bld=$(du -sk "$wt/build" 2>/dev/null | cut -f1)
+    awk -v t="${tot:-0}" -v b="${bld:-0}" -v d="$wt" \
+      'BEGIN { printf "%.1f\t%.1f\t%s\n", t/1048576, b/1048576, d }'
+  done | sort -rn -k2
 ```
 
 - Surface `worktree-vol: <N>GB free` in every board rollup.
@@ -293,9 +302,21 @@ For an OPEN PR also read its idle age (`gh pr view <pr> --json updatedAt` → da
 by `test_worktree_gc.py`), which owns the thresholds and the pressure math in one place:
 
 ```bash
-# payload: {free_gb, running_dirs:[...], worktrees:[{dir,size_gb,has_build,issue_state,pr_state,pr_idle_days},...]}
+# payload: {free_gb, running_dirs:[...],
+#           worktrees:[{dir,size_gb,build_size_gb,has_build,issue_state,pr_state,pr_idle_days},...]}
+# size_gb is the whole worktree and is reported only; build_size_gb (from the `du -sk
+# "$wt/build"` above) is the ONLY figure the reclaim math uses, because build/ is all a
+# reclaim deletes. Omit build_size_gb and it counts as 0 — the script then under-projects
+# and keeps selecting, which is the safe direction.
 python3 scripts/worktree-gc.py < payload.json > gc-out.json   # → {tiers, reclaim, summary}
 ```
+
+`summary.projected_free_gb` is a LOWER BOUND, not a result (`projection_is_lower_bound:
+true`). **After each build deletion, re-measure free space with `df` and decide on the
+MEASURED number** — stop when measured free ≥ `TARGET_FREE_GB`, and if the list runs out
+before that, say so and escalate rather than reporting the target met. Trusting the
+projection is exactly how a run stopped deleting while the volume was still near ENOSPC.
+`summary.unmeasured_builds` > 0 means `reclaim_gb` understates the total further still.
 
 The four tiers it returns (semantics, not numbers — the numbers live in the script):
 
@@ -331,12 +352,18 @@ inside the worktree:
 > Reply 'gc done <freed>G', or 'active' to keep it.
 
 For each worktree `scripts/worktree-gc.py` puts in `reclaim` (STALE-OPEN under pressure), the
-dispatch reclaims the regenerable build only — the worktree, branch, and PR stay:
+dispatch reclaims the regenerable build only — the worktree, branch, and PR stay. Quote
+`build_size_gb`, never the worktree size: the coworker is being asked to delete `build/`, and
+naming the larger number both misstates the ask and inflates the reclaim you expect back.
 
-> [Supervisor — build-reclaim — gh-issue-X/Y-N] Issue #<num> `OPEN`, PR #<pr> `OPEN` but idle <days>d; reclaiming regenerable `build/` in `<dir>` (~<size>G) under disk pressure.
+> [Supervisor — build-reclaim — gh-issue-X/Y-N] Issue #<num> `OPEN`, PR #<pr> `OPEN` but idle <days>d; reclaiming regenerable `build/` in `<dir>` (~<build_size>G of a <size>G worktree) under disk pressure.
 > Run `rm -rf /workspace/agent/<dir>/build` (gitignored cmake output — source, branch, uncommitted
 > work, and the PR are untouched; rebuild on resume). Do **not** remove the worktree.
 > Reply 'reclaimed <freed>G', or 'active' to keep the build.
+
+After each `reclaimed` reply, re-run the `df` above. Continue down the `reclaim` list until the
+MEASURED free reaches `TARGET_FREE_GB` or the list is exhausted — never stop on
+`projected_free_gb`.
 
 Save-then-remove is mandatory — even merged-PR worktrees often hold untracked files that
 `remove --force` would destroy (reviewer worktrees in particular carry ad-hoc review notes). Track
