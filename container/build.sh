@@ -160,10 +160,33 @@ if [ -n "$LOCK_SHA" ]; then
     BUILD_ARGS+=(--build-arg "AGENT_RUNNER_LOCK_SHA256=$LOCK_SHA")
 fi
 
-# Fetch external skills declared in coworker-types.yaml
+# Fetch external skills declared in coworker-types.yaml.
+#
+# This used to be `|| echo "⚠ ... — using cached"`, which made the fail-loud
+# contract in fetch-skills.sh pointless for the one caller that matters most: a
+# rate-limited fetch left container/skills/ partial, the build carried on, and
+# the damage surfaced later as
+# `references unknown skill/workflow/overlay: slangpy-build, ...`.
+# Building an image off a known-incomplete skill tree is never what you want.
+#
+# ALLOW_STALE_SKILLS=1 opts out explicitly — for building offline, or off a
+# deliberately pinned container/skills/. It has to be asked for.
 if [ -x "$PROJECT_ROOT/scripts/fetch-skills.sh" ]; then
     echo "Fetching external skills..."
-    bash "$PROJECT_ROOT/scripts/fetch-skills.sh" || echo "⚠ External skill fetch failed — using cached"
+    set +e
+    bash "$PROJECT_ROOT/scripts/fetch-skills.sh"
+    FETCH_RC=$?
+    set -e
+    if [ "$FETCH_RC" -ne 0 ]; then
+        if [ "${ALLOW_STALE_SKILLS:-}" = "1" ]; then
+            echo "⚠ External skill fetch failed (rc=$FETCH_RC) — continuing on cached skills (ALLOW_STALE_SKILLS=1)"
+        else
+            echo "✗ External skill fetch failed (rc=$FETCH_RC) — refusing to build an image" >&2
+            echo "  off an incomplete container/skills/. Fix the fetch, or re-run with" >&2
+            echo "  ALLOW_STALE_SKILLS=1 to build on whatever is cached on disk." >&2
+            exit "$FETCH_RC"
+        fi
+    fi
 fi
 
 echo "Building NanoClaw agent container image..."
