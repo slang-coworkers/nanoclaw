@@ -34,6 +34,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { REVIEW_PAGE_CAP, aggregateReviewCycles, countHumanReview, fetchAllReviewsWith } from './funnel-metrics.js';
 import { initDb } from '../src/db/connection.js';
 import { getDb } from '../src/db/connection.js';
 import { DATA_DIR } from '../src/config.js';
@@ -45,6 +46,15 @@ const INSTALL_BY_OWNER: Record<string, string> = {
   'slang-coworkers': '123550981',
 };
 const BOT_LOGIN = 'nv-slang-bot[bot]';
+
+// Review-cost helpers live in funnel-metrics.ts so they can be unit-tested —
+// this file calls main() at import, so a test importing it would run the funnel.
+const fetchAllReviews = (repo: string, pr: number): any[] | null =>
+  fetchAllReviewsWith(
+    (page) => gh(repo, `pulls/${pr}/reviews?per_page=100&page=${page}`),
+    (n) =>
+      console.error(`  WARNING ${repo}#${pr}: hit the ${REVIEW_PAGE_CAP}-page review cap at ${n}; counts are a floor`),
+  );
 
 // Repos whose issues form the denominator of the issue partition (the per-issue
 // pass below). The PR spine discovers repos from pr_session_mappings, but the
@@ -320,6 +330,11 @@ async function main() {
     isDraft: boolean | null;
     prAuthor: string | null;
     authoredByBot: boolean | null; // true = nv-slang-bot's own PR (in the funnel spine); false = human-authored
+    // Human review cost. null when the reviews fetch fails / is uncached — which is
+    // NOT the same as zero, and is excluded from the aggregate rather than counted
+    // as a clean PR. See reviewCycles below.
+    humanReviewRounds: number | null; // CHANGES_REQUESTED submissions by a human other than the author
+    humanReviewers: number | null; // distinct human reviewers (0 = merged unreviewed)
   }
   const approverByPrFull = new Map<string, ApproverDecision>();
   try {
@@ -349,6 +364,8 @@ async function main() {
         isDraft: null,
         prAuthor: null,
         authoredByBot: null,
+        humanReviewRounds: null,
+        humanReviewers: null,
       });
     }
   } catch {
@@ -365,6 +382,15 @@ async function main() {
     d.isDraft = typeof pr.draft === 'boolean' ? pr.draft : null;
     d.prAuthor = pr.user?.login ?? null;
     d.authoredByBot = d.prAuthor ? d.prAuthor === BOT_LOGIN : null;
+    // How much HUMAN review did this PR cost? Same cached gh(), so a warm disk
+    // cache makes this nearly free. Reviews by a bot, and self-reviews (GitHub
+    // does record those), are not human cost and are excluded.
+    const reviews = fetchAllReviews(d.repo, d.pr);
+    if (reviews) {
+      const { rounds, reviewers } = countHumanReview(reviews, d.prAuthor);
+      d.humanReviewRounds = rounds;
+      d.humanReviewers = reviewers;
+    }
   }
   // Newest decision first for display.
   const approverDecisions = [...approverByPrFull.values()].sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : -1));
@@ -689,8 +715,16 @@ async function main() {
     return { prod: count(pred, 'prod'), lego: count(pred, 'lego'), total: count(pred) };
   }
 
+  // ── human review cost, aggregated from the enriched approver ledger ──────────
+  // Companion to Autonomy (how much ships) and regression-quality (does it hold
+  // up): what did that throughput cost a human reviewer? The aggregation lives in
+  // funnel-metrics.ts, where the traps it encodes (unreviewed != clean, a failed
+  // fetch != zero, merged-only scope) are covered by fixture tests.
+  const reviewCycles = aggregateReviewCycles(approverDecisions);
+
   const snapshot = {
     generatedAt: STAMP,
+    reviewCycles, // human review cost by author class; see the caveat above
     routedWindowed: routedSet.size,
     board,
     routedNoPr, // legacy (PR-mapping-derived); kept for back-compat
