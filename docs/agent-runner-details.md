@@ -203,7 +203,9 @@ SDK message (so the idle timer stays honest) and maps recognized messages to `Pr
 
 ### Codex Provider
 
-Wraps `@openai/codex-sdk`.
+Drives the `codex` CLI directly over its app-server JSON-RPC protocol. (It used to
+wrap `@openai/codex-sdk`; that approach is deprecated and the dependency is gone —
+see `providers/codex-app-server.ts`.)
 
 ```typescript
 class CodexProvider implements AgentProvider {
