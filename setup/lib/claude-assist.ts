@@ -133,6 +133,90 @@ export async function offerClaudeAssist(
   return true;
 }
 
+/** One `git status --porcelain=v1 --untracked-files=all` entry. */
+export interface StatusEntry {
+  /** The two-character XY status code. `??` marks an untracked path. */
+  code: string;
+  /** Repo-relative path. */
+  path: string;
+}
+
+/**
+ * Everything uncommitted in the tree: staged, unstaged, AND untracked.
+ *
+ * `git diff --quiet` — the test this replaces — reports a clean tree for both of
+ * the last two. An assist that committed its merge but left a staged fixup or a
+ * half-written file behind therefore passed validation, and the setup step that
+ * consumed the "composed" tree next picked up uncommitted agent output.
+ *
+ * A `git status` that cannot run returns a synthetic entry rather than an empty
+ * list: not being able to inspect the tree must never read as "the tree is clean".
+ */
+export function worktreeResidue(projectRoot: string): StatusEntry[] {
+  const r = spawnSync('git', ['status', '--porcelain=v1', '--untracked-files=all', '-z'], {
+    cwd: projectRoot,
+    encoding: 'utf-8',
+  });
+  if (r.status !== 0) {
+    return [{ code: '!!', path: `<git status failed: ${(r.stderr ?? '').trim()}>` }];
+  }
+
+  const fields = (r.stdout ?? '').split('\0');
+  const entries: StatusEntry[] = [];
+  for (let i = 0; i < fields.length; i++) {
+    const f = fields[i];
+    if (!f) continue;
+    const code = f.slice(0, 2);
+    entries.push({ code, path: f.slice(3) });
+    // Rename/copy entries carry the ORIGINAL path as a separate NUL field.
+    if (code[0] === 'R' || code[0] === 'C') i++;
+  }
+  return entries;
+}
+
+/**
+ * Delete exactly `paths` (repo-relative), then prune any directory they emptied.
+ *
+ * Deliberately NOT `git clean -fdx`. That would also take node_modules, .env,
+ * local build caches — everything a developer's tree legitimately holds and git
+ * ignores. Destroying those to tidy up after a failed merge assist is a far worse
+ * outcome than the residue itself, so only paths this run OBSERVED appearing are
+ * removed. Anything outside `projectRoot` is refused.
+ */
+export function removeRecordedFiles(projectRoot: string, paths: string[]): void {
+  const root = path.resolve(projectRoot);
+  const inside = (abs: string): boolean => abs.startsWith(root + path.sep);
+
+  for (const rel of paths) {
+    const abs = path.resolve(root, rel);
+    if (!inside(abs)) continue;
+    // eslint-disable-next-line no-empty -- best-effort cleanup; the caller re-checks
+    try { fs.rmSync(abs, { force: true }); } catch {}
+  }
+
+  // Deepest first, so `a/b/c` is gone before we try `a/b`.
+  const dirs = [...new Set(paths.map((rel) => path.dirname(rel)))]
+    .filter((d) => d && d !== '.')
+    .sort((a, b) => b.length - a.length);
+  for (const d of dirs) {
+    let cur = path.resolve(root, d);
+    while (inside(cur)) {
+      try {
+        fs.rmdirSync(cur); // throws if the directory still holds anything
+      } catch {
+        break;
+      }
+      cur = path.dirname(cur);
+    }
+  }
+}
+
+function formatResidue(entries: StatusEntry[]): string {
+  const shown = entries.slice(0, 10).map((e) => `  ${e.code} ${e.path}`);
+  if (entries.length > shown.length) shown.push(`  … and ${entries.length - shown.length} more`);
+  return shown.join('\n');
+}
+
 /**
  * LLM-assisted merge fallback (opt-in; the caller gates on NANOCLAW_LLM_MERGE).
  * Used when deterministic merge-train couldn't compose `branch` — a conflict
@@ -141,11 +225,29 @@ export async function offerClaudeAssist(
  * Claude to resolve keep-both, then re-validates the build OURSELVES — the build,
  * not Claude's summary, is the source of truth. Rolls back to the clean
  * pre-attempt tree on any failure. Returns true iff the tree is composed + builds.
+ *
+ * "Composed" means committed. Leftover staged or untracked files are a HARD
+ * failure, not a detail: the caller's next step reads the tree, and uncommitted
+ * agent output there is indistinguishable from work that landed.
  */
 export async function composeMergeViaClaude(
   branch: string,
   projectRoot: string = process.cwd(),
 ): Promise<boolean> {
+  // Checked before anything else, including installing/authenticating Claude:
+  // rollback restores tracked files from `startHead` and deletes untracked ones
+  // this run saw appear. Neither is safe if the tree was already dirty — we would
+  // discard the developer's uncommitted work, or fail to attribute residue.
+  const before = worktreeResidue(projectRoot);
+  if (before.length > 0) {
+    p.log.error(
+      `Not running the merge assist: ${projectRoot} has uncommitted changes, so a ` +
+        'rollback could not restore it. Commit or stash them first.',
+    );
+    p.log.message(k.dim(formatResidue(before)));
+    return false;
+  }
+
   if (!(await ensureClaudeReady(projectRoot))) return false;
 
   const rev = (args: string): string =>
@@ -160,14 +262,40 @@ export async function composeMergeViaClaude(
   const built =
     spawnSync('pnpm', ['run', 'build'], { cwd: projectRoot, stdio: 'ignore' }).status === 0;
   const advanced = rev('rev-parse HEAD') !== startHead;
-  const clean = spawnSync('git', ['diff', '--quiet'], { cwd: projectRoot }).status === 0;
+  const residue = worktreeResidue(projectRoot);
 
-  if (built && advanced && clean) {
+  if (built && advanced && residue.length === 0) {
     p.log.success(`Claude composed ${branch} and the tree builds.`);
     return true;
   }
+
+  if (residue.length > 0) {
+    // The build passing does not redeem this: a green build over uncommitted
+    // files is precisely how unreviewed agent output reached the next step.
+    p.log.error(
+      `Claude left ${residue.length} uncommitted change(s) after composing ${branch} — ` +
+        'treating that as a failed composition.',
+    );
+    p.log.message(k.dim(formatResidue(residue)));
+  }
+
   spawnSync('git', ['merge', '--abort'], { cwd: projectRoot, stdio: 'ignore' });
   spawnSync('git', ['reset', '--hard', startHead], { cwd: projectRoot, stdio: 'ignore' });
+  // `reset --hard` restores tracked files and leaves untracked ones exactly where
+  // they are; the pre-flight check above guarantees every untracked path here
+  // appeared during the assist, so removing precisely these is both sufficient
+  // and the most this may safely delete.
+  removeRecordedFiles(
+    projectRoot,
+    residue.filter((e) => e.code === '??').map((e) => e.path),
+  );
+
+  const after = worktreeResidue(projectRoot);
+  if (after.length > 0) {
+    p.log.warn(`Rolled back ${branch}, but the tree is still not clean — inspect it:`);
+    p.log.message(k.dim(formatResidue(after)));
+    return false;
+  }
   p.log.warn(`Claude couldn't compose ${branch} into a building tree — rolled back.`);
   return false;
 }
@@ -187,8 +315,13 @@ function buildMergePrompt(branch: string, currentBranch: string, startHead: stri
     '4. Run `pnpm run build`. Fix every TypeScript error — they usually mean a file you kept',
     '   references a symbol you dropped from another file; restore it so both sides cohere.',
     '5. When `pnpm run build` exits 0, commit: git commit --no-edit. Do NOT push.',
+    '6. Leave NOTHING uncommitted. `git status --porcelain --untracked-files=all` must',
+    '   print nothing when you stop — no staged fixups, no scratch files, no leftover',
+    '   build artifacts. A non-empty status is treated as a failed composition and',
+    '   rolled back, however good the merge itself was.',
     '',
-    `If you cannot make it build, run \`git reset --hard ${startHead}\` and stop.`,
+    `If you cannot make it build, run \`git reset --hard ${startHead}\`, delete any files`,
+    'you created, and stop.',
   ].join('\n');
 }
 
