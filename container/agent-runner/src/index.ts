@@ -80,8 +80,9 @@ async function main(): Promise<void> {
   }
 
   // Keep the primary clones fresh before we load their .claude/ + CLAUDE.md and
-  // before any worktree is branched off them. FETCH-ONLY (never pull/checkout —
-  // the clone is shared across all group sessions), recency-guarded so a
+  // before any worktree is branched off them. Fast-forward only (never merge,
+  // rebase, or reset — the clone is shared across all group sessions), guarded
+  // by a per-clone lock plus a recency check re-taken inside that lock so a
   // group-restart's simultaneous boots don't storm the remote, and best-effort
   // (never blocks boot). See refresh-clones.ts.
   refreshPrimaryClones(additionalDirectories, { log });
