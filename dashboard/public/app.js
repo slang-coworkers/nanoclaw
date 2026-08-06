@@ -413,7 +413,10 @@ async function loadFunnel() {
 
   // PR-approver (Verity) shadow-mode ledger — ALL decisions, not just the bot-
   // authored PRs that appear in the funnel spine. Appended below the partition.
-  if (board) board.innerHTML = partHtml + funnelApproverPanel(snap.approverDecisions || []);
+  // reviewCycles rides inside the funnel snapshot, so it needs no extra fetch.
+  if (board)
+    board.innerHTML =
+      partHtml + reviewCyclesHtml(snap.reviewCycles) + funnelApproverPanel(snap.approverDecisions || []);
 
   // nv-slang-bot contribution table (separate snapshot: /api/bot-contributions).
   if (detail) {
@@ -430,6 +433,29 @@ async function loadFunnel() {
       if (btn) btn.addEventListener('click', () => triggerBotcRefresh(btn));
     } catch {
       detail.innerHTML = '';
+    }
+
+    // Regression quality is a genuinely INDEPENDENT snapshot with its own host
+    // cron, so it gets its own try/catch and its own container. Nesting it in
+    // the block above meant a bot-contributions network error or malformed body
+    // jumped to that catch, skipped this fetch entirely and cleared the pane —
+    // the two panels have no reason to fail together.
+    const rqBox = document.createElement('div');
+    detail.appendChild(rqBox);
+    try {
+      const rq = await fetch('/api/regression-quality');
+      if (rq.ok) {
+        rqBox.innerHTML = regressionQualityHtml(await rq.json());
+      } else {
+        const jq = await rq.json().catch(() => ({}));
+        rqBox.innerHTML =
+          '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Regression quality: no snapshot yet. ' +
+          esc(jq.hint || '') +
+          '</div>';
+      }
+    } catch (e) {
+      rqBox.innerHTML =
+        '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Regression quality: failed to load.</div>';
     }
   }
 }
@@ -522,6 +548,173 @@ function funnelApproverPanel(decisions) {
         ${empty}
       </details>
     </div>`;
+}
+
+// Human review cost by author class. Rides inside the funnel snapshot
+// (snap.reviewCycles) — no extra fetch.
+//
+// THIS PANEL MUST SHOW ITS DENOMINATORS. meanRounds alone inverts the signal: a
+// PR merged with no human review scores zero rounds, so a bot looks BETTER the
+// less anyone checks its work. Coverage and unreviewed sit next to the headline
+// for exactly that reason, and the two exclusions stay separate — notMerged is a
+// deliberate scope choice, unclassified is a failed lookup, and conflating them
+// would hide a degraded run behind a clean-looking number.
+function reviewCyclesHtml(rc) {
+  if (!rc || (!rc.bot && !rc.human)) return '';
+  const cell = (c) => {
+    if (!c) return '<td colspan="6" style="padding:2px 12px;color:var(--text-muted)">—</td>';
+    // null (not 0) when nothing was reviewed: "no data", never "0 rounds".
+    const nd = '<span style="color:var(--text-muted)">no data</span>';
+    // Headline is the FEEDBACK-session round (CHANGES_REQUESTED or COMMENTED,
+    // collapsed per reviewer). meanChangesRequested is kept beside it and will
+    // sit near zero — in the census that was 5 CHANGES_REQUESTED against 1,178
+    // COMMENTED, which is exactly why it cannot be the headline on its own.
+    const mean =
+      c.meanFeedbackRounds === null || c.meanFeedbackRounds === undefined
+        ? nd
+        : '<b>' + c.meanFeedbackRounds + '</b>';
+    const meanCr =
+      c.meanChangesRequested === null || c.meanChangesRequested === undefined ? nd : String(c.meanChangesRequested);
+    const hasCov = c.coveragePct !== null && c.coveragePct !== undefined;
+    const cov = hasCov ? c.coveragePct + '%' : '—';
+    const warn = hasCov && c.coveragePct < 50 ? ';color:var(--warn,#c90)' : '';
+    return (
+      '<td style="text-align:right;padding:2px 12px">' + mean + '</td>' +
+      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' + meanCr + '</td>' +
+      '<td style="text-align:right;padding:2px 12px">' + (c.reviewedPrs || 0) + '</td>' +
+      '<td style="text-align:right;padding:2px 12px' + warn + '">' + cov + '</td>' +
+      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' + (c.unreviewedPrs || 0) + '</td>' +
+      '<td style="text-align:right;padding:2px 12px' + (c.unknownPrs ? ';color:var(--warn,#c90)' : ';color:var(--text-muted)') + '">' +
+        (c.unknownPrs || 0) + '</td>'
+    );
+  };
+  const th = (l, r) =>
+    '<th style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 12px;border-bottom:1px solid var(--border)">' + l + '</th>';
+  // The producer publishes its own definition; render it rather than hardcoding
+  // a description that can drift away from the metric.
+  const roundRule =
+    rc.roundDefinition === 'feedback-session'
+      ? 'A round is a human feedback session — CHANGES_REQUESTED or COMMENTED, collapsed per reviewer within ' +
+        (rc.sessionGapMinutes || 30) +
+        ' min. APPROVED makes you a reviewer but costs no round.'
+      : 'Round definition unavailable from this snapshot.';
+  const excl = [];
+  if (rc.notMergedExcluded) excl.push(rc.notMergedExcluded + ' not merged (out of scope)');
+  if (rc.unclassifiedPrs) excl.push('<b>' + rc.unclassifiedPrs + ' unclassified (lookup failed)</b>');
+  return (
+    '<div style="margin-top:16px">' +
+    '<div style="font-weight:600;margin-bottom:4px">Human review cost ' +
+    '<span style="font-weight:400;color:var(--text-muted)">— Verity-decided merged PRs</span></div>' +
+    '<table style="border-collapse:collapse;font-size:10px">' +
+    '<tr>' + th('author') + th('mean rounds', 1) + th('of which CR', 1) + th('reviewed', 1) + th('coverage', 1) + th('unreviewed', 1) + th('unknown', 1) + '</tr>' +
+    '<tr><td style="padding:2px 12px">bot</td>' + cell(rc.bot) + '</tr>' +
+    '<tr><td style="padding:2px 12px">human</td>' + cell(rc.human) + '</tr>' +
+    '</table>' +
+    '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
+    roundRule +
+    ' Mean is over <i>reviewed</i> PRs only; <b>unknown</b> are lookup failures excluded from coverage, ' +
+    'so a high coverage beside a high unknown is not reassurance. Population is PRs the approver ' +
+    'recorded, not every merged PR.' +
+    (excl.length ? '<br>Excluded: ' + excl.join(' · ') : '') +
+    '</div></div>'
+  );
+}
+
+// Regression quality — /api/regression-quality (scripts/regression-quality.py).
+//
+// Attribution coverage is the load-bearing number and it is LOW: only issues
+// citing a CAUSAL reference can be attributed, so the bot/human split is a
+// FLOOR, not a total. Printing the split without the coverage overstates how
+// much is actually known.
+function regressionQualityHtml(rq) {
+  if (!rq) return '';
+
+  // Snapshot age. The route stamps snapshotMtime from the file mtime because the
+  // producer writes no timestamp of its own; without this a cron that quietly
+  // died still renders as current data.
+  let freshness = '';
+  if (rq.snapshotMtime) {
+    const ageH = (Date.now() - new Date(rq.snapshotMtime).getTime()) / 3600000;
+    const stale = ageH > 36; // a daily cron that missed more than one run
+    const label = ageH < 1 ? 'just now' : ageH < 48 ? Math.round(ageH) + 'h ago' : Math.round(ageH / 24) + 'd ago';
+    freshness = ' · snapshot ' + (stale ? '<b style="color:var(--warn,#c90)">' + label + ' (stale)</b>' : label);
+  } else {
+    freshness = ' · <span style="color:var(--warn,#c90)">age unknown</span>';
+  }
+
+  const title =
+    '<div style="font-weight:600;margin-bottom:4px">Regression quality ' +
+    '<span style="font-weight:400;color:var(--text-muted)">— ' +
+    esc(rq.repo || '') +
+    ' · label "' + esc(rq.label || 'regression') + '"' + freshness + '</span></div>';
+
+  // COLLECTION FAILURE IS NOT A ZERO. Schema 2 fails closed: an incomplete run
+  // emits NO metric keys at all and sets complete:false with a populated errors[].
+  // Render the breakage — a number here would read as "quality improved" when in
+  // fact nothing was measured, which is the defect this schema exists to stop.
+  if (rq.complete === false) {
+    const errs = (rq.errors || []).slice(0, 4).map((e) => esc(String(e))).join('<br>');
+    return (
+      '<div style="margin-top:20px">' + title +
+      '<div style="padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
+      '<b>Collection incomplete — no metric published.</b> This is NOT zero regressions; the run failed and ' +
+      'deliberately emitted no numbers.' + (errs ? '<br>' + errs : '') +
+      '</div></div>'
+    );
+  }
+
+  if (!rq.issues) return '';
+  const attributed = rq.issues - (rq.unattributed || 0);
+  const cov = Math.round((attributed / rq.issues) * 100);
+
+  // Rates MUST come from the cohort keys. `filed_month` buckets by when the issue
+  // was FILED, which is not the cohort the denominator uses — dividing one by the
+  // other compares unrelated populations, and that mismatch was the finding.
+  const cohortBot = rq.cohort_bot || {};
+  const cohortHuman = rq.cohort_human || {};
+  const cohortMixed = rq.cohort_mixed || {};
+  const rateBot = rq.rate_bot_per_100 || {};
+  const rateHuman = rq.rate_human_per_100 || {};
+  const months = Array.from(
+    new Set([...Object.keys(cohortBot), ...Object.keys(cohortHuman), ...Object.keys(cohortMixed)]),
+  )
+    .sort()
+    .slice(-6);
+
+  const th = (l, r) =>
+    '<th style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 10px;border-bottom:1px solid var(--border)">' + l + '</th>';
+  const td = (v, r) => '<td style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 10px">' + v + '</td>';
+  const num = (v) => (v === null || v === undefined ? '—' : v);
+
+  const rows = months
+    .map((m) =>
+      '<tr>' + td(esc(m)) +
+      td(num(cohortBot[m]), 1) + td(num(rateBot[m]), 1) +
+      td(num(cohortHuman[m]), 1) + td(num(rateHuman[m]), 1) +
+      td('<span style="color:var(--text-muted)">' + num(cohortMixed[m]) + '</span>', 1) + '</tr>',
+    )
+    .join('');
+
+  const mixedTotal = Object.values(cohortMixed).reduce((a, b) => a + (b || 0), 0);
+
+  return (
+    '<div style="margin-top:20px">' + title +
+    '<div style="margin-bottom:6px;padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
+    '<b>Attribution coverage ' + cov + '%</b> (' + attributed + '/' + rq.issues + '). ' +
+    'The rest cite no causal reference, so the split below is a <b>floor, not a total</b>.' +
+    '</div>' +
+    '<table style="border-collapse:collapse;font-size:10px">' +
+    '<tr>' + th('culprit merge month') + th('bot-caused', 1) + th('per 100 bot PRs', 1) +
+    th('human-caused', 1) + th('per 100 human PRs', 1) + th('mixed', 1) + '</tr>' + rows + '</table>' +
+    '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
+    'Cohorted by the <b>culprit PR\'s merge month</b>, so numerator and denominator describe the same ' +
+    'population. Rate, not count: bot merge volume rose sharply, so a raw count climbs even when quality ' +
+    'is flat.' +
+    (mixedTotal
+      ? ' <b>' + mixedTotal + '</b> regression(s) had joint bot+human culprits and are excluded from both rates.'
+      : '') +
+    '</div></div>'
+  );
 }
 
 // Table of nv-slang-bot's per-repo commits / additions / deletions, from the

@@ -5365,6 +5365,41 @@ export async function handleRequest(
   // API: nv-slang-bot contribution snapshot (commits/additions/deletions per repo),
   // written by scripts/bot-contributions.ts. Served alongside the funnel; never
   // recomputed inline (GitHub stats/contributors can 202 for seconds).
+  // Regression quality — `scripts/regression-quality.py --json` (host cron; see
+  // scripts/funnel-cron.sh). Served cached, never recomputed: it makes read-only
+  // gh API calls that have no business in the request path.
+  //
+  // The snapshot carries `issues` and `unattributed`. Attribution coverage is
+  // (issues - unattributed) / issues, and it is LOW — the bot/human split is a
+  // FLOOR, not a total. The client renders that alongside the numbers.
+  if (url.pathname === '/api/regression-quality') {
+    if (!requireAuth(req, res)) return;
+    const p = join(getProjectRoot(), 'reports', 'regression-quality.json');
+    if (!existsSync(p)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          error: 'no snapshot',
+          hint: 'run: python3 scripts/regression-quality.py --json reports/regression-quality.json',
+        }),
+      );
+      return;
+    }
+    try {
+      const snap = JSON.parse(readFileSync(p, 'utf-8'));
+      // The producer writes no timestamp, so a cron that quietly stopped would
+      // keep serving the same JSON with HTTP 200 forever and look current. Stamp
+      // it from the file mtime so the client can show (and age) it.
+      snap.snapshotMtime = statSync(p).mtime.toISOString();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(snap));
+    } catch {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'snapshot unreadable' }));
+    }
+    return;
+  }
+
   if (url.pathname === '/api/bot-contributions') {
     if (!requireAuth(req, res)) return;
     const p = join(getProjectRoot(), 'reports', 'bot-contributions.json');
