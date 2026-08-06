@@ -47,10 +47,25 @@ jobs:
       - name: Whitespace and EOF check (this PR's own diff)
         env:
           BASE: ${{ github.base_ref }}
+        # `set +e`, deliberately: the runner's default shell is `bash -e`, which
+        # would abort this step the moment `git diff --check` reports a finding
+        # — before the exit code could be captured and reported. Every command
+        # below therefore carries its own explicit status handling.
         run: |
+          set +e
           set -uo pipefail
-          git fetch origin "$BASE" --depth=0 >/dev/null 2>&1 || {
-            echo "::error::could not fetch base branch '$BASE'"; exit 1; }
+
+          # actions/checkout ran with fetch-depth: 0, so the base ref is already
+          # local. Fetch only as a fallback, and never with --depth (that is a
+          # clone flag; `git fetch --depth=0` is an error, which is how the
+          # first version of this job failed).
+          if ! git rev-parse --verify --quiet "origin/${BASE}" >/dev/null; then
+            git fetch --no-tags origin "+refs/heads/${BASE}:refs/remotes/origin/${BASE}"
+            if [ $? -ne 0 ]; then
+              echo "::error::could not resolve base branch '${BASE}'"
+              exit 1
+            fi
+          fi
 
           # Only this PR's diff, never the whole tree: the KB corpus carries
           # thousands of pre-existing diagnostics, and a gate that fails on
@@ -63,8 +78,9 @@ jobs:
           cat /tmp/code.txt
 
           echo "--- knowledge_base/** (reported, not yet enforced) ---"
-          git diff --check "$RANGE" -- knowledge_base > /tmp/kb.txt 2>&1 || true
-          KB_N=$(grep -c . /tmp/kb.txt || true)
+          git diff --check "$RANGE" -- knowledge_base > /tmp/kb.txt 2>&1
+          KB_N=$(grep -c . /tmp/kb.txt)
+          [ -n "$KB_N" ] || KB_N=0
           head -20 /tmp/kb.txt
           if [ "${KB_N:-0}" -gt 0 ]; then
             echo "::warning::${KB_N} whitespace/EOF diagnostic(s) under knowledge_base/**."
