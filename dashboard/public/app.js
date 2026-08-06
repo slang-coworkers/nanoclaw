@@ -5335,6 +5335,18 @@ async function fetchCwMessages(append = false) {
         cwState.approvalCountByFolder[selectedAtStart] = 0;
       }
     }
+    // Critique-gate summary for the strip above the queue. Throttled to once a
+    // minute: this poll runs every 3s and the summary is a cross-instance
+    // GROUP BY that does not change on that timescale.
+    if (!cwState._escFetchedAt || Date.now() - cwState._escFetchedAt > 60_000) {
+      cwState._escFetchedAt = Date.now();
+      try {
+        const er = await fetch('/api/approvals/escalations?days=14');
+        cwState.escalationSummary = er.ok ? await er.json() : null;
+      } catch {
+        cwState.escalationSummary = null;
+      }
+    }
     // No auto-mark-read on coworker click. The folder-level cursor only advances
     // when the user explicitly clicks "mark all read" (or via per-session opens
     // that aggregate up). Otherwise clicking a coworker would silently mark
@@ -5391,11 +5403,50 @@ function critiqueProvenance(item) {
   return `<div style="font-size:9px;color:#8b949e;margin-top:5px">${bits.join(' · ')}</div>`;
 }
 
+// One line of critique-gate context above the pending queue.
+//
+// Deliberately not a panel. The queue itself can't answer "is the gate
+// working": /api/approvals returns only status='pending' rows and the response
+// handler DELETES a row on decision, so there is no history in it — and since
+// the self-heal change most escalations never become a card at all (17 of the
+// first 18 were stale/missing, which now resolve with no human). The one
+// number worth surfacing is enforcement releases, which are invisible
+// everywhere else: a container-side fail-open never creates a card.
+function renderEscalationStrip() {
+  const s = cwState.escalationSummary;
+  if (!s || !Array.isArray(s.totals) || s.totals.length === 0) return '';
+  const by = Object.fromEntries(s.totals.map((t) => [t.event, t.n]));
+  const parts = [];
+  if (by.self_healed) parts.push(`${by.self_healed} self-healed`);
+  if (by.carded) parts.push(`${by.carded} needed a human`);
+  const released = Number(s.released) || 0;
+  parts.push(
+    released
+      ? `<b style="color:#f85149">${released} enforcement release${released === 1 ? '' : 's'}</b>`
+      : 'no enforcement releases',
+  );
+  return `<div style="font-size:9px;color:#8b949e;margin:0 0 6px 2px">critique gate · last ${esc(String(s.days))}d: ${parts.join(' · ')}</div>`;
+}
+
 function renderApprovalItem(item) {
   const coworkerHeader = item.coworkerName
     ? `<div style="font-size:9px;color:#10b981;font-weight:600;margin-bottom:4px">@${esc(item.coworkerName)}</div>`
     : '';
-  const safeReason = item.reason ? `\n\n*Reason:* ${esc(item.reason)}` : '';
+  // Clamp for the generic branches too, not just critique-gate cards: the
+  // wall-of-text problem is not specific to one action — agents write
+  // multi-paragraph reasons on rebuild/cli_command/install cards as well, and
+  // those pushed the Approve/Reject buttons off screen. The toggle anchor is
+  // appended after md() (see the return), because md() begins `let h = esc(s)`
+  // and would render raw HTML embedded in the markdown string as literal text.
+  const genericReasonText = String(item.reason || '');
+  const genericNeedsClamp = genericReasonText.length > REASON_CLAMP;
+  const genericExpanded = isReasonExpanded(item.approvalId);
+  const shownGenericReason =
+    genericNeedsClamp && !genericExpanded ? genericReasonText.slice(0, REASON_CLAMP) + '…' : genericReasonText;
+  const safeReason = item.reason ? `\n\n*Reason:* ${esc(shownGenericReason)}` : '';
+  const genericReasonToggle = genericNeedsClamp
+    ? `<div style="margin-top:4px"><a href="#" class="${genericExpanded ? 'reason-less' : 'reason-more'}" data-rid="${escAttr(item.approvalId)}" style="font-size:9px">${genericExpanded ? 'show less' : 'show more'}</a></div>`
+    : '';
   let desc;
   if (item.action === 'critique_gate_bypass') {
     // Critique-gate cards used to fall through to the generic branch below,
@@ -5462,7 +5513,7 @@ function renderApprovalItem(item) {
   return `<div class="cw-msg assistant">
     <div class="cw-msg-bubble" style="border-left:3px solid #f59e0b;padding-left:8px">
       ${coworkerHeader}
-      ${md(desc)}
+      ${md(desc)}${genericReasonToggle}
       ${controls}
     </div>
     <div class="cw-msg-time">${formatTime(item.createdAt)} <span style="font-size:7px;color:#f59e0b;font-style:italic">approval</span></div>
@@ -5800,7 +5851,7 @@ function renderCwMessages() {
   const approvalCount = (cwState.pendingApprovals || []).length;
   const bannerHtml =
     approvalCount > 0
-      ? `<div class="approval-banner"><div class="approval-banner-label">⚠ Pending Actions (${approvalCount})</div>${approvalHtml}</div>`
+      ? `<div class="approval-banner"><div class="approval-banner-label">⚠ Pending Actions (${approvalCount})</div>${renderEscalationStrip()}${approvalHtml}</div>`
       : '';
   // "Load older" button at the top — only when the server says more rows
   // exist below the loaded window AND we have at least one row to anchor a
