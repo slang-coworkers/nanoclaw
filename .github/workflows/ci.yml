@@ -123,6 +123,9 @@ jobs:
       # .github/nv-path-guard/ownership.py — the same pathspec matcher the
       # nv-path-guard workflow uses, so the two can never disagree about what
       # nv-main owns. setup/nv-owned-drift.test.ts exercises it here.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Install pathspec (path-guard matcher, used by the drift tests)
         run: pip install pathspec
 
