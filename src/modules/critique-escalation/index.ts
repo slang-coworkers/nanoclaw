@@ -305,6 +305,10 @@ export function reconcileBypassState(session: Session, dirOverride?: string): vo
       ? state.critique_gate_bypass_consumed_grant_id
       : null;
   if (state.critique_gate_bypass_consumed_at != null) {
+    // The gates stamp epoch seconds. Fall back to "now" when it is missing or
+    // unparseable, which fails toward flagging rather than excusing.
+    const consumedAtRaw = Number(state.critique_gate_bypass_consumed_at);
+    const consumedAtMs = Number.isFinite(consumedAtRaw) && consumedAtRaw > 0 ? consumedAtRaw * 1000 : nowMs;
     const consumed = consumedGrantId ? getBypassGrant(consumedGrantId) : null;
     if (consumedGrantId) {
       // Attributed. Either it names a grant we issued to this session, or it
@@ -322,6 +326,19 @@ export function reconcileBypassState(session: Session, dirOverride?: string): vo
         // all, which is precisely the case one-shot exists to prevent.
         divergence(
           `grant ${consumedGrantId} was CONSUMED AGAIN (already spent at ${consumed.consumed_at}) — replayed waiver`,
+        );
+      } else if (consumed.revoked_at) {
+        // Existing-and-unspent is not the same as valid. A revoked grant is
+        // dead; consuming it means the gate honoured local state the host had
+        // already withdrawn.
+        divergence(
+          `grant ${consumedGrantId} was CONSUMED although the host REVOKED it at ${consumed.revoked_at} (${consumed.revoked_reason ?? 'no reason recorded'})`,
+        );
+      } else if (Date.parse(consumed.expires_at) <= consumedAtMs) {
+        // Consumed outside its validity interval. Checked against the stamped
+        // consumption time, not "now", so a late sweep can't excuse it.
+        divergence(
+          `grant ${consumedGrantId} was CONSUMED at ${new Date(consumedAtMs).toISOString()}, after it expired at ${consumed.expires_at}`,
         );
       } else {
         markBypassGrantConsumed(consumed.grant_id, nowIso);

@@ -506,6 +506,54 @@ describe('host-authoritative bypass ledger', () => {
     expect(eventKinds()).toContain('state_divergence');
   });
 
+  it('flags consumption of a REVOKED grant', () => {
+    // Existing-and-unspent is not the same as valid: consuming a grant the
+    // host already withdrew means the gate honoured stale local state.
+    ledger.set(GRANT, {
+      grant_id: GRANT,
+      session_id: 'sess-esc-test',
+      requested_at: 123,
+      granted_at: iso(-1000),
+      expires_at: iso(3_600_000),
+      granted_by: 'slack:admin',
+      consumed_at: null,
+      revoked_at: iso(-500),
+      revoked_reason: 'superseded',
+    });
+    writeState({
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_grant_id: GRANT,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+    });
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).toContain('state_divergence');
+    expect(ledger.get(GRANT)!.consumed_at).toBeNull();
+  });
+
+  it('flags consumption that happened AFTER the grant expired', () => {
+    // Validated against the stamped consumption time, not "now", so a late
+    // sweep cannot excuse a consumption outside the validity interval.
+    ledger.set(GRANT, {
+      grant_id: GRANT,
+      session_id: 'sess-esc-test',
+      requested_at: 123,
+      granted_at: iso(-7_200_000),
+      expires_at: iso(-3_600_000),
+      granted_by: 'slack:admin',
+      consumed_at: null,
+      revoked_at: null,
+      revoked_reason: null,
+    });
+    writeState({
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_grant_id: GRANT,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000), // well after expiry
+    });
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).toContain('state_divergence');
+    expect(ledger.get(GRANT)!.consumed_at).toBeNull();
+  });
+
   it('flags a REPLAYED grant — consumed a second time between sweeps', () => {
     writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
     applyBypassApproval(session, 'slack:admin', dir, GRANT);
