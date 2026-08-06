@@ -72,7 +72,7 @@ import { runUninstallFlow } from './uninstall/flow.js';
 import { detectExistingInstall } from './uninstall/scan.js';
 import { detectRegisteredGroups, detectExistingDisplayName } from './environment.js';
 import { pollHealth } from './onecli.js';
-import { getLaunchdLabel, getSystemdUnit } from '../src/install-slug.js';
+import { SERVICE_NAME_CAVEAT, getLaunchdLabel, getSystemdUnit, serviceRestartHint } from '../src/install-slug.js';
 import { claudeCliAvailable, resolveTimezoneViaClaude } from './lib/tz-from-claude.js';
 import * as setupLog from './logs.js';
 import { ensureAnswer, fail, runQuietChild, runQuietStep, spawnQuiet } from './lib/runner.js';
@@ -503,9 +503,14 @@ async function main(): Promise<void> {
     }
     if (res.terminal?.fields.DOCKER_GROUP_STALE === 'true') {
       p.log.warn(brandBody("NanoClaw's permissions need a tweak before it can reach Docker."));
+      // Linux-only context (setfacl on /var/run/docker.sock), so systemctl alone
+      // is correct here — but the unit name is DERIVED from the checkout path, so
+      // it is the name a default install would have, not necessarily this one's.
       p.log.message(
         brandBody(
-          '  sudo setfacl -m u:$(whoami):rw /var/run/docker.sock\n' + `  systemctl --user restart ${getSystemdUnit()}`,
+          '  sudo setfacl -m u:$(whoami):rw /var/run/docker.sock\n' +
+            `  systemctl --user restart ${getSystemdUnit()}\n` +
+            '  (custom unit name? find it: systemctl --user list-units --all | grep -i claw)',
         ),
       );
     }
@@ -850,12 +855,12 @@ function renderPingFailureNote(result: PingResult): void {
     result === 'socket_error'
       ? [
           wrapForGutter(
-            "The NanoClaw service isn't listening on its local socket. Try restarting it, then chat with `pnpm run chat hi`:",
+            "The NanoClaw service isn't listening on its local socket. Try restarting it, then chat with `pnpm run chat hi`. " +
+              SERVICE_NAME_CAVEAT,
             6,
           ),
           '',
-          `  macOS:  launchctl kickstart -k gui/$(id -u)/${getLaunchdLabel()}`,
-          `  Linux:  systemctl --user restart ${getSystemdUnit()}`,
+          serviceRestartHint(),
         ].join('\n')
       : wrapForGutter(
           'No reply from your assistant within 30 seconds. Check `logs/nanoclaw.log` for clues, then try `pnpm run chat hi`.',
