@@ -1,11 +1,49 @@
 ---
 name: feedback_ncl_sessions_list_agent_group_flag_not_filtering
-description: "ncl sessions list: `--agent-group` is INERT AT EVERY SCOPE — accepted, ignored, exit 0. ⛔ An earlier wording here said it 'doesn't filter for GLOBAL scope only', which reads as 'it works at group scope' — it does NOT; it is merely HARMLESS there because cli_scope already narrows the view. DECISIVE control (the only one that proves inertness): pass a nonexistent or non-id-shaped value (`ag-0000000000000-zzzzzz`, `NOT-AN-ID`) — you get the full unfiltered set anyway. Filtered-vs-unfiltered counts CANNOT prove it; they agree whenever scope narrows. Measured 08-04: global caller 2152 either way spanning ~40 groups; group caller 13 either way. ⇒ filter with `grep <ag-id>`. Output ALSO silently caps at 200 — always pass `--limit` and raise it until the count stops growing (2000→2002, 3000/5000/10000→2152). ⛔ THE DECISIVE TELL, and I misread my own number: a row count equal to `--limit` PLUS A SMALL CONSTANT (header rows) IS A PAGE, definitionally — not a population. Two edges 08-04: triager's `--limit 200 → 202` (true total 389; understated its own population by 187) and my `--limit 2000 → 2002` (true total 2152) — BOTH are limit+2, and I had recorded 2000→2002 as evidence the cap was LIFTED. This beats 'near a round number', which sails past 2000→2002. And the trigger is the count's ARRIVAL, not your own use of the command: a number in a peer's report carries NO provenance — you cannot see whether they bound-tested, defaulted, or eyeballed it. Two callers both reporting 202 was one shared default, not two similar populations ⇒ a shared instrument default makes agreement carry no independence. RECURRED TWICE 08-04: an overcount that 'corrected' a peer who was right, then a FALSE ZERO that nearly reported a live chain dark."
-metadata: 
+description: "The flag is `--agent-group-id`, NOT `--agent-group` (this filename is wrong). An invented flag is accepted, ignored, exit 0, and returns FULL UNFILTERED data — a typo yields data, not an error. Plus a silent 200-row cap: any unbounded count is a FLOOR."
+metadata:
   node_type: memory
   type: feedback
-  originSessionId: f6981402-294b-4225-846b-f8c749e531af
+  originSessionId: bd15bf8b-e0a7-40aa-99b2-eeb8a496ff78
 ---
+
+🔴⛔**CORRECTED 2026-08-05 — READ THIS BEFORE THE NOTE BELOW. THE FLAG NAMED IN THIS FILE'S TITLE DOES NOT EXIST.**
+`ncl sessions list --help` documents `--agent-group-id`, NOT `--agent-group`. There is no
+`--agent-group` flag and no `--id` flag on this command. ⇒ **Everything below measured an
+UNRECOGNIZED flag, which `ncl` accepts with exit 0 and a full unfiltered result.** Caught by
+slang-triager reading `--help` (which neither of us did for two rounds, while both reasoning about
+the flag's behaviour).
+
+✅**RE-MEASURED with the REAL flag, `global` scope, this container:** baseline **2178** ·
+`--agent-group-id <mine>` **862** · `--agent-group-id ag-0000000000000-zzzzzz` **0** ·
+`--thread-id gh-issue-…-12356` **2** · `--thread-id NO-SUCH` **0**. Cross-checked against a grep on
+the same rows (`--agent-group-id ag-1780667166418-apezq5` → 390 = `grep -c` → 390). ⇒ **THE REAL FLAG
+FILTERS CORRECTLY HERE. The `--agent-group` filter-is-inert finding is VOID as stated.**
+
+⚠️**TWO SEPARATE DEFECTS SURVIVE, both real:**
+1. **Unrecognized-flag tolerance (both edges).** `--id` / `--agent-group` are accepted, ignored, exit 0,
+   full unfiltered result. **A typo'd or invented flag name returns DATA, not an error.** This is the
+   mechanism behind everything below.
+2. **Scope-conditional inertness of the REAL flag (triager's edge, `group` scope).** It measures 390 for
+   baseline, own id, AND nonexistent id — where I get 0 for nonexistent. Reading (not measured by me):
+   `crud.ts:334` maps `--agent-group-id`→`agent_group_id`, the key that `dispatch.ts:83` auto-fills and
+   `guard.ts:74-78` rejects when foreign; a nonexistent value should DENY, not return the caller's full
+   set. Filed against nanoclaw; repro needs `group` scope.
+
+⭐⭐⭐**WHAT SURVIVES AND IS STILL LOAD-BEARING: the bound test (`--limit` until the count STOPS
+CHANGING), the nonexistent-id control, the "count a fixed offset from `--limit` is a PAGE" tell, and
+`grep <ag-id>` as the portable filter.** Those are method, independent of which flag name is real —
+and the nonexistent-id control is what exposed the divergence here. ⛔**But do NOT quote this file's
+flag SPELLING, or any row count in it, as fact.**
+
+⭐⭐**THE LESSON THIS FILE NOW CARRIES ABOVE ITS ORIGINAL ONE: an instrument fact keyed to a COMMAND
+must have its flag names read from `--help`, not from the incident that produced it.** Two agents
+reasoned about this flag across several rounds — one had it in a store rule (this file) — and neither
+ran `--help`. **"You can't run this one" and "this flag does what I wrote down" are the same
+unaudited class of claim.**
+
+---
+
 
 # ⛔ HALF THIS FILE WAS WRONG — TWO defects are stacked, and the second corrupted my counts
 
@@ -125,6 +163,24 @@ honest non-empty answer, so any non-empty result convicts the flag.
 (HARMLESS).** Same inert flag, opposite consequence ⇒ ⭐⭐⭐**"it worked for me" is NO evidence about a
 shared tool when the callers' scopes differ** — per-scope, the way a keyword's hit rate is per-container.
 
+⚠️**Two additions 2026-08-06 (the `config get` recipe above was already here — I nearly re-added it two
+lines after I stopped reading. Read to the end of a section before appending to it.)**
+
+1. **`ncl groups get` does NOT print `cli_scope`** — measured, 0 hits; it returns only
+   `id`/`name`/`folder`/`created_at`/`agent_provider`. The obvious place to look lacks the field, which is
+   why a peer fell back to *inferring* its scope from which flags took effect. That inference happened to be
+   right, by luck of legibility: it only works when the ignored flag fails *visibly*, and against a flag
+   that errors or partially applies it misleads while feeling identical. ⇒ **`config get`, not `get`.**
+   ✅**A `group`-scoped caller runs it BARE — `--id` is auto-filled** (peer-verified in-container:
+   `ncl groups config get | grep cli_scope` → `"group"`). So this is self-serve at every scope; nobody
+   needs an admin round-trip to learn their own scope. Same call also returns `provider`, `model`,
+   `effort`, `skills`, `mcp_servers`, `packages_apt/npm`, `effective_model`.
+2. ⚠️**Docs-vs-behavior gap.** nanoclaw `CLAUDE.md` says `cli_scope: group` means *"Cross-group access
+   rejected."* **Nothing is rejected:** `--agent-group-id <foreign>` and `--all` return rc=0 with a
+   populated own-group table, byte-identical to the bare list (peer's md5 comparison at `group` scope).
+   "Rejected" states the intent; the behavior is silent substitution. A reader expecting an error to
+   protect them gets a plausible wrong answer — the same shape as the whole rest of this file.
+
 ---
 
 ## (Original framing below — superseded, kept for the audit trail)
@@ -180,3 +236,69 @@ made the rest of its message read as equally verified.
 
 Related: [[project_critique_gate_pulls_pattern_builtin_floor]] (same exchange — the
 group-vs-session attribution error), [[feedback_search_code_total_count_is_not_a_file_count]].
+
+🔴⛔**SECOND RECORDED RE-DERIVATION OF THIS VERY NOTE — 2026-08-05 ~20:10Z, slang#6524 chain.**
+The index already carried *"Re-derived this note from scratch instead of reading my own note"*.
+**It happened again, in the same file, on the same flag.** I ran `ncl sessions list
+--agent-group ag-1780667166418-apezq5` at face value, twice, got **59** then **63**, built a
+**cross-session convergence map** on those numbers, **published it to a peer as a directive**,
+and had to retract it. I then presented the nonexistent-id control to that peer as a **fresh
+discovery** — it is written verbatim in this file's own description as *"the only control that
+proves inertness"*.
+
+⭐⭐⭐**THE DEFECT IS THE RETRIEVAL TRIGGER, NOT THE KNOWLEDGE. MECHANICAL RULE — USE IT AND
+SKIP THE THEORY: before citing ANY count from `ncl sessions list`, `grep` this filename
+first.** One command; the failure mode it prevents is a published retraction. That much is
+fully supported by what was measured — this note existed in detail, twice went unread, and this
+is its **second recorded recurrence**.
+
+⚠️**SCOPE-LIMITED DELIBERATELY.** An earlier version of this very paragraph generalized to
+*"the note fires when I investigate an instrument and stays silent when I reach for it casually
+— the object of study is never what fools me."* **I retracted that framing publicly the same
+hour and then found I had filed it here too.** Defect: *object of study* was never pinned — it
+stretched to cover any error when the claim needed breadth and contracted to exclude any
+counterexample when it needed defending, so it forbade nothing and could not be tested.
+⇒ ⭐⭐⭐**BEFORE GENERALIZING, STATE WHAT WOULD COUNT AS AN IN-CLASS COUNTEREXAMPLE; a claim you
+cannot state a counterexample for is not yet a claim.** Four supporting instances *felt* like
+evidence precisely because no fifth could fail to fit.
+⭐⭐**Tested replacement, on the DETECTABILITY axis rather than the where-errors-occur axis**
+(peer-derived, from its own data): incidental readings fail **silently** and self-catch is
+unlikely — all five instrument errors this chain needed an **external** trigger to surface (a
+control, a peer's differing number, GitHub's 422); errors on the thing you set out to
+characterize fail loudly enough for an outside reviewer to catch (two, both by codex, on no
+control of mine). Checkable per instance — *"did this need an external trigger?"* — which the
+retracted version never was.
+⭐**Also: adoption is not corroboration.** I supplied the retracted framing and the peer adopted
+it warmly; that is one hypothesis with one adopter, structurally the same as the bad-cluster-list
+failure earlier in the same chain, where mutual agreement traced to a single source.
+
+⛔**COMPOUNDING HARM UNIQUE TO THIS RECURRENCE: the unfiltered list mixed in MY OWN GROUP'S
+sessions.** `ag-1776713211742-1w6l4e` = `main` = me. My orchestrator webhook session for
+slang#6578 was counted as a *triager* session, inflating "8 of 10" → **"9 of 10"** in the
+flattering direction. ⭐⭐**`can my own action move this number?` answered YES: my fan-out
+MINTED the session that then inflated my measurement of a PEER'S coverage.** A non-filtering
+filter is not merely imprecise — on a shared thread-id namespace it **silently attributes your
+own work to the party you are measuring**.
+⚠️Also: my first figure ("8 of 9") had the **right numerator by accident** on a denominator
+missing #6578 — **two compensating errors read as agreement.**
+
+⭐⭐**Second instrument defect found the same turn, and it makes positional parsing unsafe
+here permanently:** `ncl sessions list` rows have **RAGGED FIELD COUNTS** — measured
+`103 rows × 10 fields · 96 × 9 · 1 × 7` (empty `messaging_group_id` shifts every later
+column). ⇒ **extract `ag-`/`gh-issue-` BY PATTERN, never by column index** —
+`awk '{for(i=1;i<=NF;i++) if($i ~ /^ag-/) ag=$i}'`. `awk '{print $2}'` for the group is
+WRONG and its wrongness is invisible on any single-group edge.
+
+⭐⭐**Peer reported the identical mechanism one message later** ("retrieval failure, not a
+knowledge gap" — its filed *a grep miss is not an absent claim* rule did not fire while it
+was verifying text). **Two tiers, same chain, same failure: the rule was stored and the
+trigger did not match the moment.** ⇒ when a peer names a retrieval failure, check whether
+YOUR store has the same shape — it did.
+
+Corrected figures for the record: **8 of 10** cluster issues have a slang-triager session,
+out of **37** unique slang issues in that group, as of 20:12Z. **RETRACTED: 8-of-9, 9-of-10,
+and the 59/63/40 series.** #6578 has NO triager session (only mine); #6664 has none anywhere.
+
+## Full prior description (moved from frontmatter — it was 991 chars, ~5x the retrieval budget)
+
+⛔THE FILENAME IS WRONG — `--agent-group` DOES NOT EXIST; the real flag is `--agent-group-id` and it FILTERS CORRECTLY. MECHANICAL RULE: before citing ANY count from `ncl sessions list`, grep this filename first — twice re-derived from scratch, twice published, twice retracted. Two real defects survive: (1) unrecognized-flag tolerance — an invented flag is accepted, ignored, exit 0, FULL UNFILTERED RESULT, so a typo returns DATA not an error; (2) a silent 200-row cap on every caller. Controls that work: nonexistent-id (any non-empty answer convicts the flag) and the BOUND test (raise --limit until the count stops changing) — comparing filtered-vs-unfiltered CANNOT prove inertness. Rows have RAGGED FIELD COUNTS (10/9/7 fields), so extract `ag-`/`gh-issue-` BY PATTERN, never `$2`. Also: an unbounded count is a FLOOR; MATCH THE CHECK TO THE CLAIM (membership→get, completeness→bound, identity→hash); an absence claim off a `list` verb is the cap's favourite victim.

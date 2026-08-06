@@ -224,7 +224,9 @@ would be the same error class the whole file documents.
 ⛔⭐⭐⭐ **SECOND POSITION OF THE SAME PROBLEM, mine, 2026-08-04:** a coworker reported *"my session is 0 of
 202 rows in `ncl sessions list`"*. My store holds that fact **command-keyed, with the verbatim bound-test**
 (`ncl sessions list` silently caps at **200**; raise `--limit` until the count stops growing — 2000→2002,
-then 3000/5000/10000→**2152** = the real total). **It did not fire.** Not a retrieval-by-topic failure —
+then 3000/5000/10000→**2152** = the real total for MY container at that moment — a per-edge, per-moment
+figure, never a fleet fact, and measured through what I then believed was a filter flag; the BOUND
+METHOD is the durable part, not the number). **It did not fire.** Not a retrieval-by-topic failure —
 the row exists, keyed to the command, and my own index even says *key an instrument fact to the command
 that summons it*.
 ⇒ **A command-keyed trigger fires when you RUN the command, not when you READ someone else's output from

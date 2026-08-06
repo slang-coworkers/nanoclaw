@@ -1,11 +1,97 @@
 ---
 name: project_slangwin5_spirv_val_runner_defect
-description: "SLANGWIN5 SPIR-V validation broken wholesale (`PASSING [866/866]` + `spirv-val [0/866]`) — an infra outage that reads as 866 shader bugs. FILED: #12341 (depool) + #12342 (in-tree `validate()` conflates validator-absent with genuine-rejection). ATTRIBUTION is solid on two independent controls (same-head att2 WIN5 ❌ / att3 WIN4 ✅; and 3 runners / 1 job / 22 min); MECHANISM is unknown — VS 17→18 is a hypothesis only, the job sets up no VS at all. ⛔ Many claims here were RETRACTED — read before restating ANY of it: 'reruns futile' (runs-on is a POOL), 'att1 ran 0 jobs' (page cap 30 of 37), 'zero diagnostic text' (withdrawn as a strawman refutation), cost 3→2 evictions, and the rerun fail-fast mechanism (16 s head start vs 1.5–5.2 min idle gap ⇒ REFUTED). There is NO `spirv-val` binary — validation is in-process `glslang_validateSPIRV`."
+description: "✅RESOLVED 2026-08-05 by maintainer jkwak-work — ROOT CAUSE: VulkanSDK upgraded on SLANGWIN5 with the OLD version DELETED, and the github runner SERVICE was never restarted ⇒ its cached PATH still pointed at a deleted Vulkan dir. FIX = RESTART THE RUNNER SERVICE (free). Verified green on SLANGWIN5 job 92450719106: 866/866 in ALL FOUR modes, '- PASS' 3464, '- FAIL' 0, zero 'following shaders failed' blocks. ⛔⛔MY 'this is explicitly NOT a reboot request' IS REFUTED — I inferred a REMEDY property (a restart is a no-op) from a DEFECT property (the box passes other jobs); box-health says NOTHING about a long-lived service's CACHED ENVIRONMENT, and every job on that box inherited the same stale PATH. 2nd remedy-from-defect error on this chain (1st: 'reruns are futile') ⇒ A REMEDY CLAIM NEEDS ITS OWN INSTRUMENT. ⛔VS-17→18 was the WRONG CHANGE (real: VulkanSDK) — two toolchain changes landed in one window and we latched onto the one our logs exposed (observability bias); it cost nothing ONLY because it was LABELLED a hypothesis and routed to a human with box access. ⭐The hedged claim was wrong and harmless; the UNHEDGED one shaped the ask. ⛔Ask OVERSCOPED ('depool or reprovision' vs a free restart) ⇒ when the cause is unknown, ask for INVESTIGATION or the cheap/reversible action, not a named heavy remedy. ✅KEPT: the unifying description 'a freshly built Slang binary cannot resolve a DLL/symbol on this box' was RIGHT and covered both signatures. Original 08-04 material follows. SLANGWIN5 SPIR-V validation broken wholesale — ⛔ GREP `spirv-val` ALONE (or the emitted `spirv-val [ 0 / 866 ]` WITH inner spaces); the compact `spirv-val [0/866]` matches ZERO on a genuine occurrence and misclassifies infra as a code regression. Signature: compiles `[ 866 / 866 ]` but `spirv-val [ 0 / 866 ]`, exit 255 — an infra outage that reads as 866 shader bugs. FILED: #12341 (depool) + #12342 (in-tree `validate()` conflates validator-absent with genuine-rejection). ATTRIBUTION is solid on two independent controls (same-head att2 WIN5 ❌ / att3 WIN4 ✅; and 3 runners / 1 job / 22 min); MECHANISM is unknown — VS 17→18 is a hypothesis only, the job sets up no VS at all. ⛔ Many claims here were RETRACTED — read before restating ANY of it: 'reruns futile' (runs-on is a POOL), 'att1 ran 0 jobs' (page cap 30 of 37), 'zero diagnostic text' (withdrawn as a strawman refutation), cost 3→2 evictions, and the rerun fail-fast mechanism (16 s head start vs 1.5–5.2 min idle gap ⇒ REFUTED). There is NO `spirv-val` binary — validation is in-process `glslang_validateSPIRV`."
 metadata:
   node_type: memory
   type: project
   originSessionId: 02f511c2-578b-4ccf-bd07-2049b7969ecd
 ---
+## ✅ 2026-08-05 08:3xZ — THE CANONICAL OCCURRENCE TABLE. Main-verified per ATTEMPT, per RUN, at source.
+
+⛔**Run-level `conclusion` reports the LATEST attempt and hides the failed early ones** — enumerate
+`attempts/N/jobs`, never the run object. Branch/event read from the run itself (not inferred):
+
+| run | att | outcome | runner | started | PR |
+|---|---|---|---|---|---|
+| `30885595493` | 1 | failure | SLANGWIN5 | 08-04 07:18:45Z | **#12322** (`pull_request`, `fix/slang-test-gate-emit-cpu-via-llvm`) |
+| `30885595493` | 2 | failure | SLANGWIN5 | 08-04 08:31:40Z | " |
+| `30885595493` | 3 | success | SLANGWIN4 | 08-04 08:47:16Z | " |
+| `30889533285` | 1 | failure | SLANGWIN5 | 08-04 08:18:52Z | **#12246** `merge_group` |
+| `30899638732` | 1 | failure | SLANGWIN5 | 08-04 10:46:44Z | **#12246 AGAIN** (2nd merge-group attempt) |
+| `30899638732` | 2 | success | SLANGWIN10X64-1 | 08-04 11:49:35Z | " |
+| `30904952059` | 1 | failure | SLANGWIN5 | 08-04 12:01:35Z | **#12324** `merge_group` |
+| `30914831831` | 1 | failure | **SLANGWIN5** | 08-04 14:40:15Z | **#12125** (`pull_request`, `compile-perf-memory-tracking`) |
+| `30914831831` | 2 | failure | **SLANGWIN5** | 08-04 16:16:39Z | " |
+| `30914831831` | 3 | failure | **SLANGWIN5** | 08-04 16:28:39Z | " |
+| `30914831831` | 4 | success | SLANGWIN10X64-1 | 08-05 00:21:20Z | " |
+| `30977814221` | 1 | failure | SLANGWIN5 | 08-05 05:45:44Z | **#12252** `merge_group` |
+
+**Totals: 9 SLANGWIN5 failures · 6 distinct runs · 0 SLANGWIN5 passes post-onset · 5 PRs touched**
+(#12322, #12246, #12324, #12125, #12252), of which **3 were evictions** (#12246, #12324, #12252) —
+matching the verified floor exactly, because #12322 and #12125 were **head-check** runs that never
+reached a merge group.
+
+⛔**I had `30899638732` and `30904952059` TRANSPOSED** (#12324 double-counted, one of #12246's two
+evictions dropped). Attribution error, not magnitude — the headline survived, which is exactly why it
+would have shipped.
+
+## ⛔⭐⭐⭐ THE "JUST RERUN UNTIL IT DRAWS A HEALTHY BOX" ADVICE HAS A LIVE COUNTER-EXAMPLE IN THIS DATASET
+
+`30914831831` att1/att2/att3 were **all three on SLANGWIN5** — Main-verified per attempt. GitHub
+re-dispatched the *same* box three consecutive times, burning **~1h46m** of wall clock, before att4
+finally drew SLANGWIN10X64-1 the next day.
+
+⇒ ⚠️**Never tell a maintainer "rerun until it lands on a healthy host."** #12125 sits in the same dataset
+as the refutation: **3 reruns, 3 SLANGWIN5 draws.** This is the measured basis of the rerun-affinity
+finding, and it is why the practical rule is **cap at 2 and prefer a fresh dispatch**.
+
+⚠️**And keep the head-check population time-scoped:** it is empty **on 08-05** (Main-measured: 28 `ci.yml`
+runs, SLANGWIN5 drew compile-regression once, on a merge_group). It is **not** empty historically —
+#12322 and #12125 are both `pull_request` occurrences. **"Zero today" must never be restated as "never."**
+
+## ⛔⭐⭐⭐ 2026-08-05 — THE SIGNATURE HAS INNER SPACES. `spirv-val [0/866]` GREPS TO **ZERO** ON A GENUINE OCCURRENCE.
+
+Babysitter-found, Main-verified on job `92219507338` (#12252 merge-group commit `28b73d85`, SLANGWIN5):
+
+```
+grep -cE 'spirv-val \[0/866\]'        → 0     ← the compact form matches NOTHING
+grep -cE 'spirv-val \[ 0 / 866 \]'    → 2     ← the emitted form
+```
+
+⇒ ⛔**Believing that zero misclassifies this INFRA flake as a CODE regression** — the worst possible
+direction, because it sends a maintainer hunting a compiler bug that does not exist.
+
+⚠️**This store carried the unusable form in 3 files** (`feedback_a_discriminator_is_a_claim_about_a_log_run_it`,
+this file, `slang-ci-infra-chains-index`). Fine as prose; **wrong the instant one is lifted as a needle.**
+
+⭐⭐**Second instance in one day of the same class**, the other being #12145's crash code
+(`0xC0000005` → 0 hits; the log prints decimal `3221225477`). **Both times the form a fluent reader would
+type differs from the form the tool emits, and both times the wrong form returns a confident zero.**
+⇒ ⭐⭐⭐**When a note records a value that will also be grepped, store the EMITTED bytes — copy them out of
+the log, never retype them from understanding.** Safest keys here: `spirv-val` alone (2 hits), or the test
+name.
+
+## ✅ 2026-08-05 08:00Z — FIRST eviction where this defect is the SOLE cause (#12252)
+
+Main-verified on **both** surfaces of merge-group commit `28b73d85`:
+
+```
+check-runs: 45 total — 43 success, 2 failure
+            FAIL: test-compile-regression   ← SLANGWIN5, the defect
+            FAIL: check-ci                  ← pure aggregator, reports the above
+statuses:   state=success (license/cla, SlangPy Tests)
+timeline:   05:20:17Z added skiminki-nv → 06:51:45Z removed github-merge-queue failed_checks
+            → 07:09:33Z added skiminki-nv   ← AUTHOR re-added, 18 min later
+```
+
+⇒ **Nothing else was red.** Previous evictions had a co-occurring cause, so this is the first clean
+attribution — and it bills another human re-add (18 min, `skiminki-nv`).
+
+⛔**Cost correction, babysitter's own: 2 → 3 verified #12341 evictions (#12246, #12324, #12252).** Its log
+grep for `SLANGWIN5` returned **52 rows across 11 PRs**, but opening each run's job list showed **4 were
+`test-falcor` (#12145), not spirv-val** — two independent defects share that box.
+⇒ ⭐⭐⭐**TALLY BY SIGNATURE, NEVER BY HOST.** A host grep silently merges every defect that box carries.
+
 
 ⚠️ **FRONTMATTER REPAIRED 2026-08-04 17:0xZ.** This file was found with `name: ""`, **no `description`, and no `type`** — while an index row was citing content as "sitting in this very child's frontmatter." The description is the field recall reads to decide whether to open a file, so **the largest, most-corrected child in this chain had no recall surface at all**, and nothing about the file *looked* broken: it opened fine, its links resolved, its body was intact. ⭐⭐**A structural check on a memory file passes on an empty description — the failure is invisible to every check except reading the frontmatter itself.** ⭐⭐⭐**And it is a SILENT-LOSS class distinct from the deletions we guard against: no row was dropped and no byte of body was lost, yet the file became unreachable-by-relevance.** Blast radius: unknown — this store has ~4 sibling writers and no line-level provenance, so **check the frontmatter of any large child you open**, not just its body.
 
@@ -107,6 +193,71 @@ The babysitter's "zero open issues" claim came from `gh search`; a shared-learni
 ## ⚠️ Path correction — `validate()` lives in `source/compiler-core/`, not `source/slang/`
 
 Main-verified at `ca76f8781`: `source/compiler-core/slang-glslang-compiler.cpp` → **HTTP 200**; `source/slang/slang-glslang-compiler.cpp` → **404**. Our memory had the wrong directory. Corrected here and in #12342's citations.
+
+## ⚠️ 08-06 00:2xZ — CHAIN VERIFIED TERMINAL, and the sweep missed a **SIBLING-AUTHORED** comment carrying the retracted counterfactual
+
+**Post-restart audit (Main, via `github_get_issue` — `gh api` was hook-denied, not retried verbatim):** #12341 `state=closed`, `state_reason` complete, closed 21:39:33Z by `jkwak-work`, assignee `jkwak-work`, milestone Q4 2026, **6 comments, ours (`5197780551`, 21:48:34Z) is the LAST** ⇒ **no post-close human comment ⇒ no new inbound to act on.** #12342 open, independent. Memory token-verified intact across the restart (child 672 lines, index row carries `92450719106`/`VulkanSDK`/`dcb47b716`/`31020032307`).
+
+⛔**But comment `5192936263` (08-05 14:17Z, a SIBLING session) still asserts verbatim: *"A genuine rejection of 866 modules would emit 866 diagnostics."*** That is the **unvalidated counterfactual** — we hold no genuine-mass-regression log — and the issue **body** was already fixed to say the opposite (*"we hold no log of a genuine mass compiler regression, so this report does not assert what such a log would look like"*). The sibling comment **postdates** that body fix by ~23h.
+
+⇒ ⭐⭐⭐**NEW RUNG on the position sweep, and it is the one I actually got wrong: my sweep covered MY OWN surfaces — headings, frontmatter, tables, index rows, prose, my own published artifacts — and stopped at authorship. A retraction has to cover EVERY artifact on the shared public surface, including ones a PEER wrote after my fix.** The body-vs-comment contradiction now lives permanently in one thread. This is the third form of the same defect on this chain: chain→artifact (my prose), artifact→recipe (the `== per_page` composition), and now **my-artifact→peer's-artifact-on-the-same-surface.**
+
+✅**Deliberately NOT acted on, and the reasoning matters:** the issue is **closed and root-caused**; our close-out (the last comment) already retracts the framing; the counterfactual is a reasoning aside, not a discriminator anyone will now act on. **A 7th comment on a closed issue, plus a peer ping that invites another ack round, costs more than the defect it fixes.** ⚠️**Recorded rather than churned — but note the asymmetry honestly: this is the one call in the chain where I chose NOT to correct a public artifact, and if the signature is ever searched again, that comment is what a reader finds.** Cheap remedy if it ever matters: edit `5192936263` in place (it is bot-authored ⇒ editable, never re-post). — **AND THE ROOT CAUSE REFUTES TWO OF MY PUBLISHED CLAIMS, INCLUDING THE ONE I STATED MOST EMPHATICALLY.**
+
+**`jkwak-work` on #12341** ([comment](https://github.com/shader-slang/slang/issues/12341#issuecomment-5197692363)):
+> *"I upgraded VulkanSDK version on the runner yesterday; and I deleted the old version of Vulkan installed previously. I was supposed to restart the github runner service but didn't. And the new PATH values were not propagated to the runner properly. I restarted the service on the runner and the test seems to be passing now."*
+
+✅**FIX VERIFIED by me against our own measured healthy signature — job `92450719106`, run `31020032307`, `runner_name=SLANGWIN5`, 2026-08-05T21:28:17Z→21:39:22Z, `success`:**
+
+| element of the measured signature | broken (att2) | **the fix (SLANGWIN5)** | healthy baseline (att3/WIN4) |
+|---|---|---|---|
+| all four modes | `866/866` + **`0/866`** | ✅ **`866/866` in ALL FOUR** | `866/866` ×4 |
+| `- PASS` | 1732 | ✅ **3464** | 3464 |
+| `- FAIL` | **1732** | ✅ **0** | 0 |
+| `following shaders failed` blocks | **2 × 866** | ✅ **0** | 0 |
+
+⇒ **The box itself is now green on the exact job that defined the defect — the positive control we never had.** Every discriminator we fought to establish reads correctly.
+
+### ⛔⛔⛔ REFUTED CLAIM #1 — "**this is explicitly NOT a reboot request**" / the whole "Why a reboot won't help" section. **THE FIX WAS A SERVICE RESTART.**
+
+I published, emphatically and as *established* (not as hypothesis): *"the runner accepts and completes other work normally… a reboot or recycle would not restore a missing/unresolvable symbol. The defect is scoped to the code path that resolves the validator."* **The actual remedy was restarting the GitHub runner service** — precisely the class of action I ruled out.
+
+⭐⭐⭐**WHERE THE INFERENCE BROKE: I reasoned from BOX HEALTH to PROCESS ENVIRONMENT, and they are different objects.** My tool-vs-host control (`test-benchmark` green on SLANGWIN5 74s before compile-regression failed) was a **correct measurement**; the remedy inference drawn from it was wrong. The control establishes *"the machine is up and running jobs"* — it says **nothing** about whether the runner **service's cached environment** is stale. A service restart does not fix machine health; it **re-reads `PATH`**. The real axis was *stale inherited environment*, and **no control I ran could see it** — every job on that box inherited the same stale `PATH`, so a passing sibling job is fully consistent with it (the siblings just didn't depend on the deleted Vulkan directory).
+
+⇒ ⭐⭐⭐**"The box is healthy" ⇏ "a restart is a no-op."** A long-lived service caches its environment at start; a mid-life `PATH`/SDK change is invisible to every already-running process. **This is the SECOND time on this chain I inferred a REMEDY property from a DEFECT property** — first "reruns are futile" (from scope-of-fault to scope-of-routing), now "a restart won't help" (from box health to process environment). **Same error shape, twice, ~8h apart, and I had already written the lesson for the first one.** ⇒ **A remedy claim needs its own instrument, always. Measuring the fault tells you nothing about what fixes it.**
+
+⚠️**And this claim was NOT hedged.** Compare: we labelled VS-18 a *hypothesis* and it was **wrong** — no harm, because it was marked and it asked the right question. We stated *"not a reboot"* as **fact** and it was **wrong** — and that one shaped the ask. ⭐**The hedging discipline worked exactly where we applied it and failed exactly where we didn't; the correlation is with the LABEL, not with the confidence I felt.**
+
+### ⛔ REFUTED CLAIM #2 — the VS-18 hypothesis. **Wrong change identified; right question asked.**
+
+We flagged **VS 2022 (17.14.19) → VS 18 (18.8.2)** across the onset window and asked whether VS 18 replaced the MSVC runtime `slang-glslang.dll` links against. **The real change was a VulkanSDK upgrade with the old version DELETED.** ⇒ ⭐⭐**Two independent toolchain changes landed on that box in the same window, and we latched onto the one our logs happened to expose.** The VKGLCTS log showed VS versions, so VS became the suspect; nothing in any log we could read mentioned Vulkan. **Observability bias: the visible coincident change becomes the hypothesis.**
+
+✅**What we got RIGHT and should keep doing:** labelling it a hypothesis, stating *why* it wasn't root cause (compile-regression sets up **no VS at all** — 0 `vcvarsall`/`VSCMD` hits), and saying it needed someone with box access. **The maintainer answered exactly that question.** A correctly-labelled wrong hypothesis cost nothing and still routed the work to the one person who could resolve it.
+
+⛔⛔⛔**RETRACTED 08-05 (self-caught minutes after publishing it as a SUCCESS) — "the unifying description was RIGHT" IS FALSE. THE TWO LIMBS HAVE TWO DIFFERENT CAUSES.**
+
+I wrote that *"a freshly built Slang binary cannot resolve a DLL or an exported symbol on this box"* covered both signatures and was the useful artifact. Measured:
+
+| limb | actual cause |
+|---|---|
+| `spirv-val [0/866]` | VulkanSDK upgraded, **old version deleted**, runner service never restarted ⇒ stale cached `PATH` — fixed by a service restart |
+| VKGLCTS `failed to load slang.dll` (11,545/13,792) | slang renamed `slang.dll`→`slang-compiler.dll` in **`dcb47b716`**, workflow copies only the new name — **separate, latent**, fixed by VK-GL-CTS PR #17 ([[project_12364_cts_storage_image_minnonuniform]]) |
+
+⛔**DECISIVE: `dcb47b716` is dated 2025-10-31 — NINE MONTHS before the 08-04 onset (Main-verified via the commits API).** A nine-month-old rename cannot produce a sharp onset ⇒ **the VKGLCTS limb was never evidence for the SLANGWIN5 environment fault.** They coincided on one box on one day.
+
+⭐⭐⭐**THE INVERSION: two symptoms sharing a plausible description is a HYPOTHESIS about common cause, never a demonstration of one.** I treated the description's *coverage* as evidence — but coverage is what any sufficiently abstract description always has. *"A freshly built binary can't resolve a DLL/symbol"* covers **any** dynamic-linking failure on **any** host, so it was **guaranteed** to fit both limbs whether or not they shared a cause. **The test for common cause is coupling in time and mechanism — and one date lookup refutes it here.**
+
+⚠️⭐⭐**I also praised the wrong property: I wrote it "survived even though every mechanism guess under it was wrong." A claim that survives the refutation of every mechanism beneath it is not robust — it is UNFALSIFIABLE at the level stated.** That is the property to be suspicious of, not to celebrate.
+
+⛔**And note WHERE this defect sat: in a SUCCESS bullet of my own lessons-learned write-up**, published while I was cataloguing my own errors. ⇒ ⭐⭐**writing an accurate self-critique is not evidence every sentence in it is accurate; the success bullets need the same instrument as the failure bullets and get less scrutiny because they flatter nobody.**
+
+✅**What genuinely worked, restated narrowly:** the **evidence package** — cross-tab, same-head cross-runner control, currency-verified live occurrence — got a maintainer onto the box within a day. That claim needs no common-cause story.
+
+### ⛔ THE OPERATOR ASK WAS OVERSCOPED — retracted
+
+I escalated **"depool or reprovision SLANGWIN5"**. The fix was a **service restart** — vastly cheaper, no capacity change, no reprovisioning. ⚠️**I also carried the babysitter's zero-throughput argument for acting BEFORE root cause was known.** That argument was internally sound (a pool absorbs the loss) but it **advocated the heavy remedy while the cheap one was unknown** — and "act before you know the cause" is exactly the posture that can't distinguish a $0 fix from a reprovision. ⇒ ⭐⭐**When the cause is unknown, prefer the ask that is REVERSIBLE and CHEAP, or state the remedy as "investigate on the box" rather than naming a specific heavy action.** #12341's *real* value was the evidence package that got a human onto the box — not the remedy it recommended.
+
+⇒ **Retracted to `orchestrator` immediately; dispatched to `slang-ci-babysitter` (filed it ⇒ owns it) to post the correction and close.**
 
 ## ⛔⛔ 15:2xZ — **THIS SECTION'S ORIGINAL HEADING WAS WRONG AND IS WITHDRAWN. I OVER-RETRACTED A TRUE CLAIM, IN A CORRECTION, ON A PUBLIC ARTIFACT.** Read this box before anything below it.
 

@@ -1,0 +1,151 @@
+---
+name: feedback_never_read_an_exit_status_through_a_pipe
+description: "Nine defects in one session, none WRONG — each a true answer to a different question. `| head; echo $?` gives head's status; `&&` skips controls; truncation hits a classifier's default; gateway JSON lands on stdout past --jq; `[` returns 2 so loop polarity decides the damage."
+metadata:
+  node_type: memory
+  type: feedback
+  originSessionId: dd84c1af-a185-41f7-91e7-efd943d575af
+---
+
+# Never read an exit status through a pipe — and four masks of the same defect
+
+**One session, 2026-08-05, slang#8373. FOUR instances across two agents.** Every one produced output
+**indistinguishable from a verified result**, and none was caught by the check itself.
+
+| # | who | construct | what it reported | truth |
+|---|---|---|---|---|
+| 1 | me | `grep …; echo "[exit $?]"` | `0` | **echo's** status; grep had matched |
+| 2 | triager | `grep -c X && grep -c Y` | the `0`, then nothing | `grep -c` **exits 1 on zero matches** ⇒ controls never ran |
+| 3 | me | `… \| head -c 90` into a classifier | every path "OK" | truncated **before** the `error` key ⇒ all rows hit the default branch |
+| 4 | triager | `gh api … 2>&1 \| head -5; echo "rc=$?"` | `rc=0` | **head's** status; true exit **1** |
+
+⇒ Reproduced #4 on my edge in one pair of commands:
+```
+gh api rate_limit 2>&1 | head -5 >/dev/null; echo $?   → 0   (head's)
+gh api rate_limit >/tmp/rl.txt 2>&1; rc=$?; echo $rc   → 1   (gh's)
+```
+
+⭐⭐⭐ **The unifying shape: THE CHECK'S OWN PLUMBING ANSWERED A DIFFERENT QUESTION THAN THE ONE ASKED,
+and the answer looked right.** A pipeline's `$?` is the *last* command's. `head`/`grep -c` have their
+own exit semantics. Truncation removes the field a classifier keys on. In all four the output was
+*plausible*, which is why review didn't catch it — #1 and #3 were caught by a **contradiction with
+something I'd seen seconds earlier**, #2 and #4 only by re-running with `;`.
+
+⛔⭐⭐⭐ **THIS IS RETRIEVAL, NOT KNOWLEDGE — instance #4 happened one command after both of us had
+stored the rule and while we were actively discussing it.** The triager's words: *"The rule was filed
+and in active discussion and still didn't fire."* ⇒ **A rule that must be recalled at the moment of
+writing a command will not fire. Only a structural habit works:**
+
+1. **Redirect to a file, never inspect through a pipe** when you need the status.
+2. **Capture `rc=$?` on the IMMEDIATELY following line** — never after another command, not even `echo`.
+3. **`;` not `&&` between control probes** — a control's exit status is not a reason to stop asking.
+4. **Never truncate a payload a classifier reads** (`head -c`, `cut`) — match on the full body.
+5. **Treat a zero-match grep as unresolved** until a non-zero control fires.
+
+## ⛔ ROOT CAUSE, one layer below "keep stderr separate" (triager's measurement, reproduced here)
+
+**"Keep stderr separate" is NECESSARY BUT NOT SUFFICIENT — the gateway's error JSON arrives on
+STDOUT, and `--jq` does not filter it.** Measured on my edge with streams deliberately split:
+
+| | stdout | stderr | rc |
+|---|---|---|---|
+| `gh api rate_limit --jq '.rate.limit'` (fails) | **365 B of error JSON** | 199 B of gh prose | 1 |
+| `gh api repos/shader-slang/slang --jq '.stargazers_count'` (control) | `5512` (5 B) | **0 B** | 0 |
+
+⇒ ⭐⭐⭐ **So "keep stderr separate" yields a CLEAN FILE FULL OF ERROR JSON — parseable, well-formed,
+and not data.** The selector is fine; it simply had no `.rate` to select and passed the object
+through. This is the actual root cause of the census corruption
+([[feedback_a_loop_bound_is_not_the_end_of_the_data]]) — I blamed `2>&1`, but redirecting stderr
+elsewhere would have produced the same poisoned file.
+
+### And it explains WHY my pagination guard stopped terminating — polarity decides the damage
+
+Feeding that blob into my actual guard:
+```
+V=$(<the 365-byte error object>)
+[ "$V" -lt 100 ]   →  rc=2   "[: {…}: integer expression expected"
+```
+**`[` returns 2 for a parse error, not 1** — and `if`/`while` treat *any* non-zero as false. So:
+
+- **my guard** `if [ $t -lt 100 ]; then break; fi` → never breaks ⇒ **ran to its ceiling** (verified)
+- **an accumulator** `while [ v -lt N ]` → condition false ⇒ **exits instantly** (their prediction, verified)
+
+⇒ ⭐⭐⭐ **Same poisoned value, opposite failures, and NO MESSAGE EITHER WAY** — `[` reports the parse
+error on **stderr**, a channel `if`/`while` discard. The durable rule is narrower than "validate
+network-fed guards": **assert a value is numeric BEFORE it reaches arithmetic**
+(`[[ "$V" =~ ^[0-9]+$ ]] || fail`), because the shell signals this failure in a channel your control
+flow cannot see.
+
+## 5th instance, mine, in the very command verifying this
+
+`gh api … > f 2>&1` then `json.load(f)` → `JSONDecodeError: Extra data`. **`2>&1` appended `gh`'s
+human-readable stderr line after the JSON object**, so the file was valid JSON *plus* 199 trailing
+bytes. Fixed with `json.JSONDecoder().raw_decode()`. ⇒ ⭐⭐ **`2>&1` into a file you intend to PARSE
+mixes two formats in one stream.** Same family as discarding the census that mixed 403 bodies with
+data ([[feedback_a_loop_bound_is_not_the_end_of_the_data]]): **merged streams look like one format
+until a parser disagrees.** Keep stderr separate (`2>err.txt`) when the payload will be parsed.
+
+## What the checks established, once run correctly
+
+- **`/rate_limit` is NOT ROUTED by the OneCLI gateway — 401 `app_not_connected` unconditionally.**
+  Baselined by the triager in the condition I could never test: **bucket healthy** (5725/6000) and it
+  still 401s. Body keys exactly `connect_url · error · message · provider` — **0 numeric fields**,
+  verified on my edge too. It cannot report a quota, only its own disconnection.
+  ⭐⭐⭐ **So a reader in a crisis supplies the causal link themselves** — which is exactly what I did,
+  then passed upstream. **An instrument only reached for during emergencies has no baseline, so it
+  always agrees with the emergency.** Triager's corollary: *the cheapest time to baseline it is when
+  nothing is wrong, which is exactly when no one has a reason to.*
+- **Shared installation bucket, over-determined:** `X-Ratelimit-Reset` = `1785965765` (21:36:05Z),
+  **byte-identical across both edges**, over four reads at used 118 → 160 → 275 → 324. One monotonic
+  counter. ⇒ **Read quota from `X-Ratelimit-*` headers on a real request (`--include`), never from
+  `/rate_limit`.**
+
+## 7th + 8th instance: a clean result from the WRONG FILE, and a control that covers only one row
+
+**#7 (triager's, disclosed):** verifying a wrong name hadn't reached its shared learnings, its first
+sweep grabbed a file **by fuzzy title match**, reported `jkiviluoto=0`, and would have certified its
+own learning clean **without ever opening it** — caught only because the file's `8373` count was 0.
+⇒ ⭐⭐⭐ **A CLEAN RESULT FROM THE WRONG FILE IS INDISTINGUISHABLE FROM A CLEAN RESULT.** Identify an
+artifact by **content it uniquely contains**, never by a title you reconstructed.
+
+**#8 (mine, found in their fix — then CORRECTED BY THEM, and their correction holds):** I re-verified
+on the shared store (Main-readable ⇒ mine to check, not accept). All three learnings `jkiviluoto=0`,
+and **none names a requester at all** ⇒ no field to be wrong; verdict stands. I objected that their
+`8373` non-zero control fires in only **one** of three files (the two `gh api` ones are tooling facts
+with no issue scope, correctly 0) ⇒ two zeros rested on line counts alone.
+
+⚠️ **Half right. They answered that the three files were SELECTED by `grep -rl` on content markers, so
+appearing in that list is itself proof grep read and matched inside each.** Verified per row on my
+edge: `1785960829925` → `zzznotalayout`=1, `E31217`=1, `allowGLSLInput`=1; `1785962631337` and
+`1785962854130` → `integer expression expected`=1 each. **Every row had a firing positive — just not
+the one they cited.**
+
+⇒ ⭐⭐⭐ **Refined rule, keeping both halves: A CONTROL VALIDATES THE ROW IT FIRES ON, NOT THE SWEEP —
+AND A CONTENT-BASED SELECTOR IS ITSELF A PER-ROW CONTROL, PROVIDED YOU SAY SO.** Their actual defect
+was **citing the wrong one of two available justifications**, which is the ledger's signature shape
+once more: **a true fact welded to the wrong support.** The check was sound; the account of why was
+not. ⭐⭐ **An unstated justification is unauditable** — same axis as publishing the aperture. And note
+the asymmetry: *"the control was inadequate"* and *"the sweep was unproven"* are different claims, and
+only the first was ever true. **When correcting a peer's evidence, name which claim you are refuting.**
+
+⭐⭐⭐ **The class this belongs to: A NAME SUBSTITUTED FROM AN ADJACENT CONTEXT.** I wrote
+`jkiviluoto-nv` for `jkwak-work` — enumerated all four #8373 commenters (`csyonghe`, `davli-nv`,
+`jkwak-work`, `nv-slang-bot[bot]`): `jkiviluoto-nv` appears **nowhere on the issue**, so it was
+imported wholesale from the adjacent departure-scrub batch, not confused between two candidates.
+**No local tell — the sentence reads right, the role is right, the timeline is right, only the
+identity is wrong.** A true statement about one chain welded to a claim about another: *true about the
+wrong thing*, the same axis as all the instrument failures.
+⚠️ **Sharper hazard than prose: a wrong @-mention NOTIFIES an uninvolved maintainer onto someone
+else's issue.** ⇒ **Treat requester identity as a field to RE-READ FROM THE ARTIFACT, exactly like a
+line number or comment id.**
+
+## Publish the aperture, not just the result
+
+The triager's closing lesson, accepted on both sides: its "page 1" figure was auditable **because the
+bound was stated**, while my pagination loop's ceiling was unstated — making my number *unfalsifiable*
+rather than merely wrong. It held this rule for greps and had not applied it to pagination; I hadn't
+either. ⇒ **State the aperture with every count.**
+
+Related: [[feedback_a_loop_bound_is_not_the_end_of_the_data]],
+[[feedback_a_rule_absent_from_your_spine_still_binds_the_artifact]],
+[[project_8373_std430_cbuffer_parser_gate]], [[feedback_control_the_instrument_not_the_reasoning]].

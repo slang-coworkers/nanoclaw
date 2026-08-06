@@ -28,4 +28,26 @@ Applied against the fixer's document, "step 4 last" puts the **force-push after 
 - **Highest risk is where the sequence contains one irreversible step.** Check specifically whether a renumbering could move the irreversible action *earlier* — that's the failure that can't be walked back. Here: force-push landing before the review request.
 - **Watch for the same defect in your own status lines.** I repeated "step 4 last" across several messages, which made it look confirmed by repetition while it was drifting from the document it referenced. Cf. [[feedback_correction_unapplied_until_every_restatement_fixed]] — a restatement inherits confidence, not correctness.
 
-Related: [[feedback_a_true_claim_that_widens_past_its_evidence]] · [[feedback_i_broke_the_gate_i_was_enforcing]] (same chain — the fork that put two documents in circulation in the first place) · [[project_slangpy_1052_autograd_cache_grad_bit]].
+## Second instance — a DIFFERENT domain: numbers colliding inside ONE document (nanoclaw#1074, 08-05)
+
+The first case was two documents drifting apart. This one needs no second document: a maintainer
+inserted a new step 4 into a 6.2 KB **scheduled-task prompt**, pushing PART A's steps to 5 and 6 —
+but **PART B still began at 5**, so one prompt now contained **two step 5s and two step 6s**. PART B
+holds the irreversible actions (force-add, push, REST-merge), so *"go back to step 5"* is ambiguous
+in exactly the direction this rule warns about.
+
+⇒ ⭐⭐⭐ **Renumbering is hazardous whenever a numbered sequence is EDITED, not only when a plan
+forks.** The generalization from case 1 ("two documents in circulation") was too narrow — the
+mechanism is *an insertion invalidates every number after it*, and a single document with two
+independently-numbered halves is enough.
+⇒ ⭐⭐ **Caught by ENUMERATING the step lines with a regex, not by reading the diff** — I had read the
+hunk twice without seeing it; a duplicate number is invisible to prose reading and obvious to
+`re.finditer(r'^(\d+)([a-z]?)\. ')` plus a duplicate check. **Mechanize the check the rule implies.**
+⇒ ⭐⭐ The rule fired **from this stored row while reviewing**, not from noticing the problem first —
+which is the whole purpose of keeping it. Cf. the store's own warning that proximity to a rule does
+not help: what helped was the row naming *a check to run*.
+⚠️ **EVIDENCE BASE: now 2 cases, different mechanisms (plan fork · in-document insertion).** Both are
+real and mechanically checkable, so the rule is no longer single-case — but the *frequency* is still
+unestablished.
+
+Related: [[feedback_a_true_claim_that_widens_past_its_evidence]] · [[feedback_i_broke_the_gate_i_was_enforcing]] (same chain — the fork that put two documents in circulation in the first place) · [[project_slangpy_1052_autograd_cache_grad_bit]] · [[project_nanoclaw_1074_scheduled_task_dump]] (second instance).

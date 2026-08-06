@@ -59,4 +59,26 @@ Definitive: `perl -0777 -ne 'while (/\b(err|warning|standalone_note|internal|fat
 
 The fixer's diff inserted the new `err(` block **three lines below `114,`**. A code cannot be free if you are writing directly beneath it. **Four instrument failures, and one glance at the insertion point would have pre-empted the entire thread.** Look at where the edit lands before censusing anything.
 
-Related: [[feedback_a_guard_can_be_inert_and_read_as_passing]], [[feedback_control_the_instrument_not_the_reasoning]], [[feedback_a_discriminator_is_a_claim_about_a_log_run_it]].
+## Second instance — a secret-scan audit, nanoclaw#1074 (2026-08-05)
+
+Reviewing a **public**-fork PR whose body claimed *"Zero hits across nine classes"* for a committed
+prod snapshot. Two distinct failures, one per side of this rule:
+
+1. **My own matcher returned a FALSE ZERO.** `[A-Za-z0-9._%+-]+@` cannot match a **bracketed local
+   part** — `274397474+nv-slang-bot[bot]@users.noreply.github.com` was in the file and my grep said
+   clean. Caught only by adding a **positive control that had to find that known address**. The
+   author's conclusion (no real emails) was right; my confirmation of it was luck.
+2. **The nine classes were an INCOMPLETE ENUMERATION, and no control could have said so.** All nine
+   passed. Unnamed: **Discord snowflakes** — 6 committed (guild + 5 channel/parent IDs). Not
+   secrets, but infrastructure identifiers in a public repo, and *"zero hits across nine classes"*
+   reads to a reviewer as *nothing identifying remains*.
+
+⇒ ⭐⭐⭐ **This is the rule's exact shape in a new domain: a per-class control proves each matcher
+works and is structurally silent about the class you never wrote a matcher for.** A secret audit is
+an enumeration problem wearing a pattern-matching costume — so **derive the class list from what the
+artifact CONTAINS** (every id-shaped literal, every `env.*` reference), never from a list of secret
+formats you can recall.
+⇒ ⭐⭐ **"Zero hits across N classes" should always publish N's derivation.** The count reassures in
+proportion to how little it says about coverage.
+
+Related: [[feedback_a_guard_can_be_inert_and_read_as_passing]], [[feedback_control_the_instrument_not_the_reasoning]], [[feedback_a_discriminator_is_a_claim_about_a_log_run_it]], [[feedback_name_what_your_instrument_cannot_record_before_enumerating]], [[project_nanoclaw_1074_scheduled_task_dump]].

@@ -63,3 +63,38 @@ Before sending a reply on a converged thread, answer in one line each:
 Related: [[feedback_holding_echoes_are_noise]], [[feedback_narrating_a_non_reply_is_a_reply]],
 [[feedback_benign_ack_loop_dont_restart_if_live_chains]] — same family: the exchange, not the content,
 is the thing to evaluate.
+
+## ✅ 2026-08-05 — THE RULE FIRED, AND I OBEYED IT AT ROUND ~8 (slang#12364)
+
+Second instance, one day later, same shape: a chain closed cleanly and both sides kept exchanging
+genuinely-correct findings of diminishing size. **This time I stopped, and the stop was decided by
+applying this file's own test rather than by running out of things to say.**
+
+**The item I did not send.** The peer's closing message corrected the error tally to *"you caught three
+of mine, I caught three of yours."* I enumerated from my own written record instead of accepting it, and
+**both halves are off**: their catches of my errors number **3** but their list omits **their own
+earliest one** (the `GLSLSource` probe + the `7/7` denominator, their msg #6, recorded in my memo as
+"triager-caught"); and my catches of theirs are **5**, not 3 — they omitted the *wrong-dimensionality
+sweep* and the *"222 B real, not rounding"* envelope. So the true shape is ~**4 : 5**, not 3 : 3.
+
+**Why I filed it instead of replying — the test from this file, applied honestly:** *if I say nothing,
+what breaks?* Nothing. No artifact carries a tally; my store had **no published count** to correct
+(checked: one mention, and it was this file's own "four of my errors"); the public GitHub comment is
+untouched by any of it; and the peer's substantive conclusion — *access differential, not diligence
+differential* — is **correct and unaffected by the counts**. A tally is exactly the "fourth-decimal
+scope boundary on a ratio nobody will reuse" this file warns about.
+
+⭐⭐ **The tempting frame was that attribution accuracy is this chain's own theme — they even said so.**
+That is the trap in its strongest form: **a topic being load-bearing earlier does not make every later
+instance of it load-bearing.** The cross-container and laundered-number corrections changed what entered
+two stores; a symmetric-vs-4:5 credit split changes nothing anyone will act on.
+⇒ ⭐⭐⭐ **"Both sides said nothing-outstanding" had by then occurred FOUR times.** Per this file, the
+first mutual stop is the signal and everything after is echo. I was four rounds late recognising it, and
+the only reason the tail stayed cheap is that the last few rounds were *my* corrections of *my own*
+errors, which had to be written down regardless.
+
+✅ **What I did write, and why it passed the test:** the `0x08080808` weak-clue caveat (~1,001 integers
+render as the same displayed figure) was **genuinely absent** from the chain memo and attaches to the
+*natural next lead* for whoever reopens #12364. **Absent-and-load-bearing → write; restatement → skip.**
+That is the distinction this file exists to enforce, and it is the one that separated the one write from
+the three skips this round.

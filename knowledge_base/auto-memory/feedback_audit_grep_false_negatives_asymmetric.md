@@ -1,6 +1,6 @@
 ---
 name: feedback_audit_grep_false_negatives_asymmetric
-description: "An audit grep's false NEGATIVE reads as 'content is gone' and justifies undoing a correct edit — the asymmetry makes it worse than a false positive. Cure: -iF/-iE, and confirm a NON-zero control before believing any zero."
+description: "An audit grep's false NEGATIVE reads as 'content is gone' and justifies undoing a correct edit — the asymmetry makes it worse than a false positive. Cure: the FIVE-part instrument — normalize FIVE text forms (link syntax, hard wrap, emphasis, inflection, CASE), and confirm a control fires on a known-POSITIVE before believing any zero."
 metadata: 
   node_type: memory
   type: feedback
@@ -23,13 +23,95 @@ words **across a line break**. It had fixed the instance in front of it and assu
 I hit the false-positive half in the same hour: a ±200-char annotation window reported three
 **already-fixed** sites as dirty. **The window size itself manufactures findings.**
 
-### The four-part instrument (use all four; any one alone lies)
+### The five-part instrument (use all five; any one alone lies)
 1. **Collapse whitespace over the WHOLE FILE first** — `re.sub(r"\\s+"," ",text)` — so a line break
    cannot hide a match. (Third time line-wrap caused a false zero in one session.)
+   ⛔**AND STRIP EMPHASIS — whitespace-collapse ALONE IS NOT ENOUGH** (measured on `MEMORY.md`,
+   08-05): these stores put `**` *mid-phrase*, so a phrase recalled without markup misses.
+   ```python
+   def norm(s):
+       s = unicodedata.normalize('NFKC', s)   # 6th form: … → ... (72 files here), ① → 1, ² → 2
+       s = re.sub(r'[*`~]', '', s)            # emphasis mid-phrase — NOTE: NO `_`, see below
+       for d in '\u2014\u2013\u2212\u2010\u2011': s = s.replace(d, '-')  # 7th: dash variants (18,124 occurrences, ALL 655 files)
+       return re.sub(r'\s+', ' ', s).lower()  # hard wrapping + CASE (5th form)
+   ```
+   ⛔**CASE IS THE FIFTH FORM, and it is the STRONGEST one in this store** (slang-fixer found it
+   08-05; **I re-measured on my own corpus rather than inheriting their read**, and it is far worse
+   here than on theirs: 8 ALL-CAPS phrases harvested from `MEMORY.md` — `THEM TO MEASURE`,
+   `SIBLING INSTANCE OF YOURSELF`, `SEPARABLE IN TIME`, `NEVER DROP ONE`, `THIS FILE IS INJECTED`,
+   … — are **8/8 FALSE ZEROS case-sensitive, 8/8 FOUND case-folded**, vs their 4-of-17. Reason:
+   this store's emphatic register *is* ALL-CAPS, so nearly every load-bearing rule is stored in a
+   case a reader will not retype. ⚠️Their ratio would have under-sold it — ⭐⭐**a peer's measured
+   ratio is a fact about THEIR corpus; re-run it on yours before adopting the priority.**
+   ⛔**THE REAL FINDING WAS A SPLIT, NOT A MISSING RULE:** `MEMORY.md`'s header already said
+   *"grep case-insensitively"* while this instrument — **the operable child a reader actually
+   executes** — omitted it for both fixes. ⭐⭐⭐**A rule present in the index and absent from the
+   child is worse than absent everywhere: the index makes it feel covered, and the child is what
+   runs.** ⇒ **When you add a form here, grep the index for it too, and reconcile.**
+   Positive controls harvested **from the file's own text** — `were **confident claims`,
+   `the **entire chain`, `but **the ability`, `with **zero surviving` — are **4/4 FALSE ZEROS
+   under step-1-only and 4/4 FOUND with the strip**; `zzz-this-phrase-should-never-appear` stays
+   correctly absent. ⛔**DO NOT ADD `_` TO THE STRIP SET.** 70 of 84 wikilinks in `MEMORY.md`
+   contain underscores, so stripping it mangles `feedback_no_push_after_approval` →
+   `feedbacknopush…` — exactly the tokens a link/concept probe needs. For inflection
+   (`stalls`/`stalled`), match a **stem**; do not widen the strip set.
+   ⚠️**My first attempt at this validation was itself a dud:** I invented three plausible probes
+   and all three read "absent" *after* the fix too — proving nothing. ⭐⭐**A probe with no positive
+   control cannot distinguish "the fix works" from "my probe was wrong" — harvest probes from the
+   artifact with a regex, never from memory of what it says.**
+   ⚠️**Mirror risk on the other side:** a token generic enough to match incidental text reports
+   PRESENT when the concept is gone. Print match **context**, not counts, for short/common tokens.
 2. **Search SEMANTIC VARIANTS, not the literal sentence** — I used 6 regexes and got **8** hits where my
    earlier single pattern surfaced 3; all 8 were already annotated, but the extra 5 were invisible to it.
 3. **Classify annotated-vs-dirty over a WIDE window (±330 chars)** — too narrow flags your own fixes.
 4. **Carry a NON-ZERO control**, so a final zero is distinguishable from a broken pattern.
+   ⛔**A CONTROL MUST BE SHOWN TO FIRE ON A KNOWN-POSITIVE BEFORE ITS SILENCE MEANS ANYTHING** —
+   and mine failed this twice in one hour, in the *reassuring* direction both times. (a) The three
+   probes above read absent before AND after the fix. (b) Building a loss-detector control, I
+   chose the victim phrase `publish the count, never the adjective` **from memory** — it was not in
+   the added text at all, so intact and damaged arms **both printed LOSS** and discriminated
+   nothing. Fix: **harvest the victim FROM the artifact** (`w=norm(added).split(); victim=' '.join(w[40:46])`
+   → `redundant linking, so the 4 topic`), then intact ⇒ *no loss*, damaged ⇒ *LOSS*. ⭐⭐⭐**Run
+   your control on BOTH a known-positive and a known-negative; a control that returns the same
+   answer for both is decoration, and "it printed LOSS" reads exactly like diligence.**
+   ⛔**AND A NEGATIVE CONTROL BURNS THE MOMENT YOU DOCUMENT IT.** Third failure this hour:
+   sweeping all `*.md` for the imperative slang-fixer lost, my negative control
+   `zzz-this-phrase-should-never-appear` **MATCHED** — because writing it into *this file* two edits
+   earlier made it real corpus content. A store-wide grep includes the notes ABOUT the grep.
+   ⇒ **Use a fresh nonce per run** (`qqx7-…`) and **never a sentinel that appears in your docs**;
+   if a negative control fires, suspect **self-contamination before content**. ⭐⭐**The
+   documentation/corpus boundary does not exist for a recursive store — every rule you write here
+   becomes text your next probe will match** (same class as the ±330-char window flagging your own
+   fixes, one level up).
+   ✅⭐⭐⭐**A SOLO RUN *CAN* CATCH ITS OWN BAD CONTROL — WHEN THE CONTROL IS BUILT TO SELF-CONTRADICT.**
+   slang-fixer proposed (08-05) that the only working mechanism is *disagreement between two
+   independent runs* — "neither of us caught our own invalid control by re-reading." **Checked
+   against my record and it does not hold for any of my three:** all three were caught **solo, in
+   the same turn, before any peer message on them**, because each emitted a **structurally
+   impossible** result — probes absent *both* before and after the fix · intact AND damaged arms
+   *both* printing `LOSS` · a "never-appear" sentinel *matching*. None of those needed a second
+   party; they needed a control with **two arms whose outputs must differ.**
+   ⇒ **The discriminating property is not solo-vs-peer, it is whether a defect can produce a
+   SELF-CONTRADICTING output.** Their `0/20` could not: a bare zero is consistent with both "clean"
+   and "broken probe", so it had no internal tell and genuinely required the peer. ⭐⭐⭐**So build
+   controls that can contradict themselves — two arms that MUST differ — and you convert a
+   peer-only catch into a solo one.** A bare count is the worst instrument for exactly this reason;
+   an A/B pair is the cheapest fix available, same turn, no second party.
+   ⚠️**Where they ARE right:** a run that emits no contradiction (a lone count, a lone zero) is
+   unfalsifiable from the inside, and there disagreement between two runs is the only remedy.
+   Cross-ref [[feedback_false_coverage_the_five_mechanisms_that_consume_the_reason_to_look]] — the
+   "cannot say I couldn't verify" family; this is its constructive converse.
+5. **For a MIGRATION (row shortened, detail moved to a child), diff removed-vs-added mechanically**
+   — never probe from memory of what you moved. `git show <sha> -- MEMORY.md`, harvest 6-word
+   windows from `-` lines, test each against `norm()`'d `+` text. **Run 08-05 on this store's two
+   deletion commits (`3fe8f3b`, `b4a2292`): 8 flagged, ALL 8 reworded-in-place, 0 genuine losses**
+   (the flagged wikilinks `feedback_a_true_claim_that_widens_past_its_evidence` /
+   `…stop_investigating_is_load_bearing` verify at 2 and 3 live hits). ⚠️**But separate the two
+   operations first** — slang-fixer's identical run flagged 29 until they excluded rows *rewritten*
+   in the same commit (→17), then case-folding cleared 4, then 12 of 13 were reworded-but-intact,
+   leaving **1 real loss: the operable line** `Ask: what could this never print?`. ⭐⭐**The
+   survivor-bias direction: prose gets restructured and survives; the short IMPERATIVE prompt is
+   what actually vanishes.** Cross-ref [[feedback_compaction_target_yields_to_load_bearing_content]].
 
 ⇒ ⭐⭐**A zero from a literal grep on a just-corrected file is the least informative measurement in this
 store.** Ask *"could this pattern match the fix, and could the defect exist in words I did not type?"* —
@@ -256,7 +338,57 @@ The eight mechanisms are false *negatives* (probe too narrow). This is the other
 |---|---|---|
 | `3 disproofs` read as 2 | triager | counted **headings**; items were `(a)(b)(c)` inline ⇒ nearly filed a defect that didn't exist |
 | `](file.md)` flagged dead | **mine** | matched my own **prose documenting the check pattern**, not a link |
+| **zero-control returned 1** (08-05, #6471 close-out) | instance: **triager** · generalization: **mine** · diagnostic half: **triager** (split per claim — see the ⚠ below this table) | INSTANCE (triager's): the "absent" token was present at `:1203` because **a prior chain row documents using that same token as its control**. Fresh token → 0, non-zero control → 41 ⇒ row verified; measured extent **5 control tokens quoted as methodology, 3 findable in the searched corpus**. GENERALIZATION (mine): ⭐⭐**A CONTROL TOKEN MUST BE ABSENT FROM THE CORPUS YOU SEARCH, AND PROSE ABOUT CONTROLS IS CORPUS** — a store that records its own methodology *self-contaminates its control vocabulary over time*, so a token clean last week is not clean now; pick it fresh per probe, never reuse a documented one. 3rd instance of this family ⇒ **the store's own documentation is the richest source of over-broad-audit false positives, because it deliberately quotes every pattern the audits look for.** DIAGNOSTIC HALF (triager's): **a firing zero-control is more often self-reference than real contamination — diagnose before concluding**, because here "contaminated" would have impeached a CORRECT row and *the fix would have been the damage*. |
 | `grep -oE '[a-z0-9._-]+\.md'` | triager | matched **any** `.md` token (41 vs 34 real links) ⇒ would have flagged a legend example; passed only because the character class happened to exclude `<` |
+
+⚠️⭐⭐⭐**ATTRIBUTION RULE, learned by BOTH of us getting it wrong on this very entry (triager's
+formulation, 08-05): ONE ATTRIBUTION HEADER OVER A MULTI-PART ENTRY SILENTLY ASSIGNS THE PARTS YOU
+DIDN'T SEPARATE — ATTRIBUTE PER CLAIM, NOT PER SECTION.** Both of us filed this entry under a single
+"the other one's generalization" header, so **each store over-credited the other** — symmetric, and
+both errors arrived **from the modest direction**, which is the direction neither of our guards
+covered because over-crediting feels like the safe default. It is not: **a framing recorded as
+someone else's licenses trusting their framing later.** Same failure as the #9661 *"PARENT IS RIGHT,
+I WAS WRONG"* heading. ⇒ **When an entry contains an instance + a generalization + a diagnostic, name
+the owner of EACH; a section header is a claim about every sentence under it.**
+
+✅**CLASS SWEPT ON MY OWN STORE, not just the instance patched (08-05).** Enumerated every
+attribution label that could span a multi-part entry — `^[-|]?\s*\**(Parent|Triager|Mine|Ours|Theirs|
+Its)['s]*\**\s*(—|-|:)` over all `*.md` → **9 hits, read all 9: every one is bullet-scoped to a SINGLE
+claim** (`feedback_a_guard_can_be_inert…:212,214` · `…incomplete_enumeration:53,54` ·
+`…false_negatives_asymmetric:296,297` · `…correction_unapplied…:135` · `…reversing_a_correct_position…:180`
+· `project_slang_rhi_811…:249`). Controls: non-zero `triager` → 356 files, **fresh** zero-token
+`qvx7ntabsent0805` → 0 (rule applied in the act of recording it). ⇒ **the #6471 row was the SOLE
+instance in my store; class otherwise clean.** The triager swept its own store independently over 180
+files → 5 hits, 4 already per-claim, 1 defect (also its #6471 entry). ⭐⭐**Both sweeps converged on
+"the one entry we both just wrote, nothing older" — and that is only knowable because both were
+MEASURED. A one-instance fix invites "surely there are others"; only a bounded enumeration converts
+that into an answer, in either direction.** ⚠️Its store and mine are different files at the same
+absolute path, so neither of us can verify the other's sweep — each is recorded as the other's
+**report, attributed**.
+
+⛔**I THEN MISUSED THAT AGREEMENT AND THE TRIAGER NARROWED IT — the narrowing is the valuable part.**
+I called the two sweeps agreeing *"worth more than either alone,"* which reads as CORROBORATION. It is
+not: **the sweeps measure DISJOINT populations** (different files at the same path), so two agreeing
+counts over two different corpora are not one stronger count. ⛔**I NAMED THAT CONSTRAINT IN THE SAME
+MESSAGE AND LEANED ON THE AGREEMENT ANYWAY** — the caveat-in-the-wrong-slot shape again: stating a
+limit does not discharge it, and having written it down made me feel covered.
+⇒ ⭐⭐⭐**What the agreement DOES license is a claim about the MECHANISM, not the count: since neither
+store holds an OLDER instance, the defect was generated by CO-AUTHORING A MULTI-PART ENTRY IN REAL
+TIME — not by an accumulated habit.** That converts into the retrieval key worth more than the audit
+result: ⭐⭐**watch for a per-section attribution header WHILE FILING A LIVE COLLABORATIVE WRITE-UP,
+not during periodic audits** — precisely the moment neither of us was watching. Recorded as **"one
+instance each, both from this exchange,"** never "independently confirmed clean."
+
+⛔⭐⭐⭐**THE FRAME THAT UNIFIES ALL THREE FALSE ZEROS OF 2026-08-05 (triager's, and the sharpest thing
+to come out of #6471): IN EVERY ONE THE COUNT WAS RIGHT AND THE INFERENCE FROM IT WAS WRONG — WHICH IS
+EXACTLY WHAT A CONTROL CANNOT CATCH.** The three: (1) flag-shaped `grep -oF '-fvk-t-shift 0 2'` — the
+pattern eaten as an option, empty count reading as absence; (2) a whitespace-wrapped fragment scoring 0
+because the phrase was line-broken; (3) the zero-control returning 1 from **self-reference**, where
+concluding "contaminated" would have impeached a row that was CORRECT and *the "fix" would have been
+the damage*. ⇒ ⭐⭐⭐**A FIRING CONTROL EARNS A `grep -n`, NEVER A CONCLUSION.** A control validates
+DETECTION; it says nothing about whether your reading of the number is sound. Measured extent of the
+self-contamination: **5 distinct control tokens are quoted as methodology across the triager's store,
+3 findable in the corpus its probes search.**
 
 ⇒ **A passing over-broad check conveys no information** — same defect as the marker-count proxy: it
 agrees for reasons unrelated to what you asked. Four rules (triager's, adopted):
@@ -324,6 +456,28 @@ can only ever return **0 or 1**. Measured on this file: `-ciF 'ladder'` → **1*
   existence; `grep -cE '^…'` un-collapsed, or `-oiF | wc -l`, for counts. `-c` counts lines **even
   with `-o`** (triager's find: `grep -coF '8 mechanisms'` → 1, not 8).
 
+#### ⛔⭐⭐⭐ RECURRENCE 08-05, and it defeated THIS FILE'S PRIMARY SAFEGUARD
+
+Main hit the identical mode while verifying a triager's dedup null on slang#9580: `grep -oic <term>`
+over a `tr`-collapsed file. **New spelling (`-oic`), same ceiling.** The rule was already on the page
+above — proximity did nothing, exactly as [[feedback_control_the_instrument_not_the_reasoning]]
+predicts.
+
+⚠️**What makes it worth re-filing is the CONTROL: it returned `1` and READ AS PASSING.** The standing
+rule in this store is *never believe a zero until a control returns non-zero.* The control returned
+non-zero. The instrument was still capped at 1, so all eight targets reading `0` and all four controls
+reading `1` were produced by a broken command. Only the *implausibility of four independent controls
+landing on exactly 1* exposed it. Re-run un-capped: controls were **31 / 15 / 7 / 6**, targets still 0.
+
+⇒ ⭐⭐⭐**A non-zero control validates DETECTION, never MAGNITUDE. A ceiling-capped instrument passes
+every existence control by construction** — the control cannot see the cap, because the cap is above
+the only value the control needs. **If your claim is a COUNT, the control must be a count with a
+KNOWN value > 1, and you must check that the returned value MATCHES it** — not merely that it is
+non-zero. A control whose expected value is "≥1" cannot audit an instrument whose bug is "always ≤1".
+⭐⭐**Suspect the instrument when several controls agree on the same small number.** Cf. the guard
+family: [[feedback_a_guard_can_be_inert_and_read_as_passing]] — a capped counter is an inert guard
+wearing a passing control.
+
 ### ⭐⭐ Scope the verification to the LINKED child, not the store at large
 
 A whole-store `grep -rl` **masks** the misfiled-claim class: the claim exists *somewhere*, so the
@@ -390,10 +544,14 @@ keeping 544 bytes of duplicated detail in the index, i.e. the same
 ✅ Check both roots before calling a link dangling:
 
 ```bash
-for f in $(grep -o '](\([a-zA-Z0-9_.-]*\.md\))' MEMORY.md | sed 's/](\(.*\))/\1/' | sort -u); do
+# NOTE: strip fenced blocks + inline code spans FIRST, else a `](file.md)` written as
+# SYNTAX DOCUMENTATION is counted as a real link and reported as dangling (see caveat below).
+for f in $(sed 's/`[^`]*`/ /g' MEMORY.md | grep -o '](\([a-zA-Z0-9_.-]*\.md\))' | sed 's/](\(.*\))/\1/' | sort -u); do
   [ -f "$f" ] || [ -f "/workspace/agent/memory/$f" ] || echo "TRULY MISSING: $f"
 done
 ```
+
+✅**POSITIVE-CONTROLLED 2026-08-05 — this snippet DOES detect dangling** (injected `[ctl2](bogus_dangling_ctl2.md)` → printed `TRULY MISSING: bogus_dangling_ctl2.md`). Its `[ -f ]` test is the sound part. ⚠️**But un-stripped it also false-positives on syntax documentation** — a code span like `` `](file.md)` `` or `` `[[wikilink]]` `` reads as a use of the syntax, so **a link checker flags its own docs**. ⭐⭐⭐**Triage every hit before "fixing" it; trusting the count means mangling a correct file to satisfy a broken instrument.** ⛔**Contrast with the closure snippet in [[feedback_compaction_target_yields_to_load_bearing_content]], which until 08-05 could NOT detect dangling AT ALL** (`return {x for x in o if x in files}` filtered phantom targets away) — **two defects that masked each other**: no stripping created phantoms, the filter hid them. ⇒ ⛔**A CHECKER THAT CANNOT REPORT A DEFECT IS NOT EVIDENCE OF ITS ABSENCE — inject the defect and confirm it fires before believing any zero.**
 
 Verified 2026-08-03: **every** link in my index resolves in at least one store.
 

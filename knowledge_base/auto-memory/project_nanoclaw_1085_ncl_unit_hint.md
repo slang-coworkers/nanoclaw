@@ -1,0 +1,37 @@
+---
+name: project_nanoclaw_1085_ncl_unit_hint
+description: "slang-coworkers/nanoclaw#1085 — ncl transport-error hint asserts a derived service name; fix adds a caveat but its finder one-liner is systemctl-only above BOTH platform lines; 9th inline-routing instance"
+metadata:
+  node_type: memory
+  type: project
+  originSessionId: pr1085-ncl-unit-hint
+---
+
+**slang-coworkers/nanoclaw#1085** — `fix(ncl): don't assert a service name we cannot verify`, author **szihs**, branch `fix/nv-main/ncl-unit-hint` → `nv-main`. `pr_ready_for_review` (reason `opened`, 2026-08-05T12:47Z). **1 file, +9/−1: `src/cli/transport-errors.ts` only.** Head `02830e0c`, base `c0bc5a03`.
+
+**ROUTING: handled INLINE by Main — 9th instance of the rule.** NanoClaw platform-infra fork; the webhook task string ("route to the project's `*-pr-approver`") targets PRODUCT (slang/slangpy) PRs. Never dispatch a nanoclaw-repo PR to `slang-pr-approver`/`slangpy-pr-approver`. See [[project_nanoclaw_pr874_webhook_route_approver]], [[project_nanoclaw_1083_drift_check_empty_allowlist]] (8th), [[project_nanoclaw_1081_silent_turn_undelivered]] (6th).
+
+**The change.** `formatTransportError` printed `Or, if installed as a service:` then two derived commands. The names come from `getLaunchdLabel()`/`getSystemdUnit()` = `sha1(projectRoot).slice(0,8)` (`src/install-slug.ts:11-22`), so they are a *default* install's names. On the lego box the real unit is `nanoclaw-haaggarwal-lego` ⇒ the hint sends the operator to restart a nonexistent service and fails quietly. Fix reframes them as DEFAULTS and adds a finder one-liner. **Premise verified: derived, exactly as claimed.**
+
+**🔴 THE FINDING — the fix reproduces its own defect on macOS.** Rendered the actual output (`tsx` importing the head file, not read off the diff):
+```
+checkout; a service registered under a custom name will differ, find it
+with `systemctl --user list-units --all | grep -i claw`:
+  macOS:  launchctl kickstart -k gui/$(id -u)/com.nanoclaw-v2-02fe4fac
+  Linux:  systemctl --user restart nanoclaw-v2-02fe4fac
+```
+"find **it** with `systemctl …`" sits **above both platform lines**, so a macOS operator reads it as their finder — and `systemctl` doesn't exist there. Same failure class the PR fixes: quiet failure that looks like it should have worked. **The macOS form already exists in-repo** (`setup/verify.ts:55` uses `launchctl list`; `.claude/skills/setup/SKILL.md:326` greps it) ⇒ suggested per-platform pairing. ⭐⭐**A fix for "hint names something that isn't there" can itself name something that isn't there — check the remedy against every platform the hint prints for.**
+
+**🟡 No test covers the new behavior.** `src/cli/transport-errors.test.ts` (3 tests, all pass at head) asserts only that the derived names still appear — it is **byte-identical-passing before and after this PR**, so a future edit could drop the caveat green. One line closes it: `expect(out).toContain('list-units --all')`. ⭐⭐**A suite that passes identically on both sides of a change tests nothing about the change** — checked by reading the assertions, not by the green tick.
+
+**🟡 Three unfixed sibling sites** print the same two-line pair: `setup/auto.ts:857-858` (`renderPingFailureNote`) and `setup/auto.ts:508`. **Scoping to `ncl` is defensible but NOT for the obvious reason** — I checked whether those sites always run right after registering the service (which would make the derived name correct there): they don't. `auto.ts:169` "NanoClaw is already installed → Keep it & continue setup" and `NANOCLAW_SKIP=service` (`:496`) both reach the ping step at `:615` on an install whose unit was registered elsewhere. Follow-up, not a blocker.
+
+**🟡 Adjacent latent, NOT introduced here:** `client.ts:42` writes to stderr with no drain callback then `process.exit(2)` at `:43`, while the stdout path at `:52` carries an explicit comment that `process.exit()` discards buffered pipe writes and uses a callback for exactly that. **Could not construct a truncation** (~300 bytes, far under the 64KB pipe buffer) ⇒ reported as asymmetry, not a defect. ⭐**Report the failed reproduction alongside the observation; "I couldn't make it fail" is the load-bearing half.**
+
+**Author's "not changed: the exit code" section is CORRECT and verified** — `client.ts:41-43` really does `process.exit(2)` in the transport `catch`. His piping diagnosis is right for a reason worth keeping: **`bin/ncl` ends in `exec pnpm exec tsx …`, so `exec` replaces the shell and its `set -euo pipefail` never governs the CALLER's pipeline** — `ncl … | tail -3` reports `tail`'s status. ⭐⭐**A "not changed" section is the most valuable part of a PR body to verify — it is a claim that a working path was left alone, and nothing else in the diff will catch it if wrong.**
+
+**Verification method (what was actually run, in the local clone `/workspace/agent/nanoclaw-kb`):** `git fetch origin fix/nv-main/ncl-unit-hint nv-main` → checkout head. **`tsc -p tsconfig.json` BASE vs HEAD compared, not just run:** both exit 2 with the **same 4 pre-existing missing-module errors** (`@chat-adapter/telegram`, `js-yaml` ×3) ⇒ delta zero, but the tree is NOT error-free at either end — the PR's "typechecks clean" is true only as a delta. ⭐⭐**Run the baseline: a nonzero tsc on the head means nothing until you know the base's number.** prettier clean. `vitest run src/cli/transport-errors.test.ts` 3/3. `gh pr checks` → `check`/`ci`/`label` all pass (`ci` was `pending` on first read, `pass` on re-read — don't quote a pending as a result). **Enumerated all consumers of the derived names via one `grep` over `getSystemdUnit|getLaunchdLabel|getInstallSlug|getContainerImageBase|getDefaultContainerImage`** (~30 sites across `src/`, `setup/`, `migrate-v2.sh`, `setup/lib/install-slug.sh` shell mirror) rather than reasoning about likely callers. **Confirmed no in-repo custom-service-name mechanism exists** (no `SERVICE_NAME`/`SYSTEMD_UNIT` env override) ⇒ a custom name is registered OUT of band, which is precisely why the hint cannot verify it. ⚠️`systemctl` exists in this container but `--user` fails (`Failed to connect to bus: No medium found`) ⇒ **could not execute the suggested finder here; its correctness rests on reading `setup/verify.ts`, not on a run.**
+
+**Posted:** one comment, [issuecomment-5192069833](https://github.com/slang-coworkers/nanoclaw/pull/1085#issuecomment-5192069833). **No auto-merge** — maintainer-owned `nv-main`, outside the `nv-coworkers` grant ([[feedback_nv_coworkers_automerge]]).
+
+**On redelivery:** routing unchanged (inline, no dispatch). Do not re-review from scratch; check whether the macOS finder was fixed and whether a test assertion was added, then ack.

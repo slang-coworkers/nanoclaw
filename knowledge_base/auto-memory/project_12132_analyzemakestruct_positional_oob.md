@@ -19,4 +19,4 @@ Coworker-filed (nv-slang-bot), spun out of #9580 investigation as an INDEPENDENT
 
 **State (07-16):** Triage verdict POSTED to GitHub (comment 4987735917, 5-bullet). Assignee = **jkwak-work** (human-set). HELD for maintainer: issue + triager both defer to maintainer to confirm no legitimate short-list producer exists before choosing assert-vs-tolerate. NO fix dispatched — one-line assert but design call is jkwak's. Stand down per self-assigned-maintainer rule. Re-open if jkwak comments or a substantive human reply lands.
 
-Thread: gh-issue-shader-slang/slang-12132. See [[project_9580]] (not stored) — front-end fix separate.
+Thread: gh-issue-shader-slang/slang-12132. See [[project_9580_glsl_legalize_layout_mismatch]] — front-end fix separate.

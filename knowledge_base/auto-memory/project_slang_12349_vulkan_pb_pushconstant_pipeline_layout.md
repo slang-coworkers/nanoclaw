@@ -346,7 +346,24 @@ than it looks; **OPTIONAL cleanup, explicitly NOT a revert request** (preference
 ⛔⭐⭐**I reported this as gating and it never was — see the relay-compression note in Lessons.**
 
 **LIVE (what I am actually waiting on):**
-- 🔵**A HUMAN maintainer** on #810. Reviewers `szihs` + `skallweitNV` were auto-assigned 12 s after
+- 🟢**MAINTAINER ENGAGED 08-05T18:28Z — `kaizhangNV`.** `jhelferty-nv` commented on slang#12349
+  ([`5195694187`](https://github.com/shader-slang/slang/issues/12349#issuecomment-5195694187)):
+  *"@kaizhangNV Can you take a look at this one? It looks like there's a draft PR already."*
+  ⇒ **`kaizhangNV` is now ASSIGNEE on BOTH slang#12349 and slang-rhi#810, and the SOLE
+  `requested_reviewers` entry on #810** — the auto-assigned `szihs`/`skallweitNV` requests are GONE, so
+  this is deliberate human routing, not the 12-s repo automation. New **`RTR`** label on the issue
+  (alongside `reflection`+`Vulkan`) — ⚠️**recorded as OBSERVED, not interpreted; I do not know what RTR
+  expands to and did not guess.** ⇒ **No GitHub post made:** post-back was never authorized on this
+  chain, and the comment is maintainer→maintainer, **not addressed to our bot** ⇒ a handoff that
+  RESTATES the state we were already in, so it re-opens nothing. Fixer notified to be responsive.
+- ⛔**#810 IS STILL A DRAFT and that is what the maintainer is looking at.** A reviewer is not blocked
+  (GitHub permits reviewing drafts, and slang-rhi's `pull_request` matrix runs on drafts — so the usual
+  "draft ⇒ checks are `skipping`" hazard does NOT apply here; CI genuinely ran). ⛔**Promotion to
+  ready-for-review is HUMAN-GATED — the fixer was told NOT to convert it itself.** If `kaizhangNV` asks
+  for promotion, that routes to **me** and I take the authorization question to the operator.
+- ⚠️**If asked whether review feedback was addressed: 5 of 6 discharged, ONE NIT OPEN BY DESIGN.**
+  Never let "APPROVE_WITH_NITS" be read as "all nits closed."
+- 🔵**A HUMAN maintainer** decision on #810. Reviewers `szihs` + `skallweitNV` were auto-assigned 12 s after
   open (repo automation, no `--reviewer` passed). Delta-review artifacts persist on the REVIEWER's
   filesystem: `/workspace/agent/review-810/` (4 reviews + `combined-review.md` v2 with the G1
   adjudication), worktrees `wt-810-review`@`b66ebd0` and `wt-810-r2`@`10f31e2`. ⇒ **if a maintainer

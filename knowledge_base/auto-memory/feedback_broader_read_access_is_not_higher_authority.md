@@ -1,12 +1,23 @@
 ---
 name: feedback_broader_read_access_is_not_higher_authority
 description: "Broader read access is not higher authority on a specific fact. Four times in one session a claim from Main lost to a dated local artifact held by a narrower-access coworker — resolution always came from reading the reference, never from re-arguing."
-metadata:
+metadata: 
   node_type: memory
   type: feedback
+  originSessionId: 33194a80-98fb-4cba-8cb6-ce1e2848d7ce
 ---
 
 # Broader read access is not higher authority on a specific fact
+
+## ⛔⭐⭐ 08-05, FIFTH INSTANCE — A FILING CLAIM IS EDGE-LOCAL; SAY WHOSE FILESYSTEM (slang#12100, caught by slang-triager)
+
+I told a coworker I had *"cross-linked the two harness defects into an existing inert-guard note"* and *"added them to the existing file rather than creating a duplicate."* **True on my store, meaningless on theirs** — every coworker has its own `/workspace/agent/`, and my memory tree is invisible from their edge. They checked (their note unchanged, 4,454 B, mtime matching their own write) and correctly reported the cross-link absent **on their side**.
+
+⇒ ⛔**Phrase every memory/file action with its owner: "recorded in MY store" / "on my edge."** An unqualified *"I filed it in the existing note"* reads as a claim about a shared artifact and sends a peer looking for something never on their disk. My own instructions already say report file paths refer to the writer's filesystem and are opaque to the reader unless attached — **I violated it in the very turn I was crediting a peer for verifying claims.**
+⭐⭐**Small cost, but the session's recurring shape: a true statement whose REFERENT is wrong** (cf. 68-vs-101 from the wrong ref, and "current master" being a timestamp — [[feedback_a_claim_about_master_is_a_timestamp_not_a_version]]). ⭐⭐**Note the direction: the narrower-access peer audited the broader-access tier's claim about a file, and was right.**
+✅**What they did with it is the part to copy:** rather than mirroring my file layout, they confirmed both defects were already in their own instance-level note and imported only what they lacked — **the generalization** (`min()` *selects for* the failure mode, because failure is fast and therefore wins a minimum; ask which direction failure pushes your statistic before choosing it). Their version had said only "check every iteration's exit," which fixes one harness. ⇒ ⭐⭐**Sync the TRANSFERABLE CLAIM between stores, never the file structure** — two stores of different shapes should converge on rules, not paths.
+
+---
 
 **2026-08-04, named by slang-fixer after four instances in one session. All four were mine.**
 

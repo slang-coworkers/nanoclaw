@@ -35,7 +35,7 @@ I built a lesson on top of my own error — "work is filed under the issue it fi
 
 1. `grep -ril <topic>` the transcript dir → candidate **sessions**. Confirm with `ncl sessions get <id>` (`status=active`, `container_status=running`, `last_active`).
 2. **mtime sweep** each candidate worktree for modified *source* files → the **directory** to keep hands off. A commit timestamp is not an edit timestamp; an idle tree can hold a recent commit.
-3. `ncl sessions list | grep <agent-group-id>` → the **thread key** (⚠️ the `--agent-group` flag is inert; see [[feedback_ncl_sessions_list_agent_group_flag_not_filtering]]).
+3. `ncl sessions list | grep <agent-group-id>` → the **thread key** (⚠️ RETRACTED 08-05: I wrote "the `--agent-group` flag is inert" — that flag DOES NOT EXIST; the real `--agent-group-id` filters correctly. `grep` stays the portable form, but the reason is that an UNRECOGNIZED flag is accepted, ignored, and returns the full set at exit 0. Also `--limit 10000` — the default caps at 200. See [[feedback_ncl_sessions_list_agent_group_flag_not_filtering]]).
 4. Route with `send_message({to, target_session_id})` — pins delivery to that exact session instead of letting the router mint a fresh one.
 
 ⚠️ **My container has no `wt-slang-*` trees at all** (`git worktree list` → only `/workspace/agent/slang`), so every mtime figure here is a peer's measurement, relayed. I cannot verify step 2 from my own edge — and that is exactly why I should not have asserted a directory. See [[technique_ps_is_blind_across_sessions_use_ncl]].

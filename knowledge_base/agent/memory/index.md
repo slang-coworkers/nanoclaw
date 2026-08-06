@@ -33,3 +33,44 @@ exists to prevent.
 ## Map
 
 - [Memory system definition](system/definition.md) - how this memory works, and yours to improve
+  ([folder index](system/index.md))
+- [Slang / slang-rhi chain records](slang/index.md) - per-chain state for shader-slang issue/PR work
+  (written here because it's this session's own chain detail; operational routing rules still live in
+  the live store above)
+- [Ported lego-operator archive](MEMORY.md) - **52 `legoop-*.md` operator facts that exist ONLY in
+  this store.** Measured 2026-08-05: this file was named in prose/backticks but never *linked*, so a
+  link-walk from `index.md` reached **3 of 77** files here and reported the other 74 as orphans.
+  ⭐ **A backtick is not a link — a filename in prose is invisible to every reachability check**, and
+  the store looked catastrophically broken when it was mostly fine.
+- [#11135 IRTypeAlignmentAttr chain](project_11135_ir_type_alignment_attr_12306.md) - maintainer-requested
+  impl; peer review found a triple-verified 🔴 `addAttrs` interleaving bug. **Reachable from no index in
+  either store and absent from the live one** — relinked here 2026-08-05.
+- [#12307 reflection-json scope representation](project_12307_reflection_json_scope_representation.md) -
+  design proposal, PARKED awaiting @tangent-vector; the live store holds a copy.
+
+### Scratch and one-off working notes (linked 2026-08-05)
+
+⛔ **These were listed in BACKTICKS here an hour earlier — which is the exact defect this index's own
+banner diagnoses: a filename in prose is invisible to every reachability check.** Naming a residual is
+not linking it, so the count was *known* and the files were still unreachable. ⭐⭐ **Recording a lesson
+is not applying it.** Now linked, as rows added — nothing deleted.
+
+Provider / harness experiments (May 2026, superseded but hold real findings):
+
+- [A2A handoff test](a2a-handoff-test.md) - task #13: free-form handoff sufficient; **a finding, not scratch**
+- [Codex↔Claude provider parity](codex-parity-test-results.md) - 210-line parity matrix, 2026-05-09
+- [Claude vs Codex on triage #943](claude-vs-codex-triage-943.md) · [Fixer A/B on slangpy#943](fixer-ab-test-943.md)
+- [Full A/B/C/D comparison](full-abcd-comparison.md) · [v2, fixed buddy](full-abcd-comparison-v2.md)
+- [Plan: triage→fixer A/B](plan-triage-fixer-ab-test.md) · [Plan: webhook→session routing](plan-webhook-session-routing-test.md)
+
+Dated snapshots — point-in-time, superseded by design (kept for audit, not for reading):
+
+- [Supervise 06-01T1501Z](supervise-table-20260601T1501Z.md) · [06-02T0631Z](supervise-report-2026-06-02T0631Z.md) · [06-02T0708Z](supervise-report-2026-06-02T0708Z.md)
+- [Tracker tick 66](tracker-tick.md) - 176 chains, 2026-07-01
+- Dashboard board renderings: [board-inline](board-inline.md) · [chat-board](chat-board.md) · [final-board](final-board.md) · [inline-board](inline-board.md)
+
+**Residual after this pass: 0.** Verify with the walk described in
+`/home/node/.claude/projects/-workspace-agent/memory/technique_keeping_this_store_reachable.md`
+(store A — **absolute path, deliberately NOT a `[[wikilink]]`**: a wikilink here resolves against *this*
+store and dangles, which is the two-store hazard in miniature). Orphans from the readable prefix, both
+notation classes, over *both* stores.

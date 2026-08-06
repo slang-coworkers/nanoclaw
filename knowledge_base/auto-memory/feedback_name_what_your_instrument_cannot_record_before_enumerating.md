@@ -1,6 +1,6 @@
 ---
 name: feedback_name_what_your_instrument_cannot_record_before_enumerating
-description: "The only verification check that runs BEFORE you have a result: name what your data source structurally cannot record, then enumerate rivals INCLUDING those. Every other control needs something first — implausibility needs a domain prior, a control needs a hypothesis, a residual bucket needs the item to have been fetched. This one needs only knowledge of what the tool IS. Worked case: VKGLCTS, where a tree comparison could not see an unpinned external fetch, so the fourth rival was invisible to every instrument pointed at the problem. ALSO HOLDS two rules earned the same night: ELIMINATION IS NOT SUFFICIENCY (a survivor of elimination is un-eliminated, not confirmed — 2 independent instances; a 2x2 factorial settled in 80 runs what reading the diff could not, showing two mechanisms JOINTLY necessary where arithmetic had proved one insufficient-alone), and A NULL AT HUGE n CAN BE A FALSE NULL (0/4000 became 21/30 by changing the METHOD, not the repetitions — sample size cannot compensate for a probe that cannot reach the phenomenon)."
+description: "The only verification check that runs BEFORE you have a result: name what your data source structurally cannot record, then enumerate rivals INCLUDING those. Every other control needs something first — implausibility needs a domain prior, a control needs a hypothesis, a residual bucket needs the item to have been fetched. This one needs only knowledge of what the tool IS. Worked case: VKGLCTS, where a tree comparison could not see an unpinned external fetch, so the fourth rival was invisible to every instrument pointed at the problem. ALSO HOLDS two rules earned the same night: ELIMINATION IS NOT SUFFICIENCY (a survivor of elimination is un-eliminated, not confirmed — 2 independent instances; a 2x2 factorial settled in 80 runs what reading the diff could not, showing that NEITHER half closed the injected failure alone IN THOSE TRIALS where arithmetic had proved one insufficient-alone — ⛔ NOT "jointly necessary": 20/30-trial samples do not reach a universal, and I over-read it exactly as the triager had), and A NULL AT HUGE n CAN BE A FALSE NULL (0/4000 became 21/30 by changing the METHOD, not the repetitions — sample size cannot compensate for a probe that cannot reach the phenomenon)."
 metadata:
   node_type: memory
   type: feedback
@@ -94,12 +94,30 @@ The fixer's **2×2 factorial refuted it in 80 runs**:
 
 | arm | result |
 |---|---|
-| gate only | **14/20 fail** |
-| reorder only | **18/30 fail** |
-| both | **0/30** |
+| gate only | **14 of 20 trials reproduced the failure** |
+| reorder only | **18 of 30 reproduced** |
+| both | **0 failures in 30 trials** |
 
-⇒ **jointly necessary.** Its own naming of the error is exact: *the arithmetic proved insufficient-alone,
-and I over-read that as not-involved.*
+⇒ **Neither half closed the injected failure on its own IN THESE TRIALS.** Its own naming of the error is
+exact: *the arithmetic proved insufficient-alone, and I over-read that as not-involved.*
+
+⛔⭐⭐⭐**AND I THEN OVER-READ THE FACTORIAL THE SAME WAY — I wrote "⇒ jointly necessary" here and in this
+file's `description`.** The triager corrected its own published version 2026-08-05: *"jointly necessary"*
+and *"a partial fix would not have closed 228"* are **universal claims that finite samples do not reach.**
+20 and 30 trials support *"each isolated variant still reproduced it in these trials"* — nothing about
+necessity. Corrected in both positions here.
+
+⚠️**The compounding detail: this file's own §FALSE NULL section, forty lines below, warns that a
+finite-sample result does not license a universal.** I had the rule in the same document and applied it
+in one direction only — to the *negative* (0/4000 is not "cannot reproduce") and not to the *positive*
+(0/30 is not "immune"). ⭐⭐⭐**A sample bound cuts both ways; holding it for nulls alone is how a
+carefully-stated negative sits beside an unbounded positive in one file.**
+
+⭐⭐**And the triager's own diagnosis of why it happened is the keeper: the overclaim lived INSIDE a
+correction.** It had just refuted its own attribution error, and *"the relief of having the real answer is
+what licensed stating it too strongly."* ⇒ **A correction arrives feeling hard-won, so it gets LESS
+scrutiny than what it replaced rather than more** — second instance in that chain, and **both catches came
+from adversarial review, not self-review.**
 
 ⭐⭐⭐**When two candidate mechanisms sit in the same code path, only varying them INDEPENDENTLY settles
 it.** A factorial answers in 80 runs what no amount of reading the diff can: it distinguishes *"each
@@ -116,7 +134,20 @@ covering all the evidence felt like proof; here, one candidate surviving elimina
 Same chain: a reproduction attempt returned **0 / 4000** and was published as *"attempted and did not
 reproduce."* Changing the **method** — injecting delay at the `drain()` window rather than repeating
 runs — gave **21/30 failures on base across a 500× widening (100 µs–50 ms), 0/30 fixed**, plus natural
-reproduction at **~1/400** on stock Release.
+reproduction: **1 failure observed in 400 unmodified Release runs.**
+
+⛔⭐⭐⭐**DO NOT WRITE THAT AS "~1/400" — I did, and so did the triager, and it is a RATE claim from ONE
+observed failure.** The same build gave **0/4000** in a separate attempt, so the spread is not a
+frequency measurement at all. Honest form: **it demonstrates the failure occurs on stock `main`; it does
+not measure how often.**
+
+⇒ ⭐⭐⭐**A bare `~N/M` ratio smuggles a frequency claim past a verb-only scan.** The triager rescoped every
+universal *verb* — immune / deterministic / necessary / guarantees — and this survived, because it
+contains none of them. **Watch bare ratios, not just universal verbs.** (Its find; it caught it on an
+artifact it had *just finished correcting*.)
+
+⚠️**I relayed "~1/400" to an operator.** Corrected there too. **A ratio inherited from a peer arrives
+looking like a measurement even when the peer's own memo already says it isn't one** — this one did.
 
 ⭐⭐⭐**A null at n=4000 feels like the strongest possible negative and was measuring the wrong window.
 Sample size cannot compensate for a probe that cannot reach the phenomenon** — the same shape as a

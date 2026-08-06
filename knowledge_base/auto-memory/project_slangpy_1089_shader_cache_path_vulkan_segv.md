@@ -216,9 +216,101 @@ extension absent ⇒ cache path never entered), and **Approach A must not carry 
 ⚠️ **MY FAILURE:** I relayed their environmental negative to the operator as fact in a rollup. Lesson →
 [[feedback_published_negative_env_claims_need_rederivation]].
 
+## R5 2026-08-05 22:08 — MAINTAINER ASSIGNED; 2 rhi PRs shipped, `Fixes` guardrail HELD
+
+Webhook: `jkwak-work` → *"@kaizhangNV, please take a look at the description and see if you can work
+on it."* **`kaizhangNV` is now the sole assignee.** Issue still **OPEN**, no labels, 2 comments only
+(our 08-03 triage + this). ⚠️ **No `@nv-slang-bot` mention** ⇒ NOT a post-task; routing/awareness only.
+
+⭐ **The reporter never answered the discriminator — 2 days of silence.** The whole chain was gated on
+one line of Python that never came. Lesson: *a discriminator the reporter will run* still assumes they
+come back at all; a 2-day-quiet gate needs its own resume path, not indefinite holding.
+
+**Two slang-rhi PRs exist that I never received a `[Fix Report]` for** (found by looking, not by being
+told — the fixer's report never reached me):
+
+| PR | state | what |
+|---|---|---|
+| [#808](https://github.com/shader-slang/slang-rhi/pull/808) | **MERGED 08-04 22:42:45** | Validate pipeline cache blob lengths/offsets before use (deserialization hardening) |
+| [#809](https://github.com/shader-slang/slang-rhi/pull/809) | **open, DRAFT**, `fix/pipeline-cache-proc-and-key-validation` | Approach A — only report the Vulkan pipeline cache when its entry points are present |
+
+✅ **Both carry a "Note on shader-slang/slangpy#1089" and NEITHER carries `Fixes`/`Closes`.** I verified
+by grep. #809's note is exactly the framing I asked for, unprompted: *"It is still deliberately not
+marked as fixing that issue… their backtrace is inconsistent with the mechanism it repairs… That
+issue's cause remains unlocated and it should stay open."* It also correctly ranks the evidence —
+call-ordering as decisive, frame shape as *"short of proof on its own"* given optimized DWARF.
+⇒ **The guardrail I flagged 4 rounds earlier survived into two public artifacts without me re-asserting it.**
+
+⚠️ #809 notes `clang-format` unavailable locally ⇒ CI formatting authoritative. Also flags an
+out-of-scope residual: **serializer size arithmetic (unchecked table multiply) still unaddressed.**
+
+## R6 2026-08-05 22:14:53 — DELTA COMMENT POSTED, chain closed at our tier
+
+Comment [`5198010118`](https://github.com/shader-slang/slangpy/issues/1089#issuecomment-5198010118) —
+**fresh comment, not a PATCH**, correctly: `jkwak-work` commented after our 08-03 one, so editing in
+place would have hidden the update below a human's message. ⭐**Edit-if-self applies only while yours
+is still the last word.**
+
+**I read the body — accurate on every checkable claim, no new analysis, addressed to `@kaizhangNV`.**
+It does the one thing that mattered: says the comment *above it* is stale, that branch 1 was tested
+and set aside, that both rhi PRs deliberately lack `Fixes` because neither fixes this, and that the
+root cause is **still unlocated**. Correctly ranks call-ordering as decisive and frame-shape as
+corroboration only. Names the two captures a 610.43.02 box would need: `VkResult` +
+`pipelineKey.keySize` after the second query, and `info symbol $pc` at the faulting frame.
+
+✅ **Their extra check, which I had NOT made and should have:** #808's fix is **on `main`**, not merely
+merged. I re-derived it — `vk-pipeline.cpp` at `main`: `keySize > VK_MAX_PIPELINE_BINARY_KEY_SIZE_KHR`
+→ `SLANG_FAIL` at **`:355-358`**, *before* the `memcpy` at `:366`; `dataOffset`/`dataSize` range-checked
+against `tableEnd`/`blobSize` at `:359-363`. ⭐**"Merged" and "present on main" are different claims** —
+a squash/revert/follow-up can separate them, and I pointed a maintainer at a PR without checking the
+second. Sibling of [[feedback_verify_pushed_state_by_branch_not_sha]].
+
+## R7 22:18 — `[Fix Report]` received; #809 CI green; ⭐two-surface check-count trap (MINE-verified)
+
+Fixer's report finally arrived at the triager (root cause of the gap: **its reports had gone up its
+parent edge only**). Committed to reporting on #809 draft→ready + any successor; triager will still
+verify bodies itself rather than rest on the agreement.
+
+**#809 CI at head `6eb4ffe203`: 22/22 green, 0 pending, awaiting maintainer promotion from draft.**
+⭐ **I re-measured and would have reported 21.** Two independent API surfaces:
+
+| surface | call | result |
+|---|---|---|
+| Checks | `commits/6eb4ffe2/check-runs?per_page=100` | `total_count: 21`, all `success` |
+| **Legacy Statuses** | `commits/6eb4ffe2/status` | `state: success`, **1** — `license/cla` |
+
+`license/cla` is a **commit status**, invisible to `check-runs` at any `per_page`. ⚠️ **My store already
+held this** ([[feedback_two_nv_slang_bot_identities_cla_gate]]) — filed under *bot identity*, i.e. not
+where a check-counting task looks. **A fact under the wrong retrieval key is not stored** — ⚠️true of
+**MY** store specifically, NOT the general diagnosis I first offered: the triager checked and theirs was
+*held-but-not-consulted*, filed under the right key (opposite remedy — procedural trigger, not
+re-filing; discriminate by asking whether the note was reachable under the key you'd have used, and
+**never infer a gap from your own surprise**). Cross-linked
+both ways into [[feedback_filter_latest_returns_two_suites_per_sha]] with a two-call recipe.
+
+#808 confirmed on `main` independently by them via `compare/fcbacea743...main` → `identical` (I had
+verified the clamp in the file at `:355-358`; theirs is the stronger form — *tree equality*, which also
+excludes a later revert).
+
+⭐ Their disposition rule went into **`.instructions.md`, not a learning** — correct reasoning I should
+adopt: *a learning doesn't fire at the moment a decision is made; standing orders load every session.*
+Covers prefer-a-self-runnable-experiment, ~72h cap then escalate, never close silently, re-read your
+last public comment on ownership change, and the `Fixes`-guardrail + on-`main` check.
+
 ## RESUME
 
-Authorized the **narrow post** (boundary correction + `device=0x1` unsafe + ask for the datapoint),
-with the null-proc hypothesis presented as **one of two**, not the answer. Next = reporter's
-`p api.vkGetPipelineKeyKHR` / `vulkaninfo | grep pipeline_binary` on 610.43.02, or fixer's Fix Report.
-If the proc is **non-null**, Approach A is defence-in-depth only and the real fault is elsewhere at `:178`.
+**Root cause STILL UNLOCATED.** Branch 1 refuted by test; branch 2 (driver-side handling of the
+`pNext`-chained `VkPipelineCreateInfoKHR` on the second key query) is the surviving hypothesis,
+unconfirmed. Reporter never ran the `has_feature` discriminator (2 days silent).
+
+**Now maintainer-owned:** `kaizhangNV` assigned 08-05 by `jkwak-work`. Our tiers hold nothing
+actionable — the useful handoff is that #809's body already carries the full diagnosis.
+
+**CLOSED at both our tiers 08-05 22:16.** Two real defects fixed in slang-rhi; #1089's own root cause
+unlocated and correctly left OPEN. Public footprint now current (delta comment `5198010118`).
+Lesson: [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]].
+
+**Triggers to re-engage:** reporter posts the `has_feature` result (`True` ⇒ confirms branch 2 and the
+extension IS enabled on 610.43.02, making the `pNext` path the live suspect; `False` ⇒ routes back to
+us, since it would contradict the extension being enabled) · `kaizhangNV` asks a question or mentions
+the bot · a `Fixes #1089` appears on #809 or any successor · #809 merges (verify #1089 stays OPEN).

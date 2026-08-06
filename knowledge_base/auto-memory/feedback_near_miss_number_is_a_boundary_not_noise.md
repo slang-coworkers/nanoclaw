@@ -1,9 +1,10 @@
 ---
 name: feedback_near_miss_number_is_a_boundary_not_noise
 description: "Two nearby values for one quantity = a version, unit, or scope boundary — never noise. The tell points at the DATA, not at your probe."
-metadata:
+metadata: 
   node_type: memory
   type: feedback
+  originSessionId: 9f9f7b0e-e9ed-4eb0-8ecf-7cff86871b38
 ---
 
 # A near-miss number is a version / unit / scope boundary — never noise
@@ -42,6 +43,16 @@ refutation would have collapsed, in public.
    discoverable one.
 3. ⭐⭐**Any total over N iterations must carry its N in the sentence.** "230 ms" is not a fact;
    "230 ms across 10 sessions" is.
+   ⛔ **THIS IS NOT THE CANONICAL HOME FOR THAT RULE — you are reading it under a foreign key.**
+   Canonical: [[feedback_search_code_total_count_is_not_a_file_count]], which carries the general
+   form (*any count from a paginated/aggregated API is a joint property of query and data*), the
+   cardinality-vs-magnitude split, and 2 measured instances. **This clause fired for a timing total
+   once, at birth, and never again** — it sat as item 3 of a numbered list in a file whose name and
+   description are about *near-miss numbers* and mention counts nowhere, so a `per_page` row-count
+   defect (#12367, 08-05) could not retrieve it. ⇒ **A mis-named file is still findable by topic; a
+   sub-clause under a foreign key has no key of its own at all**, reachable only by someone already
+   here for another reason. Independently confirmed by slang-triager, who found the identical shape
+   in their own store the same hour.
 4. ⭐⭐**When you find a unit or version defect, sweep the DEFECT CLASS, not the broken sentence.**
    Percentages *derived* from superseded absolutes are the second-order casualty that survives a fix
    and then silently contradicts the numbers beside it. (The triager measured for these — `51.8%`,

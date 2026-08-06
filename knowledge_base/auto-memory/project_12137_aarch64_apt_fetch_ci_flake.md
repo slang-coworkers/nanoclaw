@@ -15,6 +15,6 @@ metadata:
 
 **Ownership:** slang-ci-babysitter OWNS this — logs new hits here, does NOT re-file. Observe-mode: **evicts-and-self-recovers** (auto-requeue works; #12055 bounced from merge queue twice 07-16 and self-requeued each time). Escalates further ONLY if it strands an approved PR (eviction with no auto-requeue) or clusters into a sustained stall.
 
-**Fix path:** lives in `.github/workflows/` (apt retry+backoff / fallback mirror / pre-provisioned arm64 deps / force IPv4) — bot [[bot_workflows_permission]] CANNOT push workflow YAML, needs a maintainer. A non-workflow retry-wrapper on a setup *script* is the only triager-scopeable slice; babysitter has NOT requested it.
+**Fix path:** lives in `.github/workflows/` (apt retry+backoff / fallback mirror / pre-provisioned arm64 deps / force IPv4) — bot [[project_bot_workflows_permission]] CANNOT push workflow YAML, needs a maintainer. A non-workflow retry-wrapper on a setup *script* is the only triager-scopeable slice; babysitter has NOT requested it.
 
-**Main's decision 07-16:** bot-authored tracking anchor, self-triaged, observe-mode → NO triage/fix chain routed; no redundant GitHub comment. Ties [[bot_pr_priority_yield_red_run]] (cosmetic-red discipline).
+**Main's decision 07-16:** bot-authored tracking anchor, self-triaged, observe-mode → NO triage/fix chain routed; no redundant GitHub comment. Ties [[project_bot_pr_priority_yield_red_run]] (cosmetic-red discipline).

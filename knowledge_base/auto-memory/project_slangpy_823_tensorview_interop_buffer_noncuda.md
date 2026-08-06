@@ -134,7 +134,101 @@ when the *torch tensor* isn't CUDA; #823 is *tensor CUDA, device not*), so it do
 the triager prefers `write_shader_cursor_with_interop` before the allocation, so the
 wasted copy is skipped too. Both are defensible; not our call.
 
-## RESUME triggers — two humans, both named
+## ⛔GATE VOIDED 2026-08-05T18:41Z — RE-OPENED by a human mention
+`jkiviluoto-nv` (**MEMBER**, cmt `5195828320`, real `@nv-slang-bot` mention ⇒ posting authorized):
+> *"Mukund (mkeshavaNV) won't be returning to this work for a while. Please scrub this issue and
+> assess whether it is still relevant, needs reassignment, or should be closed."*
+
+⭐⭐⭐**THE WHOLE CHAIN'S RESUME TRIGGER WAS "mkeshavaNV picks A/B/C" — that gate is now
+PERMANENTLY VOID, not merely slow.** I had this parked as *"holding, awaiting a named human"*; the
+named human is gone. ⇒ **A hold is only as valid as the availability of the person it waits on —
+and NOTHING in the artifact would ever have told me. `assignees` still reads `mkeshavaNV`; the
+issue looked identical the whole time.** Re-probe of a gate tests whether it MOVED, never whether
+it CAN still move. See [[feedback_a_guard_can_be_inert_and_read_as_passing]] — an abandoned gate
+and a slow gate render identically.
+⚠️Corollary for every other parked chain: **"RESUME = <person> answers" carries an unstated
+liveness premise.** Prefer a trigger with a second, person-independent disjunct.
+
+**State at 08-05T18:41Z (re-probed, not remembered):** #823 open, 4 comments, **still assigned
+`mkeshavaNV`**, milestone still **Q1 2026 (Winter)** (~2 quarters stale — bears on "still
+relevant"). #934 open, non-draft, **`dirty`**, head `9543720`, **untouched since 2026-07-25**.
+**Reassignment candidate on the artifact record:** `jhelferty-nv` — the issue's REPORTER *and*
+author/assignee of #934, last active on it 07-25. ⚠️**That is evidence of activity ON 07-25, NOT
+of current availability** — exactly the mistake `jkiviluoto-nv`'s message just corrected about
+someone else. Propose, never assert.
+**The trap in "should it be closed":** C (WNF) was *mkeshavaNV's* position. His opinion survives as
+a data point; his **authority to decide does not**. And WNF-without-the-guard leaves the
+silent-wrong-results footgun (copy-back structurally dead). ⇒ **close-as-WNF and land-the-guard are
+COMPATIBLE, and separating them is the recommendation.**
+
+## 08-05T19:08Z — scrub turn died on 429; RE-DRIVEN pinned
+Triager's scrub turn returned `API Error: Request rejected (429)` with **no body**. ⭐**A provider
+error on the recipient's turn is NOT "the work is queued" — the dispatch was consumed and produced
+nothing.** MEASURED before assuming either way: #823 still **4 comments**, our bot cmt `5175960220`
+still the 08-04 revision (`updated_at` 12:34:07Z), `jkiviluoto-nv`'s 18:41Z request **unanswered**
+⇒ scrub entirely un-started.
+**Not chain-specific:** `ncl sessions list` showed **56 sessions created in the 18:42–18:45 window**
+fleet-wide ⇒ rate-limit burst. ⭐⭐**Check whether a failure is YOURS or AMBIENT before diagnosing
+it** — a per-chain post-mortem on a fleet-wide burst is wasted work and invents a false cause.
+**Re-driven** with `send_message` + `target_session_id=sess-1785827934925-gjwvxb` (triager's live
+#823 session, ag-1780667169498-sqxdef, full chain context) so it resumes warm instead of cold.
+⚠️**`send_message` REFUSED the bare send:** *"10 unresponded inbound rows exist on this peer
+thread"* ⇒ **`in_reply_to` is REQUIRED once a thread has unanswered inbounds** (the 5 empty ones
+from 08-04 count). Passed `in_reply_to=30`. ⭐**A refusal naming a precondition is a gift — it
+names the edge to disambiguate.**
+⭐⭐**Told the recipient to CHECK FOR A DUPLICATE before posting**, because the host may redrive the
+same handoff independently (bounded backoff + dead-letter). Two turns running one scrub would
+double-post on a maintainer's request; edit-in-place if a reply already exists.
+
+## ✅08-05T19:13Z — SCRUB POSTED (cmt `5196220483`, 5th comment, no duplicate)
+⭐⭐⭐**The 2nd 429 (19:37Z) was on a LATER turn — the WORK HAD ALREADY LANDED at 19:13Z.** I nearly
+re-drove a third time; the artifact check stopped me. ⇒ **A provider error names the turn it killed,
+NOT the state of the task — always read the DELIVERABLE before re-driving.** 1st 429 = work lost
+(0 artifact); 2nd = only the report-back lost (artifact present). **Identical error string, opposite
+remediation.** The duplicate-check instruction I attached is what made a safe re-drive possible.
+
+**Verified in the posted comment (mine, at HEAD):**
+- **HEAD advanced `086ca32`→`507b4cf`** and `507b4cf` **is** current main. The 2 intervening commits
+  (`08ae47a` #1084 board-sync, `507b4cf` #1078 array tests) touch **only** workflow YAML +
+  `test_array.py` ⇒ none of the load-bearing files. ✅triager's re-derivation claim is exact.
+- ⛔**CORRECTION — the generalizing claim UNDERCOUNTS.** Comment says `mkeshavaNV` is assignee on
+  **"6 other"** open `slangtorch_parity_polish` items and lists #899/#844/#832/#822/#768/#823.
+  **Enumerated from source: 8 open non-PR issues** —
+  #899(no-milestone) #844(Q2) #832(Q2) **#823**(Q1) #822(Q1) #779(Q2) #768(Q1) **#274(Q4 2025)**.
+  Missing: **#274** (three quarters stale, the worst case, and the one that most makes his point)
+  and **#779**. ⭐⭐**A hand-typed list defines its own coverage — the undercount weakened the very
+  argument it was offered to support.** Fix by enumerating:
+  `gh api "repos/shader-slang/slangpy/issues?assignee=mkeshavaNV&state=open&per_page=100" --jq '.[]|select(.pull_request==null)|.number'`
+  ⚠️Also: the comment scopes them as `slangtorch_parity_polish` items; I enumerated by **assignee**,
+  not by label — the 8 is the assignee set. Label-scoped count not separately verified.
+  ⇒ **A scrub of #823 alone leaves 7 other chains on a void gate.**
+
+## ⛔08-05T21:49Z (post-restart) — MY "7 UNATTENDED CHAINS" OFFER WAS WRONG
+I closed my last report offering to *"dispatch scrubs for the remaining seven"* void-gate issues.
+**All 7 were ALREADY SCRUBBED by the fleet** — bot comments on every one, 19:04→20:43Z, i.e. several
+posted BEFORE I made the offer. Same `jkiviluoto-nv` request, same verified HEAD `507b4cf`, and to a
+high standard: **#779 found the feature is FIXED and recommends closing**; **#274 found a LIVE test
+guard (`test_buffer_cursor.py:245-251`, 6 call sites) that still cites the issue by URL** — better
+evidence than #823's own. Had I dispatched, I'd have duplicated seven live chains on a maintainer's
+request.
+⭐⭐⭐**THE ERROR: I derived an unattended SET from `assignees` and never checked for IN-FLIGHT
+COVERAGE.** Correctly reasoning that a gate is void does NOT license concluding nobody is working
+it — those are independent facts, and the second one is one API call away:
+`gh api repos/<r>/issues/<n>/comments --jq '[.[]][-1] | "\(.user.login) @\(.created_at)"'`
+⇒ **Before offering to fan out over a set, check the set for existing coverage. "Nobody has acted"
+is a claim about the WORLD, not an inference from a stale FIELD** — the same shape as the void-gate
+lesson itself (`assignees` doesn't say who is working; it also doesn't say who ISN'T).
+⚠️I was also *lucky*: I offered instead of dispatching. **The staggering instinct was right for the
+wrong reason** — rate limits, when the real hazard was duplication.
+**Also seen at #768:** a sibling comment `5196679064` **amended SIX times**, and a PATCH nearly
+destroyed it after a rate-limited read returned an **empty body** ⇒ ⭐⭐**edit-in-place has a
+re-edit ceiling; each PATCH risks the artifact a maintainer reads. Prefer a NEW comment over an
+Nth amendment, and NEVER write back a body you read as empty.**
+
+**#823 state at 21:49Z (re-probed post-restart):** open, **5 comments**, unchanged since 19:13:52Z,
+still assigned `mkeshavaNV`. Our scrub `5196220483` is still the latest word; **no human reply yet**.
+
+## RESUME triggers — SUPERSEDED (kept for the lesson; see GATE VOIDED above)
 - **`mkeshavaNV` answers A/B/C** on #823 (guard · let #934 carry it · WNF), **or**
 - **#934 stops being `dirty`** (rebased/merged/closed) — it is the sequencing
   hazard: landing a guard now conflicts with it.
