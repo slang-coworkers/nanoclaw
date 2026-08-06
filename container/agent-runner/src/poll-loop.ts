@@ -1352,6 +1352,12 @@ export function checkCritiqueGate(
     critique_verdicts?: Record<string, string>;
     critique_gate_bypass_approved?: boolean;
     critique_gate_bypass_rejected?: boolean;
+    // Grant envelope written by the host on an admin Approve. `grant_id` is the
+    // approving approval_id — the host's ledger is keyed on it, so consumption
+    // can be attributed to a specific grant rather than to a session.
+    critique_gate_bypass_grant_id?: string;
+    critique_gate_bypass_expires_at?: number; // epoch secs (shell arithmetic in the bash gate)
+    critique_gate_bypass_rejected_request?: number;
     edits_since_critique?: number;
     critique_attested?: Record<string, Record<string, string>>;
   } = {};
