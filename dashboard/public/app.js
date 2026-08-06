@@ -5359,16 +5359,21 @@ async function fetchCwMessages(append = false) {
 // Agent-authored reason text is unbounded — agents routinely write several
 // paragraphs, and the card rendered every character, turning the approval
 // queue into a wall of prose. Clamp with an inline expander.
+//
+// Expansion is tracked in cwState, NOT in the DOM: fetchCwMessages polls every
+// 3s and re-runs renderApprovalItem for every card, so DOM-only state (a
+// toggled style, a removed link) is wiped almost immediately after the click.
 const REASON_CLAMP = 300;
+function isReasonExpanded(id) {
+  return !!(cwState.expandedReasons && cwState.expandedReasons.has(id));
+}
 function clampedReason(text, id) {
   const t = String(text || '');
   if (t.length <= REASON_CLAMP) return esc(t);
-  const cut = t.slice(0, REASON_CLAMP);
-  return (
-    `<span id="rs-${esc(id)}">${esc(cut)}…</span>` +
-    `<span id="rf-${esc(id)}" style="display:none">${esc(t)}</span> ` +
-    `<a href="#" class="reason-more" data-rid="${esc(id)}" style="font-size:9px">show more</a>`
-  );
+  if (isReasonExpanded(id)) {
+    return `${esc(t)} <a href="#" class="reason-less" data-rid="${escAttr(id)}" style="font-size:9px">show less</a>`;
+  }
+  return `${esc(t.slice(0, REASON_CLAMP))}… <a href="#" class="reason-more" data-rid="${escAttr(id)}" style="font-size:9px">show more</a>`;
 }
 
 // Escalation provenance: how this got to a human at all. There is deliberately
@@ -5397,12 +5402,19 @@ function renderApprovalItem(item) {
     // rendering as a bare title ("Critique gate stuck — bypass requested") —
     // no PR, no session, nothing to decide on. Everything needed to act is in
     // the payload; this branch surfaces it and links both ends.
-    const target = item.prUrl
-      ? `[${esc(item.repo || '')}#${esc(item.prNumber)}](${esc(item.prUrl)})`
+    // Both links are built as raw anchors rather than going through md():
+    // md() only linkifies http(s) URLs, so a markdown link to the hash route
+    // below would render as literal "[session](...)" text.
+    const prLink = item.prUrl
+      ? `<a href="${escAttr(item.prUrl)}" target="_blank" rel="noopener">${esc(item.repo || '')}#${esc(item.prNumber)}</a>`
       : esc(item.repo || 'no PR mapped');
-    const sessionLink = item.sessionId
-      ? ` · [session](?session=${encodeURIComponent(item.sessionId)})`
-      : '';
+    // The coworkers router is hash-based: #/cw/<folder>/s/<sessionId>.
+    const sessionLink =
+      item.sessionId && item.coworkerFolder
+        ? ` · <a href="#/cw/${encodeURIComponent(item.coworkerFolder)}/s/${encodeURIComponent(item.sessionId)}">session</a>`
+        : item.sessionId
+          ? ` · <code>${esc(item.sessionId)}</code>`
+          : '';
     const surface = item.hit ? ` · blocked: ${esc(item.hit)}` : '';
     const reasonHtml = item.reason
       ? `<div style="margin-top:6px;font-size:10px"><b>Unmet:</b> ${clampedReason(item.reason, item.approvalId)}</div>`
@@ -5410,7 +5422,8 @@ function renderApprovalItem(item) {
     return `<div class="cw-msg assistant">
     <div class="cw-msg-bubble" style="border-left:3px solid #f59e0b;padding-left:8px">
       ${coworkerHeader}
-      ${md(`**${esc(item.title || 'Critique gate')}**\n\n${target}${sessionLink}${surface}`)}
+      <div style="font-weight:600">${esc(item.title || 'Critique gate')}</div>
+      <div style="margin-top:4px;font-size:10px">${prLink}${sessionLink}${surface}</div>
       ${reasonHtml}
       ${critiqueProvenance(item)}
       <div style="margin-top:8px">
@@ -5799,6 +5812,9 @@ function renderCwMessages() {
   el.innerHTML = loadMoreHtml + systemToggleHtml + messageHtml + bannerHtml;
 
   if (!cwState._inflightApprovals) cwState._inflightApprovals = new Set();
+  // Approval ids whose clamped reason the user expanded. Kept in state, not the
+  // DOM, so the 3s poll's innerHTML rebuild below doesn't collapse it again.
+  if (!cwState.expandedReasons) cwState.expandedReasons = new Set();
   // Event delegation: attach once on the stable parent, survives innerHTML rebuilds
   if (!el._approvalDelegateAttached) {
     el._approvalDelegateAttached = true;
@@ -5878,18 +5894,17 @@ function renderCwMessages() {
         }
         return;
       }
-      // ── "show more" on a clamped approval reason ──
-      const reasonMore = e.target.closest('.reason-more');
-      if (reasonMore) {
+      // ── "show more" / "show less" on a clamped approval reason ──
+      // Toggle state lives in cwState so the 3s message poll's re-render keeps
+      // the reason open; mutating the DOM here would be undone within seconds.
+      const reasonToggle = e.target.closest('.reason-more, .reason-less');
+      if (reasonToggle) {
         e.preventDefault();
-        const rid = reasonMore.dataset.rid;
-        const short = document.getElementById(`rs-${rid}`);
-        const full = document.getElementById(`rf-${rid}`);
-        if (short && full) {
-          short.style.display = 'none';
-          full.style.display = 'inline';
-          reasonMore.remove();
-        }
+        const rid = reasonToggle.dataset.rid;
+        if (!cwState.expandedReasons) cwState.expandedReasons = new Set();
+        if (reasonToggle.classList.contains('reason-less')) cwState.expandedReasons.delete(rid);
+        else cwState.expandedReasons.add(rid);
+        renderCwMessages();
         return;
       }
       // ── Approval buttons ──
