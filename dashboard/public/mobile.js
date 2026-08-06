@@ -90,6 +90,9 @@ let cwState = {
   pendingApprovals: [],
   approvalCountByFolder: {},
   _inflightApprovals: new Set(),
+  // Approval ids whose (clamped) reason the user has expanded. Held here
+  // rather than in the DOM so a re-render doesn't collapse it.
+  expandedReasons: new Set(),
 };
 
 // --- Live updates ---
@@ -425,10 +428,20 @@ function renderApprovalCard(item) {
     ? `<div style="font-size:9px;color:#10b981;font-weight:600;margin-bottom:4px">@${esc(item.coworkerName)}</div>`
     : '';
   // Agent-authored reasons run to paragraphs; on a phone that buries the
-  // buttons entirely. Clamp harder here than on desktop.
-  const shortReason = item.reason
-    ? `\n\n*Reason:* ${esc(String(item.reason).length > 180 ? String(item.reason).slice(0, 180) + '…' : item.reason)}`
+  // buttons entirely. Clamp harder than desktop — but the clamped text must
+  // stay REACHABLE: truncating with no way to expand can hide the very detail
+  // the decision turns on. Expansion is held in cwState, not the DOM, so the
+  // message poll's re-render doesn't collapse it.
+  const expanded = !!(cwState.expandedReasons && cwState.expandedReasons.has(item.approvalId));
+  const reasonText = String(item.reason || '');
+  const needsClamp = reasonText.length > 180;
+  const shownReason = needsClamp && !expanded ? reasonText.slice(0, 180) + '…' : reasonText;
+  // md() escapes its whole input (`let h = esc(s)`), so the toggle anchor must
+  // be appended AFTER md() runs, not embedded in the markdown string.
+  const toggleHtml = needsClamp
+    ? `<div style="margin-top:4px"><a href="#" class="reason-toggle" data-rid="${escAttr(item.approvalId)}" style="font-size:11px">${expanded ? 'show less' : 'show more'}</a></div>`
     : '';
+  const shortReason = item.reason ? `\n\n*Reason:* ${esc(shownReason)}` : '';
   const safeReason = shortReason;
   let desc;
   if (item.action === 'critique_gate_bypass') {
@@ -454,7 +467,7 @@ function renderApprovalCard(item) {
     desc = `**${esc(item.action)}**${safeReason}`;
   }
   return `<div class="m-card m-card-approval">
-    <div class="m-card-body">${coworkerHeader}${md(desc)}</div>
+    <div class="m-card-body">${coworkerHeader}${md(desc)}${toggleHtml}</div>
     <div class="m-card-actions">
       <button class="m-btn m-btn-approve approval-btn" data-qid="${escAttr(item.approvalId)}" data-decision="Approve">Approve</button>
       <button class="m-btn m-btn-reject approval-btn" data-qid="${escAttr(item.approvalId)}" data-decision="Reject">Reject</button>
@@ -519,6 +532,18 @@ function renderCwMessages() {
 
 // --- Event delegation for cards ---
 document.getElementById('m-chat-messages').addEventListener('click', async (e) => {
+  // Expand/collapse a clamped approval reason. Toggling state (not the DOM)
+  // keeps it open across the poll-driven re-render.
+  const reasonToggle = e.target.closest('.reason-toggle');
+  if (reasonToggle) {
+    e.preventDefault();
+    const rid = reasonToggle.dataset.rid;
+    if (!cwState.expandedReasons) cwState.expandedReasons = new Set();
+    if (cwState.expandedReasons.has(rid)) cwState.expandedReasons.delete(rid);
+    else cwState.expandedReasons.add(rid);
+    renderCwMessages();
+    return;
+  }
   const approvalBtn = e.target.closest('.approval-btn');
   if (approvalBtn) {
     const qid = approvalBtn.dataset.qid;
