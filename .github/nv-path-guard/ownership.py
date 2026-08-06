@@ -29,18 +29,87 @@ Exit codes:
 """
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
+import venv
 from pathlib import Path
+
+# ── pathspec, self-provisioned ────────────────────────────────────────────────
+# This module MUST NOT depend on a CI step to install its matcher, and the reason
+# is structural rather than convenience.
+#
+# Sibling-branch CI composes: the job runs the workflow file from the PR's OWN
+# branch, then merges nv-main into the tree and tests the composed state. Every
+# nv-main-owned file therefore reaches the test run — except one. GitHub Actions
+# has already read and started `.github/workflows/ci.yml` before the compose step
+# executes, so that single file can never compose itself.
+#
+# Consequence: a test added on nv-main travels to nv-dashboard/nv-slang PRs, while
+# the CI step it needs does not. That is exactly what happened — a `pip install
+# pathspec` step added on nv-main alongside this module's tests, and every
+# sibling-branch PR then failed on six assertions unrelated to its own change.
+#
+# So we provision the matcher ourselves. Reimplementing gitwildmatch was rejected:
+# this module exists BECAUSE two readers of the same allowlist disagreed, and a
+# hand-rolled matcher would be a third dialect — the original bug wearing a hat.
+_BOOTSTRAP_ENV = "NV_PATH_GUARD_NO_BOOTSTRAP"
+
+
+def _venv_site_packages(root: Path) -> Path | None:
+    """The site-packages of a venv, without assuming a Python version in the path."""
+    for lib in (root / "lib").glob("python*/site-packages"):
+        return lib
+    win = root / "Lib" / "site-packages"  # Windows layout
+    return win if win.is_dir() else None
+
+
+def _provision_pathspec() -> bool:
+    """Create (or reuse) a cached venv holding pathspec, and put it on sys.path.
+
+    Returns True when `import pathspec` will now succeed. Never raises: every
+    failure path returns False so the caller can fail CLOSED with a real message
+    rather than proceeding without a matcher.
+    """
+    if os.environ.get(_BOOTSTRAP_ENV):
+        return False  # deliberately disabled (air-gapped runners, policy)
+    cache_root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache"))
+    root = cache_root / "nv-path-guard" / "pathspec-venv"
+    try:
+        site = _venv_site_packages(root)
+        if site is None:
+            venv.create(root, with_pip=True, clear=False)
+            site = _venv_site_packages(root)
+        if site is None:
+            return False
+        if not any(site.glob("pathspec*")):
+            py = root / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+            # Quiet, but NOT silent on failure — check=True surfaces a real error.
+            subprocess.run(
+                [str(py), "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "pathspec"],
+                check=True,
+                capture_output=True,
+            )
+        sys.path.insert(0, str(site))
+        return True
+    except (OSError, subprocess.SubprocessError):
+        return False
+
 
 try:
     import pathspec
 except ModuleNotFoundError:  # pragma: no cover - environment guard
-    print(
-        "::error::the `pathspec` package is required to evaluate path ownership "
-        "(the same matcher CI's path-guard uses). Install it: pip install pathspec",
-        file=sys.stderr,
-    )
-    sys.exit(2)
+    if _provision_pathspec():
+        import pathspec  # noqa: F811  — now importable from the provisioned venv
+    else:
+        print(
+            "::error::the `pathspec` package is required to evaluate path ownership "
+            "(the same matcher CI's path-guard uses), and it could not be provisioned "
+            f"automatically. Install it (pip install pathspec), or unset {_BOOTSTRAP_ENV} "
+            "if bootstrapping was disabled deliberately.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
 
 def load_patterns(config_path: Path) -> list[str]:
