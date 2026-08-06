@@ -29,6 +29,7 @@ const envConfig = readEnvFile([
   'ROUTE_ISSUES_TO',
   'ROUTE_READY_PRS_TO',
   'APPROVER_CI_GATE',
+  'APPROVAL_LEDGER_WRITERS',
   'CI_GATE_REQUIRED_SUITE',
   'CI_GATE_REQUIRED_CHECK_RUN',
   'DEFAULT_AGENT_PROVIDER',
@@ -318,6 +319,36 @@ export const ROUTE_READY_PRS_TO = (process.env.ROUTE_READY_PRS_TO || envConfig.R
 export const APPROVER_CI_GATE = /^(1|true|yes|on)$/i.test(
   (process.env.APPROVER_CI_GATE || envConfig.APPROVER_CI_GATE || '').trim(),
 );
+
+/**
+ * Agent groups permitted to append to the approval-decision ledger — the
+ * `record_decision` capability, enforced at the host boundary by
+ * `approval_ledger.record_decision` (src/modules/approval-ledger/guard.ts).
+ *
+ * Comma-separated agent-group ids and/or folders (folders match
+ * case-insensitively), e.g. `slang-pr-approver,slangpy-pr-approver`.
+ *
+ * UNSET MEANS NO CONTAINER MAY WRITE. That is deliberate: the ledger is the
+ * evidence humans use to calibrate how far to trust the approver bots, so
+ * "who may write to it" is an operator decision, not something a container can
+ * assert about itself. `coworker_type` is NOT accepted as the signal — the
+ * same reasoning container-runner.ts already applies to the shared-bucket
+ * mount ("trust ONLY is_admin, not coworker_type": an import that sets
+ * coworker_type must not confer privilege).
+ *
+ * A denial is logged at error level naming this variable, so an install that
+ * upgrades without setting it sees exactly why the ledger stopped filling.
+ *
+ * Read through `approvalLedgerWriters()` rather than captured at import, so a
+ * value supplied via the process environment is honoured without a restart
+ * ordering dependency (and so tests can set it).
+ */
+export function approvalLedgerWriters(): string[] {
+  return (process.env.APPROVAL_LEDGER_WRITERS || envConfig.APPROVAL_LEDGER_WRITERS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 // Which check_suite must be green to RELEASE a parked PR. Matches the suite's
 // GitHub App slug (check_suite.app.slug) or, as a fallback, a substring of the

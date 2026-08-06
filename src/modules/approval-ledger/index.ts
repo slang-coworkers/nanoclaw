@@ -7,17 +7,28 @@
  * this is the host side of the same two-DB transport that pr-mapping's
  * `map_pr_session` uses.
  *
- * A second action, `record_human_verdict`, stamps the human outcome onto an
- * existing decision row (the join for scoring) — emitted when the approver
- * sees a `github.pr_review` on a PR it decided, or replays offline ground
- * truth. See ./store.ts.
+ * Both actions register with a GUARD SPEC, not `unguarded(...)`. They used to
+ * register unguarded on the reasoning that a ledger append is "an audit
+ * record, not a privileged mutation". That reasoning was wrong in both halves:
+ * the record is the evidence humans calibrate bot trust against, so writing it
+ * IS privileged; and the old INSERT OR REPLACE made it a mutation of existing
+ * records, not an append. See ./guard.ts for the decisions and ./store.ts for
+ * the append-only write.
+ *
+ * A second action, `record_human_verdict`, is now denied from every container
+ * — the host stamps the human outcome deterministically from the GitHub
+ * webhook (webhook-github.ts). The registration is kept so an older container
+ * image still emitting it gets a reason instead of a silent
+ * "Unknown system action" drop.
  */
 import { getDb } from '../../db/connection.js';
 import { registerDeliveryAction } from '../../delivery.js';
-import { unguarded } from '../../guard/index.js';
 import { log } from '../../log.js';
 import type { Session } from '../../types.js';
-import { isValidDecision, recordHumanVerdict, upsertDecision } from './store.js';
+import { notifyAgent } from '../approvals/index.js';
+import { approvalLedgerRecordDecision, approvalLedgerRecordHumanVerdict } from './guard.js';
+import { appendDecision } from './store.js';
+import { isValidDecision } from './validate.js';
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null);
 const jsonStr = (v: unknown): string | null => {
@@ -29,62 +40,84 @@ const jsonStr = (v: unknown): string | null => {
     return null;
   }
 };
+const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v));
 
-registerDeliveryAction(
-  'record_decision',
-  async (content: Record<string, unknown>, session: Session) => {
-    const repo = str(content.repo);
-    const prNumber = typeof content.pr_number === 'number' ? content.pr_number : Number(content.pr_number);
-    const commitSha = str(content.commit_sha);
-    const decision = str(content.decision);
+/**
+ * Shape validation runs as the guard wrapper's precheck: a malformed call is
+ * answered without ever reaching the capability decision, so a broken prompt
+ * from a legitimate approver reads as "you sent the wrong arguments" rather
+ * than as an authorization failure.
+ */
+function validateRecordDecision(content: Record<string, unknown>, session: Session): boolean {
+  const repo = str(content.repo);
+  const prNumber = num(content.pr_number);
+  const commitSha = str(content.commit_sha);
+  const decision = str(content.decision);
 
-    if (!repo || !Number.isFinite(prNumber) || !commitSha || !decision) {
-      log.warn('record_decision: missing repo/pr_number/commit_sha/decision', { content });
-      return;
-    }
-    if (!isValidDecision(decision)) {
-      log.warn('record_decision: invalid decision state (dropped)', { decision, repo, pr: prNumber });
-      return;
-    }
+  if (!repo || !Number.isFinite(prNumber) || !commitSha || !decision) {
+    log.warn('record_decision: missing repo/pr_number/commit_sha/decision', { content });
+    notifyAgent(session, 'record_decision ignored: repo, pr_number, commit_sha and decision are all required.');
+    return false;
+  }
+  if (!isValidDecision(decision)) {
+    log.warn('record_decision: invalid decision state (dropped)', { decision, repo, pr: prNumber });
+    notifyAgent(
+      session,
+      `record_decision ignored: "${decision}" is not a decision state. Use WOULD_APPROVE, BLOCK, ABSTAIN_POLICY or ABSTAIN_INFRA.`,
+    );
+    return false;
+  }
+  return true;
+}
 
-    upsertDecision(getDb(), {
-      repo,
-      prNumber,
-      commitSha,
-      mode: str(content.mode) ?? 'unknown',
-      decision,
-      reasonCode: str(content.reason_code),
-      reviewDiffHash: str(content.review_diff_hash),
-      policyVersion: str(content.policy_version),
-      clausesJson: jsonStr(content.clauses),
-      challengerJson: jsonStr(content.challenger),
-      agentGroupId: session.agent_group_id,
-      sessionId: session.id,
-      threadId: session.thread_id,
-      // The container stamps ts (it has no Date.now ban); fall back to the row's
-      // own arrival if absent. Kept as the container-reported decision time.
-      decidedAt: str(content.ts) ?? new Date().toISOString(),
-    });
-  },
-  unguarded('record_decision appends to the approval-decision ledger — audit record, not a privileged mutation'),
-);
+async function applyRecordDecision(content: Record<string, unknown>, session: Session): Promise<void> {
+  const outcome = appendDecision(getDb(), {
+    repo: str(content.repo) as string,
+    prNumber: num(content.pr_number),
+    commitSha: str(content.commit_sha) as string,
+    mode: str(content.mode) ?? 'unknown',
+    decision: str(content.decision) as string,
+    reasonCode: str(content.reason_code),
+    reviewDiffHash: str(content.review_diff_hash),
+    policyVersion: str(content.policy_version),
+    clausesJson: jsonStr(content.clauses),
+    challengerJson: jsonStr(content.challenger),
+    agentGroupId: session.agent_group_id,
+    sessionId: session.id,
+    threadId: session.thread_id,
+    // The container stamps ts (it has no Date.now ban); the store normalizes
+    // it and falls back to arrival time when it is unusable.
+    decidedAt: str(content.ts) ?? new Date().toISOString(),
+  });
+
+  // Tell the agent what happened on every non-success branch. A refusal it
+  // cannot see is a refusal it will retry forever.
+  if (outcome.status === 'invalid') {
+    notifyAgent(session, `record_decision rejected: ${outcome.reason}`);
+  } else if (outcome.status === 'conflict') {
+    notifyAgent(
+      session,
+      `record_decision refused: a decision for this commit is already recorded (${outcome.existingDecision}). ` +
+        'The ledger is append-only — record a decision for the new head instead of restating this one.',
+    );
+  }
+}
+
+registerDeliveryAction('record_decision', applyRecordDecision, {
+  guardAction: approvalLedgerRecordDecision,
+  precheck: validateRecordDecision,
+  onDeny: (_content, session, reason) => notifyAgent(session, `record_decision denied: ${reason}`),
+});
 
 registerDeliveryAction(
   'record_human_verdict',
-  async (content: Record<string, unknown>, _session: Session) => {
-    const repo = str(content.repo);
-    const prNumber = typeof content.pr_number === 'number' ? content.pr_number : Number(content.pr_number);
-    const commitSha = str(content.commit_sha);
-    const humanVerdict = str(content.human_verdict);
-
-    if (!repo || !Number.isFinite(prNumber) || !commitSha || !humanVerdict) {
-      log.warn('record_human_verdict: missing repo/pr_number/commit_sha/human_verdict', { content });
-      return;
-    }
-    // `false` now means "no UNSTAMPED decision for this PR" — either none was
-    // ever recorded, or every one already carries a verdict (first-wins). The
-    // store logs the specifics on both branches, so don't restate them here.
-    recordHumanVerdict(getDb(), repo, prNumber, commitSha, humanVerdict);
+  async (_content: Record<string, unknown>, _session: Session) => {
+    // Unreachable: the guard denies unconditionally. Present so the registry
+    // entry is a real guarded action rather than a special case.
+    log.error('record_human_verdict handler reached — the guard should have denied it');
   },
-  unguarded('record_human_verdict stamps the human review outcome onto an existing ledger row — audit record'),
+  {
+    guardAction: approvalLedgerRecordHumanVerdict,
+    onDeny: (_content, session, reason) => notifyAgent(session, `record_human_verdict denied: ${reason}`),
+  },
 );

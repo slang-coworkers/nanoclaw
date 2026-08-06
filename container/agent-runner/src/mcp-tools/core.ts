@@ -547,7 +547,7 @@ const recordDecision: McpToolDefinition = {
   tool: {
     name: 'record_decision',
     description:
-      'Record one PR-approval decision to the host approval_decisions ledger (PR-approver coworkers only). Host-owned + auditable; survives container exit. One row per (repo, pr, commit_sha) — a re-run on the same commit replaces it. This is the ledger append gated by the critique stages; call it only after the recorded verdicts exist.',
+      'Record one PR-approval decision to the host approval_decisions ledger. Host-owned + auditable; survives container exit. The host ENFORCES that your agent group holds the ledger-writer capability — a call from any other group is denied and you are told so; this is not an honour-system restriction. APPEND-ONLY: one row per (repo, pr, commit_sha), first write wins. Repeating an identical decision is a harmless no-op; a DIFFERENT decision for the same commit is refused — record the new head instead. This is the ledger append gated by the critique stages; call it only after the recorded verdicts exist. The human review outcome is joined automatically by the host from GitHub, so there is nothing for you to report about it.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -605,52 +605,10 @@ const recordDecision: McpToolDefinition = {
   },
 };
 
-const recordHumanVerdict: McpToolDefinition = {
-  tool: {
-    name: 'record_human_verdict',
-    description:
-      'Stamp the human review outcome onto an existing approval_decisions row for (repo, pr, commit_sha), for agreement scoring (PR-approver coworkers only). Prefers the exact commit; if the PR advanced past every decided head (the common case for a merge), the host credits your most recent UNSTAMPED decision for that PR instead. An already-stamped verdict is never overwritten — the first human signal wins. No-op only when this PR has no unstamped decision at all.',
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        repo: { type: 'string', description: 'Repository in owner/name format' },
-        pr_number: { type: 'number', description: 'PR number' },
-        commit_sha: { type: 'string', description: 'The reviewed commit the human verdict applies to' },
-        human_verdict: {
-          type: 'string',
-          description: 'e.g. APPROVED | CHANGES_REQUESTED | COMMENTED',
-        },
-      },
-      required: ['repo', 'pr_number', 'commit_sha', 'human_verdict'],
-    },
-  },
-  async handler(args) {
-    const repo = typeof args.repo === 'string' ? args.repo.trim() : '';
-    const prNumber = typeof args.pr_number === 'number' ? args.pr_number : NaN;
-    const commitSha = typeof args.commit_sha === 'string' ? args.commit_sha.trim() : '';
-    const humanVerdict = typeof args.human_verdict === 'string' ? args.human_verdict.trim() : '';
-    if (!repo || !Number.isFinite(prNumber) || !commitSha || !humanVerdict) {
-      return err('repo, pr_number, commit_sha, human_verdict are required');
-    }
-
-    const seq = writeMessageOut({
-      id: generateId(),
-      kind: 'system',
-      platform_id: null,
-      channel_type: null,
-      thread_id: null,
-      content: JSON.stringify({
-        action: 'record_human_verdict',
-        repo,
-        pr_number: prNumber,
-        commit_sha: commitSha,
-        human_verdict: humanVerdict,
-      }),
-    });
-
-    log(`record_human_verdict: #${seq} → ${repo}#${prNumber}@${commitSha.slice(0, 12)} = ${humanVerdict}`);
-    return ok(`Human verdict recorded: ${repo}#${prNumber}@${commitSha.slice(0, 12)} = ${humanVerdict}`);
-  },
-};
-
-registerTools([sendMessage, sendFile, addReaction, reportPrCreated, recordDecision, recordHumanVerdict]);
+// `record_human_verdict` is deliberately NOT registered. The human review
+// outcome is stamped host-side from the GitHub webhook that observed it
+// (notifyApproverOfTerminalPr), keyed by the delivery id; the host guard denies
+// the container-originated action outright. Offering a tool whose every call is
+// refused would just burn approver turns. The host-side denial remains as
+// defence in depth for container images built before this change.
+registerTools([sendMessage, sendFile, addReaction, reportPrCreated, recordDecision]);

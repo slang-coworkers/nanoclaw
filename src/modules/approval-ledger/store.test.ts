@@ -3,11 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeDb, initTestDb } from '../../db/connection.js';
 import { runMigrations } from '../../db/migrations/index.js';
 import {
+  appendDecision,
   getDecisionSessionsForPr,
   isValidDecision,
+  listTrustedDecisions,
   recordHumanVerdict,
-  upsertDecision,
+  TRUSTED_PROVENANCE,
   type DecisionWrite,
+  type VerdictSource,
 } from './store.js';
 
 beforeEach(() => {
@@ -39,6 +42,9 @@ function baseWrite(overrides: Partial<DecisionWrite> = {}): DecisionWrite {
   };
 }
 
+/** Distinct webhook deliveries — the provenance key for a human verdict. */
+const gh = (id: string): VerdictSource => ({ kind: 'github_webhook', eventId: id });
+
 describe('isValidDecision', () => {
   it('accepts the four closed states, rejects anything else', () => {
     for (const d of ['WOULD_APPROVE', 'BLOCK', 'ABSTAIN_POLICY', 'ABSTAIN_INFRA']) {
@@ -50,42 +56,210 @@ describe('isValidDecision', () => {
   });
 });
 
-describe('upsertDecision', () => {
-  it('inserts one decision row keyed on (repo, pr, commit)', () => {
+describe('appendDecision', () => {
+  it('inserts one decision row keyed on (repo, pr, commit), stamped as verified provenance', () => {
     const db = initTestDb();
     runMigrations(db);
-    upsertDecision(db, baseWrite());
+    expect(appendDecision(db, baseWrite()).status).toBe('recorded');
     const row = db
       .prepare(
-        'SELECT decision, mode, policy_version, human_verdict FROM approval_decisions WHERE repo=? AND pr_number=? AND commit_sha=?',
+        'SELECT decision, mode, policy_version, human_verdict, provenance FROM approval_decisions WHERE repo=? AND pr_number=? AND commit_sha=?',
       )
       .get('shader-slang/slang', 11993, 'abc123def456abc123def456abc123def456abcd') as Record<string, unknown>;
     expect(row.decision).toBe('WOULD_APPROVE');
     expect(row.mode).toBe('live');
     expect(row.policy_version).toBe('v0-shadow');
     expect(row.human_verdict).toBeNull();
+    expect(row.provenance).toBe(TRUSTED_PROVENANCE);
   });
 
-  it('replaces the decision on a re-run of the same commit (last-writer-wins)', () => {
+  it('is idempotent: re-recording the SAME decision for a commit is a no-op, not a second row', () => {
     const db = initTestDb();
     runMigrations(db);
-    upsertDecision(db, baseWrite());
-    upsertDecision(db, baseWrite({ decision: 'ABSTAIN_POLICY', reasonCode: 'OPEN_GAP' }));
+    appendDecision(db, baseWrite());
+    expect(appendDecision(db, baseWrite()).status).toBe('duplicate');
+    const count = db.prepare('SELECT COUNT(*) c FROM approval_decisions').get() as { c: number };
+    expect(count.c).toBe(1);
+  });
+
+  it('REFUSES a different decision for a commit already decided — append-only, first write wins', () => {
+    // F14: INSERT OR REPLACE let any caller overwrite a recorded decision.
+    // Overwrite is the primitive that turns "append a false row" (visible
+    // beside the true one) into "erase the true row" (visible nowhere).
+    const db = initTestDb();
+    runMigrations(db);
+    appendDecision(db, baseWrite({ decision: 'BLOCK', reasonCode: 'CLAUSE_FAIL:tests' }));
+    const outcome = appendDecision(db, baseWrite({ decision: 'WOULD_APPROVE', reasonCode: null }));
+    expect(outcome.status).toBe('conflict');
+    if (outcome.status === 'conflict') expect(outcome.existingDecision).toBe('BLOCK');
+
     const rows = db.prepare('SELECT decision, reason_code FROM approval_decisions').all() as Array<
       Record<string, unknown>
     >;
     expect(rows).toHaveLength(1);
-    expect(rows[0].decision).toBe('ABSTAIN_POLICY');
-    expect(rows[0].reason_code).toBe('OPEN_GAP');
+    expect(rows[0].decision).toBe('BLOCK');
+    expect(rows[0].reason_code).toBe('CLAUSE_FAIL:tests');
   });
 
   it('a distinct commit is a distinct row (one per reviewed revision)', () => {
     const db = initTestDb();
     runMigrations(db);
-    upsertDecision(db, baseWrite());
-    upsertDecision(db, baseWrite({ commitSha: 'ffffffffffffffffffffffffffffffffffffffff' }));
+    appendDecision(db, baseWrite());
+    appendDecision(db, baseWrite({ commitSha: 'ffffffffffffffffffffffffffffffffffffffff' }));
     const count = db.prepare('SELECT COUNT(*) c FROM approval_decisions').get() as { c: number };
     expect(count.c).toBe(2);
+  });
+
+  it('treats a sha differing only in case as the same reviewed commit', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    appendDecision(db, baseWrite({ commitSha: 'a'.repeat(40) }));
+    expect(appendDecision(db, baseWrite({ commitSha: 'A'.repeat(40) })).status).toBe('duplicate');
+    const count = db.prepare('SELECT COUNT(*) c FROM approval_decisions').get() as { c: number };
+    expect(count.c).toBe(1);
+  });
+});
+
+describe('appendDecision — input domains', () => {
+  it('rejects a repo that is not owner/name', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    const outcome = appendDecision(db, baseWrite({ repo: 'not-a-repo' }));
+    expect(outcome.status).toBe('invalid');
+    if (outcome.status === 'invalid') expect(outcome.field).toBe('repo');
+    expect((db.prepare('SELECT COUNT(*) c FROM approval_decisions').get() as { c: number }).c).toBe(0);
+  });
+
+  it('rejects a commit_sha that is not a git object name', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    const outcome = appendDecision(db, baseWrite({ commitSha: 'HEAD~1' }));
+    expect(outcome.status).toBe('invalid');
+    if (outcome.status === 'invalid') expect(outcome.field).toBe('commit_sha');
+  });
+
+  it('rejects a non-positive or non-integer PR number', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    for (const pr of [0, -3, 1.5, Number.NaN, 99_999_999]) {
+      const outcome = appendDecision(db, baseWrite({ prNumber: pr }));
+      expect(outcome.status, `pr_number ${pr} should be rejected`).toBe('invalid');
+    }
+  });
+
+  it('normalizes an unusable decided_at to host time instead of storing it', () => {
+    // The ordering the join depends on (`ORDER BY datetime(decided_at)`) is
+    // only as sound as this field. Prod slang#11530 held a decision stamped
+    // 730h after its own merge.
+    const db = initTestDb();
+    runMigrations(db);
+    appendDecision(db, baseWrite({ decidedAt: '2044-01-01T00:00:00Z' }));
+    const row = db.prepare('SELECT decided_at FROM approval_decisions').get() as { decided_at: string };
+    expect(Date.parse(row.decided_at)).toBeLessThanOrEqual(Date.now() + 1000);
+  });
+
+  it('caps an oversized evidence blob rather than storing it whole', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    appendDecision(db, baseWrite({ clausesJson: 'x'.repeat(500_000) }));
+    const row = db.prepare('SELECT clauses_json FROM approval_decisions').get() as { clauses_json: string };
+    expect(row.clauses_json.length).toBe(64 * 1024);
+  });
+
+  it('normalizes an unrecognized mode rather than dropping the decision', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    expect(appendDecision(db, baseWrite({ mode: 'sideways' })).status).toBe('recorded');
+    const row = db.prepare('SELECT mode FROM approval_decisions').get() as { mode: string };
+    expect(row.mode).toBe('unknown');
+  });
+});
+
+describe('listTrustedDecisions', () => {
+  it('excludes rows whose provenance predates enforcement', () => {
+    // F14: metrics consumed every row with no provenance filter, so a
+    // pre-enforcement (or forged) row moved the calibration numbers by exactly
+    // as much as a verified one.
+    const db = initTestDb();
+    runMigrations(db);
+    appendDecision(db, baseWrite({ commitSha: 'a'.repeat(40) }));
+    db.prepare(
+      `INSERT INTO approval_decisions
+         (repo, pr_number, commit_sha, mode, decision, agent_group_id, session_id, decided_at, provenance)
+       VALUES ('shader-slang/slang', 11993, ?, 'live', 'WOULD_APPROVE', 'g-legacy', 's-legacy', '2026-01-01T00:00:00Z', 'legacy')`,
+    ).run('b'.repeat(40));
+
+    const trusted = listTrustedDecisions(db);
+    expect(trusted.map((r) => r.commit_sha)).toEqual(['a'.repeat(40)]);
+    // The legacy row is still readable history — it just isn't evidence.
+    expect((db.prepare('SELECT COUNT(*) c FROM approval_decisions').get() as { c: number }).c).toBe(2);
+  });
+});
+
+describe('recordHumanVerdict — provenance', () => {
+  it('refuses a verdict with no source event id', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    appendDecision(db, baseWrite());
+    expect(
+      recordHumanVerdict(db, 'shader-slang/slang', 11993, 'abc123def456abc123def456abc123def456abcd', 'APPROVED', {
+        kind: 'github_webhook',
+        eventId: '',
+      }),
+    ).toBe(false);
+    const row = db.prepare('SELECT human_verdict FROM approval_decisions').get() as { human_verdict: string | null };
+    expect(row.human_verdict).toBeNull();
+  });
+
+  it('refuses a verdict outside the closed domain', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    appendDecision(db, baseWrite());
+    expect(
+      recordHumanVerdict(
+        db,
+        'shader-slang/slang',
+        11993,
+        'abc123def456abc123def456abc123def456abcd',
+        'LGTM_SHIP_IT',
+        gh('d-1'),
+      ),
+    ).toBe(false);
+  });
+
+  it('records the source kind and event id on the stamped row', () => {
+    const db = initTestDb();
+    runMigrations(db);
+    appendDecision(db, baseWrite());
+    recordHumanVerdict(
+      db,
+      'shader-slang/slang',
+      11993,
+      'abc123def456abc123def456abc123def456abcd',
+      'APPROVED',
+      gh('delivery-abc'),
+    );
+    const row = db.prepare('SELECT verdict_source, verdict_source_event_id FROM approval_decisions').get() as Record<
+      string,
+      unknown
+    >;
+    expect(row.verdict_source).toBe('github_webhook');
+    expect(row.verdict_source_event_id).toBe('delivery-abc');
+  });
+
+  it('is idempotent under webhook redelivery of the same event', () => {
+    // GitHub redelivers routinely; a redelivery is not a second observation.
+    const db = initTestDb();
+    runMigrations(db);
+    appendDecision(db, baseWrite({ commitSha: 'a'.repeat(40) }));
+    appendDecision(db, baseWrite({ commitSha: 'b'.repeat(40), decidedAt: '2026-07-09T02:00:00Z' }));
+    expect(recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'MERGED', gh('same'))).toBe(true);
+    // Same delivery again — must not consume the second unstamped decision.
+    expect(recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'MERGED', gh('same'))).toBe(false);
+    const stamped = db.prepare('SELECT COUNT(*) c FROM approval_decisions WHERE human_verdict IS NOT NULL').get() as {
+      c: number;
+    };
+    expect(stamped.c).toBe(1);
   });
 });
 
@@ -93,13 +267,14 @@ describe('recordHumanVerdict', () => {
   it('stamps the human verdict onto an existing decision row', () => {
     const db = initTestDb();
     runMigrations(db);
-    upsertDecision(db, baseWrite());
+    appendDecision(db, baseWrite());
     const joined = recordHumanVerdict(
       db,
       'shader-slang/slang',
       11993,
       'abc123def456abc123def456abc123def456abcd',
       'APPROVED',
+      gh('d-1'),
     );
     expect(joined).toBe(true);
     const row = db
@@ -111,27 +286,27 @@ describe('recordHumanVerdict', () => {
   it('is a no-op when no decision row exists (human review preceded a decision)', () => {
     const db = initTestDb();
     runMigrations(db);
-    const joined = recordHumanVerdict(db, 'shader-slang/slang', 999, 'nope', 'CHANGES_REQUESTED');
-    expect(joined).toBe(false);
+    expect(recordHumanVerdict(db, 'shader-slang/slang', 999, 'nope', 'CHANGES_REQUESTED', gh('d-1'))).toBe(false);
   });
 
-  it('preserves the joined human verdict across a decision re-run', () => {
+  it('preserves the joined human verdict when the same decision is re-sent', () => {
     const db = initTestDb();
     runMigrations(db);
-    upsertDecision(db, baseWrite());
+    appendDecision(db, baseWrite());
     recordHumanVerdict(
       db,
       'shader-slang/slang',
       11993,
       'abc123def456abc123def456abc123def456abcd',
       'CHANGES_REQUESTED',
+      gh('d-1'),
     );
-    // Re-decide the same commit — human_verdict must survive (COALESCE subquery).
-    upsertDecision(db, baseWrite({ decision: 'BLOCK' }));
+    // A re-send of the same decision is a no-op, so the verdict cannot be lost.
+    expect(appendDecision(db, baseWrite()).status).toBe('duplicate');
     const row = db
       .prepare('SELECT decision, human_verdict FROM approval_decisions WHERE commit_sha=?')
       .get('abc123def456abc123def456abc123def456abcd') as Record<string, unknown>;
-    expect(row.decision).toBe('BLOCK');
+    expect(row.decision).toBe('WOULD_APPROVE');
     expect(row.human_verdict).toBe('CHANGES_REQUESTED');
   });
 });
@@ -144,14 +319,14 @@ describe('recordHumanVerdict — head advanced past the decision', () => {
     // PRs had advanced this way, leaving a 42% hole in the calibration data.
     const db = initTestDb();
     runMigrations(db);
-    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
-    upsertDecision(
+    appendDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
+    appendDecision(
       db,
       baseWrite({ commitSha: 'b'.repeat(40), decision: 'ABSTAIN_POLICY', decidedAt: '2026-07-09T01:00:00Z' }),
     );
 
     // Merged at a head the approver never decided on.
-    const ok = recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED');
+    const ok = recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED', gh('d-1'));
     expect(ok).toBe(true);
 
     const rows = db
@@ -171,10 +346,12 @@ describe('recordHumanVerdict — head advanced past the decision', () => {
     // replaced by MERGED, erasing the evidence of a false approve.
     const db = initTestDb();
     runMigrations(db);
-    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40) }));
-    expect(recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'CHANGES_REQUESTED')).toBe(true);
-    // Same sha again — the head did NOT advance, so this takes the exact path.
-    expect(recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'MERGED')).toBe(false);
+    appendDecision(db, baseWrite({ commitSha: 'a'.repeat(40) }));
+    expect(recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'CHANGES_REQUESTED', gh('d-1'))).toBe(
+      true,
+    );
+    // Same sha again, a genuinely later event — the head did NOT advance.
+    expect(recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'MERGED', gh('d-2'))).toBe(false);
     const row = db
       .prepare('SELECT human_verdict, join_mode FROM approval_decisions WHERE commit_sha=?')
       .get('a'.repeat(40)) as { human_verdict: string; join_mode: string };
@@ -185,8 +362,8 @@ describe('recordHumanVerdict — head advanced past the decision', () => {
   it('records join_mode so precision can be split by whether the head moved', () => {
     const db = initTestDb();
     runMigrations(db);
-    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
-    recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED');
+    appendDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
+    recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED', gh('d-1'));
     const row = db.prepare('SELECT join_mode FROM approval_decisions WHERE commit_sha=?').get('a'.repeat(40)) as {
       join_mode: string;
     };
@@ -194,31 +371,41 @@ describe('recordHumanVerdict — head advanced past the decision', () => {
   });
 
   it('picks the latest by datetime(), not lexicographic text, and breaks ties by rowid', () => {
-    // decided_at is agent-supplied and unvalidated, so a bare TEXT sort mis-orders
-    // offset forms and truncated fractions, and an exact tie credits the FIRST row.
+    // Legacy rows carry agent-supplied decided_at values, so a bare TEXT sort
+    // mis-orders offset forms and truncated fractions, and an exact tie credits
+    // the FIRST row. New writes are normalized to Z-form by validate.ts, but the
+    // ordering must stay correct for the rows already in prod.
     const db = initTestDb();
     runMigrations(db);
     // '…14:00:00+02:00' is 12:00:00Z — EARLIER than 12:30:00Z — but sorts above it as text.
-    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T14:00:00+02:00' }));
-    upsertDecision(db, baseWrite({ commitSha: 'b'.repeat(40), decision: 'BLOCK', decidedAt: '2026-07-09T12:30:00Z' }));
-    recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED');
+    for (const [sha, decided] of [
+      ['a'.repeat(40), '2026-07-09T14:00:00+02:00'],
+      ['b'.repeat(40), '2026-07-09T12:30:00Z'],
+    ] as const) {
+      db.prepare(
+        `INSERT INTO approval_decisions
+           (repo, pr_number, commit_sha, mode, decision, agent_group_id, session_id, decided_at, provenance)
+         VALUES ('shader-slang/slang', 11993, ?, 'live', 'WOULD_APPROVE', 'g1', 's1', ?, 'legacy')`,
+      ).run(sha, decided);
+    }
+    recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED', gh('d-1'));
     const rows = db.prepare('SELECT commit_sha, human_verdict FROM approval_decisions').all() as Array<{
       commit_sha: string;
       human_verdict: string | null;
     }>;
     const stamped = rows.find((r) => r.human_verdict !== null);
-    // The genuinely-latest decision is the 12:30Z BLOCK, not the offset-form row.
+    // The genuinely-latest decision is the 12:30Z row, not the offset-form one.
     expect(stamped?.commit_sha).toBe('b'.repeat(40));
   });
 
   it('never overwrites a verdict that was already observed', () => {
     const db = initTestDb();
     runMigrations(db);
-    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
-    recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'CHANGES_REQUESTED');
+    appendDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
+    recordHumanVerdict(db, 'shader-slang/slang', 11993, 'a'.repeat(40), 'CHANGES_REQUESTED', gh('d-1'));
 
     // A later terminal event must not clobber the real observation.
-    const ok = recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED');
+    const ok = recordHumanVerdict(db, 'shader-slang/slang', 11993, 'f'.repeat(40), 'MERGED', gh('d-2'));
     expect(ok).toBe(false);
     const row = db.prepare('SELECT human_verdict FROM approval_decisions WHERE commit_sha=?').get('a'.repeat(40)) as {
       human_verdict: string;
@@ -229,7 +416,7 @@ describe('recordHumanVerdict — head advanced past the decision', () => {
   it('returns false when no decision exists for the PR at all', () => {
     const db = initTestDb();
     runMigrations(db);
-    expect(recordHumanVerdict(db, 'shader-slang/slang', 424242, 'f'.repeat(40), 'MERGED')).toBe(false);
+    expect(recordHumanVerdict(db, 'shader-slang/slang', 424242, 'f'.repeat(40), 'MERGED', gh('d-1'))).toBe(false);
   });
 });
 
@@ -238,8 +425,8 @@ describe('getDecisionSessionsForPr', () => {
     const db = initTestDb();
     runMigrations(db);
     // R0 then R1 (a synchronize re-decision) from the same approver session.
-    upsertDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
-    upsertDecision(
+    appendDecision(db, baseWrite({ commitSha: 'a'.repeat(40), decidedAt: '2026-07-09T00:00:00Z' }));
+    appendDecision(
       db,
       baseWrite({ commitSha: 'b'.repeat(40), decision: 'ABSTAIN_POLICY', decidedAt: '2026-07-09T01:00:00Z' }),
     );
