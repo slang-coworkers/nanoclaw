@@ -760,6 +760,112 @@ describe('dashboard server', () => {
     expect(a.targetLabel).toBe('Deletes wiring: PerfHound → PerfHound (self-edge)');
   });
 
+  it('surfaces critique-gate identity (PR, session, class) instead of dropping it', async () => {
+    const db = createDashboardTestDb();
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS pending_approvals (
+        approval_id TEXT PRIMARY KEY, session_id TEXT, request_id TEXT NOT NULL,
+        action TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL,
+        agent_group_id TEXT, channel_type TEXT, platform_id TEXT,
+        platform_message_id TEXT, expires_at TEXT, status TEXT NOT NULL DEFAULT 'pending',
+        title TEXT, question TEXT, options_json TEXT
+      );
+    `);
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO agent_groups (id, name, folder, is_admin, routing, created_at)
+       VALUES ('ag-orch2', 'Orchestrator', 'orch-crit-probe', 1, 'direct', ?)`,
+    ).run(now);
+    db.prepare(
+      `INSERT INTO pending_approvals (approval_id, session_id, request_id, action, payload, created_at, agent_group_id, status, title, question)
+       VALUES ('appr-crit', 'sess-crit', 'req-crit', 'critique_gate_bypass', ?, ?, 'ag-orch2', 'pending', 'Critique gate — shader-slang/slang#12186: critique returned must-fix', 'body text')`,
+    ).run(
+      JSON.stringify({
+        sessionId: 'sess-1784687870891-dnkxu6',
+        repo: 'shader-slang/slang',
+        prNumber: 12186,
+        prUrl: 'https://github.com/shader-slang/slang/pull/12186',
+        reason: 'OUTPUT_REVIEW last verdict is "must-fix" (must be "approve").',
+        hit: 'PR creation',
+        class: 'failed',
+        denials: 3,
+        selfHealAttempts: 0,
+      }),
+      now,
+    );
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/approvals?group=orch-crit-probe`);
+    expect(res.status).toBe(200);
+    const a = (await res.json())[0];
+    expect(a.action).toBe('critique_gate_bypass');
+    // Each of these was parsed from the payload and then dropped before.
+    expect(a.sessionId).toBe('sess-1784687870891-dnkxu6');
+    expect(a.repo).toBe('shader-slang/slang');
+    expect(a.prNumber).toBe(12186);
+    expect(a.prUrl).toBe('https://github.com/shader-slang/slang/pull/12186');
+    expect(a.hit).toBe('PR creation');
+    expect(a.escalationClass).toBe('failed');
+    expect(a.denials).toBe(3);
+    // The authored card body was persisted but never surfaced.
+    expect(a.question).toBe('body text');
+  });
+
+  it('summarizes critique escalations, and reports enforcement releases separately', async () => {
+    const db = createDashboardTestDb();
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS critique_escalation_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL,
+        agent_group_id TEXT, approval_id TEXT, event TEXT NOT NULL, class TEXT,
+        reason TEXT, hit TEXT, repo TEXT, pr_number INTEGER, attempt INTEGER,
+        created_at TEXT NOT NULL, requested_at INTEGER
+      );
+    `);
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO agent_groups (id, name, folder, is_admin, routing, created_at)
+       VALUES ('ag-fixer', 'slang-fixer', 'fixer-esc-probe', 0, 'direct', ?)`,
+    ).run(now);
+    const ins = db.prepare(
+      `INSERT INTO critique_escalation_events (session_id, agent_group_id, event, class, created_at)
+       VALUES ('sess-e', 'ag-fixer', ?, ?, ?)`,
+    );
+    ins.run('self_heal', 'missing', now);
+    ins.run('self_heal', 'stale', now);
+    ins.run('self_healed', 'missing', now);
+    ins.run('carded', 'failed', now);
+    ins.run('approved', 'failed', now);
+    ins.run('failed_open', 'missing', now);
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/approvals/escalations?days=7`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.days).toBe(7);
+    const totals = Object.fromEntries(body.totals.map((t: { event: string; n: number }) => [t.event, t.n]));
+    expect(totals.self_heal).toBe(2);
+    expect(totals.carded).toBe(1);
+    // approved + failed_open are the two events that admitted a delivery with
+    // the requirement unmet; they must never be buried in a total.
+    expect(body.released).toBe(2);
+    expect(body.byDay.some((r: { coworker: string }) => r.coworker === 'slang-fixer')).toBe(true);
+  });
+
+  it('returns an empty escalation summary when the host has no events table', async () => {
+    const db = createDashboardTestDb();
+    db.exec('DROP TABLE IF EXISTS critique_escalation_events;');
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/approvals/escalations`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.totals).toEqual([]);
+    expect(body.released).toBe(0);
+  });
+
   it('rejects sibling-prefix traversal for static files', async () => {
     mkdirSync(PUBLIC_PROBE_DIR, { recursive: true });
     writeFileSync(path.join(PUBLIC_PROBE_DIR, 'secret.txt'), 'probe-public\n', 'utf-8');

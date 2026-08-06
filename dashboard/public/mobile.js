@@ -424,9 +424,22 @@ function renderApprovalCard(item) {
   const coworkerHeader = item.coworkerName
     ? `<div style="font-size:9px;color:#10b981;font-weight:600;margin-bottom:4px">@${esc(item.coworkerName)}</div>`
     : '';
-  const safeReason = item.reason ? `\n\n*Reason:* ${esc(item.reason)}` : '';
+  // Agent-authored reasons run to paragraphs; on a phone that buries the
+  // buttons entirely. Clamp harder here than on desktop.
+  const shortReason = item.reason
+    ? `\n\n*Reason:* ${esc(String(item.reason).length > 180 ? String(item.reason).slice(0, 180) + '…' : item.reason)}`
+    : '';
+  const safeReason = shortReason;
   let desc;
-  if (item.action === 'install_packages') {
+  if (item.action === 'critique_gate_bypass') {
+    // Name the PR and the blocked surface — without these the card is a bare
+    // action slug and there is nothing to decide on.
+    const target = item.prUrl
+      ? `[${esc(item.repo || '')}#${esc(item.prNumber)}](${esc(item.prUrl)})`
+      : esc(item.repo || 'no PR mapped');
+    const surface = item.hit ? ` · blocked: ${esc(item.hit)}` : '';
+    desc = `**${esc(item.title || 'Critique gate')}**\n\n${target}${surface}${shortReason}`;
+  } else if (item.action === 'install_packages') {
     desc = `**Install packages:** ${(item.packages || []).map(p => esc(p)).join(', ')}${safeReason}`;
   } else if (item.action === 'request_rebuild') {
     desc = `**Rebuild container**${safeReason}`;

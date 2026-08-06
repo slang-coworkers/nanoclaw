@@ -11424,6 +11424,22 @@ export async function handleRequest(
               mcpServer: payload.name || payload.server || null,
               commandLine,
               targetLabel,
+              // The card body the requesting module authored. It was delivered
+              // to chat but never surfaced here, so the dashboard could only
+              // ever render the one-line title. `question` is absent on
+              // pre-migration-021 rows, hence the null fallback.
+              question: row.question || null,
+              // Identity. These were parsed out of the payload and then
+              // dropped on the floor, which is why a critique-gate card could
+              // name a session id and nothing an operator could act on.
+              sessionId: payload.sessionId || row.session_id || null,
+              hit: payload.hit || null,
+              repo: payload.repo || null,
+              prNumber: typeof payload.prNumber === 'number' ? payload.prNumber : null,
+              prUrl: payload.prUrl || null,
+              escalationClass: payload.class || null,
+              denials: typeof payload.denials === 'number' ? payload.denials : null,
+              selfHealAttempts: typeof payload.selfHealAttempts === 'number' ? payload.selfHealAttempts : null,
             };
           });
         }
@@ -11433,6 +11449,62 @@ export async function handleRequest(
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(approvals));
+    return;
+  }
+
+  // API: critique-gate escalation metrics.
+  //
+  // Answers "how often does the gate escalate, from which coworker, and how
+  // often is enforcement released" — questions that previously required
+  // grepping a 64 MB time-only multi-day log and decoding epoch-ms out of
+  // approval ids, because a resolved approval row is deleted on decision.
+  // Backed by critique_escalation_events (host migration 932); returns an
+  // empty summary when that table is absent so an older host still works.
+  if (req.method === 'GET' && url.pathname === '/api/approvals/escalations') {
+    if (!requireAuth(req, res)) return;
+    const days = Math.min(Math.max(Number(url.searchParams.get('days')) || 14, 1), 90);
+    const since = new Date(Date.now() - days * 86_400_000).toISOString();
+    let byDay: unknown[] = [];
+    let totals: unknown[] = [];
+    if (db) {
+      try {
+        const present = db
+          .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='critique_escalation_events'")
+          .get();
+        if (present) {
+          byDay = db
+            .prepare(
+              `SELECT substr(e.created_at, 1, 10) AS day, ag.name AS coworker,
+                      e.event AS event, e.class AS class, COUNT(*) AS n
+                 FROM critique_escalation_events e
+                 LEFT JOIN agent_groups ag ON ag.id = e.agent_group_id
+                WHERE e.created_at >= ?
+                GROUP BY day, coworker, event, class
+                ORDER BY day DESC, coworker, event`,
+            )
+            .all(since);
+          totals = db
+            .prepare(
+              `SELECT e.event AS event, COUNT(*) AS n
+                 FROM critique_escalation_events e
+                WHERE e.created_at >= ?
+                GROUP BY e.event
+                ORDER BY n DESC`,
+            )
+            .all(since);
+        }
+      } catch {
+        /* table may not exist on an older host */
+      }
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    // `released` is the number that matters: an approved bypass or a
+    // container-side fail-open both admitted a delivery with the requirement
+    // unmet. Surfaced separately so it is never buried in a total.
+    const released = (totals as Array<{ event: string; n: number }>)
+      .filter((t) => t.event === 'approved' || t.event === 'failed_open')
+      .reduce((a, t) => a + t.n, 0);
+    res.end(JSON.stringify({ sinceIso: since, days, totals, byDay, released }));
     return;
   }
 
