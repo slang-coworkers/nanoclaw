@@ -26,6 +26,21 @@
  * ingestion path (webhook-github.ts), never from a container, and requires the
  * source event id that observed the human — the GitHub webhook delivery id.
  * It never touches decision fields.
+ *
+ * ONE TRUST LEVEL PER TABLE. `approval_decisions` holds only rows written
+ * under capability enforcement; the pre-enforcement ones live in
+ * `approval_decisions_legacy` (migration 935). Mixing them in one table meant
+ * every read had to remember to filter, and two that didn't were real defects:
+ * a legacy row could permanently block the authorized approver at a PR head
+ * (the pre-guard write path let any container seed those keys, so the closed
+ * hole survived as a denial-of-service primitive), and a legacy row could
+ * absorb the single webhook-sourced human verdict, leaving the verified
+ * decision unscoreable. Separating them makes both structurally impossible
+ * rather than conventionally avoided.
+ *
+ * Delivery is the exception, and stays explicit: `getDecisionSessionsForPr`
+ * reads BOTH tables, because telling an approver session how its PR ended is
+ * routing, not calibration.
  */
 import type Database from 'better-sqlite3';
 
@@ -42,9 +57,14 @@ import {
 export { isValidDecision } from './validate.js';
 
 /**
- * Rows written under capability enforcement. Metric consumers filter on this
- * value; 'legacy' rows (written before the guard existed, see migration 934)
- * are readable history but are not calibration evidence.
+ * Rows written under capability enforcement.
+ *
+ * Since migration 935 this is the only provenance `approval_decisions` holds —
+ * the pre-enforcement rows live in `approval_decisions_legacy`. That is the
+ * point: a table with one trust level cannot be misread by a query that forgot
+ * to filter, and every existing consumer (including the funnel, which still
+ * selects unfiltered) became correct without being edited. The explicit scopes
+ * below are belt-and-braces for a half-migrated database.
  */
 export const TRUSTED_PROVENANCE = 'agent_verified';
 
@@ -90,6 +110,16 @@ export type AppendOutcome =
  * is reported differently to the agent: `duplicate` is success, `conflict` is
  * a refusal the agent should be told about, and `invalid` is a correctable
  * mistake in its own arguments.
+ *
+ * "First write wins" ranges over TRUSTED rows only. Migration 935 quarantines
+ * the pre-enforcement ones into approval_decisions_legacy precisely so that is
+ * true by construction — but a legacy row surviving here (a partially applied
+ * upgrade, a restored backup) must never be able to suppress a verified
+ * decision, so the conflict path below re-checks and quarantines one if it
+ * finds it. Without that, a row any container could have pre-seeded before the
+ * guard existed would silence the real approver at that PR head forever: the
+ * closed vulnerability would live on as a denial-of-service primitive against
+ * the ledger that replaced it.
  */
 export function appendDecision(db: Database.Database, w: DecisionWrite): AppendOutcome {
   const bad = validatePrRef(w.repo, w.prNumber, w.commitSha);
@@ -111,6 +141,18 @@ export function appendDecision(db: Database.Database, w: DecisionWrite): AppendO
     });
   }
 
+  // One transaction: a legacy row displaced by the retry below must not be able
+  // to vanish without the verified row that replaced it landing.
+  return db.transaction(() => insertDecision(db, w, commitSha, decidedAt.iso))();
+}
+
+function insertDecision(
+  db: Database.Database,
+  w: DecisionWrite,
+  commitSha: string,
+  decidedAtIso: string,
+  isRetry = false,
+): AppendOutcome {
   const res = db
     .prepare(
       `INSERT INTO approval_decisions (
@@ -140,7 +182,7 @@ export function appendDecision(db: Database.Database, w: DecisionWrite): AppendO
       agentGroupId: w.agentGroupId,
       sessionId: w.sessionId,
       threadId: w.threadId,
-      decidedAt: decidedAt.iso,
+      decidedAt: decidedAtIso,
       provenance: TRUSTED_PROVENANCE,
     });
 
@@ -156,8 +198,23 @@ export function appendDecision(db: Database.Database, w: DecisionWrite): AppendO
   }
 
   const existing = db
-    .prepare('SELECT decision FROM approval_decisions WHERE repo=? AND pr_number=? AND commit_sha=?')
-    .get(w.repo, w.prNumber, commitSha) as { decision: string } | undefined;
+    .prepare('SELECT decision, provenance FROM approval_decisions WHERE repo=? AND pr_number=? AND commit_sha=?')
+    .get(w.repo, w.prNumber, commitSha) as { decision: string; provenance: string | null } | undefined;
+
+  // An untrusted occupant is not evidence and does not get to win. Move it to
+  // the history table and let the verified write take the key. Guarded by
+  // isRetry so a pathological state cannot loop.
+  if (existing && existing.provenance !== TRUSTED_PROVENANCE && !isRetry) {
+    quarantineLegacyRow(db, w.repo, w.prNumber, commitSha);
+    log.warn('approval decision: displaced a pre-enforcement row so the verified decision could land', {
+      repo: w.repo,
+      pr: w.prNumber,
+      commit: commitSha.slice(0, 12),
+      displacedProvenance: existing.provenance ?? '(null)',
+      displacedDecision: existing.decision,
+    });
+    return insertDecision(db, w, commitSha, decidedAtIso, true);
+  }
 
   if (existing && existing.decision === w.decision) {
     log.info('approval decision already recorded — idempotent no-op', {
@@ -181,18 +238,37 @@ export function appendDecision(db: Database.Database, w: DecisionWrite): AppendO
 }
 
 /**
- * The approver session(s) that decided a given PR — the ledger is the index.
+ * Move one row out of the trusted table into the history table, preserving it
+ * verbatim. Copy-then-delete, and delete only what the copy accepted, so the
+ * row cannot disappear. Callers run inside a transaction.
+ */
+function quarantineLegacyRow(db: Database.Database, repo: string, prNumber: number, commitSha: string): void {
+  db.prepare(
+    `INSERT OR IGNORE INTO approval_decisions_legacy
+       SELECT * FROM approval_decisions WHERE repo=? AND pr_number=? AND commit_sha=?`,
+  ).run(repo, prNumber, commitSha);
+  db.prepare(
+    `DELETE FROM approval_decisions
+      WHERE repo=? AND pr_number=? AND commit_sha=?
+        AND EXISTS (SELECT 1 FROM approval_decisions_legacy l
+                     WHERE l.repo=? AND l.pr_number=? AND l.commit_sha=?)`,
+  ).run(repo, prNumber, commitSha, repo, prNumber, commitSha);
+}
+
+/**
+ * The approver session(s) that decided a given PR — the ROUTING index.
  * Used to route a terminal PR event (merged / closed) back to the approver
- * that decided it so it can join the human outcome onto its decision row and
- * distill an abstract learning. Returns one row per decided commit (a PR may
- * have several revision decisions from the same session); callers dedup on
- * (agent_group_id, thread_id) when delivering. Empty when no approver ever
- * decided this PR — nothing to learn, nothing to route.
+ * that decided it so it can distill an abstract learning. Returns one row per
+ * decided commit (a PR may have several revision decisions from the same
+ * session); callers dedup on (agent_group_id, thread_id) when delivering.
+ * Empty when no approver ever decided this PR — nothing to learn, nothing to
+ * route.
  *
- * Deliberately NOT provenance-filtered: this is the wake-the-session index,
- * and the sessions named on legacy rows are real approver sessions that
- * should still receive their outcome. Provenance gates what COUNTS
- * (listTrustedDecisions), not what gets notified.
+ * Reads BOTH tables, deliberately. Delivery and calibration are different
+ * questions: the sessions named on quarantined pre-enforcement rows are real
+ * approver sessions that should still be told how their PR ended, even though
+ * their rows are not evidence. Keeping the two concerns apart is what lets the
+ * calibration join be trusted-only without silently dropping notifications.
  */
 export interface DecisionSessionRow {
   agent_group_id: string;
@@ -204,12 +280,21 @@ export interface DecisionSessionRow {
 }
 
 export function getDecisionSessionsForPr(db: Database.Database, repo: string, prNumber: number): DecisionSessionRow[] {
+  // The ORDER BY lives outside the union: SQLite only accepts bare result
+  // columns as compound-select ORDER BY terms, and `datetime(decided_at)` is an
+  // expression — which the store needs, since a bare TEXT sort mis-orders the
+  // offset forms and truncated fractions these rows carry.
   return db
     .prepare(
-      `SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict
-       FROM approval_decisions WHERE repo=? AND pr_number=? ORDER BY datetime(decided_at) ASC, rowid ASC`,
+      `SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict FROM (
+         SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict, decided_at, rowid AS rid
+           FROM approval_decisions WHERE repo=? AND pr_number=?
+         UNION ALL
+         SELECT agent_group_id, session_id, thread_id, commit_sha, decision, human_verdict, decided_at, rowid AS rid
+           FROM approval_decisions_legacy WHERE repo=? AND pr_number=?
+       ) ORDER BY datetime(decided_at) ASC, rid ASC`,
     )
-    .all(repo, prNumber) as DecisionSessionRow[];
+    .all(repo, prNumber, repo, prNumber) as DecisionSessionRow[];
 }
 
 export interface TrustedDecisionRow {
@@ -226,12 +311,12 @@ export interface TrustedDecisionRow {
  * Every decision row that is calibration evidence — i.e. written by a group
  * that held the ledger-writer capability at the time of the write.
  *
- * This is the reader metric producers should use. Reading `approval_decisions`
- * unfiltered counts rows whose provenance is unattributable ('legacy',
- * pre-enforcement) alongside verified ones, which is precisely the corruption
- * F14 describes: the calibration dashboards are what humans consult to decide
- * how much to trust the approver, so an unattributable row moves the trust
- * decision by exactly as much as a real one.
+ * The named reader for metric producers. Since migration 935 quarantined the
+ * pre-enforcement rows this returns the whole table, so an existing consumer
+ * that selects `approval_decisions` directly is no longer counting
+ * unattributable rows either — but new consumers should use this, because the
+ * name says what the rows are for and the filter survives a partially applied
+ * migration.
  */
 export function listTrustedDecisions(db: Database.Database): TrustedDecisionRow[] {
   return db
@@ -316,13 +401,21 @@ export function recordHumanVerdict(
   // we cannot tell. Only a well-formed sha may take the exact path.
   const exactSha = /^[0-9a-fA-F]{40}$|^[0-9a-fA-F]{64}$/.test(commitSha) ? commitSha.toLowerCase() : '';
 
+  // Every selection below is scoped to trusted provenance. Migration 935 makes
+  // that redundant by moving the pre-enforcement rows out of this table, but
+  // stating it in the SQL is what keeps it true on a half-migrated database and
+  // in the next query someone adds. Unscoped, a legacy row at the exact head —
+  // or one carrying a newer (sometimes malformed-future) decided_at — absorbs
+  // the single webhook-sourced verdict, and the verified decision it should
+  // have scored stays unstamped forever.
+
   // GitHub redelivers; a redelivery must not be mistaken for a second
   // observation. If this exact event already stamped a row for this PR, we are
   // done.
   const already = db
     .prepare(
       `SELECT 1 FROM approval_decisions
-        WHERE repo=? AND pr_number=? AND verdict_source_event_id=? LIMIT 1`,
+        WHERE repo=? AND pr_number=? AND verdict_source_event_id=? AND ${TRUSTED_PROVENANCE_SQL} LIMIT 1`,
     )
     .get(repo, prNumber, source.eventId);
   if (already) {
@@ -341,7 +434,7 @@ export function recordHumanVerdict(
             SET human_verdict=@humanVerdict, join_mode='exact',
                 verdict_source=@sourceKind, verdict_source_event_id=@eventId
           WHERE repo=@repo AND pr_number=@prNumber AND commit_sha=@commitSha
-            AND human_verdict IS NULL`,
+            AND human_verdict IS NULL AND ${TRUSTED_PROVENANCE_SQL}`,
       )
       .run({
         humanVerdict,
@@ -370,12 +463,14 @@ export function recordHumanVerdict(
   // '…12:30:00Z') and truncated fractions ('Z' > '.'), and an exact tie would
   // credit the FIRST row — the opposite of "latest". Prod carries proof this is
   // not theoretical: slang#11530 holds a decision stamped 730h AFTER its own
-  // merge. New writes are normalized (validate.ts), but the legacy rows those
-  // stamps produced are still in the table.
+  // merge. New writes are normalized (validate.ts), and the rows those stamps
+  // produced are quarantined out of this table — which is also why the
+  // provenance scope below matters most HERE: an unnormalized future timestamp
+  // is exactly what would win a "latest" ordering and steal the verdict.
   const latest = db
     .prepare(
       `SELECT rowid AS rid, commit_sha AS decidedSha FROM approval_decisions
-        WHERE repo=? AND pr_number=? AND human_verdict IS NULL
+        WHERE repo=? AND pr_number=? AND human_verdict IS NULL AND ${TRUSTED_PROVENANCE_SQL}
         ORDER BY datetime(decided_at) DESC, rowid DESC LIMIT 1`,
     )
     .get(repo, prNumber) as { rid: number; decidedSha: string } | undefined;
