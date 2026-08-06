@@ -70,15 +70,15 @@ import './codex.js';
 The agent's global Node CLIs install from `container/cli-tools.json` (a json-merge seam), not hand-edited Dockerfile layers. Add Codex by appending one entry — idempotent on `name`, so a re-run is a no-op. `@openai/codex` has no native postinstall (its published `scripts` are empty), so no `onlyBuilt`. Both `container/Dockerfile` and `container/Dockerfile.derived` install every manifest entry via pinned `pnpm install -g`; no Dockerfile edit is needed.
 
 ```nc:json-merge into:container/cli-tools.json key:name
-{ "name": "@openai/codex", "version": "0.146.1" }
+{ "name": "@openai/codex", "version": "0.146.0" }
 ```
 
-The version (`0.146.1`) is the canonical pin — this SKILL.md is the source of truth, and `container/cli-tools.json` must agree with it.
+The version (`0.146.0`, published 2026-07-29) is the canonical pin — this SKILL.md is the source of truth, and `container/cli-tools.json` must agree with it.
 
 Two things to know before bumping it:
 
-- **The pin is the whole supply-chain control.** Codex briefly escaped the manifest into a hand-written `pnpm install -g` layer duplicated across both Dockerfiles; `0.146.1` reached the image roughly 14.6 hours after it was published. Keep it here.
-- **Respect the release-age quarantine.** The repo refuses versions younger than three days (`minimumReleaseAge: 4320`). Check the publish time before pinning — `pnpm view @openai/codex@<version> time` — and pick a version that has already matured rather than the newest tag.
+- **The pin is the whole supply-chain control.** Codex briefly escaped the manifest into a hand-written `pnpm install -g` layer duplicated across both Dockerfiles, and `0.146.1` reached the image roughly 14.6 hours after it was published. Keep it here.
+- **The release-age quarantine is now ENFORCED on this install path**, not merely documented. `container/install-cli-tools.sh` writes `minimum-release-age=4320` into `/root/.npmrc` — the config a global install actually reads — and proves at build time that pnpm is honouring it. A pin younger than three days fails the image build with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. That is why the pin is `0.146.0` and not `0.146.1`: check the publish time first (`pnpm view @openai/codex@<version> time`) and choose a version that has already matured rather than the newest tag. Do **not** reach for `minimumReleaseAgeExclude` — it needs explicit human sign-off, and every entry is a permanent hole unless someone prunes it.
 
 ### 4. Build
 
