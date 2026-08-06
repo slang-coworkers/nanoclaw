@@ -8,5 +8,10 @@
     "name": "@anthropic-ai/claude-code",
     "version": "2.1.197",
     "onlyBuilt": true
+  },
+  {
+    "name": "@mariozechner/claude-trace",
+    "version": "1.0.9",
+    "onlyBuilt": true
   }
 ]

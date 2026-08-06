@@ -68,3 +68,12 @@ slang_kb/
 # minimumReleaseAge). A stray package-lock.json bypasses that supply-chain gate.
 package-lock.json
 __pycache__/
+
+# The patched claude-trace build is vendored ON PURPOSE (see
+# container/claude-trace/BUILD.md) so a deploy needs no node build. The blanket
+# `dist/` rule above would silently swallow it — and its absence is invisible at
+# runtime: resolveClaudeTraceDir() just returns null and tracing is quietly off.
+# Git will not descend into an excluded directory, so the DIRECTORIES must be
+# un-ignored, not merely the files inside them.
+!container/claude-trace/dist/
+!container/claude-trace/frontend/dist/

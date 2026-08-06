@@ -164,6 +164,12 @@ container/install-cli-tools.sh
 # Codex lifecycle hooks, installed to /etc/codex/requirements.toml (the managed
 # config layer — the user layer leaves them untrusted and silently skipped).
 container/codex-hooks.toml
+# Patched claude-trace (NVIDIA/Bedrock interception) — prebuilt dist is vendored
+# on purpose so a deploy needs no build; see container/claude-trace/BUILD.md.
+# The guard test is a SIBLING of the directory, not inside it, so it needs its
+# own entry (same split as cli-tools.json / cli-tools.test.ts above).
+container/claude-trace/**
+container/claude-trace.test.ts
 # Top-level version manifest.
 versions.json
 

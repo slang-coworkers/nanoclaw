@@ -792,6 +792,26 @@ function resolveProviderContribution(
   return { provider, contribution };
 }
 
+/**
+ * Locate the patched claude-trace build, or null if this install has none.
+ *
+ * Prefers the tracked copy at container/claude-trace. Falls back to the legacy
+ * untracked data/claude-trace so a box provisioned before it was vendored keeps
+ * tracing until its checkout catches up.
+ *
+ * Presence of dist/cli.js is the switch for the whole feature: no build means no
+ * mount and no CLAUDE_CODE_EXECUTABLE, so the SDK runs the stock binary and
+ * simply produces no traces. Both call sites gate on this, so they can never
+ * disagree — an env var pointing at an unmounted wrapper would break every
+ * Claude turn with ENOENT.
+ */
+export function resolveClaudeTraceDir(): string | null {
+  for (const dir of [path.join(process.cwd(), 'container', 'claude-trace'), path.join(DATA_DIR, 'claude-trace')]) {
+    if (fs.existsSync(path.join(dir, 'dist', 'cli.js'))) return dir;
+  }
+  return null;
+}
+
 export function buildMounts(
   agentGroup: AgentGroup,
   session: Session,
@@ -1297,6 +1317,23 @@ export function buildMounts(
     mounts.push(...validated);
   }
 
+  // claude-trace: mount the patched reverse-proxy build read-only at
+  // /opt/claude-trace. The wrapper (CLAUDE_CODE_EXECUTABLE, set below) runs the
+  // native claude binary behind claude-trace's local reverse proxy and dumps
+  // per-session request/response .jsonl + .html into the child cwd
+  // (/workspace/agent/.claude-trace = groups/<folder>/.claude-trace on the host).
+  // Claude provider only — Codex does not go through pathToClaudeCodeExecutable.
+  //
+  // Source lives in the repo at container/claude-trace (tracked). It used to be
+  // an untracked data/claude-trace directory hand-placed on each box, which meant
+  // the feature silently did not exist anywhere it had not been copied. The
+  // DATA_DIR path is still honoured as a fallback so an existing box keeps
+  // working until its checkout catches up.
+  if (provider === 'claude') {
+    const traceDir = resolveClaudeTraceDir();
+    if (traceDir) mounts.push({ hostPath: traceDir, containerPath: '/opt/claude-trace', readonly: true });
+  }
+
   // Provider-contributed mounts (e.g. opencode-xdg)
   if (providerContribution.mounts) {
     mounts.push(...providerContribution.mounts);
@@ -1373,6 +1410,18 @@ async function buildContainerArgs(
   // global; resolveGroupTimezone validates a hand-edited DB value.
   args.push('-e', `TZ=${resolveGroupTimezone(agentGroup.id)}`);
   args.push('-e', `AGENT_PROVIDER=${provider}`);
+  // claude-trace: point the SDK's executable at the wrapper mounted above. Unlike
+  // stock claude-trace (a require-hook, JS-only), this build stands up a local
+  // reverse proxy, points the child's ANTHROPIC_BASE_URL at it, and forwards
+  // upstream via the OneCLI proxy — so it works with the NATIVE ELF binary and
+  // captures NVIDIA (/llm/) and Bedrock (/model/) traffic, not just anthropic.com.
+  // Gated on the same directory check as the mount: no build, no env, no trace.
+  if (provider === 'claude' && resolveClaudeTraceDir()) {
+    args.push('-e', 'CLAUDE_CODE_EXECUTABLE=/opt/claude-trace/claude-trace-wrapper.sh');
+    args.push('-e', 'CLAUDE_TRACE_DIR=/opt/claude-trace');
+    // NANOCLAW_SESSION_ID is exported below (dashboard routing) and read by the
+    // wrapper for per-session --log names.
+  }
   // Two-DB split: container reads inbound.db, writes outbound.db
   args.push('-e', 'SESSION_INBOUND_DB_PATH=/workspace/inbound.db');
   args.push('-e', 'SESSION_OUTBOUND_DB_PATH=/workspace/outbound.db');

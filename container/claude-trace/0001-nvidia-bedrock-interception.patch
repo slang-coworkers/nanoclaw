@@ -1,0 +1,979 @@
+From d1d33ac63923a387774e6e7952cd1a0f2b0f8b0c Mon Sep 17 00:00:00 2001
+From: Harsh Aggarwal <haaggarwal@nvidia.com>
+Date: Thu, 24 Jul 2025 18:16:55 +0530
+Subject: [PATCH] Harsh : Working
+
+---
+ apps/claude-trace/package-lock.json  | 377 ---------------------------
+ apps/claude-trace/package.json       |   4 +-
+ apps/claude-trace/src/interceptor.ts | 287 +++++++++++++++++++-
+ package-lock.json                    | 188 ++++++++++++-
+ 4 files changed, 465 insertions(+), 391 deletions(-)
+ delete mode 100644 apps/claude-trace/package-lock.json
+
+diff --git a/apps/claude-trace/package-lock.json b/apps/claude-trace/package-lock.json
+deleted file mode 100644
+index 2b15e23..0000000
+--- a/apps/claude-trace/package-lock.json
++++ /dev/null
+@@ -1,377 +0,0 @@
+-{
+-  "name": "@mariozechner/claude-logger",
+-  "version": "1.0.2",
+-  "lockfileVersion": 3,
+-  "requires": true,
+-  "packages": {
+-    "": {
+-      "name": "@mariozechner/claude-logger",
+-      "version": "1.0.2",
+-      "license": "MIT",
+-      "bin": {
+-        "claude-logger": "dist/cli.js"
+-      },
+-      "devDependencies": {
+-        "@types/node": "^20.0.0",
+-        "concurrently": "^9.1.2",
+-        "typescript": "^5.0.0"
+-      },
+-      "engines": {
+-        "node": ">=16.0.0"
+-      }
+-    },
+-    "node_modules/@types/node": {
+-      "version": "20.17.57",
+-      "resolved": "https://registry.npmjs.org/@types/node/-/node-20.17.57.tgz",
+-      "integrity": "sha512-f3T4y6VU4fVQDKVqJV4Uppy8c1p/sVvS3peyqxyWnzkqXFJLRU7Y1Bl7rMS1Qe9z0v4M6McY0Fp9yBsgHJUsWQ==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "undici-types": "~6.19.2"
+-      }
+-    },
+-    "node_modules/ansi-regex": {
+-      "version": "5.0.1",
+-      "resolved": "https://registry.npmjs.org/ansi-regex/-/ansi-regex-5.0.1.tgz",
+-      "integrity": "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==",
+-      "dev": true,
+-      "license": "MIT",
+-      "engines": {
+-        "node": ">=8"
+-      }
+-    },
+-    "node_modules/ansi-styles": {
+-      "version": "4.3.0",
+-      "resolved": "https://registry.npmjs.org/ansi-styles/-/ansi-styles-4.3.0.tgz",
+-      "integrity": "sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "color-convert": "^2.0.1"
+-      },
+-      "engines": {
+-        "node": ">=8"
+-      },
+-      "funding": {
+-        "url": "https://github.com/chalk/ansi-styles?sponsor=1"
+-      }
+-    },
+-    "node_modules/chalk": {
+-      "version": "4.1.2",
+-      "resolved": "https://registry.npmjs.org/chalk/-/chalk-4.1.2.tgz",
+-      "integrity": "sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "ansi-styles": "^4.1.0",
+-        "supports-color": "^7.1.0"
+-      },
+-      "engines": {
+-        "node": ">=10"
+-      },
+-      "funding": {
+-        "url": "https://github.com/chalk/chalk?sponsor=1"
+-      }
+-    },
+-    "node_modules/chalk/node_modules/supports-color": {
+-      "version": "7.2.0",
+-      "resolved": "https://registry.npmjs.org/supports-color/-/supports-color-7.2.0.tgz",
+-      "integrity": "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "has-flag": "^4.0.0"
+-      },
+-      "engines": {
+-        "node": ">=8"
+-      }
+-    },
+-    "node_modules/cliui": {
+-      "version": "8.0.1",
+-      "resolved": "https://registry.npmjs.org/cliui/-/cliui-8.0.1.tgz",
+-      "integrity": "sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==",
+-      "dev": true,
+-      "license": "ISC",
+-      "dependencies": {
+-        "string-width": "^4.2.0",
+-        "strip-ansi": "^6.0.1",
+-        "wrap-ansi": "^7.0.0"
+-      },
+-      "engines": {
+-        "node": ">=12"
+-      }
+-    },
+-    "node_modules/color-convert": {
+-      "version": "2.0.1",
+-      "resolved": "https://registry.npmjs.org/color-convert/-/color-convert-2.0.1.tgz",
+-      "integrity": "sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "color-name": "~1.1.4"
+-      },
+-      "engines": {
+-        "node": ">=7.0.0"
+-      }
+-    },
+-    "node_modules/color-name": {
+-      "version": "1.1.4",
+-      "resolved": "https://registry.npmjs.org/color-name/-/color-name-1.1.4.tgz",
+-      "integrity": "sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==",
+-      "dev": true,
+-      "license": "MIT"
+-    },
+-    "node_modules/concurrently": {
+-      "version": "9.1.2",
+-      "resolved": "https://registry.npmjs.org/concurrently/-/concurrently-9.1.2.tgz",
+-      "integrity": "sha512-H9MWcoPsYddwbOGM6difjVwVZHl63nwMEwDJG/L7VGtuaJhb12h2caPG2tVPWs7emuYix252iGfqOyrz1GczTQ==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "chalk": "^4.1.2",
+-        "lodash": "^4.17.21",
+-        "rxjs": "^7.8.1",
+-        "shell-quote": "^1.8.1",
+-        "supports-color": "^8.1.1",
+-        "tree-kill": "^1.2.2",
+-        "yargs": "^17.7.2"
+-      },
+-      "bin": {
+-        "conc": "dist/bin/concurrently.js",
+-        "concurrently": "dist/bin/concurrently.js"
+-      },
+-      "engines": {
+-        "node": ">=18"
+-      },
+-      "funding": {
+-        "url": "https://github.com/open-cli-tools/concurrently?sponsor=1"
+-      }
+-    },
+-    "node_modules/emoji-regex": {
+-      "version": "8.0.0",
+-      "resolved": "https://registry.npmjs.org/emoji-regex/-/emoji-regex-8.0.0.tgz",
+-      "integrity": "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==",
+-      "dev": true,
+-      "license": "MIT"
+-    },
+-    "node_modules/escalade": {
+-      "version": "3.2.0",
+-      "resolved": "https://registry.npmjs.org/escalade/-/escalade-3.2.0.tgz",
+-      "integrity": "sha512-WUj2qlxaQtO4g6Pq5c29GTcWGDyd8itL8zTlipgECz3JesAiiOKotd8JU6otB3PACgG6xkJUyVhboMS+bje/jA==",
+-      "dev": true,
+-      "license": "MIT",
+-      "engines": {
+-        "node": ">=6"
+-      }
+-    },
+-    "node_modules/get-caller-file": {
+-      "version": "2.0.5",
+-      "resolved": "https://registry.npmjs.org/get-caller-file/-/get-caller-file-2.0.5.tgz",
+-      "integrity": "sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==",
+-      "dev": true,
+-      "license": "ISC",
+-      "engines": {
+-        "node": "6.* || 8.* || >= 10.*"
+-      }
+-    },
+-    "node_modules/has-flag": {
+-      "version": "4.0.0",
+-      "resolved": "https://registry.npmjs.org/has-flag/-/has-flag-4.0.0.tgz",
+-      "integrity": "sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==",
+-      "dev": true,
+-      "license": "MIT",
+-      "engines": {
+-        "node": ">=8"
+-      }
+-    },
+-    "node_modules/is-fullwidth-code-point": {
+-      "version": "3.0.0",
+-      "resolved": "https://registry.npmjs.org/is-fullwidth-code-point/-/is-fullwidth-code-point-3.0.0.tgz",
+-      "integrity": "sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==",
+-      "dev": true,
+-      "license": "MIT",
+-      "engines": {
+-        "node": ">=8"
+-      }
+-    },
+-    "node_modules/lodash": {
+-      "version": "4.17.21",
+-      "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz",
+-      "integrity": "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==",
+-      "dev": true,
+-      "license": "MIT"
+-    },
+-    "node_modules/require-directory": {
+-      "version": "2.1.1",
+-      "resolved": "https://registry.npmjs.org/require-directory/-/require-directory-2.1.1.tgz",
+-      "integrity": "sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==",
+-      "dev": true,
+-      "license": "MIT",
+-      "engines": {
+-        "node": ">=0.10.0"
+-      }
+-    },
+-    "node_modules/rxjs": {
+-      "version": "7.8.2",
+-      "resolved": "https://registry.npmjs.org/rxjs/-/rxjs-7.8.2.tgz",
+-      "integrity": "sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==",
+-      "dev": true,
+-      "license": "Apache-2.0",
+-      "dependencies": {
+-        "tslib": "^2.1.0"
+-      }
+-    },
+-    "node_modules/shell-quote": {
+-      "version": "1.8.2",
+-      "resolved": "https://registry.npmjs.org/shell-quote/-/shell-quote-1.8.2.tgz",
+-      "integrity": "sha512-AzqKpGKjrj7EM6rKVQEPpB288oCfnrEIuyoT9cyF4nmGa7V8Zk6f7RRqYisX8X9m+Q7bd632aZW4ky7EhbQztA==",
+-      "dev": true,
+-      "license": "MIT",
+-      "engines": {
+-        "node": ">= 0.4"
+-      },
+-      "funding": {
+-        "url": "https://github.com/sponsors/ljharb"
+-      }
+-    },
+-    "node_modules/string-width": {
+-      "version": "4.2.3",
+-      "resolved": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
+-      "integrity": "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "emoji-regex": "^8.0.0",
+-        "is-fullwidth-code-point": "^3.0.0",
+-        "strip-ansi": "^6.0.1"
+-      },
+-      "engines": {
+-        "node": ">=8"
+-      }
+-    },
+-    "node_modules/strip-ansi": {
+-      "version": "6.0.1",
+-      "resolved": "https://registry.npmjs.org/strip-ansi/-/strip-ansi-6.0.1.tgz",
+-      "integrity": "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "ansi-regex": "^5.0.1"
+-      },
+-      "engines": {
+-        "node": ">=8"
+-      }
+-    },
+-    "node_modules/supports-color": {
+-      "version": "8.1.1",
+-      "resolved": "https://registry.npmjs.org/supports-color/-/supports-color-8.1.1.tgz",
+-      "integrity": "sha512-MpUEN2OodtUzxvKQl72cUF7RQ5EiHsGvSsVG0ia9c5RbWGL2CI4C7EpPS8UTBIplnlzZiNuV56w+FuNxy3ty2Q==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "has-flag": "^4.0.0"
+-      },
+-      "engines": {
+-        "node": ">=10"
+-      },
+-      "funding": {
+-        "url": "https://github.com/chalk/supports-color?sponsor=1"
+-      }
+-    },
+-    "node_modules/tree-kill": {
+-      "version": "1.2.2",
+-      "resolved": "https://registry.npmjs.org/tree-kill/-/tree-kill-1.2.2.tgz",
+-      "integrity": "sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==",
+-      "dev": true,
+-      "license": "MIT",
+-      "bin": {
+-        "tree-kill": "cli.js"
+-      }
+-    },
+-    "node_modules/tslib": {
+-      "version": "2.8.1",
+-      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz",
+-      "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==",
+-      "dev": true,
+-      "license": "0BSD"
+-    },
+-    "node_modules/typescript": {
+-      "version": "5.8.3",
+-      "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.8.3.tgz",
+-      "integrity": "sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==",
+-      "dev": true,
+-      "license": "Apache-2.0",
+-      "bin": {
+-        "tsc": "bin/tsc",
+-        "tsserver": "bin/tsserver"
+-      },
+-      "engines": {
+-        "node": ">=14.17"
+-      }
+-    },
+-    "node_modules/undici-types": {
+-      "version": "6.19.8",
+-      "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-6.19.8.tgz",
+-      "integrity": "sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==",
+-      "dev": true,
+-      "license": "MIT"
+-    },
+-    "node_modules/wrap-ansi": {
+-      "version": "7.0.0",
+-      "resolved": "https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-7.0.0.tgz",
+-      "integrity": "sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "ansi-styles": "^4.0.0",
+-        "string-width": "^4.1.0",
+-        "strip-ansi": "^6.0.0"
+-      },
+-      "engines": {
+-        "node": ">=10"
+-      },
+-      "funding": {
+-        "url": "https://github.com/chalk/wrap-ansi?sponsor=1"
+-      }
+-    },
+-    "node_modules/y18n": {
+-      "version": "5.0.8",
+-      "resolved": "https://registry.npmjs.org/y18n/-/y18n-5.0.8.tgz",
+-      "integrity": "sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==",
+-      "dev": true,
+-      "license": "ISC",
+-      "engines": {
+-        "node": ">=10"
+-      }
+-    },
+-    "node_modules/yargs": {
+-      "version": "17.7.2",
+-      "resolved": "https://registry.npmjs.org/yargs/-/yargs-17.7.2.tgz",
+-      "integrity": "sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==",
+-      "dev": true,
+-      "license": "MIT",
+-      "dependencies": {
+-        "cliui": "^8.0.1",
+-        "escalade": "^3.1.1",
+-        "get-caller-file": "^2.0.5",
+-        "require-directory": "^2.1.1",
+-        "string-width": "^4.2.3",
+-        "y18n": "^5.0.5",
+-        "yargs-parser": "^21.1.1"
+-      },
+-      "engines": {
+-        "node": ">=12"
+-      }
+-    },
+-    "node_modules/yargs-parser": {
+-      "version": "21.1.1",
+-      "resolved": "https://registry.npmjs.org/yargs-parser/-/yargs-parser-21.1.1.tgz",
+-      "integrity": "sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==",
+-      "dev": true,
+-      "license": "ISC",
+-      "engines": {
+-        "node": ">=12"
+-      }
+-    }
+-  }
+-}
+diff --git a/apps/claude-trace/package.json b/apps/claude-trace/package.json
+index 01f6522..7747b90 100644
+--- a/apps/claude-trace/package.json
++++ b/apps/claude-trace/package.json
+@@ -49,6 +49,8 @@
+ 		"typescript": "^5.0.0"
+ 	},
+ 	"dependencies": {
+-		"@anthropic-ai/sdk": "^0.52.0"
++		"@anthropic-ai/sdk": "^0.52.0",
++		"@smithy/eventstream-serde-node": "^4.0.4",
++		"@smithy/util-utf8": "^4.0.0"
+ 	}
+ }
+diff --git a/apps/claude-trace/src/interceptor.ts b/apps/claude-trace/src/interceptor.ts
+index 31f3d23..3f67ea5 100644
+--- a/apps/claude-trace/src/interceptor.ts
++++ b/apps/claude-trace/src/interceptor.ts
+@@ -3,6 +3,10 @@ import path from "path";
+ import { spawn } from "child_process";
+ import { RawPair } from "./types";
+ import { HTMLGenerator } from "./html-generator";
++import { fromUtf8, toUtf8 } from "@smithy/util-utf8";
++
++// Target domains to intercept
++const TARGET_DOMAINS = ["anthropic.com", "nvidia.com", "aws.com"];
+ 
+ export interface InterceptorConfig {
+ 	logDirectory?: string;
+@@ -51,19 +55,26 @@ export class ClaudeTrafficLogger {
+ 		console.log(`  HTML:  ${this.htmlFile}`);
+ 	}
+ 
+-	private isAnthropicAPI(url: string | URL): boolean {
++	private isTargetAPI(url: string | URL): boolean {
+ 		const urlString = typeof url === "string" ? url : url.toString();
+ 		const includeAllRequests = process.env.CLAUDE_TRACE_INCLUDE_ALL_REQUESTS === "true";
+ 
+-		// Support custom ANTHROPIC_BASE_URL
+-      		const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com";
+-      		const apiHost = new URL(baseUrl).hostname;
+-		
++		// Check if URL matches any target domain
++		const matchesTargetDomain = TARGET_DOMAINS.some((domain) => urlString.includes(domain));
++		if (!matchesTargetDomain) {
++			return false;
++		}
++
+ 		if (includeAllRequests) {
+-			return urlString.includes(apiHost); // Capture all Anthropic API requests
++			return true; // Capture all requests to target domains
+ 		}
+ 
+-		return urlString.includes(apiHost) && urlString.includes("/v1/messages");
++		// For filtered mode, check for API endpoints on any target domain
++		const hasAPIEndpoint =
++			urlString.includes("/v1/messages") || // Anthropic direct API
++			urlString.includes("/model/") || // AWS Bedrock
++			urlString.includes("/llm/"); // NVIDIA API
++		return matchesTargetDomain && hasAPIEndpoint;
+ 	}
+ 
+ 	private generateRequestId(): string {
+@@ -106,6 +117,249 @@ export class ClaudeTrafficLogger {
+ 		// Clone the response to avoid consuming the body
+ 		return response.clone();
+ 	}
++	private parseEventStreamBinary(bodyRaw: string): any[] {
++		const events: any[] = [];
++
++		try {
++			// Convert string back to binary data
++			const binaryData = new Uint8Array(bodyRaw.length);
++			for (let i = 0; i < bodyRaw.length; i++) {
++				binaryData[i] = bodyRaw.charCodeAt(i);
++			}
++
++			let offset = 0;
++			while (offset < binaryData.length) {
++				// AWS EventStream message format:
++				// [total_length:4][headers_length:4][prelude_crc:4][headers][payload][message_crc:4]
++
++				if (offset + 12 > binaryData.length) break;
++
++				const totalLength = new DataView(binaryData.buffer, offset, 4).getUint32(0);
++				const headersLength = new DataView(binaryData.buffer, offset + 4, 4).getUint32(0);
++
++				// Validate message boundaries
++				if (offset + totalLength > binaryData.length || totalLength < 16) {
++					throw new Error(`Invalid message boundaries at offset ${offset}`);
++				}
++
++				// Skip prelude CRC (4 bytes)
++				const headersStart = offset + 12;
++				const payloadStart = headersStart + headersLength;
++				const payloadLength = totalLength - headersLength - 16; // 12 byte prelude + 4 byte message CRC
++
++				if (payloadLength > 0 && payloadStart + payloadLength <= binaryData.length) {
++					const payloadBytes = binaryData.slice(payloadStart, payloadStart + payloadLength);
++					const payloadText = new TextDecoder("utf-8").decode(payloadBytes);
++
++					try {
++						const payload = JSON.parse(payloadText);
++						if (payload.bytes) {
++							// Decode the base64 bytes to get actual event
++							const eventJson = Buffer.from(payload.bytes, "base64").toString("utf-8");
++							const event = JSON.parse(eventJson);
++							events.push(event);
++						}
++					} catch (e) {
++						// Skip malformed payloads but continue parsing
++					}
++				}
++
++				offset += totalLength;
++			}
++
++			return events;
++		} catch (error) {
++			// Binary parsing failed, will fall back to regex
++			throw new Error(`Binary parsing failed: ${error instanceof Error ? error.message : String(error)}`);
++		}
++	}
++
++	private parseBedrockStreamingResponse(bodyRaw: string): any {
++		try {
++			let events: any[] = [];
++			let parsingMethod = "";
++
++			// Try binary parsing first
++			try {
++				events = this.parseEventStreamBinary(bodyRaw);
++				parsingMethod = "binary";
++
++				if (process.env.CLAUDE_TRACE_DEBUG) {
++					console.log(`✅ Binary parsing succeeded: ${events.length} events`);
++				}
++			} catch (binaryError) {
++				if (process.env.CLAUDE_TRACE_DEBUG) {
++					console.log(
++						`❌ Binary parsing failed: ${binaryError instanceof Error ? binaryError.message : String(binaryError)}`,
++					);
++					console.log(`🔄 Falling back to regex parsing...`);
++				}
++
++				// Fallback to regex parsing
++				try {
++					events = this.parseEventStreamRegex(bodyRaw);
++					parsingMethod = "regex";
++
++					if (process.env.CLAUDE_TRACE_DEBUG) {
++						console.log(`✅ Regex parsing succeeded: ${events.length} events`);
++					}
++				} catch (regexError) {
++					if (process.env.CLAUDE_TRACE_DEBUG) {
++						console.log(`❌ Both parsing methods failed`);
++					}
++					return null;
++				}
++			}
++
++			// ... rest of the method remains the same
++			if (events.length === 0) {
++				return null;
++			}
++
++			// Add parsing method to logs for analysis
++			if (process.env.CLAUDE_TRACE_DEBUG) {
++				console.log(`🎯 Using ${parsingMethod} parsing for ${events.length} events`);
++			}
++
++			// Process events to build response (same logic as before)
++			let messageStart: any = null;
++			let usage: any = null;
++			let toolBlocks: Array<{ id: string; name: string; input: any }> = [];
++			let textBlocks: Array<{ text: string }> = [];
++
++			// Track partial JSON for tool use
++			const toolInputBuilders: Map<number, string> = new Map();
++
++			for (const event of events) {
++				switch (event.type) {
++					case "message_start":
++						messageStart = event.message;
++						break;
++
++					case "message_delta":
++						if (event.usage) {
++							usage = { ...usage, ...event.usage };
++						}
++						break;
++
++					case "content_block_start":
++						if (event.content_block?.type === "tool_use") {
++							toolBlocks[event.index] = {
++								id: event.content_block.id,
++								name: event.content_block.name,
++								input: {},
++							};
++							toolInputBuilders.set(event.index, "");
++						} else if (event.content_block?.type === "text") {
++							textBlocks[event.index] = { text: "" };
++						}
++						break;
++
++					case "content_block_delta":
++						const index = event.index || 0;
++
++						if (event.delta?.type === "input_json_delta") {
++							const currentJson = toolInputBuilders.get(index) || "";
++							const newJson = currentJson + (event.delta.partial_json || "");
++							toolInputBuilders.set(index, newJson);
++						} else if (event.delta?.text) {
++							if (!textBlocks[index]) {
++								textBlocks[index] = { text: "" };
++							}
++							textBlocks[index].text += event.delta.text;
++						}
++						break;
++
++					case "content_block_stop":
++						const stopIndex = event.index || 0;
++						if (toolInputBuilders.has(stopIndex)) {
++							const jsonString = toolInputBuilders.get(stopIndex);
++							try {
++								if (toolBlocks[stopIndex] && jsonString) {
++									toolBlocks[stopIndex].input = JSON.parse(jsonString);
++								}
++							} catch (e) {
++								if (toolBlocks[stopIndex]) {
++									toolBlocks[stopIndex].input = {};
++								}
++							}
++							toolInputBuilders.delete(stopIndex);
++						}
++						break;
++				}
++			}
++
++			// Build final content array
++			const content: any[] = [];
++
++			textBlocks.forEach((block) => {
++				if (block && block.text) {
++					content.push({
++						type: "text",
++						text: block.text,
++					});
++				}
++			});
++
++			toolBlocks.forEach((block) => {
++				if (block && block.id) {
++					content.push({
++						type: "tool_use",
++						id: block.id,
++						name: block.name,
++						input: block.input,
++					});
++				}
++			});
++
++			const response = {
++				id: messageStart?.id || "",
++				type: "message",
++				role: "assistant",
++				model: messageStart?.model || "",
++				content: content,
++				stop_reason: "end_turn",
++				stop_sequence: null,
++				usage: usage || messageStart?.usage || null,
++			};
++
++			// Add parsing method metadata for analysis
++			if (process.env.CLAUDE_TRACE_DEBUG) {
++				(response as any)._parsing_method = parsingMethod;
++			}
++
++			return response;
++		} catch (error) {
++			if (process.env.CLAUDE_TRACE_DEBUG) {
++				console.log(
++					`[INTERCEPTOR] Bedrock parsing failed: ${error instanceof Error ? error.message : String(error)}`,
++				);
++			}
++			return null;
++		}
++	}
++
++	/**
++	 * Parse EventStream using regex to extract base64-encoded events (fallback)
++	 */
++	private parseEventStreamRegex(bodyRaw: string): any[] {
++		const events: any[] = [];
++		const base64Pattern = /"bytes"\s*:\s*"([^"]+)"/g;
++		let match;
++
++		while ((match = base64Pattern.exec(bodyRaw)) !== null) {
++			try {
++				const base64Data = match[1];
++				const decoded = Buffer.from(base64Data, "base64").toString("utf-8");
++				const event = JSON.parse(decoded);
++				events.push(event);
++			} catch (e) {
++				continue;
++			}
++		}
++
++		return events;
++	}
+ 
+ 	private async parseRequestBody(body: any): Promise<any> {
+ 		if (!body) return null;
+@@ -139,6 +393,18 @@ export class ClaudeTrafficLogger {
+ 			} else if (contentType.includes("text/event-stream")) {
+ 				const body_raw = await response.text();
+ 				return { body_raw };
++			} else if (contentType.includes("application/vnd.amazon.eventstream")) {
++				// Amazon Event Stream - parse immediately in interceptor
++				const body_raw = await response.text();
++				const parsedMessage = this.parseBedrockStreamingResponse(body_raw);
++
++				if (parsedMessage) {
++					// Return clean JSON instead of raw binary
++					return { body: parsedMessage };
++				} else {
++					// Fallback: keep raw data for frontend parsing
++					return { body_raw };
++				}
+ 			} else if (contentType.includes("text/")) {
+ 				const body_raw = await response.text();
+ 				return { body_raw };
+@@ -176,8 +442,9 @@ export class ClaudeTrafficLogger {
+ 			// Convert input to URL for consistency
+ 			const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+ 
+-			// Only intercept Anthropic API calls
+-			if (!logger.isAnthropicAPI(url)) {
++			// Only intercept target API calls
++
++			if (!logger.isTargetAPI(url)) {
+ 				return originalFetch(input, init);
+ 			}
+ 
+@@ -298,7 +565,7 @@ export class ClaudeTrafficLogger {
+ 		// Parse URL from options
+ 		const url = this.parseNodeRequestURL(options, isHttps);
+ 
+-		if (!this.isAnthropicAPI(url)) {
++		if (!this.isTargetAPI(url)) {
+ 			return originalRequest.call(this, options, callback);
+ 		}
+ 
+diff --git a/package-lock.json b/package-lock.json
+index db2a5b7..0f900bb 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -28,7 +28,7 @@
+ 		},
+ 		"apps/claude-bridge": {
+ 			"name": "@mariozechner/claude-bridge",
+-			"version": "1.0.13",
++			"version": "1.0.14",
+ 			"license": "MIT",
+ 			"dependencies": {
+ 				"@anthropic-ai/sdk": "^0.52.0",
+@@ -77,7 +77,9 @@
+ 			"version": "1.0.3",
+ 			"license": "MIT",
+ 			"dependencies": {
+-				"@anthropic-ai/sdk": "^0.52.0"
++				"@anthropic-ai/sdk": "^0.52.0",
++				"@smithy/eventstream-serde-node": "^4.0.4",
++				"@smithy/util-utf8": "^4.0.0"
+ 			},
+ 			"bin": {
+ 				"claude-trace": "dist/cli.js"
+@@ -387,6 +389,82 @@
+ 				"anthropic-ai-sdk": "bin/cli"
+ 			}
+ 		},
++		"node_modules/@aws-crypto/crc32": {
++			"version": "5.2.0",
++			"resolved": "https://registry.npmjs.org/@aws-crypto/crc32/-/crc32-5.2.0.tgz",
++			"integrity": "sha512-nLbCWqQNgUiwwtFsen1AdzAtvuLRsQS8rYgMuxCrdKf9kOssamGLuPwyTY9wyYblNr9+1XM8v6zoDTPPSIeANg==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"@aws-crypto/util": "^5.2.0",
++				"@aws-sdk/types": "^3.222.0",
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=16.0.0"
++			}
++		},
++		"node_modules/@aws-crypto/util": {
++			"version": "5.2.0",
++			"resolved": "https://registry.npmjs.org/@aws-crypto/util/-/util-5.2.0.tgz",
++			"integrity": "sha512-4RkU9EsI6ZpBve5fseQlGNUWKMa1RLPQ1dnjnQoe07ldfIzcsGb5hC5W0Dm7u423KWzawlrpbjXBrXCEv9zazQ==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"@aws-sdk/types": "^3.222.0",
++				"@smithy/util-utf8": "^2.0.0",
++				"tslib": "^2.6.2"
++			}
++		},
++		"node_modules/@aws-crypto/util/node_modules/@smithy/is-array-buffer": {
++			"version": "2.2.0",
++			"resolved": "https://registry.npmjs.org/@smithy/is-array-buffer/-/is-array-buffer-2.2.0.tgz",
++			"integrity": "sha512-GGP3O9QFD24uGeAXYUjwSTXARoqpZykHadOmA8G5vfJPK0/DC67qa//0qvqrJzL1xc8WQWX7/yc7fwudjPHPhA==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=14.0.0"
++			}
++		},
++		"node_modules/@aws-crypto/util/node_modules/@smithy/util-buffer-from": {
++			"version": "2.2.0",
++			"resolved": "https://registry.npmjs.org/@smithy/util-buffer-from/-/util-buffer-from-2.2.0.tgz",
++			"integrity": "sha512-IJdWBbTcMQ6DA0gdNhh/BwrLkDR+ADW5Kr1aZmd4k3DIF6ezMV4R2NIAmT08wQJ3yUK82thHWmC/TnK/wpMMIA==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"@smithy/is-array-buffer": "^2.2.0",
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=14.0.0"
++			}
++		},
++		"node_modules/@aws-crypto/util/node_modules/@smithy/util-utf8": {
++			"version": "2.3.0",
++			"resolved": "https://registry.npmjs.org/@smithy/util-utf8/-/util-utf8-2.3.0.tgz",
++			"integrity": "sha512-R8Rdn8Hy72KKcebgLiv8jQcQkXoLMOGGv5uI1/k0l+snqkOzQ1R0ChUBCxWMlBsFMekWjq0wRudIweFs7sKT5A==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"@smithy/util-buffer-from": "^2.2.0",
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=14.0.0"
++			}
++		},
++		"node_modules/@aws-sdk/types": {
++			"version": "3.840.0",
++			"resolved": "https://registry.npmjs.org/@aws-sdk/types/-/types-3.840.0.tgz",
++			"integrity": "sha512-xliuHaUFZxEx1NSXeLLZ9Dyu6+EJVQKEoD+yM+zqUo3YDZ7medKJWY6fIOKiPX/N7XbLdBYwajb15Q7IL8KkeA==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"@smithy/types": "^4.3.1",
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=18.0.0"
++			}
++		},
+ 		"node_modules/@esbuild/aix-ppc64": {
+ 			"version": "0.25.4",
+ 			"resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.25.4.tgz",
+@@ -1299,6 +1377,111 @@
+ 				"win32"
+ 			]
+ 		},
++		"node_modules/@smithy/eventstream-codec": {
++			"version": "4.0.4",
++			"resolved": "https://registry.npmjs.org/@smithy/eventstream-codec/-/eventstream-codec-4.0.4.tgz",
++			"integrity": "sha512-7XoWfZqWb/QoR/rAU4VSi0mWnO2vu9/ltS6JZ5ZSZv0eovLVfDfu0/AX4ub33RsJTOth3TiFWSHS5YdztvFnig==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"@aws-crypto/crc32": "5.2.0",
++				"@smithy/types": "^4.3.1",
++				"@smithy/util-hex-encoding": "^4.0.0",
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=18.0.0"
++			}
++		},
++		"node_modules/@smithy/eventstream-serde-node": {
++			"version": "4.0.4",
++			"resolved": "https://registry.npmjs.org/@smithy/eventstream-serde-node/-/eventstream-serde-node-4.0.4.tgz",
++			"integrity": "sha512-RD6UwNZ5zISpOWPuhVgRz60GkSIp0dy1fuZmj4RYmqLVRtejFqQ16WmfYDdoSoAjlp1LX+FnZo+/hkdmyyGZ1w==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"@smithy/eventstream-serde-universal": "^4.0.4",
++				"@smithy/types": "^4.3.1",
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=18.0.0"
++			}
++		},
++		"node_modules/@smithy/eventstream-serde-universal": {
++			"version": "4.0.4",
++			"resolved": "https://registry.npmjs.org/@smithy/eventstream-serde-universal/-/eventstream-serde-universal-4.0.4.tgz",
++			"integrity": "sha512-UeJpOmLGhq1SLox79QWw/0n2PFX+oPRE1ZyRMxPIaFEfCqWaqpB7BU9C8kpPOGEhLF7AwEqfFbtwNxGy4ReENA==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"@smithy/eventstream-codec": "^4.0.4",
++				"@smithy/types": "^4.3.1",
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=18.0.0"
++			}
++		},
++		"node_modules/@smithy/is-array-buffer": {
++			"version": "4.0.0",
++			"resolved": "https://registry.npmjs.org/@smithy/is-array-buffer/-/is-array-buffer-4.0.0.tgz",
++			"integrity": "sha512-saYhF8ZZNoJDTvJBEWgeBccCg+yvp1CX+ed12yORU3NilJScfc6gfch2oVb4QgxZrGUx3/ZJlb+c/dJbyupxlw==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=18.0.0"
++			}
++		},
++		"node_modules/@smithy/types": {
++			"version": "4.3.1",
++			"resolved": "https://registry.npmjs.org/@smithy/types/-/types-4.3.1.tgz",
++			"integrity": "sha512-UqKOQBL2x6+HWl3P+3QqFD4ncKq0I8Nuz9QItGv5WuKuMHuuwlhvqcZCoXGfc+P1QmfJE7VieykoYYmrOoFJxA==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=18.0.0"
++			}
++		},
++		"node_modules/@smithy/util-buffer-from": {
++			"version": "4.0.0",
++			"resolved": "https://registry.npmjs.org/@smithy/util-buffer-from/-/util-buffer-from-4.0.0.tgz",
++			"integrity": "sha512-9TOQ7781sZvddgO8nxueKi3+yGvkY35kotA0Y6BWRajAv8jjmigQ1sBwz0UX47pQMYXJPahSKEKYFgt+rXdcug==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"@smithy/is-array-buffer": "^4.0.0",
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=18.0.0"
++			}
++		},
++		"node_modules/@smithy/util-hex-encoding": {
++			"version": "4.0.0",
++			"resolved": "https://registry.npmjs.org/@smithy/util-hex-encoding/-/util-hex-encoding-4.0.0.tgz",
++			"integrity": "sha512-Yk5mLhHtfIgW2W2WQZWSg5kuMZCVbvhFmC7rV4IO2QqnZdbEFPmQnCcGMAX2z/8Qj3B9hYYNjZOhWym+RwhePw==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=18.0.0"
++			}
++		},
++		"node_modules/@smithy/util-utf8": {
++			"version": "4.0.0",
++			"resolved": "https://registry.npmjs.org/@smithy/util-utf8/-/util-utf8-4.0.0.tgz",
++			"integrity": "sha512-b+zebfKCfRdgNJDknHCob3O7FpeYQN6ZG6YLExMcasDHsCXlsXCEuiPZeLnJLpwa5dvPetGlnGCiMHuLwGvFow==",
++			"license": "Apache-2.0",
++			"dependencies": {
++				"@smithy/util-buffer-from": "^4.0.0",
++				"tslib": "^2.6.2"
++			},
++			"engines": {
++				"node": ">=18.0.0"
++			}
++		},
+ 		"node_modules/@socket.io/component-emitter": {
+ 			"version": "3.1.2",
+ 			"resolved": "https://registry.npmjs.org/@socket.io/component-emitter/-/component-emitter-3.1.2.tgz",
+@@ -9095,7 +9278,6 @@
+ 			"version": "2.8.1",
+ 			"resolved": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz",
+ 			"integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==",
+-			"dev": true,
+ 			"license": "0BSD"
+ 		},
+ 		"node_modules/tsup": {
+-- 
+2.39.5 (Apple Git-154)
+

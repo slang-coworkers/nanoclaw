@@ -80,12 +80,17 @@ COPY agent-runner/ ./
 # Files copied as root must stay readable by the runtime user.
 RUN chown -R node:node /app
 
-# NOTE: no claude-trace here on purpose. The lego claude-trace wiring (the
-# `claude-trace-wrap` shim and its container-runner hooks) is deliberately
-# UNCOMMITTED local state on that box, not tracked on any branch. An earlier
-# revision COPY'd claude-trace-wrap, which made a clean-checkout build fail
-# outright — the file does not exist in the repo. Lego applies its own wrapper
-# on top; this image must stay buildable from a clean tree.
+# NOTE: claude-trace is still not COPY'd here, and that is now deliberate rather
+# than forced. The patched build lives in the repo at container/claude-trace and
+# is MOUNTED read-only at /opt/claude-trace at spawn time (see
+# resolveClaudeTraceDir() in src/container-runner.ts) — mounting, not baking,
+# keeps it out of the lock-sha'd image so updating the tracer never forces an
+# image rebuild.
+#
+# The old `container/claude-trace-wrap` shim is intentionally NOT ported: it was
+# dead code. CLAUDE_CODE_EXECUTABLE points at the MOUNTED
+# /opt/claude-trace/claude-trace-wrapper.sh, so the baked /usr/local/bin copy was
+# never invoked by anything.
 
 # ---- restore the base's runtime identity -------------------------------------
 # ENTRYPOINT is inherited from the base and deliberately not redeclared.
