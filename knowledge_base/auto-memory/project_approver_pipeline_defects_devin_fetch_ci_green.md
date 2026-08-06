@@ -9,6 +9,313 @@ metadata:
 
 # Approver-pipeline defects — `devin-fetch.sh` readiness + `ci_green_on_sha`
 
+## 🔴🔴🔴 RETRACTED AGAIN (08-05, round 3 on ONE fact) — D2 did **NOT** fire. READ THIS FIRST.
+
+**The "D2 FIRED FOR REAL" block below is WITHDRAWN by its author, and my own
+self-correction inside it is ALSO withdrawn.** Net: **D2 remains LATENT.**
+
+✅**BOTH ARTIFACTS NOW SECOND-SOURCED — the approver ATTACHED them and I read
+them on my own disk** (08-05). No longer resting on its reading:
+- `/workspace/inbox/a2a-1785937530020-iu64t1/1090-R2-loaded-APPROVAL_POLICY.json`
+  — **`"require_ci_green": false` at line 9**, `policy_version v0-shadow-wide`.
+  ⇒ clause **provably** takes the `:184` skip path.
+- `/workspace/inbox/a2a-1785937540345-ncfmdq/1090-R2-clauses.json` — verbatim
+  `{"name":"ci_green_on_sha","status":"pass","evidence":"policy does not require
+  CI green"}`, `commit_sha bb870c1750cc…`, `mode live_late`, 6/6 pass, `fail: []`,
+  `unevaluable: []`. **The record states its own cause.**
+⭐**Asking for the artifact beat arguing about it — 3 rounds of inference settled
+by 2 file reads.** ⭐**And "I cannot verify this" is a routable request, not a
+dead end**: naming the two files I lacked is what produced them.
+
+**What the recorded artifact says** (now MINE-VERIFIED per above): `clauses.json` carries
+`{"name":"ci_green_on_sha","status":"pass","evidence":"policy does not require
+CI green"}`, and the policy the run loaded
+(`work/1090-bb870c1750cc/policy/APPROVAL_POLICY.json`, `v0-shadow-wide`) has
+**`require_ci_green: false`**. ⇒ It short-circuited at `:184` and **never queried
+the status API at all** — never read CodeRabbit's context, never consulted
+combined status, **certified nothing about CI.** My CodeRabbit-vs-red-builds
+observation is a true fact about the *commit* and was **never an input to the
+decision**.
+
+### ⭐⭐⭐ Why we disagreed for three rounds: DIFFERENT FILES, both read correctly
+
+**MINE-VERIFIED on my disk:** both bundled policies (`slangpy-`, `slang-`) are
+`v0-shadow` with **`require_ci_green: true`**. **Its runs load a MOUNTED policy**
+(`v0-shadow-relaxed` → `v0-shadow-wide`, human-signed) with
+**`require_ci_green: false`**. Neither reading was wrong; **they are different
+artifacts.** ⇒ ⛔⭐⭐⭐**"every policy on my disk says X" and "the bundled default
+says not-X" are BOTH true and NEITHER settles what a RUN did — only the run's
+loaded policy does.** My "no bundled config takes the skip path" was a correct
+statement about *bundles* that I wrongly let speak for the *run*. **Un-retracted,
+as asked:** my original *"inert under `require_ci_green:false`"* framing was
+right, and had the run's configuration behind it.
+
+### ✅ What actually survives — and it is the defect I found independently
+
+**The clause emits the identical `status: "pass"` on two unrelated grounds** —
+`:184` (policy skip) and `:190` (substantive green) — MINE-VERIFIED at those
+exact lines. Only the **`evidence` string** distinguishes them, so any consumer
+keying on `status` cannot tell "we checked and CI is green" from "we never
+checked." **That is what enabled three rounds of error, including the author's.**
+**Fix: distinct statuses (`skipped` vs `pass`), not a prose difference.**
+
+⚠️**D2 is UNTESTED IN PRODUCTION, NOT DISPROVEN.** It fires the moment
+`require_ci_green: true`, and `:183` `policy.get(...,True)` **defaults True on an
+absent key** ⇒ **a missing policy file activates it.** The tripwire ("a clause
+contradicting the review evidence is a hard stop") stands on its own merits but
+**would have caught nothing here — the clause made no claim to contradict.**
+
+### 🔴⭐⭐⭐ D2's PRIORITY GOES **UP**, not down — the re-tightening is PRE-COMMITTED
+
+**MINE-VERIFIED from the attached policy's own `_comment`:**
+`require_ci_green: false` is **not an oversight** — it is a deliberate
+**human-signed** measurement decision (**haaggarwal, 2026-08-04**), superseding
+`v0-shadow-relaxed`, justified on **232 measured decisions** (53% were
+`ABSTAIN_POLICY`; of the 82 abstains that later carried a decisive human verdict,
+**91% were approved**), and it carries an explicit
+**`MUST BE RE-TIGHTENED BEFORE ANY ENFORCEMENT`** condition naming
+`.github/workflows/**` as a supply-chain surface and requiring the size cap be
+set from measured precision-vs-PR-size.
+
+⇒ ⭐⭐⭐**A defect that is inert only because of a temporary, explicitly-temporary
+setting is NOT low priority — it is a SCHEDULED failure.** The substantive `:190`
+path *will* be exercised, by written commitment. **SEQUENCING IS THE ACTIONABLE
+OUTPUT:**
+1. **`require_ci_green: true` must NOT land before the check-runs fix** — else
+   enforcement *begins* with a CI gate that reads GitHub Actions as absent.
+2. **`:183` defaulting True means a LOST MOUNT silently opts into the buggy path
+   TODAY** — no policy change required to get bitten.
+3. **The `skipped` vs `pass` fix is the PREREQUISITE for both** — a consumer
+   keying on `status` cannot distinguish "checked, green" from "never checked",
+   which is exactly the confusion that cost 3 rounds.
+
+### 🔴⭐⭐⭐ "6/6 PASS" IS "6/6 UNDER WIDE, **4/6 UNDER THE BUNDLE**" — and D2 fires there
+
+**MINE-VERIFIED by testing the recorded evidence against the bundle** (not just
+diffing the two policies — that is the step that turns a diff into a finding):
+
+| clause | wide | under the BUNDLE |
+|---|---|---|
+| `author_trust` | pass | **HOLDS** (`MEMBER` ∈ `[OWNER,MEMBER,COLLABORATOR]`) |
+| `head_provenance` | pass | 🔴**REVERSES** — bundled `allow_fork_head:false`, head **IS** a fork (`fknfilewalker/slangpy`, verified `fork=True`) |
+| `commit_match` | pass | **HOLDS** (policy-independent) |
+| `ci_green_on_sha` | pass | 🔴**CHANGES MEANING** — bundled `true` ⇒ takes `:190`, a **real query** |
+| `no_protected_paths` | pass | 🔴**REVERSES** — PR touches **`external/slang-rhi`**, matched by bundled `external/**` |
+| `tier_eligible` | pass | **HOLDS** (220 ≤ 400 lines, 7 ≤ 30 files) |
+
+⭐**The `external/**` match is MATCHER-EXECUTED, not reasoned:** I extracted
+`glob_to_re` from `eval-clauses.py` and ran it — `external/**` vs
+`external/slang-rhi` (**no trailing slash**, a submodule gitlink) → **True**,
+because `**` → `.*` after an optional `/`. Glob semantics on a
+directory-without-slash was the one place this could have gone either way; ⭐**run
+the matcher, don't reason about the pattern.**
+
+⚠️**And that path is not incidental — it is the submodule bump carrying the
+ENTIRE Vulkan/Metal import implementation**, the most consequential file in the
+diff (`+1/-1` in bytes, the whole feature in effect). ⭐**A one-line diff can be
+the largest change in a PR; size is not significance.**
+
+### 🔴🔴 D2 **DOES** FIRE ON THIS PR — under the bundle. Simulated, not predicted.
+
+Under bundled `require_ci_green: true` the clause queries
+`commits/bb870c1750cc/status` → **`success`, single context `CodeRabbit`** ⇒ emits
+`pass "combined status=success"` — **while 4 build legs are RED** (linux gcc
+Debug/Release, windows msvc Debug/Release). ⇒ **The "D2 is untested in
+production" framing is now as tight as it can get short of a live run: the exact
+commit, the exact clause, one policy flag away.** This is the counterfactual that
+was missing all along — and it took *running* the bundle's path, not reasoning
+about it.
+
+### 🔴🔴🔴 D3 (NEW, 08-05) — A GITLINK HIDES THE DIFF FROM **EVERY** PATH-BASED AND SIZE-BASED CLAUSE
+
+**The `+1/-1` `external/slang-rhi` gitlink is `1a976874` → `11eefdc6`.
+MINE-VERIFIED what that one line actually carries:**
+
+```
+7 commits · 22 files · +448/-160 = 608 lines of churn
+```
+vs. `tier_eligible`'s recorded **"220 lines / 7 files within caps"** ⇒
+**undercount ≈ 3.8× lines, 4.1× files.** Every size heuristic scores a submodule
+bump at **1 line**.
+
+### ⚠️ TWO CORRECTIONS TO MY OWN D3 FRAMING — the size half survives, the path half is narrower
+
+**1. Peer's scoping correction (accepted).** Those workflows live in
+**slang-rhi's** `.github/`, and GitHub Actions only executes workflows from the
+**consuming repo's root**; slangpy has its own (`ci.yml`, `claude.yml`, …). **A
+submodule's workflows do NOT run in the consumer's CI.** ⇒ ⛔**"6 new workflows
+now run in slangpy CI" is WRONG — do not repeat it.** I reached for the strongest
+phrasing and it over-claimed.
+
+**2. My own measurement error, found by re-testing the peer's correction.** My
+"9 hits" was computed on **submodule-root-relative** paths (`.github/workflows/…`).
+In the slangpy tree they are **prefixed** (`external/slang-rhi/.github/…`).
+Re-run with the correct prefixes: **22 hits, not 9** — but almost entirely via
+`external/**`, i.e. *because they're under `external/`*, not because they're
+workflows. ⭐⭐**A path-glob test is meaningless unless the paths are spelled as
+the evaluator would see them — I tested strings from a compare API against globs
+anchored to a different root.**
+
+**3. And the finding that actually narrows D3:** the bundle's `external/**`
+**already matches the OUTER gitlink entry `external/slang-rhi` itself**
+(matcher-executed). ⇒ **under the bundle, `no_protected_paths` FAILS on this PR
+anyway** — which is what the 4/6 table already said. So:
+
+| D3 half | status |
+|---|---|
+| **size blindness** — `tier_eligible` scores the gitlink as **1 line** vs **608** real | ✅**FULLY GENERAL**, unaffected by both corrections |
+| **path blindness** | ⚠️**REPO-SPECIFIC here** — this submodule happens to sit under a protected prefix, so the gate *does* trip. The general hazard is a **submodule NOT under a protected prefix**: then inner paths are invisible to path clauses entirely, including cases where the submodule's root *is* the CI surface |
+
+⇒ **Rank D3 on the size/attention blindness, not on workflow execution** — the
+peer's placement, and correct. **Blind by construction remains true**: clause
+evaluation enumerates the **outer** commit, where the whole submodule is one
+entry, so 608 lines of C++ compiled into slangpy are reviewed as 220.
+
+### 🔴⭐⭐⭐ `external/**` IS PROTECTING INCIDENTALLY — do NOT "tidy" it at re-tightening
+
+**MINE-VERIFIED counterfactual (drop `external/**` from the bundle, keep the other 7 globs):**
+```
+inner paths matched ONLY via external/**       : 13 of 22
+inner paths still protected without it         :  9 of 22
+outer gitlink 'external/slang-rhi' protected?  : FALSE
+⇒ the PR would PASS no_protected_paths entirely
+```
+⇒ ⭐⭐⭐**`external/**` is the SOLE glob protecting the gitlink, and it does so as
+an artifact of this repo's LAYOUT, not by design.** It looks redundant beside
+`.github/**` / `**/*.yml`, so a re-tightening pass that narrows or removes it
+**silently opens the general case** — and nothing else in the policy catches a
+submodule bump. **Flag this in the same breath as D3.**
+⭐⭐**A guard that works by coincidence is indistinguishable from a designed one in
+the config file — and reads as REDUNDANT, which is what gets it deleted.**
+⭐**Why the information loss IS the hazard:** `external/**` was near-certainly
+written to protect **vendored third-party source**, not as a submodule-bump
+backstop. It does that second job only because submodules happen to live under
+`external/`, and **nothing in the policy file records it.** ⇒ two fixes for the
+owner: **(a) annotate the incidental role** (cheap half — the missing information
+is what creates the hazard), or **(b) treat any gitlink modification as
+protected/ineligible**, which removes the dependence on layout coincidence and is
+the real fix. **(b) widens what the approver blocks ⇒ owner's call, not ours.**
+
+### ⚠️ ANCHOR SUB-FINDING — verified, with one membership correction against the peer
+
+✅**The anchor mechanism is REAL and is the source of the redundancy illusion.**
+MINE-VERIFIED: `.github/**` compiles to **`^\.github/.*$`** — root-anchored — so
+it matches `.github/workflows/ci.yml` but **NOT**
+`external/slang-rhi/.github/workflows/pr-checks-complete.yml`. ⇒ ⭐⭐⭐**A glob that
+looks like it covers a path CLASS covers it only at the ANCHOR it was written
+for.** That is precisely why pruning looks safe glob-by-glob.
+
+⚠️**But the peer's attribution is wrong, and I checked rather than inheriting it.**
+It said the 13 only-via-`external/**` paths *"include all six added
+`.github/workflows/*.yml` files."* They do **not**: `**/*.yml` compiles to
+`^.*[^/]*\.yml$` — **unanchored** — so it **does** catch all six at any depth.
+Matcher-executed: each of the 6 is matched by `['**/*.yml', 'external/**']`.
+
+**The actual 13 (MINE-VERIFIED) contain ZERO `.yml` files** — they are the *source*
+files: 5 × `src/metal/*`, 5 × `tests/*`, `include/slang-rhi/capabilities.h`,
+`docs/api.md`. ⇒ ⭐⭐**The corrected membership makes the point STRONGER, not
+weaker: what `external/**` uniquely protects is the C++ implementation under
+review — exactly the 608 lines D3 is about — while the workflow files were never
+solely dependent on it.** Same lesson as before: fixing the input changed *which
+mechanism was operative*, not just a number.
+
+✅**What a fix requires (design note, not a patch):** resolve gitlink changes and
+evaluate clauses over the **expanded** submodule diff — or treat any gitlink
+modification as itself protected/ineligible, which is the cheap conservative
+option. ⛔**Do not implement unilaterally; this widens what the approver blocks.**
+
+⭐⭐**Generalization for the re-tightening owner:** *any* heuristic ranking
+eligibility or reviewer attention by **lines changed** scores a submodule bump
+near zero. `max_total_lines` is exactly such a heuristic. **#1090 is the worked
+example: the smallest hunk in the diff (`+1/-1`) carries the entire
+implementation under review AND 7 CI workflow files.**
+
+### ⭐⭐⭐ The measurement-validity consequence (peer's finding, and the biggest one)
+
+The widening is **pre-committed to reverse**, so those two passes are
+**scheduled to reverse**. ⇒ **Precision statistics gathered under `wide` describe
+a population the enforcing policy WILL NOT ADMIT.** The `_comment`'s
+**91%-of-82-abstains** figure inherits that caveat — **and it is the number the
+re-tightening decision will rest on.** A PR shaped exactly like #1090 (fork head
++ `external/**`) stops being eligible at enforcement, yet contributes to the
+statistic arguing for enforcement.
+
+✅**Concrete asks, recorded for whoever owns re-tightening:**
+1. **Record the policy version with every tally** (already in `clauses.json`;
+   must survive into the aggregate).
+2. **Mark policy-GRANTED passes distinctly from substantively-VERIFIED ones** —
+   the same defect as `:184`/`:190` both emitting bare `pass`, now at the
+   population level rather than the row level.
+3. **Emit a shadow tally against the bundle at record time**, so the gap is
+   visible then instead of hand-reconstructed three rounds later.
+
+⚠️**How wide `v0-shadow-wide` actually is** (MINE-VERIFIED, loaded vs the bundle
+I hold): `require_ci_green` T→**F** · `allow_fork_head` F→**T** ·
+`max_total_lines` 400→**8000** · `max_files` 30→**150** · `protected_paths`
+8 globs→**1** (`**/slang-tag-version.h` only) · `trusted_associations` 3→**7**,
+**including `NONE`**. Nearly every Step-1 gate is relaxed at once ⇒ **do not read
+"6/6 clauses pass" under this policy as meaning what it means under the bundle.**
+
+### ⭐⭐⭐ The failure shape, third instance in two days — and the worst
+
+`json.loads` → `vkMapMemory` → this. All three: **a mechanism asserted without
+testing it.** The first two needed real work to refute; **this one needed one
+field of a JSON object already open.** The author's own account of what made it
+feel safe is the durable part:
+- **It confirmed a prediction just filed** ⇒ a `pass` beside red builds arrived
+  looking **pre-endorsed**. ⭐⭐⭐**A PREDICTION CONFIRMED BY A REINTERPRETED
+  OBSERVATION IS NOT CONFIRMED** — that is the moment to re-derive, not promote.
+- **It was packaged as correcting a peer for being TOO GENEROUS** ⇒ the harsher
+  reading *felt* like rigor. ⭐⭐⭐**Self-criticism and peer-criticism both feel
+  like skepticism while functioning as confirmation bias** — the diligence slot
+  again ([[feedback_a_caveat_aimed_at_the_wrong_claim_reads_as_diligence]]).
+- ⭐⭐**And I amplified it by self-correcting toward the harsher reading** without
+  checking whether my own retraction had evidence. **An unnecessary retraction is
+  a real error, not humility** — it destroyed a correct claim.
+
+## 🔴🔴 [WITHDRAWN] D2 FIRED FOR REAL — 08-05, spy#1090 @ `bb870c1750cc`
+
+**MINE-VERIFIED by REST.** `GET commits/bb870c1750cc/status` →
+**`state: success`, `total_count: 1`, and that single context is `CodeRabbit`** —
+a *review bot*. On that same commit **4 build legs were RED** (linux gcc
+Debug/Release, windows msvc Debug/Release). So `ci_green_on_sha` recorded
+**`pass`** — "CI green" — **on a review bot's word, in the same decision whose
+BLOCK evidence was those very build failures.**
+
+⭐⭐⭐**MY EARLIER "inert under `require_ci_green:false`" ASSESSMENT WAS TOO
+GENEROUS, and the approver corrected it against itself.** This run was
+`v0-shadow-wide` and the clause reported `pass` **on substance**, not via the
+policy skip. Worse than either of us first wrote:
+- **MINE-VERIFIED: BOTH bundled policies set `require_ci_green: true`**
+  (`slangpy-` and `slang-`, both `v0-shadow`) ⇒ **no bundled config takes the
+  skip path at all**; the "inert" framing had no configuration behind it.
+- ⭐⭐**The clause emits the SAME `pass` verdict on two utterly different
+  grounds** (`:184` "policy does not require CI green" vs `:190` "combined
+  status=success") ⇒ **a reader cannot tell a policy skip from a substantive
+  green.** Cf. the class root
+  [[feedback_false_coverage_the_five_mechanisms_that_consume_the_reason_to_look]] —
+  a clause that reports `pass` and never `unevaluable` for "no build signal".
+
+⭐⭐⭐**WHY THE DECISION SURVIVED — and why that is not reassurance:** the
+session **ignored the clause** and read job logs directly via its own
+`tmp/ci-logs.py`. A **broken clause did not stop a correct BLOCK because a
+stronger primary source routed around it.** ⇒ **A correct outcome is not
+evidence the instrument worked.** Had the verdict leaned on clauses, `pass`
+would have certified green over 4 red builds.
+
+✅**New tripwire (cheap, detectable at record time):** **a clause result that
+CONTRADICTS the review evidence in the same decision is a HARD STOP.** Here
+`ci_green_on_sha=pass` sat beside "4 legs red" in one payload.
+
+⚠️**Attribution correction, mine to make:** the approver framed this as fixing
+my roll-up's "CI settled 18/18 green". I did **not** claim green — my record and
+my message both read *"18/18 (pagination OK), 11 success, **4 failure**, 0
+in_progress"*, where "settled" meant *no longer `in_progress`*. **The substance
+of its finding is new and correct and I accept it in full; the attribution is
+off.** ⭐**Accept the finding, correct the aim — a correction that lands on the
+wrong sentence still teaches the wrong lesson**
+([[feedback_a_caveat_aimed_at_the_wrong_claim_reads_as_diligence]]).
+
 ## 🔴 CAUSAL RETRACTION 2026-08-03 (round 4) — READ BEFORE THE "SETTLED" BLOCK
 
 **The mechanism below for D1 part 2 is WRONG. Observations hold; causation does

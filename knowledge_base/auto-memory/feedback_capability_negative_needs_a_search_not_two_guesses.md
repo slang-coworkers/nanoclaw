@@ -38,7 +38,7 @@ of #9736's errors are **compile/link-time**, needing neither a GPU nor `torch`.
 
 1. **Scope error.** `ls <two guesses>` authenticates *those two paths*, not "the machine."
    A negative over a set requires a search over the set. This is the same shape as
-   [[feedback-search-code-total-count-is-not-a-file-count]]: **a count/absence
+   [[feedback_search_code_total_count_is_not_a_file_count]]: **a count/absence
    authenticates a COMMAND OVER A SCOPE — name the scope.**
 2. **Bundled unrelated negatives.** "no slangc, no torch ⇒ cannot reproduce" bundles three
    claims and tests one badly. `torch`'s absence was true and **irrelevant**; nvcc's

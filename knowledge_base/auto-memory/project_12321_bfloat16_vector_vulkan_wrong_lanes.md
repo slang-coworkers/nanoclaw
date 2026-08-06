@@ -1,6 +1,6 @@
 ---
 name: project_12321_bfloat16_vector_vulkan_wrong_lanes
-description: "#12321 vector<BFloat16,4>→float4 wrong .z/.w on -vk — bot-filed; Main DISPROVED the CI-visibility claim (variant PASSES on 4 CI GPU tiers incl. the reported SHA) ⇒ driver-specific to L40S/565.57.01, NOT a master regression; correction posted; PARKED pending driver-upgrade re-test"
+description: "#12321 vector<BFloat16,4>→float4 wrong .z/.w on -vk — bot-filed; Main DISPROVED the CI-visibility claim (variant PASSES on 4 CI GPU tiers incl. the reported SHA) ⇒ driver-specific to L40S/565.57.01, NOT a master regression; ✅jkwak-work ACCEPTED ('not-a-slang-bug'), assigned+Q4 2026 ⇒ TERMINAL, no reply sent (all points already in the posted comment)"
 metadata:
   type: project
   originSessionId: b285e0b9-76cd-4205-9319-07b838de7550
@@ -46,5 +46,19 @@ The body's "CI visibility" section hypothesized the `-vk` variant is GPU-gated a
 **PARKED.** The single discriminating experiment = **re-run on the same L40S with driver ≈580.126.09**. Pass ⇒ close as 565.x driver bug (log coverage gap on #10750). Still fails ⇒ driver hypothesis dead, Ada-vs-Turing becomes live, Slang emission back on the table. Driver upgrade is **infrastructure, outside bot reach** — operator/maintainer call.
 
 **RESUME on:** substantive human (non-bot) comment on #12321, a driver-upgrade re-test result, or a maintainer picking it up. Do NOT re-triage on further bot echoes. Do NOT let the "silent wrong result on real hardware" framing drive P1 urgency — it is green on all CI hardware.
+
+## ✅ 2026-08-06 — MAINTAINER ACCEPTED THE CORRECTION; chain TERMINAL
+
+`jkwak-work` cmt **`5199011622`** (08-06 00:31Z): *"It sounds like this is not-a-slang-bug. Lowering the priority and pushing it by two sprints."* — i.e. **the correction landed and was acted on.** Timeline-verified state changes:
+- `jhelferty-nv` 08-05 18:02Z: labeled `Office-Yong`, **assigned `jkwak-work`**
+- `jkwak-work` 08-05 18:19Z: milestoned **Q4 2026 (Fall)** (from none; Q3 due 09-30 → Q4 due 12-31 = the "two sprints")
+- `jkwak-work` 08-06 00:30Z: **unlabeled `Office-Yong`** (triage label consumed)
+- Still `open`, labels `bug`/`SPIR-V`/`Vulkan` unchanged, 2 comments.
+
+**NO REPLY SENT — deliberate, and this is the reusable judgment.** Every point a reply would carry was **already in cmt `5164985223`**, verified by grepping my own posted body: the 580.126.09 re-run as the discriminating experiment (§"Suggested next step"), the Ada/565.x coverage gap and its #10750 home (§"The real coverage gap", lines 22-29), and the explicit not-a-root-cause hedge. The maintainer read it, agreed, and disposed. ⇒ **A maintainer agreeing with you is not an inbound requiring output.** Restating the posted comment back at the person who just acted on it is the echo the silent-ack rule exists to kill. `next-action:` = none from us.
+
+⚠️**Left undone on purpose, NOT a deferral-without-trigger:** the coverage gap is *named in the public comment* the maintainer has now read, so it is discharged as a communication. I did **not** add it to **#10750** (open, `jvepsalainen-nv`, Q2 2026 Spring milestone, 0 comments) — a bot comment on a maintainer's own coverage tracker, saying something the assigned maintainer just read elsewhere, is noise. **If a human asks where the gap is tracked, the answer is: only in cmt `5164985223`, not on #10750.**
+
+**Disposition: TERMINAL** — maintainer-owned, assigned, milestoned. Do NOT re-engage on further label/milestone churn or bot echoes. RESUME only on a substantive *new* human comment or a driver-upgrade re-test result.
 
 Related learnings: [[feedback_never_relay_a_verdict_not_in_hand]], [[feedback_verify_pushed_state_by_branch_not_sha]].

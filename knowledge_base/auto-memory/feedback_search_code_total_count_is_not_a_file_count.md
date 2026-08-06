@@ -1,11 +1,53 @@
 ---
 name: feedback_search_code_total_count_is_not_a_file_count
-description: "GitHub search/code total_count counts MATCHES, not files — I reported it as '932 files' and it produced an impossible number that a peer misdiagnosed as a stale-checkout artifact; paginating the same query gives 786, exactly matching an independent grep -rl"
+description: "ANY count from a paginated/aggregated GitHub API is a JOINT property of query and data — carry the flag that produced it, or carry a shape instead. Two instances: units (search/code total_count = matches, 932 vs a true 786) and paging (row count tracks per_page). See body."
 metadata: 
   node_type: memory
   type: feedback
   originSessionId: 8e2b6b80-3f44-4982-9ac8-7e27d75dbb2e
 ---
+
+⛔⭐⭐⭐ **GENERAL RULE (2 instances, 2 different mechanisms): ANY COUNT FROM A PAGINATED OR
+AGGREGATED API IS A JOINT PROPERTY OF QUERY AND DATA. Either carry the flag that produced it —
+"100 *at `per_page=100`*" — or carry the SHAPE instead of the tally.** A bare number silently
+attributes your query's parameters to the endpoint.
+
+- **Instance 1 — units** (2026-08-03, below): `search/code total_count` counts *matches*, not files.
+- **Instance 2 — paging** (#12367, 2026-08-05): `gh api repos/O/R/issues/comments` row count tracks
+  `per_page` **exactly** — measured `per_page=5`→5, `=30`→30, `=100`→100, bare→**30**. The triager
+  published "100 rows, repo-wide" from their own `?per_page=100`; I measured 30 bare. Neither was
+  wrong, and **the stored tally manufactured a phantom "our instruments disagree" round-trip.**
+  ⇒ Filed the *shape* (foreign rows, no error, discriminated by `issue_url`) and banned the count.
+  See [[feedback_github_comment_hygiene]] for the full 2×2.
+
+⭐⭐ **Keep CARDINALITY, drop MAGNITUDE.** "Never store a count" overcorrects: the `<N>`-scoped
+control returning **exactly 1 row** is load-bearing and *invariant under paging* — it's a 1-vs-many
+check, not a magnitude. Distinguish, or you discard the control that makes the mute arm detectable.
+
+⛔⭐⭐⭐ **THE DETECTOR, and it is cheap: THE MOMENT YOU CATCH YOURSELF DERIVING A GENERAL RULE, GREP
+FOR IT BEFORE WRITING IT.** A hit means you have found a **retrieval failure, not a new insight** —
+and the work is **re-keying, not authoring**. Collapse whitespace first (`tr -s '[:space:]' ' '`), or
+a wrapped false zero argues for creating the very duplicate the check exists to prevent.
+⭐⭐⭐ **Worst hiding place is not a mis-named file — it is a TRAILING CLAUSE UNDER A FOREIGN KEY.**
+Ran this detector on my own store and it hit immediately: *"any total over N iterations must carry its
+N"* was item 3 of a numbered list at
+[[feedback_near_miss_number_is_a_boundary_not_noise]]`:43` — a file whose name and description are
+about near-miss numbers and mention counts **nowhere** (verified: frontmatter-scoped grep for
+count/total/tally = **0**). It fired once, for a timing total at birth, and never again. **A
+mis-named file is still findable by topic; a sub-clause has no key of its own at all.** Pointer
+added there routing to here. slang-triager independently found the identical shape in their own store
+the same hour (theirs buried in a file about *retracted objections*) ⇒ 2 stores, 2 instances, same
+mechanism.
+⚠️ **My first attempt to measure this was itself broken** — `tr -s '[:space:]' ' ' | sed -n '1,8p'`
+collapses the file to ONE line, so "frontmatter" matched the whole document and returned a reassuring
+3×`count`. **Collapsing whitespace and then slicing by line are incompatible operations**; scope
+first, collapse second.
+
+⭐⭐⭐ **Retrieval-key lesson, which is the real failure here:** the triager had *already filed*
+"a total over N iterations must carry its N" — and it didn't fire, because it was keyed to **timing
+totals** and this was a **row count**. The rule was on disk and useless. ⇒ **When a rule doesn't fire
+on an instance it plainly covers, widen its key rather than filing a near-duplicate** — which is why
+this entry now leads with the general form instead of the `search/code` specific.
 
 **`gh api search/code --jq '.total_count'` returns a MATCH/hit count, NOT a file count.** I cited it as "**932** code-search hits under `docs/generated/tests`" and then, in a peer message, as "**932 files**". Paginating the *identical* query and counting distinct `.items[].path` returns **786** — which matches `slang-reviewer`'s independent `grep -rl` on a clean master worktree **exactly** (786 files containing `/dev/null` under `docs/generated/tests`). The `items[]` array also caps at 30 per page, so the headline number and the visible rows never correspond.
 
@@ -102,8 +144,11 @@ compose: it indexes the **default branch** (blind to any line a PR adds) *and* u
    *survivors*; failures never enter the total (`test-reporter.cpp:371` returns before `:378`'s
    increment). **Tell = the DENOMINATOR (689→264), not the percentage.**
 3. `grep -c` = **lines**, not occurrences ("16 `ElementOfSetType` sites" → ~42).
-4. ⚑`ncl sessions list` = a **200-row cap**, not a total (true total 2096; `--agent-group` also
-   doesn't filter for global scope).
+4. ⚑`ncl sessions list` = a silent **200-row default cap**, not a total — bound it by raising
+   `--limit` until the count stops changing. ⛔**The flag clause here was RETRACTED 08-05: I wrote
+   `--agent-group` doesn't filter; that flag DOESN'T EXIST (it is `--agent-group-id`, which filters
+   correctly). The real defect is that `ncl` accepts an unrecognized flag, ignores it, and returns
+   the full set with exit 0** — so the count was right and my explanation for it was wrong.
 5. ⚑My `-vk 74` = a **file** count wearing a directive count's clothes — `grep -ohE '^//TEST[^:]*:[^ ]*'`
    stops at the first space ⇒ ≤1 match per file. Peer got 48 anchored / 82 unanchored / **81 executed**.
    All four correct, four different questions.

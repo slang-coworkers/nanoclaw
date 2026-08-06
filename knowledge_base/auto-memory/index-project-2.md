@@ -1,0 +1,73 @@
+---
+type: index
+---
+
+# index-project-2 — shard 2 of 9 (65 rows)
+
+Alphabetical shard of the project family, packed by SIZE so every shard keeps headroom under the ~24986-char read bound. Range: `project_11881_numthreads_override_parked` … `project_12062_board_sync_422_reviewer_node`.
+
+- [[project_11881_numthreads_override_parked]] — Follow-up issue spun off PR #11715; three requirements (a/b/c). Was parked (jkwak self-assigned); jkwak invited a PR 2026-07-01 → park RELEASED, fixer dispatched for (c)+conditional(b)
+- [[project_11882_primal_require_diff_usesite_pending]] — slang#11882 capability-propagation gap; VERIFIED at HEAD but issue's root cause INCOMPLETE (4-cell matrix); held for @expipiplus1, fixer NOT dispatched, adjacent to #11859/#11872 series
+- [[project_11903_hitobject_sm69_nvapi_pending]] — #11903 HitObject sm_6_9 NVAPI — PR #11907 APPROVED by jkwak @ 8e4ad4e566, MERGEABLE; merge blocked-on #10660 (NVAPI CI) + maintainer-gated; bot flips nothing
+- [[project_11917_fixer_compaction_loop]] — slang-fixer
+- [[project_11917_pass_gating_epic]] — shader-slang/slang
+- [[project_11919_remove_ox_optins_parked]] — "slang#11919 remove -OX opt-ins from slang-test — Phase 1 SHIPPED draft PR #11923; Phase 2 held pending maintainer scope signal"
+- [[project_11924_miniz_alloc_wrappers]] — "#11924 miniz alloc-wrapper hardening — MERGED (PR #11934, jkwak-work, 07-08). Chain closed/terminal."
+- [[project_11925_mimalloc_core_parked]] — "#11925 use mimalloc for Slang core — TERMINAL 2026-07-20: author @pdeayton-nv shipped it himself + closed; our chain stood down, WIP reaped, stale promise-comment edited in place"
+- [[project_11927_odr_headers_asan_parked]] — "shader-slang/slang#11927 ODR-in-public-headers mixed-ASan — TRIAGE-AND-PARK, gated on"
+- [[project_11933_fp_precise_nocontraction]] — SHIPPED — #11933 -fp-mode precise no-op on direct SPIR-V; PR #11935 MERGED to master (33f9ed0ce); issue left OPEN for per-decl follow-up
+- [[project_11936_replay_blob_leak_pr11942]] — "#11936 record-replay replay-path blob leaks — PR #11942 MERGED; issue stays OPEN for deferred proxy-wrapper leaks"
+- [[project_11938_pathinfo_leak_parked]] — "#11938 CacheFileSystem::PathInfo repro-load leak — PARKED behind author's own PR #11937; fixer NOT dispatched"
+- [[project_11943_append_atomic_counter_alternative]] — PR #11943 AppendStructuredBuffer review chain → bot alternative #11972 MERGED by jkwak 07-08; #11943 closed. TERMINAL-POSITIVE.
+- [[project_11944_sv_target_location_order]] — "#11944 SV_Target<N> out-of-order location — draft PR #11945; jkwak wants GENERIC (uninformed); gated on his informed re-decision"
+- [[project_11951_testserver_jsonrpc_pathlevel_flake]] — "✅✅ FULLY RESOLVED #11951 Sig-B test-server JSON-RPC IPC-drop flake — TRUE cause = JIT-teardown UAF, fixed by #12114 (bf7a78ab25f4, merged 07-15 21:40Z); #12056/AVX-512 was incidental. Fix-gap was real but mis-attributed. #12146 local-repro follow-up closed by jkwak 07-17; discriminator NONE on post-#12114 trees; loop closed cmt 5007190490"
+- [[project_11952_module_link_perf_reopened]] — "#11952 module_link +5% regression from #11921 — RE-OPENED (was wrongly closed); P2; awaiting fixer cross-drive draft PR"
+- [[project_11954_simplifyir_sideeffect_memo]] — PR
+- [[project_11955_degrading_cpu_runner]] — "#11955 CI flake: test-linux-release-gcc-x86_64-cpu/test-slang intermittent SIGSEGV/HANG/OOM, binary-independent, merge-queue evictor. CORRECTED 07-15: runner is GitHub-hosted EPHEMERAL ubuntu-24.04 (ci.yml:367-381) — no persistent host, 're-image' RETRACTED; re-anchored on resource-envelope (LLVM-JIT mem ceiling). jkwak-work engaged → maintainer owns; operator-escalation DISARMED"
+- [[project_11957_cuda_prelude_vec1_make_protected_path]] — "PR#11957 CUDA prelude vec1 make helpers — ABSTAIN_POLICY protected CI path"
+- [[project_11963_module_scope_lambda_collision]] — "IN-FLIGHT/STALLED — slang#11963 module-scope lambda name collision (_slang_Lambda_ bare name, no counter). Root-caused, fix in DRAFT PR #11965 with 0 reviews for a month. 08-06: maintainer jkwak-work reassigned to zangold-nv 'to triage' — draft invisibility is the failure mode."
+- [[project_11967_64bit_indexing_e2e]] — IN-FLIGHT —
+- [[project_11969_metal_out_param_addrspace]] — MERGED/CLOSED — #11969 Metal fragment out-param crash; PR #12015 merged by jkwak-work 07-16; chain closed
+- [[project_11970_metal_bindless_msl]] — IN-FLIGHT —
+- [[project_11977_sec_tutorial_docs_abstain]] — docs PR SEC tutorial; MERGED 07-14; ABSTAIN OPEN_GAP (README:142) VALIDATED — human fixed exact claim pre-merge; chain closed
+- [[project_11979_shader_coverage_backends_block_vindicated]] — PR
+- [[project_11981_metal_export_out_param_addrspace]] — "In-flight — Metal export/library out/inout param crashes 'Unknown addressspace encountered'; sibling of"
+- [[project_11982_debugsource_dup_import]] — #11982 duplicate SPIR-V DebugSource for imported module — FIXED via REAL draft PR #12034 (Main-verified), held pending human review/merge
+- [[project_11983_spirv_debugfunction_wrong_cu]] — "#11983 imported SPIR-V DebugFunction wrong CU scope — TERMINAL: PR #12148 MERGED 0864e60e63 (8 files/+135/−9, NOT the 13/+289 we published); issue closed"
+- [[project_11984_debugsource_bom_pending]] — "slang#11984 (pdeayton-nv): -g2 embeds a #line-referenced file's DebugSource via a raw disk re-read that bypasses SourceFile's BOM strip, so a UTF-8 BOM survives into OpString and misaligns text vs line/col by one code point; fix routed the fresh-read fallback through a shared decodeContentBlob. TERMINAL: PR #12055 MERGED 2026-07-16T10:25:14Z (Main-verified live 08-04), issue auto-closed. ⚠ FILENAME AND BODY BOTH SAY 'pending'/'mergedAt=null' — that was true on 07-10 and is now STALE; trust this description. Shadow approver row is ABSTAIN_INFRA (pipeline defect, excluded from agreement scoring), not a code-risk signal."
+- [[project_11985_macos_metal_capability_regression]] — "slang#11985 intermittent macOS CI failure. ⛔ Heavy retraction history — do NOT restate: the original capability-attribute diagnosis was publicly RETRACTED, then the 'macOS-26 Metal driver/runtime race' reconciliation was itself an OVER-CORRECTION. Resolved truth (merged #12009): deterministic per-OS collision — slang-rhi advertises metallib_4_0 on macOS>=26 so Slang emits the metal4.0-only attribute while the downstream compiler is hard-coded -std=metal3.1. Also ⛔ the 'Approach A is a functional no-op' Vulkan-headers framing was DISPROVEN by build (submodule v1.4.307 too old). State: Metal cause resolved; closure gated only on a maintainer-authored revert of #12075 (bot lacks workflows perm)."
+- [[project_11988_nightly_spvopt_workflow_parked]] — "slang#11988: add a nightly slang-test workflow running the suite with SpvOpt enabled. State per file: PIECE #1 MERGED — jkwak's own PR #12187 ('-OX' slang-test flag, `Fixes #11988`) merged 2026-07-22; our draft #12159 closed unmerged; jkwak then REOPENED because the nightly workflow itself is missing. PIECE #2 (workflow YAML) remains, bot cannot push (App lacks workflows perm) — standing git-apply diff in comment 5014780707, `git apply --check` clean. No bot action pending; re-open only on fresh human comment. ⛔ The originally-assumed `-default-optimization-level` interface was NOT what shipped."
+- [[project_11989_examples_fail_on_warnings]] — "slang#11989: CI example tests should fail if they print warnings (filed at jkwak's request off #11985). TERMINAL for the bot: PR #12001 CLOSED unmerged 07-08 on POLICY — coworker bots may not modify .github/workflows/** regardless of route, so it was never landable. Issue #11989 stays OPEN, maintainer-owned; jkwak writes the CI PR locally. Durable output = spinoff issues #12006 (E41017 extern-global false positive) and #12007 (E36108 llvm-at-loadModule). ⛔ Superseded plans: H-A capture+grep+allowlist rejected by jkwak; the (a)+(b)-in-#12001 plan WITHDRAWN, never dispatched; and the earlier H-C rejection of `-warnings-as-errors` as unreachable was itself WRONG (reachable via compilerOptionEntries)."
+- [[project_11990_iarray_subscript_64bit_pending]] — PENDING design —
+- [[project_11996_half_to_int_cpu_conv]] — ✅ CLOSED — #11996 CPU/LLVM half→scalar conv ops; PR #12043 MERGED 2026-07-13T20:31:44Z by jkwak (commit 1a9cec331f), issue auto-closed
+- [[project_11997_hitobject_abi_design]] — "slang#11997: maintainer @szihs design issue for a single source-of-truth HitObject ABI (native DXR SM6.9 vs NVAPI) behind an explicit `nvapi_hit_objects` capability; supersedes the #11903/#11907 chain. Triager delivered the maintainer-requested full HitObject API inventory (bucketed native/NVAPI/divergent) as comment 4914543116. State: HELD awaiting szihs on 3 unresolved design questions (Invoke 2-arg vs 3-arg bottleneck, atom naming, migration); no fixer to dispatch. ⚠ Contains one flagged UNVERIFIED hypothesis (sphere/LSS methods as a second latent mixed-ABI instance) — hypothesis, not finding."
+- [[project_11999_gpu_printing_reenable_parked]] — "#11999 re-enable gpu-printing macOS test — bot-filed tracking issue, blocked on infra #11973, PARKED (no dispatch)"
+- [[project_12002_opname_asm_register_leak]] — "#12002 [SPIR-V] OpName wrong result ID — premise REFUTED (coincidental name), Approach A draft PR #12053, Approach B maintainer-scope"
+- [[project_12004_image_sampler_param_asymmetry]] — "#12004 SPIR-V image-vs-sampler param asymmetry — Approach A REJECTED by jkwak, PR #12027 CLOSED, issue Unplanned/parked"
+- [[project_12006_e41017_extern_cpp_false_positive]] — "#12006 E41017 false positive on __extern_cpp/export __global globals — DRAFT PR #12011, jkwak soft-approved + set @expipiplus1 second-reviewer gate; held"
+- [[project_12006_e41017_false_warning_pr12011]] — "#12006 E41017 false-warning — PR #12011 DRAFT held; jkwak reassigned review to expipiplus1 (recent-change owner)"
+- [[project_12007_e36108_require_llvm_falsepos]] — "#12007 E36108 false-positive [require(sm_6_0)]+GPU op cites 'llvm' — SHIPPED, PR #12008 MERGED by jkwak 07-09, chain terminal"
+- [[project_12016_slang_h_c4819_nonascii]] — "#12016 slang.h non-ASCII em-dashes trip MSVC C4819 — triaged, fixer dispatched (draft PR incoming)"
+- [[project_12019_double_to_bool_spirv]] — IN-FLIGHT —
+- [[project_12022_json_reflection_size_info_followup]] — "#12022 follow-up — systematic JSON reflection size/alignment info; new PR by slang-fixer, DRAFT+merge operator-gated"
+- [[project_12023_compileperf_sweep_abstain_policy]] — "#12023 compile-perf complexity sweep — R1/R2/R4 ABSTAIN_POLICY (CI protected-path gate); MERGED 07-14 w/ human APPROVE = agreement, not false-safe. CLOSED"
+- [[project_12025_wavetangledvector_diff_subscript]] — "#12025 WaveTangledVector diff subscript — CLOSED, maintainer self-fix PR #12026"
+- [[project_12029_lifted_diff_constraint_arithmetic]] — "#12029 lifted differentiable constraint arithmetic — COMMENT-state review POSTED, maintainer owns branch"
+- [[project_12031_autodiff_ref_accessor_silent_wrong_grad]] — "#12031 autodiff ref-accessor silent WRONG gradient (case a) — CONFIRMED w/ codegen evidence; approver R4 ABSTAIN_INFRA; step-2 maintainer heads-up gated w/ approver"
+- [[project_12032_windows_ci_crashdump]] — "#12032 Windows CI crash-dump capture — RESOLVED, advisory diff posted; awaiting maintainer apply"
+- [[project_12034_rebase_bom_decode_merge]] — "#12034 — pdeayton-requested rebase; squashed 5 review commits, resolved conflict with #12055 BOM-decode in getOrEmitDebugSource (merged both); build+verify then push"
+- [[project_12035_overload_diag_reasons]] — "#12035 overload-failure diagnostics — maintainer self-assigned, PARKED; A fix-ready, B design-gated"
+- [[project_12038_ascii_ci_guard]] — "#12038 CI guard rejecting non-ASCII bytes in include/ + prelude/ — triaged, PARKED (self-assigned owner)"
+- [[project_12040_ir_legalization_quadratic_parked]] — "#12040 IR type-legalization O(N²) on straight-line fns — self-filed+self-assigned contributor, PARKED (no auto-fixer)"
+- [[project_12042_half_double_rounding_parked]] — "#12042 half double-rounding on CPU/C++ target — triaged→PARK needs-maintainer (design-gated); split from #11996"
+- [[project_12045_zero_cast_struct_deprecation_parked]] — "#12045 deprecate (Struct)0 cast — maintainer-self-owned tracking issue, PARKED, no GitHub post"
+- [[project_12046_modulus_remainder_audit]] — "#12046 modulus/remainder audit — SHIPPED. PR #12130 MERGED 5bd8eb89 @fixed-head 200d6f5f39 04:46Z; approver BLOCK vindicated. TERMINAL"
+- [[project_12048_enum_to_int_cast_infllight]] — MERGED 07-13 — PR #12050 (skiminki-nv); approver WOULD_APPROVE matched human
+- [[project_12048_fixer_autocompact_loop_0713]] — 07-13 slang-fixer autocompact thrash loop (self-confirmed); group-restart REQUESTED but operator-approval-gated; restart≠/clear caveat
+- [[project_12049_entrypoint_specialize_extension_conformance]] — "#12049 entry-point -specialize can't see primary-TU extension conformances — SHIPPED (PR#12052 merged 07-16)"
+- [[project_12051_descriptor_reuse_pinning]] — "#12051 re-use loaded descriptors — jkwak picked (a); mechanism is SPIR-V EMIT not IR dup; awaiting his go to prototype draft"
+- [[project_12052_stranded_mergequeue_operator_escalation]] — "#12052 APPROVED bot PR stranded ~18h+ by #11955-flake merge-queue eviction; PARENT-owned operator escalation (card fired 2×, both timed out); exact fix = maintainer/operator runs gh pr merge --merge-queue"
+- [[project_12054_msvc_release_opt_ref_icf]] — "✅ SHIPPED #12054 MSVC Release PDBs lost /OPT:REF+ICF — PR #12061 MERGED 07-13 (a9c6ff78e4); chain TERMINAL"
+- [[project_12059_coopmat_fill_splat_discard]] — "#12059 HLSL CoopMat.fill/clear discard Matrix::Splat return — triaged+parked, jkwak self-filing"
+- [[project_12062_board_sync_422_maintainer_blocked]] — "board-sync HTTP 422 BOT_kgDOCnlnWA — advisory diff posted, maintainer-blocked; issue's own root cause was WRONG"
+- [[project_12062_board_sync_422_reviewer_node]] — "shader-slang/slang#12062 — pr-board-sync.yml 422 on unresolvable reviewer node; fix ready as hand-apply diff, awaiting jhelferty"

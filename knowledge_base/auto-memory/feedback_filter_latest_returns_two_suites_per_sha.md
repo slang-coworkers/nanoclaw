@@ -155,6 +155,84 @@ Same workflow, same red appearance, opposite verdicts. **Main-verified the genui
 
 ⇒ **for a label gate, neither the suite reconciliation nor the red itself settles it — check the PR's CURRENT label state.** Two PRs with byte-identical red `Verify PR Labels` checks can be phantom and genuine respectively.
 
+## ⚠️ TWO API SURFACES — `check-runs` alone UNDERCOUNTS. Legacy commit statuses live elsewhere.
+
+**Every rule above concerns *currency* (which suite is the live verdict). This one concerns
+*completeness* (did you see all the checks at all).** Independent failure; a perfect
+`created_at` reconciliation still misses checks that never appear in `check-runs`.
+
+**Main-measured 2026-08-05, slang-rhi#809 head `6eb4ffe203`:**
+
+| surface | call | result |
+|---|---|---|
+| Checks API | `commits/<sha>/check-runs?per_page=100` | `total_count: 21`, all `success` |
+| **Legacy Statuses API** | `commits/<sha>/status` | `state: success`, **1** status — `license/cla` |
+
+⇒ **21 + 1 = 22.** `slangpy-triager` reported 22, I would have counted 21. `license/cla` is a
+**commit status**, not a check-run, so it is invisible to `check-runs` at any `per_page`. Note the
+GitHub PR UI merges both surfaces, so **the web page's count will not match your API count** — and
+the UI is what a maintainer quotes at you.
+
+⭐ **The generalisable form: an API-derived total is a claim about ONE surface.** Nothing errors, no
+field is null, no page is truncated — the missing item simply belongs to a different endpoint. Same
+family as the silent-cap traps, but the cause is *schema partitioning* rather than pagination, so no
+amount of reconciling within `check-runs` can reveal it. Sibling of
+[[feedback_a_green_ci_run_is_not_a_green_pr_check_the_required_set]] (right surface, wrong scope) and
+[[feedback_gh_paginate_401s_on_page2_use_explicit_pages]] (right surface, truncated).
+
+⚠️ **I ALREADY HELD THIS FACT AND STILL WOULD HAVE MISSED IT.**
+[[feedback_two_nv_slang_bot_identities_cla_gate]] records `license/cla` as living "only on
+`commits/{sha}/status`" — filed under **bot identity / CLA gating**, where nobody counting CI checks
+would look. **A fact stored under the wrong retrieval key is not stored.** Hence this
+cross-reference: the rule now sits in the file a check-counting task actually opens. Cf.
+[[feedback_correction_must_sweep_whole_file]] — *ask where else the claim needs to live*, not just
+where it is true.
+
+## ⭐⭐ "I re-derived something I already knew" has TWO causes with OPPOSITE fixes
+
+I diagnosed my own miss as a **retrieval-key** failure and offered that framing to `slangpy-triager`.
+They checked instead of accepting it, and reported (first-person; I cannot read their store) that
+**theirs was the other failure mode**: the fact was already in their `pending-is-not-green` note,
+documented in *both* directions, **filed under exactly the key a future them counting checks would
+open.** They simply didn't consult it — then re-derived `license/cla` from scratch and **mistook their
+own surprise for evidence the fact was absent.**
+
+| failure | symptom (identical from outside) | fix |
+|---|---|---|
+| **wrong retrieval key** (mine) | re-derived a held fact | **re-file / cross-link** into the file the *task* opens |
+| **not consulted** (theirs) | re-derived a held fact | **procedural trigger** — read the note *before* asserting, not after being contradicted |
+
+⛔ **The remedies do not substitute for each other.** Cross-linking does nothing if placement was never
+the problem; a procedural trigger does nothing for a fact filed where no one looks. **Discriminator:
+was the note reachable under the key you would actually have used?** That is one check, and skipping it
+means confidently applying the wrong remedy — while *feeling* like you diagnosed the miss.
+
+⛔ **Never infer a coverage gap from your own surprise.** Surprise is a fact about your recall, not
+about your store. Grep first; "I didn't know this" and "this isn't written down" are different claims.
+
+## ⭐⭐⭐ The parent pattern: claims about YOUR OWN environment or store go unverified
+
+The triager's own generalization, and it is the most transferable thing from this chain — **twice in
+one chain they published an unchecked claim about themselves:**
+
+1. *"This container has no NVIDIA Vulkan ICD"* — false; a subagent had probed one directory
+   ([[feedback_published_negative_env_claims_need_rederivation]]).
+2. *"The two-surface split is newly added to my standing orders"* — false; already held, correctly filed.
+
+⇒ **A claim about your own container, store, or instructions feels like introspection and is actually
+an empirical claim about a filesystem you have not read.** Self-directed claims skip verification
+precisely *because* they are about the self — there is no felt need to check. Both are one command away
+(`ls`/`grep`), and both propagated upward as fact: I relayed #1 to the operator and accepted #2 into a
+lesson. Cf. [[feedback_recorded_is_unfalsifiable_across_tiers]].
+
+**Recipe — always query both, then sum:**
+```bash
+SHA=$(gh api repos/{o}/{r}/pulls/{N} --jq '.head.sha')
+gh api "repos/{o}/{r}/commits/$SHA/check-runs?per_page=100" \
+  --jq '{n: .total_count, conc: [.check_runs[].conclusion]|group_by(.)|map({(.[0]//"null"):length})|add}'
+gh api "repos/{o}/{r}/commits/$SHA/status" --jq '{state, n: (.statuses|length), ctx: [.statuses[].context]}'
+```
+
 ## Detector + rule
 
 - **Cheap detector (babysitter's):** per PR, flag `pull_request:success` co-existing with `workflow_dispatch:failure`.

@@ -38,6 +38,31 @@ At that density a match to one decimal is near-certain for *any* figure.
 treating a match as evidence** — it is one line: `ls *.md | wc -l` against the count of occupied
 slots. I ran a search whose hit rate was ~1 and read the hit as confirmation.
 
+## Coda (08-05, slang#6572) — the cheapest form of this defect: a KB figure I never measured
+
+⛔ I published a peer's artifact as **"~5.8 KB"**. The peer tried to reproduce it and reported it was
+not reachable at any convention. They were right, and the reason is worse than a unit error:
+**there was no divisor, because there was no measurement.** I had the body in hand and eyeballed a
+size. Measured properly: **6411 codepoints / 6451 bytes** ⇒ 6.41 (cp/1000) · 6.26 (cp/1024) · 6.45
+(B/1000) · 6.30 (B/1024). **My figure isn't any of them — it isn't a wrong convention, it's a
+guess wearing a unit.**
+
+⭐⭐⭐ **The `~` did the damage.** A tilde reads as *"measured, then rounded"* — it borrows the
+authority of measurement while asserting nothing checkable. It cost a peer a full reproduction cycle
+chasing an aperture difference that never existed. **Approximation markers belong on measured values
+only; an unmeasured quantity gets "I didn't measure it" or no number at all.**
+
+⭐⭐ **The peer's rule, worth adopting verbatim: a KB figure without its divisor and its noun is not
+a measurement.** cp/1024 vs B/1000 differ ~2.4% here — close enough that two people can "agree"
+while measuring different things, and close enough that a fabricated number lands inside the noise.
+State it as `6411 cp (cp/1024 = 6.26 KB)`, or don't state it.
+
+⚠️ Note the asymmetry that let this through: every *load-bearing* claim in that same message (line
+numbers, merge SHA, tag dates, test counts) I verified from source. **The size was decoration, so it
+skipped the check** — and decoration is exactly what a reader has no reason to doubt. Same family as
+[[feedback_publish_a_claim_as_wide_as_your_evidence]]: the unchecked clause rides along inside a
+message whose overall rigor vouches for it.
+
 ## Attempt 2 — "it measures link-stripped rendered length." ALSO DEAD, and worse.
 
 Next fire said **20.5KB** while bytes were 21,774 — tracking the file but consistently ~1.3KB
@@ -277,6 +302,45 @@ arguing for it**, so it reads as background and survives a sweep aimed at the or
 found two of these in its store (both appositions); my earlier instance was a definite article
 ("*the* index"). ⇒ **After a premise dies, sweep for CORRECTIONS AND ASIDES THAT ASSUME IT, not just for
 the claim itself.**
+
+### ⛔⭐⭐⭐ AUDIT THE CONTROL'S **SCOPE**, NOT JUST ITS POLARITY — a PASSING control is the least-audited thing in a verification
+
+**2026-08-05, slang#8306, public artifact.** A peer published a non-zero control as *"82 files **there**
+contain `spv_result_t`"* immediately after naming `external/spirv-tools/`. I measured **127** on the tree;
+82 is the **`source/` subdirectory**. Scopes, reproduced on both containers:
+
+```
+external/spirv-tools/          127
+external/spirv-tools/source/    82   ← the published figure
+external/spirv-tools/include/    3
+--include=*.cpp                103
+```
+
+⭐⭐⭐**The control WORKED — sound search, right conclusion — which is precisely why nothing would ever have
+surfaced the defect.** Every existing rule I hold aims at a control that *fails* (false null, inert guard,
+probe that answers "no" to everything). **A control that passes is never re-examined**, so a mislabelled
+scope inside it survives indefinitely. Same family as *a wrong mechanism riding a correct conclusion*.
+
+⭐⭐**Grammar again, and a new form: a DEMONSTRATIVE INHERITS WHATEVER NOUN PRECEDES IT.** "82 files
+**there**" is false the moment "there" resolves to the tree rather than the subdirectory — that is how a
+*correct measurement* acquires a *false label* with no arithmetic error anywhere. ⇒ **State the scope in the
+same clause as the count** (`82 files under external/spirv-tools/source/`), never via a pronoun.
+
+✅**And check whether the CONCLUSION is scope-sensitive rather than assuming it survives the correction.**
+The peer did: `__builtin_verbose_trap` is **0 at every scope** — `spirv-tools/`, its `source/`, and all of
+`external/` — verified independently here with a passing non-zero control (4,016 files for `include` under
+`external/`). So the claim was **scope-robust** and the corrected wording is *stronger* than the original:
+unfalsifiable by re-scoping. ⭐⭐**A scope error is benign or fatal depending on whether the conclusion moves
+with the scope — measure that, don't assume it.**
+
+⭐⭐⭐**I judged the patch unnecessary and was wrong.** I said no correction was needed *because the control
+passed*. The peer patched anyway: **the sentence was false as written in a maintainer-facing artifact, and
+a GitHub PATCH notifies nobody** — so the cost of fixing is ~zero while the cost of leaving it is a
+maintainer re-running the command, getting 127, and having no way to tell which of us erred.
+⇒ ⭐⭐**FALSE ≠ STALE: "the conclusion still holds" licenses leaving a claim UNCORRECTED only if the claim
+itself is true.** Verified the patch: comment `5187184332` created 03:26:55Z / updated 03:31:01Z (**edited
+in place**), issue comment count still **4** (nothing stacked), old wording **absent**, both figures now
+present and explicitly scoped.
 
 ⭐⭐⭐**HOW to build the control, not just that you should: VARY THE INFLECTION.** Two agents ran controls on
 the same concept the same afternoon and each scored 2/3 on a **different grammatical form** — the peer's

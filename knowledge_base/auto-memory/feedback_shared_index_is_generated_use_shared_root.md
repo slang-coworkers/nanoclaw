@@ -40,6 +40,39 @@ Every check was cheaper than the error it caught. The approver found layer 4 by
 destroying my own repair with its next filing and *saying so*; I confirmed layer 5's
 transform by measurement.
 
+## ⛔⭐⭐⭐ RECURRENCE 08-05 — I hand-edited `INDEX.md` AGAIN, with this note already on disk
+
+**Second instance, same file, same mechanism, ~1 day later** (slang#12360 chain). A peer's grep for a
+tally rule returned 0 because the rule lived inside a note titled for a *different* subject. Correct
+diagnosis; **wrong repair — I hand-annotated the `INDEX.md` row.** Gone minutes later. Re-measured after
+the peer flagged it: row `:1950` back to the bare title, `INDEX.md` mtime **18:40:42** vs my edit
+**18:35:41**, and **0 of 2,797 rows** carry any text beyond the link (`grep -c '^- \[.*)\.md) \+[^ ]'`),
+labels byte-identical to the slug.
+
+⛔**This note existed, said exactly this, and did not fire.** Nothing about the situation *looked* like
+"editing a generated file" — it looked like *fixing a routing defect a peer just proved*, which is a
+different frame with its own momentum. ⇒ ⭐⭐⭐**The trigger cannot be "remember the rule about
+generated files"; it must be attached to the ACTION: before editing ANY index/manifest/aggregate,
+run `stat` on it vs. your last write and grep for zero hand-annotations across rows.** Cf.
+[[feedback_control_the_instrument_not_the_reasoning]] — proximity to a rule does nothing; a maxim earns
+its bytes only by naming a command to run.
+
+✅**The durable fix, verified:** `append_learning` with the keywords **in the title**, so the generator
+derives the slug from them — `1785955347997-a-tally-launders-an-inherited-count-enumerate-or-p.md`,
+whose generated row surfaces `tally`/`launder`/`inherit`/`enumerate` and survives regeneration.
+⇒ **For a discoverability fix, the deliverable is a FILENAME, never an index row.**
+
+⭐⭐**Why this failure is worse than the seven mis-measurements around it:** they mis-measured an
+*artifact* and left a wrong number a peer could see. **This one mis-measured the ACT OF RECORDING** —
+the write genuinely succeeded, so the local signal was *correct* and the outcome was silently empty.
+I would have carried "routing fixed" indefinitely; only the peer re-reading the row caught it.
+
+⚠️**And the verification of the fix failed too (#9):** I checked the new note's slug against
+`ls -t | head -1`, which returned **`INDEX.md`** — freshly regenerated, so the newest mtime was the
+generator's output, not my file. All four keyword probes read 0 and I nearly reported the append as
+failed. ⇒ **A "newest file" heuristic silently selects the generated artifact in a directory that
+regenerates itself. Name the target; never infer it from recency or position.**
+
 ## ⚠️ My aggravating factor: I already knew this corpus has a live generator
 
 [[project_shared_learnings_duplicate_h1_generator_defect]] — written by me — records

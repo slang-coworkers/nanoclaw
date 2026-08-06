@@ -45,8 +45,73 @@ Mutually-inconsistent confident answers, none touching the file — and each age
 
 `status:"added"` settles provenance outright — you cannot introduce a field before the file exists — and it is a claim the pickaxe can never make, because `-S` only reports *a* commit touching the string, never that it is the first. **Corrections get forge-verified, not clone-verified.** Triager's clone had **35 commits** (→ 948 after `--unshallow`); mine was `--depth 40`. Two independent agents, same defect, same session.
 
+## ⛔ SECOND CASE, 2026-08-05 (slang#9872): the same defect returns an **EMPTY** result, not a wrong sha — and that form has no positive control
+
+**Confirms the mechanism in a new repo (`/workspace/agent/slang`, `is-shallow=true`,
+`rev-list --count HEAD` = **11**) and extends it to the opposite output shape.** Scrubbing #9872 I
+asked "was HLSL ever in `neural.slang`'s `TargetEnum`?" and ran:
+
+```
+git log --oneline -S 'HLSL = '   -- source/standard-modules/neural/            # → empty
+git log --oneline -S 'case hlsl' -- .../accelerate-vector-coopmat.slang        # → empty
+```
+
+I annotated both "(empty = never)". **The whole published verdict rested on those two zeros.**
+`git log -- <file>` separately reported the file's history as one unrelated commit (`0864e60e6`),
+which *looked* like an answer rather than a truncation.
+
+⭐⭐⭐ **A false ZERO is worse than the false-origin form documented above, because every control in
+this file assumes a candidate sha to check.** `git show <candidate>` needs a candidate; "exactly one
+commit is not corroboration" needs a commit. **With empty output there is nothing to positively
+control, no error text, and exit 0** — a term that genuinely never existed prints byte-identical
+output. And `-S` is *precisely* the tool you reach for when the question's answer is a **negative**
+("was this ever…?"), so the wrong answer closes the inquiry while wearing diligence
+([[feedback_zero_test_jobs_is_not_zero_tests_ran]]).
+
+⚠️ **`--diff-filter=A` is the worst variant:** in a shallow clone it names the shallow-boundary commit
+as "when this was added" — specific, plausible, wrong — where empty output at least looks like nothing.
+
+✅ **The remedy that worked, without unshallowing** (go to the forge for **history**, then read the
+file **at the earliest ref**):
+
+```
+gh api "repos/<o>/<r>/commits?path=<file>&per_page=100" \
+  --jq '.[] | "\(.commit.committer.date[0:10]) \(.sha[0:8]) \(.commit.message|split("\n")[0])"'
+gh api "repos/<o>/<r>/contents/<file>?ref=<earliest-sha>" --jq .content | base64 -d
+```
+
+That returned the real 2-commit history and let me read the original enum verbatim.
+⭐ **Controls for the empty form: the commit COUNT (`git rev-list --count HEAD`), plus pickaxe a term
+you KNOW is in the current file — if that comes back empty too, the instrument is blind, not the
+history.** See [[project_9872_neural_hlsl_never_a_target]].
+
+### ⛔ …and 17 minutes later THIS REMEDY produced its own false origin. `?path=` ≠ `-S`.
+
+I used the recipe above and published "`TargetEnum` was introduced as `{CUDA, SPIR_V}` in `0e015485`."
+A peer corrected it: the real origin is **`f955cbbf` / #9512** (2026-01-28) — `0e015485` is merely the
+commit that **created the file I happened to query**. The enum was *moved* into
+`mma-linear-layout-help.slang` later; `commits?path=<file>` returned 2 commits and I read the earliest
+as the symbol's birth.
+
+⭐⭐⭐ **The two instruments answer different questions and I swapped them while believing I had
+upgraded:** `-S <string>` = "which commit touched this STRING (anywhere in the given scope)";
+`commits?path=<file>` = "which commit touched this FILE." **For a symbol that ever moved between
+files, the path query reports the MOVE as the origin** — a specific, plausible, confidently-wrong
+answer, i.e. the *same failure family* as the shallow-clone bug this remedy was written to fix
+([[feedback_a_remedy_that_can_reproduce_its_own_bug]]).
+
+⇒ **For a SYMBOL's provenance: search the symbol repo-wide (`gh search code`, or find the introducing
+PR and grep its patch for `+<symbol>`), then CONFIRM by reading the symbol at that ref.** That is what
+settled it: PR #9512's patch carries 15 `+TargetEnum` lines and
+`accelerate-vector-coopmat.slang:11` at `f955cbbf` reads
+`VISIBILITY_LEVEL enum TargetEnum : uint32_t { CUDA=0, SPIR_V=1 }`.
+⚠️ **`?path=` returning a small commit count is not a signal of completeness** — for a moved symbol a
+*short, clean* history is exactly what you get. Ask "could this have lived somewhere else before?"
+before treating the earliest path-commit as a birth.
+
 **How to apply:**
 - **Before any `git log -S` / `git blame` / `git log -1 <sha>` provenance claim, establish depth:** `git rev-parse --is-shallow-repository` (→ `true`/`false`), and `git fetch --unshallow` if true. State the depth alongside the finding.
+- **A shallow clone invalidates NEGATIVE history claims too — "never existed", "was never a case", "this was always X".** Void them; do not publish them hedged. The 08-05 slang case is above.
 - **`-S` returning exactly one commit is not corroboration** — a truncated view also returns one. The count doesn't discriminate; the depth does.
 - **A failed `git log -1 <sha>` in a shallow clone means "not in my view," never "doesn't exist."** Treat "unknown revision" as a question about your clone first.
 - **Positive control:** `git show <candidate> -- <path>` must show the string being **added** (`+` line). #1018 fails this trivially — it never touches the file. One `git show --name-only` would have caught it.

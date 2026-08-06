@@ -96,10 +96,25 @@ Both errors are **compile/link-time**; neither needs a GPU or `torch`.
 - **Error 2 CONFIRMED + A/B**: same source `-target cpp` ⇒ `static float Scale_eval_0`;
   `-target cuda` ⇒ **no specifier**. 2 TUs ⇒ `nvlink error : Multiple definition of
   '_Z12Scale_eval_0P7Scale_0f'`.
-- ⭐⭐**COUNTERFACTUAL FINDING my source read MISSED**: adding `static` to non-exported
-  helpers fixes those, but **`exportedEntry` still collides** — correctly, it IS
-  exported ⇒ **internal linkage is NECESSARY BUT NOT SUFFICIENT** for a header
-  carrying definitions.
+- ⛔**RETRACTED 08-05 — "internal linkage is NECESSARY BUT NOT SUFFICIENT" WAS WRONG.**
+  I recorded it as a ⭐⭐ counterfactual finding and put it in the GitHub comment, the
+  index row, and two peer messages. **The test was defective:** the triager had
+  **duplicated ONE module**, so both TUs declared the same `computeMain` — the
+  entry-point collision was the HARNESS, not Slang. Re-measured 08-05 on the realistic
+  shape (2 modules, **distinct** entry points `entryA`/`entryB`): `static` on the
+  helpers takes `Multiple definition` from **2 → 0**.
+  ⇒ Mechanically consistent: `kIROp_EntryPointDecoration` **is** in the
+  `isPublicOrExportedFunc` allowlist (verified by me at `b0e43d657`, `slang-emit-cpp.cpp`),
+  so entry points are *meant* to keep external linkage; two TUs both defining one entry
+  point is not a shape Slang should be expected to link.
+  ⭐⭐⭐**A COUNTERFACTUAL IS ONLY AS GOOD AS ITS HARNESS — "I changed X and the failure
+  persisted" needs the harness itself controlled.** Duplicating one module to fake "two
+  TUs" silently duplicates the entry point too, manufacturing a collision that no real
+  embedding has. ⇒ **this REMOVES an objection to approach (b), it doesn't weaken it.**
+- ⚠️Unrelated boundary, stated UNVERIFIED by triager: the `static` link still ends at
+  `nvlink error : Undefined reference to 'SLANG_globalParams'` — **pre-existing**, a
+  single-TU `-dlink` of unmodified output fails the same way (host supplies that symbol).
+  Not part of this issue; don't read the exit code as (b) failing.
 - ⭐⭐**Two shapes ALREADY LINK today (`LINK EXIT=0`)**: (i) `-target cuh` emits
   **declarations only** ⇒ cuh in N TUs + one `-target cuda` definition TU, `-dc`;
   (ii) header-only, once every func has internal linkage, no `-rdc`. Strengthens the
@@ -145,6 +160,39 @@ Manual workaround (hand-edit generated header) exists but must be redone on ever
 regenerate. Fix is **design-gated** — namespacing global atomics is potentially
 source-breaking for existing CUDA consumers ⇒ maintainer call, **no fixer dispatched**
 (human assignee mkeshavaNV, per the #8306 precedent).
+
+## 🔄 RE-OPENED 08-05 — assignee unavailable, scrub requested
+
+**jkiviluoto-nv (MEMBER) cmt `5195816253`, 08-05T18:40Z:** *"Mukund (mkeshavaNV) won't
+be returning to this work for a while. Please scrub this issue and assess whether it is
+still relevant, needs reassignment, or should be closed."*
+
+⛔**This VOIDS my stated reason for not dispatching a fixer** ("human assignee owns it").
+A design gate still stands, but the gate now has **no gatekeeper** ⇒ the ask is a
+*direction call from a maintainer who is actually present*, not from mkeshavaNV.
+
+**Re-verified at LIVE master `b0e43d657d` (08-05T16:06Z), 10 commits ahead of my
+`0864e60e6`:**
+- **STILL RELEVANT.** `slang-emit-cuda.cpp` bypass (*"Skip the CPP impl"*) intact;
+  prelude atomics at the **identical** lines `2719/2724/2732/2739`;
+  `SLANG_PRELUDE_NAMESPACE` in the CUDA prelude still **0** occurrences.
+- **None of the 300 changed files** in that range are ours (control: `.files|length`=300).
+- **No competing work**: no PR touches either mechanism. #12242 (merged 07-31) is in the
+  header-export area but ended up **docs-only** — its compiler changes were reverted per
+  jkwak-work/csyonghe direction ⇒ no overlap. #12182 / #12080 are adjacent CUDA work.
+- **OP has 2 issues ever** (#9736 + a 2024 one) ⇒ no ongoing engagement to reconfirm with;
+  do NOT treat OP silence as "not relevant" — the defect is verified independent of them.
+
+⚠️**FALSE ZERO I HIT AND CAUGHT**: a compound `q=…+A+OR+B+OR+C` REST search returned
+`total_count: 0`; the same terms split into separate queries returned 5 / 112 / 2 / 23 / 5.
+⇒ ⭐⭐**a multi-`OR` GitHub search query is a defective instrument — split it and control
+each term.** Nearly published "no competing PR work" off that zero.
+
+**Reassignment candidates (measured from REST commit history, since local clone is shallow):**
+- `prelude/slang-cuda-prelude.h`: **szihs** (11), kaizhangNV (6)
+- `source/slang/slang-emit-cuda.cpp`: **csyonghe** (6), kaizhangNV (4), szihs (4)
+- ⇒ **szihs and kaizhangNV overlap both files**; csyonghe is the emit-side authority.
+- No CODEOWNERS entry covers cuda/prelude/emit paths (checked; file has no such rule).
 
 ✅**POSTED 08-04 — cmt `5176126183`** by triager (`nv-slang-bot[bot]`, 4947 chars,
 `comments=1` not stacked); `reproduced` label applied; Type already `Bug`.

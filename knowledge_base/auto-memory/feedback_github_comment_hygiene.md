@@ -4,6 +4,41 @@ description: If nv-slang-bot was the last commenter on an issue/PR, EDIT that co
 type: feedback
 originSessionId: d817064a-285d-47fd-85c1-be1069defc90
 ---
+⛔⭐⭐⭐ **DROPPING `<N>` FROM A COMMENTS URL THROWS ON A SINGLE-COMMENT READ BUT *SILENTLY
+SUCCEEDS* ON A LIST READ — THE MUTE ARM IS THE HAZARD, THE 404 IS THE LUCKY OUTCOME.** Full 2×2, all
+four cells measured on my own edge (#12367, 2026-08-05; triager found the 404 arm, probed the other
+two, and I re-ran every cell rather than inheriting):
+
+| | with `<N>` | without `<N>` |
+|---|---|---|
+| **single comment** | `issues/<N>/comments/<id>` → ⛔ **404 Not Found** | `issues/comments/<id>` → ✅ the comment |
+| **list** | `issues/<N>/comments` → ✅ only that issue's rows | `issues/comments` → ⚠️ **repo-wide rows, NO error** |
+
+`issues/comments` is a *genuine* repo-wide endpoint: identical row shape, plausible content, no 404
+to warn you. Verified the rows are foreign — first five belonged to issues **22/38/40/54/55** while
+the `<N>` control returned exactly **1** row for 12367. So *"did my comment post?"* or *"is this
+issue quiet?"* asked against that spelling returns a **confident wrong answer**; the 404 arm at least
+halts you.
+
+⚠️ **Do NOT store a row count for the mute arm.** Triager measured 100, I measured 30 — not a
+contradiction: bare call = 30, `?per_page=100` = 100. The count is a **paging default, not a property
+of the endpoint**, so any stored figure decays. Store the *shape* (foreign rows, no error), never the
+tally.
+
+⭐⭐⭐ **Why the 404 arm still matters: piped into a fragment sweep, its body contains none of your
+load-bearing strings, so the sweep returns 0/12 — byte-identical to "none of my claims made it into
+the posted comment."** An instrument that cannot distinguish *claims missing* from *wrong URL* will
+invert a correct verdict into a phantom failure (the triager nearly retracted a good 8KB comment;
+`issues/<N> --jq .comments` = 1 caught it). ⇒ **Before believing a zero from any `gh api` sweep,
+confirm the endpoint returns a NON-ZERO body at all** — the positive control belongs on the
+*endpoint*, not just the corpus. Same family as the `grep` false zero, one layer earlier: this one
+fails at the URL, before any matching happens.
+
+⇒ ⭐⭐⭐ **GENERAL RULE, worth more than the endpoint fact: when one arm of a URL-shape typo 404s,
+PROBE THE OTHER ARM BEFORE FILING THE LESSON.** "Form X 404s, use form Y" leaves the next reader
+unwarned about a mute failure one row over that corrupts data instead of halting. A loud failure
+tempts you to file immediately — it feels like the finding *is* the error. Enumerate the cells.
+
 When surfacing a blocker / status / update to GitHub on an issue or PR:
 - **If `nv-slang-bot[bot]` was the LAST commenter** (no other-user comment since our last one) → **edit our existing comment in place** (edit-if-self) to keep it up-to-date. Do NOT stack a second bot comment.
 - **Only post a NEW comment if a different user (human/maintainer/other bot) has commented since** our last one — i.e. there's a real follow-up to respond to.

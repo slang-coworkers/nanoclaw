@@ -115,7 +115,76 @@ fixing the artifact rather than appending a retraction.
 ⚠️ **I did NOT dispatch a fixer.** Remedy is operator/maintainer-gated by the no-hand-edit policy;
 route (2) "fix the source doc" is a separate PR per `regenerate.md`.
 
-**RESUME** = babysitter reports the edit landed (then verify the live body carries 24-not-195 and the
+## Update 08-05 18:2xZ — chain RE-OPENED by a human comment; no bot post (unauthorized)
+
+`jhelferty-nv` [commented `5195600621`](https://github.com/shader-slang/slang/issues/12351#issuecomment-5195600621):
+**"@jvepsalainen-nv Is this expected?"** — addressed to the **suite owner**, not to us.
+
+- ⛔**The `github.pr_mention` webhook was a FALSE POSITIVE** — `grep -ci nv-slang-bot` on the body = **0**
+  ⇒ no mention, no `<github-post-authorized />`, **no bot comment.** (Same false-positive shape as
+  #11988's 07-08 event, already recorded in [[project_11988_nightly_spvopt_workflow_parked]].)
+- ✅**Ownership confirmed by measurement, not assumption:** `jvepsalainen-nv` authored **14 of 17**
+  commits under `docs/generated/tests` and **all 7** touching `_meta/expected-failures.txt` ⇒ he is the
+  right addressee; interjecting into a question aimed at him would be noise.
+- ⚠️**Short of our own stated resumption trigger.** Our comment `5186113055` named *"a maintainer
+  comment here choosing a route"*; "Is this expected?" **asks about state, it does not choose a route.**
+  Our answer to his actual question is already public one comment up (advisory suite, not `tests/`, no
+  compiler regression, needs a route decision).
+- ✅**Our published comment made a FALSIFIABLE PREDICTION and it RESOLVED — verified:** it said
+  *"tonight's run lands ~05:05Z and will make it 37 unless something changed."* Run **`30977023222`**,
+  `2026-08-05T05:05:01Z`, `schedule`, **failure** ⇒ population now **37 = 36 failure + 1 cancelled**,
+  `total_count 37 == 37 returned`. ⭐⭐**A published prediction is an obligation to check back: it is the
+  one number on the artifact that goes stale on a KNOWN SCHEDULE, and the check costs one call.**
+- ⚠️**Stale-by-one, not wrong** ⇒ an in-place refresh is hygiene, and per
+  [[feedback_an_in_place_edit_notifies_nobody]] it will **not** reach jhelferty. Since posting anew is
+  unauthorized here, that tension resolves toward: refresh in place, do not post. **Handed to
+  slang-ci-babysitter** (closest-to-the-state; it owns comment `5186113055`).
+
+### 08-05 18:2xZ — refresh landed; the DRIFT SET MOVED (I verified from both logs, did not relay)
+
+✅**Title+body refreshed in place, still 2 comments, no new post.** Live: *"red **37** consecutive
+nights"*, `~4.6×`, `27 runs` post-#12017, segments **28 + 8**, and the failing/stale lists now labeled a
+**snapshot, not a fixed work item**.
+
+⛔⭐⭐⭐**The substantive finding is theirs and it FALSIFIES a claim the issue published: "a small,
+stable drift set … prior nights are consistent" is FALSE — the set moved overnight.** I diffed the two
+run logs myself (`30879595238` 08-04 vs `30977023222` 08-05), both fetched, both `200`:
+
+| | 08-04 | 08-05 |
+|---|---|---|
+| summary | `4554/4583`, 19 expected-fail | `4552/4583`, 20 expected-fail |
+| failing | **10** | **11** |
+| stale-pass | **5** | **4** |
+
+Failing-set diff (exact): **+`hlsl/nvapi-guard-present-without-nv-intrinsic.slang`**,
+**+`hlsl/prelude-nvapi-include-conditional.slang`**,
+**−`design/pipeline/02-parse-ast/builtin-op-matrix-operands.slang (cpu)`**. Stale-pass diff:
+**−`design/ir-reference/decorations/struct-with-many-field-decorations.slang`** (cleared).
+⚠️Also present both nights and NOT in the issue's original list: `unsafe-force-inline-early-decoration`,
+`swizzle-emit-multi-target.slang.4`, `nvapi-guard-with-wave-intrinsic` — the original body abbreviated
+3 as `{hlsl,metal,wgsl}/…`.
+
+⭐⭐⭐**Their corollary, and it is the keeper: a CHARACTERIZATION inferred from 2–3 samples ("stable",
+"consistent", "steady-state") is the FIRST thing to re-test when sample N+1 lands — because the COUNT
+is visible and the CHARACTERIZATION is not.** A maintainer scoping work off "stable" would have
+mis-sized it; that mattered more than the counter tick. ⭐⭐**And a bump is not a find-and-replace: 36→37
+left THREE derived figures stale in different populations** (the ratio; the post-#12017 tally 26→27,
+a *different* population that also grew; and the falsified characterization) ⇒ **enumerate what DERIVES
+from a number before editing it.**
+
+⛔⭐⭐⭐**MY OWN PROBE WAS DEFECTIVE AGAIN — 3rd instrument defect this chain, same slot (auditing a
+peer).** I probed the live body for `4.5` and got **3 hits in a body containing ZERO** — I passed
+`4.5` unescaped to `grep -oi`, so `.` matched any char (`4.6`, `4552`, `4583`). **A regex
+metacharacter in a literal-string probe INFLATES, where the earlier `grep -oic`-after-`tr` bug
+FLATTENED to 1** ⇒ ⭐⭐⭐**both directions of a broken probe read as a plausible number; escape the dot
+(`grep -oF` or `4\.5`) and sanity-check any count against a `grep -n` that shows you the LINE.**
+✅Resolved by re-running literal: `4.5`→**0**, `4.6`→**1**. Body was clean; my instrument wasn't.
+
+**RESUME** = `jvepsalainen-nv` replies (route choice ⇒ dispatch per his answer), **or** the earlier
+triggers below. ⛔**Do not post to #12351 without a
+real `@nv-slang-bot` mention.**
+
+**RESUME (original)** = babysitter reports the edit landed (then verify the live body carries 24-not-195 and the
 bounded-streak framing, with a single distinctive token, not a multi-word phrase), **or** a human
 comments on #12351, **or** a reconciliation PR appears touching
 `docs/generated/tests/_meta/expected-failures.txt` → route to slang-reviewer.

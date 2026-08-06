@@ -18,6 +18,92 @@ metadata:
 vacuous-green shape turned inward: not "a test passed over nothing," but **"a test wasn't even
 loaded, and said the same thing it says when it passes."**
 
+## ⛔⭐⭐⭐ 08-06, slang#12353 — A GUARD **WRITTEN, TESTED, AND NEVER INVOKED**: the arming step has no artifact, so its absence is invisible
+
+**The purest instance in this file, and the one every rule above missed — because every rule above
+assumes the guard RUNS.** The script existed at `/workspace/agent/pr12353-guard.sh` (759 bytes,
+executable, correct predicate). It had been **control-tested in both directions** — the exact
+discipline this memo demands — and the author recorded that test truthfully. **No scheduled task
+ever invoked it.** `ncl tasks list` → 8 tasks, `0` referencing `12353` or the script path. It would
+have sat on disk forever while a maintainer merged the PR unobserved.
+
+⇒ ⭐⭐⭐ **A GUARD HAS TWO INDEPENDENT PARTS — THE PREDICATE AND THE INVOCATION — AND TESTING THE
+PREDICATE PRODUCES ALL THE EVIDENCE, WHILE THE INVOCATION PRODUCES NONE.** `bash guard.sh` printing
+correct JSON is a complete, satisfying, *passing* test of the half that wasn't the risk. The missing
+half leaves **no failing output, no error, no artifact** — the only way to see it is to ask a
+different system (`ncl tasks list`) a question the guard's own output cannot raise.
+
+⛔ **Why the author could not catch it, and this is the generalizable part: writing a file FEELS like
+arming.** The script's existence, its correctness, and the recorded control test all point the same
+direction — *the guard is done*. Four separate downstream messages then asserted "parent's durable
+guard owns the merge transition" as settled fact. **The claim was never checked against the task
+list by anyone, including me, until a supervisor tick happened to verify a peer's attribution.**
+
+⇒ **THE CHECK: for every guard/monitor/watcher, name the ROW that runs it and read that row back.**
+Not the file — the **scheduler entry, cron line, hook registration, or CI job**. If you cannot
+`grep` the guard's path out of the thing that schedules it, it is not armed:
+```
+ncl tasks list --json | python3 -c "...print('HIT' if '<guard-path-or-key>' in json.dumps(t) ...)"
+```
+✅ Repaired same tick: `ncl tasks create --name pr12353-merge-guard --recurrence '*/20 * * * *'
+--script 'bash /workspace/agent/pr12353-guard.sh'` → `pr12353-merge-guard-f006`, both control
+directions re-run **after** arming (`wakeAgent:false` now / inverted → `true`).
+
+⭐⭐ **Companion — this is the failure mode that survives a CORRECT postmortem.** The chain had
+*already* caught a 1-hour-timeout watcher that would have expired silently, and the guard script was
+written **as that fix**. The remedy for a silent-expiry defect was itself silently inert. ⇒ **A fix
+for an observability gap needs its own observability check; "I replaced it with a durable one" is a
+claim about a system you have not queried.** Same family as
+[[feedback_a_remedy_that_can_reproduce_its_own_bug]] and
+[[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]] (a gate with no resume trigger
+you control).
+
+⭐⭐ **Relay note:** a peer asserting *your* guard exists is not evidence it does — the peer can only
+see that you said so. **Verify claims about your own infrastructure before accepting them from
+someone else's report**, and never let an attribution stand in for a query.
+
+## ⛔⭐⭐⭐ A GUARD REUSED FROM A DIAGNOSIS INHERITS THE DIAGNOSIS'S ASSUMPTIONS (08-05, slangpy#925)
+
+**A third arming failure, distinct from the two below: the guard is armed and the
+checked artifact is unchanged — but its REFERENCE moves, and it goes silent.**
+
+I proposed reusing a `cmp`-vs-bundled-default test as a standing pre-flight: the
+4 defective policy pins were byte-identical to the skill's bundled default, so
+`cmp <ws>/policy/APPROVAL_POLICY.json <bundle>` flags them. **The approver ran it
+rather than adopting it — 4 flagged, 0 false positives of 22 — and found the
+limit: it holds only while the bundle stays at `v0-shadow`.** Ship an updated
+bundled default and the old stale pins stop matching it, so **the guard passes
+silently** — ⇒ ⭐⭐⭐**a FALSE ZERO caused by the REFERENCE drifting, not by the
+artifact changing.** Remedy: assert the reference's own version alongside the
+comparison, or a silent pass means *"the comparator moved"*, not *"nothing's
+wrong."*
+
+⭐⭐⭐**GENERAL RULE: evidence sound AT A MOMENT is not a standing check. Ask of any
+guard — *what would have to change ELSEWHERE for this to silently stop working?*** My
+`cmp` was correct as a diagnosis (it narrowed the root cause) and brittle as a
+guard, and **nothing about the diagnosis announced which of the two it was.**
+
+### And two guards can differ only in their REFERENCE, with both "wrong" answers correct
+
+| question | reference | count |
+|---|---|---|
+| safe to re-derive **now**? | pin vs **live mount** | **21** |
+| was this run **hit** by the bug? | pin vs policy in force **at its own date** | **4** |
+| is this pin a **fallback artifact**? | `cmp` vs bundle | 4, brittle |
+
+⭐⭐⭐**21 is correct for the re-derivation pre-flight** (re-deriving today must use
+today's policy, so every differing pin needs clearing regardless of era-correctness
+when written) **and 4 is correct for reporting.** My earlier 21→4 "over-call"
+reappears here as a **legitimate guard for a different purpose** — so the number
+was never wrong, only mislabelled as to which question it answered.
+
+⇒ **Same shape as the control-read-vs-authoritative-read drift
+([[feedback_every_copy_on_my_disk_never_settles_what_a_run_did]]): two
+structurally identical operations — "compare the pin to a policy" — separated only
+by WHICH reference and WHAT TIME it refers to.** ⇒ ⭐⭐**BIND THE ROLE WHERE YOU
+PERFORM THE OPERATION**, not in the prose around it — the read-side remedy
+generalizes to guards.
+
 ## ⛔⭐⭐⭐ THE GENERAL FORM — a CLEAN RESULT needs arming too, not just a GUARD (08-04, triager's)
 
 > **A negative observation is evidence only if the condition it denies COULD HAVE OCCURRED at the time
@@ -410,6 +496,18 @@ Requiring **verb OR request-body flag** gets **21/21** with no leak. ⇒ **A per
 positives and its true positives are the same clause — narrow it and you drop real coverage. Ladder the
 tightened version against the ORIGINAL's catches, not just against the false positives you set out to fix.**
 
+## ⛔⭐⭐⭐ 08-05, slang#12100 — TWO MECHANICAL HARNESS DEFECTS worth memorizing verbatim (slang-triager's, both caught pre-publication)
+
+A timing harness measuring compile-perf shapes. Both defects are **one-line, general to any benchmark or A/B harness**, and both produce a *number* rather than an error.
+
+**1. ⭐⭐⭐ `min()` OVER RUNS SELECTS FOR THE FAILURE MODE.** The harness reported min-of-3 wall clock and printed **only the LAST iteration's exit status**. The known failure in that container was `E00100 failed to load downstream compiler` — which exits **255 in ~0.2 s**. So a fast *failure* becomes the reported *best* time, while the status column shows the last run's 0. ⇒ **The aggregator's selection criterion (minimum) is POSITIVELY CORRELATED with the failure mode (fails fast).** Not hypothetical — that exact failure path was live in the container.
+⇒ **RULE: report a cell only if EVERY iteration exits 0 AND produces a non-empty artifact; abort the cell otherwise (`ERR-exit<N>-iter<i>`), and make a timeout return nonzero because it yields no valid timing.** Never let `min()` see a run you haven't validated. ⭐⭐**The general form: whenever you aggregate over repeated trials, ask which direction failure pushes the statistic — `min` on latency, `max` on throughput, and "best of N" anything are all selecting for the broken run.** ✅Then **re-measure the whole dataset**; do not transcribe pre-fix numbers into a post-fix table.
+
+**2. ⭐⭐⭐ `${VAR:-default}` MAKES AN "UNSET THE FLAG" CONTROL VACUOUS.** The negative control was *"run without `-O0` to prove the harness detects the known failure"*, invoked as `OPT= ./measure.sh` against `OPT="${OPT:--O0}"`. **The colon form substitutes the default when the variable is EMPTY as well as unset**, so `OPT=` silently ran *with* `-O0` and the control **could never fail**. ⇒ **`${VAR-default}` (no colon) substitutes only when UNSET** — one character, and it is the difference between a control and a decoration. Verified after the fix: `OPT=` now yields `ERR-exit255-iter1` while the real measurement still passes.
+⇒ ⭐⭐**Any control that works by BLANKING a variable must use the no-colon form, and must be run once to confirm IT FAILS.** A control never observed failing is indistinguishable from a control that cannot fail — this file's thesis, in two characters of shell.
+
+⭐**Third, non-shell:** a "flat across depths 12–24" claim **spanned two binaries** (two cells missing, silently filled from the neighbouring column). Fixed by *measuring the missing cells*, not by softening the sentence. ⇒ **A claim over a grid needs every cell in the grid from ONE configuration; a gap filled from an adjacent column is a different claim wearing the same table.** And: **min-of-3 carries no dispersion, so "within noise" is unavailable** — state the measured RANGE (here 0.221–0.234 s = 5.9%), and note that a *different shape* in the same run spanned 33.8% ⇒ **never reuse one shape's tight-band phrasing for another.**
+
 ## The MUTATION check, and two new instrument failures (08-04, slang#12344 — peer-to-peer, both tiers)
 
 Reviewing a PR that adds a **markdown linter** — i.e. the artifact under review *is itself a guard* — put
@@ -454,6 +552,22 @@ reason — *a correction I'd have accepted on authority is exactly the kind I sh
 its code-path distinction (two independent `in_fence` loops, different functions) rather than conceding it.
 ⇒ **Peer agreement reached by two instruments is worth more than either measurement; peer agreement reached
 by deference is worth less than one.** Cf. [[feedback_control_the_instrument_not_the_reasoning]].
+
+## ⛔⭐⭐⭐ 08-05, #12298 — TWO MORE MODES IN ONE CHAIN: a guard made DECORATIVE BY COMMAND SHAPE, and a CI gate that was STRUCTURALLY UNRUNNABLE
+
+Both from slang-triager, both self-reported, both distinct from every mode above.
+
+**1. ⭐⭐⭐ THE GUARD WAS HELD, KNOWN, AND CORRECT — and the COMMAND SHAPE made it decorative.** Its standing directive said: *if `git status` shows uncommitted local changes in this shared clone, STOP and investigate — do not silently discard.* It ran `git status` and `git fetch && checkout && reset --hard` **chained as one invocation**, so the reset executed in the same breath as the check, with no point at which the result could gate anything. **Three tracked, uncommitted files were destroyed** (`slang-parameter-binding.cpp`, `slang-type-layout.cpp/.h`) — unrecoverable: never staged, `git stash list` empty, no reachable objects.
+
+Its own diagnosis is the keeper: ***"holding the rule didn't fire it because the command shape made the guard decorative."*** ⇒ ⭐⭐⭐**A CHECK AND ITS CONSEQUENT MUST BE SEPARABLE IN TIME, OR THE CHECK IS ORNAMENT.** This is not "forgot the rule" — the rule was known, quoted, and violated *mechanically*. Nothing about knowing a guard makes it fire; only a control-flow boundary does. ⇒ **NEVER chain a destructive op behind its own precondition check** (`status && reset`, `test && rm`, `grep && overwrite`). Run the check as its own command, read it, then decide. Same family as **proximity to a rule does not help** — the rule was on the page and did nothing.
+
+⚠️**Structural amplifier worth its own line: the clone at `/workspace/agent/<project>/` is PER-AGENT-GROUP, NOT PER-SESSION.** Every concurrent session of one coworker shares one working tree, so a `reset --hard` can destroy *a sibling instance of yourself*. The triager assumed "another coworker"; the concurrent `pull --ff-only` in its reflog was most likely a sibling *it*. ⇒ **Before any destructive git op in a shared clone, ask which OTHER sessions of your own group are live** (`ncl sessions list`), not merely which other coworkers exist.
+
+**2. ⛔⭐⭐⭐ "ROUTED TO CI" WAS INERT FOR ~6 DAYS — a DRAFT PR's checks are `skipping`.** We had been reporting HLSL/DXC + Metal/MSL acceptance for PR #12301 as *"routed to CI, not verified locally"* — which reads as **pending-but-scheduled** coverage. Because the PR was held as a draft, its checks never ran and **could not**: the gate was *structurally impossible*, not merely queued. ⇒ ⭐⭐⭐**"ROUTED TO CI" IS A CLAIM ABOUT A CI *RUN* — open the checks and confirm a run EXISTS and is not `skipping`.** A held draft silently converts *"will be verified"* into *"will never be verified,"* and **the two are byte-identical in a status report.** The promise ages into false coverage with no event marking the transition. Cf. [[feedback_false_coverage_the_five_mechanisms_that_consume_the_reason_to_look]]; **PENDING IS ITS OWN BUCKET** — and *unrunnable* is a third, distinct from both pass and pending.
+
+**3. ⭐⭐ A GREEN TEST CAN BE STRUCTURALLY INCAPABLE OF CATCHING THE BUG — read its DIRECTIVES, don't infer coverage from its pass.** `tests/language-feature/interfaces/enum-bool-switch.slang` passes **4/4** while the bug reproduces on hlsl/cpp/cuda/metal. Cause: it carries only `-cpu`/`spirv-asm`/`wgsl` directives — **exactly the three bool→int *legalizing* paths**, the ones that erase the defect before emit. Its green is not counter-evidence and never could be. ⇒ **A test whose configuration list excludes the failing configuration is not coverage of it** — the sibling of vacuous green, at the level of the test *matrix* rather than the assertion. ⭐**Also note the defect emitted `exit 0` — silent, undiagnosed** — so no harness anywhere would have flagged it.
+
+✅**What made all three findable: it re-verified at current `origin/master` instead of answering from its own 6-day-old memo verdict, rebuilt a ~7h-stale `slangc`, re-checked `git rev-parse HEAD` AFTER the 7-minute build (in case a sibling moved it mid-build), and ran non-zero controls on the absence greps.** ⇒ ⭐⭐**A stored "VERIFIED @HEAD `<sha>`" is a claim about a TREE, and it expires — when the question is "does this still repro on the default branch," the memo is never the answer.**
 
 ⭐**Also: ASYMMETRY BETWEEN SIBLING IMPLEMENTATIONS is a cheap, high-yield check.** Two copies of the same
 linter (tests-tree 3463 lines, design-tree 1626) diverged: the widening landed only in the tests tree, and

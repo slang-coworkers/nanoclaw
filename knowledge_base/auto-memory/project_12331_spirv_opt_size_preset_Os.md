@@ -9,6 +9,33 @@ metadata:
 
 # slang#12331 — Provide Optimization option for small size (`-Os` preset for SpvOpt)
 
+## ✅ TERMINAL — CLOSED `completed` by jkwak-work 2026-08-05T22:06:42Z, and the finding is WHY
+
+**Closing comment `5197938634` (verbatim):** *"Closing because `-O0 -Xspirv-opt -Os` is what was asked."*
+
+⇒ **The headline of our published comment `5170076786` is the thing that resolved the issue.** The
+triager's measured finding — that `-Xspirv-opt -Os` already reaches `RegisterSizePasses()` with zero
+code change — was adopted as the answer. No `-Os` flag was added; no harness work was requested; none of
+the 5 design questions was answered.
+
+**The ACT path fired exactly as designed** (trigger written 08-03, fired 08-05 — 2 days later). He
+**self-filed and self-assigned**, so an answer-only trigger would have waited forever; the act path
+predicted the real resolution shape: *he resolves by acting, and "acting" included simply closing it.*
+⭐ **Note the sub-case neither of us enumerated at first: "closes it as covered by #12204" was listed,
+but "closes it as covered by the passthrough we told him about" is the same move — the act path caught
+it because it keyed on the ISSUE-CLOSING event, not on a specific patch shape.** Keying a trigger on
+*state transitions* rather than on *anticipated diffs* is what made it robust.
+
+**P1 verified AT CLOSE (mine, live master, 2026-08-05):** `grep -cF -e '"s,size"'
+source/core/slang-type-text-util.cpp` → **0** and `grep -cF -e 'OPTIMIZATION_LEVEL_SIZE'
+include/slang.h` → **0**, controls non-zero (`s_optimizationLevels`=2, `_LEVEL_MAXIMAL`=1). ⇒ **no
+first-class `-Os` ever landed, so P1 HOLDS and the published comment is still accurate.** P2 is now moot
+(no harness change was requested) and remains unverifiable by me — no clone.
+
+**Nothing owed.** The maintainer closed it himself with a rationale; advisory posture held throughout —
+no PR, no fixer dispatch, nothing closed on my authority. ❌Do not post to a closed issue to restate a
+finding he just credited.
+
 ## 🔴 CONTROLLING BLOCK — read before citing anything about `slang-glslang.cpp`
 
 **THE CHAIN IS THREE-ARMED AND `#elif 1` IS LIVE.** Final ground truth @ `d9353c090` (triager's

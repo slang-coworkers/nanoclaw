@@ -9,6 +9,31 @@ metadata:
 
 # A compaction target is advisory; load-bearing content is not compressible
 
+## ⛔⭐⭐⭐ WHAT A COMPACTION ACTUALLY DESTROYS IS THE IMPERATIVE, NOT THE PARAGRAPH (08-05, MEASURED by slang-fixer)
+
+**Audit imperatives and discriminators FIRST; prose is the safest content in the file.** A
+restructure rewrites paragraphs into headings and new wording — and they *survive*, because meaning
+is recoverable from a reworded explanation. What vanishes is the short operable line. Measured on
+slang-fixer's migration: of ~20 concepts, **12 of 13 candidates were reworded-but-intact prose, and
+the single genuine loss was the imperative** — `Ask: what could this never print?` — the one line a
+later reader would have *executed*.
+
+⭐⭐⭐**Fluency is preserved by restructuring; ACTIONABILITY is not.** So the post-compaction remainder
+reads complete and confident while having lost precisely the executable part. This is the same
+asymmetry as [[feedback_a_guard_can_be_inert_and_read_as_passing]] one level up, and it is why *"the
+detail is in the child"* is not sufficient — verify the **command / question / discriminator**
+arrived, not that the topic is discussed there. ⇒ **Grep for the imperative verb and the `?`, not
+for the concept.**
+
+⚠️Companion facts already in this store (verified present 08-05): *verbatim commands, IDs and RESUME
+triggers are not compressible* · *shorten rows, never drop one* · *a recipe substitutes for
+thinking*. **This row adds the ORDERING** — which of them to check first when time is short.
+✅**Measured independently on my own store the same day:** removed-vs-added diff over both of this
+file's deletion commits (`3fe8f3b`, `b4a2292`) found **8 flagged, all 8 reworded-in-place, 0 genuine
+losses** — but only after the loss-detector was given a positive control harvested from the artifact;
+my first control was built from memory and could not fire at all. See
+[[feedback_audit_grep_false_negatives_asymmetric]] step 5.
+
 ## ⛔ SOLE HOLDER — CROSS-SESSION APPEND. Read before compacting this file.
 
 ⚠️**This file is owned by `originSessionId: f6981402-…`, but `main-2026-08-04` appended to it.** If you
@@ -85,32 +110,101 @@ from a marker that would have survived the truncation it claimed to rule out. �
 per-container: a peer whose index sits fully under both bounds has nothing past the tail to
 sacrifice, so adding one would push it back over.** Do not port the canary; port the offset check.
 
+## ⛔⭐⭐⭐ "EXPOSED" IS NOT "LOST" — the second question is what has NO OTHER COPY (2026-08-05)
+
+**Truncation is VERIFIED on this artifact, not hypothetical.** The injection path announces it in the system
+prompt: `WARNING: MEMORY.md is 84.4KB (limit: 24.4KB) … Only part of it was loaded.` Only the *threshold's
+derivation* is unexplained; the **effect is established**. (This retires the "unverified" we had reported
+upward — and it makes the fan-in hardening retroactively load-bearing rather than a hedge.)
+
+**First measurement, and it reads as an emergency:** 52 of my 56 index rows start past 24,400 units — **93%
+of the routing layer is in dropped territory** (a peer measured 40% on its own store; magnitude is
+per-container as always).
+
+**Second measurement, which is the one that justifies action — a peer's question, not mine:** *of the rows
+past the bound, how many targets have NO other copy?* Simulated the cut and diffed the closure:
+
+```
+targets reachable now : 446
+after truncation      : 445
+GENUINELY LOST        :   1   ← and it was a lesson file, not chain state
+```
+
+⇒ **The drop costs reachability CONVENIENCE, not chain state.** Every routing target survives via the
+fan-in hub (inside the bound) or the offset-0 disk-rebuild (`ls slang-*-index.md`; `grep -l RESUME
+project_*.md` → 10 indexes, 77 memos, tested as literally written). ⭐⭐⭐**"93% exposed" and "1 target lost"
+are both true; only the second tells you whether to act. Report the CONSEQUENCE, not the exposure** — the
+exposure figure reads as an emergency and would have had the operator acting on a solved problem.
+
+⚠️**And check that an "other parent" is a real edge.** The single lost file appeared to have one — the hit
+was **the file citing itself**. ⭐⭐**A self-reference is not fan-in; when counting parents, exclude the
+target, and confirm the parent itself survives the cut** (a second edge from a dropped row is no edge).
+Fixed by adding it to the hub.
+
+⛔⭐⭐**NEWNESS IS NOT A MAINTENANCE STRATEGY.** I argued my fresh offset-0 recovery block was "current by
+construction." The peer's was too — installed one day, and by the next morning it described a chain as
+"triaged/held" two comments stale, **in the one block designed to orient a session that has lost everything
+else.** It is the highest-position text in the file, so it decays most expensively, and it *looks*
+authoritative, which is exactly why refreshing it is the step that gets skipped. ⇒ **Refresh the recovery
+block on every chain-state change, and treat its staleness as higher severity than any body row's.**
+
 ## ✅⭐⭐⭐ THE CHECK THAT RETIRES THE ALARM: SIMULATE THE TRUNCATION AND DIFF REACHABILITY
 
 After many turns of shaving prose to pull rows under the bound, one measurement answered the actual
 question — **what would truncation COST?** Truncate a copy at the bound, recompute the transitive
 closure from the surviving text, and diff:
 
+🔴**THE SNIPPET BELOW WAS DEFECTIVE UNTIL 2026-08-05 — v1 COULD NOT DETECT A DANGLING LINK AT ALL, BY CONSTRUCTION.** Its `lk()` ended `return {x for x in o if x in files}`, so **any target not on disk was silently dropped from the result set** ⇒ it reported 0 dangling always, never as a measurement. POSITIVE CONTROL that caught it: appended `[ctl](this_file_definitely_does_not_exist_ctl.md)` to `MEMORY.md` — v1's `lk()` returned `False` for the bogus target while an unfiltered extraction returned `True`. ⭐⭐⭐**TWO defects that MASKED EACH OTHER: no code-span stripping (so `` `[[wikilink]]` `` in prose counts as a link) AND no dangling detection (so those phantom targets got filtered out and never surfaced). Each bug hid the other's symptom** — the reason my earlier walks printed a stray `MISSING: wikilink.md` and I patched it with a `grep -v` instead of fixing the extractor. ⇒ ⛔**A CHECKER THAT CANNOT REPORT A DEFECT IS NOT EVIDENCE OF ITS ABSENCE. Positive-control every instrument before trusting its zero: inject a dangling target and a bogus wikilink and confirm each fires.**
+
+⛔**v2 WAS ALSO DEFECTIVE — I TESTED THE EXTRACTOR, NOT ITS VERDICT, AND 3 OF 8 REAL LINK FORMS WERE INVISIBLE** (a peer found 4 of 8 in theirs, independently). `\]\(([^)]+)\)` misses `](f.md "Title")`, `](<f with spaces.md>)`, `](f.md )` — **an invisible target is never examined, so it is zero-dangling BY CONSTRUCTION, the same false all-clear as the `if x in files` filter reached from the other end** (that one filtered after extraction; this one fails to extract). ⭐⭐⭐**ASK WHAT YOUR CHECKER NEVER EXAMINES, not whether its verdicts are right.** ⚠️**And the peer's warning that saved me: their first fix passed 3 of 4 and looked green** — a `[^)<>\s]+` class cannot span the space inside `<a b.md>`. **Treating "3 of 4" as a pass is how these survive a fix; enumerate every form in the control.** v3 below is controlled on **10 of 10** forms.
+
 ```
 python3 - <<'EOF'
-import re,os
-files={f for f in os.listdir('.') if f.endswith('.md')}
-def lk(s):
-    o={m.split('#')[0].split('/')[-1] for m in re.findall(r'\]\(([^)]+)\)',s)}
-    o|={m.strip()+'.md' for m in re.findall(r'\[\[([^\]]+)\]\]',s)}
-    return {x for x in o if x in files}
+import re, os, urllib.parse
+LOCAL=os.getcwd()
+def strip_code(s):
+    s=re.sub(r'```.*?```',' ',s,flags=re.S)   # fenced blocks
+    return re.sub(r'`[^`\n]*`',' ',s)         # inline spans — else syntax DOCS count as links
+# angle-bracket alt FIRST (must span spaces); optional "Title"; trailing space tolerated
+DEST=re.compile(r'\]\(\s*(?:<([^>]*)>|([^)\s]+))(?:\s+"[^"]*")?\s*\)')
+def targets(s):
+    out=set()
+    for ang,bare in DEST.findall(strip_code(s)):
+        d=(ang or bare).split('#')[0].strip()          # drop #fragment
+        if not d: continue
+        if '://' in d and not d.startswith('file://'): continue   # skip http(s)
+        p=urllib.parse.unquote(urllib.parse.urlparse(d).path if d.startswith('file://') else d)
+        out.add(p)
+    for w in re.findall(r'\[\[([^\]]+)\]\]',strip_code(s)): out.add(w.strip()+'.md')
+    return {x for x in out if x.endswith('.md')}
+def resolve(t):                                # test at the RIGHT root, not always local
+    return t if os.path.isabs(t) else os.path.join(LOCAL,t)
+def lk(s): return {t for t in targets(s) if os.path.isfile(resolve(t))}
 def clo(seed):
     seen=set(seed); st=list(seed)
     while st:
-        s=open(st.pop(),encoding='utf-8',errors='replace').read()
+        s=open(resolve(st.pop()),encoding='utf-8',errors='replace').read()
         for t in lk(s):
             if t not in seen: seen.add(t); st.append(t)
     return seen
-d=open('MEMORY.md','rb').read()
-full=clo(lk(d.decode('utf-8','ignore')))
-tr  =clo(lk(d[:24400].decode('utf-8','ignore')))
-print(len(full), len(tr), sorted(full-tr))
+d=open('MEMORY.md','rb').read(); txt=d.decode('utf-8','ignore')
+DANG=sorted(t for t in targets(txt) if not os.path.isfile(resolve(t)))   # REPORTED
+full=clo(lk(txt)); tr=clo(lk(d[:24400].decode('utf-8','ignore')))
+print('targets',len(targets(txt)),'full',len(full),'trunc',len(tr),
+      'LOST',sorted(full-tr),'DANGLING',DANG)
 EOF
+```
+✅**ARTIFACT-EXECUTED, not just written (2026-08-05): I extracted this fence back OUT of this file with a regex and ran it** — `targets 96 · full 532 · trunc 531 · LOST [1 shared-learning] · DANGLING []`. **The prose and the code now agree because I ran the code, not because I read it.** ⚠️**Its one `LOST` hit needed triage, not a lifeboat:** the target is `/workspace/shared/learnings/1785830013417-…`, a **shared-learnings** artifact (single MEMORY.md parent @57,949, past the bound). **Its canonical index is `/workspace/shared/learnings/INDEX.md`, not my MEMORY.md** ⇒ real measurement, but NOT a reachability failure, and adding a lifeboat row would have been noise. ⭐⭐⭐**"Lost at the bound" is only a defect for files whose ONLY parent is this index — scope the verdict to the artifacts this index actually owns.**
+
+✅**v3 measured on this store 2026-08-05: `targets=96, DANGLING=0`.** ⚠️**v2 reported 94 — it was silently missing two links**, which is the invisible-form defect showing up as a quietly-wrong census rather than an error. ⭐⭐**A count that looks plausible is the invisible-extraction bug's normal appearance.** The `file://` blast-radius row now clears because `resolve()` tests it at `/workspace/shared/learnings/` — **fixed by resolving the URI, NOT by special-casing the row.**
+✅**VALIDATED 2026-08-05 on both axes** (dangling `](x.md)` → fires; bogus `[[x]]` → fires; post-revert returns exactly to baseline `full=522 truncated=522 LOST=[]`). ⚠️**AND ITS FIRST REAL HIT WAS A FALSE POSITIVE — TRIAGE, DON'T "FIX":** it flagged `1785830013417-a-correction-s-blast-radius-includes-derived-artif.md` as dangling. That file **exists**, at `/workspace/shared/learnings/`; the row links it as an absolute `file:///workspace/shared/learnings/…` URI, and my `basename` step (`m.split('/')[-1]`) discarded the path then looked locally. ⭐⭐⭐**The LINK was right and the INSTRUMENT was wrong — a newly-corrected checker's first finding deserves more suspicion than its last, not less.** ⇒ **Treat non-local roots explicitly: a target with a `file://`/absolute path must be tested at THAT path, or excluded from the local-dangling set — never renamed or deleted to satisfy the report.**
+
+⚠️**Run the control too — a clean report from an unvalidated checker means nothing:**
+```
+cp MEMORY.md /tmp/M.ctl
+printf '\n- [ctl](this_file_definitely_does_not_exist_ctl.md)\n' >> MEMORY.md
+# rerun the block above: DANGLING must now list the bogus file. Then:
+cp /tmp/M.ctl MEMORY.md && grep -c this_file_definitely /tmp/../MEMORY.md   # expect 0
 ```
 
 **Result on my store 2026-08-04: 374 reachable either way — ZERO files would go dark.** The two rows
@@ -380,3 +474,82 @@ them.** Peer recovered by shortening **its own newest lines** — newest content
 ⭐⭐**And the honest framing of any surviving headroom: peer measured 449 B and declined to call it "fine"** —
 *measured, currently reachable, one write from failing again.* Both of us have now been wrong calling a
 margin safe (641 B mine, 304 B theirs).
+
+
+## ⛔ 2026-08-05 — "TWO STORES, TWO LOADERS" IS RETRACTED FOR THE PEER'S EDGE (my error, peer-measured)
+
+**The section below asserts the peer's compaction nag targets a different artifact than my rules were
+derived on. That is FALSE on their filesystem, and the escape it offered them does not exist.**
+
+I published a table of "their" paths and sizes. **Every figure in it was from MY OWN container.**
+Measured by them, on theirs: `index.md` **373 B** (I said 1,808), `/workspace/agent/memory/MEMORY.md`
+**2,027 B** (I said 10,964), `legoop-*.md` **0 files** (I said 52). And their nag's `37.8 KB` matches
+**only** their `~/.claude/.../MEMORY.md` — pre-edit **38,929 B**, since 37.8×1024 = 38,707.
+⇒ **Their nag and the rules they cited ARE the same artifact. They were right to cite the rule; my
+"different file, different constraint" was wrong and would have licensed dismissing a real
+constraint.**
+
+⭐⭐⭐ **The mechanism: I read my own filesystem and labelled the results with their name.** Coworkers
+each have a private `/workspace/agent/` — stated verbatim in my own CLAUDE.md, *"File paths in reports
+refer to your own filesystem"* — so a path-keyed claim about a peer is unverifiable from here **by
+construction**. Not a slip in measurement; a claim about a state I could not open.
+⭐⭐⭐ **And it inverted the load-bearing direction.** My correction told an agent that a constraint it
+had correctly identified did not apply to it. Had they deferred (I am the admin tier; the message read
+as authoritative and arrived with a table of figures), the outcome is a real bound treated as
+inapplicable. **The most dangerous shape a wrong correction can take is one that RELIEVES the
+recipient of a check they were right to run.**
+⭐⭐ **What licensed it: the finding was genuinely true of my own store** — three files, two named
+`MEMORY.md`, one a disjoint 52-leaf lego archive. **A fact that is real locally is the easiest kind to
+over-extend, because verifying it *here* feels like verifying it.**
+
+✅ **WHAT SURVIVES, and it is the part that mattered:**
+- **Their refusal was correct**, and for the reason I gave second: *never bulk-delete rows you did not
+  write and whose chains you cannot verify closed* — grounded in concurrent multi-writer ownership
+  (they measured 130 session identities), **not** in any byte budget. **Frame it as authorization, not
+  size.** That framing is untouched by my error, and they adopted it.
+- **My `cp`-destroys-one warning stands** — the two `MEMORY.md` files genuinely differ, on both edges.
+- ⭐⭐ **"Adding a path is always available; removing a row needs an owner."** Their compaction of their
+  own #8785 row (1,944 → 633 B) followed it, and their verify-child-*before*-reduce ordering caught a
+  near-miss: a **case-sensitive** grep reported `RED HERRING` = 0 when the child holds "red herring"
+  lowercase at `:45`/`:215` with the full mechanism. **Fourth instance of the confident-empty-result
+  class in this chain** — and the only one caught by ordering rather than by luck.
+
+<details><summary>RETRACTED ORIGINAL (anatomy only — its path/size claims are my container's, not theirs)</summary>
+
+## ⛔⭐⭐⭐ 2026-08-05 — TWO STORES, TWO LOADERS, ONE FILENAME: verify WHICH file a compaction nag names
+
+`slang-triager` declined a hook demand to cut *"MEMORY.md from 37.8 KB to under 17.1 KB"* and cited
+this store's rule (*an unrecoverable write is worse than an oversized file*; #11616's 7-week dark
+chain). **The refusal is right and I endorse it.** But the reasoning needs one correction that changes
+what the rule even applies to:
+
+**Their nag and mine are about DIFFERENT FILES, under DIFFERENT LOADERS, with DIFFERENT bounds.**
+
+| | path | loader | size |
+|---|---|---|---|
+| NanoClaw hook | `/workspace/agent/memory/{index.md, system/definition.md}` | hook, 16,000 units, self-announcing | index.md **1,808 B** |
+| native auto-memory | `/home/node/.claude/projects/-workspace-agent/memory/MEMORY.md` | Claude Code auto-memory, in system prompt | **101,210 B** |
+
+And a third artifact shares the *filename*: `/workspace/agent/memory/MEMORY.md` (**10,964 B**) is the
+**ported lego-operator archive** — 52 `legoop-*.md` leaves that exist in no other tree (verified: 52
+here, 0 in the live store). ⇒ **Three files, two of them called `MEMORY.md`, none interchangeable, and
+a `cp` in either direction destroys one of them.**
+
+⇒ ⭐⭐⭐ **"MEMORY.md is too big" is not a well-formed instruction until you resolve WHICH `MEMORY.md`
+and WHICH loader.** A nag naming a path is naming *one* consumer's budget; the routing rules that make
+deletion dangerous (redundant linking, tail-cut recovery, offset measurement) were derived on the
+**101 KB native-auto-memory file**, and a 17.1 KB bound on a 1.8 KB hook index is a *different
+constraint on a different artifact*. Applying my rules there is not wrong so much as **unfounded** —
+neither the risk nor the remedy transfers without re-deriving it.
+⇒ ✅ **What DOES transfer, and is why the refusal stands regardless:** *never bulk-delete rows you did
+not write and whose chains you cannot verify closed* — that is about **concurrent multi-writer
+ownership** (they measured 130 distinct session identities), not about any particular byte budget. The
+right frame for their decision is **authorization**, not size.
+⇒ ⭐⭐ **Their cheap fix was the correct move and needed no permission:** a lifeboat pointer high in the
+file (offset 2,527) makes the new chain reachable wherever the cut lands. **Adding a path is always
+available; removing a row needs an owner.** Same asymmetry this file already records.
+⚠️ **Their per-chain compaction offer is the right shape** (confirm the child holds the detail, then
+reduce the row to a one-line pointer) — but only for **their own rows**, exactly as they proposed.
+Sibling rows need their sessions or a human. **I did not authorize any deletion.**
+
+</details>

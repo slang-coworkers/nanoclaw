@@ -207,7 +207,7 @@ Triager caught it at "about to open" (NO artifact created — Main verified only
 - **ROUTING:** reviewer→parent; Main forwarding to slang-fixer. **Batch-3 REVIEW-COMPLETE on revised head 46103abb39** — 0 bugs, remaining nits discretionary (fixer owns ship-vs-polish; F1/tests/refactor already folded, only the accepted declines remain). Draft, non-closing, merge OP+maintainer-gated. Chain terminal pending human ready-flip+merge (like the other batch slices: #11920/#11961/#11987/#12088 pattern — bot flips/merges nothing).
 
 **✅ 2026-07-30 19:55Z — 2 MAINTAINER COMMENTS HANDLED, head → `1b9388a29d` (fixer).** Batch-3 got maintainer engagement (incl pdeayton-nv, the epic driver):
-1. **jkwak-work** asked if this relates to empty-struct #8125 (CUDA crash) → fixer traced + replied **ORTHOGONAL:** `legalizeResourceTypes` sits behind `if (shouldLegalizeExistentialAndResourceTypes)` (slang-emit.cpp:1799) = FALSE for C/C++/CUDA (they take else @:1907, run only `legalizeEmptyTypes`), so the resource early-out can't touch #8125's CUDA path; empty gate still runs on any empty type (behavior-preserving). #8125 stays OPEN/jkwak-owned (copilot PR #10788 now CLOSED); fixer did NOT auto-implement, offered preserved repro (branch fix/issue-8125 → now fix/issue-8125-v2, see [[project_8125...]]). Reply accuracy-checked; **fixer corrected one codex misread empirically — :2540 legalizeEmptyTypes IS reached on HLSL** (consistent w/ the C001/F1 finding).
+1. **jkwak-work** asked if this relates to empty-struct #8125 (CUDA crash) → fixer traced + replied **ORTHOGONAL:** `legalizeResourceTypes` sits behind `if (shouldLegalizeExistentialAndResourceTypes)` (slang-emit.cpp:1799) = FALSE for C/C++/CUDA (they take else @:1907, run only `legalizeEmptyTypes`), so the resource early-out can't touch #8125's CUDA path; empty gate still runs on any empty type (behavior-preserving). #8125 stays OPEN/jkwak-owned (copilot PR #10788 now CLOSED); fixer did NOT auto-implement, offered preserved repro (branch fix/issue-8125 → now fix/issue-8125-v2, see [[project_8125_empty_struct_cuda_infllight]]). Reply accuracy-checked; **fixer corrected one codex misread empirically — :2540 legalizeEmptyTypes IS reached on HLSL** (consistent w/ the C001/F1 finding).
 2. **pdeayton-nv** (epic DRIVER) review-thread nit: fold the IRGeneric check into the scan loop, drop `hasAnyGeneric`, avoid the double `getGlobalInsts()` traversal → **DONE, commit `1b9388a29d`**, merged into `moduleHasGlobalTypeMatching`'s single loop. codex-approved (IRGeneric/IRType disjoint op ranges → order-safe), byte-identical vs master, both tests pass. Acked on thread; PR body refreshed.
 - **NB the FG004 extraction I relayed + reviewer verified byte-identical is now itself refactored again** (single-loop fold) at pdeayton's request — still byte-identical behavior, order-safe. Head moved 46103abb39→1b9388a29d. Prior R2 delta-verify verdict (APPROVE_WITH_NITS, effectively clean) stands modulo this small order-safe fold; if the fixer re-requests review it's a delta-verify (through Main). CI = benign draft priority-yield. Nothing further from fixer unless maintainer replies. Draft, non-closing, bot flips/merges nothing.
 
@@ -252,3 +252,37 @@ scheduling, NOT because hardware is absent** (an L40S is present; `vk` ran 81 he
 after the breaker discards 265 failures. **Read the DENOMINATOR (689→264), not the percentage**, and
 grep `failed(pending retry)` — 265 hits, on **stdout**, so it survives pipelines that drop stderr.
 Full mechanism + validated grep: [[feedback_expected_noise_line_is_not_a_failure_signature]].
+
+## ✅ BATCH-3 (PR #12281) MERGED 2026-08-05 01:43:01Z — Main-verified after slang-fixer's session died
+**`merged_by: pdeayton-nv`, merge commit `ff45b15ed3f0`**, last branch commit `78a0a0113b` (a master
+merge at 22:05:49Z). Recorded here because **slang-fixer timed out mid-turn** (`API Error: The operation
+timed out`) and its session will not carry this forward.
+
+⚠️**AND MY OWN RULING WAS OVERTAKEN BY A SIBLING.** On 08-04 I ruled *reply-only, do not push* on #12281's
+five jkwak comments, because pdeayton's approval was pinned to `54f357b8f8` and jkwak had filed
+**`COMMENTED`, not `CHANGES_REQUESTED`**. That reasoning was sound for the session I was addressing —
+but a **sibling session pushed anyway**:
+- **#12336** head moved `f0ccf1c231` → **`23cd9f6d48`** — *"Remove the comments added by this PR (#11917)"*,
+  a **bot** commit at 22:58:09Z, i.e. jkwak's comment-removal requests applied.
+- ✅**pdeayton re-approved at the NEW head:** `APPROVED commit=23cd9f6d48`. **No dismissal survived** — he
+  pushed his approval forward after the change.
+⇒ ⭐⭐⭐**A ruling addressed to one session does not bind its siblings.** I told one arm to hold; another
+arm shipped. Same shared identity, same branch, no coordination surface between them. **When a ruling
+depends on preserving an approval, the constraint has to reach every session on the thread — and I have
+no mechanism that does that.** Operator-visible gap, not a coworker error.
+⇒ ⭐⭐**The outcome was benign and that is luck, not design:** the maintainer re-approved rather than the
+approval being lost. Had he not, my hold would have been correct and the sibling's push would have cost
+a live approval.
+
+**Current state (Main-verified 08-05 ~04:30Z):**
+| PR | state |
+|---|---|
+| **#12281** batch-3 | ✅ **MERGED** `ff45b15ed3f0` by pdeayton-nv |
+| **#12336** batch-2 | open, non-draft, head `23cd9f6d48`, **approved AT that head**, awaiting merge |
+| **#11709** groupshared | open, non-draft since jhelferty flipped it 07-07, head `3f85174872`, `check-formatting` green, awaiting his `__ref const` decision |
+| **#12186** | open, **unmerged**, `blocked` ⇒ **#12192 stays parked** (its trigger, not #12336) |
+
+**No docs PR was created** for the `formatting.sh` bare-invocation doc bug — I authorized it and the
+session timed out first (`search/issues` for open bot PRs matching *formatting* → **0**). That work is
+unstarted, not lost: the finding is in shared learnings and the four doc sites are
+`CLAUDE.md:83`, `:246`, `.github/copilot-instructions.md:16`, `:46`.

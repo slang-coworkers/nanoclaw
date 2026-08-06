@@ -1,6 +1,6 @@
 ---
 name: project-12338-optional-existential-reboxing
-description: "#12338 Optional<IFoo> re-boxes an existential — MINE-REPRODUCED at master 645ac5ee; root cause narrowed to the `none` element defeating isSingleton, not Optional itself. Triage POSTED 5179233988; awaiting maintainer label/route."
+description: "#12338 Optional<IFoo> re-boxes an existential — HANDED OFF: saipraveenb25 (pass author) CONFIRMED the approach + ASSIGNED to himself, PR incoming. My 3 comments: 5179233988 triage, 5195640966 HLSL, 5196649835 both-reproducers-same-shape. RESUME = his PR appears."
 metadata: 
   node_type: memory
   type: project
@@ -11,9 +11,36 @@ metadata:
 `AnyValue` blob with `OpBitcast` round-trips, where a bare `IFoo` field specializes to the
 concrete type. Performance-only; reporter measured 80 vs 72 registers/thread, +3.7% render time.
 
-**Status: triage POSTED** (`5179233988`, my only comment on the issue). **NO label, NO assignee**
-— I have neither authority; flagged `dynamic_dispatch` + @saipraveenb25 as the maintainer's call.
-**RESUME trigger = a maintainer labels/assigns, or a human replies.** No step of mine pending.
+✅**Status: HANDED OFF, chain has an OWNER.** 08-05T19:52Z **saipraveenb25 — the type-flow pass
+author — confirmed the approach in his own words** (*"lower `Optional<IFoo>` to `(FooImpl, bool)` if
+the specialization pass detects that the only possibilities are one implementation + none. Will open
+a PR for this."*) and **the issue is now ASSIGNED to him** (`assignees=[saipraveenb25]`; still no
+label, which was always the maintainer's call not mine). ⭐**His framing independently matches my
+root cause** — "one implementation + none" IS singleton-modulo-none.
+
+My 3 comments: (1) `5179233988` triage · (2) `5195640966` HLSL answer to **jhelferty-nv**'s ask
+(`5195577369`) — YES it repros, far more readable (named `packAnyValue16`/`unpackAnyValue16` +
+`asuint`/`asfloat` vs inline `OpBitcast`) · (3) `5196649835` **closing my own open question** (below).
+
+**RESUME = his PR appears** (offer standing: I run the reduced repro on SPIR-V + HLSL against his
+branch). **No step of mine pending. Do NOT re-triage or re-dispatch — a named MEMBER owns it.**
+
+## ✅The caveat I left open, now CLOSED (MINE-VERIFIED 08-05, comment `5196649835`)
+
+I had refused to claim one fix covers both reproducers. Checking the `createDynamicObject` case's IR
+directly settled it — **both reduce to the SAME shape**:
+```
+let %17 : _ = TypeSet(%MySample, %10)      ; %10 = NoneTypeElement
+let %16 : _ = WitnessTableSet(%13, %5)     ; %13 = NoneWitnessTableElement
+                                           ; %5  = witness_table_t(%IMaterialSample)(%MySample)
+    field(%material, tuple_type(SetTagType(%16), UntaggedUnionType(%17)))
+```
+`{none, exactly one concrete table}`, and **`grep -c Unbounded` over the whole dump = 0** ⇒ the
+link-time `-conformance` does NOT leave an open set here. So the predicate is on SET CONTENTS, not
+on how the conformance was supplied. ⭐⭐**I published this as covering THESE TWO INPUTS, explicitly
+NOT as a proof of the general condition** — I never built a 2+-conformance case to check the
+predicate correctly DECLINES. ⭐**Resolving a caveat is itself a claim with a scope: say which
+inputs you checked, or the fixer inherits your hedge as a guarantee.**
 
 ## What I established (all MINE-VERIFIED at master `645ac5eef2b118454ac761b87546d78423ec6250`, local Release slangc stamped 2026-08-04 07:50:48)
 
@@ -45,11 +72,39 @@ already strips none elements (used by `analyzeGetOptionalValue`). Missing piece 
 "singleton modulo none" notion. Target shape `{ConcreteT, bool}` is exactly what variant 2
 (`Optional<MyFoo>`) produces today.
 
-⚠️**I did NOT establish that one fix covers both reproducers, and said so publicly.** The
-`createDynamicObject` case closes its conformance set only via link-time
-`-conformance MyModel:IMaterialModel=1`; #11266 (same author, OPEN) shows that ID bookkeeping has
-its own defects. Whether the collapse is safe there is an open question I explicitly declined to
-answer — do not let a future summary flatten this into "root-caused, one fix".
+⚠️→✅**SUPERSEDED — see "The caveat I left open, now CLOSED" ABOVE (comment `5196649835`).** As of
+2026-08-04 I had NOT established that one fix covers both reproducers and said so publicly, because
+the `createDynamicObject` case closes its conformance set only via link-time
+`-conformance MyModel:IMaterialModel=1` and #11266 (same author, OPEN) shows that ID bookkeeping has
+its own defects. **08-05 I checked its IR and both reproducers DO reduce to the same
+`{none, exactly-one-concrete-table}` shape (`Unbounded`=0), so the predicate is on set contents.**
+Scope of that resolution: **THESE TWO INPUTS, not a general proof** (no 2+-conformance case built).
+⭐**This paragraph is kept only so the earlier public hedge is traceable — do not restate it as my
+current position.**
+
+## HLSL numbers (MINE-VERIFIED 08-05, binary unchanged; HEAD now `b0e43d657`)
+
+`-target hlsl`, same `minimal.slang`: **109 / 211 / 126 lines** for `USE_OPTIONAL=0/1/2`.
+v0 `struct P_0 { float3 pos_0; bool has_0; MyFoo_0 foo_0; }` · v1 `AnyValue16{4×uint}` +
+`Tuple_0{uint,AnyValue16}` + `P_0{float3,Tuple_0}` · v2 `_slang_Optional_MyFoo_0{MyFoo_0,bool}`.
+Tag takes only `1U`(none)/`2U`(MyFoo). **`none` discriminator on HLSL: 0 pack/unpack decls +
+0 casts without the `none` store vs 3 decls (+3 call sites) + 8 `asuint`/`asfloat` with it.**
+material-system: **369 → 481** lines; baseline already has `packAnyValue52` (the
+`createDynamicObject` model, expected), v1 adds a **SECOND NESTED** box `packAnyValue20_1(MySample_0)`.
+
+⚠️**I published "4 pack/unpack functions" in the draft and CAUGHT IT PRE-POST: real count is 6
+matches = 3 DECLS + 3 CALL SITES.** My two counts used different greps on different files.
+⭐⭐**A bare count is ambiguous between declarations and occurrences — say which you counted, in
+the artifact.** Fixed to "3 decls (+3 call sites)" before posting.
+
+⛔**dxc TRAP, and its control mattered:** the emitted HLSL fails dxc validation —
+`Type 'agg.result' is a struct type but is used as a parameter in function 'make_0'` — **on ALL
+THREE variants INCLUDING the baseline**, so it is NOT this bug. Cause = the reporter's
+`[noinline]` (added only to keep `P` a named type). Remove it → DXIL compiles clean (2992 B) and
+**the boxing still appears** ⇒ boxed form is dxc-legal. ⭐⭐**Had I tested only the buggy variant I
+would have reported a second, non-existent defect — the BASELINE is the control, and a failure
+shared by the control is the environment, not the finding.** (Ladder that found it: float3→float4
+buffer swap = no change; trivial shader = OK; scalar impl = same error; drop `[noinline]` = OK.)
 
 ## Lessons worth keeping
 

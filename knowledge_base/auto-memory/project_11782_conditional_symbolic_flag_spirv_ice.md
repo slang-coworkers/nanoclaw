@@ -33,4 +33,4 @@ set-spec hypothesis): a plain **un-monomorphized enclosing generic**
 
 **Fix approaches (from the strong triage memo, held not dispatched):** A = producer-side monomorphization of the enclosing generic before conditional-lowering; B = defensive diagnostic guard.
 
-Related split-off [[project-11784]] (bwd_diff `.get()` ICE) tracked separately.
+Related split-off [[project_11784_conditional_autodiff_pending]] (bwd_diff `.get()` ICE) tracked separately.

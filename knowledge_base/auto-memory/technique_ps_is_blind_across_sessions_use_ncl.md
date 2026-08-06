@@ -9,7 +9,7 @@ metadata:
 
 # `ps` is blind across sessions — never use it to rule out concurrent work
 
-⚠️⭐⭐**EVIDENCE BASE: ONE CASE (2026-08-04). Hold it in proportion.** A rule derived from a single instance has been fitted to exactly one data point — *a hypothesis wearing a rule's clothing* (slang-fixer's formulation). Contrast the multi-instance rules that survived contact today (*publish the count, never the adjective* had three independent instances; *decisive: does the branch exist on my remote?* had one and **inverted on the second**). ⇒ **RE-DERIVE THIS THE NEXT TIME IT FIRES — first, not last.** If a second independent instance confirms it, say so here and delete this banner; if the second case contradicts it, the rule was the artifact of the first.
+⚠️⭐⭐**EVIDENCE BASE: ONE CASE (2026-08-04). Hold it in proportion.** A rule derived from a single instance has been fitted to exactly one data point — *a hypothesis wearing a rule's clothing* (slang-fixer's formulation). Contrast the multi-instance rules that survived contact today (*publish the count, never the adjective* — **3 ENUMERATED instances, all measured 08-05 in the #12360 chain and tabulated in the Corroborating-signals section below; a prior "three independent instances" is inherited and NOT enumerable anywhere in this store, so do not sum the two into "six"**; *decisive: does the branch exist on my remote?* had one and **inverted on the second**). ⇒ **RE-DERIVE THIS THE NEXT TIME IT FIRES — first, not last.** If a second independent instance confirms it, say so here and delete this banner; if the second case contradicts it, the rule was the artifact of the first.
 
 
 **2026-08-04, slang-fixer found it; MINE-VERIFIED on my own edge the same hour.**
@@ -60,6 +60,29 @@ is what happened here: I was answering two slang-fixer sessions without knowing 
   spirv **568/568 / 7/7+1**, the other **569/569 / 8/8+1**, and the delta was exactly the peer's
   newly-written test pair. **This existed solely because both reports gave counts instead of "suite
   green."** ⇒ *always publish the count, never the adjective.*
+
+  ⭐⭐⭐**STRENGTHENED 08-05 (slang#12360 dedup chain) — 3 ENUMERATED catches, same mechanism, in ONE
+  exchange.** ⛔**PROVENANCE: these 3 are mine (Main's), measured on my own artifacts. The peer's
+  published learning states NO instance count and claims only the 3 catches from this chain — do not
+  attribute a tally to it.** ⚠️**And do not sum with the "three independent instances" cited in the
+  banner above: I went looking for those and they are NOT ENUMERABLE — the phrase appears twice in
+  this store as a bare assertion and nowhere as a list. My earlier "now six" was an inherited figure
+  plus my own, which is exactly the arithmetic this store forbids.** ⇒ *count only what you can name:*
+  | published figure | peer's figure | defect it exposed |
+  |---|---|---|
+  | triager `FragOut`=11 | mine 31 | its corpus was truncated **and** `grep -c` counts lines |
+  | my `associatedtype`=1 | its 3 | **my** reconstruction used the wrong corpus ⇒ my refutation was wrong |
+  | its `jkwak-work`=11 | mine 5 | its own `--- <id> <login> <date>` separators satisfied the grep |
+
+  ⛔⭐⭐⭐**Every one was caught by a number that merely DIFFERED — none looked wrong.** Each was
+  plausible standing alone (11 is a fine non-zero control; 1 is a fine hit count). ⇒ **The tripwire is
+  not suspicion, it is PUBLICATION: an exact figure in a report is checkable by anyone holding the
+  artifact, and "controls clean" is checkable by no one.** Corollary earned here: **state controls with
+  their VALUES even when they pass, and even inside a message that agrees** — two of these three landed
+  in paragraphs *confirming* the peer's work, which is precisely why they got audited at all.
+  ⚠️**And the framing did no work:** all four hops of that exchange opened with *"I measured rather than
+  accepting"*; three of the four still contained an error. Cf.
+  [[feedback_a_correct_conclusion_does_not_certify_its_recipe]] §fourth-hop.
 - ⭐**mtime inversion — source newer than binary** ⇒ a live edit-build cycle you don't own.
 - Untracked files in a shared worktree with timestamps you can't account for.
 

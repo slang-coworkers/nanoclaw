@@ -1,0 +1,28 @@
+---
+name: a-watcher-scoped-to-the-known-hazard-reports-silence-as-all-clear
+description: "A monitor triggered on last week's failure signature stays silent through this week's red, and its silence reads as \"0 failures\" — trigger on ANY non-success, then branch to the specialized discriminator."
+metadata: 
+  node_type: memory
+  type: feedback
+  originSessionId: 3a9c1658-b084-4fd9-badf-659d94e701b9
+---
+
+**2026-08-05, slang PR #12353.** I warned two peers about a SLANGWIN5 SPIR-V-validation confound. `slang-reviewer` built a pole-validated discriminator, armed it on `compile-regression` failures gated on `runner_name == "SLANGWIN5"`, and reported **"0 failures"** twice — at 22:14 and again minutes later. Both statements were already false: `test-falcor / Test (Falcor)` had failed on **SLANGWIN4** at **22:09:45Z**, before either message.
+
+⭐⭐⭐ **The instrument was correct and validated; its TRIGGER SCOPE was the defect.** Both gate conditions missed (`test-falcor` ≠ `compile-regression`; `SLANGWIN4` ≠ `SLANGWIN5`), so a well-built watcher sat silent through the only red on the run — **and its silence was read as an all-clear.** A monitor aimed at the hazard you already know converts an unmonitored failure into confident false assurance. Worse than no monitor, which at least prompts a manual look.
+
+⇒ **Fix: trigger on `conclusion != "success"` for ANY job, THEN branch to the specialized discriminator when the job matches its scope.** Selectivity belongs in the classifier, never in the trigger.
+
+⭐⭐ **The priming symmetry is the reusable half: I flagged the hazard I had been primed for, and the actual failure arrived where neither of us was watching.** Yesterday's outage set both our attentions on SLANGWIN5/compile-regression; the red came from SLANGWIN4/test-falcor. **Detection aimed at the last failure is not coverage of the next one** — a fresh hazard flag narrows attention as much as it directs it. Sibling of [[feedback_false_coverage_the_five_mechanisms_that_consume_the_reason_to_look]]: here the consumed reason-to-look was *"the watcher would have told me."*
+
+⭐⭐ **A binary infra-vs-real label set cannot express "real but unrelated," and forcing it corrupts the verdict.** INFRA / REAL / INDETERMINATE had no slot for this failure: a process genuinely crashed, and it is **not attributable to the diff** (reachability). Forced to REAL it implicates the maintainer's PR; forced to INFRA it blames the environment. **A label set needs a slot for every outcome the evidence can actually produce** — add UNRELATED-TO-DIFF, carrying its reachability argument. With a human watching a red X, the label is what gets acted on. ⛔ **I originally wrote "not infra" as established. Withdrawn — unsupported, and a `0xC0000005` host access violation on a Windows runner is a PARADIGM infra suspect.** Whether it is infra or a genuine unrelated defect is **undetermined**, and that is precisely why the fourth slot is needed: it lets you report *not-the-diff* without pretending to have resolved infra-vs-real. ⚠️ **Excluding a category the same note calls unprovable is the error** — I did it two lines from the sentence conceding the logs had expired.
+
+⭐⭐ **Reachability is the only decisive KIND of argument here, and it supplies TWO independent legs.** (1) `createArtifactFromIR` **opens** with `SLANG_RETURN_ON_FAIL(emitSPIRVFromIR(...))` at `slang-emit.cpp:3291` — SPIR-V-only **by construction**, not by an internal branch, so a **D3D12/DXIL** test never enters it. (Cite the entry call, not "the branch is SPIR-V flavored" — the former is checkable in one read.) (2) `slang-fixer`'s: both changed branches require `needsValidation` **and** a non-OK `validate`, so nothing in the diff runs target-irrespectively.
+
+⛔⛔ **THE SIBLING-ISOLATION ARGUMENT WAS AN OVERCLAIM.** I wrote that a regression "would not spare nine near-identical neighbours and kill one" (the real figure is **12 PASSED / 1 FAILED / 2 SKIPPED** — "nine" was never the measured count). **`slang-fixer` refuted it: an INPUT-SPECIFIC defect in shared code can hit one variant and spare its siblings** (different shader inputs take different paths through the same code). Isolation **localizes** a failure; it does not exonerate a shared code path. ⇒ ⭐⭐⭐ **"N siblings passed" is corroborating, never decisive — and it is the leg that FEELS strongest because the count is large.** Twelve greens read as twelve independent confirmations; they are one weak inference repeated.
+
+⚠️ **I first recorded this as "I sent it to both peers, who repeated it back." That attribution is WRONG — see [[feedback_verified_fragments_do_not_verify_the_conclusion]].** The fixer formed it independently at 22:12:54 (their own review caught it 22:15:15) and my message carrying it arrived 22:19:50. **Two convergent origins, not one origin plus propagation** — and I got that wrong in the direction of taking *more* blame, which is the direction I never thought to verify.
+
+⛔ **Also NOT established: "known flake."** Only prior `test-falcor` failure on `ci.yml` is run `29742458336` from 2026-07-20, logs expired ⇒ unprovable. Fixer independently reached the same limit from the other side (Falcor `success` on the two recent master runs where it ran; no red-master control). **State the limit rather than let "probably flaky" ride on the reachability claim's strength.** Crash profile (`3221225477` = `0xC0000005` host access violation, not a golden-image mismatch) is likewise corroborating only.
+
+See [[technique_spirv_val_infra_discriminator_measured_both_poles]] for the discriminator itself and [[project_12342_downstream_absent_capability_slangresult]] for the chain.

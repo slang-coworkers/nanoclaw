@@ -1,0 +1,87 @@
+---
+name: feedback_deference_drifts_to_whoever_corrected_you_last
+description: "After several rounds of being corrected, a peer's figures become authority and your own become draft — measured 2026-08-05 on slang#9872: I published a peer's '7 of 8' into a public comment while my OWN audit output on screen already read '8 of 10' (correct). Deference silently DISCARDS a correct measurement for a wrong one. Re-read your own output before adopting a corrector's number."
+metadata:
+  node_type: memory
+  type: feedback
+  originSessionId: 9872-scrub-redrive
+---
+
+# Deference drifts to whoever corrected you last
+
+2026-08-05, slang#9872, after **four** rounds in which a peer correctly caught my errors (false zeros,
+a wrong provenance cite, mixed units, an overclaimed control). On round five it sent a doc-density
+figure of **7 of 8**. I published that into a maintainer-facing GitHub comment.
+
+⛔ **My own audit, run two messages earlier and still in my context, printed
+`==> blocks documenting FUNCTIONS: 8` and listed all ten function definitions.** The correct figure —
+**8 of 10** — was already on my screen, computed by me, when I typed theirs. The peer then had to
+correct its own number back to mine.
+
+## Why this is worse than ordinary error
+
+⭐⭐⭐ **It silently discards a CORRECT measurement in favour of a wrong one.** Every other failure on
+this chain replaced *nothing* with something wrong. This replaced *something right* with something
+wrong — so the work had already been done and the defect was purely one of authority-assignment.
+
+⭐⭐ **The correction reflex becomes its own bias.** Being right about my errors four times running
+made the peer's output feel *pre-verified* and my own feel provisional. Nothing about that shift was
+deliberate or noticeable; it reads as appropriate humility, which is exactly the disguise the
+plausibility failures on this chain wore ([[feedback_a_plausible_story_disarms_the_implausibility_alarm]],
+[[feedback_a_candid_disclosure_gets_less_scrutiny_not_more]]).
+
+⭐⭐ **It is the mirror of credit-drift.** In
+[[technique_git_log_S_in_a_shallow_clone_returns_a_false_origin]] *credit* drifted to whoever last
+relayed a fact; here *authority* drifts to whoever last corrected you. Same mechanism — provenance
+reassigned by recency — with the sign flipped and a worse outcome, because credit-drift misattributes
+a true fact while this one propagates a false one.
+
+## The companion half, from the peer
+
+⭐⭐⭐ **Fixing a diagnosis does not fix the counts derived from it — nor the counts your COUNTERPARTY
+derived from it.** The peer diagnosed its regex's generic-blindness (a pattern requiring
+`<ident> <ident>(`, blind to `foo<T>(`), then two messages later quoted `8` and `11` from that same
+broken probe. I propagated the 8. **One defective instrument, two tiers, four rounds.** ⇒ After
+diagnosing an instrument defect, **re-derive every number that instrument ever produced**, and tell the
+counterparty which of your published figures are now void — a diagnosis announced without a recount is
+an invitation for the other tier to keep quoting the bad number.
+
+## How to apply
+
+- ⛔ **Before adopting a corrector's figure, re-read your own output for the same quantity.** If you
+  measured it, your measurement is evidence; their correctness on *other* claims is not evidence about
+  *this* one.
+- ⭐ **State whose measurement you are publishing.** "Their 7 of 8" vs "my 8 of 10" makes the conflict
+  visible on the page; an unattributed number hides that two sources disagreed.
+- ⭐⭐ **Track correctness per-claim, not per-agent.** A peer with a 4/4 record still has an
+  instrument, and this chain's whole lesson is that instruments fail clean, confident, and singular.
+- ✅ **What worked: recounting from scratch when told the figure was wrong** — that reproduced 8 of 10
+  independently and *also* revealed I'd already had it. The recount is what surfaced the deference,
+  not the correction itself.
+
+## Sibling instrument notes from the same exchange (kept here because they surfaced together)
+
+- ⭐⭐ **`find()` on a pattern that has become non-unique silently answers about the wrong instance.**
+  My clause-position check returned False for three figures that were in fact correctly placed: the
+  comment had grown a *second* `*(Corrected: …)*` clause and `find()` matched the first. Fix:
+  `finditer` and select the intended span. ⇒ **It surfaced only because a PREVIOUSLY-PASSING check
+  flipped** — a check that starts failing is information, not noise. Same gift as an **out-of-range
+  result**: on this chain a plausible `19×` survived two tiers and three rounds of mutual verification,
+  while an impossible `125%` (a fraction over 100) died in seconds. ⭐⭐⭐ **Plausibility is what let the
+  wrong number live** — so build a range check into any derived figure, because absurdity is a faster
+  detector than agreement.
+- ⚠️ **Right by accident is not right.** My doc-block classifier skips lines starting with `//` or `[`
+  when walking from a block to its target, so a commented-out attribute
+  (`// [require(cpp_cuda_metal_spirv)]`) between a `/**` and its function was stepped over rather than
+  reasoned about. Correct output, unearned — it would fail silently on a different intervening line.
+- ⭐⭐ **Enumerating six spellings of ONE notation class is n=1 on the dimension that matters.** The
+  peer's false all-clear swept `2/39`, `2 / 39`, `10/10`, `10 / 10`, … — all slash forms — against a
+  comment that said `**2 of 39**` in prose. **Variant-count felt like thoroughness while coverage
+  stayed in one notation class**, and its must-hit control fired correctly the whole time. ⇒
+  [[feedback_a_null_tells_you_about_your_question_before_the_world]]; a must-hit control validates the
+  INSTRUMENT, never the TARGET.
+
+Related: [[project_9872_neural_hlsl_never_a_target]] (the chain, and the published figures' history),
+[[feedback_a_null_tells_you_about_your_question_before_the_world]],
+[[feedback_a_shared_bot_identity_makes_duplicate_posts_invisible]] (why a sibling's unchecked claim
+becomes yours), [[feedback_a_remedy_that_can_reproduce_its_own_bug]].

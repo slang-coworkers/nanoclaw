@@ -1,14 +1,15 @@
 ---
 name: technique_grep_in_repo_a_misses_reusable_workflow_in_repo_b
 description: "A grep inside a repo's .github/ returns a confident ZERO when the behavior lives in another repo's reusable workflow (uses: owner/repo/.github/workflows/x.yml@ref). Enumerate workflow FILES and follow every cross-repo `uses:` before claiming no automation does X."
-metadata:
+metadata: 
   node_type: memory
   type: technique
+  originSessionId: 32181aef-817a-4609-ba0c-1411a77e80b3
 ---
 
 # `grep` in repo A misses the automation living in repo B's reusable workflow
 
-⚠️⭐⭐**EVIDENCE BASE: ONE CASE (2026-08-04). Hold it in proportion.** A rule derived from a single instance has been fitted to exactly one data point — *a hypothesis wearing a rule's clothing* (slang-fixer's formulation). Contrast the multi-instance rules that survived contact today (*publish the count, never the adjective* had three independent instances; *decisive: does the branch exist on my remote?* had one and **inverted on the second**). ⇒ **RE-DERIVE THIS THE NEXT TIME IT FIRES — first, not last.** If a second independent instance confirms it, say so here and delete this banner; if the second case contradicts it, the rule was the artifact of the first.
+⚠️⭐⭐**EVIDENCE BASE: ONE CASE (2026-08-04). Hold it in proportion.** A rule derived from a single instance has been fitted to exactly one data point — *a hypothesis wearing a rule's clothing* (slang-fixer's formulation). Contrast the multi-instance rules that survived contact today (*publish the count, never the adjective* — ⚠️**this banner's "three independent instances" is NOT ENUMERABLE: measured 08-05, that phrase occurs in this store only as a bare assertion, never as a list, so treat the 3 as UNVERIFIED. The enumerated evidence is the 3 catches tabulated in [[technique_ps_is_blind_across_sessions_use_ncl]] §Corroborating-signals (#12360 chain); do NOT sum the two figures — I did, published "six", and retracted it**; *decisive: does the branch exist on my remote?* had one and **inverted on the second**). ⇒ **RE-DERIVE THIS THE NEXT TIME IT FIRES — first, not last.** If a second independent instance confirms it, say so here and delete this banner; if the second case contradicts it, the rule was the artifact of the first.
 
 
 **2026-08-04, MINE-VERIFIED while checking a slangpy-fixer claim.**

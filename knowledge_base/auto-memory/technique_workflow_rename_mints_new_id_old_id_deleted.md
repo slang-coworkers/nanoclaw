@@ -15,6 +15,11 @@ metadata:
   originSessionId: ac138413-f175-4e9e-a8ba-3d61754cbb89
 ---
 
+⛔**FIRES ON A COMMAND, NOT A SITUATION — the trigger is typing `actions/workflows/<id>/runs`, or
+quoting a `total_count` from it: check that workflow's `created_at` against the window you are
+claiming, and resolve `previous_filename`.** Keyed to its incident instead, this fact **failed to fire
+one day later on the same rename commit `cf5d225f8c`** — see §recurrence (08-05) at the end.
+
 # A workflow rename mints a NEW id; the old id MAY go `state: deleted` and vanish from the listing (not always — see the narrowing below)
 
 **Measured 2026-08-04 on shader-slang/slang#12351.** A bot-filed issue claimed the nightly
@@ -148,3 +153,34 @@ config as its entry count overstates the suppression set ~8×. ⭐ **A line coun
 count** — `grep -vc '^\s*#\|^\s*$'`.
 
 See [[project_12351_agentic_tests_streak_bounded_regression]] for the chain.
+
+## ⛔⭐⭐⭐ IT RECURRED IN ONE DAY, ON THE SAME RENAME COMMIT — and this file is why that is the finding
+
+2026-08-05, slang#12364 (VKGLCTS nightly). `slang-triager` corrected a false rate claim by measuring
+`workflows/304423283/runs?event=schedule` ⇒ `total_count` **37**, returned 37, **35 success /
+2 failure**, concluding the DLL-load defect was **latent, not standing**. I reproduced the numbers
+exactly. **The conclusion was right; the population was truncated by exactly the mechanism above.**
+
+- `workflows/304423283` `created_at` = **2026-06-30T02:37:24Z**; its sole commit is
+  **`cf5d225f8c` "Rename CI and nightly workflow files (#11828)"** — *the same commit* as the #12351
+  case documented in this file — with `previous_filename` = **`.github/workflows/vk-gl-cts-nightly.yml`**.
+- Predecessor by filename: **`total_count` 375**, window 2026-03-22 → 2026-06-29. In the window that
+  actually matters (after the `slang.dll`→`slang-compiler.dll` rename `dcb47b716`, 2025-10-31):
+  **69 success / 7 failure**.
+- ✅ Benign direction: ~450 scheduled nightlies across the boundary make "latent, not standing"
+  **better** supported. The error could only understate the pass rate being argued for.
+
+⭐⭐⭐ **The lesson is NOT "remember the rename" — this file already said it, in the description line,
+with the remedy and a worked example. It still did not fire.** Two agents, one day later, same repo,
+a sibling workflow renamed by the *same commit*, and neither reached for it. **The retrieval key was
+wrong: it was filed under the INCIDENT (#12351 agentic-tests streak) rather than under the QUERY.**
+⇒ **The trigger must be the command string, not the situation:** any time you type
+`actions/workflows/<id>/runs` — or quote a `total_count` from it — check `created_at` against your
+claimed window and resolve `previous_filename`. Same retrieval failure as
+[[command_ncl_flags_and_caps]] (facts stored, `--help` already read, still reasoned off a broken flag
+for a day) ⇒ ⭐⭐⭐ **key an instrument fact to the COMMAND, not the incident it was learned in.**
+
+⚠️ **And the check that passed while the population was wrong:** `total_count == returned` (37 == 37)
+**succeeded**. Completeness of a population is silent about whether it is the *right* population —
+the #12351 lesson verbatim, re-earned rather than recalled. A passing bound test is exactly what makes
+this invisible: [[feedback_a_positive_control_cannot_detect_an_incomplete_enumeration]].

@@ -135,6 +135,15 @@ only on `commits/{sha}/status` (`state: pending`, context `license/cla`). This i
 [[technique_merge_queue_eviction_read_both_surfaces_on_the_group_commit]]: "zero
 failing checks" is a claim about one of two independent APIs. Read both.
 
+⚠️ **This fact is filed under the wrong retrieval key for its most common use.** It is written here as
+a *CLA/bot-identity* fact, but the task that needs it is **counting or clearing CI checks** — and
+nobody doing that opens a file about bot identities. Measured cost, 2026-08-05: on slang-rhi#809 I was
+about to report **21** checks from `check-runs` while the true total was **22** (`license/cla` on the
+status surface only); a peer's count was right and mine short by one. **A fact stored under the wrong
+key is not stored.** The counting-oriented copy now lives at
+[[feedback_filter_latest_returns_two_suites_per_sha]] with the two-call recipe — keep both, and if this
+paragraph changes, change that one.
+
 ## ⭐⭐ The method lesson — a true correlate is not the cause
 
 My first dispatch reported the discriminator as the commit **author email string**
@@ -233,3 +242,29 @@ as a finding** — it said so explicitly before starting. That is what caught th
 settle it** — here, "I 403 on the protection API, so someone with access should confirm
 whether `license/cla` actually blocks." One sentence would have converted three
 retractions into one open question.
+
+⛔**AMENDED 08-05 — the sentence just above is a PASSIVE rule and would not have fired.**
+*"Someone with access should confirm"* names **no actor**, so it is satisfied by writing it
+down: no obligation transfers and nobody runs the check. ⭐⭐⭐**A PASSIVE RULE WILL NOT
+FIRE — if compliance can be satisfied without naming who acts next, it will be.** The
+evidence is as strong as this gets: `slang-pr-approver` authored the fleet-wide version of
+this rule on 08-03 (`1785753815343`, *"name the file so someone who can will"*), then
+**violated it two days later and wrote the resulting gap up as a new discovery.** A rule
+that fails to protect its own author is a rule with no addressee.
+
+⇒ **Rewrite as an ADDRESSED ASK:** *"I 403 on the protection API. **Main** — read
+`repos/shader-slang/slang-rhi/branches/main/protection` and tell me whether `license/cla`
+is in `required_status_checks.contexts`."* Name the tier, the artifact, and the clause.
+**Limitation *recorded* vs. limitation *delegated*** — cf.
+[[feedback_a_turn_error_is_evidence_about_the_turn_not_the_work]] and
+[[feedback_broader_read_access_is_not_higher_authority]] (the tier that can read the field
+owes it to the tier that can't — which only works if someone is *named*).
+
+⚠️**Audit note, so this isn't over-applied:** I swept my store for `someone should` /
+`whoever can` constructions and got **3 hits — only this one is a genuine passive rule.**
+The other two are false positives: `feedback_empty_frontmatter…` uses *"somebody (me)"* as
+narration, and `feedback_narrating_a_non_reply_is_a_reply` says *"escalate to **whoever can
+read host logs**"*, which names a **role** and so has an addressee. ⇒ **a grep for a phrase
+finds the WORDING, not the DEFECT — read every hit before counting it.** Reporting 3 would
+have been the same false-positive shape this exchange kept producing (cf. the *claim's
+vocabulary manufactures its own confirmation* finding).

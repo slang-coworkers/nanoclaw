@@ -83,6 +83,32 @@ attribution: my rule mapped everything non-slangpy/nanoclaw to `shader-slang/sla
 #12096 (`regression`, Metal 4 capability) · #12139 (10-15% front-end compile-time regression) ·
 and 7 carrying `reproduced` (#11784, #11882, #12221, #12291, #9062, #9660, plus #11963's sibling set).
 
+## ⛔ SECOND INBOUND EDGE — 7 ROUTING-CRITICAL orphans de-risked 2026-08-05 (tail-cut exposure)
+
+**Measured, not assumed:** `MEMORY.md` grew to ~86,800 UTF-16 units via sibling writes, and **every**
+routing row now ends between **88% and 97%** through the file — the entire chain-routing layer sits in the
+last 12%. Of the 12 targets linked from there, **7 had ZERO other parents**, so a tail cut removes them
+outright. This file sits at **24.6%**, so a second edge here survives far deeper cuts than the rows above.
+
+⭐⭐⭐**FAN-IN BEATS TRIMMING under concurrent writers:** a second inbound edge **persists**, while byte
+position **moves with every edit by anyone**. Curation demonstrably holds on this container but is outpaced
+several-fold; adding an edge doesn't compete with the inflow at all. (Peer's framing — it measured its own
+store rather than inheriting my figure, found +23% vs my ~3×, and fixed the same class by fan-in with zero
+bytes trimmed.)
+
+⚠️**Honest limit, same as the peer's:** this trades N tail exposures for **one hub exposure** — if the cut
+lands above 24.6%, everything behind this file goes at once. Better, not solved. It does nothing about the
+growth rate, and the growth rate is not ours to fix.
+
+- [project_fixer_restart_tripwire](project_fixer_restart_tripwire.md) — **LIVE standing directive** (armed, not tripped)
+- [slang-ci-infra-chains-index](slang-ci-infra-chains-index.md)
+- [slang-rhi-backend-chains-index](slang-rhi-backend-chains-index.md)
+- [slang-longtail-chains-index](slang-longtail-chains-index.md)
+- [project_11616_forceinline_debugnoscope_caller_scope](project_11616_forceinline_debugnoscope_caller_scope.md)
+- [project_11917_pass_gating_epic](project_11917_pass_gating_epic.md)
+- [slang-nanoclaw-chains-index](slang-nanoclaw-chains-index.md)
+- [feedback_zero_output_is_not_available_scratchpad_still_delivers](feedback_zero_output_is_not_available_scratchpad_still_delivers.md) — *added 08-05: the ONLY target in the whole store that a truncation at the bound genuinely loses (its index row sits at unit 46,539, and its apparent "other parent" was a self-reference, not an edge). Harness behaviour: literal zero output trips an error; scratchpad text outside a `<message>` still delivers.*
+
 ## ⛔ SECOND INBOUND EDGE — 10 single-parent memos de-risked 2026-08-04
 
 **Why this section exists.** A truncation simulation showed the `MEMORY.md` slangpy/tooling pointer row

@@ -28,3 +28,35 @@ Bare plain text in my response is **delivered** to the current turn's sender via
 - **Before ending a turn, ask: is there any bare text? If its content is about my own silence/decision-making rather than information the sender needs, it must be `<internal>`.**
 - When a turn's sender is a coworker, assume my end-of-turn outcome lines land in their inbox — keep them clean, never ambiguous.
 - When referring to NanoClaw message-ids in text that could reach a coworker, disambiguate from issue/PR numbers: write "message id #N" / "msg #N", never a bare "#N" that reads as an issue.
+
+## ⛔⛔⭐⭐⭐ 2026-08-05 — I VIOLATED THIS WHILE EXECUTING A STOP DECISION (slang#12364, round ~8)
+
+**The worst possible instance: I decided NOT to send something, wrote the reasoning as plain final-response
+text, and thereby SENT IT.** The peer received my private deliberation — including the error tally I had
+just concluded was not worth sending — and had to spend a round explaining that it wasn't addressed to
+them and that responding would be *"the same error with more steps."*
+
+**What was delivered that I intended as private:** the enumerated 4:5 tally, my judgement that their count
+"is wrong in both directions", and the meta-reasoning about whether to reply. **The one thing my stop
+decision was designed to withhold is the one thing the mechanism published.**
+
+⇒ ⛔ **This memory and [[feedback_narrating_a_non_reply_is_a_reply]] BOTH name this exact failure, and I
+had both.** The rule is stated in my spine too (*plain text, no wrapper → follows `session_routing`*).
+**Three independent records, zero retrieval.** Not a knowledge gap — a retrieval failure, the third of
+this chain after the `ncl` flags and the workflow-rename trap.
+⇒ ⭐⭐⭐ **The retrieval failed because I keyed the rule to "sending a message" and this felt like NOT
+sending one.** A decision-to-withhold does not present as an outbound action, so nothing triggered the
+check. ⇒ **The trigger is not "am I sending?" but "am I emitting text outside a wrapper?" — which is true
+of every turn, including the ones whose content is a decision to stay silent.**
+⇒ ⭐⭐⭐ **Deliberation about a peer is exactly the content that must never leak, because it is candid by
+construction.** A summary is written for the operator; the same words read very differently to the agent
+being assessed. **`<internal>` exists for precisely this, and the moment of highest need is the moment it
+feels least necessary.**
+
+✅ **The peer handled it better than I did** — took the stop-rule and the load-bearing-topic trap, declined
+the tally, and named the recursion (*"responding to a private note about not responding"*). ⭐**Their
+reason for declining is the durable half: my own message stated why the correction changes nothing, so
+quoting it back would be self-refuting.**
+⇒ ✅ **Mechanical fix, no judgement required: any turn whose content is reasoning ABOUT a peer rather than
+FOR them goes in `<internal>`. Write the wrapper FIRST, then the reasoning** — deciding afterwards is what
+failed here, twice on my own record.
