@@ -20,10 +20,20 @@ orchestrator can read the digest at /workspace/shared/KB-HEALTH.md.
 LANDMINE: Python's glob will NOT descend into dot-directories, so `**` silently skips
 every `.claude-shared/`. The transcript pattern must spell it literally. Two of the
 probes that produced this script's baseline returned a confident zero because of it.
+
+The history file is the ONLY record of the trend and cannot be recomputed — old
+transcripts age out of the scan window. So this script never replaces it on a degraded
+run: a scan that matched zero transcripts refuses to append (an outage is not a quiet
+day), a history that fails to parse is preserved beside itself rather than reset to `[]`,
+and both outputs are written temp+fsync+rename so a crash mid-write cannot truncate it.
+
+Exit codes: 0 = a sample was recorded, 1 = refused to record (degraded input or
+unparseable history), 2 = misconfigured (no such directory).
 """
-import argparse, collections, glob, json, os, re, sys, time
+import argparse, collections, datetime, glob, json, os, re, shutil, sys, tempfile, time
 
 CHARS_PER_TOKEN = 4  # rough; consistent across runs is what matters for trends
+ATOM_WINDOW_DAYS = 14
 
 
 def transcripts(sessions_dir, cutoff):
@@ -51,6 +61,24 @@ def layer_of(path):
     return "other"
 
 
+# Citations the VALUE metric counts as evidence the KB was actually used.
+CITE_RE = re.compile(r"\b1\d{12}-[a-z0-9-]{5,}\.md|wiki/concepts/[a-z0-9-]+\.md")
+
+# Cheap per-line pre-filter, applied before the JSON parse because these transcripts run
+# to hundreds of MB.
+#
+# It has ONE correctness obligation: it must admit every line CITE_RE could match. The
+# previous filter did not. It required "/workspace/shared", "tool_use_id" or
+# "append_learning", and an assistant citing `[x](wiki/concepts/y.md)` in prose carries
+# none of the three — so the citation evidence was discarded before anything tried to
+# parse it, and `sessions_citing` was structurally an undercount. Every CITE_RE
+# alternative ends in ".md", so admitting any line containing ".md" is a proven superset;
+# test_admits_is_a_superset_of_the_citation_regex pins that property.
+def admits(line):
+    return ("/workspace/shared" in line or "tool_use_id" in line
+            or "append_learning" in line or ".md" in line)
+
+
 def scan_reads(files):
     """Returns (reads_by_layer, chars_by_layer, per_page_reads, sessions_touching,
     sessions_citing, appends, sessions_appending)."""
@@ -59,7 +87,6 @@ def scan_reads(files):
     per_page = collections.Counter()
     touching, citing, appending = set(), set(), set()
     appends = 0
-    cite_re = re.compile(r"\b1\d{12}-[a-z0-9-]{5,}\.md|wiki/concepts/[a-z0-9-]+\.md")
 
     for f in files:
         pend = {}
@@ -69,8 +96,7 @@ def scan_reads(files):
             continue
         with fh:
             for line in fh:
-                cheap = "/workspace/shared" in line
-                if not cheap and "tool_use_id" not in line and "append_learning" not in line:
+                if not admits(line):
                     continue
                 try:
                     rec = json.loads(line)
@@ -80,7 +106,7 @@ def scan_reads(files):
                 content = msg.get("content")
                 if msg.get("role") == "assistant" and isinstance(content, list):
                     for b in content:
-                        if isinstance(b, dict) and b.get("type") == "text" and cite_re.search(b.get("text") or ""):
+                        if isinstance(b, dict) and b.get("type") == "text" and CITE_RE.search(b.get("text") or ""):
                             citing.add(f)
                 if not isinstance(content, list):
                     continue
@@ -135,17 +161,25 @@ def atom_stats(learn_dir, recent_n=400, threshold=0.6):
             if len(t1 & t2) / len(t1 | t2) >= threshold:
                 near += 1
                 break
-    # atoms/day over the last 14 calendar days
-    import datetime
+    # atoms/day over the last 14 CALENDAR days.
+    #
+    # The denominator is the fixed window, not the number of days that happened to
+    # produce an atom. Dividing by active days answers "how many atoms on a day when
+    # atoms were written?", which rises as the KB goes quieter: three atoms across three
+    # active days out of fourteen reported 1.0/day instead of 0.2/day — a 4.7x
+    # overstatement, largest exactly when activity has collapsed.
     days = collections.Counter()
     for p in files:
         ms = int(os.path.basename(p).split("-")[0])
-        days[datetime.datetime.fromtimestamp(ms / 1000, datetime.timezone.utc).strftime("%Y-%m-%d")] += 1
-    last14 = sorted(days.items())[-14:]
-    per_day = round(sum(v for _, v in last14) / max(1, len(last14)), 1)
+        days[datetime.datetime.fromtimestamp(ms / 1000, datetime.timezone.utc).date()] += 1
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    start = today - datetime.timedelta(days=ATOM_WINDOW_DAYS - 1)
+    in_window = sum(v for d, v in days.items() if start <= d <= today)
+    per_day = round(in_window / float(ATOM_WINDOW_DAYS), 1)
     return {
         "total": len(files),
         "per_day_14d": per_day,
+        "atoms_in_14d": in_window,
         "exact_dup_slugs": dup_exact,
         "near_dup_recent": near,
         "near_dup_window": len(recent),
@@ -182,6 +216,31 @@ def shape_stats(shared, per_page):
         "mirrors": mirrors,
         "mirror_drift": max(mirrors.values()) - min(mirrors.values()),
     }
+
+
+def write_atomic(path, text):
+    """temp + fsync + rename, in the destination directory.
+
+    Both outputs were written in place. `.kb-health.json` is append-only trend data that
+    cannot be recomputed, and the dashboard reads it on every request — a crash or a full
+    disk partway through `write()` left a truncated file that the next run then failed to
+    parse, which (before the guard above) reset the history to empty.
+    """
+    d = os.path.dirname(os.path.abspath(path))
+    os.makedirs(d, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=d, prefix=".kb-health.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def fmt(n):
@@ -264,15 +323,21 @@ def main():
     cutoff = time.time() - args.days * 86400
     files = transcripts(sessions, cutoff)
     if not files:
-        print("WARNING: 0 transcripts matched — check the .claude-shared glob (see LANDMINE).",
-              file=sys.stderr)
+        # REFUSE to record. Zero transcripts is overwhelmingly a broken glob, an unmounted
+        # sessions dir, or a wrong --repo — not a fortnight of silence. The old code warned
+        # and then appended a full sample of zeros, so a scan that saw nothing became a
+        # datapoint asserting the KB went unused, permanently, in the one file that cannot
+        # be recomputed.
+        print("REFUSING to record: 0 transcripts matched under "
+              f"{sessions} — check --repo and the .claude-shared glob (see LANDMINE). "
+              "No sample appended; existing history untouched.", file=sys.stderr)
+        return 1
 
     reads, chars, per_page, touching, citing, appends, appending = scan_reads(files)
     tokens_by_layer = {k: v // CHARS_PER_TOKEN for k, v in chars.items()}
     tokens_total = sum(tokens_by_layer.values())
     reads_total = sum(reads.values())
 
-    import datetime
     cur = {
         "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -307,16 +372,35 @@ def main():
     hist = []
     if os.path.exists(hist_path):
         try:
-            hist = json.load(open(hist_path))
-        except Exception:
-            hist = []
+            with open(hist_path, encoding="utf-8") as fh:
+                hist = json.load(fh)
+            if not isinstance(hist, list):
+                raise ValueError(f"history is {type(hist).__name__}, expected a list")
+        except Exception as e:
+            # PRESERVE, do not reset. `hist = []` silently threw away the entire trend and
+            # the very next write replaced the file with a single fresh sample — one bad
+            # read and the history was gone with nothing to inspect. Move it aside and
+            # stop; a human should see why it corrupted, and atomic writes below mean it
+            # should not happen again.
+            keep = f"{hist_path}.corrupt.{datetime.datetime.now(datetime.timezone.utc):%Y%m%dT%H%M%SZ}"
+            try:
+                shutil.copy2(hist_path, keep)
+                where = keep
+            except OSError as ce:
+                where = f"<could not copy: {ce}>"
+            print(f"REFUSING to record: {hist_path} did not parse ({type(e).__name__}: {e}). "
+                  f"Preserved at {where}. The trend cannot be recomputed from aged-out "
+                  "transcripts, so nothing was overwritten — inspect, repair or remove the "
+                  "original, then re-run.", file=sys.stderr)
+            return 1
+
     prev = hist[-1] if hist else None
     hist.append(cur)
     hist = hist[-90:]  # ~3 months of daily runs
-    json.dump(hist, open(hist_path, "w"), indent=1)
+    write_atomic(hist_path, json.dumps(hist, indent=1))
 
     text = digest(cur, prev)
-    open(os.path.join(shared, "KB-HEALTH.md"), "w").write(text + "\n")
+    write_atomic(os.path.join(shared, "KB-HEALTH.md"), text + "\n")
     if not args.json_only:
         print(text)
     return 0
