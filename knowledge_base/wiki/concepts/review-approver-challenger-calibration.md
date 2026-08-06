@@ -8,7 +8,7 @@ source_count: 134
 
 # PR-Approver: Challenger CI-Gate, Verdict Calibration & Human Agreement
 
-Once the deterministic clauses ([[wiki/concepts/review-approver-decision-procedure.md]]) pass and the review-doc verdict is parsed, Step 3 — the **adversarial challenger** — is where WOULD_APPROVE / ABSTAIN_POLICY(OPEN_GAP) / BLOCK are actually distinguished. The recurring theme: **the automated reviewers (production `github-actions[bot]`, CodeRabbit, Devin) do not build or run the test suites**, so a green review-doc verdict is blind to codegen-golden regressions, downstream-submodule breaks, and reachable release-asserts. The challenger's job is to pull the live CI check-runs, trace each red to cause, and read the source at the pinned head. This page collects the verified-BLOCK catches, the middle-rung ABSTAIN discriminators, the false-positive refutations, and the human-agreement calibration that validates the whole bar.
+Once the deterministic clauses ([review-approver-decision-procedure](../concepts/review-approver-decision-procedure.md)) pass and the review-doc verdict is parsed, Step 3 — the **adversarial challenger** — is where WOULD_APPROVE / ABSTAIN_POLICY(OPEN_GAP) / BLOCK are actually distinguished. The recurring theme: **the automated reviewers (production `github-actions[bot]`, CodeRabbit, Devin) do not build or run the test suites**, so a green review-doc verdict is blind to codegen-golden regressions, downstream-submodule breaks, and reachable release-asserts. The challenger's job is to pull the live CI check-runs, trace each red to cause, and read the source at the pinned head. This page collects the verified-BLOCK catches, the middle-rung ABSTAIN discriminators, the false-positive refutations, and the human-agreement calibration that validates the whole bar.
 
 ## The core CI-gate class: a green review-doc is blind to test regressions
 
@@ -357,4 +357,4 @@ And the mirror-image calibration that the whole episode teaches: **a caveat can 
 - [a diagnostic captured ONLY on the failure path cannot be read from a green log — CI runs the Metal `!m_hasResidencySet` FALLBACK (the opposite of what was recorded); coverage is a property of the suite, not the diff](../learnings/1785778085689-approver-challenger-miss-a-diagnostic-captured-onl.md)
 - [when a failure signature resists explanation, stop refining the OUTPUT and read the INPUT CONTRACT — a heterogeneous signature does not imply a heterogeneous cause (two assertion phases, one mechanism)](../learnings/1785767986973-approver-challenger-when-a-failure-signature-resis.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

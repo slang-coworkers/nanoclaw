@@ -10,6 +10,40 @@ source_count: 56
 
 Operational knowledge for working with slangpy's CI system, triaging GitHub issues, understanding runtime/API behavior, and building from source. Covers flake patterns, rerun authority, the slang bundling model, buffer layout gotchas, and the fixer-container build environment.
 
+⚠️ **This page is over the 40 KB page cap (~81 KB) and its tail may be truncated on read.** The TL;DR below carries the durable rules so they survive a bounded read; a subtopic split is pending.
+
+## TL;DR
+
+- **SUPERSEDED (2026-08-03): cross-repo `gh run rerun <id> --repo shader-slang/slangpy --failed` now WORKS** — the old "Must have admin rights to Repository" block no longer reproduces, so rerun slangpy reds yourself under the normal 3/PR/day cap.
+- **Exit 0 is NOT proof a rerun fired — the `run_attempt` increment is.** Re-read `gh api repos/shader-slang/slangpy/actions/runs/<id> --jq '{status,conclusion,attempt:.run_attempt}'`; piped forms (`gh … | jq`) report jq's status and launder gh failures into exit 0.
+- **Classify a slangpy red by its signature's determinism, not by permissions** — intermittent (dep-fetch 5xx, DXC prebuilt fetch 500 at CMake configure from `FetchDXC.cmake`) → rerun; deterministic/author-owned (setup-python toolcache, `E36121`, code break) → no rerun, because a rerun cannot fix a deterministic failure.
+- **All-false `.permissions` on `shader-slang/slangpy` does NOT mean you cannot act or read** — log reads always worked. **Probe the actual operation instead of introspecting permissions.**
+- **RETRACTED framing: the old rerun 403 was the OneCLI gateway PAT-routing collision, not a missing scope** — a read-only user PAT shadowed the App token, which already has `actions:write`. Never ask an operator to "grant slangpy actions:write"; ask only to extend the scoped secret.
+- **RETRACTED GPU-leak claims: #115/#608/#827 do not reproduce at HEAD.** The CUDA-OOM cascade is peak concurrent VRAM (`pytest -n auto --maxprocesses=4` × ~5 GB per worker), not a leak — distinguish a monotonic climb (leak) from a step function that plateaus (working set).
+- **When A/B-ing against a local Slang build, `SGL_LOCAL_SLANG_BUILD_DIR` must point at `build/Release`, never the downloaded `build/slang-<ver>-linux-x86_64/` release artifact** — that artifact lacks the PR and makes BOTH arms come back clean, a false negative that looks like a real result. Prove it with `strings <dir>/libslang*.so | grep -c 'is incompatible with compilation target'` (2 = real, 0 = invalid) plus `ldd build/linux-gcc/Debug/sgl_tests | grep slang`.
+- **Slang's `default` CMake preset is Ninja Multi-Config, so `-DCMAKE_BUILD_TYPE=Release` is inert** — `--config Release` is what selects the config.
+- **Establish the pinned-Slang baseline control BEFORE any A/B or you will misattribute pre-existing failures** — the 5 residual `sgl_tests` failures are LFS-fixture cases (3 `test_dds_file.cpp` + 2 `test_texture_loader.cpp`); the arithmetic `33 = 28 + 5` is what falsified a monitor reporting 0 diagnostics.
+- **`git checkout <commit> -- <path>` STAGES as well as writing the worktree, so a plain `git diff` is empty and the revert looks like a no-op** — use `git diff HEAD` / `git status --porcelain`, and prove a PR is unmerged with `git merge-base --is-ancestor <pr-head> origin/master`.
+- **Doctest name filters can silently select nothing** (`-tc=formats` / `-sc=vulkan` matched 0, 203 skipped) — run the whole binary and grep the log.
+- **A stubgen (`numpy`/`libcst`) failure aborts ninja BEFORE the `sgl_tests` link — a FALSE GREEN where a stale binary "passes" against pre-change code** (observed 10 days older than HEAD). Build `--target sgl_tests` explicitly and require both `sgl_tests` and `libsgl.so` mtimes newer than a pre-build `date` stamp; a fresh `.o` is not sufficient.
+- **Building slangpy needs `python3-dev`/`python3.11-dev` and `--break-system-packages` on every pip call (PEP-668)** — `tools/ci.py install-slangpy-torch` fails because its internal `pip install wheel` omits the flag; nvcc is NOT required; pip site-packages reset on container rebuild; an ENOSPC-interrupted submodule needs `git submodule update --init --force --recursive`.
+- **The full C++ `sgl` build requires the `data` submodule whose two fonts are git-LFS** — without git-lfs you get ~131-byte pointer stubs and ninja dies on `Inconsolata-Regular.ttf` before any source compiles. Verify byte sizes (Montserrat 197624 B, Inconsolata 101752 B), not mere existence.
+- **`device.create_buffer(element_count=n, struct_size=K)` allocates `n*K` bytes and NEVER reconciles `K` against Slang's per-target device-side stride — silent out-of-bounds the debug layer will not catch.** Pass `resource_type_layout=program.reflection.<bufferParam>` so the reflected stride is used.
+- **Python `id(m)` differing across `session.load_module(...)` calls is NOT evidence of an `IModule*` identity bug** — slangpy mints a fresh wrapper proxy per call; compare `IModule*` pointers in a standalone C++ program.
+- **`device.load_program("mod.slang", ["one_ep"])` capability-checks EVERY `[shader]` entry point in the module at load time, not lazily per function** — one illegal EP sinks its clean siblings; guard the offending declaration with the SGL-injected `#ifndef __TARGET_CUDA__`.
+- **`E36121` fires only on API-level requested capabilities** (`targetOptionSet.getArray(CompilerOptionName::Capability)`), never by walking declarations — so `[__requiresNVAPI]` is not a second fix site. Read a diagnostic's emission loop, not its wording.
+- **`0 assertions failed` alongside N failed test cases is the signature of a module-load/compile break, not a logic regression** — go read the compiler diagnostic instead of hunting behavior.
+- **`ci-latest-slang.yml`'s `build-pr` job runs `actions/checkout@v6` with no `ref:`, so slangpy always builds its DEFAULT branch** — a required `SlangPy Tests` check on a slang PR cannot go green until the slangpy-side fix is **merged to slangpy main**; a draft PR changes nothing.
+- **"Deferred until the upstream Slang fix ships" gates on the `SGL_SLANG_VERSION` pin (`external/CMakeLists.txt:85`), not on a wheel release** — check three stages: merge, a tag CONTAINING the commit (`compare/<tag>...<sha> --jq '.status'` must be `behind`/`identical`, never `ahead`), then the pin bump. The pin lagged five releases.
+- **The cheapest proof a slang fix works with slangpy is an existing cross-repo `ci-latest-slang` run** (nightly 01:00 UTC, `workflow_dispatch` with `slang_branch`, `repository_dispatch` per slang PR) — but `build-pr` is a reduced Linux+Windows Release matrix: real evidence, not full-matrix evidence.
+- **`updatedAt - createdAt` from `gh run list` is NOT job duration** — a re-run keeps the original `created_at` while jobs start at `run_started_at`, so a `success` run can show 1255 min. Confirm with per-job durations.
+- **Never call this environment "GPU-less" — an NVIDIA L40S is present and compute/Vulkan `cooperative_matrix` run.** Cooperative-VECTOR does not (driver 565.x lacks `VK_NV_cooperative_vector`), and **coop-vec kernels still COMPILE (slangc exit 0), so compile-only checks give false confidence** — dispatch is where it dies.
+- **NVRTC/CUDA downstream compilation is deferred to the first `kernel.dispatch(...)`, so a test stopping at `create_compute_kernel` never runs NVRTC** — dispatch with a real output buffer and expect `RuntimeError`; `downstream_args` reach only DXC and NVRTC, silently dropped elsewhere.
+- **A test that deliberately crashes (SIGSEGV/SIGABRT) HANGS the "Unit Tests (Python)" step for hours** because Crashpad intercepts it, while passing locally where crashpad is off — hard-guard on the CI env.
+- **On slangpy-samples, `pre-commit run --all-files` means one pre-existing violation anywhere reds the `pre-commit` job on EVERY PR**, and **`PATCH` of an existing bot issue comment 403s while `POST` works** — design status updates as append-only fresh comments.
+- **A single test can remove the shared D3D12 device and cascade into hundreds of "Failed to create device!" failures** indistinguishable from infra flake — grep for `Device removal has been triggered` and find the first-emitting test per xdist worker; "my tests passed" is meaningless if they ran before the poisoner.
+- **Before mapping a solution space, grep HEAD for the feature's named symbols and check merged PRs** (stale line-refs are the staleness tell); for any GPU-codegen gap search `shader-slang/slang` PRs first — the fix often already lives in core.
+
 ## CI Flakes and Infra Failures
 
 ### Crash Dump Re-symbolization
@@ -288,4 +322,4 @@ Mechanics worth reusing ([A/B testing a slangpy fix against an unreleased Slang 
 - [load_program capability-checks ALL entry points in a module at load (not lazy-per-function); guard the offending EP with `#ifndef __TARGET_CUDA__`](../learnings/1785443278231-slangpy-load-program-capability-checks-all-entry-p.md)
 - [a slangpy test-fixture guard can be the PREREQUISITE that unblocks an upstream slang PR's required SlangPy Tests check — land the guard first (pin-independent no-op), defer the SGL_SLANG_VERSION bump to the release tag](../learnings/1785478041840-a-slangpy-test-fixture-guard-can-be-the-prerequisi.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

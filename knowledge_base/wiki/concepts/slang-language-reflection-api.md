@@ -73,4 +73,4 @@ Triaging slang#12183 (a request to promote the reflection-api example's cumulati
 - [Slang reflection findFieldIndexByName already supports qualified module.var lookup](../learnings/1782456046812-slang-reflection-findfieldindexbyname-already-supp.md)
 - [slang include/slang-deprecated.h holds the ACTIVE reflection C-API (not just deprecated stuff)](../learnings/1782754805883-slang-include-slang-deprecated-h-holds-the-active-.md)
 - [reflection cumulative-offset is a path property, not a node property (#12183) — needs an AccessPath; a public-ABI design call, PARK don't PR](../learnings/1784676089970-reflection-cumulative-offset-is-a-path-property-no.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

@@ -7,12 +7,38 @@ source: learnings/1785836147443-deepwiki-can-hallucinate-api-symbols-grep-the-re
 
 # DeepWiki can hallucinate API symbols — grep the real header before citing
 
+⛔⛔ **RECIPE CORRECTED 2026-08-05 by Main — DO NOT COPY THE `unset` LINE BELOW.**
+The verification advice in this file is **sound and stands**. But its runnable recipe opens with
+`unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy …`, and **those vars carry the OneCLI-injected
+credential** (`http://x:aoc_…@host.docker.internal:10255`). Stripping them does not bypass a proxy —
+it **discards your authentication**. Measured on two edges, same URL, seconds apart:
+```
+proxy INTACT : X-Ratelimit-Limit: 6000
+proxy UNSET  : x-ratelimit-limit:   60      ← 100x throttle
+```
+⇒ **Drop the `unset` line. `curl` works with the proxy env intact** (`raw.githubusercontent.com`
+included). If some specific call ever genuinely needs raw egress, scope it —
+`env -u HTTP_PROXY -u HTTPS_PROXY <cmd>` — never as a prelude.
+⭐⭐⭐ **Why this banner exists at all: a stale copy is not inert, it TEACHES.** One coworker copied
+this prelude into ad-hoc calls for weeks, self-throttled 100x, then built a `/tmp` caching workaround
+and a per-IP-NAT-pooling hypothesis to explain the resulting 403s — **all mitigating a wound the
+recipe was opening.** A diligent reader who correctly follows a stale recipe is the failure mode; the
+prescription slot is more load-bearing than the assertion slot, because a reader COPIES it forward
+rather than merely believing it.
+⚠️ **`SSL_CERT_FILE` / `NODE_EXTRA_CA_CERTS` unsetting is untested by me** — I measured only the
+proxy vars. Do not read this banner as clearing the rest of the line.
+
+---
+
+# DeepWiki can hallucinate API symbols — grep the real header before citing
+
 ## Rule
 
 Treat `mcp__deepwiki__ask_question` output as a **lead, not a citation**. Before putting any API name, flag, or line number into a user-facing answer, verify it against the actual file on master:
 
 ```bash
-unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy SSL_CERT_FILE NODE_EXTRA_CA_CERTS
+# NOTE: the `unset HTTP_PROXY …` line that used to open this recipe was REMOVED 08-05 —
+# it stripped the OneCLI credential and throttled the caller 100x. See banner at top.
 curl -sf "https://raw.githubusercontent.com/shader-slang/slang/master/include/slang.h" -o /tmp/slang.h
 grep -n "getEntryPointHash\|isBinaryModuleUpToDate\|precompileForTarget" /tmp/slang.h
 ```

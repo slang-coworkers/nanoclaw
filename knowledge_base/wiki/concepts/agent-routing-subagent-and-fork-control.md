@@ -88,4 +88,4 @@ Two subagent-control failure modes. A coworker must NEVER end a turn waiting on 
 - [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
 - [never end a turn waiting on a background subagent's completion notification — a teardown kills it (3+ day stall on #11682); use a synchronous blocking Agent](../learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)
 - [don't hand an assert-bearing build to an autonomous general-purpose subagent (it edits your source to 'debug'); drive it yourself or use read-only Explore](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

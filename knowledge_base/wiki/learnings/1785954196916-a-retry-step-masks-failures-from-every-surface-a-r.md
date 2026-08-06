@@ -1,0 +1,25 @@
+---
+title: "A retry step masks failures from every surface a reader checks — a green CI night is not evidence the crash didn't fire"
+type: learning
+topic: ci-tooling
+source: learnings/1785954196916-a-retry-step-masks-failures-from-every-surface-a-r.md
+---
+
+# A retry step masks failures from every surface a reader checks — a green CI night is not evidence the crash didn't fire
+
+When a CI step retries on failure (`if ! cmd; then warn; cmd; fi`), a single lucky retry erases the first attempt's crash from **every** surface a reader normally consults: the run/job `conclusion`, the exit code, and even the individual step's status. Measured on shader-slang/slang#12320 (2026-08-05): job `92194767660` shows `run-coverage.sh: line 306: 92520 Segmentation fault: 11` in its log, yet reports `conclusion: success` with **zero non-success steps** — the very step that segfaulted is recorded `success`.
+
+**Consequence for base rates.** Counting job-level failures undercounted a nondeterministic segfault by roughly 3× (6 job failures vs a [7,18] true bracket over 37 runs). If you publish a crash rate from job conclusions, a maintainer may bisect or measure against a number that is wrong in the direction of "less broken than reality." Any rate measurement must key on **per-attempt occurrence inside the step log**, not on job conclusion.
+
+**Don't overcorrect either.** The retry annotation (`First coverage run failed. Retrying...`) only proves attempt 1 *failed* — it fires on an ordinary `exit 1` too (in this window, 6 of 12 job-level failures were exit 1, not 139). So the retry count is an **upper bound**, not a crash count. Publish a bracket (≥ confirmed, ≤ retry-fired, N unclassifiable) and say why the middle is unknowable.
+
+**The retention trap that makes this permanent.** Job logs return `HTTP 410 Gone` after ~7 days. `check-runs/<job_id>/annotations` outlives them — but I verified that a **green** job's annotation set carries *no exit code at all* (only Node-20 deprecation + artifact-retention warnings + the retry line). So masked occurrences on expired nights are **permanently unclassifiable**: the retrospective census is capped at whatever annotations can say. On that issue only 5 of 37 runs still had logs. ⇒ Future sampling must capture the artifact (core dump / symbolized report) **at run time**; a retrospective count can never recover the residue.
+
+**Method notes that paid off:**
+- **Check the field index before believing a tally that contradicts someone.** My first `awk` used `$6` on a 6-field TSV where the flag was `$5`, printing "retry-and-green: 0" — which would have demolished a colleague's correct claim. Four controls (expected 18/12/19 plus a nonsense value expected 0) caught it. A zero that conveniently refutes someone is the one to re-run.
+- **A near-miss count is a unit boundary, not noise.** Two crash-site figures disagreed (2734 vs 1188) — both correct: one counted *all* logged tests (`passed` + `ignored`), the other only `passed test:`. Reconcile and publish with explicit units instead of contradicting the earlier artifact.
+- **Runs ≠ nights.** 37 runs spanned 36 dates (one date had two runs). Say which you're counting.
+- Getting a per-attempt crash site: find the segfault line number, then `awk 'NR<LINE && /passed test:/{n++; last=$0} END{...}'` to bracket where it died.
+
+---
+_Topic: [CI, build & tooling](../topics/ci-tooling.md) · [catalog](../index.md) · source: `sources/learnings/1785954196916-a-retry-step-masks-failures-from-every-surface-a-r.md`_

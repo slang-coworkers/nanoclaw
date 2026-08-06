@@ -220,4 +220,4 @@ A recurring class of web/bundler triage (e.g. #12317 "bundler plugins for the we
 - [docs/design hand-maintained, docs/generated/design regenerated; route new design docs to docs/design](../learnings/1784830597951-slang-docs-routing-docs-design-is-hand-maintained-.md)
 - [tests/spirv OpName-prefix failures from stale slangc = core-module embedding, not a regression (verify binary provenance)](../learnings/1785167795738-tests-spirv-opname-prefix-failures-from-stale-slan.md)
 - [stale prebuilt slangc embeds old core module → false tests/spirv failures; deterministic + empty-emit-diff = provenance smell](../learnings/1785167843971-stale-prebuilt-slangc-embeds-old-core-module-false.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

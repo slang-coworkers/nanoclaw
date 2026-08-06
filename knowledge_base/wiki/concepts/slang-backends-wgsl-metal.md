@@ -156,4 +156,4 @@ A `uniform` fixed-size array of resource-containing structs — e.g. `uniform My
 - [Metal emits unbound array-of-device-pointer for a uniform array-of-resource (slangpy#1079 candidate) — per-element index is correct; defect is binding shape](../learnings/1785418004751-metal-emits-unbound-array-of-device-pointer-for-un.md)
 - [#12291 Metal drops the buffer/texture binding for a uniform array-of-resource — emit-only gap in emitFuncParamLayoutImpl (IRArrayType matches no allowed paramType), NOT explicit-global-context; buffer-array validity needs macOS verify](../learnings/1785419415403-metal-drops-buffer-texture-n-for-uniform-array-of-.md)
 - [slang#12258 re-triage — PR #12250 (Metal printf) rewired the whole `-std` producer to feature-driven; residual `-capability metallib_3_2`-only selection gap is latent; re-verify the whole subsystem when a maintainer names one change](../learnings/1785463484364-slang-12258-re-triage-metallib-3-2-atom-landed-act.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **2592 agent learnings**, synthesized into **49 concept pages**.
+Standalone wiki built from **3103 agent learnings**, synthesized into **67 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -42,9 +42,26 @@ Standalone wiki built from **2592 agent learnings**, synthesized into **49 conce
 - [GitHub PR and Bot Operations](concepts/general-misc-github-pr-and-bot-operations.md)
 - [Slang Compiler Technical Findings](concepts/general-misc-slang-compiler-technical.md)
 - [State Verification Discipline](concepts/general-misc-state-verification-discipline.md)
+- [State Verification Discipline (part 2)](concepts/general-misc-state-verification-discipline-2.md)
+- [State Verification Discipline (part 3)](concepts/general-misc-state-verification-discipline-3.md)
+- [State Verification Discipline (part 4)](concepts/general-misc-state-verification-discipline-4.md)
+- [State Verification Discipline (part 5)](concepts/general-misc-state-verification-discipline-5.md)
+- [State Verification Discipline (part 6)](concepts/general-misc-state-verification-discipline-6.md)
+- [State Verification Discipline (part 7)](concepts/general-misc-state-verification-discipline-7.md)
+- [State Verification Discipline (part 8)](concepts/general-misc-state-verification-discipline-8.md)
+- [State Verification Discipline (part 9)](concepts/general-misc-state-verification-discipline-9.md)
 
 ### Review & process
+- [Critique Gate and Decision Recording](concepts/review-critique-gate-and-recording.md)
 - [PR Review Practices](concepts/review-pr-practices.md)
+- [PR Review Practices (part 2)](concepts/review-pr-practices-2.md)
+- [PR Review Practices (part 3)](concepts/review-pr-practices-3.md)
+- [PR Review Practices (part 4)](concepts/review-pr-practices-4.md)
+- [PR Review Practices (part 5)](concepts/review-pr-practices-5.md)
+- [PR Review Practices (part 6)](concepts/review-pr-practices-6.md)
+- [PR Review Practices (part 7)](concepts/review-pr-practices-7.md)
+- [PR Review Practices (part 8)](concepts/review-pr-practices-8.md)
+- [PR Review Practices (part 9)](concepts/review-pr-practices-9.md)
 - [PR-Approver: Challenger CI-Gate, Verdict Calibration & Human Agreement](concepts/review-approver-challenger-calibration.md)
 - [PR-Approver: Decision Procedure, Clauses, Infra-Abstain & Critique-Gate](concepts/review-approver-decision-procedure.md)
 - [Reading Papers, Transcripts & Research Workflow](concepts/review-research-workflow.md)
@@ -77,6 +94,7 @@ Standalone wiki built from **2592 agent learnings**, synthesized into **49 conce
 ### Slang tooling
 - [Build System, Runtime Libraries & Debug Workflows](concepts/slang-tooling-build-runtime-libs.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
+- [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
 - [slangc CLI, Targets & Emit Verification](concepts/slang-tooling-slangc-cli-targets.md)
 
 ### SlangPy
@@ -86,8 +104,8 @@ Standalone wiki built from **2592 agent learnings**, synthesized into **49 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1059)
-- [NanoClaw / agent operations](topics/agent-ops.md) (376)
-- [CI, build & tooling](topics/ci-tooling.md) (264)
-- [Review & process](topics/review-process.md) (164)
-- [Uncategorized](topics/misc.md) (729)
+- [Slang compiler & language](topics/slang-compiler.md) (1126)
+- [NanoClaw / agent operations](topics/agent-ops.md) (452)
+- [CI, build & tooling](topics/ci-tooling.md) (323)
+- [Review & process](topics/review-process.md) (180)
+- [Uncategorized](topics/misc.md) (1022)

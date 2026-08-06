@@ -3,12 +3,31 @@ title: "Agent Routing: MCP Servers & Gateways"
 type: concept
 group: agent-routing
 tags: [mcp, codex, critique-gate, slang-mcp, slangd, lsp, service-restart, graphql, budget, toolchain]
-source_count: 20
+source_count: 25
 ---
 
 # Agent Routing: MCP Servers & Gateways
 
-Operational rules for the codex-critique gate overlay, the slang-mcp server, slangd LSP probing, and related MCP tooling.
+Operational rules for the codex-critique gate overlay, the slang-mcp server, slangd LSP probing, the OneCLI credential gateway, and related MCP tooling.
+
+## TL;DR
+- **The critique gate records verdicts only from a FRESH top-level `mcp__codex__codex` call**, one per stage, made sequentially. `codex-reply` rounds are for iterating on must-fix items — they never move the gate, and `must-fix` is sticky within a reused thread. After codex says approve, make one fresh staged call.
+- **Stage detection keys on the FIRST stage keyword in the prompt.** Lead with a bare `STAGE: <NAME>` line and name no other stage earlier in the body. The response must end with `### Verdict` followed by a line containing only `approve` or `must-fix`.
+- **The gate needs `OUTPUT_REVIEW = approve` specifically**; other stages need only count ≥ 1.
+- **Codex runs in a separate container that shares `/workspace` but not `/tmp`.** Stage every artifact codex must read under `/workspace`, and set `sandbox: "danger-full-access"`.
+- **The gate's PreToolUse hook denies the WHOLE bash command**, so a heredoc that precedes a blocked `gh pr create` never runs. Write the PR body as its own step, then create the PR, then fill in the real URL — never fabricate it up front.
+- **Gate an APPROVE on green full-suite CI for broad-blast-radius changes**, not static review. On a draft PR the auto CI is draft-gated; confirm a `workflow_dispatch` run exists.
+- **An empty MCP search result is non-signal, never evidence of absence.** `github_search_issues` has returned zero for date-qualified queries and, during an extended outage, for *every* query including trivially-matching ones. Never read empty as "no duplicate issue" or "the merge queue is frozen" — fall back to `github_list_issues(state=ALL)` + client-side filter, or REST `pulls/<N>` / `commits?sha=master`.
+- **`merged_at` is never populated by that tool**; determine merge state from REST `.merged`/`.state`/`.draft`.
+- **Restart the failing MCP subprocess, not the service.** `systemctl restart nanoclaw-*` SIGKILLs every running agent container and destroys in-progress work; `pkill -f '<mcp-server>'` lets the host respawn the child with no container impact.
+- **Distinguish a credential outage from a cold start before retrying.** A 401 on reads that reproduces across sessions and channels is a vault/token failure only an operator can fix — 2-3 attempts confirms it. Preserve the unposted artifact, attach it upstream, and report `blocked` with exact error strings; never post a partial report.
+- **Credential injection at the gateway is PATH-SCOPED.** An intact proxy env is necessary but not sufficient: a path with no rule for this agent returns 401/403 even though the credential exists. Never conclude "the upstream object is gone" from a scoped read.
+- **Never `unset HTTP_PROXY` to work around a 403** — it strips the injected token entirely and drops the rate limit from 6000/hr to 60/hr.
+- **Drop `-f` and print `%{http_code}` the moment a fetch returns nothing you cannot explain.** `curl -sf` renders an auth failure as empty stdout, byte-identical to a legitimate absence. Pair every such read with a positive control on a path known to be in scope.
+- **The git wire protocol is not path-gated the way the REST API is.** `git ls-remote` and a `--filter=blob:none` scratch clone answer ref existence, default-branch, and `merge-base --is-ancestor` reachability against foreign orgs over the same proxy.
+- **Branch-protection endpoints are unavailable on a scoped token**, so "is this check required?" must be answered from merge evidence, not the required-contexts list.
+- **ProjectsV2 boards need a per-project access grant** separate from org-level Projects permission; prod coworkers generally cannot write them. Route the literal `/graphql`, not `/graphql*`.
+- **Probe a language server with a real `slangd` over stdio, with a control arm on an unpatched build.** slang-test's `LANG_SERVER` harness disables periodic diagnostics, so it never publishes the diagnostics you are trying to observe.
 
 ## Codex Critique Gate: Overview
 
@@ -70,9 +89,24 @@ To confirm whether a Slang language-server fix clears a diagnostic bug (e.g. #11
 
 A reusable hardened probe lives at `/workspace/agent/wt-slang-11532/expt-logs/probe_slangd.py`. Always run a CONTROL arm (unpatched build) first to prove the probe + repro reproduce the bug before trusting a "fixed" result. `slang-unit-test` cannot link `Workspace`/`getOrLoadModule` symbols (non-`SLANG_API`, `-fvisibility=hidden`) ([Verify Slang LS (slangd) diagnostics with a manual stdio LSP probe, not slang-test](../learnings/1781088708789-verify-slang-ls-slangd-diagnostics-with-a-manual-s.md)).
 
+## OneCLI Gateway: Injection Is PATH-SCOPED
+
+The OneCLI gateway injects credentials **per-path**, and that scoping is the rule to internalize: on a shader-slang-scoped agent, `api.github.com/repos/shader-slang/*` returns **200** while `api.github.com/repos/microsoft/*` — any other org — returns **401 Bad Credentials**. Keeping the proxy env intact is **necessary but not sufficient**; the credential is present and healthy, it simply has no rule for the foreign path. So a 401/403 here is not evidence the token is broken, the object is missing, or the vault needs an operator (contrast the Discord all-channel 401 above, which *is* a token outage — the discriminator is whether an in-scope path still returns 200).
+
+**The real defect is how the failure presents.** `curl -sf` suppresses the error body on HTTP failure, so a 401 arrives as **empty stdout, byte-identical to a legitimate "this object does not exist upstream."** Measured 2026-08-06 while root-causing a submodule-pin CI failure: three consecutive `curl -sf .../microsoft/mimalloc...` calls returned nothing, and the tempting conclusion — *"the pinned commit was force-pushed away upstream"* — was a claim the data did not support at all. Always run a **positive control** before reading empty as absence, and drop `-f` so the code is visible:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -H "User-Agent: curl/8.0" \
+  "https://api.github.com/repos/microsoft/mimalloc"      # -> 401  (out of scope)
+curl -s -o /dev/null -w '%{http_code}\n' -H "User-Agent: curl/8.0" \
+  "https://api.github.com/repos/shader-slang/slang"      # -> 200  (control)
+```
+
+**The workaround is the git wire protocol, which is not path-gated the way the REST API is.** `git ls-remote --heads/--tags/--symref <url>` and a `--filter=blob:none` scratch clone both succeed against foreign orgs over the same proxy — enough for ref existence, default-branch resolution, and `git merge-base --is-ancestor` reachability tests. Also known-403 on this scope: `/repos/{o}/{r}/branches/{b}/protection`, so "is this check required?" must be answered from merge evidence rather than the required-contexts list. And never `unset HTTP_PROXY` to "fix" a 403 — that strips the injected token entirely and collapses the GitHub rate limit from 6000/hr to 60/hr ([OneCLI gateway injection is path-scoped; `curl -sf` hides the 401 as empty output](../learnings/1785992213588-onecli-gateway-injection-is-path-scoped-cross-org-.md)).
+
 ## GitHub GraphQL / ProjectsV2 Access
 
-ProjectsV2 (org project boards) require a per-project access grant under the project's settings, separate from org-level Projects permission. The nv-slang-bot App install may have org Projects R/W yet still 403 on a specific board because it lacks the per-project grant. On the dev instance this was worked around with a human PAT path-routed to `/graphql`; prod has no such PAT, so ProjectsV2 writes are generally not available to prod coworkers. The OneCLI path quirk: `/graphql*` won't match the bare `/graphql` — use the literal ([GitHub GraphQL / ProjectsV2 access needs a per-project grant (often unavailable to the bot)](../learnings/legoop-project_graphql_path_routing.md)).
+ProjectsV2 (org project boards) require a per-project access grant under the project's settings, separate from org-level Projects permission. The nv-slang-bot App install may have org Projects R/W yet still 403 on a specific board because it lacks the per-project grant. On the dev instance this was worked around with a human PAT path-routed to `/graphql`; prod has no such PAT, so ProjectsV2 writes are generally not available to prod coworkers. The OneCLI path quirk is the same path-scoping mechanism as above, at pattern granularity: `/graphql*` won't match the bare `/graphql` — use the literal ([GitHub GraphQL / ProjectsV2 access needs a per-project grant (often unavailable to the bot)](../learnings/legoop-project_graphql_path_routing.md)).
 
 
 ## Discord MCP 401 + Send-Timeout = Global Gateway Credential Failure, Not Cold-Start (2026-07-22 fold)
@@ -89,7 +123,8 @@ When `mcp__slang-mcp__discord_read_messages` returns `Discord API error 401` on 
 
 An extended outage of the `mcp__slang-mcp__github_search_issues` tool: it returned `{items: [], total_count: 0}` for **every** query — trivially-matching ones (`repo:shader-slang/slang is:issue`) and merge windows of 1/2/6/25 days alike — while live issues and merges demonstrably existed. Confirmed independently by Main after slang-discord-support flagged it. The connection/auth is healthy; it's the **search endpoint specifically** — `github_list_issues`, `github_get_issue`, and `github_get_pull_request` all work fine. Two concrete casualties and their fixes: (1) **Duplicate-issue detection** — do NOT read an empty search result as "no existing issue," which risks the fleet filing dupes; fall back to `github_list_issues(state=ALL)` + client-side title/label filter, or `gh search issues`/`gh issue list --search` (a different search path) ([slang-mcp github_search_issues returning empty — use list+filter](../learnings/1785073457026-slang-mcp-github-search-issues-returning-empty-use.md)). (2) **Merge/queue-health checks** — `is:pr is:merged merged:>=<date>` returning zero nearly triggered a false "queue frozen/dead" escalation; the REST commits API showed the merges landing. Determine merge state via REST instead: per-PR `curl .../pulls/<N>` reading `.merged`/`.state`/`.draft`, and recent activity via `.../commits?sha=master` counting `(#NNNN)` first-line messages ([github_search_issues is:merged returns zero — verify merges via REST commits/pulls API](../learnings/1785053957653-github-search-issues-is-merged-returns-zero-verify.md)). This extends the earlier "slang-mcp github_search_issues date qualifiers return empty" note from a date-qualifier quirk to a total search-endpoint degradation — treat an empty `github_search_issues` as non-signal until the tool recovers.
 
-**Source learnings (24):**
+**Source learnings (25):**
+- [OneCLI gateway injection is PATH-SCOPED — cross-org GitHub reads 401 and `curl -sf` hides it as empty output](../learnings/1785992213588-onecli-gateway-injection-is-path-scoped-cross-org-.md) — an intact proxy env is not sufficient scope; positive-control every read, and use `git ls-remote` for foreign orgs.
 - [slang-mcp github_search_issues degraded — empty for ALL queries; use github_list_issues+filter or gh search for dup-detection](../learnings/1785073457026-slang-mcp-github-search-issues-returning-empty-use.md)
 - [github_search_issues is:merged returns zero even when merges happened — verify merge/queue state via REST commits/pulls API, don't escalate a phantom outage](../learnings/1785053957653-github-search-issues-is-merged-returns-zero-verify.md)
 - [codex-critique gate: open the PR before claiming it in OUTPUT_REVIEW](../learnings/1780325263478-codex-critique-gate-open-the-pr-before-claiming-it.md)
@@ -114,4 +149,4 @@ An extended outage of the `mcp__slang-mcp__github_search_issues` tool: it return
 - [Slang CI exposed to unpinned toolchain drift](../learnings/1781055257855-slang-ci-exposed-to-unpinned-toolchain-drift.md)
 - [Discord MCP 401 + send-timeout = global gateway credential failure (operator re-auth), not cold-start; preserve report to UNPOSTED.md](../learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md)
 - [Discord MCP 401 on every channel (retried) = bot-token outage needing an operator refresh; distinct from a single-channel 403 or empty low-traffic results](../learnings/1784708358394-discord-mcp-401-across-all-channels-token-outage-n.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

@@ -1,13 +1,39 @@
 ---
-title: "A workflow rename mints a new Actions id; the retired id is state:deleted and absent from the workflows listing"
+title: "A workflow rename mints a new Actions id; the old id MAY go state:deleted and vanish from the listing — read the state field, never derive it"
 type: learning
 topic: misc
 source: learnings/1785882085230-a-workflow-rename-mints-a-new-actions-id-the-retir.md
 ---
 
-# A workflow rename mints a new Actions id; the retired id is state:deleted and absent from the workflows listing
+# A workflow rename mints a new Actions id; the old id MAY go state:deleted and vanish from the listing — read the state field, never derive it
 
-# A workflow rename mints a NEW Actions id — the old id is `state: deleted` and NOT in the listing
+# A workflow rename mints a NEW Actions id — the old id **may** go `state: deleted` and drop out of the listing
+
+⛔ **NARROWED 2026-08-04 (was published as an absolute; the absolute is FALSE).** This note originally
+asserted that the retired id *is* `state: deleted` and absent from the listing. **Both lifecycles
+occur.** Re-verified by direct fetch:
+
+| id | name | `state` | in the 82-entry listing | file at master |
+|---|---|---|---|---|
+| `287019999` | Agentic Tests (Nightly) | **`deleted`** | **no** | 404 |
+| `88428719` | Compile Regression-Test | **`active`** | **yes** | 404 |
+
+`88428719` is **dormant, not deleted** — its last run was 2026-06-17 and its job moved into `ci.yml`,
+but the id is still active and still listed. ⛔ **File-absence does NOT predict `state`: both files are
+404 at master and the states differ.** ⭐⭐⭐ **Read the `state` field; never derive it.**
+
+⭐ **The error's shape: a lifecycle transition inferred from an observed effect** — *"the job now runs
+under a new id"* ⇒ *"the old id must be gone"* — when *going quiet* is equally compatible.
+
+⛔⭐⭐⭐ **Cost of getting this wrong, observed:** a peer cited the absolute version while auditing a
+control that counts non-active workflows, and it implied that control was **inert** — it would have
+"fixed" a latent gap it wrongly believed was undetectable. **A wrong stored fact is worse than a
+missing one: it can invalidate a SOUND control and redirect real work.** A retrieved fact that
+licenses *skipping* a check earns more scrutiny than one that adds work, not less.
+
+⚠️ **The enumeration warning below still stands and is if anything broader:** the listing can miss a
+retired id (`287019999`) *and* include a dormant one whose history now lives elsewhere (`88428719`).
+Enumerate by **filename** across `previous_filename` either way.
 
 **Measured on shader-slang/slang 2026-08-04** while checking a bot-filed issue (#12351) that claimed
 the nightly `agentic-tests` job had *"never completed successfully in retained run history — at least
@@ -120,9 +146,10 @@ shape on a suite that does have cancelled/skipped runs will silently mix the met
 5. Aggregate across ids. Use `runs?status=success --jq .total_count` per id as a direct zero/non-zero
    control instead of eyeballing a histogram.
 
-⛔ **Never enumerate ids from `actions/workflows` for a historical question.** That listing is a view
-of *live* workflows. Retired ids are fetchable directly and their runs are intact, but they are absent
-from it.
+⛔ **Never enumerate ids from `actions/workflows` for a historical question.** A retired id **may be**
+absent from that listing while remaining fetchable directly with its runs intact — and a dormant id
+**may be** present while its job's history has moved to another workflow. Neither presence nor absence
+in the listing tells you where a suite's history lives; only `previous_filename` does.
 
 ## Two collateral corrections worth generalizing
 

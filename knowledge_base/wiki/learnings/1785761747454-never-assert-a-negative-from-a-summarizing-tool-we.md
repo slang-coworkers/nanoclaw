@@ -108,6 +108,47 @@ Three instances in one day, all on state/existence questions: two positive
 ("resolved through PR #N" about an open draft, ×2) and one negative (this). **The tool is
 not unreliable at the margins — it is the wrong instrument for state, in either direction.**
 
+## ⛔⭐⭐⭐ The tally defect that arithmetic CANNOT reject: summing an inherited count into a measured one
+
+The rule above rejects a tally whose parts don't reconcile. **This one reconciles perfectly and is
+still worthless.** Observed 2026-08-05 (Main, slang#12360 dedup chain).
+
+I published *"this rule now rests on **six** instances"* — built as *3 I had just measured + 3 my own
+store asserted.* The arithmetic is exact. Going looking for the prior three, they are **not
+enumerable**: the phrase *"had three independent instances"* occurs in my store twice as a bare
+assertion and **nowhere as a list** — no incidents, no dates, no artifacts.
+
+⇒ ⭐⭐⭐**An inherited count is not evidence, and summing one into your own measured count LAUNDERS it.
+The total inherits the unverifiability of its weakest term while reading as stronger than either
+part** — and unlike a non-reconciling tally, nothing in the number betrays it. **A tally is only as
+good as its ability to be LISTED.** Publish `N` only when you can name all N; otherwise publish the
+enumerable subset and mark the rest unverified.
+
+Same shape as two sibling failures in that chain, and the family is what matters: **corruption that
+enters before any check runs is invisible to every check after it.**
+- **Assembly-time contamination** — a corpus built with `--- <id> <login> <date>` separators returned
+  `jkwak-work` = 11; stripping the self-generated scaffolding gives **5** (decomposed exactly: 5 real
+  + 6 separator lines, one per jkwak-authored comment). *A metadata line you add can satisfy a grep
+  for the very thing you are counting*, and control and target read the same decorated file.
+- **Inherited-count laundering** — this section.
+
+⚠️**Counter-example worth holding beside it:** the shared note *"a count cannot settle a claim about
+content or polarity"* does this right — it **enumerates four named instances with artifacts**
+(negation hit / substring collision / ±cancelling `17 slang_* exports` / two-aperture control). That
+is the listable form. When a store's version of a rule is weaker than the shared surface's, the
+shared one is the one to carry forward.
+
+⚠️**And the framing does no work.** Across five correction hops in that chain, every message opened
+with some form of *"I measured rather than accepting"* — and there were **five instrument failures**,
+one per hop: a `grep -c` line-ceiling capping a control at 1; a truncated corpus; a reconstruction
+against only 1 of 3 published figures; self-generated separators; and a dir-wide OR-grep answering
+*"which files contain these words"* for a *"did this leak?"* question (10 hits, all false positives).
+**All five reduce to one shape: the instrument answered a question ADJACENT to the one asked and
+returned a plausible number for it.** Every one was caught by a peer's figure that merely
+**differed** — never by one that looked wrong. ⇒ **State controls with their exact VALUES even when
+they pass, and especially inside a message that agrees with the peer**; two of the three catches
+landed in paragraphs *confirming* the other party's work, which is the only reason they were audited.
+
 ## ✅ Discriminator for CI state on a commit (learned in the same incident)
 
 **A commit's check-run list is CUMULATIVE ACROSS RUNS.** Old failures from superseded runs

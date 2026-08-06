@@ -10,6 +10,39 @@ source_count: 72
 
 The slang-test framework has many non-obvious behaviors around subtest synthesis, test selection, artifact management, and how different test types interact with CI. This page consolidates hard-won knowledge about authoring, running, and debugging slang-test tests.
 
+⚠️ **This page is over the 40 KB page cap (~86 KB) and its tail may be truncated on read.** The TL;DR below carries the durable rules so they survive a bounded read; a subtopic split is pending.
+
+## TL;DR
+
+- **`slang-test` never invokes a `FileCheck` binary from `PATH`** — it loads FileCheck in-process from the `slang-llvm` library (`test-context.cpp:95-113` → `loadSharedLibrary("slang-llvm")` → `createLLVMFileCheck_V1`, gated at `slang-test-main.cpp:5915` on `hasLlvm`). A `pip`/`apt` FileCheck on PATH cannot influence it either way.
+- **RETRACTED: "the library is absent locally so `filecheck=` tests skip."** It lives at `build/Debug/lib/libslang-llvm.so` (152 MB) and LLVM FileCheck **does** run locally — probe with `find build -iname '*slang-llvm*'`, never `ls build/Debug/bin/` or `which FileCheck`, and **name the scope you actually searched**.
+- **When the library genuinely is missing, `filecheck=` tests report `Ignored` (0/0) or pass vacuously** — a whole suite goes green while asserting nothing, so **counting `passed` proves nothing**.
+- **`slang-test`'s process exit code was 0 on a FAILED test** — parse the `FAILED test:` / `% of tests passed` lines, never `$?`.
+- **The only control that discriminates evaluated-and-passed from silently-skipped: inject a deliberately broken CHECK pattern, require RED, then restore.** Verify the control itself landed — controls that were themselves vacuous have been observed.
+- **A unit test that crashes the test server was reported PASSED pre-PR #11753** (RPC death leaves `ExecuteResult resultCode=0` → Pass), so a test that "starts failing after #11753" is **crashing the server**; the PR only changed reporting.
+- **The unit-test retry path in test-server mode also reports failures as passes (#11911)** — a green merge-queue / per-PR gate does **not** certify C++ unit-test health.
+- **Device caching in `slang-test` silently defeats per-invocation debug-callback bridges** (from #11785) — a cached device reuses the prior callback wiring, so per-invocation regressions go undetected as false greens.
+- **Never write a dump-based FileCheck test to `-o /dev/null`**: it is Windows-invalid (`error[E00004]`, exit 255) yet `-dump-ir` already printed the matched text, so the test stays GREEN. Use `-o -` plus a status assertion; reproduce on Linux with `-o /nonexistent-dir/out.spv`.
+- **`-o -` and dropping `-o` are not equivalent — with `-g`, dropping `-o` flips the driver into `-whole-program`**, and `result code = 0` is inert under `-g` because the IR dump embeds your own comment; write `result code = {{0}}` (`{{N}}` is evaluated, `{0}` is inert).
+- **At `-g2` Slang embeds the entire source — comments included — as an `OpString`, so FileCheck matches your own `//CHECK` lines** (vacuous positives, false `-NOT` hits). Drop `-g2` if unneeded, anchor with `{{^}}`, and never count with a bare `grep -c '<Op>'`.
+- **LLVM FileCheck scans every line for its prefix regardless of comment/backtick/prose context** — writing `` `CHECK: OpEntryPoint` `` in an explanatory sentence creates a live failing directive. Use an abstract placeholder like `//<prefix>:`.
+- **Under `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):`, `//CHECK-NOT:` is inert** — only a line starting exactly `//CHECK:` is parsed as an annotation; "must not warn" negatives pass solely because the matcher is **exhaustive-by-default**.
+- **DIAGNOSTIC_TEST annotations take NO space after `//`** (`// CHECK_ERR:` is silently ignored) and since `//CHECK:` is exactly 8 chars **carets must start at column 9**; copy the harness's "Suggested annotations" block and match by error **code**, not free text.
+- **Under `diag=CHECK` each diagnostic emits TWO `E<code>` rows (title + primary span)** — N diagnostics require 2N annotations under exhaustive mode.
+- **A `CHECK-NOT` only scans the region between its adjacent positive CHECKs** — the only reliable whole-output negative is a lone `-NOT` under its own `filecheck=` prefix with no positives to bound it.
+- **Even a correctly-scoped `CHECK-NOT` is vacuous if DCE removed its subject** — grep the real output for the forbidden instruction; zero hits means the negative asserts nothing. Fence every negative with a positive.
+- **INTERPRET/slangi tests are silently skipped when the slangi binary isn't built**, and `//TEST:LANG_SERVER` never fires `publishDiagnostics` (so `//DIAGNOSTICS` deadlocks). For GPU-less regression use `//TEST:COMPARE_COMPUTE(filecheck-buffer=CHECK):-cpu -output-using-type`.
+- **slang-test FRONT-inserts `-O0` into any directive lacking an explicit `-OX`** (slang-test path only — a standalone `slangc` repro needs `-O0` passed explicitly), so fold-dependent CHECKs need `-O1`; and **`SLANG_RUN_SPIRV_VALIDATION=1` validates PRE-optimization SPIR-V**, so pin optimizer defects with a `-target spirv-asm` check anchored by `{{$}}`.
+- **`<file>.slang.N` is the (N+1)th `//TEST:` directive, not a run or retry counter** — count directives and read what the variant exercises before calling a recurring `.N` failure a GPU flake.
+- **Skip a crashing synthesized subtest with `-exclude-prefix` or `-skip-list`** (pre-run, source-path level, before subtests expand); expected-failure lists run the test first and cannot survive a crash. Matching an expanded variant needs **exact equality against the full `testName`**, including the ` syn` / ` (<api>)` suffixes.
+- **Discover golden tests with a pattern that tolerates the `TEST(category):` suffix**; a deterministic cross-platform `test-slang` failure right after a golden change means incomplete regeneration, not a compiler bug. `.expected` is gitignored (**new goldens need `git add -f`**) and `*.slang.actual.txt` artifacts must be deleted before `git add`.
+- **A stale test binary passes the very test you are validating** — require `test_binary_mtime > build_start` and refuse to report numbers otherwise; a build exiting 0 can have rebuilt nothing.
+- **Count assertion-bearing tests (a `//TEST:` directive plus CHECKs), not files, and name which test carries the proof.** Ask: *in my configuration, does the fallback path produce the same answer as the fix?* If yes, that test cannot distinguish fixed from broken.
+- **One positive control per HAZARD, not per fix** — when a fix converts leak into double-release, removing the fix proves nothing about the new mode; sabotage the specific new guard (`if (owned)` → `if (true)`) and extend the test so it has something to trip on.
+- **An empty-output FileCheck failure in a `-dx12` `COMPARE_COMPUTE` lane is usually an arg-parse failure (error 1004, unknown option), not codegen** — `-use-dxil` is not a valid slang-test flag since DXIL is the dx12 default. Read the ACTUAL block first.
+- **A `-target spirv` SIMPLE test with no `[shader("compute")]`/`-entry`/`-stage` compiles a module with NO entry point** and silently exercises only the fallback path. Match `OpSource {{Slang|Unknown}}` (aarch64 CI exports `SLANG_USE_SPV_SOURCE_LANGUAGE_UNKNOWN=1`) and give byte-exact fixtures `text eol=lf` in `.gitattributes`.
+- **No slang-test category gates a downstream compiler's VERSION**, so a `metallib_4_0` test runs and fails on any lane with a pre-4.0 `metal` on PATH — assert the Slang-side decision with an emit-only `-target metal` FileCheck test. The harness **is** partially unit-testable, so "verify behaviorally" is not a blanket excuse.
+
 ## Synthesized Subtest Skipping and Selection
 
 Synthesized subtests (API variants, `syn` expansions) require different handling than plain tests. To skip a synthesized variant (e.g. LLVM JIT) that crashes, use `-exclude-prefix` or `-skip-list` — these filter at the source-file path level **before** subtests expand ([slang-test: synthesized subtest skip needs pre-run exclusion, not expected-failure](../learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md)). Expected-failure lists run the test first and cannot handle crashes.
@@ -284,4 +317,4 @@ The through-line across all four of these — skipped test, stale binary, vacuou
 - [`DIAGNOSTIC(diag=CHECK)` catches a crash→diagnostic regression via empty stderr (checks parsed diagnostics, not exit code) — valid only when diag & crash are mutually exclusive (front-end); else add a SIMPLE `result code=N`](../learnings/1785349746955-diagnostic-diag-check-catches-a-crash-regression-v.md)
 - [re-run slang-test yourself for pass-counts in a PR body — a subagent reported 39/39 where a fresh run was 38/38 (13 dx11 variants ignored); counts are load-bearing](../learnings/1785349753826-verify-slang-test-suite-pass-counts-from-a-fresh-r.md)
 
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

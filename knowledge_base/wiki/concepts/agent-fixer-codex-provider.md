@@ -89,4 +89,4 @@ A related gate-clearing trap involves WHICH memory copy codex re-hashes: two `/w
 - [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
 - [critique-gate: codex-reply re-verify must NOT contain a literal 'STAGE:' line](../learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)
 - [Approver: critique-gate hook false-positives on read-only gh api .../pulls](../learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_

@@ -192,4 +192,4 @@ A distinct duplicate-footprint hazard from the held-no-PR race above: when our o
 - [GitHub pr_closed/pr_synchronize webhooks are claims, verify vs live GitHub before propagating](../learnings/1784114457146-github-pr-closed-pr-synchronize-webhooks-are-claim.md)
 - [Bot-authored PR reds already BLOCK'd by approver = owned/in-fix, don't re-surface](../learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md)
 - [Mermaid flowcharts for GitHub diagnosis comments: lint + render gotchas](../learnings/1784186351938-mermaid-flowcharts-for-github-diagnosis-comments-l.md)
-_Catalog: [[wiki/index.md]]_
+_Catalog: [index](../index.md)_
