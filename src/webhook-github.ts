@@ -784,22 +784,29 @@ function notifyApproverOfTerminalPr(event: GitHubPrEvent, eventContent: string):
     // Mapping is the one the approver SKILL.md already specifies: merged =>
     // APPROVED-equivalent, closed-unmerged => CHANGES_REQUESTED-equivalent.
     // recordHumanVerdict is first-verdict-wins, so an earlier real observation
-    // (e.g. a human's CHANGES_REQUESTED on pr_review) is never overwritten, and
-    // the agent's own later call becomes a harmless no-op — the two paths can
-    // coexist. The agent is still woken below, but now only for the half that
-    // genuinely needs judgment: distilling the learning.
+    // (e.g. a human's CHANGES_REQUESTED on pr_review) is never overwritten.
+    // This is now the ONLY path that may stamp a verdict — the container-side
+    // `record_human_verdict` action is denied by the guard, because an agent
+    // reporting the human's opinion of its own work is the one input the
+    // calibration metric cannot tolerate being self-asserted. The agent is
+    // still woken below, but only for the half that genuinely needs judgment:
+    // distilling the learning.
     try {
       // The PR's final head, when the payload carries it. Passing the real head
       // is what lets recordHumanVerdict distinguish exact from head_advanced; a
       // missing head falls through to the fallback path, which is the honest
       // answer when we cannot tell.
       const headSha = typeof event.payload.head_sha === 'string' ? event.payload.head_sha : '';
+      // The delivery id is the provenance key: it names the GitHub event that
+      // observed the human, and makes a webhook redelivery (routine) an
+      // idempotent no-op rather than a second observation.
       recordHumanVerdict(
         getDb(),
         event.repo,
         event.prNumber,
         headSha,
         event.event === 'github.pr_merged' ? 'MERGED' : 'CLOSED_UNMERGED',
+        { kind: 'github_webhook', eventId: event.deliveryId ?? `${event.event}:${event.rowId}` },
       );
     } catch (err) {
       log.warn('github-webhook: deterministic verdict join failed (non-fatal)', {
