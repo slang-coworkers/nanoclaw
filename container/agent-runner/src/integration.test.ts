@@ -516,6 +516,59 @@ describe('poll loop — /clear command', () => {
   });
 });
 
+describe('poll loop — silent turn (Codex last_agent_message: null)', () => {
+  /**
+   * Reproduces the real failure end to end: the provider completes its turn
+   * with `text: null`, never sets isError, and writes nothing. The whole
+   * runPollLoop path has to hold the line here — processQuery's ack AND the
+   * outer loop's fallback markCompleted, which used to overwrite everything.
+   */
+  class SilentProvider {
+    readonly supportsNativeSlashCommands = false;
+    registerMemorySessionHook(): void {}
+    isSessionInvalid(): boolean {
+      return false;
+    }
+    query() {
+      return {
+        push() {},
+        end() {},
+        abort() {},
+        events: (async function* () {
+          yield { type: 'init', continuation: 'silent-session' };
+          yield { type: 'result', text: null };
+        })(),
+      };
+    }
+  }
+
+  it('never acks the trigger completed, and says so in the channel', async () => {
+    insertMessage('m-silent', { sender: 'Alice', text: 'are you there?' }, { platformId: 'chan-1', channelType: 'discord' });
+
+    const provider = new SilentProvider();
+    const controller = new AbortController();
+    const loopPromise = runPollLoopWithTimeout(provider as unknown as MockProvider, controller.signal, 3000);
+
+    await waitFor(() => getUndeliveredMessages().length > 0, 3000);
+    // Let the outer loop run past its fallback markCompleted before asserting —
+    // that line is the one that used to turn this into a 'completed' turn.
+    await sleep(200);
+    controller.abort();
+
+    const ack = getOutboundDb()
+      .prepare('SELECT status FROM processing_ack WHERE message_id = ?')
+      .get('m-silent') as { status: string } | undefined;
+    expect(ack?.status).not.toBe('completed');
+    expect(ack?.status).toBe('failed');
+
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(JSON.parse(out[0].content).text).toContain('without producing any output');
+
+    await loopPromise.catch(() => {});
+  });
+});
+
 /**
  * Provider that throws on every query, simulating API failures.
  */

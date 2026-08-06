@@ -154,6 +154,24 @@ export function hasOutboundToThread(
   return (result?.n ?? 0) > 0;
 }
 
+/**
+ * Highest outbound seq currently in `messages_out` (0 when empty).
+ *
+ * The poll loop samples this before a turn and again at its `result` event: a
+ * strictly greater value means the turn produced at least one outbound row, by
+ * ANY path. An in-process counter can't answer that — the MCP tools
+ * (`send_message`, `send_file`, …) run in a separate stdio process and write
+ * to the same file — so the watermark has to come from the DB. seq is
+ * monotonic (container writes odd, never reused) and nothing deletes from
+ * `messages_out`, so this only ever increases.
+ */
+export function outboundWatermark(): number {
+  const row = getOutboundDb().prepare('SELECT COALESCE(MAX(seq), 0) AS m FROM messages_out').get() as {
+    m: number;
+  };
+  return row.m;
+}
+
 /** Get undelivered messages (for host polling — reads from outbound.db). */
 export function getUndeliveredMessages(): MessageOutRow[] {
   return getOutboundDb()

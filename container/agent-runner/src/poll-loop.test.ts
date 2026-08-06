@@ -5,7 +5,7 @@ import path from 'path';
 
 import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from './db/connection.js';
 import { getPendingMessages, markCompleted } from './db/messages-in.js';
-import { getUndeliveredMessages } from './db/messages-out.js';
+import { getUndeliveredMessages, writeMessageOut } from './db/messages-out.js';
 import { formatMessages, extractRouting } from './formatter.js';
 import {
   checkCritiqueGate,
@@ -1870,5 +1870,154 @@ describe('task-run turn wiring (real processQuery)', () => {
     expect(logs[1]).toContain('[undelivered → local-cli] fire two result');
     expect(logs).not.toContain('first delivery decision handled');
     expect(logs).not.toContain('second delivery decision handled');
+  });
+});
+
+describe('silent turn — a result that delivers nothing is never acked completed', () => {
+  // The Codex `last_agent_message: null` shape: turn/completed, zero output,
+  // isError never set. Before this suite the batch was acked 'completed' and
+  // the thread simply stopped.
+
+  function ackStatus(id: string): string | undefined {
+    const row = getOutboundDb()
+      .prepare('SELECT status FROM processing_ack WHERE message_id = ?')
+      .get(id) as { status: string } | undefined;
+    return row?.status;
+  }
+
+  /**
+   * A query whose first result is the silent turn. When `retry` is given, the
+   * query waits for the loop's re-send nudge and answers it with that event;
+   * when it is null the stream just ends (provider never came back).
+   */
+  function makeSilentQuery(retry: ProviderEvent | null): { query: AgentQuery; pushes: string[] } {
+    const pushes: string[] = [];
+    let onPush: (() => void) | null = null;
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 'sess-silent' };
+      yield { type: 'result', text: null };
+      if (!retry) return;
+      if (pushes.length === 0) {
+        await new Promise<void>((resolve) => {
+          onPush = resolve;
+        });
+      }
+      yield retry;
+    }
+    return {
+      pushes,
+      query: {
+        push: (m: string) => {
+          pushes.push(m);
+          onPush?.();
+          onPush = null;
+        },
+        end: () => {},
+        events: events(),
+        abort: () => {},
+      },
+    };
+  }
+
+  it('nudges once, then acks FAILED (not completed) and delivers a notice', async () => {
+    const { query, pushes } = makeSilentQuery(null);
+
+    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+
+    // The batch is NOT consumed as a success.
+    expect(ackStatus('m1')).not.toBe('completed');
+    expect(ackStatus('m1')).toBe('failed');
+    expect(result.undeliveredIds).toEqual(['m1']);
+
+    // Recovery was attempted in the poll loop itself — not via the optional
+    // provider hook, which no production provider implements.
+    expect(pushes).toHaveLength(1);
+    expect(pushes[0]).toContain('produced NO output');
+
+    // …and the silence is durable: the channel gets a notice instead of nothing.
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(JSON.parse(out[0].content).text).toContain('without producing any output');
+    expect(out[0].platform_id).toBe('chan-1');
+  });
+
+  it('acks completed when the nudged re-send actually delivers', async () => {
+    // Plain text auto-routes to the triggering channel (the fork's auto-route
+    // gate) — the delivery path a real re-send would take.
+    const { query, pushes } = makeSilentQuery({ type: 'result', text: 'here it is, sorry' });
+
+    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+
+    expect(ackStatus('m1')).toBe('completed');
+    expect(result.undeliveredIds ?? []).toHaveLength(0);
+    expect(pushes).toHaveLength(1);
+
+    const out = getUndeliveredMessages();
+    expect(out).toHaveLength(1);
+    expect(JSON.parse(out[0].content).text).toBe('here it is, sorry');
+  });
+
+  it('nudges at most once — a second silent result finalizes instead of looping', async () => {
+    const { query, pushes } = makeSilentQuery({ type: 'result', text: null });
+
+    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+
+    expect(ackStatus('m1')).toBe('failed');
+    expect(result.undeliveredIds).toEqual(['m1']);
+    expect(pushes).toHaveLength(1);
+    expect(getUndeliveredMessages()).toHaveLength(1);
+  });
+
+  it('does NOT fire for a turn that answered through the send_message tool', async () => {
+    // send_message runs in the MCP stdio process: it writes an outbound row
+    // while the final text stays empty. The watermark sees that write; a
+    // `sent === 0` check never could.
+    const pushes: string[] = [];
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 'sess-tool' };
+      writeMessageOut({
+        id: 'tool-send-1',
+        kind: 'chat',
+        platform_id: 'chan-1',
+        channel_type: 'discord',
+        content: JSON.stringify({ text: 'answered via the tool' }),
+      });
+      yield { type: 'result', text: null };
+    }
+    const query: AgentQuery = {
+      push: (m: string) => pushes.push(m),
+      end: () => {},
+      events: events(),
+      abort: () => {},
+    };
+
+    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+
+    expect(ackStatus('m1')).toBe('completed');
+    expect(result.undeliveredIds ?? []).toHaveLength(0);
+    expect(pushes).toHaveLength(0);
+    expect(getUndeliveredMessages()).toHaveLength(1); // only the tool's own message
+  });
+
+  it('does NOT fire for a task run (no chat message is the normal ending)', async () => {
+    const { query, pushes } = makeSilentQuery(null);
+
+    const result = await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+
+    expect(ackStatus('t1')).toBe('completed');
+    expect(result.undeliveredIds ?? []).toHaveLength(0);
+    expect(pushes).toHaveLength(0);
+    expect(getUndeliveredMessages()).toHaveLength(0);
+  });
+
+  it('skips the re-send nudge when the empty turn is already flagged isError', async () => {
+    const { query, pushes } = makeResultQuery({ type: 'result', text: '', isError: true });
+
+    const result = await processQuery(query, ERR_ROUTING, ['m1'], 'claude', undefined, undefined, undefined, 'prompt', undefined);
+
+    expect(ackStatus('m1')).toBe('failed');
+    expect(result.undeliveredIds).toEqual(['m1']);
+    expect(pushes).toHaveLength(0); // re-asking a failed turn just re-hammers it
+    expect(getUndeliveredMessages()).toHaveLength(1);
   });
 });

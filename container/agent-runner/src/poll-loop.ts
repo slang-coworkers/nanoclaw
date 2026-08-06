@@ -13,12 +13,13 @@ import {
   markProcessing,
   markCompleted,
   markBounced,
+  markFailed,
   markScriptSkipped,
   getMessageInBySeq,
   type MessageInRow,
 } from './db/messages-in.js';
 import { classifyTurnError } from './transient-error.js';
-import { hasIdenticalSend, writeMessageOut } from './db/messages-out.js';
+import { hasIdenticalSend, outboundWatermark, writeMessageOut } from './db/messages-out.js';
 import { getInboundDb, touchHeartbeat, clearStaleProcessingAcks } from './db/connection.js';
 import {
   clearContinuation,
@@ -57,6 +58,15 @@ const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
  * page cache (host-sweep then respawns with a fresh mount).
  */
 const CORRUPTION_STREAK_EXIT = 10;
+
+/**
+ * User-facing notice for a turn that produced nothing at all, even after the
+ * re-send nudge. Delivered so the thread reports the failure instead of just
+ * stopping — the whole point of the silent-turn path.
+ */
+const SILENT_TURN_NOTICE =
+  'The agent finished its turn without producing any output, so there is nothing to deliver. ' +
+  'Your message was not answered — please re-send it.';
 
 /**
  * True for SQLite errors that indicate a corrupt READ view — almost always a
@@ -590,9 +600,22 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // back to 'completed' and permanently consume the un-actioned handoff. This
     // covers both bounce paths: the structured-result bounce (queryResult.
     // bouncedIds) and the thrown-error bounce (thrownBouncedIds) above.
-    const bounced = new Set([...(queryResult?.bouncedIds ?? []), ...thrownBouncedIds]);
-    markCompleted(processingIds.filter((id) => !bounced.has(id)));
-    log(`Completed ${ids.length} message(s)`);
+    // Silent turns (queryResult.undeliveredIds) are excluded for the same
+    // reason: they were acked 'failed' after delivering a failure notice, and
+    // overwriting that with 'completed' is exactly how the silence used to
+    // disappear from the record.
+    const skipAck = new Set([
+      ...(queryResult?.bouncedIds ?? []),
+      ...(queryResult?.undeliveredIds ?? []),
+      ...thrownBouncedIds,
+    ]);
+    const ackedIds = processingIds.filter((id) => !skipAck.has(id));
+    markCompleted(ackedIds);
+    log(
+      skipAck.size > 0
+        ? `Completed ${ackedIds.length} message(s); ${skipAck.size} NOT completed (bounced or undelivered)`
+        : `Completed ${ids.length} message(s)`,
+    );
   }
 }
 
@@ -696,6 +719,11 @@ interface QueryResult {
   // fallback markCompleted, or it would clobber the bounce marker back to
   // 'completed' and permanently consume the un-actioned handoff.
   bouncedIds?: string[];
+  // Ids acked `failed` because the turn delivered nothing at all (see the
+  // silent-turn branch in processQuery). Same contract as bouncedIds: the
+  // outer loop's fallback markCompleted must skip them, or it would overwrite
+  // the failure with 'completed' and the silence would go unrecorded again.
+  undeliveredIds?: string[];
 }
 
 export async function processQuery(
@@ -721,11 +749,55 @@ export async function processQuery(
   // Trigger ids marked as a transient a2a bounce this turn (see the result
   // branch). Returned so the outer loop's fallback markCompleted skips them.
   const bouncedIds: string[] = [];
+  // Ids acked 'failed' by finalizeSilentTurn. Same contract as bouncedIds.
+  const undeliveredIds: string[] = [];
+  // Once-per-batch guard for the silent-turn re-send nudge, and the flag that
+  // says a nudged turn is still awaiting its retry (so nothing is acked yet).
+  let silentTurnNudged = false;
+  let silentTurnOpen = false;
+  // Outbound watermark at the start of the current turn. A turn that ends with
+  // no text is only truly silent if this has not moved (see the silent-turn
+  // branch); resampled after every result event.
+  let turnWatermark = outboundWatermark();
   // Prompt queue for the exchange hook — each result event consumes the
   // oldest unanswered prompt, except a wrapping-retry result, which answers
   // the same prompt again. Unused (and unmaintained) when the provider
   // doesn't implement `onExchangeComplete`.
   const archivePrompts: string[] = [initialPrompt];
+
+  /**
+   * Close out a turn that delivered nothing by any path: emit a durable,
+   * user-visible notice (so the thread does not just stop) and ack the batch
+   * 'failed' — never 'completed'. `failed` is deliberate: syncProcessingAcks
+   * maps it onto the inbound row, so the silence is recorded once and the
+   * message is not re-driven into an identical silent turn forever.
+   */
+  const finalizeSilentTurn = (resultText: string | null): void => {
+    silentTurnOpen = false;
+    log('Turn delivered nothing (no text, no outbound row) — acking failed, not completed');
+    if (routing.channelType && routing.platformId && routing.channelType !== 'system') {
+      writeMessageOut({
+        id: generateId(),
+        in_reply_to: routing.inReplyTo,
+        kind: 'chat',
+        platform_id: routing.platformId,
+        channel_type: routing.channelType,
+        thread_id: routing.threadId,
+        content: JSON.stringify({ text: SILENT_TURN_NOTICE }),
+      });
+    } else {
+      log('No deliverable routing for the silent-turn notice — recorded in the log only');
+    }
+    notifyExchangeComplete(onExchangeComplete, {
+      prompt: archivePrompts[0] ?? initialPrompt,
+      result: resultText,
+      continuation: queryContinuation ?? initialContinuation,
+      status: 'undelivered',
+    });
+    archivePrompts.shift();
+    for (const id of initialBatchIds) markFailed(id);
+    undeliveredIds.push(...initialBatchIds);
+  };
 
   // Concurrent polling: push follow-ups into the active query as they arrive.
   // We do NOT force-end the stream on silence — keeping the query open avoids
@@ -926,6 +998,10 @@ export async function processQuery(
         // the trigger un-acked so the host redrive sweep re-arms it. Permanent
         // errors and non-a2a channels fall through to the normal dispatch path.
         let bounced = false;
+        // Any result closes out an open silent turn: either it delivered (and
+        // acks normally below) or it was silent again (and the branch at the
+        // bottom finalizes it, because silentTurnNudged is already set).
+        silentTurnOpen = false;
         const bounceClass =
           event.isError === true && event.text && routing.channelType === 'agent'
             ? classifyTurnError(event.text)
@@ -945,7 +1021,7 @@ export async function processQuery(
             status: 'error',
           });
           archivePrompts.shift();
-        } else if (event.text) {
+        } else if (event.text?.trim()) {
           const { sent, hasUnwrapped, danglingOpen, gateRefusals, taskBlocks } = dispatchResultText(
             event.text,
             routing,
@@ -964,9 +1040,20 @@ export async function processQuery(
           // second run summary.
           if (routing.taskRun && !taskBlockNudged) autoAppendTaskLog(event.text);
           if (sent === 0 && event.isError === true && !routing.taskRun) {
-            // Non-retryable error turn (e.g. a 403 billing_error) with no
-            // <message> envelope, on a non-task channel: deliver the notice
-            // instead of dropping it as
+            // Non-retryable error turn (e.g. a 403 billing_error) on a
+            // non-task channel, whose text dispatchResultText could not route:
+            // skip the re-wrap nudge — it would just re-hammer the failing
+            // gateway turn after turn. The common case (plain error text, known
+            // channel) is already delivered by the auto-route gate above.
+            //
+            // NOTE: the `deliverErrorResult(event.text, routing)` call that used
+            // to head this branch was dropped by the e77ee838e2 upstream-sync
+            // merge, which also left this comment truncated mid-sentence. It is
+            // deliberately NOT restored here: as written it also fired when the
+            // critique/routing gates had BLOCKED every <message> block, which
+            // would push the withheld body straight to the channel. Restoring a
+            // safe version needs `blocked` out of dispatchResultText and a rule
+            // for un-routable turns — its own change, not this one.
             notifyExchangeComplete(onExchangeComplete, {
               prompt: archivePrompts[0] ?? initialPrompt,
               result: event.text,
@@ -976,23 +1063,15 @@ export async function processQuery(
             archivePrompts.shift();
           } else {
             const willRetryWrapping = hasUnwrapped && !unwrappedNudged;
-            // A turn that delivered nothing by ANY path is not "completed" — the
-            // thread simply goes silent, with no error to notice. Codex reaches
-            // here routinely: it can emit turn/completed with last_agent_message
-            // null (observed 2026-07-17: 7.5s turn, zero output, ack completed,
-            // thread dead), and it never sets isError, so the branch above can
-            // never catch it. Claude has the same hole structurally.
-            // `sent === 0` is the safe discriminator: a reply sent via
-            // mcp__nanoclaw__send_message increments it, so agents that answer
-            // without final text are unaffected. Task runs legitimately produce
-            // no chat message (they append to a run log), so they are excluded.
-            const deliveredNothing = sent === 0 && !event.text?.trim() && !routing.taskRun;
+            // A turn with no meaningful text never reaches here — the branch
+            // below owns it. (It used to be tested for HERE, inside a branch
+            // gated on `event.text`, which made the check dead for the exact
+            // `text: null` silent turn it was written to catch.)
             notifyExchangeComplete(onExchangeComplete, {
               prompt: archivePrompts[0] ?? initialPrompt,
               result: event.text,
               continuation: queryContinuation ?? initialContinuation,
-              status:
-                hasUnwrapped || willRetryTaskBlocks || deliveredNothing ? 'undelivered' : 'completed',
+              status: hasUnwrapped || willRetryTaskBlocks ? 'undelivered' : 'completed',
             });
             if (willRetryWrapping) {
               unwrappedNudged = true;
@@ -1022,12 +1101,55 @@ export async function processQuery(
             if (!willRetryWrapping && !willRetryTaskBlocks) archivePrompts.shift();
           }
         } else {
-          archivePrompts.shift();
+          // SILENT TURN — the result carried no usable text (`null`, or blank).
+          // A turn that delivered nothing by ANY path is not "completed": the
+          // thread simply stops, with no error for anyone to notice. Codex
+          // reaches here routinely — it emits turn/completed with
+          // last_agent_message null (observed 2026-07-17: 7.5s turn, zero
+          // output, acked completed, thread dead) and never sets isError, so
+          // the bounce branch above can't catch it either. Claude has the same
+          // hole structurally.
+          //
+          // The outbound watermark, NOT `sent`, is the discriminator: the MCP
+          // tools (send_message, send_file) run in a separate stdio process,
+          // so a turn that answered purely through a tool call moves the
+          // watermark while `sent` stays 0. Task runs legitimately end with no
+          // chat message (they append to a run log) and are excluded.
+          const producedOutput = outboundWatermark() > turnWatermark;
+          if (producedOutput || routing.taskRun) {
+            archivePrompts.shift();
+          } else if (!silentTurnNudged && event.isError !== true) {
+            // Recovery attempt #1, owned by the poll loop (not by an optional
+            // provider hook no production provider implements): ask for the
+            // answer again on the SAME open query. Nothing is acked yet, and
+            // the prompt stays queued so the retry archives against the user's
+            // message rather than against this nudge.
+            silentTurnNudged = true;
+            silentTurnOpen = true;
+            const names = getAllDestinations()
+              .map((d) => d.name)
+              .join(', ');
+            log('Turn produced no output at all — pushing a re-send nudge before acking anything');
+            query.push(
+              `<system>Your last turn produced NO output — no final text and no message sent. ` +
+                `Nothing reached the user, who is still waiting on the message above. ` +
+                `Re-send your answer now, wrapped in <message to="name">...</message>. ` +
+                `Your destinations: ${names}.</system>`,
+            );
+          } else {
+            // Either the nudged retry came back empty too, or the turn was
+            // already flagged as an error (re-asking would just re-hammer it).
+            // Emit the durable notice and ack failed.
+            finalizeSilentTurn(event.text);
+          }
         }
         // Ack the turn as completed UNLESS it was a transient a2a bounce (left
-        // pending above for the host redrive). This replaces the former
-        // unconditional markCompleted at the top of the branch.
-        if (!bounced) markCompleted(initialBatchIds);
+        // pending above for the host redrive), it delivered nothing and was
+        // acked 'failed' by finalizeSilentTurn, or a silent turn is still
+        // awaiting its re-send retry. This replaces the former unconditional
+        // markCompleted at the top of the branch.
+        if (!bounced && !silentTurnOpen && undeliveredIds.length === 0) markCompleted(initialBatchIds);
+        turnWatermark = outboundWatermark();
       }
     }
   } catch (err) {
@@ -1045,7 +1167,13 @@ export async function processQuery(
     signal?.removeEventListener('abort', onSignalAbort);
   }
 
-  return { continuation: queryContinuation, bouncedIds };
+  // The stream ended while a nudged silent turn was still outstanding (the
+  // provider never answered the re-send). The batch is still un-acked at this
+  // point — close it out the same way a second silent result would, so the
+  // outer loop's fallback markCompleted can't quietly call it a success.
+  if (silentTurnOpen) finalizeSilentTurn(null);
+
+  return { continuation: queryContinuation, bouncedIds, undeliveredIds };
 }
 
 function notifyExchangeComplete(
