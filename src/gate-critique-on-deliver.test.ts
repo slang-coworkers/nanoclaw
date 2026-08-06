@@ -400,7 +400,13 @@ describe('graduated escalation at the denial cap', () => {
     activateOverlay();
     fs.writeFileSync(
       stateFile,
-      JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3, critique_gate_bypass_approved: true }),
+      JSON.stringify({
+        critique_rounds: 0,
+        critique_gate_denials: 3,
+        critique_gate_bypass_approved: true,
+        critique_gate_bypass_grant_id: 'appr-1',
+        critique_gate_bypass_expires_at: Math.floor(Date.now() / 1000) + 3600,
+      }),
     );
     const result = run(denyPayload());
     expect(result.status).toBe(0);
@@ -408,10 +414,28 @@ describe('graduated escalation at the denial cap', () => {
     // The grant is spent, and the release is recorded for the host to see.
     expect(readState().critique_gate_bypass_approved).toBe(false);
     expect(readState().critique_gate_bypass_consumed_at).toBeGreaterThan(0);
+    // Attribution: the host reconciler matches consumption on this id. Without
+    // it, a legitimate bypass reads as consumption of a grant nobody issued —
+    // a false positive on the happy path, on every shell-path bypass.
+    expect(readState().critique_gate_bypass_consumed_grant_id).toBe('appr-1');
     expect(readEsc().failed_open_at).toBeTruthy();
     // A second delivery is denied again — it is not a standing grant.
     const again = run(denyPayload());
     expect(again.status).toBe(2);
+  });
+
+  it('a bypass with NO expiry is not an unlimited bypass — it is refused', () => {
+    // Treating a missing expiry as "no expiry" would let a forged flag with no
+    // expiry at all defeat the TTL entirely.
+    activateOverlay();
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3, critique_gate_bypass_approved: true }),
+    );
+    const result = run(denyPayload());
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('no usable expiry');
+    expect(readState().critique_gate_bypass_approved).toBe(false);
   });
 
   it('an EXPIRED bypass does not allow the delivery', () => {

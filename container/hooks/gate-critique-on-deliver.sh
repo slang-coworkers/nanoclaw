@@ -247,14 +247,38 @@ EOF
     if [ "$BYPASS" = "true" ]; then
       BYPASS_EXP=$(jq -r '.critique_gate_bypass_expires_at // 0' "$STATE" 2>/dev/null || echo 0)
       case "$BYPASS_EXP" in *[!0-9]*|'') BYPASS_EXP=0 ;; esac
-      if [ "$BYPASS_EXP" -gt 0 ] && [ "$NOW_EPOCH" -ge "$BYPASS_EXP" ]; then
-        # Expired grant: clear it and fall through to the normal denial path.
+      # A grant with no usable expiry is NOT an unlimited grant. Treating a
+      # missing or non-numeric value as "no expiry" would let a forged flag
+      # with no expiry at all defeat the TTL entirely — fail closed instead.
+      if [ "$BYPASS_EXP" -le 0 ] || [ "$NOW_EPOCH" -ge "$BYPASS_EXP" ]; then
+        # Expired (or unusable) grant: clear it and fall through to denial.
         jq '. + {critique_gate_bypass_approved: false, critique_gate_bypass_expired_at: '"$NOW_EPOCH"'}' \
           "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" || true
-        echo "[critique-gate] Admin bypass EXPIRED unused — requirement still enforced." >&2
+        echo "[critique-gate] Admin bypass EXPIRED or has no usable expiry — requirement still enforced." >&2
       else
-        jq '. + {critique_gate_bypass_approved: false, critique_gate_bypass_consumed_at: '"$NOW_EPOCH"'}' \
+        # Attribute the consumption to the grant that authorized it. The host
+        # reconciler matches on this id; without it a perfectly legitimate
+        # bypass looks like a consumption of a grant nobody issued.
+        GRANT_ID=$(jq -r '.critique_gate_bypass_grant_id // ""' "$STATE" 2>/dev/null || echo "")
+        jq --arg gid "$GRANT_ID" \
+          '. + {critique_gate_bypass_approved: false,
+                critique_gate_bypass_consumed_grant_id: (if $gid == "" then null else $gid end),
+                critique_gate_bypass_consumed_at: '"$NOW_EPOCH"'}' \
           "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" || true
+        # The one-shot property depends on that write. If it did not land the
+        # grant is still `approved` and would be reusable on every subsequent
+        # delivery, so refuse rather than allow — a delivery denied is
+        # recoverable, a permanently reusable waiver is not.
+        STILL_APPROVED=$(jq -r '.critique_gate_bypass_approved // false' "$STATE" 2>/dev/null || echo true)
+        if [ "$STILL_APPROVED" = "true" ]; then
+          cat >&2 << EOF
+CRITIQUE REQUIRED before $HIT — the admin bypass could NOT be recorded as
+consumed, so allowing it would leave a reusable waiver. Refusing instead.
+
+Reason: $DENIAL_REASON.
+EOF
+          exit 2
+        fi
         stamp_failed_open "admin bypass consumed (one-shot)"
         echo "[critique-gate] Delivery allowed by admin-approved bypass, now CONSUMED (requirement still unmet: $DENIAL_REASON)." >&2
         exit 0

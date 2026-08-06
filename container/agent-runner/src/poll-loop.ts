@@ -1177,6 +1177,53 @@ const GATE_DENIAL_CAP = 3;
 // incrementing, so after GATE_DENIAL_CAP denials the counter stays pinned at
 // the cap and the gate yields without bumping further. Best-effort persistence
 // — a state-write failure never blocks delivery, it just disables the cap.
+/**
+ * Merge keys into workflow-state.json. Used to consume/expire a bypass grant,
+ * mirroring the bash hook's jq patch so both gate implementations leave the
+ * same trail.
+ */
+function patchGateState(statePath: string, patch: Record<string, unknown>): void {
+  const fs = require('fs') as typeof import('fs');
+  const path = require('path') as typeof import('path');
+  let state: Record<string, unknown> = {};
+  try {
+    state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
+  } catch {
+    state = {};
+  }
+  Object.assign(state, patch);
+  try {
+    fs.mkdirSync(path.dirname(statePath), { recursive: true });
+    fs.writeFileSync(statePath, JSON.stringify(state));
+  } catch {
+    // Best-effort, as elsewhere in this file.
+  }
+}
+
+/**
+ * Record an enforcement release into the escalation file — the session
+ * bind-mount, which the host reads. Anything that ALLOWS a delivery with the
+ * requirement unmet must leave a durable trace: this container runs --rm, so a
+ * release logged only to stderr is a release nobody ever learns about.
+ */
+function stampFailedOpen(escPath: string, denialReason: string, why: string): void {
+  const fs = require('fs') as typeof import('fs');
+  const nowIso = new Date().toISOString();
+  let esc: Record<string, unknown> = {};
+  try {
+    esc = JSON.parse(fs.readFileSync(escPath, 'utf-8')) as Record<string, unknown>;
+  } catch {
+    esc = { requested_at: 0, reason: denialReason, hit: 'text-output delivery' };
+  }
+  esc.failed_open_at = nowIso;
+  esc.failed_open_why = why;
+  try {
+    fs.writeFileSync(escPath, JSON.stringify(esc));
+  } catch {
+    // Best-effort — an unwritable escalation file degrades to deny-only.
+  }
+}
+
 function gateShouldYield(statePath: string, key: string): boolean {
   const fs = require('fs') as typeof import('fs');
   let state: Record<string, unknown> = {};
@@ -1305,6 +1352,12 @@ export function checkCritiqueGate(
     critique_verdicts?: Record<string, string>;
     critique_gate_bypass_approved?: boolean;
     critique_gate_bypass_rejected?: boolean;
+    // Grant envelope written by the host on an admin Approve. `grant_id` is the
+    // approving approval_id — the host's ledger is keyed on it, so consumption
+    // can be attributed to a specific grant rather than to a session.
+    critique_gate_bypass_grant_id?: string;
+    critique_gate_bypass_expires_at?: number; // epoch secs (shell arithmetic in the bash gate)
+    critique_gate_bypass_rejected_request?: number;
     edits_since_critique?: number;
     critique_attested?: Record<string, Record<string, string>>;
   } = {};
@@ -1406,16 +1459,6 @@ export function checkCritiqueGate(
   // request times out (backstop preserving the original anti-thrash
   // contract). CRITIQUE_ESCALATION=0 restores the legacy fail-open cap.
   if (gateShouldYield(statePath, 'critique_gate_denials')) {
-    if (process.env.CRITIQUE_ESCALATION === '0') return { blocked: false };
-    if (state.critique_gate_bypass_approved === true) return { blocked: false };
-    if (state.critique_gate_bypass_rejected === true) {
-      return {
-        blocked: true,
-        reason:
-          `[critique-gate] REFUSED — an admin REJECTED the bypass request (${denialReason}). ` +
-          `Satisfy the critique requirement (/codex-critique) or report the blocker to your parent instead of delivering.`,
-      };
-    }
     const escPath =
       process.env.CRITIQUE_ESCALATION_FILE ?? path.join(path.dirname(statePath), 'critique-escalation.json');
     const nowS = Math.floor(Date.now() / 1000);
@@ -1426,11 +1469,81 @@ export function checkCritiqueGate(
     } catch {
       requestedAt = 0;
     }
-    const timeoutS = Number(process.env.CRITIQUE_ESCALATION_TIMEOUT_SECS ?? 1800);
-    if (requestedAt > 0 && nowS - requestedAt >= timeoutS) {
-      // Timeout backstop: no decision landed — fail open rather than wedge.
+    const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+    // The kill switch still fails open, but the release is now recorded where
+    // the HOST can see it: this container is --rm'd, so anything written only
+    // to stderr is unrecoverable once the session ends.
+    if (process.env.CRITIQUE_ESCALATION === '0') {
+      stampFailedOpen(escPath, denialReason, 'CRITIQUE_ESCALATION=0 kill switch');
       return { blocked: false };
     }
+
+    // Admin bypass — ONE-SHOT and time-limited, in parity with the bash hook.
+    // This was a bare `=== true` with no expiry and no consumption, so a single
+    // approval stood THIS path open for the session's whole life even after the
+    // hook path was fixed — and this is the more common delivery path.
+    if (state.critique_gate_bypass_approved === true) {
+      const expiresAt = num(state.critique_gate_bypass_expires_at);
+      // A grant with no usable expiry is NOT an unlimited grant. Treating a
+      // missing or non-numeric value as "no expiry" would let a forged flag
+      // with no expiry at all defeat the TTL entirely — fail closed instead.
+      if (expiresAt <= 0 || nowS >= expiresAt) {
+        patchGateState(statePath, {
+          critique_gate_bypass_approved: false,
+          critique_gate_bypass_expired_at: nowS,
+        });
+        // Expired (or unusable) grant: fall through to the denial path below.
+      } else {
+        patchGateState(statePath, {
+          critique_gate_bypass_approved: false,
+          critique_gate_bypass_consumed_grant_id: state.critique_gate_bypass_grant_id ?? null,
+          critique_gate_bypass_consumed_at: nowS,
+        });
+        // The one-shot property depends on that write. If it did not land the
+        // grant is still `approved` and would be reusable on every subsequent
+        // delivery, so refuse rather than allow — a denied delivery is
+        // recoverable, a permanently reusable waiver is not.
+        let stillApproved = true;
+        try {
+          const after = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as {
+            critique_gate_bypass_approved?: boolean;
+          };
+          stillApproved = after.critique_gate_bypass_approved === true;
+        } catch {
+          stillApproved = true; // unreadable → assume the worst
+        }
+        if (stillApproved) {
+          return {
+            blocked: true,
+            reason:
+              `[critique-gate] REFUSED — the admin bypass could NOT be recorded as consumed, so allowing it ` +
+              `would leave a reusable waiver (${denialReason}).`,
+          };
+        }
+        stampFailedOpen(escPath, denialReason, 'admin bypass consumed (one-shot)');
+        return { blocked: false };
+      }
+    }
+
+    // A rejection answers the request it was made about — not every later one.
+    // Unscoped, a single old "no" silently decided every subsequent delivery
+    // in the session and suppressed re-escalation with it.
+    if (
+      state.critique_gate_bypass_rejected === true &&
+      num(state.critique_gate_bypass_rejected_request) === requestedAt
+    ) {
+      return {
+        blocked: true,
+        reason:
+          `[critique-gate] REFUSED — an admin REJECTED the bypass request (${denialReason}). ` +
+          `Satisfy the critique requirement (/codex-critique) or report the blocker to your parent instead of delivering.`,
+      };
+    }
+
+    // NOTE: there is deliberately NO timeout fail-open here any more. It used
+    // to allow the delivery once CRITIQUE_ESCALATION_TIMEOUT_SECS elapsed,
+    // which meant an agent could satisfy the requirement by waiting.
     if (requestedAt === 0) {
       try {
         fs.writeFileSync(

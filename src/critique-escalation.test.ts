@@ -54,9 +54,51 @@ vi.mock('./session-manager.js', () => ({
 
 const recordEventMock = vi.fn();
 let prForSession: { repo: string; pr_number: number } | null = null;
+
+/** In-memory stand-in for critique_bypass_grants — the host's own ledger. */
+interface Grant {
+  grant_id: string;
+  session_id: string;
+  requested_at: number | null;
+  granted_at: string;
+  expires_at: string;
+  granted_by: string | null;
+  consumed_at: string | null;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+}
+const ledger = new Map<string, Grant>();
+let createGrantThrows = false;
+
 vi.mock('./db/critique-escalations.js', () => ({
   recordEscalationEvent: (...args: unknown[]) => recordEventMock(...args),
   lookupPrForSession: () => prForSession,
+  createBypassGrant: (g: Omit<Grant, 'consumed_at' | 'revoked_at' | 'revoked_reason'>) => {
+    if (createGrantThrows) throw new Error('ledger unavailable');
+    ledger.set(g.grant_id, { ...g, consumed_at: null, revoked_at: null, revoked_reason: null });
+  },
+  getBypassGrant: (id: string) => ledger.get(id) ?? null,
+  getLatestSpendableGrant: (sessionId: string, nowIso: string) =>
+    [...ledger.values()]
+      .filter(
+        (g) =>
+          g.session_id === sessionId &&
+          !g.consumed_at &&
+          !g.revoked_at &&
+          Date.parse(g.expires_at) > Date.parse(nowIso),
+      )
+      .sort((a, b) => Date.parse(b.granted_at) - Date.parse(a.granted_at))[0] ?? null,
+  markBypassGrantConsumed: (id: string, iso: string) => {
+    const g = ledger.get(id);
+    if (g && !g.consumed_at) g.consumed_at = iso;
+  },
+  revokeBypassGrant: (id: string, iso: string, reason: string) => {
+    const g = ledger.get(id);
+    if (g && !g.revoked_at) {
+      g.revoked_at = iso;
+      g.revoked_reason = reason;
+    }
+  },
 }));
 
 const deleteApprovalMock = vi.fn();
@@ -66,8 +108,13 @@ vi.mock('./db/sessions.js', () => ({
   deletePendingApproval: (...args: unknown[]) => deleteApprovalMock(...args),
 }));
 
-const { checkCritiqueEscalation, applyBypassApproval, applyBypassRejection, isRequirementCleared } =
-  await import('./modules/critique-escalation/index.js');
+const {
+  checkCritiqueEscalation,
+  applyBypassApproval,
+  applyBypassRejection,
+  isRequirementCleared,
+  reconcileBypassState,
+} = await import('./modules/critique-escalation/index.js');
 
 const session = { id: 'sess-esc-test', agent_group_id: 'ag-esc-test', thread_id: null } as unknown as Session;
 
@@ -87,6 +134,8 @@ beforeEach(() => {
   deleteApprovalMock.mockClear();
   pendingApprovals = [];
   prForSession = null;
+  ledger.clear();
+  createGrantThrows = false;
 });
 
 afterEach(() => {
@@ -314,6 +363,279 @@ describe('admin decision application', () => {
     expect(state.critique_rounds).toBe(4);
     expect((state.critique_verdicts as Record<string, string>).OUTPUT_REVIEW).toBe('must-fix');
     expect(state.critique_gate_bypass_approved).toBe(true);
+  });
+});
+
+describe('host-authoritative bypass ledger', () => {
+  const GRANT = 'appr-grant-1';
+  const iso = (msFromNow: number): string => new Date(Date.now() + msFromNow).toISOString();
+
+  function grantExists(id: string): Grant | undefined {
+    return ledger.get(id);
+  }
+
+  it('an approval records a ledger row keyed on the approval id', () => {
+    writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, GRANT);
+    const g = grantExists(GRANT)!;
+    expect(g.session_id).toBe('sess-esc-test');
+    expect(g.granted_by).toBe('slack:admin');
+    // ISO-8601 per the repo Timestamps policy, not epoch ints.
+    expect(g.granted_at).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+    expect(g.expires_at).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+    // The file carries the grant id and epoch seconds (shell arithmetic).
+    expect(readState().critique_gate_bypass_grant_id).toBe(GRANT);
+    expect(typeof readState().critique_gate_bypass_expires_at).toBe('number');
+  });
+
+  it('a legitimate grant survives reconciliation untouched', () => {
+    writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, GRANT);
+    recordEventMock.mockClear();
+    reconcileBypassState(session, dir);
+    expect(readState().critique_gate_bypass_approved).toBe(true);
+    expect(eventKinds()).not.toContain('state_divergence');
+  });
+
+  it('revokes a bypass no host grant backs (the forgery case)', () => {
+    writeState({ critique_gate_bypass_approved: true, critique_gate_bypass_grant_id: 'forged' });
+    reconcileBypassState(session, dir);
+    expect(readState().critique_gate_bypass_approved).toBe(false);
+    expect(eventKinds()).toContain('state_divergence');
+  });
+
+  it('revokes a claim carrying no grant id at all', () => {
+    writeState({ critique_gate_bypass_approved: true });
+    reconcileBypassState(session, dir);
+    expect(readState().critique_gate_bypass_approved).toBe(false);
+    expect(eventKinds()).toContain('state_divergence');
+  });
+
+  it('revokes a claim on an already-consumed grant', () => {
+    ledger.set(GRANT, {
+      grant_id: GRANT,
+      session_id: 'sess-esc-test',
+      requested_at: 123,
+      granted_at: iso(-1000),
+      expires_at: iso(3_600_000),
+      granted_by: 'slack:admin',
+      consumed_at: iso(-500),
+      revoked_at: null,
+      revoked_reason: null,
+    });
+    writeState({ critique_gate_bypass_approved: true, critique_gate_bypass_grant_id: GRANT });
+    reconcileBypassState(session, dir);
+    expect(readState().critique_gate_bypass_approved).toBe(false);
+    expect(eventKinds()).toContain('state_divergence');
+  });
+
+  it('revokes a claim on an expired grant', () => {
+    ledger.set(GRANT, {
+      grant_id: GRANT,
+      session_id: 'sess-esc-test',
+      requested_at: 123,
+      granted_at: iso(-7_200_000),
+      expires_at: iso(-3_600_000),
+      granted_by: 'slack:admin',
+      consumed_at: null,
+      revoked_at: null,
+      revoked_reason: null,
+    });
+    writeState({ critique_gate_bypass_approved: true, critique_gate_bypass_grant_id: GRANT });
+    reconcileBypassState(session, dir);
+    expect(readState().critique_gate_bypass_approved).toBe(false);
+  });
+
+  it('revokes a claim on another session’s grant', () => {
+    ledger.set(GRANT, {
+      grant_id: GRANT,
+      session_id: 'sess-someone-else',
+      requested_at: 123,
+      granted_at: iso(-1000),
+      expires_at: iso(3_600_000),
+      granted_by: 'slack:admin',
+      consumed_at: null,
+      revoked_at: null,
+      revoked_reason: null,
+    });
+    writeState({ critique_gate_bypass_approved: true, critique_gate_bypass_grant_id: GRANT });
+    reconcileBypassState(session, dir);
+    expect(readState().critique_gate_bypass_approved).toBe(false);
+    expect(eventKinds()).toContain('state_divergence');
+  });
+
+  it('clamps an expiry extended beyond what the host granted', () => {
+    writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, GRANT);
+    const granted = readState().critique_gate_bypass_expires_at as number;
+    // Agent extends its own grant by a day.
+    writeState({ ...readState(), critique_gate_bypass_expires_at: granted + 86_400 });
+    recordEventMock.mockClear();
+    reconcileBypassState(session, dir);
+    expect(readState().critique_gate_bypass_expires_at).toBe(granted);
+    expect(eventKinds()).toContain('state_divergence');
+    // Still live — clamping is not revocation.
+    expect(readState().critique_gate_bypass_approved).toBe(true);
+  });
+
+  it('does NOT flag a legitimate consumption that carries no grant id (older gate)', () => {
+    // The bash hook and the agent-runner deploy on different cadences, so a
+    // gate older than this host can consume without writing the id. Treating
+    // that as divergence would fire on every legitimate bypass on the happy
+    // path — the exact cross-path parity mistake that produced #1092.
+    writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, GRANT);
+    writeState({
+      ...readState(),
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+      // note: no critique_gate_bypass_consumed_grant_id
+    });
+    recordEventMock.mockClear();
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).not.toContain('state_divergence');
+    expect(grantExists(GRANT)!.consumed_at).toBeTruthy();
+  });
+
+  it('DOES flag an unattributed consumption when the session has no grant to spend', () => {
+    writeState({
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+    });
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).toContain('state_divergence');
+  });
+
+  it('flags consumption of a REVOKED grant', () => {
+    // Existing-and-unspent is not the same as valid: consuming a grant the
+    // host already withdrew means the gate honoured stale local state.
+    ledger.set(GRANT, {
+      grant_id: GRANT,
+      session_id: 'sess-esc-test',
+      requested_at: 123,
+      granted_at: iso(-1000),
+      expires_at: iso(3_600_000),
+      granted_by: 'slack:admin',
+      consumed_at: null,
+      revoked_at: iso(-500),
+      revoked_reason: 'superseded',
+    });
+    writeState({
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_grant_id: GRANT,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+    });
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).toContain('state_divergence');
+    expect(ledger.get(GRANT)!.consumed_at).toBeNull();
+  });
+
+  it('flags consumption that happened AFTER the grant expired', () => {
+    // Validated against the stamped consumption time, not "now", so a late
+    // sweep cannot excuse a consumption outside the validity interval.
+    ledger.set(GRANT, {
+      grant_id: GRANT,
+      session_id: 'sess-esc-test',
+      requested_at: 123,
+      granted_at: iso(-7_200_000),
+      expires_at: iso(-3_600_000),
+      granted_by: 'slack:admin',
+      consumed_at: null,
+      revoked_at: null,
+      revoked_reason: null,
+    });
+    writeState({
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_grant_id: GRANT,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000), // well after expiry
+    });
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).toContain('state_divergence');
+    expect(ledger.get(GRANT)!.consumed_at).toBeNull();
+  });
+
+  it('flags a REPLAYED grant — consumed a second time between sweeps', () => {
+    writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, GRANT);
+    const stamp = (): void => {
+      writeState({
+        ...readState(),
+        critique_gate_bypass_approved: false,
+        critique_gate_bypass_consumed_grant_id: GRANT,
+        critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+      });
+    };
+    stamp();
+    reconcileBypassState(session, dir); // first, legitimate consumption
+    recordEventMock.mockClear();
+    stamp(); // agent re-set approved and spent the same grant again
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).toContain('state_divergence');
+  });
+
+  it('flags a CONSUMED bypass the host never granted — the forgery that SUCCEEDS', () => {
+    // The gate clears `approved` before allowing delivery, so a successful
+    // forgery leaves only a consumption stamp. Gating this behind the
+    // approved-flag check would make it the one case that never reports.
+    writeState({
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_grant_id: 'forged',
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+    });
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).toContain('state_divergence');
+  });
+
+  it('marks a legitimately consumed grant spent, and clears the stamp so it cannot be replayed', () => {
+    writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, GRANT);
+    writeState({
+      ...readState(),
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_grant_id: GRANT,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+    });
+    recordEventMock.mockClear();
+    reconcileBypassState(session, dir);
+    expect(grantExists(GRANT)!.consumed_at).toBeTruthy();
+    expect(eventKinds()).not.toContain('state_divergence');
+    // Stamp cleared — otherwise it would be re-evaluated every sweep and could
+    // mark a LATER legitimate grant spent before its owner ever used it.
+    expect(readState().critique_gate_bypass_consumed_at).toBeNull();
+    expect(readState().critique_gate_bypass_consumed_grant_id).toBeNull();
+  });
+
+  it('a stale consumption stamp does not consume the NEXT grant', () => {
+    writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'grant-A');
+    writeState({
+      ...readState(),
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_grant_id: 'grant-A',
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+    });
+    reconcileBypassState(session, dir); // spends A, clears the stamp
+    // A second, legitimate approval.
+    applyBypassApproval(session, 'slack:admin', dir, 'grant-B');
+    reconcileBypassState(session, dir);
+    expect(grantExists('grant-B')!.consumed_at).toBeNull();
+    expect(readState().critique_gate_bypass_approved).toBe(true);
+  });
+
+  it('revokes the ledger row when the state write fails (no orphan capability)', () => {
+    writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
+    // A directory where the state file should be makes the patch throw.
+    fs.mkdirSync(path.join(dir, 'workflow-state.json'), { recursive: true });
+    expect(() => applyBypassApproval(session, 'slack:admin', dir, GRANT)).toThrow();
+    const g = grantExists(GRANT)!;
+    expect(g.revoked_at).toBeTruthy();
+    expect(g.revoked_reason).toContain('patch failed');
+  });
+
+  it('does nothing when no bypass is claimed', () => {
+    writeState({ critique_rounds: 3 });
+    reconcileBypassState(session, dir);
+    expect(recordEventMock).not.toHaveBeenCalled();
   });
 });
 
