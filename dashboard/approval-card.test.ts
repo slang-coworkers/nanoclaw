@@ -74,9 +74,11 @@ describe('critique-gate card: expansion survives the poll re-render', () => {
   });
 
   it('re-renders after a toggle instead of mutating the rendered nodes', () => {
+    // Anchor on the handler's own variable, not on the string "reason-" —
+    // that also appears in the renderer's class names, which come first in
+    // both files and would slice the wrong region.
     for (const src of [app, mobile]) {
-      const handler = src.slice(src.indexOf('reason-'), src.indexOf('reason-') + 1200);
-      expect(handler).toContain('renderCwMessages()');
+      expect(src).toMatch(/const reasonToggle[\s\S]{0,800}renderCwMessages\(\)/);
     }
   });
 
