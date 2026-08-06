@@ -19,7 +19,7 @@
 # Measured against the pinned base (2026-08-05): it runs as non-root `node`
 # (uid 1000), WORKDIR /workspace/group, ENTRYPOINT ["/usr/bin/tini","--",
 # "/app/entrypoint.sh"], and already ships `agent-browser` and `ncl` but NOT
-# `codex` or `claude-trace`. Those two are what this fork adds.
+# `codex`, and NOT `jq`/`python3`/`gh`. Those are what this file restores.
 #
 # Build via `container/build-derived.sh`.
 
@@ -32,10 +32,26 @@ FROM ${BASE_IMAGE}
 # fails with EACCES on /root/.npmrc.
 USER root
 
+# ---- tools the hardened base strips out ---------------------------------------
+# The base trims its attack surface and drops jq, python3 and gh — all of which
+# our locally-built image had, and all of which container/hooks/*.sh call.
+#
+# Their absence is SILENT. A hook that dies with "jq: command not found" exits
+# 127, hook failures are swallowed (5s timeout, non-fatal), so the dashboard
+# simply shows no events for that coworker and nothing anywhere says why.
+# MEASURED ON LEGO: adopting the hardened base took hook_events for a Codex
+# group to zero while the agent carried on replying normally — the coworker
+# looked healthy and its whole event timeline was gone.
+#
+# build-derived.sh gates on these at build time so a future base change cannot
+# reintroduce the same silence.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends jq python3 gh && \
+    rm -rf /var/lib/apt/lists/*
+
 # ---- fork-only global CLIs ---------------------------------------------------
 # Reuse the fork's installer so pins match a local build instead of drifting to
-# "latest". The base already has agent-browser and claude-code; the entry that
-# matters here is @mariozechner/claude-trace.
+# "latest". The base already has agent-browser and claude-code.
 COPY cli-tools.json install-cli-tools.sh /tmp/
 RUN --mount=type=cache,target=/root/.cache/pnpm \
     sh /tmp/install-cli-tools.sh /tmp/cli-tools.json
@@ -55,9 +71,12 @@ COPY agent-runner/ ./
 # Files copied as root must stay readable by the runtime user.
 RUN chown -R node:node /app
 
-# ---- claude-trace wrapper (lego observability) --------------------------------
-COPY claude-trace-wrap /usr/local/bin/claude-trace-wrap
-RUN chmod +x /usr/local/bin/claude-trace-wrap
+# NOTE: no claude-trace here on purpose. The lego claude-trace wiring (the
+# `claude-trace-wrap` shim and its container-runner hooks) is deliberately
+# UNCOMMITTED local state on that box, not tracked on any branch. An earlier
+# revision COPY'd claude-trace-wrap, which made a clean-checkout build fail
+# outright — the file does not exist in the repo. Lego applies its own wrapper
+# on top; this image must stay buildable from a clean tree.
 
 # ---- restore the base's runtime identity -------------------------------------
 # ENTRYPOINT is inherited from the base and deliberately not redeclared.

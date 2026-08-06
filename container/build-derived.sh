@@ -34,19 +34,17 @@ fi
 [ -n "$BASE" ] || { echo "could not resolve a base image" >&2; exit 1; }
 echo "base:  $BASE"
 
-# ---- local image name, matching build.sh's convention ------------------------
-IMAGE_NAME="$(node -e '
-  const {execSync} = require("child_process");
-  try {
-    const m = require("./package.json").name || "nanoclaw";
-    console.log(process.env.IMAGE_BASE || "");
-  } catch { console.log(""); }
-' 2>/dev/null)"
-if [ -z "$IMAGE_NAME" ]; then
-  # Mirror whatever build.sh produced most recently for this checkout.
-  IMAGE_NAME="$($RUNTIME images --format '{{.Repository}}' | grep -E '^nanoclaw-agent' | head -1)"
-fi
-[ -n "$IMAGE_NAME" ] || IMAGE_NAME="nanoclaw-agent"
+# ---- local image name --------------------------------------------------------
+# Use the SAME slug helper build.sh uses. The previous version computed nothing
+# usable (it read package.json, discarded it, and printed $IMAGE_BASE, which is
+# normally unset) and then fell back to `docker images | grep ^nanoclaw-agent |
+# head -1`. On a host with more than one install that picks an ARBITRARY
+# install's image and stamps THIS checkout's lock sha onto it — silently
+# corrupting a neighbouring installation. The slug is per-checkout, so derive it.
+# shellcheck source=../setup/lib/install-slug.sh
+source "$PROJECT_ROOT/setup/lib/install-slug.sh"
+IMAGE_NAME="$(container_image_base)"
+[ -n "$IMAGE_NAME" ] || { echo "could not resolve the image base name for this checkout" >&2; exit 1; }
 echo "target: ${IMAGE_NAME}:${TAG}"
 
 # ---- lock sha (same computation as build.sh) ---------------------------------
@@ -84,6 +82,30 @@ DOCKER_BUILDKIT=1 $RUNTIME build \
   --build-arg "IMAGE_SOURCE=derived" \
   -t "${IMAGE_NAME}:${TAG}" \
   container
+
+echo
+# ---- runtime-parity gate -----------------------------------------------------
+# The hardened base strips tools our hooks call. A missing one does NOT announce
+# itself: the hook exits 127, hook failures are swallowed, and the only symptom
+# is a coworker whose dashboard timeline is empty while it otherwise looks fine.
+# That cost us a real debugging session. Fail the BUILD instead, where it is
+# loud, rather than discovering it from a silent timeline days later.
+#
+# claude-trace is deliberately NOT listed: it is uncommitted lego-local wiring,
+# not part of a clean-checkout build.
+REQUIRED_BINS="jq python3 gh curl git node bun codex ncl"
+echo "verifying required binaries…"
+MISSING="$($RUNTIME run --rm --entrypoint sh "${IMAGE_NAME}:${TAG}" -c '
+  for b in '"$REQUIRED_BINS"'; do command -v "$b" >/dev/null 2>&1 || printf "%s " "$b"; done')"
+if [ -n "${MISSING// /}" ]; then
+  {
+    echo "  MISSING from the image: $MISSING"
+    echo "  These are called by container/hooks/*.sh and fail SILENTLY at runtime"
+    echo "  (exit 127, swallowed by the non-fatal hook timeout)."
+  } >&2
+  exit 1
+fi
+echo "  OK  ($REQUIRED_BINS)"
 
 echo
 echo "verifying the stamped label matches this checkout…"
