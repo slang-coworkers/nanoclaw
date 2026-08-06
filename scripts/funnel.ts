@@ -59,6 +59,16 @@ const INSTALL_BY_OWNER: Record<string, string> = {
 // on which API surface produced the payload; isOurBotLogin normalises before
 // comparing so neither spelling is mistaken for a human.
 
+// Only decisions written through the guarded host path are attributable. Rows
+// predating migration 934 backfill to 'legacy': unattributable, which is not
+// evidence of forgery but is not evidence of authenticity either, so they are
+// not counted. Deliberately a local literal rather than an import of
+// TRUSTED_PROVENANCE from src/modules/approval-ledger/store.ts — that export and
+// its migration land in a separate PR, and funnel has to build and run on either
+// side of it. Keep the two in sync; the probe below fails loudly, not silently,
+// if this ever stops matching what the writer stamps.
+const TRUSTED_PROVENANCE = 'agent_verified';
+
 // Review-cost helpers live in funnel-metrics.ts so they can be unit-tested —
 // this file calls main() at import, so a test importing it would run the funnel.
 const fetchAllReviews = (repo: string, pr: number): any[] | null =>
@@ -342,40 +352,72 @@ async function main() {
     humanReviewers: number | null; // distinct human reviewers (0 = merged unreviewed)
   }
   const approverByPrFull = new Map<string, ApproverDecision>();
+  // Was the provenance filter actually applied? Reported in the snapshot so the
+  // panel can say "unfiltered" out loud rather than presenting a filtered and an
+  // unfiltered number identically.
+  let provenanceFiltered = false;
   try {
-    const decisions = db
-      .prepare(
+    // Probe for the column rather than referencing it blind. On a DB that has not
+    // taken migration 934 a `WHERE provenance` reference throws, the catch below
+    // swallows it, and the approver maps come back EMPTY — a panel showing
+    // nothing, with nothing anywhere saying why. pragma_table_info() yields zero
+    // rows for a missing table instead of throwing, so it also separates "no
+    // ledger yet" (expected) from "ledger present but unmigrated". Used as a
+    // table-valued function rather than a bare PRAGMA so it is plainly a SELECT
+    // and the table name is a bound parameter.
+    const columns = db.prepare('SELECT name FROM pragma_table_info(?)').all('approval_decisions') as Array<{
+      name: string;
+    }>;
+    if (columns.length === 0) {
+      console.error('  note: no approval_decisions table — the approver panel will be empty');
+    } else {
+      provenanceFiltered = columns.some((c) => c.name === 'provenance');
+      if (!provenanceFiltered) {
+        console.error(
+          '  WARNING approval_decisions has no provenance column (migration 934 not applied): counting ALL ' +
+            'decisions, including any never written through the guarded host path',
+        );
+      }
+      const stmt = db.prepare(
         `SELECT repo, pr_number AS pr, decision, reason_code AS reason, human_verdict AS human,
                 mode, decided_at AS decidedAt
-         FROM approval_decisions ORDER BY datetime(decided_at) ASC, rowid ASC`,
-      )
-      .all() as Array<{
-      repo: string;
-      pr: number;
-      decision: string;
-      reason: string | null;
-      human: string | null;
-      mode: string;
-      decidedAt: string;
-    }>;
-    // ASC order + overwrite → last (newest) decision per PR wins.
-    for (const d of decisions) {
-      if (!orgAllowed(d.repo)) continue;
-      if (REPO_FILTER && d.repo !== REPO_FILTER) continue;
-      approverByPr.set(`${d.repo}#${d.pr}`, { decision: d.decision, human: d.human });
-      approverByPrFull.set(`${d.repo}#${d.pr}`, {
-        ...d,
-        prState: null,
-        isDraft: null,
-        prAuthor: null,
-        authoredByBot: null,
-        humanFeedbackRounds: null,
-        humanChangesRequested: null,
-        humanReviewers: null,
-      });
+         FROM approval_decisions
+         ${provenanceFiltered ? 'WHERE provenance = ?' : ''}
+         ORDER BY datetime(decided_at) ASC, rowid ASC`,
+      );
+      const decisions = (provenanceFiltered ? stmt.all(TRUSTED_PROVENANCE) : stmt.all()) as Array<{
+        repo: string;
+        pr: number;
+        decision: string;
+        reason: string | null;
+        human: string | null;
+        mode: string;
+        decidedAt: string;
+      }>;
+      // ASC order + overwrite → last (newest) decision per PR wins. Decisions are
+      // append-only per (repo, pr, commit_sha), so a corrected re-decision arrives
+      // as a new row on a new head rather than replacing one — last-wins by
+      // decided_at is still the right read of "what was decided about this PR".
+      for (const d of decisions) {
+        if (!orgAllowed(d.repo)) continue;
+        if (REPO_FILTER && d.repo !== REPO_FILTER) continue;
+        approverByPr.set(`${d.repo}#${d.pr}`, { decision: d.decision, human: d.human });
+        approverByPrFull.set(`${d.repo}#${d.pr}`, {
+          ...d,
+          prState: null,
+          isDraft: null,
+          prAuthor: null,
+          authoredByBot: null,
+          humanFeedbackRounds: null,
+          humanChangesRequested: null,
+          humanReviewers: null,
+        });
+      }
     }
-  } catch {
-    // approval_decisions table not present — leave the maps empty.
+  } catch (err) {
+    // Anything reaching here is a REAL failure, not the expected "no ledger yet"
+    // case, which is handled above. Saying so beats an unexplained empty panel.
+    console.error(`  WARNING approval_decisions read failed, approver panel will be empty: ${err}`);
   }
   // Enrich each decided PR with its live GitHub state (merged/open/closed +
   // draft + author). Uses the same cached gh() the spine uses, so a warm disk
@@ -741,7 +783,11 @@ async function main() {
     engagedNoPr, // corrected residue: bot triaged but produced no live bot PR
     issuePartition, // per-issue funnel (denominator = ALL filed issues in window)
     rows,
-    approverDecisions, // ALL Verity shadow-mode decisions (incl. human-authored PRs); not gated by the PR spine
+    approverDecisions, // Verity shadow-mode decisions (incl. human-authored PRs); not gated by the PR spine
+    // Whether the ledger read was restricted to attributable decisions. False
+    // means the DB predates migration 934 and this panel includes rows of
+    // unknown origin — a caveat the panel should state, not one to bury.
+    approverLedger: { provenanceFiltered, trustedProvenance: provenanceFiltered ? TRUSTED_PROVENANCE : null },
   };
 
   // --out <path>: write the snapshot to a file for the dashboard panel to serve
