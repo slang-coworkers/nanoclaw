@@ -6,15 +6,41 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 388 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 178 |
-| `nv-slang` | slang project spine, skills, workflows | 131 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 420 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 185 |
+| `nv-slang` | slang project spine, skills, workflows | 132 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 67 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 46 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-06
+
+### nv-main (32 PRs)
+- **#1134** `path-guard: provision pathspec itself, so a nv-main test cannot break sibling CI`
+- **#1133** `typecheck: widen the gate past src/, ratcheted against a shrink-only baseline`
+- **#1132** `supply-chain: enforce the release-age quarantine on in-image installs, pin codex 0.146.0`
+- **#1131** `cron: make a nonzero exit from a scheduled job impossible to miss`
+- **#1130** `funnel: report what the legacy quarantine set aside`
+- **#1129** `ci: stop generating trailing blank lines, and make a skipped CI run visible (W1 + W2)`
+- **#1128** `migrate-v1-to-v2: a path glob in the JSDoc closed the comment, breaking the file`
+- **#1127** `agent-runner: lock the clone refresh and stop letting git's stamp hide a partial one`
+- **#1126** `setup: failed steps rendered the green success glyph`
+- _+23 more: #1125, #1124, #1120, #1119, #1118, #1116, #1115, #1114, #1113, #1111, #1110, #1109, #1108, #1107, #1106, #1105, #1103, #1102, #1101, #1097, #1096, #1085, #1084_
+
+### nv-dashboard (7 PRs)
+- **#1095** `dashboard: render critique-gate cards with the PR, session and provenance`
+- **#1098** `dashboard: fix three defects in the critique-gate card (review of #1095)`
+- **#1100** `dashboard: clamp every approval reason, add a critique-gate strip`
+- **#1104** `dashboard: surface review cost and regression quality — with their denominators`
+- **#1117** `dashboard: say whether the approver ledger is provenance-filtered`
+- **#1121** `dashboard: read the structured kb-doctor artifact, and stop reporting 0 drift`
+- **#1122** `dashboard: pin ccusage instead of executing whatever npm serves today`
+
+### nv-slang (1 PRs)
+- **#1123** `fix(discord): a failed forward must not consume reply capacity (F15, #920 follow-up)`
 
 ## 📅 2026-08-05
 
