@@ -108,7 +108,12 @@ the routine update is cheap:
 3. Synthesize only those: fold each into the existing concept page for its theme — **reconcile,
    don't append**. When a new learning supersedes an older one, rewrite the paragraph to state the
    current truth, add the old atom's `superseded_by: <new-stem>` frontmatter, and **remove its row
-   from `**Source learnings (N):**`** (recompute N). Near-duplicates collapse into one paragraph
+   from `**Source learnings (N):**`** (recompute N). Write that marker on either
+   `wiki/learnings/<stem>.md` or the L1 atom — `build` harvests both into `.lineage.json` before it
+   regenerates, so the retirement survives every later rebuild. (It did not always: the marker
+   lived only on the regenerated page, so the next `build` destroyed it and the atom came back as
+   `UNCOVERED`, inviting the fold to resurrect a concept that had been deliberately retired.)
+   Near-duplicates collapse into one paragraph
    citing both. Add a new concept page only if it opens a genuinely new topic — **or if the target
    page is at the 40 KB cap**, in which case split it by subtopic. Don't re-synthesize untouched themes.
 4. Re-run `finalize` → expect 0 dangling, 0 uncovered, 0 oversize, 0 missing-TL;DR.
@@ -175,12 +180,20 @@ Usage:
   python3 learnings_wiki.py build      # L2 + deterministic L3 base + cluster manifests (PRESERVES wiki/concepts/)
   python3 learnings_wiki.py finalize   # stitch concepts into index/glossary + validate coverage & links
 """
-import os, re, sys, glob, json, collections
+import os, re, sys, glob, json, tempfile, collections
 
 ROOT = os.environ.get("WIKI_KB_ROOT") or os.getcwd()
 L1   = os.path.join(ROOT, "learnings")
 SRC  = os.path.join(ROOT, "sources", "learnings")
 WIKI = os.path.join(ROOT, "wiki")
+# Durable supersession lineage. build() DELETES and regenerates every wiki/learnings page,
+# so a `superseded_by:` marker written onto one of those pages survives exactly until the
+# next build — after which finalize() reads lineage from the freshly generated page, sees
+# none, and reports the retired atom as UNCOVERED again. The fold is then told to re-fold
+# an atom that was deliberately retired, resurrecting the superseded concept and making
+# every later compaction decision from incomplete lineage. So lineage lives here too,
+# outside the regenerated tree, and is merged forward on every build.
+LINEAGE = os.path.join(ROOT, ".lineage.json")
 LINK = re.compile(r"\[(?:[^\]]*)\]\((wiki/[^)]+\.md)\)")
 OBSIDIAN_WITH_DESC = re.compile(r"\[\[wiki/learnings/([^\]]+\.md)\]\]\s*—\s*(.+)")
 OBSIDIAN_BARE = re.compile(r"\[\[wiki/learnings/([^\]]+\.md)\]\]")
@@ -270,7 +283,53 @@ def classify(hay, table, default):
             best, best_score = key, score
     return best
 
+def _write_atomic(path, text):
+    d = os.path.dirname(os.path.abspath(path)) or "."
+    os.makedirs(d, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=d, prefix=".lineage.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text); fh.flush(); os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    except Exception:
+        try: os.unlink(tmp)
+        except OSError: pass
+        raise
+
+def load_lineage():
+    """{stem: superseding-stem}. Missing or corrupt reads as empty, never as an error —
+    lineage is additive evidence; a bad read must not block a build."""
+    try:
+        with open(LINEAGE, encoding="utf-8") as fh:
+            d = json.load(fh)
+        return dict(d.get("superseded_by") or {}) if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+def harvest_lineage():
+    """Read supersession markers BEFORE build() deletes the pages carrying them.
+
+    MERGES into the existing record rather than replacing it: a build that runs against a
+    partially-wiped wiki/ (or straight after `rm -rf wiki/`) must not conclude that
+    nothing was ever superseded. Markers are accepted from either place an agent may have
+    written one — the generated L3 page, which is what SKILL.md tells it to edit, or the
+    L1 atom itself.
+    """
+    known = load_lineage()
+    for d in (os.path.join(WIKI, "learnings"), L1):
+        for p in glob.glob(os.path.join(d, "*.md")):
+            try:
+                with open(p, encoding="utf-8", errors="replace") as fh:
+                    v = fm(fh.read(), "superseded_by")
+            except OSError:
+                continue
+            if v:
+                known[stem_of(os.path.basename(p))] = v
+    _write_atomic(LINEAGE, json.dumps({"superseded_by": known}, indent=1, sort_keys=True))
+    return known
+
 def build():
+    lineage = harvest_lineage()   # MUST precede the delete sweep below
     concepts_dir = os.path.join(WIKI, "concepts") + os.sep
     for d in (SRC, WIKI):
         if os.path.isdir(d):
@@ -297,8 +356,13 @@ def build():
         ts = (re.match(r"^(\d{10,})-", stem) or [None, ""])[1] if re.match(r"^(\d{10,})-", stem) else ""
         open(os.path.join(SRC, stem + ".md"), "w", encoding="utf-8").write(text if text.endswith("\n") else text + "\n")
         body = re.sub(r"^\s*#\s+.*\n", "", text, count=1).lstrip("\n").rstrip()
+        # Carry supersession forward. Same precedence as `topic` above: an explicit marker
+        # on the L1 atom wins, else the harvested lineage. Without this the marker is
+        # destroyed on every rebuild and the retired atom returns as UNCOVERED.
+        sup = fm(text, "superseded_by") or lineage.get(stem, "")
         page = ["---", f'title: "{yesc(title)}"', "type: learning", f"topic: {topic}",
-                f"source: learnings/{fn}", "---", "", f"# {title}", "", body, "",
+                f"source: learnings/{fn}"] + ([f"superseded_by: {sup}"] if sup else []) + [
+                "---", "", f"# {title}", "", body, "",
                 "---", f"_Topic: [{TOPIC_LABEL.get(topic, topic)}](wiki/topics/{topic}.md) · [catalog](wiki/index.md) · source: `sources/learnings/{stem}.md`_", ""]
         open(os.path.join(WIKI, "learnings", stem + ".md"), "w", encoding="utf-8").write("\n".join(page))
         entries.append({"stem": stem, "title": title, "topic": topic, "ts": ts})
@@ -477,8 +541,13 @@ def finalize():
     # folded and replaced, so it must not re-appear as UNCOVERED forever. Without this, the
     # only way to reach "0 uncovered" is to append every atom to a concept page and never
     # remove anything — which is what made pages grow without bound.
+    # Union the page markers with the durable record. Reading lineage from the generated
+    # pages ALONE is what lost it: build() had already destroyed them by the time
+    # finalize() looked.
+    lineage = load_lineage()
     superseded = {"wiki/learnings/" + os.path.basename(p) for p in learn
-                  if fm(open(p, encoding="utf-8").read(), "superseded_by")}
+                  if fm(open(p, encoding="utf-8").read(), "superseded_by")
+                  or lineage.get(stem_of(os.path.basename(p)))}
     live = all_learn - superseded
     uncovered = sorted(live - cited)
     print(f"concept pages {len(concepts)} | wiki pages {len(pages)} | links {edges} | dangling {len(dangling)}")
