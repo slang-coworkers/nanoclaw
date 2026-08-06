@@ -46,6 +46,14 @@ const INSTALL_BY_OWNER: Record<string, string> = {
 };
 const BOT_LOGIN = 'nv-slang-bot[bot]';
 
+// Deliberately broader than BOT_LOGIN. For "was this PR ours?" only nv-slang-bot
+// counts, but for "did a HUMAN pay review attention?" any automated reviewer
+// (github-actions, dependabot, Copilot, a coworker fork's own app) is not human
+// cost. GitHub suffixes App identities with "[bot]", which covers the general case.
+const EXTRA_BOT_LOGINS = new Set(['devin-ai-integration', 'copilot-pull-request-reviewer']);
+const isBotLogin = (login: string): boolean =>
+  login.endsWith('[bot]') || EXTRA_BOT_LOGINS.has(login.replace(/\[bot\]$/, ''));
+
 // Repos whose issues form the denominator of the issue partition (the per-issue
 // pass below). The PR spine discovers repos from pr_session_mappings, but the
 // "ALL issues filed" denominator must be enumerated directly — so we list them.
@@ -320,6 +328,11 @@ async function main() {
     isDraft: boolean | null;
     prAuthor: string | null;
     authoredByBot: boolean | null; // true = nv-slang-bot's own PR (in the funnel spine); false = human-authored
+    // Human review cost. null when the reviews fetch fails / is uncached — which is
+    // NOT the same as zero, and is excluded from the aggregate rather than counted
+    // as a clean PR. See reviewCycles below.
+    humanReviewRounds: number | null; // CHANGES_REQUESTED submissions by a human other than the author
+    humanReviewers: number | null; // distinct human reviewers (0 = merged unreviewed)
   }
   const approverByPrFull = new Map<string, ApproverDecision>();
   try {
@@ -349,6 +362,8 @@ async function main() {
         isDraft: null,
         prAuthor: null,
         authoredByBot: null,
+        humanReviewRounds: null,
+        humanReviewers: null,
       });
     }
   } catch {
@@ -365,6 +380,19 @@ async function main() {
     d.isDraft = typeof pr.draft === 'boolean' ? pr.draft : null;
     d.prAuthor = pr.user?.login ?? null;
     d.authoredByBot = d.prAuthor ? d.prAuthor === BOT_LOGIN : null;
+    // How much HUMAN review did this PR cost? Same cached gh(), so a warm disk
+    // cache makes this nearly free. Reviews by a bot, and self-reviews (GitHub
+    // does record those), are not human cost and are excluded.
+    const reviews = gh(d.repo, `pulls/${d.pr}/reviews?per_page=100`);
+    if (Array.isArray(reviews)) {
+      const human = reviews.filter((r: any) => {
+        const login = r?.user?.login ?? '';
+        return login && !isBotLogin(login) && login !== d.prAuthor;
+      });
+      // Rounds, not comments: nine line-comments inside one review is ONE round.
+      d.humanReviewRounds = human.filter((r: any) => r?.state === 'CHANGES_REQUESTED').length;
+      d.humanReviewers = new Set(human.map((r: any) => r.user.login)).size;
+    }
   }
   // Newest decision first for display.
   const approverDecisions = [...approverByPrFull.values()].sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : -1));
@@ -689,8 +717,50 @@ async function main() {
     return { prod: count(pred, 'prod'), lego: count(pred, 'lego'), total: count(pred) };
   }
 
+  // ── human review cost, aggregated from the enriched approver ledger ──────────
+  // Companion to Autonomy (how much ships) and regression-quality (does it hold
+  // up): what did that throughput cost a human reviewer?
+  //
+  // THE TRAP THIS ENCODES: a PR merged with NO human review scores zero rounds,
+  // which reads as flawless but actually means unreviewed. Averaging those in
+  // makes a bot look better the less anyone looks at its work — exactly backwards.
+  // So the mean is taken over REVIEWED PRs only, and `unreviewed` + `coveragePct`
+  // are reported beside it so the denominator can never hide. Same discipline as
+  // regression-quality's attribution coverage.
+  const reviewCycles = (() => {
+    const acc = {
+      bot: { reviewed: 0, unreviewed: 0, rounds: 0, unknown: 0 },
+      human: { reviewed: 0, unreviewed: 0, rounds: 0, unknown: 0 },
+    };
+    for (const d of approverDecisions) {
+      if (d.authoredByBot === null) continue; // author unknown — can't classify
+      const k = d.authoredByBot ? 'bot' : 'human';
+      if (d.humanReviewers === null || d.humanReviewRounds === null) {
+        acc[k].unknown++; // fetch failed/uncached — NOT the same as "zero review"
+      } else if (d.humanReviewers === 0) {
+        acc[k].unreviewed++;
+      } else {
+        acc[k].reviewed++;
+        acc[k].rounds += d.humanReviewRounds;
+      }
+    }
+    const shape = (k: 'bot' | 'human') => {
+      const a = acc[k];
+      const decided = a.reviewed + a.unreviewed;
+      return {
+        reviewedPrs: a.reviewed,
+        unreviewedPrs: a.unreviewed,
+        unknownPrs: a.unknown,
+        meanRounds: a.reviewed ? Math.round((a.rounds / a.reviewed) * 100) / 100 : null,
+        coveragePct: decided ? Math.round((a.reviewed / decided) * 100) : null,
+      };
+    };
+    return { bot: shape('bot'), human: shape('human') };
+  })();
+
   const snapshot = {
     generatedAt: STAMP,
+    reviewCycles, // human review cost by author class; see the caveat above
     routedWindowed: routedSet.size,
     board,
     routedNoPr, // legacy (PR-mapping-derived); kept for back-compat

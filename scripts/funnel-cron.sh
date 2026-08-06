@@ -39,5 +39,18 @@ else
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] bot-contributions refresh FAILED (rc=$?)" >> "$LOG"
 fi
 
+# Regression-quality snapshot for the panel beside the funnel (dashboard
+# /api/regression-quality serves reports/regression-quality.json cached and never
+# recomputes). Companion to reviewCycles, which funnel.ts already embeds in
+# funnel.json above. Read-only gh API calls; same proxy-stripped env.
+# NOTE: this one is python3, not tsx — the hardened image drops python3, which is
+# why container/Dockerfile.derived reinstalls it and build-derived.sh gates on it.
+echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] regression-quality refresh start" >> "$LOG"
+if /usr/bin/python3 scripts/regression-quality.py --json reports/regression-quality.json >> "$LOG" 2>&1; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] regression-quality refresh ok" >> "$LOG"
+else
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] regression-quality refresh FAILED (rc=$?)" >> "$LOG"
+fi
+
 # Keep the log bounded.
 tail -200 "$LOG" > "$LOG.tmp" 2>/dev/null && mv "$LOG.tmp" "$LOG"
