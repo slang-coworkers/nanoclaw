@@ -65,6 +65,29 @@ configured=$(sed -nE 's/^minimumReleaseAge:[[:space:]]*([0-9]+)[[:space:]]*$/\1/
   fail "minimumReleaseAge is ${configured} minutes; policy requires at least ${REQUIRED_MINUTES} (three days)"
 echo "structural: minimumReleaseAge=${configured} at top level — OK"
 
+# ---- 1b. the in-image install path declares the same floor -------------------
+# The agent container's global installs (`pnpm install -g`) resolve config from
+# /root/.npmrc and never read pnpm-workspace.yaml, so container/install-cli-tools.sh
+# has to state the floor itself. A second copy of a number is a drift hazard —
+# exactly the shape of the duplicated Codex pin that F01 removed — so the two
+# must agree, checked here rather than trusted.
+INSTALLER="$REPO_ROOT/container/install-cli-tools.sh"
+if [ -f "$INSTALLER" ]; then
+  in_image=$(sed -nE 's/^MIN_RELEASE_AGE=([0-9]+).*/\1/p' "$INSTALLER")
+  [ -n "$in_image" ] ||
+    fail "container/install-cli-tools.sh has no MIN_RELEASE_AGE=<minutes>.
+  The in-image global installs would run unquarantined — that is the half of F01
+  the workspace setting cannot cover."
+  [ "$in_image" = "$configured" ] ||
+    fail "release-age floor has drifted: pnpm-workspace.yaml says ${configured} minutes,
+  container/install-cli-tools.sh says ${in_image}. They govern different install
+  paths and must state the same policy."
+  grep -q 'ERR_PNPM_NO_MATURE_MATCHING_VERSION' "$INSTALLER" ||
+    fail "container/install-cli-tools.sh no longer probes that the gate is in force.
+  Writing the setting is not evidence it applies — that was the whole finding."
+  echo "in-image: install-cli-tools.sh declares ${in_image} and probes enforcement — OK"
+fi
+
 # ---- probe harness -----------------------------------------------------------
 PROBE_ROOT="$(mktemp -d)"
 trap 'rm -rf "$PROBE_ROOT"' EXIT

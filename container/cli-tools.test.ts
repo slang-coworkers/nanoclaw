@@ -70,3 +70,41 @@ describe('cli-tools manifest', () => {
     expect(installer).toMatch(/only-built-dependencies\[\]=/);
   });
 });
+
+describe('in-image release-age quarantine (F01)', () => {
+  // These global installs resolve config from /root/.npmrc and never read the
+  // repository's pnpm-workspace.yaml, so the three-day quarantine did not apply
+  // to the packages that actually run inside the agent container. That is how
+  // @openai/codex 0.146.1 entered the image ~14.6h after publication.
+
+  it('writes a release-age floor into the config pnpm actually reads', () => {
+    expect(installer).toMatch(/^MIN_RELEASE_AGE=\d+$/m);
+    expect(installer).toMatch(/minimum-release-age=/);
+    expect(installer).toMatch(/\/root\/\.npmrc/);
+  });
+
+  it('declares the same floor as pnpm-workspace.yaml (one policy, two install paths)', () => {
+    const inImage = /^MIN_RELEASE_AGE=(\d+)$/m.exec(installer)?.[1];
+    const workspace = /^minimumReleaseAge:\s*(\d+)\s*$/m.exec(
+      readFileSync(join(here, '..', 'pnpm-workspace.yaml'), 'utf8'),
+    )?.[1];
+    expect(inImage, 'install-cli-tools.sh must declare MIN_RELEASE_AGE').toBeDefined();
+    expect(workspace, 'pnpm-workspace.yaml must declare a top-level minimumReleaseAge').toBeDefined();
+    expect(inImage).toBe(workspace);
+  });
+
+  it('PROVES the gate is in force rather than assuming it', () => {
+    // Writing the setting is not evidence that it applies — a policy that looked
+    // configured and was not is the entire finding. The installer probes with an
+    // absurd age and requires the refusal, failing the build if pnpm ignores it.
+    expect(installer).toMatch(/ERR_PNPM_NO_MATURE_MATCHING_VERSION/);
+    expect(installer).toMatch(/PROBE_AGE=/);
+  });
+
+  it('does not carry a release-age exclusion list', () => {
+    // minimumReleaseAgeExclude needs explicit human sign-off (CLAUDE.md), and
+    // each entry is a permanent hole unless someone prunes it. Nothing in the
+    // container build may add one quietly.
+    expect(installer).not.toMatch(/minimumReleaseAgeExclude|minimum-release-age-exclude/);
+  });
+});

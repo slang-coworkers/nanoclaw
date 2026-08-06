@@ -236,6 +236,14 @@ NanoClaw uses pnpm with two supply chain defenses configured in `pnpm-workspace.
 
 `minimumReleaseAge: 4320` (3 days). pnpm will refuse to resolve any package version published less than 3 days ago. This defends against typosquatting and compromised maintainer accounts — most malicious publishes are detected and pulled within 72 hours.
 
+**The key must stay top-level.** It previously sat nested under a `pnpm:` key, which pnpm 10.33.0 ignores *silently* — no warning of any kind — so the quarantine documented here was not actually running. `scripts/check-release-age-policy.sh` now probes pnpm in CI instead of trusting the file, and fails if the setting is ever moved somewhere pnpm does not read.
+
+**Two install paths, two places to configure.** `pnpm-workspace.yaml` governs the repository install. It does *not* govern the agent container's global CLI installs: `pnpm install -g` resolves config from `/root/.npmrc` and never reads the workspace file, so the packages that actually execute inside the agent were unprotected even after the key was fixed. `container/install-cli-tools.sh` writes the same floor into `/root/.npmrc` and proves at build time that pnpm honours it, failing the image build otherwise. CI checks the two numbers for drift.
+
+The enforcement is version-sensitive, which is why the probe exists rather than a comment: measured 2026-08-06, pnpm 10.33.0 (what the Dockerfile pins) honours `minimum-release-age` for global installs and pnpm 11.20.0 ignores it — the same regression that already applies to `only-built-dependencies[]=`. A pnpm bump past 10.x fails the image build instead of quietly reopening the hole.
+
+One consequence when bumping a pinned CLI: a version younger than three days now fails the image build with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. Check `pnpm view <pkg>@<version> time` and pin a version that has already matured rather than the newest tag.
+
 **Excluding a package from the release age gate** (`minimumReleaseAgeExclude`):
 
 This should be rare. When a zero-day fix or critical dependency requires an immediate update:
