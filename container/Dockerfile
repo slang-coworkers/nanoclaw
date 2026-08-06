@@ -25,7 +25,7 @@ ARG INSTALL_CJK_FONTS=false
 # pinned in cli-tools.json so a skill can add one with a json-merge; Bun (the
 # runtime) is pinned here because it installs from a different source.
 # codex is fork-only (not in cli-tools.json) — pinned here for the separate install below.
-ARG CODEX_VERSION=0.139.0
+ARG CODEX_VERSION=0.146.1
 ARG BUN_VERSION=1.3.12
 
 # Enable contrib + non-free + non-free-firmware so per-group container_configs
