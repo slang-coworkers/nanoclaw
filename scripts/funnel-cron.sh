@@ -18,13 +18,37 @@ export no_proxy='*' NO_PROXY='*'
 cd "$REPO" || exit 1
 LOG="$REPO/logs/funnel-cron.log"
 mkdir -p "$REPO/logs"
+# Every writer below targets reports/. A fresh checkout has no such directory and
+# the writers do not create one, so without this the whole run fails on ENOENT
+# with nothing but a stack trace to show for it.
+mkdir -p "$REPO/reports"
 
-echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] funnel refresh start" >> "$LOG"
-if pnpm exec tsx scripts/funnel.ts --since 2026-04-10 --out reports/funnel.json >> "$LOG" 2>&1; then
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] funnel refresh ok" >> "$LOG"
-else
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] funnel refresh FAILED (rc=$?)" >> "$LOG"
-fi
+# Run a refresh step and log its REAL exit code.
+#
+# The obvious spelling of this is a lie:
+#     echo "[$(date -u ...)] ... FAILED (rc=$?)"
+# `$(date)` is a subshell that runs BEFORE the interpolation of `$?`, and it
+# succeeds, so `$?` is its status — 0. Every failure logged "rc=0" and looked
+# like a clean run to anyone reading the log. Capture RC first, interpolate second.
+run_step() {
+  local label="$1"
+  shift
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $label refresh start" >> "$LOG"
+  "$@" >> "$LOG" 2>&1
+  local rc=$?
+  if [ "$rc" -eq 0 ]; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $label refresh ok" >> "$LOG"
+  else
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $label refresh FAILED (rc=$rc)" >> "$LOG"
+  fi
+  return "$rc"
+}
+
+# Track whether anything failed, but keep going — one broken producer must not
+# stop the others from refreshing.
+FAILURES=0
+
+run_step funnel pnpm exec tsx scripts/funnel.ts --since 2026-04-10 --out reports/funnel.json || FAILURES=$((FAILURES + 1))
 
 # nv-slang-bot contributions snapshot for the panel under the funnel
 # (dashboard /api/bot-contributions serves reports/bot-contributions.json
@@ -32,12 +56,7 @@ fi
 # "no snapshot yet" until someone hits the manual refresh button — the
 # funnel-cron never generated it. Same proxy-stripped env + gh-App-token
 # path as the funnel above; a handful of read-only gh API calls.
-echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] bot-contributions refresh start" >> "$LOG"
-if pnpm exec tsx scripts/bot-contributions.ts >> "$LOG" 2>&1; then
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] bot-contributions refresh ok" >> "$LOG"
-else
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] bot-contributions refresh FAILED (rc=$?)" >> "$LOG"
-fi
+run_step bot-contributions pnpm exec tsx scripts/bot-contributions.ts || FAILURES=$((FAILURES + 1))
 
 # Regression-quality snapshot for the panel beside the funnel (dashboard
 # /api/regression-quality serves reports/regression-quality.json cached and never
@@ -45,12 +64,16 @@ fi
 # funnel.json above. Read-only gh API calls; same proxy-stripped env.
 # NOTE: python3, not tsx. This cron runs on the HOST, where python3 is present
 # (the kb-health cron uses it too) — no container image is involved.
-echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] regression-quality refresh start" >> "$LOG"
-if /usr/bin/python3 scripts/regression-quality.py --json reports/regression-quality.json >> "$LOG" 2>&1; then
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] regression-quality refresh ok" >> "$LOG"
-else
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] regression-quality refresh FAILED (rc=$?)" >> "$LOG"
-fi
+# NOTE: regression-quality.py's fail-closed exit codes (nonzero when its
+# collection was incomplete, so an outage cannot publish as a clean zero) land in
+# the companion F07 PR. Until then it exits nonzero only on a missing label; the
+# rc capture above is what makes either one visible in the log at all.
+run_step regression-quality /usr/bin/python3 scripts/regression-quality.py --json reports/regression-quality.json ||
+  FAILURES=$((FAILURES + 1))
 
 # Keep the log bounded.
 tail -200 "$LOG" > "$LOG.tmp" 2>/dev/null && mv "$LOG.tmp" "$LOG"
+
+# Surface the aggregate to cron (which mails/records a nonzero exit) rather than
+# always reporting success because the last command happened to be `mv`.
+[ "$FAILURES" -eq 0 ] || exit 1

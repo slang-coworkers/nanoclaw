@@ -34,7 +34,17 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { REVIEW_PAGE_CAP, aggregateReviewCycles, countHumanReview, fetchAllReviewsWith } from './funnel-metrics.js';
+import {
+  REVIEW_PAGE_CAP,
+  TTL_LONG,
+  type TerminalLookup,
+  aggregateReviewCycles,
+  countHumanReview,
+  diskCacheTtl,
+  fetchAllReviewsWith,
+  isOurBotLogin,
+  reviewsApiPath,
+} from './funnel-metrics.js';
 import { initDb } from '../src/db/connection.js';
 import { getDb } from '../src/db/connection.js';
 import { DATA_DIR } from '../src/config.js';
@@ -45,13 +55,15 @@ const INSTALL_BY_OWNER: Record<string, string> = {
   'shader-slang': '122982130',
   'slang-coworkers': '123550981',
 };
-const BOT_LOGIN = 'nv-slang-bot[bot]';
+// Our bot appears BOTH as `nv-slang-bot[bot]` and bare `nv-slang-bot` depending
+// on which API surface produced the payload; isOurBotLogin normalises before
+// comparing so neither spelling is mistaken for a human.
 
 // Review-cost helpers live in funnel-metrics.ts so they can be unit-tested —
 // this file calls main() at import, so a test importing it would run the funnel.
 const fetchAllReviews = (repo: string, pr: number): any[] | null =>
   fetchAllReviewsWith(
-    (page) => gh(repo, `pulls/${pr}/reviews?per_page=100&page=${page}`),
+    (page) => gh(repo, reviewsApiPath(pr, page)),
     (n) =>
       console.error(`  WARNING ${repo}#${pr}: hit the ${REVIEW_PAGE_CAP}-page review cap at ${n}; counts are a floor`),
   );
@@ -134,17 +146,14 @@ function tokenFor(repo: string): string | null {
 }
 
 // ── Disk cache for GitHub API responses ──
-// Terminal-state items (merged PRs, closed issues) rarely change — cache them
-// for 24h. Open/active items get 15min. Listings always refetch.
+// TTL policy (and the reasons behind it) lives in funnel-metrics.ts so it can be
+// unit-tested; this file only supplies the cache lookup it needs.
 const DISK_CACHE_PATH = path.join(
   path.dirname(import.meta.url.replace('file://', '')),
   '..',
   'reports',
   '.funnel-gh-cache.json',
 );
-const TTL_LONG = 24 * 60 * 60 * 1000; // 24h — merged PRs, closed issues
-const TTL_MED = 60 * 60 * 1000; // 1h  — check-runs, timeline, comments
-const TTL_SHORT = 15 * 60 * 1000; // 15m — open items, listings
 
 interface DiskCacheEntry {
   data: unknown;
@@ -155,25 +164,6 @@ try {
   diskCache = JSON.parse(fs.readFileSync(DISK_CACHE_PATH, 'utf-8'));
 } catch {
   /* first run or corrupt — start fresh */
-}
-
-function diskCacheTtl(apiPath: string, data: any): number {
-  // Listings and paginated results: always refetch
-  if (apiPath.includes('page=') || apiPath.match(/^issues\?/)) return TTL_SHORT;
-  // Individual PR or issue: long TTL if terminal state
-  if (/^pulls\/\d+$/.test(apiPath) && data) {
-    if (data.merged || data.state === 'closed') return TTL_LONG;
-    return TTL_SHORT;
-  }
-  if (/^issues\/\d+$/.test(apiPath) && data) {
-    if (data.state === 'closed') return TTL_LONG;
-    return TTL_SHORT;
-  }
-  // Check-runs, timeline, comments: medium
-  if (apiPath.includes('check-runs') || apiPath.includes('timeline') || apiPath.includes('comments')) {
-    return TTL_MED;
-  }
-  return TTL_SHORT;
 }
 
 let diskCacheHits = 0;
@@ -197,13 +187,27 @@ function saveDiskCache(): void {
 // ── GitHub GET with --noproxy (OneCLI gateway would otherwise tunnel localhost
 //    and corrupt these calls) + in-memory + disk cache ──
 const ghMemCache = new Map<string, unknown>();
+
+// Does the cache already know this PR/issue reached a terminal state? Answering
+// from cache is sound because terminality is one-way: a merged PR never
+// un-merges, so even a days-old entry is authoritative for this question. Used
+// to let a merged PR's reviews inherit the 24h TTL.
+const terminalLookup =
+  (repo: string): TerminalLookup =>
+  (parentPath) => {
+    const key = `${repo}|${parentPath}`;
+    const data = (ghMemCache.get(key) ?? diskCache[key]?.data) as any;
+    if (!data || typeof data !== 'object' || !('state' in data)) return null;
+    return data.merged === true || data.state === 'closed';
+  };
+
 function gh(repo: string, apiPath: string): any {
   const key = `${repo}|${apiPath}`;
   if (ghMemCache.has(key)) return ghMemCache.get(key);
   // Check disk cache
   const cached = diskCache[key];
   if (cached) {
-    const ttl = diskCacheTtl(apiPath, cached.data);
+    const ttl = diskCacheTtl(apiPath, cached.data, terminalLookup(repo));
     if (Date.now() - cached.fetchedAt < ttl) {
       diskCacheHits++;
       ghMemCache.set(key, cached.data);
@@ -333,7 +337,8 @@ async function main() {
     // Human review cost. null when the reviews fetch fails / is uncached — which is
     // NOT the same as zero, and is excluded from the aggregate rather than counted
     // as a clean PR. See reviewCycles below.
-    humanReviewRounds: number | null; // CHANGES_REQUESTED submissions by a human other than the author
+    humanFeedbackRounds: number | null; // distinct human feedback sessions (COMMENTED + CHANGES_REQUESTED)
+    humanChangesRequested: number | null; // strict CHANGES_REQUESTED subset of the above
     humanReviewers: number | null; // distinct human reviewers (0 = merged unreviewed)
   }
   const approverByPrFull = new Map<string, ApproverDecision>();
@@ -364,7 +369,8 @@ async function main() {
         isDraft: null,
         prAuthor: null,
         authoredByBot: null,
-        humanReviewRounds: null,
+        humanFeedbackRounds: null,
+        humanChangesRequested: null,
         humanReviewers: null,
       });
     }
@@ -381,14 +387,15 @@ async function main() {
     d.prState = pr.merged ? 'merged' : (pr.state ?? null);
     d.isDraft = typeof pr.draft === 'boolean' ? pr.draft : null;
     d.prAuthor = pr.user?.login ?? null;
-    d.authoredByBot = d.prAuthor ? d.prAuthor === BOT_LOGIN : null;
+    d.authoredByBot = d.prAuthor ? isOurBotLogin(d.prAuthor) : null;
     // How much HUMAN review did this PR cost? Same cached gh(), so a warm disk
     // cache makes this nearly free. Reviews by a bot, and self-reviews (GitHub
     // does record those), are not human cost and are excluded.
     const reviews = fetchAllReviews(d.repo, d.pr);
     if (reviews) {
-      const { rounds, reviewers } = countHumanReview(reviews, d.prAuthor);
-      d.humanReviewRounds = rounds;
+      const { feedbackRounds, changesRequestedRounds, reviewers } = countHumanReview(reviews, d.prAuthor);
+      d.humanFeedbackRounds = feedbackRounds;
+      d.humanChangesRequested = changesRequestedRounds;
       d.humanReviewers = reviewers;
     }
   }
@@ -434,7 +441,7 @@ async function main() {
     let closedReason: string | null = null;
     if (issue) {
       const comments = gh(map.repo, `issues/${issue}/comments?per_page=100`);
-      if (Array.isArray(comments)) triaged = comments.some((c: any) => c?.user?.login === BOT_LOGIN);
+      if (Array.isArray(comments)) triaged = comments.some((c: any) => isOurBotLogin(c?.user?.login));
       const iss = gh(map.repo, `issues/${issue}`);
       if (iss) {
         issueUrl = iss.html_url ?? issueUrl;
@@ -550,7 +557,7 @@ async function main() {
           const src = e?.source?.issue;
           if (!src?.pull_request) continue;
           const author = src?.user?.login ?? '';
-          linkedPrs.push({ number: src.number, author, isBot: author === BOT_LOGIN });
+          linkedPrs.push({ number: src.number, author, isBot: isOurBotLogin(author) });
         }
       }
       const botPr = linkedPrs.find((p) => p.isBot);
@@ -589,7 +596,7 @@ async function main() {
 
       // Did the bot at least comment? (triage)
       const comments = gh(repo, `issues/${num}/comments?per_page=100`);
-      const botCommented = Array.isArray(comments) && comments.some((c: any) => c?.user?.login === BOT_LOGIN);
+      const botCommented = Array.isArray(comments) && comments.some((c: any) => isOurBotLogin(c?.user?.login));
       // A closed-completed issue with no bot artifact at all is also resolved elsewhere.
       if (issueState === 'closed' && (stateReason === 'completed' || stateReason == null) && !botCommented) {
         issueParts.push({
@@ -719,7 +726,10 @@ async function main() {
   // Companion to Autonomy (how much ships) and regression-quality (does it hold
   // up): what did that throughput cost a human reviewer? The aggregation lives in
   // funnel-metrics.ts, where the traps it encodes (unreviewed != clean, a failed
-  // fetch != zero, merged-only scope) are covered by fixture tests.
+  // fetch != zero, merged-only scope, the field name IS the definition) are
+  // covered by fixture tests. A "round" is a human feedback SESSION — COMMENTED
+  // counts, because almost all review here arrives as COMMENTED; the strict
+  // CHANGES_REQUESTED mean ships beside it under its own name.
   const reviewCycles = aggregateReviewCycles(approverDecisions);
 
   const snapshot = {
