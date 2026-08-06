@@ -25,4 +25,4 @@ setup/channels/run-channel-skill.test.ts  TS2345  x2  # WireArgs has no index si
 setup/index.ts                            TS2307  x1  # BROKEN: lazy-imports ./groups.js but setup/groups.ts does not exist. Create-or-delete needs intent we do not have; the dynamic import only throws if that step is selected, which is why nobody hit it
 setup/lib/skill-driver.ts                 TS2322  x2  # validator typed (value: string) where (value: string|undefined) is required
 setup/migrate-v2/tasks.ts                 TS2724  x1  # BROKEN: imports insertTask, renamed to insertTaskRow — throws on import, in the v1->v2 migration path a user hits once, under stress
-setup/whatsapp-auth.ts                    TS7006  x1  # implicit any on a baileys callback param, downstream of the ambient any stub in types/optional-modules.d.ts
+setup/whatsapp-auth.ts                    TS7006  x1  # implicit any on a baileys callback param, downstream of the ambient any stub in setup/types/optional-modules.d.ts
