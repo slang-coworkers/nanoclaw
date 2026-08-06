@@ -413,7 +413,10 @@ async function loadFunnel() {
 
   // PR-approver (Verity) shadow-mode ledger — ALL decisions, not just the bot-
   // authored PRs that appear in the funnel spine. Appended below the partition.
-  if (board) board.innerHTML = partHtml + funnelApproverPanel(snap.approverDecisions || []);
+  // reviewCycles rides inside the funnel snapshot, so it needs no extra fetch.
+  if (board)
+    board.innerHTML =
+      partHtml + reviewCyclesHtml(snap.reviewCycles) + funnelApproverPanel(snap.approverDecisions || []);
 
   // nv-slang-bot contribution table (separate snapshot: /api/bot-contributions).
   if (detail) {
@@ -425,6 +428,23 @@ async function loadFunnel() {
       } else {
         const j = await r.json().catch(() => ({}));
         detail.innerHTML = `<div style="color:var(--text-muted);font-size:11px;margin-top:16px">nv-slang-bot contributions: no snapshot yet. ${esc(j.hint || '')}</div>`;
+      }
+      // Regression quality is a SEPARATE snapshot (its own host cron), so it gets
+      // its own fetch and must APPEND — replacing would take the bot-contributions
+      // panel down with it whenever this snapshot is absent.
+      try {
+        const rq = await fetch('/api/regression-quality');
+        if (rq.ok) {
+          detail.innerHTML += regressionQualityHtml(await rq.json());
+        } else {
+          const jq = await rq.json().catch(() => ({}));
+          detail.innerHTML +=
+            '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Regression quality: no snapshot yet. ' +
+            esc(jq.hint || '') + '</div>';
+        }
+      } catch (e) {
+        detail.innerHTML +=
+          '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Regression quality: failed to load.</div>';
       }
       const btn = detail.querySelector('[data-action="refresh-botc"]');
       if (btn) btn.addEventListener('click', () => triggerBotcRefresh(btn));
@@ -522,6 +542,101 @@ function funnelApproverPanel(decisions) {
         ${empty}
       </details>
     </div>`;
+}
+
+// Human review cost by author class. Rides inside the funnel snapshot
+// (snap.reviewCycles) — no extra fetch.
+//
+// THIS PANEL MUST SHOW ITS DENOMINATORS. meanRounds alone inverts the signal: a
+// PR merged with no human review scores zero rounds, so a bot looks BETTER the
+// less anyone checks its work. Coverage and unreviewed sit next to the headline
+// for exactly that reason, and the two exclusions stay separate — notMerged is a
+// deliberate scope choice, unclassified is a failed lookup, and conflating them
+// would hide a degraded run behind a clean-looking number.
+function reviewCyclesHtml(rc) {
+  if (!rc || (!rc.bot && !rc.human)) return '';
+  const cell = (c) => {
+    if (!c) return '<td colspan="4" style="padding:2px 12px;color:var(--text-muted)">—</td>';
+    // null (not 0) when nothing was reviewed: "no data", never "0 rounds".
+    const mean =
+      c.meanRounds === null || c.meanRounds === undefined
+        ? '<span style="color:var(--text-muted)">no data</span>'
+        : '<b>' + c.meanRounds + '</b>';
+    const hasCov = c.coveragePct !== null && c.coveragePct !== undefined;
+    const cov = hasCov ? c.coveragePct + '%' : '—';
+    const warn = hasCov && c.coveragePct < 50 ? ';color:var(--warn,#c90)' : '';
+    return (
+      '<td style="text-align:right;padding:2px 12px">' + mean + '</td>' +
+      '<td style="text-align:right;padding:2px 12px">' + (c.reviewedPrs || 0) + '</td>' +
+      '<td style="text-align:right;padding:2px 12px' + warn + '">' + cov + '</td>' +
+      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' + (c.unreviewedPrs || 0) + '</td>'
+    );
+  };
+  const th = (l, r) =>
+    '<th style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 12px;border-bottom:1px solid var(--border)">' + l + '</th>';
+  const excl = [];
+  if (rc.notMergedExcluded) excl.push(rc.notMergedExcluded + ' not merged (out of scope)');
+  if (rc.unclassifiedPrs) excl.push('<b>' + rc.unclassifiedPrs + ' unclassified (lookup failed)</b>');
+  return (
+    '<div style="margin-top:16px">' +
+    '<div style="font-weight:600;margin-bottom:4px">Human review cost ' +
+    '<span style="font-weight:400;color:var(--text-muted)">— merged PRs only</span></div>' +
+    '<table style="border-collapse:collapse;font-size:10px">' +
+    '<tr>' + th('author') + th('mean rounds', 1) + th('reviewed', 1) + th('coverage', 1) + th('unreviewed', 1) + '</tr>' +
+    '<tr><td style="padding:2px 12px">bot</td>' + cell(rc.bot) + '</tr>' +
+    '<tr><td style="padding:2px 12px">human</td>' + cell(rc.human) + '</tr>' +
+    '</table>' +
+    '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
+    'Mean is over <i>reviewed</i> PRs only. Low coverage does <b>not</b> mean the rest were clean — ' +
+    'it means little of the work was reviewed at all.' +
+    (excl.length ? '<br>Excluded: ' + excl.join(' · ') : '') +
+    '</div></div>'
+  );
+}
+
+// Regression quality — /api/regression-quality (scripts/regression-quality.py).
+//
+// Attribution coverage is the load-bearing number and it is LOW: only issues
+// citing a CAUSAL reference can be attributed, so the bot/human split is a
+// FLOOR, not a total. Printing the split without the coverage overstates how
+// much is actually known.
+function regressionQualityHtml(rq) {
+  if (!rq || !rq.issues) return '';
+  const attributed = rq.issues - (rq.unattributed || 0);
+  const cov = Math.round((attributed / rq.issues) * 100);
+  const months = Object.keys(rq.by_month || {}).sort().slice(-6);
+  const th = (l, r) =>
+    '<th style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 10px;border-bottom:1px solid var(--border)">' + l + '</th>';
+  const td = (v, r) => '<td style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 10px">' + v + '</td>';
+  const rate = (n, d) => (d ? ((100 * n) / d).toFixed(1) : '—');
+  const rows = months
+    .map((m) => {
+      const bp = (rq.merged_bot || {})[m] || 0;
+      const hp = (rq.merged_human || {})[m] || 0;
+      const b = (rq.bot_month || {})[m] || 0;
+      const h = (rq.human_month || {})[m] || 0;
+      return (
+        '<tr>' + td(esc(m)) + td((rq.by_month || {})[m] || 0, 1) +
+        td(b, 1) + td(rate(b, bp), 1) + td(h, 1) + td(rate(h, hp), 1) + '</tr>'
+      );
+    })
+    .join('');
+  return (
+    '<div style="margin-top:20px">' +
+    '<div style="font-weight:600;margin-bottom:4px">Regression quality ' +
+    '<span style="font-weight:400;color:var(--text-muted)">— ' + esc(rq.repo || '') +
+    ' · label "' + esc(rq.label || 'regression') + '"</span></div>' +
+    '<div style="margin-bottom:6px;padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
+    '<b>Attribution coverage ' + cov + '%</b> (' + attributed + '/' + rq.issues + '). ' +
+    'The rest cite no causal reference, so the bot/human split below is a <b>floor, not a total</b>.' +
+    '</div>' +
+    '<table style="border-collapse:collapse;font-size:10px">' +
+    '<tr>' + th('month') + th('regressions', 1) + th('bot-caused', 1) + th('per 100 bot PRs', 1) +
+    th('human-caused', 1) + th('per 100 human PRs', 1) + '</tr>' + rows + '</table>' +
+    '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
+    'Rate, not count: bot merge volume rose sharply, so a raw count climbs even when quality is flat.' +
+    '</div></div>'
+  );
 }
 
 // Table of nv-slang-bot's per-repo commits / additions / deletions, from the
