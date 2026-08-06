@@ -400,7 +400,12 @@ describe('graduated escalation at the denial cap', () => {
     activateOverlay();
     fs.writeFileSync(
       stateFile,
-      JSON.stringify({ critique_rounds: 0, critique_gate_denials: 3, critique_gate_bypass_approved: true }),
+      JSON.stringify({
+        critique_rounds: 0,
+        critique_gate_denials: 3,
+        critique_gate_bypass_approved: true,
+        critique_gate_bypass_grant_id: 'appr-1',
+      }),
     );
     const result = run(denyPayload());
     expect(result.status).toBe(0);
@@ -408,6 +413,10 @@ describe('graduated escalation at the denial cap', () => {
     // The grant is spent, and the release is recorded for the host to see.
     expect(readState().critique_gate_bypass_approved).toBe(false);
     expect(readState().critique_gate_bypass_consumed_at).toBeGreaterThan(0);
+    // Attribution: the host reconciler matches consumption on this id. Without
+    // it, a legitimate bypass reads as consumption of a grant nobody issued —
+    // a false positive on the happy path, on every shell-path bypass.
+    expect(readState().critique_gate_bypass_consumed_grant_id).toBe('appr-1');
     expect(readEsc().failed_open_at).toBeTruthy();
     // A second delivery is denied again — it is not a standing grant.
     const again = run(denyPayload());

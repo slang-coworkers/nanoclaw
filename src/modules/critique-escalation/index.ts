@@ -56,6 +56,7 @@ import path from 'path';
 import {
   createBypassGrant,
   getBypassGrant,
+  getLatestSpendableGrant,
   lookupPrForSession,
   markBypassGrantConsumed,
   recordEscalationEvent,
@@ -305,12 +306,35 @@ export function reconcileBypassState(session: Session, dirOverride?: string): vo
       : null;
   if (state.critique_gate_bypass_consumed_at != null) {
     const consumed = consumedGrantId ? getBypassGrant(consumedGrantId) : null;
-    if (!consumed || consumed.session_id !== session.id) {
-      divergence(
-        `a bypass was CONSUMED under grant ${consumedGrantId ?? 'none'}, which this host never issued for this session`,
-      );
-    } else if (!consumed.consumed_at) {
-      markBypassGrantConsumed(consumed.grant_id, nowIso);
+    if (consumedGrantId) {
+      // Attributed. Either it names a grant we issued to this session, or it
+      // doesn't — and "doesn't" is the forgery that actually succeeds.
+      if (!consumed || consumed.session_id !== session.id) {
+        divergence(
+          `a bypass was CONSUMED under grant ${consumedGrantId}, which this host never issued for this session`,
+        );
+      } else if (!consumed.consumed_at) {
+        markBypassGrantConsumed(consumed.grant_id, nowIso);
+      }
+    } else {
+      // Unattributed. A gate older than this host does not write the grant id,
+      // and the two gates deploy on different cadences (hooks are bind-mounted
+      // and live on restart; the agent-runner ships as a per-group image copy).
+      // Falling straight to `divergence` here would flag EVERY legitimate
+      // bypass taken through an older gate — a false positive on the happy
+      // path, which would train us to ignore the signal. Attribute it to the
+      // session's newest spendable grant instead, and only call it divergence
+      // when the session has no grant to spend at all.
+      const fallback = getLatestSpendableGrant(session.id, nowIso);
+      if (fallback) {
+        markBypassGrantConsumed(fallback.grant_id, nowIso);
+        log.warn('Critique-gate bypass consumed without a grant id — attributed to the newest live grant', {
+          sessionId: session.id,
+          grantId: fallback.grant_id,
+        });
+      } else {
+        divergence('a bypass was CONSUMED with no grant id and no live grant exists for this session');
+      }
     }
     // Clear the stamp either way. Left in place it would be re-evaluated every
     // sweep (noisy) and, worse, could be replayed against a later legitimate

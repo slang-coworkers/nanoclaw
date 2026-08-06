@@ -174,6 +174,29 @@ export function getBypassGrant(grantId: string): BypassGrant | null {
   return row ?? null;
 }
 
+/**
+ * The session's newest still-spendable grant.
+ *
+ * Only used to attribute a consumption that arrived WITHOUT a grant id — a
+ * gate older than this host does not write one, and the two gates deploy on
+ * different cadences (hooks are bind-mounted and live on restart; the
+ * agent-runner ships as a per-group image copy). Without this fallback every
+ * legitimate bypass during a skew window would be reported as a forgery.
+ */
+export function getLatestSpendableGrant(sessionId: string, nowIso: string): BypassGrant | null {
+  if (!hasTable(getDb(), 'critique_bypass_grants')) return null;
+  const row = getDb()
+    .prepare(
+      `SELECT * FROM critique_bypass_grants
+        WHERE session_id = ? AND consumed_at IS NULL AND revoked_at IS NULL
+          AND datetime(expires_at) > datetime(?)
+        ORDER BY datetime(granted_at) DESC, rowid DESC
+        LIMIT 1`,
+    )
+    .get(sessionId, nowIso) as BypassGrant | undefined;
+  return row ?? null;
+}
+
 /** The gate spent the grant; record it so it can never be honoured again. */
 export function markBypassGrantConsumed(grantId: string, consumedAtIso: string): void {
   if (!hasTable(getDb(), 'critique_bypass_grants')) return;

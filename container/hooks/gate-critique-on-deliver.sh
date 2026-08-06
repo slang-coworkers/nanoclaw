@@ -253,7 +253,14 @@ EOF
           "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" || true
         echo "[critique-gate] Admin bypass EXPIRED unused — requirement still enforced." >&2
       else
-        jq '. + {critique_gate_bypass_approved: false, critique_gate_bypass_consumed_at: '"$NOW_EPOCH"'}' \
+        # Attribute the consumption to the grant that authorized it. The host
+        # reconciler matches on this id; without it a perfectly legitimate
+        # bypass looks like a consumption of a grant nobody issued.
+        GRANT_ID=$(jq -r '.critique_gate_bypass_grant_id // ""' "$STATE" 2>/dev/null || echo "")
+        jq --arg gid "$GRANT_ID" \
+          '. + {critique_gate_bypass_approved: false,
+                critique_gate_bypass_consumed_grant_id: (if $gid == "" then null else $gid end),
+                critique_gate_bypass_consumed_at: '"$NOW_EPOCH"'}' \
           "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" || true
         stamp_failed_open "admin bypass consumed (one-shot)"
         echo "[critique-gate] Delivery allowed by admin-approved bypass, now CONSUMED (requirement still unmet: $DENIAL_REASON)." >&2

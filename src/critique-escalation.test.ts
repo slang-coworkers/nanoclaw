@@ -78,6 +78,16 @@ vi.mock('./db/critique-escalations.js', () => ({
     ledger.set(g.grant_id, { ...g, consumed_at: null, revoked_at: null, revoked_reason: null });
   },
   getBypassGrant: (id: string) => ledger.get(id) ?? null,
+  getLatestSpendableGrant: (sessionId: string, nowIso: string) =>
+    [...ledger.values()]
+      .filter(
+        (g) =>
+          g.session_id === sessionId &&
+          !g.consumed_at &&
+          !g.revoked_at &&
+          Date.parse(g.expires_at) > Date.parse(nowIso),
+      )
+      .sort((a, b) => Date.parse(b.granted_at) - Date.parse(a.granted_at))[0] ?? null,
   markBypassGrantConsumed: (id: string, iso: string) => {
     const g = ledger.get(id);
     if (g && !g.consumed_at) g.consumed_at = iso;
@@ -466,6 +476,34 @@ describe('host-authoritative bypass ledger', () => {
     expect(eventKinds()).toContain('state_divergence');
     // Still live — clamping is not revocation.
     expect(readState().critique_gate_bypass_approved).toBe(true);
+  });
+
+  it('does NOT flag a legitimate consumption that carries no grant id (older gate)', () => {
+    // The bash hook and the agent-runner deploy on different cadences, so a
+    // gate older than this host can consume without writing the id. Treating
+    // that as divergence would fire on every legitimate bypass on the happy
+    // path — the exact cross-path parity mistake that produced #1092.
+    writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, GRANT);
+    writeState({
+      ...readState(),
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+      // note: no critique_gate_bypass_consumed_grant_id
+    });
+    recordEventMock.mockClear();
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).not.toContain('state_divergence');
+    expect(grantExists(GRANT)!.consumed_at).toBeTruthy();
+  });
+
+  it('DOES flag an unattributed consumption when the session has no grant to spend', () => {
+    writeState({
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+    });
+    reconcileBypassState(session, dir);
+    expect(eventKinds()).toContain('state_divergence');
   });
 
   it('flags a CONSUMED bypass the host never granted — the forgery that SUCCEEDS', () => {
