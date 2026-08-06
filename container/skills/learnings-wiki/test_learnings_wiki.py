@@ -18,7 +18,6 @@ import json
 import contextlib
 import os
 import re
-import sys
 import tempfile
 import unittest
 from pathlib import Path
