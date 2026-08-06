@@ -52,19 +52,17 @@ RUN apt-get update && \
 # ---- fork-only global CLIs ---------------------------------------------------
 # Reuse the fork's installer so pins match a local build instead of drifting to
 # "latest". The base already has agent-browser and claude-code.
+#
+# codex is installed here too, from that same manifest. It used to be a separate
+# hand-written `pnpm install -g` duplicated from container/Dockerfile under a
+# "KEEP THIS IN LOCKSTEP" comment — the two files had to be reconciled by hand,
+# and when they drifted the derived image shipped a different codex than the
+# base build while both claimed to be "the" pinned version. That is exactly the
+# two-versions-in-one-image confusion that cost a debugging session. Sharing the
+# manifest makes the lockstep structural instead of aspirational.
 COPY cli-tools.json install-cli-tools.sh /tmp/
 RUN --mount=type=cache,target=/root/.cache/pnpm \
     sh /tmp/install-cli-tools.sh /tmp/cli-tools.json
-
-# codex is fork-only (not in cli-tools.json) — pinned, same as the local build.
-# KEEP THIS IN LOCKSTEP WITH container/Dockerfile. When they drift, the derived
-# image ships a different codex than the base build while both claim to be "the"
-# pinned version — which is exactly the two-versions-in-one-image confusion that
-# cost a debugging session (a scan of the older copy showed no hook trust fields
-# and looked like it contradicted the newer one).
-ARG CODEX_VERSION=0.146.1
-RUN --mount=type=cache,target=/root/.cache/pnpm \
-    pnpm install -g "@openai/codex@${CODEX_VERSION}"
 
 # Managed-layer Codex hooks — see container/codex-hooks.toml. The hardened base
 # has no /etc/codex, so this creates it.

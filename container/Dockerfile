@@ -21,11 +21,9 @@ ARG INSTALL_CJK_FONTS=false
 
 # Pin versions for reproducibility. Bump deliberately — unpinned installs mean
 # every rebuild silently picks up the latest and can break in lockstep across
-# all users. The global Node CLIs (claude-code, agent-browser) are
-# pinned in cli-tools.json so a skill can add one with a json-merge; Bun (the
-# runtime) is pinned here because it installs from a different source.
-# codex is fork-only (not in cli-tools.json) — pinned here for the separate install below.
-ARG CODEX_VERSION=0.146.1
+# all users. The global Node CLIs (claude-code, agent-browser, claude-trace,
+# codex) are pinned in cli-tools.json so a skill can add one with a json-merge;
+# Bun (the runtime) is pinned here because it installs from a different source.
 ARG BUN_VERSION=1.3.12
 
 # Enable contrib + non-free + non-free-firmware so per-group container_configs
@@ -164,13 +162,15 @@ RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 # skill can add one with a json-merge instead of editing this Dockerfile.
 # install-cli-tools.sh installs each via pnpm (pinned), writing the per-tool
 # only-built-dependencies opt-ins it reads from the manifest.
+#
+# codex is in that manifest too, as of the F01 fix. It used to be a second,
+# hand-written `pnpm install -g` step here, duplicated verbatim in
+# Dockerfile.derived under a "KEEP THIS IN LOCKSTEP" comment — a drift hazard
+# the two files had to be manually reconciled against. One manifest, one
+# installer, one pin.
 COPY cli-tools.json install-cli-tools.sh /tmp/
 RUN --mount=type=cache,target=/root/.cache/pnpm \
     sh /tmp/install-cli-tools.sh /tmp/cli-tools.json
-
-# codex is fork-only (not in cli-tools.json) — install separately, pinned.
-RUN --mount=type=cache,target=/root/.cache/pnpm \
-    pnpm install -g "@openai/codex@${CODEX_VERSION}"
 
 # Codex lifecycle hooks go in the MANAGED config layer. A hook in the user layer
 # (~/.codex/hooks.json) needs per-hook content-hash trust before it may fire and
