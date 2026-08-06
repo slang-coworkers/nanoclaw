@@ -419,6 +419,51 @@ async function main() {
     // case, which is handled above. Saying so beats an unexplained empty panel.
     console.error(`  WARNING approval_decisions read failed, approver panel will be empty: ${err}`);
   }
+
+  // Migration 935 QUARANTINES every pre-enforcement decision into
+  // approval_decisions_legacy instead of leaving it in place. That is the right
+  // call — those rows are unattributable — but it means this panel's population
+  // changes the day 935 runs, and a count that drops for a STRUCTURAL reason is
+  // indistinguishable from the thing it measures having stopped. Exactly the
+  // reading error reviewCycles avoids by publishing unreviewedPrs beside the mean.
+  //
+  // So: report what was set aside. Deliberately NOT unioned into the panel —
+  // counting unattributable rows in a calibration metric is the whole defect —
+  // but the size of the exclusion is stated so the drop explains itself.
+  // readOk:false means the counts are UNKNOWN, not zero. Reporting 0 after a
+  // failed read would be the same confident zero this whole change is about.
+  const legacyLedger: {
+    tableFound: boolean;
+    readOk: boolean;
+    quarantinedPrs: number | null;
+    excludedFromPanelPrs: number | null;
+  } = { tableFound: false, readOk: true, quarantinedPrs: 0, excludedFromPanelPrs: 0 };
+  try {
+    const cols = db.prepare('SELECT name FROM pragma_table_info(?)').all('approval_decisions_legacy') as Array<{
+      name: string;
+    }>;
+    legacyLedger.tableFound = cols.length > 0;
+    if (legacyLedger.tableFound) {
+      const rows = db.prepare('SELECT DISTINCT repo, pr_number AS pr FROM approval_decisions_legacy').all() as Array<{
+        repo: string;
+        pr: number;
+      }>;
+      for (const r of rows) {
+        if (!orgAllowed(r.repo)) continue;
+        if (REPO_FILTER && r.repo !== REPO_FILTER) continue;
+        legacyLedger.quarantinedPrs!++;
+        // A PR re-decided after enforcement still appears in the panel; only PRs
+        // with NO trusted decision actually vanished from it. That second number
+        // is the one that explains a visible drop.
+        if (!approverByPrFull.has(`${r.repo}#${r.pr}`)) legacyLedger.excludedFromPanelPrs!++;
+      }
+    }
+  } catch (err) {
+    legacyLedger.readOk = false;
+    legacyLedger.quarantinedPrs = null;
+    legacyLedger.excludedFromPanelPrs = null;
+    console.error(`  WARNING approval_decisions_legacy read failed, exclusion count unknown: ${err}`);
+  }
   // Enrich each decided PR with its live GitHub state (merged/open/closed +
   // draft + author). Uses the same cached gh() the spine uses, so a warm disk
   // cache mostly avoids extra calls. "what it decided AND what state" — the
@@ -787,7 +832,13 @@ async function main() {
     // Whether the ledger read was restricted to attributable decisions. False
     // means the DB predates migration 934 and this panel includes rows of
     // unknown origin — a caveat the panel should state, not one to bury.
-    approverLedger: { provenanceFiltered, trustedProvenance: provenanceFiltered ? TRUSTED_PROVENANCE : null },
+    approverLedger: {
+      provenanceFiltered,
+      trustedProvenance: provenanceFiltered ? TRUSTED_PROVENANCE : null,
+      // What migration 935 set aside. tableFound:false means 935 has not run here,
+      // so nothing is quarantined YET — not that nothing ever will be.
+      legacy: legacyLedger,
+    },
   };
 
   // --out <path>: write the snapshot to a file for the dashboard panel to serve
