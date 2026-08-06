@@ -112,6 +112,8 @@ interface EscalationFile {
   failed_open_recorded?: boolean;
   resolved?: string;
   resolved_by?: string;
+  /** Grant issued by the approval that resolved this request, if any. */
+  grant_id?: string;
 }
 
 /** The session's `.claude/` dir on the host. Overridable for tests. */
@@ -183,6 +185,76 @@ function patchEscalationFile(session: Session, patch: Record<string, unknown>, d
   } catch {
     // No escalation file to mark — nothing to do.
   }
+}
+
+/**
+ * Retire a terminal escalation file so this session can escalate AGAIN.
+ *
+ * The in-container gate only opens a new escalation when the file is ABSENT —
+ * `if [ -f "$ESC_FILE" ] … exit 2` in gate-critique-on-deliver.sh. A resolved
+ * file left behind therefore wedges the session shut in both directions: the
+ * gate keeps denying with "already escalated / awaiting the admin", and every
+ * host sweep fast-returns on `esc.resolved`, so no later denial can ever reach
+ * a human again. One approval used to disable escalation for the rest of the
+ * session's life — weeks, for the long-lived fixer sessions here.
+ *
+ * Renamed rather than deleted (one slot, overwritten each time) so the last
+ * escalation stays inspectable on the session mount. The authoritative history
+ * is `critique_escalation_events` in the central DB, which is why retirement is
+ * only safe once everything durable has been recorded.
+ */
+function retireEscalation(session: Session, esc: EscalationFile, dirOverride?: string): void {
+  const file = escalationPath(session, dirOverride);
+  try {
+    fs.renameSync(file, path.join(path.dirname(file), 'critique-escalation.last.json'));
+  } catch {
+    // Rename can fail across weird mounts; the point is that the live path is
+    // gone, so fall back to removing it.
+    try {
+      fs.unlinkSync(file);
+    } catch {
+      return; // already gone — nothing to retire, nothing to say
+    }
+  }
+  log.info('Critique escalation retired — the session can escalate again', {
+    sessionId: session.id,
+    resolved: esc.resolved,
+    requestedAt: esc.requested_at ?? null,
+  });
+}
+
+/**
+ * Is a resolved escalation actually finished, or is something still due to
+ * land in its file?
+ *
+ * Resolving the REQUEST and consuming the GRANT are two different events at
+ * two different times: the approval handler marks the file resolved the moment
+ * a human clicks approve, but the container spends the one-shot grant — and
+ * stamps `failed_open_at` — only on its next delivery attempt, which may be
+ * an hour later. Retiring in between would throw away the file that stamp is
+ * written into, and the release would go unrecorded exactly as it did when the
+ * `resolved` fast-return swallowed it.
+ */
+function isEscalationSpent(session: Session, esc: EscalationFile, dirOverride?: string): boolean {
+  if (esc.resolved === 'approved') {
+    const grant = esc.grant_id ? getBypassGrant(esc.grant_id) : null;
+    if (grant) {
+      return grant.consumed_at !== null || grant.revoked_at !== null || Date.parse(grant.expires_at) <= Date.now();
+    }
+    // No grant id recorded (a file written by an older host, or a grant the
+    // ledger never got): fall back to "has this session anything left to spend".
+    return getLatestSpendableGrant(session.id, new Date().toISOString()) === null;
+  }
+  if (esc.resolved === 'rejected') {
+    // The gate's "an admin REJECTED this" branch is scoped by comparing
+    // `critique_gate_bypass_rejected_request` against the `requested_at` it
+    // reads out of THIS file. Retire it early and an immediate retry looks
+    // like a brand-new unanswered request, re-carding the human who just said
+    // no. Hold it until the agent actually satisfies the requirement.
+    return isRequirementCleared(session, esc, dirOverride);
+  }
+  // self-healed / expired-stale: the requirement was satisfied to get here.
+  return true;
 }
 
 /** Common event fields so every row carries the same identity. */
@@ -465,7 +537,10 @@ export function applyBypassApproval(session: Session, userId: string, dirOverrid
     });
     throw err;
   }
-  patchEscalationFile(session, { resolved: 'approved', resolved_by: userId }, dirOverride);
+  // `grant_id` ties the resolved REQUEST to the grant it issued, so the sweep
+  // can tell "answered" from "answered and spent" and only retire the file
+  // once the container can no longer write into it (see isEscalationSpent).
+  patchEscalationFile(session, { resolved: 'approved', resolved_by: userId, grant_id: grantId }, dirOverride);
   record(session, esc, 'approved', { approval_id: esc.approval_id ?? null });
   log.warn('Critique-gate bypass APPROVED (one-shot)', {
     sessionId: session.id,
@@ -526,13 +601,22 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   reconcileBypassState(session, dirOverride);
 
   const esc = readEscalation(session, dirOverride);
-  if (!esc || esc.resolved) return;
+  if (!esc) return;
 
-  // ── 1. Ingest a container-side enforcement release, exactly once.
-  // The hook writes `failed_open_at` when it allows a delivery with the
-  // requirement unmet. Before this, that event existed only on the container's
-  // stderr — and containers run --rm, so the host could never learn a gate had
-  // opened. Surfacing it is the whole point of stamping it.
+  // ── 1. Ingest a container-side enforcement release, exactly once — BEFORE
+  // any check on `resolved`. The hook writes `failed_open_at` when it allows a
+  // delivery with the requirement unmet. Before this, that event existed only
+  // on the container's stderr — and containers run --rm, so the host could
+  // never learn a gate had opened. Surfacing it is the whole point of stamping
+  // it.
+  //
+  // This used to sit BELOW a `resolved` fast-return, which made it unreachable
+  // for the release it most needed to catch: an approval marks the file
+  // resolved, and only afterwards does the container consume the one-shot
+  // grant and stamp `failed_open_at`. The stamp therefore always landed on an
+  // already-resolved file, so `failed_open` was never recorded and
+  // `failed_open_recorded` was never set — the audit trail lost precisely the
+  // event #1092 added it to make durable.
   if (esc.failed_open_at && !esc.failed_open_recorded) {
     record(session, esc, 'failed_open');
     patchEscalationFile(session, { failed_open_recorded: true }, dirOverride);
@@ -544,7 +628,15 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
     });
   }
 
-  // ── 2. Requirement satisfied since we raised this? Retract and close out.
+  // ── 2. Terminal state. Everything durable has been recorded, so retire the
+  // file once nothing is still due to land in it (see isEscalationSpent) —
+  // otherwise it suppresses every future escalation for this session.
+  if (esc.resolved) {
+    if (isEscalationSpent(session, esc, dirOverride)) retireEscalation(session, esc, dirOverride);
+    return;
+  }
+
+  // ── 3. Requirement satisfied since we raised this? Retract and close out.
   if (isRequirementCleared(session, esc, dirOverride)) {
     const card = pendingCardFor(session.id);
     if (card) {
@@ -567,7 +659,7 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
     return;
   }
 
-  // ── 3. Already with a human — leave it alone.
+  // ── 4. Already with a human — leave it alone.
   if (esc.forwarded_at) return;
 
   const reason = typeof esc.reason === 'string' ? esc.reason : 'unspecified';
@@ -575,7 +667,7 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   const cls = esc.class ?? classifyEscalation(reason);
   const attempts = esc.self_heal_attempts ?? 0;
 
-  // ── 4. Self-heal: drive the agent to run the critique. Gate stays SHUT.
+  // ── 5. Self-heal: drive the agent to run the critique. Gate stays SHUT.
   if (isSelfHealable(cls) && attempts < MAX_SELF_HEAL_ATTEMPTS) {
     const lastNudgeMs = esc.self_heal_at ? Date.parse(esc.self_heal_at) : NaN;
     if (Number.isFinite(lastNudgeMs) && Date.now() - lastNudgeMs < SELF_HEAL_COOLDOWN_SECS * 1000) {
@@ -593,7 +685,7 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
     return;
   }
 
-  // ── 5. Human decision required: a failed critique, or self-heal exhausted.
+  // ── 6. Human decision required: a failed critique, or self-heal exhausted.
   const pr = lookupPrForSession(session.id);
   const target = pr ? `${pr.repo}#${pr.pr_number}` : (session.thread_id ?? 'no PR mapped');
   const prUrl = pr ? `https://github.com/${pr.repo}/pull/${pr.pr_number}` : null;

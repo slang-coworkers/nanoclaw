@@ -332,6 +332,135 @@ describe('fail-open ingestion', () => {
   });
 });
 
+describe('escalation lifecycle — resolve, consume, re-escalate', () => {
+  // Resolution and consumption are two events at two different times: the
+  // approval handler marks the file resolved when the human clicks, and the
+  // container spends the one-shot grant (stamping failed_open_at) only on its
+  // next delivery. A `resolved` fast-return above the fail-open ingest meant
+  // the stamp always arrived too late to be recorded, and the resolved file
+  // then sat there forever — the in-container gate only opens a NEW escalation
+  // when the file is ABSENT, so the session could never escalate again.
+
+  /** What the hook's stamp_failed_open does: merge into the existing file. */
+  function stampFailedOpen(at = '2026-08-06T10:00:00Z'): void {
+    writeEscalation({ ...readEscalation(), failed_open_at: at, failed_open_why: 'admin bypass consumed (one-shot)' });
+  }
+  /** What the gate does to workflow-state when it spends a grant. */
+  function consumeGrantInContainer(grantId: string): void {
+    writeState({
+      ...readState(),
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_grant_id: grantId,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+    });
+    stampFailedOpen();
+  }
+  function escalationExists(): boolean {
+    return fs.existsSync(path.join(dir, 'critique-escalation.json'));
+  }
+  /**
+   * A fresh denial-cap hit, as the hook actually handles it: it opens an
+   * escalation ONLY when the file is absent (`if [ -f "$ESC_FILE" ] … exit 2`),
+   * otherwise it just keeps denying. Modelling that is the whole point — a
+   * stale resolved file is what silently suppresses the next escalation, and a
+   * test that simply overwrites the file cannot see the bug.
+   */
+  function denyAgainAsTheHookWould(requestedAt: number): void {
+    if (escalationExists()) return;
+    writeEscalation({ requested_at: requestedAt, reason: REASON_FAILED, hit: 'PR creation', denials: 3 });
+  }
+  function retiredEscalation(): Record<string, unknown> | null {
+    const p = path.join(dir, 'critique-escalation.last.json');
+    return fs.existsSync(p) ? (JSON.parse(fs.readFileSync(p, 'utf-8')) as Record<string, unknown>) : null;
+  }
+
+  it('ingests a fail-open stamped AFTER the approval resolved the request', async () => {
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-late');
+    consumeGrantInContainer('appr-late');
+    recordEventMock.mockClear();
+
+    await checkCritiqueEscalation(session, dir);
+
+    expect(eventKinds()).toContain('failed_open');
+    expect(retiredEscalation()!.failed_open_recorded).toBe(true);
+  });
+
+  it('holds the resolved file while the one-shot grant is still spendable', async () => {
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-live');
+
+    await checkCritiqueEscalation(session, dir);
+    // Retiring here would throw away the file the container still has to
+    // stamp its release into.
+    expect(escalationExists()).toBe(true);
+
+    consumeGrantInContainer('appr-live');
+    await checkCritiqueEscalation(session, dir);
+    expect(escalationExists()).toBe(false);
+  });
+
+  it('request → approve → consume → sweep → deny again raises a NEW card', async () => {
+    // 1. REQUEST: the gate hit its denial cap on a must-fix critique.
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', denials: 3 });
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
+
+    // 2. APPROVE: one-shot grant issued, the request is answered.
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-1');
+    expect(readEscalation().resolved).toBe('approved');
+
+    // 3. CONSUME: the container spends the grant and stamps the release.
+    consumeGrantInContainer('appr-1');
+
+    // 4. SWEEP: the release is recorded and the spent file is retired.
+    recordEventMock.mockClear();
+    await checkCritiqueEscalation(session, dir);
+    expect(eventKinds()).toContain('failed_open');
+    expect(escalationExists()).toBe(false);
+    expect(retiredEscalation()!.resolved).toBe('approved');
+
+    // 5. DENY AGAIN: the hook can open a new escalation only because the live
+    //    path is free again.
+    denyAgainAsTheHookWould(2000);
+    expect(escalationExists()).toBe(true);
+
+    // 6. A NEW CARD — the approval before it decided one delivery, not the session.
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('holds a REJECTED escalation until the requirement is satisfied', async () => {
+    writeEscalation({ requested_at: 1785932550, reason: REASON_FAILED, hit: 'PR creation', forwarded_at: 'ts' });
+    applyBypassRejection(session, 'slack:admin', dir);
+
+    await checkCritiqueEscalation(session, dir);
+    // The gate's "an admin REJECTED this" branch matches
+    // critique_gate_bypass_rejected_request against the requested_at in THIS
+    // file. Retire it early and an immediate retry re-cards the human who just
+    // said no.
+    expect(escalationExists()).toBe(true);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+
+    // The agent complies. Now it can go, and a genuinely new denial escalates.
+    writeState({ ...readState(), last_critique_at: '2026-08-05T12:59:48Z' });
+    await checkCritiqueEscalation(session, dir);
+    expect(escalationExists()).toBe(false);
+  });
+
+  it('retires a self-healed escalation on the sweep after it closes', async () => {
+    writeState({ last_critique_at: '2026-08-05T12:59:48Z' });
+    writeEscalation({ requested_at: 1785932550, reason: REASON_STALE, self_heal_attempts: 1 });
+
+    await checkCritiqueEscalation(session, dir);
+    expect(readEscalation().resolved).toBe('self-healed'); // audit fields land first
+
+    await checkCritiqueEscalation(session, dir);
+    expect(escalationExists()).toBe(false);
+    expect(retiredEscalation()!.resolved).toBe('self-healed');
+  });
+});
+
 describe('admin decision application', () => {
   it('approval writes a ONE-SHOT, TTL-scoped bypass — not a standing grant', () => {
     writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
