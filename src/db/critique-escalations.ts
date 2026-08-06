@@ -10,7 +10,12 @@ import { log } from '../log.js';
 
 import { getDb, hasTable } from './connection.js';
 
-/** Lifecycle transitions. The two RELEASE events are `approved` and `failed_open`. */
+/**
+ * Lifecycle transitions. The two RELEASE events are `approved` and
+ * `failed_open`. `state_divergence` is the integrity event: the session's
+ * workflow-state claimed a bypass the host never granted (see
+ * migrations/933-critique-bypass-grants.ts).
+ */
 export type EscalationEventKind =
   | 'self_heal'
   | 'self_healed'
@@ -18,7 +23,8 @@ export type EscalationEventKind =
   | 'expired'
   | 'approved'
   | 'rejected'
-  | 'failed_open';
+  | 'failed_open'
+  | 'state_divergence';
 
 export interface EscalationEvent {
   session_id: string;
@@ -113,6 +119,82 @@ export function lookupPrForSession(sessionId: string): { repo: string; pr_number
     .prepare('SELECT repo, pr_number FROM pr_session_mappings WHERE session_id = ? ORDER BY created_at DESC LIMIT 1')
     .get(sessionId) as { repo: string; pr_number: number } | undefined;
   return row ?? null;
+}
+
+// ── Bypass grant ledger ───────────────────────────────────────────────────
+// The host's own record of every bypass it actually granted. See
+// migrations/933-critique-bypass-grants.ts. Unlike the escalation-event
+// appends above these are NOT best-effort: if the ledger write fails the grant
+// must fail too, because a grant the ledger does not know about is exactly the
+// thing the sweep revokes.
+
+export interface BypassGrant {
+  grant_id: string;
+  session_id: string;
+  requested_at: number | null;
+  granted_at: string;
+  expires_at: string;
+  granted_by: string | null;
+  consumed_at: string | null;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+}
+
+export function createBypassGrant(g: {
+  grant_id: string;
+  session_id: string;
+  requested_at: number | null;
+  granted_at: string;
+  expires_at: string;
+  granted_by: string | null;
+}): void {
+  if (!hasTable(getDb(), 'critique_bypass_grants')) return;
+  getDb()
+    .prepare(
+      `INSERT INTO critique_bypass_grants (grant_id, session_id, requested_at, granted_at, expires_at, granted_by)
+       VALUES (@grant_id, @session_id, @requested_at, @granted_at, @expires_at, @granted_by)`,
+    )
+    .run(g);
+}
+
+/**
+ * Look a grant up by its id — the approval_id that authorized it.
+ *
+ * Keyed on the host-owned id rather than `(session_id, requested_at)`:
+ * `requested_at` originates in the agent-writable escalation file, so matching
+ * on it would let the claimant choose which row it is compared against.
+ * Liveness (expiry, consumption, revocation) is evaluated by the caller so a
+ * dead grant can still be distinguished from a grant that never existed.
+ */
+export function getBypassGrant(grantId: string): BypassGrant | null {
+  if (!hasTable(getDb(), 'critique_bypass_grants')) return null;
+  const row = getDb().prepare('SELECT * FROM critique_bypass_grants WHERE grant_id = ?').get(grantId) as
+    | BypassGrant
+    | undefined;
+  return row ?? null;
+}
+
+/** The gate spent the grant; record it so it can never be honoured again. */
+export function markBypassGrantConsumed(grantId: string, consumedAtIso: string): void {
+  if (!hasTable(getDb(), 'critique_bypass_grants')) return;
+  getDb()
+    .prepare('UPDATE critique_bypass_grants SET consumed_at = ? WHERE grant_id = ? AND consumed_at IS NULL')
+    .run(consumedAtIso, grantId);
+}
+
+/**
+ * Kill a grant. Also the compensating action when the workflow-state patch
+ * fails after the row is inserted — without it the ledger would hold a live
+ * grant nobody knows about, which an agent could later claim by forging
+ * matching file fields.
+ */
+export function revokeBypassGrant(grantId: string, revokedAtIso: string, reason: string): void {
+  if (!hasTable(getDb(), 'critique_bypass_grants')) return;
+  getDb()
+    .prepare(
+      'UPDATE critique_bypass_grants SET revoked_at = ?, revoked_reason = ? WHERE grant_id = ? AND revoked_at IS NULL',
+    )
+    .run(revokedAtIso, reason, grantId);
 }
 
 /** Every event for one session, oldest first — the per-escalation audit trail. */

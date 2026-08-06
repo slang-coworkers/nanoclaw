@@ -1215,7 +1215,16 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
     expect(esc.reason).toContain('must-fix');
   });
 
-  it('admin-approved bypass allows delivery at the cap', () => {
+  // Parity with the bash hook. Until this change, THIS path — the one the
+  // comment at the top of the describe calls out as bypassing the bash hook —
+  // still honoured a bare `bypass_approved: true` with no expiry and no
+  // consumption, and still failed open on a timeout, long after the hook had
+  // both removed.
+  const readState = (): Record<string, unknown> =>
+    JSON.parse(fs.readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
+  const readEsc = (): Record<string, unknown> =>
+    JSON.parse(fs.readFileSync(path.join(tmp, 'critique-escalation.json'), 'utf-8')) as Record<string, unknown>;
+  const cappedState = (extra: Record<string, unknown> = {}): void => {
     fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
     fs.writeFileSync(
       statePath,
@@ -1224,46 +1233,60 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
         critique_stages: { OUTPUT_REVIEW: 1 },
         critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
         critique_gate_denials: 3,
-        critique_gate_bypass_approved: true,
+        ...extra,
       }),
     );
+  };
+
+  it('admin-approved bypass allows delivery ONCE, then consumes itself', () => {
+    cappedState({ critique_gate_bypass_approved: true, critique_gate_bypass_grant_id: 'appr-1' });
     expect(gate().blocked).toBe(false);
+    // Spent: flag cleared, consumption attributed to the granting approval.
+    expect(readState().critique_gate_bypass_approved).toBe(false);
+    expect(readState().critique_gate_bypass_consumed_grant_id).toBe('appr-1');
+    expect(readState().critique_gate_bypass_consumed_at).toBeGreaterThan(0);
+    // The release is recorded where the host can see it (container is --rm'd).
+    expect(readEsc().failed_open_at).toBeTruthy();
+    // A second delivery is denied — it is not a standing grant.
+    expect(gate().blocked).toBe(true);
   });
 
-  it('admin-rejected bypass keeps denying without re-escalating', () => {
-    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-    fs.writeFileSync(
-      statePath,
-      JSON.stringify({
-        critique_rounds: 1,
-        critique_stages: { OUTPUT_REVIEW: 1 },
-        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
-        critique_gate_denials: 3,
-        critique_gate_bypass_rejected: true,
-      }),
-    );
+  it('an EXPIRED bypass does not allow delivery', () => {
+    cappedState({
+      critique_gate_bypass_approved: true,
+      critique_gate_bypass_expires_at: Math.floor(Date.now() / 1000) - 60,
+    });
+    expect(gate().blocked).toBe(true);
+    expect(readState().critique_gate_bypass_approved).toBe(false);
+  });
+
+  it('admin-rejected bypass keeps denying the request it answered', () => {
+    fs.writeFileSync(path.join(tmp, 'critique-escalation.json'), JSON.stringify({ requested_at: 5000, reason: 'x' }));
+    cappedState({ critique_gate_bypass_rejected: true, critique_gate_bypass_rejected_request: 5000 });
     const r = gate();
     expect(r.blocked).toBe(true);
     expect(r.reason).toContain('REJECTED');
-    expect(fs.existsSync(path.join(tmp, 'critique-escalation.json'))).toBe(false);
   });
 
-  it('escalation timeout fails open when no decision lands', () => {
-    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-    fs.writeFileSync(
-      statePath,
-      JSON.stringify({
-        critique_rounds: 1,
-        critique_stages: { OUTPUT_REVIEW: 1 },
-        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
-        critique_gate_denials: 3,
-      }),
-    );
+  it('a rejection from an EARLIER escalation does not answer a new one', () => {
+    fs.writeFileSync(path.join(tmp, 'critique-escalation.json'), JSON.stringify({ requested_at: 9999, reason: 'x' }));
+    cappedState({ critique_gate_bypass_rejected: true, critique_gate_bypass_rejected_request: 5000 });
+    const r = gate();
+    expect(r.blocked).toBe(true); // enforcement still holds
+    expect(r.reason).not.toContain('REJECTED'); // but as a live escalation
+  });
+
+  it('NEVER times out to fail-open — an old, undecided escalation stays denied', () => {
+    // The enforcement regression test for this path: it previously allowed the
+    // delivery once CRITIQUE_ESCALATION_TIMEOUT_SECS elapsed, so an agent could
+    // satisfy the requirement by waiting.
+    cappedState();
     fs.writeFileSync(
       path.join(tmp, 'critique-escalation.json'),
-      JSON.stringify({ requested_at: Math.floor(Date.now() / 1000) - 3600, reason: 'x' }),
+      JSON.stringify({ requested_at: Math.floor(Date.now() / 1000) - 86_400, reason: 'x' }),
     );
-    expect(gate().blocked).toBe(false);
+    expect(gate().blocked).toBe(true);
+    expect(readEsc().failed_open_at).toBeUndefined();
   });
 
   it('CRITIQUE_ESCALATION=0 restores the legacy fail-open cap', () => {

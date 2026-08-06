@@ -34,11 +34,18 @@
  * There is no longer a timeout that lets a delivery through with the
  * requirement unmet.
  *
- *   - Approve → `critique_gate_bypass_approved: true` plus a request id and an
- *     expiry. The gate CONSUMES it on the next delivery (one-shot); it no
+ *   - Approve → `critique_gate_bypass_approved: true` plus a grant id, a
+ *     request id and an expiry. BOTH gate implementations (the bash hook and
+ *     poll-loop's in-process check) CONSUME it on the next delivery; it no
  *     longer stands open for the rest of the session's life.
  *   - Reject  → `critique_gate_bypass_rejected: true` scoped to THIS request
  *     id, so a rejection cannot answer a future, unrelated escalation.
+ *
+ * That file is agent-writable (`/workspace` is mounted `readonly: false`), so
+ * the grant is ALSO recorded in a host-only ledger (critique_bypass_grants) and
+ * `reconcileBypassState` revokes any claim the ledger does not back. That is
+ * eventual, best-effort detection — an adversarial agent can re-forge between
+ * sweeps — not a hard bound.
  *
  * Registered in src/modules/index.ts so the approval handler is bound even
  * after a host restart with a pending card.
@@ -46,7 +53,15 @@
 import fs from 'fs';
 import path from 'path';
 
-import { lookupPrForSession, recordEscalationEvent, type EscalationEventKind } from '../../db/critique-escalations.js';
+import {
+  createBypassGrant,
+  getBypassGrant,
+  lookupPrForSession,
+  markBypassGrantConsumed,
+  recordEscalationEvent,
+  revokeBypassGrant,
+  type EscalationEventKind,
+} from '../../db/critique-escalations.js';
 import { deletePendingApproval, getPendingApprovalsByAction } from '../../db/sessions.js';
 import { log } from '../../log.js';
 import { sessionDir } from '../../session-manager.js';
@@ -114,9 +129,26 @@ export function patchWorkflowState(session: Session, patch: Record<string, unkno
   }
   Object.assign(state, patch);
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = `${file}.tmp`;
+  // Unique temp name: both in-container gates write this file too, and the
+  // bash hook's tmp is literally `$STATE.tmp`. Sharing that path lets two
+  // writers interleave into one another's partial document.
+  const tmp = `${file}.host-${process.pid}-${Date.now()}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(state));
   fs.renameSync(tmp, file);
+  // Both writers rewrite the WHOLE document, so a concurrent container write
+  // can still land after ours and drop the patch. We accept that race rather
+  // than change the gates (which would force a coupled deploy), but we do not
+  // accept it silently: re-read and say so if the write did not stick. Matters
+  // most for a revocation — silently losing one leaves the bypass live.
+  try {
+    const after = JSON.parse(fs.readFileSync(file, 'utf-8')) as Record<string, unknown>;
+    const lost = Object.keys(patch).filter((k) => JSON.stringify(after[k]) !== JSON.stringify(patch[k]));
+    if (lost.length > 0) {
+      log.warn('workflow-state patch did not stick — concurrent container write', { file, lost });
+    }
+  } catch {
+    /* unreadable right after write: nothing useful to report */
+  }
 }
 
 function readWorkflowState(session: Session, dirOverride?: string): Record<string, unknown> {
@@ -216,20 +248,172 @@ export function isRequirementCleared(session: Session, esc: EscalationFile, dirO
   return Math.floor(lastMs / 1000) > requestedAt;
 }
 
+/**
+ * Reconcile the session's claimed bypass against the host's grant ledger.
+ *
+ * `workflow-state.json` is agent-writable — `/workspace` is mounted
+ * `readonly: false` and the in-container hook writes that file itself. PR #803
+ * recorded this as a deliberate residual ("verdicts remain same-user-writable
+ * in-container") after hardening the POLICY tier via env injection. The bypass
+ * grant landed in that same writable tier in #1092, which meant a forged
+ * `critique_gate_bypass_approved: true` would be honoured for the rest of the
+ * session's life — weeks, for the long-lived fixer sessions here.
+ *
+ * The host now keeps its own ledger of what it actually granted
+ * (critique_bypass_grants, not mounted into any container) and revokes a claim
+ * nothing backs. That bounds a forged bypass to one sweep interval (60s)
+ * rather than the session lifetime.
+ *
+ * This is a narrowing, not a closure: an agent that forges the flag and
+ * delivers inside the same interval still gets through once, and the hook
+ * still decides locally. Closing it properly means moving enforcement outside
+ * the agent's environment (conditioning credential release at the proxy).
+ *
+ * Scope is the grant only. Verdicts are legitimately written in-container by
+ * track-critique.sh from codex output, so the host cannot tell a real approve
+ * from a forged one without re-running the review; the grant, by contrast, is
+ * 100% host-originated, so any divergence is unambiguous and false positives
+ * are impossible by construction.
+ */
+export function reconcileBypassState(session: Session, dirOverride?: string): void {
+  const state = readWorkflowState(session, dirOverride);
+  const nowMs = Date.now();
+  const nowIso = new Date().toISOString();
+
+  const divergence = (reason: string): void => {
+    recordEscalationEvent({
+      session_id: session.id,
+      agent_group_id: session.agent_group_id,
+      event: 'state_divergence',
+      reason,
+    });
+    log.error('Critique-gate STATE DIVERGENCE', {
+      sessionId: session.id,
+      agentGroupId: session.agent_group_id,
+      reason,
+    });
+  };
+
+  // ── 1. Consumption. Processed BEFORE any early return, because the attack
+  // that actually SUCCEEDS ends here: a forged flag is consumed by the gate,
+  // which clears `approved` and stamps the consumption. Gating this behind the
+  // `approved === true` check below would make the successful forgery the one
+  // case that never produces a divergence event.
+  const consumedGrantId =
+    typeof state.critique_gate_bypass_consumed_grant_id === 'string'
+      ? state.critique_gate_bypass_consumed_grant_id
+      : null;
+  if (state.critique_gate_bypass_consumed_at != null) {
+    const consumed = consumedGrantId ? getBypassGrant(consumedGrantId) : null;
+    if (!consumed || consumed.session_id !== session.id) {
+      divergence(
+        `a bypass was CONSUMED under grant ${consumedGrantId ?? 'none'}, which this host never issued for this session`,
+      );
+    } else if (!consumed.consumed_at) {
+      markBypassGrantConsumed(consumed.grant_id, nowIso);
+    }
+    // Clear the stamp either way. Left in place it would be re-evaluated every
+    // sweep (noisy) and, worse, could be replayed against a later legitimate
+    // grant — marking a fresh grant spent before its owner ever used it.
+    patchWorkflowState(
+      session,
+      { critique_gate_bypass_consumed_grant_id: null, critique_gate_bypass_consumed_at: null },
+      dirOverride,
+    );
+  }
+
+  // ── 2. A claimed, unspent bypass.
+  if (state.critique_gate_bypass_approved !== true) return;
+
+  const grantId = typeof state.critique_gate_bypass_grant_id === 'string' ? state.critique_gate_bypass_grant_id : null;
+  const grant = grantId ? getBypassGrant(grantId) : null;
+  const live =
+    grant !== null &&
+    grant.session_id === session.id &&
+    grant.consumed_at === null &&
+    grant.revoked_at === null &&
+    Date.parse(grant.expires_at) > nowMs;
+
+  if (!live) {
+    // Nothing the host issued backs this claim: forged, replayed, expired or
+    // already spent. Revoke rather than trust it.
+    patchWorkflowState(
+      session,
+      { critique_gate_bypass_approved: false, critique_gate_bypass_revoked_at: Math.floor(nowMs / 1000) },
+      dirOverride,
+    );
+    divergence(
+      `bypass claimed under grant ${grantId ?? 'none'} with no live host grant (${
+        grant === null ? 'unknown grant' : 'dead grant'
+      }) — revoked`,
+    );
+    return;
+  }
+
+  // A live grant exists, but the file claims a longer life than the host gave
+  // it. The file carries epoch seconds (the bash gate does shell arithmetic).
+  const grantExpiresEpoch = Math.floor(Date.parse(grant.expires_at) / 1000);
+  const fileExpires = Number(state.critique_gate_bypass_expires_at);
+  if (Number.isFinite(fileExpires) && fileExpires > grantExpiresEpoch) {
+    patchWorkflowState(session, { critique_gate_bypass_expires_at: grantExpiresEpoch }, dirOverride);
+    divergence(`bypass expiry extended to ${fileExpires}, clamped to the granted ${grantExpiresEpoch}`);
+  }
+}
+
 /** Admin approved the bypass: a ONE-SHOT, TTL'd grant — not a standing open. */
-export function applyBypassApproval(session: Session, userId: string, dirOverride?: string): void {
+export function applyBypassApproval(session: Session, userId: string, dirOverride?: string, approvalId?: string): void {
   const esc = readEscalation(session, dirOverride) ?? {};
-  patchWorkflowState(
-    session,
-    {
-      critique_gate_bypass_approved: true,
-      // Scope + expiry are what make this ONE delivery's grant rather than a
-      // permanent hole. The hook consumes the flag on use and honours the TTL.
-      critique_gate_bypass_request: esc.requested_at ?? null,
-      critique_gate_bypass_expires_at: Math.floor(Date.now() / 1000) + BYPASS_TTL_SECS,
-    },
-    dirOverride,
-  );
+  const grantedAtMs = Date.now();
+  const expiresAtMs = grantedAtMs + BYPASS_TTL_SECS * 1000;
+  const expiresEpoch = Math.floor(expiresAtMs / 1000);
+  // The grant is keyed on the approval that authorized it — a host-owned id
+  // from the pending_approvals row. `esc.requested_at` comes from the
+  // agent-writable escalation file, so it is recorded for diagnostics but is
+  // never what we match on. Falls back to the escalation's own recorded
+  // approval id, then to a synthetic one, so a grant always has an identity.
+  const grantId = approvalId ?? esc.approval_id ?? `grant-${grantedAtMs}-${Math.random().toString(36).slice(2, 8)}`;
+
+  // LEDGER FIRST, then the file. Reversed, a sweep landing between the two
+  // writes would see a flag with no grant behind it and revoke a legitimate
+  // approval. The ledger is the host's own record and is not reachable from
+  // any container; the file is only the gate's read path.
+  createBypassGrant({
+    grant_id: grantId,
+    session_id: session.id,
+    requested_at: esc.requested_at ?? null,
+    granted_at: new Date(grantedAtMs).toISOString(),
+    expires_at: new Date(expiresAtMs).toISOString(),
+    granted_by: userId,
+  });
+  try {
+    patchWorkflowState(
+      session,
+      {
+        critique_gate_bypass_approved: true,
+        critique_gate_bypass_grant_id: grantId,
+        // Scope + expiry are what make this ONE delivery's grant rather than a
+        // permanent hole. Both gates consume the flag on use and honour the TTL.
+        critique_gate_bypass_request: esc.requested_at ?? null,
+        // Epoch seconds: the bash gate does shell arithmetic on this. Derived
+        // from the same instant the ledger stored, so reconciliation's clamp
+        // check can't trip against our own grant.
+        critique_gate_bypass_expires_at: expiresEpoch,
+      },
+      dirOverride,
+    );
+    // eslint-disable-next-line no-catch-all/no-catch-all -- compensating action, then rethrow
+  } catch (err) {
+    // The row is in but the session can't see it. Left alone that is an orphan
+    // capability: a live grant nobody is using, which an agent could later
+    // claim by forging matching file fields. Kill it, then let the caller fail.
+    revokeBypassGrant(grantId, new Date().toISOString(), 'workflow-state patch failed after grant insert');
+    log.error('Critique-gate bypass grant REVOKED — could not write it to the session', {
+      sessionId: session.id,
+      grantId,
+      err,
+    });
+    throw err;
+  }
   patchEscalationFile(session, { resolved: 'approved', resolved_by: userId }, dirOverride);
   record(session, esc, 'approved', { approval_id: esc.approval_id ?? null });
   log.warn('Critique-gate bypass APPROVED (one-shot)', {
@@ -259,7 +443,9 @@ export function applyBypassRejection(session: Session, userId: string, dirOverri
 }
 
 registerApprovalHandler(BYPASS_ACTION, async (ctx) => {
-  applyBypassApproval(ctx.session, ctx.userId);
+  // ctx.approval is the verified host-side row — the authoritative identity for
+  // the grant, unlike anything read out of the session's own files.
+  applyBypassApproval(ctx.session, ctx.userId, undefined, ctx.approval?.approval_id);
   ctx.notify(
     'Critique-gate bypass approved by an admin — resend your delivery. This grant is ONE-SHOT and expires: it covers this delivery only, and the critique requirement itself is still unmet. Prefer running /codex-critique.',
   );
@@ -282,6 +468,12 @@ registerApprovalResolvedHandler((event) => {
  * Idempotent — safe to call every sweep.
  */
 export async function checkCritiqueEscalation(session: Session, dirOverride?: string): Promise<void> {
+  // FIRST, and unconditionally — before the escalation file is even read.
+  // A forged bypass can exist with no escalation file at all, and every branch
+  // below returns early in that case, so anything gated behind them would
+  // never run for exactly the sessions that matter most.
+  reconcileBypassState(session, dirOverride);
+
   const esc = readEscalation(session, dirOverride);
   if (!esc || esc.resolved) return;
 
