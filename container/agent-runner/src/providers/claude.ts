@@ -653,10 +653,18 @@ export class ClaudeProvider implements AgentProvider {
 
     const instructions = input.systemContext?.instructions;
 
+    // The executable the SDK spawns. Defaults to the bundled native claude
+    // binary. CLAUDE_CODE_EXECUTABLE points it at the claude-trace wrapper (the
+    // real binary under a request-logging reverse proxy) so each session dumps
+    // .claude-trace/*.jsonl + *.html. The wrapper MUST keep the child's stdout
+    // (SDK stream-json) clean; claude-trace's own logs go to stderr.
+    const claudeExecutable =
+      process.env.CLAUDE_CODE_EXECUTABLE || '/app/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude';
+
     const sdkResult = sdkQuery({
       prompt: stream,
       options: {
-        pathToClaudeCodeExecutable: '/app/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude',
+        pathToClaudeCodeExecutable: claudeExecutable,
         cwd: input.cwd,
         additionalDirectories: this.additionalDirectories,
         resume: input.continuation,
