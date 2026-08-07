@@ -100,8 +100,23 @@ DONE_EXPR='(() => {
   // learnings on devin-fetch premature exit-0.
   if (/Generating\s*(\.{2,}|…)/i.test(t)) return false;
   // Positive done-signals: the AI-analysis heading AND a flags/checks summary.
+  //
+  // The checks-panel alternative must require a SETTLED rail (passed === total).
+  // A partial counter like "Checks 12/22" means CI is still running, which says
+  // nothing about whether the review verdict has rendered — the verdict can
+  // still be behind an unclicked "View results". Accepting a partial counter as
+  // a done-signal is what produced the exit-0 false-cleans (observed on
+  // slang-rhi#815 at "Checks 12/22"; see the knowledge_base learnings on
+  // devin-fetch premature exit-0). Requiring equality keeps the July-10 fix
+  // that this alternative exists for — a settled "Checks 22/22" rail on a page
+  // whose "All checks passed" banner has not yet rendered still counts as done,
+  // so the false 30-min timeouts do not come back.
   const heading = /Devin.s AI analysis/i.test(t);
-  const summary = /\b\d+\s+Flags?\b/.test(t) || /\bNo flags\b/i.test(t) || /All checks passed/i.test(t) || /checks? failed/i.test(t) || /Checks\s*\d+\s*\/\s*\d+/i.test(t);
+  const checksSettled = (() => {
+    const m = t.match(/Checks\s*(\d+)\s*\/\s*(\d+)/i);
+    return !!m && m[1] === m[2];
+  })();
+  const summary = /\b\d+\s+Flags?\b/.test(t) || /\bNo flags\b/i.test(t) || /All checks passed/i.test(t) || /checks? failed/i.test(t) || checksSettled;
   const done = heading && summary;
   // "PR analysis in progress" can LINGER transiently on a page that is otherwise
   // fully rendered. Only let it veto when the positive done-signals are ABSENT —
@@ -131,6 +146,22 @@ done
 if [ "$stable" -lt 2 ]; then
   echo "timeout: Devin did not reach a stable done state within ${MAX_MIN}m" > "$OUT/devin-error.txt"
   exit 3
+fi
+
+# Reveal the verdict if it is still collapsed. Devin can render the
+# "Devin's AI analysis" heading with the findings themselves behind a
+# "View results" button; scraping at that point captures the surrounding page
+# (PR description, CI rail) and yields an empty Flags section that reads as a
+# clean pass. Click it first, and give the panel a moment to render.
+if agent-browser eval '(() => {
+  const btn = Array.from(document.querySelectorAll("button, a")).find(
+    (b) => /^view results$/i.test((b.textContent || "").trim())
+  );
+  if (btn) { btn.click(); return true; }
+  return false;
+})()' 2>/dev/null | grep -qi true; then
+  echo ">>> devin-fetch: clicked 'View results' to reveal the verdict" >&2
+  sleep 3
 fi
 
 # Expand the Flags panel. The button text is "<N> Flags" / "1 Flag" /
