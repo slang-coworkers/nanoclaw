@@ -8,8 +8,6 @@ source_count: 35
 
 # Agent Routing: GitHub Bot & Webhooks
 
-# Agent Routing: GitHub Bot & Webhooks
-
 The `nv-slang-bot` GitHub identity, webhook verification, consolidated posting policy, comment edit/delete rights, label operations, CI behavior for bot-authored PRs, and the exit conditions a parked chain needs.
 
 > **This page is part 1 of 2** of the Agent Routing: GitHub Bot & Webhooks synthesis (split 2026-08-07 to stay under the 40 KB read cap). Siblings: [part 2](agent-routing-github-bot-and-webhooks-2.md). The TL;DR below is shared across all parts.

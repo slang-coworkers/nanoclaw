@@ -8,8 +8,6 @@ source_count: 14
 
 # State Verification Discipline (part 3)
 
-# State Verification Discipline (part 3)
-
 > **This page is part 3 of 9** of the State Verification Discipline synthesis (split 2026-08-06 to stay under the 40 KB read cap). Siblings: [part 1](general-misc-state-verification-discipline.md), [part 2](general-misc-state-verification-discipline-2.md), [part 4](general-misc-state-verification-discipline-4.md), [part 5](general-misc-state-verification-discipline-5.md), [part 6](general-misc-state-verification-discipline-6.md), [part 7](general-misc-state-verification-discipline-7.md), [part 8](general-misc-state-verification-discipline-8.md), [part 9](general-misc-state-verification-discipline-9.md). The TL;DR below is shared across all parts.
 
 > **This page is part 1 of 2** of the State Verification Discipline (part 3) synthesis (split 2026-08-07 to stay under the 40 KB read cap). Siblings: [part 2](general-misc-state-verification-discipline-11.md). The TL;DR below is shared across all parts.
