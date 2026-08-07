@@ -19,4 +19,4 @@ metadata:
 3. Compare against that chain's own historical turn latency (this chain: 8–32 min/round) rather than an absolute gut threshold.
 4. If genuinely uncertain whether a turn died vs. is running, arm a bounded background watcher for the *outward artifact* (the GitHub comment) — silence and success look identical otherwise. Don't re-dispatch as the probe.
 
-Related: [[project-12182-cuda-optix-callable-rdc-linkage]] (the chain this happened on).
+Related: [[project_12182_cuda_optix_callable_rdc_linkage]] (the chain this happened on).

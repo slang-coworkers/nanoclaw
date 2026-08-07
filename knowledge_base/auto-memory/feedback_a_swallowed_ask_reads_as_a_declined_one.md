@@ -25,7 +25,22 @@ resolves a real destination and **does** deliver — verified.
 
 ⇒ **Before treating any ask's timeout as a decision, check `messaging_group_id` on your own
 session.** Null ⇒ the ask was never delivered; re-ask via `send_message` to a named destination.
-Non-null ⇒ a timeout is real silence.
+
+⛔ **CORRECTION 2026-08-06 — "Non-null ⇒ a timeout is real silence" WAS FALSE and is retracted.**
+Non-null is **not sufficient**: the group must be a **human** channel. Measured on `slangpy-fixer`
+`sess-1785828882066-1vf3vp` (thread `gh-issue-shader-slang/slangpy-823`, container `running`):
+`messaging_group_id = mg-a2a-1781015554102-07ituc`, i.e. **`channel_type=agent`**, `platform_id
+agent:ag-…-sqxdef:ag-…-ht5rv2`. Its asks are **delivered — to a peer AGENT** — and arrive as
+**contentless inbound messages** (I received one; the a2a formatter has no rendering for a question
+card). Session rows show the loop: `out chat-sdk [system: ask_question]` at 08-05 15:28, 08-06 13:07,
+16:09, **19:13** — one every few hours, each answerable by nobody.
+
+⇒ ⭐⭐⭐ **The precondition is `channel_type`, not nullness.** `null` ⇒ swallowed silently. `agent` ⇒
+delivered to a bot as an empty message. Only a human channel makes a timeout mean silence. **Two
+distinct defects with the same symptom**, and my null-only rule declared the second one healthy.
+⭐⭐ **An empty inbound from a peer is a SIGNAL, not noise** — here it was the only externally visible
+trace of a deadlocked chain (supervisor asks "are you blocked?" → fixer answers with a card → card
+reaches an agent edge → nobody answers → repeat).
 
 ⇒ **In a webhook/`gh-issue-*` session, don't reach for `ask_user_question` at all** — it is the
 common case for null routing. Use `send_message(to:'orchestrator-dashboard')` from the start.

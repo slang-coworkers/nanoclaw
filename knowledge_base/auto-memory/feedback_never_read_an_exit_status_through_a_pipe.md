@@ -25,6 +25,70 @@ gh api rate_limit 2>&1 | head -5 >/dev/null; echo $?   → 0   (head's)
 gh api rate_limit >/tmp/rl.txt 2>&1; rc=$?; echo $rc   → 1   (gh's)
 ```
 
+## ⛔ 5th + 6th instances, 2026-08-06 — THE SAME PIPE FOOLED TWO AGENTS IN OPPOSITE DIRECTIONS
+
+I hit this again the day after filing it, on `build-criterion-fixtures.sh` (slang#12382 chain):
+```
+bash bcf.sh 2>&1 | tail -3; echo "EXIT=$?"   → EXIT=0    (tail's)
+bash bcf.sh >/dev/null 2>&1; echo $?         → 2         (the script's, correct all along)
+bash bcf.sh 2>&1 | tail -3 >/dev/null; echo "${PIPESTATUS[0]}" → 2
+```
+I reported a **defect that did not exist** — "the abort path returns success" — and proposed a fix for
+it. The abort was always `exit 2`; the script's only real fault was printing to stderr, so a piping
+caller saw a blank stdout.
+
+⭐⭐⭐ **The symmetry is the finding: the same construct produced a false reading for each of two agents
+in OPPOSITE directions from one artifact.** The reviewer misread a **failing** control as passing
+(`EXIT=0` through `tail`); I misread a **correct** abort as a silent success. One cause, two
+contradictory conclusions. ⇒ **When two observers disagree — or agree — about a result read through
+shared plumbing, that tells you about the instrument, not the object.** Cf.
+[[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]]: a control validates the instrument, never
+the target.
+
+⛔ **And I had this file filed one day earlier.** Rule #4 in the table above is this exact construct.
+⭐⭐ **Holding a rule is not applying it** — the trigger has to fire at the moment you type the pipe,
+which is why the durable fix is a habit (`>/dev/null; echo $?`, or `${PIPESTATUS[0]}`) rather than a
+remembered principle. See [[feedback_a_rule_that_doesnt_fire_is_a_retrieval_failure]].
+
+## ⛔ 7th INSTANCE, SAME DAY — TWO AGENTS PROPAGATED IT INTO A DURABLE STORE
+
+`slang-reviewer` ran `slang-test ... 2>&1 | tail -8; echo "EXIT=$?"`, recorded `EXIT=0` on a
+deliberately-failing cell, and published *"slang-test exits 0 on FAILED"* to
+`/workspace/shared/learnings/`. I challenged it from a source trace — `slang-test-main.cpp:6203`
+`return reporter.didAllSucceed() ? SLANG_OK : SLANG_FAIL` → `:6228` `? 0 : 1`;
+`test-reporter.cpp:683` `didAllSucceed() { return m_failedTestCount == 0; }`; `:382` a `Fail`
+increments it. Re-measured without the pipe: broken assertion ⇒ `0% of tests passed (0/1)`, **EXIT=1**.
+
+⛔⛔ **Then a SECOND, uncontacted agent reproduced the same wrong reading via the same `| tail` idiom
+and published it 32 seconds after the first correction landed** — deriving a *stronger* false claim:
+that a revert drill's `REVERTED_RC != 0` condition *"can never be satisfied"*, so working drills
+should be rewritten.
+
+⭐⭐⭐ **INDEPENDENT REPRODUCTION OF A WRONG READING IS NOT CORROBORATION WHEN THE PLUMBING IS SHARED.**
+For ~4 minutes the store held **two mutually-corroborating false files and one retraction** — a reader
+arriving by title search would have found the majority wrong. `| tail` is the natural way to keep a
+verbose harness out of context, so the shared cause needs no coordination.
+
+⇒ ⭐⭐ **The durable fix is not a rule, it is a habit: never type `| tail` / `| head` for context
+control on a command whose status you need.** Redirect (`> file 2>&1`) and read the file. Three
+occurrences in one day across two agents, and I had this very leaf filed at the time.
+
+✅ **The real hazard, which survives:** `no tests run` prints that string and exits **0**
+(`test-reporter.cpp:702`, `m_failedTestCount == 0`), so a typo'd test name passes unconditionally.
+⇒ Gate on a **nonzero test count**, not on the exit code:
+`grep -qE '[0-9]+% of tests passed \([0-9]+/[1-9][0-9]*\)'` then check `$rc`.
+
+⚠️ **Store hygiene learned here:** a retraction in a *separate file* retracts nothing for a reader who
+finds the original by title search, and it cannot reach a concurrent author mid-write. Mark the
+original in place, and **sweep the whole store rather than the files you know about** — the grep found
+5 touching files, not 2. My own in-place banner was itself wrong on one file (I cited a recipe that
+file didn't contain, having written the banner against a different file) ⇒ **a correction inherits none
+of the verification of the thing it corrects.**
+
+⇒ Corollary earned alongside it: **a program that exits nonzero silently is still a real defect** —
+nobody reads a blank stdout as a failure, so the exit code being correct does not make the behavior
+correct. Announce the abort on stdout *and* stderr.
+
 ⭐⭐⭐ **The unifying shape: THE CHECK'S OWN PLUMBING ANSWERED A DIFFERENT QUESTION THAN THE ONE ASKED,
 and the answer looked right.** A pipeline's `$?` is the *last* command's. `head`/`grep -c` have their
 own exit semantics. Truncation removes the field a classifier keys on. In all four the output was

@@ -118,6 +118,59 @@ and `pull.sh:38` both do (`build-derived.sh` → 0 hits). Closes all three, dele
   earlier matcher bug (searching `origin/feat/...` before fetching that ref) returned a FALSE 0 with
   the control also reading 0, which is what exposed it.
 
-**RESUME = szihs replies.** Follow-up offered: `install-slug.sh` fix + commit-or-drop the wrapper +
-the two tests. **Unmerged at post time**, so this is a real gate — nothing live on `nv-main` to chase.
-Comment `5192090652` (verified present via `gh api …/comments`: 1 comment, `nv-slang-bot`, len 8841).
+## ✅ 3rd webhook @ `27a41ce` — BOTH BLOCKERS FIXED, re-reviewed (comment `5201183458`)
+
+szihs replied (`5201065145`) + pushed `container: unblock derived image — clean build, safe image name,
+parity gate`. Re-fetched and re-measured (only the 2 files changed):
+
+- **🔴1 cleared** — `COPY claude-trace-wrap` removed; all remaining COPY sources resolve (1/1/1/1/89),
+  control `claude-trace-wrap`→0. ⭐⭐⭐**My hypothesis about the CAUSE was confirmed VERBATIM by the
+  commit**: *"the lego claude-trace wiring is deliberately UNCOMMITTED local state on that box, not
+  tracked on any branch."* ⇒ **"a local success cannot distinguish committed from present-in-my-working-tree"
+  was the right diagnosis, not just the right symptom.**
+- **🔴2 cleared** — now `source setup/lib/install-slug.sh` + `container_image_base()`; ran it verbatim →
+  `nanoclaw-agent-v2-6f7bdffe`, MATCHES `src/config.ts:92`. `grep|head -1` fallback gone (0 hits).
+  Surviving `IMAGE_BASE` (1 hit) is inside the new explanatory COMMENT, not code ⇒ **not a defect;
+  check WHERE a residual hit lives before re-reporting it.**
+- **New parity gate TESTED, not read** (stub runtime, 4 cases): all-present→exit 0 ✓ · two-missing→exit 1 ✓ ·
+  ⭐⭐**`docker run` itself failing (exit 125, empty stdout) → ABORTS at 125, does NOT read as "nothing
+  missing"** — the case I most expected to be broken (the inert-guard shape); `set -euo pipefail` inside
+  `$( )` saves it. 4th case (whitespace+newline output) would slip `${MISSING// /}`, but is UNREACHABLE
+  from the inner loop (`printf "%s "` emits no newlines) ⇒ noted as unreachable, not published as a bug.
+- **Severity claim independently confirmed**: `container-runner.ts` registers hooks with `timeout: 5`;
+  in `codex-dashboard-hook.sh` the 1st `jq` is guarded (`|| true`) but the **2nd is not**, so under
+  `set -euo pipefail` a missing `jq` aborts mid-script — reproduced with an empty `PATH`: `command not
+  found`, **exit 127**, end-marker never printed (`REACHED END` count 0).
+
+## ⛔⭐⭐⭐ THE LESSON OF THIS ROUND: I was credited for a finding I never made
+
+szihs wrote *"You were right that this PR doesn't install Python."* **Measured against my own posted
+text: `python3`/`python`/`jq`/`gh`/`apt-get`/`hooks` = 0 hits each** (controls `claude-trace-wrap` 4,
+`IMAGE_BASE` 3, `install-slug` 2). What I actually wrote was on **#1096**, far narrower — a
+CROSS-BRANCH REFERENCE CHECK ("neither file exists at head or on `nv-main`; they live only on #1084"),
+and I had explicitly hedged the OTHER way: *"the hardened-image python3 story may not bear on whether
+this line works at all."* **szihs found the missing `apt-get` block himself.** I declined the credit in
+writing. ⇒ [[feedback_declining_credit_for_a_finding_you_did_not_make]].
+
+## 🟡 New this round — `gh` is unpinned and the gate cannot see a version skew
+
+`Dockerfile.derived:48` bare-installs `gh`; `container/Dockerfile:131-136` deliberately adds GitHub's
+keyring+apt source first (`cli.github.com` 2 / `githubcli-archive-keyring` 4 hits there, **0** in the
+derived file). ⚠️**I FIRST BELIEVED THIS BROKE THE BUILD AND CHECKED BEFORE WRITING — IT DOESN'T:**
+`gh` **is** in Debian bookworm main, so `apt-get install gh` succeeds. Real residual: it resolves to
+**2.23.0** (bookworm, 2023) vs **2.96.0** (GitHub repo, what the local build + this container run), and
+`command -v gh` passes identically for both. Concrete consequence: `supervise-issues/reference.md:202`
+uses `--json …,closedByPullRequestsReferences`, exposed by cli/cli#10941 **merged 2025-05-07** ⇒
+⭐⭐**a field added in 2025 cannot exist in a 2023 build — DATE-ORDERING settled it without a version
+table, which mattered because `api.github.com/repos/cli/cli` returns 401 from here (SCOPE, not broken
+auth — our own repo still resolves; control run).** Fix: replicate the keyring block, or assert a
+minimum `gh --version` in the gate — `command -v` answers "present?" when the question is "usable?".
+⚠️**Scope disclosed in the comment: cannot inspect the private-ECR base, so cannot confirm which apt
+source wins inside it.**
+
+**4 earlier 🟡 all still open, unchanged** (v1 `WORKDIR`, 495 MB `chown`, `IMAGE_SOURCE` collision +
+no `derived-from`, no test). No blockers remain.
+
+**RESUME = szihs replies / decides whether the `gh` pin gates merge.** Still **OPEN + `CLEAN` + CI
+green ⇒ a genuine pre-merge gate throughout** (rare in this series — 7 prior merge races).
+Comments `5192090652` (round 1) + `5201183458` (round 2), both verified present via `gh api …/comments`.

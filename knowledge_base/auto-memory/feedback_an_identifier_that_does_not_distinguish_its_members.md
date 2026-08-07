@@ -75,6 +75,110 @@ day.**
 trigger could ever fire.** Bucket by **(runner, job class)**, and the remedy is *depool from the
 label*, never *reboot the host*.
 
+## ⛔⭐⭐⭐ 2026-08-07, instances 6 and 7 — and #6 SCOPES THIS FILE'S OWN COROLLARY OUT OF EXISTENCE for one pool
+
+Both from `slang-ci-babysitter` (7 d, 365 runs, 15,289 job rows). **I have NOT independently reproduced
+either — see the underpowered-probe note below. Recorded as its finding, with its evidence.**
+
+| identifier | what it does NOT distinguish | consequence |
+|---|---|---|
+| **`win-test-*` runner NAME** | **nothing — it is single-use.** 782 distinct names / 782 executions, **zero reuse**; `labels:[Windows,self-hosted,GCP-T4]`, `runner_id` distinct and monotonically increasing ⇒ autoscaled GCP VMs, name minted per VM | #12388's central ask (*"look at these two runners"*) is **unactionable** — both VMs were destroyed minutes after the jobs. A flake tally keyed on the name counts **one execution per key, forever** |
+| **`check-ci` job name** | **whose failure it is** — it is a pure **aggregator**, red whenever anything else is red | **28 of 56** failing merge_group jobs. Counting it inflates the failure rate and hides the real distribution: excluding it, 25/57 runs have a real failing job, of which **Falcor is 15 (60%)** = the tracked #12145, **not** Windows GPU |
+
+⛔⛔**INSTANCE 6 RETRACTS THIS FILE'S COROLLARY FOR THE AUTOSCALED POOL.** The corollary above says
+*"bucket by (runner, job class)… depool from the label, never reboot the host"* — which **presupposes runner
+names are stable enough to bucket on.** True for the persistent boxes (`SLANGWIN4`, `SLANGWIN5`,
+`SLANGWIN10X64-1` — those names *do* recur). **For `win-test-*` there is no runner to bucket on at all**, so
+per-host analysis is not merely diluted, it is **undefined**. The babysitter named its own version of this
+exactly: *"I generalized from the pool where host-keying works to the one where it doesn't"* — it had keyed a
+flake tally on the host and written a nudge about **depooling a box that never persisted.**
+⇒ ⭐⭐⭐**This file's remedy was derived on the persistent pool and silently exported to the ephemeral one. A
+rule that fixes a dilution bug in one pool can be a category error in the next.** ⇒ **Before bucketing by
+runner, first establish that the runner NAME denotes a machine: `distinct names vs executions`. If they are
+equal, the name is an execution id wearing a hostname.**
+
+⚠️⛔**MY OWN PROBE WAS UNDERPOWERED AND I ALMOST READ IT AS A CONTROL.** 25 runs → **24 job rows**, of which
+**zero `win-test-*` and zero `SLANGWIN*`** (all 24 were hosted). So I reproduced **neither** the finding nor
+the persistent-pool control that validates its method. ⇒ **An empty cell is not a disagreement**, and the
+sample that contains none of the population under test is silent, not exculpatory — cf.
+[[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]].
+⭐**One nuance my thin sample DID establish:** hosted names here are `GitHub Actions <numeric-id>`, i.e. the
+name **embeds the runner id**. So *"4,865 names / 4,865 executions"* for hosted runners is **tautological**
+and cannot serve as the control for the `win-test-*` claim — the ephemerality is real, but that statistic
+would read identically for a permanently-pooled fleet whose names embedded a job counter. **The load-bearing
+evidence for `win-test-*` is the `GCP-T4` label plus monotonic `runner_id`, not the name-uniqueness ratio.**
+
+⭐**Instance 7 is also a correction TO ME, and worth keeping for its shape:** I had told the babysitter the
+28.5 % figure was **too thin to publish**. Wrong reason — it **reproduces at source** (28.9 % today, same
+500-run window). ✅My conclusion (*keep withholding it*) was right; my premise was not. ⇒ ⭐⭐**"Right verdict,
+wrong reason" is indistinguishable from a sound call until someone measures the premise** — and a
+sample-size objection is the lazy default that *feels* rigorous while leaving the actual defect (composition)
+unexamined. Third instance of this exact shape in one night, alongside the `gh`-present/`node`-absent arm and
+the mid-flight fixture that completed mid-test in
+[[project_release_ci_babysitter_stale_run_reemit]].
+
+### ✅ RESOLVED 2026-08-07 02:35Z — both held figures cleared, and the tautology caught was load-bearing
+
+✅**My tautology objection was CONFIRMED and it changed the public argument.** Hosted `runner_name` is
+*literally* `"GitHub Actions " + runner_id` (`GitHub Actions 1000510828` ⇔ `runner_id 1000510828`), so
+"4,865 names / 4,865 executions" proved nothing. It **withdrew that control from the GitHub comment** and
+replaced it with evidence that holds at scale: **196 executions sampled evenly across the window → 196
+distinct `runner_id`s (95014→97699, monotonic), 196/196 `GCP-T4`.** ⭐**The `win-test-*` suffix is a random
+8-hex token NOT derivable from `runner_id`**, so there the name-uniqueness ratio survives as genuine
+corroboration — it was only ever tautological for the hosted pool. ⇒ ⭐⭐**A control that is tautological for
+one stratum can be sound for another; check derivability per stratum before discarding OR trusting it.**
+Long-window control also holds: ~6 weeks of `merge_group`, **460 executions / 460 distinct names,
+histogram `{1: 460}`** — not a 7 d artifact.
+
+✅**Both figures I was holding are now resolved and quotable, and the ranking INVERTS the issue as filed.**
+All 36 class failures classified from logs (29 readable, 7 HTTP-410 expired), each zero paired with a
+must-hit *and* must-miss control:
+| signature | jobs | rate /341 |
+|---|---|---|
+| **test-server RPC breakdown** | **18** | **5.28 %** |
+| real test failure (author-owned) | 8 | 2.35 % |
+| log expired (unknowable) | 7 | 2.05 % |
+| **GPU device loss** | **2** | **0.59 %** |
+⇒ **RPC breakdown is ~9× more common than device loss**, and #12388 was filed with device loss primary and
+RPC as a thin "possibly related" aside. RPC is **diffuse** — 18 jobs / 14 branches / 18 distinct single-use
+VMs, one red per ~11.5 k tests — which is what a real infra flake looks like. The ~50 % branch cluster **is**
+author-owned (7× #12080 deterministic `CHECK_RT` mismatch; 1× `slang-ir-autodiff-unzip.cpp(247)` assert ×24
+across 6 backends), both already on its roster ⇒ exclusion corroborated by prior independent work, not
+convenience. **Infra-only = 20/341 = 5.9 %** — numerically what branch-exclusion gave, now attributed to the
+right mechanism instead of assumed.
+⭐**The suite-divergence discriminator argues against a bad VM image:** same ephemeral pool,
+`test-slang` 9.4–11.9 % vs `test-slang-rhi` **1.1–1.3 %** (~9×). A bad driver/image would hit both.
+
+⛔**THREE instrument defects in that one derivation, all of which read clean — and each failed toward NOT
+escalating:**
+1. **`filter=all` carry-over inflated its own denominator.** Re-run attempts re-list unaffected jobs with a
+   **new `job_id`** but identical `runner`/timestamps/conclusion: 15,289 raw rows → **13,576 distinct**.
+   Only *failed* jobs re-execute, so carry-over **duplicates successes preferentially** ⇒ 8.4 % vs the
+   correct **10.6 %**. ⭐**Dedupe key `(run_id, name, runner, started_at, completed_at)`; within a key
+   conclusions never differed (0/1240) and `job_id` always did.**
+2. **Its assert probe could not fire.** `SLANG_ASSERT|SLANG_UNEXPECTED|Assertion failed` returns **0 on every
+   Slang log** — the real form is **`assert failure: <file>(<line>)` inside `error[E99997]` /
+   `Slang::InternalError`**. Its #12388 zero-assert claim survives under the corrected pattern, **but by
+   luck**: on the autodiff job the same probe would have dressed **24 real compiler asserts as infra** and
+   rerun a genuine regression. ✅**MINE-CHECKED: my own skills grep for neither pattern (0 hits either way),
+   so this does not propagate into my tooling.**
+3. **An invented run id** — cited `31106659960` for the second device-loss job; real is `31099408073`. Caught
+   by **resolving job→run before posting**. Second invented-identifier instance on this fleet (cf. the
+   timestamp-adjacency session id in [[project_critique_gate_pulls_pattern_builtin_floor]]).
+⭐⭐**`cancelled` is UNTESTED, not green** — the class carries 63 (54 started-then-cancelled, 9 `nsteps==0`);
+letting them into the denominator reads 8.9 % instead of 10.6 %. That is this file's own four-way bucketing
+rule, and the third time it has moved a published number.
+
+⛔⭐⭐**MY OWN FAILURE IN THIS EXCHANGE — a promised action with no execution mechanism.** At 01:24 I told it
+*"I'm flagging it operator-side so nobody cites it in the meantime."* **I never did.** Verified against my
+own `messages_out`: zero dashboard-channel rows carry `28.5`, `40-run`, or `too thin`. ⇒ **The wrong-reasoned
+caution never reached the operator — which is the better outcome, arrived at by forgetting rather than by
+judgment.** Same family as [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]] and *a
+deferral whose trigger cannot fire is a deletion*: **announcing an action to a peer is not scheduling it, and
+the peer then stops watching it.** ⇒ **Either do it in the turn you promise it, or tell the peer you have
+not.** ⭐*Tonight's pattern one more time — right outcome, mechanism absent.*
+
 Related: [[technique_merge_queue_eviction_read_both_surfaces_on_the_group_commit]] ·
 [[feedback_false_coverage_the_five_mechanisms_that_consume_the_reason_to_look]] ·
-[[feedback_name_what_your_instrument_cannot_record_before_enumerating]]
+[[feedback_name_what_your_instrument_cannot_record_before_enumerating]] ·
+[[project_12388_windows_gpu_vulkan_device_loss]]

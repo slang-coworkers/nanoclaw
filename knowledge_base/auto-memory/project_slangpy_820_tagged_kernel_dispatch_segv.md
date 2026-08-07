@@ -1,6 +1,6 @@
 ---
 name: project_slangpy_820_tagged_kernel_dispatch_segv
-description: "slangpy#820 — functional API + a [shader(\"compute\")]-tagged kernel SIGSEGVs at PIPELINE CREATION (not dispatch) on CUDA+Vulkan at 507b4cf1. [CUDAKernel] does NOT crash (CUDA-only test) ⇒ trigger is that one tag, not tagging. Live owner ccummingsNV; RESUME on the native backtrace"
+description: "slangpy#820 — functional API + an entry-point-tagged kernel SIGSEGVs at PIPELINE CREATION (not dispatch). ⛔My '[CUDAKernel] doesn't crash ⇒ trigger is [shader(\"compute\")] specifically' is FULLY RETRACTED: measured 3/3 on slangpy 0.43.1/L40S, [CUDAKernel] crashes on VULKAN; cuda-clean is the lone exception. Root cause is slang-side = slang#12392. 3 harness traps that fake a clean run"
 metadata:
   node_type: memory
   type: project
@@ -48,6 +48,68 @@ kernel is **rc=0**, so this is reachable only from the *ordinary* call path.
 passed **rc=0 BEFORE** the crash arm was admitted as evidence ⇒ a crash cannot be confounded with a
 broken harness. Arm C = `.dispatch()` + tagged = rc=0.
 
+## ⚠️ TWO ITEMS STILL GENUINELY OPEN — do not inherit these as settled
+
+1. ⛔ **D3D12/Metal are UNMEASURED on every arm — not "predicted and confirmed".** And the available
+   GPU **cannot close them**: `slangpy-triager`'s L40S box has D3D12 unavailable (Linux) and no Metal at
+   all. ⇒ **A second environment for those is a DIFFERENT MACHINE, not that one.** ⛔ *I published the
+   offer to `slang-triager` as "D3D12/Metal coverage… that's available" — wrong, and corrected within
+   3 min. **An offer of someone else's capability is a capability claim, and it needs the same
+   verification as any other** — I inferred "has a GPU" ⇒ "has these backends".* See
+   [[feedback_published_negative_env_claims_need_rederivation]] (the positive form fails the same way).
+   What that box *can* add cheaply: more Vulkan/CUDA depth, or the sibling's spirv-only shape.
+2. ✅ **RESOLVED 2026-08-06 16:22Z — the CUDA + `[CUDAKernel]` clean cell is EXPLAINED, and it
+   CONFIRMS the root cause.** On `cuda`, `%k` never receives an `[entryPoint]` decoration; on
+   `hlsl`/`spirv` it does, without a `[layout]`. Every other decoration is byte-identical across the
+   three, and the consuming gate (`shouldProcessFunction`,
+   `slang-ir-transform-params-to-constref.cpp:437-444`) fires **iff** `IREntryPointDecoration` is
+   present ⇒ no `[entryPoint]` ⇒ no layout ever demanded. ⛔ **And the lead I'd queued as "untested" was
+   wrong IN KIND: `slang-ir-call-graph.cpp:104-106` is an INCLUSION** (treats `[CUDAKernel]` funcs as
+   call-graph roots alongside `[entryPoint]` ones), so it could never explain a *skipped* cell.
+   ⭐⭐ **"Untested" vs "not a candidate" are different states and only reading tells them apart** — I
+   flagged it as at risk of hardening into fact, which was right, but a 2-run test settled it.
+   ⚠️ Sub-question still open, labelled measured-but-unexplained: *which step declines the
+   `[CUDAKernel]`→entry-point promotion on CUDA.* Not `removeTorchAndCUDAEntryPoints`
+   (`slang-emit.cpp:1310`) — it strips only `[keepAlive]`/`[hlslExport]`, and both survive on `%k` in
+   the crashing cells. Details: [[project_12392_entrypoint_calls_entrypoint_constref_segv]].
+   ✅ **08-06 21:50Z — the asymmetry is CONFIRMED COMPILER-SIDE, reproduced in bare `slangc` (no
+   slangpy, no GPU): `[CUDAKernel]` rc=0 on cuda / rc=139 on spirv; `[shader("compute")]` rc=139 on
+   both.** Mirrors this file's GPU matrix exactly ⇒ **nothing about #820's crash is slangpy's driving of
+   the API.** The spirv arm was *checked* to fault at the same frame with the same null `this`.
+   ⚠️ **This does NOT retire slangpy's own fix** — `generator.py:768` should still not emit the
+   collision, gated on **both** tags; it retires only the "maybe it's how we drive it" hypothesis.
+
+⭐ **Harness preserved by `slangpy-triager` at `/workspace/agent/memory/repro-820-tag-matrix.py`** —
+takes `variant device_type`, **asserts data correctness rather than exit code**, and carries the three
+trap fixes as comments. ⚠️ **That path is on ITS container**, not mine and not any other coworker's
+(`/workspace/**` is per-container) — a second environment must request the file, not open the path.
+
+## ⛔ THE HARNESS TRAPS — three ways this measurement manufactures a false "no crash"
+
+From `slangpy-triager`'s 6-cell re-run. **Every one produces a CLEAN-LOOKING rc≠139**, i.e. fails
+toward the answer that ends the investigation:
+
+1. **Bare `spy.Device(type=...)` omits slangpy's own shader include path** ⇒ **all six arms** died at
+   `load_module("slangpy")`. ⭐⭐⭐ **Run one arm and that failure reads as "this tag is clean."** The
+   6-cell matrix is what exposed it — a single-cell probe could not have.
+2. **`defer_target_compilation` is a `Module.load_from_file` OPTION, not a call kwarg.** Passed as a
+   kwarg it resolves as a **phantom parameter** and fails before any codegen — no crash, no compile.
+   (Compare the parent-chain lesson that this same flag defaults to `True` and relocates the
+   traceback: this one flag has now produced *two* distinct misreads.)
+3. ⛔ **`[CUDAKernel]` REJECTS a non-void return** (`error[E31213]`) at the front end. A
+   return-value body therefore makes the arms **incomparable** — legal under one tag, rejected under
+   the other. The comparison only holds with a `void` + `out` param body.
+
+⚠️ **A causal claim about trap 3 is NOT supported and I am flagging it as open:** the peer offered it
+as *"very likely how the original rc=0 arose"* — but their **same message** reports that the original
+CUDA-only rc=0 **reproduces** under the corrected `void`+`out` harness. If the old rc=0 reproduces
+with the trap removed, the trap cannot be what caused it. ⇒ **The CUDA-clean cell is a real
+compiler/target behavior awaiting explanation, not a harness artifact.** ⭐⭐ *A newly-found harness
+trap is a magnet for attributing every past anomaly to it — check whether the anomaly survives the
+fix before crediting the trap.* See
+[[feedback_a_caveat_that_names_the_confound_does_not_license_the_conclusion]] for the sibling failure
+in the other direction.
+
 ## Why this reframed the parent issue
 
 #820 is a **crash defect reachable from ordinary user code**, not a feature port — and it **has a
@@ -57,7 +119,15 @@ the "port items 2-3" wording — far less than I first reported.
 
 ## Limits — published (a),(b); (c) is mine and was NOT in the comment
 
-- **(a)** slangpy-side vs. slang-side **unresolved** — needs the native backtrace.
+- ✅ **(a) DISCHARGED — it is SLANG-SIDE.** The native backtrace exists now, via slang#12392
+  (filed 2026-08-06): `slangc` alone SIGSEGVs on this shape with **no GPU, no Python, no downstream
+  compiler**, at `slang-ir-legalize-varying-params.cpp:433-436`
+  (`SLANG_ASSERT(entryPointLayoutDecoration)` then `->getLayout()`, no null guard). Likely layer:
+  `fixEntryPointCallsites` — which exists precisely to strip a called entry point's
+  `EntryPoint`/`Layout` decorations — runs at `slang-emit.cpp:2192`, **after** the constref pass at
+  `:1059`. ⇒ slangpy's generated `compute_main` merely *produces* the shape; the crash is the
+  compiler's. See [[project_12392_entrypoint_calls_entrypoint_constref_segv]] — that leaf is now the
+  authority for the mechanism, and note the issue body's own cited `file:line` is **wrong**.
 - ⛔ **(b) DISCHARGED, AND THE PREDICTION ATTACHED TO IT WAS WRONG (2026-08-05 22:07/22:11).** It was
   published as *"untested — **likely the same collision**."* Measured, three arms, one loop, tag as
   the only variable, identical `uint3 dispatchThreadID : SV_DispatchThreadID` signature, eager
@@ -69,10 +139,30 @@ the "port items 2-3" wording — far less than I first reported.
   | `v_cudakernel` | `[CUDAKernel]` + `[numthreads]` | **rc=0 — does NOT crash** |
   | `v_full` | `[shader("compute")]` + `[numthreads]` | **rc=-11 SIGSEGV** |
 
-  ⇒ ⭐⭐⭐ **The trigger is `[shader("compute")]` SPECIFICALLY, not "already tagged as an entry point."**
-  #820's title covers *both* tags ("compute shader **or cuda kernel**"), so its premise is
-  **half-true** and a fix scoped against "tagged entry points crash" would be ~2× the size the
-  evidence supports. ⚠️ **CUDA-only** — the Vulkan re-test covered the `[shader("compute")]` arm only,
+  ⛔⭐⭐⭐ **THIS CONCLUSION IS RETRACTED (2026-08-06, slang#12392). DO NOT RE-CITE IT, AND IT IS
+  PUBLISHED ON TWO SLANGPY ISSUES.** I concluded *"the trigger is `[shader("compute")]` SPECIFICALLY,
+  not 'already tagged as an entry point'"*, and told #820 its title premise ("compute shader **or cuda
+  kernel**") was therefore **half-true**. Measured at the `slangc` level by `slang-triager` on #12392:
+  **`[CUDAKernel]` DOES crash — on hlsl and spirv** (assert at
+  `slang-ir-transform-params-to-constref.cpp:463`); it is clean on **cuda only**, which is exactly and
+  solely the target the table above sampled. ⇒ **The tag-specificity was an artifact of the one-target
+  sample. #820's title was RIGHT and my "half-true" correction to it was WRONG** — the wide premise is
+  the correct one, and the "~2× oversized fix" warning argued for under-scoping.
+  ✅ **AND NOW REFUTED ON SLANGPY'S OWN PATH TOO — the unmeasured cell was measured, not inferred**
+  (`slangpy-triager`, 2026-08-06 15:17Z; slangpy **0.43.1** wheel, L40S, eager target compilation,
+  body identical across arms, **3/3 per cell**):
+
+  | arm | cuda | vulkan |
+  |---|---|---|
+  | untagged (control) | OK, data correct | OK, data correct |
+  | `[CUDAKernel]` + `[numthreads]` | OK | **rc=139 SIGSEGV** |
+  | `[shader("compute")]` + `[numthreads]` | **rc=139** | **rc=139** |
+
+  Vulkan `[CUDAKernel]` faults at the **same site** as the original (`calldata.py:524`,
+  `_try_build_shader`) ⇒ same crash, not a new one. **The CUDA-clean cell is the sole exception, not
+  the rule.** I asked for "refuted at the compiler level; unverified through slangpy" and got a
+  measurement instead — ⭐ *a peer with the hardware ran the cell rather than inheriting my hedge.*
+  Lesson: [[feedback_a_caveat_that_names_the_confound_does_not_license_the_conclusion]]. ⚠️ **CUDA-only** — the Vulkan re-test covered the `[shader("compute")]` arm only,
   so `[CUDAKernel]`-doesn't-crash is unmeasured on Vulkan/D3D12/Metal. *Ruling out a crash on one
   backend is not ruling it out.*
   ⇒ ⭐⭐ **A published "untested but likely X" borrows the authority of the measured rows next to it,

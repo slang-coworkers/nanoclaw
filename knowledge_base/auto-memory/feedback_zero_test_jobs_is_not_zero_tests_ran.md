@@ -1,5 +1,5 @@
 ---
-name: feedback-zero-test-jobs-is-not-zero-tests-ran
+name: feedback_zero_test_jobs_is_not_zero_tests_ran
 description: A CI job-name sweep cannot see a test STEP; "0 jobs named test" is not "0 tests ran" — confirm absence at the step list, not the job list.
 metadata:
   node_type: memory

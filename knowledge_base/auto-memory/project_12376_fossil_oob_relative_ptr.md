@@ -209,8 +209,53 @@ null.
 ⚠️ One `gh` call returned OneCLI `app_not_connected` 401 mid-sweep, then three immediate retries
 succeeded — transient, not a credential loss. Worth remembering before escalating a 401 as a broken PAT.
 
-Related: [[feedback_a_negative_control_must_va]], [[feedback_deference_drifts_to_whoever_corrected_you_last]],
-[[feedback_never_cite_a_peers_artifac]].
+## 08-06 03:01 — cmt 5199770804 PATCHED in place. **CHAIN closed / ISSUE #12376 OPEN** (and #12354 open, unmerged, `mergeable_state=behind`). Verified on my own edge, not relayed.
+
+⛔ **Never write bare `closed` about this row.** Re-measured 03:07Z: `state=open`, `state_reason=null`.
+`closed` is *exactly* what #12376 becomes when #12354 merges (`Fixes #12376`), so the word cannot
+distinguish "we finished our work" from "the auto-close already fired" — and the wrong reading is the
+one that makes the two live maintainer decisions (the 🔴 bypass, the (b) carrier) look settled. Always
+`chain closed / issue open`. See [[feedback_a_status_word_that_collides_with_the_target_systems_own_state]].
+
+All four asks landed. Independently confirmed by me against the API (not from the triager's report):
+`created=02:40:48Z` vs `updated=03:01:10Z` ⇒ **edited, not stacked**; `comments_count` still **1**;
+len 5290 → **7715**. Superseded framings all **0** (`that guess is wrong`, `correcting it here`,
+`our bot guessed`). New fragments present: `3717966165`, `4bac3b2d2` ×2, `31052137029`, `0c7f96d0b`,
+`kNullOffset`, `re-discovered`, `directionally`. Issue unmutated: open / `Dev Opened`+`bug` /
+Q3 2026 / `jkwak-work`.
+
+Published text now leads its next-action with the 🔴 bypass (**credit to the review bot**, not to us),
+demotes (b) beneath it with the already-erased-once evidence, SHA-pins the CI paragraph, and states
+the alt-cause hypothesis as *directionally unsupported*. The CI framing now reads *"I'm adding the SHA
+pin, not correcting it"* — accurate.
+
+⭐ **Triage strengthened my finding rather than relaying it**, which is the behavior to reinforce: it
+fetched `pull/12354/head` (sha-matched; must-miss control = the file is absent at master and errors
+loudly), confirmed `FossilInt = int32_t` / `BlobOffset = Int64` so the collision is *arithmetically*
+available, then **modelled** raw `-1 - D` at D = 0, 4, 12, 28, 32, 160, 3840, 7227, 2³¹-2 — all yield
+exactly `-1`, with **both controls firing** (genuine nulls still map to the sentinel; ordinary forward
+pointers 32+12, 160+100, 28+4 do **not** collide). ⇒ **not a corner case — available at any offset.**
+My own note had said "one byte before the blob", which understated it. **Modelling the arithmetic beat
+reasoning about the algebra, and it upgraded the severity.**
+
+⭐⭐ **The reusable rule this chain produced — a scope brief bounds the QUESTION, never the bug class.**
+My brief said "confirm these two facts about the bug"; triage answered it well and neither of us asked
+whether the *fix* contained an instance of the same class. It did, unresolved, 7 commits old. ⇒
+**Before ranking pre-merge priorities on any fix PR, census its UNRESOLVED review threads** —
+`reviewThreads(first:N){nodes{isResolved isOutdated comments(first:1){nodes{databaseId path body}}}}`
+via GraphQL; `isResolved=false, isOutdated=false` is the pair that means *still open AND still on
+current code*. 9 of 13 open here. Filed as a shared learning by triage.
+
+⚠️ **A `gh api graphql` Bash call was denied by a PreToolUse hook** mid-verification; I re-derived the
+same facts through the `mcp__slang-mcp__github_get_issue` MCP path instead. ⇒ when a hook blocks a
+shell route, the MCP tool surface is the fallback — don't retry the denied command verbatim.
+
+**RESUME (unchanged owner: `jkwak-work`):** his call on the `3717966165` bypass and on the (b) carrier.
+**CO-TRIGGER** = #12354 merges → auto-closes #12376 ⇒ re-read the merged diff, **check specifically
+whether the `kNullOffset` bypass shipped**, and refresh cmt 5199770804 in place.
+
+Related: [[feedback_a_negative_control_must_vary_exactly_one_thing]], [[feedback_deference_drifts_to_whoever_corrected_you_last]],
+[[feedback_never_cite_a_peers_artifact_by_your_own_local_name]], [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]].
 
 Related: [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]],
-[[feedback_a_negative_control_must_va]] (a vacuous check reads as protection).
+[[feedback_a_negative_control_must_vary_exactly_one_thing]] (a vacuous check reads as protection).

@@ -6,6 +6,16 @@ metadata:
   originSessionId: 6cb5ba36-0d3a-4bd6-a56f-0e0eb4c9f5b1
 ---
 
+> ⚠️ **CONTROLLING STATE — READ THIS BLOCK FIRST. Everything below is chronological history and earlier entries ARE SUPERSEDED.** (This file is **45.6KB against a 24.4KB Read limit**, so an append-only read truncates the NEWEST, most authoritative content. Same hazard as [[project_12185_bindless_texture_nv_desc_handle_nonimage]]; cf. [[project_memory_files_over_read_limit_backlog]].)
+>
+> **As of 2026-08-07 — TWO draft PRs open, both awaiting maintainers. Nothing owed by me or the fixer.**
+> - **#12414** "Allow FileStream to write to the null device" — draft `4881fffa60`, `pr: non-breaking`, 2 files +157/−4. **The real fix**; matches the null device by **`st_rdev` identity** (+ case-insensitive `NUL`), NOT by type class. ⛔**formatting UNKNOWN** (local `formatting.sh` false-greens, remote `check-formatting` skipped on drafts) — disclosure is live in the PR body.
+> - **#12334** test cleanup — draft `1fc6f14e9f`, `APPROVE_WITH_NITS`, `mergeable_state=blocked` = **review gate, not staleness**. ⛔**its 30-job CI green is on the PRIOR head `d57ab26dbb` only — never cite it for `1fc6f14e9f`.**
+> - **Order set by `jkwak-work`:** Linux refusal first (#12414) → *then* re-derive whatever null-device policy remains → #12334 independent. **Gap 1 (`_common.md:881` generator prompt still MANDATES `-o /dev/null`) unfiled, needs its own nod.**
+> - ⛔**The issue's "Windows-only" premise is FALSE** — binary targets fail on Linux too. Text targets merely *bypass* the check (`writeNativeText` → bare `fopen_s`), they don't pass it.
+> - **5 same-shape errors of mine here** (set-member→set · necessary→sufficient · arm-reachable→reached · matches→files · **line-changed→line-reached**). My proposed one-line fix was a **no-op**; two of the fixer's were **worse than the bug** (FIFO **hangs**; `/dev/full` **silent-success**).
+> - ⭐⭐⭐**Top transferable lessons:** a test matrix derived from the fix's own story omits the cases that refute it · **name the safe member, don't accept the type class** · a run id's `conclusion` **mutates in place across attempts** · a stale *pessimistic* CI claim never gets re-checked · **silence that invites a wrong inference is itself a defect**.
+
 **shader-slang/slang#12333** — "Tests using `-o /dev/null` are invalid on Windows and can pass on a failing compile". Filed **2026-08-03 18:54:18Z by `nv-slang-bot[bot]`** (slang-fixer, session `sess-1783026484565-avmy9m`, thread `gh-issue-shader-slang/slang-11917`). **No labels, no assignee, 0 comments.** Canonical thread `gh-issue-shader-slang/slang-12333`.
 
 ## Why this is NOT a zero-dispatch own-bot echo
@@ -137,4 +147,99 @@ He wrote "or", so **the fixer must ask which — or implement B and say why**, s
 
 ⚠️**#12334 CI — fixer CORRECTED ITS OWN earlier "benign yield" report:** ten hours on, **still no substantive CI run** on `d57ab26dbb`. `CI Retry Yielded Bot` fired but never produced a new `ci.yml` run; the only two runs on that SHA are the `skipped` `pull_request` one and the yielded `workflow_dispatch` one ⇒ **`test-compile-regression` is UNCONFIRMED on the merge commit — the merge has NOT been shown to clear it.** ⭐**"the retry bot handles it" is a mechanism, not an observation** — verify a *run exists*, don't infer it from the bot being active. Ready-flip (maintainer-only) is what would make `pull_request` CI actually run.
 
-**RESUME:** jkwak's A-vs-B answer → fixer implements in a fresh worktree + draft PR, with tests **both** ways (null path silent-and-successful **and** a genuinely unwritable path still diagnosing `E00004` — a guard that swallowed real failures would be a worse silent-pass bug than the original) · #12334 review/merge · Gap 1 (`_common.md:881`) still unabsorbed and unfiled · or pdeayton commenting on #12333/#12334 · or a maintainer asking for the out-of-scope `slang-test` hard guard. Gaps 2-4 are comment-wording only ⇒ fixer's call whether to fold in before ready-flip; **gap 1 wants its own issue** (needs pdeayton/maintainer nod first, per the don't-file-unilaterally rule that bit #12219). Do NOT re-dispatch on further bot echoes.
+## ⭐⭐⭐ 2026-08-06 22:26Z — jkwak ANSWERED by REFRAMING: fix the Linux bug FIRST, as its own PR
+
+`jkwak-work`, comment **`5209555169`**: *"It seems like we discovered a new issue that `/dev/null` doesn't work on Linux. We should fix that first. Can you make a fix PR for that as a new and separate PR?"*
+
+⭐**This dissolves A-vs-B rather than picking a side.** Neither (A) Windows-mapping nor (B) recognise-and-skip — he wants the **underlying refusal** fixed, then the null-device policy question separately. **Three PRs now, strictly ordered:** (1) the Linux/`FileStream` refusal ← **AUTHORIZED NOW** · (2) whatever null-device policy remains after (1) · (3) #12334 (already open, untouched). ⭐**Surfacing the fact beat both obeying and overriding the "or" — the maintainer had a third option neither of us listed.**
+
+## ⭐⭐⭐ MINE-VERIFIED: the fix is ONE LINE, and the guard's OWN COMMENT proves it
+
+`slang-stream.cpp`, `FileStream::_init` (~`+86`):
+```cpp
+if (File::exists(fileName))
+{
+    // Check that the path exists and is a file; not a directory.   ← STATED INTENT
+    SlangPathType pathType;
+    SLANG_RETURN_ON_FAIL(Path::getPathType(fileName, &pathType));
+    if (pathType != SLANG_PATH_TYPE_FILE)      ← IMPLEMENTATION
+        return SLANG_E_CANNOT_OPEN;
+}
+```
+⭐⭐**The comment says "not a directory"; the code rejects "not a regular file."** Those differ exactly on the third category — **character/block devices, FIFOs, sockets**. `/dev/null` is a char device, so it is refused by a check that never intended to refuse it. ⇒ **The principled fix is `if (pathType == SLANG_PATH_TYPE_DIRECTORY) return SLANG_E_CANNOT_OPEN;`** — implement the documented intent, let the OS adjudicate everything else (`fopen("/dev/null","w+b")` already succeeds). **This is a root-cause fix at the producer, not a null-device special case** — no `/dev/null` string ever appears, so it generalises to `/dev/stdout`, FIFOs, `CON`/`NUL` on Windows.
+
+⛔⛔**RULED OUT — do NOT add a `SLANG_PATH_TYPE_*` enumerator. It is PUBLIC ABI and would be a breaking change.** MINE-VERIFIED in `include/slang.h`: `enum SlangPathType : SlangPathTypeIntegral` at **`:1724-1729`** has **exactly two enumerators (`DIRECTORY=0`, `FILE=1`) and NO sentinel/`CountOf`**; it is passed to **`FileSystemContentsCallBack`** (`:1734`) and to **`ISlangFileSystemExt::getPathType`**, a **`virtual … SLANG_MCALL`** on a public COM interface (**`:1853`**). Per CLAUDE.md's ABI rules, third-party file systems *implement* that vtable and *switch* on that enum, so a new value would be returned to callers compiled against the 2-value enum ⇒ **breaking**. ⭐**The cheap-looking fix ("just add `SLANG_PATH_TYPE_OTHER`") is the one that breaks ABI; the one-line predicate flip is both smaller AND safer.** If a new category is ever genuinely needed it belongs on a new versioned interface, not this enum.
+
+⚠️**Blast radius is real and must be tested, because this is `FileStream`, not a `/dev/null` path** — every binary artifact write plus anything else routed through it. **The guard must still reject a DIRECTORY** (that is its whole purpose, and it is presumably load-bearing somewhere) ⇒ regression test for: null device writes silently+successfully · **directory still refused** · genuinely unwritable path still diagnoses `E00004` · a normal file still round-trips.
+
+**Sequencing note for whoever picks this up:** once (1) lands, re-derive what (2) still needs — if `/dev/null` simply works, the "recognise and skip the printing" half may reduce to nothing, or to a *documentation* change. **Do not carry the old (B) plan forward unexamined** ([[feedback_a_freshness_reading_expires_the_moment_you_stop_looking]] shape: a plan written against the old premise).
+
+## ⛔⭐⭐⭐ 2026-08-07 — MY ONE-LINE FIX WAS A NO-OP. Shipped as draft #12414. THREE wrong fixes, all "obviously right", all caught only by MEASUREMENT.
+
+**PR #12414** "Allow FileStream to write to the null device" — draft, `4881fffa60`, `pr: non-breaking`, **2 files +157/−4** (`source/core/slang-stream.cpp` +29/−4, `tools/slang-unit-test/unit-test-io.cpp` +128). 5-bullet on #12333 = `5210218141`; `report_pr_created` called. **Main-verified against the live diff.**
+
+**⛔ MY CANDIDATE (`if (pathType == SLANG_PATH_TYPE_DIRECTORY)`) WAS A NO-OP — MINE-RE-VERIFIED at source:** `Path::getPathType` returns **`SLANG_FAIL`** for a char device (`slang-io.cpp:676`, the `return SLANG_FAIL` after the two `S_IS*` arms), and `SLANG_RETURN_ON_FAIL` (`include/slang-com-helper.h:24-27`) returns as soon as `SLANG_FAILED(_res)` ⇒ **control never reaches the comparison I proposed changing, and `pathType` is never even written.** ⭐⭐⭐**I read the two lines I intended to change and never traced the line ABOVE them. The bug was in treating "cannot classify" as "cannot open" — a `SLANG_RETURN_ON_FAIL` on a call whose failure is EXPECTED and benign.** My *reasoning* (comment says "not a directory", code refuses "not a regular file") was the right basis and is what shipped; my *edit site* was unreachable. ⇒ **A fix must be traced from the function's entry to the edit, not read outward from the line that looks wrong.** 5th same-shape error in this chain (set-member→set · necessary→sufficient · arm reachable→reached · matches→files · **line-changed→line-reached**).
+
+**⚠️⚠️ THE FIXER THEN GOT IT WRONG TWICE — and both were WORSE THAN THE BUG.** Its measured table:
+
+| accepted set | `-o <fifo>` | `-o /dev/full` |
+|---|---|---|
+| "refuse only directories, let the OS decide" (≈ my intent) | **rc=124 — HUNG** | rc=0 |
+| "any character device" | rc=255 | **rc=0 — SILENT SUCCESS** |
+| **shipped** (null device by identity) | rc=255 | rc=255 |
+
+- ⭐⭐⭐**"Let the OS adjudicate" presumes the OS DECIDES — a FIFO BLOCKS**, converting an error into a hang. A hang is worse than a wrong answer: it consumes a CI slot and reports nothing.
+- ⭐⭐⭐**`/dev/full` fails every write with `ENOSPC`, yet `fwrite` returns the full count** (stdio buffers), so the error surfaces at `fflush` — which `FileStream::write` never checks ⇒ **rc=0 for output never written = the EXACT silent-success class #12333 exists to eliminate.** My generalisation ("generalises to FIFOs, `/dev/stdout`") was precisely the wrong direction.
+- ⇒ ⭐⭐⭐**NAME THE SAFE MEMBER; DO NOT ACCEPT THE TYPE CLASS.** Shipped fix matches the null device by **device identity** (`st_rdev` equality against `stat("/dev/null")`, so symlink aliases work) plus `NUL` case-insensitively on Windows — verified in the diff. Only the null device guarantees *write discarded* **and** *reported as succeeding*.
+
+✅**My ABI warning held and became moot:** no new `SlangPathType` value needed; fixer confirmed the 2-enumerator/no-sentinel public enum on `ISlangFileSystemExt::getPathType`, and that **the cheap-looking fix was the breaking one**.
+
+✅**Sidecar hazard = PRE-EXISTING, not unmasked** (fixer measured): no `/dev/null.dbg.spv`, no coverage-manifest sidecar, `:683`'s assert never trips. The `<hash>.dbg.spv` in CWD is named from the **build-id hash, not the `-o` path**, and the *pre-fix* binary writes it too. ⭐**I flagged this as a possible new hazard; it was neither new nor caused by us — "measure rather than assume" cut the right way against MY flag.**
+
+**Tests:** 6 unit tests (null device incl. both `NUL` cases; directory / FIFO / `/dev/full` refused; unwritable still diagnoses `E00004`; regular file round-trips). Unit suite **540/540**, `tests/diagnostics/command-line/` 55/55. **Revert-drilled each** — old guard ⇒ null test fails; wide guard ⇒ FIFO test **hangs** rather than passing.
+
+⚠️**TWO DISCLOSURES TO CARRY FORWARD (fixer's, unprompted):**
+1. ⛔**Formatting is NOT tool-verified — `clang-format` is absent from that container AND `extras/formatting.sh` EXITS 0 while saying it needs it.** A silent false green in the project's own required pre-commit step. Hand-checked tabs/≤100 cols only ⇒ **CI formatting may still fail; do not represent this PR as format-clean.** Same class as the slang-test `Ignored`-not-failed trap. ⭐**worth its own report to the operator if it recurs — a repo-wide gate that exits 0 when unusable mis-certifies every bot PR.**
+2. Force-pushed twice (squash + fix), each time first confirming the remote tip was its own commit with no PR attached.
+
+⚠️**MEMORY-INTEGRITY EVENT (fixer's report):** its index had **zero** pointers to `fix-12333.md` / `fix-12414.md` although both child files existed on disk — **unreachable from the loaded index**; rows restored. ⭐**Matches the Mode-4 hazard I hit on my own store this chain: a sibling compaction can drop pointers while leaving content. Content-on-disk ≠ reachable.**
+
+⚠️**CI on #12414:** benign yield on attempt 1 (zero build jobs). ⛔**The fixer again wrote "the retry bot handles it" — that is a MECHANISM, not an OBSERVATION**; it was wrong about exactly this on #12334 (ten hours, no `ci.yml` run ever appeared). **Verify a run EXISTS before treating CI as pending-but-fine.**
+
+✅**MAIN-VERIFIED #12414 CI + formatting (08-07), by measurement not mechanism.** At full head `4881fffa60effe64dd59bcace868139344f24fc3`: **11 runs**. The `workflow_dispatch` **CI** run `31133814619` = `completed/failure`, and its jobs reconcile **2 failure + 33 skipped + 1 success = 36 = `total_count`** — failures are only **`wait-for-human-priority` + `check-ci`**, **zero build jobs ran** ⇒ **benign yield CONFIRMED**, and this time a run genuinely exists (unlike #12334, where none ever appeared). ⚠️**`gh actions/runs?head_sha=` returned `total_count: 0` for the ABBREVIATED sha and 11 for the full 40-char sha** — a **silent false zero**, not an error ⇒ ⛔**always pass the full SHA to `head_sha=`** (same class as the abbreviated-ref traps already in this store).
+
+⛔⭐⭐**FORMATTING IS GENUINELY UNRESOLVED — CI CANNOT COVER IT: `Check Formatting (comment /format to auto-fix)` = `skipped` on this head.** So the fixer's disclosure (no `clang-format` in-container, and `extras/formatting.sh` **exits 0 while saying it needs it**) is **not** compensated by CI: the local gate false-greens *and* the remote gate is skipped on drafts. ⇒ **Two independent instruments both report nothing, and neither reports failure** — exactly [[feedback_a_null_from_an_instrument_with_no_field_is_an_unasked_question]]'s inverted form, twice over. **Formatting on #12414 is UNKNOWN, not clean; it will first be adjudicated on ready-flip.** The `/format` comment affordance in the check's own name is the cheap remedy if it fails.
+
+## ✅ 2026-08-07 — #12334 DID get full CI on `d57ab26dbb`: the concern we BOTH carried as open was already CLOSED
+
+**MINE-VERIFIED.** Run **`31006541602`** (`CI`/`workflow_dispatch`) on full sha `d57ab26dbbb6704cdd06327413599208c86cce0c`: **`completed/success`**, jobs **36 success + 1 skipped = 37**, of which **30 are real `build*`/`test-*` jobs** — including **`test-compile-regression / Test (Compile Regression)` = success**, plus both `test-falcor` legs. Window `2026-08-05T12:39:02Z → 2026-08-06T02:05:17Z` ⇒ **~13.4 h**, which is why both of us looked too early and saw nothing.
+
+⭐⭐⭐**So the thing I recorded twice as "test-compile-regression UNCONFIRMED on the merge commit" was TRUE WHEN WRITTEN AND WENT FALSE WHILE FILED.** The fixer's *"I reported 'still unconfirmed' against a run that had already flipped"* is exactly right, and I propagated the same stale claim upstream. ⇒ ⭐⭐**A negative CI finding is a TIMESTAMPED observation, not a state. Re-measure before repeating it** — a slow queue makes "no run exists" decay into a falsehood with no event to notify you. Same family as [[feedback_a_freshness_reading_expires_the_moment_you_stop_looking]], but the decay direction is *toward* good news, which is why nobody rechecks.
+
+⚠️**Current head `1fc6f14e9f`** (a second `Merge remote-tracking branch 'origin/master'`, 08-06T12:53:51Z; diff still 3 files +33/−5) has **only** a benign yield so far — run `31103592339`, **2 failure (`wait-for-human-priority`+`check-ci`) + 33 skipped + 1 success = 36 = `total_count`**, zero build jobs. ✅**`mergeable_state` improved `behind` → `blocked`** (the merge cleared; `blocked` = awaiting the review gate, not a rebase problem). ⇒ **The 30-job green is on the PREVIOUS head. Do not cite it for `1fc6f14e9f`** — that would be the `reviews[].commit_id` post-dating trap in a new costume. If a fresh full run matters, it needs another ~13 h or a ready-flip.
+
+✅**#12414 formatting disclosure verified on the LIVE PR body** (`:152-157`): *"Formatting is unverified, not verified-clean… `extras/formatting.sh` exits 0 while reporting that it cannot run… `check-formatting` is also `skipped` on this head, as it is for any draft… `/format` will auto-fix"*. ⭐**The fixer's PR body had made no formatting claim at all, so nothing was false — it added the disclosure anyway, because two silent instruments let a reviewer ASSUME the check happened.** That is the right standard: **silence that invites a wrong inference is itself a defect to fix**, not merely an absence to leave alone.
+
+⭐⭐**Paired lesson, jointly derived — the two errors are symmetric and both are "reasoning about the NAME instead of the RUNTIME BEHAVIOUR":**
+- **mine — `line-changed ≠ line-reached`**: I read the two lines I meant to edit, never the guard above them.
+- **fixer's — `type-class ≠ behaviour-class`**: "character device" looks like a coherent category, but `/dev/null` and `/dev/full` share the type and have **opposite write semantics**.
+⇒ Both were settled only by running the adversarial case. ⭐**Neither `mkfifo` nor `/dev/full` was on the original 4-case matrix** — the FIFO came from my blast-radius instruction, `/dev/full` from the fixer chasing a mechanism *past* the example that named it. **A test matrix derived from the fix's own story systematically omits the cases that refute it.**
+
+## ⛔⭐⭐⭐ THE MECHANISM THAT HID THE STALE CI CLAIM: **a run id's `conclusion` MUTATES IN PLACE across attempts** — MINE-VERIFIED both attempts
+
+The fixer named this and I confirmed it directly on the **same run id `31006541602`**:
+
+| query | `run_attempt` | `conclusion` | `updated_at` |
+|---|---|---|---|
+| `actions/runs/31006541602/attempts/1` | 1 | **`failure`** | 2026-08-05T12:39:37Z |
+| `actions/runs/31006541602` (bare) | **2** | **`success`** | 2026-08-06T02:05:17Z |
+
+Same `created_at` (12:39:02Z), but `run_started_at` = **08-06T00:44:37Z** ⇒ attempt 2 started ~12 h later. ⭐⭐⭐**So "I already measured run 31006541602" is NOT grounds to trust a cached reading — the id is stable while the verdict underneath it changes.** A re-query of the *same id* is a *different measurement*, which is exactly the intuition that makes caching feel safe here. This is the missing half of the check-runs traps already in this file (cumulative aggregate; 30-item page; `total_count` short-count) — **now: attempt-mutation.**
+
+⭐⭐**And the fixer's asymmetry is the reason it survived two tellings: a stale PESSIMISTIC claim feels safe to restate, so nobody re-checks it; a stale optimistic one gets challenged instantly.** ⇒ ✅**State CI findings so they cannot rot: timestamp + FULL sha + run id + `run_attempt` + non-skipped count + real-build-job count.** Never bare "CI is unconfirmed" — that phrasing has no expiry field, so it reads as current forever. **Always pass `--jq '.run_attempt'` alongside `.conclusion`.**
+
+⭐⭐⭐**MOST TRANSFERABLE LESSON OF THE WHOLE CHAIN (fixer's framing, and I agree it outranks my half): A TEST MATRIX DERIVED FROM THE FIX'S OWN STORY SYSTEMATICALLY OMITS THE CASES THAT WOULD REFUTE IT.** Its 4-case matrix contained neither `mkfifo` nor `/dev/full`, because both candidate fixes' stories were about *making `/dev/null` work* — not about *what else the widened predicate would admit*. **The two cases that caught real defects both came from OUTSIDE that story** (the FIFO from my blast-radius question; `/dev/full` from chasing a reviewer's mechanism past the example that named it). ⇒ **Not carelessness — the author picks the cases the fix is ABOUT.** Ask instead: *what does this change now ACCEPT that it previously refused, and which member of that new set behaves worst?*
+
+✅**Standing rule adopted by both tiers: SILENCE THAT INVITES A WRONG INFERENCE IS ITSELF A DEFECT** — not merely an absence to leave alone. Generalised beyond formatting.
+
+**RESUME:** #12414 review/merge — draft `4881fffa60`, `pr: non-breaking`, formatting disclosure live, **formatting UNKNOWN until ready-flip** · #12334 review/merge — draft `1fc6f14e9f`, `mergeable_state=blocked` (**review gate, not staleness**), ⛔**full 30-job CI green is on the PRIOR head `d57ab26dbb` ONLY — do not launder it onto `1fc6f14e9f`** · null-device policy (2) re-derive **only after #12414 lands** · Gap 1 (`_common.md:881`) unfiled, needs its own maintainer nod · then re-derive what null-device policy (2) still needs · #12334 review/merge · Gap 1 (`_common.md:881`) unfiled. Superseded: fixer's PR (1) for the `FileStream` predicate · then re-derive (2) · #12334 review/merge · Gap 1 (`_common.md:881`) still unfiled. Old trigger (superseded): jkwak's A-vs-B answer → fixer implements in a fresh worktree + draft PR, with tests **both** ways (null path silent-and-successful **and** a genuinely unwritable path still diagnosing `E00004` — a guard that swallowed real failures would be a worse silent-pass bug than the original) · #12334 review/merge · Gap 1 (`_common.md:881`) still unabsorbed and unfiled · or pdeayton commenting on #12333/#12334 · or a maintainer asking for the out-of-scope `slang-test` hard guard. Gaps 2-4 are comment-wording only ⇒ fixer's call whether to fold in before ready-flip; **gap 1 wants its own issue** (needs pdeayton/maintainer nod first, per the don't-file-unilaterally rule that bit #12219). Do NOT re-dispatch on further bot echoes.

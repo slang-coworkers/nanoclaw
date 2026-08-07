@@ -1,13 +1,19 @@
 ---
 name: project_nanoclaw_1085_ncl_unit_hint
-description: "slang-coworkers/nanoclaw#1085 — ncl transport-error hint asserts a derived service name; fix adds a caveat but its finder one-liner is systemctl-only above BOTH platform lines; 9th inline-routing instance"
+description: "slang-coworkers/nanoclaw#1085 — RESOLVED at head c67f6585: per-platform finders + a test that actually fails against the old impl (verified by swapping impls). 9th inline-routing instance"
 metadata:
   node_type: memory
   type: project
   originSessionId: pr1085-ncl-unit-hint
 ---
 
-**slang-coworkers/nanoclaw#1085** — `fix(ncl): don't assert a service name we cannot verify`, author **szihs**, branch `fix/nv-main/ncl-unit-hint` → `nv-main`. `pr_ready_for_review` (reason `opened`, 2026-08-05T12:47Z). **1 file, +9/−1: `src/cli/transport-errors.ts` only.** Head `02830e0c`, base `c0bc5a03`.
+**slang-coworkers/nanoclaw#1085** — `fix(ncl): don't assert a service name we cannot verify`, author **szihs**, branch `fix/nv-main/ncl-unit-hint` → `nv-main`. Two webhooks: `opened` 2026-08-05T12:47Z (1 file, +9/−1, head `02830e0c`) and **`synchronize` 08-06 (2 files, +40/−1, head `c67f6585`)**.
+
+✅ **RESOLVED at head `c67f6585` — BOTH findings from my first review fixed; the 🔴 in the description above is SUPERSEDED (kept in §🔴 below for the lesson, not as live state).** Per-platform finders now sit *under* their own platform line, and the reframe is better than what I proposed — *"if the restart reports 'not found', find the real one first"* gives a TRIGGER for when to bother rather than an unconditional step. ⭐**A suggestion can be improved on in review; check what shipped against the problem, not against your patch.**
+
+⭐⭐⭐**THE TEST IS REAL, AND I VERIFIED IT THE ONLY WAY THAT DISCRIMINATES: swapped the OLD `transport-errors.ts` under the NEW test file and re-ran** — `× gives each platform its OWN finder / AssertionError: expected '  macOS:  launchctl kickstart…' to contain 'launchctl list | grep -i claw' / 1 failed | 3 passed`. **This is the check my first review said was missing, applied to the fix for that very gap** — a green 4/4 at head is exactly as uninformative as the green 3/3 I flagged; only the impl-swap distinguishes them. Its block-slicing (`slice(macIdx, linuxIdx)`) pins **placement not presence**, so re-hoisting a finder above both lines fails too, and the trailing `not.toMatch(/systemctl|launchctl/)` on `slice(0, macIdx)` pins the original bug directly. **Posted:** [issuecomment-5201060565](https://github.com/slang-coworkers/nanoclaw/pull/1085#issuecomment-5201060565).
+
+**At `c67f6585`:** 4/4 pass · prettier clean both files · `tsc` error set **byte-identical to base `8cd67100`** (4 pre-existing, delta zero) · `check` + `ci` green · `CLEAN`/`MERGEABLE`. **🟡 No labels:** `label-pr.yml` fires on `pull_request_target: [opened, edited]` and reads PR-body checkboxes — this body has none, so nothing matched; the `label` check present at the old head is **absent from this head's check-runs** (only `check`, `ci`), consistent with `synchronize` not being a trigger. Nothing enforces it. **🟡 Base 7 commits behind** (`a00aa69e` vs tip `8cd67100`); the 13 touched files exclude `src/cli/transport-errors.*` ⇒ no conflict. Comment block now has an overlapping 2nd/3rd paragraph — cosmetic, unraised as a blocker.
 
 **ROUTING: handled INLINE by Main — 9th instance of the rule.** NanoClaw platform-infra fork; the webhook task string ("route to the project's `*-pr-approver`") targets PRODUCT (slang/slangpy) PRs. Never dispatch a nanoclaw-repo PR to `slang-pr-approver`/`slangpy-pr-approver`. See [[project_nanoclaw_pr874_webhook_route_approver]], [[project_nanoclaw_1083_drift_check_empty_allowlist]] (8th), [[project_nanoclaw_1081_silent_turn_undelivered]] (6th).
 
@@ -34,4 +40,8 @@ with `systemctl --user list-units --all | grep -i claw`:
 
 **Posted:** one comment, [issuecomment-5192069833](https://github.com/slang-coworkers/nanoclaw/pull/1085#issuecomment-5192069833). **No auto-merge** — maintainer-owned `nv-main`, outside the `nv-coworkers` grant ([[feedback_nv_coworkers_automerge]]).
 
-**On redelivery:** routing unchanged (inline, no dispatch). Do not re-review from scratch; check whether the macOS finder was fixed and whether a test assertion was added, then ack.
+⛔**INSTRUMENT DEFECTS from the 2nd pass — both produced a NUMBER from a command that never ran:**
+1. ⭐⭐⭐**`diff /tmp/tsc-base.txt <(…)` against a file that no longer existed** (tmp cleared between sessions): `grep: /tmp/tsc-base.txt: No such file or directory` scrolled past, `diff` reported `0a1,4` — **which reads exactly like "head added 4 errors", the alarming answer.** I nearly published a regression. **Regenerated the baseline from `origin/nv-main` ⇒ identical sets, delta zero.** ⇒ **A cached baseline is not a baseline; re-derive it in the same session as the comparison, and treat a stderr line above a diff as invalidating the diff.**
+2. ⭐⭐⭐**`MB=$(git merge-base …)` returned EMPTY (exit 1) and `git rev-list --count $MB..origin/nv-main` expanded to `..origin/nv-main`, printing a confident `2`** — wrong, and wrong in the plausible direction. Cause: **`/workspace/agent/nanoclaw-kb` is a SHALLOW clone** (`.git/shallow` present, `--is-shallow-repository` → true) ⇒ no common ancestor is reachable, so **every merge-base/ahead-behind figure computed locally here is void.** Correct route is the API: `gh api repos/<r>/compare/<base>...<tip> --jq '.ahead_by, .behind_by'` ⇒ real answer **7**, not 2. ⇒ **Check `--is-shallow-repository` before ANY ancestry arithmetic in this clone** ([[feedback_shallow_clone_makes_your_head_the_graft_root]] — same root, new surface). ⚠️**Both defects share the shape from [[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]]: an unchecked failure feeds a downstream command that reports a true number about a set it never saw.**
+
+**On redelivery:** routing unchanged (inline, no dispatch). **State is RESOLVED — do not re-review from scratch and do not re-raise the macOS finder or the missing test; both are fixed at `c67f6585`.** Only open questions are cosmetic (label absent by design of `label-pr.yml`'s triggers; overlapping comment paragraph). Maintainer owns merge; **no auto-merge** (`nv-main` outside the `nv-coworkers` grant, [[feedback_nv_coworkers_automerge]]).

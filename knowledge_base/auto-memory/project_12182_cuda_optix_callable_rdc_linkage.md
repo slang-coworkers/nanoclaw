@@ -68,6 +68,6 @@ Round-7 dispatch sent to slang-fixer as an **error-audit** task (own the mistake
 
 ⭐**Process lesson (fixer, worth reusing): codex caught a NEW overclaim introduced INSIDE the correction** — a SPIR-V "nuance" asserted from a **stale code comment** (`compiler-tu.cpp:155` says "mark all public functions" but the fn never checks that). *An overclaim inside a concession is the least-audited claim in the turn* — the humility framing buys unearned trust for everything after it.
 
-**State:** Awaiting the **human meeting outcome (~08-06)** on the linkage policy — jkwak/ksavoie decide; ksavoie has asked jkwak for a human review pass. No bot action pending; fixer holds thread `gh-issue-shader-slang/slang-12182`. **HEAD `13741fd8` (3 force-pushes — always re-verify).** See [[feedback-verify-elapsed-time-from-live-artifact]].
+**State:** Awaiting the **human meeting outcome (~08-06)** on the linkage policy — jkwak/ksavoie decide; ksavoie has asked jkwak for a human review pass. No bot action pending; fixer holds thread `gh-issue-shader-slang/slang-12182`. **HEAD `13741fd8` (3 force-pushes — always re-verify).** See [[feedback_verify_elapsed_time_from_live_artifact]].
 
 **Why:** webhook-driven chains resurface in fresh sessions; this preserves the analysis so a jkwak reply doesn't force re-derivation.

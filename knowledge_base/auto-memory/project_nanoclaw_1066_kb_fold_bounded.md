@@ -32,9 +32,19 @@ atom back as UNCOVERED. **The defect is LIVE on `nv-main`.**
 `0/2` (no citations). ⭐**a rebuilt harness that returns a DIFFERENT number is telling you the
 harness broke, not the finding changed** — rebuild from source, don't reinterpret.
 
-RESUME = **offer accepted ⇒ open the follow-up PR** (preferred fix: persist retirement OUTSIDE
-the regenerated tree — a KB-root manifest `build` doesn't touch, so the L1-immutable contract
-stays intact). Offered in `5179614225`; awaiting szihs's word.
+✅**FOLLOW-UP LANDED AS A PR 2026-08-06 — see [[project_nanoclaw_1125_wiki_fold_lineage]]** (szihs,
+`fix/nv-main/wiki-fold-lineage`, OPEN). It implements exactly the fix offered here (`5179614225`):
+persist retirement OUTSIDE the regenerated tree (`.lineage.json` at KB root, harvested before the
+delete sweep, merged forward), so the L1-immutable contract stays intact. Reviewed — the body's
+12-pass **and** its 5-failure negative control both reproduced; 2 🟠 of my own filed (retirement is
+one-way with the un-retire path undocumented; a typo'd successor stem is accepted and invisible).
+**Nothing owed here anymore** — the defect's remaining state lives on #1125.
+
+⛔**Write-authority correction to the section above: "plain issue-comment POST works" is AMBIGUOUS,
+and the obvious reading of it is the DENIED one.** `gh pr comment` (GraphQL `addComment`) is
+**denied** on this repo; only REST `gh api repos/<o>/<r>/issues/<n>/comments -X POST` works
+(measured 08-06, seconds apart, same token). See
+[[feedback_gh_pr_comment_and_rest_comments_are_different_verbs]].
 
 Touches `container/skills/learnings-wiki/SKILL.md` + `container/spines/base/context/workspace.md`
 + `container/spines/base/identity/main-body.md` — i.e. **my own spine** and the skill whose output

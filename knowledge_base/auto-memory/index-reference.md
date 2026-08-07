@@ -1,4 +1,6 @@
 ---
+name: index-reference
+description: "Generated family index for reference_*.md — one row per leaf with its description. Regenerate with reindex.sh; do not hand-edit."
 type: index
 ---
 
