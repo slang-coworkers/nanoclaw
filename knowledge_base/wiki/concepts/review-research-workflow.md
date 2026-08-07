@@ -10,6 +10,24 @@ source_count: 2
 
 How to read research papers (arXiv/HuggingFace) and extract text from PDFs end-to-end inside a Slang coworker container.
 
+## TL;DR
+
+- The `Read` tool renders PDFs by rasterizing pages with `pdftoppm`, which the base container image lacks. Request `poppler-utils` once via `install_packages` (~2MB, standard Debian repo); files under `/workspace/agent/` survive the rebuild, so downloads are not lost.
+- Enter a paper through its HuggingFace page rather than hunting arXiv directly — one page links the PDF, project page, and code repo, and a cheap `WebFetch` extracts the PDF URL and metadata.
+- Download with `curl -sL`. The `-L` is mandatory: some arXiv PDF URLs 302 through a CDN and a non-following fetch yields an HTML body.
+- Always sanity-check a downloaded PDF with `pdfinfo` before reading. It confirms the file is a real PDF rather than an HTML 404 wearing the extension, and gives the page count you need because `Read` errors if `pages:` is omitted on anything longer than 10 pages.
+- Read in chunks of about 9 pages. The hard cap is 20, but smaller batches are safer, and tables, equations, and figure captions all come through legibly at default rasterization.
+- `file` is not installed in containers. Verify magic bytes with `pdfinfo` or `head -c 8 <file> | od -c`.
+- Never substitute an arXiv HTML render for the PDF in real analysis — WebFetch summarizes lossily and figures and tables are lost entirely.
+- For downstream NLP or chunking, extract with pymupdf in blocks mode, sorting blocks top-down and joining with blank lines. It is fast, paragraph-segmented, and free of whitespace artifacts.
+- Avoid pypdf-backed document readers for bulk text: they insert spurious whitespace inside words and ligatures and run an order of magnitude slower.
+- Layer a layout-preserving extractor (or a dedicated table tool) on top of pymupdf when tables matter — flat extraction collapses a table to one cell per line.
+- Recover hyperlinks and citations separately via the PDF's link annotations; flat-text extractors drop URLs entirely.
+- Reach for `agent-browser` only when an HTML render actually exists, when the target is an OpenReview/blog/project page, or when you need a screenshot or visual layout rather than text.
+- A review runner can exit 0 and still fail to produce its deliverable. Check the output artifact's size and content, never the exit code alone.
+- An external review service may never settle on a DRAFT PR and will burn its full timeout. Budget for that, and prefer running it against a non-draft when the choice exists.
+- When a documented delegate path and the deployed skill disagree, the contradiction itself is usually the root cause of a contract gap — resolve which one is authoritative before treating downstream symptoms.
+
 ## Reading arXiv / HuggingFace Papers with the Read Tool
 
 The `Read` tool natively supports PDFs — it rasterizes pages via `pdftoppm` and feeds them to the multimodal model — but the base container image does not include `poppler-utils`. Without it, `Read` on a PDF fails with `pdftoppm is not installed. Install poppler-utils...` [Reading arXiv/HF papers end-to-end with the Read tool](../learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md).
@@ -86,4 +104,4 @@ For tables, layer `pdftotext -layout` or a dedicated tool (`camelot`, `tabula`) 
 - [slang-pr-review Reviewer A can complete analysis but fail to write final-review.md](../learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis-b.md)
 - [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
 - [[approver/infra-abstain] Verity delegate-path vs deployed harvest+Devin skill contradiction — the real root of the contract-block gap](../learnings/1784187372743-approver-infra-abstain-verity-delegate-path-vs-dep.md)
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

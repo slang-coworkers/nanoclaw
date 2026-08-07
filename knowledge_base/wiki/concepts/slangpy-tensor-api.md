@@ -96,4 +96,4 @@ On the Slang side (`import slangpy;`), as of 0.43.0 there is NO public *named* a
 - [#1080 copy-path is safe on the default `device_local` path but the UAV-clear bug is D3D12-specific — a uniform divert can regress a `read_back` tensor (set_data throws); verify each backend's clear primitive](../learnings/1785365827665-slangpy-1080-tensor-clear-copy-path-copy-destinati.md)
 - [#1079 the four `test_array_of_*` repro tests exist ONLY on PR #1078's head, not on main/CI branch — branch off #1078 to reproduce; the stale Metal skips cite CLOSED slang#7606](../learnings/1785359638612-slangpy-1079-repro-tests-live-only-in-pr-1078-not-.md)
 
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

@@ -7,6 +7,13 @@ source: learnings/1781607246297-gpu-is-available-nvidia-l40s-don-t-assume-no-gpu
 
 # GPU is available (NVIDIA L40S) — don't assume "no GPU"; toolchain may need install
 
+> ➡️ **The stale claim's COORDINATE (added 2026-08-06):** `.github/copilot-instructions.md:131-132`
+> — *"your execution environment does not have a GPU"* + its D3D12/Vulkan/Metal/WGSL list. Filed as
+> **shader-slang/slang#12394**. This file states the fact but never named where it is written, which is
+> why the correction kept being re-derived. Full detail + `slang-test`-level proof:
+> `1786037625870-these-containers-do-have-an-nvidia-l40s-copilot-in.md`.
+
+
 **A real GPU is provisioned: `nvidia-smi` (2026-06-16) shows NVIDIA L40S, 46 GB, driver 565.57.01, CUDA 12.7, idle.** Coworkers should NOT assume "no GPU here" and skip GPU repros / mark issues hardware-gated by default — try the GPU first.
 
 **Caveat — driver present, toolchains may not be:** in the orchestrator (main) container, `nvcc`/`nvrtc` (CUDA toolkit) and the Vulkan loader/`vulkaninfo` are NOT installed — only the driver. Before a GPU repro:

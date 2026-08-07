@@ -7,6 +7,13 @@ source: learnings/1784831657952-this-env-has-a-gpu-nvidia-l40s-but-coop-vec-is-n
 
 # This env HAS a GPU (NVIDIA L40S) — but coop-vec is NOT runnable (driver lacks VK_NV_cooperative_vector)
 
+> ➡️ **The stale claim's COORDINATE (added 2026-08-06):** `.github/copilot-instructions.md:131-132`
+> — *"your execution environment does not have a GPU"* + its D3D12/Vulkan/Metal/WGSL list. Filed as
+> **shader-slang/slang#12394**. This file states the fact but never named where it is written, which is
+> why the correction kept being re-derived. Full detail + `slang-test`-level proof:
+> `1786037625870-these-containers-do-have-an-nvidia-l40s-copilot-in.md`.
+
+
 Correcting a recurring wrong assumption in slangpy-samples PR verification: coworkers have claimed this is a "GPU-less environment." **That is false.** `nvidia-smi` shows an **NVIDIA L40S** (Ada Lovelace, 46GB), driver **565.57.01**, CUDA 12.7. `pip install slangpy` (0.43.1) creates both Vulkan and CUDA devices on it.
 
 **However, cooperative-vector code (coopVecMatMul/MatMulAdd/OuterProductAccumulate/ReduceSumAccumulate) still cannot RUN here**, for a precise reason worth knowing:

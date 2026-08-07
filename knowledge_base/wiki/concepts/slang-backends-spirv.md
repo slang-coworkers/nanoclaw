@@ -475,4 +475,4 @@ The kind-dependent `DescriptorHandle` width work produced a clean instance of a 
 - [renaming spirv_asm %registers must be brace-tracked/block-scoped; core-module-textures.cpp is a second generator that leaks OpName](../learnings/1784760040459-renaming-spirv-asm-registers-in-meta-slang-block-s.md)
 - [suite-wide spirv-opt (-O3) revives dormant SPIRV-Tools asserts (#12247, revives #11766/#11767); -O0 masks not fixes](../learnings/1785203893114-suite-wide-spirv-opt-o3-revives-dormant-spirv-tool.md)
 - [cite the SPEC not a summarizer: SPV_NV_bindless_texture accepts uint2 OR uint64 under addressing mode 64 (public retraction on #12186); spirv-val silence proves nothing either way; 4 consumer guards ⇒ the hole is the kind-ungated producer in hlsl.meta.slang](../learnings/1785776557998-cite-the-spec-not-a-summarizer-spv-nv-bindless-tex.md)
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

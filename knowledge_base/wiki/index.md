@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **3103 agent learnings**, synthesized into **67 concept pages**.
+Standalone wiki built from **3478 agent learnings**, synthesized into **89 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -21,9 +21,11 @@ Standalone wiki built from **3103 agent learnings**, synthesized into **67 conce
 - [GitHub Auth and Operations in Agent Containers](concepts/agent-infra-github-auth-operations.md)
 - [Multi-Session Coordination, A2A Routing, and Supervisor Operations](concepts/agent-infra-multi-session-coordination.md)
 - [Sessions, Containers, and Worktrees in Agent Infrastructure](concepts/agent-infra-sessions-containers-worktrees.md)
+- [Shared-Clone Safety: Destructive Defaults, Recovery Claims, and Attribution](concepts/agent-infra-shared-clone-safety.md)
 
 ### Agent routing & messaging
 - [Agent Routing: GitHub Bot & Webhooks](concepts/agent-routing-github-bot-and-webhooks.md)
+- [Agent Routing: GitHub Bot & Webhooks (part 2)](concepts/agent-routing-github-bot-and-webhooks-2.md)
 - [Agent Routing: MCP Servers & Gateways](concepts/agent-routing-mcp-servers-and-gateways.md)
 - [Agent Routing: Message Routing & Gating](concepts/agent-routing-message-routing-and-gating.md)
 - [Agent Routing: Slang Compiler Context](concepts/agent-routing-slang-compiler-context.md)
@@ -33,8 +35,11 @@ Standalone wiki built from **3103 agent learnings**, synthesized into **67 conce
 - [CI Build Tooling & Workflow Structure](concepts/ci-build-tooling.md)
 - [CI Runners & Flake Triage](concepts/ci-runners-flake-triage.md)
 - [gh CLI Usage & PR/Issue Mechanics](concepts/ci-gh-cli-usage.md)
+- [gh CLI Usage & PR/Issue Mechanics (part 2)](concepts/ci-gh-cli-usage-2.md)
+- [gh CLI Usage & PR/Issue Mechanics (part 2)](concepts/ci-gh-cli-usage-3.md)
 - [GitHub/git Instrument Limits — Caps, Silent Truncation & Endpoint Splits](concepts/ci-github-instrument-limits.md)
-- [GitHub/git Instrument Limits, part 2 — Pagination, Scope & Path-Classed Auth](concepts/ci-github-instrument-limits-2.md)
+- [GitHub/git Instrument Limits, part 2 — Pagination, Scope & Path-Classed Auth](concepts/ci-github-instrument-limits-3.md)
+- [GitHub/git Instrument Limits, part 2 — Pagination, Scope & Path-Classed Auth (part 2)](concepts/ci-github-instrument-limits-2.md)
 
 ### general-misc
 - [Agent and Subagent Control Discipline](concepts/general-misc-agent-subagent-control.md)
@@ -44,10 +49,13 @@ Standalone wiki built from **3103 agent learnings**, synthesized into **67 conce
 - [State Verification Discipline](concepts/general-misc-state-verification-discipline.md)
 - [State Verification Discipline (part 2)](concepts/general-misc-state-verification-discipline-2.md)
 - [State Verification Discipline (part 3)](concepts/general-misc-state-verification-discipline-3.md)
+- [State Verification Discipline (part 3) (part 2)](concepts/general-misc-state-verification-discipline-11.md)
 - [State Verification Discipline (part 4)](concepts/general-misc-state-verification-discipline-4.md)
 - [State Verification Discipline (part 5)](concepts/general-misc-state-verification-discipline-5.md)
+- [State Verification Discipline (part 5) (part 2)](concepts/general-misc-state-verification-discipline-12.md)
 - [State Verification Discipline (part 6)](concepts/general-misc-state-verification-discipline-6.md)
 - [State Verification Discipline (part 7)](concepts/general-misc-state-verification-discipline-7.md)
+- [State Verification Discipline (part 7) (part 2)](concepts/general-misc-state-verification-discipline-10.md)
 - [State Verification Discipline (part 8)](concepts/general-misc-state-verification-discipline-8.md)
 - [State Verification Discipline (part 9)](concepts/general-misc-state-verification-discipline-9.md)
 
@@ -62,8 +70,21 @@ Standalone wiki built from **3103 agent learnings**, synthesized into **67 conce
 - [PR Review Practices (part 7)](concepts/review-pr-practices-7.md)
 - [PR Review Practices (part 8)](concepts/review-pr-practices-8.md)
 - [PR Review Practices (part 9)](concepts/review-pr-practices-9.md)
+- [PR Review Practices (part 9) (part 2)](concepts/review-pr-practices-10.md)
 - [PR-Approver: Challenger CI-Gate, Verdict Calibration & Human Agreement](concepts/review-approver-challenger-calibration.md)
+- [PR-Approver: Challenger CI-Gate, Verdict Calibration & Human Agreement (part 2)](concepts/review-approver-challenger-calibration-2.md)
+- [PR-Approver: Challenger CI-Gate, Verdict Calibration & Human Agreement (part 3)](concepts/review-approver-challenger-calibration-3.md)
+- [PR-Approver: Challenger CI-Gate, Verdict Calibration & Human Agreement (part 4)](concepts/review-approver-challenger-calibration-4.md)
+- [PR-Approver: Challenger CI-Gate, Verdict Calibration & Human Agreement (part 5)](concepts/review-approver-challenger-calibration-5.md)
+- [PR-Approver: Challenger CI-Gate, Verdict Calibration & Human Agreement (part 6)](concepts/review-approver-challenger-calibration-6.md)
+- [PR-Approver: Challenger CI-Gate, Verdict Calibration & Human Agreement (part 7)](concepts/review-approver-challenger-calibration-7.md)
 - [PR-Approver: Decision Procedure, Clauses, Infra-Abstain & Critique-Gate](concepts/review-approver-decision-procedure.md)
+- [PR-Approver: Decision Procedure, Clauses, Infra-Abstain & Critique-Gate (part 2)](concepts/review-approver-decision-procedure-2.md)
+- [PR-Approver: Decision Procedure, Clauses, Infra-Abstain & Critique-Gate (part 3)](concepts/review-approver-decision-procedure-3.md)
+- [PR-Approver: Decision Procedure, Clauses, Infra-Abstain & Critique-Gate (part 4)](concepts/review-approver-decision-procedure-4.md)
+- [PR-Approver: Decision Procedure, Clauses, Infra-Abstain & Critique-Gate (part 5)](concepts/review-approver-decision-procedure-5.md)
+- [PR-Approver: Decision Procedure, Clauses, Infra-Abstain & Critique-Gate (part 6)](concepts/review-approver-decision-procedure-6.md)
+- [PR-Approver: Decision Procedure, Clauses, Infra-Abstain & Critique-Gate (part 7)](concepts/review-approver-decision-procedure-7.md)
 - [Reading Papers, Transcripts & Research Workflow](concepts/review-research-workflow.md)
 
 ### Slang autodiff & IR
@@ -96,6 +117,7 @@ Standalone wiki built from **3103 agent learnings**, synthesized into **67 conce
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
 - [slangc CLI, Targets & Emit Verification](concepts/slang-tooling-slangc-cli-targets.md)
+- [Test Instruments That Lie Quietly (slangi, coverage census, stale binaries)](concepts/slang-tooling-test-instruments.md)
 
 ### SlangPy
 - [SlangPy CI, Triage, Build, and Runtime](concepts/slangpy-ci-triage.md)
@@ -104,8 +126,8 @@ Standalone wiki built from **3103 agent learnings**, synthesized into **67 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1126)
-- [NanoClaw / agent operations](topics/agent-ops.md) (452)
-- [CI, build & tooling](topics/ci-tooling.md) (323)
-- [Review & process](topics/review-process.md) (180)
-- [Uncategorized](topics/misc.md) (1022)
+- [Slang compiler & language](topics/slang-compiler.md) (1183)
+- [NanoClaw / agent operations](topics/agent-ops.md) (502)
+- [CI, build & tooling](topics/ci-tooling.md) (373)
+- [Review & process](topics/review-process.md) (191)
+- [Uncategorized](topics/misc.md) (1229)

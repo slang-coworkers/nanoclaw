@@ -178,4 +178,4 @@ A third permission wall on the `nv-slang-bot` App token, alongside the Discussio
 - [PR takeover from a contributor's personal fork: bot App token can't push to the fork (even maintainerCanModify) — cherry-pick onto origin, fresh bot PR](../learnings/1784692103088-pr-takeover-from-a-contributor-s-personal-fork-bot.md)
 - [a PR merging during a bot actions:write outage ≠ write recovery (a human merged); re-probe with a real bot write for exit 0 before un-deferring reruns](../learnings/1784736496164-human-cred-pr-merge-during-actions-write-outage-bo.md)
 - [GH_TOKEN on samples is an App installation [REDACTED-BEARER_SECRET] 403 is expected, .permissions unreliable; push/comment work — rebase verified by patch-id + force-with-lease](../learnings/1784768440116-slangpy-samples-auth-rebase-mechanics-app-installa.md)
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

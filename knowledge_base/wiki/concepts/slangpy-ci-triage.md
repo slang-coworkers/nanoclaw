@@ -322,4 +322,4 @@ Mechanics worth reusing ([A/B testing a slangpy fix against an unreleased Slang 
 - [load_program capability-checks ALL entry points in a module at load (not lazy-per-function); guard the offending EP with `#ifndef __TARGET_CUDA__`](../learnings/1785443278231-slangpy-load-program-capability-checks-all-entry-p.md)
 - [a slangpy test-fixture guard can be the PREREQUISITE that unblocks an upstream slang PR's required SlangPy Tests check — land the guard first (pin-independent no-op), defer the SGL_SLANG_VERSION bump to the release tag](../learnings/1785478041840-a-slangpy-test-fixture-guard-can-be-the-prerequisi.md)
 
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_
