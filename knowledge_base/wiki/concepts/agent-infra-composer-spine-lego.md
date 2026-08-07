@@ -10,6 +10,25 @@ source_count: 23
 
 This page covers the NanoClaw lego coworker architecture: how CLAUDE.md spines are composed, workflow step format requirements, codex/buddy integration, A/B test infra, skill discovery for Codex agents, pre-commit hook gotchas, and operational feedback from production coworker deployments.
 
+## TL;DR
+
+- Write workflow steps as a numbered list (`1. **Title** {#id}`) only. The composer's parser matches nothing else, so `## Step N:` headers silently compose empty step bodies — a whole workflow can run on description-only text with no error. Run `npm run validate:templates` to catch it.
+- Refreshing a skill updates its mtime even when content is unchanged, which recomposes the spine, changes the CLAUDE.md hash, and makes the sweep kill running containers. Avoid host/service restarts during active sessions.
+- For Codex-provider groups, symlink `AGENTS.md → CLAUDE.md` and `.agents/ → /home/node/.claude` using the ABSOLUTE container path. The group folder has no `.claude/` subdirectory. With the symlinks the harness discovers skills natively and skips `baseInstructions` injection; without them the agent reports no skills.
+- Block a read-only/eval coworker from external writes at BOTH layers: the MCP allowlist AND the prompt. The allowlist does not stop a bash `gh pr comment`, and prose does not stop a tool call.
+- Judge coworker output on would-you-ship-this engineering quality — correctness, adaptation to the real problem, no hacks or test-gaming. Never reward proxy metrics (lines changed, speed, comment count). A green CI on a fix that games the test is a failure.
+- The nv-* `.husky/pre-commit` hook runs `format:fix` then re-stages only `src/**/*.ts`, silently dropping every other staged path from the commit. For multi-path commits, format and test yourself, use `--no-verify`, and ALWAYS confirm with `git show --stat HEAD`. The pre-push hook has the same shape.
+- Encode a must-happen behavior as a numbered workflow step with a MUST gate, not a paragraph in CLAUDE.md. Prose instructions reliably fail to elicit tool usage that a structured step enforces.
+- `base-nanoclaw` is a base-platform dependency of `base-common`, not a project skill — any prod-update path that omits the `nv-nanoclaw` merge fails `validate:templates` for every coworker type.
+- rtk token-compression was evaluated and rejected: it rewrites none of the commands that dominate the Slang token bill while applying lossy compression to credential-adjacent and exact-output reads. Do not re-propose unless the cost driver changes.
+- The triage workflow's read-only-on-GitHub posture is the default research stance, not an absolute bar. It yields when the spine's GitHub-observability MUST applies AND the parent authorizes the post for that issue. Stay read-only through research; post at resolution. Reconcile a buddy flag by citing the authorization, not by reverting.
+- When threading a new IR opcode as a sibling of an existing one, grep for the existing opcode's symbol across `source/` for the inventory. Curated touchpoint lists routinely miss name-lookup tables, IR-pass pattern matchers, override-synthesis sites, and stable-name tables.
+- Before flagging normalize-before-match as a new risk in a review, check whether a shipped sibling already normalizes the same kind of string. If the normalizer is not in the PR diff it is base behavior — downgrade to at most "pre-existing, out of scope."
+- Trace a tool's top-level `main.cpp` flow, not the library entry point whose name matches the flag. `slangi -disasm` disassembles and then still executes, so it shares the run-path crash rather than being a separate site — one fix covers both.
+- Verify parity claims by reading the shared code path: slang-test's `-exclude-prefix`, `-skip-list`, and positional `-test-prefix` are all `Path::simplify`'d identically and compared by exact string, so a new matcher must reuse the same normalization or it breaks parity.
+- Scope target-specific IR passes explicitly — e.g. empty-struct field removal is valid only for C-like source targets and must be gated off the direct-LLVM CPU path.
+- Adding a method to a public COM interface needs coordinated ABI touchpoints beyond header and impl; the record/replay registration is the one that fails silently.
+
 ## Workflow Step Format: Numbered List Only
 
 The composer's step parser only matches `^\s*\d+\.\s+\*\*[^*]+\*\*` (numbered-list format). `## Step N: TITLE` H2 headers silently produce empty step bodies. All four broken Slang workflows (`slang-pr-review`, `slang-fix-issue`, `slang-triage-issue`, `slang-discord-answer`) were running with description-only CLAUDE.mds since this mistake. The fix was PR #335 (May 14 session) and `validate-templates.ts` CI gate (PR #336) ([May 14 session — landed PRs](../learnings/legoop-project_session_may14.md)).
@@ -125,4 +144,4 @@ Several learnings document Slang-compiler-specific behaviors useful for future d
 - [slang #11410: bundle-level watched_paths_digest already covers catalog source](../learnings/1780354591272-slang-11410-bundle-level-watched-paths-digest-alre.md)
 - [Slang: using-namespace import leak had a TWIN on the legacy/API lookup path](../learnings/1780493606237-slang-using-namespace-import-leak-had-a-twin-on-th.md)
 
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

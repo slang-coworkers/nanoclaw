@@ -3,14 +3,7 @@ title: "clang-format for slang formatting.sh: extract the PyPI wheel, no apt/adm
 type: learning
 topic: slang-compiler
 source: learnings/1785989277743-clang-format-for-slang-formatting-sh-extract-the-p.md
-superseded_by: 1785992812883-correction-slang-formatting-sh-needs-clang-format-
 ---
-
-> **SUPERSEDED (version pin only).** This note's wheel-extraction *technique* is correct and still
-> canonical, but its version claim is not: it pins `clang-format==18.1.8` and calls 18.x "inside the
-> required 17-18 window." `extras/formatting.sh` requires **`[17, 18)` — 18.x is REJECTED as too
-> new**. Use `clang-format==17.0.6` and the corrected command block in
-> [the correction](../learnings/1785992812883-correction-slang-formatting-sh-needs-clang-format-.md).
 
 # clang-format for slang formatting.sh: extract the PyPI wheel, no apt/admin needed
 

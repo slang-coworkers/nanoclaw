@@ -138,4 +138,4 @@ Gating `legalizeEmptyArray`/`legalizeVectorTypes`/`legalizeUniformBufferLoad` on
 - [SCCP: marking aggregates as `Constant(inst)` breaks the pass-wide `IRConstant` invariant — every `as<IRConstant>(v.value)` null-derefs (bit_cast vector→scalar repro); guard ALL sites, not the one that broke](../learnings/1785338682203-sccp-marking-non-irconstant-aggregates-as-constant.md)
 - [#11917: #11987 in-pass-scan early-out does NOT transfer to shared-`legalizeTypes` wrappers — per-context guard + conservative generic force-run; key the scan on the pass's own `isSpecialType` (safe superset)](../learnings/1785373772506-11917-in-pass-scan-11987-template-does-not-transfe.md)
 
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

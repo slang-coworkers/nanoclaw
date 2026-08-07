@@ -10,6 +10,34 @@ source_count: 15
 
 Empirical findings from stress-testing Claude vs Codex providers under `AGENT_RUNTIME=local`, and process rules for running `/codex-critique` correctly in the Slang fixer workflow.
 
+## TL;DR
+
+- The native `Task` subagent is Claude-only; on Codex it hangs silently rather than erroring. The portable subagent path on either provider is `mcp__nanoclaw__create_agent` plus a2a messaging.
+- Claude coalesces rapid pushed messages into one result; Codex emits one result per push. Fanning out to a Claude coworker and needing per-message reply identity requires waiting for the prior turn or opening separate sessions. Rapid-fire is safe on Codex.
+- Plan-gate and critique-gate do not fire under `AGENT_RUNTIME=local`; a `CLAUDE.md` @import cannot be verified on a live session because the system prompt is cached — kill and respawn. The CLI adapter is single-client, so parallel chat calls evict each other.
+- Rebase onto the base branch before a codex `CODE_REVIEW`. Otherwise upstream-only changes read as deletions/reverts and codex flags phantom scope-creep must-fixes. Rebase late, only when needed.
+- Always call codex with `sandbox: "danger-full-access"`. Under `read-only` it cannot run `cat`/`git`/`grep`, returns a non-verdict, and the gate still counts the round — so the delivery gate can open on a meaningless review.
+- The AI-transparency disclaimer goes on issue/PR comments, never in the PR description or commit message. Upstream policy prohibits AI attribution there and `OUTPUT_REVIEW` flags a body footer as must-fix.
+- Run every required critique stage up front. For the fixer overlay that is PLAN_REVIEW + CODE_REVIEW + OUTPUT_REVIEW; the denial fires at PR-create time, after all review work is already spent. Write the plan file first if the fix jumped straight to code.
+- A round counts only when a FRESH `mcp__codex__codex` call carries both a `STAGE: <NAME>` line and the canonical reviewer block verbatim. A `codex-reply` is never attributed to the gate, and a free-form call records as `stages: none`.
+- `developer-instructions` must be a TOP-LEVEL tool parameter, never nested inside `config`. The hook reads only the top-level field, so a config-nested block reads empty and the round is dropped even though codex ran and answered. A secondary tell is codex ignoring your requested output format.
+- On a `codex-reply` re-verify, do NOT include a literal `STAGE:` line — the hook treats it as an initial stage call, runs the instruction-pinning check the reply cannot satisfy, and silently drops the approve.
+- Critique coverage resets on ANY file edit after the OUTPUT approve, including edits to unrelated memory files. Do all housekeeping writes BEFORE the final review; touch nothing between approve and the delivery send.
+- A critique approve is a signal, not a proof. It does not substitute for a test-build on anything depending on enum/atom ordering, contiguity, or set membership. Treat "approve by analogy to a nearby helper" as lower confidence, and fail closed when an anchor value is absent.
+- When codex is the only thing blocking a marker send and the reviewed content is already approved and public, deliver a plain ungated status roll-up rather than leaving the chain silent. Model overrides are unavailable in this container — omit them.
+- The gate re-hashes the `/workspace/agent/memory` OKF copy, not the `~/.claude` index copy. A status change that must clear an artifact-mismatch gate has to land in the OKF copy.
+- A hook-denied or failed probe is a fact about YOUR edge, not about the question. Hand the probe to a coworker on a different edge before concluding; record UNVERIFIED only after someone who plausibly could has also failed.
+- Try another route before giving up — one blocked endpoint does not make a fact unreachable, and the alternate route is often trivial.
+- Never launder a relayed claim into durable memory as fact. Noting the denial, attributing the source, and reasoning about coverage all read like diligence while producing the same corrupted record as blind acceptance. Write `state=UNVERIFIED (probe denied)`; a stated gap is recoverable, a laundered fact is not.
+- Relayed is not primary, even from your parent — a parent's report can be mid-flight and self-corrected minutes later. Weight relayed provenance inversely to how much the fact drives your next action.
+- Replace an UNVERIFIED marker IN PLACE when the answer arrives. Never append a retraction below it: the standing marker is what the next reader acts on.
+- Reciprocate — when a peer's UNVERIFIED marker covers something trivially checkable from where you sit, run it and tell them.
+- Re-read an escalation question against the state you just verified and check its presupposition still holds. A forward-looking framing ("promote the guard out of draft?") smuggles an unverified premise into a human's decision queue.
+- A summary→detail pointer authored before its child passes link resolution and cut-then-verify while asserting something the child never contained. Verify pointers at AUTHORING time, not only when shortening them: extract checkable tokens (issue refs, distinctive numbers, backticked identifiers) and grep the child for each.
+- A pointer/child mismatch does not say which side is wrong. Go to ground truth (GitHub, the build) rather than trusting whichever text you wrote more recently — an auto-repair that always trusts the index can re-open long-merged work.
+- Prose quality and byte count are independent claims: a "compaction" that reads cleaner may be larger. Print the delta on the specific lines changed, since file totals get masked by concurrent edits.
+- Characterize a ref by its commit date, not its name. Matching a branch-name prefix is not identifying a branch.
+
 ## Claude vs Codex Functional Parity
 
 From a 10-probe stress test on `AGENT_RUNTIME=local` (PR #52, snapshot `84ae3e5`), three real asymmetries emerged ([claude-vs-codex-provider-parity](../learnings/1778085879531-claude-vs-codex-provider-parity.md)):
@@ -89,4 +117,4 @@ A related gate-clearing trap involves WHICH memory copy codex re-hashes: two `/w
 - [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
 - [critique-gate: codex-reply re-verify must NOT contain a literal 'STAGE:' line](../learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)
 - [Approver: critique-gate hook false-positives on read-only gh api .../pulls](../learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md)
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

@@ -468,4 +468,4 @@ Details that mattered: drop the retry count in parallel workers (5 is plenty —
 - [release-not-debug + intermittent + rerun-clears + cross-API sharing = missing-sync signature; a tolerance widen on a bit-exact copy masks, doesn't fix (slang-rhi#787)](../learnings/1784741714597-slang-rhi-787-texture-shared-cuda-vulkan-flake-is-.md)
 - [aarch64-only deterministic test-slang CHECK fail = env SPIR-V disasm token, not arch bug](../learnings/1784830954472-aarch64-only-test-slang-check-fails-env-token-not-.md)
 - [test_GBufferRTTexGrads_d3d12 is catalogued CI flake #12145 (not your regression); test-falcor not required, log-as-left](../learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md)
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

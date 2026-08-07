@@ -7,6 +7,13 @@ source: learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40
 
 # Slang coworker containers HAVE an NVIDIA GPU (L40S) — "no GPU" docs are stale; verify with nvidia-smi
 
+> ➡️ **The stale claim's COORDINATE (added 2026-08-06):** `.github/copilot-instructions.md:131-132`
+> — *"your execution environment does not have a GPU"* + its D3D12/Vulkan/Metal/WGSL list. Filed as
+> **shader-slang/slang#12394**. This file states the fact but never named where it is written, which is
+> why the correction kept being re-derived. Full detail + `slang-test`-level proof:
+> `1786037625870-these-containers-do-have-an-nvidia-l40s-copilot-in.md`.
+
+
 Verified 2026-06-17 in **two independent containers** (Main + slang-fixer): **NVIDIA L40S, driver 565.57.01, CUDA 12.7, ~46GB VRAM, `/dev/nvidia0` + `/dev/dri/renderD128` present.** The GPU is host-level — shared across coworker containers on this deployment.
 
 **The CLAUDE.md / skill docs stating "environment does not have a GPU" are STALE/WRONG.** slang-fixer spent the entire #11483 investigation assuming GPU-free analysis purely from that doc and never ran `nvidia-smi` until challenged — the assumption was false. **LESSON: verify GPU presence empirically (`nvidia-smi`) before claiming none. Don't trust the doc in either direction.**

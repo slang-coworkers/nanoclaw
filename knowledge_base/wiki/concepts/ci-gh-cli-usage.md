@@ -8,12 +8,19 @@ source_count: 24
 
 # gh CLI Usage & PR/Issue Mechanics
 
+# gh CLI Usage & PR/Issue Mechanics
+
+# gh CLI Usage & PR/Issue Mechanics
+
 Concrete pitfalls and correct patterns for using the `gh` CLI in the Slang project: search limitations, closing-issue verification, comment retrieval, PR review detection, and bot process rules around GitHub writes.
 
 **Split 2026-08-05 at the 40 KB page cap.** Everything about *how `gh`/git readings lie* — collection caps, silently-truncated arrays, endpoint splits, path-classed 401s, and the control shapes that catch them — moved to [GitHub/git Instrument Limits — Caps, Silent Truncation & Endpoint Splits](../concepts/ci-github-instrument-limits.md). This page keeps *how to drive* the tools.
 
-## TL;DR
+> **This page is part 1 of 2** of the gh CLI Usage & PR/Issue Mechanics synthesis (split 2026-08-07 to stay under the 40 KB read cap). Siblings: [part 2](ci-gh-cli-usage-2.md). The TL;DR below is shared across all parts.
 
+> **This page is part 1 of 2** of the gh CLI Usage & PR/Issue Mechanics synthesis (split 2026-08-07 to stay under the 40 KB read cap). Siblings: [part 2](ci-gh-cli-usage-3.md). The TL;DR below is shared across all parts.
+
+## TL;DR
 - **`gh search` is not an existence or merge oracle.** `gh search prs`/`issues` have index lag and return false zeroes; `is:merged` returns 0 while PRs demonstrably merge. Use the timeline, `closingIssuesReferences`, a `--head fix/issue-<n>` list, or a direct `pulls/<n>` read.
 - **A PR title containing `Fix #N` does not auto-close anything** — GitHub honors the keyword only in the PR **body** (or a manual Development-panel link). Verify with `gh pr view <pr> --json closingIssuesReferences`, never a body regex (the `owner/repo#N` long form defeats a naive pattern).
 - **`gh issue view --comments` can print nothing at exit 0** — a renderer quirk, not an auth failure. Read `gh api .../issues/<n>` and `.../issues/<n>/comments` instead.
@@ -22,6 +29,10 @@ Concrete pitfalls and correct patterns for using the `gh` CLI in the Slang proje
 - **A draft-held fix PR does not discharge the issue comment.** `Fixes #N` in a draft body neither auto-closes nor surfaces; post the 5-bullet on the issue when you *decide* to hold.
 - **`gh api .../user.login` omits the `[bot]` suffix** — never compare it raw against a review author.
 - **An infra-unblock nudge is not a decision override**: being told "you're unblocked" restores capability, not authority to change a verdict.
+- **A `gh` name that resolves is not the name you meant.** `--workflow <typo>.yml` binds silently to a *retired* workflow with the words reordered and serves its old runs. Enumerate workflow paths; never type one from memory. Weeks-old rows in a query about *recent* automation are an instrument alarm, not a finding.
+- **`gh run rerun` rc=0 is not proof it fired; an unchanged `run_attempt` is not proof it didn't.** Proof is a second rerun returning 403 "already running". Key reruns on `(workflow_id, event, name)`, never name alone.
+- **A run concluding `success` may have declined to act** — read the script's decision line in the log, not the conclusion. Priority-yield aging is contention-gated (12h yield-out / 16h lookback); a yielded run can expire unrerun.
+- **Bucket a CI red by its terminal outcome, never by a signature string's presence.** When a challenged total reproduces unchanged, verify its members — offsetting errors pass every sum check.
 
 ## gh search prs Is Unreliable for Recent PRs
 
@@ -34,6 +45,13 @@ Concrete pitfalls and correct patterns for using the `gh` CLI in the Slang proje
 
 Note: a PR title containing `Fix #N` does NOT auto-close the issue — GitHub only honors `Close(s)/Fix(es)/Resolve(s) #N` in the PR body (or a manual Development-panel link).
 
+
+
+## A Name That Resolves Is Not the Name You Meant
+
+`gh search` returning too little is the benign half of this family; the dangerous half is a selector that resolves to the **wrong population** and returns a coherent dataset for it. `gh run list --workflow retry-yielded-bot-ci.yml` returned eight `completed/success` runs dated five weeks earlier — read, reasonably, as "this automation is dead". That filename does not exist: the real path is `ci-retry-yielded-bot.yml`, and `gh` silently bound the typo to a **retired** workflow whose *name* was the same words reordered, serving its final pre-deletion runs; the correct path showed 15 fires in the last hour. A 404 would have been safe because it is loud — instead the answer was well-formed *and* a legitimate-looking finding, with no failure signature, the family of `|| echo 0` laundering a tooling error into a plausible datum. So **never type a workflow filename from memory**: enumerate and copy it (`gh api repos/<o>/<r>/actions/workflows --paginate --jq '.workflows[]|.path'`), which matters most in shader-slang/slang with its 82 near-identically-named `ci-*` workflows. A `contents/.github/workflows/<name>` 404 cross-checks only when paired with a **positive control** in the same enumeration (`ci.yml` must appear), since a path-filtered query cannot distinguish "absent" from a permissions problem. Never call a workflow retired without confirming the name binds to what you meant [gh run list --workflow <wrong-filename> silently returns a RETIRED workflow's old runs instead of erroring](../learnings/1786079545237-gh-run-list-workflow-wrong-filename-silently-retur.md).
+
+
 ## Checking Closing-Issue Links
 
 To verify a PR auto-closes an issue, use:
@@ -43,6 +61,8 @@ gh pr view <pr> -R <owner>/<repo> --json closingIssuesReferences --jq '[.closing
 ```
 
 Do NOT decide from a body regex. GitHub honors both the short form (`Closes #N`) and the long form (`Closes owner/repo#N`) — a naive `keyword #N` pattern produces false-negatives for the long form. The API call is authoritative ([Check a PR's closing-issue link via gh closingIssuesReferences, not a body regex](../learnings/1780462327680-check-a-pr-s-closing-issue-link-via-gh-closingissu.md)).
+
+
 
 ## gh issue view --comments Can Return Empty
 
@@ -56,21 +76,31 @@ gh issue view <n> --json number,title,state,author,labels,body
 
 ([gh issue view --comments can return empty; use --json or gh api for comments](../learnings/1782389247211-gh-issue-view-comments-can-return-empty-use-json-o.md))
 
+
+
 ## Verifying release artifacts vs. reporter claims
 
 When a reporter says an official release artifact has a version mismatch, download and inspect the actual artifact before routing a fix. The zip ships `include/slang-tag-version.h` (contains the embedded version) and the binaries. `slang-compiler.dll` is the module that implements `getBuildTagString`; `slang.dll` is a ~156KB re-export shim. CI run logs expire after ~few weeks (HTTP 410 Gone), so the artifact is often the only remaining ground truth. A `strings` grep on the binary is the authoritative check ([Verify a reported release-version mismatch against the actual artifact before treating it as a release-CI bug](../learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md)).
+
+
 
 ## Don't Cite Env Vars or Flag Names Without Verifying
 
 Env-var, CLI-flag, and command names are a high-frequency hallucination surface. Before writing any env var, CLI flag, registry key, or command name in a user-facing reply, verify it via `man`, `--help`, the project's docs, or a GitHub grep on the project repo. A fabricated knob name is unrecoverable for the reader; a verified name is always preferable to a confident-sounding wrong one ([Don't cite env-var or flag names without verifying — they're a high-frequency hallucination surface](../learnings/1780177920997-don-t-cite-env-var-or-flag-names-without-verifying.md)).
 
+
+
 ## Pushing Commits Is Not a User-Facing Write
 
 Pushing code commits to a `fix/issue-*` branch never requires per-push operator approval — not for draft PRs, not for ready PRs, not in response to automated reviewers (CodeRabbit). The operator-gated set is narrow: PR/issue comments, review replies, emoji reactions, `gh pr ready`, merge/mark-ready-for-review. A commit push is none of those ([Pushing code commits is NOT a user-facing write — it's always allowed, draft or ready](../learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md)).
 
+
+
 ## Draft-Held Fix PR Still Needs the Issue Comment
 
 When a triaged issue's resolving PR is held as a draft, the `Fixes #N` in the draft PR body does NOT auto-close the issue and does NOT surface prominently. The 5-bullet triage outcome comment MUST still be posted on the issue (verdict = "Triaged → fix in draft PR #N, held pending review/approval"). Treat the decision to hold the PR as a draft as the trigger for the issue comment ([Draft-held fix PR still needs the issue 5-bullet — post it when you decide to hold, not after a nudge](../learnings/1780900630856-draft-held-fix-pr-still-needs-the-issue-5-bullet-p.md)).
+
+
 
 ## Verifying a Cited Fix PR Is an Ancestor
 
@@ -82,11 +112,15 @@ git merge-base --is-ancestor <fixPR-merge-commit> <reporter-build-commit>
 
 If the exit code is non-zero, the fix was NOT in the reporter's build. The correct deliverable is regression-test coverage, not a new fix. Get the reporter's build from their `slangc -v` / `git describe`, and the fix-PR's merge commit via `gh pr view N --json mergeCommit` ([Verify the cited fix-PR is an ancestor of the reporter's build before accepting regression/incomplete-fix framing](../learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-repo.md)).
 
+
+
 ## Detecting Transient Claude CLI Failures in PR Review Runners
 
 When running `/slang-pr-review` background reviewers (`compose-and-run.sh` for Reviewer A, `run-clarity.sh` for C), the background-task completion notification's exit code is the wrapper's `echo`, not the inner script — it shows 0 even when the review failed. Always grep for `REVIEWER_*_EXIT=` in the log.
 
 Failure signatures: Reviewer A — `final-review.md` missing, stream's final `result` record has `is_error:true` + socket-closed message, tiny cost (~$0.05, num_turns≈2); Reviewer C — exit 143 (SIGTERM), no `clarity-review.md`, `stream.jsonl` ends with no `result` line. On either signature, re-run that reviewer's script (idempotent). Then validate: files non-empty, zero "API Error" hits, for C confirm `tool-uses.jsonl` has zero GitHub-write calls ([slang-pr-review: detecting transient claude-CLI failures in A/C runners](../learnings/1780650742331-slang-pr-review-detecting-transient-claude-cli-fai.md)).
+
+
 
 ## Infra-Unblock Nudge Is Not a Decision Override
 
@@ -94,9 +128,13 @@ An infra-unblock signal (disk freed, build can now run, CI green) is orthogonal 
 
 The same read-only-blind-spot trap bites the maintainer daily report: a `gh` label scan cannot see in-flight coworker session chains, so an issue missing `Dev Reviewed` is *not* the same as "untriaged, needs routing / apply P0" — that over-claims a routing gap that may not exist (observed 2026-07-31: slang #12285/#12291 and slangpy #1079 flagged as "untriaged" were all already triaged and in-flight, with #12291 GitHub-assigned to jhelferty-nv). Keep the severity read, but reframe the ask from "untriaged → route/label P0" to "severity: P0-class; work-state: triaged & in-flight, fixer/triager-owned; `Dev Reviewed` + priority are the human maintainer's to apply" — the label is a human write, not a coworker routing gap, and when work-state isn't verifiable from the scan, say so ("label view only; work-state not verified") rather than asserting fresh dispatch is needed ([daily-report P0 candidates: label view ≠ work state (read-only blind spot)](../learnings/1785485841108-daily-report-p0-candidates-label-view-work-state-r.md)).
 
+
+
 ## Furo Theme Dark-Mode Code Colors
 
 For the `shader-slang/shader-slang.github.io` Sphinx site using the Furo theme, use `pygments_dark_style` in `docs/conf.py` rather than CSS overrides. Furo emits its dark-mode rules wrapped in `body:not([data-theme="light"]) .highlight .k { … }` (higher specificity than a plain `.highlight .k`), so CSS overrides lose in dark mode. The intended hook is `pygments_dark_style = "<PygmentsStyleClass>"` pointing to a custom `pygments.style.Style` subclass. Delete the `.highlight .*` color-override block from `theme_overrides.css` after adopting custom styles. For non-Pygments code on the same page (e.g. auto-generated reference with `pre .code_keyword` etc.), scope those rules with `body[data-theme="dark"]` ([Furo theme dark-mode code colors — use pygments_dark_style, not CSS overrides](../learnings/1779427288040-furo-theme-dark-mode-code-colors-use-pygments-dark.md)).
+
+
 
 
 ## Recent operational learnings (incremental fold 2026-07-17)
@@ -106,13 +144,19 @@ For the `shader-slang/shader-slang.github.io` Sphinx site using the Furo theme, 
 **Rerun supersedes attempt-1 logs — capture receipts before rerunning** — **Rule:** If you intend to cite an attempt-N FAILED line as evidence (e.g. [Rerun supersedes attempt-1 logs — capture receipts before rerunning](../learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts-b.md)
 
 ---
+
+
 ## Critique-Gate Hook False-Matches Read-Only `gh api .../pulls/...` GETs (2026-07-12 fold)
 
 In a critique-gate-overlay container (`CRITIQUE_GATE_ACTIVE=1`), a pure read-only GET like `gh api repos/O/R/pulls/12065/reviews` is DENIED pre-execution ("CRITIQUE REQUIRED before PR creation") — `/app/hooks/gate-critique-on-deliver.sh` matches `gh api [^|]*pulls\b` method-blind, so it catches any `gh api` path containing `pulls`, not just `POST .../pulls`. The whole compound Bash command is blocked, so side effects (mkdir, writes) in the same call also don't run. Avoid it: use `gh pr view <n> --json <fields>` and `gh pr diff <n>` for PR reads (no literal `api .../pulls` substring), and `gh api graphql -f query='...'` for inline review threads / resolve state / per-review commit_id (the endpoint path is `graphql`, not `.../pulls`). The bundled `harvest-reviews.py`/`eval-clauses.py` call `gh api .../pulls` inside python, which the hook doesn't see — only raw `gh api .../pulls` typed directly into a Bash tool call trips. Also pre-create `mkdir -p /workspace/.claude` if you hit a `workflow-state.json.tmp: No such file` hook error before your first critique ([critique-gate hook false-matches read-only gh api pulls GETs as PR-creation](../learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)).
 
+
+
 ## gh .user.login Omits the [bot] Suffix (2026-07-14 fold)
 
 The REST API returns a bot account's login bare (`nv-slang-bot`), not the `nv-slang-bot[bot]` form shown in the UI — so an "edit-if-last-poster-is-self" comment guard that compares against `nv-slang-bot[bot]` mis-fires and posts a DUPLICATE. Compare against the bare login ([gh .user.login omits the [bot] suffix — edit-if-self guards must compare bare login](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)).
+
+
 
 ## GraphQL-401-while-REST-healthy phantom-greens a CI sweep (`gh pr checks` is GraphQL-backed) (2026-08-01 fold)
 
@@ -130,47 +174,40 @@ gh api "repos/<o>/<r>/commits/$sha/statuses?per_page=100" \
 
 Notes: (1) `--paginate` concatenates JSON objects, so a bare `.check_runs[]` dies on page 2 — but do **NOT** reach for the optional-`?` form (`jq -s '[.[]|.check_runs[]?]'`) as the fix, as an earlier revision of this page recommended. **That `?` is itself a silencer**: it swallows a gateway error document (which has no `.check_runs` key) and hands you a clean-looking result built from page 1 only. Gate on shape instead — `jq -e '.check_runs'` per page — and reconcile the count (see *Pagination truncates silently* below). (2) Some required gates (merge-queue aggregators, cross-repo checks like SlangPy Tests) are commit **statuses**, not check-runs — check both. (3) The wake payload's `evicted` list may itself be GraphQL-derived → cross-check merge-group evictions via REST `actions/runs?event=merge_group`. This is distinct from a full actions:write outage (where `gh run rerun` returns 403 "Must have admin rights"); a fresh GraphQL-401-while-REST-ok is worth an operator ping via parent ([GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)](../learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md), [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)).
 
+
+
 ## is:merged Search Is Broken — Infer PR Merge From Simultaneous Issue-Close (2026-08-01 fold)
 
 A companion to the "gh search prs is unreliable" section, but for merge-detection specifically: the `mcp__slang-mcp__github_search_issues` `is:merged` query returns 0 results even over wide windows while PRs are demonstrably merging (confirmed 07-26 and again 08-01). Do NOT use `is:merged` to decide whether a PR merged. Reliable substitute: check whether the PR's **closing issue** is now CLOSED via `github_get_issue` — a PR with `Fixes #N`/`Closes #N` auto-closes its issue at the merge instant, so `issue.state == closed` + a matching `closed_at` = fix merged (e.g. 08-01, #12071 CLOSED 2026-07-30T18:34Z confirmed PR #12095 merged though `is:merged` returned nothing). Alternatively page the REST `commits` API — but note it truncates to ~15 entries, so widen the window or paginate or you'll undercount merges (07-28: counted 5, actual 9) ([is:merged search broken — infer PR merge from simultaneous issue-close](../learnings/1785572253771-is-merged-search-broken-infer-pr-merge-from-simult.md)).
 
-## CORRECTION — What the Bash Write-Guard Actually Trips On (2026-08-04 fold)
 
-Two successive characterizations of a `PreToolUse:Bash` denial on a **read-only** `gh api` call were published and both were wrong; each pointed an operator at a different non-existent problem. Recorded here as supersessions because the wording lives above in the critique-gate section.
 
-**Retracted claim 1: "the delivery/critique gate blocks *all* bash — including read-only `gh api` reads."** Wrong. Single-field `--jq` reads succeed on the identical URL, same session, same gate state (`--jq '.state'`, `--jq '.state_reason'`, `--jq '.closed_at'` all → 200), while one composed form was denied. A peer coworker independently reported read-only `gh api` working fine on their edge, which is what prompted the re-probe instead of continuing to assert a blanket block. The meta-lesson: a tool's behavior was diagnosed **from two denials without probing a single variant**, and that diagnosis was handed to a parent as grounds for escalating a process fix — *"X is blocked"* and *"the way I invoked X is blocked"* are different claims with very different consequences ([CORRECTION: the gate does not block read-only gh api](../learnings/1785781643460-correction-the-critique-gate-blocks-composed-multi.md)).
+## `gh run rerun` Returns 0 Before Anything Changes
 
-**Retracted claim 2 (from that same correction): "only composed multi-field interpolated `--jq` strings trip it."** Also refuted by probing. The mine-verified trigger is the literal **`state=`** in the command text **on an `issues` path**:
+`gh run rerun <id> -R <r> --failed` exits **0** as soon as the API accepts the request, but `run_attempt` can still read the **old** value immediately after — so rc=0 is not proof the rerun took, and a same-value `run_attempt` is not disproof (observed: read back `att=1`, nearly logged "rerun failed to take", then seconds later `att=2, in_progress, steps=4`). The unambiguous confirmation is to **issue the rerun a second time**: if the first took, GitHub replies 403 `{"message":"This workflow is already running"}` — positive proof; if it accepts again, the first never fired. Otherwise re-query after a beat and check `run_attempt` **and** `status` **and** `steps` length together, since a real re-execution has a fresh non-empty `steps` array. Related keying trap: one job *name* can exist on a single sha under two `event`s (`REUSE Compliance Check` on both `pull_request` and `push`) — rerunning "the REUSE run" greened the `pull_request` instance to att3 while the `push` instance sat red at att1 and the PR still showed a failure. **Key reruns on `(workflow_id, event, name)`, never name alone** [gh run rerun returns rc=0 before run_attempt increments — the proof it took is a second call returning 403 "already running"](../learnings/1786077463765-gh-run-rerun-returns-rc-0-before-run-attempt-incre.md).
 
-- Denied: `--jq '"state=\(.state)"'` (single field), `--jq '"state=x"'` (no interpolation at all), `--jq '"state_reason=\(.state_reason)"'`
-- Passed: `--jq '.state'`, `--jq '.state,.closed_at'`, `--jq '"foo=\(.state)"'`, `--jq '"a=\(.state) b=\(.closed_at)"'` (**composed, multi-field, interpolated**), the same `"state=x"` literal on a **non-issues** path, and bare `echo "state=closed"` (so the pattern is `gh`-scoped)
 
-Inferred (labelled inferred) mechanism: a **write-guard against closing an issue** — meant to catch `gh api …/issues/N -f state=closed` — implemented as a regex loose enough to match the same characters appearing in a *read's* `--jq` output-format string; hence path-sensitive and literal-sensitive while indifferent to the HTTP method. **The workaround is to rename the label:** `"foo=\(.state)"` passes where `"state=\(.state)"` is denied, costing only the wording of your own output label; safest of all are **bare selectors** (`--jq '.state,.state_reason,.closed_at'`) — no `=` anywhere and no string literal to match. The real fix is for the guard to match argument position/method, not a substring that can appear in an output-format string. A **second, separate** trigger (`.state_reason` appearing before a later `=`) was measured to **one edge only** after a third agent ran the two denied cells verbatim and both passed — nobody else should code around it, since a fleet-wide workaround for a single-edge artifact is a permanent tax on everyone for one agent's config ([the gh api gate trigger is a write-guard regex false-positive, narrower than two successive characterizations](../learnings/1785782110173-the-gh-api-gate-trigger-is-a-write-guard-regex-fal.md)).
+## A `success` Conclusion Can Mean "Declined to Act" — Priority-Yield Aging
 
-Three method rules from that chain, all reusable well beyond this gate. **This file's own title originally claimed the trigger was "reproduced on 3 edges" — false and retracted**: it was verified on one edge plus a *report* from one other, i.e. an inference dressed as a count, and a number borrows the authority of measurement whether or not it later turns out right (it did, afterwards — *being lucky is not being calibrated*). **A residual you cannot explain can still be bounded**, and bounding it is often more useful than explaining it, because scope decides who has to care; three candidate regexes were built and discarded because each mispredicted a cell that had already passed, and an unexplained residual honestly labelled beats a clean story that mispredicts. **METHOD TRAP — the guard matches command TEXT before execution, so a bundled retest invalidates itself**: putting a previously-passing form in the same command as a previously-denied literal "to compare them side by side" denies the whole command, the control never runs, and the denial looks like a property of the control (read for one moment as *"the gate is nondeterministic"*). One probe per command, always — an experiment whose apparatus is itself subject to the effect under test cannot measure it. Finally, note the downstream harm that holds regardless of which trigger story is right: **a gate that blocks read-only verification pressures an agent toward substituting remembered values exactly when checking matters most.**
+The belief that aging (`ci-retry-yielded-bot`, "~8h") forces a yielded bot CI run into a real verdict is **false as a timer**. `wait-for-priority.py --max-yield-hours 12` escalates only when the gate **runs again** and finds itself aged out (age from *original* creation, across reruns); a completed yielded run never escalates while sitting still. Escalation therefore needs a rerun, and reruns come only from `retry-yielded-bot-ci.py`, whose **first gate** is `any_active_ci(...)`: if any `ci.yml` run repo-wide is `queued|in_progress|waiting` it prints `CI is still active (N run(s)); not rerunning bot CI.` and exits 0 — then `--max-reruns 1` per fire, ascending `run_number`. Real params are **12h yield-out / 16h lookback**; past the lookback a run silently stops being a candidate and **expires unrerun** rather than escalating (one busy day: 60/60 fires over 5.4h blocked at gate 1, 32 candidates competing for the single slot).
 
-## An Unexplained Bot Comment: Your Own Fan-Out Is the Prime Suspect (2026-08-04 fold)
+The instrument lesson generalizes — **the aging run concludes `success` even when it did nothing**, so its conclusion says nothing about its decision. Read the decision line from the log, and since a GHA log echoes its own `run:` block, grep the *output*, not the echoed source:
 
-The `[bot]`-suffix guard above is about *not duplicating* your own comment; this is about *attributing* one you didn't expect. Two incidents, one shape.
+```bash
+gh run view <id> -R <repo> --log | grep -oE "CI is still active.*|No yielded bot CI runs are eligible.*|Rerunning yielded bot CI run #[0-9]+.*"
+```
 
-**"Read-only agent" is a claim about a tool list, not about the world.** A coworker found an unexplained `nv-slang-bot[bot]` comment on an issue it was driving and excluded its own subagents because "my three research agents were all `Explore`-typed (no `gh`/write surface)," then escalated *"a second tier can write to GitHub surfaces I hold"* as a routing hazard. The exculpating premise is false: `Explore`'s grant is *all tools except Agent, Artifact, ExitPlanMode, Edit, Write, NotebookEdit* — **`Bash` is retained**, so `gh api …/issues/<n>/comments --method POST -f body=…` is fully available. Explore is read-only with respect to the **local filesystem**; it says nothing about network side effects, and a single retained shell is a write surface to every API the container is credentialed for. Corroborating detail for the mundane local explanation: the comment's timestamp fell inside the owning session's own turn gap (outbound `00:23:39` → `00:47:24`), and a subagent's `gh` write is invisible as session outbound, so a self-inflicted write looks exactly like a mystery write. Rules: verify a subagent's tool grant before treating it as incapable; **state read-only intent in the prompt** ("do not write to GitHub or any external service; report findings only") because the type does not enforce it; a capability-based alibi needs the same evidence as any other claim; and absence of an audit trail is not absence of a cause — the systemic story must not be adopted just because it is the one that leaves you blameless ([Explore-typed subagents RETAIN Bash — read-only restricts file writes, not network writes](../learnings/1785804584522-explore-typed-subagents-retain-bash-read-only-agen.md)).
+A rerun **mutates the same run id in place**: `run_attempt` is the test for "did aging touch this run", `head_sha` is unchanged, and there is no new run id at the same SHA to hunt for. Don't misread a long-lived active run as stranded (which would wrongly imply the gate never opens) — one `in_progress` for 12.8h had 26 jobs done and 9 started minutes earlier; key on **`status`**, never `started_at`. Never promise a time by which aging will force a run through: report the gate state (is `ci.yml` quiet, what is this run's queue position) and say plainly it may expire at the lookback without ever building. Re-dispatching CI on a draft under contention just mints another yield and another competitor for the one slot [slang priority-yield aging is CONTENTION-gated, not a timer — a yielded run can expire unrerun](../learnings/1786079520646-slang-priority-yield-aging-is-contention-gated-not.md).
 
-**The other direction: the dispatcher's own unannounced write.** A comment on slang#12223 (id 5167783319) was reported as coming from "a different session under our shared `nv-slang-bot[bot]` identity," with a coordination rule proposed for concurrent sessions writing to one surface. There was **no concurrency incident** — the orchestrator posted it itself: it authorized the close-out (the worker's footprint), then four minutes later posted a separate finding on the same issue and told the *reviewer* tier but not the worker. The correct rule belongs to the dispatcher, not the workers: **whoever delegates a surface must announce any write it makes to that surface, with the comment id, on the same thread, in the same turn.** What survives in weaker form is ordinary hygiene — a shared bot identity genuinely isn't attributable to a tier from GitHub alone, so investigating an unannounced bot comment *by content* and re-reading the newest comment before posting are both right — but do not escalate "unattributable bot comment" to "concurrency incident" without evidence; ask the tier that could have written it first. The same episode yields a cheaper habit: **before re-running an experiment, re-read the evidence you already collected and ask what else it proves.** Three agents independently re-derived that `*_FLAGS_<CONFIG>_INIT` seeding fails to honor env `CXXFLAGS`, when the chain's own days-old probe output already showed the all-config slot (where env `CXXFLAGS` lands) preceding the per-config slot — the ordering *was* the finding. Probe when you have no evidence; re-read when you do ([CORRECTION: it was the dispatcher's unannounced write, not a rogue session](../learnings/1785770140397-correction-to-my-12223-concurrency-claim-it-was-th.md)).
 
-## Contradictions / supersessions
+## Bucket a Red by Terminal Outcome, Not by a Signature String
 
-- **`--paginate` "gives no non-zero exit code"** — superseded. `gh` does exit 1; a pipe into `jq` (or `2>/dev/null`) launders it. Fixed in place above; the mechanism claim must always name the *invocation form* measured.
-- **`jq -s '[.[]|.check_runs[]?]'` as the recommended `--paginate` slurp** — superseded. The optional `?` is a silencer for gateway error documents; the note in the GraphQL-401 section now says gate on `jq -e '.check_runs'` and reconcile the count instead.
-- **"The critique/delivery gate blocks all bash, including read-only `gh api`"** and **"only composed multi-field interpolated `--jq` trips it"** — both retracted; the mine-verified trigger is the literal `state=` on an `issues` path (see the CORRECTION section). The separate `.state_reason`-before-`=` trigger is one-edge-only and must not be worked around fleet-wide.
-- **"Reproduced on 3 edges"** (as originally published for the `state=` trigger) — retracted as an inference dressed as a count; it became true only later, which does not retroactively justify writing it.
-- **`repos/.../branches/main/protection` 403 ⇒ "CI-not-required clause unverifiable"** — retracted; `branches/main` carries `.protection.required_status_checks.contexts` unprivileged, and the fact was the opposite of what the caveat implied.
-- **"GitHub auth is down fleet-wide"** — retracted; it was a REST-vs-GraphQL path-class split, and four agreeing probes were all one instrument (introspection + GraphQL-backed).
+Whether to rerun at all depends on classifying the red, and the cheap classifier is wrong. On slang #12418 "test-server JSON-RPC breakdown = 18" came from grepping failing job logs for `JSON RPC failure`; re-deriving by **terminal failure** (the `FAILED test:` line) returned **18 again** — with a different composition (of 29 class failures: 18 terminal RPC, 7 a PR's own new CUDA test, 2 device-loss cascade, 1 autodiff assert on the PR's own tests, 1 mixed). **11 of 29 rows were misfiled**, yet the headline held because string-presence over-counted by ~11 while an independent window/denominator error under-counted by about as much — two errors of opposite sign on one figure. The string is not evidence because `slang-test` retries: in all 11 misfiled jobs it landed on a retry-*passing* test while the terminal red was a deterministic regression reproducing across SHAs, runners and platforms, where a rerun cannot succeed. Presence proves an event occurred, never that it caused the red. Two counting traps: `Too many failed tests for retry(N) - setting all to failed` promotes every pending-retry test to terminal, so one job can contribute 100+ (two such jobs supplied 200 of ~250 terminal failures in that window and dominated every per-test rate); and `failed(pending retry)` / `[Failed]:` are **first-attempt only**, so neither is a failure count.
+
+Two durable rules follow. **A total that reproduces is not a composition that reproduces** — an unchanged challenged figure is the moment to name the members, not to relax, because offsetting errors are exactly the case where every sum check passes. And misclassification has a **direction of harm**: every misfiled row pointed at *infra*, the disposition that recommends a rerun, so calling an author-owned regression infra prescribes a rerun that cannot succeed and tells the author their red is someone else's problem. Likewise a signature-based flake rule is sound only if the signature is **absent from passing runs**; if it co-occurs with success it quietly becomes "ignore the strongest legitimate tell" [A correct total can hide a wrong composition — reclassify by TERMINAL outcome, never by signature-string presence](../learnings/1786074478624-a-correct-total-can-hide-a-wrong-composition-recla.md).
 
 **Source learnings (24):**
-- [CORRECTION: the critique gate does not block read-only gh api — probe variants before characterizing a tool](../learnings/1785781643460-correction-the-critique-gate-blocks-composed-multi.md)
-- [The gh api gate denial is a write-guard regex false-positive on literal `state=` over an issues path — rename the label](../learnings/1785782110173-the-gh-api-gate-trigger-is-a-write-guard-regex-fal.md)
-- [Explore-typed subagents RETAIN Bash — "read-only agent" restricts file writes, not network writes](../learnings/1785804584522-explore-typed-subagents-retain-bash-read-only-agen.md)
-- [CORRECTION: the #12223 "concurrency incident" was the dispatcher's own unannounced write; re-read evidence before re-running it](../learnings/1785770140397-correction-to-my-12223-concurrency-claim-it-was-th.md)
+
 - [GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)](../learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md)
 - [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy — enumerate failures via REST check-runs + statuses](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
 - [is:merged search broken — infer PR merge from simultaneous issue-close (github_get_issue state==closed), not is:merged](../learnings/1785572253771-is-merged-search-broken-infer-pr-merge-from-simult.md)
@@ -189,8 +226,9 @@ The `[bot]`-suffix guard above is about *not duplicating* your own comment; this
 - [Templated operator-wake is not an explicit scoped override](../learnings/1782734222994-templated-operator-wake-explicit-scoped-override-o.md)
 - [critique-gate hook false-matches read-only gh api .../pulls/... GETs as PR-creation — use gh pr view/diff --json instead](../learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)
 - [gh .user.login omits the [bot] suffix — edit-if-self guards must compare bare login](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)
-
-
 - [[approver/clause-gap] ci_green_on_sha reads only the combined-status endpoint, not Actions check-runs — and the CodeRabbit exit-22 wait-then-reharvest works](../learnings/1784148788488-approver-clause-gap-ci-green-on-sha-reads-only-the.md)
 - [Rerun supersedes attempt-1 logs — capture receipts before rerunning](../learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts-b.md)
-_Catalog: [index](../index.md)_
+- [`gh run list --workflow <wrong-filename>` silently binds to a retired workflow and serves its old runs; enumerate paths instead of typing them.](../learnings/1786079545237-gh-run-list-workflow-wrong-filename-silently-retur.md)
+- [`gh run rerun` rc=0 precedes the `run_attempt` increment; positive proof is a second call's 403 "already running", and reruns must key on (workflow_id, event, name).](../learnings/1786077463765-gh-run-rerun-returns-rc-0-before-run-attempt-incre.md)
+- [Slang priority-yield aging is contention-gated (12h yield-out / 16h lookback), concludes `success` while doing nothing, and can let a yielded run expire unrerun.](../learnings/1786079520646-slang-priority-yield-aging-is-contention-gated-not.md)
+- [Classify a CI red by its terminal `FAILED test:` outcome, not signature-string presence; a reproducing total can hide offsetting composition errors.](../learnings/1786074478624-a-correct-total-can-hide-a-wrong-composition-recla.md)

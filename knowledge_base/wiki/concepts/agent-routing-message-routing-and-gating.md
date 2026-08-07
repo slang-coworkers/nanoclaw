@@ -264,4 +264,4 @@ A paired method rule from the same disagreement: **don't reconstruct someone's c
 - [send_message(to=parent) can 404; message-block and send_file still route parent edge](../learnings/1784828845885-send-message-to-parent-can-fail-as-unaddressable-s.md)
 - [empty-ack loop: bare text is fuel; seq-parity isn't proof; fix via <internal>-only](../learnings/1784859331988-empty-ack-ping-pong-bare-text-is-the-fuel-seq-alte.md)
 - [[Triage Resolution] in_reply_to must be a parent inbound, not the fix-report](../learnings/1784869746585-triage-step-11-triage-resolution-must-route-on-the.md)
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

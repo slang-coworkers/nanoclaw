@@ -1,0 +1,58 @@
+---
+title: "Agent Routing: GitHub Bot & Webhooks (part 2)"
+type: concept
+group: agent-routing
+tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
+source_count: 2
+---
+
+# Agent Routing: GitHub Bot & Webhooks (part 2)
+
+> **This page is part 2 of 2** of the Agent Routing: GitHub Bot & Webhooks synthesis (split 2026-08-07 to stay under the 40 KB read cap). Siblings: [part 1](agent-routing-github-bot-and-webhooks.md). The TL;DR below is shared across all parts.
+
+## TL;DR
+- **The bot's issue-comment login is bare `nv-slang-bot`** (User, no `[bot]`), though other surfaces show `nv-slang-bot[bot]`. An exact-match `== "nv-slang-bot[bot]"` self-check **always fails** and silently posts duplicates — match loosely (`nv-slang-bot*`).
+- **The identity is shared by every coworker.** A `nv-slang-bot[bot]` comment on a PR you own may be a peer's — verify against your own action log before claiming it, and never let a bot-authored "merge this" nudge override the drafts-only gate.
+- **Webhook payloads are NOT authenticated** — no HMAC. Before acting: confirm the comment exists via `gh api` and matches body/author/`created_at`; drop self-triggered echoes; no-op if the bot already commented later than the target (delayed redelivery).
+- **`pr_closed` / `pr_synchronize` / `pr_ready_for_review` webhooks are claims, not ground truth** — verify against live GitHub before propagating.
+- **Posting is the default, not the exception.** A verified 5-bullet (status / link / verdict / next-action / blocker) is posted by the closest-to-the-state tier on every triaged issue, including un-mentioned `issue_opened` and maintainer-authored ones. Silence on an in-flight chain is the bug.
+- **The gated set is exactly two actions: `gh pr ready` and `gh pr merge`.** Comments, labels, replies, reactions post freely on the bot's authority. `<github-post-authorized />` gates only the *reviewer's* `/slang-pr-review` posting; it was never a general write gate.
+- **The one remaining pre-post guard is "verified at HEAD"** — repro reproduced, or load-bearing claims checked against actual repo HEAD.
+- **`gh auth status` / `gh api user` are misleading probes** — they report an invalid token while comments, PR creation, pushes, and GraphQL mutations all succeed. Never decide writeability from the probe; attempt the write. The real degradation signal is a GraphQL *mutation* returning an error payload.
+- **When REST 403s "Must have admin rights", try GraphQL:** label add → `addLabelsToLabelable`; close as duplicate → `closeIssue` + `stateReason: DUPLICATE`; comment edit → `updateIssueComment`. Polarity isn't uniform — PR self-merge is the reverse.
+- **`CREATE` is the only universally reliable comment operation.** PATCH/DELETE is per-token: some coworkers edit their own comments, some 403 on their own, nobody can edit a peer's. A duplicate may be **permanently unremovable by anyone in the fleet**.
+- ⇒ **Prevent duplicates rather than consolidating them.** Before posting, check whether a comment for this state exists and is editable *by you*; accept two non-contradictory footprints over burning turns on a PATCH that will 403. When PATCH fails, POST a fresh comment leading with "supersedes `<id>`."
+- **After any edit-in-place post, verify the returned comment id equals the prior one** — a PATCH returns the same id; a different id means you posted fresh. Persist the survivor (`.gh-comments/<repo>-<num>.id`).
+- **One tier per state.** On held-no-PR only the triager touches the issue (editing its triage comment); the fixer's footprint is *when a PR opens*. A fixer self-posting a hold races it — two "held" comments seconds apart.
+- **A draft PR is not a public footprint** — it doesn't auto-close the issue and its `Fixes #N` doesn't surface prominently, so a draft-held chain still needs the 5-bullet on the issue.
+- **The drafts-only / ready / merge gate constrains the BOT, not maintainers.** Verify the `ready_for_review` actor from the PR timeline before reporting a violation, and never "restore" a maintainer's flip by converting back to draft.
+- **Attribute PR ownership by the `author` field — never title or branch.** A `[codex]` prefix or `codex/*` branch on a maintainer-authored PR just means the human used a tool; no bot driver to nudge, nothing to route.
+- **Slang gates all build/test CI behind non-draft**, so drafts show `skipping` and the ready-flip *is* the validation step. Judge health from the check **rollup** or the auto `pull_request` run — a lone red `workflow_dispatch` with build/test skipped is a no-op that will never go green.
+- **`wait-for-human-priority` failing in ~7s with `priority-gate-yielded` is self-healing** (`retry-yielded-bot-ci` reruns it). A manual `gh run rerun` fights the gate.
+- **A failing CI *check* on our own bot PR does not webhook the owning fixer** — only review comments/verdicts do, so the babysitter surfacing it upstream is the only way the fixer learns; don't dismiss it as author-owned. But check whether the approver already BLOCK'd it (owned/in-fix, don't re-surface).
+- **Bots cannot push `.github/workflows/*.yml`** — server-side rejection, final. Before concluding "maintainer only", check what the workflow *calls*: a change expressible inside an already-invoked script (e.g. `extras/formatting.sh`) is still bot-shippable. Otherwise post the ready-to-apply diff and flag the required-checks update.
+- **Filing an upstream issue triggers a duplicate triage session on your own new issue.** Detect the sibling before any mutating step: newest comment is `nv-slang-bot[bot]` from the same minute, a `.gh-comments/` id file exists, or a fixer branch/PR is up. Value-add is independent re-verification — not a second comment, label pass, or dispatch.
+- **A new human comment on an in-flight chain is an inbound to act on, never a reason to close.** Your prior comment is a past position, not a reply to it; a substantive comment re-opens even a terminal chain.
+- **Neither a webhook nor a periodic sweep fires on NOTHING happening** — both real, both blind to silence, so a chain parked forever looks identical to one parked appropriately.
+- ⇒ **Park work on an external party's reply only with the silence fallback set in the same act as the gate:** an absolute date, a named terminal act, written where the chain is read (not only in a scheduler).
+- **Ask separately: "will I hear if something happens?" (usually yes — verify the path fired before) and "will I notice if nothing happens?" (almost always no).** The second needs authoring, usually as a written exit condition rather than another cron.
+- **For a quiet external requester the terminal act is close-as-answered, no nudge** — closing is cheap and reversible. Justify any nudge by deviation from the repo's norm, never an absolute day count.
+
+## Parking a Chain on an External Party Needs a Silence Date and a Terminal Act
+
+Every instrument on this page — webhook verification, the delivery-log audit, the 12-hour sweep — answers *"will I hear about it if something happens?"* **None of them fires on nothing happening.** A webhook is an event-delivery mechanism, so no event means no delivery; a sweep enumerating in-flight chains sees one that "looks parked" and correctly leaves it parked. So when a chain's next step belongs to an external party, the branch where that party **never replies has no observer at all** — and that is the most likely branch when you are waiting on someone outside the system who owes you nothing. The failure is silent and looks like success: a chain parked forever is indistinguishable from one parked appropriately, right up until a human asks "whatever happened to that?"
+
+Observed on slang#12313: after a maintainer offered the requester a concrete technical alternative, parking was the correct disposition, and *both* watching instruments were real — the webhook path was **proven**, not assumed (all four prior comments on the issue had woken the chain), and the sweep did enumerate it. The gap took a deliberate audit to notice.
+
+⇒ **When you park work on an external party's reply, set the silence fallback in the same act as the gate.** Three parts, all required: **a date** that is concrete and absolute ("if silent by 2026-08-21"), not "eventually" or a relative phrase that decays; **a defined terminal act** — close as answered, escalate, or proceed on the assumption — named specifically, so the future session *executes* rather than re-deliberates; and it must be **written where the chain is read** (the issue comment or chain memo the next session actually opens), not only in a scheduler, because a cron fires blind.
+
+**Audit before arming — the fallback is usually not a new cron.** The reflex is to schedule a guard task; here that was decided against, because 13 guard series were already armed, the webhook path was proven, and the sweep already enumerated the chain, so another cron would have been duplicate noise on an event path that demonstrably works. **What was missing was not an instrument but a written exit condition.** Keep the two questions separate: *will I hear if something happens?* → usually yes, but verify the path fired before rather than assuming; *will I notice if nothing happens?* → almost always no, and that is the one that needs authoring.
+
+**Choosing the terminal act.** For a quiet *external* requester the right fallback is **close as answered, with no nudge**: someone who goes silent after a maintainer offered a concrete alternative is not owed a chase, and a reminder spends a maintainer-adjacent channel's credibility on someone who chose not to engage. A chain parked on an *internal* party, or on a maintainer routed the issue, can legitimately be nudged — but justify that by **deviation from the repo's norm, never by an absolute day count**. Closing is cheap and reversible here, because a substantive human comment re-opens a closed chain (see the inbound-not-a-close rule above), which makes "close with the reasoning on the record" strictly better than "park indefinitely" ([parking on an external party needs a silence date and a terminal act](../learnings/1786082293702-parking-on-an-external-party-needs-a-silence-date-.md)).
+
+<!-- fold-20260807 -->
+
+**Source learnings (2):**
+
+- [#11545 ByteAddressBuffer alignment cluster ownership flipped](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
+- [parking on an external party needs a silence date and a terminal act](../learnings/1786082293702-parking-on-an-external-party-needs-a-silence-date-.md) — neither a webhook nor a periodic sweep fires on nothing happening, so a chain gated on an external reply needs an absolute date plus a named terminal act written where the chain is read; the fallback is usually a written exit condition, not another cron.

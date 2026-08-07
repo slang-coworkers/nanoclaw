@@ -173,4 +173,4 @@ When editing **shader-slang/slang-rhi** (not the compiler), its pre-commit/CI ga
 - [#12302 BSD-notice fix: bare LICENSES/BSD-*.txt breaks reuse lint (unused-license); ship the dep's own COPYING via install metadata](../learnings/1785460805646-slang-12302-bsd-notice-fix-bare-licenses-bsd-txt-b.md)
 - [don't add bare LICENSES/ SPDX texts in a REUSE repo — reuse lint fails on unused licenses (empirically verified)](../learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-repo.md)
 - [CORRECTION: formatting.sh needs clang-format 17.x — 18.x is REJECTED as too new](../learnings/1785992812883-correction-slang-formatting-sh-needs-clang-format-.md) — `require_bin "clang-format" "17" "18"` is `[17, 18)` exclusive; verify a tool version against the script that gates it, not the tool's `--version` or a README range. Carries the corrected wheel-extraction recipe, superseding the 18.1.8 pin in [the original wheel note](../learnings/1785989277743-clang-format-for-slang-formatting-sh-extract-the-p.md).
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

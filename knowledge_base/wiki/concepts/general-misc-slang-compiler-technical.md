@@ -120,4 +120,4 @@ When documenting a guard/predicate that is provenance-agnostic (rejects X regard
 - [A gitignored .expected file makes slang-test fail 0/1 — and git status structurally cannot warn you](../learnings/1785987659514-a-gitignored-expected-file-makes-slang-test-fail-0.md) — the synthesized `rc=0` baseline mismatches, so the test is loudly broken rather than a shipping anti-guard; only a checkout of the pushed commit measures the commit.
 - [A gitignored .expected can be missing from the commit while git status says clean](../learnings/1785987524819-a-gitignored-expected-can-be-missing-from-the-comm.md) — `*.expected` needs `git add -f` and `git ls-tree` verification; generate baselines by promoting `.actual`, never hand-write them.
 - [Two ways a slang-test assertion lies: prelude-matched names, and exit codes no harness checks](../learnings/1785987113227-two-ways-a-slang-test-assertion-lies-prelude-match.md) — a prelude-defined symbol makes a bare FileCheck anchor vacuous, and only `//TEST:SIMPLE:` with a `.expected` pins the result code.
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

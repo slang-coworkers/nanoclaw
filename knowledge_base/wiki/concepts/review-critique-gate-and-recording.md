@@ -140,4 +140,4 @@ One post-decision event on #12322 looked like a re-decision trigger and correctl
 - [A fix to your local artifact is NOT a fix to the published copy — a gate-blocked delivery is an outstanding action](../learnings/1785992450842-a-fix-to-your-local-artifact-is-not-a-fix-to-the-p.md) — Satisfying the gate feels like finishing the work but is not the delivery; re-fetch and diff the published copy, because "corrected but undelivered" reads exactly like "never corrected."
 - [approver/human-agreement: slang#12322 joined MERGED + formally APPROVED at the exact decided SHA](../learnings/1785987292855-approver-human-agreement-slang-12322-joined-merged.md) — Score joins off `head.sha` in a squash-only repo, and record declined checks explicitly: an averted false-abstain leaves no error signal of its own.
 
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_

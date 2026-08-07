@@ -332,4 +332,4 @@ Related to the doc-regeneration lesson above, the `check-cmdline-ref` CI job enf
 - [adding a public capability alias regenerates TWO CI-checked docs (a4-02 AND command-line-slangc-reference.md), not just a4-02](../learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md)
 - [`check-cmdline-ref` byte-exact-diffs the generated slangc reference — commit generator output verbatim (trailing spaces included, `2>&1`); don't strip whitespace to satisfy `git diff --check`](../learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md)
 
-_Catalog: [index](../index.md)_
+_Catalog: [[wiki/index.md]]_
