@@ -87,7 +87,7 @@ Both errors are **compile/link-time**; neither needs a GPU or `torch`.
 - `slangc` **existed in MY OWN tree** at `slang/build/Release/bin/slangc` (+9 more
   under peer `/workspace/extra/ephemeral/prod-groups/*/`). My probe was two
   **guessed relative paths from the wrong cwd**. See
-  [[feedback-capability-negative-needs-a-search-not-two-guesses]].
+  [[feedback_capability_negative_needs_a_search_not_two_guesses]].
 
 **Triager's measurements (nvcc 12.6, 5 configs incl. 1 A/B control + 2 counterfactuals):**
 - **Error 1 CONFIRMED**: ATen-shaped `void atomicAdd(int64_t*,int64_t)` before HEAD's
@@ -205,5 +205,5 @@ atomic overloads / (b) internal linkage for non-exported generated `__device__` 
 non-bot comment on the issue. No fixer (design gate + human assignee, #8306 precedent).
 
 Related: [[feedback_control_the_instrument_not_the_reasoning]] (controls used
-throughout), [[project-8306-embed-core-glsl-module-slang-dll]] (assignee-is-human
+throughout), [[project_8306_embed_core_glsl_module_slang_dll]] (assignee-is-human
 ⇒ no fixer precedent).

@@ -47,15 +47,28 @@ escalation.** `extras/ci/retry-yielded-bot-ci.py` + `.github/workflows/ci-retry-
 `--lookback-hours 16` must stay above `wait-for-priority.py --max-yield-hours 12` so that
 *"once a run is older than its `--max-yield-hours` it **escalates and succeeds**, so it stops being a
 candidate."* So a yielded run either gets rerun when the repo goes quiet, or escalates to full
-priority at ~12h. **Bounded, self-healing — no human action owed for the rerun.**
+priority at ~12h. ~~**Bounded, self-healing — no human action owed for the rerun.**~~
+
+⛔ **RETRACTED 2026-08-06 — the "or escalates at ~12h" half is FALSE. See
+[[feedback_a_rerun_changes_triggering_actor_so_the_gate_is_skipped]].** A rerun flips
+`github.triggering_actor` to `github-actions[bot]`, so `IS_THROTTLED_BOT=false` and
+`wait-for-priority.py` is **never invoked on attempt ≥2** (5 of 5, complete population); on attempt 1
+the age is always ~0.3 min. Only the *first* half survives: a yielded run gets rerun when the repo
+goes quiet — and that rerun then runs **gate-free**. There is no 12 h backstop, so this is **not**
+self-healing under sustained contention (upstream: shader-slang/slang#12391).
 
 ✅ **Gap closed in the implementation (fixer read it after I flagged the hop).**
 `wait-for-priority.py:127-134` `--max-yield-hours` float default `12.0`; `:176-183`
 `escalated = yielded and self_age_hours >= args.max_yield_hours`, then `if escalated: yielded = False`
 — it proceeds despite higher-priority CI; `:65` age comes from `created_at` and "stays fixed across
-reruns"; `ci.yml:109` passes `--max-yield-hours 12`, default not overridden. **Real executed code, real
-ceiling.** ⭐ *I had labeled it comment-asserted rather than presenting it as verified — labeling the hop
+reruns"; `ci.yml:109` passes `--max-yield-hours 12`, default not overridden. ~~**Real executed code, real
+ceiling.**~~ ⭐ *I had labeled it comment-asserted rather than presenting it as verified — labeling the hop
 is what got it closed.*
+
+⛔ **"Real executed code" was the exact overreach.** Every citation here is accurate, and the branch
+still never executes — I verified the code *exists* and read that as the ceiling *binding*.
+⭐⭐⭐ **Confirming an operand, a threshold, and a compare says nothing about the value on the
+left-hand side at the instants the compare runs.** That is the check I skipped twice.
 
 ⚠️ **My figure was the wrong one of two.** I said "~12h post-00:31Z ⇒ ≈12:31Z". There are **two**
 candidates at that head and the clock anchors on `created_at`, so the **first** escalation is

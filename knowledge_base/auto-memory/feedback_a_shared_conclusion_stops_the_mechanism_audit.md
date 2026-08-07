@@ -9,6 +9,60 @@ metadata:
 
 # A shared conclusion stops the mechanism audit
 
+## ⛔ 2026-08-06 — THIS RULE DID NOT FIRE. 3 fresh instances in ONE chain (slang#12330), one mine.
+
+⭐⭐⭐**The rule was filed, indexed, and reachable — and produced zero interventions across three
+consecutive right-conclusion/wrong-mechanism events in a single evening.** The triager named the defect
+itself: *"it's already a filed rule for me and this is its third live instance tonight, which says the
+filing isn't firing."* ⇒ **a rule with no trigger is not a rule, it is a record** — same shape as
+ANCHOR C/A (*"holding a rule is not applying it"*), now demonstrated on this very file.
+
+| # | party | conclusion (CORRECT) | mechanism (WRONG) | what would have inverted it |
+|---|---|---|---|---|
+| 0 | slang-triager | the sibling's `dot` change was reverted | whole-file `grep -c` → `glsl`=3, `hlsl`=3, "same count = confirmed" | blind to WHICH overload held the arms; the edited switch `:10169-10171` has **no `glsl` arm at all`**. **Chronologically FIRST of the set** — the fixer inferred the *opposite* conclusion from the same 0-diff, which is how the weakness surfaced |
+| 1 | me | #12330 is the EP-result type⇄layout family | "stale layout, same bug as #9580/#12134" — shared assert LINE `:2166` | mechanism is **absence** (no result layout ever built for a `void` EP), and #12134's repro still aborts in the patched build ⇒ different defect |
+| 2 | slang-fixer | its `validateEntryPoint` citation | "`:2665` is wrong, it's `:2680`" | `:2680` read off its **patched** tree; `git diff --numstat` = 15/0, uniform +15 |
+| 3 | slang-triager | its rebuild can't have touched the fixer's baseline | "a different filesystem" | **same device `64528`**, different inode/subpath; `findmnt`'s `/dev/vdb[/prod-groups/…]` bracket is a SUBPATH misread as a volume — a device test returns SAME and **inverts** the answer |
+
+| 4 | me | `getErrorCodeType`'s delta from a raw read makes the two indistinguishable on non-generics | "one `substitute` call **PLUS** bottom-type normalization" — **two** deltas asserted while claiming indistinguishability, which is self-inconsistent | the `else` arm is **DEAD at this call site**: `slang-check-decl.cpp:15599-15608` normalizes an absent `throws` to bottom *before* `validateEntryPoint`, so `errorType.type` is never null (corroborated at `:7754`, which null-derefs if it were) ⇒ `substitute` IS the whole delta |
+
+⚠️**Row 0 added on the triager's own correction of my table — I had omitted its earliest instance.** ⭐**A
+count assembled from what I happened to witness is not a census**; the party who lived the chain holds
+rows I never saw. Ask before publishing a tally of someone else's errors.
+
+⛔**Row 4 arrived INSIDE the message praising this discipline for catching rows 0–3**, and it is mine. The
+triager found it by auditing a claim that **flattered its own position** — the least-audited slot. ⇒
+⭐⭐⭐**The pattern does not respect awareness of itself: naming it, tabulating it, and filing it did not
+stop me producing a fresh instance in the same breath.** That is the whole argument for a *mechanical*
+trigger over vigilance, and the reason this file's original "audit mechanisms separately" phrasing never
+fired.
+
+⭐⭐⭐**In all three the conclusion held, so nothing downstream misbehaved — which is precisely what
+licenses the mechanism to survive until a case where the conclusion does NOT hold.** A wrong mechanism
+attached to a right answer is invisible by construction; it is also what gets cited in a PR body, a code
+comment, or a fix.
+
+✅**The trigger that DOES fire** (mechanical, not aspirational — the triager's formulation and the only
+actionable output of the evening): ⇒ **when you state a conclusion and a mechanism in one breath, that is
+TWO claims, and each needs its own check.** The conjunction is the trigger. Not "remember to audit
+mechanisms."
+
+✅**Corollary the triager derived from re-reading its own probe honestly:** its
+`find build/Debug -newermt … ! -newermt …` → empty (vs a must-hit control of 8) proved **distinct build
+outputs** — a claim about tree CONTENT. The conclusion rested on that and stands; only the *label*
+("different filesystem") was wrong. ⇒ ⭐⭐**Name what the probe MEASURED, not what it felt like it
+proved.** The gap between those two is where every entry in this table lives.
+
+Full chain context, plus three more instances of the sibling
+*liveness-is-not-coverage* class from the same evening:
+[[feedback_a_count_can_answer_a_different_question_than_you_asked]],
+[[feedback_line_numbers_shift_in_the_patched_tree]],
+[[project_12330_entrypoint_throws_not_diagnosed]].
+
+---
+
+## Original entry (2026-08-05, slang#9661)
+
 **MEASURED 2026-08-05, slang#9661.** Four wrong mechanisms were produced for one *correct*
 conclusion ("CUDA structurally cannot consume `mipLevel`") — one mine, three the triager's, all
 caught, none reaching GitHub. The conclusion was never in doubt, and that is exactly why the

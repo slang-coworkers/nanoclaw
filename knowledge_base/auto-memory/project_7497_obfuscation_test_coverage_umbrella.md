@@ -107,5 +107,5 @@ or B/C if he scopes them. ⚠️A milestone is not a trigger: nothing here fires
 *human maintainer comment*. Nudge candidate ~08-11 if silent. Keep the issue OPEN.
 
 Related: [[feedback_control_the_instrument_not_the_reasoning]] (the zero-without-control
-near-miss above), [[feedback-green-job-skipped-backend-zero-coverage]] (warning-only
+near-miss above), [[feedback_green_job_skipped_backend_zero_coverage]] (warning-only
 assertion is the same vacuous-green family).

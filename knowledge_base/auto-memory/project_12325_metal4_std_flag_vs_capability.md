@@ -1,6 +1,6 @@
 ---
 name: project_12325_metal4_std_flag_vs_capability
-description: "#12325 metal4 -std: headline ask ALREADY FIXED (#12009, first release v2026.14); reporter on 2026.12.2 — fix = slang-rhi version bump, not slang-core. NOT a dup of #12096"
+description: "#12325 metal4 -std: ALREADY FIXED by #12009 (1st release v2026.14), reporter on 2026.12.2 ⇒ fix = slang-rhi pin bump, not slang-core. 08-06 jkwak-work ENDORSED verbatim + took assignee; ack-only, no dispatch. NOT a dup of #12096"
 metadata: 
   node_type: memory
   type: project
@@ -142,6 +142,42 @@ non-operative merge-only push, reviewed content byte-identical). **RESUME on tha
 completing** — then read the per-test lines for `bindless-buffers.metal` / `bindless-textures.metal`
 specifically, not the job conclusion.
 
-**RESUME:** rhi Slang-version bump lands (then `metallib_4_0` un-comments) · any human comment on
-#12325 · #802 CI turning over with Metal actually executing. Triage memo (triager's fs):
-`/workspace/inbox/a2a-1785764518666-963d79/triage-12325.md`.
+## ✅ 2026-08-06 16:26Z — MAINTAINER ENDORSED THE VERDICT (jkwak-work, cmt `5207425279`)
+> "@skallweitNV, what the bot says is that this issue is already resolved by … PR #12009. And it is
+> a part of v2026.14. Since you tested with v2026.12, it appears to be a matter of upgrading the
+> Slang version on slang-rhi."
+
+**Our triage verdict was adopted verbatim by the assignee.** Both load-bearing facts (#12009 →
+v2026.14; reporter on 2026.12.2 ⇒ rhi version bump, not a slang-core change) restated as his own
+conclusion. Notable given the chain's history: this is the one where I hedged my premise and let the
+triager measure it — the opposite of [[feedback_label_dispatch_suspicions_as_hypotheses]]'s failure
+mode. Had my "the `-std` ask is a false lead, close as dup of #12096" framing been accepted, this
+comment could not exist.
+
+**Routing call: NO dispatch, NO GitHub post.**
+- **Not addressed to us and NOT a bot mention** — webhook said `github.pr_mention` but
+  `grep -c nv-slang-bot` on the body = **0**. It is a maintainer→maintainer routing note.
+  ⇒ [[feedback_webhook_dispatch_by_event]]: classify by the body, not the event label.
+- Per spine: a human restatement/endorsement gets an **ack with no further routing**. It introduces
+  no new design point, no counter-proposal, no question to us. Our resolution comment
+  (`5167081493`) is already public and its substance is unchanged ⇒ re-posting would be churn, and
+  jkwak is *citing* that very comment.
+- **Not an authorization.** He tells **skallweitNV** to upgrade. A maintainer directing another
+  maintainer is not a go-ahead for us ([[feedback_reopen_not_release_parked_feature]]).
+
+**State deltas (Main-verified 08-06):** #12325 **still OPEN**, now **assigned jkwak-work** (was
+unassigned), labels `Dev Opened`/`RTR` unchanged. Correctly open — it is #807's re-enable trigger.
+⚠️ **rhi `main` pin is STILL `2026.12.2`** (`CMakeLists.txt:148`, `SLANG_HASH_VERSION:307`) and
+`metallib_4_0` is **still commented out** (`metal-device.cpp:266`). So nothing has moved on the rhi
+side in 3 days; the bump is unowned-in-practice though nominally skallweitNV's.
+
+**Available-but-unauthorized work:** the bump is small, mechanical and bot-doable (bump `:148` +
+`:307`, regenerate 7 SHA256s from the v2026.14.x release assets). ⚠️ It does **NOT** unblock our
+#802 any more — #807 already removed the device-init blocker, and #802's live blocker is the
+ABI/test finding. So the bump's only payoff is restoring rhi's Metal 4 advertisement = **squarely
+rhi-maintainer territory**. Offer only if the operator asks; do not volunteer into another repo's
+maintenance.
+
+**RESUME:** rhi Slang-version bump lands (then `metallib_4_0` un-comments) · a human comment that
+asks us something or disputes the verdict · #802 CI turning over with Metal actually executing.
+Triage memo (triager's fs): `/workspace/inbox/a2a-1785764518666-963d79/triage-12325.md`.

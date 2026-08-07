@@ -46,3 +46,6 @@ AGENTS.md
 docs/maintainer-guide.md
 docs/drafts/
 forks.md
+
+# Published KB snapshot: never publish Python bytecode caches (binary, unscrubbable, churn)
+knowledge_base/**/__pycache__/

@@ -219,7 +219,8 @@ cd "$R" 2>/dev/null            || { echo "CANNOT VERIFY: no checkout at $R"; exi
 test -d tools/compile-perf     || { echo "CANNOT VERIFY: tools/compile-perf absent"; exit 3; }
 C=$(find tools/compile-perf -name '*.py' | wc -l)
 [ "$C" -gt 0 ]                 || { echo "CANNOT VERIFY: 0 .py files scanned"; exit 3; }
-N=$(grep -rlE 'getsize|st_size' tools/compile-perf/ 2>/dev/null | wc -l)
+# ⛔ scope to TRACKED SOURCE — a bare -r scans fetched binaries and reports a FALSE BREAK
+N=$(git ls-files 'tools/compile-perf/*' | xargs grep -lIE 'getsize|st_size' 2>/dev/null | wc -l)
 [ "$N" -eq 0 ] && echo "P2 HOLDS (scanned $C files)" || echo "P2 BROKEN ($N file(s) probe size)"
 ```
 

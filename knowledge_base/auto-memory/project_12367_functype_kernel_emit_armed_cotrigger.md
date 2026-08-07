@@ -47,9 +47,47 @@ an edit — an edit notifies no one**), and `[Triage Resolution]` upstream.
 
 ## ✅ PR #12378 OPEN 2026-08-06 02:23Z — draft, awaiting review
 
-`fix/issue-12367` → master · **draft** · `pr: non-breaking` · `Fixes #12367` · **+419/−0, 10 files** ·
-`mergeable=true` · `jkwak-work` requested reviewer **and** assignee · 0 reviews · CI red is a bot-CI
-priority yield, so **nothing is validated yet**. Public trail on the issue: cmt `5199718759`.
+`fix/issue-12367` → master · **draft** · `pr: non-breaking` · `Fixes #12367` · `mergeable=true` ·
+`jkwak-work` requested reviewer **and** assignee · 0 reviews · CI red is a bot-CI priority yield
+("Stop yielded bot CI", 33 builds skipped), so **nothing is validated yet**. Public trail: issue cmt
+`5199718759` (patched in place — now lists `llvm-shader-ir` and carries a segfault Update).
+
+⚠️ **DIFFSTAT MOVES — NEVER quote a stored one; re-measure.** Observed THREE times on this branch:
+`+419/−0 over 10 files` @02:23Z (head `524c391fb`… earlier) → `+424/−0 over 10` @03:1xZ
+(`524c391fb`) → **`+564/−0 over 16 files` @04:5xZ (head `9482349972`)** — each verified by me, each
+with the partition control closing (per-file `--numstat` sum == `--shortstat` total ⇒ no file
+unaccounted). **The command, not the number:**
+`MB=$(git merge-base <pr-ref> origin/master); git diff --shortstat $MB <pr-ref>`.
+
+⛔⭐⭐⭐ **`APPROVE_WITH_NITS` IS PEER-INTERNAL AND IS *NOT* A GITHUB REVIEW STATE.** The reviewer tier
+reported APPROVE_WITH_NITS with 0 confirmed correctness bugs across 9 rounds; GitHub shows
+**0 reviews** and `jkwak-work` has not reviewed. ⇒ **Never relay it upward as "approved"** — two
+different populations (an internal verdict vs. the `reviews` array), the same wrong-population shape
+that ran through this whole chain. Outstanding gates: **CI validation + jkwak-work's review**.
+
+⛔⭐⭐⭐ **"CI IS RED" WENT STALE AND THE NEW STATE IS *WORSE*: IT NOW READS GREEN.** Measured myself on
+head `9482349972`: `/status` combined **`state=success`**, while the check-run census is
+**41 skipped + 4 success, 0 failures** — and the 4 are `board-sync` ×2 and `reuse-compliance-check` ×2,
+**pure housekeeping. Zero builds, zero tests** (every `test-*` job is in the skipped set:
+`test-windows-debug-cl-x86_64-gpu`, `test-linux-release-gcc-x86_64-rhi`, `test-compile-regression`, …).
+⭐⭐⭐ **Red announces itself; a green aggregate computed from housekeeping over 41 skipped builds is
+SILENT — a maintainer sees validation that does not exist.** ⇒ **Never cite the CI aggregate. Cite WHICH
+checks ran** — the aggregate is a function of what was *attempted*, and "everything skipped" aggregates
+to `success`. Commands (store these, not a verdict):
+`gh api repos/O/R/commits/<sha>/check-runs?per_page=100 --jq '.check_runs|group_by(.conclusion)[]|"\(.[0].conclusion): \(length)"'`
+then `… | select(.conclusion=="success") | .name`.
+⚠️ **Both tiers repeated the stale "red" for hours — CI is the one artifact here that changes with NO
+notification to either side.** I restated it minutes after applying the store-the-command rule to the
+diffstat: **same rule, different noun, missed by both.**
+✅ **Drafting rule that saved the public comment:** cmt `5199718759` says *"CI has validated nothing
+yet"* (still true: 0 builds, 0 tests) and never says *"red"*. **A claim phrased as its CONSEQUENCE
+outlives one phrased as its SYMPTOM.**
+
+⚠️ **Compaction asymmetry, worth knowing if resuming:** the fixer's context was compacted (~868k
+tokens gone) and its resume path depends on its own `memory/fix-12367.md`; the triager is insulated by
+`triage-12367.md` (~1,477 lines) plus tasks #4/#5. Its post-merge queue is now **3** spin-offs:
+`[DllImport]`+`hpp` SIGSEGV · the `-minimum-slang-optimization` gate question · func-typed **return
+type** SIGSEGV.
 
 **Approach: E55216 in `checkUnsupportedInst`** — not the CPP emitter. **I verified the two claims most
 expensive to get wrong:**

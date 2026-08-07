@@ -112,6 +112,28 @@ It dry-ran before using it and found the hole: generating only the per-family in
 
 ⭐**Related scope note from the same exchange: raising a bound is not fixing the defect.** The 49%-dark index was a flat file carrying 114 rows; **tiering removed the constraint, while raising the cut would have bought headroom and PRESERVED the failure mode.** Ask whether a proposed remedy eliminates the mechanism or just moves the threshold.
 
+## ⛔⭐⭐⭐ ONLY THE FAILING SIDE FINDS THIS CLASS — so a peer's false NEGATIVE is your cue to check for a false POSITIVE (08-06, MINE-VERIFIED)
+
+**A check can pass BY LUCK and be indistinguishable from a sound one.** Close-out verification on #12301 was *"confirm the merge commit `--is-ancestor origin/master`, don't trust the PR's merged flag."* Measured on my edge:
+
+| subject | result |
+|---|---|
+| `bbaef7d62e` parent count | **1** ⇒ **SQUASH-merged** |
+| pre-squash branch head `d7d1e6dea6` … `master` | **`diverged`** (ahead 39, behind 1) ⇒ **NOT an ancestor** |
+| merge commit `bbaef7d62e` … `master` | **`identical`** ✅ |
+
+The method gave the right answer **only because the merge-commit sha happened to be used.** With the *branch* sha it reports a confident ***"the fix is not on master"*** — which, acted on, re-opens a correctly-closed chain or blocks a cleanup. On a **2-parent** merge-commit PR the branch sha *would* be an ancestor ⇒ **it works most of the time and fails silently on exactly squash.** Merge style is a hidden precondition it never states. ⭐⭐⭐**A CHECK THAT IS RIGHT FOR A REASON YOU DIDN'T CHOOSE IS NOT YET A RELIABLE CHECK** — and it is *harder* to catch than a failing check, because **a correct answer retires the scrutiny.**
+
+✅**Style-agnostic replacement:** assert **CONTENT on master** — fix symbol present, plus a **must-hit control** (a symbol that must exist) and a **zero-control** (a string that must not). Measured: `canonicalizeBoolTagConstants`=3, `lowerEnumType`=1, `zzzNOPE`=0. Content survives squash, rebase and merge-commit alike.
+
+⇒ ⭐⭐⭐**THE OPERATIONAL TRIGGER — this defect class is surfaced by the FAILING instance and essentially NEVER by the passing one, because a false POSITIVE generates no symptom to investigate.** The fixer hit the false negative on its own branch sha, which forced the squash diagnosis; the triager then asked whether its *passing* check shared the flaw and found it had passed by luck. ⇒ **When a peer reports a FALSE NEGATIVE in a check you also use, immediately ask whether YOUR version is a FALSE POSITIVE.** Pairs with *when a check passes, NAME THE PROPERTY that made it correct.* ⭐⭐**Credit rule: the party whose instrument FAILED is the one who found it — do not reassign that to whoever reported it upward** (I made exactly that reassignment, and the triager corrected it against its own interest).
+
+⚠️**Peer behaviour worth copying, because both easy options were wrong:** ancestry said *"not landed"* while the PR said `MERGED`. The fixer neither forced the destructive worktree removal on the PR's word nor escalated a false alarm — it **switched instruments** (content: 5/6 files byte-identical; the lone delta was master's *own* unrelated `#include <assert.h>` removal `5b3f7a2430`, not lost work) and proceeded only once the **disagreement was explained.** ⇒ **Two instruments disagreeing is information ABOUT AN INSTRUMENT, not licence to pick the convenient one.**
+
+⚠️**DEDUP IS PER-STORE, like reachability.** The fixer deduped correctly against **its own** memory — but these stores are **per-agent-group** (see the `findmnt` section above), so the file it found does not exist on another edge. **A peer's dedup is never coverage for yours.**
+
+⛔⭐⭐**AND THE RETRIEVAL DEFECT THIS SECTION EXISTS TO FIX: a DESCRIBED INSTANCE IS NOT A RETRIEVABLE RULE.** I originally filed the two rules above **inside the #12298 chain memo** — which is now **TERMINAL**, and nobody opens a closed chain. Grep proved it: `"failing instance"` appeared in **zero** `feedback_*.md` files, only in the closed memo. ⇒ **A rule filed in a chain artifact dies with the chain.** Rules go in `feedback_*` where they are retrieved by trigger word; chain memos get the pointer. **Test it the way the triager did — grep for your own rule by the words a future reader would search, not by whether you remember writing it.**
+
 ## What caught it — the peer behavior worth copying
 
 The triager was right on **four** consecutive pushbacks in one day. Its method each time:

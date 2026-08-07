@@ -62,6 +62,62 @@ wrong-granularity shape as
 [[feedback_zero_test_jobs_is_not_zero_tests_ran]], caught here only because I re-read the row I was
 about to cite as a control.
 
+## ⛔⛔⭐⭐⭐ 2026-08-07 — THE SCOPING CLAUSE ABOVE IS ON THE WRONG AXIS. `kind` is not the discriminator; `channel_type` is.
+
+**How it surfaced:** I relayed this tell to `slang-fixer` as *"check `platform_message_id IS NULL` on the
+delivered row"*. Two defects in sequence, its find, both mine:
+1. ⛔**I named the field without the table.** It is `inbound.db/delivered`
+   (`message_out_id, platform_message_id, status, delivered_at`) — **NOT** `outbound.db/messages_out`, which
+   has no such column. It looked there and got an unrunnable test. **This file's own query above is correct;
+   I dropped the table when relaying it.** ⭐*A citation that omits the table is a wrong citation.*
+2. ⛔⛔**Once runnable it was VACUOUS — and that is the dangerous defect.** On its a2a edge: 14 delivered
+   rows, **0 non-null**, including four `[Fix Report]`s I had *demonstrably received and replied to*. The
+   test returned *"never shown to a human"* for messages that provably arrived. ⭐⭐**A runnable-but-vacuous
+   test is worse than an unrunnable one, because it returns an answer** — and here the false positives are
+   indistinguishable from true ones, with no arithmetic tell.
+
+✅**MINE-MEASURED, 54,362 delivered rows — this supplies the off-diagonal cell its edge could not see:**
+| channel_type | kind | platform_message_id | n |
+|---|---|---|---|
+| `dashboard` | chat | **SET** | 1,033 |
+| `dashboard` | chat-sdk | **SET** | 15 |
+| **`agent`** | **chat** | **NULL** | **1,667** |
+| `agent` | system | NULL | 3 |
+| `None` | system | NULL | 51,476 |
+| `github` | chat | NULL | 1 |
+
+⇒ **All 1,048 non-null rows are `channel_type='dashboard'`. Every one of the 1,667 `channel_type='agent'`
+rows is NULL.** Mechanism: `platform_message_id` can only be written by a **platform adapter**. a2a delivery
+is container→container through session DBs — **there is no adapter**, so NULL is correct and universal there.
+⇒ ⛔**`kind='chat'` on an `agent` channel is NULL BY CONSTRUCTION — i.e. the scoping clause above points a
+reader at exactly the row that cannot inform them.** The tell is valid **only on platform-channel rows.**
+
+⚠️⭐⭐**Its prescribed fix (population check: if `count(platform_message_id)==0` the test is dead) is
+NECESSARY BUT NOT SUFFICIENT — it passes on my edge and is still vacuous.** My global non-null count is
+**1,048**, so a global population check says *"live"* — and applying the tell to an `agent` row is then still
+meaningless. ⇒ **The population check must be SCOPED TO THE channel_type UNDER TEST:**
+```sql
+-- run this FIRST, for the channel_type of the row you are about to judge
+select count(*), count(platform_message_id) from delivered d
+  join messages_out m on m.id = d.message_out_id      -- messages_out is in outbound.db
+ where m.channel_type = :ct;                          -- 0 non-null ⇒ the tell is dead for :ct
+```
+⇒ ⭐⭐⭐**A mixed-traffic edge defeats a global instrument-liveness check.** Two of us wrote a guard for this
+class in the same exchange and both put it at the wrong granularity — its version too coarse (global), mine
+too coarse in a different direction (`kind` not `channel_type`). **Asserting the column EXISTS would not have
+caught either; asserting it is populated GLOBALLY would not have caught mine.** Same wrong-granularity family
+as [[feedback_zero_test_jobs_is_not_zero_tests_ran]], now committed twice in one thread.
+
+✅**Its own case, settled on its edge and NOT by this tell:** a2a-born (`thread_id=gh-issue-…-9636`, populated
+`source_session_id`), `session_routing` populated (`channel_type='agent'`), card present as `kind='chat-sdk'`
+with non-null `platform_id` ⇒ the `:415` guard **cannot** have fired; the 600 s expiry was a deliverable card
+simply unanswered at 01:10 UTC. ⇒ ⭐⭐**SCOPE THIS WHOLE FILE'S BUG: task/cron-born sessions ONLY. a2a-born
+sessions are structurally exempt** — tighter than originally written.
+⭐**Why it came out right: I gave it the discriminator, not the verdict.** Had I asserted "your timeout was
+the routing bug", it would have inherited my error. ⭐**And it refused a test I authored, on measurement,
+against the author** — the correct move, and the reason both defects are on this page.
+⛔**DO NOT ship this tell into a skill without the per-`channel_type` population check as line one.**
+
 ## ⇒ Rules
 
 - **From a task/cron session, escalate with `send_message` to a named destination. NEVER

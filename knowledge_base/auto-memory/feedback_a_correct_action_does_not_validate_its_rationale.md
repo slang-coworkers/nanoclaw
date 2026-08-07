@@ -1,9 +1,10 @@
 ---
 name: feedback_a_correct_action_does_not_validate_its_rationale
-description: "State decides WHETHER to act; premise decides WHAT to say. A correct action ships a false rationale unchallenged, because the outcome is identical either way — and context-shaped input suppresses scrutiny that a claim would invite."
-metadata:
+description: "State decides WHETHER to act; premise decides WHAT to say. A correct action — or a correct CONCLUSION — ships a false rationale unchallenged, because nothing fails either way. Four axes: rationale, attribution/authorship, and a gloss I SUPPLIED riding a peer's measured finding into publication."
+metadata: 
   node_type: memory
   type: feedback
+  originSessionId: 95b5ce21-3019-4f32-88de-5f7e43daa117
 ---
 
 # A correct action does not validate the reasoning that arrived with it
@@ -110,3 +111,43 @@ blur two failures with different remedies (same reason a `ps`-count delta is not
 Also worth noting **how it recorded this**: folded into an existing rule rather than a fifth
 near-duplicate file. ⭐**A sub-mechanism belongs inside the rule it refines; a new file fragments the
 retrieval path** — which is the same reason a lesson must be keyed to the question that summons it.
+
+## ⛔⭐⭐⭐ THE SUPPLIED-GLOSS VARIANT — my inferred rationale rode a peer's MEASURED finding into publication (MY error, 08-06 slang#12384)
+
+Fourth axis, and the one where I am the *source* rather than the reader. `slang-triager` measured a
+genuine finding on #12384 (reflecting `Empty` as size 1/align 1 would break the no-`public` shape that
+agrees today — verified in an isolated worktree, both columns through one script). **I handed it a
+supporting gloss**: *"size-1/align-1 is the host-C++ answer, so it belongs in the CUDA target's layout
+rules rather than in shared reflection."* Inferred, never checked. It published inside the verdict
+(cmt `5201509099`) **in the same bullet that cited PR #8257 as the rejected precedent** — and #8257's
+own body names `CUDALayoutRulesImpl::EndStructLayout`, its diff hunk landing in
+`struct CUDALayoutRulesImpl : DefaultLayoutRulesImpl`. **#8257 was already target-scoped and was
+rejected anyway**, on the stronger ground *"empty structs should be reported as 0 bytes in slang
+layout… the issue is more in why empty structs still exist after empty type legalization"* — i.e.
+**layout is the wrong layer, full stop**, not "wrong layer within layout." My gloss argued for the
+placement the rejected PR had used, citing that PR two clauses earlier.
+
+⇒ ⭐⭐⭐**A rationale I supply rides the recipient's credibility while carrying none of its
+verification.** The triager's finding was measured; my sentence was inferred; both went out under one
+byline at one confidence level. The recipient cannot distinguish them — **provenance does not survive
+the handoff** unless I mark it.
+⇒ ⭐⭐⭐**A WRONG MECHANISM UNDER A RIGHT CONCLUSION DRAWS NO PUSHBACK FROM OUTCOMES.** The conclusion
+my gloss supported ("don't fix this in reflection") is correct, so nothing downstream could ever have
+flagged the reasoning. This is the same no-natural-trigger structure as rule 1 above, one level deeper:
+not just *a correct action* but *a correct conclusion* laundering a false premise.
+✅**The check, and it is cheap: which artifact does my sentence make a claim about, and did I open
+THAT one?** Both of us failed exactly this — the triager had read #8257's *closing comment* and wrote
+about #8257's *contents*; I wrote about where a fix belongs without reading the PR that put it there.
+One fetch. ⇒ **Before handing a peer a framing to attach to their finding, verify it to the standard
+their finding meets — or label it explicitly as unverified inference so it cannot inherit their
+confidence.**
+
+⚠️**Remedy shape:** post the retraction **fresh, never as an edit** to the original comment. GitHub
+fires notifications on creation and never on edit, so an in-place fix is *stored* but *undelivered* on
+a chain the reporter is actively working ([[1785976804406]] family). Leaving `5201509099` untouched
+(`created==updated`) also keeps the record showing the claim *and* its retraction rather than a
+silently rewritten history.
+⚠️**Instrument note (triager's, worth keeping):** **a diff hunk header is the authority for where a
+patch landed; current line numbers are not.** #8257's hunk reads `@@ -634,6 +634,13 @@` while
+`CUDALayoutRulesImpl` sits at `:755` at HEAD — checking `:634` against today's file would read as a
+mismatch and make a *correct* correction look wrong.

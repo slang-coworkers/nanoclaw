@@ -1,6 +1,6 @@
 ---
 name: feedback_a_live_artifact_read_is_a_measurement_with_a_timestamp
-description: "A read of a mutable live artifact (GitHub comment body, issue labels, PR head, file mtime) is a MEASUREMENT WITH A TIMESTAMP, not a fact. Restating a recorded read as current state is a stale-read defect even when both the read and the instrument were correct. Verified three times: #11616 (an UNEARNED DISPATCH built on an 08:16Z body read that an 08:24Z edit had already superseded), #8785 (a memo asserting updated_at 00:36:25Z when live read 00:50:15Z — a later, real edit), and nanoclaw#1065 (open/unstable at 10:36Z, merged by 10:46Z — the decaying field was the PR's own terminal state, on a repo where the author self-merges in minutes). Cure: re-read before restating; record the read TIME alongside the value; never let a recorded updated_at/label-set/head-sha stand in for current."
+description: "A read of a mutable live artifact (comment body, issue labels, PR head, TITLE, mtime) is a MEASUREMENT WITH A TIMESTAMP, not a fact — the defect is invisible because nothing malfunctions. 5 instances; the two worst are DISPATCH-SIDE, where a quoted field becomes someone else's public claim: #12398 (quoted title, reporter had already retitled) and #12404 (⛔THE WEBHOOK PAYLOAD ITSELF — I forwarded `labels=(none)` verbatim; author set milestone/assignee/Type/label 60s after filing). Cure: re-read at the moment of claiming; STAMP quoted upstream state with its read time; prefer the link to the paste."
 metadata: 
   node_type: memory
   type: feedback
@@ -70,6 +70,78 @@ What this instance adds beyond #11616 / #8785:
   distinguishes "I decided not to act" from "there was nothing left to act on."
 
 See [[project_nanoclaw_1065_reclaim_before_wake]].
+
+## Fourth instance — slang#12398, 2026-08-06: I QUOTED the decaying field INTO a dispatch
+
+New variant, and the worst-propagating one so far. Dispatching #12398 to `slang-triager`
+I pasted the issue **title and body verbatim** into the brief. The reporter renamed the
+issue at **16:31:59Z** (`renamed` timeline event, actor `skiminki-nv`) — *"truncates the
+**range**"* → *"truncates the **iterator values**"* — after my message was composed. The
+triager's draft verdict, built on my quoted title, framed its central finding as *"narrower
+than the title suggests"*, i.e. it was about to **publicly correct a title the reporter had
+already fixed himself**. It caught the rename before posting; the published verdict opens by
+agreeing with the retitle instead.
+
+What this adds beyond the three instances above — all of which were stale reads I made and
+then *restated to myself*:
+
+- ⭐⭐⭐ **A mutable value quoted into a dispatch is a stale read planted in someone else's
+  head, and the transport launders it into fact.** My notes carry (at least implicitly) that
+  they are notes; a `<message>` brief reads as *the orchestrator's statement of the case*. The
+  recipient has no way to see which fields were snapshots, so **my staleness becomes their
+  public claim** — with their name on it.
+- **The blast radius inverts.** Instances 1–3 cost me an unearned dispatch or a wrong memo
+  line. This one was aimed at a **public comment on the reporter's own issue**, and the
+  specific failure mode was *condescension*: telling a maintainer his title was imprecise
+  13 minutes after he'd sharpened it himself.
+- **Titles belong on the decaying-fields list**, alongside body/labels/head-sha/`updated_at`.
+  They feel like identity — stable, quotable, the thing you name the thread after — which is
+  exactly why quoting one goes unexamined. The canonical `thread_id` *is* stable; the title
+  is not.
+
+**How to apply (dispatch-side):**
+
+- **Stamp quoted upstream state in the brief itself**: *"title/body as of dispatch
+  16:2xZ — re-read live before making any claim about them."* One clause, and it transfers
+  the shelf-life along with the value.
+- **Never build a public claim on a quoted field.** Before disagreeing with, correcting, or
+  characterizing a title/body/label, check the `renamed` / `edited` timeline events — the
+  cheap check the triager named. This is the artifact-vs-notes discrimination from the head
+  of this file, applied to *inherited* notes: a brief from upstream is someone else's memo.
+- **Prefer the link to the paste** where the recipient can fetch it themselves. Quoting the
+  body was convenient and unnecessary — the issue URL cannot go stale.
+
+See [[project_12398_compile_time_for_int32_truncation]].
+
+## ⛔ Fifth instance — slang#12404, 2026-08-06: THE WEBHOOK PAYLOAD IS ITSELF A SNAPSHOT
+
+Same dispatch-side variant as #12398, one tier earlier in the pipe. I forwarded the
+`github.issue_opened` payload's `labels` field to `slang-triager` as **`LABELS=(none)`**. True at the
+webhook instant (17:36:31Z) and **false ~60 seconds later**: the author, jhelferty-nv, set his own
+milestone (17:36:31Z), assignee (17:36:32Z), Type (17:37:05Z) and label (17:37:31Z). Live read at
+18:2xZ: `["Dev Opened","Infra"]`, `assignees:["jhelferty-nv"]`, milestone Q3 2026. The triager caught
+it and corrected me.
+
+What this adds beyond instances 1–4:
+
+- ⭐⭐⭐ **The hazard is not just *my* read going stale — the payload arrives pre-staled.** Instances 1–4
+  were all fields *I* read and then restated. Here I never read anything: I copied a webhook body. A
+  payload **feels** like ground truth because it is machine-generated and arrived unsolicited, which is
+  exactly why its snapshot nature goes unexamined. **A webhook is a photograph of one instant, not a
+  view of the issue.**
+- **A self-triaging author is the worst case, and it is common among maintainers.** jhelferty-nv filed,
+  milestoned, typed, labelled and self-assigned inside 60 s. Any `labels`/`assignees`/`milestone` field
+  in an `issue_opened` payload is therefore near-guaranteed stale for a MEMBER author — the fields most
+  likely to be wrong are the ones that decide *routing*.
+- **Cost was near-zero only because the recipient checked.** The triager's memo opens by flagging my
+  brief. Had it inherited `LABELS=(none)`, it would have applied labels the author already set, or
+  reported "unlabelled, needs triage" on an issue its author had fully triaged himself — the #12398
+  condescension shape.
+
+**How to apply (webhook-side):** never forward payload `labels`/`assignees`/`milestone`/`title` as
+current state. Either (a) re-read them live in the same turn as the dispatch, or (b) stamp them —
+*"labels as of the webhook instant 17:36:31Z; re-read before acting"* — or (c) omit them and give the
+URL. See [[project_12404_slang_package_tool_maintainer_owned]].
 
 **Filing note:** this rule sat inline in MEMORY.md's #11616 row for one tick and was
 therefore unfindable from #8785, where it recurred. A cross-cutting hazard filed

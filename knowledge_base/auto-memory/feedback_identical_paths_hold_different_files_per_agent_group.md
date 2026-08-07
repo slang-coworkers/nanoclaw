@@ -1,6 +1,6 @@
 ---
 name: feedback_identical_paths_hold_different_files_per_agent_group
-description: "THREE memory roots, not two: /home/node/.claude is bind-mounted per agent group; /workspace/agent/memory is a second local store; /workspace/extra/ephemeral/prod-groups/<peer>/memory exposes 6 peers READ-ONLY — but that visible root is NOT the one a peer reports on. I claimed no peer path exists; false. Never infer a peer's store from your own."
+description: "THREE memory roots; /home/node/.claude and /workspace/agent are per-agent-group BIND MOUNTS ⇒ identical absolute paths hold different files. RETRIEVAL KEYS: why do our store FILE COUNTS differ · a peer's store figure is UNVERIFIABLE not disputable · same path different store · cross-store count comparison · /workspace/shared is rw for Main, ro for coworkers."
 metadata: 
   node_type: memory
   type: feedback

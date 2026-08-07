@@ -1,3 +1,11 @@
+---
+name: MEMORY-full-archive-2026-08-05
+description: "Verbatim archive of the flat MEMORY.md index as it stood before the 2026-08-05 shard rebuild: 182 rows, 221KB against a 24.4KB read bound, so ~90% of its rows were unreachable on load. Kept as the tail-cut recovery fallback — nothing here was deleted, every row's leaf file is still on disk."
+metadata:
+  node_type: memory
+  type: reference
+---
+
 # Slang fleet index — one line per entry; detail is in the linked file, open it before acting.
 ⛔**TAIL-CUT RECOVERY — rebuild the routing layer FROM DISK, no surviving link required** (immune to file growth, unlike any hub):
 ```

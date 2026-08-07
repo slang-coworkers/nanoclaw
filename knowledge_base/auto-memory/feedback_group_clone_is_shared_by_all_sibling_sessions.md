@@ -1,6 +1,6 @@
 ---
 name: feedback_group_clone_is_shared_by_all_sibling_sessions
-description: "A coworker's repo clone at /workspace/agent/<project>/ is PER-AGENT-GROUP, not per-session — 32 slang-triager sessions share one working tree (measured 08-05). Any `git reset --hard`/`clean`/`checkout -f` there destroys SIBLING SESSIONS' uncommitted work, and the sibling is usually another instance of YOURSELF. Two independent actors hit this in one day. Never chain a destructive git op behind its own status check — the check becomes decorative."
+description: "A coworker's repo clone at /workspace/agent/<project>/ is PER-AGENT-GROUP, not per-session — 32 sessions share one tree. Destructive git ops there eat SIBLING sessions' uncommitted work (2 actors, 08-05); never chain one behind its own status check. ✅08-06: first POSITIVE case — read-then-leave saved a sibling probe. ⚠️And Main's same-named path is a DIFFERENT object: my clean status is no evidence about a peer's tree."
 metadata:
   node_type: memory
   type: feedback
@@ -14,6 +14,65 @@ metadata:
 **Measured scope for `slang-triager` (ag-1780667166418-apezq5): 32 sessions share `/workspace/agent/slang/`** — 30 `active` (4 with `container_status=running`), 2 closed. Any of the 26 stopped-but-active sessions can be woken by the supervisor sweep and land in that same tree.
 
 ⇒ ⭐⭐⭐**The "other coworker" in a shared clone is usually ANOTHER INSTANCE OF YOU.** slang-triager saw a concurrent `pull --ff-only` in the reflog and reported "someone else is active in this clone" — it was almost certainly a sibling triager session. **Before any destructive git op, ask which sessions of YOUR OWN GROUP are live** (`ncl sessions list`), not merely which other coworkers exist.
+
+## ✅ INCIDENT 3 (2026-08-06) — THE FIRST POSITIVE INSTANCE: the guard fired and the work survived
+
+**At chain-close on slang#12392.** `slang-triager` found **5 tracked modifications it had not made** in
+`/workspace/agent/slang/` — `hlsl.meta.slang`, `slang-ast-type.cpp`, `slang-check-decl.cpp`,
+`slang-check-expr.cpp`, `slang-diagnostics.lua`. It **read them before assuming anything**: a sibling
+session's in-flight probe, self-labelled `-- TRIAGE PROBE (revert me)`, adding diagnostic 38038.
+**Left untouched.** A `git checkout -- .` would have destroyed another session's live work — Incident 1
+exactly, one day later, same group, same tree.
+
+⭐⭐⭐ **This is what the rule looks like when it works, and the shape is worth copying: READ the
+unexpected diff → IDENTIFY its author → decide, with no destructive op anywhere in the sequence.** It
+also defended its own figures independently of the foreign edits: **zero overlap** with any file its
+findings rest on (none of constref / varying-params / entry-point-uniforms / emit-spirv / call-graph /
+fix-entrypoint touched), `HEAD` still `d7d59f374`. ⇒ **A dirty shared tree doesn't invalidate your
+measurements — it obligates you to show the dirt is DISJOINT from them.**
+
+⚠️⭐⭐⭐ **THE SHARING BOUNDARY IS NARROWER THAN "the clone is shared" SUGGESTS. Measured on my own
+mount at the same moment: `HEAD=d7d59f374` (matches) but `git status --porcelain` → **0** lines.** The
+probe is **invisible from Main's `/workspace/agent/slang/`**.
+⇒ ⛔ **A clean `git status` on MY mount is NOT evidence a peer's tree is clean, and NOT a refutation of a
+peer reporting dirt.** I nearly read my `0` as contradicting their `5`. The only authority on a group's
+working tree is a session **inside that group**.
+
+✅ **SETTLED AT THE SOURCE, not left as inference** — the peer ran the definitive instrument:
+
+```
+findmnt -T /workspace/agent/slang
+→ /workspace/agent  on  /dev/vdb[/prod-groups/slang-triager]
+```
+
+⇒ **The whole workspace, clone included, is bind-mounted from a PER-GROUP SUBVOLUME NAMED AFTER THE
+GROUP.** That is sharper than "shared per agent group": `/workspace/agent/slang` is a genuinely
+different object in every group *at an identical path* — same family as the per-group
+`/home/node/.claude` bind. ⭐⭐ **`findmnt -T <path>` is the one-command answer to "is this the same
+object as the peer's?" — prefer it over comparing file contents or `git` state**, which can agree by
+coincidence.
+
+⭐⭐⭐ **AND IT IS STRONGER THAN A SUBVOLUME SPLIT — I ran the same command on MY container:**
+
+```
+# slang-triager:  /workspace/agent  →  /dev/vdb [/prod-groups/slang-triager]
+# Main (me):      /workspace/agent  →  /dev/vda1[/home/ubuntu/slang-coworkers-prod/nanoclaw/groups/main]
+```
+
+**Different block DEVICE and a different subpath** — the two paths cannot alias under any
+circumstance, and even the host-side layout convention differs (`/prod-groups/<group>` vs
+`…/nanoclaw/groups/<group>`). ⇒ **Never reason about a peer's `/workspace/**` from your own; the paths
+are namesakes, not views of one tree.** Run `findmnt -T` on both ends before any cross-container file
+claim — one command, and it ends the argument that content comparison cannot.
+
+⛔⭐⭐⭐ **THE TRAP, AND IT IS THE REUSABLE PART: `HEAD` MATCHED WHILE `git status` DIFFERED.** One
+agreeing field made the two trees read as the same object, which then lent **false authority** to the
+disagreeing field — nearly converting a correct dirt report into a "correction." ⇒ **A single matching
+field is not an identity proof; identity needs a field that CANNOT agree by coincidence** (a mount
+source, an inode, a hash). Both trees being at the same commit is exactly what you'd expect of two
+independent clones of the same repo. Cf. the file-length-fingerprint rule in
+[[project_slangpy_820_tagged_kernel_dispatch_segv]] — a shape invariant settles same-vs-different-ref in
+one number, but only when the invariant can actually distinguish them.
 
 ## Incident 1 — the guard was held, and the COMMAND SHAPE made it decorative
 

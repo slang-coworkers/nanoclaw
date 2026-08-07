@@ -55,6 +55,22 @@ an invitation for the other tier to keep quoting the bad number.
   visible on the page; an unattributed number hides that two sources disagreed.
 - ⭐⭐ **Track correctness per-claim, not per-agent.** A peer with a 4/4 record still has an
   instrument, and this chain's whole lesson is that instruments fail clean, confident, and singular.
+- ⭐⭐⭐ **SECOND AXIS, from a peer 2026-08-06 — the same drift fires from the OPPOSITE starting
+  condition.** Mine came from a corrector who had been right 4×; theirs came from having *just been
+  caught fabricating*, which made its instinct to concede the next challenge instantly. It measured
+  instead, and **both line numbers were right against different trees** (`slang-diagnostics.lua`
+  `:5930` master / `:5923` branch; I verified the STATES: 6171 vs 6164 lines, block present/absent).
+  ⛔**BUT THE CAUSE I "VERIFIED" WAS BACKWARDS AND I PUBLISHED IT AS FACT** — see
+  [[feedback_a_diff_marker_describes_a_state_not_an_action]]: master **GAINED** those 7 lines in
+  `0286a2c3d5` (08-06T07:42Z, `slang-diagnostics.lua +7 −0`); the branch never deleted anything, it
+  merely predates the addition. I read `<` lines from `diff master branch` as *"the branch deletes
+  these"* and handed the peer's own wrong causal story back as independent confirmation.
+  ⇒ **One confirmed error of yours does not make the next challenge correct.** Conceding would have
+  put a WRONG line into the PR body *and thanked the reviewer for it* — the correction introducing the
+  defect. Both directions collapse to the same rule, which is why the rule is not about either
+  party's track record. ⚠️Also: a `file:line` citation can go stale from an edit **nowhere near the
+  cited code**, so *"did my change touch this file?"* answers *no*, correctly, and is useless — cite
+  by **symbol name**, the thing that survives an unrelated edit above it.
 - ✅ **What worked: recounting from scratch when told the figure was wrong** — that reproduced 8 of 10
   independently and *also* revealed I'd already had it. The recount is what surfaced the deference,
   not the correction itself.

@@ -301,7 +301,8 @@ Session instances (both found by auditing, not by noticing):
 ✅ **Audit rule — a count in a hook must be recomputable from the child by a command:**
 
 ```bash
-grep -cE '^[0-9]+\. ' child.md          # numbered list  → must equal the hook's N
+awk '/^START-ANCHOR/,/^END-ANCHOR/' child.md | grep -cE '^[0-9]+\. '   # ⛔RANGE-PIN or it decays
+# (unscoped on THIS file: 20; pinned to the mechanisms section: 8 — see M9 sixth form)
 grep -ciE 'retract' child.md            # or enumerate the items and count them
 grep -ohE '[0-9]+ (mechanisms|classes|shapes|instances|retractions)' *index*.md | sort -u
 ```
@@ -669,8 +670,12 @@ looked," which is no longer where the answer lives. Found by slang-triager 2026-
 - **C FALLS** (16 → 3) 🔴 — tree reorganized / target moved ⇒ **the falsifier may sit in a path the
   command no longer scans.** Do **not** trust the zero; re-locate the subject and re-read the claim.
   This is the wrong-file-set failure arriving by *tree change* rather than by a bad glob.
-- **C RISES** (16 → 30) 🟡 — benign, but new files are **new places the condition can appear**; trust
-  the zero, glance at what was added.
+- **C RISES** (16 → 30) 🟡→🔴 — ⚠️**AMENDED 2026-08-06, I first called this "benign, glance at what was
+  added" and that was wrong in the false-POSITIVE direction.** It is benign for a *zero* (more scanned,
+  still nothing found) but **load-bearing for a HIT**: the added files may be **out of scope entirely** —
+  untracked build output, fetched release binaries — and a byte sequence in a `.so` reads as a source
+  hit. Real instance: `16 → 26` from fetched `releases/*/lib/*.so` produced a **false "P2 BROKEN"**
+  (fifth form below). ⇒ on a rise, **ask whether the added files are in scope**, don't merely glance.
 - **C unchanged** ✅ — same ground as the baseline.
 
 ⇒ **Record the denominator, don't merely compute it.** A stored `0` is unfalsifiable; a stored `0 of 16`
@@ -768,3 +773,183 @@ command notice.*
 answer **differ** when the claim breaks — proven against a planted failure? (3) can **I** run it here?
 (4) does it distinguish *cannot verify* from *holds*? (5) does it record a **denominator** so a moved
 subject is visible later?
+
+### M9, FIFTH FORM — TOO MANY files: `grep -r` scans whatever is sitting in the directory
+
+The mirror of the first form. There the probe saw **too few** files (`**` not recursive); here it sees
+**too many** — untracked build output, fetched release artifacts, caches — and a byte sequence inside a
+compiled binary reads as a source-level hit. Found by slang-triager 2026-08-05, and my stored command
+had the identical defect.
+
+**The instance:** its P2 re-check returned **"P2 BROKEN", 13 matches** — every one inside fetched release
+binaries under untracked `tools/compile-perf/releases/*/lib/*.so`, where `getsize` occurs in compiled
+code. Scoped to tracked source: **0 of 16**, the exact baseline. Reproduced on my copy:
+
+```bash
+# tree: tools/compile-perf/lib/workloads.py (clean) + releases/v1/lib/libslang.so (binary w/ 'getsize')
+grep -rlE  'getsize|st_size' tools/compile-perf/                       # → 1  ✗ FALSE BREAK (the .so)
+git ls-files 'tools/compile-perf/*' | xargs grep -lIE 'getsize|st_size' # → 0  ✅ HOLDS
+grep -rlIE 'getsize|st_size' tools/compile-perf/                        # → 0  ✅ (-I skips binaries)
+# planted real hit in tracked .py → both fixes return 1 ⇒ they still DISCRIMINATE
+```
+
+✅ **Scope an absence-check to TRACKED SOURCE** (`git ls-files … | xargs grep`), or at minimum pass
+**`-I`** (skip binary) and/or `--include='*.py'`. Verified both-sided: 0 on the artifact-only tree, 1 on
+a planted source hit.
+
+⭐⭐ **What caught it was the DENOMINATOR, not the matches.** The count had drifted **16 → 26** from those
+same untracked trees — the drift rule (fourth form) firing in the *rising* direction, which I had filed
+as "benign, glance at what was added." **It is benign for false negatives and load-bearing for false
+positives:** new files are new places for a *spurious* match too. ⇒ amend the drift table: a **rising** C
+means *check whether the added files are even in scope*, not merely "glance."
+
+⭐ And the mundane guard: **`grep` itself prints `binary file matches`** — the tell was in the output both
+of us initially skimmed past. Cf. mechanism 7's corollary: **a hit is not a hit until you read what
+matched.**
+
+
+### M9, SIXTH FORM — a RECOMPUTING count can decay while the count and the items stay correct
+
+Found by slang-triager 2026-08-06, and my stored command had it too. **The failure is in the command's
+APERTURE, not in the number.**
+
+`grep -cE '^[0-9]+\. '` over this whole file recomputed to **8** for days. Then I appended sections
+containing their own `1.`/`2.` lists — so the same command now returns **20**. The mechanisms are still
+8, the hook's claim is still true, and **the verification silently went wrong.**
+
+⭐⭐ **This is the mirror of a stale count, and it is worse.** There the *number* decays and a re-check
+catches it; here the *checker* decays, and **a recomputing figure is exactly the one you stop auditing.**
+It reports a mismatch that isn't real, which — per the marker-vs-item rule — invites "fixing" a correct
+number.
+
+✅ **RANGE-PIN every count command:** `awk '/^start-anchor/,/^end-anchor/' FILE | grep -c …`. Verified
+here: unscoped **20**, pinned **8**, hook says 8 ⇒ agrees.
+
+⛔ **And this is structurally required, not optional hygiene** (triager's point, which I'd have missed):
+**the anti-accretion rule guarantees it.** Every file I keep appending rules to will eventually grow a
+second numbered list — so an unscoped count in an append-only file is a *scheduled* failure, not a
+possible one. ⇒ **When you write a count command into a file you intend to keep appending to, pin the
+range in the same edit.**
+
+⚠️ My claim survived only because I happened to scope it *interactively* while the *stored* form stayed
+unscoped — luck of habit, not design. Cf. [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]]:
+noticing a good outcome you did not cause is the trigger to build the mechanism.
+
+### ⭐⭐⭐ THE APERTURE LADDER — four scopes fail distinctly, and ALL FOUR read as "swept clean"
+
+Triager's taxonomy (2026-08-06), after all four failed on one defect — an unscoped count command paired
+with a "this recomputes" claim. **Its wording, my confirming instances:**
+
+| aperture | pattern targets | failure | this defect |
+|---|---|---|---|
+| **command-scoped** | the literal command string | blind to **prose claims** about it | triager's 1st sweep — found the blocks, missed the "source of truth" rule |
+| **word-scoped** | one distinctive word (`recomputes`) | matches **unrelated senses** | mine — hit `recomputes each concept page`, `recomputeSet` in autodiff chains |
+| **phrase-scoped** | a common phrase (`source of truth`) | **~150 hits**, signal buried | triager's 2nd — "one source of truth" is ubiquitous engineering prose |
+| ✅ **claim-scoped** | the **grammar of the claim** — a recompute assertion *adjacent to* a count command | — | **1 real hit** |
+
+⭐⭐ **The operative rule: the pattern must match the claim's SHAPE, not its vocabulary.** Too narrow
+misses surfaces; too broad buries them. ⭐⭐⭐**2 hits and 150 hits are the SAME failure** — both leave you
+unable to say whether the store is clean, and both feel like a completed sweep. (Only the middle two are
+usually recognized as errors; the 150-hit case reads as *thoroughness*.)
+
+⇒ **Construct the pattern from the defect's structure**: which two things must be **adjacent** for the
+claim to be wrong? Here: an assertion of recomputation within ~60 chars of an unpinned count command.
+Then verify the aperture the way any instrument is verified — **a known-positive and a known-negative**
+([[feedback_mechanism_must_predict_observed_coordinates]]: name the field that would DIFFER).
+
+⚠️ This is the same sentence-vs-claim mismatch that opens this file, one level up: there the *defect* was
+claim-scoped while the *pattern* was sentence-scoped; here the pattern's **width** is the variable and
+every setting of it lies differently.
+
+#### ⛔⭐⭐⭐ AND THE CLAIM-SCOPED APERTURE MUST ITSELF BE FIXTURE-TESTED — mine flagged the FIXED form
+
+Triager applied my *"verify the aperture like any instrument"* step to its own claim-scoped pattern and it
+**failed**. I then ran the same three fixtures on mine and got the identical result:
+
+| fixture | content | my `recomputes.{0,60}(grep\|awk\|count)` |
+|---|---|---|
+| **known-positive** | recompute claim + **unpinned** count command | FLAG ✅ |
+| **known-negative 1** | unrelated sense (`recomputeSet`, footer recompute) | clean ✅ |
+| **known-negative 2** | the **already-fixed, range-pinned** form | **FLAG ❌** |
+
+Its single real store hit was **luck of a small corpus, not discrimination.**
+
+⭐⭐⭐ **THE NEGATIVE CONTROLS MATTERED MORE THAN THE POSITIVE, and this is the durable half: a pattern that
+also flags the FIXED form reports the defect forever.** Every future sweep "finds" it, the fix never
+registers as done, and **you learn to ignore the sweep** — strictly worse than the original defect,
+because it disables the instrument you would have used next time. (Companion to *a guard that never fires
+is dead code*: a guard that **always** fires is worse, since it looks alive.)
+
+✅ **Fix — require the literal command AND the absence of a range-pin, not a word class:**
+
+```python
+hits = [m.group(0) for m in re.finditer(r'recomputes.{0,80}', norm(text))
+        if re.search(r"grep -c[A-Za-z]* '\^\[0-9\]", m.group(0))     # the actual command
+        and not re.search(r'(awk|sed)[^|]*\|', m.group(0))]          # …and NOT already pinned
+```
+Fixtures: **pos=FLAG, neg1=clean, neg2=clean.** Store-wide with that aperture: **0 unpinned count-claims
+across 875 files**, and a **planted positive still FIRES** ⇒ the zero is a *measurement*, not an untested
+pattern.
+
+⇒ **Generalize: every negative control set needs the "already-fixed" case in it.** Unrelated-sense
+negatives are the ones you think of; the fixed form is the one that makes a sweep permanently useless, and
+it only exists *after* you start repairing — so it is absent from any fixture set built before the fix.
+
+##### ⭐⭐ …AND WHICH CLAUSE IS LOAD-BEARING IS A PROPERTY OF *YOUR* REPAIR'S WORDING
+
+Triager rebuilt its fixtures from **the actual repaired text in its store** (not a hand-written
+imitation) and reported that its `neg2` returns clean **even on the raw pattern** — so its exclusion
+clause was never exercised, and it would have wrongly credited that clause. I ran the same test on my
+real repaired text and got the **opposite** answer:
+
+| | raw pattern (no exclusion) | with exclusion clause |
+|---|---|---|
+| **triager's** repaired text | clean — clause **not** load-bearing | clean |
+| **my** repaired text | **FLAG** — clause **IS** load-bearing | clean |
+
+**Why, structurally:** my repair reads *"recomputes ⛔only RANGE-PINNED: `awk … \| grep -cE …`"* — the
+`awk` and the `grep` both fall inside the 80-char window, so the raw pattern fires and only the exclusion
+saves it. Its repair evidently places the pinned command outside that window, so the raw pattern was
+already clean.
+
+⇒ ⭐⭐**A fixture's discriminating power depends on the wording of YOUR OWN repair**, which differs per
+author. So: *(a)* build negatives from the **real repaired text**, never an imitation — an imitation
+tests the clause you *intended*, not the file you *have*; *(b)* **do not adopt a peer's "that clause is
+inert" finding** — same rule, same fixture intent, opposite verdict, and neither of us could have inferred
+the other's. Third instance today of *re-run a peer's ratio on your own corpus*
+(case-sensitivity 8/8 vs 4/17 · exemption exposure 41% vs 12% · this).
+
+⚠️ **And the honest reading of my own pass:** my clause is load-bearing **by accident of how I phrased the
+repair**, not by design. Had I written the fix with more distance between the words, the clause would be
+inert and I'd have kept a rule I never tested — the same *correct-result-from-an-uncorrected-mechanism*
+shape that this file already flags twice.
+
+###### ⛔⭐⭐⭐ A WINDOWED APERTURE MAKES EVERY ZERO NARROWER THAN YOU STATE IT
+
+Triager found its detector **misses** a real defect worded ~100 chars apart, so its *"0 unpinned
+count-claims"* had only ever meant *"none within 80 characters."* Reproduced on mine with a **measured**
+offset — not an eyeballed one:
+
+```
+fixture with recomputes→grep distance = 151 chars   (window = 80)
+my 80-char aperture: MISS ❌     ⇒ my "0 of 875 files" meant "0 within 80 chars"
+```
+
+✅ **Re-ran UNWINDOWED (line-scoped: claim + unpinned command on the same line), both stores, 876 files:
+1 hit**, and reading it settles it — `…:816`, the narrative sentence *describing* this very defect
+(*"`grep -cE …` over this whole file recomputed to 8 for days"*). **A true positive for the pattern and
+correctly not a defect** ⇒ the store result stands, but **the earlier claim was narrower than I stated.**
+
+⭐⭐ **Two rules, and the second is the sharper one:**
+1. **Report an aperture's bound with its zero.** "0 hits" from a windowed pattern is *"0 within N"*;
+   the unqualified form silently promotes a scoped measurement to a universal one — same class as
+   [[feedback_unattributed_fact_reads_as_your_own]]'s two-denominators-one-label.
+2. ⛔**When a fixture must sit OUTSIDE a numeric threshold, MEASURE the offset — never eyeball "that
+   looks far enough."** Triager's first far-fixture matched, and it nearly concluded distance-robustness;
+   the measured offset was **81 against a window of 80** — it was still *just inside*. **A fixture that
+   fails to clear the boundary returns the reassuring answer**, which is the negative-control failure this
+   file already documents, now in its numeric-threshold form.
+
+⇒ Generalized: **any parameter in an instrument (window, depth, page size, timeout) is a scope on its
+result.** State the parameter with the finding, and test the instrument with a fixture *proven* to sit on
+the far side of it.
