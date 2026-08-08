@@ -10,6 +10,14 @@ source_count: 13
 
 Slang's C-style `switch` has a cluster of independent defects surfaced by maintainer **skiminki-nv** in a systematic hardening sweep (issues #9999, #12236–#12240, 2026-07). They *look* like one bug family — they share the two-pass file cluster `slang-check-stmt.cpp` (semantic `SemanticsStmtVisitor::visitSwitchStmt` / `validateCaseStmts`), `slang-lower-to-ir.cpp` (`lowerSwitchCases`), and `slang-emit-spirv.cpp` (`kIROp_Switch` emit) — but they have **distinct root sites at different layers**, so one fix rarely covers two. The transferable discipline is: verify the actual root site with `-dump-ir` before deduping, and hold the fix (triage + verdict only) because skiminki-nv self-files these to *track* and self-defers until an explicit "make a PR."
 
+## TL;DR
+- `switch` defects in this codebase cluster into four independent facets: missing diagnostics, case-label placement, condition type, and emit width. A fix for one does not cover the others.
+- Statements can be **silently dropped** between front-end and lowering — an asymmetry, so check both sides when a case body vanishes.
+- Nested case labels escape the uniqueness check and can ICE; the check belongs where the labels are collected.
+- `bool` and `float` selectors reach invalid SPIR-V; reject them in the front end rather than in emit.
+- `OpSwitch` case literals were hard-coded to 32 bits — a width bug that a same-width test cannot detect.
+- The `enum:bool` fold (#12260 / PR #12275) shows the pattern: one front-end fold unlocked four backends at once, which is the layer to prefer.
+
 ## Missing-diagnostic facet: statements silently dropped (front-end/lowering asymmetry)
 
 The oldest thread is a **silent-drop** gap: statements before the first `case`/`default` label — and, in the general #9999 case, an entire label-less switch body — are discarded with **no diagnostic**, while statements after a `break` correctly warn `E41000 unreachable-code`. The asymmetry's root is that `lowerSwitchCases()` (`slang-lower-to-ir.cpp` ~L9305) never *lowers* pre-first-label statements, so they never reach `startBlockIfNeeded()` (the only `Diagnostics::UnreachableCode` emit site); a `break` terminates the IR block so the *next* statement does hit that path. #12236 (leading statements) and #9999 (whole label-less body) are the **same root** — one fix at the L9305 branch covers both — and the recommended shape is to emit E41000 there rather than discard, co-located with the established "IR-lowering does source-level E41000 diagnosis" pattern [Slang switch: pre-first-case statements silently dropped (E41000 gap), same root as #9999](../learnings/1785173842957-slang-switch-pre-first-case-statements-silently-dr.md). The #9999 design fork (warning E41000 vs a hard E30606 error) was resolved 2026-07-27 in favor of a warning — see [[wiki/topics/slang-compiler.md]].

@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **3478 agent learnings**, synthesized into **89 concept pages**.
+Standalone wiki built from **3683 agent learnings**, synthesized into **97 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -58,6 +58,16 @@ Standalone wiki built from **3478 agent learnings**, synthesized into **89 conce
 - [State Verification Discipline (part 7) (part 2)](concepts/general-misc-state-verification-discipline-10.md)
 - [State Verification Discipline (part 8)](concepts/general-misc-state-verification-discipline-8.md)
 - [State Verification Discipline (part 9)](concepts/general-misc-state-verification-discipline-9.md)
+
+### General / misc
+- [slang-backends-spirv-2-pipeline](concepts/slang-backends-spirv-2-pipeline.md)
+- [slang-backends-spirv-3-incidents](concepts/slang-backends-spirv-3-incidents.md)
+- [slang-backends-spirv-4-incidents](concepts/slang-backends-spirv-4-incidents.md)
+- [slang-backends-spirv-5-deep-dives](concepts/slang-backends-spirv-5-deep-dives.md)
+- [slang-misc-compiler-internals-2](concepts/slang-misc-compiler-internals-2.md)
+- [slang-misc-compiler-internals-3](concepts/slang-misc-compiler-internals-3.md)
+- [slang-misc-compiler-internals-4](concepts/slang-misc-compiler-internals-4.md)
+- [slang-misc-compiler-internals-5](concepts/slang-misc-compiler-internals-5.md)
 
 ### Review & process
 - [Critique Gate and Decision Recording](concepts/review-critique-gate-and-recording.md)
@@ -126,8 +136,8 @@ Standalone wiki built from **3478 agent learnings**, synthesized into **89 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1183)
-- [NanoClaw / agent operations](topics/agent-ops.md) (502)
-- [CI, build & tooling](topics/ci-tooling.md) (373)
-- [Review & process](topics/review-process.md) (191)
-- [Uncategorized](topics/misc.md) (1229)
+- [Slang compiler & language](topics/slang-compiler.md) (1198)
+- [NanoClaw / agent operations](topics/agent-ops.md) (528)
+- [CI, build & tooling](topics/ci-tooling.md) (395)
+- [Review & process](topics/review-process.md) (210)
+- [Uncategorized](topics/misc.md) (1352)

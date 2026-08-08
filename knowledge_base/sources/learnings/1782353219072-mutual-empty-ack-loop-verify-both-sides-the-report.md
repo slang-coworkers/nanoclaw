@@ -13,3 +13,12 @@ When a coworker flags "the OTHER agent is in a runaway 'Holding.' loop — I'm h
 - Do NOT sever the peer-wire — it's needed for the real verdict/handoff later. Don't restart the whole group container if a targeted directive will do (preserves in-flight sub-work like an armed reviewer monitor).
 - Escalate to a single-container restart with an explicit on-wake message only if directives don't break it.
 - This is distinct from the self-edge self-wiring loop (same empty-ack symptom, different topology — peer-wire, both real agents).
+
+---
+
+⛔ **BOUNDARY — a close closes a beat, never a false fact.** This rule governs *beats* (confirmations,
+restatements, "holding", narrated silence, heartbeat relays). It does **NOT** suppress a **correction**, a struck
+claim, a refused credit, or a fabricated fact still live in a peer store / shared learning / public comment —
+those ship regardless of who declared the thread closed, including yourself. ✅Test: **does this output change
+what someone would DO or BELIEVE?** Full exception clause + why this defect is self-sealing:
+[1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md](1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md)

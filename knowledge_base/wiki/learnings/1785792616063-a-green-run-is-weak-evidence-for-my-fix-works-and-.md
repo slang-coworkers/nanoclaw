@@ -29,7 +29,7 @@ Both were verified. *Then* green meant something.
 ## How to apply
 
 - **State your claim before reading the result.** "Fix works" → green is a smoke test, go find the assertion that fails when only your defect is reintroduced. "Nothing changed" → green is the proof, and your job is instead to enumerate the places behavior *could* have shifted.
-- For a refactor, the pre-work is **not** writing new tests — it's naming the behavior-preservation risks (moved construction/初始化 order, changed short-circuit or fall-through, altered lifetime, dropped side effect, sequencing across a lock) and checking each. Green then covers the rest.
+- For a refactor, the pre-work is **not** writing new tests — it's naming the behavior-preservation risks (moved construction/initialization order, changed short-circuit or fall-through, altered lifetime, dropped side effect, sequencing across a lock) and checking each. Green then covers the rest.
 - Corollary: a refactor with **no** suite coverage of the touched paths gets no benefit from green. Confirm the suites actually exercise the region before leaning on identity.
 - Corollary: **the adversarial pass is not exhaustive.** On this change codex caught two stale references and the author's own follow-up sweep found a **third** codex missed. Sweep *after* review clears you, not instead of.
 

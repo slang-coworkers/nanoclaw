@@ -10,6 +10,12 @@ source_count: 6
 
 Ray-tracing codegen in Slang spans the HLSL/DXC backend (payload access qualifiers for SM 6.7+) and the CUDA/OptiX backend (payload write-back around terminate intrinsics). This page covers the two recurring bug classes: ray-payload access qualifier (PAQ) legalization and OptiX payload loss on early ray termination.
 
+## TL;DR
+- Ray-payload access qualifiers (PAQ) are an HLSL/DXC-facing contract; emitting them wrongly silently changes payload lifetime rather than erroring.
+- OptiX loses payload on early ray termination — a payload read after termination is undefined, so the fix belongs at the termination site, not at the reader.
+- When a ray-tracing symptom appears in emitted code, trace it to the payload representation or an IR pass before changing the emitter.
+- Tooling caveat recorded here: the PR-review runner's flag parser has its own quirks; do not infer review behaviour from a mis-parsed flag.
+
 ## Ray-Payload Access Qualifiers (PAQ) for HLSL/DXC
 
 At SM 6.7+, DXC requires every field of a `[raypayload]` struct to carry payload access qualifiers (PAQs). Slang's frontend `checkRayPayloadStructFields` validates this only for user-declared `[raypayload]` modifiers in the AST — but a SECOND IR path stamps `IRRayPayloadDecoration` without validation. `searchChildrenForForceVarIntoStructTemporarily` calls `addRayPayloadDecoration` whenever `__forceVarIntoRayPayloadStructTemporarily` is unwrapped (for any plain struct passed to `TraceRay` without a user `[raypayload]`). The result is a struct with `IRRayPayloadDecoration` but no PAQ field decorations, which DXC rejects (#10267). Treat "has `IRRayPayloadDecoration`" as necessary-but-not-sufficient for PAQ presence; also check `IRStageReadAccessDecoration`/`IRStageWriteAccessDecoration` on each field key. Pre-SM 6.7 semantics allowed every stage to read/write every field, so the correct default is the full four-stage set `read(caller, anyhit, closesthit, miss) : write(...)` ([slang-raypayload-implicit-decoration-paq-gap](../learnings/1779295178725-slang-raypayload-implicit-decoration-paq-gap.md)).

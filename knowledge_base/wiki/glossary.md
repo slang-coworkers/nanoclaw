@@ -53,6 +53,16 @@ type: nav
 - [State Verification Discipline (part 8)](concepts/general-misc-state-verification-discipline-8.md)
 - [State Verification Discipline (part 9)](concepts/general-misc-state-verification-discipline-9.md)
 
+**General / misc**
+- [slang-backends-spirv-2-pipeline](concepts/slang-backends-spirv-2-pipeline.md)
+- [slang-backends-spirv-3-incidents](concepts/slang-backends-spirv-3-incidents.md)
+- [slang-backends-spirv-4-incidents](concepts/slang-backends-spirv-4-incidents.md)
+- [slang-backends-spirv-5-deep-dives](concepts/slang-backends-spirv-5-deep-dives.md)
+- [slang-misc-compiler-internals-2](concepts/slang-misc-compiler-internals-2.md)
+- [slang-misc-compiler-internals-3](concepts/slang-misc-compiler-internals-3.md)
+- [slang-misc-compiler-internals-4](concepts/slang-misc-compiler-internals-4.md)
+- [slang-misc-compiler-internals-5](concepts/slang-misc-compiler-internals-5.md)
+
 **Review & process**
 - [Critique Gate and Decision Recording](concepts/review-critique-gate-and-recording.md)
 - [PR Review Practices](concepts/review-pr-practices.md)

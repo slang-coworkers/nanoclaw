@@ -50,8 +50,33 @@ Same instrument-scope defect one layer down, on the local build. `setsid nohup c
 
 ⇒ ⭐⭐ **A stale-looking artifact mid-build is indistinguishable from a failed build — both readings were correct and the conclusion was wrong.** Check whether a builder is still alive before concluding anything: `pgrep -f 'ninja -f build-*.ninja'`, or arm a monitor that waits on the real process (`until ! pgrep -f ninja; do sleep 20; done`) rather than on an exit code — and never launch a second `cmake --build` against a live ninja directory. **The freshness check that actually works is behavioural**: grep the built binary or library for a string introduced by the commit you expect it to contain. Timestamps alone cannot separate "not built yet" from "built without your change", and `-v`/version strings are configure-time. Corollary for measurement hygiene: after a dependency merges, **rebuild the inputs too** — staged `.slang-module` files produced by the pre-merge binary would have made a "merged master" run a mixed-binary measurement.
 
-**Source learnings (3):**
+## Reading a CI run: census, roll-ups, and the retry layers (2026-08-08 fold)
 
+A run-level `conclusion` is a **roll-up census**, not a per-job verdict, so it can read `failure`
+above zero failing check-runs ([Excluding an aggregator check from a DASHBOARD and from a TALLY are two different actions — doing only the first still double-counts](../learnings/1786164627761-excluding-an-aggregator-check-from-a-dashboard-and.md)). A census taken while a rerun is in flight is
+the hardest kind of stale, because the field is **populated but not final** — staleness normally
+announces itself as absence ([Two correct CI scans can disagree on failure count — reconcile the UNIT (current vs completed) before conceding or disputing](../learnings/1786164106546-two-correct-ci-scans-can-disagree-on-failure-count.md)). "Retried" is ambiguous across three distinct
+retry layers, so the word alone cannot support a claim ([A `cancelled` CI job is three different things — only arithmetic tells them apart](../learnings/1786155858380-a-cancelled-ci-job-is-three-different-things-only-.md)). A **cancelled** job
+tested nothing: it is neither evidence for nor against, and folding it into a failure streak inflates
+the strongest number in a report ([A run-level CI conclusion is a ROLL-UP — census the jobs, and never compare the total to a remembered count](../learnings/1786153681937-a-run-level-ci-conclusion-is-a-roll-up-census-the-.md), [GitHub workflow identity is keyed to file path — pin the id but cross-check via the path endpoint, which 404s loudly](../learnings/1786153514241-github-workflow-identity-is-keyed-to-file-path-pin.md)). Job **names** are
+not safe selectors — one name can be a strict prefix of a sibling's, so a prefix match silently
+reports the wrong job ([A CI job name can be a strict prefix of a sibling's — anchor the match, and audit credit as hard as blame](../learnings/1786151349296-a-ci-job-name-can-be-a-strict-prefix-of-a-sibling-.md), [A prefix-collision selector reports a sibling job's result as yours](../learnings/1786151335188-a-prefix-collision-selector-reports-a-sibling-job-.md)). Workflow identity is keyed to
+**file path**, so a rename mints a new id and retires the old one.
+**Rule: bound every census (`rows == total_count`), take the newest row per job name within a naming
+family, and treat any non-terminal `conclusion` as unknown rather than as a value.**
+
+**Source learnings (14):**
 - [Wake payload evicted list measured 0-for-5 — enumerate merge-queue evictions yourself every sweep](../learnings/1785990268683-wake-payload-evicted-list-measured-0-for-5-enumera.md) — 1 false positive, 4 false negatives, 0 correct on a 93-PR population; ~90 calls buys ground truth.
 - [A wake payload can report an eviction that never happened — verify against RemovedFromMergeQueueEvent](../learnings/1785989687956-wake-payload-can-report-an-eviction-that-never-hap.md) — A red job is a fact about a run, not an eviction; reject any blamed run that started after the enqueue.
 - [setsid + run_in_background makes "exit code 0" report the WRAPPER, not your build](../learnings/1785988615115-setsid-run-in-background-makes-exit-code-0-report-.md) — Wait on `pgrep -f ninja`; verify freshness behaviourally by grepping the artifact for a commit-introduced string.
+- [Excluding an aggregator check from a DASHBOARD and from a TALLY are two different actions — doing only the first still double-counts](../learnings/1786164627761-excluding-an-aggregator-check-from-a-dashboard-and.md)
+- [Two correct CI scans can disagree on failure count — reconcile the UNIT (current vs completed) before conceding or disputing](../learnings/1786164106546-two-correct-ci-scans-can-disagree-on-failure-count.md)
+- [A `cancelled` CI job is three different things — only arithmetic tells them apart](../learnings/1786155858380-a-cancelled-ci-job-is-three-different-things-only-.md)
+- [A run-level CI conclusion is a ROLL-UP — census the jobs, and never compare the total to a remembered count](../learnings/1786153681937-a-run-level-ci-conclusion-is-a-roll-up-census-the-.md)
+- [GitHub workflow identity is keyed to file path — pin the id but cross-check via the path endpoint, which 404s loudly](../learnings/1786153514241-github-workflow-identity-is-keyed-to-file-path-pin.md)
+- [A CI job name can be a strict prefix of a sibling's — anchor the match, and audit credit as hard as blame](../learnings/1786151349296-a-ci-job-name-can-be-a-strict-prefix-of-a-sibling-.md)
+- [A prefix-collision selector reports a sibling job's result as yours](../learnings/1786151335188-a-prefix-collision-selector-reports-a-sibling-job-.md)
+- [slang layer-C retry (retry-on-gpu-failure) is merge_group-ONLY and its GPU-health trigger has not fired in ~6 weeks — existence is not firing](../learnings/1786137766218-slang-layer-c-retry-retry-on-gpu-failure-is-merge-.md)
+- [A check-run census taken while a rerun is in flight is not the run's verdict — poll until conclusion != null before writing "N failures" or "all green](../learnings/1786137761743-a-check-run-census-taken-while-a-rerun-is-in-fligh.md)
+- ["Retried" is ambiguous across THREE retry layers in slang CI — and PendingRetry means a first-pass failure is never counted](../learnings/1786137292183-retried-is-ambiguous-across-three-retry-layers-in-.md)
+- [A cancelled job tested nothing — so it cannot corroborate "retried and still failed"](../learnings/1786136609115-a-cancelled-job-tested-nothing-so-it-cannot-corrob.md)

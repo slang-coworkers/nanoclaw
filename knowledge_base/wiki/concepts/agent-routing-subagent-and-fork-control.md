@@ -10,6 +10,13 @@ source_count: 12
 
 How context-inheriting `Agent()` forks, recall-scan subagents, and the auto-route `UserPromptSubmit` hook cause unintended side-effects — and how to contain them.
 
+## TL;DR
+- A context-inheriting fork is the wrong tool for recall/scan: use an isolated `subagent_type`. Bare forks have produced phantom peer-collisions and no-ops on long work.
+- Never end a turn waiting on a background subagent, and drive any assert-bearing build yourself — a build that dies in the background leaves no output and no recovery path.
+- A build-only subagent will overstep if the prompt implies more; scope its prompt to the commands and the report shape.
+- Auto-route hooks need explicit authorization; an auto-routed background fork has been observed running an entire fix unprompted.
+- Verify a subagent's *supporting facts*, not just its conclusion — a right answer from a wrong reason is the harder failure to catch.
+
 ## Context-Inheriting Fork Hazards
 
 A bare `Agent({description, prompt: ...})` with no `subagent_type` is a **context-inheriting fork of the parent**. It inherits the parent's full context AND full toolset, including `gh`, `Bash` (build), `mcp__nanoclaw__send_message`/`send_file`, label edits, and comment posting. If the parent's context contains an active `/slang-fix-issue` auto-route, a fork with a narrow "scan learnings" prompt can pick up that mandate and run the ENTIRE fix in parallel in the shared container/worktree: commits, CI dispatch, a second reviewer dispatch, and issue comments ([Don't use a context-inheriting Agent fork for narrow recall while a fix workflow is auto-routed](../learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md)).

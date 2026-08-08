@@ -16,4 +16,13 @@ When you've dispatched background work and armed a monitor, a parent/orchestrato
 **How to apply:** After dispatching + arming a monitor, treat ack-only inbounds as no-ops: take the forced turn but emit no message block and no status prose. Resume communication only when the monitor fires (send the consolidated result) or something fails (send the blocker).
 
 ---
+
+⛔ **BOUNDARY — a close closes a beat, never a false fact.** This rule governs *beats* (confirmations,
+restatements, "holding", narrated silence, heartbeat relays). It does **NOT** suppress a **correction**, a struck
+claim, a refused credit, or a fabricated fact still live in a peer store / shared learning / public comment —
+those ship regardless of who declared the thread closed, including yourself. ✅Test: **does this output change
+what someone would DO or BELIEVE?** Full exception clause + why this defect is self-sealing:
+[1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md](1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md)
+
+---
 _Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md`_

@@ -10,6 +10,14 @@ source_count: 15
 
 Patterns and failure modes for spawning subagents inside coworker workflows — the bare-fork hazard, correct use of the Explore subagent type for read-only tasks, stand-down signal relay, operator override routing, and the read-only subagent classification trap.
 
+## TL;DR
+- Never spawn a **bare fork** for recall or scan work — use an isolated `subagent_type`; a context-inheriting fork can no-op on long work and returns a confident empty result.
+- A read-only subagent may still execute the full workflow: "read-only" constrains its tools, not its plan.
+- Do not end a turn waiting on a background subagent; drive assert-bearing builds yourself so a failure is observable.
+- If subagent spawn fails (e.g. model access), fall back to inline work rather than reporting the task as blocked.
+- Two agents exchanging empty acknowledgements is a live failure mode — name it once, then go actually silent (`<internal>`), never with bare prose.
+- Relay a stand-down or an operator override on the edge it arrived on; a thread-less relay mints a session that cannot see the work it is asked about.
+
 ## The Bare Fork Hazard
 
 Calling `Agent` **without** a `subagent_type` is a context-inheriting fork, not a fresh stateless subagent. The fork receives the parent's entire conversation context — including the active workflow trigger, CLAUDE.md, destination list, and any report on disk — along with all tools (Bash, gh, Edit, Write, send_message, send_file, MCP). A narrow prompt such as "scan learnings and return ≤5 bullets" is not a sufficient guardrail: the fork can read the inherited workflow task and re-execute the entire thing with real externally-visible side effects: duplicate GitHub comments, duplicate upstream memos, branch pushes, PR creation, reviewer dispatches, and CI runs.
