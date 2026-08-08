@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""grepc — CONCEPT-level presence/absence check with a mandatory bogus control.
+
+Why this exists: a needle guessed from recollection produces a zero that is
+indistinguishable from a real absence, and hyphenation / case / wrapped-line
+artifacts produce false ABSENTs. Measured 2026-08-07 across three agents:
+
+    a false ABSENT drives DUPLICATION  (you re-add content already there)
+    a false PRESENT drives LOSS        (you trim the only copy)
+
+Same needle defect, opposite damage. So every check here is run three ways and
+is required to carry a control that MUST return zero.
+
+Usage:
+    grepc <concept> <path> [<path> ...]
+
+<concept> is matched case-insensitively with ALL whitespace collapsed (so a
+sentence that wraps across a newline still matches) and with -/_/space treated
+as interchangeable. Output is per-file PRESENT/ABSENT plus:
+
+  * a MUST-HIT control (a token taken from each file itself) — if it fails,
+    the instrument is broken and the run is VOID, not negative.
+  * a MUST-MISS control (a bogus string) — if it hits, the matcher is too loose.
+
+Exit 0 always; read the report. Prints a terminal '=== done N/N ===' line so a
+truncated run is distinguishable from a clean negative.
+"""
+import re
+import sys
+
+
+def norm(s: str) -> str:
+    """Lowercase, drop punctuation/markup, collapse whitespace.
+
+    Punctuation must go: the first live run of this tool returned a FALSE ABSENT
+    because the stored text read "gates BEATS, never FALSE FACTS" and the needle
+    omitted the comma. Markdown emphasis (**, *, `) and em-dashes are stripped
+    for the same reason — they are formatting, not content.
+    """
+    s = s.lower()
+    s = re.sub(r"[*`_~]+", " ", s)          # markdown emphasis
+    s = re.sub(r"[-–—]+", " ", s)           # hyphens and dashes
+    s = re.sub(r"[^\w\s]", " ", s)          # all remaining punctuation
+    s = re.sub(r"\s+", " ", s)
+    return s.strip()
+
+
+def main() -> int:
+    if len(sys.argv) < 3:
+        print(__doc__)
+        return 0
+    concept, paths = norm(sys.argv[1]), sys.argv[2:]
+    BOGUS = norm("zzq-no-such-token-9137")
+    present, absent, void = [], [], []
+    for p in paths:
+        try:
+            raw = open(p, encoding="utf-8", errors="replace").read()
+        except OSError as e:
+            void.append((p, f"unreadable: {e}"))
+            continue
+        hay = norm(raw)
+        # must-hit control: the file's own longest word, so a broken reader shows up
+        words = [w for w in re.findall(r"[a-z]{6,}", hay)]
+        ctl_hit = words[0] in hay if words else False
+        ctl_miss = BOGUS in hay
+        if not ctl_hit or ctl_miss:
+            void.append((p, f"CONTROLS FAILED must_hit={ctl_hit} must_miss_fired={ctl_miss}"))
+            continue
+        (present if concept in hay else absent).append(p)
+
+    for p in present:
+        print(f"  PRESENT  {p}")
+    for p in absent:
+        print(f"  ABSENT   {p}")
+    for p, why in void:
+        print(f"  VOID     {p}  ({why})")
+    n = len(present) + len(absent) + len(void)
+    print(f"\nconcept={sys.argv[1]!r}  present={len(present)} absent={len(absent)} void={len(void)}")
+    if void:
+        print("⛔ VOID files are NOT negatives — the instrument failed on them.")
+    print(f"=== done {n}/{n} ===")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

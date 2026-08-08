@@ -497,6 +497,90 @@ than exit-0 clean. So the approver's "exit 0 with an empty flags section" is
 **plausible but I did NOT reproduce it**; I confirmed the matcher, not the
 observed exit-0 path.
 
+### 🔴 08-07 — "LATENT" IS SETTLED: **LIVE**, by artifact. And the two mitigations above are weaker than I wrote.
+
+**`slang#12142` exited 0 on a page reading `Devin's AI analysis` / `No analysis
+available`** (approver's archive). A false-clean needing **no** control-flow
+argument — the page's own text says there is no analysis. ⇒ strike "latent
+hazard, not a live false-clean generator" above.
+
+⭐⭐⭐**`heading` is VACUOUS — 177/177 archived pages carry it**, healthy and
+degraded alike. It is a static section *label*, not evidence of analysis. So
+`done = heading && summary` collapses to **`summary` alone**, and my "mitigations
+exist" framing above over-counted the guards by one.
+
+⛔**MY OWN WRONG MECHANISM THIS ROUND (mine to own):** I argued an auth-gated
+page (no heading) couldn't reach `done`, so the slangpy exit-0 must have come
+through the **200-byte floor** ⇒ "two independent paths, two fixes." **False and
+checkable:** the poll loop's `exit 3` is at **`:138-141`**, *before* the scrape
+and before the floor at `:318-329`. A page that never reaches `done` times out
+and **never reaches the floor at all**. Verified by reading `:127-141` on my own
+edge after the peer refuted it.
+
+✅**THE FIX, and the only rationale that survives** — gate exit 0 on a positive
+verdict token **in the scraped output**, because it is the **LAST gate before
+success**, so it holds *however* the page got there:
+```
+grep -qE '\b[0-9]+ (Bugs?|Flags?)\b|\bNo (bugs|flags)\b' "$OUT/devin-flags.md" || exit 3
+```
+Secondary: drop the three checks-panel terms from `summary` (`:109` slang,
+`:104` nanoclaw); add `No analysis available` as an explicit degraded token.
+
+⭐⭐⭐**WHEN THE CAUSAL STORY IS CONTESTED, FIX AT THE GATE CLOSEST TO THE
+DECISION.** Two edges built two mechanisms from the artifacts each happened to
+hold; **both were wrong; the fix derived from neither was right** — because it
+sits at the last gate, not an entry condition. A fix at an entry condition dies
+with its mechanism; a fix at the last gate survives being wrong about the cause.
+
+⛔**UNRESOLVED — and this leaf already told me how to resolve it.** `:406` says
+⭐*"Two copies of a script = the fixed one may not be the executed one; find the
+invocation, never the better file."* We spent three rounds auditing
+`devin-fetch.sh` before I asked whether slangpy runs it: **`slangpy-pr-approver`'s
+skill tree references no runner at all** — `grep -rniIl devin` hits 4 files
+(`SKILL.md`, `collect-reviews.sh`, `eval-clauses.py`, `harvest-reviews.py`);
+`grep -rniE 'devin-fetch|review-runner|agentType'` returns nothing; and
+`devin-page.txt` is written **only** by the two runner copies (`slang…:224`,
+`nanoclaw…:149`). Reproduced from both edges. ⇒ **defect confirmed in a script I
+have read; that it is the script that produced the slangpy exit-0 is NOT
+established.** (Scope of that claim: I searched skill *files*, which cannot tell
+me the runtime call path.) **This leaf's own `:406` rule was dark to me for the
+whole exchange.**
+
+⚠️**Denominator scope (peer-measured, 08-07):** the 177 is **archived pages** —
+the archive holds **300 review dirs, 177 `devin-page.txt`, and 12
+`devin-error.txt` with no page** (all `timeout: … stable done state`). ~40% of
+runs never scrape, so the corpus is **structurally silent about the timeout
+population** — exactly where an auth-gated page lands if it never renders the
+label. "Heading is vacuous" survives (177/177 + 12142's self-report); **"no page
+lacks the heading" does not generalize past the scraped set.**
+
+⭐⭐**FOURTH INSTANCE of one shape, across two edges — an ABSENCE REPORT INHERITS
+THE SCOPE OF THE SEARCH THAT PRODUCED IT, and that scope is the unstated part:**
+(1) my `find /workspace` → "script not verifiable from my edge" — **false**, the
+skills are under `/home/node/.claude/skills/`, one `find /` away; (2) the peer's
+"Devin's flags were EMPTY" on PR 815 → the findings never *rendered*
+(instrument failure attributed to its subject); (3) 177/177 → "archived,
+therefore scraped"; (4) my slangpy grep → "skill files, not the call path".
+**Each a true statement whose boundary went unstated.** ⇒ state the search scope
+*inside* the claim. Cf. [[feedback_published_negative_env_claims_need_rederivation]].
+
+⚠️`View results` was proposed as the detector (16/16 vs 0/155) and **dropped**:
+UI-string dependency (the `:97` comment already records a 2026 Bugs/Flags UI
+change), single-archive derivation, absent from the slangpy page, and **6 of the
+peer's own 22 no-token pages lack it** (12142 among them). Demoted to a
+diagnostic hint. ⭐**A clean split measured on the subset where the string
+applies is not a detector for the population.**
+
+**Blast radius on recorded decisions: none found.** All three WOULD_APPROVEs with
+Devin as sole source (slang#12078, slang-torch#49, slang-rhi#806) were re-opened
+by the peer — each carried genuine per-PR analysis. Their summary is the part
+worth keeping: ⭐⭐*"the guard never saved me — my own artifact-reading did, which
+is exactly the wrong thing to rely on."*
+
+**Still not landed by me** — shared skill files touching both approvers + the
+nanoclaw runner; operator decision pending. Per "Not fixed by me" below, a fix
+must land where the containers actually read.
+
 ⚠️ **The approver's second half — "extractor splits on newlines against
 JSON-quoted text" — I could NOT confirm; the slang copy CONTRADICTS it.**
 `:215-224` pipes `document.body.innerText` through

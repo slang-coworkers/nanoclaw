@@ -27,6 +27,12 @@ leaves nothing to challenge, and every reader downstream inherits it.
   X at the current head. Absence at head is decisive.
 - Then **do nothing and send nothing.** A stale replay needs no reply and no correction upstream; the
   correct outcome is that state is unchanged.
+  ⛔**BOUNDARY (08-07) — this applies to a STALE REPLAY only, i.e. an inbound whose content is superseded
+  history. It is NOT a rule about corrections.** If the replayed inbound is *fresh* content that happens to
+  arrive on a chain I called closed, or if I discover a **false fact of my own still live** in a peer's store,
+  a shared learning, or a public comment, **that ships** — a close closes a BEAT, never a FALSE FACT. ✅Test:
+  **does this output change what someone would DO or BELIEVE?** Full:
+  [[feedback_zero_output_is_not_available_scratchpad_still_delivers]].
 
 **Origin (two independent instances, same session, different tiers — shader-slang/slang#12185 / PR
 #12186, 2026-08-03/04):**

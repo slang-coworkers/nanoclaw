@@ -274,6 +274,258 @@ absent code.**
 developer-instructions**, so a stage re-review sent as a *reply* is **silently
 not recorded** — relevant to anyone relying on it for a critique gate.
 
+## 🟢 R3 SYNCHRONIZE 08-07 — THE BLOCK'S FIX LANDED. Re-dispatched.
+
+Webhook `pr_ready_for_review (synchronize)`. Debounce recipe run; **re-dispatch,
+not hold.** All MINE-VERIFIED by anonymous REST.
+
+1. **Head MOVED** `bb870c1750cc` → **`eca1dc49e1eb`** (`ahead_by 1`). Not a duplicate.
+2. **Delta is a LONE GITLINK BUMP** — `external/slang-rhi` `+1/-1`,
+   `11eefdc6` → **`5f00bdc5`**, commit *"update slang-rhi"* (Lukas Lipp).
+   ⭐**This is the D3 shape exactly: a one-line diff that is the entire change** —
+   and here it carries the fix, so the same blindness that undercounts risk also
+   undercounts a *remedy*. **A gitlink-only delta must never be debounced as
+   trivial.**
+3. 🟢**THE PRESCRIBED FIX IS PRESENT.** `vk-buffer.cpp` at `5f00bdc5`: blob
+   **`eda0548ead59`** (was `3318cadb8cd8`), `fixupBufferDesc` count **1 → 2**:
+   - `:340` `createBuffer` (pre-existing)
+   - **`:443` `createBufferFromNativeHandle`** — `RefPtr<BufferImpl> buffer(new
+     BufferImpl(this, fixupBufferDesc(desc)));`
+   ⇒ **exactly option 1 of the BLOCK's fix guidance**, and it closes the intra-file
+   asymmetry the verdict rested on (`:340` had it, `:441` didn't).
+4. **Upstream provenance:** slang-rhi**#813** *"Apply fixupBufferDesc when importing
+   buffers from native handles (vulkan/d3d)"* — **MERGED 2026-08-07T14:30:33Z,
+   merge_commit `5f00bdc50f1f`** == the newly pinned sha. So the author fixed it at
+   the correct layer (rhi, not a slangpy workaround) and bumped the pin.
+5. **Non-bot inbounds — 3, all read:**
+   - `fknfilewalker` 08-05T12:38 — answers ccummingsNV: implemented for d3d/vk/webgpu;
+     **cuda + cpu have no native-handle impl** (offers a follow-up PR); "Done" on tests.
+   - `fknfilewalker` 08-05T12:54 — *"Tests fail because of slang-rhi #813"* — i.e. the
+     author independently identified the same root cause as the BLOCK.
+   - **`guoxx` 08-06T15:32 — NEW third party**: confirms the approach works on Vulkan,
+     wants it for NPU interop. **Corroborating, not blocking.**
+6. ⚠️**ccummingsNV's `CHANGES_REQUESTED` is still open and still pinned to
+   `5c384a20b11b`** (two heads stale). Both his asks are now answered, but **only he
+   can dismiss it.**
+7. **CI NOT SETTLED at dispatch:** 14/14 pagination OK — 2 success, **8 in_progress,
+   4 queued.** Decide only on a settled head.
+
+### ⚠️ MY OWN D3 MISS — I called the delta "the fix" and never enumerated the gitlink
+
+**Approver caught it; MINE-VERIFIED after.** `11eefdc6..5f00bdc5` is **3 commits,
+6 files, +246/−24 = 270 lines**, not just #813:
+
+| commit | what |
+|---|---|
+| `57b5dec033c9` | #806 README license correction |
+| **`fcbacea7433b`** | **#808 "Validate pipeline cache blob lengths and offsets before use"** — `vk-pipeline.cpp` **+75/−21** + `tests/test-pipeline-cache.cpp` **+165** |
+| `5f00bdc50f1f` | **#813** the actual fix — `vk-buffer.cpp` +1/−1, `d3d12-device.cpp` +1/−1 |
+
+⇒ ⛔⭐⭐⭐**I wrote "the delta IS the fix" one round after filing D3, whose whole
+content is that a `+1/−1` gitlink conceals its payload.** The fix is **2 source
+lines**; the gitlink carried **~250 lines of unrelated arriving code** under the
+message *"update slang-rhi"*. **I applied the D3 lesson to the RISK direction and
+not to the REMEDY direction — the same "must not be debounced as trivial in either
+direction" I had just written.** ⭐⭐**Having filed a lesson is not having applied
+it; the application is a separate act with its own failure mode.**
+
+🔴**And #808 is not inert for me: `vk-pipeline.cpp` is the file at the centre of
+the LIVE [[project_slangpy_1089_shader_cache_path_vulkan_segv]] chain** (P1,
+`shader_cache_path` SIGSEGV on first pipeline creation, **still OPEN**, assignee
+`kaizhangNV`). #808 merged 2026-08-04T22:42:45Z and **arrives in slangpy via this
+very pin bump.** My #1089 row already lists *"#808 MERGED"* and *"NEITHER carries
+`Fixes`"* — ⇒ **this PR is the vehicle by which #808 lands in slangpy, which is a
+#1089 RESUME condition I have to evaluate on its own thread, not here.**
+⭐**A pin bump on PR A can silently satisfy or invalidate a premise on unrelated
+chain B — enumerate the bump's commits against your OTHER live chains, not just
+the current one.**
+
+### 🟢 R3 CI — MINE-VERIFIED BY TEST NAME on the legs that CRASHED at R2
+
+**2 of the 4 R2-failing legs have landed and both flipped to green.** Read from
+job logs, by test name, with a non-zero control (11,141 lines) — not from job
+conclusions:
+
+| leg | R2 @ `bb870c1750cc` | R3 @ `eca1dc49e1eb` |
+|---|---|---|
+| linux x86_64 gcc **Debug** (92898524558) | `1 failed, 4139 passed` — `gw0` crashed | ✅**`4148 passed`**, 0 crashes |
+| linux x86_64 gcc **Release** (92898524634) | `1 failed, 4139 passed` — `gw1` crashed | ✅**`4148 passed`**, 0 crashes |
+
+All four pre-registered rows present on the Release leg, exactly as specified:
+```
+PASSED  test_buffer_from_native_handle[DeviceType.vulkan]
+PASSED  test_buffer_from_native_handle[DeviceType.cuda]
+PASSED  test_buffer_from_native_handle_invalid[DeviceType.vulkan]
+SKIPPED test_buffer_from_native_handle_invalid[DeviceType.cuda]
+        (reason: "DeviceType.cuda cannot import native buffers")
+```
+`grep -cF "crashed while running"` = **0** (control: 11,141 lines).
+**macOS Debug (92898524698): `PASSED [metal]` + `PASSED _invalid[metal]`,
+`1772 passed`** — still *executing* on Metal, not skipping.
+
+⭐**The `4139 → 4148` delta is the cleanest single figure**: +9 = the previously
+crashed/uncollected tests now running. **A pass-count increase is a stronger
+signal than a green conclusion** — it shows tests were *gained*, not merely that
+nothing failed.
+
+⚠️**STILL SHORT OF THE BAR — 2 legs outstanding:** both **windows msvc**
+(92898524522 Debug, 92898524563 Release) still `in_progress`; macOS Release too.
+CI 14/14: 10 success, 4 in_progress. **The approver is holding, correctly — "one
+green leg is not four", and it set the bar before the evidence arrived.**
+
+### ✅ Approver ran D3's OTHER half unprompted (its read, recorded as such)
+
+Re-anchored the submodule's changed paths to the consumer tree
+(`external/slang-rhi/...`) and checked against **`v0-shadow-wide`**'s
+`protected_paths`: **zero hits** — the only protected glob is
+`**/slang-tag-version.h` and nothing in the bump matches; 6 files / 270 lines is
+inside the 8000-line / 150-file caps. ⇒ **the gitlink hides real code here but
+nothing policy-relevant — stated from evidence rather than from the clause
+script's silence.** ⭐**That is the difference between "the gate didn't fire" and
+"I checked what the gate would have seen."**
+
+### ⚖️ Symmetry the approver insisted on, recorded because it is fair
+
+It caught my gitlink miss **only because my own D3 learning was in its recall
+set** — it ran the enumeration *because* D3 said to. And it made the structurally
+identical error at R2: **it had the per-device cut in hand and theorized a
+mechanism without using it.** ⇒ **Same failure, same remedy, both directions: the
+enumeration is cheap and neither tier should skip it.** ⭐**A lesson that catches
+its own author's peer is doing its job; a lesson its author then fails to apply is
+still doing half of it.**
+
+### ✅ Approver's R2 mechanism correction (its own, accepted — sharper than mine)
+
+#813's commit message supplies the precise chain, and the approver flagged that
+its R2 wording implied the **upload** transition was the trigger. Correct
+derivation: upload transitions `Undefined → CopyDestination` (**valid — `Undefined`
+is fine as *source***), then **`requireDefaultStates()` transitions it BACK**,
+making `Undefined` the **destination** ⇒ `commitBarriers` →
+`calcPipelineStageFlags(..., stateAfter, src=false)` → `SLANG_RHI_ASSERT(src)` →
+`abort()`. ⭐**This independently explains why `_invalid[vulkan]` PASSED** — it
+never reaches the requireDefaultStates path. Verdict unaffected; mechanism sharper.
+
+### Approver's other verified items (its reads, flagged as such)
+
+- **`m_memory` STILL OUTSTANDING** — checked, not assumed: #813 does not touch
+  `vk-buffer.h`; at `5f00bdc5` the ctor still initializes only `m_api` and the
+  import still assigns only `m_buffer.m_buffer`. **Real, unfired, not required to
+  clear the block.**
+- **Author's platform claim ACCURATE** — `createBufferFromNativeHandle` defined in
+  exactly 4 backends (d3d12/metal/vulkan/wgpu); `src/cuda/` and `src/cpu/` have
+  zero. Agrees with slangpy's `native_buffer_handle_type()` switch **and** the
+  test's table.
+- **D3D12 got the fix too** despite never crashing (it survived only via
+  `Undefined → COMMON`) — correct, it had the identical omission.
+- **Harvest exit 10 = STALE, not 0** — CodeRabbit's newest review is pinned to
+  `bb870c17`; falls to the Devin-only tier noting staleness, **not an abstain**.
+  Confirmed a genuine skip rather than a race (CodeRabbit status already `success`
+  on this head, no review-bot check-run pending) — consistent with a gitlink-only
+  delta.
+- ✅**Approver PRE-REGISTERED its expectation before the legs landed**: vulkan
+  PASSED ×4, metal still PASSED, cuda PASSED via not-implemented, `_invalid[cuda]`
+  SKIPPED — *"anything else and I don't clear the block."*
+  ⭐⭐**Pre-registration converts a post-hoc reading into a test** and is the right
+  answer to this session's state-5 problem (a correct conclusion licensing
+  unchecked detail).
+
+## ✅ R3 FINAL 08-07 — **BLOCK CLEARED** → **ABSTAIN_POLICY `OPEN_GAP`** @ `eca1dc49e1eb`
+
+Ledger written, critique gate passed both stages, head re-verified unchanged after
+recording, **nothing posted to GitHub**. **MINE-VERIFIED independently:**
+
+- **Head pinned correctly** — still `eca1dc49e1eb` at decision time and after.
+- 🟢**THE DECIDING QUESTION, `[DeviceType.vulkan]` PASSED BY NAME ON ALL 4 LEGS
+  THAT CRASHED AT R2**, zero crash markers, against large non-zero controls:
+
+| job | leg | vulkan | `crashed` | summary |
+|---|---|---|---|---|
+| 92898524558 | linux gcc Debug | **PASSED** | 0 | `4148 passed` |
+| 92898524634 | linux gcc Release | **PASSED** | 0 | `4148 passed` |
+| 92898524522 | windows msvc Debug | **PASSED** | 0 | `5689 passed` |
+| 92898524563 | windows msvc Release | **PASSED** | 0 | `5689 passed` |
+
+Metal still `PASSED [metal]` + `PASSED _invalid[metal]` (92898524698) — executing,
+not skipping. **Pre-registered bar met 4/4 with nothing renegotiated**, cuda rows
+included.
+⭐**`4139 → 4148` = +9 passes; R2's total included a failure, so it is +8
+COLLECTED.** The approver caught its own "+9 collected" draft error. **A
+pass-count increase beats a green conclusion — it shows tests were GAINED.**
+
+### 🔴 The carried-over gap it abstains on — and it is WORSE than R1's G2
+
+`device.h:404` (MINE-VERIFIED, verbatim): *"\param desc Buffer description. **The
+size must not exceed the native allocation.**"* — a documented promise.
+**MINE-VERIFIED which backends enforce it** at rhi `5f00bdc5`, by reading each
+`createBufferFromNativeHandle` body:
+
+| backend | checks `desc.size`? |
+|---|---|
+| **metal** | ✅ `desc.size > nativeBuffer->length()` |
+| **vulkan** | ❌ |
+| **d3d12** | ❌ |
+| **wgpu** | ❌ |
+
+⇒ **3 of 4 supported import backends type-check the handle and never check the
+size — all Python-reachable.**
+
+⚠️**Sub-correction, and it is the trap the approver had just named, applied to its
+own sentence.** It wrote *"wgpu's **only** `.size` line is an assignment."*
+**MINE-VERIFIED: `wgpu-buffer.cpp` has THREE `.size` lines** — `:46`
+`bufferDesc.size = desc.size;` (createBuffer), `:75` a `wgpuQueueWriteBuffer`
+argument (createBuffer), `:146` `size_t size = bufferImpl->m_desc.size;`
+(mapBuffer). **None is in `createBufferFromNativeHandle`, so the 3-of-4
+conclusion HOLDS** — but "only" is wrong, and it is the *count of hits* again,
+one message after coining ⭐**"a hit is not a predicate; read the operator."**
+⇒ ⭐⭐⭐**The trap has a second half nobody stated: read the operator AND count the
+hits.** Both halves are membership claims about the same grep, and this session
+has now produced the error in both.
+✅**For the record, wgpu's import path DOES validate the handle**
+(`handle.type != NativeHandleType::WGPUBuffer || handle.value == 0` →
+`SLANG_E_INVALID_HANDLE`) and calls `fixupBufferDesc` — it is the **size** promise
+alone that goes unenforced. ⭐**The approver had this as 2 of 4 and corrected
+itself UPWARD; it had missed wgpu.** ⚠️**This is R1's G2, unfixed and now
+better-quantified — the abstain is on the GAP, not on the fix.**
+
+### ⭐⭐⭐ The propagation-worthy process finding: ASK FOR BOTH DIRECTIONS BY NAME
+
+**OUTPUT_REVIEW took 6 must-fix rounds**, three of them *the same overclaim
+leaking one abstraction level at a time* (stale fact → unverified inference →
+categorical claim) — because after each fix it **grepped for the phrase it had
+just changed instead of the concept.** ⭐⭐**A fix verified by grepping its own new
+wording cannot detect the claim reappearing in different words.**
+
+Then the key move: **it explicitly asked the reviewer whether it had
+*UNDER*-claimed anywhere — and that question is what surfaced wgpu.**
+⇒ ⭐⭐⭐**Repeated narrowing rounds bias you toward UNDER-claiming, while reviewers
+optimise for catching OVERclaims. So the under-claim direction has no natural
+detector — ask for it BY NAME.** This is the missing counterpart to everything
+this week's catalogue collected (all overclaim-shaped):
+[[feedback_four_states_where_the_decisive_check_feels_unnecessary]].
+
+### ⚠️ Two corrections it made against itself, and one against me
+
+- **Withdrew** a relayed subagent claim of a *"byte-identical finding set"* — the
+  two artifacts' hashes differ and the re-run file has zero flag titles, so it was
+  **uncheckable from its evidence.** ⭐**Relaying a subagent's verification as your
+  own verified fact is the same laundering as relaying a peer's.**
+- **Signal quality, and it matters MORE than usual here:** harvest **exit 10
+  (stale)** *and* Devin's first run also stale — **on a revision whose ENTIRE
+  delta is the gitlink, i.e. precisely what a stale analysis cannot see.** It
+  re-ran rather than reasoning around the gap; the re-run is head-current
+  (`+5f00bdc5`, `Checks 16/16`) but establishes **head currency and unchanged
+  counts only** — finding bodies come from the first run and apply to the
+  unchanged non-gitlink code; **the submodule is covered solely by source reading
+  + CI.** ⭐**Naming exactly what a re-run does and does not establish is the
+  honest form.**
+- ✅**CORRECTION TO ME (accepted, MINE-RE-VERIFIED):** ccummingsNV's review is
+  **2 heads stale, not 3.** `compare/5c384a2...eca1dc4` → `ahead_by: 2`
+  (`bb870c1750cc` "tests", `eca1dc49e1eb` "update slang-rhi"). **I said "three
+  heads stale" twice.** The PR has had 3 *heads* (`5c384a2` → `bb870c1` →
+  `eca1dc4`) but only **2 moves since the reviewed one** — I counted heads, not
+  moves. ⭐**"N stale" is a DISTANCE, not a population count; say which you mean
+  and run `rev-list --count`.**
+
 ## RESUME triggers
 
 - ✅ Approver verdict received 08-03 → rolled up to operator.

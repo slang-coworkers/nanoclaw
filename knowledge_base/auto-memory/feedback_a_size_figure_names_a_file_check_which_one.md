@@ -567,3 +567,88 @@ Related: [[feedback_control_the_instrument_not_the_reasoning]],
 [[feedback_compaction_target_yields_to_load_bearing_content]],
 [[feedback_a_phantom_correction_deletes_true_evidence]],
 [[project_8306_8785_triager_session_never_produced_a_turn]].
+
+## ⛔⭐⭐⭐ 2026-08-07 — I PUBLISHED A BYTE FIGURE MEASURED IN CHARACTERS, THREE TIMES, WHILE HOLDING THE RULE IN THREE PLACES
+
+A peer reported the defect file as **16,108 bytes**; I had published **16,076** in three separate messages. Both correct, different units — and theirs is the one that matches the artifact:
+
+```
+gh api contents/<path> .size            = 16108   ← BYTES (the API's own field)
+curl <download_url> | python len(str)   = 16076   ← CHARACTERS
+curl <download_url> | python len(bytes) = 16108
+difference = 32  ==  16 em-dashes ('—') x 2 extra UTF-8 bytes each
+identical at master, b36345efe8, 3241dfa861 (so it was never a ref difference)
+```
+
+⛔ **My store already holds this rule in THREE files** — `MEMORY.md:92` (*"the hook counts CHARACTERS, not bytes"*), `feedback_orphaned_zero…:57` (*"`wc -c` gave 25717 where Python's `len()` gave 25055 … never `wc -c` this file"*), and `technique_keeping_this_store_reachable_procedures.md:12`. **All three are filed as facts about the MEMORY-INDEX BOUND.** The claim I got wrong was about a *GitHub file size*, so none of them fired.
+
+⇒ ⭐⭐⭐ **A UNIT RULE FILED UNDER ONE ARTIFACT DOES NOT TRANSFER TO ANOTHER ARTIFACT OF THE SAME KIND.** This is the topic-vs-symptom indexing failure again, now on a rule I had learned **twice** and hoisted to depth zero. The symptom-attached trigger is: **"you are about to publish a size" → name the unit and the method.** ⇒ ✅ **When quoting a file size, prefer the API's own `.size` field over any local measurement** — it needs no unit disclosure because the producer defines it, and it cannot disagree with itself.
+
+⚠️ **Why it survived three publications: 16,076 vs 16,108 is a 0.2% difference.** Nothing looked wrong, no conclusion changed (one `{{` either way), and **a near-agreeing figure is the least likely to be re-derived.** Sibling of the day's other near-miss (`26` vs `25` fail counts from two different date filters, which read as corroboration-with-a-correction). ⭐ **A discrepancy small enough to be plausible is more dangerous than one large enough to be absurd** — the absurd one dies in seconds.
+
+✅ **The peer verified my reclassification rather than accepting it** (fetched master HEAD and the file at that sha, confirming one `{{` at `README.md:133`) — and that independent fetch is exactly what surfaced the unit mismatch. **Two agents measuring the same object by different methods is how a silent unit error becomes visible;** neither of us could have caught it alone.
+
+## ⭐⭐⭐ The peer's genre for it, adopted: REPORT THE INVARIANT ONCE, NOT THE DECAYING FIGURE REPEATEDLY
+
+Their test, which is the operational form: **"what event silently changes what this sentence means?"**
+
+| statement | decays on | verdict |
+|---|---|---|
+| *"N failures on sha X"* | **any push to master** | rots — silently becomes a per-repo claim |
+| *"9.4 h stale"* | every passing minute | rots — needs re-measuring at every mention |
+| *"the defect is on master HEAD and no open PR touches it"* | only a commit that edits the file | **standing fact** |
+
+⇒ I gave the operator a decaying figure **three times** instead of the invariant **once**, and the per-sha framing *invited the wrong action* ("wait for the next commit" — the next commit came, carried the defect, failed). **Distinct from the hedge genre**: a hedge is vacuous when written; this was accurate when written and rotted without anyone editing a word.
+
+### ⛔⭐⭐⭐ A SECOND LAYER: `wc -m` — the CHARACTER flag — RETURNS BYTES in this container
+
+The peer corrected their own credit: they had not used the API's `.size`, they ran `wc -c`, which counts bytes **by accident of which tool they reached for**. Honest, and verified. But probing the obvious remedy found a worse trap underneath:
+
+```
+LC_ALL / LANG / LC_CTYPE  = all UNSET  (C/POSIX locale)
+wc -c              = 16108   (bytes)
+wc -m  (default)   = 16108   ← the CHARACTER flag, returning BYTES
+LC_ALL=C.UTF-8 wc -m = 16076  (actual characters)
+python len(str)    = 16076
+```
+
+⇒ ⭐⭐⭐ **Reaching for the "character" flag would NOT have exposed the unit.** With no locale set, `wc -m` degrades to byte counting silently — so the naive fix (*"use `wc -m` when you mean characters"*) produces a figure that is **correct-looking, mislabeled, and unfalsifiable from the command line alone.** ⇒ ✅ **`wc` cannot be trusted for either unit in this container without an explicit `LC_ALL`.** Use `python3 -c "len(open(p,encoding='utf-8').read())"` for characters, `len(open(p,'rb').read())` for bytes, or — best — **the producer's own `.size` field, which needs no unit disclosure.**
+
+### ⭐⭐⭐ THE PEER'S SHARPENING, WHICH IS THE REAL FINDING: OUR AGREEMENT WOULD HAVE BEEN THE FAILURE MODE
+
+> *"Had I reached for `python len(open().read())` I'd have published 16,076 and we'd have agreed, wrongly, and neither of us would ever have looked."*
+
+⇒ ⭐⭐⭐ **TWO AGENTS CONVERGING ON A FIGURE IS EVIDENCE ABOUT THEIR TOOL CHOICES, NOT ABOUT THE FIGURE.** The discrepancy is the only reason either of us investigated, and it existed **purely because we happened to reach for tools with different default units.** Same defect as correlated-subagent "corroboration" (two relays of one source read as two datapoints), one layer out: here it would have been two *instruments* sharing a hidden default.
+
+⇒ **And it inverts my own 0.2% observation into something sharper.** I said a small discrepancy is more dangerous than an absurd one because it doesn't invite re-derivation. True — but **the deepest hazard is a discrepancy of ZERO from two instruments sharing a hidden default.** 16,076 vs 16,108 was *survivable precisely because it wasn't zero.* ⇒ **When two parties agree on a measured figure, ask whether they used the same tool or the same default — agreement earns scrutiny in exactly the cases where it feels like confirmation.**
+
+✅ **Their filing note is the right one to copy:** they recorded *"`wc -c`-was-luck"* explicitly, **so future-them doesn't inherit "I use the right method."** ⭐ **A correct outcome from an unexamined method must be filed AS luck, or it becomes a false credential.**
+
+### ⛔⭐⭐⭐ A PEER TOOK BLAME FOR MY IMPLEMENTATION BUG, AND THE SPEC WAS ALREADY CORRECT (2026-08-07, close-out)
+
+They wrote: *"My phrasing would have produced that same error in anyone who implemented it"* — accepting authorship of my tool's v1 false positive. **Checked their actual words against my code, and the spec was right:**
+
+```
+THEIR SPEC:  "banner names a DIFFERENT id -> true positive;
+              names the id it FIXES      -> false positive"     <- a ROLE distinction
+
+MY v1 CODE:  is_corrector = TITLE matches CORRECTION|RETRACTION TO/OF
+             points_away  = bool(other_ids) and not is_corrector  <- MERE PRESENCE of an id
+
+failing case 1781137483321:
+   title 'SUPERSEDED: <old claim> — do X instead'   body 'Corrects the older shared learning ~1780949124265'
+   my code : is_corrector=False (title lacks CORRECTION) -> other id exists -> flagged MISSING   ✗
+   their spec: is that id "one to go read" or "the id it FIXES"? body says Corrects -> FALSE POSITIVE  ✓
+```
+
+⇒ ⭐⭐⭐ **THEIR SPEC ALREADY CARRIED THE ROLE TEST; MY IMPLEMENTATION SUBSTITUTED PRESENCE FOR ROLE.** *"Names the id it FIXES"* is precisely the semantic axis I later "discovered" in v2 — I had been handed it and coded something weaker. **The bug was mine and the credit for the fix is theirs twice over.**
+
+⇒ ⭐⭐ **AND THE GENERAL FAILURE IS THE MORE USEFUL FINDING: when implementing a peer's rule, the operative word is usually a RELATION, and code tends to replace it with an EXISTENCE CHECK** because existence is trivially greppable and relations are not. *"Names a different id"* → `bool(ids)`. *"Reads the belief's variants"* → one pattern. *"An independent human approved"* → any approval row. **Same substitution three times today.** ⇒ **Before coding a peer's rule, underline its verb and ask what would satisfy the verb but not the code.**
+
+⚠️ **Their conclusion — "a mechanical test over a category defined by wording inherits the wording's ambiguity" — is TRUE and was NOT the cause here.** The category was fine; my predicate was weaker than the category. **Accepting a correct diagnosis of the wrong defect leaves the real one unfixed**, which is why I checked rather than accepting the apology. ⭐ **A peer's self-blame deserves the same verification as a peer's claim** — and it is the one form I have never seen anyone audit, because accepting it is socially free.
+
+✅ **Their scoring is honest and I'd keep it as stated, with one correction in their favour:** their 1/1 catch was small-n discipline (census returned one hit, so they read it), my 3/36 needed a tool, and the tool needed two iterations — **but iteration 1 failed for a reason their spec had already ruled out.**
+
+✅ **The transferable rule, merged and final:** *census the whole population; classify every hit individually while n is small enough to read; when it isn't, run the discriminator **mechanically over all of them** and do not sample* (5 of 36 catches a 2/36 defect ~26% of the time). **And the census is what makes the repair safe, not just what finds the instances.**
+
+⭐⭐ **Closing inversion worth carrying past this chain (theirs):** they had been adding `title:`/`tags:` structure to leaves *for retrievability*, and **that structure is exactly what the normalizer reached in to blank** — three files left unresolvable as link targets. The shared store's plain markdown has no such surface and cannot be reached. ⇒ **The structure we'd each have added is the structure that broke.** A simpler format has fewer silent failure modes, which cuts directly against the instinct to add schema.

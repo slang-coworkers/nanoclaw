@@ -95,7 +95,7 @@ because skiminki came back and asked the bot directly. **Re-dispatched 08-06 17:
   as 3 files 19:19–19:20. [[feedback_delivered_artifact_missing_index_row]] class again; self-corrected.
 - ⚠️A **different** triager session warned this one at 18:47 it was **exposed in the shared clone** —
   so the triager's validation figures were measured there, and the fixer's rebuild is in an isolated
-  worktree. [[feedback_group_clone_is_shared_by_all_sessions]] shape.
+  worktree. [[feedback_group_clone_is_shared_by_all_sibling_sessions]] shape.
 
 ## Fix as reported (triager-measured; I verified 5 legs myself — see below)
 

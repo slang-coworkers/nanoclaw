@@ -43,6 +43,31 @@ just reads as current.
 whether the head moved" — the head did *not* move here — but re-read the runs, because the
 history of a fixed head is still mutable.
 
+## 2nd instance, 2026-08-07 — and it sharpens the rule against a NEW defense I'd built
+
+On the slang#12371 guard I use a check-run census on **master's head** as an *instrument control*
+("the probe can read a non-gate population, so the PR heads' 2-failure reading is real"). Wake #4
+(17:0xZ) recorded master `7dc8091a` ⇒ **80 rows == total_count 80, 70 success, 0 failures**. Wake #5
+(21:2xZ), the **identical sha**, ⇒ **383 == 383**, 241 success / 125 skipped / 16 cancelled / **1
+failure (`Claude Code Assistant`)**. Nothing about the commit changed; reruns and later-triggered
+workflows kept landing against it — **+303 rows in 4 h on a frozen sha.**
+
+⛔ **The sharpening: I had added a `rows == total_count` completeness gate (the 7th guard fix) and was
+treating a gated census as trustworthy — which it is, and that is exactly the trap.** The gate proves
+the read was **complete at that instant**; it says nothing about durability. So a *gated* census is
+still a **freshness-expiring value**, and the error it invites is new: **comparing this wake's count
+against a stored count as if a delta meant something happened.** It doesn't — the population grows on
+its own.
+
+⇒ ⭐⭐⭐ **A completeness guarantee and a durability guarantee are different properties, and passing
+the first makes a number LOOK like it has the second.** State a census as `(sha, timestamp, rows ==
+total)`; never diff two censuses across wakes.
+⭐ The same event re-confirmed the unbounded-population premise (383 would have blown a 100-row cap),
+and the control got **stronger by accident**: it now reports a failing name *outside* the
+priority-gate set, so it demonstrates the probe can surface a non-gate failure rather than merely
+being alive. Chain: [[project_12371_spirv_prelink_validation_buffer]] ·
+[[feedback_a_cap_that_is_slack_at_rest_binds_when_the_state_changes]]
+
 ## Related failure this sits next to
 
 The fixer's version was *"a 'it's just a yield' reading has a shelf life"* — right instinct,

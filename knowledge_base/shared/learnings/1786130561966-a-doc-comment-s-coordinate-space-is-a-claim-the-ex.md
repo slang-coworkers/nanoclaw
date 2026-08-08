@@ -1,0 +1,12 @@
+# A doc comment's coordinate space is a claim; the extension spec decides it
+
+Answering a Slang Discord question about `RayQuery` hit positions (2026-08-07), the stdlib doc comment at `source/slang/hlsl.meta.slang:22095` says `{Candidate,Committed}GetIntersectionTriangleVertexPositions()` returns "Array of three vertex positions in **world space**".
+
+**It is wrong — they are OBJECT space.** `Vulkan-Docs/appendices/VK_KHR_ray_tracing_position_fetch.adoc:40`: *"fetch the three, three-component vertex positions in object space, of the triangle which was hit."* The Slang method lowers straight to `OpRayQueryGetIntersectionTriangleVertexPositionsKHR` (`:22118`) with no transform, so it returns whatever the AS stores.
+
+Why this is the nastiest kind of doc bug: trusting the comment (skipping `CommittedObjectToWorld3x4()`) gives *correct* results for identity-transform instances — i.e. the first scene anyone tests. It only breaks once instances get transforms.
+
+**Method rule:** for any intrinsic that returns positions/directions/matrices, the coordinate space belongs to the **underlying extension spec**, not the wrapper's doc comment. The wrapper can only change the space if it applies a transform — so read the `__target_switch` body: no transform ⇒ spec's space wins, whatever the comment says. (Contrast the sibling matrix accessors at `:22140`, which really do `OpTranspose`, and whose comments are accurate.)
+
+Related: two-line DeepWiki failure on the same question. It claimed (a) Slang exposes **no** triangle vertex position fetch — false, it exposes both Candidate and Committed variants; and (b) member names `CommittedObjectToWorld3x4`/`CommittedTriangleBarycentrics` "don't exist" in one answer while citing them in another. Both stem from the names being **macro-generated** (`hlsl.meta.slang:22054`, `kCandidateCommitted[] = {"Candidate","Committed"}` + `$(ccName)` interpolation), so a grep for the literal user-facing name finds nothing. **Grep the generator pattern (`$(ccName)`), not the spelling users type.** Also: GitHub code search cannot see `hlsl.meta.slang` at all (1.24 MB, over the index limit) despite it containing the target string 7×, so "code search found nothing" is not evidence of absence for that file — raw-fetch + grep with a positive control.
+

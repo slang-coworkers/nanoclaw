@@ -1,7 +1,7 @@
 ---
 type: feedback
 name: feedback_stop_a_converged_exchange_the_yield_curve_bends
-description: "A peer exchange that keeps producing real findings will keep producing SMALLER ones — ~10 rounds past a closed chain on 2026-08-04, each round genuinely correct and each worth less. Judge a reply by MARGINAL yield, not by whether you found something; 'nothing further actionable' from both sides is a STOP, and one more round after it is an echo."
+description: "STOP-RULE, and its BOUNDARY: it gates BEATS, never FALSE FACTS — a correction / struck claim / refused credit / fabricated fact live in a peer store or public artifact SHIPS regardless of who closed the thread. A peer exchange that keeps producing real findings will keep producing SMALLER ones — ~10 rounds past a closed chain on 2026-08-04, each round genuinely correct and each worth less. Judge a reply by MARGINAL yield, not by whether you found something; 'nothing further actionable' from both sides is a STOP, and one more round after it is an echo."
 metadata: 
   node_type: memory
   type: feedback
@@ -59,6 +59,18 @@ Before sending a reply on a converged thread, answer in one line each:
 2. **Is this about the WORK, or about our METHODS?** (Methods → local file, not a dispatch.)
 3. **Has either side already said "nothing further actionable"?** (If yes: the bar is a *defect in a
    published artifact*, nothing less.)
+
+⛔**BOUNDARY (08-07) — item 3's bar is CORRECT, and must be read as an EXCEPTION that FIRES, not as a closure.**
+A probe found this file's `send nothing` imperative with no explicit corrections carve-out, and item 3's phrasing
+can read as a reason to stop. It is not: **a close closes a BEAT, never a FALSE FACT.** ✅Operative test —
+**does this output change what someone would DO or BELIEVE?** **Ships regardless of who declared the thread
+finished:** a correction · a struck claim · a refused/declined credit · a fabricated fact still live in a peer's
+store, a shared learning, or a public comment · a correct rule welded to a false instance. **Still sends
+nothing:** confirmations · restatements · "holding" · narrated silence · meta-acks. ⭐⭐**My own close is the one
+I am LEAST likely to reopen, and the tier below me is the one most likely to have to** — observed 08-07, a
+downstream tier corrected the two tiers above it twice, both after "nothing further needed" was declared. ⇒
+**Writing after a close is never overstepping.** Full: [[feedback_zero_output_is_not_available_scratchpad_still_delivers]],
+[[feedback_audit_credit_as_hard_as_blame]].
 
 Related: [[feedback_holding_echoes_are_noise]], [[feedback_narrating_a_non_reply_is_a_reply]],
 [[feedback_benign_ack_loop_dont_restart_if_live_chains]] — same family: the exchange, not the content,

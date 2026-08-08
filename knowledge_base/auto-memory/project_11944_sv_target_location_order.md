@@ -1,6 +1,6 @@
 ---
 name: project_11944_sv_target_location_order
-description: "#11944 SV_Target<N> out-of-order location — draft PR #11945; jkwak wants GENERIC (uninformed); gated on his informed re-decision"
+description: "#11944 SV_Target<N> out-of-order location — PR #11945 NON-DRAFT, CI FULLY GREEN (44/0/5) at 306c974356, and a MEASURED silent miscompile is still in the branch (aggregate+scalar SV_Target). CI structurally cannot catch it. DO NOT report green as readiness; merge operator-gated, awaiting jkwak."
 metadata: 
   node_type: memory
   type: project
@@ -22,3 +22,38 @@ shader-slang/slang #11944: fragment-output struct with `SV_TargetN` declared out
 - **RE-DISPATCHED to slang-fixer 07-27** on canonical thread `gh-issue-shader-slang/slang-11944`, `<github-post-authorized />` — execute the option-(a) reply now, verify the E39023 fact against a fresh compiled baseline (not reasoned — the SM-tier lesson), then build jkwak's resulting pick. Do NOT relay a decision; present tradeoff → jkwak picks. Merge OPERATOR-gated.
 
 Precision lesson applied ([[feedback_verify_regression_claims_at_precision]]): a symmetric VS-out/FS-in receipt proves today's decl-order is self-consistent but NOT that suffix→location desyncs matching (symmetric pair matches under either scheme; desync only in ASYMMETRIC producer/consumer). Both triager comment + fixer reply hedged accordingly. DeepWiki falsely claimed user-varyings derive location from suffix — refuted by compiled binary; do not cite.
+
+## ⛔⛔⭐⭐⭐ 2026-08-07 03:23Z — **DO NOT MERGE. CI IS FULLY GREEN AND A MEASURED SILENT MISCOMPILE IS IN THE BRANCH.**
+
+**MINE-VERIFIED at head `306c9743562c9700f3994dc1414d8acf6ffa12ae` (PR #11945):**
+```
+conclusions {success: 44, skipped: 5}   0 non-success, no PENDING bucket
+test-falcor / Test (Falcor)       completed/success   attempt 2, started 03:01:16Z
+test-falcor / Test (Falcor Perf)  completed/success
+skipped set = retry-on-gpu-failure · Claude Code Assistant ×2 · bridge · review   (bot/bridge legs, NOT builds)
+non-skipped build/test check-runs = 30
+isDraft=false · mergeStateStatus=BLOCKED · reviewDecision=REVIEW_REQUIRED · reviews=20 · comments=0
+```
+⚠️Fixer reported **39** non-skipped build/test check-runs; **I measure 30** on the same head with
+`^(build|test)` — an attempt-set / prefix-definition difference, not a contradiction. **Either way the skipped
+set contains no build or test leg, so "44 success" is NOT a skip-wall.** Falcor flake attribution confirmed:
+**attempt 2 green on an unchanged tree** is what #12145 looks like.
+
+⛔⭐⭐⭐**THE HAZARD IS THE GREEN ITSELF. Every automated signal now reads ready** — CI green,
+`behind=0`, non-draft, `pr: non-breaking`, 4 of 5 threads resolved *by jkwak himself* — **while the aggregate +
+scalar `SV_Target` defect is still in the branch** (silent wrong `location = 2` where master gives `1`, or
+E39023; Khronos-only; verified against clean master). `BLOCKED` is **only** `REVIEW_REQUIRED`; **nothing
+mechanical is holding this PR.** The fixer's "please don't merge" comment is the sole flag.
+
+⇒ ⛔**CI STRUCTURALLY CANNOT CATCH IT: no Khronos test exercises shape 6** (aggregate `SV_Target` beside a
+scalar) — confirmed with the *controlled* detector, after an uncontrolled one had falsely **exonerated** it
+(see [[feedback_optimized_lane_can_be_inert_for_the_fix]]). **The green tally is exactly as blind as the
+earlier 569/569 was.**
+⇒ ⭐⭐⭐**BLOCKED INFERENCE for any supervisor tick reading this chain: "CI green + behind=0 +
+non-draft" MUST NOT be reported as readiness here.** The CI reading is *correct* and *irrelevant* to the open
+defect — a green dashboard invites exactly the wrong conclusion, and this row exists to stop it. Cf.
+[[feedback_a_field_named_like_a_state_is_not_a_test_for_that_state]].
+
+**RESUME:** jkwak's direction on the aggregate-`SV_Target` fix approach. Fixer is not self-resolving and is
+pushing nothing further. **Merge stays OPERATOR-gated — do not authorize a draft→ready flip or a merge on
+the strength of CI.**

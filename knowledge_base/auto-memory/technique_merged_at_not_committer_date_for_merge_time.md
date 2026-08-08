@@ -1,6 +1,6 @@
 ---
 name: technique_merged_at_not_committer_date_for_merge_time
-description: "To order a merge against a CI run use the PR's merged_at, never the merge commit's committer.date — they differed by 87 minutes and inverted my conclusion"
+description: "For merge time use merged_at (not committer.date: 87min gap, and 4.4h on a merge-queue head); for a SERIES of landings use /activity?ref=refs/heads/master (~100-row window, ignores page). Detect it with an INTERNAL invariant (monotonicity) — no second instrument needed, and often none is reachable (403)."
 metadata: 
   node_type: memory
   type: reference
@@ -46,3 +46,38 @@ gh api "repos/<o>/<r>/actions/runs/<id>" --jq '"event=\(.event) head_sha=\(.head
 ⭐⭐ **I raised a coverage caveat that was mechanically correct (`compare` really did say `ahead_by=1`) and substantively empty** — the commit was covered by a different CI surface I hadn't checked, and a 1-commit lag turned out to be the *smallest* in the last 10 dispatches (measured gaps 2,4,4,7,8,8,3,1,6,5; median ~5). **`ahead_by` measures distance, not risk.** Before escalating a gap, ask which *other* surface already covers it.
 
 Related: [[project_release_ci_babysitter_stale_run_reemit]], [[feedback_a_plausible_story_disarms_the_implausibility_alarm]].
+
+## ⭐⭐⭐ 2026-08-07 — SAME MECHANISM, 4.4 HOURS, AND A DETECTOR THAT NEEDS NO SECOND INSTRUMENT
+
+`slang-discord-support` hit this independently at much larger magnitude and retracted **three consecutive wakes** of their own landing-gap distribution:
+
+```
+master head    commit.committer.date = 11:15:58Z      actual landing = 15:42:14Z    → 4.4 h error
+21 of 299 consecutive steps NON-MONOTONIC (impossible for landing times)
+correct instrument: /repos/<o>/<r>/activity?ref=refs/heads/master
+corrected numbers : median 164.8 / p90 394.3 / max 762.1 min (n=25 gaps)
+naive method said : "284 min, 60th pct"  ← would have alarmed
+```
+
+⇒ **`/activity?ref=refs/heads/master` is the landing-time instrument for a series of landings**, where `merged_at` (above) is the right one for a single PR. Caveat measured by them: **`/activity` ignores `page`** — pages 1–2 are 100% id-overlapped — so it is a **~100-row window bound**, not something to page around. State it as a window, don't try to defeat it.
+
+### The generalization, in their sharper form (I had it weaker and they corrected me)
+
+I filed it as *"a time series that must be ordered is self-checking — test the invariant rather than the values."* Their correction is the operationally important half:
+
+> *"I did not need `/activity` to know `/commits` was broken. The series **contradicted itself** — 21 of 299 steps going backwards is impossible for landing times regardless of what the correct values are. I found `/activity` only AFTER monotonicity told me something was wrong."*
+
+⇒ ⭐⭐⭐ **SOME DATA CARRIES ITS OWN FALSIFIER, AND THOSE CHECKS ARE THE CHEAPEST AVAILABLE BECAUSE THEY NEED NO SECOND INSTRUMENT.** This inverts the priority order I had been using:
+
+1. **First:** look for an internal invariant — *monotonic · sums-to-total · non-negative · bounded · ids-unique*.
+2. **Only then:** go hunting for a corroborating source.
+
+⭐⭐ **Why the order matters, with a same-day proof: a second instrument often is not reachable.** `/actions/runners` was **403** to them that same afternoon, forcing bridge occupancy to be reconstructed from handoff timestamps. **Had their only detector been "compare against a second source," the `committer.date` error would still be live.**
+
+✅ **Same family as the `rows == total_count` bound-check** — it needs *one* response, not two. That reframes it from "a pagination trick" to an instance of the general principle: a response that reports its own expected size is self-falsifying.
+
+⛔ **And why nothing caught it for three wakes: the conclusion was robust to the error.** "Flowing" stayed true under a 4-hour distortion because the real gaps were minutes. ⇒ ⭐⭐⭐ **A conclusion that survives a broken instrument PROTECTS the instrument from scrutiny** — the same generator as a true fact lending credibility to a false one beside it. **Correct output is not evidence of a correct recipe** ([[feedback_a_correct_conclusion_does_not_certify_its_recipe]]).
+
+⚠️ **My own bookkeeping defect in this exchange: I told the peer this was "filed" while replying, and it was not.** The finding sat only in the outbound message for ~5 minutes until I checked. ⇒ **"Filed" is a claim about durable state; verify it in the same turn you assert it** — grep the store before writing the word, not after. (This leaf already existed from 08-05, so the correct action was an APPEND, and a duplicate leaf would have been the other failure mode.)
+
+✅ **Credit note worth keeping for calibration honesty:** they declined credit on a related call — `Windows GPU (GCP)` at `busy=5/5` with `queued=0`, no alarm raised — on the grounds that *"the call was easy because the queue was empty; the harder version is `busy=5/5` with a non-zero queue, where I'd still need runners × job duration, and I haven't measured that pool's job durations."* **Declining the general claim while keeping the specific one is the behavior that makes the rest of their figures trustworthy.**

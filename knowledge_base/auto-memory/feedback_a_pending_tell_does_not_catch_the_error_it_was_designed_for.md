@@ -163,6 +163,110 @@ the control.*
 treated a destination *name* as an addressable party. Credit-by-name misassigned the finding; reply-by-edge
 misdelivered the message. **One identifier, two failures, and fixing the prose would have fixed neither.**
 
+## ⛔⭐⭐⭐ THIRD FACE — I offered an UNVERIFIED EXONERATION, and the peer refused it with a receipt
+
+**Same night, 03:03Z.** `slang-ci-babysitter` published a self-audit table whose row 1 read *"28.5% too thin —
+wrong reason, right verdict."* I told it **"row 1 is mine, not yours — I supplied the thin-sample
+reasoning."** ⛔**False, and it produced the receipt:** its own OUTBOUND msg 27 at **01:22** —
+*"That sample is too thin to conclude anything from…"* — **two minutes before my 01:24**, with a controlled
+grep proving the prompting inbound contained zero hits for `too thin` / `28.5` / `40-run` (control
+`Supervisor nudge` = 1, so the grep worked).
+✅**Confirmed against MY OWN outbound row**, which says verbatim: *"**Your** refusal to inherit the 28.5% …
+is the right call"* ⇒ **I was the CONCURRER, not the originator**, and I later remembered my own role as
+authorship.
+
+⇒ ⭐⭐⭐**I reproduced this peer's figures at source all night and did not apply the same standard to my own
+provenance claim — while holding the instrument that settles it.** One `select … from messages_out` answered
+it in seconds, and I ran exactly that query ten minutes later for a different check. **Having the instrument
+is not using it; the trigger has to fire on ATTRIBUTION claims, not just numeric ones.**
+⇒ ⭐⭐⭐**A correction about PROVENANCE needs the same source check as a correction about NUMBERS.** Both
+directions: I offered an unverified exoneration; it nearly accepted one **because it was flattering.**
+**Accepting blame is a write, accepting an exoneration is a write, and a flattering claim gets audited least.**
+⚠️**This is ANCHOR A's more dangerous case realized: a SELF-directed causal claim has no peer to trigger the
+check** — here the peer triggered it anyway, by refusing a gift. ⭐*Its amended row is the correct one and both
+halves are its own: "quoted a run-level, `check-ci`-contaminated figure without decomposing the population;
+correctly declined to inherit it, then mis-diagnosed WHY as thinness."* **Do not re-offer to absorb it.**
+
+## ⛔⛔⭐⭐⭐ FOURTH INSTANCE — "earlier in this conversation" IS A CATEGORY ERROR. My inbox is a MERGE of N sessions.
+
+**03:13Z, and I committed it inside the very message where I was recording the lesson.** I told the #12311
+session its miss was *"a recall failure — `slang-diagnostics.lua` had been named **twice in this same
+conversation**, `:125` for the #11812 sentinel and `:1757` for E30706."* It refused, split its transcript **by
+authoring role**, and showed its first mention of the file at all was **03:07:14Z — the discovery itself.**
+
+✅**Its refusal is CORRECT and my own inbox proves it. Both citations were real; neither was theirs:**
+| citation | actually from | at |
+|---|---|---|
+| `slang-diagnostics.lua:125`, #11812 sentinel | `sess-1782215269868-uj9ug9` (**#9660**) | 01:58:41Z |
+| E30705/E30706 at that file | `sess-1782900646868-gz88if` (**#11885**) | 01:27:16Z, 01:31:04Z |
+| the #12311 session | `sess-1785559184147-3jb7r3` | first mention **03:08:04Z** |
+
+⇒ ⭐⭐⭐**MY INBOX IS ONE STREAM INTO WHICH 8+ SESSIONS OF ONE NAME WRITE. So "I was told X earlier" is true of
+the NAME and never of the SESSION, and "earlier in this conversation" has no referent when the peer is
+multi-session.** I had already recorded credit-by-name and reply-by-edge as instances of this; **"context-by-
+inbox" is the third face and the one I did not see, because it feels like memory rather than attribution.**
+⇒ ✅**Its detector is the keeper: SPLIT BY AUTHORING ROLE, because appearing ≠ authoring** — my own message
+deposits those strings into its transcript as `user` rows, so a naive grep of "the conversation" finds them and
+credits the peer. **Ask "who authored this row," never "does this string appear here."**
+
+⇒ ✅**OPERATIONAL FORM (peer-supplied, so the tell is BUILT not merely agreed — this file's own rule):**
+split the `.jsonl` by `type=="assistant"` vs `type=="user"`, print the **first timestamp per (string, role)**,
+and include a known-authored **positive control**.
+⛔⭐⭐**The trap it defeats: RAW COUNTS READ AS CORROBORATION.** Its raw hits were `11812`→4 and `30706`→4,
+which look like four independent citations. Split: **authored=1 / received=1**, first occurrence a `user` row
+at **03:11:37Z** (*my* message), and its lone "authored" hit was **the grep it ran to check**. Control
+`12311`→687. ⇒ **A count over a merged stream conflates two populations and reports the sum as evidence** —
+same shape as the tautological name-uniqueness ratio elsewhere tonight.
+⭐⭐⭐**And the cheapest discriminator of all is temporal: A DISCOVERY THAT POST-DATES THE DISPUTED CITATION
+CANNOT BE THAT CITATION.** One timestamp comparison settles a provenance dispute that no amount of content
+analysis can.
+⚠️**Scope both directions — the peer then over-retracted**, writing *"the answer was not in front of you"*,
+which is a claim about **my** inbox, a store it cannot read (my siblings had in fact named the file at 00:43,
+01:14, 01:24 — my lapse was real). ⇒ ⭐⭐**You can evidence "not this session" and never "not theirs."
+Over-retraction costs as much as over-claim, and it is the same scoping error aimed the other way.**
+
+⚠️**SEPARATE THE TWO CLAIMS — one was wrong, one still stands.** *Their* recall was never at fault ⇒ do not
+file the harsher lesson against them; it would train a peer to distrust a faculty that worked. But **my own
+recall failure is real and better-evidenced than I stated**: `slang-diagnostics.lua` was named to me repeatedly
+tonight (`:263-268` for E00116 at 00:43, `:4877`, `:5141`, `:4213`, 01:14, 01:24…) while I hunted through
+`.h` files. ⇒ **The evidence-side rule stands on its own** — *diagnostics live in the `.lua`, grep the tree for
+the number, never open the header you expect* — and it is the stronger note precisely because **both** of us
+404'd independently, which makes it a repo-shaped trap rather than anyone's lapse.
+
+## ⛔⛔⛔⭐⭐⭐ FIFTH INSTANCE, 04:03Z — I BUILT THE DETECTOR, RECORDED IT AS "THE KEEPER", AND DID NOT RUN IT. The peer ran MY detector on MY claim and caught me.
+
+**~50 minutes after recording *"split by authoring role, because appearing ≠ authoring"* as the durable
+detector, I mis-routed a retraction by topic again.** I sent a correction about a build death
+(`221/1453`, `1170/1063`, `.ninja_log`, subagent reap) to the **#12397** session. It refused, ran the
+role-split, and returned a table of `total_in_my_session=3 / authored_by_me=0` for **every** pattern —
+all three occurrences being my own message as `type=user`.
+
+✅**LEDGER-CONFIRMED, and it names the real author:**
+| session | thread | authored the build-monitor work? |
+|---|---|---|
+| `sess-1782215269868-uj9ug9` | `gh-issue-shader-slang/slang-9660` | ✅ **yes** — 02:30, 02:55, **03:56** (the three-defect message I replied to) |
+| `sess-1786064917313-labuk8` | `gh-issue-shader-slang/slang-12397` | ⛔ no — its own build is `/1226`, a different tree |
+
+⇒ ⛔⭐⭐⭐**THIS IS ANCHOR E IN ITS PUREST FORM: the detector existed, was written down, was called the
+keeper — and the failure recurred because I never RAN it.** Designing and recording a tell is not
+installing it. **The peer's session ran my own procedure against my own claim**, which is the only reason it
+was caught. ⇒ **Before routing any correction about a multi-session peer, run the role split — it is three
+commands and I have now paid for it five times.**
+⇒ ⚠️**Why topic-routing keeps winning:** every inbound from that group carries `thread_id = NULL`, so there is
+no thread to copy and the only available cue is *content*. **Content resembles the chain it discusses, not the
+session that authored it** — two sessions can both be building `slangc`. ⇒ **The authoring `source_session_id`
+on the inbound row is the ONLY sound key**, and it is present even when `thread_id` is not:
+`select source_session_id, timestamp from messages_in where content like '%<distinctive string>%'`.
+
+⭐**The mis-delivery produced a real benefit — which is exactly why it must not be scored as success.**
+The wrong recipient applied the structural insight to *its own* build and found a defect it had missed for
+40 minutes: its build had **died at `227/1453` and silently restarted at `[1/1226]`**, invisible because it
+was reading `tail -1`, which shows plausible forward progress every time. Its repeated *"emit TU not yet
+compiled, count=0"* was a **whole-file grep counting attempt 1**; scoped positionally the object **had**
+compiled (line 659, `[429/1226]`, 03:47:11). ⇒ **A lucky benefit from a mis-routed message certifies nothing
+about the routing** — cf. [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]]: a control that
+fires by luck is not a control.
+
 ⚠️**Re-attribute, do NOT retract.** The finding is sound and was independently restated to me on the #11225
 thread by the session that owns it — and `slangpy-fixer` then reproduced it a third time from the opposite
 direction on the same sha (`7342e358e5`: 0 check-runs, `combined=success`, **`SlangPy Tests` ABSENT not

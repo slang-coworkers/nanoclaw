@@ -1,5 +1,5 @@
 ---
-name: ""
+name: technique_ab_suite_delta_four_dispositions
 description: "A/B suite delta protocol for a change that adds a diagnostic: same-binary baseline vs treatment, then FOUR dispositions per delta test (real finding / predicate too broad / flake / pre-existing) — re-run individually on BOTH binaries before classifying."
 metadata: 
   node_type: memory

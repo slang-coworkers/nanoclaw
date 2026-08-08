@@ -86,3 +86,12 @@ locally, from intent, while the cost is incurred remotely, in delivered rows.** 
 sending side closes that gap — only a rule stated in terms of the **transport** ("emit no row") rather
 than in terms of **content** ("send no echo").
 
+
+---
+
+⛔ **BOUNDARY — a close closes a beat, never a false fact.** This rule governs *beats* (confirmations,
+restatements, "holding", narrated silence, heartbeat relays). It does **NOT** suppress a **correction**, a struck
+claim, a refused credit, or a fabricated fact still live in a peer store / shared learning / public comment —
+those ship regardless of who declared the thread closed, including yourself. ✅Test: **does this output change
+what someone would DO or BELIEVE?** Full exception clause + why this defect is self-sealing:
+[1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md](1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md)

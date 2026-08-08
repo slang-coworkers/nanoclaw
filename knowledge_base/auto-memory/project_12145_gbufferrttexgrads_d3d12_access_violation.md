@@ -91,6 +91,120 @@ every genuine red into a coin-flip. The retry must fire **only when GBufferRTTex
 failure** (hence the `-x` report), and must still fail the job if anything else failed. jkwak scoped
 it correctly in prose (*"just for this specific test"*) — preserve that scoping in the implementation.
 
+## ⛔⛔⛔ 2026-08-07 — THE DELIVERED DIFF IS DEAD. `test-falcor` WAS MIGRATED TO AN OPAQUE RUNNER BINARY 9.5 h BEFORE THE MAINTAINER REPLIED.
+
+**Babysitter-found, Main-verified at every step.** Commit **`eea5b2753`** = *"ci: gate Falcor bridge
+test-falcor behind falcor-ci approval environment (#11915)"*, **`2026-08-07 10:04:07 +0000`**. The
+`test-falcor` job at HEAD is now, in full:
+
+```yaml
+  test-falcor:
+    runs-on: [Linux, self-hosted, X64, falcor-bridge]   # was: [Windows, self-hosted, falcor]
+    environment: falcor-ci                              # vet-and-approve gate, reviewers = ci-approvers
+    steps:
+      - name: Run external CI
+        run: /opt/slang-ci/run-external-ci
+```
+
+- `grep -c run_image_tests .github/workflows/ci-falcor-test.yml` → **0 (rc=1)**. The command the gate
+  parsed is gone.
+- `grep -rl 'run-external-ci'` across the repo → **only the workflow itself**. `/opt/slang-ci/run-external-ci`
+  is a **runner-image binary, not a tracked file** ⇒ **there is no in-repo layer the stdout-parsing gate can
+  live in.** Not a preference change — the patched layer ceased to exist.
+- ⚠️ Size correction: babysitter said 5,600 B → 3,456 B; the parent is actually **6,180 B** → 3,456 B.
+  Direction and conclusion unaffected.
+
+✅**Still merge-gating — re-verified post-migration at `ci.yml:677`** (job def now at `ci.yml:613`). So the
+cost mechanism is unchanged even though the observability is gone.
+
+⛔**SCOPE THE OBSERVABILITY LOSS PRECISELY — I OVERSTATED IT TO THE OPERATOR AND THE BABYSITTER CORRECTED
+ME.** I escalated it as degrading "Falcor classification capability" generally. **It is narrower, and the
+narrow version is both true and serious** — over-claiming invites the operator to discount it. Measured at
+HEAD vs `eea5b2753^`:
+
+| capability | status after 10:04Z |
+|---|---|
+| job red/green | ✅ retained |
+| **which test failed + its crash code** | ⛔ **GONE** — this is the whole loss |
+| which *step* failed | ⚠️ **degraded to worthless**: step count **7 → 1** (`Add Git Bash` / **unnamed `uses: actions/checkout`** / `Download Slang build` / `setup-falcor` / `Copy Slang to Falcor` / `falcor-unit-test` / `falcor-image-test` → **`Run external CI`**) |
+| `Test (Falcor Perf)` sibling | ✅ **untouched** — still `[Windows, self-hosted, perf]`, 3 steps, `falcor_perftest.exe`; `git diff` on the perf job = **0 lines** |
+
+⚠️**One refinement to the babysitter's own scoping:** it said *"I can still see which step failed."*
+Technically true but now vacuous — with a single step, "which step" and "the job failed" are the same bit.
+So the honest statement is: **red/green survives; everything finer than the job is gone; Perf is unaffected.**
+⭐⭐**Both of us mis-scoped in the same exchange, in opposite directions — I too broad, it too generous —
+which is why a capability claim needs a measured table, not an adjective.**
+
+⭐⭐⭐**THE INSTRUMENT STOPPED MEASURING, AND THAT IS THE MOST IMPORTANT FACT ON THIS ISSUE NOW.** The new
+logs cannot name individual tests, so **every signature-keyed detector in this file — the decimal
+`3221225477` probe, the test name, the HSigmoid discriminator — is blind by construction on
+post-10:04Z runs.** ⇒ **A quiet #12145 after 08-07T10:04Z is NOT evidence the flake is gone.** The
+babysitter correctly refused to call it fixed.
+
+⛔**RATE FIGURES MUST BE SPLIT AT THE 10:04Z BOUNDARY — a single day-rate straddles an infra change and
+describes neither regime:**
+
+| window | fail/tested | rate |
+|---|---|---|
+| pre-10:04Z (Windows SLANGWIN) | 4/22 | 1 in 5.5 |
+| post-10:04Z (Linux bridge) | 1/15 | 1 in 15 |
+
+**All 4 confirmed-signature failures are PRE-boundary.** The lone post-boundary failure died at
+`Run external CI` naming no test — **different class, do not merge it into this signature's count.**
+The maintainer's *"roughly 1 in 6"* matches the babysitter's `merge_group` slice exactly (2/12); its
+whole-day 5/37 = 1 in 7.4 is the straddling figure and was correctly not published as this flake's rate.
+An unattributed 2.4-day "1 in 4.5" was likewise withheld.
+
+⭐⭐**HOST-SKEW LEAN RETRACTED — refuted by a same-host pair.** SLANGWIN5 4/10 vs SLANGWIN4 0/12 looked
+suggestive; run **`31137238034` failed SLANGWIN5 att1 and passed SLANGWIN5 att2**. ⇒ **a pass/fail pair on
+ONE host refutes host-bound-ness directly**, so the maintainer's *"not machine-specific"* is right and the
+skew was scheduler placement. Cheapest possible discriminator for any "is it host X?" claim.
+
+⛔**`GBufferRTTexGrads_vulkan` DOES NOT EXIST in the suite** ⇒ *"d3d12-only"* is a **matrix property, not an
+API-specific discriminator.** This file's earlier "D3D12 only, all other ~100 tests pass on D3D12+Vulkan"
+framing overstates it; the test simply has no Vulkan variant to fail.
+
+⭐⭐**THE PROCESS LESSON — a delivered artifact can be invalidated by an unrelated commit while the chain
+sits open, and nothing notifies you.** The babysitter caught it only because it re-checked the file to
+verify the maintainer's `--run-only` datum, and a `grep` returned rc=1. Had it replied from its 08-05
+checkout it would have defended a patch that cannot apply, to the maintainer who would have to apply it.
+⇒ ✅**Before defending or re-asserting a delivered diff, re-verify the target file at live HEAD.** Same
+family as [[feedback_stale_index_describes_a_real_deleted_file]] — except here *we* were the stale index.
+
+## ⭐⭐⭐ 2026-08-07 19:40Z — MAINTAINER `jkiviluoto-nv` REPLIED (comment `5221307479`). Four new facts; retry approach CORROBORATED independently.
+
+Main-verified: 474 B, `2026-08-07T19:40:33Z`, issue now at **7 comments**, still OPEN, assignee
+`jkiviluoto-nv`. Verbatim substance:
+
+1. **Reproduced on hardware DIFFERENT from the original report's runners ⇒ "does not look
+   machine-specific."** Independently confirms this file's standing `⚠ HOST-INDEPENDENT` note (which was
+   derived from SLANGWIN4-vs-SLANGWIN5 reds). ⇒ **a #12145 red is still not host evidence.**
+2. **`Mogwai.exe exited with return code 3221225477` (`0xC0000005`) — "confirms the access violation
+   directly rather than by inference."** Note the maintainer wrote **both** forms; the store's grep rule
+   is unchanged (**probe DECIMAL `3221225477` or the test name — the hex form returns ZERO in logs**).
+3. **Sole failing test in the run — everything else passed.** Independently reproduces the selectivity
+   discriminator, and is exactly the precondition the delivered gate keys on.
+4. ⭐⭐⭐**"It failed with image comparison disabled, so the process crashed rather than producing a
+   mismatched image."** This is the strongest causal statement on the issue to date: with `--run-only`
+   there is no reference-image compare, so the failure **cannot** be a tolerance/reference-staleness
+   artifact. It is a genuine process crash — which retires the whole "bad or stale reference image"
+   hypothesis class.
+5. **"Rate today was roughly 1 in 6 runs."** First maintainer-side frequency figure.
+
+⭐⭐**ARITHMETIC CROSS-CHECK — two independent methods agree, which is the real corroboration:**
+if p(fail)≈1/6 and attempts are independent, recovery-on-one-retry = **1−p = 83.3%**. The babysitter
+measured **4/5 = 80.0%** from actual attempt-pairs. **Two routes, ~3 points apart** ⇒ the retry premise
+holds on the maintainer's own number, not just ours. Residual after one retry ≈ (1/6)² = **1 in 36**;
+after two ≈ 1 in 216. ⚠️**Independence is an ASSUMPTION** — a per-host or per-boot correlated cause would
+break it, and the maintainer's own "different hardware" datum argues the cause travels with the test, not
+the machine. Do not present the 1-in-36 as measured; it is a projection from one day's rate.
+
+⚠️**A 6th comment existed that I had not seen:** bot recurrence log `5213306803` (2026-08-07T06:20:15Z) —
+#11709 run `31119388554` attempt 2 on **SLANGWIN4**, `FAILED (6.5 s)`, HSigmoid passing both APIs,
+`Test (Falcor Perf)` passing same host/attempt. Cost since 07-31: **28 declined-rerun decisions across 14
+PRs + 9 reruns fired across 7 PRs** — largest live babysitter-work bucket. ⇒ ⭐⭐**Re-read the live comment
+list before replying to a chain I believed closed; my last verified count was 5 and the true count was 7.**
+
 ## ✅ 2026-08-06 01:25Z — DELIVERED. Retry diff posted to `jkiviluoto-nv`; retry efficacy MEASURED.
 
 `slang-ci-babysitter` drafted + delivered it (comment **`5199334901`**, 01:25:42Z, 7,777 B, author

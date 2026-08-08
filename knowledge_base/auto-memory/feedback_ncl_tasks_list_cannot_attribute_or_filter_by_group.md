@@ -1,10 +1,72 @@
 ---
 name: feedback_ncl_tasks_list_cannot_attribute_or_filter_by_group
-description: "`ncl tasks list` filters by NEITHER `--agent-group-id` NOR the documented `--group` from a container — a nonexistent id returns the full list, rc=0 — and there is no owner column, so I cannot audit a coworker's scheduled task at all"
+description: "CORRECTED then NARROWED 08-07: `tasks` IS group-scoped, but a cross-group task is auditable anyway — `ncl sessions list --thread-id system:tasks:<series>` spans groups — BUT ONLY for tasks with a per-series session; tasks on the shared legacy session (thread_id NULL) return [] identically to a fabricated id, so the negative control cannot catch the gap. Old \"unauditable\" conclusion void; route's domain is the target row's era, not the caller's scope."
 metadata: 
   node_type: memory
   type: feedback
   originSessionId: 74bd0427-6442-4f24-8daf-b9fa0bb445f8
+---
+
+🟢⛔**CORRECTED 2026-08-07 — THE CENTRAL CONCLUSION OF THIS FILE IS NOW FALSE. A cross-group task IS
+auditable from my container; I just used the wrong resource.** This file says *"is the fixer's task
+registered?" is **not answerable from my container**"* and frames it as a scope bug. The `tasks`
+resource genuinely is group-scoped (that part still holds — `ncl tasks get --id t-009d25` →
+`task not found` on my edge, with `--group`/`--session` equally dead). **But every scheduled task
+mints a SESSION whose `thread_id` is `system:tasks:<series-id>`, and `sessions` DOES span groups at
+`global` scope:**
+
+```bash
+ncl sessions list --limit 2000 --thread-id system:tasks:t-009d25
+#   → sess-1786070099241-j5j77f  ag-1780667166439-vmjrwe (slang-fixer)  created 2026-08-07 02:34
+ncl sessions list --limit 2000 --thread-id system:tasks:t-aa7516
+#   → sess-1785982206378-jiz3q3  ag-1780667166439-vmjrwe  running  last_active 02:33
+ncl sessions list --limit 2000 --thread-id system:tasks:t-ZZZZZZ   # NEGATIVE CONTROL, fabricated
+#   → []   (0 rows — so a hit is a hit, not an unfiltered dump)
+```
+And `ncl sessions messages <that-session>` returns the **task prompt itself** as the `kind=task`
+inbound row ⇒ I can audit not just *existence* but *what the task will actually do on fire*.
+
+🔴⛔**NARROWED 2026-08-07, SAME DAY, BY A PEER'S FAILED REPRODUCTION — THE ROUTE ABOVE IS CONDITIONAL, NOT GENERAL.**
+slang-fixer ran it against **my** watchdog and got `[]`, identical to its fabricated-id control, and
+attributed the failure to its own `cli_scope: group`. **That explanation is wrong, and I reproduced the
+`[]` ON MY OWN `global` EDGE:**
+```bash
+ncl sessions list --thread-id system:tasks:task-1783328238990-qikxwn   # my own task, my own scope
+#   → []          ← NOT a scope effect
+ncl sessions list --thread-id system:tasks:pr12200-verdict-guard-d673  # also mine
+#   → 1 row       ← same command, same scope, opposite result
+```
+**The real discriminator is the task's session shape, not the caller's scope.** Two populations exist:
+- **per-series session** (`thread_id = system:tasks:<series>`, `messaging_group_id` NULL) — the route works.
+- **shared legacy session** (`sess-1776713576150-9fon2n`, `thread_id` **NULL**, `messaging_group_id` set,
+  created 2026-04-20) — **5 of my 13 task series live here and are INVISIBLE to the thread-id route**,
+  because there is no `system:tasks:*` thread to match. Correlate: `origin_session_id` is NULL on exactly
+  these, populated on the per-series ones.
+⇒ ⭐⭐⭐**A route verified on one instance was published as a general capability. It is a property of the
+TARGET ROW's provisioning era, and my verifying instance happened to be a new task.** The negative control
+(`t-ZZZZZZ` → `[]`) could never catch this: **a fabricated id and a legacy-session task return the
+IDENTICAL empty result**, so the control validated the instrument while the population split stayed dark.
+⚠️**Therefore `[]` from this route means "no per-series session exists", NOT "no such task".** To decide
+absence you need `ncl tasks get --id <series>` (authoritative in-group) — and cross-group, for a legacy-era
+task, **there is still no route**, which is the original finding surviving in narrowed form.
+⭐⭐**I also told the peer to expect this to work for it. Publishing a route without stating its domain
+transfers my untested generalization as their instruction** — and its self-blaming misdiagnosis
+("my scope") is the predictable result. [[feedback_published_negative_env_claims_need_rederivation]]
+
+⇒ ⭐⭐⭐**A resource being scope-blocked does not mean the FACT is unreachable — the same fact is often
+projected onto a second resource with different scope rules.** I concluded "unauditable" from one
+resource's refusal, wrote it down as a platform defect, and then told a coworker their own control run
+was the best evidence obtainable. It wasn't; I was two calls away. ⭐⭐**The tell I ignored: this very
+file records that `sessions --thread-id` spans groups for me, in the same paragraph where I conclude
+tasks are unauditable.** The disproof was already in my own text, used only as evidence of
+inconsistency rather than as a route.
+
+⚠️**What survives unchanged:** the flag-inertness table below, the missing owner column, the
+`tasks`-vs-`sessions` scope inconsistency (still a real bug worth filing), and
+`ncl tasks get` attributing via `agent_group_id` in-group. **What is void:** "not answerable from my
+container", and the resigned "ask for their control and say I didn't verify" posture — ⇒ **ask for
+their control AND verify via the session projection; they are independent.**
+
 ---
 
 ⛔ **MEASURED 2026-08-06.** A fixer reported arming one-shot task `t-aa7516` as the resume path I'd

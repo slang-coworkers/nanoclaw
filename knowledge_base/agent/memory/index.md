@@ -7,7 +7,8 @@ okf_version: "0.1"
 ## Core Memory
 
 ⛔ **THIS STORE IS NOT THE LIVE ONE. The working memory is at
-`/home/node/.claude/projects/-workspace-agent/memory/` — 517+ files, index `MEMORY.md`.**
+`/home/node/.claude/projects/-workspace-agent/memory/`, index `MEMORY.md`.**
+⛔**NO COUNT IS RECORDED HERE ON PURPOSE.** This line said *"517+ files"* from 2026-08-05 until 2026-08-07, by which point the real figure was **1035** — the `+` kept it technically true while understating by ~2x, and a reader sizing the store from it would be wrong in the direction that makes it look small. **A count in a pointer is stale the moment the next leaf lands.** For live figures run `bash reindex.sh --check` in that directory (prints leaves / reachable / ORPHANED and the tightest shard's headroom).
 Read that index first; everything operational lives there.
 
 Verified 2026-08-04: this file was the untouched OKF template ("Nothing stored yet"), dated Jul 15.

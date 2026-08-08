@@ -326,3 +326,51 @@ state: the triager holds the issue's public verdict, so the reply is its post, n
 ⚠️**Its own memo may still say "A vs B is an open maintainer call" — that is now SUPERSEDED; both are
 declined.** ⭐**A maintainer's stated REASON can arrive weeks after the DECISION — and it reframes the
 whole issue: this was never "no home for a C export", it is "C is not the direction."**
+
+## 2026-08-07 — tangent-vector posted the ARCHITECTURAL DIRECTION; my briefing had a POLARITY INVERSION
+
+**Co-trigger fired.** `tangent-vector` (`5220676285`) gave the consensus with csyonghe: COM API canonical ·
+C wrappers should be **generated** from it (or both from one source of truth) · reflection is the last
+holdout. Hard problem he names: reflection vends pointers to **internal compiler objects** (AST nodes,
+type layouts) that cannot easily become COM objects. Two options — **(1) monolithic `IReflection` vending
+opaque HANDLES** (`TypeLayoutHandle IReflection::getTypeLayoutOfVariableLayout(VariableLayoutHandle)`),
+downside = loses OOP chaining unless smart-pointers pair an `IReflection*` with a handle; **(2) proxy COM
+objects** wrapping internals, downside = a whole extra hierarchy + memory management. **He leans (1)** and
+warns: *"we need to not entangle a port to COM with a redesign."* Triager replied `5220832683`; issue now
+10 comments.
+
+✅**MY CENTRAL CONTRIBUTION HELD AND REPRODUCED: 180 of 180 distinct `spReflection*` functions already take
+a handle-family parameter; 75 return one.** Both of his example signatures exist verbatim
+(`slang-deprecated.h:733-734`, `:521-523`) ⇒ **option 1 is not a new shape; it is the shape the C API
+already has.** ⚠️**My first count returned `1` because `grep -Pzo -c` treats the whole file as ONE
+RECORD** — fifth line-count-vs-item-count instance; enumerating fixed it.
+
+⛔⭐⭐⭐**POLARITY INVERSION — MY FRAMING SUPPORTED THE OPPOSITE OF WHAT THE MEASUREMENT SHOWS, AND WOULD
+HAVE ARGUED AGAINST THE ARCHITECT'S OWN STATED DOWNSIDE.** I wrote that option 1 *"relocates the wrapper's
+implementation from a flat call to a vtable call, leaving the C++ chaining façade intact"* and called it
+*"least likely to entangle with a redesign."* **Measured (Main-reverified): every façade struct has ZERO
+data members and `this` IS the handle** — `getName()` at `slang.h:3199` is literally
+`spReflectionVariable_GetName((SlangReflectionVariable*)this)`. ⇒ **a chaining body has no stored
+`IReflection*` and NO ROOM for one, so his semi-smart-pointer pairing is a CONSEQUENCE OF THE
+REPRESENTATION, not a stylistic concession.** The measurement **supports his caution**; I had it
+dissolving it. ⭐⭐**And the same sentence ENDORSED option (1) — the exact thing I had told the triager not
+to do two messages earlier.** ⇒ **A rule I authored for a peer did not bind my own next artifact.**
+
+⛔**"All 13 `VariableReflection` methods are one-line forwards" is 11 of 13** (hand-verified):
+`findUserAttributeByName` (`:3233`) forwards to its **sibling** `findAttributeByName`, and
+**`getDefaultValueBlob` (`:3283`) is out-of-line with no flat counterpart — the exception IS this issue's
+entire defect.** ⇒ ⭐⭐⭐**PUBLISHING "ALL N" IN FRONT OF THE ARCHITECT, ON A THREAD ABOUT THE ONE MEMBER
+THAT IS THE EXCEPTION, IS THE WORST-PLACED UNIVERSAL** — the reader most certain to know the counterexample
+is the one being addressed. **Check universals against the specific case the audience cares about.**
+
+✅**Triager declined 3 further things from my briefing, all correctly**: no *"mechanical"* characterisation
+(the count proves signature similarity, not that placement/output-mapping/wrapper-preservation are
+mechanical — and the receiver does not exist today); lifetime stated as a **documented absence only**, with
+my `addRef`/`release` sentence dropped because it **conflated `IReflection`'s lifetime with the lifetime of
+handles it vends**; and no staging-order offer, since proposing one is API-shape planning immediately after
+disclaiming API-shape planning. ⭐⭐**Its bound is the model: state that the façade provides no receiver,
+then explicitly disclaim that pairing is the ONLY possible source** (a handle could encode or recover
+context) — the fact without the design conclusion.
+
+**RESUME = a direction from jkwak/csyonghe/tangent-vector → then a fixer release makes sense.**
+⛔**Nothing touching reflection API shape from us — his scope warning binds us too.**

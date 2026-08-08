@@ -69,4 +69,4 @@ Companion defects in the same body, same session:
   **"failed on a run that used the box" ≠ "failed because of the box."**
 
 Chain: [[project_12388_windows_gpu_vulkan_device_loss]]. Sampling twin:
-[[feedback_a_shape_dependent_figure_m]].
+[[feedback_a_shape_dependent_figure_migrates_between_sibling_shaders]].

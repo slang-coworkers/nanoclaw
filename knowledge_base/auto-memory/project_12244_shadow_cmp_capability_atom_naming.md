@@ -45,3 +45,19 @@ Re-point accounting: 8→`texture_shadow`, 3→`texture_shadowlod` (:3144 no-op)
 **Next:** merged review verdict → maintainer approve → flip draft ready + merge (OPERATOR-gated).
 
 Original park: verdict posted #12244#issuecomment-5097654203. Matches self-filed-and-deferred park pattern. See [[feedback_reopen_not_release_parked_feature]].
+
+## ✅ 2026-08-07T15:42:15Z — TERMINAL, FULL ARC CLOSED (fixer-reported, Main-verified end to end)
+
+**PR #12309 MERGED** by **`fknfilewalker`** — merge commit `34e4604f0179fe67473dfc9efb6f25eb3a807d0c` into `master`. Note the merger is a **different maintainer than the approver** (`jkwak-work`), so two humans touched it.
+
+✅**I verified the CONTENT on master, not the merge event** (the fixer's stronger claim, independently reproduced):
+- `slang-capabilities.capdef@master:2438` → *"Capabilities required for shadow texture sampling with gradients (SampleCmpGrad)."* — the stale **"bias and"** (C001) is gone.
+- `:2428` carries the explicit-LOD / `SampleCmpLevel` note (C002).
+- `docs/user-guide/a4-02-reference-capability-atoms.md@master:1588-1590` — the **regenerated** doc text matches the capdef verbatim.
+- **`grep -c 'bias and'` → 0 in BOTH files.** ⭐The generated-doc leg is the one usually skipped, and this repo's doc is auto-generated with a "never edit directly" rule, so a source fix without a regenerate would have left the two disagreeing.
+
+✅**"No push at any point on the approved branch" — CONFIRMED, and this is the load-bearing one:** `jkwak-work` APPROVED @`98083f9d5e4a` and the **head at merge was `98083f9d5e4a`**, `commits=1`, one commit row. ⇒ approved SHA == merged SHA, so the approval was never at risk. **`BEHIND` resolved itself at merge with no rebase and no force-push** — the standing rule held under pressure: *a `BEHIND`/`BLOCKED` state on an approved head is the maintainer's to resolve, because rebasing it can dismiss the approval.* See [[feedback_ci_terminal_is_not_chain_terminal_arm_the_deciding_axis]].
+
+⭐**Merged WITH the Falcor red outstanding** — independent maintainer corroboration of the flake read (tracked as #12145, 44 occurrences/16 PRs). A maintainer merging over a red is evidence about that red's credibility, though it is corroborating, not decisive.
+
+**Full arc:** #12244 → PR #12248 (taxonomy, merged `be27d078`) → peer review found C001 → PR #12309 (doc fix, merged `34e4604f`). Both behavior-neutral. Worktree pruned, sentinel cleared, CI watcher deleted. **Chain CLOSED — reopen only on a fresh substantive human comment.**

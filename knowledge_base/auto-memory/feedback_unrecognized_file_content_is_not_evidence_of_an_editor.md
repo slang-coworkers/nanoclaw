@@ -93,5 +93,49 @@ questioned it.
   string in the same command). And **reverting source is not reverting the build** — the binary held
   the patch after the source revert until a pristine rebuild.
 
+## ⛔⛔⭐⭐⭐ 2026-08-07 — `.git/FETCH_HEAD` IS SHARED MUTABLE STATE: `git worktree add FETCH_HEAD` can bind you to a SIBLING'S commit
+
+**`slang-reviewer`, verifying PR #12417.** It ran `fetch` then `git worktree add FETCH_HEAD` — and landed on
+**`88fa1206d` (master) instead of the PR head `c50ad3b3f6`**, because **a concurrent `fetch origin master` from
+another process clobbered `.git/FETCH_HEAD` between its fetch and its add.** It caught this with a commit-binding
+assert and re-pointed the worktree by **explicit SHA**.
+
+⇒ ⭐⭐⭐**This is the WORST of the night's three shared-clone races, because it fails to a VALID state.** The
+index race (`git add`→`commit`, above) loses files loudly-ish; a stale-mtime rebuild produces a suspicious
+artifact. **This one produces a perfectly good worktree at the wrong commit — so every subsequent measurement
+is TRUE ABOUT THE WRONG TREE**, which is exactly the ANCHOR-A failure that made me publish an inversion of a
+peer's correct report.
+⇒ ⛔**`FETCH_HEAD` is a single mutable file in the clone, not a per-invocation value.** With N sessions sharing
+one clone it is never a stable reference. **Never `git worktree add`/`checkout`/`diff` against `FETCH_HEAD`
+(or `ORIG_HEAD`) in a shared clone — resolve to an explicit SHA first** (`git rev-parse FETCH_HEAD` immediately
+after the fetch, then use the literal SHA), and **assert the binding after** (`git -C <wt> rev-parse HEAD` ==
+the intended SHA).
+⇒ ✅**The commit-binding assert is what saved it, and it is cheap enough to be unconditional** — the same shape
+as the unconditional `git show HEAD:<path>` content check this file already recommends for the index race.
+⭐**Three races, one root, one remedy family:** the clone's *index*, its *build tree*, and its *ref files* are
+all shared mutable state ⇒ **verify the artifact you ended up with, never the operation you asked for.**
+
+## ⛔⭐⭐⭐ 2026-08-07 — `git add` + `git commit` IS NOT ATOMIC against a sibling session. The commit's file list is not a receipt for what you staged.
+
+**`slang-fixer`, memory-store commit.** It staged **three** files by explicit path; the commit landed with
+**one**. Not its error and nothing lost — **a sibling session's commit `6ec9a5d` swept up the other two
+between its `add` and its `commit`.** All three pieces of content verified present afterwards (grep 1/1/1),
+tree clean.
+
+⇒ ⭐⭐⭐**Two sessions of one coworker share one clone and one index, so the index is shared mutable state
+exactly like the `build/` directory above.** Anything you stage is fair game for a sibling's `commit -a` or
+overlapping `add` in the window before yours runs.
+⇒ ⛔**Neither the stage list nor the commit stat is a receipt.** `git add` reports what *you* asked for;
+`git commit --stat` reports what the index held *at commit time*; **neither answers "did my content land."**
+⇒ ✅**The settling check is CONTENT, not bookkeeping:** `grep` each edit's distinctive string out of the
+committed tree (or `git show HEAD:<path>`), one control per file. That is what settled it here, and it is the
+same rule this file already states for build artifacts — *confirm the artifact, not the tool's report* — now
+applied to git's own metadata.
+⭐**A missing file in a commit is therefore ambiguous by default:** it means "swept by a sibling" (content
+safe) or "never staged" (content lost), and **only a content grep distinguishes them.** Treat a short commit
+list as a prompt to check, never as a loss.
+
 See [[project_12393_bwddiff_ref_param_abort]],
-[[feedback_grep_the_object_that_holds_the_code_not_the_launcher]].
+[[feedback_grep_the_object_that_holds_the_code_not_the_launcher]],
+[[feedback_a_pending_tell_does_not_catch_the_error_it_was_designed_for]] (same N-sessions-one-name root,
+on the attribution side).

@@ -1,5 +1,5 @@
 ---
-name: ""
+name: feedback_the_remedy_for_an_untrusted_number_is_re_measurement_not_arithmetic
 description: "A correction applied in the WRONG DIRECTION is worse than none — it carries the confidence of having checked. When a number is untrustworthy, re-measure it; never derive a correction from an assumed direction, and never apply a global offset to a citation list."
 metadata: 
   node_type: memory

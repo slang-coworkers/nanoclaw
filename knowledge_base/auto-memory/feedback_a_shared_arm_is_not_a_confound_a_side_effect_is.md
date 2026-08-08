@@ -76,7 +76,7 @@ mystery residue elsewhere that gets attributed to whatever hypothesis is in hand
 Compare `.spv`, or compare produced-vs-not. ⭐⭐ **A same-input repeat
 run is the cheapest possible validation of a comparison instrument, and I nearly skipped it because
 three different hashes looked like a finding rather than a defect.** Related:
-[[feedback_a_negative_control_must_va]] family, and
+[[feedback_a_negative_control_must_vary_exactly_one_thing]] family, and
 [[feedback_a_downstream_fix_can_void_an_upstream_published_control]] for the chain.
 
 ⭐ **Register note:** the triager framed this as *"same family as: an instrument inside the phenomenon
