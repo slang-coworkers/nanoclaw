@@ -15,7 +15,7 @@ On 2026-08-05 I applied that rule to PR #12354 and **reran a real regression**. 
 
 ## Why the confound rule mis-fired
 
-**The rpc signature is not evidence of causation — it appears on legs that PASS.** On the same commit, the sibling `test-linux-release-gcc-x86_64 / test-slang` job logged 4 `JSON RPC failure` occurrences and still finished `100% of tests passed (7129/7129)`. So presence-of-rpc-strings has近-zero discriminating power on its own; it is background noise layered over whatever else is happening.
+**The rpc signature is not evidence of causation — it appears on legs that PASS.** On the same commit, the sibling `test-linux-release-gcc-x86_64 / test-slang` job logged 4 `JSON RPC failure` occurrences and still finished `100% of tests passed (7129/7129)`. So presence-of-rpc-strings has near-zero discriminating power on its own; it is background noise layered over whatever else is happening.
 
 What actually happened: the PR added `-DSLANG_ENABLE_VALIDATION_FOSSIL=ON` to its CI build invocations, and `source/slang/slang-fossil.h` makes that macro swap `SLANG_ASSERT(CONDITION)` → `SLANG_UNEXPECTED("invalid format encountered in serialized data")` — fail-fast in **release** too. The tests spawn a `slangc` child; the child aborts on the new fossil check; the channel dies. **The abort produces the rpc-death symptom.** So the confound's signature is the *downstream* appearance of the real bug, which is why it is retry-resistant and why grepping for it confirms the wrong hypothesis.
 

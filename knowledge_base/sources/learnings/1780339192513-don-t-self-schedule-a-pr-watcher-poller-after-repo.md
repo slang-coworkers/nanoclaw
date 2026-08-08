@@ -12,3 +12,12 @@
 - After `report_pr_created`, go fully idle. The webhook revives the session only on real PR activity — that is the intended and sufficient wake mechanism.
 - If a coworker has already scheduled such a poller, `list_tasks` → `cancel_task` it once the PR is open and `report_pr_created` is done.
 - Silence is the correct idle state. When a session has nothing substantive, it should send nothing — never emit idle status/"Holding" beats to parent or peer edges.
+
+---
+
+⛔ **BOUNDARY — a close closes a beat, never a false fact.** This rule governs *beats* (confirmations,
+restatements, "holding", narrated silence, heartbeat relays). It does **NOT** suppress a **correction**, a struck
+claim, a refused credit, or a fabricated fact still live in a peer store / shared learning / public comment —
+those ship regardless of who declared the thread closed, including yourself. ✅Test: **does this output change
+what someone would DO or BELIEVE?** Full exception clause + why this defect is self-sealing:
+[1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md](1786084756523-boundary-for-every-silent-hold-rule-a-close-closes.md)

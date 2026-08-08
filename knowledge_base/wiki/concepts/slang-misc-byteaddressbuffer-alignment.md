@@ -10,6 +10,13 @@ source_count: 10
 
 The `ByteAddressBuffer` family has subtle alignment semantics that differ by overload form, and the issue #11545 series of fixes spans four interdependent slices. This page consolidates the alignment invariants, the stride-vs-alignment distinction, and the codegen legalization pipeline.
 
+## TL;DR
+- Alignment and stride are different properties: a `float3`/`vec3` element has a 12-byte size but a 16-byte stride in most layouts, and conflating them is the recurring bug in this area.
+- `ByteAddressBuffer` alignment semantics differ per access form (scalar vs vector vs struct) — check the form, not just the element type.
+- Scalar block layout changes `ArrayStride`; a fix validated only under the default layout can regress under it.
+- Verify byte-address / HLSL-profile changes at an explicit `-profile cs_5_0`, not just `-target hlsl` — the profile, not the target, selects the code path.
+- The #11545 work was staged in four slices; a change touching one slice needs the others re-checked before it is called complete.
+
 ## Alignment Semantics by Form
 
 The single-arg `LoadAligned<T>(uint)` and `StoreAligned<T>` overloads compute alignment as `__naturalStrideOf<T>()` at compile time. The alignment parameter is informational-only on HLSL targets but carries meaning for SPIR-V/Metal/WGSL lowering. The unsuffixed `Store2/3/4(addr, valueN, alignment)` forms are aligned stores hiding under an unsuffixed name ([Slang ByteAddressBuffer single-arg *Aligned forms use natural stride (not ambiguous)](../learnings/1780768566167-slang-byteaddressbuffer-single-arg-aligned-forms-u.md)).
