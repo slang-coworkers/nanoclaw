@@ -18,7 +18,7 @@ Routed **INLINE by Main** — Nth instance of [[project_nanoclaw_pr874_webhook_r
 ⚠️**Webhook said `mergeStateStatus: UNSTABLE`** — that was only `ci` still *pending* at webhook
 time. Re-checked 15 min later: all 3 green (ci 2m17s / check 7s / label 2s).
 ⇒ **A merge-state at webhook arrival is a snapshot of an in-flight run, not a verdict** — re-poll
-before treating UNSTABLE as a finding. Cf. [[feedback_ci_checks_at_a_sha_expire]].
+before treating UNSTABLE as a finding. Cf. [[feedback_ci_checks_at_a_sha_expire_source_at_a_sha_does_not]].
 
 ## ⭐⭐⭐ The reviewer's edge: I could run what the author could not
 

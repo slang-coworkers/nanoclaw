@@ -1,0 +1,192 @@
+---
+name: project_12426_cuda_sm_capability_atoms_and_downstream_query
+description: "slang#12426 (tdavidovicNV, @claude triage) — add missing _cuda_sm_x_y atoms + new getDownstreamCompilerCapabilities() NVRTC query. Main VERIFIED a latent SILENT-DOWNGRADE defect the issue does not mention: slang-code-gen.cpp:627-635 CASE table omits _cuda_sm_8_9 and _cuda_sm_3_5, so -capability cuda_sm_8_9 emits -arch=compute_80. Routed to slang-triager."
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 13a626a4-b545-40eb-b549-ef69a7f59acd
+---
+
+# slang#12426 — CUDA capability atoms + downstream-compiler capability query
+
+**Filed** 2026-08-07 by `tdavidovicNV`, body carries an explicit `@claude:` triage request.
+**Routed** to `slang-triager` on canonical thread `gh-issue-shader-slang/slang-12426`.
+
+Two separable asks, as the author himself notes:
+1. Add missing `_cuda_sm_x_y` capability atoms (self-contained, reviewable alone).
+2. New `IGlobalSession::getDownstreamCompilerCapabilities(passThrough, count*, caps*)`,
+   NVRTC first, follow-up to #11552/#11556.
+
+## ⭐ Main's verified finding the issue does NOT mention: a silent arch downgrade
+
+Adding atoms is **not** purely additive. There is a second table that must be kept in
+sync, and it is **already out of sync today** at `7dc8091a6d76`:
+
+`source/slang/slang-code-gen.cpp:627-635` maps capability atoms → `SemanticVersion` for
+the `requiredCapabilityVersions` list that becomes NVRTC's `-arch=compute_XX`
+(`source/compiler-core/slang-nvrtc-compiler.cpp:1281-1333`). It has **9 rows**:
+`1_0 2_0 3_0 4_0 5_0 6_0 7_0 8_0 9_0`.
+
+`slang-capabilities.capdef:248-258` defines **11 atoms** — it also has `_cuda_sm_3_5`
+and `_cuda_sm_8_9`. **Those two have no CASE row.**
+
+Because `_cuda_sm_8_9 : _cuda_sm_8_0` (capdef:257), the atom set for a
+`cuda_sm_8_9` request still contains `_cuda_sm_8_0`, which *is* in the table — so the
+lookup silently resolves to **8.0** instead of failing. No diagnostic.
+
+### MEASURED on my edge (Release slangc @ `7dc8091a6d76`, NVRTC 12.6.85)
+
+| `-capability` | emitted PTX | expected |
+|---|---|---|
+| `cuda_sm_7_0` | `.target sm_70` | ✅ |
+| `cuda_sm_8_0` | `.target sm_80` | ✅ |
+| **`cuda_sm_8_9`** | **`.target sm_80`** | ❌ **should be `sm_89`** |
+| `cuda_sm_9_0` | `.target sm_90` | ✅ |
+| *(no cuda cap)* | `.target sm_50` | ✅ NVRTC-12.6 floor |
+
+⛔ **`_cuda_sm_3_5` is a CODE-INSPECTION finding only — I cannot discriminate it at
+runtime on NVRTC 12.6.** The 12.6 floor is `SemanticVersion(5,0)`
+(`slang-nvrtc-compiler.cpp:1300`), which is *above* 3.5, so the CASE gap and the floor
+both yield `sm_50`. `cuda_sm_3_5 → sm_50` is therefore **not** evidence of the bug;
+only the `8_9` row is proven. Discriminating 3_5 needs a CUDA-11 NVRTC.
+
+### Why the FP8 coop-matrix test still passes (do not let this mask the bug)
+
+`tests/cooperative-matrix/fp8-cuda.slang` (line 1: `-capability cuda_sm_8_9`)
+compiles to **`.target sm_89` — correct**. That is a *different, working* path:
+`slang-emit-cuda.cpp:348` calls `m_extensionTracker->requireSMVersion(SemanticVersion(8,9))`
+for an FP8 CoopMatrix element type, which feeds `cudaTracker->m_smVersion` →
+`slang-code-gen.cpp:577-583`, bypassing the CASE table entirely.
+
+⇒ **Two independent producers of the arch flag; only the emit-tracker one is correct.**
+The existing test suite pins the working path and is blind to the broken one, which is
+why this has survived. A regression test for the fix must assert the arch flag from a
+**bare `-capability`** request with no FP8/CoopMatrix in the source.
+
+**Provenance:** the `_cuda_sm_8_9` atom arrived in `507d3b241` (#11007, CUDA
+bfloat16/int8/FP8 coop-matrix, 2026-05-04). `git show --stat 507d3b241 | grep code-gen`
+→ **empty**: that PR added the atom and never touched the CASE table. The bug is as old
+as the atom.
+
+## ⭐ The issue's own "missing atoms" list is incomplete
+
+Measured directly against the container's NVRTC (`ctypes` →
+`nvrtcGetNumSupportedArchs`/`nvrtcGetSupportedArchs`, rc=0, n=14):
+
+```
+50 52 53 60 61 62 70 72 75 80 86 87 89 90
+```
+
+The issue proposes adding `7.2 7.5 8.6 8.7 8.8 10.0 10.3 11.0 12.0 12.1`. Even with
+that list fully applied, Slang still cannot represent **5.2, 5.3, 6.1, 6.2** — all four
+reported by the NVRTC sitting in this container. The issue's stated goal ("a complete
+vocabulary for describing current CUDA targets") is not met by its own list.
+
+Also: **`_cuda_sm_4_0` (capdef:252) is a phantom** — there is no CUDA compute
+capability 4.0 in any CUDA release. It has a CASE row and an alias. Worth a question,
+not a blocker.
+
+## Constraints the API half must respect
+
+- `SlangCapabilityID` values are **explicitly not ABI-stable** — `include/slang.h:4243-4247`
+  says so in the `findCapability` doc comment, and the generator assigns values by
+  *declaration order* in the capdef
+  (`tools/slang-capability-generator/capability-generator-main.cpp:1113-1167`,
+  `enumValueCounter` walking Normal → Abstract → Alias). **Inserting an atom mid-list
+  renumbers everything after it.** So the proposed API returning raw `SlangCapabilityID`
+  is self-consistent with existing policy only because that policy is already
+  "look up by name at runtime".
+- `CapabilityAtom` **is** serialized into modules (`slang-serialize-ast.cpp:420` includes
+  it in the `serializeEnum` list; `slang-serialize.h:663` writes the **raw Int32**).
+  Module compat is gated on a single `kSupportedSerializationVersion = 1`
+  (`slang-serialize-ir.cpp:43`, checked at `:813`) — there is **no** per-enum
+  compatibility mapping like the IR opcodes' stable-name table
+  (`slang-ir-insts-stable-names.lua`). ⇒ renumbering atoms changes the meaning of bytes
+  in already-serialized `.slang-module` files. This is a real question for the triager to
+  put to a maintainer: **append-only atom placement, or accept module invalidation?**
+- `nvrtcGetNumSupportedArchs`/`nvrtcGetSupportedArchs` are **not currently loaded** —
+  `SLANG_NVRTC_FUNCS` (`slang-nvrtc-compiler.cpp:40+`) has no entry for either. They must
+  be added as **optional** symbols per the issue's own note.
+
+## State
+
+Dispatched to `slang-triager` with the above. No GitHub comment posted by me (triager
+owns the verdict — closest-to-the-state). **RESUME:** triager verdict, or any non-bot
+comment on #12426.
+
+## 2026-08-07 ~18:1xZ — triager memo received + VERIFIED, and the race resolved
+
+`slang-triager` returned a 184-line memo (`triage-12426.md`). **I independently
+re-derived every load-bearing claim on my own edge; all held.** Verified by me, not relayed:
+
+- **`-capability` is INERT in `fp8-cuda.slang`** — recompiled that test with the flag *removed*:
+  still `.target sm_89`, and `cmp` byte-identical to the with-flag run. ⇒ the emit tracker alone
+  produces sm_89; **a test pinning the arch flag with FP8/CoopMatrix in source passes on unpatched
+  master.** This is stronger than my own briefing's version of the point.
+- **Coverage gap:** 93 test files pass `-capability cuda_sm_*`; files matching `target sm_` = **0**,
+  `arch=compute` = **0** tree-wide (must-hit ctl `capability cuda_sm_8_9` ⇒ 4). Nothing pins the flag.
+- **⭐ Existing CASE rows emit arch strings NVRTC REJECTS.** Reproduced with my own `ctypes` probe
+  (`nvrtcCompileProgram`, log captured): `compute_10/20/30/35/40` ⇒ rc=5 *"invalid value for
+  --gpu-architecture"*; `50/52/60/70/75/80/86/89/90` ⇒ rc=0. These never escape only because the
+  NVRTC-12 floor `SemanticVersion(5,0)` (`slang-nvrtc-compiler.cpp:1300`) clamps them — confirmed:
+  `cuda_sm_1_0…5_0` all → `sm_50`, `6_0` → `sm_60`. **The floor is load-bearing by accident.**
+- **`_cuda_sm_4_0` is a phantom** — no CUDA compute capability 4.0 has ever existed; NVRTC rejects
+  `compute_40`. It has an atom, a CASE row, and a public alias.
+- **Serialization exposure is worse than I stated.** Atoms are not just an int field: they are
+  **BIT POSITIONS in a uint64 bitmask** — `CapabilitySetVal` → `CapabilityTargetSetVal` →
+  `CapabilityStageSetVal` → `UIntSetVal` (`slang-capability-val.h:32`, `slang-ast-val.h:1287-1307`),
+  hanging off AST modifiers ⇒ reaching `.slang-module`. Renumbering changes the meaning of stored
+  **bits**. The `isBinaryModuleUpToDate` build-tag digest (`slang-session.cpp:1825-1836`) would catch
+  it but is **opt-in** (`UseUpToDateBinaryModule`, `slang-session.cpp:1282`).
+- **⛔ NO OPTIONAL-SYMBOL PRECEDENT** — `SLANG_NVTRC_GET_FUNC` (`slang-nvrtc-compiler.cpp:182-188`)
+  does `if (m_##name == nullptr) return SLANG_FAIL;` for **every** entry. Adding the two arch
+  functions to `SLANG_NVRTC_FUNCS` would make **older NVRTC fail to load entirely** — opposite of the
+  issue's requirement. Needs a separate optional list.
+- **Vtable:** `getDownstreamCompilerVersion` is **slot 32** (`unit-test-vtable-stability.cpp:953-957`,
+  asserted `:979-981`); a new method is slot 33.
+- **max-wins verified IN CODE**, not only via DeepWiki: `slang-emit-cuda.h:31` and
+  `slang-nvrtc-compiler.cpp:1313-1322`. ⇒ two intentional producers; the CASE gap is a bug in one,
+  not a design question.
+- Guilty control reproduced: `-capability cuda_sm_99_9` ⇒ `error[E00014] unknown profile`, rc=1.
+- ⚠️ **Instrument (cost me a void matrix too):** PTX contains a NUL ⇒ plain `grep` prints nothing and
+  says *"binary file matches"*. **Use `grep -a`.** My first control sweep returned an empty column for
+  every row and I nearly read it as "all failed".
+- ⛔ Memo correctly preserves my scope limit: the `_cuda_sm_3_5` leg is **inspection-only** here
+  (floor 5.0 > 3.5 masks it). Needs a CUDA-11 NVRTC.
+
+### ⭐⭐ THE RACE RESOLVED — the production bot already implemented the atom half
+
+`claude[bot]` (Actions run 31202204260) finished at 17:45Z. Its issue comment is **content-free**
+("I'll analyze this and get back to you") — **no triage verdict was posted**, so there is no duplicate
+verdict and no dedup conflict. But it **pushed a branch**: `claude/issue-12426-20260807-1745`,
+commit `edbc6de74`, 4 files +151/−6 (capdef, slang-code-gen.cpp, generated capability-atoms doc, a new
+diagnostics test). No PR opened.
+
+What that branch does, inspected by me:
+- Adds all 10 atoms the issue listed **and CASE rows for them — including `_cuda_sm_8_9`**, so it
+  **incidentally fixes the silent downgrade** without ever naming it as a bug.
+- ⛔ **Still no CASE row for `_cuda_sm_3_5`** (`git diff … | grep -c 3_5` ⇒ **0**) — the other half of
+  the sync defect survives.
+- ⛔ **Inserts atoms MID-LIST** (`_cuda_sm_7_2` between `7_0` and `8_0`, etc.) — precisely the
+  renumbering the memo flags as a maintainer call, decided silently.
+- ⛔ **Its test pins capability IMPLICATION, not the arch flag** (`-restrictive-capability-check`
+  diagnostics only) ⇒ it does **not** cover the silent-downgrade path it just fixed. The bug could
+  regress with that test still green.
+- ⛔ **NEW, flagged by neither the bot nor the memo — verified by me:** there is **no ceiling clamp**
+  in `slang-nvrtc-compiler.cpp:1281-1333` (max-over-requirements against a *floor* only). So the new
+  high atoms make Slang emit `compute_103` / `compute_110` / `compute_121` verbatim on **this** NVRTC
+  12.6, which **rejects all three** (rc=5, my probe). Before the patch these were unreachable
+  because the atoms did not exist. ⇒ **adding atoms without a ceiling converts "unrepresentable" into
+  "representable and hard-fails downstream."** This is the strongest argument for the memo's
+  A-before-B ordering.
+
+### Triager's recommendation (its own, and I concur)
+**Three PRs: A (CASE-table bug fix, with a bare-`-capability` test) → B (atoms) → C (API)** — not the
+two-way split the issue proposes. Rationale: the genuinely small self-contained piece is a bug the
+author did not know about, while the piece he assumed was small carries the enum-stability policy
+question. 5 open questions deliberately left to a maintainer (append-only vs module invalidation;
+add 5.2/5.3/6.1/6.2; deprecate phantom 4.0; should a CASE-less atom diagnose; implied vs maximal set).
+
+**State:** memo verified. No GitHub comment from me (triager owns the verdict — closest-to-the-state).
+**RESUME:** triager posts its verdict, or a maintainer/`tdavidovicNV` comments, or someone opens a PR
+from `claude/issue-12426-20260807-1745`.

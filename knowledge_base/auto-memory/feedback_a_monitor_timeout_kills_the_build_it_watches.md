@@ -69,11 +69,36 @@ Never diagnose it from the string; measure occurrence count + elapsed time first
 reap**: the build `Agent` was reaped and took ninja with it. Ruled out resources properly (15 GB free, no
 `dmesg` OOM, no disk pressure). ⚠️**But it did not report either of the two discriminators this file says are
 load-bearing** — occurrence count in the whole log, and elapsed-to-interrupt vs. its own configured timeouts.
+⛔**PARTIAL RETRACTION of that criticism (2026-08-07 03:56Z, its own later finding):** the log is
+**append-only across attempts**, so *"occurrence count in the whole log"* is a number that **cannot
+discriminate** once a prior attempt has already written the line — I asked for a figure that was ambiguous by
+construction. **The elapsed-time discriminator stands; the whole-log count must be scoped to the current
+attempt.** See the append-only-root section below. ⭐*A discriminator inherits the ambiguity of the artifact it
+reads, and this file recommended one without stating that precondition.*
 Its positive evidence was that *"the SIGINT arrived while the build subagent's poller shells were still
 waiting"*, which is **temporal coincidence** — the same shape as the timestamp-adjacency error that produced
 a confident wrong session id in [[project_critique_gate_pulls_pattern_builtin_floor]]. Plausible, likely, and
-**not established**; this string now has **four** attributed causes (wrapper ×2, monitor lifetime ×1,
-subagent reap ×1) and has overturned two confident diagnoses already.
+**not established**; this string now has **three** attributed causes (wrapper ×2, monitor lifetime ×1) plus
+**one UNIDENTIFIED**, and has overturned three confident diagnoses.
+
+⛔⛔**CAUSE #4 IS RETRACTED — 2026-08-07 04:10Z, by its own author, on forensics.** The reap mechanism fails:
+the build subagent's transcript **stops at 01:18:07** while the SIGINT surfaced at **~02:24** — a **66-minute
+gap**, and a reap does not kill a child an hour later. ⭐⭐⭐**And the evidence it cited was pointing the other
+way: it offered "the poller shells were still alive" as support FOR reaping, when live children prove the
+process group had NOT been torn down.** Its own words: *"I read a fact that contradicted my story and logged it
+as support."* ⇒ **the honest statement is: delegated builds died three times; the kill signal's origin is
+UNIDENTIFIED.**
+⇒ ✅**Both halves stay actionable anyway — the remedy never depended on the mechanism** (`setsid`/background
+survived 2h+ under PPID 1). ⭐*A remedy that works for reasons you cannot name is still a remedy; the error was
+publishing the cause, not adopting the fix.*
+⇒ ⚠️**What would actually establish it, and why it is perishable:** capture the ninja `pid,ppid,pgid,sid` chain
+**while the delegated build runs**. Post-hoc is hopeless — `.ninja_log` **field 2 is a ms offset from build
+start, not an epoch stamp**, so it cannot date a kill, and both logs' mtimes track the *current* build ⇒
+**resume destroys the evidence about the previous death.**
+⚠️**Do NOT over-retract the log as an instrument:** field 2 (ms offset) dates nothing absolutely, but
+**field 3 IS the output's mtime in epoch nanoseconds** and is legitimate — `1786074431169406609` ns =
+03:47:11.169Z, arithmetic-checkable (ms offsets in a 438 s compile are ~1e5, not 1.8e18). The three-instrument
+hierarchy in [[feedback_an_assertion_that_cannot_fail_2026_08_07]] stands; only field 2 is unusable.
 
 ⛔⭐⭐⭐**ITS FIX TRADES ONE KILLER FOR ANOTHER, and the two are documented in different files — which is why
 nobody sees the trade.** It moved from a build `Agent` to **`run_in_background` under its own session**:
@@ -113,3 +138,36 @@ produced a false inversion in [[feedback_unrecognized_file_content_is_not_eviden
 [[feedback_expected_noise_line_is_not_a_failure_signature]] (same string, different cause, ×2) ·
 [[feedback_slang_test_exits_zero_on_no_tests_run]] (a wrapper's exit 0 says nothing about the work it
 wrapped) · [[project_12330_entrypoint_throws_not_diagnosed]]
+
+## ⭐⭐⭐ 2026-08-07 — THREE monitor defects, ONE root: an APPEND-ONLY log makes every "latest value" query ambiguous across attempts
+
+**`slang-fixer`, #12397 build. All three printed plausible numbers and none printed an error.**
+
+| reported | truth | defect |
+|---|---|---|
+| `[221/1453]`, frozen 90 min | **`[499/1232]`** and climbing | **hardcoded denominator** — monitor grepped `^\[[0-9]+/1453\]`; ninja **recomputed the edge count on resume** to `/1232`, so the matcher stopped matching the live build and kept re-reporting the last `/1453` line — which belonged to the **dead attempt**, still in the appended log |
+| DXC `1170/1063` (**>100%**) | not a count at all | **invented denominator** — `wc -l` on DXC's `.ninja_log`, which carries a `# ninja log v5` header and **accumulates a line per build attempt**: a cumulative journal, not an edge count |
+| "1 failure in log" | line 223 = the **old** SIGINT | stale pre-interrupt line read as current state |
+
+⇒ ⭐⭐⭐**ONE ROOT, not three bugs: the log is APPEND-ONLY ACROSS ATTEMPTS, so "the last line matching X" is
+ambiguous between a live build and a dead one.** Fix is positional, not pattern-based: **read only lines after
+the last interruption marker**, and never hardcode a total (`^\[[0-9]+/[0-9]+\]`), because ninja's denominator
+is recomputed per invocation against the current tree.
+⚠️**Corollary for this file's own rule:** an interrupted build leaves `ninja: build stopped: interrupted by
+user` *in the log forever*, so an occurrence-count discriminator must be scoped to the current attempt — the
+count that settled the #12330 cause (1 occurrence) is only meaningful when the log holds one attempt.
+
+⇒ ⭐⭐⭐**THE PROBE, and it is the best new instrument-check of the night — "WHAT COULD THIS NEVER PRINT?"**
+It interrogates the **range** of an instrument's output rather than its failure mode, which is strictly
+stronger than the failure/negative-result rule this store already holds:
+- a monitor pinned to `/1453` can never print `/1232` ⇒ its silence about the live build is unrepresentable in
+  its own output;
+- a `wc -l` denominator can never *decrease* ⇒ it cannot be an edge count.
+**Ask it of any instrument before trusting a null or a plateau.** A field whose name implies progress
+(`[N/M]`) is not a test for progress; liveness belongs on an **affirmative side effect** — here object writes
+(61 in the last 6 min).
+
+✅**And the `>1.0` ratio is the third instance of an already-recorded rule: RANGE-CHECK EVERY DERIVED FIGURE —
+ABSURDITY BEATS AGREEMENT AS A DETECTOR.** `1170/1063 = 110%` is impossible for a progress ratio, and that
+impossibility is what exposed the fabricated denominator in seconds — where a *plausible* wrong number
+(the earlier `19×`) survived three rounds. ⇒ **Compute the ratio even when you only need the numerator.**

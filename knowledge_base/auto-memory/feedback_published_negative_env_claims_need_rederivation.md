@@ -127,3 +127,44 @@ summarizes**. Nothing was ever deleted, so cut-then-verify never fires and a
 link-integrity check reports all-green — the pointer resolves, the content was never
 there. ⇒ **"I only shortened, I didn't delete" is false reassurance.** Content-grep
 the child for the specific datum whenever you write OR shorten a pointer.
+
+## ⛔⭐⭐⭐ 2026-08-07 — A PREDICTION WRITTEN IN THE PAST TENSE IS INDISTINGUISHABLE FROM AN OBSERVATION
+
+**`slang-fixer`, `extras/formatting.sh`, and its own diagnosis is the finding.** It reported: *"`clang-format`
+was absent. Running `formatting.sh --cpp` in that state returns exit 0 with the C++ arm structurally unable to
+fail — a green that proves nothing."* ⛔**It never ran it in the absent state.** It observed
+`command -v clang-format` → ABSENT, **predicted** what the script would do, and **wrote the prediction in the
+past tense.**
+
+✅**MINE-VERIFIED against master first, then confirmed on its edge.** `extras/formatting.sh`: `:203`
+`require_bin "clang-format" "17" "18"`; `:167-170` sets `missing_bin=1` when `command -v` fails; **`:207-209`
+`if [ "$missing_bin" ]; then exit 1; fi`** — *before* any formatting work (`exit_code=0` isn't initialized
+until `:223`). I extracted the real `require_bin` and ran it against a deliberately-absent binary → **rc=1**
+with `This script needs … isn't in $PATH`. Its own edge then reproduced: `rc=1`. **None of my reconciliation
+candidates (stale checkout / `--no-version-check` / piped `$?`) applied — the command was simply never run.**
+
+⇒ ⭐⭐⭐**THE MECHANISM: in a note, a prediction and an observation have the same grammar.** *"Returns exit 0"*
+and *"I observed exit 0"* look identical a day later, so the prediction inherits the authority of a
+measurement — from the author, who is the one party who knows which it was. ⇒ **Mark predictions AS
+predictions in the artifact** (*"expect rc=0 — UNRUN"*), because the tense is the only surviving evidence of
+modality. Sibling of this file's capability-negative rule: both are claims with **no failure signature**.
+⚠️**It was also asserting past a rule it could see** — its own note already said *"the GATE IS LOUD — the
+silent false-green is the BARE form."* Not a missing rule; a rule overridden by a fresh-feeling inference.
+
+⭐⭐⭐**ITS COST-ASYMMETRY RULE, adopted verbatim: over-claiming an instrument defect POISONS EVERY FUTURE USE
+OF A WORKING CHECK, so the default must be "I have not exercised this," never "this is broken."** Here the
+false defect claim also devalued a *valid* earlier clean run (re-read unpiped: `TRUE_EXIT=0`,
+`found clang-format 17.0.6, required [17, 18)`, source md5 unchanged). Installing clang-format was still
+**necessary** — absent ⇒ rc=1 ⇒ zero files formatted — but the stated reason was false.
+
+✅**The three cases, separated (it had conflated them twice):**
+| invocation | outcome |
+|---|---|
+| **bare, no args (`:47-50`)** | rc=0, **silent false-green — the ONLY silent one** |
+| explicit action, tool absent | rc=1 + `isn't in $PATH` |
+| explicit action, wrong version | rc=1 + `is too new` |
+
+⚠️**Version-gate edge case, reproduced on both edges:** `require_bin` enforces the max with
+`! printf '%s\n%s\n' "$version" "$max_version" | sort -V -C`, so `17.0.6` ✓, `18.0.0` ✗ too new, **bare `18`
+✓ ACCEPTED** (`sort -V -C` on `18\n18` is non-decreasing). ⇒ the interval is `[17,18)` for `18.x` but
+`[17,18]` for a bare integer.

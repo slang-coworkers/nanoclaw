@@ -143,7 +143,7 @@ erased. ⚠️ But see the completion below: a clean status diff is **not** suff
   parenthetical was its own, PATCHed while comments were still 0).
 - ⚠️ Build hazard the triager hit and flagged: **the generated core-module header is shared across
   configs, not per-config** — a concurrent Debug build poisons a Release restore. Related:
-  [[feedback_group_clone_is_shared_by_all_sessions_of_one_coworker]].
+  [[feedback_group_clone_is_shared_by_all_sibling_sessions]].
 - No emitted-shape test exists today: 0 files under `tests/` reference `_slang_vector_get_element`
   or a `dot_N` helper (49 mention `dot(`), so the regression test would be the first.
 

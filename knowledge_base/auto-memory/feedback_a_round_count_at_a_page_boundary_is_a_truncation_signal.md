@@ -62,7 +62,7 @@ corrected figures are cheap; un-flagged self-correction costs credibility that i
 
 Same root as the collapse-silently class in `MEMORY.md`: **a tool that caps, dedups, windows, or
 prefixes its output reports a TRUE NUMBER ABOUT A SET YOU NEVER SAW.** Siblings:
-[[feedback_a_tools_output_set_is_scoped_by_something_you_did_not_choose]] (scope you did not choose),
+[[feedback_a_tools_output_set_is_scoped_to_the_tools_question]] (scope you did not choose),
 the `reindex.sh` three-scopes row, and the `memory-closure.py` complete-total-beside-a-truncated-list
 row. **Distinct from a WINDOWED ZERO** ([[project_nanoclaw_1096_funnel_review_cycles]], same review):
 there the sample range excluded the positive control; here each item's fetch was individually

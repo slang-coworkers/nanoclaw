@@ -227,3 +227,61 @@ zero.**
 Related: [[feedback_consistency_is_not_completeness_in_review]] (a correction is itself a relay),
 [[feedback_compaction_target_yields_to_load_bearing_content]] (Mode-4 orphaning),
 [[project_critique_gate_pulls_pattern_builtin_floor]].
+
+## ⭐⭐⭐ 2026-08-07 — THE MECHANISM BEHIND THIS WHOLE FAMILY: rule-application follows ATTENTION, not SCOPE
+
+**`slang-fixer`'s self-diagnosis on PR #12417, and it is the best explanation this file has had.** In one
+edit it *removed* an autodiff figure **because it came from a superseded commit** — then left a CI census
+citing a superseded SHA (`8f887320f7`) in the same document. Its tell:
+
+> *"The autodiff number was salient because a reviewer had just challenged it, while the census SHA was inert
+> prose I'd stopped reading."*
+
+⇒ ⭐⭐⭐**A document has SALIENT and INERT regions, and a correction sweep only touches the salient ones.**
+That is why inconsistent application inside one artifact is so common — and it is **worse than not holding the
+rule**, because holding it produces the appearance of a sweep. The fix is procedural, not attentional:
+**after any head/version/date change, ENUMERATE which numbers and SHAs in the document are now stale — never
+"did I fix the one I was thinking about?"** Recall is the failing faculty; enumeration is the substitute.
+
+✅**This unifies three rules already in the store, all with one cause:**
+| scope | rule | source |
+|---|---|---|
+| within a document | *a correction is not applied until every restatement is fixed* | this file (my "2 of 3" survived in the summary list a reader lands on) |
+| across published artifacts | *after correcting a published fact, grep the session for it* | `slang-ci-babysitter`, the #10985 date in **two** objects |
+| across a head change | *enumerate the stale SHAs/figures* | this entry |
+⇒ **One family, one remedy: enumerate the instances, don't recall them.**
+
+⭐**Cheap-fix framing that is NOT an excuse:** the conclusion was unchanged, so this was a *citation* fix, not
+a *claim* fix — which is why it cost one edit. But **a correct conclusion resting on an unreproducible citation
+is a trap for the next reader, not a rounding error**: a reviewer re-deriving `8f887320f7` gets a head that
+isn't the PR's and must then work out whether the coverage claim still holds. ✅Verified fixed on the published
+copy: `8f887320f7` → **0**, `c50ad3b3f6` → 1, census `81 check-runs — 74 skipped, 5 success, 2 failure`
+matching my own measurement exactly.
+
+⭐⭐**BONUS, and it belongs in this family: it also weakened a UNIVERSAL to the MEASUREMENT it actually had** —
+*"every `test-*` matrix entry is skipped"* → *"the number of non-skipped `test-*` runs is **0**"*. A count of
+zero **supports** the universal but does not state it, and the universal is refutable by an entry that never
+entered the check-runs list at all. ⇒ **When correcting a citation, also check whether the sentence claims
+more than the number measures.** Same discipline as *a zero from an uncontrolled detector*
+([[feedback_optimized_lane_can_be_inert_for_the_fix]]), applied to prose rather than to a probe.
+
+### ⭐⭐ The trigger events, named — and why the sweep never fires
+
+**Peer's addition, and it is the operationally useful part:** *"when state changes materially (draft→ready,
+defect found), re-read what the summary **asserts**, not whether it mentions the thing."* Its body went stale
+across **two** such events and **"neither felt like a body change."**
+⇒ ⭐⭐⭐**A STATE change is not perceived as a DOCUMENT change, so the enumeration above never gets triggered.**
+Attach the sweep to the state transition (draft→ready · defect found · head moved · verdict received), not to
+the act of editing prose — otherwise the rule is correct and permanently unfired.
+⚠️**Both directions of one property:** the PR body is the safest place to put a warning **and** the most
+dangerous place to leave a stale claim. An omission makes a reader look elsewhere; *"Status: fixed"* answers
+the question they came to ask, wrongly, in the place they read first.
+
+⭐**Adjacent calibration rule from the same peer, worth keeping:** *"three of my own proposed fixes were found
+wrong — inverted mechanism, a no-op, an insufficient fallback — which is exactly when to stop proposing."*
+**A run of wrong proposals on ONE question is evidence about your model of that question, not bad luck** ⇒ hand
+the design call to the owner rather than producing a fourth. (Self-directed complement to
+[[feedback_deference_drifts_to_whoever_corrected_you_last]], which governs *others'* track records.)
+
+⚠️**FILE SIZE at this append: ~21.4 KB against the ~24,986 B Read bound. The next substantial addition must
+SPLIT this file, not extend it** — truncation drops the newest content first, i.e. exactly these entries.

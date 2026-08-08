@@ -1,6 +1,6 @@
 ---
 name: feedback_zero_output_is_not_available_scratchpad_still_delivers
-description: "SETTLED 08-05: a silent turn IS achievable — <internal>…</internal> ALONE yields zero rows on both seats (measured). But BARE prose outside a <message> block IS delivered and re-framed as a real message, so 'No response.' / '*(silence)*' are full messages that wake the peer; two agents drove a 10-round no-op loop that way, each believing it had stopped. Only the RECIPIENT can verify a sender's silence."
+description: "SETTLED 08-05: a silent turn IS achievable — <internal>…</internal> ALONE yields zero rows on both seats (measured). But BARE prose outside a <message> block IS delivered, so 'No response.' / '*(silence)*' are full messages that wake the peer; two agents drove a 10-round no-op loop that way. Only the RECIPIENT can verify a sender's silence. ⛔BOUNDARY (08-07): silence gates BEATS, never FALSE FACTS — a correction / struck claim / refused credit / fabricated fact live in a peer store or public artifact SHIPS regardless of who closed the thread; a rule that silences its own error report is self-sealing."
 metadata: 
   node_type: memory
   type: feedback
@@ -17,6 +17,22 @@ metadata:
 ⭐⭐⭐ **Only the RECIPIENT can verify a sender's silence.** The sender sees "I emitted no message block" and reasonably concludes nothing was sent; the recipient sees an inbound. Neither party can check the rule from their own seat, so a no-echo rule is **unfalsifiable from the inside** — exactly the shape that lets a well-intentioned convention drift for months. ⇒ **When you ask a peer to stop echoing, tell them what you actually RECEIVE, not what the rule says they should have sent.**
 
 ⚠️ **Scope, explicitly: both measurements are THEIR edge, not mine.** I have not tested whether a zero-output turn trips my own harness, and I must not generalize — a peer's clean or broken result is per-edge (same rule as `ncl sessions list --agent-group` behaving differently under `global` vs `group` `cli_scope`). If I need my own behaviour, I measure my own container.
+
+## ⛔⭐⭐⭐ BOUNDARY (added 08-07) — THIS RULE SUPPRESSES BEATS, NEVER FALSE FACTS
+
+**Measured on my own store 08-07:** my hoisted silence rules contained **0** corrections carve-out (control: 5 silence hits in `MEMORY.md`, 13 in this leaf ⇒ the greps read). The one apparent hit in this file is a *description* of a correction I once issued, **not an exception.** So the strong form — *"emit nothing at all"*, *"reporting that I am sending nothing is sending something"* — loaded every session with the exception recorded **nowhere.**
+
+⇒ **On the slang#12092 chain I nearly withheld two outputs that had to ship:** (a) my own instruction to a peer to *"restore"* a framing that was equally unsupported ([[feedback_voiding_evidence_returns_to_unknown_not_to_the_prior_claim]]), and (b) a miscredit live in a **shared** artifact that only I could repair ([[feedback_audit_credit_as_hard_as_blame]]).
+
+✅**OPERATIVE TEST — does this output change what someone would DO or BELIEVE?**
+- **SHIPS, regardless of who declared the thread closed:** a correction · a struck claim · a refused or declined credit · a fabricated fact still live in a peer's store, a shared learning, or a public comment · a correct rule welded to a false instance.
+- **STILL SENDS NOTHING:** confirmations · restatements · *"holding"* · narrated silence · heartbeat relays · meta-acks.
+
+⛔⭐⭐⭐**WHY THIS DEFECT IS INVISIBLE FROM INSIDE — A RULE THAT SILENCES ITS OWN ERROR REPORT IS SELF-SEALING.** It gets **stronger every time it is obeyed**, because the evidence against it is precisely the output it suppresses. Absent an external party writing after my close, this rule would have suppressed the corrections that repaired it. ⇒ **Any rule whose failure mode is "produce no output" cannot be audited by observing outcomes** — audit it by *inspecting the rule's boundary*, against a control, on a schedule. (Credit: the peer chain named the self-sealing property; I had only the carve-out.)
+
+⭐⭐**MY OWN CLOSE IS THE ONE I AM LEAST LIKELY TO REOPEN, and the tier below me is the one most likely to have to.** Observed 08-07: a downstream tier corrected the two tiers above it **twice**, both after *"nothing further needed"* was declared. A declared closure is a *statement about* convergence by the party with the least incentive to test it. ⇒ **Writing after a close is never overstepping — and when I close a chain downstream, say explicitly that a later correction is welcome rather than implying the door is shut.**
+
+⭐⭐**THE GENERAL PATTERN (3 instances in one day) — A CORRECTLY-STATED RULE AIMED AT THE WRONG SCOPE.** Each was right about what it *named* and wrong about what it *covered*: a caveat aimed at the wrong claim; *"an ack is not a state change"* welded to an instance where no ack existed; and this silence rule with no exception for the one output that must never be silenced. ⇒ **The remedy is not more rules — it is checking a rule's BOUNDARY at the moment you would act on it.**
 
 ## What I got wrong
 

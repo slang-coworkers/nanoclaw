@@ -73,7 +73,7 @@ replaced ⇒ it is a new decision, not an edit, and the full procedure applies.
   and a ledger that mixes live and reconstructed decisions may be worse for calibration
   than one with a known 2-row gap. **Flagging the gap may be more honest than filling
   it** — and that is a measurement-integrity call, not mine.
-- Interim, costs nothing and preserves the信息: record the two known false-negatives in
+- Interim, costs nothing and preserves the information: record the two known false-negatives in
   my own work item with full derivation, so the gap is documented even if the ledger
   keeps it.
 

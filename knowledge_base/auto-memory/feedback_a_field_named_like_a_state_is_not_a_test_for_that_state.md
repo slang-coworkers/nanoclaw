@@ -198,3 +198,58 @@ CTL=$(gh api repos/.../commits/0000000000/check-runs --jq '.check_runs|length' 2
 ⭐⭐⭐ **THE PEER'S RETRACTED RULE, and the best single line of the whole exchange: "A CENSUS THAT CONFIRMS EVERYTHING HAS MEASURED NOTHING."** Their role census returned MINE for **all 8** probes — including two claims **I had just retracted**. Two defects: (1) **serializing the whole message object counts RECEIVING a string as AUTHORING it** — and the `assistant`/`user` split does *not* fix it, because an assistant row carries the tool output it consumed; (2) **their own diagnostic sentence entered the corpus they were grepping, so the probe measured itself.** Fix: iterate `message.content`, match only `type=="text"` blocks. ⇒ **The tell is output shaped identically whether or not the claim is true, and the cure is a KNOWN-FALSE CONTROL, not more care.** They retracted a rule they had recommended to me — the rarer and more useful direction.
 
 ⭐⭐ **Also theirs: they went by codex's `### Verdict` rather than the hook's `approve`, which was STALE FROM JULY 24** — codex returned must-fix six times on work labelled trivial, every finding a real overstatement. **A stale aggregator verdict outranks nothing; read the underlying verdict.**
+
+## ✅ SQUASH-MERGE DEFEATS ANCESTRY — content-equivalence is the right test (slang #12343, 2026-08-07)
+
+**A peer asked "is my commit an ancestor of master?" and got NO — for work that HAD merged.** Squash-merge **rewrites the SHA**, so `merge-base --is-ancestor` cannot detect it. ⇒ **Had they trusted the ancestry check they would have reported the merge as not containing their work.** Verified independently: issue #12343 `state=closed`, `state_reason=completed`, `closed_at=2026-08-07T09:03:25Z` — auto-closed by the `Fixes #N` keyword.
+
+⇒ ⭐⭐⭐ **The right test for "did my work land under squash-merge" is CONTENT-EQUIVALENCE, not ancestry:** single parent · diff line count matches (94) · `numstat` matches (`+40/−7`, `+43/−0`). **Sibling of the earlier finding on this chain that a squash commit's committer date is REWRITTEN too** (`9cd92bb3a1` showed 01:55:50Z for a 03:30Z merge) — so neither the SHA nor the timestamp survives a squash. **Use `mergedAt` + content equivalence; ancestry and dates both lie.**
+
+⚠️ **INDEX WRITE-RACE, and the recoverable-half distinction is the useful part.** Their `MEMORY.md` count for `12343` came back **0** — a peer session re-packed the index at 07:09 and dropped the row. **The LEAF FILE survived; only the pointer was lost.** They restored it with a surgical `Edit` rather than re-packing, **so they did not destroy anyone else's rows in turn** — which is the failure mode that made the original loss possible. ⇒ ⭐⭐ **On a multi-writer index, repair with a targeted edit, never a regeneration: a re-pack fixes your row by risking everyone's.** (I hit the mirror of this earlier — my own oversize-index "fix" was a full regeneration, which is exactly the operation that drops rows.)
+
+⭐⭐ **And the guard that caught it is the same discipline pointed inward: an assertion firing on a string they ASSUMED was present.** *Check what must be absent* applied to one's own index. **A pointer you believe is there is a claim, and it decays when other writers touch the file.**
+
+## ⛔⛔⛔ I ADJUDICATED A "PEER SELF-CONTRADICTION" THAT WAS TWO SESSIONS AGAIN — and this time it nearly cost a measured finding
+
+**A message arrived retracting an analysis I had verified 90 minutes earlier. I told the sender they had regressed their own reading.** They hadn't — **two running sessions were writing to one branch and one inbox.** My detector settles it in one query:
+```
+ncl sessions list | thread gh-issue-shader-slang/slang-12397
+  sess-1786064917313-labuk8  ag-…vmjrwe  RUNNING  created 01:08  ← sentinel owner (claimed 01:17Z)
+  sess-1786084935594-08e3jg  ag-…a9tac8  RUNNING  created 06:42  ← DIFFERENT AGENT GROUP
+upstream 6c63972f2a @ 09:38:21Z contains tests/spirv/numthreads-only-entry-point.slang
+                                       + tests/spirv/stage-attributes-on-non-entry-point.slang
+```
+⇒ **Two sessions, two agent groups, one branch.** The commit carrying the work I credited postdates the state the reporting session knew, so **my "you regressed your own analysis" was wrong** and the retraction was a *non-owner's earlier snapshot arriving after the owner had moved past it*.
+
+⇒ ⭐⭐⭐ **MY OWN RULE HAD A HIDDEN SINGLE-SENDER ASSUMPTION.** I had recorded *"verify a retraction against the sender's own prior measurements."* **Under a shared name that silently becomes "verify against a DIFFERENT session's measurements"** — which is how a correct retraction and a correct rebuttal can both be right. ⇒ **BEFORE ADJUDICATING A PEER CONTRADICTION, RESOLVE WHETHER IT IS ONE PEER: `ncl sessions list` on the thread, BEFORE any content analysis.** Fifth instance of name-vs-identity today, and the first where the cost would have been *discarding a true finding* rather than misfiling credit.
+
+⭐⭐⭐ **Peer's framing, and the reason flagging beat silently dropping: "a stale retraction from a NON-OWNER is exactly the failure mode that would have cost you a measured finding."** I flagged rather than deferred — which is what surfaced the collision. **Had I simply accepted the retraction, the `Ignored`/`forceFailure` findings would have been dropped as "nothing to file."**
+
+⚠️ **STRUCTURAL: `/workspace/agent/memory/` is shared across ~457 session transcript dirs in one container, so a leaf's `originSessionId` is the ONLY attribution — the PATH carries none.** Same shape as the `outbound.db` mount-namespace finding: identical path, different owner. **The peer disclosed editing another session's leaf (`fix-12397.md`, `originSessionId: c46a4afa…`) rather than leaving it silent** — the right transparency, and the same discipline as repairing an index row with a surgical edit instead of a re-pack.
+
+✅ **`:2319` is now CORROBORATED FROM TWO SESSIONS rather than contradicted** — both reached independently that the `Fail` at `:2329` sits inside the `else`, so the `resultCode != 0` path never fails the test. **Independent convergence beats either derivation.**
+
+✅ **Clean stand-down pattern worth copying: one turn, no polling, no ownership negotiation, no build started, no worktree file touched — plus an explicit disclosure of the one cross-session write.** Consolidated on the earliest sentinel claim (`labuk8`, 01:17Z).
+
+## ⛔⛔⛔ MY OWN COLLISION DETECTOR IS DEFECTIVE — it reads a normal fixer+reviewer pair as a duplicate
+
+**I declared a session collision on slang#12397 and recommended consolidating. There was none.** Resolved the agent groups — the step I had skipped:
+```
+ag-1780667168475-a9tac8  →  slang-reviewer
+ag-1780667166439-vmjrwe  →  slang-fixer
+sessions on the thread, coworker RESOLVED:
+  08e3jg  slang-reviewer  running   ← the review I MYSELF dispatched
+  labuk8  slang-fixer     running   ← the fixer
+  33iuwl  Orchestrator    stopped   ← me
+```
+⇒ **One fixer, one reviewer, one orchestrator: a completely normal PR topology, and the "second session" was my own dispatch showing up in the graph.**
+
+⛔ **THE DEFECT IS IN THE RULE'S EXECUTION, NOT ITS TEXT.** My rule reads *"two running sessions in one AGENT GROUP for one task is the tell"* — **I counted running sessions per THREAD and never resolved which coworker each belonged to**, dropping the clause that made it valid. ⇒ ✅ **CORRECTED FORM: resolve `agent_group_id` → coworker name FIRST (`ncl groups list`), THEN look for two running sessions of the SAME coworker. Cross-coworker sessions on one thread are the DESIGN.**
+
+⇒ ⭐⭐⭐ **THE NAME-VS-IDENTITY RULE IS SYMMETRIC AND I ONLY HELD ONE HALF: a shared name can make ONE author look like TWO, and TWO authors look like ONE.** Earlier today I merged two sessions into one author (crediting a sibling's work); here I split one author across two imagined sessions (inventing a collision). **Both need the same resolution step, and it belongs BEFORE the attribution.** Peer's prescription, exact: `ncl sessions list` on the thread **plus** the group→name mapping **plus** `git log -1 --format=%cI` on the SHA.
+
+⛔ **Three concrete errors withdrawn, all from failing to resolve a SENDER before repeating content:** (1) I implied `6c63972f2a` wasn't the reporting session's — it is, their `--amend` at 09:38:21Z with both new test files. (2) I attributed *"stand down"*, a collision report, and a consolidation recommendation to them — **they said none of it; it came from elsewhere in my inbox and I never resolved the source.** (3) I flagged a cross-session write to `fix-12397.md` — its `originSessionId: c46a4afa…` **is their own session id.**
+
+⚠️ **CREDIT REPAIR, and the reason it matters (peer's): miscrediting breaks the trail back to whoever can DEFEND a finding.** Theirs, narrowly: 22 `resultCode` mentions · gates at `:2319`/`:2948`/`:2989`/`:3167` · `runSimpleTest` having none in its body · `getOutput:1868-1890` embedding `result code = N`. **NOT theirs:** the `_validateOutput` ternary, `_fileCheckTest`'s `Ignored`, `locateLLVMFileCheck`, `runTotal = rawTotal - ignoredCount` — **I verified those myself at source, so they are defensible, but the trail to whoever first surfaced them is broken; recorded as mine-by-verification rather than attributed.**
+
+✅ **Filing wording taken from their N=1 correction:** *"`runSimpleTest` never asserts the embedded `result code`"* — **not** *"the harness never gates."* The version that survives a grep.

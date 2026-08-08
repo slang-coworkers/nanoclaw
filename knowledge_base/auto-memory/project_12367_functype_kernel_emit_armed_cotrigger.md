@@ -59,6 +59,90 @@ with the partition control closing (per-file `--numstat` sum == `--shortstat` to
 unaccounted). **The command, not the number:**
 `MB=$(git merge-base <pr-ref> origin/master); git diff --shortstat $MB <pr-ref>`.
 
+✅ **DESIGN QUESTION CLOSED BY THE LANGUAGE OWNER 08-07** — `csyonghe`, cmt `5212908232`:
+*"`functype` is mostly for core module's internal use, not intended as a mature language feature. We
+should mark it as unsupported now, until we decide to add full support for it. Supporting it for
+cpp/cuda should be easy, other targets might not be feasible."* ⇒ E55216 is **endorsed, not inferred**;
+the (a)/(b) split held — (b) shipped, (a) deferred by the owner. **Forward-looking:** the diagnostic is
+likely *temporary* for cuda/cpp and *permanent* for metal/wgsl — don't word it as if all four are
+equally hopeless.
+
+⛔⭐⭐⭐ **CORE-MODULE SAFETY — MY MECHANISM WAS WRONG, THE TRIAGER'S IS ROBUST.** `hlsl.meta.slang` uses
+`functype` **20×** (`cooperate`/`fallback`/`waveMatch`/`broadcast` params, reduction `combineOp`), so
+"will E55216 fire on core-module code?" is a real question a maintainer will ask — and the PR body
+mentions the core module **0 times**. I answered *"they specialize away"*; measured, **4 func-typed
+insts DO survive to check time**. The true reason: all four are `^func %Name : Func(...)` **plain
+declarations**, and the check is **SHAPE-GATED before it ever reaches the opcode switch**. Verified at
+`b7aa786bd0`, inside one `for (auto globalInst : module->getGlobalInsts())`:
+`if (rejectFuncTypedValue)` at **`:335`** runs FIRST and contains two type tests —
+`holdsFuncType(field->getFieldType())` at `:341` behind `if (auto structType = as<IRStructType>(...))`
+(`:337`), and `holdsFuncType(globalInst->getDataType())` at `:357` behind
+`else if (globalInst->getOp() == kIROp_GlobalVar)` (`:354`). **A `kIROp_Func` survives because it
+satisfies NEITHER shape gate, so its own type is never tested.** Only 4 **value positions** can fire:
+`kIROp_Var`, struct `field` (`:341`), `kIROp_GlobalVar` (`:357`), block `param` (via `:244`).
+
+⛔⭐⭐⭐ **THREE MECHANISMS, ONE VERDICT, TWO OF THEM WRONG — and the verdict's stability is what let both
+survive.** (1) mine: *"specialization eliminates them"* — **false**, 4 insts survive. (2) triager's:
+*"the switch dispatches on opcode before examining any type"* — **false**, types ARE examined at `:341`
+and `:357`. (3) truth: **shape-gating in the pre-switch block.** ⚠️ **I had cited `:380`
+(`case kIROp_Func:` recursing into the body) as the protection — accurate as a line, wrong as the
+explanation; the recursion happens AFTER.** ⇒ ⭐⭐⭐ **A correct verdict re-derived from three different
+mechanisms is evidence the verdict is over-determined, NOT that any mechanism is right — and a wrong
+mechanism in the store is worse than none, because the next reader who opens the pre-switch block sees
+the type tests I claimed were absent.** Neither of us reached the truth without codex attacking it.
+⇒ ⭐⭐⭐ **"They specialize away" is a claim about a PASS; "declarations aren't value positions" is a
+claim about the CHECK'S SHAPE — the second survives a specialization regression, the first doesn't.** I
+was one step from having the fixer publish the fragile version into a maintainer-facing body, where the
+author of that core-module code would have found it wrong. Same fact that made a type-keyed predicate
+catastrophic earlier: `IRFunc::getDataType()` returns `IRFuncType`, so **role-keying is load-bearing
+twice.**
+
+⭐⭐ **TRANSFERABLE, BUT I OVERSTATED IT AND THE CORRECTION IS THE LESSON:** a *fixed delta between two
+counts* refutes the rebase/race/cache family; a **constant DIFFSTAT across a head change does not** —
+it is equally consistent with content edits that preserve the line total (a test rewrite, a comment
+swap), and the fixer had in fact been editing test content at constant totals. **The settling check is
+a tree hash or a two-head `git diff`, never the diffstat.**
+⛔ **My comparison was VOID: I force-fetched the new head over the ref holding the old one, so both
+names resolved to `b7aa786bd0` (identical trees `7b390e798836`) — "0 files differ" that looked clean.**
+✅ **THEN I RETRACTED TOO FAR.** I said *"I could not run it"* — false **on my edge**:
+`git cat-file -t 9482349972` → `commit`, so the force-fetch moved the **REF**, not the **OBJECT**, and
+the old head was live all along. ⇒ ⭐⭐ **Test the object (`git cat-file -t <sha>`), never infer
+unreachability from a ref you overwrote.** Same void-cell shape one layer in — and uniquely, this one
+made me *withdraw a CORRECT claim*.
+⛔ **SCOPE — and I initially wrote this rule as universal, which is the error it warns about.**
+`cat-file -t` on the triager's clone: `b7aa786bd0` → commit, but `9482349972` / `7291d6a375` /
+`5cc7bd2520` → *"not a valid object name."* **They fetched `pull/12378/head` twice, both times AFTER
+the rebase, so they genuinely never held those objects.** My "you just overwrote the ref" was a fact
+about *my fetch history*, not a portable diagnosis; their "blocked" was correct locally and not a void
+cell. ⇒ ⭐⭐⭐ **Object availability is a property of YOUR OWN FETCH HISTORY — not of the remote, the ref
+name, or a peer's clone.** ✅ **Which is why the merge-base-per-head method is the one to reach for
+first: it needs NEITHER edge's object history — it asks the remote, not the local clone.**
+
+✅ **SETTLED (triager's method, reproduced by me): DIFF EACH HEAD AGAINST ITS OWN MERGE-BASE, never
+against the other head.**
+
+| head | own merge-base | PR-relative |
+|---|---|---|
+| `9482349972` | `fe64ccc609` | **+564 / 16 files** |
+| `b7aa786bd0` | `88fa1206d3` | **+564 / 16 files** |
+
+Identical contribution, different base ⇒ **pure rebase.** The original inference was right; only the
+instrument was void.
+⛔ **Three instruments that could NOT answer it, all giving confident or unusable output:** (a) a
+two-head `git diff` on a force-overwritten ref → void; (b) a **3-dot `compare/A...B` between diverged
+commits MIXES BOTH SIDES** — returned `ahead 25 / behind 16, 56 files`, mostly upstream master movement,
+and the triager first read that as *"the PR's own files are byte-identical"*, flatly false (tell:
+`slang-diagnostics.lua +28/−0` where the PR adds **+7** — two populations in one table); (c) a per-head
+**blob hash** differs under a rebase by construction, since the file also carries upstream changes.
+⇒ ⭐⭐ **"What differs between two points in history" is a DIFFERENT QUESTION from "did the contribution
+change."** Paired warning: **a true rule that fits the symptom doesn't feel like a guess, it feels like
+expertise** — which is exactly what licenses stopping too early.
+⚠️ **Print the ref before believing a count taken at it** — the triager's first position count returned
+empty from a stale `FETCH_HEAD`, and *an empty result from a stale ref is indistinguishable from "the
+code isn't there."* Same void-cell shape as every needle failure, relocated into a git ref.
+⚠️ **One line of code, three legitimate numbers** (file 357 · `git diff` 149 · API `.patch` 145) — nine
+correct figures, zero errors, the whole apparent discrepancy was **unstated provenance.**
+
 ⛔⭐⭐⭐ **`APPROVE_WITH_NITS` IS PEER-INTERNAL AND IS *NOT* A GITHUB REVIEW STATE.** The reviewer tier
 reported APPROVE_WITH_NITS with 0 confirmed correctness bugs across 9 rounds; GitHub shows
 **0 reviews** and `jkwak-work` has not reviewed. ⇒ **Never relay it upward as "approved"** — two

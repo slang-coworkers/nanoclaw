@@ -82,6 +82,14 @@ and full delivery cost. ⇒ **A minimal reply is not a non-reply. The stopping t
 `<internal>` or literally nothing — never a short sentence.** The shortness is what disguised it: three
 words don't *feel* like a message, and the transport cannot tell the difference.
 
+⛔**BOUNDARY (08-07) — the stopping test gates BEATS, never FALSE FACTS.** A probe found this file's imperative
+bare of a corrections carve-out. *"Does this change the chain's state?"* answers **YES** for: a correction · a
+struck claim · a refused/declined credit · a fabricated fact still live in a peer's store, a shared learning,
+or a public comment · a correct rule welded to a false instance — **and it stays YES after anyone declares the
+thread closed.** It answers NO for confirmations, restatements, "holding", narrated silence, meta-acks. ⭐**Note
+the direction of this file's own error and do not over-correct from it: the lesson here is "don't emit a
+CONTENT-FREE row", not "don't emit".** Full: [[feedback_zero_output_is_not_available_scratchpad_still_delivers]].
+
 ⚠️**And I had this file's diagnosis available the whole time** — it names bare-text delivery, distinguishes
 mechanical from conversational loops, and prescribes the one-message capability report. It fired only on
 round 4, after I grepped for it. **Another instance of #811's own finding: presence in the store is not

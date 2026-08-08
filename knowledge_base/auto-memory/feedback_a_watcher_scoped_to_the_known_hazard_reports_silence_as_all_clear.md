@@ -26,3 +26,81 @@ metadata:
 ⛔ **Also NOT established: "known flake."** Only prior `test-falcor` failure on `ci.yml` is run `29742458336` from 2026-07-20, logs expired ⇒ unprovable. Fixer independently reached the same limit from the other side (Falcor `success` on the two recent master runs where it ran; no red-master control). **State the limit rather than let "probably flaky" ride on the reachability claim's strength.** Crash profile (`3221225477` = `0xC0000005` host access violation, not a golden-image mismatch) is likewise corroborating only.
 
 See [[technique_spirv_val_infra_discriminator_measured_both_poles]] for the discriminator itself and [[project_12342_downstream_absent_capability_slangresult]] for the chain.
+
+## ⭐⭐⭐ THREE DISTINCT FORMS OF "A WATCHER THAT CANNOT FIRE", all 2026-08-06/07 — and each was silent, not broken
+
+| form | mechanism | how it was caught |
+|---|---|---|
+| **wrong trigger scope** | armed on `compile-regression`+`SLANGWIN5`; the red landed on `test-falcor`+SLANGWIN4 | a peer measured the run and found the failure the watcher never saw |
+| **unfireable predicate** | `gh api --jq` prints its **error object to stdout**, so `[ -z "$CTL" ]` is unreachable — and `\|\| echo 0` pins a count to 0 forever | a control that SHOULD have fired didn't |
+| **self-matching process watch** (peer's) | `until ! pgrep -f run-clarity` can never exit: the monitor's own command line contains `run-clarity` | read the run log's `done (rc=0)` instead and found the job had finished at 07:40 |
+
+⇒ ⭐⭐⭐ **All three are indistinguishable from "the job hasn't finished yet."** A watcher's silence is only evidence if the watcher can be shown to fire — **so every armed guard needs a must-fire control at arming time, not at doubt time.**
+
+⭐⭐⭐ **PEER'S FIX IS THE GENERAL ONE AND BETTER THAN MINE: WATCH THE ARTIFACT, NOT THE PROCESS.** `until [ -s clarity-review.md ]` rather than `until ! pgrep -f <job>` — **the output file is the thing that actually matters, and a process can die without producing it.** (Their earlier instance of the same defect: a bare `pgrep -f run-clarity` reported "C RUNNING" when the only matches were their own grep processes; caught by checking `/proc/<pid>/cwd` and finding it pointed at their verification worktree.)
+
+✅ **Fleet audit prompted by their report: NONE of my guards watch a process** (`pgrep`/`pidof`/`ps -ef` → 0 hits across all six). All three live ones poll artifact-or-API state — `i12371-pr-guard.sh`, `pr12200-guard.sh`, `sweep12375-guard.sh` — which is the shape their finding argues for. **Checked rather than assumed, because "I would never do that" is not a measurement.**
+
+## ⭐⭐⭐ A TEST OVER REDUNDANT DEFENSES MEASURES THE PAIR, NEVER EITHER MEMBER (2026-08-07, slang #12423)
+
+**A peer mutation-tested its own new test honestly and reported that it does NOT discriminate:**
+```
+strip removed alone        → PASSES
+emitter gate removed alone → PASSES
+BOTH removed               → FAILS (names %computeMainB_0)
+```
+⇒ **Two redundant defenses, each individually sufficient, so NO single-mutant test can fail.** Their framing is the one to keep: *the bad IR shape still exists with the strip removed; the emitter gate just refuses to act on it.* ⭐⭐ **Most agents would have shipped "test covers both guards" — they reported the absence of per-guard coverage instead.** The contrast case proves the mutants were actually run rather than reasoned about: the sibling `[instance]` test **does** discriminate (gate removed → 50%, 1/2) because there is no second defense there.
+
+⭐⭐⭐ **FOURTH FORM OF "INSTRUMENT ABSENT": FOUR REPRO ATTEMPTS THAT WERE STRUCTURALLY INCAPABLE OF FIRING.** They had **already deleted the assert two edits earlier** while fixing a comment, so the runs could not reproduce an assert that no longer existed in the binary. Fixed by temporarily restoring it. ⇒ **To reproduce an assert, first prove the assert EXISTS in the binary under test** — a test that cannot fail is indistinguishable from a test that passed. (Forms so far: wrong trigger scope · unfireable predicate · self-matching `pgrep` · **absent assertion**.)
+
+✅ **UB premise verified verbatim, so default-deny was justified rather than defensive padding:** `source/core/slang-common.h:363-372` — `#ifdef _DEBUG … handleAssert(…) #else #define SLANG_ASSERT(VALUE) SLANG_ASSUME(VALUE)`. **A false `SLANG_ASSERT` in a release build is genuine UB.**
+
+✅ **Comment-fix claim verified at coordinates, and the sharper half holds:** `lowerEntryPointToIR` → **0 hits in `source/`** (name gone); `Shader64BitIndexing` in `slang-lower-to-ir.cpp` → **10 hits, all at :15281-15312**, while `lowerProgramEntryPointToIR` spans **:15316→:15372**. ⇒ **Every hit sits ABOVE the function, so a reader guessing the nearest real name lands in the function that DISPROVES the comment** — worse than a dangling name.
+
+⚠️ **UNFILED, HARNESS-WIDE, and bigger than the PR: `slang-test` never gates on `exeRes.resultCode`, so a bare `CHECK-NOT` PASSES TRIVIALLY when the compile stops emitting.** ⇒ **Every `CHECK-NOT`-only test in the suite is potentially vacuous** — the same family as every item above, at suite scale. Told the peer to file it separately with the mechanism plus one demonstration, not folded into #12423. **Public write ⇒ needs operator authorization; offered to raise it alongside the two filings already held.**
+
+## ⭐⭐⭐ THE LARGEST INSTRUMENT-ABSENT CLASS FOUND SO FAR: an entire assertion type downgraded to `Ignored` as DOCUMENTED POLICY (slang-test, 2026-08-07)
+
+**Peer's find, verified verbatim by me** — `tools/slang-test/slang-test-main.cpp:816-822`:
+```cpp
+IFileCheck* fc = context.getFileCheck();
+if (!fc) {
+    // Ignore if FileCheck is not available.
+    // We could report an error, but our ARM64 CI doesn't have FileCheck yet.
+    testReporter.message(TestMessageType::Info, "FileCheck is not available");
+    return TestResult::Ignored;          // not Fail
+}
+```
+⇒ **On any host lacking FileCheck, EVERY `filecheck=`/`filecheck-buffer=` test returns `Ignored`** — and the comment names **real ARM64 CI** as that host. *A test that cannot fail is indistinguishable from a test that passed*, here as harness policy with a TODO on it.
+
+✅ **I MEASURED THE AGGREGATION BEFORE ANYONE CHARACTERIZED IT, and it cuts both ways:**
+```
+test-reporter.cpp:407-411  if (m_verbosity < Info) if (result==Pass || result==Ignored) return;  ← suppressed WITH Pass
+test-reporter.cpp:362      if (result==Ignored && m_hideIgnored)                                 ← separate hide flag
+test-reporter.h:148        bool m_hideIgnored = false;                                           ← defaults to NOT hiding
+```
+⇒ **"Silently SKIPPED, not silently PASSED."** At default verbosity it prints nothing (grouped with `Pass` for suppression), **but it is NOT tallied as a pass** — `Ignored` has its own `TestResult` and its own reporter cases (`:393`, `:427`). ⭐⭐ **Filing the stronger "counted green" version would die to a thirty-second `grep 'case TestResult::Ignored'`** — the precise cost the peer held the first filing to avoid. **Claim the version the code supports, not the version that lands hardest.**
+
+⛔ **AND MY OWN "CONSEQUENCE 1" WAS WRONG — retracted, peer-caught.** I argued the result code is *"checked by comparison rather than by an `if`"* because `getOutput` embeds `result code = N`. But `slang-test-main.cpp:963-968` is a **ternary**: `defaultExpectedContent` reaches only `_fileComparisonTest`, so **in `filecheck=` mode nothing asserts on the code at all.** My mechanism holds for `.expected`-file tests and **is inapplicable to exactly the tests the finding concerns.** ⇒ ⭐⭐ **Reading the FORMATTER (`getOutput`) told me what data exists; only reading the DISPATCHER (`_validateOutput`) told me whether anything CHECKS it.** Data present ≠ data asserted.
+
+⭐⭐⭐ **THE N-RULE, in the peer's stronger form: put the number of inspected instances in the claim EVEN WHEN IT'S LARGE, because a claim carrying its own N invites the reader to check the denominator.** This exchange is the argument for it — **three of my consecutive published statements needed narrowing** (suite-wide → one runner → not-even-that-mechanism), and each would have carried its own correction had it stated N. Their original error: inspected **N=1** runner, quantified over the harness.
+
+✅ **Right instinct, right order (peer's, self-flagged): check your OWN artifact before worrying about the suite.** Their two tests carry `PRESENT`/`PROMOTED` positives beside the `CHECK-NOT`, so **the anti-vacuity directive added for another reason already covers this defect.** ⇒ **A positive directive is what makes a negative one meaningful, independent of harness behaviour.**
+
+## ⚠️ A PEER RETRACTION CAN BE STALE — and re-verifying beat deferring to it (2026-08-07, slang-test gates)
+
+**A peer sent a retraction at 09:44 that reverted two readings they had themselves corrected at 08:42/08:44.** It re-listed `:2319` as a `resultCode` gate and concluded *"nothing to file against the harness"* — which would have made me drop a measured finding I hold the filing for.
+
+✅ **Re-verified instead of deferring, and the earlier work stands:**
+```
+:2319  if (exeRes.resultCode != 0)  actualOutput = getOutput(exeRes);   ← SELECTS output
+:2324  else { … return TestResult::Fail; … }                            ← the Fail is INSIDE the else
+       ⇒ it fires when the compile SUCCEEDED and the RUN failed; the resultCode path never fails the test
+```
+⇒ **`:2319` is an output selector, not a gate** — the peer's own 08:42 reclassification was right, and the 09:44 message regressed to the pre-08:42 reading.
+
+⇒ ⭐⭐⭐ **DEFERENCE TO A RETRACTION IS STILL DEFERENCE. A peer withdrawing a claim carries social weight ("they're being rigorous"), so it is the update least likely to be checked** — the mirror of the earlier finding that *a disconfirming probe deserves MORE scrutiny than the original assertion*. **Verify a retraction against the timeline of the peer's own measurements: a later, better measurement outranks an earlier framing even when the earlier one arrives second.**
+
+⭐⭐ **Diagnostic that settled it cheaply: compare the retraction against the peer's OWN prior findings, not against my beliefs.** Their 08:44 message contained `:977 forceFailure`, `:2760 /*forceFailure*/ false`, `:3781` gating, and the in-source `CROSS_COMPILE` rationale — a harness-level finding the 09:44 message discarded in favour of a per-test convention. **A retraction that throws away the sender's strongest evidence is a signal the retraction is stale, not that the evidence was wrong.**
+
+⭐⭐⭐ **The genuinely new item from that exchange, and a good rule: AN INCOMPLETE ENUMERATION READS AS AN EXHAUSTIVE ONE.** A user (`juliusikkala`) feared the PR broke his `[numthreads]`-only compute entry points **because the PR description listed only `-entry`/`-stage` as routes by which a `[shader]`-less function becomes an entry point.** It didn't break — emitted SPIR-V byte-identical to master, mechanism at `slang-module.cpp:386-392` (discovery infers `Stage::Compute` from `NumThreadsAttribute`). ⇒ **A user's misreading of your description is your defect, not theirs** — and the fix order was right: prove it, then pin it with a regression test, then reply.

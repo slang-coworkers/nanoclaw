@@ -2,8 +2,11 @@
 ⛔**ANCHOR A (08-06, 4th instance) — TRIGGER: ANY claim about a file or a build, and UNCONDITIONALLY before saying a PEER is wrong about one** (a SELF-directed causal claim has no peer to trigger the check, so it is the more dangerous case — a peer published "another ninja in the same `build/`" without pinning which filesystem its `.ninja_log` lived on; right conclusion, unasked question).** Then **`findmnt -no SOURCE,TARGET --target <path>` FIRST** — I overturned a peer's TRUE report with a clean mtime control run on **a different clone** (mine `/dev/vda1[…/groups/main]`, its `/dev/vdb[/prod-groups/slang-triager]` — a device **not present on my edge**). ⭐⭐⭐**MY METHOD WAS RIGHT AND POINTED THE OTHER WAY ON ITS EDGE: a valid discriminator run on the wrong tree manufactures a confident inversion.** Cost: two upstream messages asserting a true finding was false. Full derivation, the ancestor-commit refutation, both mtime sets, and the "cause unidentified, effect measured" terminal position: [[feedback_unrecognized_file_content_is_not_evidence_of_an_editor]].
 ⛔**ANCHOR E (08-06) — A TELL YOU DESIGNED BUT DID NOT BUILD IS WORTH ZERO AND READS AS COVERAGE.** I specified "every claim names its source thread" for cross-session credit-merging, a peer *rated* it, and ~2 turns later I merged two `slang-fixer` sessions' reports into one thread-less reply — the exact error. ⇒ ⭐⭐⭐**Build the tell in the turn you design it, or record that you did not.** ⭐⭐**With N sessions behind one destination name, attribution is a MISSING-KEY problem, never a care problem** — fix with a key, not attention. Full: [[feedback_a_pending_tell_does_not_catch_the_error_it_was_designed_for]].
 
+⛔**ANCHOR F (08-07) — A REPAIR MECHANISM KEYED ON "LOOKS UNFINISHED" RE-RUNS COMPLETED SIDE EFFECTS.** A spent one-shot stays `pending` / past-`process_after` / `runs=0` **forever** (runs increments on COMPLETION), byte-identical to an orphan — and my `scheduler-watchdog` re-arms exactly that shape, so **my own repair task was the live path to the second maintainer nudge I had just forbidden a peer from sending.** ⇒ ⭐⭐⭐**Ask what a SUCCESSFUL run leaves on the row you inspect; if "nothing", the row cannot drive the repair.** ⭐⭐⭐**Its self-exclusion guard keyed on a substring absent from its own real id — dead for 126 runs, untested because it never had to fire.** ⚠️**And the cross-group route I published the same hour was OVER-GENERALIZED:** `ncl sessions list --thread-id system:tasks:<series>` works only for tasks with a **per-series** session; **5 of my 13 series sit on a shared legacy session (`thread_id` NULL) and return `[]` — IDENTICAL to a fabricated id**, so my negative control could never catch the split. A peer reproduced the `[]` and blamed its own `cli_scope`; **I reproduced it on my own `global` edge, so scope was not the cause — the route's domain is the TARGET ROW's provisioning era.** ⇒ ⭐⭐⭐**Publishing a route without its domain hands a peer my untested generalization as an instruction, and their self-blame is the predictable result.** [[feedback_a_spent_one_shot_stays_pending_and_invites_a_rerun]], [[feedback_ncl_tasks_list_cannot_attribute_or_filter_by_group]].
+
 ⛔**ANCHOR B (08-06) — ⭐⭐⭐BARE PROSE OUTSIDE A `<message>` BLOCK IS DELIVERED.** `"Holding."` / `"No response."` / `*(silence)*` are FULL MESSAGES that wake the peer; the ONLY non-delivering form is `<internal>…</internal>`. **The leaf said this, marked SETTLED, but was UNLINKED from this index — so I re-derived it wrong, diagnosed the resulting no-op loop as the PEER'S config defect, and spent operator attention on a fix to an artifact that already mandated the rule.** ⇒ ⭐⭐⭐**A DARK RULE IS WORSE THAN A MISSING ONE — I built a RIVAL THEORY on its territory.** ⭐⭐**Before proposing a fix to another agent's config, grep your own store: a peer-blaming diagnosis IS the trigger for a retrieval check.** ⚠️`ls *.md` **misses dotfiles** — a glob's silence about a hidden file is indistinguishable from absence; use `find -iname`. Full: [[feedback_zero_output_is_not_available_scratchpad_still_delivers]].
-⛔**ANCHOR C (08-05/06, 3 instances) — ⭐⭐⭐A NON-ZERO CONTROL DOES NOT DETECT A WRONG-FILE READ: controls validate the INSTRUMENT, never the TARGET.** Instruction files are **composed per coworker** and `/workspace/**` is **per-container**, so one absolute path NAMES A DIFFERENT OBJECT per edge. ⇒ ⭐⭐⭐**When two parties disagree about a file, compare a SHAPE INVARIANT FIRST** (line count / hash / a control's count) — one exchange instead of rounds — and **RE-MEASURE at the moment of the dispute**, never cite a stored count (these files are recomposed on every wake). ⭐⭐⭐**NEVER infer a SCHEMA from one container's copy** — say "on my edge". ✅`<internal>…</internal>` **IS** suppressed (settled from existing logs, no test message). ⇒ ⭐⭐**Before accepting "this needs a live test", ask what you have ALREADY RUN that discriminates it.** Figures, the `cd`-false-zero near-miss, and the settled controls: [[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]], [[feedback_zero_output_is_not_available_scratchpad_still_delivers]]. ⛔**08-06 REFINEMENT — "per-container" is NOT "per-session": N sessions of ONE coworker share one container, one disk, one `git stash`.** I told a peer *"I can't measure your file, it's on your edge"* and inferred a denominator instead — false; a sibling's file was one `wc` from **them** and **requestable from me**. ⇒ ⭐⭐⭐**Before inferring a value you cannot see, ask WHO CAN SEE IT.** The anchor bounds *cross-group* paths; within a group the correct move is to ask, and its converse also holds — a file you can *see* is not a file you *wrote*: [[feedback_a_denominator_hunt_silently_asserts_the_numerator]].
+　　⛔**CARVE-OUT (08-07, added beside the rule because a pointer would be one hop too far) — THIS ANCHOR SUPPRESSES BEATS, NEVER FALSE FACTS.** Measured: my hoisted silence rules had **0** corrections carve-out (control: 5 silence hits, so the greps read), and on this chain I nearly withheld two corrections that mattered — my own instruction to "restore" an unsupported framing, and a miscredit sitting in a shared artifact. ⇒ ✅**OPERATIVE TEST: does this output change what someone would DO or BELIEVE?** **SHIPS regardless of who declared the thread closed:** a correction, a struck claim, a refused/declined credit, a fabricated fact still live in a peer's store or a shared file, a rule welded to a false instance. **Still sends nothing:** confirmations, restatements, "holding", narrated silence, heartbeat relays. ⭐⭐⭐**My own close is the one I am LEAST likely to reopen and the tier below me is the one most likely to have to** — so writing after my close is never overstepping. ⭐⭐**THE REAL PATTERN (3 instances 08-07): a correctly-stated rule aimed at the WRONG SCOPE** — each was right about what it named and wrong about what it covered. ⇒ **check a rule's BOUNDARY at the moment you would act on it.** [[feedback_audit_credit_as_hard_as_blame]], [[feedback_voiding_evidence_returns_to_unknown_not_to_the_prior_claim]].
+⛔**ANCHOR C (08-05/06, 3 instances) — ⭐⭐⭐A NON-ZERO CONTROL DOES NOT DETECT A WRONG-FILE READ: controls validate the INSTRUMENT, never the TARGET.** Instruction files are **composed per coworker** and `/workspace/**` is **per-container**, so one absolute path NAMES A DIFFERENT OBJECT per edge. ⇒ ⭐⭐⭐**When two parties disagree about a file, compare a SHAPE INVARIANT FIRST** (line count / hash / a control's count) — one exchange instead of rounds — and **RE-MEASURE at the moment of the dispute**, never cite a stored count (these files are recomposed on every wake). ⭐⭐⭐**4 INSTANCES 08-06/07 — **A PEER'S TRUE STATEMENT ABOUT ITS OWN ENVIRONMENT ARRIVES AS A GENERAL FACT ABOUT THE TOOL**: `host-cpp` rc=0 vs my timeout · `libslang-llvm.so` Debug-only · `.instructions.md` contents · git object availability (`cat-file -t 9482349972` → `commit` on my edge, *"not a valid object name"* on the triager's — they fetched only post-rebase ⇒ **object availability is a property of YOUR OWN FETCH HISTORY**, not the remote or ref name). ⚠️**I wrote mine as a universal — "a moved ref is not an absent object" — the very error this row warns about.** ✅**Guard: RE-RUN the one-line probe locally before ADOPTING *or* DISPUTING an environment claim; prefer a method needing neither edge's local state** (here: diff each head against **its own merge-base** — asks the remote, not the clone). ⇒ NEVER infer a SCHEMA from one container's copy** — say "on my edge". ✅`<internal>…</internal>` **IS** suppressed (settled from existing logs, no test message). ⇒ ⭐⭐**Before accepting "this needs a live test", ask what you have ALREADY RUN that discriminates it.** Figures, the `cd`-false-zero near-miss, and the settled controls: [[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]], [[feedback_zero_output_is_not_available_scratchpad_still_delivers]]. ⛔**08-06 REFINEMENT — "per-container" is NOT "per-session": N sessions of ONE coworker share one container, one disk, one `git stash`.** I told a peer *"I can't measure your file, it's on your edge"* and inferred a denominator instead — false; a sibling's file was one `wc` from **them** and **requestable from me**. ⇒ ⭐⭐⭐**Before inferring a value you cannot see, ask WHO CAN SEE IT.** The anchor bounds *cross-group* paths; within a group the correct move is to ask, and its converse also holds — a file you can *see* is not a file you *wrote*: [[feedback_a_denominator_hunt_silently_asserts_the_numerator]].
 
 ⛔ **Read the family index for your task, then the leaf file. A line here is a pointer; acting on the pointer alone is the failure this structure exists to prevent.**
 
@@ -43,6 +46,7 @@
 | [[index-feedback-9]] | `zero_output_is_not_availab…` … `zero_test_jobs_is_not_zero…` |
 | [[index-feedback-10]] | `the_compaction_bound_targe…` … `verifying_n_paths_then_tes…` |
 | [[index-feedback-11]] | `void_the_execution_claims_…` … `zero_test_jobs_is_not_zero…` |
+| [[index-feedback-12]] | `which_memory_store_injects…` … `zero_test_jobs_is_not_zero…` |
 | **Chains** — per-issue/PR state. Open the specific chain before touching its issue. | |
 | [[index-project-1]] | `10027_vector4_import_abort…` … `11878_e30051_alias_handoff…` |
 | [[index-project-2]] | `11881_numthreads_override_…` … `12062_board_sync_422_revie…` |
@@ -62,64 +66,30 @@
 
 ## Topic indexes
 - ⛔**[[index-verification-failure-branches]]** — ROUTER, open FIRST when a verification failed. 5 branches, 2 families, **opposite remedies**: void evidence→instrumentation, sound evidence→reading discipline.
-- [[slang-ci-infra-chains-index]] — "LIVE CI-infra chains spilled from MEMORY.md 2026-08-04 (4th spill): SPIR-V validation outage, #12145 queue-evicting flake, supervisor bounce-limb fal
-- [[slang-evidence-lessons-derivations]] — Long-form derivations for the evidence & verification standing lessons — split out of MEMORY.md to keep the index under the Read limit. Conclusions 
-- [[slang-evidence-lessons-index]] — "The evidence & verification standing lessons — full one-line-per-rule text, moved verbatim out of MEMORY.md. Open BEFORE any verification, correcti
-- [[slang-evidence-lessons-instruments]] — "Four unabridged evidence rules split out 2026-08-04 because the evidence index crossed its 24.4KB read limit: check-runs currency, per-container path
-- [[slang-evidence-lessons-measurement-rows]] — "Five evidence/verification lesson rows: subagent-restore-claim (added 08-04, root index was over the Read bound), plus four spilled verbatim from MEM
-- [[slang-frontend-docs-chains-index]] — Live slang frontend/codegen/docs chains spilled from MEMORY.md at the 08-04 compaction floor. Every row keeps its RESUME trigger verbatim; all are mai
-- [[slang-longtail-chains-index]] — "Chains with no live RESUME trigger of their own, folded out of MEMORY.md on 2026-08-04 to stay under the index read limit. Each row is a pointer plus
-- [[slang-nanoclaw-chains-index]] — "slang-coworkers/nanoclaw (platform-infra repo) live chain rows, spilled from MEMORY.md at the index floor 2026-08-04. Open before any nanoclaw PR/rev
-- [[slang-parked-index]] — "Long-tail index of chains that need no action now — parked, maintainer-owned, bot-unpushable, or merged/terminal. Split out of MEMORY.md to keep th
-- [[slang-rhi-backend-chains-index]] — LIVE chains — slang-rhi + backend-codegen (Metal/CUDA/HLSL-SPIRV). Most rows were spilled from MEMORY.md 2026-08-04 (3rd spill) and are gated on a N
-- [[slang-routing-lessons-index]] — "Standing lessons on routing, posting authority, GitHub write gates, a2a edges, infra/perms, and tooling. Split out of MEMORY.md to keep the root inde
-- [[slang-shipped-index]] — "Long-tail index of shipped / merged / reference chains kept for lookup only — no action pending. Split out of MEMORY.md to keep the root index scan
-- [[slang-slangpy-tooling-chains-index]] — Live slangpy and approver/gate tooling chains moved out of the index at the 08-04 compaction floor. Each row keeps its RESUME trigger verbatim.
-- [[slang-tick87-instrument-lessons]] — "Five verification failures from one supervisor tick, each with the check that catches it. Common root: a correct measurement over an unverified scope
-- [[slang-unindexed-triaged-backfill-index]] — "Backfill index for the 18 still-OPEN slang issues that slang-triager triaged but that had ZERO footprint in my store. One row per issue: verdict, com
-- [[slang-verify-lessons-pointers]] — Pointer-only rows split out of MEMORY.md — one-line verification/CI lessons whose full text lives in their own feedback files. No content here beyon
-- [[dark_open_chains_restored]] — "RESTORED-FOR-REACHABILITY index: every memo found reachable from NO index whose issue is STILL OPEN upstream (24 at restore time — treat the count 
+- [[slang-ci-infra-chains-index]] — LIVE CI-infra chains spilled from MEMORY.md 2026-08-04 (4th spill): SPIR-V validation ou
+- [[slang-evidence-lessons-derivations]] — Long-form derivations for the evidence & verification standing lessons
+- [[slang-evidence-lessons-index]] — The evidence & verification standing lessons
+- [[slang-evidence-lessons-instruments]] — Four unabridged evidence rules split out 2026-08-04 because the evidence index crossed i
+- [[slang-evidence-lessons-measurement-rows]] — Five evidence/verification lesson rows: subagent-restore-claim (added 08-04, root index
+- [[slang-frontend-docs-chains-index]] — Live slang frontend/codegen/docs chains spilled from MEMORY.md at the 08-04 compaction f
+- [[slang-longtail-chains-index]] — Chains with no live RESUME trigger of their own, folded out of MEMORY.md on 2026-08-04 t
+- [[slang-nanoclaw-chains-index]] — slang-coworkers/nanoclaw (platform-infra repo) live chain rows, spilled from MEMORY.md a
+- [[slang-parked-index]] — Long-tail index of chains that need no action now
+- [[slang-rhi-backend-chains-index]] — LIVE chains
+- [[slang-routing-lessons-index]] — Standing lessons on routing, posting authority, GitHub write gates, a2a edges, infra/per
+- [[slang-shipped-index]] — Long-tail index of shipped / merged / reference chains kept for lookup only
+- [[slang-slangpy-tooling-chains-index]] — Live slangpy and approver/gate tooling chains moved out of the index at the 08-04 compac
+- [[slang-tick87-instrument-lessons]] — Five verification failures from one supervisor tick, each with the check that catches it
+- [[slang-unindexed-triaged-backfill-index]] — Backfill index for the 18 still-OPEN slang issues that slang-triager triaged but that ha
+- [[slang-verify-lessons-pointers]] — Pointer-only rows split out of MEMORY.md
+- [[dark_open_chains_restored]] — RESTORED-FOR-REACHABILITY index: every memo found reachable from NO index whose issue is
 
-## ⛔ TAIL-CUT RECOVERY — rebuild from disk, no surviving link required
+## Store maintenance procedures → moved out (char budget)
 
-⛔**GLOB-FREE BY DESIGN.** The prior version of this block enumerated by prefix
-(`ls slang-*.md dark_*.md`, `ls feedback_*.md technique_*.md …`) — ⛔**a glob index is blind to exactly
-the size of your naming inconsistency, and it fails SILENTLY: a file matching no prefix simply does not
-appear, with no error.** Measured 08-05: the six globs covered 727 of 729 files and missed
-**`MEMORY-full-archive-*.md`** — i.e. the archive that is this block's own fallback. **List the
-directory; grep for the prefixes only to sort what you find.**
-
-```
-# 1. THE WHOLE STORE, no prefix assumptions
-cd /home/node/.claude/projects/-workspace-agent/memory && ls *.md | wc -l && ls *.md
-
-# 2. The archive of the pre-rebuild flat index (the globs missed this)
-ls MEMORY-full-archive-*.md
-
-# 3. Instruments — NOT .md, so every glob above is blind to them
-ls bin/*.py     # THREE tools, three questions a single one cannot answer:
-#   fragcheck.py  content: is X present?  (given X)
-#   nbrcheck.py   loss:    did this edit destroy anything? (harvests the expected set)
-#   rootcheck.py  universe: which ROOT does this reference resolve in? (sibling-authored;
-#                 tier-2 errors — wrong universe entirely — are invisible to widening a
-#                 search within one root, so neither tool above can see them)
-
-# 4. SECOND MOUNT — 71 files that exist ONLY there; no glob in this store can reach them
-ls /workspace/agent/memory/*.md /workspace/agent/memory/*.json 2>/dev/null | wc -l
-
-# 5. Live chains: read the description: field, do not trust the filename
-grep -l 'RESUME' *.md
-```
-
-Regenerate a family index after adding a memory (idempotent, reads `description:` from each file):
-```
-fam=feedback; { printf -- '---\ntype: index\n---\n\n# %s_*\n\n' "$fam"; for f in ${fam}_*.md; do n="${f%.md}"; d=$(awk '/^description:/{sub(/^description: */,""); print; exit}' "$f"); printf -- '- [[%s]] — %s\n' "$n" "${d:-(no description)}"; done; } > index-$fam.md
-```
-
-## Writing rule for this store
-
-⭐⭐⭐ **A new lesson goes in its own leaf file with a tight `description:`, and its family index is regenerated. It does NOT get a paragraph here.** Every anchored paragraph appended to the top of the old index pushed ~2KB of older rows past the read bound — the store grew while becoming less reachable, and each rescue row displaced more ([[feedback_a_remedy_that_can_reproduce_its_own_bug]]). Keep the `description:` field under ~200 chars: it is the retrieval surface, and at 667 entries the median is 167 but the max was 1905.
-
-✅ **Frontmatter repaired 2026-08-05** — [[feedback_ncl_sessions_list_agent_group_flag_not_filtering]] had `name: ""` and no `description:`/`type:`, leaving the store's richest instrument file unreachable by scan. All three keys present; `index-feedback` = **235 entries, 0 missing descriptions, 0 split-frontmatter**. ⚠️Its FILENAME still asserts what its own correction retracts (`--agent-group` doesn't exist; `--agent-group-id` works) — kept to preserve inbound links; the description leads with the retraction. ⭐**"Repair when next editing it" was a deferral with no trigger — it sat for a day. Fix frontmatter on sight** ([[feedback_a_deferral_whose_trigger_cannot_fire_is_a_deletion]]).
-
-⚠️ **Measured 08-05 21:57 — "0 missing descriptions" is a PRESENCE check, and the store's live defect is now the opposite: OVERSIZE.** Of **696** files with a `description:`, **83 exceed 400 chars** (max **2,568** — `project_slangwin5_spirv_val_runner_defect`; then 1,873 / 1,550 / 1,386 / 1,312). Against the ~200-char budget on line 56 that is ~12% of the store spending the retrieval surface it was meant to save. ⭐⭐ **A present-but-1,000-char description is as unscannable as an absent one, and it passes every completeness check** — presence and fitness are orthogonal, so `0 missing` says nothing about usability. Cut on sight when already editing a file (move the full text to a body section — nothing need be lost); **not worth a sweep of 83 files unasked**. Three cut this way already: `feedback_ncl_sessions_list_agent_group_flag_not_filtering` (991→256, full text kept as a body section), plus the two #8373 leaves (365→259, 520→280).
+⛔ **TAIL-CUT RECOVERY** (glob-free rebuild from disk · the 3 instruments in `bin/` · the second mount) and the
+**WRITING RULE** (own-leaf-never-a-paragraph · ~200-char `description:` budget) moved verbatim 2026-08-07 to
+**[[technique_keeping_this_store_reachable_procedures]]**.
+⭐**The hook counts CHARACTERS, not bytes** — measure with
+`python3 -c "print(len(open('MEMORY.md',encoding='utf-8').read())/1024)"`, never `wc -c`.
+⇒ ⭐⭐**This index keeps violating its own rule: a new lesson gets a LEAF, not a paragraph here.** Every anchor
+paragraph pushes older rows past the bound.

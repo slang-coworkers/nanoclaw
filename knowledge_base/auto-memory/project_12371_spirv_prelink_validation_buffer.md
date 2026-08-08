@@ -1,6 +1,6 @@
 ---
 name: project_12371_spirv_prelink_validation_buffer
-description: "LIVE — slang#12371: SPIR-V validation runs on the PRE-LINK buffer so a valid linked module is rejected for OpCapability Linkage. DRAFT PR #12382 (head f93eb4f7, A1) is CONTAINED WHOLE by draft PR #12408 (head 95bdd991, ahead 6/behind 0), which builds A2 => Q1 answered in built code, not by the operator. 23:0xZ: #12408 GAINED both closing links (closes 12371+12383) — my flagged hazard is resolved — and jhelferty-nv assigned jkwak-work + requested review 22:57Z. RESUME: guard i12371-pr-guard-0175 — latch fixed FIVE times; 5th (23:0xZ) added xst= per-cross-ref-PR state after xprs proved to be a MEMBERSHIP probe, blind to what the superseding PR does."
+description: "LIVE — slang#12371: SPIR-V validation runs on the PRE-LINK buffer so a valid linked module is rejected for OpCapability Linkage. DRAFT PR #12382 (head f93eb4f7, A1) is CONTAINED WHOLE by draft PR #12408 (head 76281671, A2, closes 12371+12383) => Q1 answered in built code, not by the operator. 01:2xZ 08-08: heartbeat #6, latch 5th TRUE NEGATIVE, emitted NOTHING (nudge budget exhausted at #4). Blocked purely on human acts: 0 reviews on EITHER PR ~55h after shepherd assignment; defect still live on master 716ec597:3444. NEW: the master negative control finally produced a failing name OUTSIDE the gate set (`build`) — a control that has never emitted the positive it excludes is a control in name only, and I waited 3 wakes for the field to hand me that property rather than building it. RESUME: guard i12371-pr-guard-0175 — fixed SEVEN times; 7th is in the INSTRUMENT: `gh --paginate` SILENTLY TRUNCATES check-runs at 100 (rel=next uses /repositories/<id>/ which 401s under the OneCLI proxy), so use an explicit page loop gated on rows==total_count."
 metadata: 
   node_type: memory
   type: project
@@ -8,6 +8,347 @@ metadata:
 ---
 
 # slang#12371 — SPIR-V validation reads the pre-link buffer
+
+## 01:2xZ 08-08 heartbeat wake #6 — 5th true negative; emitted nothing. The master control finally produced its STRONGEST form: a failing name OUTSIDE the gate set
+
+✅ **Latch correct; every field re-measured from the API, byte-identical to wakes #4 and #5.** #12382
+`f93eb4f7`, draft, OPEN, 3 commits, 4 files +204/−7, closes `[12371]`, `mergeable=true`,
+`mergeable_state=behind`, `updated_at` still **2026-08-06T07:46:07Z**. #12408 `76281671`, draft, OPEN,
+10 commits, 6 files +869/−36, closes `[12371,12383]`, `mergeable=true`, `behind`, `updated_at` still
+**2026-08-07T12:45:04Z**. Both `pr: non-breaking`, assignee + requested reviewer `jkwak-work`, author
+id 274397474 type Bot, base master. **0 reviews / 0 inline review-comments on BOTH**, now ~**55 h**
+after the shepherd was assigned. Sole non-bot issue-comment on each is still jhelferty-nv's board-sync
+(05:58:29Z / 22:57:06Z, both 08-06). Issue #12371 open, 1 comment (ours), milestone Q3 2026,
+`updated 2026-08-07T01:24:37Z`, non-bot timeline events still exactly **4** (jkwak-work
+assigned/milestoned 08-06 + mentioned/subscribed 08-07 01:17Z, the reflex of our own comment edit).
+#12383 still OPEN, 0 comments. `compare f93eb4f7...76281671` = **ahead 15 / behind 0** ⇒ #12382 still
+contained whole.
+
+⭐ **Did NOT re-run the order test — correct, not skipped.** Both heads are the same **immutable shas**
+read at wakes #4/#5 (`76281671` ⇒ A2, validation below the optimizer). A content test at a pinned sha
+cannot change; the order test is owed on a **new head**, which the fingerprint reports.
+
+✅ **Defect still live on master — control, not inference.** Master advanced `7dc8091a → `**`716ec597`**;
+`slang-emit.cpp:3444` is still `compiler->validate((uint32_t*)spirv.getBuffer(), …)`. Neither PR has
+landed. (Master moving is deliberately unlatched — `mergeable` stayed `true` at both heads, the
+`mergeable`-over-`mergeable_state` choice still holding.)
+
+⚠️ **CI still infra-by-design at both heads, read COMPLETE via the 7th fix's page loop.** `f93eb4f7`:
+**84 == 84** ⇒ 2 failure / 74 skipped / 8 success. `76281671`: **80 == 80** ⇒ 2 failure / 74 skipped /
+4 success. Failing names on both = `{check-ci, wait-for-human-priority}` only ⇒ **no fixer dispatch.**
+74 skipped at both ⇒ CI is **UNMEASURED, not green.**
+
+⭐⭐ **The master control reached its strongest form this wake, and it took six wakes of luck to get
+there.** `716ec597` ⇒ **87 == 87**, 70 success / 9 skipped / 3 cancelled / 4 null / **1 failure named
+`build`** — a name **outside** `{check-ci, wait-for-human-priority}`. So the probe is demonstrably able
+to surface exactly the class of name whose absence at the PR heads is my no-dispatch decision, on the
+same instrument, in the same session. Wake #4's control could only show the probe was *alive*
+(0 failures); wake #5's was the first with a non-gate name (`Claude Code Assistant`); this one names a
+**build** job. ⇒ ⭐⭐⭐ **A negative control that has never produced the positive it is meant to
+exclude is a control in name only — and I did not build that property, I waited for the field to hand
+it to me three wakes in a row.** The lesson from ANCHOR-4 restated in this chain's terms: a control
+firing by luck is not a control; note when the luck arrives so the earlier readings are not
+retroactively credited with a strength they lacked.
+
+⛔ **Did NOT report master's `build` failure to `slang-ci-babysitter`, and that is a scope call, not an
+omission.** It is one failing name at a master sha with 70 successes, **which I did not classify by
+reading the job's own log** — and my own standing rule on this chain is that a rollup/conclusion color
+is not a classification. Relaying an unclassified color as a finding, from a guard session whose
+mandate is #12371 only, would publish exactly the shape I refuse to accept from others.
+
+⛔ **Emitted NOTHING upstream.** Heartbeat wake, unchanged fingerprint, no field moved, **nudge budget
+exhausted at wake #4**. Re-reporting "still 0 reviews, still blocked on ready/approve/merge" is
+narrated silence, and bare prose outside `<message>` still delivers
+([[feedback_zero_output_is_not_available_scratchpad_still_delivers]]) — so the terminal turn emitted no
+row at all.
+
+## 21:2xZ heartbeat wake #5 — 4th true negative; emitted nothing (budget exhausted). The MASTER CONTROL's census grew 80 → 383 on the SAME SHA in 4 h
+
+✅ **Latch correct; every field re-measured from the API, byte-identical to wake #4.** #12382
+`f93eb4f7`, draft, OPEN, 3 commits, 4 files +204/−7, closes `[12371]`, `mergeable=true`, `updated_at`
+still **2026-08-06T07:46:07Z**. #12408 `76281671`, draft, OPEN, 10 commits, 6 files +869/−36, closes
+`[12371,12383]`, `mergeable=true`, `updated_at` still **2026-08-07T12:45:04Z**. Both `pr:
+non-breaking`, assignee + requested reviewer `jkwak-work`, author id 274397474 type Bot, base master,
+`mergeable_state=behind` (a normal resting value here — deliberately unlatched). **0 reviews and 0
+inline review-comments on BOTH**, ~51 h after the shepherd was assigned. Sole non-bot issue-comment on
+each is still jhelferty-nv's board-sync. Issue #12371 open, 1 comment (ours), milestone Q3 2026,
+`updated 01:24:37Z`. #12383 still OPEN, 0 comments. `compare f93eb4f7...76281671` = **ahead 15 /
+behind 0** ⇒ #12382 still contained whole. Defect still live on master `7dc8091a`:**3444** is
+`compiler->validate((uint32_t*)spirv.getBuffer(), …)` — control, not inference.
+
+⭐ **Did NOT re-run the order test, and that is the correct call, not a skipped step:** both heads are
+the same **immutable shas** the 17:0xZ wake fetched and read (`76281671` ⇒ A2, validation below the
+optimizer). A content test at a pinned sha cannot change; re-running it would re-measure an immutable
+object. The order test is owed on a **new head**, which is exactly what the fingerprint reports.
+
+⚠️ **CI still infra-by-design at both heads, read COMPLETE.** `f93eb4f7`: **84 == 84** ⇒ 2 failure /
+74 skipped / 8 success. `76281671`: **80 == 80** ⇒ 2 failure / 74 skipped / 4 success. Failing names on
+both = `{check-ci, wait-for-human-priority}` only ⇒ **no fixer dispatch.** 74 skipped at both heads ⇒
+CI is **UNMEASURED, not green**.
+
+⛔ **NEW, and it retires my standing framing of the master control: the same sha's check-run census is
+a reading at a TIME, not a property of the sha.** At wake #4 I recorded master `7dc8091a` ⇒ **80 == 80,
+70 success, 0 failures**. This wake, **the identical sha** ⇒ **383 == 383**, 241 success / 125 skipped /
+16 cancelled / **1 failure (`Claude Code Assistant`)**. Nothing about `7dc8091a` changed; reruns and
+later-triggered workflows kept landing against it. ⇒ ⭐⭐⭐ **A `rows == total_count` gate proves the
+read was complete *at that instant*; it does not make the census a durable fact about the commit, so a
+stored census is a FRESHNESS-EXPIRING value and comparing this wake's count against last wake's is
+meaningless.** ⭐⭐ It also confirms the 7th fix's premise in the field a second time — the population
+really is unbounded and would have blown a 100-row cap here (383). ⭐ **The control got STRONGER by
+accident:** it now surfaces a failing name **outside** the gate set, so this wake's clean PR reading is
+a real negative from a probe demonstrably able to report a non-gate failure — where wake #4's
+zero-failure master could only show the probe was alive.
+
+⛔ **Emitted NOTHING upstream.** Heartbeat wake, unchanged fingerprint, no field moved, and the **nudge
+budget was exhausted at wake #4**. Re-reporting "still 0 reviews, still blocked on ready/approve/merge"
+would be narrated silence ([[feedback_zero_output_is_not_available_scratchpad_still_delivers]]) — and
+bare prose outside `<message>` still delivers, so the terminal turn emitted no row at all.
+
+## 17:0xZ heartbeat wake #4 — 3rd true negative, and NUDGE #2 SPENT (budget now exhausted)
+
+✅ **Latch correct: fingerprint byte-identical, and so was every field when re-measured from the API
+rather than trusted.** #12382 `f93eb4f7`, draft, OPEN, 3 commits, 4 files +204/−7, closes `[12371]`,
+`mergeable=true`, `updated_at` still **2026-08-06T07:46:07Z**. #12408 `76281671`, draft, OPEN, 10
+commits, 6 files +869/−36, closes `[12371,12383]`, `mergeable=true`, `updated_at` 12:45:04Z (the
+resync merge from the 13:2xZ wake — nothing since). Both `pr: non-breaking`, assignee + requested
+reviewer `jkwak-work`, author id 274397474 type Bot. **0 reviews and 0 inline review-comments on
+BOTH**; the sole non-bot issue-comment on each remains jhelferty-nv's board-sync (05:58:29Z /
+22:57:06Z, both 08-06). Issue #12371 open, 1 comment (ours, `updated 01:24:37Z`), milestone Q3 2026,
+non-bot timeline events still exactly **2** (jkwak-work `assigned`+`milestoned` 08-06 18:16Z).
+#12383 still OPEN, 0 comments.
+
+✅ **Containment + order test re-run at the live head, not carried forward.**
+`compare f93eb4f7...76281671` = **ahead 15 / behind 0** ⇒ #12382 still contained whole. Fetched
+`slang-emit.cpp@76281671`: `if (needsLink)` :3472 → `_Move(linkedArtifact)` :3494 →
+`compiler->compile` :3541 → `stripDbgSpirvFromArtifact` :3556 → **`if (needsValidation)` :3610 →
+`validateSpirvArtifact(…, artifact)` :3612**, `dbgArtifact` :3625; the two early-exit arms (:3582,
+:3595) still validate `preOptimizeArtifact`. Validation stays **BELOW** the optimizer ⇒ still **A2**,
+no silent reshape. `spirv.getBuffer()` live uses in the validation region: **0** (the three hits are
+:3412 `spirvFiles.add`, :3469 disassemble, and the `#if 0` region).
+
+✅ **Defect still live on master — control, not inference.** Master head **`7dc8091a`**;
+`slang-emit.cpp:3444` is still `compiler->validate((uint32_t*)spirv.getBuffer(), …)`. Neither PR has
+landed.
+
+⚠️ **CI still infra-by-design at both heads, read COMPLETE with the 7th-fix page loop.**
+`f93eb4f7`: **84 rows == total_count 84** ⇒ 2 failure / 74 skipped / 8 success. `76281671`: **80 ==
+80** ⇒ 2 failure / 74 skipped / 4 success. Failing names on both = `{check-ci,
+wait-for-human-priority}` only ⇒ **no fixer dispatch.** Instrument control: master `7dc8091a` ⇒ **80
+== 80 with 70 success, 0 failures** — so the probe can read a non-gate population and report zero
+failures on a healthy sha; the PR heads' 2-failure reading is a real signal, and their **74 skipped
+means CI is UNMEASURED at both heads, not green.**
+
+⛔ **NUDGE #2 SPENT — this was the 4th heartbeat wake on an unanswered Q1, the exact condition the
+budget named.** Sent to `orchestrator-dashboard`. Content: Q1 is moot as a *build* question (A2 is
+built and contains A1 whole), so the operator decision that remains is **which PR carries #12371**,
+and the chain is otherwise blocked on three **human-only** acts (ready / approve / merge) with
+**zero reviews ~35 h after the shepherd was assigned and ~18 h after review was requested on
+#12408**. ⇒ **The nudge budget is now EXHAUSTED. No further nudge on any subsequent wake, heartbeat
+or changed** — later wakes report only if a *field* moved.
+⭐ **What made this nudge legitimate where a status beat would not be:** it names a decision only the
+operator can make and a stall only a human can clear. Re-reporting "still 0 reviews" without that
+would be the narrated-silence failure ([[feedback_zero_output_is_not_available_scratchpad_still_delivers]]).
+
+## 13:2xZ `changed` wake — FIRST TRUE POSITIVE of the latch, and it fired on the cell the 5th fix added
+
+✅ **The latch woke for a real event and named it precisely.** Exactly ONE cell differed between
+`prior_fingerprint` and `fingerprint`: the `xst=` row for **#12408**, head `95bdd991 → 76281671`.
+Every other cell byte-identical on both rows (draft / OPEN / mergedAt null / closing links
+`12371+12383` / 1 comment / 0 reviews / MERGEABLE), and **#12382 is unchanged** (`f93eb4f7`, 3
+commits, 4 files +204/−7, `updated_at` still 2026-08-06T07:46:07Z). ⭐⭐⭐ **This is the field the
+5th fix added *because a membership probe could not see what the superseding PR was doing* — and it
+has now fired in the field on exactly that class of event, 15 h after its retroactive control
+predicted it.** ⇒ **A widening justified by a retroactive control (seed the prior dark state,
+confirm it wakes) and NO prediction is the shape that pays off**; contrast the 6th fix, whose
+extra prediction fired its antecedent and was wrong (09:4xZ above).
+
+⛔ **The new head is a MERGE COMMIT, not new work — `76281671` has `parents=2`
+(`95bdd991`, `eea5b275`), message *"Merge remote-tracking branch 'refs/remotes/origin/master' into
+fix/issue-12383"*.** #12408 is now **10 commits, 6 files +869/−36**, still draft, `pr: non-breaking`,
+assignee + requested reviewer `jkwak-work`, `updated_at` 12:45:04Z.
+⭐⭐ **A resync merge is where a conflict resolution can smuggle a PR-side edit, and the shape that
+hides it is a LEGITIMATELY LARGE delta** — `compare/95bdd991...76281671` lists **41 files** of
+master's content, so "the delta is big" carries no information. **The discriminator is not delta
+size: it is that every added line is present in MASTER'S OWN COPY at the merged-in sha.** Ran it:
+full-file diff of `slang-emit.cpp` across the merge = **exactly 2 hunks, +12/−0** —
+`SLANG_PASS(cleanUpVoidType)` in the `HostVM` arm, and the `linkresult == SLANG_E_NOT_AVAILABLE`
+arm — and **both are present in `eea5b275`'s own `slang-emit.cpp`** (`:1671`, `:3423`, `:3427`).
+⇒ **zero PR-side content change in the merge.**
+
+✅ **The merge INTEGRATED a real collision cleanly, and this is the constraint-4 item closing out.**
+Master's `88fa1206` (*"Guard GlslangDownstreamCompiler::link against a null glslang_linkSPIRV
+(#12359)"*, 08-06 18:20Z) landed the `DownstreamLinkingUnavailable` arm **inside the same function**
+this PR rewrites. Carried constraint 4 said *do not bundle that arm — #12359 already diagnoses it*;
+the resync brings it in from master instead of duplicating it. Verified no double-implementation:
+`compiler->validate(` count at the merged head = **1** (inside the `validateSpirvArtifact` helper
+:3327 only). `slang-diagnostics.lua` diff vs master = **the PR's own `spirv-blob-not-word-sized`
+57008 only**, plus the range comment `57001-57007 → 57001-57008`; **0 duplicate numeric ids, 0
+duplicate names** across the whole merged file. ⭐ The 09:4xZ falsification holds up under a second
+event: hunks ~1570 lines apart merged clean, and this one — in the *same* function — also merged
+clean because the two edits touch different arms.
+
+✅ **ORDER TEST re-run on the FETCHED file at `76281671` — still A2, not a silent A1.**
+`if (needsLink)` :3472 → `_Move(linkedArtifact)` :3494 → `compiler->compile` :3541 →
+`stripDbgSpirvFromArtifact` :3556 → `passthroughDownstreamDiagnostics` :3575 → **`if
+(needsValidation)` :3610 → `validateSpirvArtifact(…, artifact)` :3612**, `dbgArtifact` :3625; the
+two early-exit arms (:3582, :3595) still validate `preOptimizeArtifact`. Validation stays **BELOW**
+the optimizer and the strip. `spirv.getBuffer()` live uses in the validation region: **0** — the two
+hits are :3412 `spirvFiles.add` and :3469, which I confirmed by reading :3455-3475 is **inside
+`#if 0`** (a grep line number is not a live call).
+✅ **Containment holds: `compare f93eb4f7...76281671` = ahead 15 / behind 0** ⇒ #12382 still
+contained whole (ahead grew 6→15 only because the merge pulled master's 9 commits in).
+
+✅ **Defect still live on master — control, not inference.** At master head `7a9328f8` (08:37Z),
+`slang-emit.cpp:3444` is still `compiler->validate((uint32_t*)spirv.getBuffer(), …)`. Neither PR has
+landed; #12383 also still **OPEN**. Issue #12371 open, 1 comment (ours), `iev=2` held (only
+jkwak-work's 08-06 assign/milestone). **0 reviews / 0 inline comments on BOTH PRs — nobody has
+reviewed either, ~38 h after jkwak-work was assigned and ~14 h after review was requested.**
+
+⚠️ **CI still infra-by-design at the new head, read COMPLETE.** `76281671`: **80 rows == total_count
+80** ⇒ 2 failure / 74 skipped / 4 success; failing names `{check-ci, wait-for-human-priority}` only.
+Classified from the job's **own annotation**, not the rollup: *"priority-gate-yielded: higher-priority
+CI is active; ci-retry-yielded-bot will rerun this bot CI when quiet"*. Run `31179559787` job census:
+`filter` success, the two gate jobs failure, **33 skipped — still zero build/test jobs, so CI is
+UNMEASURED, not green.** ⇒ **no fixer dispatch.** #12382 unchanged (84 == 84, same 2 names).
+Instrument control: master `7a9328f8` ⇒ **97 == 97** with `board-sync / board-sync` failure + 10
+cancelled — so the probe **can** report a name outside the gate set; the PR heads' clean reading is
+a real negative. The explicit-page-loop + `rows == total_count` gate from the 7th fix passed on all
+three heads.
+
+**Nudge budget: #1 still the only one spent (06:30Z 08-06). This was a `changed` wake, so the
+heartbeat count stays at 3 — nudge #2 becomes due on heartbeat wake #4.** Emitted nothing upstream:
+the only movement is a clean resync that changes neither Q1 (already answered in built code by
+#12408's A2) nor the human acts (ready/approve/merge) the chain is actually waiting on.
+
+## 09:4xZ heartbeat wake — latch held (2nd true negative); my 6th-fix PREDICTION was falsified, and the completeness control caught a 7th defect in the INSTRUMENT
+
+✅ **Latch correct again.** Re-measured everything (5 prior wrong readings earn no trust). Byte-identical
+to stored state: **#12382** `f93eb4f7`, draft, 3 commits, 4 files +204/−7, closes `[12371]`, `MERGEABLE`;
+**#12408** `95bdd991`, draft, 9 commits, 6 files +869/−36, closes `[12371,12383]`, `MERGEABLE`. Both
+`pr: non-breaking`, assignee+reviewer `jkwak-work`, `updated_at` **unchanged since 08-06** (07:46Z /
+22:57Z). **0 reviews, 0 inline comments on BOTH**; sole issue-comment on each is jhelferty-nv's
+board-sync. Issue open, 1 comment (ours, `updated 01:24:37Z`), milestone Q3 2026, `iev=2` held (the
+`mentioned`/`subscribed` narrowing still working). **Nobody has reviewed either PR.** Emitted nothing
+upstream. Nudge #2 not yet due — this is heartbeat wake **#3** on an unanswered Q1 (budget: after 4+).
+
+⛔ **MY 05:2xZ PREDICTION FIRED ITS ANTECEDENT AND WAS WRONG.** I wrote *"the next master push
+touching `slang-emit.cpp` converts that silent behind-ness into a silent conflict."* Master pushed
+**`5990e40b`** 06:24:56Z with **+4/−0 in exactly that file**, then `6330a678` 07:38:47Z; both PRs are
+now **behind 7** — and both are still **`mergeable=true`**. Cause: git conflicts on overlapping
+**HUNKS**, not shared files. Master's hunk is `@@ -1665,6 +1665,10 @@`; the PRs' hunks span
+`@@ -3236 @@`–`@@ -3504 @@` — **~1570 lines apart**, so a clean merge is the CORRECT answer.
+⚠️ **Had I trusted the prediction, the next wake would have read `MERGEABLE` as a BROKEN PROBE** and
+I'd have hunted a phantom defect in a field reporting the truth. ⭐⭐⭐ **A justification and a
+prediction carry different burdens: adding the field only needed "it can change with no other field
+changing" (true, and it stands); "it WILL change on event E" needed a mechanism I never checked when
+checking was one API call (read the `@@` header).** ⇒ **When a fix needs no prediction to be
+justified, don't ship one.** Leaf: [[feedback_same_file_is_not_the_conflict_predicate]].
+⭐ `behind` growing 5→7 correctly did NOT wake — the `mergeable`-over-`mergeable_state` choice
+survives the falsification intact.
+
+⛔ **SEVENTH DEFECT, and the first one that is in the INSTRUMENT rather than the field set: the
+check-run read was page-1-of-100, on the one probe whose population is UNBOUNDED — and I had
+DOCUMENTED that cap as safe** (*"Fine for a 3-commit draft"*, 15:0xZ). True and irrelevant: the
+governing population is check-runs, not commits. Both heads sit at 84/36 **only because the priority
+gate SKIPS every build/test job**; master head `6330a678` carried **112 → 122 → 129** within this one
+session. ⭐⭐⭐ **The event that produces the signal and the event that blinds the instrument are the
+SAME event** — a real build failure requires CI to actually run, and CI actually running is what
+pushes the count past the cap. **A cap validated at rest is validated in the one state where it cannot
+fail.** Page 1 holds the NEWEST runs (verified `started_at` 10:04:23Z→07:44:56Z vs page 2
+07:43:10Z→07:39:10Z), so a failure on an older-started job falls outside the window.
+⛔ **`--paginate` DOES NOT FIX IT AND FAILS SUCCESS-SHAPED.** 3 trials each, same URL: `--paginate`
+⇒ **100 rows, exit 1**; explicit `&page=N` loop ⇒ **122**; `total_count` ⇒ **122**. Mechanism pinned,
+not guessed: page 1's `Link: rel="next"` is the **`/repositories/93882897/…` numeric-id path form**,
+which **401s under the OneCLI proxy** while `/repos/owner/name/…` succeeds (isolated:
+`gh api repositories/93882897` ⇒ 401, `gh api repos/$R` ⇒ works). Partial data → **stdout**, 401 →
+**stderr**, and every call site had `2>/dev/null`. Repo-wide too: `pulls?state=open` gave 100 vs 200.
+⇒ Fixed with an explicit page loop over the `/repos/` form + a `total_count` probe **gated on
+`rows == total_count`**. ⭐⭐⭐ **What caught it was the completeness control I'd been running by hand
+since 08-06 11:1xZ purely as an instrument check** (`total_count=112 returned=100`) — **not** the
+field-set review that found the six prior defects, which cannot find it: the field was present, the
+probe ran, and it returned a plausible answer about a subset. ⇒ **Two questions per probe: (1) is the
+field in the fingerprint, (2) is the READ of it complete.** I'd asked (1) six times, (2) never.
+Eight tests, latch md5 `d829f9d5…` identical after every failure case: **T1** neutral at rest ·
+**T2** `rows 84 != total_count 150` bail · ⭐**T3 RETROACTIVE** — `build-linux-x86_64-release / build`
+failure present **only on page 2** ⇒ **wakes and names it** (old read: zero failures) · **T4/T5/T6**
+error-object `total_count`, error-object page 1, injected junk ⇒ bail, latch identical · **T7**
+positive control still wakes · **T8** unstubbed ⇒ silent. `bash -n` clean.
+⚠️ **Two stub bugs each produced a PASS FOR THE WRONG REASON:** `*per_page=1*` prefix-matches
+`per_page=100`; and a stub must emit **post-`--jq`** output (bare array), not raw API JSON. ⇒ ⭐⭐
+**A bail is not a pass — read WHICH guard fired; a bail from the wrong guard means the one under test
+never ran.** ⭐⭐ Restored `lastwake` to the true **`1786096807`** (4th time — a test of a budgeted
+mechanism must not consume the budget it measures).
+✅ **Sibling audit:** only this guard and `pr12200-guard.sh` read check-runs — and **pr12200 already
+had the correct explicit-page + `rows != total_count` gate**; I wrote it right once and didn't carry
+it across. The three `--paginate` users (`sweep12375`, `guard-11965`, `i12092-scope`) paginate issue
+comments with populations **3/3/0** ⇒ latent, not live. Leaf:
+[[feedback_a_cap_that_is_slack_at_rest_binds_when_the_state_changes]].
+
+⚠️ **CI still infra-by-design at both heads, now with a COMPLETE read.** `f93eb4f7`: **84 == 84** ⇒
+2 failure (`check-ci`, `wait-for-human-priority`) / 74 skipped / 8 success. `95bdd991`: **36 == 36**
+⇒ same 2 / 33 skipped / 1 success. Nothing outside {check-ci, wait-for-human-priority} ⇒ **no fixer
+dispatch.** Instrument control: master `6330a678` ⇒ 122 rows, **0 failures**. **Still zero build/test
+jobs at either head — CI is UNMEASURED, not green.**
+
+## 05:2xZ heartbeat wake — latch HELD (1st true negative), but found the 6th dark aperture
+
+✅ **First wake where the fingerprint's "unchanged" was CORRECT.** Re-measured everything anyway
+(this latch has been wrong 5×). Both PRs byte-identical to the stored state: #12382 `f93eb4f7`,
+draft, 3 commits, 4 files +204/−7, closing `[12371]`; #12408 `95bdd991`, draft, 9 commits, 6 files
++869/−36, closing `[12371,12383]`. `compare f93eb4f7...95bdd991` = **ahead 6, behind 0** — still
+contained whole. **0 reviews / 0 review-comments on BOTH PRs**; the only issue-comment on each is
+jhelferty-nv's board-sync. Nobody has reviewed. Issue open, `jkwak-work` assigned, milestone Q3 2026.
+
+⚠️ **Two movements the latch correctly declined to wake on, both OUR OWN writes:**
+1. `iev` stayed **2** — correct. The timeline gained `mentioned` + `subscribed` (actor jkwak-work,
+   **01:17:40/41Z**), but those are the reflex of slang-triager editing cmt 5197829621 at 01:17:20Z,
+   whose body @-mentions him. The narrowing I added at 01:2xZ (exclude those two events) **worked as
+   designed** — this is the first fire that proves it, since the events are present and excluded.
+2. Our verdict comment grew to **16323 B**, `updated 01:24:37Z` — the triager folded in the #12408
+   supersession, the squash-only closure finding, and the "#12382 needs closing by hand" note. Issue
+   `updated_at` tracks it, and comment *count* is still 1, so `human=0` held. ⭐ **`updated_at` on an
+   issue moves for a BOT comment edit — it is not a human-activity signal.**
+
+⛔ **SIXTH DARK APERTURE — `mergeable` was absent from the guard entirely (`grep -c mergeable` ⇒ 0),
+and it is the one decision-relevant field whose change has NO branch-side signal at all.** Every
+probe added across the five prior fixes keys on something the *branch* does — a push, a draft flip, a
+review, a closing link, a cross-ref appearing. **Master moving flips `MERGEABLE → CONFLICTING` with
+the PR's own head sha, commit count, file set, check-runs and closing links all byte-identical.** So
+a conflict — the state that blocks the merge this entire guard exists to observe — is invisible **by
+construction** to a fingerprint assembled only from branch-side fields. Already half-realized and
+dark: master advanced to **`88fa1206`** and both PRs went to **behind 5** (#12382 ahead 3/behind 5,
+#12408 ahead 9/behind 5) with **zero** fingerprint movement. The next master push touching
+`slang-emit.cpp` converts that silent behind-ness into a silent conflict.
+⭐⭐⭐ **The generalization of five fixes' worth of "another unenumerated field": I had been
+enumerating fields by asking "what could the fixer do next?" — a BRANCH-side question. A field whose
+value is a FUNCTION OF TWO REFS changes when the ref I am not watching moves, so no amount of
+branch-side enumeration reaches it.** ⇒ For any latch, ask of each field: *whose action changes
+this?* Fields owned by a third party (master, the repo, the clock) need their own probe.
+⇒ Added `:mergeable` as a 9th cell on every `xst=` row.
+⭐ **Chose `mergeable` (tri-state) over `mergeable_state`** deliberately: `behind` is a **normal
+resting value** here (both PRs have been `behind` for a day), so latching it would wake on every
+master push repo-wide — noise, not signal. `mergeable` only leaves `MERGEABLE` when a human must act.
+⭐ **`UNKNOWN` is treated as UNMEASURED, not as a state** — GitHub returns it transiently while
+recomputing after any push; latching it would wake twice per push (→UNKNOWN, →back).
+Tested six ways: **T1** wakes on the widened field set · **T2** silent immediately after · ⭐**T3
+RETROACTIVE control — seeded `12408:…:CONFLICTING` with EVERY OTHER CELL IDENTICAL, and it wakes**, so
+the field catches the dark event rather than merely being present · **T4** `mergeable=UNKNOWN` ⇒
+silent, latch **md5-identical** · **T5** `pr view` 404 (error JSON on stdout, no `mergeable` key) ⇒
+silent, latch identical · **T6** injected junk value (`; rm -rf /`) ⇒ silent, latch identical (the
+shape-check rejects it before it can reach the fingerprint). `bash -n` clean.
+⭐⭐ Restored `lastwake` to the true **`1786081207`** after testing — **a test of a budgeted mechanism
+must not consume the budget it measures**; final control fire confirms silent (`675s since last wake`).
+
+⚠️ **CI unchanged and still infra-by-design at both heads, with completeness controls.**
+`95bdd991`: **36 returned == total_count 36** ⇒ 2 failure (`check-ci`, `wait-for-human-priority`) /
+33 skipped / 1 success (`filter`). `f93eb4f7`: **84 == 84** ⇒ 2 failure (same two names) / 74 skipped
+/ 8 success (board-sync ×5, reuse-compliance ×2, filter). Nothing outside {check-ci,
+wait-for-human-priority} ⇒ **no fixer dispatch.** Instrument control: master head `88fa1206` ⇒
+`total_count` **543**, so a low count is a real reading, not a dead probe. **Still zero build/test
+jobs at either head** — CI is *unmeasured*, not green.
+
+**Nudge budget: unchanged, #1 spent 06:30Z.** This is heartbeat wake #2 on an unanswered Q1; budget
+says #2 is due after 4+. Emitted nothing upstream.
 
 ## 23:0xZ heartbeat wake — the hazard I filed RESOLVED ITSELF and the latch was blind to that too
 

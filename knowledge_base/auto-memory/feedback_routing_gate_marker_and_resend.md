@@ -13,3 +13,28 @@ Two linked operational rules for the chain-routing gate, learned from a duplicat
 **Why:** On #11496 I sent a combined response — a valid `in_reply_to` correction to slang-triager + an operator status surface that quoted `[Triage Resolution]`. The status surface tripped the gate (Rule 1). I read "not delivered" as nothing-delivered and re-sent both (violating Rule 2), so the triager got the correction twice and nearly logged the duplicate as an injection/replay artifact.
 
 **How to apply:** Before sending status surfaces that reference coworker reports, strip the bracketed marker tokens from the prose. On any gate refusal, identify the single offending message, fix only that one, and re-send only that one — leave already-delivered siblings alone.
+
+---
+
+## ⛔ Rule 3 (2026-08-07) — A CRON-BORN SESSION CANNOT SATISFY THIS GATE AT ALL, and that is a defect, not a discipline problem
+
+Measured on the slang-fixer #12186 horizon chain, twice. A session created by a **scheduled task**
+has `messaging_group_id = NULL` and **no a2a inbound was ever minted**, so there is no inbound row id
+to name. The gate demands `in_reply_to=<inbound id>` on any marker-bearing delivery ⇒ for this session
+class the requirement is **unsatisfiable by construction**, not merely inconvenient.
+
+The two available workarounds are both **control-laundering** and the fixer correctly refused both:
+1. Re-send twice to exhaust the gate's 3-denial soft-fail — buys delivery by wearing the gate down.
+2. Strip the marker to slip the same payload through — defeats the scan rather than satisfying it.
+
+✅ **The correct behaviour, and the one to expect from a coworker:** send as a **plain status** with the
+canonical `thread_id` set (the spine's own rule for a cron-initiated send is *"no `in_reply_to`
+available → still set `thread_id`"*), and **disclose the gap up front**. The gate's own comment says an
+agent that consistently cannot link an inbound means the workflow step needs review — a cron horizon
+check is exactly that case.
+
+⇒ ⭐⭐ **Do not read a cron-session gate disclosure as sloppiness, and do not ask the coworker to "just
+use `in_reply_to`".** ⚠️**This is MINE to fix, not the coworker's to work around** — and as of
+2026-08-07 it is **acknowledged but NOT fixed**. Telling a peer "it's mine" is not a fix; say which it
+is. Related: [[feedback_thread_id_is_my_inference_in_reply_to_is_the_record]].
+

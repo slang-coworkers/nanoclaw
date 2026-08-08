@@ -136,7 +136,7 @@ wrong for precisely the reason I was criticizing his code. ⇒ ⭐⭐⭐**A roun
 (`==100`, `==50`, `==30`) is a TRUNCATION SIGNAL, never a measurement** — `awk '{c[$1]++} END{...
 if(c[p]>=100)}'` over the census is the one-line check, and it costs nothing. **I ran it only because
 he named pagination**; nothing in my own method would have surfaced it. Cf.
-[[feedback_a_tools_output_set_is_scoped_by_something_you_did_not_choose]] and the
+[[feedback_a_tools_output_set_is_scoped_to_the_tools_question]] and the
 complete-total-beside-a-truncated-list rule in `MEMORY.md`.
 ⭐⭐**And I disclosed it in the published comment** rather than silently correcting — the corrected
 figures are cheap; the credibility of un-flagged self-correction is not.

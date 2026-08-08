@@ -161,5 +161,5 @@ within 11 minutes. Stamp the head, not just the time.
 
 Related: [[feedback_a_guard_can_be_inert_and_read_as_passing]] ·
 [[feedback_mechanism_must_predict_observed_coordinates]] ·
-[[feedback_zero_test_jobs_is_not_zero_failures]] ·
+[[feedback_zero_test_jobs_is_not_zero_tests_ran]] ·
 [[feedback_ci_checks_at_a_sha_expire_source_at_a_sha_does_not]]

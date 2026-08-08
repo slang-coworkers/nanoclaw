@@ -55,6 +55,40 @@ task families and moves off single-case treatment.** States 1/2/4 keep their ori
 confidence.** A test using the program's *real* predicate on the *wrong* inputs
 **looks more rigorous** than an approximation while being exactly as wrong.
 
+## 🔴 FOURTH instance of state 3 — 08-07, and BOTH edges re-derived it as new
+
+On `nanoclaw#1145`, `slang-pr-approver` spent a turn correcting four stale figures of mine and, inside
+that same turn, asserted a count (**"three"**) from recall. Real count **seven**; its own
+`decision.md` said **two**. It filed the lesson as a fresh finding, and I **credited it as its
+derivation** — until it grepped its own store and found `1785940962451` (**08-05**; verified on my
+disk: *"Issuing a correction is the sharpest diligence slot"*), which had been in its loaded index
+verbatim the whole time. It declined the credit.
+
+⛔**And I made the same error in the same exchange.** I wrote a new leaf
+(`feedback_audit_the_figures_inside_a_correction_turn_hardest`) framing the rule as new — while
+**state 3 of this very file already was it**. I ran the dedup grep only after its retraction forced
+the check. **That leaf is deleted; folded here.** Two agents, two stores, one rule already in both.
+
+⇒ ⭐⭐⭐**A re-derivation filed as a discovery destroys the recurrence count**, which is the only number
+that carries information. *"4th instance, rule in loaded context, still fired"* argues the trigger
+must be **mechanical**; a fresh-looking atom implies awareness is improving. Its 08-05 instance fired
+**one turn** after it wrote the rule; this one fired **two days** after ⇒ **distance from the rule is
+not the variable.**
+
+⇒ ⭐⭐**Standing wiring, its formulation:** *"here's the rule I'm taking from this" is a novelty claim
+about my own store — grep BEFORE writing the atom, not after.* Same shape as
+[[feedback_zero_output_is_not_available_scratchpad_still_delivers]]: a dark rule is worse than a
+missing one, because you build a rival theory on its territory.
+
+✅**The one genuinely new part, and it is mine, not its** (it insisted on the attribution): the error
+failed in the direction that **weakened its own argument** — 7 across 3 repos is a far stronger case
+for the missing predicate than 2. **Self-interest is the usual smoke detector for a bad number, so an
+error that costs you rhetorically sets it off exactly never.** ⇒ the blind quadrant is **under-claims
+against yourself**, which is why the countermeasure cannot be judgement-based. Mirror of
+[[feedback_audit_credit_as_hard_as_blame]]'s *"a correction that REDUCES my error count is the one to
+check hardest"* — and the reason a **declined** credit must be audited as hard as a granted one:
+checking this one is what exposed my own duplicate.
+
 ## 🔴⭐⭐⭐ STATE 5 (added 08-05): HOLDING A CORRECT CONCLUSION — and it has NO felt signature
 
 The peer named this after its 5th and 6th instances, and it is the one to flag
@@ -139,6 +173,40 @@ span with a 12-minute leading gap. **The evidence licensed "dominant cause", not
 explain everything — a single tidy cause is the shape over-reach takes when you
 are finally right.**
 
+## 🔴⭐⭐⭐ STATE 7 — UNDER-CLAIMING: the counterpart to this ENTIRE catalogue
+
+**Everything above is overclaim-shaped, and every remedy pulls ONE direction:
+narrow, weaken, report less.** That direction has its own failure mode, and it is
+the second entry here with **no self-correcting mechanism**.
+
+⛔⭐⭐⭐**Why it cannot be caught by review:** narrowing rounds **only ever
+subtract**, and an adversarial critic asking *"can you support this?"* **passes
+anything too weak — because everything it says is true.** Measured (peer,
+08-07): **OUTPUT_REVIEW ran 6 must-fix rounds**, all pulling smaller; nothing
+pushed back until it **asked, by name, "did I UNDER-claim anywhere?"** — and that
+question is what surfaced the third unvalidated backend (2-of-4 → **3-of-4**).
+
+✅**Remedy, and it must be explicit: ASK FOR BOTH DIRECTIONS BY NAME.** A reviewer
+optimising for overclaims will never volunteer an under-claim.
+
+⭐⭐**Same shape as state 6** (*"undeterminable from my seat"*): **a wrong STRONG
+claim leaves an artifact for the next call to falsify; a wrong WEAK claim leaves
+nothing to contradict.** ⇒ **Two entries in this catalogue have that property, and
+they are the two hardest to catch.** Both read as rigor.
+
+⭐⭐**Companion from the same repair loop: GREP THE CONCEPT, NOT THE PHRASE YOU
+JUST EDITED.** Three of the six rounds went to re-finding **one** claim that had
+reappeared in new wording — the fix was verified by searching for its own new
+text, which cannot detect the claim resurfacing differently. Same class as a
+`grep -cF` false negative, opposite direction.
+
+⭐⭐⭐**And the membership trap has TWO halves — both hit this session, one message
+apart:** the peer coined *"a hit is not a predicate; read the operator"* (a
+size-shaped grep hit that was an assignment), then immediately wrote *"wgpu's
+**only** `.size` line is…"* when there are **three** (`:46`, `:75`, `:146`).
+⇒ **READ THE OPERATOR *AND* COUNT THE HITS.** The conclusion survived both times;
+the narration did not — which is state 5 again, now nested inside the fix for it.
+
 ✅**Two disciplines from the peer, sharper than anything above and fully mechanical:**
 1. ⭐⭐⭐**ONE COMPARISON IS NOT AN ISOLATION — it is a guess with a control.**
    Bisect: strip to the minimum ACCEPTED shape, confirm, then add back **one**
@@ -150,6 +218,29 @@ are finally right.**
 3. ⚠️**And one it violated while fixing the others: STOP PROBING WHEN THE PROBE
    COSTS SOMEONE ELSE.** Each bisect fired a real decision card at a human; once
    the workaround was known, a tighter threshold wasn't worth more cards.
+
+## ⭐⭐⭐ THE WEEK'S ARITHMETIC — the one discrimination that survived all ~17 instances
+
+**Sort every remedy by what it ASKS OF YOU, and the record is unambiguous:**
+
+| class | asks | outcome across ~17 instances |
+|---|---|---|
+| **NOTICING rules** — states 1-7, "audit while correcting", "a prediction confirmed by reinterpretation", "report the resolution your evidence has" | recognise a risky mental state, then be careful | **every one failed at least once**, including in the turn that filed it |
+| **ARTIFACT rules** — *print the per-item result*, *bisect from the minimum accepted shape*, *enumerate before conceding unanswerability*, *simulate the truncation and diff* | produce an output before speaking | **none has failed** |
+
+⇒ ⭐⭐⭐**A rule that requires me to notice something has already lost, because the
+failure states are defined by not noticing.** The tightest proof: **state 5 nested
+inside the fix for state 5 at ONE-SENTENCE range** — the peer coined *"a hit is not
+a predicate; read the operator"* and committed an adjacent hit-count over-reach in
+the same breath. **Having repaired a method is no protection: the repair supplies
+confidence that spills onto whatever is adjacent, and "adjacent" includes the next
+clause.**
+
+✅**Operative form:** *"print three rows before typing 'only'"* — five seconds, and
+it catches the error that seven noticing-rules did not.
+⇒ **When choosing between "be careful about X" and "emit an artifact that makes X
+visible", the second is not merely better, it is the only one with a clean
+record.** Applies to designing gates and policies too, not just to my own prose.
 
 ## The rules that fall out
 

@@ -117,8 +117,35 @@ PATH"*, auto-disables PCH. **`which sccache ccache` ⇒ neither on PATH, on MY e
    made a destructive hand-off read as routine.** It refused. See
    [[feedback_a_handoff_granting_destructive_authority_needs_the_same_audit_as_blame]].
 
-⇒ "has destroyed work twice" understates it. And #4 shows the hazard is not only *concurrent writes* — it is
-**attribution under a shared identity**, which no worktree fixes.
+5. **08-07 05:30Z — FIFTH, and the first to land AFTER the escalation was delivered.** `slang-triager`
+   (session `5nim5r`, #12411) refreshed the shared clone with `reset --hard` and destroyed a sibling's
+   uncommitted `[ForceUnroll]` edit in `source/slang/hlsl.meta.slang` — owned by **`4zoory`, a
+   DIFFERENT SESSION OF THE SAME COWORKER** (both slang-triager; 4 of its sessions live in the
+   05:00–06:30Z window). Recovery was **luck** — the sibling happened to keep `.pristine`/`.patched`
+   scratch copies; unstaged edits have no object, so `fsck` cannot reach them.
+   ⭐⭐⭐**MECHANISM — A GUARD WHOSE OUTPUT NOTHING BRANCHES ON IS A LOG LINE, NOT A GUARD.** The
+   destructive command *contained* its check: `git status --porcelain | grep -v '^??' | wc -l` printed
+   **`1`** and the `reset --hard` ran anyway, same command, because no control flow consumed the `1`.
+   ⇒ `test "$(...)" -eq 0 || { echo ABORT; exit 1; }`, and prefer `merge --ff-only` over `reset --hard`
+   (it *cannot* silently discard — structural, not guard-dependent).
+   ⭐⭐⭐**THE DISCRIMINATOR (the genuinely new finding, triager's own):** the caution has a *strong*
+   positive record — it fired correctly in **11 files across 8 prior chains**, each an explicit "a
+   `--hard` here would have destroyed a peer's work; I declined." All 8 successes were **deliberate
+   cleanup/revert decisions**, where stopping to think *is* the task. **Both losses came from a refresh
+   recipe run as session BOILERPLATE.** ⇒ the failure is not "discipline doesn't hold" — it is that **a
+   destructive verb inside routine boilerplate never reaches the deliberation the same verb gets when
+   it IS the decision.** A third written caution cannot help: the caution was never missing,
+   *invocation* was. ⇒ **searchable next audit target: any other destructive op living in a routine
+   recipe rather than in a decision.**
+   ⚠️**My own layer sweep (5 layers, armed control): `CLAUDE.md` 0 · `CLAUDE.local.md` 0 · `memory/` 2
+   files · `~/.claude` memory 21 files · skills 0 — all 23 are incident PROSE, ZERO runnable recipes.**
+   The unsafe default was in a coworker spine, not mine. ⭐**Print the census, never the total** — "23
+   hazards in my store" would have been alarming and false.
+
+⇒ "has destroyed work twice" understates it — **FIVE instances in 3 days, one of them after the ask was
+delivered.** And #4 shows the hazard is not only *concurrent writes* — it is **attribution under a shared
+identity**, which no worktree fixes. #5 sharpens that: the clobberer and victim were **the same coworker,
+two sessions**, so "which agent owns this edit" is unanswerable from the tree alone.
 
 ⚠️**Two worktrees can exist for one issue**: `wt-12330` (triager) vs `wt-slang-12330` (fixer, branch
 `fix/issue-12330`). Key every path claim by its FULL name; a `wt-*12330` substring merges two owners.
@@ -141,6 +168,19 @@ same output.** Re-ran on a non-conflicting file for the clean measurement. See
 [[feedback_a_probe_that_cannot_observe_the_subject_returns_a_confident_value]].
 
 ## State
+
+⚠️**08-07 09:0xZ fire — operator has NOT answered; incident #5 re-ping delivered as dashboard msg
+`id 325` (a new data point, NOT a repeat of the ask).** ⭐**The first attempt was silently UNDELIVERED** —
+it came back as an `undelivered_message` and needed an explicit `send_message(to=...)` to land. ⇒ **on
+this task, a `<message>` block in the final response is not proof of delivery; confirm the returned id.** Verified no operator inbound since: the two dashboard messaging
+groups (`mg-1776713211742-om8syu` main, `mg-1781699149434-jdo1uq` admin) have **no inbound chat row after
+2026-08-06 19:4xZ** — the main dashboard session `9fon2n` tops out at **2026-05-21**, and every 08-07 row
+across 159 main-group sessions is coworker or task traffic. Concurrency **has not** grown materially:
+running sessions/group = **12 main · 7 slang-fixer · 3 slang-triager** · rest ≤2 (was 15/7/5) ⇒ the
+re-ping rests on the **incident**, not the count.
+⭐**The ask now has a THIRD item that is cheaper and more targeted than (a)–(c): fix the guard default in
+the coworker spines.** #5 was not prevented by isolation being absent — it was caused by a
+guard-beside-the-action recipe, which a one-line spine edit fixes for every coworker at once.
 
 **RESUME = operator decision on the spine default.** Nothing implemented; no config changed. Mechanics if
 greened: (a) `git worktree add` per chain, (b) source-only unless a build is required, (c) `sccache` via
