@@ -6,7 +6,7 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 420 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 423 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 185 |
 | `nv-slang` | slang project spine, skills, workflows | 132 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 67 |
@@ -15,6 +15,13 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-09
+
+### nv-main (3 PRs)
+- **#1150** `deps: own ccusage on nv-main, and assert runtime specifiers actually resolve`
+- **#1152** `critique-gate: close the consume/stamp interleaving that manufactured a bogus escalation`
+- **#1153** `fix(setup): prove the overlay actually landed before calling a merge composed`
 
 ## 📅 2026-08-06
 
