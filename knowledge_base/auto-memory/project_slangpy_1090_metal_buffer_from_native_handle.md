@@ -526,6 +526,235 @@ this week's catalogue collected (all overclaim-shaped):
   moves. ⭐**"N stale" is a DISTANCE, not a population count; say which you mean
   and run `rev-list --count`.**
 
+## 🔁 R4 SYNCHRONIZE 08-08 — **REBASE, not a push.** Re-dispatched.
+
+⛔⭐⭐⭐**THE OLD-HEAD COMPARE IS THE WRONG INSTRUMENT ON A REBASE — and it lied
+loudly.** `compare/eca1dc49...f906a119` returns **`status: diverged`, ahead 6 /
+behind 3**, listing **24 files** including 7 `.github/workflows/*` and
+`external/slang-rhi` — i.e. it looked like the PR had grown enormously and taken
+on CI-workflow changes. **All of that is upstream `main` traffic**, not the PR.
+✅**The PR's OWN diff (`pulls/1090/files`, base…head) is 6 files, +189/−29** —
+`test_buffer_from_native_handle.py`, `device.{cpp,h}`, `resource.{cpp,h}`,
+`slangpy_ext/device/device.cpp`.
+⇒ ⭐⭐⭐**On a `diverged` compare, STOP and switch instrument: use `pulls/N/files`
+(or the merge-base), never `compare/<old-head>...<new-head>`.** The author's
+commits were **rewritten** (`fac1587e5dfd` "Add Device::create_buffer_from_native_handle",
+`f906a11983f8` "tests" — new SHAs for the same work). `head.ref native-buffer-handle`,
+`base bd564212fc4e` (main).
+
+🔴**AND THE GITLINK BUMP IS GONE FROM THE PR.** `external/slang-rhi` is **no longer
+in the PR's diff** — the carrier of the BLOCK's fix has left. **Do not read that as
+the fix being reverted.** MINE-VERIFIED:
+- PR head pin == **`8ffe21c501b2`** and **`main`'s pin is the SAME** ⇒ the bump
+  **landed upstream independently**, so the PR no longer needs to carry it.
+- At that pin `vk-buffer.cpp` is blob **`eda0548ead59`** (identical to R3),
+  `fixupBufferDesc` count **2** — `:340` `createBuffer`, **`:443`
+  `createBufferFromNativeHandle`**. Fix **PRESENT**.
+- `compare/5f00bdc5...8ffe21c5` → **`ahead_by: 1`** ⇒ #813 is an **ancestor**;
+  the fix is retained, not reverted.
+⇒ ⭐⭐⭐**A file LEAVING a PR's diff can mean "merged upstream", not "reverted" —
+check the base's value before reading a disappearance as a regression.** This is
+the mirror of D3: the gitlink hid an arrival, and now its *absence* hides that
+nothing changed.
+
+**Inbound scan (all 3 endpoints):** no new non-bot input — still the same 3
+(`fknfilewalker` ×2, `guoxx`). CodeRabbit posted a **new COMMENTED review at
+`f906a11983f8`** (08-08T07:29:22Z) ⇒ **harvest should be head-current this time,
+unlike R3's exit-10.** ⚠️**ccummingsNV's `CHANGES_REQUESTED` still open, still
+pinned to `5c384a20b11b`** — and note his sha **no longer exists on the branch**
+after the rebase, so "N heads stale" is now ill-defined; only he can dismiss it.
+
+**`mergeable_state: blocked`** (his review is the block). **CI NOT SETTLED:** 18/18
+pagination OK — 7 success, 2 skipped, **9 in_progress**.
+
+## ✅ R4 FINAL 08-08 — **ABSTAIN_POLICY `OPEN_GAP`** @ `f906a11983f8`; R2 BLOCK stays cleared
+
+Ledger written, critique gate passed, head re-verified unchanged after recording,
+**nothing posted to GitHub**. **MINE-VERIFIED independently:**
+
+- **Head still pinned** `f906a11983f8`.
+- 🟢**Pass set HOLDS across the rebase** — re-read by test name on the new head,
+  `crashed while running` = **0** on every leg against `PASSED` controls:
+
+| job | leg | row | summary | ctrl |
+|---|---|---|---|---|
+| 93075061205 | linux gcc Debug | `PASSED …[vulkan]` | `4148 passed` | 4148 |
+| 93075061236 | linux gcc Release | `PASSED …[vulkan]` | `4148 passed` | 4187 |
+| 93075061194 | windows msvc | `PASSED …[vulkan]` | `5689 passed` | 5689 |
+| 93075061171 | windows msvc | `PASSED …[vulkan]` | `5689 passed` | 5749 |
+| 93075061188 | macOS | `PASSED …[metal]` | `1772 passed` | 1772 |
+
+Counts **identical to R3** (4148/4148/5689/5689/1772) — and the approver
+**pre-registered the bar again before reading.**
+- **Gap UNCHANGED** — it re-grepped all four import paths at the **new** pin rather
+  than inheriting R3: only Metal enforces the size precondition. The intervening
+  **#814 is inert here** (CUDA capability files only,
+  `grep -c createBufferFromNativeHandle` = 0). **`m_memory` still uninitialized**
+  at `8ffe21c501b2`.
+
+### ⛔⭐⭐⭐ FOUR RANGES ANSWER TO "THE FILE COUNT" — **state the range with the number**
+
+**MINE-VERIFIED, all four, labelled:**
+
+| range | repo | result |
+|---|---|---|
+| single-commit `parents[0]...head` | slangpy | **2 files** |
+| **PR-level `main...head`** | slangpy | **6 files / 218 lines** ← *the PR* |
+| **PR-level `pulls/1090/files`** | slangpy | **6 files / 218 lines** (agrees) |
+| **DIVERGED `old-head...new-head`** | **slangpy** | **22 files** |
+| submodule rhi `11eefdc6...5f00bdc5` | slang-rhi | **6 files / 270 lines** |
+
+⇒ ⭐⭐⭐**"The file count" is meaningless without its range.** The recorded clause
+evidence (`6 changed path(s)`, `218 lines / 6 files`) matches the PR-level range
+exactly — so the *dispute* was never 22-vs-24, it was **the wrong range**.
+
+⚠️**One correction back to the approver, which it got backwards:** it said both our
+numbers "described the **submodule** compare." **They did not.** The 22-file list is
+the **diverged SLANGPY compare** — MINE-VERIFIED: it contains
+`slangpy/tests/device/…`, `src/sgl/…`, and **`external/slang-rhi` as a single
+gitlink ENTRY**, and contains **zero** rhi-internal paths (`src/vulkan/…` etc.).
+The submodule compare is a **different range in a different repo** returning **6
+files / 270 lines**. ⭐⭐**Two wrong numbers can share a cause and still be
+mis-attributed to the wrong range — "we were both looking at X" is itself a
+membership claim needing the check.** Its conclusion (*the PR is 6 files*) is right;
+its account of what my 22 measured is not.
+
+⭐⭐**AND A COLLIDING-VALUE TRAP INSIDE THE SAME TABLE (approver's catch): TWO
+ranges both return "6 files"** — PR-level slangpy (6 / **218** lines) and submodule
+rhi `11eefdc6...5f00bdc5` (6 / **270** lines) — **measuring entirely different
+things.** ⇒ ⭐⭐⭐**A matching number is NOT evidence you are on the right range**,
+which makes *"state the range with the number"* load-bearing rather than stylistic.
+✅**Line counts disambiguated them here (218 vs 270) where file counts could not —
+carry a SECOND dimension whenever a count is load-bearing.**
+
+⚠️**A further collision I found, MINE-VERIFIED, which makes it worse:** the
+approver cited `compare/5c384a20b11b...f906a119` and I cited
+`compare/eca1dc49...f906a119` — **different bases, and BOTH return exactly 22
+files with IDENTICAL file sets** (`ahead 6/behind 1` vs `ahead 6/behind 3`).
+⇒ ⭐⭐**Two different ranges agreeing on both the count AND the membership is the
+worst case for range confusion — the only distinguishing fields were
+`ahead_by`/`behind_by`.** So "we got the same 22" could not have detected that we
+were on different ranges either. **Print the range string itself, not just its
+result.**
+
+### 🔴⭐⭐⭐ THE COLLISION IS BY CONSTRUCTION, NOT COINCIDENCE — **both ranges share a merge-base**
+
+**MINE-VERIFIED, and this supersedes the "carry a second dimension" remedy I
+proposed (which FAILS on this very case):**
+
+| range | files | lines | sorted-set sha256 | status | ahead | behind | **merge_base** |
+|---|---|---|---|---|---|---|---|
+| `5c384a20...f906a119` (R1 head) | 22 | **876** | `b58e4d9596a4` | diverged | 6 | **1** | **`086ca32f8db4`** |
+| `eca1dc49...f906a119` (R3 head) | 22 | **876** | `b58e4d9596a4` | diverged | 6 | **3** | **`086ca32f8db4`** |
+
+⇒ ⭐⭐⭐**GitHub's `compare` reports the THREE-DOT diff from the merge-base, so any
+two bases sharing a merge-base with the head produce BYTE-IDENTICAL file lists and
+counts.** The agreement is **structural**, not lucky — which is why *file count*,
+*line count*, and even a *hash of the sorted membership* all collide. **No output
+dimension can distinguish these queries; only the inputs can.** `behind_by` differs
+only because it is computed against the base itself rather than the merge-base.
+
+✅**Correct remedy, one level up from any output check (approver's, adopted):
+PRINT THE PROVENANCE WITH THE FIGURE** —
+`compare/<base>...<head> -> 22 files, 876 lines (ahead 6, behind 1)`. The
+identifying string is the only field guaranteed to differ when the queries differ.
+✅**And when reconciling with a peer, COMPARE INPUTS, NOT OUTPUTS** — *"which range
+are you on?"* settles in one exchange what output-matching cannot settle at all.
+
+⭐⭐⭐**GENERAL FORM: agreement on a RESULT is never evidence of agreement on the
+QUERY.** This is the exact inverse of Tuesday's duplicate-artifact rule
+([[feedback_every_copy_on_my_disk_never_settles_what_a_run_did]]): there,
+**disagreement** was stable under mutual re-verification; here, **agreement** is.
+**Both are resolved only by exchanging the artifact or the query — never by
+comparing conclusions.**
+⚠️**And it is ROUTINE, not exotic: neither base was wrong.** After any rebase there
+are several defensible "previous heads", so this failure mode is available on
+**every rebased PR**.
+
+### ✅⭐⭐⭐ OUT-OF-SAMPLE CONFIRMATION — the mechanism predicted a case neither of us had inspected
+
+**R2's head (`bb870c17`) was never part of the dispute.** The three-dot mechanism
+predicts: same merge-base, byte-identical files/lines/membership, and
+`behind_by` = 2 (between R1's 1 and R3's 3). **MINE-VERIFIED, fetched after
+stating the prediction:**
+
+```
+R1 5c384a20: files=22 lines=876 set=b58e4d9596a4 mb=086ca32f8db4 ahead=6 behind=1
+R2 bb870c17: files=22 lines=876 set=b58e4d9596a4 mb=086ca32f8db4 ahead=6 behind=2   <- PREDICTED
+R3 eca1dc49: files=22 lines=876 set=b58e4d9596a4 mb=086ca32f8db4 ahead=6 behind=3
+```
+
+⇒ ⭐⭐⭐**This is the check that was missing from `json.loads` and `vkMapMemory`
+earlier in the week: a mechanism that PREDICTS AN UNINSPECTED CASE and is then
+confirmed, versus one that merely accounts for the case that prompted it.**
+**Prediction-then-fetch is the counterfactual's positive twin** — cf.
+[[feedback_mechanism_must_predict_observed_coordinates]], which demanded the
+mechanism explain the *observed* coordinates; this goes further and demands it
+call *unobserved* ones.
+
+⛔⭐⭐**And the footgun that follows, approver's, worth the handoff: `compare`
+CANNOT give you a two-dot diff at all.** If you want "changes since R1" with R1
+taken **literally**, `compare` silently answers a different question whenever R1
+isn't the merge-base — you need `git diff base..head` on a local clone, or both
+trees. ⇒ **the "carry a second dimension" remedy was not merely insufficient, it
+was UNSOUND: every output field except `behind_by` is a function of the
+MERGE-BASE, not of the base you asked about.**
+
+✅**D3 does NOT apply to this revision** — no gitlink left in the diff to
+under-count. **Still valid as a general finding for the re-tightening owner; simply
+not instantiated here.** ⭐**A finding can be correct and inapplicable at once; say
+which.**
+
+### ⚠️ CORRECTION TO ME — the diverged compare returns **22** files, not 24
+
+**MINE-RE-COUNTED: `len(files)` = 22** (7 workflow + `.github/zizmor.yml` +
+`external/slang-rhi` + 13 source/test). **I said 24.** ⭐⭐**I printed the list and
+then stated a number I had not counted — the exact "count the hits" half of the
+trap I had corrected the approver on one round earlier.** It kept 22 and shipped
+the reproducing script rather than propagate either figure unverified — the right
+handling.
+✅**Everything else in my warning held**: `diverged`, ahead 6 / behind 3, 7 workflow
+files, `pulls/1090/files` = **6 files / +189−29**.
+⭐**And the trap is NARROWER than I framed it: `eval-clauses.py` is ALREADY correct**
+— it diffs `base_ref...sha` and reported 6 paths / 218 lines. **The danger was a
+human hand-feeding it the diverged list, not the script.** ⇒ **Name the vulnerable
+STEP, not the whole tool** — I implied a tool defect where there was only an
+operator one.
+
+### 🔎 Approver's additions past my list (its reads; the two I could check, I did)
+
+- ⭐⭐**Devin's staleness discriminator INVERTED** — with no gitlink in the
+  post-rebase PR, *rendering one at all now proves staleness*. Its change-group 4
+  was `slang-rhi +1/−1`, 7 files against the true 6. ⇒ **the same artifact that
+  proved currency last round proves staleness this round; a discriminator's
+  polarity is a function of the revision, not a fixed property.**
+- Rather than assert the findings still applied, it measured **per-file blob SHAs
+  across the rebase**: `resource.cpp`, `resource.h`,
+  `slangpy_ext/device/device.cpp` and the test file **byte-identical** ⇒ findings
+  apply verbatim; only `device.cpp`/`device.h` moved, neither for this PR's
+  reasons. ⭐**Blob-SHA equality is the right instrument for "does a prior finding
+  still apply after a rebase."**
+- 🔴**CodeRabbit's new 🟠 Major belongs to a DIFFERENT PR — MINE-VERIFIED both
+  ways:** this PR's *only* `device.cpp` hunk is **`@@ -578`**, and **#1094
+  (`31a351726ec2`, "Improve persistent cache robustness")** owns **`@@ -116,8
+  +116,16`** — the flagged shader-cache `create_directories`-outside-try block at
+  `device.cpp:119-128`. **Genuine-looking concern, wrong PR.** ⇒ **a rebase makes a
+  bot attribute upstream code to the PR that merely rebased onto it.**
+- Harvest **exit 0, head-current** this time (vs R3's exit-10 stale).
+
+### ⭐⭐ Its self-corrections, one of which is the new under-claim state firing
+
+- **It wrote "Blocker: None" on an ABSTAIN** — conflating *"my pipeline is
+  healthy"* with *"nothing blocks."* ⇒ **an under-claim, caught by OUTPUT_REVIEW,
+  and exactly the direction with no natural detector.**
+- **The concept-vs-phrase leak, one level deeper:** it had upgraded from
+  phrase-grepping to concept-grepping **but kept `grep`**, so a claim **wrapped
+  across a newline** still slipped through. **Fixed the tool class, not the
+  instance** — multiline whitespace-insensitive matcher. ⭐⭐⭐**This is the
+  artifact-over-noticing rule paying out: the durable fix was a better INSTRUMENT,
+  not more care.** Same defect family as
+  [[feedback_audit_grep_false_negatives_asymmetric]].
+
 ## RESUME triggers
 
 - ✅ Approver verdict received 08-03 → rolled up to operator.

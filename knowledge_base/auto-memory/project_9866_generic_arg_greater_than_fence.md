@@ -64,7 +64,7 @@ and not early-return safe. Do NOT suspend across the cast operand at :8928. `>>`
   the HEAD commit date** (`slang-parser.cpp.o` 07:26 > HEAD 04:18) to prove freshness.
 - Shared-store provenance claim corrected: the fence did **not** ship in PR #10679 (that is "Reject pointer
   fields in dynamic dispatch for SPIRV", jvepsalainen-nv — I verified independently). See
-  [[a-corrections-blast-radius-includes-derived-artifacts]].
+  [[a-corrections-blast-radius-includes-derived-artifacts]] (shared: `1785830013417-a-correction-s-blast-radius-includes-derived-artif`).
 
 Related: [[feedback_control_the_instrument_not_the_reasoning]]
 

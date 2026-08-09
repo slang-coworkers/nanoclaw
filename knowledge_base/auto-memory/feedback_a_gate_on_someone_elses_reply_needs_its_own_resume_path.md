@@ -117,3 +117,18 @@ luck:** it survives hops, nobody has to remember it, and it leaves an artifact y
 
 - Chain: [[project_slangpy_1089_shader_cache_path_vulkan_segv]]
 - Stale-then-corrected public artifacts: [triage](https://github.com/shader-slang/slangpy/issues/1089#issuecomment-5169214782) · [delta](https://github.com/shader-slang/slangpy/issues/1089#issuecomment-5198010118)
+
+## ✅⭐⭐ 2026-08-08 — 4th and 5th instances, both BUILT in the turn the gate was set; and the ALWAYS-TRUE branch is a heartbeat, not a signal
+
+Two gates on external humans in one session, both wired immediately instead of promised:
+
+| gate | promise I almost left | built |
+|---|---|---|
+| CI run #30098 needs a `ci-approvers` approve/cancel | *"I'll tell you when it clears"* | `ci30098-blocker-clear-5975`, `*/20`, keys on run id `31179559787` |
+| #12386 needs operator authorization to post | *"requesting authorization"* then waiting | `i12386-footprint-gate-d856`, `0 */6`, keys on comment bodies + PR draft flag |
+
+⛔ **THE NEW DEFECT, caught only because I ran the script before scheduling it: my first version returned `wakeAgent: true` on EVERY fire.** The steady state — *"still unanswered"* — is the **expected** condition while a human decides, so waking on it is a heartbeat that trains me to ignore the task. Fixed with a persisted counter (`/workspace/agent/.i12386_footprint_fires`) firing at fire 4 (~24h) and fire 12 (~72h), then never. ⇒ ⭐⭐⭐ **A watcher whose default branch is "wake" has no signal — enumerate which branch is the STEADY STATE and make that one silent.** Cf. [[feedback_a_spent_one_shot_stays_pending_and_invites_a_rerun]]: same family, opposite end — there a repair fired on a state it could not distinguish; here a watcher fires on the state that means *nothing has happened*.
+
+⛔ **BOTH OF MY FIRST TWO CONTROLS WERE BUILT ON FALSE PREMISES AND VALIDATED NOTHING.** I pointed one at issue #12384 "as a closed issue" (it is **open** — never checked) and one at #12371 while still grepping for `12434` (a string that was never going to be there). Both printed the *same* `STILL_UNANSWERED` as the live run, so **the output was indistinguishable from a working control** and I would have called the gate armed. ⇒ ⭐⭐⭐ **A control asserts a PREMISE about its target; verify that premise before reading the control's output.** Fixed by querying for a genuinely closed issue (`?state=closed` → #12432 → `ISSUE_CLOSED` ✓) and by grepping a string I had *confirmed present* (`"Triage summary"` → `FOOTPRINT_CLOSED_ELSEWHERE` ✓). ⚠️ **This is the same shape I had just spent the session correcting in two peers** — an unarmed check and a spliced coordinate — which is the point: knowing the failure class does not exempt the next instrument you build.
+
+✅ **Both gates now proven at every branch, including the negative:** an unreachable API returns `wakeAgent: false` with a note, **never** a false "cleared"/"closed". ⇒ **A watcher that cannot distinguish "resolved" from "can't tell" is worse than no watcher**, because its silence reads as coverage.

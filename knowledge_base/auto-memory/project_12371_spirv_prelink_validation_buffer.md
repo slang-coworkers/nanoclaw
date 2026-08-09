@@ -1,13 +1,604 @@
 ---
 name: project_12371_spirv_prelink_validation_buffer
-description: "LIVE — slang#12371: SPIR-V validation runs on the PRE-LINK buffer so a valid linked module is rejected for OpCapability Linkage. DRAFT PR #12382 (head f93eb4f7, A1) is CONTAINED WHOLE by draft PR #12408 (head 76281671, A2, closes 12371+12383) => Q1 answered in built code, not by the operator. 01:2xZ 08-08: heartbeat #6, latch 5th TRUE NEGATIVE, emitted NOTHING (nudge budget exhausted at #4). Blocked purely on human acts: 0 reviews on EITHER PR ~55h after shepherd assignment; defect still live on master 716ec597:3444. NEW: the master negative control finally produced a failing name OUTSIDE the gate set (`build`) — a control that has never emitted the positive it excludes is a control in name only, and I waited 3 wakes for the field to hand me that property rather than building it. RESUME: guard i12371-pr-guard-0175 — fixed SEVEN times; 7th is in the INSTRUMENT: `gh --paginate` SILENTLY TRUNCATES check-runs at 100 (rel=next uses /repositories/<id>/ which 401s under the OneCLI proxy), so use an explicit page loop gated on rows==total_count."
+description: "LIVE — slang#12371: SPIR-V validation runs on the PRE-LINK buffer so a valid linked module is rejected for OpCapability Linkage. 01:0xZ 08-09 `changed` wake #12: SECOND RETRACTION IN A ROW, and this time my wake-#11 'UNREACHABLE without a human' was falsified by OUR OWN PUSH 3.5h later — #12408's new head 49dbe8c1 minted run 30170, whose creation CANCELLED the waiting run 30098 via ci.yml `concurrency: CI-<ref>`, clearing `any_active_ci`; 30154 then escalated at exactly its 12.0h ceiling and is measuring now. I had named the deadlock but never asked WHICH ACTORS could clear it — a push on the SAME ref was one of them, and it was the actor I control. Both PRs now m0/gate-pair-only (UNMEASURED). New commit is test-diagnosability only (reportStep, 12431); order test A2 holds, emit.cpp md5-identical to 76281671. Containment BROKEN: diverged 25/3. RESUME: guard i12371-pr-guard-0175."
 metadata: 
   node_type: memory
   type: project
-  originSessionId: 1dd5892a-bf52-4274-8dd1-46df09e77581
+  originSessionId: 3f8c803c-bb49-4678-a7c5-abc649c949c0
 ---
 
 # slang#12371 — SPIR-V validation reads the pre-link buffer
+
+## 01:0xZ 08-09 `changed` wake #12 — MY WAKE-#11 "UNREACHABLE WITHOUT A HUMAN" WAS FALSIFIED BY OUR OWN PUSH, 3.5 h after I published it. A push on the same ref cancels the blocker, and I never enumerated the actors who could clear the deadlock I had just pinned
+
+⛔ **What moved: three cells, all #12408's.** Head `76281671 → `**`49dbe8c1`** (+2 commits: a resync
+merge `e88f626d` + one real commit), failing set **{the two Windows `test-slang`} → `{check-ci,
+wait-for-human-priority}`**, and **`m30 → m0`**. #12382's row byte-identical (`115185a0`, gate pair,
+`m0`). PR now 12 commits, 6 files **+907/−36**, `updated 00:59:07Z`, `mergeable_state` **`behind` →
+`blocked`** (deliberately unlatched — `mergeable` is still `true`).
+
+⛔⛔ **THE RETRACTION, and it is the second in two wakes.** Wake #11 concluded: *"the measurement is
+UNREACHABLE without a human — a human must approve `falcor-ci` on run 30098, or the measurement never
+happens."* **Falsified at 00:59:22Z by an action from our own side of the fence.** Mechanism, pinned
+in `ci.yml@716ec597:10-12` rather than inferred:
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+```
+The fixer's push minted `workflow_dispatch` run **30170** on the same ref `fix/issue-12383` ⇒ same
+concurrency group as the parked **30098** ⇒ GitHub cancelled 30098 to admit 30170. Timeline is
+second-resolution and consistent in one direction only:
+- 30170 created **00:59:22Z**; 30098 `status=waiting → completed/cancelled`, `updated` **00:59:32Z**;
+  its `test-falcor` job cancelled **00:59:24Z**; deployment `5805649902` got a second status
+  **`error` at 00:59:25Z** (was `waiting` since 08-08T04:53:27Z), `pending_deployments` now **0**.
+- The retry bot fired on the `workflow_run` completion at 00:59:15 / 00:59:34 / 00:59:59Z. But the
+  actual unblock did **not** come from it: **30154's own attempt 3 started 00:57:02Z — 2 min 20 s
+  BEFORE our push** — and its gate log reads *"Priority gate for run #30154 (age 12.0h) … Waited
+  12.0h (>= 12.0h ceiling); escalating priority and proceeding despite higher-priority CI."*
+  ⇒ ⭐⭐ **Two independent releases landed in the same three-minute window: the 12 h ceiling fired for
+  30154 (which is on `fix/issue-11981`, NOT ours), and our push cancelled 30098.** I record both
+  rather than crediting the one that flatters my model.
+✅ **Historical control for the cancel mechanism, on this very branch:** `fix/issue-12383`'s
+`workflow_dispatch` history is `29987 cancelled` (updated 22:10:37Z) → `29991 cancelled` (created
+21:52:02Z, updated 22:41:59Z) → `29993 failure` — i.e. **each earlier run on this ref was cancelled
+around the next one's arrival**, and the pattern is absent on `fix/issue-12371`, whose five runs all
+end `failure` in <60 s (they never live long enough to be cancelled). So the mechanism is observed on
+the same ref three times, not just asserted from YAML.
+⭐⭐⭐ **THE ERROR IS NOT THE MECHANISM, IT IS THE MISSING ENUMERATION.** Wake #11 correctly derived
+*"the rerunner is hard-gated on `any_active_ci`, which 30098 satisfies"* and then jumped to *"only a
+human can clear it."* **`any_active_ci` stops being satisfied when 30098 leaves an active status —
+and `cancelled` is one way to leave it.** The actors who can do that: (a) a `ci-approvers` human
+approving `falcor-ci`, (b) a repo admin cancelling, (c) **anyone pushing to the same ref**, (d) the
+job timing out. I had enumerated exactly one — the one I could not perform — and published the
+conclusion as *unreachable*. ⇒ ⭐⭐⭐ **After pinning a blocking condition, enumerate every transition
+OUT of it and mark which are available to me. "Only X can fix it" is a claim about the size of a set
+I never listed, and the cheapest error to make is to stop enumerating at the actor you are not.**
+⚠️ **And the 44/44 census I offered as proof was true and non-probative of the conclusion it
+supported.** Re-ran it wider this wake: **30/30** most recent fires still say *"CI is still active"*
+(1–2 runs). Every one of those readings is a measurement of the *past*, and none of them constrains
+what a future push does. **A perfect record of a gate refusing to fire tells you nothing about which
+events can make its precondition false** — the same shape as ANCHOR-4's lucky control, inverted: a
+long unbroken negative reads as a proof of impossibility.
+⭐ **What the two retractions have in common: both were mechanism-correct and SCOPE-wrong** (wake #10:
+a control run read without its precondition; wake #11: a precondition read without its exits). That
+is the store's *"a correctly-stated rule aimed at the WRONG SCOPE"* pattern, third and fourth
+instances, now inside one chain two wakes running.
+
+✅ **ORDER TEST on the fetched file — still A2, and cheaply so.** `slang-emit.cpp@49dbe8c1` is
+**md5-IDENTICAL to `76281671`** (`721d9118c40e2cc010010da59e9f14ad`, 3776 lines both), so the order
+cannot have changed; read it anyway: `needsLink` :3441 → `_Move(linkedArtifact)` :3494 →
+`compiler->compile` :3541 → `stripDbgSpirvFromArtifact` :3556 → **`if (needsValidation)` :3610 →
+`validateSpirvArtifact(…, artifact)` :3612**; early-exit arms :3582/:3595 validate
+`preOptimizeArtifact`; `spirv.getBuffer()` live uses in the validation region **0** (:3412 is
+`spirvFiles.add`, :3469 is inside `#if 0`). ⇒ validation stays **BELOW** the optimizer. No silent A1.
+✅ **Merge commit carried ZERO PR-side content:** `compare 76281671...e88f626d` filtered to
+`slang-emit.cpp` ⇒ **[]** (file absent from the merge's changed set), and master did not move
+(`716ec597`, unmoved ~26 h).
+✅ **The one real commit is DIAGNOSABILITY ONLY, and its own message says so.** `49dbe8c1` *"Name the
+setup step when the linked-SPIR-V test cannot reach its assertions"*, **one file `+54/−16`**, adds a
+`reportStep(step, ok, diagnostics)` helper wrapping each of the ten `SLANG_CHECK_ABORT` setup steps,
+routed through `getTestReporter()->message(TestMessageType::TestFailure, …)` **because under
+`-use-test-server` a write to the process's stderr never reaches the reported `stdError`** — which is
+precisely the empty-stdout/empty-stderr + rc=1 shape wake #7 could not classify. It explicitly
+**declines to fix the harness**: *"The underlying harness behaviour is shader-slang/slang#12431; this
+makes one test legible rather than fixing that."* ⭐ **#12431 exists and is theirs** (filed 08-08
+13:26Z by author id 274397474, open, 2 comments, root-caused to
+`source/core/slang-signal.cpp:158 static bool enableSignalPrint = false`, with **#12432 closed as a
+duplicate**). ⇒ **This commit is expected to make the next failure READABLE, not green** — the same
+distinction wake #9 had to correct upstream, and I state it before anyone can read otherwise.
+
+⛔ **CONTAINMENT IS BROKEN AND WIDER THAN EVER: `compare 115185a0...49dbe8c1` = `diverged`, ahead 25 /
+behind 3.** The 3 commits #12408 **lacks** are exactly the three skip/diagnostic commits on #12382
+(`50d7a5e7`, `7037262b`, `115185a0`, one file `+56/−4`). Measured consequence, not inference: the two
+test-file copies now differ in **capability**, not just bytes —
+- #12382 `t.cpp` md5 `6037dc00…`, 237 lines: **has** `haveSpirvOpt`, `checkPassThroughSupport`,
+  `precompileDiagnostics`, `if (!outcome.haveSpirvOpt) SLANG_IGNORE_TEST` (:226).
+- #12408 `t.cpp` md5 `99c10de6…`, 223 lines: `grep` for `SLANG_IGNORE_TEST|checkPassThroughSupport|
+  haveSpirvOpt|precompileDiagnostics` ⇒ **NONE**. It has `reportStep` + 11 `SLANG_CHECK_ABORT` instead.
+Both still end at the same three assertions (`codeResult`, `producedCode`, `generatorMagic ==
+kSpvGeneratorKhronosLinker`). ⇒ **The PR that closes BOTH issues has the diagnosability work and NONE
+of the skip work; the PR that closes only #12371 has the skip work and none of the diagnosability.
+Neither branch carries both.** That is a new, concrete cost of the unanswered Q1 — reported as a fact,
+not as a nudge.
+
+⚠️ **BOTH heads are now UNMEASURED, so the Windows failure is neither fixed nor reproduced at HEAD.**
+Complete census (`rows == total_count` gate passed on all four): #12408 `49dbe8c1` **88 == 88** ⇒ 2
+failure / 82 skipped / 4 success, failing `{check-ci, wait-for-human-priority}`, **m0**. #12382
+`115185a0` **84 == 84** ⇒ same names, **m0**. The **old** head `76281671` **81 == 81** ⇒ 3 failure
+(the two Windows `test-slang` **plus** `check-ci`) / 2 cancelled (`test-falcor`,
+`retry-on-gpu-failure`) / 41 skipped / 35 success, **m30** — i.e. the only measurement this chain has
+ever had now sits on an **abandoned sha**. Master control `716ec597` **1259 == 1259**, failing
+`{agentic-tests, build}` — a **non-gate** name, so the probe still demonstrably reports the class whose
+absence at the PR heads is my reading. (Census count on the same master sha: 80 → 383 → 677 → 735 →
+779 → 1165 → **1259**. Freshness-expiring, as recorded.)
+⛔ **No fixer dispatch.** Both PRs' failing sets are inside `{check-ci, wait-for-human-priority}`,
+classified from run 30170's gate job's own log — *"Yielding behind earlier bot CI #30154
+(workflow_dispatch, queued, by nv-slang-bot[bot])"*, `::error::priority-gate-yielded` — not the
+rollup. The Windows failures were dispatched at wake #7 and the fixer has now shipped four commits
+against them; re-dispatching is a duplicate.
+
+⚠️ **The next measurement is genuinely reachable now, and I state the eligibility test rather than a
+prediction.** From `retry-yielded-bot-ci.py@716ec597`: a run is a rerun candidate iff
+`conclusion ∈ {failure, cancelled}` ∧ actor is a bot ∧ `run_attempt < 30` ∧ `created_at > now-16h` ∧
+**no newer run on the same branch** ∧ `failed_only_because_priority_gate(jobs)` (gate job failed with
+its *"Stop yielded bot CI"* step failing; a `check-ci` failure is explicitly forgiven). Verified by
+reading the jobs: **30170** (created 00:59:22Z) and **30152** (#12382, created 08-08T12:54:10Z) both
+satisfy the job-shape test — gate `failure` with `Stop yielded bot CI` = `failure`, `check-ci`
+`failure`, everything else skipped — and neither has a newer same-branch run. ⛔ **But 30152's
+16 h lookback expires 04:54Z 08-09**, so #12382's head has ~3.8 h to be picked up; #12408's 30170 has
+until ~16:59Z. The gate is `any_active_ci`, and **30154 is `in_progress` right now** (attempt 3,
+started 00:57:02Z, 18 jobs done / 8 running, Windows builds started 01:01–01:04Z) ⇒ the rerunner will
+keep bailing until it finishes. **I am not predicting which of the two gets rerun; I am naming the
+window and the discriminator (`m0 → m>0`), which the latch already carries.**
+
+✅ **No latch defect this wake, second in a row, and I did not manufacture one.** The three cells that
+moved are exactly the cells the 8th and 9th fixes added (`:N:names` per `xst=` row, `mN`), and they
+carried a real transition in both directions this time: the failing-name set moved **off** the two
+Windows names and `m` moved **30 → 0**. ⭐ **`m` was the discriminator I designed for "the measurement
+disappeared" and it has now fired on exactly that, on the cross-referencing PR** — the 9th fix's event
+class in the field. One widening considered and **declined with a reason**: a `pending_deployments` /
+`falcor-ci` cell, same as wake #11 — its effect is already latched, and this wake proves the effect
+path works (30098 cleared ⇒ `m`/names moved).
+
+## 21:2xZ 08-08 heartbeat wake #11 — 6th true negative, and I RETRACTED MY OWN WAKE-#10 CLAIM: the 12-hour escape hatch cannot fire here. It is a DEADLOCK, not a tax
+
+⛔ **Fingerprint byte-identical, and the latch was right.** Re-measured every field from the API rather
+than trusting it. #12382 `115185a0`, draft/OPEN, 6 commits, 4 files **+256/−7**, closes `[12371]`,
+`mergeable=true`/`behind`, `updated 12:53:13Z`. #12408 `76281671`, draft/OPEN, 10 commits, 6 files
++869/−36, closes `[12371,12383]`, `updated 08-07T12:45:04Z`. Both `pr: non-breaking`, assignee +
+requested reviewer `jkwak-work`, author id 274397474 type Bot. **0 reviews / 0 inline review-comments
+on BOTH** (~118 h after the shepherd was assigned). Issue #12371 open, 1 comment (ours), Q3 2026,
+non-bot timeline events still exactly **4**; #12383 open, 0 comments. `compare 115185a0...76281671` =
+**diverged, ahead 15 / behind 3** — unchanged. Master unmoved at `716ec597`, and `slang-emit.cpp:3444`
+is still `compiler->validate((uint32_t*)spirv.getBuffer(), …)` ⇒ defect live, control not inference.
+Census complete-read gate passed on all three heads: #12382 **84 == 84** (2 failure `{check-ci,
+wait-for-human-priority}`, 78 skipped, **m0**); #12408 **79 == 79** (the two Windows `test-slang`
+failures, **m30**); master control **1165 == 1165**, failing `{agentic-tests, build}` — a **non-gate**
+name, so the probe demonstrably still reports the class whose absence at #12382's head is my reading.
+
+⛔⛔ **I RETRACTED A FIGURE I PUBLISHED UPSTREAM 9 HOURS AGO, and the retraction is the whole content of
+this wake.** Wake #10 said: *"It is a 12-hour tax, not a permanent block… #12382's measurement is ~12 h
+out (~00:54Z 08-09)."* **That is false, and I can now say why mechanically.** I read the two scripts:
+- `wait-for-priority.py` computes `run_age_hours` from **`created_at`** and escalates when
+  `age >= --max-yield-hours` (12.0). But the gate **runs once, at the start of a run** — `grep -cE
+  'time\.sleep|while True'` ⇒ **0**, and #12382's gate job ran **12:54:25→12:54:35Z, 10 s**. ⇒ ⭐⭐⭐
+  **An aged run does not escalate by aging; it escalates only when something RERUNS it, so the gate
+  re-evaluates at a larger age.** The 12 h ceiling is a property of a *rerun*, not of a clock.
+- The only thing that reruns it is `retry-yielded-bot-ci.py`, whose **first action** is
+  `if any_active_ci(...): print("CI is still active"); return 0` — where `ACTIVE_STATUSES` includes
+  **`waiting`** (`ci_priority_common.py:29`).
+⇒ **#12408's own run 30098 is `status=waiting` and has been since 04:27:41Z, so the rerunner that would
+deliver the escalation is disabled by the exact run whose blockage it exists to escape.** Circular, and
+it holds until a human clears `falcor-ci`.
+✅ **Measured, not argued: I classified ALL 44 retry-bot fires since 04:27Z by their own decision line
+— 43 `"CI is still active (1 run(s))"` naming `#30098`, 1 `"Rerunning yielded bot CI run #30098"`
+(04:27:11Z, the fire that CREATED the current waiting state), 0 others.** So the rerunner has been
+0-for-44 on everything, not merely on this branch.
+⛔ **And the window closes rather than opening.** `--lookback-hours 16` skips any candidate whose
+`created_at < now-16h`, so **run 30152 stops being a rerun candidate at 04:54Z 08-09 — 4 h after the
+earliest moment it could have escalated.** Even if 30098 cleared at, say, 06:00Z, 30152 would already
+be out of lookback and would need a **fresh push** to be measured at all.
+⭐⭐⭐ **The wake-#10 error was reading a control's SUCCESS without reading its PRECONDITION.** Run
+30105 really did escalate (`"Waited 12.0h (>= 12.0h ceiling)"`, 31 measured jobs, success) — but its
+rerun to attempt 2 started **01:23:59Z**, and 30098 did not enter `waiting` until **04:27:41Z**. ⇒
+**The escape hatch was observed working in the one window where the blocker was absent**, and I
+generalized it to a window where the blocker is present and is itself what disables the hatch. ⭐⭐
+**A positive control run BEFORE the blocking condition existed is evidence about the mechanism's happy
+path, not about the blocked state — the very distinction I claimed to be drawing when I wrote
+"evidence about the mechanism, not about this branch".** I wrote the hedge and then drew the
+un-hedged conclusion in the next sentence.
+
+⛔ **The blocker is human-only and I re-verified the ownership chain, not just the symptom.**
+`test-falcor / Test (Falcor)` (`ci-falcor-test.yml:18`) declares `environment: falcor-ci`; that
+environment's sole protection rule is `required_reviewers` = **organization team `ci-approvers`**,
+`current_user_can_approve: false`. Deployment `5805649902` (ref `fix/issue-12383`, sha `76281671`) has
+exactly one status: `waiting`, created **04:53:27Z**. Its dependency `build-windows-release-cl-x86_64-gpu`
+completed **success at 04:53:25Z**, i.e. the run is not stuck computing — it is parked at the gate.
+⚠️ **Two things I did NOT establish: why nv-slang-bot's earlier falcor deployment (`5799455383`,
+08-07 17:56Z) DID progress to `success` without a visible human approver status, and whether
+`ci-approvers` membership overlaps this PR's shepherd.** Prior bot deployments on this env have cleared
+before, so "bot runs always park here" is NOT supported. Stated as unknown.
+⇒ ⭐⭐ **The correct upstream framing changed from "wait ~12 h" to "a human must approve `falcor-ci` on
+run 30098, or the measurement never happens" — a DIFFERENT ACTION, which is why the retraction had to
+ship even though the fingerprint did not move.**
+
+✅ **Reported to `orchestrator-dashboard` — a new fact plus a retraction, NOT a nudge.** The nudge
+budget stays exhausted; this message names no Q1 ask. It carries: the retraction of the ~00:54Z figure,
+the deadlock mechanism with both script legs, the 44/44 census, the 04:54Z lookback expiry, and the
+one human act that clears it. **Per the carve-out in my own store, a correction to a figure I put in
+someone's hands ships regardless of who declared the thread closed.**
+⛔ **No fixer dispatch.** #12382's failing names are both in `{check-ci, wait-for-human-priority}`,
+classified from the gate job's own log (`::error::priority-gate-yielded`, *"Yielding behind earlier bot
+CI #30098"*), not the rollup. #12408's two Windows failures were dispatched at wake #7 and the fixer
+shipped three commits against them; re-dispatching is a duplicate. **Also did not relay the repo-wide
+queue state to `slang-ci-babysitter`** — same scope call as wake #10, reported upstream instead.
+✅ **No new latch defect this wake, and I did not manufacture one.** The retraction is about a claim in
+my *report*, not a blind spot in the fingerprint: the cells that would carry the transition
+(`m0 → m31`, or a change in #12382's failing-name set) are exactly the ones the 8th/9th fixes added and
+they remain correct. ⚠️ **What the latch cannot see is the `falcor-ci` approval itself** — I considered
+adding a `pending_deployments` cell and **declined it with a reason**: its effect is already latched
+(clearing 30098 unblocks the rerunner ⇒ #12382's `m` moves off 0 and/or its failing set changes), and a
+probe on a repo-wide environment would fire on every unrelated branch's deployments.
+
+## 13:0xZ 08-08 `changed` wake #10 — the fixer closed my diagnostic-suppression concern WITH A MEASUREMENT, CI dispatch resumed, and the Windows measurement is provably blocked behind a HUMAN-ONLY environment approval on #12408's OWN run. First wake in ten with NO defect in my own latch
+
+⛔ **What moved: two cells, both #12382's.** Head `7037262b → `**`115185a0`** (+1 commit, ONE file,
+`tools/slang-unit-test/unit-test-spirv-link-validation.cpp`, `+30/−7`, 214 → 237 lines) and the failing
+set went **empty → `{check-ci, wait-for-human-priority}`** — back to the gate pair, because a
+`workflow_dispatch` run finally exists again at this head. PR now 6 commits, 4 files **+256/−7**.
+✅ **ORDER TEST: `slang-emit.cpp` md5 `fb76258af1bb211d6e3eebb19e12ef66` at `f93eb4f7`, `7037262b` AND
+`115185a0`** ⇒ still **A1** (`if (needsValidation)` :3427 → `validate` :3438, `compiler->compile` :3493
+below it). Four heads now share that md5; the whole delta of the last three commits is the test file.
+
+✅ **The fixer closed my wake-#9 concern — the one I raised as a code trace — and closed it with a
+MEASUREMENT rather than an argument.** I had flagged that the new `checkPassThroughSupport` probe passes
+`sink=nullptr`, memoizes the load result, and therefore **suppresses the
+`FailedToLoadDownstreamCompiler` diagnose at `slang-check.cpp:150`** for the compile that follows. The
+commit *"Report the spirv-opt load failure the link-validation test depends on"* moves the probe from
+session creation down to **after both compiles**, and adds a `precompileDiagnostics` field capturing the
+library precompile's sink separately, printed before the existing diagnostics. Its comment states the
+experiment: *"measured: with the module removed, probing before the precompile yields empty diagnostics,
+probing after yields `E00100 failed to load downstream compiler`."* ⇒ ⭐⭐ **That is the two-directional
+result my concern asked for, and it is the fixer's measurement on the fixer's tree — I verified the diff
+and the ordering, not the run.** The skip itself is unchanged (`if (!outcome.haveSpirvOpt)
+SLANG_IGNORE_TEST`, keyed on the dependency, three `SLANG_CHECK`s below it), so wake #9's reading stands:
+**this makes the test correct and diagnosable, not necessarily green.**
+
+⛔ **CI DISPATCH RESUMED — wake #9's "two pushes in a row with no dispatch" has ENDED.** Run **30152**
+(`31258297533`, `workflow_dispatch`) created **12:54:10Z** against a commit dated 12:52:32Z. ⚠️ **I
+deliberately do NOT convert that into a latency figure: I have the COMMIT clock, not a push time** (no
+`head_ref_force_pushed` event on this push, only `committed`) — the exact 95-s trap wake #8 recorded. The
+two intermediate heads `50d7a5e7` and `7037262b` still have **`workflow_dispatch` = []** and are
+therefore **permanently unmeasured, not clean**.
+
+⛔⛔ **THE REAL NEWS, AND IT IS HUMAN-ACTIONABLE: every bot CI run in the repo is yielding behind
+#12408's OWN run, which has been parked 24.3 h on an environment gate only a human can clear.**
+Run **30098** = `31179559787`, branch `fix/issue-12383`, head `76281671` — i.e. **#12408's own CI** —
+is `status=waiting`, attempt 2, created 08-07T12:45:43Z, with **34 of 35 jobs completed and one job
+`test-falcor / Test (Falcor)` waiting**. `pending_deployments` names environment **`falcor-ci`**, and
+`GET /environments/falcor-ci` returns exactly one protection rule: **`required_reviewers` = team
+`ci-approvers`**, `current_user_can_approve: false`. The priority gate counts it as active
+higher-priority CI **by status, explicitly** — its own log line is *"Yielding behind earlier bot CI
+#30098 (workflow_dispatch, **waiting**, by github-actions[bot])"*.
+⭐ **Head-of-line blocking verified across FOUR runs, not inferred from one:** runs **30148, 30150,
+30152, 30154** each name `#30098` in their own gate log. Of the 8 `ci.yml` `workflow_dispatch` runs
+created since 30098, **7 failed and 1 succeeded**, and in all 7 the failing jobs are exactly
+`wait-for-human-priority,check-ci` — no build/test failure anywhere in the set.
+✅ **It is a 12-hour tax, not a permanent block, and I have a positive control for the escape hatch.**
+Run **30105** (`fix/issue-11981`, head `21861f58`) logged *"Waited 12.0h (>= 12.0h ceiling); escalating
+priority and proceeding despite higher-priority CI"* and then produced **31 measured
+build/test/sanitizer jobs, 36 success / 1 skipped, conclusion `success`** at attempt 2.
+`ci-retry-yielded-bot` (`--lookback-hours 16 --max-reruns 1`, 15 successful runs in the last 4.5 h) is
+the mechanism that reruns an aged-out run. ⇒ **The escalation path demonstrably yields a full
+measurement — on ANOTHER branch. That is evidence about the mechanism, not about this branch.**
+⭐⭐⭐ **The consequence for this chain: run 30152 is at age 0, so the Windows measurement #12382 needs
+is ~12 h out (~00:54Z 08-09) — and every new push mints a NEW run at age 0 and restarts that clock.**
+Three commits landed on this branch today (10:20, 11:38, 12:52Z). **A fast iteration cadence and a
+12-hour age-based escalation are in direct tension: the more the fixer pushes, the further the
+measurement recedes.** Stated as a mechanism read from the gate script's own parameters; I have not seen
+it play out on this branch.
+
+⛔ **CONTAINMENT GAP WIDENED AGAIN: `compare 115185a0...76281671` = `diverged`, ahead 15 / behind **3**.**
+The three missing commits are exactly the three test commits (`50d7a5e7`, `7037262b`, `115185a0`).
+#12408 closes **both** `[12371, 12383]`; #12382 closes only `[12371]`. ⇒ **The PR that carries the
+closure has NONE of the three attempts at the Windows fix**, and its head still carries both failures
+(re-measured: **79 == 79**, 2 failure / 41 skipped / 35 success / 1 null, **m30**, failing = the two
+`test-windows-*-cl-x86_64-gpu / test-slang`). Test-file md5s: `6037dc00e97a2bb0f899aafa4c8156a7`
+(237 lines, #12382) vs `d2849dc4188d2cb53b2be5f9ccedf219` (185 lines, #12408).
+
+✅ **NO DEFECT IN MY OWN LATCH THIS WAKE — first of ten, and I record the audit rather than manufacture
+an eleventh.** The latch woke on the right two cells and named them. I examined one candidate widening
+and **declined it with a reason**: the queue-blocking state above is repo-wide CI infra owned by neither
+PR, and a probe on it would wake on every unrelated branch's CI activity. **Its EFFECT is already
+latched** — when 30098 clears (or 30152 escalates), #12382's `m0` moves to ~`m31` and/or its failing set
+changes, so either cell fires. ⭐⭐ **This is the first wake where the 9th fix's `measured_buildtest`
+cell is the one that will carry the next real transition**: if escalation passes everything but the
+attempt-1 gate rows persist as `failure`, the failing-name set is unchanged and `m` is the *only*
+discriminator. Designed for exactly this, now standing in front of it.
+
+⛔ **No fixer dispatch this wake.** #12382's failing names are both in `{check-ci,
+wait-for-human-priority}` — classified from the gate job's own log (`::error::priority-gate-yielded`),
+not the rollup. #12408's two Windows failures were dispatched at wake #7 and the fixer has shipped three
+commits against them today; re-dispatching would be a duplicate.
+⛔ **Did NOT relay the queue blockage to `slang-ci-babysitter`.** It is repo-wide CI infra, my mandate is
+#12371, and routing it is the operator's call — reported upstream instead.
+
+✅ Re-measured, unchanged: both PRs draft/OPEN/`mergeable=true`/`behind`, `pr: non-breaking`, assignee +
+requested reviewer `jkwak-work`, author id 274397474 type Bot; **0 reviews / 0 inline review-comments on
+BOTH** (~113 h after the shepherd was assigned); issue #12371 open, 1 comment (ours), Q3 2026,
+`updated 08-07T01:24:37Z`; #12383 open, 0 comments. Defect still live on master `716ec597` (unmoved
+~12 h): `slang-emit.cpp:3444` still `compiler->validate((uint32_t*)spirv.getBuffer(), …)`.
+
+## 11:3xZ 08-08 `changed` wake #9 — the fixer took my concern (b) and re-keyed the skip on the dependency. The probe is verifiably the RIGHT one, and it probably does NOT turn Windows green. TENTH defect, and it is inside the NINTH FIX's own denominator
+
+⛔ **What moved: one cell, #12382's head `50d7a5e7 → `**`7037262b`** (+1 commit, ONE file, `+22/−17`,
+`tools/slang-unit-test/unit-test-spirv-link-validation.cpp` only). Everything else byte-identical.
+✅ **ORDER TEST: `slang-emit.cpp` md5 `fb76258af1bb211d6e3eebb19e12ef66` at `f93eb4f7`, `50d7a5e7`
+AND `7037262b`** ⇒ still **A1** (`if (needsValidation)` :3427 → `validate` :3438, `compiler->compile`
+:3493 **below** it). No silent A2 reshape; the whole delta is the test file.
+
+✅ **The fixer answered my 10:2xZ concern (b) — "the skip is keyed on the SYMPTOM the assertion exists
+to catch" — by keying it on the DEPENDENCY instead.** Was `if ((generatorMagic & 0xFFFF0000u) ==
+40<<16) SLANG_IGNORE_TEST` (Slang's own generator id); now
+`checkPassThroughSupport(SLANG_PASS_THROUGH_SPIRV_OPT)` at the top of the helper, and the three
+`SLANG_CHECK`s moved BELOW the skip. Its own comment states the reason I gave: *"a module carrying
+Slang's own generator id is also exactly what a regression that stopped linking would produce, and
+skipping on that would delete the coverage the assertion below exists to provide."*
+⭐⭐ **I verified the probe is not merely correlated with the emit gate but reads the SAME MEMOIZED
+ANSWER, by code trace across four files:** test → `Session::checkPassThroughSupport` →
+`checkExternalCompilerSupport` (`slang-global-session.cpp:1288`) →
+`getOrLoadDownstreamCompiler(SpirvOpt, nullptr)`; emit (`slang-emit.cpp:3398-3402`) →
+`codeGenContext->getSession()` (= `getLinkage()->getSessionImpl()`, `slang-code-gen.h:159`, the
+**global** session the test created) → the identical
+`getOrLoadDownstreamCompiler(PassThroughMode::SpirvOpt, sink)`. Result memoized on
+`m_downstreamCompilerInitialized & (1<<11)` (`slang-check.cpp:99-102`), enum parity confirmed
+(`PassThroughMode::SpirvOpt = SLANG_PASS_THROUGH_SPIRV_OPT = 11`, `slang-pass-through.h:64`,
+`slang.h:759`). ⇒ **Same object, same enum, same cached pointer — the probe cannot disagree with the
+gate.** That is a genuinely correct discriminator, unlike the generator-id inference it replaces.
+
+⛔ **BUT THE COMMIT IS UNLIKELY TO MAKE THE WINDOWS JOBS GREEN, and this reverses the reading I sent
+upstream 11 minutes earlier.** The skip now fires **only** when the spirv-opt load FAILS. The failing
+job's log lists `slang-glslang.dll` in the Debug `bin_dir` artifact it downloaded (line 2832) — and
+**presence is not a successful load**, so whether it loads there is **UNMEASURED**. Two outcomes, and
+I can name both without running anything: load fails ⇒ test reports `Ignored`, job green; load
+succeeds ⇒ the same three `SLANG_CHECK`s run and whichever was failing fails again. ⇒ ⭐⭐⭐ **This
+commit makes the test CORRECT, not green** — the opposite of what my 11:31 report ("the fixer patched
+the Windows failure") led the operator to believe. **Correction sent; I created that belief, so
+reopening my own close is mine to do.**
+⚠️ **One new concern, code trace not a run: the probe SUPPRESSES the diagnostic the same commit chain
+made unconditional to gain diagnosability.** The probe calls the loader with `sink=nullptr`; the load
+result (including failure) is memoized, so the compile's later call **with** a real sink
+short-circuits at `slang-check.cpp:99-102` and never reaches the
+`FailedToLoadDownstreamCompiler` diagnose at `:150`. On a machine without spirv-opt, `outcome.diagnostics`
+is therefore empty where it previously would have named the missing library — the test still skips
+correctly, but the log no longer says *why*.
+
+⛔ **CI STILL NOT DISPATCHED — and this wake is the first with a POSITIVE CONTROL proving that is a
+choice, not latency.** `7037262b`: only the `pull_request` run (draft ⇒ `filter` skips ⇒ **48 == 48**,
+0 failure / 45 skipped / 3 success, **measured_buildtest = 0**). `workflow_dispatch` runs at
+`7037262b`: **[]**. At `50d7a5e7`: **[]** as well. Meanwhile the mechanism is demonstrably alive:
+`nv-slang-bot[bot]` created a `workflow_dispatch` CI run **11:45:31Z** on
+`test/property-accessor-coverage-12231` — **7 min AFTER our 11:38:04Z push**. And on this very branch
+it fired **65 s** after the `f93eb4f7` push (run `31079160248`, 06:58:41Z vs force-push 06:57:36Z).
+⇒ ⭐⭐ **Two pushes in a row with no dispatch, while a sibling branch got one in the same minute
+window, is not a queue — the last two commits are simply unverified and one `gh workflow run` away.**
+Earlier wakes could only say *"no run yet"*; this one can say *"the dispatcher ran for someone else."*
+
+⛔ **CONTAINMENT GAP WIDENED: `compare 7037262b...76281671` = `diverged`, ahead 15 / behind **2**.**
+The two missing commits are exactly the two test commits (`50d7a5e7`, `7037262b`). #12408 closes
+**both** `[12371, 12383]`; #12382 closes only `[12371]`. ⇒ **The PR that carries the closure has
+NEITHER attempt at the Windows fix**, and its own head `76281671` still carries both failures. Test
+file md5s now diverge further: `aaf1679f04c63e7fe851ecfa59584cf3` (214 lines, #12382) vs
+`d2849dc4188d2cb53b2be5f9ccedf219` (185 lines, #12408).
+
+⛔ **TENTH DEFECT, AND IT IS INSIDE THE NINTH FIX I SHIPPED 70 MINUTES EARLIER.** The `measured_buildtest`
+denominator matched `^(build|test)-`, which I documented as *"the naming convention every expensive CI
+job in `ci.yml` follows"*. ⭐⭐⭐ **That was ASSERTED FROM A NAMING CONVENTION, NEVER ENUMERATED — and
+it is false.** Enumerated from `ci.yml@716ec597`: the jobs carrying `needs: [filter,
+wait-for-human-priority]` (i.e. the ones the priority gate actually holds) are 9 × `build-*` **plus
+`sanitizer-linux-clang-x86_64`**; every `test-*` job hangs off a `build-*` instead. So a gated
+expensive job sat outside the denominator. **Live in the field at this very wake:** #12408's stored
+cell said `m29` while the true count was **30** — the missing row being
+`sanitizer-linux-clang-x86_64 / sanitizer`, concluded `success`.
+⚠️ **I nearly filed this as clock drift.** My ad-hoc census said 30, the latch said 29, and *"the
+census is a reading at a TIME"* (my own wake-#5 lesson) is a ready-made, plausible, WRONG explanation
+— run `31179559787` is still `waiting`, so a row concluding in the 13-minute gap fits perfectly.
+⭐⭐⭐ **A true general lesson is the most dangerous cover for a specific defect: it explains the
+discrepancy away at zero cost.** What killed it was diffing the two regexes over the same stored JSON
+(one `jq`) instead of reasoning about which reading was fresher. ⇒ **When two of my own numbers
+disagree, difference the INSTRUMENTS on one frozen input before reaching for a temporal explanation.**
+✅ **Fixed to `^(build|test|sanitizer)-`, derived from the gate condition in the workflow rather than
+from a name shape. Tested. T3 is a true retroactive control and it discriminates:** seeded the dark
+census (gate released, `sanitizer` = success, no `build-*` row concluded yet, nothing failing) ⇒ new
+code `measured:1`, **old code `measured:0` on the byte-identical input** — so the transition was dark
+by construction, proven by differencing rather than argued. The dark event: gate releases + sanitizer
+concludes first ⇒ failing set unchanged, head unchanged, `m` stays 0 ⇒ byte-identical fingerprint
+across a real gate release **with a real measurement in hand** — the EIGHTH defect's event class a
+second time. ⚠️ **Narrow, and I state the bound rather than let the fix read bigger than it is:** it
+closes as soon as any `build-*` row concludes, and a sanitizer *failure* would enter the failing-name
+set and wake anyway. Narrow is not absent — 0-vs-non-0 is the entire distinction this cell carries.
+Tests: **T1** real fire ⇒ wakes, `m29 → m30` · **T2** silent immediately after · **T3** retroactive,
+both directions on one input · **T4** `total_count` error object ⇒ bail · **T5** inflated
+`total_count` 500 vs 5 rows ⇒ bail naming both figures · **T6** page-1 error object ⇒ bail, never
+coalesces to `[]`. Latch md5 identical through every bail. `bash -n` clean. Stub `case` again ordered
+`*per_page=100&page=*` **before** `*per_page=1*` (the prefix-match bug that produced wrong-reason
+passes in the 7th, 8th and 9th fixes).
+⚠️ **Restored `lastwake` to the true `1786189209` (7th time); final control fire silent at a real
+`2570s`.**
+✅ **Sibling audit, and it is the THIRD time the sibling was already right:** `pr12200-guard.sh:30`
+counts `(build-|test-|sanitizer)` — **it has had `sanitizer` all along.** The 7th defect (page loop)
+and the 9th (denominator existing at all) were the same pairing. ⇒ ⭐⭐⭐ **Three for three: the
+correct shape was written down 20 lines away in a sibling every single time. READ THE SIBLING FIRST is
+no longer advice, it is the cheapest defect-finder I have on this chain.** Grep confirms no other
+guard carries the anchored form.
+
+✅ Re-measured, unchanged: both PRs draft/OPEN/`mergeable=true`/`behind`, `pr: non-breaking`, assignee
++ requested reviewer `jkwak-work`, author id 274397474 type Bot; **0 reviews / 0 inline review-comments
+on BOTH** (~89 h after the shepherd was assigned); issue #12371 open, 1 comment (ours), Q3 2026,
+non-bot timeline events **4**; #12383 open, 0 comments. #12382 now 5 commits, 4 files **+233/−7**.
+Defect still live on master `716ec597`: `slang-emit.cpp:3444` still
+`compiler->validate((uint32_t*)spirv.getBuffer(), …)`. Master control **779 == 779** (was 677 at wake
+#7 on the *same sha* — the freshness-expiry property holding again), failing `{agentic-tests, build}`,
+a non-gate name ⇒ the probe demonstrably still reports the class of failure whose absence at #12382's
+head is my reading. #12408's run `31179559787` still `waiting` at attempt 2.
+
+## 10:2xZ 08-08 `changed` wake #8 — the fixer patched the Windows failure onto #12382 ONLY, and the "clean" reading is the NINTH DEFECT: a failing-name set with no denominator
+
+⛔ **What moved: exactly two cells, both #12382's.** Head `f93eb4f7 → `**`50d7a5e7`** and failing set
+`{check-ci, wait-for-human-priority}` → **empty**. #12408's `xst=` row byte-identical (`76281671`,
+both Windows `test-slang` failures still there). So the latch reported the push correctly — and then
+handed me a reading that says "the red PR went green", which is the opposite of the truth.
+
+⛔ **NINTH DEFECT — THE FAILING-NAME SET HAS NO DENOMINATOR, so "CI ran and passed" and "CI never
+ran" are the SAME fingerprint value.** At `f93eb4f7` a `workflow_dispatch` CI run existed and its two
+gate jobs FAILED (**84 == 84** ⇒ 2 failure / 74 skipped / 8 success). At `50d7a5e7` only the
+`pull_request` run exists (**48 == 48** ⇒ 0 failure / 45 skipped / 3 success) — and `ci.yml`'s `filter`
+job carries `if: github.event_name != 'pull_request' || github.event.pull_request.draft != true`, so on
+a **draft** the whole workflow concludes `skipped`: **33 build/test rows, every one skipped, measured
+= 0.** ⭐⭐⭐ **The failing set went empty because THE MEASUREMENT DISAPPEARED, and a name set cannot
+say that.** ⇒ Added a `measured_buildtest` cell (`m<N>` = build/test rows that reached `success` or
+`failure`) to the primary fingerprint **and** to every `xst=` row.
+⭐ **T3 retroactive control, and this one is stronger than the 8th fix's:** seeded `m33` with every
+other cell identical ⇒ **wakes**; then **stripped the `mN` cells from both strings and they collapsed
+to BYTE-IDENTICAL** — so the old field set was blind to this transition by construction, proven
+mechanically rather than by argument. Tests: T1 wakes · T2 silent immediately after · T3 retroactive
+⇒ wakes · T4 `total_count` 404 (error object on stdout) ⇒ bails · T5 inflated `total_count` 500 vs
+rows 48 ⇒ bails naming both figures · T6 page-query 401 ⇒ bails, never coalesces to `[]` ·
+**T8 counted-call stub failing the THIRD `total_count` read** — the *primary*-PR census, after the
+cross-ref loop already passed ⇒ bails there, so the shared helper is guarded on **both** call paths ·
+T9 silent at rest at a real `2354s`. Latch + lastwake md5-identical after every bail. `bash -n` clean.
+⚠️ **The stub's `case` had to order `*per_page=100&page=*` BEFORE `*per_page=1`** — the same
+prefix-match bug that produced a wrong-reason pass in the 7th and 8th fixes; ordering it first is what
+made T5/T6 land on the guard under test.
+⚠️ **Restored `lastwake` to the true `1786185609` (6th time) but deliberately stored the NEW-format
+fingerprint** — restoring the pre-widening string would make the next real fire differ on the format
+change alone and wake on nothing. The format change is mine; the state it describes I read in full
+this wake.
+✅ **Sibling audit:** `pr12200-guard.sh` (live, `*/30`) already keys its wake on
+`subst = build-|test-|sanitizer rows concluding success|failure` — i.e. **it has had the denominator
+all along and fires ON it.** ⭐⭐ **Second time this sibling was right where this file was wrong** (the
+7th defect was the same pairing). ⇒ **When a defect is found, read the sibling BEFORE designing the
+fix — twice now the correct shape was already written down 20 lines away.**
+
+✅ **ORDER TEST: `slang-emit.cpp` is md5-IDENTICAL across the push** (`fb76258af1bb211d6e3eebb19e12ef66`
+at both `f93eb4f7` and `50d7a5e7`) ⇒ still **A1**, `if (needsValidation)` :3427 → `validate` :3438,
+`compiler->compile` :3493 below it. No silent A2 reshape, and the whole `+29/−5` delta is one file:
+`tools/slang-unit-test/unit-test-spirv-link-validation.cpp`.
+
+⛔ **CONTAINMENT BROKE, and it broke on the PR that carries the closure.** `compare
+50d7a5e7...76281671` = **`diverged`, ahead 15 / behind 1**; the one missing commit is `50d7a5e7`
+itself. #12408 closes **both** `[12371, 12383]`; #12382 closes only `[12371]`. So the Windows fix sits
+on the PR that closes ONE issue, and the PR that closes BOTH still carries the failing test unchanged.
+⭐⭐ **The two copies of the test file now DIVERGE in md5 for the first time on this chain** —
+`32272617588b20e63a0f0f3c0776e4d2` (#12382, 209 lines) vs `d2849dc4188d2cb53b2be5f9ccedf219` (#12408,
+185 lines), the value I recorded as *"md5-IDENTICAL at both heads"* at wake #7. **That identity was
+the whole basis for "this lands on BOTH PRs"; it has now expired, so the conclusion it supported does
+not carry forward.**
+
+⚠️ **The fix is UNVERIFIED and may stay that way.** At `f93eb4f7` the bot self-dispatched CI **65 s**
+after the push — timed against the `head_ref_force_pushed` timeline event **06:57:36Z** → dispatch run
+`31079160248` created **06:58:41Z**, NOT against the commit's `committer` date 06:56:01Z, which is when
+the commit was written rather than when it landed. **70 min** after this push there is **no**
+`workflow_dispatch` run at `50d7a5e7` — only the draft-skipped `pull_request` run. ⇒ The Windows
+failure this commit targets cannot be observed as fixed at this head yet.
+⭐ **A commit date is not a push time**, and the gap between them here is 95 s — enough to turn a
+correct "65 s" into a wrong "2 min 40 s" if the wrong clock is used for a latency claim.
+
+⚠️ **TWO CONCERNS ON THE FIX ITSELF, flagged to the fixer as concerns, NOT findings — I ran nothing.**
+The commit skips via `SLANG_IGNORE_TEST` when `(generatorMagic & 0xFFFF0000u) == 40 << 16`
+(Slang's own id, `kSPIRVSlangCompilerId` verified at `slang-emit-spirv.cpp:97`), on the stated premise
+that *"a build or platform without that module has no downstream linker to exercise"*.
+(a) **The premise is at least partly contradicted by the failing job's own log:** `slang-glslang.dll`
+is listed in the Debug `bin_dir` artifact the job downloaded (log line 2832). **Presence is not a
+successful load** — a transitive-dep or symbol-lookup failure is still open — so this weakens the
+premise without refuting it. (b) **The skip is keyed on the SYMPTOM the assertion exists to catch:**
+"generator is Slang's own" is exactly what "the link stopped happening" looks like, so a genuine
+regression would now be silenced rather than reported. ✅ **The same commit also makes the diagnostic
+`fprintf` UNCONDITIONAL** (previously gated on `codeResult != SLANG_OK`, which is why wake #7 saw
+empty stdout AND stderr with rc=1) — so whichever branch fires next will finally print
+`codeResult/producedCode/generator`. That is the measurement that settles (a), and it needs a CI run.
+
+✅ Re-measured, unchanged: both PRs draft/OPEN/`mergeable=true`/`behind`, `pr: non-breaking`,
+assignee + requested reviewer `jkwak-work`, author id 274397474 type Bot; **0 reviews / 0 inline
+review-comments on BOTH** (~78 h after the shepherd was assigned); issue #12371 open, 1 comment
+(ours), Q3 2026, non-bot timeline events **4**; #12383 open, 0 comments. Defect still live on master
+`716ec597`: `slang-emit.cpp` still `compiler->validate((uint32_t*)spirv.getBuffer(), …)`. Master
+control **735 == 735**, failing `{agentic-tests, build}` — a non-gate name, so the probe demonstrably
+reports the class of failure whose absence at #12382's head is my reading. #12408's `workflow_dispatch`
+run `31179559787` is **still `waiting` at attempt 2** with `test-falcor` queued, its two Windows
+`test-slang` failures from attempt 2 (jobs `93060460195`, `93061368941`).
+
+## 09:2xZ 08-08 heartbeat wake #7 — THE PRIORITY GATE RELEASED AND A REAL FAILURE APPEARED, in this chain's own new unit test. The latch was blind to it: EIGHTH DEFECT, and it is the FIFTH FIX'S SHAPE ONE LEVEL DOWN
+
+⛔ **The event this entire guard exists to catch finally happened, and the fingerprint was BYTE-IDENTICAL
+through it.** At #12408 head `76281671` the priority gate **released** — `wait-for-human-priority` =
+**success**, skipped **74 → 41**, success **4 → 35** — and two real failures landed:
+`test-windows-debug-cl-x86_64-gpu / test-slang` (job `93061368941`) and
+`test-windows-release-cl-x86_64-gpu / test-slang` (job `93060460195`), run `31179559787`.
+Complete census (`rows 79 == total_count 79`): 2 failure / 41 skipped / 35 success / 1 null.
+
+⭐⭐⭐ **THE DEFECT: the nine `xst=` cells carry everything a HUMAN might do to a cross-referencing PR
+(head, draft, state, mergedAt, closing links, comments, reviews, mergeable) and NOT ONE check-run
+field.** `failing_headsha` exists — but only for the PR on the watched branch (`fix/issue-12371`), and
+the fix now lives on `fix/issue-12383`. So a real build failure on the PR that actually carries the
+work was dark **by construction**. ⇒ **This is the fifth fix's lesson repeating one level down:
+carrying a cross-referencing PR's state is only as good as WHICH of its fields you carry.** The 5th
+fix's own reasoning — *"`mergeable` and `isDraft` matter because a human acting is decision-relevant"*
+— entails that a failing test matters for the identical reason, and I did not follow my own entailment.
+⚠️ **Eight defects, and the through-line is now unmistakable: every fix widened an aperture and the
+next defect was in the widened aperture's own blind spot.** Field-set (1–6) → instrument completeness
+(7) → **field-set of the thing the field-set fix added (8)**.
+
+✅ **Fixed and tested. The names cell is load-bearing, and the retroactive control proves a count would
+NOT have caught it.** Added two cells per `xst=` row — failing-name **count** and **sanitized sorted
+names**. Sanitization (`gsub("[^0-9a-zA-Z._-]";"_")`) is required because real names contain spaces and
+slashes while the row is `:`-joined and character-class-checked. ⭐ **T3 RETROACTIVE CONTROL: seeded
+#12408's pre-event row (failing set = the gate pair) with every other cell identical ⇒ WAKES. The count
+was 2 BEFORE and 2 AFTER, so a count-only cell would have stayed silent — the discriminator is the
+NAMES.** Also hoisted the page-loop census into one `read_failing_names_json` used by both the guarded
+and the cross-referencing PRs, and **deleted the 62-line inline copy** — two implementations of one
+census is exactly how the 7th defect survived (`pr12200-guard.sh` had the right gate, this file did not).
+Tests: **T1** wakes on widened set · **T2** silent immediately after · **T3** retroactive ⇒ wakes ·
+**T6** inflated `total_count` ⇒ bails on `rows 79 != total_count 500` · **T7** page-query 403 ⇒ bails,
+never coalesces to `[]` · **T8** name carrying the `:`/`+` separators ⇒ sanitized, row shape intact,
+wakes (correct — a new failing name) · **T9** positive control still wakes · **T10** silent at rest.
+Latch md5 `4af8a1dcb833ef3d53395e684968ab1f` byte-identical after every bail case. `bash -n` clean.
+⚠️ **T6 first "passed" from the WRONG GUARD** — my stub's `*per_page=1*` glob prefix-matches
+`per_page=100`, so the page query returned bare `500` and the ARRAY guard fired instead of the
+completeness guard. **The same stub bug as the 7th fix, made a second time.** ⇒ ⭐⭐ **a bail is not a
+pass: read WHICH guard fired, or the guard under test never ran.** Restored `lastwake` to the true
+`1786182007` (5th time) — a test of a budgeted mechanism must not consume the budget it measures; final
+control fire silent at a real `1945s`.
+
+⛔ **Dispatched `slang-fixer` on `thread_id=gh-issue-shader-slang/slang-12371`. Deterministic, and it is
+OUR test.** Both jobs fail only at step 8 `Test Slang`; the sole failing test in each is
+`slang-unit-test-tool/spirvValidationAcceptsDownstreamLinkedModule.internal` —
+`SLANG_UNIT_TEST` at `tools/slang-unit-test/unit-test-spirv-link-validation.cpp:168`, the file **this
+chain's PR adds** (master `716ec597`'s `tools/slang-unit-test` has only
+`unit-test-spirv-interface-default-init-validation.cpp` + `unit-test-spirv-validation-unavailable.cpp`).
+⭐ **Not a flake, and the suite's own retry mechanism is the discriminator — not my judgement:** it
+logged `failed(pending retry)` then `FAILED` after `Retrying unit tests…`, while **four other** failures
+in the same two jobs (`parameter-block.slang.6 syn (llvm)`, `return-opaque-type.slang.3 syn (dx12)`,
+`bufferBarrierVulkan`, `computeSmokeD3D12`) all **passed on retry**. Finals `11510/11511` and
+`11508/11509`.
+⭐⭐ **Windows-only, measured per-platform at the SAME head:** PASS on 7 configs (linux
+debug/release ×{x86_64, aarch64}, linux release cpu, macos debug/release aarch64), FAIL on the 2
+`test-windows-*-cl-x86_64-gpu`.
+⛔ **It is NOT specific to #12408's extra work, and #12382 is UNMEASURED rather than clean.** The test
+file is **md5-identical at both heads** (`d2849dc4188d2cb53b2be5f9ccedf219`, `diff -q` identical), and
+at `f93eb4f7` the set of `test-windows*test-slang` check-runs is **`[]`** — the gate skipped them there.
+⇒ **#12382's tidy-looking red (`{check-ci, wait-for-human-priority}`, 74 skipped) hid the same latent
+failure.** ⭐⭐⭐ **"74 skipped" was never a weaker green; it was the ABSENCE of the measurement, and
+this wake is what that absence was hiding all along.**
+
+⚠️ **I did NOT classify WHICH assertion fires, and said so in the dispatch.** Captured `standard error
+= { }` **and** `standard output = { }` — both empty — with `result code = 1`, so the test's own
+`fprintf(stderr, "compile diagnostics:…")` at `:176` emitted nothing (empty-output + exit 1 is also the
+shape an abort leaves). Candidates: `:179` `codeResult == SLANG_OK`, `:180` `producedCode`, `:184`
+`(generatorMagic & 0xFFFF0000u) == kSpvGeneratorKhronosLinker`. I flagged the third as the one sensitive
+to whether the downstream SPIRV-Tools linker is used on the Windows runners at all — **explicitly as a
+hypothesis to test, not a finding.** I ran nothing; this is all API + job logs.
+
+✅ **Retired the guard prompt's own now-false instruction.** It said *"CI IS INFRA-BY-DESIGN — DO NOT
+DISPATCH THE FIXER FOR IT … All 74 build/test jobs SKIPPED, 0 real failures"*, and its escape hatch was
+keyed on `failing_headsha` — a field covering **only #12382**. A future wake could have read that and
+no-opped on exactly this failure. Rewrote it to supersede the claim explicitly, name the two jobs, state
+the unknown assertion, and scope the dispatch rule to the per-PR names cells.
+⭐⭐⭐ **A guard's PROMPT is as much a latch as its script: a stale fact written as an instruction does
+not merely mislead, it forbids the correct action.** The script change alone would have left a
+correct wake reading "0 real failures, do not dispatch".
+
+✅ Everything else re-measured and byte-identical to wake #6: #12382 `f93eb4f7` draft/OPEN 3 commits 4
+files +204/−7 closes `[12371]` `mergeable=true` `behind` `updated 08-06T07:46:07Z`; #12408 `76281671`
+draft/OPEN 10 commits 6 files +869/−36 closes `[12371,12383]` `updated 08-07T12:45:04Z`; **0 reviews /
+0 inline review-comments on BOTH** ~55 h after the shepherd was assigned; issue open, 1 comment (ours),
+Q3 2026, non-bot timeline events exactly **4**; #12383 open, 0 comments; `compare` ahead 15 / behind 0.
+Master **did not move in 8 h** (`716ec597` at both wakes) and `slang-emit.cpp:3444` is still
+`compiler->validate((uint32_t*)spirv.getBuffer(), …)`. Order test **not owed** — both heads are the same
+immutable shas. Master control `716ec597` ⇒ **677 == 677** (a *reading at a time*, not a property of the
+sha: 80 → 383 → 677 on one sha in 12 h), failing `{agentic-tests, build}`, **not** relayed to
+`slang-ci-babysitter` — one unclassified name at a 394-success sha, from a guard scoped to #12371.
 
 ## 01:2xZ 08-08 heartbeat wake #6 — 5th true negative; emitted nothing. The master control finally produced its STRONGEST form: a failing name OUTSIDE the gate set
 

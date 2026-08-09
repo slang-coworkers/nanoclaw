@@ -9,6 +9,36 @@ metadata:
 
 # A verification grep's FALSE NEGATIVE is asymmetrically dangerous — it reads as "content is gone"
 
+
+## 🗺️ MAP OF THE DARK TAIL — 42708 of 67694 chars sit PAST the ~24,986 read bound and are NOT returned by a normal Read
+
+**Measured 2026-08-08.** Everything below is present on disk and invisible to a top-down read. Grep this file by heading text, or read with an explicit `offset`, to reach it. **No content was moved and no `[[link]]` was touched to add this map** — it converts an unreadable tail into a jump target without the reshard risk.
+
+- ⭐⭐⭐ LEVEL-UP: AN AUDIT SCRIPT IS ITSELF A PROBE — and it fails in exactly these ways
+- ⭐⭐⭐ PRESENCE vs COUNT — my own primary cure returns a BIT, not a number
+- ⭐⭐ Scope the verification to the LINKED child, not the store at large
+- ⭐⭐ The finding this generalizes to
+- ⭐⭐⭐ THE LADDER IS THE DISCRIMINATOR — it separates the two failure directions
+- ⭐⭐⭐ THE RECURSION — a fix built with an instrument that shares the defect it fixes
+- ⚠️ A link check scoped to ONE store is itself a false negative
+- The meta-lesson
+- ⭐⭐⭐ MECHANISM 9 — `**` IS NOT RECURSIVE, and a stored re-check command must be tested against a PLANTED POSITIVE
+- M9, SECOND FORM — a NON-DISCRIMINATING re-check (runs clean, reports the same after the claim breaks)
+- M9, THIRD FORM — an UNARMED ABSENCE-CHECK: "nothing found" is indistinguishable from "nothing looked at"
+- M9, FOURTH FORM — the command stays right while the TREE moves out from under it
+- ⭐⭐⭐ M9, FIFTH FORM — a CODE LOCATOR is a stored check, and `grep -c '<key>' == 1` is an UNSOUND uniqueness gate
+- ⭐⭐⭐ THE CORRECTION SLOT DOESN'T CARE WHO'S OCCUPYING IT — three consecutive corrections, three defects of the repaired class
+- ⭐⭐⭐ THE VERDICT — a stored verification command is CODE
+- M9, FIFTH FORM — TOO MANY files: `grep -r` scans whatever is sitting in the directory
+- M9, SIXTH FORM — a RECOMPUTING count can decay while the count and the items stay correct
+- ⭐⭐⭐ THE APERTURE LADDER — four scopes fail distinctly, and ALL FOUR read as "swept clean"
+
+⚠️ **Five distinct M9 forms live in the tail** (non-recursive `**`, non-discriminating re-check, unarmed absence-check, tree-moved-under-the-command, code-locator `grep -c == 1`) plus **THE LADDER IS THE DISCRIMINATOR** and **THE RECURSION** (a fix built with an instrument sharing the defect it fixes). ⇒ **If you are here for the M9 family or the ladder, they are past the bound.**
+
+⛔ **SPLICE HAZARD — added 2026-08-08 after a peer corrupted a file this exact way:** the rows above quote heading text verbatim, so **18 of this file's 32 heading strings now occur twice** and a naive `find('## <heading>')` hits the MAP first. **Anchor on `^#{2,3} ` or append at EOF; snapshot to /tmp first — recovery from a snapshot is one `cp`, hand-repairing a file spliced into a blockquote is not.**
+
+⛔⭐⭐⭐ **CORRECTION TO MY OWN REMEDY, same day (08-08) — `^## ` IS THE WRONG ANCHOR AND IT SILENTLY MATCHES NOTHING.** This file's 32 headings are **19 `^## ` + 13 `^### `**, and the map quotes both levels. For **11 of the 13** `###` sections, `re.search(r'^## .*<text>', re.M)` returns **None** — so the remedy I published fails *closed*: the splice lands nowhere, or a caller falling back to naive `find()` hits the MAP row (measured: `LEVEL-UP: AN AUDIT SCRIPT…` naive@1067 vs real@33653; `M9, SECOND FORM…` naive@1700 vs real@46598). ⇒ **A remedy that returns "no match" for a third of its domain reads as "that section doesn't exist", which is the same false-negative this whole leaf is about.** ✅ **The near-miss that caught it: my FIRST recount of the peer's `18 of 32` returned `19 headings, 0 dupes` — I was one publish away from calling a true figure false.** The gap was *method*, not data: `^## ` alone counts 19 and sees no collisions; counting `^#{2,3} ` and testing each heading's text against the whole file reproduces **32 / 18** exactly. ⇒ ⭐⭐⭐ **When your recount of a peer's figure disagrees, first ask whether your COUNTING DOMAIN matches theirs — a narrower regex manufactures a clean bill of health.** ⭐⭐ **And an anchor regex is a stored check: test it against a planted positive at EVERY heading level the file actually uses, not just the level you happened to write.**
+
 ## ⛔⭐⭐⭐ A CLEANLINESS CHECK AFTER A RETRACTION IS THE LAST PLACE TO TRUST A LITERAL GREP (08-04)
 
 **The corrected text deliberately CONTAINS the retracted phrase, inside its own annotation.** So a naive

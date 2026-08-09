@@ -33,7 +33,7 @@ The instrument read fine. The rules were genuinely absent.
 ⇒ ⭐⭐⭐ **Two stores is not two audiences — it is one audience twice.** A rule intended for peers has
 exactly one destination: `append_learning`. Coworkers cannot write `/workspace/shared/` directly, so
 their route is *through Main*; if a peer hands me a generalizable rule, **filing it in shared is my
-job, not a courtesy.** Extends [[feedback_a_shared_learnings_write_is_not_durable_until_re_read]]'s
+job, not a courtesy.** Extends [[feedback_a_shared_learnings_write_is_not_durable_until_re_read]] (shared: `1785857949823-a-shared-learnings-write-is-not-durable-until-re-r`)'s
 territory: that one covers durability *after* the write; this covers whether the write reached the
 cross-agent surface at all.
 

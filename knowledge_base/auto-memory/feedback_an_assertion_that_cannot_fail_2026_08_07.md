@@ -1,9 +1,10 @@
 ---
 name: feedback_an_assertion_that_cannot_fail_2026_08_07
 description: "The 2026-08-07 spill of the assertion-that-cannot-fail family: CHECK-NOT is a FileCheck directive absent from diag=; the drill's own blind spot (a FAILED arm from the wrong cause); prose has no instrument; a repeated zero from a freshly-fixed regex; delegating a probe strips its control; probe-beats-verdict; 'no longer applies' and 'cannot be reached' are one claim; the reading that costs nothing to leave standing goes unaudited."
-metadata:
+metadata: 
   node_type: memory
   type: feedback
+  originSessionId: ca41560b-b199-4c60-94f8-8afbca9f7f07
 ---
 
 # An assertion that cannot fail — the 2026-08-07 instances
@@ -27,14 +28,62 @@ negative form in the grammar at all.**
 
 ⚠️⭐⭐**SCOPE IT PRECISELY — "slang-test silently drops CHECK-NOT" is under-scoped and would retire a
 directive that works.** The repo has **two different matchers**:
-| directive | matcher | `CHECK-NOT` |
-|---|---|---|
-| `filecheck=` / `filecheck-buffer=` | **real LLVM FileCheck** | ✅ supported (subject to the bounding rule above) |
-| `diag=` | slang-test's own annotation parser | ⛔ **not in the grammar** |
+| directive | matcher | `CHECK-NOT` | `// CHECK:` **with a space** |
+|---|---|---|---|
+| `filecheck=` / `filecheck-buffer=` | **real LLVM FileCheck** | ✅ supported (subject to the bounding rule above) | ✅ **fine** — prefix matched anywhere on the line |
+| `diag=` | slang-test's own annotation parser | ⛔ **not in the grammar** | ⛔ **INERT** — strict `startsWith("//"+prefix+":")` |
 ⇒ **The rule is "`CHECK-NOT` is a FileCheck directive," not "`CHECK-NOT` is broken here."** Under `diag=`
 the correct way to assert an absence is **exhaustive mode** (the default): every emitted diagnostic must
 carry an annotation, so an unexpected diagnostic fails the test by construction — which is what the fixer
 switched to.
+
+⭐⭐**2026-08-08 — the SPACING column, added because a peer imported the strict rule ACROSS this
+boundary and I nearly adopted it.** `slang-triager` claimed a disabled test was not re-enableable partly
+because spaced `// CHECK:` is *"a plain comment rather than the `//CHECK:` directive FileCheck
+consumes."* **False for `filecheck=`, TRUE for `diag=`** — the two halves of this same table:
+- **`diag=` path is strict.** `tools/slang-test/diagnostic-annotation-util.cpp:84-86` builds
+  `lineMarker = "//" + prefix + ":"` and `:181` tests `trimmedLine.startsWith(lineMarker)`. **The space
+  in `// CHECK:` is INTERIOR to the line, so `trim()` never touches it** — the comparison reaches `//`,
+  expects `C`, finds `' '`. Hence **`// CHECK:` never matches**. Same strictness that makes
+  `//CHECK-NOT:` inert here; the in-source comment at `:83` says the colon is required deliberately
+  "to avoid confusion with substring matching."
+  ⛔**CORRECTED 08-08 — my first version of this said `trim()` (`:109`) "removes only *leading*
+  whitespace." FALSE:** `source/core/slang-string.cpp:191-201` is two loops, advancing `start` past
+  leading **and** retreating `end` past trailing horizontal whitespace. Caught by `slang-triager`
+  re-deriving; conclusion unchanged, mechanism replaced.
+  ⚠️**The offered REASON was itself unfalsifiable** ("leading-only predicts a *trailing*-space line fails
+  too, which it doesn't"). **No such input can exist by CONSTRUCTION:** `startsWith(p)` reads only
+  `s[0:len(p)]`; an `rstrip` removes from the **end**, touching that window only by overlapping it — and
+  then the string is shorter than the prefix and fails under **both** stories. ⭐**Cite the argument, not
+  a search:** two exhaustive searches agreed (lengths 6 and 9, 0 hits) but **a bounded search leaves a
+  "maybe at length 11" residue the argument forecloses.** ⇒ ⭐⭐**Fix a false fact in a durable record
+  BECAUSE IT IS FALSE, never because "it predicts something testable" until you have built the input** —
+  the peer flagged the "no discriminating observation" pattern, then *fabricated* one to justify the fix.
+- **`filecheck=` path is not.** `source/slang-llvm/slang-llvm-filecheck.cpp:92` hands the bare prefix to
+  upstream LLVM FileCheck (`fcReq.CheckPrefixes = {fileCheckPrefix}`), which scans for it **anywhere on
+  the line**.
+✅**Measured in-tree, and the convention is the opposite of the claim:** spaced `// CHECK:` **3,834**
+uses vs unspaced **2,135** (triager counted 4,145/2,148 — same direction), and live tests rely on the
+spaced form *exclusively*, e.g. `tests/hlsl-intrinsic/texture/texture-sample-count.slang` —
+`//TEST:SIMPLE(filecheck=CHECK)` with **2 spaced / 0 unspaced**.
+⇒ ⭐⭐⭐**A true rule about one harness becomes a false rule the moment it crosses to the other, and it
+crosses silently because both spell the token `CHECK`.** Before applying any annotation-syntax rule,
+read the *directive* on line 1 (`DIAGNOSTIC_TEST`/`diag=` vs `SIMPLE(filecheck=)`), not the
+annotation. Acting on the wrong side here would have implied rewriting most of `tests/`.
+
+⭐⭐⭐**WHY IT SURVIVED ITS AUTHOR'S OWN REVIEW — the transferable shape (its words, and it is the best
+thing to come out of this chain):** the false half was **welded to a TRUE conclusion**
+("not simply re-enableable") that was *already fully supported* by the other, sufficient half (the test
+expects `error 50100` vs today's `error[E50100]`). ⇒ **no outcome could contradict the false half, while
+it implied something drastic.** **When a caveat has two independent supports and one is sufficient, the
+other is carried by the conclusion rather than by evidence — audit it separately.** Same family as the
+inert-`CHECK-NOT` cases below: an assertion that cannot fail.
+⇒ Retracted publicly in place (#10892 cmt `5226850234`, 8,758→9,518 ch, comments still 5), with the
+wrong wording **quoted inside** the retraction — and verified **positionally** (marker at offset 6833,
+quoted claim at 6966) rather than by grep count, since **a count cannot distinguish an assertion from a
+retraction.** Blast radius measured, not assumed: #12430 verdict **0 hits**, shared learnings **0**.
+⚠️Those greps first returned an **empty context window** because the phrase spanned a line break —
+re-read whitespace-collapsed rather than trusting the hit.
 
 ⭐⭐⭐**This is the FIFTH distinct mechanism by which a `CHECK-NOT` in this repo is inert, and the first that
 is STRUCTURAL rather than conditional:**

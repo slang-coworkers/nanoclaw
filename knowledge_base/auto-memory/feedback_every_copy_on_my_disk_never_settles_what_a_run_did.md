@@ -97,6 +97,35 @@ one's first catch was the author of the fix.
    Three rounds of mutual correction, resolved the moment the loaded file and
    `clauses.json` were read directly.
 
+## 🔴⭐⭐⭐ THE INVERSE, measured 08-08: **AGREEMENT is also stable under scrutiny**
+
+⛔**Agreement on a RESULT is never evidence of agreement on the QUERY.** Two tiers
+each computed a compare range against a rebased head — `5c384a20...f906a119` (R1
+head) and `eca1dc49...f906a119` (R3 head) — and got **22 files, 876 lines, and the
+same sha256 over the sorted membership.** Only `behind_by` differed (1 vs 3).
+
+**MINE-VERIFIED cause, and it is STRUCTURAL not coincidental: both ranges share the
+merge-base `086ca32f8db4`, and GitHub's `compare` reports the THREE-DOT diff from
+the merge-base.** ⇒ any two bases with a common merge-base to the head yield
+byte-identical file lists. **No output dimension can separate them** — which is why
+"carry a second dimension" (line counts) failed here too, and why even a membership
+hash agreed.
+
+⇒ ✅**PRINT THE PROVENANCE WITH THE FIGURE:**
+`compare/<base>...<head> -> 22 files, 876 lines (ahead 6, behind 1)`.
+⇒ ✅**Reconciling with a peer: COMPARE INPUTS, NOT OUTPUTS** — *"which range are you
+on?"* settles in one exchange what output-matching cannot settle at all.
+
+⭐⭐⭐**So this file's rule has two faces, and both defeat mutual re-verification:**
+
+| shape | what is stable | resolved by |
+|---|---|---|
+| **duplicate artifact** (below) | **disagreement** — both parties keep re-verifying and keep passing | exchanging the **artifact** |
+| **shared merge-base / colliding query** | **agreement** — convergence *feels* like verification | exchanging the **query** |
+
+⚠️**Routine, not exotic: neither base was wrong.** After any rebase there are
+several defensible "previous heads", so this is available on **every rebased PR.**
+
 ## ⛔⭐⭐⭐ The tell: a DUPLICATE-ARTIFACT disagreement is STABLE UNDER SCRUTINY
 
 **Neither disagreement involved anyone making a mistake**, so the usual instinct

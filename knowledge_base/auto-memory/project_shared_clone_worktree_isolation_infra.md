@@ -150,6 +150,37 @@ two sessions**, so "which agent owns this edit" is unanswerable from the tree al
 ⚠️**Two worktrees can exist for one issue**: `wt-12330` (triager) vs `wt-slang-12330` (fixer, branch
 `fix/issue-12330`). Key every path claim by its FULL name; a `wt-*12330` substring merges two owners.
 
+6. **08-07 04:27Z — SIXTH, found only on the 08-08 sweep, and it PREDATES my 09:22Z ping** (so it is new
+   to the record, not new since the ask). `slang-reviewer` (`rjavdk`, #12396/#12417) ran
+   `git worktree add --detach FETCH_HEAD`; a co-tenant `fetch origin master` overwrote `.git/FETCH_HEAD`
+   between its fetch and its add, so the worktree materialized at **`88fa1206d` instead of the intended
+   `c50ad3b3f`**. Its own unconditional commit-binding assert caught it and it re-pointed by literal SHA.
+   ⭐⭐⭐**NEW FAILURE CLASS — this one does not destroy anything: it yields a VALID worktree at the WRONG
+   commit, so every downstream measurement is TRUE ABOUT THE WRONG TREE and nothing contradicts it.** The
+   three prior classes all leave a trace (lost file / reverted hunk / empty diff); this one leaves a clean
+   tree and a confident wrong answer. ⇒ **the remedy is an assert, not a guard**:
+   `git rev-parse FETCH_HEAD` → literal SHA immediately after fetch, then
+   `git -C <wt> rev-parse HEAD` == that SHA. Cheap enough to be unconditional; it is what caught this.
+
+   ⚠️**MY SCOPE CORRECTION, measured — the peer's rule is right for TODAY and wrong as a git fact, and the
+   difference bears directly on ask (a).** Two shared-learnings files publish *"`FETCH_HEAD` is a single
+   mutable file in the clone, not a per-invocation value."* Lab test (throwaway `/tmp`, git **2.39.5**,
+   my edge only):
+   - `git -C <wt> rev-parse --git-path FETCH_HEAD` → `.git/worktrees/<wt>/FETCH_HEAD`; main → `.git/FETCH_HEAD`.
+     Controls `HEAD`/`index` (known per-worktree) resolve the same way.
+   - A worktree fetch pinned to c2, then a co-tenant fetch of c3 **from the main checkout**: the worktree
+     **still reads c2**. Positive control: two fetches in the *same* checkout **do** overwrite.
+   - Physical-file control: a worktree fetch creates `.git/worktrees/<wt>/FETCH_HEAD` and **no**
+     `.git/FETCH_HEAD`.
+   - Repro of the actual event (fetch + co-tenant fetch + `worktree add FETCH_HEAD`, all from **main**):
+     lands on the wrong SHA. Arm control (no co-tenant fetch): lands correctly. Fix control (resolve to a
+     literal SHA first, then race): **holds**.
+   ⇒ **`FETCH_HEAD` is per-worktree; the race is real only because every session currently shares the ONE
+   main checkout.** So this class is **not** a counterexample to worktrees — **worktrees fix it too**, which
+   makes ask (a) stronger, not weaker. ⚠️`gitrepository-layout` does **not** list `FETCH_HEAD` either way,
+   so I state the version and the edge rather than a universal. Same family as ANCHOR C: a peer's true
+   statement about its own environment arriving as a general fact about the tool.
+
 ## Recommendation carried to the operator
 
 1. Default **write-capable** chains to a per-chain **source-only** worktree (field-proven 87 M, ~1%).
@@ -181,6 +212,29 @@ re-ping rests on the **incident**, not the count.
 ⭐**The ask now has a THIRD item that is cheaper and more targeted than (a)–(c): fix the guard default in
 the coworker spines.** #5 was not prevented by isolation being absent — it was caused by a
 guard-beside-the-action recipe, which a one-line spine edit fixes for every coworker at once.
+
+⚠️**08-08 09:2xZ fire — operator STILL has not answered; I sent NOTHING (no new post-ping incident).**
+Armed sweep over every session active since 08-07, `--full`, timestamp-keyed on the message header row:
+**zero** incidents after 09:22Z. It did surface instance **#6 above, dated 04:27Z — i.e. BEFORE my ping**,
+so it is new to the record but not a new data point since the ask ⇒ **does not meet the re-ping bar.**
+Concurrency **fell**: running/group = **10 main · 2 slangpy-pr-approver · 2 slang-discord · 1 each
+slangpy-fixer / slang-fixer / ci-babysitter / maintainer** (was 12/7/3) — no group above ~10.
+⛔**TWO INSTRUMENT DEFECTS, both of which produced a FALSE NEGATIVE first:**
+1. **`ncl sessions messages` truncates text to 300 chars by default — pass `--full`.** My incident grep
+   returned **0** on the escalation session (a session entirely about this topic) and **5** on another;
+   with `--full` the same session returns **6**. A pattern that matches only message *openings* reads as
+   "no incidents." (Already in shared learnings ×2 — I re-derived it anyway.)
+2. ⭐⭐**`ncl sessions list --limit 2000` SILENTLY CAPPED AT EXACTLY 2000 rows; the store holds 2478.**
+   Detector that caught it: `--limit 5000` and `--limit 4000` both return **2480 lines** ⇒ 2000 was the
+   cap, not the total. It made session `9fon2n` (the main dashboard session) look **absent**, and my first
+   per-group running count read **8 main** instead of **10**. ⇒ **the task's own recipe (`--limit 2000`)
+   under-reports the very number it asks for.** Cheapest check: raise the limit and see whether the count
+   moves. Same family as the basename/cap rule in ANCHOR-adjacent store guidance.
+✅**Operator-attendance discriminator (stronger than "no inbound"):** **5 `critique_gate_bypass` approvals
+sit `pending`, oldest 08-07 01:10Z, newest 08-08 07:56Z** — cards delivered to `dashboard-admin`, none
+answered. So the silence is **operator away, not ask-specific rejection**; three peer chains are gated
+behind those cards. Confirmed no inbound chat row on either dashboard group (`om8syu` main, `jdo1uq`
+admin) after 2026-08-06 19:4xZ, armed with a threshold-shifted control that does print.
 
 **RESUME = operator decision on the spine default.** Nothing implemented; no config changed. Mechanics if
 greened: (a) `git worktree add` per chain, (b) source-only unless a build is required, (c) `sccache` via

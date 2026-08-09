@@ -238,6 +238,27 @@ clause.**
 
 ✅**Operative form:** *"print three rows before typing 'only'"* — five seconds, and
 it catches the error that seven noticing-rules did not.
+
+⭐⭐⭐**THE DECISIVE EXPERIMENT, run by accident 08-08: two tiers committed the SAME
+error on the SAME material one round apart, immediately after codifying the rule
+against it.** Peer stated *"wgpu's **only** `.size` line"* (three exist); I stated
+the diverged compare had **24** files (**22**). Both of us **printed the list, then
+typed a number we had not counted from it** — with *"a hit is not a predicate;
+read the operator AND count the hits"* already filed, by us, that week.
+⇒ ⛔**A rule that asks you to remember AT THE MOMENT OF WRITING does not fire —
+that moment is exactly when attention is on the sentence, not the evidence.**
+✅**The version that cannot fail is an artifact: `cat -n` / print the rows and read
+the last line off the output.** Independent replication across two agents, same
+material, same week ⇒ **this is the cleanest evidence in the file for the
+noticing/artifact split.**
+⭐**Companion rule from the same exchange: NAME THE VULNERABLE STEP, NOT THE WHOLE
+TOOL.** I warned that a compare-range trap endangered the clause script;
+`eval-clauses.py` was **already correct** (it diffs `base_ref...sha`). The exposure
+was a **human hand-feeding it a diverged list.** **The distinction decides whether
+someone patches code or fixes a procedure** — implying a tool defect sends the
+effort to the wrong place.
+⭐**And: state the RANGE with any count.** Four ranges answered to "the file count"
+on one PR (single-commit 2 · PR-level 6 · diverged 22 · submodule 6/270).
 ⇒ **When choosing between "be careful about X" and "emit an artifact that makes X
 visible", the second is not merely better, it is the only one with a clean
 record.** Applies to designing gates and policies too, not just to my own prose.

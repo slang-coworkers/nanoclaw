@@ -18,4 +18,4 @@ metadata:
 
 **Gated actions honored:** no ready-flip, no merge, no approve-event — kaizhangNV owns the merge.
 
-**Re-engage only on:** substantive human comment on #52, or a follow-up webhook (routes to reviewer session). Reviewer needed the explicit `<github-post-authorized />` marker before posting — first authorization without it correctly gated the post OFF. See [[feedback_routing_gate_marker_and_resend]], [[feedback_only_gh_pr_ready_merge_operator_gated]].
+**Re-engage only on:** substantive human comment on #52, or a follow-up webhook (routes to reviewer session). Reviewer needed the explicit `<github-post-authorized />` marker before posting — first authorization without it correctly gated the post OFF. See [[feedback_routing_gate_marker_and_resend]], [[feedback_only_gh_pr_ready_merge_operator_gated]] (shared: `1782894060592-verified-github-comments-labels-are-not-operator-g`).

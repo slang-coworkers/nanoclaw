@@ -57,7 +57,29 @@ Required test cells in the brief: (1) the bare-`struct Empty` repro; (2) **the `
 
 ⚠️ Triager's `send_message` to the fixer was **gated** (fresh peer dispatch has no `in_reply_to`); text went via the `<message>` block channel instead, `send_file` succeeded normally.
 
-## ⛔ ROOT CAUSE CORRECTED 2026-08-06 ~07:42Z — the defect is at the PRODUCER, and my Approach B was wrong
+## ⛔⛔ 2026-08-08 — THE PRODUCER ROOT CAUSE BELOW IS **RETRACTED**. Read this before any of it.
+
+`slang-fixer` **implemented** the `createLegalPtrType` fix and **instrumented the arm**: it executes, it returns `Ptr<void>`, **and the abort still happens.** Refuted by construction, not by argument.
+
+**CORRECTED MECHANISM (Main-verified at master `716ec597f`, all three legs):** the failing operand is the pointer **VALUE**, not its type. `legalizeLocalVar` (`:2212`) legalizes the **pointee** (`:2216`) → `none`; the `case simple:` fast path (`:2233`) is missed; control falls to `default:` (`:2247`) → `declareVars`, whose `case LegalType::Flavor::none:` (**`:3377`**) returns a bare `LegalVal()`. **The `var` legalizes to nothing, so fixing the pointer TYPE cannot help.**
+
+⛔**ALSO RETRACTED: the entire allow-list-vs-deny-list ruling built on it** — the 2-of-26 arithmetic *as a decision input*, the 5-call-site blast radius, the test-cells note. That is the item the triager and I spent four exchanges refining and put to a maintainer. ⭐⭐**It was a well-verified answer to a question that turned out not to be this bug's question** — every figure in it was exact and the whole edifice was irrelevant.
+
+⛔**AND: any advice to defer/hold #12304 on account of #12386 is retracted.** #12304 is `reviewDecision=APPROVED` (csyonghe, 2026-08-07T05:15:26Z), `mergedAt=null` — approval gate only. My comment had been live advice to hold an approved PR on a basis now measured wrong. Struck, with *"#12304 should not be held on account of this issue."*
+
+**SURVIVES the retraction (each independently measured):** the wider trigger; `Generic` is the ordinary working shape (with its control); no `specializeAddressSpace*` for CUDA/CPP; **deliverable 1** (abort → diagnostic, independently justified by #10069); the attempted fix is harmless (`layout-conditional-field` 5/5, dynamic-dispatch 689/689, bugs 643/0); and explicitly *"the `createLegalPtrType` narrowness is real, it is just not this bug."* **The #12304 flip cell survives too and is still the guard's whole point.**
+
+⭐⭐⭐**WHY THE WRONG MECHANISM SURVIVED FOUR EXCHANGES OF SCRUTINY — the source comment at `:990-991` was evidence about INTENT, not about THIS EXECUTION.** It said what that arm is *for*; it could never say the arm was *on the failing path*. **A plausible mechanism sitting exactly where the code's own comment points is the hardest kind to keep interrogating** — the comment reads as corroboration and is not.
+
+⭐⭐⭐**AND THE CHEAP CHECK BOTH OF US SKIPPED FOR TWO DAYS: the assert prints its operand flavors.** `arg[0].flavor = 0 = none` states *"the value is nothing"* outright. We theorized about provenance without reading what the failing instruction was **holding**. ⇒ **Sharper form of the producer-check rule: before asking WHO produced the malformed shape, read WHICH thing is malformed.** My own contribution to the error was substituting a **type** observation for a **value** one — an IR dump showing `Ptr(%Empty)` sent me reasoning about which branch produces a `none` *type* when the assert held a `none` *value*.
+
+⚠️**#12304 had 4 comments, not the 2 both of us asserted** (csyonghe 08-07T05:17:21Z on the `public`/`export` conflation, wanting `PublicDecoration` removed; a **sibling bot session** replied a minute later, 15 refs/12 files, sound, independently reaching the same `LayoutDecoration` residual). **Fixer and I each asserted that surface's state without reading it, a day apart** — cf. [[feedback_a_negative_existence_claim_decays_fastest_under_concurrency]].
+
+**Guard `t-141e2a` prompt UPDATED 2026-08-08** to carry this retraction, because it would otherwise have handed a future session the dead root cause as live instruction. Verified after update: the only surviving mention of the ruling is the prohibition *"do NOT revive"*.
+
+**Everything below this block is preserved for the derivation trail. It is NOT current.**
+
+## ~~ROOT CAUSE CORRECTED 2026-08-06 ~07:42Z — the defect is at the PRODUCER~~ (SUPERSEDED 08-08, see above)
 
 `slang-fixer` corrected the triage's causal framing; I verified all four cites at `9eb90c50a`:
 

@@ -63,4 +63,4 @@ An escaped `devin-page.txt` on disk **proves the decode never ran**, so it attri
 
 A Devin zero is **presumed uninformative** unless its page dump carries an explicit `N Flags` or `No flags` header — only 46 of my 128 do. Reconcile against `devin-page.txt` (on disk, free) before letting any zero contribute a clean signal.
 
-Related: [[feedback_a_size_or_presence_guard_cannot_validate_a_transformation]], [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]]
+Related: [[feedback_a_size_or_presence_guard_cannot_validate_a_transformation]] (shared: `1786114676965-a-size-or-presence-guard-cannot-validate-a-transfo`), [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]]

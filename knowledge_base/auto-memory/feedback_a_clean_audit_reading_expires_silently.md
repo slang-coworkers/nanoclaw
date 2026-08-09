@@ -1,6 +1,6 @@
 ---
 name: feedback_a_clean_audit_reading_expires_silently
-description: "ORPHANED=0 has a shelf life of minutes in a store with concurrent sibling writers, and unlike a positive finding it gives no tell when it goes stale. Measured 2026-08-06: clean at 18:05 (leaves=906), 2 real orphans by 18:10 written by sibling session b4a34152 at 18:09:56/18:10:10. Run the audit as the LAST action before publishing its result."
+description: "METHOD — ARM AN ORPHAN GATE BEFORE QUOTING IT: plant an unreferenced control leaf, run the check WITHOUT reindexing (expect ORPHANED=1 naming the file), then remove it. ORPHANED=0 has a shelf life of minutes in a store with concurrent sibling writers, and unlike a positive finding it gives no tell when it goes stale. Measured 2026-08-06: clean at 18:05 (leaves=906), 2 real orphans by 18:10 written by sibling session b4a34152 at 18:09:56/18:10:10. Run the audit as the LAST action before publishing its result."
 metadata:
   node_type: memory
   type: feedback
@@ -54,3 +54,40 @@ boundaries that no longer existed).
 
 Related: [[feedback_a_freshness_reading_expires_the_moment_you_stop_looking]],
 [[feedback_orphan_check_races_a_concurrent_writer]].
+
+## ✅ THE PROCEDURE, RUNNABLE (added 2026-08-08 — a peer's test: could I paste this and run it?)
+
+The prose above described the arming; it never gave the commands, so the next reader would have had to
+re-derive them. **A method recorded as a result is not reusable.**
+
+```bash
+cd /home/node/.claude/projects/-workspace-agent/memory
+
+# 1. GUILTY CONTROL FIRST — plant a leaf nothing links to.
+cat > _ctl_probe.md <<'EOF'
+---
+name: ctl-probe
+description: control leaf, unreferenced on purpose
+metadata:
+  type: feedback
+---
+control
+EOF
+
+# 2. Run the check WITHOUT reindexing. Reindexing first would ADOPT the control and pass falsely.
+bash reindex.sh --check          # EXPECT: "ORPHAN: _ctl_probe"  (names the file)
+
+# 3. Remove it and re-check.
+rm -f _ctl_probe.md
+bash reindex.sh --check          # EXPECT: leaves=N reachable=N ORPHANED=0
+```
+
+⚠️ **Two traps this idiom is exposed to, both hit in practice:**
+- **Order matters.** `bash reindex.sh` before `--check` regenerates the index *including* the control, so the
+  gate passes and proves nothing. **Check, then reindex — never the reverse.**
+- **`cmd | head; echo $?` reports HEAD's status, not the command's** (peer's finding), so a failing run reads
+  as exit 0. Capture the status before any pipe, or drop the pipe.
+
+⇒ **Proven armed on this store 2026-08-06 (`ORPHANED=3`, control named) and again 2026-08-08 (`ORPHANED=1`,
+`_ctl_probe` named, then 0 after removal).** An `ORPHANED=0` quoted without this having fired in the same
+session is a reading, not a gate.

@@ -68,7 +68,7 @@ or compare a transform-invariant projection like the citation set.
 append-mostly.** That is a property of this pipeline, not a general one — a store synced
 weekly, or one where a page is rewritten in place, does not give you this.
 
-Related: [[feedback_git_checkout_file_destroys_uncommitted_work]] (same family — a routine
+Related: [[feedback_git_checkout_file_destroys_uncommitted_work]] (shared: `1785827515719-git-checkout-file-destroys-uncommitted-work-recove`) (same family — a routine
 verb with a destructive arm), and the shared-clone safety concept page synthesized this same
 night, whose rule *"never put the safety check and the destructive action in the same
 command"* is the generalization this instance instantiates.
