@@ -109,10 +109,11 @@ function resolveOurs(request) {
 }
 
 /**
- * Is the package on disk anywhere Node (or pnpm) would keep it? A LAST RESORT,
- * used only to tell two different "not resolvable" causes apart.
+ * Where is this package on disk? Returns its directory, or null. A LAST RESORT,
+ * used to tell two different "not resolvable" causes apart and to read the
+ * manifest when the resolver will not.
  */
-function foundOnDisk(pkg) {
+function findPackageDir(pkg) {
   // pnpm encodes a scoped name in the virtual store by replacing `/` with `+`:
   // `@scope/pkg` lives at `.pnpm/@scope+pkg@<version>/node_modules/@scope/pkg`.
   const storePrefix = `${pkg.replace('/', '+')}@`;
@@ -120,7 +121,8 @@ function foundOnDisk(pkg) {
   for (;;) {
     const nm = path.join(dir, 'node_modules');
     // Hoisted layouts (npm, yarn, and pnpm's DIRECT dependency links).
-    if (realpathOrNull(path.join(nm, pkg, 'package.json'))) return true;
+    const direct = path.join(nm, pkg);
+    if (realpathOrNull(path.join(direct, 'package.json'))) return direct;
     // pnpm's virtual store. A TRANSITIVE dependency is never linked at the root
     // under isolated node_modules — it only exists here. Checking just the line
     // above is how an earlier version of this function reported a fully
@@ -128,16 +130,37 @@ function foundOnDisk(pkg) {
     try {
       for (const entry of fs.readdirSync(path.join(nm, '.pnpm'))) {
         if (!entry.startsWith(storePrefix)) continue;
-        if (realpathOrNull(path.join(nm, '.pnpm', entry, 'node_modules', pkg, 'package.json'))) {
-          return true;
-        }
+        const inStore = path.join(nm, '.pnpm', entry, 'node_modules', pkg);
+        if (realpathOrNull(path.join(inStore, 'package.json'))) return inStore;
       }
     } catch {
       // no .pnpm store at this level
     }
     const parent = path.dirname(dir);
-    if (parent === dir) return false;
+    if (parent === dir) return null;
     dir = parent;
+  }
+}
+
+/**
+ * Read the package's own manifest and say what is wrong with it, if anything.
+ *
+ * WHY WE PARSE IT OURSELVES INSTEAD OF LETTING THE RESOLVER TELL US:
+ * Node versions disagree. Resolving `demo/src/cli.js` when `demo/package.json`
+ * is malformed throws ERR_INVALID_PACKAGE_CONFIG on Node 24 and resolves
+ * happily on Node 20 — which CI pins. Leaning on the resolver's error would mean
+ * this gate passes on the CI runner and the application breaks for an operator
+ * on a newer Node. A damaged install is damaged on every version, so we look.
+ */
+function manifestProblem(pkg) {
+  const dir = findPackageDir(pkg);
+  if (!dir) return null; // not installed at all — a different diagnosis
+  try {
+    JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+    return null;
+  } catch (err) {
+    if (err?.code === 'ENOENT') return null;
+    return err instanceof Error ? err.message.split('\n')[0] : String(err);
   }
 }
 
@@ -175,6 +198,7 @@ function classify(specifier, err) {
 
   const pkg = packageNameOf(specifier);
   if (hasDanglingLink(pkg)) return 'CORRUPT';
+  if (manifestProblem(pkg)) return 'CORRUPT';
 
   // Can the PACKAGE ITSELF be reached from our root, and is it ours?
   // `./package.json` is exported by most packages; a bare specifier covers those
@@ -188,7 +212,7 @@ function classify(specifier, err) {
       // otherwise try the next probe
     }
   }
-  return foundOnDisk(pkg) ? 'UNREACHABLE' : 'MISSING';
+  return findPackageDir(pkg) ? 'UNREACHABLE' : 'MISSING';
 }
 
 const ADVICE = {
@@ -238,6 +262,12 @@ for (const { specifier, why, smoke } of REQUIRED) {
     const kind = classify(specifier, err);
     const detail = err instanceof Error ? err.message.split('\n')[0] : String(err);
     fail(specifier, why, detail, ADVICE[kind](pkg, specifier, err));
+    continue;
+  }
+
+  const badManifest = manifestProblem(pkg);
+  if (badManifest) {
+    fail(specifier, why, badManifest, ADVICE.CORRUPT(pkg, specifier));
     continue;
   }
 
