@@ -66,16 +66,40 @@ interface Grant {
   consumed_at: string | null;
   revoked_at: string | null;
   revoked_reason: string | null;
+  release_recorded_at: string | null;
 }
 const ledger = new Map<string, Grant>();
 let createGrantThrows = false;
+/**
+ * Stand-in for the unique dedupe index. `recordEscalationEvent` returns what
+ * happened to the append, and the module surfaces anything that is not
+ * 'recorded' / 'duplicate'.
+ */
+const recordedKeys = new Set<string>();
+/** Events that actually became rows — i.e. attempts minus deduped replays. */
+const insertedEvents: Array<Record<string, unknown>> = [];
 
 vi.mock('./db/critique-escalations.js', () => ({
-  recordEscalationEvent: (...args: unknown[]) => recordEventMock(...args),
+  recordEscalationEvent: (e: Record<string, unknown>) => {
+    recordEventMock(e);
+    const key = e.dedupe_key;
+    if (typeof key === 'string' && key.length > 0) {
+      if (recordedKeys.has(key)) return 'duplicate';
+      recordedKeys.add(key);
+    }
+    insertedEvents.push(e);
+    return 'recorded';
+  },
   lookupPrForSession: () => prForSession,
-  createBypassGrant: (g: Omit<Grant, 'consumed_at' | 'revoked_at' | 'revoked_reason'>) => {
+  createBypassGrant: (g: Omit<Grant, 'consumed_at' | 'revoked_at' | 'revoked_reason' | 'release_recorded_at'>) => {
     if (createGrantThrows) throw new Error('ledger unavailable');
-    ledger.set(g.grant_id, { ...g, consumed_at: null, revoked_at: null, revoked_reason: null });
+    ledger.set(g.grant_id, {
+      ...g,
+      consumed_at: null,
+      revoked_at: null,
+      revoked_reason: null,
+      release_recorded_at: null,
+    });
   },
   getBypassGrant: (id: string) => ledger.get(id) ?? null,
   getLatestSpendableGrant: (sessionId: string, nowIso: string) =>
@@ -91,6 +115,10 @@ vi.mock('./db/critique-escalations.js', () => ({
   markBypassGrantConsumed: (id: string, iso: string) => {
     const g = ledger.get(id);
     if (g && !g.consumed_at) g.consumed_at = iso;
+  },
+  markBypassGrantReleaseRecorded: (id: string, iso: string) => {
+    const g = ledger.get(id);
+    if (g && !g.release_recorded_at) g.release_recorded_at = iso;
   },
   revokeBypassGrant: (id: string, iso: string, reason: string) => {
     const g = ledger.get(id);
@@ -135,6 +163,8 @@ beforeEach(() => {
   pendingApprovals = [];
   prForSession = null;
   ledger.clear();
+  recordedKeys.clear();
+  insertedEvents.length = 0;
   createGrantThrows = false;
 });
 
@@ -461,6 +491,234 @@ describe('escalation lifecycle — resolve, consume, re-escalate', () => {
   });
 });
 
+describe('consume/stamp interleaving — a sweep between the gate’s two writes', () => {
+  // The gate does NOT write its consumption and its release stamp atomically,
+  // and it cannot: they are two filesystem writes in a process the host does
+  // not control.
+  //
+  //   1. the gate marks the grant consumed in workflow-state.json
+  //   2. …a host sweep can land here…
+  //   3. the gate stamps failed_open_at into critique-escalation.json
+  //
+  // reconcileBypassState runs at the top of every sweep, so a sweep in that
+  // window used to see consumed_at, call the escalation spent, and retire the
+  // still-unstamped file. The gate's stamp then found no file, fabricated a
+  // `requested_at: 0` replacement, and the next sweep carded a human for a
+  // synthetic escalation while the real release went unrecorded.
+
+  /** The gate's FIRST write. Nothing is stamped yet — that is the whole point. */
+  function consumeGrantOnly(grantId: string): void {
+    writeState({
+      ...readState(),
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_grant_id: grantId,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000),
+    });
+  }
+
+  /**
+   * The gate's SECOND write, as `stamp_failed_open` now does it: merge into the
+   * escalation file when it exists, and ALWAYS append to the release journal.
+   * It never creates the escalation file — fabricating one is the corruption.
+   */
+  function stampRelease(opts: { eventId?: string; grantId?: string | null } = {}): void {
+    const eventId = opts.eventId ?? 'rel-1';
+    const at = new Date().toISOString();
+    fs.appendFileSync(
+      path.join(dir, 'critique-releases.jsonl'),
+      `${JSON.stringify({
+        event_id: eventId,
+        at,
+        why: 'admin bypass consumed (one-shot)',
+        reason: REASON_FAILED,
+        hit: 'PR creation',
+        grant_id: opts.grantId ?? null,
+      })}\n`,
+    );
+    if (fs.existsSync(path.join(dir, 'critique-escalation.json'))) {
+      writeEscalation({
+        ...readEscalation(),
+        failed_open_at: at,
+        failed_open_why: 'admin bypass consumed (one-shot)',
+        failed_open_event_id: eventId,
+      });
+    }
+  }
+
+  function escalationExists(): boolean {
+    return fs.existsSync(path.join(dir, 'critique-escalation.json'));
+  }
+  function retired(): Record<string, unknown> | null {
+    const p = path.join(dir, 'critique-escalation.last.json');
+    return fs.existsSync(p) ? (JSON.parse(fs.readFileSync(p, 'utf-8')) as Record<string, unknown>) : null;
+  }
+  function releases(): Array<Record<string, unknown>> {
+    return insertedEvents.filter((e) => e.event === 'failed_open');
+  }
+
+  it('consume → sweep → stamp → sweep: exactly one failed_open, no new card, and it still retires', async () => {
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', denials: 3, forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-race');
+    recordEventMock.mockClear();
+    insertedEvents.length = 0;
+    requestApprovalMock.mockClear();
+
+    // 1. CONSUME — the grant is spent; the stamp has not been written yet.
+    consumeGrantOnly('appr-race');
+
+    // 2. SWEEP lands inside the window. It must NOT retire the file: that
+    //    file is where the release the gate is about to record has to land.
+    await checkCritiqueEscalation(session, dir);
+    expect(escalationExists()).toBe(true);
+    expect(releases()).toHaveLength(0);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+
+    // 3. STAMP — the gate's second write, milliseconds later.
+    stampRelease({ grantId: 'appr-race' });
+
+    // 4. SWEEP — the release is recorded against the ORIGINAL request and the
+    //    now-settled file is finally retired.
+    await checkCritiqueEscalation(session, dir);
+
+    expect(releases()).toHaveLength(1);
+    expect(releases()[0].requested_at).toBe(1000);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+    expect(escalationExists()).toBe(false);
+    expect(retired()!.resolved).toBe('approved');
+    expect(retired()!.requested_at).toBe(1000);
+    expect(ledger.get('appr-race')!.release_recorded_at).toBeTruthy();
+  });
+
+  it('holds the file across repeated sweeps while the release stamp is outstanding', async () => {
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-hold');
+    consumeGrantOnly('appr-hold');
+
+    for (let i = 0; i < 3; i++) await checkCritiqueEscalation(session, dir);
+    expect(escalationExists()).toBe(true);
+    expect(releases()).toHaveLength(0);
+  });
+
+  it('recovers a release whose escalation file was already gone — via the journal, with no new card', async () => {
+    // The residual after the hold above: the orphan recovery below retires the
+    // file, and a late stamp then has nowhere to merge. The append-only
+    // journal is that release's only route home, and the grant ledger is what
+    // re-attaches it to the request that produced it.
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-late');
+    consumeGrantOnly('appr-late');
+    fs.rmSync(path.join(dir, 'critique-escalation.json'));
+    recordEventMock.mockClear();
+    insertedEvents.length = 0;
+    requestApprovalMock.mockClear();
+
+    stampRelease({ eventId: 'rel-late', grantId: 'appr-late' });
+    await checkCritiqueEscalation(session, dir);
+
+    expect(releases()).toHaveLength(1);
+    // Attribution survives the file's disappearance: 1000, not a synthetic 0.
+    expect(releases()[0].requested_at).toBe(1000);
+    // And nothing manufactured a fresh escalation to card a human about.
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+    expect(escalationExists()).toBe(false);
+  });
+
+  it('records a release exactly once when it arrives by BOTH routes', async () => {
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-both');
+    consumeGrantOnly('appr-both');
+    recordEventMock.mockClear();
+    insertedEvents.length = 0;
+
+    // One release, written to the journal AND merged into the file, then swept
+    // repeatedly — the shared event id is what keeps it a single row.
+    stampRelease({ eventId: 'rel-both', grantId: 'appr-both' });
+    await checkCritiqueEscalation(session, dir);
+    await checkCritiqueEscalation(session, dir);
+
+    expect(releases()).toHaveLength(1);
+  });
+});
+
+describe('orphaned release recovery', () => {
+  function consumeGrantOnly(grantId: string, agoSecs = 0): void {
+    writeState({
+      ...readState(),
+      critique_gate_bypass_approved: false,
+      critique_gate_bypass_consumed_grant_id: grantId,
+      critique_gate_bypass_consumed_at: Math.floor(Date.now() / 1000) - agoSecs,
+    });
+  }
+  function escalationExists(): boolean {
+    return fs.existsSync(path.join(dir, 'critique-escalation.json'));
+  }
+
+  it('reports and retires a consumed grant whose release never arrived — it does not leak forever', async () => {
+    // Holding until the stamp lands is only safe if the hold is bounded. The
+    // in-container gate opens a NEW escalation only when the file is ABSENT,
+    // so a file held forever wedges the session shut in both directions —
+    // exactly the failure #1109 removed.
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-orphan');
+    consumeGrantOnly('appr-orphan');
+    // Backdate the host-observed consumption past the recovery window.
+    ledger.get('appr-orphan')!.consumed_at = new Date(Date.now() - 3_600_000).toISOString();
+    recordEventMock.mockClear();
+    insertedEvents.length = 0;
+
+    await checkCritiqueEscalation(session, dir);
+
+    const orphan = insertedEvents.find((e) => e.event === 'release_orphaned');
+    expect(orphan).toBeDefined();
+    expect(String(orphan!.reason)).toContain('appr-orphan');
+    expect(orphan!.requested_at).toBe(1000);
+    expect(escalationExists()).toBe(false);
+    const last = JSON.parse(fs.readFileSync(path.join(dir, 'critique-escalation.last.json'), 'utf-8')) as Record<
+      string,
+      unknown
+    >;
+    expect(last.release_orphaned_at).toBeTruthy();
+    expect(last.release_orphan_grant_id).toBe('appr-orphan');
+  });
+
+  it('an unparseable consumption stamp orphans immediately rather than holding forever', async () => {
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-bad-ts');
+    consumeGrantOnly('appr-bad-ts');
+    ledger.get('appr-bad-ts')!.consumed_at = 'not-a-timestamp';
+    insertedEvents.length = 0;
+
+    await checkCritiqueEscalation(session, dir);
+
+    expect(insertedEvents.some((e) => e.event === 'release_orphaned')).toBe(true);
+    expect(escalationExists()).toBe(false);
+  });
+
+  it('a REVOKED grant still retires without a release stamp — it was never spent', async () => {
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-revoked');
+    ledger.get('appr-revoked')!.revoked_at = new Date().toISOString();
+    insertedEvents.length = 0;
+
+    await checkCritiqueEscalation(session, dir);
+
+    expect(escalationExists()).toBe(false);
+    expect(insertedEvents.some((e) => e.event === 'release_orphaned')).toBe(false);
+  });
+
+  it('an EXPIRED, unspent grant still retires without a release stamp', async () => {
+    writeEscalation({ requested_at: 1000, reason: REASON_FAILED, hit: 'PR creation', forwarded_at: 'ts' });
+    applyBypassApproval(session, 'slack:admin', dir, 'appr-expired');
+    ledger.get('appr-expired')!.expires_at = new Date(Date.now() - 1000).toISOString();
+    insertedEvents.length = 0;
+
+    await checkCritiqueEscalation(session, dir);
+
+    expect(escalationExists()).toBe(false);
+    expect(insertedEvents.some((e) => e.event === 'release_orphaned')).toBe(false);
+  });
+});
+
 describe('admin decision application', () => {
   it('approval writes a ONE-SHOT, TTL-scoped bypass — not a standing grant', () => {
     writeEscalation({ requested_at: 123, reason: REASON_FAILED, forwarded_at: 'ts' });
@@ -551,6 +809,7 @@ describe('host-authoritative bypass ledger', () => {
       consumed_at: iso(-500),
       revoked_at: null,
       revoked_reason: null,
+      release_recorded_at: null,
     });
     writeState({ critique_gate_bypass_approved: true, critique_gate_bypass_grant_id: GRANT });
     reconcileBypassState(session, dir);
@@ -569,6 +828,7 @@ describe('host-authoritative bypass ledger', () => {
       consumed_at: null,
       revoked_at: null,
       revoked_reason: null,
+      release_recorded_at: null,
     });
     writeState({ critique_gate_bypass_approved: true, critique_gate_bypass_grant_id: GRANT });
     reconcileBypassState(session, dir);
@@ -586,6 +846,7 @@ describe('host-authoritative bypass ledger', () => {
       consumed_at: null,
       revoked_at: null,
       revoked_reason: null,
+      release_recorded_at: null,
     });
     writeState({ critique_gate_bypass_approved: true, critique_gate_bypass_grant_id: GRANT });
     reconcileBypassState(session, dir);
@@ -648,6 +909,7 @@ describe('host-authoritative bypass ledger', () => {
       consumed_at: null,
       revoked_at: iso(-500),
       revoked_reason: 'superseded',
+      release_recorded_at: null,
     });
     writeState({
       critique_gate_bypass_approved: false,
@@ -672,6 +934,7 @@ describe('host-authoritative bypass ledger', () => {
       consumed_at: null,
       revoked_at: null,
       revoked_reason: null,
+      release_recorded_at: null,
     });
     writeState({
       critique_gate_bypass_approved: false,

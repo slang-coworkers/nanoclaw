@@ -59,9 +59,11 @@ import {
   getLatestSpendableGrant,
   lookupPrForSession,
   markBypassGrantConsumed,
+  markBypassGrantReleaseRecorded,
   recordEscalationEvent,
   revokeBypassGrant,
   type EscalationEventKind,
+  type EventRecordResult,
 } from '../../db/critique-escalations.js';
 import { deletePendingApproval, getPendingApprovalsByAction } from '../../db/sessions.js';
 import { log } from '../../log.js';
@@ -94,6 +96,25 @@ const MAX_SELF_HEAL_ATTEMPTS = envInt('CRITIQUE_SELF_HEAL_ATTEMPTS', 3);
 const SELF_HEAL_COOLDOWN_SECS = envInt('CRITIQUE_SELF_HEAL_COOLDOWN_SECS', 600);
 /** How long an admin-approved bypass stays usable before it must be re-asked. */
 const BYPASS_TTL_SECS = envInt('CRITIQUE_BYPASS_TTL_SECS', 3600);
+/**
+ * How long the host waits for the release stamp a CONSUMED grant owes it
+ * before declaring the release orphaned and retiring anyway.
+ *
+ * The gate writes the stamp milliseconds after the consumption it precedes, so
+ * this is not a latency budget — it is the bound on how long an unexplained
+ * consumption may wedge a session shut. 15 minutes is ~15 sweeps of margin and
+ * well inside the one-hour grant TTL. Without a bound, "hold until the stamp
+ * arrives" trades the interleaving race for a permanent leak: the escalation
+ * file never goes away, and the in-container gate only opens a NEW escalation
+ * when that file is ABSENT, so the session could never escalate again.
+ */
+const RELEASE_STAMP_TIMEOUT_SECS = envInt('CRITIQUE_RELEASE_STAMP_TIMEOUT_SECS', 900);
+/**
+ * Sanity bound on the container's release journal. One line per enforcement
+ * release means a healthy session accumulates a handful over its whole life;
+ * anything approaching this is a release loop and is reported as such.
+ */
+const MAX_RELEASE_JOURNAL_LINES = 500;
 
 /** Shape of `.claude/critique-escalation.json`. Hook-written keys, host-written keys. */
 interface EscalationFile {
@@ -103,6 +124,8 @@ interface EscalationFile {
   hit?: string;
   denials?: number;
   failed_open_at?: string; // the gate released a delivery with the requirement unmet
+  /** Gate-generated id for the release above; the same id is in the journal line. */
+  failed_open_event_id?: string;
   // written by the host
   class?: EscalationClass;
   forwarded_at?: string;
@@ -114,6 +137,19 @@ interface EscalationFile {
   resolved_by?: string;
   /** Grant issued by the approval that resolved this request, if any. */
   grant_id?: string;
+  /** Set when a consumed grant's release never arrived — see retirementDecision. */
+  release_orphaned_at?: string;
+  release_orphan_grant_id?: string;
+}
+
+/** One line of `.claude/critique-releases.jsonl`, written by both gates. */
+interface ReleaseJournalLine {
+  event_id?: string;
+  at?: string;
+  why?: string;
+  reason?: string;
+  hit?: string;
+  grant_id?: string | null;
 }
 
 /** The session's `.claude/` dir on the host. Overridable for tests. */
@@ -224,6 +260,19 @@ function retireEscalation(session: Session, esc: EscalationFile, dirOverride?: s
 }
 
 /**
+ * What to do with a resolved escalation file this sweep.
+ *
+ * `hold` is not "nothing happened" — it is a positive statement that something
+ * is still due to land in the file, so retiring it now would destroy the
+ * record. `orphaned` is the bounded escape from that hold, and it is an
+ * integrity event, not a quiet cleanup.
+ */
+type RetirementDecision =
+  | { kind: 'retire' }
+  | { kind: 'hold'; why: 'awaiting-release-stamp' | 'requirement-unmet' }
+  | { kind: 'orphaned'; grantId: string; consumedAt: string; waitedSecs: number };
+
+/**
  * Is a resolved escalation actually finished, or is something still due to
  * land in its file?
  *
@@ -234,16 +283,58 @@ function retireEscalation(session: Session, esc: EscalationFile, dirOverride?: s
  * an hour later. Retiring in between would throw away the file that stamp is
  * written into, and the release would go unrecorded exactly as it did when the
  * `resolved` fast-return swallowed it.
+ *
+ * CONSUMPTION IS NOT COMPLETION. The gate's two writes are not atomic and
+ * cannot be made so from here — it marks the grant consumed in
+ * workflow-state.json first and stamps `failed_open_at` into the escalation
+ * file only after. `reconcileBypassState` runs at the top of every sweep, so a
+ * sweep landing between those writes used to see `consumed_at` set, call the
+ * escalation spent, and retire an unstamped file; the gate's stamp then found
+ * no file and fabricated a `requested_at: 0` replacement, which the next sweep
+ * carded as a brand-new human decision. So a SPENT grant holds the file until
+ * the host has actually recorded the release it paid for — bounded by
+ * RELEASE_STAMP_TIMEOUT_SECS, after which the missing release is reported.
+ *
+ * Revoked and expired grants retire without a release stamp, as before: they
+ * were never spent, so there is no release to wait for.
  */
-function isEscalationSpent(session: Session, esc: EscalationFile, dirOverride?: string): boolean {
+function retirementDecision(session: Session, esc: EscalationFile, dirOverride?: string): RetirementDecision {
   if (esc.resolved === 'approved') {
     const grant = esc.grant_id ? getBypassGrant(esc.grant_id) : null;
     if (grant) {
-      return grant.consumed_at !== null || grant.revoked_at !== null || Date.parse(grant.expires_at) <= Date.now();
+      if (grant.consumed_at === null) {
+        const dead = grant.revoked_at !== null || Date.parse(grant.expires_at) <= Date.now();
+        return dead ? { kind: 'retire' } : { kind: 'hold', why: 'awaiting-release-stamp' };
+      }
+      if (grant.release_recorded_at !== null) return { kind: 'retire' };
+      // An unparseable consumption stamp yields Infinity, i.e. orphaned now.
+      // That fails toward REPORTING a release we cannot account for rather
+      // than toward holding the file — and the session — forever.
+      const consumedMs = Date.parse(grant.consumed_at);
+      const waitedMs = Number.isFinite(consumedMs) ? Date.now() - consumedMs : Infinity;
+      if (waitedMs < RELEASE_STAMP_TIMEOUT_SECS * 1000) return { kind: 'hold', why: 'awaiting-release-stamp' };
+      return {
+        kind: 'orphaned',
+        grantId: grant.grant_id,
+        consumedAt: grant.consumed_at,
+        waitedSecs: Number.isFinite(waitedMs) ? Math.round(waitedMs / 1000) : RELEASE_STAMP_TIMEOUT_SECS,
+      };
     }
     // No grant id recorded (a file written by an older host, or a grant the
-    // ledger never got): fall back to "has this session anything left to spend".
-    return getLatestSpendableGrant(session.id, new Date().toISOString()) === null;
+    // ledger never got): fall back to "has this session anything left to
+    // spend". This branch cannot tell a spent grant from an expired one, so it
+    // keeps the pre-existing rule rather than guessing — every grant this host
+    // issues carries an id, so only legacy files land here.
+    if (getLatestSpendableGrant(session.id, new Date().toISOString()) !== null) {
+      return { kind: 'hold', why: 'awaiting-release-stamp' };
+    }
+    if (!esc.failed_open_at) {
+      log.warn('Retiring an approved critique escalation with no grant id and no release stamp', {
+        sessionId: session.id,
+        requestedAt: esc.requested_at ?? null,
+      });
+    }
+    return { kind: 'retire' };
   }
   if (esc.resolved === 'rejected') {
     // The gate's "an admin REJECTED this" branch is scoped by comparing
@@ -251,10 +342,12 @@ function isEscalationSpent(session: Session, esc: EscalationFile, dirOverride?: 
     // reads out of THIS file. Retire it early and an immediate retry looks
     // like a brand-new unanswered request, re-carding the human who just said
     // no. Hold it until the agent actually satisfies the requirement.
-    return isRequirementCleared(session, esc, dirOverride);
+    return isRequirementCleared(session, esc, dirOverride)
+      ? { kind: 'retire' }
+      : { kind: 'hold', why: 'requirement-unmet' };
   }
   // self-healed / expired-stale: the requirement was satisfied to get here.
-  return true;
+  return { kind: 'retire' };
 }
 
 /** Common event fields so every row carries the same identity. */
@@ -276,13 +369,124 @@ function record(
   esc: EscalationFile,
   event: EscalationEventKind,
   extra: Record<string, unknown> = {},
-): void {
-  recordEscalationEvent({
+): EventRecordResult {
+  return recordEscalationEvent({
     ...eventBase(session, esc),
     event,
     class: esc.class ?? null,
     ...extra,
   } as Parameters<typeof recordEscalationEvent>[0]);
+}
+
+/** Exactly-once key for one enforcement release, stable across both routes. */
+function releaseKey(sessionId: string, eventId: string): string {
+  return `failed_open:${sessionId}:${eventId}`;
+}
+
+/**
+ * Say so when a release could not be written to the audit trail.
+ *
+ * `duplicate` is the exactly-once key working as intended and is silent.
+ * Anything else means the one durable record of a gate opening did not land,
+ * which is the failure this whole table exists to prevent — it does not get to
+ * pass as success.
+ */
+function reportReleaseRecord(session: Session, outcome: EventRecordResult, ctx: Record<string, unknown>): void {
+  if (outcome === 'recorded' || outcome === 'duplicate') return;
+  log.error('Critique gate release could NOT be recorded — the audit trail is incomplete', {
+    sessionId: session.id,
+    agentGroupId: session.agent_group_id,
+    outcome,
+    ...ctx,
+  });
+}
+
+/** The container's append-only release journal, on the session mount. */
+function releaseJournalPath(session: Session, dirOverride?: string): string {
+  return path.join(claudeDir(session, dirOverride), 'critique-releases.jsonl');
+}
+
+/**
+ * Ingest enforcement releases from the container's append-only journal.
+ *
+ * Both gates now record every release TWICE: merged into the escalation file
+ * (the rich route — it carries the request's own audit context) and appended
+ * here (the route that survives the file being gone). The journal exists
+ * because the escalation file legitimately DISAPPEARS: the host retires it.
+ * Previously a stamp that found no file made the gate fabricate a
+ * `requested_at: 0` escalation, so the real release went unrecorded and a
+ * synthetic one got carded in its place.
+ *
+ * Both routes carry the same gate-generated `event_id`, and the row is written
+ * under a unique dedupe key, so whichever arrives first wins and the second is
+ * a no-op. Attribution comes from the host's own grant ledger, not from the
+ * journal line, so a release ingested this way still joins the original
+ * request via the grant's `requested_at`.
+ *
+ * Runs before the escalation file is even read: a journal line can be the ONLY
+ * evidence left, and every branch below returns early when there is no file.
+ */
+function ingestReleaseJournal(session: Session, dirOverride?: string): void {
+  const file = releaseJournalPath(session, dirOverride);
+  let raw: string;
+  try {
+    raw = fs.readFileSync(file, 'utf-8');
+  } catch {
+    return; // No journal — the overwhelmingly common case.
+  }
+  const lines = raw.split('\n').filter((l) => l.trim().length > 0);
+  if (lines.length > MAX_RELEASE_JOURNAL_LINES) {
+    log.error('Critique release journal is over its sanity bound — the gate may be releasing in a loop', {
+      sessionId: session.id,
+      agentGroupId: session.agent_group_id,
+      lines: lines.length,
+      ingesting: MAX_RELEASE_JOURNAL_LINES,
+      file,
+    });
+  }
+  const pr = lookupPrForSession(session.id);
+  for (const line of lines.slice(-MAX_RELEASE_JOURNAL_LINES)) {
+    let entry: ReleaseJournalLine;
+    try {
+      entry = JSON.parse(line) as ReleaseJournalLine;
+      // eslint-disable-next-line no-catch-all/no-catch-all -- one bad line must not stop the rest
+    } catch {
+      log.error('Unparseable line in the critique release journal — a release may be unaccounted for', {
+        sessionId: session.id,
+        file,
+      });
+      continue;
+    }
+    const grant = typeof entry.grant_id === 'string' && entry.grant_id ? getBypassGrant(entry.grant_id) : null;
+    // Older gates carry no event id; `at`+`why` is the best stable key left.
+    const eventId = entry.event_id ?? `${entry.at ?? ''}|${entry.why ?? ''}`;
+    const outcome = recordEscalationEvent({
+      session_id: session.id,
+      agent_group_id: session.agent_group_id,
+      event: 'failed_open',
+      reason: entry.reason ?? null,
+      hit: entry.hit ?? null,
+      // The grant ledger is what re-attaches this release to the request that
+      // produced it — the reason the synthetic `requested_at: 0` file was so
+      // damaging is that it had no way back.
+      requested_at: grant?.requested_at ?? 0,
+      repo: pr?.repo ?? null,
+      pr_number: pr?.pr_number ?? null,
+      dedupe_key: releaseKey(session.id, eventId),
+    });
+    reportReleaseRecord(session, outcome, { via: 'release-journal', eventId, grantId: entry.grant_id ?? null });
+    if (grant) markBypassGrantReleaseRecorded(grant.grant_id, new Date().toISOString());
+    if (outcome === 'recorded') {
+      log.error('Critique gate FAILED OPEN — release ingested from the container journal', {
+        sessionId: session.id,
+        agentGroupId: session.agent_group_id,
+        at: entry.at ?? null,
+        why: entry.why ?? null,
+        reason: entry.reason ?? null,
+        grantId: entry.grant_id ?? null,
+      });
+    }
+  }
 }
 
 /** The pending bypass card for this session, if one is outstanding. */
@@ -600,6 +804,11 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   // never run for exactly the sessions that matter most.
   reconcileBypassState(session, dirOverride);
 
+  // Also unconditionally: a release whose escalation file was already retired
+  // reaches the host only through the journal, and every branch below returns
+  // early when there is no file to read.
+  ingestReleaseJournal(session, dirOverride);
+
   const esc = readEscalation(session, dirOverride);
   if (!esc) return;
 
@@ -617,22 +826,61 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   // already-resolved file, so `failed_open` was never recorded and
   // `failed_open_recorded` was never set — the audit trail lost precisely the
   // event #1092 added it to make durable.
+  //
+  // `failed_open_recorded` lives in an agent-writable file, so it is only the
+  // cheap check; the unique dedupe key below is the actual exactly-once
+  // guarantee, shared with the journal route.
   if (esc.failed_open_at && !esc.failed_open_recorded) {
-    record(session, esc, 'failed_open');
+    const eventId = esc.failed_open_event_id ?? esc.failed_open_at;
+    const outcome = record(session, esc, 'failed_open', { dedupe_key: releaseKey(session.id, eventId) });
+    reportReleaseRecord(session, outcome, { via: 'escalation-file', eventId, grantId: esc.grant_id ?? null });
     patchEscalationFile(session, { failed_open_recorded: true }, dirOverride);
-    log.error('Critique gate FAILED OPEN — delivery allowed with requirement unmet', {
-      sessionId: session.id,
-      agentGroupId: session.agent_group_id,
-      at: esc.failed_open_at,
-      reason: esc.reason,
-    });
+    // Discharge the consumed grant's obligation. This — not the file flag — is
+    // what lets the retirement below finally let go of the file.
+    if (esc.grant_id) markBypassGrantReleaseRecorded(esc.grant_id, new Date().toISOString());
+    if (outcome === 'recorded') {
+      log.error('Critique gate FAILED OPEN — delivery allowed with requirement unmet', {
+        sessionId: session.id,
+        agentGroupId: session.agent_group_id,
+        at: esc.failed_open_at,
+        reason: esc.reason,
+      });
+    }
   }
 
-  // ── 2. Terminal state. Everything durable has been recorded, so retire the
-  // file once nothing is still due to land in it (see isEscalationSpent) —
-  // otherwise it suppresses every future escalation for this session.
+  // ── 2. Terminal state. Retire the file once nothing is still due to land in
+  // it (see retirementDecision) — otherwise it suppresses every future
+  // escalation for this session — and never retire an outstanding release
+  // obligation quietly.
   if (esc.resolved) {
-    if (isEscalationSpent(session, esc, dirOverride)) retireEscalation(session, esc, dirOverride);
+    const decision = retirementDecision(session, esc, dirOverride);
+    if (decision.kind === 'orphaned') {
+      // The gate spent a grant and no release ever reached us. Holding the
+      // file any longer wedges the session shut; retiring it silently would
+      // hide a delivery that may well have gone out with the requirement
+      // unmet. Record it as the integrity event it is, then retire.
+      const outcome = record(session, esc, 'release_orphaned', {
+        dedupe_key: `release_orphaned:${session.id}:${decision.grantId}`,
+        reason: `bypass grant ${decision.grantId} was consumed at ${decision.consumedAt} and no release stamp arrived within ${decision.waitedSecs}s`,
+      });
+      reportReleaseRecord(session, outcome, { via: 'orphan-recovery', grantId: decision.grantId });
+      patchEscalationFile(
+        session,
+        { release_orphaned_at: new Date().toISOString(), release_orphan_grant_id: decision.grantId },
+        dirOverride,
+      );
+      log.error('Critique gate release ORPHANED — a consumed bypass never recorded where it went', {
+        sessionId: session.id,
+        agentGroupId: session.agent_group_id,
+        grantId: decision.grantId,
+        consumedAt: decision.consumedAt,
+        waitedSecs: decision.waitedSecs,
+        requestedAt: esc.requested_at ?? null,
+      });
+      retireEscalation(session, { ...esc, resolved: 'orphaned-release' }, dirOverride);
+      return;
+    }
+    if (decision.kind === 'retire') retireEscalation(session, esc, dirOverride);
     return;
   }
 

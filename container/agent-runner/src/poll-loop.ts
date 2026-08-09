@@ -193,10 +193,7 @@ export function taskOptsOutOfNewSession(m: { kind: string; content: string }): b
  *
  * Returns 'bounced-transient' to bounce, or null when the turn must NOT bounce.
  */
-export function classifyThrownBounce(
-  channelType: string | null,
-  errMsg: string,
-): 'bounced-transient' | null {
+export function classifyThrownBounce(channelType: string | null, errMsg: string): 'bounced-transient' | null {
   if (channelType !== 'agent') return null;
   return classifyTurnError(errMsg) === 'transient' ? 'bounced-transient' : null;
 }
@@ -565,8 +562,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         markBounced(processingIds, thrownBounce);
         thrownBouncedIds = processingIds;
         log(
-          `a2a thrown-error bounce (${thrownBounce}) — trigger left pending for host redrive: ` +
-            errMsg.slice(0, 80),
+          `a2a thrown-error bounce (${thrownBounce}) — trigger left pending for host redrive: ` + errMsg.slice(0, 80),
         );
       } else {
         // Write error response so the user knows something went wrong
@@ -1011,8 +1007,7 @@ export async function processQuery(
           bouncedIds.push(...initialBatchIds);
           bounced = true;
           log(
-            `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` +
-              event.text.slice(0, 80),
+            `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` + event.text.slice(0, 80),
           );
           notifyExchangeComplete(onExchangeComplete, {
             prompt: archivePrompts[0] ?? initialPrompt,
@@ -1334,22 +1329,63 @@ function patchGateState(statePath: string, patch: Record<string, unknown>): void
  * requirement unmet must leave a durable trace: this container runs --rm, so a
  * release logged only to stderr is a release nobody ever learns about.
  */
-function stampFailedOpen(escPath: string, denialReason: string, why: string): void {
+/**
+ * Record an enforcement release where the HOST can see it, in parity with
+ * container/hooks/gate-critique-on-deliver.sh.
+ *
+ * Two sinks, one id. `critique-releases.jsonl` is append-only and always
+ * written, because the escalation file can legitimately be GONE by the time we
+ * get here: the host retires a settled request, and it does that between our
+ * own two writes (the consumption patch above, then this stamp). The
+ * escalation file is merged into when it exists, since it carries the
+ * request's audit context. The host records under the shared event id exactly
+ * once, so writing both never double-counts a release.
+ *
+ * It deliberately never CREATES the escalation file. Fabricating one with
+ * `requested_at: 0` — what this did before — made the host read a real release
+ * as a brand-new escalation and card a human for it, while the release itself
+ * went unrecorded and its link to the original request was destroyed.
+ *
+ * @returns false when nothing was recorded; an invisible release is not a
+ * release the caller may allow.
+ */
+function stampFailedOpen(escPath: string, denialReason: string, why: string, grantId?: string | null): boolean {
   const fs = require('fs') as typeof import('fs');
+  const path = require('path') as typeof import('path');
   const nowIso = new Date().toISOString();
-  let esc: Record<string, unknown> = {};
+  const eventId = `rel-${Date.now()}-${process.pid}-${Math.floor(Math.random() * 1e6)}`;
+  let recorded = false;
+
+  const journalPath =
+    process.env.CRITIQUE_RELEASE_JOURNAL ?? path.join(path.dirname(escPath), 'critique-releases.jsonl');
   try {
-    esc = JSON.parse(fs.readFileSync(escPath, 'utf-8')) as Record<string, unknown>;
+    fs.appendFileSync(
+      journalPath,
+      `${JSON.stringify({
+        event_id: eventId,
+        at: nowIso,
+        why,
+        reason: denialReason,
+        hit: 'text-output delivery',
+        grant_id: grantId ?? null,
+      })}\n`,
+    );
+    recorded = true;
   } catch {
-    esc = { requested_at: 0, reason: denialReason, hit: 'text-output delivery' };
+    // Reported by the caller via the return value, not swallowed here.
   }
-  esc.failed_open_at = nowIso;
-  esc.failed_open_why = why;
+
   try {
+    const esc = JSON.parse(fs.readFileSync(escPath, 'utf-8')) as Record<string, unknown>;
+    esc.failed_open_at = nowIso;
+    esc.failed_open_why = why;
+    esc.failed_open_event_id = eventId;
     fs.writeFileSync(escPath, JSON.stringify(esc));
+    recorded = true;
   } catch {
-    // Best-effort — an unwritable escalation file degrades to deny-only.
+    // Absent or unreadable: the journal is the sink. Never fabricate one.
   }
+  return recorded;
 }
 
 function gateShouldYield(statePath: string, key: string): boolean {
@@ -1603,7 +1639,16 @@ export function checkCritiqueGate(
     // the HOST can see it: this container is --rm'd, so anything written only
     // to stderr is unrecoverable once the session ends.
     if (process.env.CRITIQUE_ESCALATION === '0') {
-      stampFailedOpen(escPath, denialReason, 'CRITIQUE_ESCALATION=0 kill switch');
+      // The kill switch is an operator's explicit standing instruction to let
+      // deliveries through, so an unrecordable release does not convert it into
+      // a refusal the way the admin-bypass path below does. It is still said
+      // out loud rather than passing as success.
+      if (!stampFailedOpen(escPath, denialReason, 'CRITIQUE_ESCALATION=0 kill switch')) {
+        log(
+          `[critique-gate] kill-switch release could NOT be recorded in ${path.dirname(escPath)} — ` +
+            `the host will never learn the gate opened (${denialReason})`,
+        );
+      }
       return { blocked: false };
     }
 
@@ -1649,7 +1694,25 @@ export function checkCritiqueGate(
               `would leave a reusable waiver (${denialReason}).`,
           };
         }
-        stampFailedOpen(escPath, denialReason, 'admin bypass consumed (one-shot)');
+        // Same reasoning as the consumption check above, one step further on: a
+        // release nobody can see is worse than a denied delivery. The grant is
+        // already spent, so the host reports it as an ORPHANED release — which
+        // is exactly what it is.
+        if (
+          !stampFailedOpen(
+            escPath,
+            denialReason,
+            'admin bypass consumed (one-shot)',
+            state.critique_gate_bypass_grant_id ?? null,
+          )
+        ) {
+          return {
+            blocked: true,
+            reason:
+              `[critique-gate] REFUSED — the admin bypass was consumed but the release could NOT be recorded ` +
+              `anywhere the host can see it, so allowing it would open the gate with no durable trace (${denialReason}).`,
+          };
+        }
         return { blocked: false };
       }
     }
@@ -1738,7 +1801,13 @@ export interface TaskMessageBlock {
 export function dispatchResultText(
   text: string,
   routing: RoutingContext,
-): { sent: number; hasUnwrapped: boolean; danglingOpen?: boolean; gateRefusals?: string[]; taskBlocks: TaskMessageBlock[] } {
+): {
+  sent: number;
+  hasUnwrapped: boolean;
+  danglingOpen?: boolean;
+  gateRefusals?: string[];
+  taskBlocks: TaskMessageBlock[];
+} {
   // Capture the destination name (group 1), any additional attributes as one
   // string (group 2), and the body (group 3). Extra attributes — `thread_id`,
   // `in_reply_to`, plus unknown ones — are tolerated. Earlier versions of

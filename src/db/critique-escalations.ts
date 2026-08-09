@@ -14,7 +14,10 @@ import { getDb, hasTable } from './connection.js';
  * Lifecycle transitions. The two RELEASE events are `approved` and
  * `failed_open`. `state_divergence` is the integrity event: the session's
  * workflow-state claimed a bypass the host never granted (see
- * migrations/933-critique-bypass-grants.ts).
+ * migrations/933-critique-bypass-grants.ts). `release_orphaned` is the other
+ * integrity event: a grant the gate CONSUMED whose release never reached the
+ * host, so the audit trail for that delivery is knowably incomplete (see
+ * migrations/936-critique-release-exactly-once.ts).
  */
 export type EscalationEventKind =
   | 'self_heal'
@@ -24,6 +27,7 @@ export type EscalationEventKind =
   | 'approved'
   | 'rejected'
   | 'failed_open'
+  | 'release_orphaned'
   | 'state_divergence';
 
 export interface EscalationEvent {
@@ -38,35 +42,86 @@ export interface EscalationEvent {
   pr_number?: number | null;
   attempt?: number | null;
   requested_at?: number | null;
+  /**
+   * Exactly-once key, unique-indexed. Set it for any event that can reach the
+   * host by more than one route — a release arrives BOTH in the escalation
+   * file and in the container's append-only release journal. Leave it unset
+   * for events the host itself originates exactly once.
+   */
+  dedupe_key?: string | null;
 }
 
-export function recordEscalationEvent(e: EscalationEvent): void {
+/**
+ * What actually happened to an append. Returned rather than swallowed because
+ * a release that could not be recorded is precisely the thing the events table
+ * exists to make impossible to miss — the caller has to be able to say so at
+ * its own boundary instead of assuming the write landed.
+ *
+ *   recorded     a new row exists
+ *   duplicate    the same dedupe_key was already recorded (the exactly-once
+ *                property doing its job — not a failure)
+ *   unavailable  the events table is not installed on this host
+ *   failed       the insert threw; details are in the error log
+ */
+export type EventRecordResult = 'recorded' | 'duplicate' | 'unavailable' | 'failed';
+
+/** Does this DB carry migration 936's exactly-once key yet? */
+function hasDedupeKey(): boolean {
+  const cols = getDb().prepare(`PRAGMA table_info(critique_escalation_events)`).all() as Array<{ name: string }>;
+  return cols.some((c) => c.name === 'dedupe_key');
+}
+
+/**
+ * Bind values for one append. `dedupe_key` is added only when the column
+ * exists: better-sqlite3 rejects a named parameter the statement does not
+ * declare, so a host that has not run migration 936 must not be handed one.
+ */
+function buildEventParams(e: EscalationEvent, keyed: boolean): Record<string, unknown> {
+  const { dedupe_key: dedupeKey, ...rest } = e;
+  const params: Record<string, unknown> = {
+    agent_group_id: null,
+    approval_id: null,
+    class: null,
+    reason: null,
+    hit: null,
+    repo: null,
+    pr_number: null,
+    attempt: null,
+    requested_at: null,
+    ...rest,
+    created_at: new Date().toISOString(),
+  };
+  if (keyed) params.dedupe_key = dedupeKey ?? null;
+  return params;
+}
+
+export function recordEscalationEvent(e: EscalationEvent): EventRecordResult {
   try {
-    if (!hasTable(getDb(), 'critique_escalation_events')) return;
-    getDb()
+    if (!hasTable(getDb(), 'critique_escalation_events')) return 'unavailable';
+    const keyed = hasDedupeKey();
+    // OR IGNORE + the partial unique index is what makes "exactly once"
+    // structural. A check-then-insert would still double-record two sweeps
+    // racing on the same journal line.
+    const info = getDb()
       .prepare(
-        `INSERT INTO critique_escalation_events
-           (session_id, agent_group_id, approval_id, event, class, reason, hit,
-            repo, pr_number, attempt, created_at, requested_at)
-         VALUES (@session_id, @agent_group_id, @approval_id, @event, @class, @reason, @hit,
-                 @repo, @pr_number, @attempt, @created_at, @requested_at)`,
+        keyed
+          ? `INSERT OR IGNORE INTO critique_escalation_events
+               (session_id, agent_group_id, approval_id, event, class, reason, hit,
+                repo, pr_number, attempt, created_at, requested_at, dedupe_key)
+             VALUES (@session_id, @agent_group_id, @approval_id, @event, @class, @reason, @hit,
+                     @repo, @pr_number, @attempt, @created_at, @requested_at, @dedupe_key)`
+          : `INSERT INTO critique_escalation_events
+               (session_id, agent_group_id, approval_id, event, class, reason, hit,
+                repo, pr_number, attempt, created_at, requested_at)
+             VALUES (@session_id, @agent_group_id, @approval_id, @event, @class, @reason, @hit,
+                     @repo, @pr_number, @attempt, @created_at, @requested_at)`,
       )
-      .run({
-        agent_group_id: null,
-        approval_id: null,
-        class: null,
-        reason: null,
-        hit: null,
-        repo: null,
-        pr_number: null,
-        attempt: null,
-        requested_at: null,
-        ...e,
-        created_at: new Date().toISOString(),
-      });
+      .run(buildEventParams(e, keyed));
+    return info.changes > 0 ? 'recorded' : 'duplicate';
     // eslint-disable-next-line no-catch-all/no-catch-all -- history must never block the gate
   } catch (err) {
     log.error('Failed to record critique escalation event', { event: e.event, sessionId: e.session_id, err });
+    return 'failed';
   }
 }
 
@@ -138,6 +193,25 @@ export interface BypassGrant {
   consumed_at: string | null;
   revoked_at: string | null;
   revoked_reason: string | null;
+  /**
+   * When the host recorded the release this grant paid for. A grant with
+   * `consumed_at` set and this NULL is an OUTSTANDING OBLIGATION: the gate
+   * spent the grant and the host has not yet seen where it went. Retiring the
+   * escalation file in that window throws away the record the container is
+   * still writing into. Host-owned — unlike the `failed_open_recorded` flag in
+   * the session-mounted file, nothing in a container can set it.
+   */
+  release_recorded_at: string | null;
+}
+
+/**
+ * `SELECT *` returns only the columns the DB actually has. On a host that has
+ * not run migration 936 `release_recorded_at` comes back `undefined`, and
+ * `undefined !== null` would read as "already recorded" — the exact
+ * early-retirement this column exists to prevent. Normalize on the way out.
+ */
+function normalizeGrant(row: Partial<BypassGrant>): BypassGrant {
+  return { ...row, release_recorded_at: row.release_recorded_at ?? null } as BypassGrant;
 }
 
 export function createBypassGrant(g: {
@@ -169,9 +243,9 @@ export function createBypassGrant(g: {
 export function getBypassGrant(grantId: string): BypassGrant | null {
   if (!hasTable(getDb(), 'critique_bypass_grants')) return null;
   const row = getDb().prepare('SELECT * FROM critique_bypass_grants WHERE grant_id = ?').get(grantId) as
-    | BypassGrant
+    | Partial<BypassGrant>
     | undefined;
-  return row ?? null;
+  return row ? normalizeGrant(row) : null;
 }
 
 /**
@@ -193,8 +267,8 @@ export function getLatestSpendableGrant(sessionId: string, nowIso: string): Bypa
         ORDER BY datetime(granted_at) DESC, rowid DESC
         LIMIT 1`,
     )
-    .get(sessionId, nowIso) as BypassGrant | undefined;
-  return row ?? null;
+    .get(sessionId, nowIso) as Partial<BypassGrant> | undefined;
+  return row ? normalizeGrant(row) : null;
 }
 
 /** The gate spent the grant; record it so it can never be honoured again. */
@@ -203,6 +277,26 @@ export function markBypassGrantConsumed(grantId: string, consumedAtIso: string):
   getDb()
     .prepare('UPDATE critique_bypass_grants SET consumed_at = ? WHERE grant_id = ? AND consumed_at IS NULL')
     .run(consumedAtIso, grantId);
+}
+
+/**
+ * Discharge a consumed grant's release obligation — the host has recorded
+ * where the delivery it paid for went. First write wins, so ingesting the same
+ * release from both routes (escalation file and release journal) keeps the
+ * first observation time.
+ *
+ * Silently a no-op on a host that has not run migration 936; the column is
+ * additive and its absence only costs the extra retirement protection.
+ */
+export function markBypassGrantReleaseRecorded(grantId: string, recordedAtIso: string): void {
+  if (!hasTable(getDb(), 'critique_bypass_grants')) return;
+  const cols = getDb().prepare(`PRAGMA table_info(critique_bypass_grants)`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === 'release_recorded_at')) return;
+  getDb()
+    .prepare(
+      'UPDATE critique_bypass_grants SET release_recorded_at = ? WHERE grant_id = ? AND release_recorded_at IS NULL',
+    )
+    .run(recordedAtIso, grantId);
 }
 
 /**

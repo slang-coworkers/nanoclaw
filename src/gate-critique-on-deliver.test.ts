@@ -364,6 +364,13 @@ describe('graduated escalation at the denial cap', () => {
     JSON.parse(fs.readFileSync(escFile(), 'utf-8')) as Record<string, unknown>;
   const readState = (): Record<string, unknown> =>
     JSON.parse(fs.readFileSync(stateFile, 'utf-8')) as Record<string, unknown>;
+  /** The append-only release journal — the sink the host cannot retire away. */
+  const readJournal = (): Array<Record<string, unknown>> =>
+    fs
+      .readFileSync(path.join(tmpRoot, 'critique-releases.jsonl'), 'utf-8')
+      .split('\n')
+      .filter((l) => l.trim())
+      .map((l) => JSON.parse(l) as Record<string, unknown>);
 
   it('at the cap: denies and opens an escalation file', () => {
     activateOverlay();
@@ -418,7 +425,10 @@ describe('graduated escalation at the denial cap', () => {
     // it, a legitimate bypass reads as consumption of a grant nobody issued —
     // a false positive on the happy path, on every shell-path bypass.
     expect(readState().critique_gate_bypass_consumed_grant_id).toBe('appr-1');
-    expect(readEsc().failed_open_at).toBeTruthy();
+    // No escalation file exists on this path, and the gate must not invent
+    // one: the release goes to the append-only journal instead.
+    expect(fs.existsSync(escFile())).toBe(false);
+    expect(readJournal()[0].grant_id).toBe('appr-1');
     // A second delivery is denied again — it is not a standing grant.
     const again = run(denyPayload());
     expect(again.status).toBe(2);
@@ -499,9 +509,106 @@ describe('graduated escalation at the denial cap', () => {
     const result = run(denyPayload(), { CRITIQUE_ESCALATION: '0' });
     expect(result.status).toBe(0);
     expect(result.stderr).toContain('soft-fail');
-    // Container stderr dies with the container; the stamp is how the host learns.
-    expect(readEsc().failed_open_at).toBeTruthy();
-    expect(readEsc().failed_open_why).toContain('kill switch');
+    // Container stderr dies with the container; the journal is how the host
+    // learns. There is no escalation file on this path — the kill switch
+    // returns before one is ever opened — and the gate must NOT invent one.
+    expect(fs.existsSync(escFile())).toBe(false);
+    expect(String(readJournal()[0].why)).toContain('kill switch');
+  });
+});
+
+describe('release recording — the gate must never fabricate an escalation', () => {
+  // `stamp_failed_open` used to CREATE critique-escalation.json with
+  // `requested_at: 0` when the file was absent. The file is absent for a
+  // mundane reason: the host retires a settled request, and it does so between
+  // the gate's own two writes — the consumption patch to workflow-state.json,
+  // and this stamp. The host then read the fabrication as a brand-new
+  // escalation and carded a human for a decision nobody asked for, while the
+  // real release went unrecorded and its link to the original request was gone.
+  const denyPayload = () => ({
+    tool_name: 'mcp__nanoclaw__send_message',
+    tool_input: { text: '[Resolution] x' },
+  });
+  const escFile = () => path.join(tmpRoot, 'critique-escalation.json');
+  const journalFile = () => path.join(tmpRoot, 'critique-releases.jsonl');
+  const readJournal = (): Array<Record<string, unknown>> =>
+    fs
+      .readFileSync(journalFile(), 'utf-8')
+      .split('\n')
+      .filter((l) => l.trim())
+      .map((l) => JSON.parse(l) as Record<string, unknown>);
+
+  function approvedBypassState(): void {
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 0,
+        critique_gate_denials: 3,
+        critique_gate_bypass_approved: true,
+        critique_gate_bypass_grant_id: 'appr-1',
+        critique_gate_bypass_expires_at: Math.floor(Date.now() / 1000) + 3600,
+      }),
+    );
+  }
+
+  it('a release with the escalation file GONE journals it instead of inventing one', () => {
+    activateOverlay();
+    approvedBypassState();
+    expect(fs.existsSync(escFile())).toBe(false);
+
+    const result = run(denyPayload());
+    expect(result.status).toBe(0);
+
+    // The corruption: no synthetic `requested_at: 0` escalation for the host
+    // to card. The next denial re-opens a real one, as it should.
+    expect(fs.existsSync(escFile())).toBe(false);
+
+    const [entry] = readJournal();
+    expect(entry.why).toBe('admin bypass consumed (one-shot)');
+    // Attribution the host uses to re-attach this release to its request.
+    expect(entry.grant_id).toBe('appr-1');
+    expect(String(entry.event_id)).toMatch(/^rel-/);
+    expect(entry.at).toBeTruthy();
+  });
+
+  it('a release with the escalation file PRESENT lands in both sinks under one id', () => {
+    activateOverlay();
+    approvedBypassState();
+    fs.writeFileSync(escFile(), JSON.stringify({ requested_at: 1000, reason: 'x', forwarded_at: 'ts' }));
+
+    expect(run(denyPayload()).status).toBe(0);
+
+    const esc = JSON.parse(fs.readFileSync(escFile(), 'utf-8')) as Record<string, unknown>;
+    // Merged, not replaced — the request's own audit context survives.
+    expect(esc.requested_at).toBe(1000);
+    expect(esc.failed_open_at).toBeTruthy();
+    // One id across both routes is what lets the host record it exactly once.
+    expect(readJournal()[0].event_id).toBe(esc.failed_open_event_id);
+  });
+
+  it('REFUSES the delivery when the release cannot be recorded anywhere', () => {
+    // A release nobody can see is worse than a denied delivery: the grant is
+    // one-shot either way, but an invisible fail-open is unrecoverable.
+    activateOverlay();
+    approvedBypassState();
+    const roDir = path.join(tmpRoot, 'unwritable');
+    fs.mkdirSync(roDir);
+    fs.chmodSync(roDir, 0o500);
+    try {
+      const result = run(denyPayload(), {
+        CRITIQUE_ESCALATION_FILE: path.join(roDir, 'critique-escalation.json'),
+        CRITIQUE_RELEASE_JOURNAL: path.join(roDir, 'critique-releases.jsonl'),
+      });
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain('could NOT be recorded');
+      // The grant was already spent by the consumption write above; the host
+      // reports it as an ORPHANED release rather than losing track of it.
+      const state = JSON.parse(fs.readFileSync(stateFile, 'utf-8')) as Record<string, unknown>;
+      expect(state.critique_gate_bypass_approved).toBe(false);
+      expect(state.critique_gate_bypass_consumed_grant_id).toBe('appr-1');
+    } finally {
+      fs.chmodSync(roDir, 0o700);
+    }
   });
 });
 
