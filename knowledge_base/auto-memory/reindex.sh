@@ -108,7 +108,17 @@ for dp,dns,fs in os.walk('.'):
         if not f.endswith('.md'): continue
         rel=os.path.relpath(os.path.join(dp,f),'.')
         base=os.path.basename(rel)[:-3]
-        if base.startswith(('index-','MEMORY','reindex')) or base=='index': continue
+        # EXACT match on infrastructure names, NOT a prefix. A prefix test here removes
+        # a real leaf from the POPULATION, so it can never be reported orphaned — the
+        # gate absorbs its own numerator and still prints ORPHANED=0. Measured
+        # 2026-08-08 (peer slang-triager hit the same shape in its `triage-*` convention
+        # predicate; tightening turned 0 into 30): on this edge the prefix form absorbed
+        # exactly 1 file, MEMORY-full-archive-2026-08-05.md — a deliberate,
+        # MEMORY.md-referenced archive, so no substantive leaf was hidden. Kept exempt
+        # BY NAME. `index-` stays a prefix: generated shards, enumerated separately.
+        if base.startswith('index-') or base in (
+            'index','MEMORY','reindex','MEMORY-full-archive-2026-08-05'
+        ): continue
         # a subdir file is reachable under either its basename or its relative path
         leaves.add(rel[:-3] if os.path.dirname(rel) else base)
 linked|={os.path.basename(l) for l in linked}

@@ -16,13 +16,16 @@ rows={}
 for l in open('INDEX.md',errors='replace'):
     m=re.match(r'^- \[([^\]]*)\]\(([^)]+\.md)\)(.*)$',l.rstrip())
     if m: rows[m.group(2)]=(m.group(1),m.group(3))
-MARK=re.compile(r'⚠ (?:PARTIALLY RETRACTED|RETRACTED|SUPERSEDED TWICE|SUPERSEDED|WITHDRAWN)')
-BANNER=re.compile(r'\b(PARTIALLY RETRACTED|RETRACTED|SUPERSEDED TWICE|SUPERSEDED|WITHDRAWN)\b')
+MARK=re.compile(r'⚠ ')   # sigil-keyed on purpose: a verb whitelist makes new phrasings invisible
+BANNER=re.compile(r'\b(PARTIALLY RETRACTED|PARTIALLY CORRECTED|RETRACTED|SUPERSEDED TWICE|SUPERSEDED|WITHDRAWN)\b')
 missing=[];wrongly=[];ok=0;scanned=0
 for f,(title,rest) in rows.items():
     if f not in files: continue
     head='\n'.join(open(f,errors='replace').read().split('\n')[:8])
-    if not BANNER.search(head): continue
+    # A banner is a HEADING or BLOCKQUOTE line announcing the status; a mention inside prose is
+    # discussion, not status. Without this, a file that merely DESCRIBES retraction gets flagged.
+    banner_lines=[l for l in head.split('\n') if (l.lstrip().startswith(('>','#'))) and BANNER.search(l.upper())]
+    if not banner_lines: continue
     scanned+=1
     h1=re.search(r'^#\s*(.*)$',head,re.M); t=(h1.group(1) if h1 else '')
     self_id=re.match(r'(\d{13})',f).group(1)

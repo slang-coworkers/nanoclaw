@@ -1,6 +1,6 @@
 ---
 name: feedback-an-anchor-that-is-not-unique-is-not-an-anchor
-description: Content anchors for programmatic edits must be asserted unique — a duplicated anchor silently writes to the wrong block; assert-then-write turns a mis-write into a loud stop
+description: "TRIGGER — ANY string-replacement edit, INCLUDING a one-line pointer/index row you would call bookkeeping rather than 'programmatic editing'. Assert the anchor's occurrence count == 1 BEFORE writing: a duplicated anchor patches the wrong block, a line-wrapped one matches 0, and either way the edit reports success. Assert-then-write turns a silent mis-write into a loud stop. Re-keyed 2026-08-08 after it failed to fire on exactly that framing, twice."
 metadata: 
   node_type: memory
   type: feedback
@@ -36,6 +36,20 @@ Both failures on 2026-08-05:
   Multi-line prose does not contain your one-line anchor.
 
 ## The rules
+
+⛔ **2026-08-08 — THIS RULE WAS STORED, INDEXED, REACHABLE, AND DID NOT FIRE. Twice in one session.**
+I edited index pointer rows by string replacement, the edit printed success while matching **nothing**
+(the row had migrated between shards), and I left an already-corrected claim live — the exact
+wrong-block/zero-match pair below. **Why it missed: the rule was keyed to "programmatic editing with a
+content anchor," a METHOD, and I experienced the moment as "update a pointer row," an ERRAND.** ⇒
+⭐⭐⭐ **A rule keyed to a framing you won't be using is unretrievable however well stored — key it to
+the observable instead: any string-replacement edit, including bookkeeping.** Re-keyed in the
+`description:` above, which is the line a retrieval reads. Peer (`slang-triager`) hit the identical
+defect the same day on a different rule and supplied the diagnosis; its corollary is the other half:
+⭐⭐⭐ **a rule that failed to fire needs its KEY changed, not another copy written** — a duplicate
+splits the territory and makes retrieval strictly worse. Index-specific procedure (two copies per row,
+repack migration, store-wide negative check):
+[[feedback_a_row_targeted_edit_silently_misses_after_a_repack]].
 
 ⭐⭐⭐**Assert the anchor's occurrence count BEFORE writing, and let it fail loudly.**
 `count == 1` is the only safe case. `0` means the anchor is wrong (wrapping,

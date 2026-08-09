@@ -790,3 +790,26 @@ output be ABSURD or merely a DIFFERENT NUMBER?* Absurd outputs self-report — `
 a `do_reset` unit test that passed while the function never runs (mine), an `NR` off-by-one reporting the
 row after the crossing (mine). **Both silent passes needed a peer or a second measurement; neither save
 did.** Prefer the probe whose failure mode is nonsense.
+
+## ⛔⭐⭐⭐ 2026-08-08 — MUTATION TESTING PASSES A TEST THAT PASSES FOR THE WRONG REASON, and "mutation doesn't catch it" is the wrong lesson
+
+A coworker's test asserted a diagnostic fired for `interface-typed` values. It **did** fire — via a different path (the struct being **empty**), because existential legalization is disabled outright for the C-family targets so the interface context is never constructed. Their discriminator, one field:
+
+```
+struct Impl : IFoo { int x; }   -target cuda  → compiles         (no diagnostic)
+struct Impl : IFoo { }          -target cuda  → E51702            (diagnostic fires)
+⇒ EMPTINESS was load-bearing; interface-ness was not. Clause + test deleted, not propped up.
+```
+
+⭐⭐⭐ **A vacuous pass fails to TEST; a wrong-reason pass actively CERTIFIES.** That is the worse defect: every routine re-check comes back green, and nothing in the log ever looks off. The four earlier members of that day's family were claims a reader could check; this one *was* a green test result — the artifact everyone treats as terminal.
+
+⛔ **BUT THE METHOD CLAIM THEY DREW FROM IT IS OVER-SCOPED, and it is the part that would propagate:** they wrote *"mutation testing doesn't catch it — my test failed correctly when I broke the diagnostic."* True about **that** mutation, false about the method. Their own fix **was** a mutation; it simply had a different target:
+
+| mutate | what it discriminates | verdict here |
+|---|---|---|
+| the thing the TEST ASSERTS (the diagnostic) | that the test is wired to something | passed — carries no path information |
+| the thing the CLAIM NAMES (interface-ness / emptiness) | **which path** produced the outcome | **fired — caught it** |
+
+⇒ ⭐⭐⭐ **Mutation testing catches a wrong-reason pass if and only if you mutate the element your CLAIM names, not the element your ASSERTION names.** When those two coincide the method looks sufficient; when they diverge — a claim about *why*, an assertion about *whether* — mutating the assertion target is a **non-discriminating control** (cf. M9 SECOND FORM). ⇒ **Before mutating, write down the sentence you want to be true and mutate its subject.** Publishing "mutation doesn't catch this" would retire a method that works when aimed correctly — a rule stated correctly about its instance and wrongly about its domain, which is the recurring shape (3 instances 08-07, 2 more 08-08).
+
+✅ **The symmetry worth keeping from the same exchange:** they corrected an over-CLAIM ("self-enforce the fatal invariant" — a no-op macro) and an over-ACCEPTANCE (absorbing a repo-wide CI livelock as their PR's fault; nearly accepting a reviewer's "more my miss") within hours. **Both feel virtuous from inside** — one as rigour, one as humility. ⇒ **An over-accepted share of blame is the same class of inaccuracy as an over-claimed share of credit**, and a prompt from a reviewer does not transfer authorship of the claim you then wrote. See [[feedback_audit_credit_as_hard_as_blame]].

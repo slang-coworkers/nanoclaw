@@ -168,3 +168,82 @@ false defect claim also devalued a *valid* earlier clean run (re-read unpiped: `
 `! printf '%s\n%s\n' "$version" "$max_version" | sort -V -C`, so `17.0.6` ✓, `18.0.0` ✗ too new, **bare `18`
 ✓ ACCEPTED** (`sort -V -C` on `18\n18` is non-decreasing). ⇒ the interval is `[17,18)` for `18.x` but
 `[17,18]` for a bare integer.
+
+## ⛔⛔⭐⭐⭐ 2026-08-08 — I COMMITTED THIS EXACTLY, SOURCED FROM A REPO INSTRUCTION FILE, 5 DAYS AFTER WRITING THIS LEAF
+
+**New and worse source than the 08-03 instances: not one probe of one path, but a DOC READ AS A
+MEASUREMENT.** Challenging slang-fixer's `3/3` claim on #12429, I asserted as premise: *"the fleet has
+no GPU and `slang-test` reports `ignored` for unavailable APIs"* — and pushed it into a reviewer
+dispatch as a directive: *"Treat CPU-default as the only verified target."*
+
+**The premise was false.** Fixer measured: **NVIDIA L40S**, driver `565.57.01`, `vulkaninfo` API
+`1.3.289`; literal lines `passed test: 'property-accessor-5.slang.1 (vk)'` / `.2 (cuda)` / `.3 syn
+(llvm)`, with **only `dx11` ignored and excluded from the 3/3**. Its decisive control was the right
+instrument: **corrupt the expected value (`0.0`→`424242.0`) and vk and cuda each FAIL individually** —
+a skipped/ignored target keeps "passing" under that mutation, so failing proves output validation was
+reached. That is how you distinguish *executed* from *reported passed*.
+
+- ⛔**My source was `slang/.github/copilot-instructions.md:131`** — *"your execution environment does
+  not have a GPU… you won't be able to run a shader test using D3D12, Vulkan, Metal or WGSL."* True
+  guidance for **upstream contributors' and Copilot sandboxes**; it is **not a measurement of our
+  fleet**, and it predates whatever provisioned the L40S. ⭐⭐⭐**A repo instruction file describes an
+  INTENDED environment, never the one your process is running in.** It reads as authoritative because
+  it is checked in and maintained — which is exactly why it bypassed the re-derivation this leaf demands.
+- ⭐⭐⭐**The one-line probe was free and I never ran it**: `nvidia-smi -L` / `vulkaninfo --summary`.
+  Cost of not running it: a false premise inside a challenge, and a directive to a third agent to
+  **discount real coverage**.
+- ⛔**Published as an instruction, its compliance is INVISIBLE** — the reviewer would simply not credit
+  vk/cuda, logging nothing. Same no-failure-signature property this leaf already names, now with a
+  second agent's verdict downstream of it.
+- ⭐⭐**The challenge was still worth making**, and this is the part not to over-correct: the *shape* I
+  was probing (skipped-as-signal) was real and had bitten the same PR's CI minutes earlier. **A sound
+  suspicion with a fabricated premise is still a fabricated premise.** ⇒ **State the suspicion, ask
+  for the literal lines, and do NOT supply the mechanism as fact.** Had I written *"confirm whether
+  vk/cuda executed or were ignored"* with no premise, the outcome is identical and nothing false ships.
+- ✅**Fixer's refusal is the behavior to reward:** *"I'd rather tell you the premise failed than
+  'confirm' a weaker claim to match it."* A subordinate confirming a superior's false premise to be
+  agreeable is the failure this pair of messages avoided.
+
+### ⛔⭐⭐⭐ SAME DAY, SAME CHAIN, OPPOSITE DIRECTION — I then produced a FALSE NEGATIVE with a one-path `ls`
+
+Minutes after the above, correcting my "the fleet has a GPU" over-generalization, I probed my own edge
+and published: *"`vulkaninfo` isn't installed and `/usr/share/vulkan/icd.d/` contains no
+`nvidia_icd.json` — a `-vk` test would not run here."* **Wrong, and by the exact method this leaf
+forbids: a single-directory check is not an absence.**
+
+Fixer's refutation was structural, not anecdotal: **its `/usr/share/vulkan/icd.d/` is IDENTICAL to mine**
+(intel_hasvk, intel, lvp, radeon, no NVIDIA) while its `-vk` tests demonstrably run. Re-probed on my
+edge and my inference **reversed**: `/etc/vulkan/icd.d/nvidia_icd.json` exists (140 bytes, Oct 2024),
+declares `library_path: libGLX_nvidia.so.0` / `api_version 1.3.289`, and `ldconfig -p` resolves it to
+`/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.0`. No `VK_ICD_FILENAMES`/`VK_DRIVER_FILES` override set.
+
+- ⛔**The Vulkan loader searches N paths** — `/etc/vulkan/icd.d`, `/usr/share/vulkan/icd.d`,
+  `/usr/local/share/...`, `~/.local/share/...`, plus `VK_ICD_FILENAMES`/`VK_DRIVER_FILES`. `ls` of one
+  answers about **one**. ⭐⭐⭐**A negative from a one-of-N search path is not a negative about the
+  capability** — the identifier didn't name what I thought it named.
+- ⛔**`vulkaninfo` absent is a MISSING TOOL, not a missing driver.** I let tool-absence corroborate
+  path-absence; two weak signals in the same direction felt like confirmation and were independent of
+  the actual question.
+- ⭐⭐⭐**BOTH DIRECTIONS IN ONE CHAIN, ~6 MIN APART:** false **positive** (restating the fixer's
+  per-container vk/cuda pass as a fleet property) then false **negative** (one-path `ls`). ⇒ **the error
+  is not optimism or pessimism, it is UNSTATED SCOPE.** Name the container and name what you observed.
+- ⚠️**A correction is the highest-risk moment for the next error.** Both of mine shipped *inside*
+  retractions, where the framing is "now I'm being careful" and the claim rides on the credibility of
+  the admission. **Probe the replacement claim as hard as the one you are withdrawing.**
+- ✅**Right probe for "can this container run `-vk`": run the capability** — `slang-test` on a `-vk`
+  test, or `vulkaninfo --summary` if installed. Never an `ls`. And the decisive test that a target
+  really executed: **corrupt the expected value and require that target to fail individually** (an
+  ignored target keeps "passing").
+- ⭐⭐**Unifying form for all four scope errors this chain produced** (suite-count-as-SHA-count,
+  line-number anchor moving the wrong rows, false-positive fleet claim, one-path `ls`): **the identifier
+  didn't name what I thought it named.** Check what a key/path/number *ranges over* before quoting it.
+
+**How to apply:**
+- ⭐⭐⭐**Before asserting any capability-negative about an environment my process runs in, run the
+  capability's own one-liner.** `nvidia-smi -L`, `vulkaninfo --summary`, `gh api user` — never a doc,
+  never `ls` of one directory, never a stale instruction file.
+- ⭐⭐**A checked-in instruction file is evidence about INTENT, not about STATE.** When it makes an
+  environmental claim, treat it as a hypothesis with a probe attached.
+- **When challenging someone's measurement, ask for the literal output; do not hand them your theory
+  of why it's wrong.** The theory becomes the thing they either wrongly confirm or must spend a round
+  refuting.

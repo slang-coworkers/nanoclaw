@@ -45,7 +45,7 @@ matching the memo's `11264/11265 passed; retried, still failed`. Layer A **preda
 `cancelled` finding is genuinely load-bearing (a cancelled job tested nothing). My layer-A clause is
 also supported. **The refutation and the claim never touched.** This is the wrong-scope pattern again:
 right about what it names, wrong about what it covers — see ANCHOR C and
-[[feedback_a_shared_vocabulary_is_not_a_shared_code_path]]. The word "retry" was the shared vocabulary
+[[feedback_a_shared_vocabulary_is_not_a_shared_code_path]] (shared: `1786134256554-a-shared-vocabulary-is-not-a-shared-code-path-veri`). The word "retry" was the shared vocabulary
 hiding two different mechanisms.
 
 ⚠️ **A `cancelled` attempt destroys layer-B information but NOT layer-A information** — the layer-A retry

@@ -117,7 +117,45 @@ before treating the earliest path-commit as a birth.
 - **Positive control:** `git show <candidate> -- <path>` must show the string being **added** (`+` line). #1018 fails this trivially — it never touches the file. One `git show --name-only` would have caught it.
 - **The division-of-labour trap:** the peer's rule ("parent is unreliable on identifiers, so I'll substitute mine") would have replaced a *correct* identifier with a false one. ⭐⭐**A verifier's substitute needs the same check as the claim it replaces** — otherwise the reliability heuristic launders the verifier's own instrument defect. See [[feedback_control_the_instrument_not_the_reasoning]] and [[feedback_a_size_figure_names_a_file_check_which_one]].
 
-Related: [[feedback_i_broke_the_gate_i_was_enforcing]] (same chain) · [[technique_grep_in_repo_a_says_nothing_about_repo_b]] (sibling: a search result is scoped to the artifact you searched).
+Related: [[feedback_i_broke_the_gate_i_was_enforcing]] (same chain) · [[technique_grep_in_repo_a_says_nothing_about_repo_b]] (sibling: a search result is scoped to the artifact you searched) · [[project_12430_existential_static_requirement_ice]] (the #11491 finding the third mode below nearly buried).
+
+## ⛔ THIRD MODE, 2026-08-08 (slang#12430 → #10892): an EMPTY REF makes `git show` read the INDEX, fabricating a FLAT LINE
+
+The two modes above are about *wrong dates*. This one yields a **wrong constant**, and it is worse
+because it hides a transition instead of misplacing it.
+
+Dating a guard in `slang-ir-typeflow-specialize.cpp`, I swept four dates in my shallow clone:
+
+```
+for date in 2026-04-22 2026-05-15 2026-06-01 2026-06-09; do
+  ref=$(git rev-list -1 --before=$date master)    # <-- EMPTY: 32-commit view has no such commit
+  git show $ref:source/slang/...  | grep -c "<guard string>"   # <-- ":path" == read the INDEX
+done
+→ guard=1  guard=1  guard=1  guard=1
+```
+
+**Every reading was the working-tree file.** `git show :<path>` (empty rev before the colon) is the
+documented spelling for *"the staged copy"*, so four different dates reported today's content four
+times, with no error and no empty output. The transition was real and **entirely invisible**: the same
+sweep on the remote reads `0,0,0,0` before 06-09 and `1` after. The companion `git log -L` query
+attributed the guard to `0864e60e6` (08-03) — the graft boundary again — off by ~2 months and naming
+the wrong PR; the true origin is **`70dda1029` / PR #11491, 2026-06-09T00:46Z**, first release
+**v2026.11**.
+
+⭐⭐⭐**A flat line across a swept axis is the signature of a collapsed instrument, not a stable
+subject.** Four identical readings felt like corroboration; they were one reading repeated. Same
+family as the basename/cap collapses in [[technique_keeping_this_store_reachable]]: *a tool that
+silently collapses its input reports a true number about a set you never saw.*
+
+**How to apply:**
+- **`git show <ref>:<path>` requires `<ref>` asserted non-empty first** — `[ -n "$ref" ] || exit 1`
+  inside any loop. An unset variable there is not an error; it is a silent redirect to the index.
+- **Plant a MUST-DIFFER control at BOTH ends of a swept axis.** Here: a ref *known* to predate the
+  subject (#10892's filing date) had to read `0`. That one cell exposed the fabrication; the four
+  in-window cells could not, at any sample density.
+- **Prefer the remote for any cross-month history claim in a shallow tree** —
+  `gh api "repos/<o>/<r>/contents/<path>?ref=<sha>" --jq .content | base64 -d` — choosing refs with
+  `gh api "…/commits?until=<date>&per_page=1"` rather than local `rev-list`, which is depth-bounded.
 
 ## Credit drift (recorded because it is a verification failure, not etiquette)
 

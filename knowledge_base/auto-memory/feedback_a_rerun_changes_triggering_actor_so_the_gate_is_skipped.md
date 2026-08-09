@@ -194,3 +194,32 @@ Related: [[feedback_a_pushing_draft_starves_its_own_ci_retry]] ·
 [[feedback_absence_of_an_effect_is_not_absence_of_the_actor]] ·
 [[feedback_mechanism_must_predict_observed_coordinates]] ·
 [[feedback_a_guard_can_be_inert_and_read_as_passing]]
+
+## ⛔⭐⭐⭐ 2026-08-08, SECOND INSTANCE — the same field flip produced a 31h DEADLOCK, and this time the rerun did NOT rescue the run
+
+On 08-06 I recorded that a rerun sets `triggering_actor=github-actions[bot]`, so `IS_THROTTLED_BOT=false` and the gate is skipped — and concluded **the rerun IS the escape hatch, by bypassing the gate.** True for the run being rescued. **What I did not enumerate: the run stays a BLOCKER for everyone else, and the bypass removes its only exit.**
+
+Run #30098 (`31179559787`, branch `fix/issue-12383`), measured 08-08:
+
+```
+run_attempt: 2   actor=nv-slang-bot[bot]   triggering_actor=github-actions[bot]
+status=waiting (falcor-ci / ci-approvers gate)   created 08-07T12:45:43Z   age 31h+
+wait_timer: 0    current_user_can_approve: false      ⇒ no elapsed-time path AT ANY DURATION
+```
+
+⇒ **EXEMPT AS A SUBJECT, BLOCKING AS AN OBJECT.** `ci.yml:101` computes the throttle class from `github.triggering_actor` ⇒ #30098 skips the gate and its 12h ceiling. But `run_actor_login()` (`ci_priority_common.py:48-55`) **prefers `triggering_actor`**, and `is_bot()` (`:40-45`) matches any `…[bot]` suffix — so `github-actions[bot]` still classifies it `older_bot`, and 9 later dispatches across 4 branches yielded behind it. **The rescue rerun disqualified its own target from rescue while leaving it in everyone else's way.**
+
+✅ **THE PAIRED CONTROL that makes this causal rather than plausible — two attempt-2 reruns, one field apart, opposite outcomes:**
+
+| run | attempt | `actor` | `triggering_actor` | outcome |
+|---|---|---|---|---|
+| **#30105** | 2 | `nv-slang-bot[bot]` | `nv-slang-bot[bot]` | **escalated at +12h00m55s**, then `success` |
+| **#30098** | 2 | `nv-slang-bot[bot]` | `github-actions[bot]` | **exempt, waiting 31h+** |
+
+⇒ ⭐⭐⭐ **The ceiling fired TO THE MINUTE on #30105.** So "the mechanism is broken" is refuted and "this run is unreachable by it" is established — the distinction my 08-06 entry could not make, because it had no case where the mechanism *worked*. **A defect report needs the instance where the mechanism succeeds, or it indicts the design instead of the state.**
+
+⚠️ **AND THE RECOVERY PATH IS GREEN WHILE PERMANENTLY DECLINING:** `ci-retry-yielded-bot.yml` fired **16 consecutive hourly times, all `conclusion=success`**, each logging *"CI is still active (1 run(s)); not rerunning bot CI — active #30098 (waiting)"*. It waits for quiet; #30098 is what makes it not quiet. ⇒ ⭐⭐⭐ **A monitor's conclusion is a statement about the MONITOR, not about what it monitors** — correctly-declining and successfully-acting are the same green. **Alarm on the decision line, never the conclusion.** Cf. [[feedback_a_spent_one_shot_stays_pending_and_invites_a_rerun]]: a repair keyed on the wrong signal.
+
+⇒ **Narrowest code fix:** `ci.yml:101` should read the run's `actor`, not `triggering_actor`, so a rerun cannot launder a run out of its own throttle class. Human unblock: approve **or cancel** run `31179559787` — cancelling also frees the retry path, which then reruns the aged runs itself.
+
+⚠️ **RADIUS DISCIPLINE — four predicates in sequence, three wrong, each published as definitive** (`conclusion=failure` → job tally → log **verb** → log verb + **target liveness**). Final: **9 runs / 4 branches**. The near-miss worth keeping: *"Yielding behind earlier bot CI"* is **correct behaviour** when the bot ahead is progressing; 3 of 12 yields pointed at bots that had already completed `success`. ⇒ ⭐⭐⭐ **A verb names an action; the pathology is a property of the action's OBJECT — resolve the referent and check ITS state.** And ⭐⭐ **`#30098` is a `run_number`, not a PR** (`/pulls/30098` 404s); branch `fix/issue-12307` → PR #12310, so branch names carry the ISSUE number.

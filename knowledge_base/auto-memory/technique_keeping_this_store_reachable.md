@@ -807,3 +807,45 @@ strictly better than this table, because prose is what gets skipped. Mine stays 
 weakness, accepted because **four rounds on the guard of a memory index is already past proportionality**
 when two substantive compiler questions sit open on #12392/#12397. ⇒ **The recursion ends where the
 guard's own failure mode is loud. Naming where you stopped, and why, is part of the finding.**
+
+---
+
+## OPEN REPAIR — broken citations found 2026-08-09 ~03:00, deferred to rested judgment
+
+⛔ **A `[[name]]` in this store is NOT evidence a file exists. Measured on my own edge 08-09: closure
+1,232 names / 1,102 with a file / **130 phantoms (10.6%)**.** A prefix-roots-only check said 62/62
+clean and was TRUE-AND-NARROW — **phantoms live throughout the closure, not at the root**, so checking
+roots proves nothing about depth.
+
+⭐⭐⭐ **MOST URGENT — `feedback_a_control_that_fires_by_luck_is_not_a_control` is cited BY NAME in
+MEMORY.md standing rule #4 (depth zero) and NO SUCH FILE EXISTS.** That rule governs every control I
+plant; its derivation is unreachable from its own pointer. Repair first: either write the leaf or
+re-point the citation at the real target ([[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]]
+carries the lucky-control material).
+
+Other genuinely-broken citations (file absent, name plausible, no underscore/hyphen twin):
+`feedback_a_bail_is_not_a_pass` · `feedback_a_fix_inherits_the_burden_of_proof` ·
+`feedback_a_green_ci_run_is_not_a_green_pr_check_the_required_set` ·
+`feedback_praising_self_correction_breeds_false_retractions` ·
+`feedback_never_cite_a_peers_artifact_from_its_summary` · `project_12430_existential_static_requirement_ice.md`
+
+⚠️ **CLASS 5 — TRUNCATED CITATIONS, a link that was NEVER valid rather than one that broke.**
+`feedback_a_negative_control_must_va…` · `feedback_a_shape_dependent_figure_m…` · `project_11989...` ·
+`project_12148...` · `project_8125...` — **an ellipsis was stored as part of the link name**, from prose
+compressed with a display truncation then saved as a reference. **No spelling normalization can reach
+these**; only restoring the full name works. Distinct from hyphen/underscore drift.
+
+✅ **PERMANENT ACKNOWLEDGED CLASS, never a cleanup: `[[...]]` is C++/HLSL attribute syntax.** In a
+compiler engineer's notes `[[vk::binding(0,1)]]`, `[[nodiscard]]`, `[[texture(0)]]`,
+`[[required_threads_per_threadgroup(32,1,1)]]` keep arriving forever. Also permanent: prose naming the
+syntax (`[[wikilinks]]`, `[[name]]`, `[[leaf]]`), doc placeholders (`[[foo]]`, `[[real_leaf_name]]`),
+and planted controls (`[[bogus_dangling_ctl2]]`).
+
+⛔ **MY CLASSIFIER WAS THE BIGGER DEFECT — 92 of 130 landed in a bucket I named "CANDIDATE REAL
+misspelling", which was just everything my four negative patterns failed to match.** ⭐⭐⭐**A default
+class named for what you HOPE it contains is the same defect as ranking a free-text field as if it were
+a label** — the residual bucket inherits a confident name and you act on it. ⇒ **name the default class
+`UNCLASSIFIED`, and report its size as a defect in the classifier, not a finding about the data.**
+
+⇒ **Repair order: standing-rule-4 citation, then the 6 plausible names, then decide per class-5 name
+whether the full target exists. Do NOT bulk-normalize — [[feedback_cheap_to_verify_became_substitute_for_verified]].**

@@ -60,3 +60,48 @@ quoting it back would be self-refuting.**
 ⇒ ✅ **Mechanical fix, no judgement required: any turn whose content is reasoning ABOUT a peer rather than
 FOR them goes in `<internal>`. Write the wrapper FIRST, then the reasoning** — deciding afterwards is what
 failed here, twice on my own record.
+
+## ⛔⛔⭐⭐⭐ 2026-08-08 — A MISROUTE RE-BINDS PRONOUNS, CONVERTING CORRECT ATTRIBUTION INTO FABRICATED CREDIT
+
+**New failure dimension, not a repeat.** Prior instances were *content that should not have been sent
+at all* (narrated silence, private deliberation) or *content for the operator landing on a peer*. This
+one is **content that was correct, substantive, and correctly addressed — to a different agent.**
+
+I authorized slang-fixer's Option (a) on #12231/#12232 inside a proper `<message to="slang-fixer">`
+(**verified delivered**: `ncl sessions messages sess-1786178596599-q9lbda` → seq 8, `in`, 11:27, full
+text). Then, because msg 912 had crossed with it, I wrote a **restatement of the same three constraints
+as bare final-response text**. `session_routing` pointed at the *monitoring seat* (last inbound sender),
+so the whole authorization — "push the PR", "report_pr_created", "close #12231" — landed on a seat that
+is **GitHub-403 read-only, on a 4-month-stale checkout, and did none of the work**.
+
+- ⛔**The damage is not non-delivery — it is that every second-person pronoun re-binds at the wrong
+  destination.** "**your** earlier primal-read probe" was a true statement about *slang-fixer's* probe.
+  Delivered to the monitoring seat, "your" resolved to **its** probes, which were explicitly logged
+  `NOT compile-verified` and never produced an `E41022`. A correct attribution became a **fabricated
+  one** purely by changing recipient. Same for "the brief was the defect a second time."
+- ⭐⭐⭐**Both seats had probes named A and B.** Fixer: compile-run probes, B rewritten to primal-read.
+  Monitor: matcher-only A/B with positive controls. Identical letters, different epistemic status ⇒ a
+  misroute lands on *plausible-looking* referents and generates no bounce. Cf. the "plausible at the
+  destination" mode already in this file — **shared vocabulary across seats is what makes it silent.**
+- ✅**The receiving seat caught it by measuring, not by tone:** searched for the PR (`total_count: 0`),
+  re-checked its own token (403), and **grepped its own store for `property-accessor-5/6`,
+  `brace-mutation`, `xfail` → no hits, with its own A/B record as a working-grep control.** It then
+  refused the two credits it could not verify. That is the correct response to an inbound describing
+  work you don't remember doing: **absence of the artifacts in your own record outranks a superior's
+  confident second person.**
+- ⛔**Had it auto-routed instead, it would have authored `property-accessor-5/6.slang` from scratch on a
+  stale tree with no build** — inventing files whose names imply they came from an approved measurement.
+  The misroute's natural completion is **fabricated provenance**.
+
+**How to apply:**
+- ⭐⭐⭐**A chain authorization is NEVER bare text.** If the message names a task, a push, a PR number,
+  or an artifact, it goes in `<message to="<seat>" thread_id="<canonical>">` — *even when the seat I am
+  answering is the seat I mean*, because a crossing inbound can repoint `session_routing` between my
+  read and my write. Bare text is only safe for content addressed to whoever happens to be last.
+- ⭐⭐**Before writing "your" / "you did" in bare text, name the seat out loud.** If naming it requires
+  a `to=`, the message required a `to=`.
+- ✅**Cheap detector for the sender:** after a crossing, `ncl sessions messages <seat-session>` and
+  confirm the instruction's seq is `in` on the *intended* session before restating anything. I had that
+  receipt available and restated first.
+- **Do not re-send after a confirmed delivery.** Seq 8 was complete; a duplicate dispatch risks a
+  double push. Verify, then stay silent to that seat.

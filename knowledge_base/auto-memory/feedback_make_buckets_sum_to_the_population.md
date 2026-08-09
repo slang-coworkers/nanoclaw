@@ -37,7 +37,7 @@ files whose `-cuda` line uses the inert `//DISABLED_TEST` spelling.
 
 Both counts were correct. I had counted by **author intent**, they by **what the harness
 recognizes**. The disagreement *was* the finding — it located a real parser gap
-([[slang_test_silently_ignores_unrecognized_directive_spellings]] in shared learnings).
+([[slang_test_silently_ignores_unrecognized_directive_spellings]] (shared: `1785967544526-slang-test-silently-ignores-unrecognized-directive`) in shared learnings).
 
 **How to apply:** on any numeric disagreement, print the set difference before arguing about
 method. Two members named the mechanism in one step where a methodology debate would have run for

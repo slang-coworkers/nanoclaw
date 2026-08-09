@@ -88,3 +88,66 @@ They checked live bridge occupancy, got **empty output**, and were one step from
 ⇒ ⭐⭐⭐ **The actionable quantity is runners × job duration, not runner count.** `1 × 45 min` means every additional demand costs three quarters of an hour, and three simultaneous demands guarantee a >2 h wait **with nothing wrong anywhere**. A capacity diagnosis that stops at "one runner" cannot tell you whether a 176-minute queue is normal; the time constant is what makes it decidable.
 
 ⇒ **Full discriminator tree for a stalled-looking job:** `status=waiting` + non-empty `pending_deployments` ⇒ policy gate (find the reviewers, check `current_user_can_approve`). `status=queued` ⇒ capacity — then split *busy* from *absent* by consecutive handoff timestamps on that label set, since `/actions/runners` is 403.
+
+## ⛔⭐⭐⭐ 2026-08-08 — `status=waiting` HAS A SECOND, WORSE CONSEQUENCE: it counts as ACTIVE CI, so one un-approved gate freezes EVERY bot dispatch repo-wide
+
+The tree above correctly routes `waiting` ⇒ *policy gate, find the reviewers*. **That answers "why is THIS run stuck" and completely misses the blast radius.** Measured on shader-slang/slang:
+
+```
+run #30098 (id 31179559787)  status=waiting  29.7h   branch fix/issue-12383, nv-slang-bot[bot]
+  environment falcor-ci → reviewer team ci-approvers, current_user_can_approve=false
+ACTIVE_STATUSES  (extras/ci/ci_priority_common.py:29)
+  = {"queued","in_progress","waiting","requested","pending"}      ← "waiting" IS IN THE SET
+⇒ wait-for-priority.py yields every bot CI dispatch to it
+blast radius: 12 failed bot dispatches / 6 branches
+  (fix/issue-12386 ×5, fix/issue-11981 ×2, test/property-accessor-coverage-12231 ×2, 12371, 12367, 12307)
+```
+
+⇒ ⭐⭐⭐ **A run parked on a human is waiting for a HUMAN, not consuming runners — but a priority gate that treats `waiting` as "active CI" converts one un-actioned approval into a repo-wide freeze.** ⇒ **When you find a `waiting` run, the next question is never "why is it waiting" alone — it is `grep ACTIVE_STATUSES` to learn who ELSE yields to it.** The per-run diagnosis and the radius are different measurements, and **the radius is the actionable figure, not the age.**
+
+### ⭐⭐⭐ THE DEADLOCK — the escalation clock only ticks on the path the block prevents
+
+Both safety valves exist and both fail on this exact shape:
+
+```
+wait-for-priority.py     --max-yield-hours 12   ages from created_at, "fixed across reruns" (:65, ceiling :179)
+                         BUT each fresh DISPATCH is a NEW run → age resets to ~0
+                         measured on two real dispatches: 0.12h, 0.56h  (vs 12h ceiling)
+ci-retry-yielded-bot.yml would rerun the SAME run (so age accumulates)
+                         BUT refuses while anything is active: 12 fires in 2h, each
+                         "CI is still active (1 run(s)); not rerunning bot CI."
+retry-yielded-bot-ci.py  --lookback-hours 16    → #30098 at 29.7h has aged OUT of consideration
+```
+
+⇒ ⭐⭐⭐ **The anti-starvation ceiling can only accumulate on the rerun path, and the block disables the rerun path.** A timeout that cannot accumulate is not a timeout. ⇒ ⭐⭐ **Whenever you read a "we escalate after N hours" comment, ask WHICH CLOCK — `created_at` of a rerun ≠ `created_at` of a fresh trigger, and the difference decides whether the guarantee exists at all.**
+
+⭐⭐⭐ **THE ACTION-VS-REASON SPLIT, worth more than the mechanism:** the fixer had already stopped dispatching, calling further dispatches *"noise — neutral but wasteful."* Correct action, wrong reason. **Each dispatch RESETS the only timer that could free the block** ⇒ actively counterproductive. Both readings say "stop" today, and they diverge the instant someone reasons *"the runs are harmless, dispatch once more to be sure."* ⇒ ⭐⭐ **A right action resting on a wrong mechanism is an unexploded failure: record the mechanism, not just the conclusion.**
+
+⚠️ **AND THE ATTRIBUTION ERROR THAT NEARLY STOOD:** the report arrived as *"the livelock affecting my PR"* — accurate about the symptom (`jobs=40, nonskipped=3, failure`, reproduced identically on two SHAs), wrong about the cause. The branch was the **most-affected, not the cause.** ⇒ ⭐⭐⭐ **"X reported the CAUSE" is a claim needing the same independent resolution as a figure** — an observation can be sound while its attribution is inherited from whatever explanation sat nearest. Third distinct source of that shape this week.
+
+✅ **Resume path BUILT, not promised** (the standing rule this would otherwise have violated — [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]]): telling a peer *"I'll tell you when it clears"* is a gate on an external human with no trigger I own. `ncl tasks create --name ci30098-blocker-clear` (`*/20`, script `/workspace/agent/.ci30098_gate.sh`), **armed at BOTH poles before scheduling**: pointed at a completed run → `reason=BLOCKER_CLEARED`; pointed at a bogus id → quiet, **not** a false clear (so a `gh` outage cannot manufacture an all-clear). It also wakes on `ADDITIONAL_BLOCKER` if the waiting-count grows.
+
+### ⛔⭐⭐⭐ STRONGER THAN THE DEADLOCK: `wait_timer=0` means THERE IS NO CLOCK — and I had the datum on screen and missed it
+
+I derived the deadlock above ("the escalation clock only ticks on the path the block prevents") and reported it as *the ceiling cannot accumulate*. A peer then read the same `pending_deployments` payload I had already fetched and drew the conclusion I had not:
+
+```
+/actions/runs/31179559787/pending_deployments
+  wait_timer: 0        wait_timer_started_at: null
+  current_user_can_approve: false      reviewers: [Team ci-approvers]
+```
+
+⇒ **`wait_timer=0` on a required-reviewers gate means no elapsed-time path exists AT ANY DURATION.** My framing implied a slow clock; the truth is no clock. ⭐⭐ **"It will age out eventually" was never on the table**, and the two findings compose into the reportable form: *no mechanism in the system can clear this without a human*.
+
+⛔ **THE FAILURE THAT MATTERS IS NOT THE MISSING CONCLUSION — IT IS THAT I FETCHED THE FIELD AND READ PAST IT.** `wait_timer: 0` was in my own tool output roughly an hour before the peer named it. ⇒ ⭐⭐⭐ **A datum you fetched but did not interpret is indistinguishable, in your later reports, from one you never had** — and it is worse than a missing measurement because it *feels* covered. Same shape as [[feedback_a_pending_tell_does_not_catch_the_error_it_was_designed_for]]: possession is not use. ✅ **Guard: when a payload is fetched to answer question A, name what its OTHER fields say before closing — especially any field whose value is `0`/`null`/empty, which reads as "nothing here" when it is often the whole answer.**
+
+### ⚠️ AND THE RADIUS FIGURE ITSELF SPLIT — a recency window UNDER-counted a live blast radius
+
+The peer reported *"all 5 known yields are branch `fix/issue-12386`* ⇒ one fix looping, not five problems." I measured 12 yields / 6 branches. Resolved by checking the `wait-for-human-priority` job **individually per run** rather than inferring from `conclusion`:
+
+```
+fix/issue-12386 ×5 · fix/issue-11981 ×2 · test/property-accessor-coverage-12231 ×2
+fix/issue-12367 ×1 · fix/issue-12371 ×1 · fix/issue-12307 ×1        (all 12: gate job = failure)
+```
+
+Their three newest ids were all `12386` — **the branch that dispatches most often dominates a recent window**, and the other five branches' yields (oldest `31181848925`, 08-07) fell outside it. ⇒ ⭐⭐⭐ **Third instance in one day of recency-ordering silently defining a population — and the FIRST that produced an UNDER-count of a live problem rather than a false all-clear.** The consequence was a wrong next-action: *"watch for a second branch to appear"* was already satisfied five times over, so that trigger could never fire on new information. ⇒ ⭐⭐ **A trigger specified against a windowed baseline is pre-satisfied and therefore dead** — check whether your watch condition is already true at the moment you set it.

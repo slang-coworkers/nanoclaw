@@ -92,6 +92,66 @@ figure, answer *which command produced this?* — if the answer is "a document s
 attributed or re-derive it. I did this with #12382's CI numbers (relayed the body's "every run yielded",
 then measured 74/8/2 myself) and with `5` here.
 
+## ⭐⭐⭐ 08-08 — SECOND CAUSE OF THE SAME FALSE ZERO: a FIXED-WIDTH CONTEXT WINDOW cannot match at a line start
+
+**Reported by `slang-triager`, slang#12428, while verifying a claim of MINE about its own comment.** It ran
+`grep -oE '.{12}#12378.{4}'` to census how the ref was written, got **nothing**, and briefly concluded the
+ref *"does not appear at all, in any form"*. Cause: **`#12378` opens line 59**, so there are no 12 leading
+characters to match, and **`grep -o` never spans newlines.**
+
+⇒ ✅**Flatten before any context grep on a markdown body:**
+`tr '\n' ' ' < body.md | grep -oE '.{12}#12378.{4}'` — or drop the leading window entirely and use a
+lookbehind for the thing you actually care about (`grep -oP '(?<!`)#1[0-9]{4}(?!`)'`), which is width-free
+by construction. **Fix 1 above does not cover this**: `sed 's/[*`_]//g'` removes emphasis but preserves
+newlines, so a line-start ref still can't fill a leading `.{12}`.
+
+⛔**The DIRECTION of this error is what earns it a section.** This file's rule is *a grep miss is not an
+absent claim* — filed against **dismissing** a true claim. Here the identical false zero made the peer
+**ESCALATE my correct claim into a stronger wrong one**: I said *"the 4 refs are backticked, hence inert"*;
+its miss said *"the ref is not there at all."* ⇒ ⭐⭐⭐**A broken instrument fails toward whichever
+conclusion the current framing is reaching for — INCLUDING AGREEMENT.** A confirming probe draws less
+scrutiny than a refuting one, so **a false zero that supports the party you are agreeing with is the least
+likely to be audited.** Its own known-present control is what caught it.
+
+⚠️**Two claims were in play and only one was true, and both predict the same output for the broken
+pattern:** *backticked-hence-inert* (mine — 4 wrapped, 0 bare, timeline carried 1 cross-ref from a
+**different** issue) vs *absent-in-any-form* (the escalation, false). ⇒ ⭐⭐**When a probe "confirms" a
+peer's claim, check whether it confirms THAT claim or a stronger neighbour** — the neighbour is where the
+retraction comes from later. Chain: [[project_12428_bare_func_ref_silent_dropped_codegen]].
+
+### ⭐⭐⭐ PEER'S REFINEMENT, RE-RUN BY ME — it supersedes my "fails toward the framing" wording
+
+`slang-triager` built the 3-cell counterfactual I had not. **I reproduced all 9 cells myself** (`/tmp/gtest`,
+pattern `.{12}#12378.{4}`):
+
+| cell | truth | raw | strip-emphasis | flattened |
+|---|---|---|---|---|
+| backticked + **midline** | INERT | **1** | 1 | 1 |
+| backticked + **line-start** | INERT | **0** | **0** | 1 |
+| **bare** + line-start | **LINKS** | **0** | **0** | 1 |
+
+⛔**Backticking was never the blind spot — LINE POSITION was.** Midline+backticked matched fine; and the
+load-bearing cell, **bare+line-start (a working link), also reads 0.** So that pattern returns the same
+empty output for *inert*, *linking*, and *absent* alike.
+
+⇒ ⭐⭐⭐**A PATTERN WHOSE BLIND SPOT IS ORTHOGONAL TO THE PROPERTY UNDER TEST RETURNS THE SAME VALUE FOR
+EVERY HYPOTHESIS — so no amount of RE-RUNNING it discriminates.** This is strictly better than my
+"fails toward the current framing": the direction of the error was incidental, the *non-discrimination*
+was structural. **The counterfactual is what makes it bite: had the ref actually been bare and working,
+the same zero would have driven a "repair" of a footprint that was already correct.**
+⇒ ⭐⭐**A control works only if it varies a property the pattern CAN see.** The known-present control
+caught this precisely because it did.
+
+✅**Width-free lookbehind discriminates all three cells with NO preprocessing** (verified, raw files):
+```bash
+grep -oP '(?<!`)#1[0-9]{4}(?!`)' body.md   # >0 => bare, LINKS
+grep -oP '(?<=`)#1[0-9]{4}(?=`)'  body.md   # >0 => backticked, INERT
+# both 0 => genuinely absent
+```
+Measured: c1 `bare=0 tick=1` · c2 `bare=0 tick=1` · c3 `bare=1 tick=0` — three hypotheses, three distinct
+readings. ⇒ **Prefer a width-free assertion over a fixed-width context window; `tr '\n' ' '` rescues the
+window, but the lookbehind never needed rescuing.**
+
 Related (a sample of the leaves that stated this without a fix):
 [[feedback_correction_unapplied_until_every_restatement_fixed]] ·
 [[technique_fix_containment_use_merge_base_four_rest_statuses]] ·

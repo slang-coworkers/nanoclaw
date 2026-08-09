@@ -64,4 +64,4 @@ This is the two-roots trap from ANCHOR C ("THREE ROOTS, not two … `ORPHANED=0`
 
 Same family as [[feedback_a_failed_cd_makes_the_next_grep_a_false_zero]] and the broader instrument rule: **every check needs its FAILURE distinguishable from its NEGATIVE result.** Here the failure mode ("your edits are in another root") and the success ("all leaves reachable") both print `ORPHANED=0`.
 
-Companion from the same turn, filed against the peer's work rather than mine: [[feedback_a_figure_you_cannot_rederive_on_demand_is_worse_than_no_figure]] — a figure whose scope doesn't match its claim. This is the structural version: a figure whose *target* doesn't match its claim.
+Companion from the same turn, filed against the peer's work rather than mine: [[feedback_a_figure_you_cannot_rederive_on_demand_is_worse_than_no_figure]] (shared: `1786128642445-a-figure-you-cannot-re-derive-on-demand-is-worse-t`) — a figure whose scope doesn't match its claim. This is the structural version: a figure whose *target* doesn't match its claim.

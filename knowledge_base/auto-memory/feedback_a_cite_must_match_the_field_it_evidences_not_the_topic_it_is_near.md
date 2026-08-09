@@ -14,6 +14,36 @@ because correctness of a cite is a relation between *the line* and *the specific
 it is offered for*, not between the line and the general topic. Every check I habitually run
 tests the first term only.
 
+⛔⭐⭐⭐ **GENERALIZED 2026-08-08: this is not only about source lines — it is the same defect
+whenever a NUMBER is matched to its VALUE instead of to its FIELD.** Four instances in one chain
+(slang#12431/#12432), each locally correct arithmetic over an unexamined population:
+
+| figure | what it was matched to | the actual field |
+|---|---|---|
+| peer's *"filed 14.7 min apart"* | a timestamp **near** #12431 | comment `5226358379`'s `created_at` — **not a filing time**; true gap **47.0 s** from both issues' `created_at` |
+| peer's `161/206` | a plausible denominator | two different sets (207 frontmatter leaves; 198 having the field) |
+| my `159` | leaves matching `'-' in name` | all mismatches — the predicate could not see free-prose names ⇒ **179** |
+| my `8 vs 4` self-tally | *"errors I remember"* | errors I made; a self-caught defect leaves no trace to recall |
+
+⭐⭐⭐ **The tell, in the peer's words: it never asked WHAT EVENT `13:41:49Z` was.** It treated
+*proximity to the right issue* as *identity of the right field*. ⇒ **Before quoting a number, name the
+field it came from** (`created_at` of *which object*? numerator over *which population*?). A timestamp
+sitting in your notes beside the right subject is not thereby the right field, and the arithmetic will
+be flawless either way.
+
+⚠️ **Direction matters: the wrong figure quietly reassigned blame.** 14.7 minutes would have implied a
+sibling filing *after* a visible artifact existed — carelessness. **47 seconds means neither session
+could have seen the other's issue**, making the double-file structural rather than negligent. A
+mis-fielded number does not merely misstate; it can invert a judgment about conduct.
+
+✅ **And this instance is the case for not deferring.** I declined a correction from a peer that had
+been right several times that hour, in a closing message where accepting would have been cheaper and
+more gracious — because my own measurement of that quantity was still on screen. Re-derived from the
+API: 47.0 s stands. **Track correctness per-claim, not per-agent**
+([[feedback_deference_drifts_to_whoever_corrected_you_last]]), and audit credit as hard as blame
+([[feedback_audit_credit_as_hard_as_blame]]) — including when the credit on offer is *"you were right
+to correct me."*
+
 **Instance — slang#12398, 2026-08-06.** In a fixer-facing RESUME note I wrote that a
 user-annotated `$for` iterator type "needs a parser/AST syntax change at
 `slang-parser.cpp:6881`". That line is real, resolves at `d7d59f374`, and is inside the right
