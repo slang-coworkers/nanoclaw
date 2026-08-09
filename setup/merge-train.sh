@@ -131,10 +131,21 @@ if [ "$merged_any" = "1" ]; then
   # (CLAUDE.md), then build + rebuild. If ANY step fails the merge produced a
   # broken tree — roll it back (see rollback_and_fail) rather than leave a broken
   # commit + false "already merged" success on the next run.
-  if ! (pnpm install --frozen-lockfile && pnpm run build && npm run rebuild:claude); then
+  #
+  # check:runtime-deps sits between install and build BECAUSE OF THIS FUNCTION.
+  # The canonicalization above overwrites the entire owned set from nv-main, so a
+  # dependency a leaf branch added to the root manifest is DISCARDED here — and
+  # install still succeeds, build still succeeds, and the consumer degrades to
+  # "metric unavailable" in production with nothing going red. That is how
+  # ccusage was lost (#1122/#1150). A frozen install cannot see it; only asking
+  # whether the specifiers our code resolves still resolve can.
+  if ! (pnpm install --frozen-lockfile \
+        && pnpm run check:runtime-deps \
+        && pnpm run build \
+        && npm run rebuild:claude); then
     rollback_and_fail
   fi
-  echo "merge-train: done — merged, installed, built, and rebuilt CLAUDE.md"
+  echo "merge-train: done — merged, installed, verified, built, and rebuilt CLAUDE.md"
 else
   echo "merge-train: nothing to merge (all branches already present)"
 fi

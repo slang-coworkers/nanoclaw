@@ -23,6 +23,9 @@ importers:
       better-sqlite3:
         specifier: 11.10.0
         version: 11.10.0
+      ccusage:
+        specifier: 20.0.19
+        version: 20.0.19
       chat:
         specifier: 4.29.0
         version: 4.29.0(zod@3.25.76)
@@ -86,6 +89,36 @@ importers:
         version: 4.1.4(@types/node@22.19.17)(vite@8.0.8(@types/node@22.19.17)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.0))
 
 packages:
+
+  '@ccusage/ccusage-darwin-arm64@20.0.19':
+    resolution: {integrity: sha512-8b69h4tuMH1KNW+EYjFRJWpbWHXbMUtFu8cOCyFOQsR6lGxq37g0kzEGHSqG+iZEoUTHaabR5CE7ZHLhW9Q64A==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@ccusage/ccusage-darwin-x64@20.0.19':
+    resolution: {integrity: sha512-YTsqIfsPo3qR9OMrwJtnJoq/fil7Jk5mzXV8k0Iejpiq7zysw4FfkjCeHr0UVJG8ihdqtE18o+xIk99p3v+5Ew==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@ccusage/ccusage-linux-arm64@20.0.19':
+    resolution: {integrity: sha512-4e+7hV3WrEpM7hQPQkh4/zNLTUSqzpd+vSSWl2y659+xQ+JCDLWqE6gzvXLMOAT/LTtcFtlrduIWDZt8VPceqQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@ccusage/ccusage-linux-x64@20.0.19':
+    resolution: {integrity: sha512-VPbB6onrwOGojTKutFzeahttb98ZgmdsiQpOr/BJet1i3QdrmUGXGmJSt591xXrvVOVVgsC7/5wBELdWM9/bKA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@ccusage/ccusage-win32-arm64@20.0.19':
+    resolution: {integrity: sha512-oOv4mZkapxzvQeAMI+jqfTOv/zN2x2AYPAD+F4AnYHQQL4n898axhH9uPd2Ls0U5CDlvfh1zDTyNILz8X9M15A==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@ccusage/ccusage-win32-x64@20.0.19':
+    resolution: {integrity: sha512-KtDlTk07uv8cu6TlizB/RptcDiQePE1YSQe6uNNZTUnwVy9zq5R3fvUUFr9/d3FYHwimSGduoHXRS8Ta+Kmkrw==}
+    cpu: [x64]
+    os: [win32]
 
   '@chat-adapter/shared@4.29.0':
     resolution: {integrity: sha512-ARqTDoHJHKN9rpytbFPJbNmqqx3fOg5xwsTZdlingQPAssOSeHDBdqrFJkgDhyCRGbmDtG09cuS0FkVzeoh2qg==}
@@ -733,6 +766,10 @@ packages:
 
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
+
+  ccusage@20.0.19:
+    resolution: {integrity: sha512-vyNIyctcvTKFbrsU/WJuWiII3CVw8WopU/0NcR+lKmRbh62wm0jccmkWrFCG6j7R8agc8mIBz5+YlmGbXH1RnQ==}
+    hasBin: true
 
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
@@ -2096,6 +2133,24 @@ packages:
 
 snapshots:
 
+  '@ccusage/ccusage-darwin-arm64@20.0.19':
+    optional: true
+
+  '@ccusage/ccusage-darwin-x64@20.0.19':
+    optional: true
+
+  '@ccusage/ccusage-linux-arm64@20.0.19':
+    optional: true
+
+  '@ccusage/ccusage-linux-x64@20.0.19':
+    optional: true
+
+  '@ccusage/ccusage-win32-arm64@20.0.19':
+    optional: true
+
+  '@ccusage/ccusage-win32-x64@20.0.19':
+    optional: true
+
   '@chat-adapter/shared@4.29.0(zod@3.25.76)':
     dependencies:
       chat: 4.29.0(zod@3.25.76)
@@ -2700,6 +2755,15 @@ snapshots:
   callsites@3.1.0: {}
 
   ccount@2.0.1: {}
+
+  ccusage@20.0.19:
+    optionalDependencies:
+      '@ccusage/ccusage-darwin-arm64': 20.0.19
+      '@ccusage/ccusage-darwin-x64': 20.0.19
+      '@ccusage/ccusage-linux-arm64': 20.0.19
+      '@ccusage/ccusage-linux-x64': 20.0.19
+      '@ccusage/ccusage-win32-arm64': 20.0.19
+      '@ccusage/ccusage-win32-x64': 20.0.19
 
   chai@6.2.2: {}
 
