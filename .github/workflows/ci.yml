@@ -124,6 +124,23 @@ jobs:
         run: bash scripts/check-release-age-policy.sh
 
       - run: pnpm install --frozen-lockfile
+
+      # A green frozen install proves manifest and lockfile AGREE. It does not
+      # prove the deep specifiers our code resolves are reachable — and the two
+      # composition paths fail in opposite directions here:
+      #
+      #   ci.yml canonicalizes only CONFLICTED files, so a leaf's root-manifest
+      #   addition can auto-merge in while the conflicting lockfile is reset to
+      #   nv-main's — that is loud (ERR_PNPM_OUTDATED_LOCKFILE, PR #1136).
+      #
+      #   setup/merge-train.sh canonicalizes the ENTIRE owned set, so the same
+      #   addition is discarded outright. Install stays green, deploy stays
+      #   green, and the dashboard's cost panel reports "unavailable" forever.
+      #
+      # Only a resolution assertion catches the silent one.
+      - name: Assert runtime specifiers resolve in the composed tree
+        run: pnpm run check:runtime-deps
+
       - name: Install agent-runner deps (Bun)
         working-directory: container/agent-runner
         run: bun install --frozen-lockfile
