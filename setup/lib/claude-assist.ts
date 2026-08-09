@@ -211,6 +211,69 @@ export function removeRecordedFiles(projectRoot: string, paths: string[]): void 
   }
 }
 
+/**
+ * Is `maybeAncestor` reachable from `descendant`?
+ *
+ * Exit status is the whole answer: 0 yes, 1 no, anything else means git could
+ * not tell us (a ref that does not exist, a broken repo). An unknown answer must
+ * read as NO — this gates whether a composition is reported successful, and
+ * "could not verify" is not "verified".
+ */
+export function isAncestor(projectRoot: string, maybeAncestor: string, descendant: string): boolean {
+  const r = spawnSync('git', ['merge-base', '--is-ancestor', maybeAncestor, descendant], {
+    cwd: projectRoot,
+    stdio: 'ignore',
+  });
+  return r.status === 0;
+}
+
+/** Everything observed about the tree after the assist ran. */
+export interface CompositionFacts {
+  built: boolean;
+  /** `git rev-parse --abbrev-ref HEAD` — the literal "HEAD" when detached. */
+  branchNow: string;
+  branchBefore: string;
+  headBefore: string;
+  headNow: string;
+  /** origin/<branch> is reachable from HEAD. */
+  overlayLanded: boolean;
+  /** headBefore is reachable from headNow. */
+  descendsFromStart: boolean;
+  residueCount: number;
+}
+
+export type CompositionFailure =
+  | 'build-failed'
+  | 'uncommitted-residue'
+  | 'branch-switched'
+  | 'detached-head'
+  | 'overlay-not-in-history'
+  | 'history-rewritten'
+  | 'no-new-commit';
+
+/**
+ * Did the assist actually do what the caller is about to rely on?
+ *
+ * Extracted as a pure function ON PURPOSE. The predicate used to be an inline
+ * `built && advanced && residue.length === 0`, which is untestable without
+ * driving a real Claude session — so the cases that mattered were never tested,
+ * and two of them were wrong. Returning the SPECIFIC failure also stops a branch
+ * switch from being reported with the same message as a merge conflict.
+ *
+ * Order matters: report the most fundamental problem first, since a rewritten
+ * history also fails the "descends from start" check and would otherwise mask it.
+ */
+export function evaluateComposition(f: CompositionFacts): CompositionFailure | null {
+  if (f.residueCount > 0) return 'uncommitted-residue';
+  if (f.branchNow === 'HEAD') return 'detached-head';
+  if (f.branchNow !== f.branchBefore) return 'branch-switched';
+  if (f.headNow === f.headBefore) return 'no-new-commit';
+  if (!f.descendsFromStart) return 'history-rewritten';
+  if (!f.overlayLanded) return 'overlay-not-in-history';
+  if (!f.built) return 'build-failed';
+  return null;
+}
+
 function formatResidue(entries: StatusEntry[]): string {
   const shown = entries.slice(0, 10).map((e) => `  ${e.code} ${e.path}`);
   if (entries.length > shown.length) shown.push(`  … and ${entries.length - shown.length} more`);
@@ -259,15 +322,58 @@ export async function composeMergeViaClaude(
 
   // Source of truth: a committed merge that actually builds. Don't trust Claude's
   // text — verify the tree.
+  //
+  // "HEAD moved and it builds" is NOT enough, and that was the bug. An unrelated
+  // or empty commit moves HEAD. So does switching to another branch and
+  // committing there. Both used to be reported as a successful composition of
+  // `branch`, and the caller then read a tree that never received the overlay.
+  // So verify the three things the caller actually relies on:
+  //
+  //   1. we are still on the branch we started on (not detached, not switched)
+  //   2. the requested overlay is genuinely in this history
+  //   3. it was built ON TOP of where we started, rather than by resetting away
+  //
+  // Ancestry alone is not sufficient either — `origin/<branch>` can be an
+  // ancestor while unrelated commits also landed — so (3) pins the base and the
+  // caller gets the exact range in the log.
   const built =
     spawnSync('pnpm', ['run', 'build'], { cwd: projectRoot, stdio: 'ignore' }).status === 0;
-  const advanced = rev('rev-parse HEAD') !== startHead;
+  const head = rev('rev-parse HEAD');
+  const branchNow = rev('rev-parse --abbrev-ref HEAD');
   const residue = worktreeResidue(projectRoot);
 
-  if (built && advanced && residue.length === 0) {
-    p.log.success(`Claude composed ${branch} and the tree builds.`);
+  const failure = evaluateComposition({
+    built,
+    branchNow,
+    branchBefore: currentBranch,
+    headBefore: startHead,
+    headNow: head,
+    overlayLanded: isAncestor(projectRoot, `origin/${branch}`, head),
+    descendsFromStart: isAncestor(projectRoot, startHead, head),
+    residueCount: residue.length,
+  });
+
+  if (failure === null) {
+    const landed = rev(`rev-list --count ${startHead}..HEAD`);
+    p.log.success(
+      `Claude composed ${branch} and the tree builds ` +
+        `(${landed} commit(s) on ${currentBranch}, ${startHead.slice(0, 9)}..${head.slice(0, 9)}).`,
+    );
     return true;
   }
+
+  // Say WHICH invariant failed. "couldn't compose" with no reason is how a
+  // branch switch looked identical to a merge conflict.
+  const EXPLAIN: Record<CompositionFailure, string> = {
+    'uncommitted-residue': '', // reported in detail below, with the file list
+    'detached-head': `Claude left the repo on a detached HEAD instead of '${currentBranch}'.`,
+    'branch-switched': `Claude ended on '${branchNow}' instead of '${currentBranch}' — the composition did not land where the caller will read it.`,
+    'no-new-commit': 'Nothing was committed — the overlay was not composed.',
+    'history-rewritten': `HEAD is no longer a descendant of ${startHead.slice(0, 9)} — history was reset or rewritten rather than merged.`,
+    'overlay-not-in-history': `The tree builds, but origin/${branch} is not in HEAD's history — whatever was committed, it was not this overlay.`,
+    'build-failed': `The composed tree does not build.`,
+  };
+  if (EXPLAIN[failure]) p.log.error(`${EXPLAIN[failure]} Treating ${branch} as not composed.`);
 
   if (residue.length > 0) {
     // The build passing does not redeem this: a green build over uncommitted
@@ -280,6 +386,27 @@ export async function composeMergeViaClaude(
   }
 
   spawnSync('git', ['merge', '--abort'], { cwd: projectRoot, stdio: 'ignore' });
+  // Get back onto the branch we started on BEFORE resetting. `reset --hard`
+  // moves whatever ref is currently checked out: if Claude switched branches (or
+  // detached), the old code reset the WRONG branch to our start commit and left
+  // the developer standing on it — destroying an unrelated branch's history
+  // while reporting a tidy rollback.
+  if (rev('rev-parse --abbrev-ref HEAD') !== currentBranch) {
+    const back = spawnSync('git', ['checkout', '--force', currentBranch], {
+      cwd: projectRoot,
+      stdio: 'ignore',
+    });
+    if (back.status !== 0) {
+      // Refuse to reset from an unknown ref. Leaving the tree visibly wrong beats
+      // silently moving a branch we did not intend to touch.
+      p.log.error(
+        `Rollback stopped: could not return to '${currentBranch}' (now on ` +
+          `'${rev('rev-parse --abbrev-ref HEAD')}'). Not resetting — resolve this by hand; ` +
+          `the pre-assist commit was ${startHead}.`,
+      );
+      return false;
+    }
+  }
   spawnSync('git', ['reset', '--hard', startHead], { cwd: projectRoot, stdio: 'ignore' });
   // `reset --hard` restores tracked files and leaves untracked ones exactly where
   // they are; the pre-flight check above guarantees every untracked path here

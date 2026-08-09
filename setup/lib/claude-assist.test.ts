@@ -19,7 +19,13 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { removeRecordedFiles, worktreeResidue } from './claude-assist.js';
+import {
+  evaluateComposition,
+  isAncestor,
+  removeRecordedFiles,
+  worktreeResidue,
+  type CompositionFacts,
+} from './claude-assist.js';
 
 const ENV = {
   ...process.env,
@@ -198,6 +204,88 @@ describe('removeRecordedFiles', () => {
   it('tolerates a path that is already gone', () => {
     withRepo((dir) => {
       expect(() => removeRecordedFiles(dir, ['never-existed.ts'])).not.toThrow();
+    });
+  });
+});
+
+describe('evaluateComposition', () => {
+  const OK: CompositionFacts = {
+    built: true,
+    branchNow: 'nv-coworkers',
+    branchBefore: 'nv-coworkers',
+    headBefore: 'aaa',
+    headNow: 'bbb',
+    overlayLanded: true,
+    descendsFromStart: true,
+    residueCount: 0,
+  };
+
+  it('accepts a real composition', () => {
+    expect(evaluateComposition(OK)).toBeNull();
+  });
+
+  // The two defects. Both of these used to return SUCCESS: the old predicate was
+  // `built && HEAD !== startHead && residue.length === 0`, and each of these
+  // satisfies all three while the requested overlay is nowhere in the tree.
+  it('rejects an unrelated commit that never brought the overlay in', () => {
+    expect(evaluateComposition({ ...OK, overlayLanded: false })).toBe('overlay-not-in-history');
+  });
+
+  it('rejects a composition that landed on a different branch', () => {
+    expect(evaluateComposition({ ...OK, branchNow: 'some-other-branch' })).toBe('branch-switched');
+  });
+
+  it('rejects a detached HEAD rather than reading it as a branch name', () => {
+    // `git rev-parse --abbrev-ref HEAD` prints the literal "HEAD" when detached,
+    // so a naive string compare against a branch called HEAD would pass.
+    expect(evaluateComposition({ ...OK, branchNow: 'HEAD', branchBefore: 'HEAD' })).toBe('detached-head');
+  });
+
+  it('rejects a reset/rewrite that dropped the starting commit', () => {
+    expect(evaluateComposition({ ...OK, descendsFromStart: false })).toBe('history-rewritten');
+  });
+
+  it('rejects a run that committed nothing', () => {
+    expect(evaluateComposition({ ...OK, headNow: OK.headBefore })).toBe('no-new-commit');
+  });
+
+  it('rejects a tree that does not build', () => {
+    expect(evaluateComposition({ ...OK, built: false })).toBe('build-failed');
+  });
+
+  it('reports uncommitted residue ahead of everything else', () => {
+    // Residue is the one failure whose message carries a file list, and a green
+    // build over uncommitted files is exactly how unreviewed output leaked
+    // through before. It outranks the rest.
+    expect(evaluateComposition({ ...OK, residueCount: 3, built: false })).toBe('uncommitted-residue');
+  });
+
+  it('reports a rewritten history rather than blaming the overlay', () => {
+    // A reset also makes the overlay unreachable; reporting "overlay missing"
+    // would send someone to re-run the merge instead of looking at the reflog.
+    expect(evaluateComposition({ ...OK, descendsFromStart: false, overlayLanded: false })).toBe('history-rewritten');
+  });
+});
+
+describe('isAncestor', () => {
+  it('is true for a real ancestor and false for an unrelated commit', () => {
+    withRepo((dir) => {
+      const base = git(dir, 'rev-parse', 'HEAD').trim();
+      fs.writeFileSync(path.join(dir, 'next.ts'), 'export const b = 2;\n');
+      git(dir, 'add', '-A');
+      git(dir, 'commit', '-qm', 'next');
+      const head = git(dir, 'rev-parse', 'HEAD').trim();
+      expect(isAncestor(dir, base, head)).toBe(true);
+      expect(isAncestor(dir, head, base)).toBe(false);
+    });
+  });
+
+  it('is false — never true — when the ref does not exist', () => {
+    // "Could not verify" must read as NOT verified: this gates whether a
+    // composition is called successful.
+    withRepo((dir) => {
+      const head = git(dir, 'rev-parse', 'HEAD').trim();
+      expect(isAncestor(dir, 'origin/does-not-exist', head)).toBe(false);
     });
   });
 });
