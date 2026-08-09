@@ -56,20 +56,87 @@ function packageNameOf(specifier) {
 }
 
 /**
- * Distinguish the two failure modes, because they have different fixes and the
- * wrong diagnosis sends someone to the wrong branch:
+ * Is the package on disk anywhere Node would look, walking node_modules dirs up
+ * from the resolution root? Deliberately a LAST RESORT, not the primary test —
+ * see classify().
+ */
+function foundOnDisk(pkg) {
+  const exists = (p) => {
+    try {
+      // realpathSync, because pnpm LINKS direct deps into the root node_modules
+      // and a dangling link must not read as "present".
+      fs.statSync(fs.realpathSync(p));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // pnpm encodes a scoped name in the virtual store by replacing `/` with `+`:
+  // `@scope/pkg` lives at `.pnpm/@scope+pkg@<version>/node_modules/@scope/pkg`.
+  const storePrefix = `${pkg.replace('/', '+')}@`;
+
+  let dir = repoRoot;
+  for (;;) {
+    const nm = path.join(dir, 'node_modules');
+
+    // Hoisted layouts (npm, yarn, and pnpm's DIRECT dependency links).
+    if (exists(path.join(nm, pkg, 'package.json'))) return true;
+
+    // pnpm's virtual store. A transitive dependency is NEVER linked at the root
+    // under isolated node_modules — it only exists here. Checking just the line
+    // above is how the first version of this function reported a perfectly
+    // installed transitive package as "not installed".
+    try {
+      for (const entry of fs.readdirSync(path.join(nm, '.pnpm'))) {
+        if (!entry.startsWith(storePrefix)) continue;
+        if (exists(path.join(nm, '.pnpm', entry, 'node_modules', pkg, 'package.json'))) return true;
+      }
+    } catch {
+      // no .pnpm store at this level
+    }
+
+    const parent = path.dirname(dir);
+    if (parent === dir) return false;
+    dir = parent;
+  }
+}
+
+/**
+ * Three outcomes, because they have three different fixes and the wrong
+ * diagnosis sends someone to the wrong branch entirely.
  *
- *   MISSING  — the package is not installed at all. The manifest/lock is wrong,
- *              and the fix belongs on the branch that OWNS package.json (nv-main).
- *              A leaf branch adding a root dependency does not survive composition.
- *   SUBPATH  — the package is installed but this entry point is not reachable
- *              (exports map, renamed file, layout change). The fix is this file
- *              or the calling code, not the manifest.
+ *   MISSING     — not resolvable and not on disk. The manifest/lock is wrong and
+ *                 the fix belongs on the branch that OWNS package.json (nv-main);
+ *                 a leaf branch adding a root dependency does not survive
+ *                 composition.
+ *   UNREACHABLE — on disk, but the package itself does not resolve from our root.
+ *                 Under pnpm's isolated layout only DIRECT dependencies are
+ *                 linked into the root node_modules, so this is the signature of
+ *                 relying on something transitive. Declare it directly.
+ *   SUBPATH     — the package resolves; this entry point does not. An exports map
+ *                 or a moved file. Fix the specifier or the caller — the manifest
+ *                 and lockfile are innocent.
+ *
+ * The package probe uses `paths: [repoRoot]`, the SAME resolution root as the
+ * real check above. An earlier version probed the filesystem at a hardcoded
+ * node_modules path, which disagreed with the resolver for scoped packages,
+ * dangling links, and anything not hoisted — i.e. it could confidently print the
+ * wrong instruction.
  */
 function classify(specifier) {
   const pkg = packageNameOf(specifier);
-  const installed = fs.existsSync(path.join(repoRoot, 'node_modules', pkg));
-  return installed ? 'SUBPATH' : 'MISSING';
+  // `./package.json` is exported by most packages; a bare specifier covers those
+  // that block it but declare a main/exports entry. Either proves reachability.
+  for (const probe of [`${pkg}/package.json`, pkg]) {
+    try {
+      require.resolve(probe, { paths: [repoRoot] });
+      return 'SUBPATH';
+    } catch {
+      // try the next probe
+    }
+  }
+  return foundOnDisk(pkg) ? 'UNREACHABLE' : 'MISSING';
 }
 
 let failed = 0;
@@ -92,12 +159,19 @@ for (const { specifier, why } of REQUIRED) {
           `             lock entries. Adding it on a leaf branch does not survive\n` +
           `             composition: merge-train canonicalizes the whole owned set.`,
       );
+    } else if (kind === 'UNREACHABLE') {
+      console.error(
+        `  diagnosis: UNDECLARED TRANSITIVE — '${pkg}' exists on disk but does not\n` +
+          `             resolve from the repo root. pnpm links only DIRECT dependencies\n` +
+          `             into the root node_modules, so this code is leaning on something\n` +
+          `             it never declared. Add '${pkg}' to package.json on nv-main.`,
+      );
     } else {
       console.error(
-        `  diagnosis: UNEXPORTED SUBPATH — '${pkg}' IS installed, but '${specifier}'\n` +
-          `             is not reachable. Likely an exports map or a moved entry point\n` +
-          `             in a version bump. Fix the specifier or the calling code; the\n` +
-          `             manifest and lockfile are not the problem.`,
+        `  diagnosis: UNEXPORTED SUBPATH — '${pkg}' resolves, but '${specifier}' does\n` +
+          `             not. Likely an exports map or a moved entry point in a version\n` +
+          `             bump. Fix the specifier or the calling code; the manifest and\n` +
+          `             lockfile are not the problem.`,
       );
     }
   }
