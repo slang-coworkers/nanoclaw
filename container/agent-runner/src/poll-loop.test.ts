@@ -1258,7 +1258,18 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
     expect(readState().critique_gate_bypass_consumed_grant_id).toBe('appr-1');
     expect(readState().critique_gate_bypass_consumed_at).toBeGreaterThan(0);
     // The release is recorded where the host can see it (container is --rm'd).
-    expect(readEsc().failed_open_at).toBeTruthy();
+    // No escalation file exists on this path, and the gate must not invent one
+    // with `requested_at: 0` — that fabrication is read by the host as a
+    // brand-new escalation and carded, while the real release goes unrecorded.
+    // The append-only journal is the sink that survives the file being gone.
+    expect(fs.existsSync(path.join(tmp, 'critique-escalation.json'))).toBe(false);
+    const journal = fs
+      .readFileSync(path.join(tmp, 'critique-releases.jsonl'), 'utf-8')
+      .split('\n')
+      .filter((l) => l.trim())
+      .map((l) => JSON.parse(l) as Record<string, unknown>);
+    expect(journal[0].grant_id).toBe('appr-1');
+    expect(journal[0].why).toBe('admin bypass consumed (one-shot)');
     // A second delivery is denied — it is not a standing grant.
     expect(gate().blocked).toBe(true);
   });

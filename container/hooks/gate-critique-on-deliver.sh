@@ -213,24 +213,71 @@ if [ -n "$DENIAL_REASON" ]; then
   NOW_EPOCH=$(date +%s)
   NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-  # Record an enforcement release into the escalation file, which is on the
-  # session bind-mount and therefore visible to the host. Anything that opens
-  # the gate must leave a durable trace; stderr is not one.
+  RELEASE_JOURNAL="${CRITIQUE_RELEASE_JOURNAL:-$(dirname "$ESC_FILE")/critique-releases.jsonl}"
+
+  # Record an enforcement release where the HOST can see it. Everything here is
+  # on the session bind-mount; container stderr is not a durable trace, because
+  # containers run --rm.
+  #
+  # TWO SINKS, ONE ID:
+  #
+  #   critique-releases.jsonl   append-only, always written. The escalation
+  #                             file can legitimately be GONE by the time we
+  #                             reach this line — the host retires a settled
+  #                             request, and it does so between our own two
+  #                             writes: we mark the grant consumed in
+  #                             workflow-state.json above, the sweep sees that
+  #                             and retires, and only then do we stamp. This
+  #                             sink cannot be retired out from under us.
+  #   critique-escalation.json  merged into when it exists, because it carries
+  #                             the request's own audit context.
+  #
+  # Both carry the same event id and the host records under it exactly once, so
+  # writing both never double-counts a release.
+  #
+  # It deliberately does NOT create the escalation file when absent. That is
+  # what this function used to do, with `requested_at: 0`, and the host then
+  # read the fabrication as a brand-new escalation: it carded a human for a
+  # decision nobody asked for while the real release went unrecorded and its
+  # association with the original request was destroyed.
+  #
+  # Returns non-zero when NOTHING was recorded — an unrecordable release is an
+  # invisible one, and the caller must decide rather than assume it landed.
   stamp_failed_open() {
     _why="$1"
-    if [ -f "$ESC_FILE" ]; then
-      jq --arg at "$NOW_ISO" --arg why "$_why" '. + {failed_open_at: $at, failed_open_why: $why}' \
-        "$ESC_FILE" > "$ESC_FILE.tmp" 2>/dev/null && mv "$ESC_FILE.tmp" "$ESC_FILE" || true
-    else
-      jq -n --arg at "$NOW_ISO" --arg why "$_why" --arg reason "$DENIAL_REASON" --arg hit "$HIT" \
-        '{requested_at: 0, reason: $reason, hit: $hit, failed_open_at: $at, failed_open_why: $why}' \
-        > "$ESC_FILE" 2>/dev/null || true
+    _gid="${2:-}"
+    _eid="rel-${NOW_EPOCH}-$$-${RANDOM:-0}"
+    _recorded=1
+
+    _line=$(jq -cn --arg id "$_eid" --arg at "$NOW_ISO" --arg why "$_why" \
+              --arg reason "$DENIAL_REASON" --arg hit "$HIT" --arg gid "$_gid" \
+              '{event_id: $id, at: $at, why: $why, reason: $reason, hit: $hit,
+                grant_id: (if $gid == "" then null else $gid end)}' 2>/dev/null) || _line=""
+    if [ -n "$_line" ] && printf '%s\n' "$_line" >> "$RELEASE_JOURNAL" 2>/dev/null; then
+      _recorded=0
     fi
+
+    if [ -f "$ESC_FILE" ]; then
+      if jq --arg at "$NOW_ISO" --arg why "$_why" --arg id "$_eid" \
+           '. + {failed_open_at: $at, failed_open_why: $why, failed_open_event_id: $id}' \
+           "$ESC_FILE" > "$ESC_FILE.tmp" 2>/dev/null && mv "$ESC_FILE.tmp" "$ESC_FILE" 2>/dev/null; then
+        _recorded=0
+      else
+        rm -f "$ESC_FILE.tmp" 2>/dev/null || true
+      fi
+    fi
+    return "$_recorded"
   }
 
   if [ "$DENIALS" -ge 3 ]; then
     if [ "${CRITIQUE_ESCALATION:-1}" = "0" ]; then
-      stamp_failed_open "CRITIQUE_ESCALATION=0 kill switch"
+      # The kill switch is an operator's explicit standing instruction to let
+      # deliveries through, so an unrecordable release does NOT convert it into
+      # a refusal the way the admin-bypass path below does. It does not pass
+      # quietly either.
+      if ! stamp_failed_open "CRITIQUE_ESCALATION=0 kill switch"; then
+        echo "[critique-gate] WARNING: this kill-switch release could NOT be recorded in $(dirname "$ESC_FILE") — the host will never learn the gate opened." >&2
+      fi
       cat >&2 << EOF
 [critique-gate soft-fail] Allowing $HIT despite unresolved requirement
 ($DENIAL_REASON). The gate denied this session 3 times already; further
@@ -279,7 +326,22 @@ Reason: $DENIAL_REASON.
 EOF
           exit 2
         fi
-        stamp_failed_open "admin bypass consumed (one-shot)"
+        # Same reasoning as the consumption check above, one step further on: a
+        # release nobody can see is worse than a denied delivery. The grant is
+        # already spent, so the host will report it as an ORPHANED release —
+        # which is the accurate description of what just happened.
+        if ! stamp_failed_open "admin bypass consumed (one-shot)" "$GRANT_ID"; then
+          cat >&2 << EOF
+CRITIQUE REQUIRED before $HIT — the admin bypass was consumed, but the release
+could NOT be recorded anywhere the host can see it, so allowing it would open
+the gate with no durable trace. Refusing instead.
+
+Reason: $DENIAL_REASON.
+
+Ask an admin to re-approve once $(dirname "$ESC_FILE") is writable.
+EOF
+          exit 2
+        fi
         echo "[critique-gate] Delivery allowed by admin-approved bypass, now CONSUMED (requirement still unmet: $DENIAL_REASON)." >&2
         exit 0
       fi
