@@ -32,19 +32,55 @@ git fetch origin nv-main "${BRANCHES[@]}"
 # is nv-main's path-guard allowlist (.github/nv-path-guard/nv-main.txt) — the same
 # file the nv-path-guard workflow enforces. A conflict in that set means a sibling
 # is carrying a stale copy of a nv-main-owned file (overlays track upstream, not
-# nv-main), so take nv-main's. We match with git's OWN gitignore engine, which is
-# exactly the gitwildmatch syntax .github/nv-path-guard/check.py matches with, so
-# is_owned can NEVER drift from path-guard and a missing entry (the class of bug a
-# hand-maintained list produced — e.g. setup.sh) is impossible. ci.yml and
-# setup.sh's compose_fork read the same file the same way.
+# nv-main), so take nv-main's.
+#
+# BOTH the allowlist and the MATCHER come from origin/nv-main, and the matcher is
+# the one every other reader uses (.github/nv-path-guard/check.py imports it;
+# scripts/check-nv-owned-drift.sh shells out to it). This used to run
+#
+#     git -c core.excludesFile=<list> check-ignore --no-index -q -- <path>
+#
+# HERE, IN THE PROJECT REPO — which also consults this repo's .gitignore,
+# .git/info/exclude and the user's global excludes. That is not a hypothetical
+# leak: this repo's own .gitignore alone hands nv-main ownership of groups/**,
+# data/**, logs/**, dist/**, store/**, repos/**, slang_kb/**, coworkers/*.yaml,
+# .claude/projects/*/memory/** and forks.md — none of which nv-main.txt lists.
+# Auto-resolving a conflict in any of those toward nv-main silently drops the
+# sibling's content, which is precisely the failure this guard exists to prevent.
+# Running the shared matcher instead sees the allowlist and nothing else.
 NV_OWNED_LIST="$(mktemp)"
 git show origin/nv-main:.github/nv-path-guard/nv-main.txt > "$NV_OWNED_LIST" 2>/dev/null || true
-is_owned() {
-  # No allowlist (unexpected) → own nothing, so every conflict surfaces loudly
-  # rather than being silently resolved toward nv-main.
-  [ -s "$NV_OWNED_LIST" ] || return 1
-  git -c core.excludesFile="$NV_OWNED_LIST" check-ignore --no-index -q -- "$1"
+NV_MATCHER="$(mktemp)"
+git show origin/nv-main:.github/nv-path-guard/ownership.py > "$NV_MATCHER" 2>/dev/null || true
+
+# NUL-delimited candidates on stdin → NUL-delimited owned paths on stdout, in ONE
+# matcher call. Per-path invocation would be a python start per file, and these
+# loops run over the whole nv-main..HEAD diff.
+nv_owned() {
+  [ -s "$NV_OWNED_LIST" ] && [ -s "$NV_MATCHER" ] || return 1
+  python3 "$NV_MATCHER" -0 "$NV_OWNED_LIST"
 }
+
+# Exact membership in a NUL-delimited set file. Deliberately not `grep -zxF`:
+# `-z` is GNU-only, and in ugrep (which shadows grep on some developer PATHs) it
+# means "decompress the input" instead of "NUL-delimited".
+nv_set_has() {
+  local set_file="$1" want="$2" got
+  while IFS= read -r -d '' got; do
+    [ "$got" = "$want" ] && return 0
+  done < "$set_file"
+  return 1
+}
+
+# Fail LOUD, not quiet. Every ownership answer below feeds either "abort this
+# merge" or "overwrite this file from nv-main"; a matcher that cannot run would
+# make both silently no-op, leaving exactly the dangling stale copies this script
+# exists to remove.
+if ! printf 'probe\0' | nv_owned >/dev/null 2>&1; then
+  echo "merge-train: cannot evaluate nv-main ownership — need python3 and" >&2
+  echo "  .github/nv-path-guard/{nv-main.txt,ownership.py} on origin/nv-main." >&2
+  exit 1
+fi
 
 # Pre-merge tip. A merge can resolve cleanly (all conflicts inside nv-main's
 # owned set) yet still produce a tree that doesn't build — e.g. is_owned took
@@ -72,10 +108,13 @@ for branch in "${BRANCHES[@]}"; do
     # set is a real overlay content clash — abort and surface it rather than
     # silently resolving toward one side.
     conflicts="$(git diff --name-only --diff-filter=U)"
+    conflicts_owned="$(mktemp)"
+    printf '%s\0' $conflicts | nv_owned > "$conflicts_owned" || : > "$conflicts_owned"
     unexpected=""
     for f in $conflicts; do
-      is_owned "$f" || unexpected="$unexpected $f"
+      nv_set_has "$conflicts_owned" "$f" || unexpected="$unexpected $f"
     done
+    rm -f "$conflicts_owned"
     if [ -n "$unexpected" ]; then
       echo "merge-train: conflicts outside nv-main's owned set, aborting:" >&2
       printf '  %s\n' $unexpected >&2
@@ -105,12 +144,17 @@ for branch in "${BRANCHES[@]}"; do
   # merge, overwrite every owned file that EXISTS on nv-main and differs here to
   # nv-main's version. Overlay-NEW owned files (absent on nv-main — the overlay's
   # own skills/adapters) are left untouched. See setup/merge-train.test.ts.
-  while IFS= read -r f; do
+  # Resolve the whole diff in one matcher call and walk the OWNED set directly,
+  # rather than asking "is this owned?" once per file. NUL-delimited throughout,
+  # so a path containing whitespace or a newline survives the round trip.
+  owned_diff="$(mktemp)"
+  git diff --name-only -z origin/nv-main HEAD | nv_owned > "$owned_diff" || : > "$owned_diff"
+  while IFS= read -r -d '' f; do
     [ -z "$f" ] && continue
-    is_owned "$f" || continue
     git cat-file -e "origin/nv-main:$f" 2>/dev/null || continue
     git checkout origin/nv-main -- "$f"
-  done < <(git diff --name-only origin/nv-main HEAD)
+  done < "$owned_diff"
+  rm -f "$owned_diff"
   if ! git diff --cached --quiet 2>/dev/null; then
     git commit -q --amend --no-edit
   fi

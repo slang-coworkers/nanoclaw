@@ -51,18 +51,38 @@ jobs:
           # of truth is nv-main's path-guard allowlist (.github/nv-path-guard/
           # nv-main.txt), read from $OWNED_SRC — HEAD for a nv-main PR (whose own
           # allowlist edit must apply to itself), origin/nv-main for a leaf PR.
-          # We match with git's OWN gitignore engine, which is exactly the
-          # gitwildmatch syntax .github/nv-path-guard/check.py matches with, so
-          # is_owned can NEVER drift from path-guard and a missing entry (the class
-          # of bug a hand-maintained list produced — e.g. setup.sh) is impossible.
-          # Mirrors setup/merge-train.sh and setup.sh's fork_is_owned.
+          # BOTH the allowlist and the MATCHER come from $OWNED_SRC, and the
+          # matcher is the one every other reader uses (check.py imports it;
+          # check-nv-owned-drift.sh shells out to it). This used to run
+          # `git -c core.excludesFile=<list> check-ignore` HERE, in the project
+          # repo, which also consults its .gitignore, .git/info/exclude and the
+          # global excludes — and this repo's .gitignore alone would hand nv-main
+          # ownership of groups/**, data/**, dist/**, repos/**, coworkers/*.yaml
+          # and forks.md. A conflict in any of those would then be auto-resolved
+          # toward nv-main instead of failing loudly, silently dropping an
+          # overlay's content: the exact regression this block exists to catch.
+          # Mirrors setup/merge-train.sh and setup.sh's compose_fork.
           NV_OWNED_LIST=$(mktemp)
           git show "$OWNED_SRC":.github/nv-path-guard/nv-main.txt > "$NV_OWNED_LIST" 2>/dev/null || true
-          is_owned() {
-            # No allowlist (unexpected) → own nothing, so every conflict surfaces.
-            [ -s "$NV_OWNED_LIST" ] || return 1
-            git -c core.excludesFile="$NV_OWNED_LIST" check-ignore --no-index -q -- "$1"
+          NV_MATCHER=$(mktemp)
+          git show "$OWNED_SRC":.github/nv-path-guard/ownership.py > "$NV_MATCHER" 2>/dev/null || true
+          # NUL-delimited candidates in, NUL-delimited owned paths out, one call.
+          nv_owned() {
+            [ -s "$NV_OWNED_LIST" ] && [ -s "$NV_MATCHER" ] || return 1
+            python3 "$NV_MATCHER" -0 "$NV_OWNED_LIST"
           }
+          # Exact membership in a NUL set file; `grep -z` is GNU-only.
+          nv_set_has() {
+            local set_file="$1" want="$2" got
+            while IFS= read -r -d '' got; do
+              [ "$got" = "$want" ] && return 0
+            done < "$set_file"
+            return 1
+          }
+          if ! printf 'probe\0' | nv_owned >/dev/null 2>&1; then
+            echo "::error::cannot evaluate nv-main ownership from $OWNED_SRC"
+            exit 1
+          fi
 
           for branch in nv-main nv-dashboard nv-slang nv-slangpy nv-nanoclaw; do
             [ "$branch" = "$BASE" ] && continue
@@ -77,9 +97,11 @@ jobs:
             fi
 
             CONFLICTS=$(git diff --name-only --diff-filter=U)
+            CONFLICTS_OWNED=$(mktemp)
+            printf '%s\0' $CONFLICTS | nv_owned > "$CONFLICTS_OWNED" || : > "$CONFLICTS_OWNED"
             UNEXPECTED=""
             for f in $CONFLICTS; do
-              is_owned "$f" || UNEXPECTED="$UNEXPECTED $f"
+              nv_set_has "$CONFLICTS_OWNED" "$f" || UNEXPECTED="$UNEXPECTED $f"
             done
             if [ -n "$UNEXPECTED" ]; then
               echo "::error::$branch merge produced conflicts outside nv-main's owned set:"

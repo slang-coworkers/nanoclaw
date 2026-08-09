@@ -56,13 +56,19 @@ function buildOrigin(root: string, withNvMain = true): string {
     git(seed, 'branch', 'work-unowned');
     git(seed, 'branch', 'work-deps');
     git(seed, 'checkout', '-q', 'nv-main');
-    // fork_is_owned() derives the owned set from nv-main's path-guard allowlist
-    // (the same file .github/nv-path-guard/check.py enforces): src/** + shared
-    // config are owned, groups/** is not.
+    // Ownership comes from nv-main's path-guard allowlist (the same file
+    // .github/nv-path-guard/check.py enforces), evaluated by nv-main's own
+    // matcher — BOTH taken from origin/nv-main: src/** + shared config are
+    // owned, groups/** is not. The matcher has to be committed here because
+    // compose_fork extracts it from the ref rather than reading the worktree.
     fs.mkdirSync(path.join(seed, '.github', 'nv-path-guard'), { recursive: true });
     fs.writeFileSync(
       path.join(seed, '.github', 'nv-path-guard', 'nv-main.txt'),
       '.github/**\nsrc/**\npackage.json\npnpm-lock.yaml\n',
+    );
+    fs.copyFileSync(
+      path.join(HERE, '..', '.github', 'nv-path-guard', 'ownership.py'),
+      path.join(seed, '.github', 'nv-path-guard', 'ownership.py'),
     );
     fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'MAIN\n');
     fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'MAIN\n');
@@ -182,6 +188,27 @@ describe('setup.sh compose_fork', () => {
       // untracked logs/ dir setup.sh creates for its own bootstrap log).
       expect(git(repo, 'status', '--porcelain', '--untracked-files=no').trim()).toBe('');
       expect(res.stderr).toMatch(/owned set/);
+    });
+  });
+
+  it('an ambient .gitignore cannot make compose_fork overwrite an unowned file', () => {
+    // compose_fork used to answer this with `git check-ignore` run IN THIS REPO,
+    // so the repo's own .gitignore contributed patterns. The real nanoclaw
+    // .gitignore contains `groups/*`, `data/`, `logs/`, `coworkers/*.yaml` and
+    // `repos/` — none of them in nv-main.txt — so nv-main "owned" a user's group
+    // config and setup.sh would resolve the conflict by overwriting it.
+    // One line here reproduces that; the shared matcher sees the allowlist only.
+    withRepo('cf-ignore-', (root) => {
+      const origin = buildOrigin(root);
+      const repo = cloneOn(root, origin, 'work-unowned');
+      fs.writeFileSync(path.join(repo, '.gitignore'), 'groups/\n');
+
+      const res = runSetup(repo);
+      // Still refuses: groups/** is not nv-main's, whatever .gitignore says.
+      expect(res.status).toBe(1);
+      expect(res.stderr).toMatch(/owned set/);
+      // And the user's file was NOT overwritten with nv-main's copy.
+      expect(fs.readFileSync(path.join(repo, 'groups', 'main', 'notes.txt'), 'utf-8')).toBe('WORK\n');
     });
   });
 });
