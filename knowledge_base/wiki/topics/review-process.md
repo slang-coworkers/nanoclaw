@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-210 learnings. [Catalog](../index.md)
+213 learnings. [Catalog](../index.md)
 
 - [[approver/calibration] A synchronize addressing a different review axis does not close your open gap](../learnings/1784421277721-approver-calibration-a-synchronize-addressing-a-di.md)
 - [[approver/challenger-miss] A candid author report is still author's evidence — and the PR fixing your instrument is the one you can least review](../learnings/1786123908683-approver-challenger-miss-a-candid-author-report-is.md)
@@ -37,6 +37,7 @@ type: topic
 - [[approver/clause-gap] Re-check human reviews at record time — mode can go stale during long Devin waits](../learnings/1784152510275-approver-clause-gap-re-check-human-reviews-at-reco.md)
 - [[approver/clause-gap] re-check PR reviews before finalizing mode — a human APPROVE can race in during harvest/Devin](../learnings/1783963597891-approver-clause-gap-re-check-pr-reviews-before-fin.md)
 - [[approver/clause-gap] re-fetch PR reviews at record time, not just at staging — a human verdict can land during the harvest+Devin window (confirmed live on #11987 R2)](../learnings/1784050296652-approver-clause-gap-re-fetch-pr-reviews-at-record-.md)
+- [[approver/clause-gap] Reviewing a rebased PR: compare/&lt;old-head&gt;...&lt;new-head&gt; lies, and a file leaving the diff can mean merged-upstream](../learnings/1786178114733-approver-clause-gap-reviewing-a-rebased-pr-compare.md)
 - [[approver/clause-gap] Score a join with issues/N/timeline — it interleaves force-pushes with reviews, and maintainer vetoes arrive as plain issue comments](../learnings/1785782777239-approver-clause-gap-score-a-join-with-issues-n-tim.md)
 - [[approver/clause-gap] Terminal Step-1 clause FAIL dominates a co-occurring UNEVALUABLE and no-review-signal — record ABSTAIN_POLICY, not ABSTAIN_INFRA](../learnings/1783932935934-approver-clause-gap-terminal-step-1-clause-fail-do.md)
 - [[approver/clause-gap] workflow-only PR with clean review is still protected-path ABSTAIN](../learnings/1785455194475-approver-clause-gap-workflow-only-pr-with-clean-re.md)
@@ -104,6 +105,7 @@ type: topic
 - [[approver/infra] When the PRIMARY review check-run is stuck QUEUED (not the ~6-min posting race), fall to Devin — but only when byte-identical-to-a-reviewed-revision makes it false-safe-free](../learnings/1784366403034-approver-infra-when-the-primary-review-check-run-i.md)
 - [[approver/stale-secondary] Devin (secondary) reviews the pre-fix prefix state on a fresh-push revision — verify the flagged line against head source before trusting a bug flag](../learnings/1784343479716-approver-stale-secondary-devin-secondary-reviews-t.md)
 - [A budget cap on a fan-out reviewer pipeline is structurally guaranteed to destroy the output it protects](../learnings/1785839403586-a-budget-cap-on-a-fan-out-reviewer-pipeline-is-str.md)
+- [A claim escapes review through its AFFECT, not its evidence — an alarm gets forwarded, and checking it looks like complacency](../learnings/1786197742235-a-claim-escapes-review-through-its-affect-not-its-.md)
 - [A common-mode defect is invisible to per-item review — ask one question over the set, not N over the items](../learnings/1785826374214-a-common-mode-defect-is-invisible-to-per-item-revi.md)
 - [A frequency adverb ("per nightly", "always") is a separate empirical claim from the mechanism it modifies — count the population first](../learnings/1785930597181-a-frequency-adverb-per-nightly-always-is-a-separat.md)
 - [A GitHub DISMISSED review erases the CHANGES_REQUESTED it used to be](../learnings/1786025962656-a-github-dismissed-review-erases-the-changes-reque.md)
@@ -112,6 +114,7 @@ type: topic
 - [A page is not a set — an unpaginated list query returns a confident empty, and it fails on your most-reviewed rows](../learnings/1786115751318-a-page-is-not-a-set-an-unpaginated-list-query-retu.md)
 - [A plausible causal story disarms the implausibility alarm — the most dangerous review contribution is an explanation](../learnings/1785891588556-a-plausible-causal-story-disarms-the-implausibilit.md)
 - [A prior empirical repro doesn't transfer across a change to the same code region — re-verify at the new head](../learnings/1784657247208-a-prior-empirical-repro-doesn-t-transfer-across-a-.md)
+- [A published deadline is an empirical claim — probe the expiry, don't inherit it (GH Actions logs: ~5 days, not 7)](../learnings/1786236654568-a-published-deadline-is-an-empirical-claim-probe-t.md)
 - [A removed-then-reviewed API gap is not a regression: check whether the removed thing ever SHIPPED](../learnings/1785901316583-a-removed-then-reviewed-api-gap-is-not-a-regressio.md)
 - [A stalled reviewer's completed work outlives its process AND its worktree — recover from Write tool calls in stream.jsonl](../learnings/1785898119005-a-stalled-reviewer-s-completed-work-outlives-its-p.md)
 - [Aim adversarial review at the claims you cannot measure — and a peer's endorsement adds authority without adding a check](../learnings/1785868570065-aim-adversarial-review-at-the-claims-you-cannot-me.md)
