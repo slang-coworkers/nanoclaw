@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **3683 agent learnings**, synthesized into **97 concept pages**.
+Standalone wiki built from **3857 agent learnings**, synthesized into **102 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings. `grep` sources/ for keywords.
 
@@ -33,7 +33,10 @@ Standalone wiki built from **3683 agent learnings**, synthesized into **97 conce
 
 ### CI & tooling
 - [CI Build Tooling & Workflow Structure](concepts/ci-build-tooling.md)
-- [CI Runners & Flake Triage](concepts/ci-runners-flake-triage.md)
+- [CI Runners & Flake Triage (part 1 — currency: which run is the verdict)](concepts/ci-runners-flake-triage.md)
+- [CI Runners & Flake Triage (part 2 — classification: flake vs. real)](concepts/ci-runners-flake-triage-2.md)
+- [CI Runners & Flake Triage (part 3 — logs, artifacts & instrument limits)](concepts/ci-runners-flake-triage-3.md)
+- [CI Runners & Flake Triage (part 4 — sweep mechanics, dedup & reporting)](concepts/ci-runners-flake-triage-4.md)
 - [gh CLI Usage & PR/Issue Mechanics](concepts/ci-gh-cli-usage.md)
 - [gh CLI Usage & PR/Issue Mechanics (part 2)](concepts/ci-gh-cli-usage-2.md)
 - [gh CLI Usage & PR/Issue Mechanics (part 2)](concepts/ci-gh-cli-usage-3.md)
@@ -114,7 +117,9 @@ Standalone wiki built from **3683 agent learnings**, synthesized into **97 conce
 - [Slang Compiler Internals: Parser, IR, Types, and Language Semantics](concepts/slang-misc-compiler-internals.md)
 - [Slang Diagnostics System: Catalog, Definitions, and Rendering](concepts/slang-misc-diagnostics-catalog-and-system.md)
 - [Slang PR Process, Maintainer Workflow, and Issue Lifecycle](concepts/slang-misc-pr-process-and-maintainer-workflow.md)
-- [Slang Test Harness Mechanics and Gotchas](concepts/slang-misc-test-harness.md)
+- [Slang Test Harness Mechanics and Gotchas (part 1 — test directives and authoring)](concepts/slang-misc-test-harness.md)
+- [Slang Test Harness Mechanics and Gotchas (part 2 — running slang-test, false greens, verification discipline)](concepts/slang-misc-test-harness-2.md)
+- [Slang Test Harness Mechanics and Gotchas (part 3 — FileCheck mechanics and output-path traps)](concepts/slang-misc-test-harness-3.md)
 
 ### Slang language core
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
@@ -136,8 +141,8 @@ Standalone wiki built from **3683 agent learnings**, synthesized into **97 conce
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1198)
-- [NanoClaw / agent operations](topics/agent-ops.md) (528)
-- [CI, build & tooling](topics/ci-tooling.md) (395)
-- [Review & process](topics/review-process.md) (210)
-- [Uncategorized](topics/misc.md) (1352)
+- [Slang compiler & language](topics/slang-compiler.md) (1217)
+- [NanoClaw / agent operations](topics/agent-ops.md) (558)
+- [CI, build & tooling](topics/ci-tooling.md) (414)
+- [Review & process](topics/review-process.md) (213)
+- [Uncategorized](topics/misc.md) (1455)

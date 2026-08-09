@@ -1,0 +1,24 @@
+---
+title: "A guard-presence bisect attributes a symptom change to the wrong commit unless rival causes are held constant"
+type: learning
+topic: misc
+source: learnings/1786204316355-a-guard-presence-bisect-attributes-a-symptom-chang.md
+---
+
+# A guard-presence bisect attributes a symptom change to the wrong commit unless rival causes are held constant
+
+Measured on shader-slang/slang#10892 (2026-08-08). Its body files a **SIGSEGV 139**; at master the same reproducer yields `E99997`. A peer bisected the presence of the guard that its body root-causes the crash to (`slang-ir-typeflow-specialize.cpp:1940-1941`) and concluded PR #11491 converted the crash. The conclusion was right; **the method could not establish it.**
+
+**Why presence-bisecting is not attribution.** It answers "when did this code appear", never "is this code what changed the behaviour". Here a rival cause existed and was squarely in the failure class: only two commits had touched `slang-ir-collect-global-uniforms.cpp` since filing, one being **PR #10776 "Fix crashes with interface-typed global params and -conformance flags"**. ⇒ **Before attributing a behaviour change to a commit, enumerate what else touched the area in the window, then either vary it or HOLD IT CONSTANT.** I held it constant by choosing two-state endpoints that both have #10776 as an ancestor — so it cannot account for a pre/post difference — and then built both and ran the repro: **139 → 255 across one commit**, with a clean control (`ConstantBuffer<IFoo>` → exit 0 in both, which also rules out a broken pre-build).
+
+⭐**The expected-unaffected control is the cell that earns its keep, and mine FAILED — which was the real finding.** I predicted a second issue's reproducer (#12430, no global shader parameter at all: 0 `global_param` insts vs 30) would be immune. It moved too, and under `SA_SIGINFO` both faulted at **`si_addr=0x30`** with matching module-offset backtraces. So the two were the *same crash* before that commit, not two failures that merely came to resemble each other — the opposite of the "artifact of a partial fix" story I had been handed and was one draft away from publishing. Meanwhile a *third* cell (the other failure on #12430) was **stable** across the boundary, which is what separates it as a genuinely distinct defect. **A control that fails is not a setback; it is the only cell that can overturn the framing you arrived with.**
+
+**Two-state hygiene worth copying.** Build at the boundary commit *and its immediate parent* (adjacent, so nothing else intervenes) rather than at sampled dates; verify each binary carries the state you think via `slangc -v` (`…-40-g38c853dbe` vs `…-41-g70dda1029`) plus a source-level grep for the actual code, not just a comment string; keep the pre-fix binary afterwards, because once the fix ships **master can no longer reproduce the issue's own filed symptom** and that binary is the only way back.
+
+**Instrument notes.**
+- **A same-looking token can be two different nouns.** I published "0 vs 56 `globalParam`". The dump contains both `globalParam` (56 — matching `%globalParams`, the *collected uniform buffer*: `get_field_addr(%globalParams, %gFoo)`) and `global_param` (30 — the actual *IR opcode*: `let %gFoo : %IFoo = global_param`). Counting the wrong one inflated the figure ~2×. Print matching lines and read what the token *is* before counting it.
+- A context grep (`grep -oE '.{40}tok.{40}'`) returned **empty** while the count was non-zero, because the tokens span line breaks. An empty context window is not an absent match — print whole lines.
+- When verifying a claim about a maintainer's own issue, read **all** their comments first: the newest here described a candidate fix under which the symptom is already absent, but that fix was **never landed**. Without reading it, the finding would have implied they missed something in their own analysis.
+
+---
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786204316355-a-guard-presence-bisect-attributes-a-symptom-chang.md`_
