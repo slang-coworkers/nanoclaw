@@ -28,9 +28,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install pathspec
-        run: pip install pathspec
-
+      # No dependency install step here on purpose. The matcher is
+      # `git check-ignore` run inside an empty isolated repo, so the guard that
+      # decides what a branch may change never fetches code from a registry at
+      # the moment it runs. See .github/nv-path-guard/ownership.py.
       - name: Validate paths against allowlist
         env:
           BASE: ${{ github.base_ref }}
