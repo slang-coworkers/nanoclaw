@@ -68,6 +68,16 @@ const REQUIRED = [
     specifier: 'ccusage/src/cli.js',
     why: 'dashboard/server.ts resolveCcusageCli() — token-cost panel; fails closed to "metric unavailable", never to npx',
     smoke: ['--version'],
+    // ccusage ships its native binary as per-platform OPTIONAL packages, and the
+    // lockfile carries exactly these six. On anything else the binary is not
+    // merely broken — it was never meant to install, so a smoke failure would be
+    // meaningless. Without this list, an operator on such a host would have
+    // merge-train roll back EVERY project merge over an inapplicable check.
+    smokePlatforms: [
+      'darwin-arm64', 'darwin-x64',
+      'linux-arm64', 'linux-x64',
+      'win32-arm64', 'win32-x64',
+    ],
   },
 ];
 
@@ -87,13 +97,22 @@ function realpathOrNull(p) {
   }
 }
 
-/** Is `resolved` inside this checkout's own node_modules? Compared via realpath,
- *  because pnpm resolves through symlinks into `.pnpm/`, which is still ours. */
+/**
+ * Did THIS checkout provide it? Compared by realpath against the repo root, not
+ * against `node_modules`, so that a workspace package linked from node_modules
+ * to `<repo>/packages/...` still counts as ours. The thing being excluded is a
+ * package satisfied from a PARENT directory or a global folder, and those are
+ * never under the repo root.
+ *
+ * Known limitation, stated rather than hidden: a pnpm install configured with
+ * `virtual-store-dir` outside the repo would be rejected here. No such layout is
+ * used by this repo; if one ever is, this is the function to revisit.
+ */
 function isOurs(resolved) {
   const real = realpathOrNull(resolved);
-  const mine = realpathOrNull(ownModules);
+  const mine = realpathOrNull(repoRoot);
   if (!real || !mine) return false;
-  return real === mine || real.startsWith(mine + path.sep);
+  return real.startsWith(mine + path.sep);
 }
 
 /** Resolve, but only accept a result that lives in this checkout. */
@@ -121,8 +140,11 @@ function findPackageDir(pkg) {
   for (;;) {
     const nm = path.join(dir, 'node_modules');
     // Hoisted layouts (npm, yarn, and pnpm's DIRECT dependency links).
+    // Recognise by the DIRECTORY, not by its package.json. A package whose
+    // manifest is missing or a dangling link is DAMAGED, not absent, and those
+    // have different fixes — reinstall versus edit the manifest on nv-main.
     const direct = path.join(nm, pkg);
-    if (realpathOrNull(path.join(direct, 'package.json'))) return direct;
+    if (realpathOrNull(direct)) return direct;
     // pnpm's virtual store. A TRANSITIVE dependency is never linked at the root
     // under isolated node_modules — it only exists here. Checking just the line
     // above is how an earlier version of this function reported a fully
@@ -131,7 +153,7 @@ function findPackageDir(pkg) {
       for (const entry of fs.readdirSync(path.join(nm, '.pnpm'))) {
         if (!entry.startsWith(storePrefix)) continue;
         const inStore = path.join(nm, '.pnpm', entry, 'node_modules', pkg);
-        if (realpathOrNull(path.join(inStore, 'package.json'))) return inStore;
+        if (realpathOrNull(inStore)) return inStore;
       }
     } catch {
       // no .pnpm store at this level
@@ -159,7 +181,10 @@ function manifestProblem(pkg) {
     JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
     return null;
   } catch (err) {
-    if (err?.code === 'ENOENT') return null;
+    // ENOENT here means the directory exists but its manifest does not — an
+    // installed-but-damaged package. Treating that as healthy (the first version
+    // did) let a broken install through whenever the deep file still resolved.
+    if (err?.code === 'ENOENT') return `package.json is missing from ${dir}`;
     return err instanceof Error ? err.message.split('\n')[0] : String(err);
   }
 }
@@ -253,7 +278,9 @@ function fail(specifier, why, detail, advice) {
   console.error(`  diagnosis: ${advice}`);
 }
 
-for (const { specifier, why, smoke } of REQUIRED) {
+const thisPlatform = `${process.platform}-${process.arch}`;
+
+for (const { specifier, why, smoke, smokePlatforms } of REQUIRED) {
   const pkg = packageNameOf(specifier);
   let resolved;
   try {
@@ -274,9 +301,21 @@ for (const { specifier, why, smoke } of REQUIRED) {
   console.log(`ok   ${specifier}\n     -> ${path.relative(repoRoot, resolved)}`);
 
   if (!smoke) continue;
+  if (smokePlatforms && !smokePlatforms.includes(thisPlatform)) {
+    // Loud, not silent. "Skipped" that nobody can see is the defect class this
+    // whole gate exists to fight — so say it, and say why.
+    console.log(
+      `     smoke: NOT APPLICABLE on ${thisPlatform} — no native package is published for this ` +
+        `platform (supported: ${smokePlatforms.join(', ')}). Resolution was still enforced.`,
+    );
+    continue;
+  }
   try {
     execFileSync(process.execPath, [resolved, ...smoke], {
       timeout: SMOKE_TIMEOUT_MS,
+      // SIGKILL, not the default SIGTERM: the launcher spawns a native
+      // grandchild, and a wrapper that exits politely can leave it running.
+      killSignal: 'SIGKILL',
       stdio: 'pipe',
       encoding: 'utf8',
     });

@@ -89,6 +89,50 @@ function pkgFiles(name: string, rel: string, body: string): Record<string, strin
   };
 }
 
+/**
+ * Everything below this block swaps REQUIRED for a synthetic entry, which tests
+ * the ENGINE. That leaves the CONTRACT untested: the engine stays green if
+ * someone deletes the ccusage entry, points it at some other resolvable module,
+ * drops its smoke, or empties the list — and the workflow would then cheerfully
+ * verify nothing at all. These first tests pin the real list.
+ */
+describe('check-runtime-resolvable — the production contract', () => {
+  const source = fs.readFileSync(SCRIPT, 'utf8');
+
+  it('still requires ccusage/src/cli.js, with a smoke command', () => {
+    const block = source.match(/const REQUIRED = \[([\s\S]*?)\n\];/)?.[1] ?? '';
+    expect(block, 'REQUIRED must not be empty — an empty list verifies nothing').not.toMatch(
+      /^\s*$/,
+    );
+    expect(block).toContain('ccusage/src/cli.js');
+    // Resolution alone never proved ccusage RUNS; the native binary is optional.
+    expect(block, 'the ccusage entry must keep its smoke command').toMatch(/smoke:\s*\['--version'\]/);
+  });
+
+  it('goes green against this checkout as it actually stands', () => {
+    // The positive end-to-end case. If the composed tree ever loses ccusage,
+    // this is the test that turns red — the synthetic-entry tests below cannot.
+    const out = execFileSync(process.execPath, [SCRIPT], { encoding: 'utf8', stdio: 'pipe' });
+    expect(out).toContain('ccusage/src/cli.js');
+    expect(out).toContain('belong to this checkout');
+  });
+});
+
+describe('merge-train validation chain', () => {
+  it('runs the runtime-deps check, because canonicalization is where deps vanish silently', () => {
+    // merge-train.sh overwrites the entire nv-main-owned set after every merge,
+    // so a leaf's root-manifest dependency is discarded there — install still
+    // green, build still green, consumer silently unavailable. Every merge-train
+    // unit test sets MERGE_TRAIN_NO_INSTALL=1 and so skips this chain entirely,
+    // which is exactly why the chain's CONTENTS need pinning here.
+    const sh = fs.readFileSync(path.join(repoRoot, 'setup', 'merge-train.sh'), 'utf8');
+    const chain = sh.match(/if ! \(pnpm install --frozen-lockfile[\s\S]*?\); then/)?.[0] ?? '';
+    expect(chain, 'validation chain not found — did merge-train.sh change shape?').not.toBe('');
+    expect(chain).toContain('check:runtime-deps');
+    expect(chain.indexOf('check:runtime-deps')).toBeLessThan(chain.indexOf('pnpm run build'));
+  });
+});
+
 describe('check-runtime-resolvable', () => {
   it('passes when the specifier resolves inside the checkout', () => {
     const r = run('healthy', {
@@ -135,6 +179,19 @@ describe('check-runtime-resolvable', () => {
   it('reports DAMAGED INSTALL for a dangling symlink rather than blaming the manifest', () => {
     const r = run('dangling', {
       links: { 'node_modules/demo': path.join(sandbox, 'does-not-exist-anywhere') },
+      specifier: 'demo/src/cli.js',
+    });
+    expect(r.status).toBe(1);
+    expect(r.out).toContain('DAMAGED INSTALL');
+  });
+
+  it('reports DAMAGED INSTALL when the package directory has no manifest at all', () => {
+    // The directory is there and the deep file is there, but package.json is
+    // gone. An earlier version recognised a package only BY its package.json,
+    // so this read as "not installed" and sent you to edit the manifest on
+    // nv-main — when the actual fix is a reinstall.
+    const r = run('no-manifest', {
+      files: { 'node_modules/demo/src/cli.js': '' },
       specifier: 'demo/src/cli.js',
     });
     expect(r.status).toBe(1);
