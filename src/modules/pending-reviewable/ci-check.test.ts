@@ -1,79 +1,108 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-// promisify(execFile) resolves via the custom symbol, so the mock must expose it
-// or `const { stdout } = await execFileAsync(...)` destructures a bare string.
-const PROMISIFY_CUSTOM = Symbol.for('nodejs.util.promisify.custom');
+import { checkRunArgs, selectCheckRun } from './ci-check.js';
 
-const calls: Array<{ file: string; args: string[]; opts: Record<string, unknown> }> = [];
-let nextStdout = '';
-let nextThrow: Error | null = null;
+/**
+ * The defect these guard against was invisible to every response-shaped test.
+ *
+ * `gh api ... --paginate --slurp --jq <expr>` is rejected by gh before any HTTP
+ * request happens:
+ *
+ *   the `--slurp` option is not supported with `--jq` or `--template`
+ *
+ * exit 1. So the probe failed for every head, on every call, and
+ * `requiredCheckRunGreen` returned false unconditionally — the approver was
+ * never invited and it presented as a low ci_green rate, not as a broken gate.
+ * 4,964 failures accumulated in one prod error log before anyone read it.
+ *
+ * The bug lived entirely in the ARGV. That is why the argv is asserted directly.
+ */
+describe('checkRunArgs', () => {
+  it('never combines --slurp with --jq, which gh rejects outright', () => {
+    const args = checkRunArgs('shader-slang/slang', 'd7f3c47fcc85');
+    expect(args).toContain('--slurp');
+    // The whole regression, in one assertion.
+    expect(args).not.toContain('--jq');
+    expect(args).not.toContain('--template');
+  });
 
-vi.mock('child_process', () => {
-  const execFile = ((...a: unknown[]) => a) as unknown as Record<symbol, unknown>;
-  execFile[PROMISIFY_CUSTOM] = (file: string, args: string[], opts: Record<string, unknown>) => {
-    calls.push({ file, args, opts });
-    if (nextThrow) return Promise.reject(nextThrow);
-    return Promise.resolve({ stdout: nextStdout, stderr: '' });
-  };
-  return { execFile };
-});
+  it('keeps --paginate, without which multi-page heads are silently truncated', () => {
+    // Real slang heads carry ~134 check-runs across 2 pages.
+    expect(checkRunArgs('shader-slang/slang', 'abc123')).toContain('--paginate');
+  });
 
-const { requiredCheckRunGreen } = await import('./ci-check.js');
-
-beforeEach(() => {
-  calls.length = 0;
-  nextStdout = '';
-  nextThrow = null;
-});
-
-describe('requiredCheckRunGreen — credential handling', () => {
-  it('strips GH_TOKEN/GITHUB_TOKEN so gh uses its cron-refreshed hosts.yml', async () => {
-    // Regression (prod 2026-08-05): the host service inherits GH_TOKEN from .env
-    // via systemd EnvironmentFile, which is read ONCE at start. The App token it
-    // carries dies within the hour, gh prefers it over hosts.yml, and every probe
-    // 401'd — 3,225 failures against 4 releases, so the approver was never invited.
-    process.env.GH_TOKEN = 'ghs_expired_pinned_at_boot';
-    process.env.GITHUB_TOKEN = 'ghp_also_stale';
-    nextStdout = 'completed/success';
-
-    await requiredCheckRunGreen('shader-slang/slang', 'a'.repeat(40), 'check-ci');
-
-    const env = calls[0].opts.env as Record<string, string | undefined>;
-    expect(env.GH_TOKEN).toBeUndefined();
-    expect(env.GITHUB_TOKEN).toBeUndefined();
-    expect(env.PATH).toBeDefined(); // the rest of the environment survives
-
-    delete process.env.GH_TOKEN;
-    delete process.env.GITHUB_TOKEN;
+  it('targets the commit check-runs endpoint for the given repo and sha', () => {
+    expect(checkRunArgs('owner/repo', 'deadbeef')).toContain('repos/owner/repo/commits/deadbeef/check-runs');
   });
 });
 
-describe('requiredCheckRunGreen — pagination', () => {
-  it('passes --slurp so --jq runs once across pages, not once per page', async () => {
-    nextStdout = 'completed/success';
-    await requiredCheckRunGreen('shader-slang/slang', 'b'.repeat(40), 'check-ci');
-    expect(calls[0].args).toContain('--slurp');
-    // the jq must flatten the slurped page array
-    expect(calls[0].args.join(' ')).toContain('.[].check_runs[]');
+/** One page of `gh api .../check-runs` output. */
+function page(...runs: Array<{ name: string; status: string; conclusion: string | null }>) {
+  return { total_count: runs.length, check_runs: runs };
+}
+
+describe('selectCheckRun', () => {
+  it('finds a run that only appears on a LATER page', () => {
+    // This is precisely what --slurp exists for. Before it, --paginate applied
+    // the filter per page and the caller saw "null" from page 1.
+    const stdout = JSON.stringify([
+      page({ name: 'actionlint', status: 'completed', conclusion: 'success' }),
+      page({ name: 'check-ci', status: 'completed', conclusion: 'success' }),
+    ]);
+    expect(selectCheckRun(stdout, 'check-ci')).toBe('completed/success');
   });
 
-  it('does not hold a green PR when the response still spans lines', async () => {
-    // The old parser split "completed/success\nnull/null" on "/" and produced
-    // conclusion="success\nnull", which failed PASSING and held a green PR
-    // (observed in prod on head 013675eb0c7f).
-    nextStdout = 'completed/success\nnull/null';
-    await expect(requiredCheckRunGreen('shader-slang/slang', 'c'.repeat(40), 'check-ci')).resolves.toBe(true);
+  it('returns empty when the named run is not present yet', () => {
+    // Normal while CI is still starting — the caller logs info, not a warning.
+    const stdout = JSON.stringify([page({ name: 'actionlint', status: 'completed', conclusion: 'success' })]);
+    expect(selectCheckRun(stdout, 'check-ci')).toBe('');
   });
 
-  it('is still false when every line is null (run genuinely absent)', async () => {
-    nextStdout = 'null/null\nnull/null';
-    await expect(requiredCheckRunGreen('shader-slang/slang', 'd'.repeat(40), 'check-ci')).resolves.toBe(false);
+  it('reports an in-flight run as not-completed rather than as absent', () => {
+    // conclusion is null until the run finishes. The caller gates on
+    // status === 'completed', so this must NOT collapse to '' — that would be
+    // indistinguishable from "no such check" and hide a running build.
+    const stdout = JSON.stringify([page({ name: 'check-ci', status: 'in_progress', conclusion: null })]);
+    expect(selectCheckRun(stdout, 'check-ci')).toBe('in_progress/null');
   });
 
-  it('is false for a failed conclusion, and for a probe that throws', async () => {
-    nextStdout = 'completed/failure';
-    await expect(requiredCheckRunGreen('shader-slang/slang', 'e'.repeat(40), 'check-ci')).resolves.toBe(false);
-    nextThrow = new Error('Command failed: gh api ...');
-    await expect(requiredCheckRunGreen('shader-slang/slang', 'f'.repeat(40), 'check-ci')).resolves.toBe(false);
+  it('does not match a different check whose name merely contains the target', () => {
+    const stdout = JSON.stringify([page({ name: 'check-ci-extra', status: 'completed', conclusion: 'failure' })]);
+    expect(selectCheckRun(stdout, 'check-ci')).toBe('');
+  });
+
+  it('takes the first match in page order, as the previous .[0] did', () => {
+    const stdout = JSON.stringify([
+      page(
+        { name: 'check-ci', status: 'completed', conclusion: 'success' },
+        { name: 'check-ci', status: 'completed', conclusion: 'failure' },
+      ),
+    ]);
+    expect(selectCheckRun(stdout, 'check-ci')).toBe('completed/success');
+  });
+
+  it('tolerates a bare single response object, not only a slurped array', () => {
+    const stdout = JSON.stringify(page({ name: 'check-ci', status: 'completed', conclusion: 'neutral' }));
+    expect(selectCheckRun(stdout, 'check-ci')).toBe('completed/neutral');
+  });
+
+  it('returns empty for empty output instead of throwing', () => {
+    expect(selectCheckRun('', 'check-ci')).toBe('');
+    expect(selectCheckRun('   \n ', 'check-ci')).toBe('');
+  });
+
+  it('skips pages that carry no check_runs array', () => {
+    const stdout = JSON.stringify([
+      { message: 'Not Found' },
+      page({ name: 'check-ci', status: 'completed', conclusion: 'success' }),
+    ]);
+    expect(selectCheckRun(stdout, 'check-ci')).toBe('completed/success');
+  });
+
+  it('throws on malformed JSON so the caller logs a real failure', () => {
+    // Deliberate: a parse error belongs in the catch block as a genuine
+    // problem. Returning '' here would report corrupt output as "not ready
+    // yet" and hold the PR forever with nothing in the log to explain it.
+    expect(() => selectCheckRun('{not json', 'check-ci')).toThrow();
   });
 });

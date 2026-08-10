@@ -28,6 +28,59 @@ const execFileAsync = promisify(execFile);
 
 const PASSING = new Set(['success', 'neutral', 'skipped']);
 
+/**
+ * The exact `gh` argv for the check-run probe.
+ *
+ * Extracted so it can be asserted on. The defect this replaced was ENTIRELY in
+ * the argv — `--slurp` and `--jq` together, which `gh` rejects outright — and no
+ * amount of testing the response parser would have caught it. See the test.
+ */
+export function checkRunArgs(repo: string, headSha: string): string[] {
+  return ['api', `repos/${repo}/commits/${headSha}/check-runs`, '--paginate', '--slurp'];
+}
+
+/**
+ * Pick the named check-run out of `gh api ... --paginate --slurp` output.
+ *
+ * WHY THIS IS TS AND NOT jq
+ *
+ * `--slurp` is load-bearing: without it `--paginate` applies a filter to EACH
+ * page separately, so a commit whose check-runs span pages emits one result per
+ * page and a naive parser reads "success\nnull" as a single conclusion. That is
+ * real here — slang's heads carry ~134 runs across 2 pages. But `gh` rejects
+ * `--slurp` alongside `--jq`, so the two cannot be combined and the selection
+ * has to happen after the fact. Doing it here also means malformed output is a
+ * caught parse error rather than a non-zero exit that looks like an API outage.
+ *
+ * Returns `"<status>/<conclusion>"` for the first matching run in page order
+ * (the same run the previous jq expression's `.[0]` selected), or `''` when the
+ * named run is not present yet — a normal state while CI is still starting.
+ */
+export function selectCheckRun(stdout: string, checkName: string): string {
+  const raw = stdout.trim();
+  if (!raw) return '';
+
+  // --slurp yields ONE array whose elements are the per-page response objects.
+  // Tolerate a bare single response too, so this keeps working if --paginate is
+  // ever dropped for a commit that fits on one page.
+  const parsed: unknown = JSON.parse(raw);
+  const pages: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
+
+  for (const page of pages) {
+    const runs = (page as { check_runs?: unknown })?.check_runs;
+    if (!Array.isArray(runs)) continue;
+    for (const run of runs) {
+      const r = run as { name?: unknown; status?: unknown; conclusion?: unknown };
+      if (r?.name !== checkName) continue;
+      // conclusion is null while a run is queued/in_progress. Render it as the
+      // string "null" so the caller's status check ("completed") is what
+      // decides, exactly as the jq interpolation used to behave.
+      return `${String(r.status)}/${String(r.conclusion)}`;
+    }
+  }
+  return '';
+}
+
 export async function requiredCheckRunGreen(repo: string, headSha: string, checkName: string): Promise<boolean> {
   try {
     // `gh` prefers $GH_TOKEN / $GITHUB_TOKEN over its stored hosts.yml
@@ -51,26 +104,25 @@ export async function requiredCheckRunGreen(repo: string, headSha: string, check
     // "/" and produced conclusion="success\nnull", failing PASSING and holding
     // a genuinely green PR (observed on head 013675eb0c7f). --slurp wraps the
     // pages in one array so jq runs once; harvest-reviews.py already does this.
-    const { stdout } = await execFileAsync(
-      'gh',
-      [
-        'api',
-        `repos/${repo}/commits/${headSha}/check-runs`,
-        '--paginate',
-        '--slurp',
-        '--jq',
-        `[.[].check_runs[] | select(.name=="${checkName}")] | .[0] | "\\(.status)/\\(.conclusion)"`,
-      ],
-      { timeout: 20_000, maxBuffer: 8 * 1024 * 1024, env: ghEnv },
-    );
-    // Belt and braces: if anything still yields multiple lines, take the first
-    // line that names a real run rather than splitting a newline into a field.
-    const val = (
-      stdout
-        .trim()
-        .split('\n')
-        .find((l) => l.trim() && l.trim() !== 'null/null') ?? ''
-    ).trim();
+    // NO --jq HERE, DELIBERATELY. `gh` refuses `--slurp` together with `--jq`:
+    //
+    //   the `--slurp` option is not supported with `--jq` or `--template`
+    //
+    // and exits 1. That is not an API error, an auth error or a rate limit — the
+    // invocation is simply rejected before a request is made, so it failed for
+    // EVERY head on EVERY call. `requiredCheckRunGreen` therefore returned false
+    // unconditionally and the approver was never invited to review, which
+    // presented as a low ci_green rate rather than as a broken gate. Measured on
+    // slang-coworkers prod 2026-08-10: 4,964 probe failures in one error log,
+    // 81 of the last 100 error lines, against gh 2.96.0.
+    //
+    // --slurp is still load-bearing (see below), so the selection moves to TS.
+    const { stdout } = await execFileAsync('gh', checkRunArgs(repo, headSha), {
+      timeout: 20_000,
+      maxBuffer: 8 * 1024 * 1024,
+      env: ghEnv,
+    });
+    const val = selectCheckRun(stdout, checkName);
     if (!val || val === 'null/null') {
       log.info('ci-gate: required check-run not present yet — not releasing', {
         repo,
