@@ -1619,8 +1619,14 @@ async def list_commits(args: ListPullRequestCommitsArgs) -> dict:
         return {"error": str(e)}
 
 
-async def get_file_contents(owner: str, repo: str, path: str, branch: str) -> dict:
-    """Get the contents of a file from a GitHub repository.
+async def _get_file_contents_raw(owner: str, repo: str, path: str, branch: str) -> dict:
+    """Get the raw contents-API payload for a file on a branch.
+
+    Private helper for create_or_update_file, which needs the blob `sha` to
+    update a file in place. Distinct from the exported `get_file_contents` MCP
+    tool defined below, which takes a pydantic args model and returns
+    {"error": ...} rather than raising; this one RAISES on a missing file, which
+    is what the caller's try/except is written against.
 
     Args:
         owner: Repository owner (username or organization)
@@ -1667,7 +1673,7 @@ async def create_or_update_file(args: CreateOrUpdateFileArgs) -> dict:
         current_sha = args.sha
         if not current_sha:
             try:
-                existing_file = await get_file_contents(
+                existing_file = await _get_file_contents_raw(
                     args.owner, args.repo, args.path, args.branch
                 )
                 if isinstance(existing_file, dict):

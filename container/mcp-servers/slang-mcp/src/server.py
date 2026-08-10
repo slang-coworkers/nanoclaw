@@ -142,9 +142,6 @@ def main(port: int, transport: str) -> int:
 
         console.print(f"[green]Available APIs: {', '.join(available_apis)}[/green]")
 
-        # Discord client will be started eagerly inside the event loop (see arun below)
-        discord_eager_init = "Discord" in available_apis
-
         # Create MCP server
         app = Server("slang-mcp-server")
 
@@ -675,7 +672,10 @@ def main(port: int, transport: str) -> int:
                         ),
                         types.Tool(
                             name="github_get_file_contents",
-                            description="Read a file or list a directory from a GitHub repository (read-only). Defaults to shader-slang/slang.",
+                            description=(
+                                "Read a file or list a directory from a GitHub repository "
+                                "(read-only). Defaults to shader-slang/slang."
+                            ),
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -940,7 +940,11 @@ def main(port: int, transport: str) -> int:
                         ),
                         types.Tool(
                             name="discord_send_message",
-                            description="Send a message to a Discord channel, thread, or forum. For forums, creates a new thread/post. Restricted to allowed channels.",
+                            description=(
+                                "Send a message to a Discord channel, thread, or forum. "
+                                "For forums, creates a new thread/post. "
+                                "Restricted to allowed channels."
+                            ),
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -954,7 +958,10 @@ def main(port: int, transport: str) -> int:
                                     },
                                     "thread_name": {
                                         "type": "string",
-                                        "description": "For forum channels: title for the new thread/post. Ignored for text channels and threads.",
+                                        "description": (
+                                            "For forum channels: title for the new thread/post. "
+                                            "Ignored for text channels and threads."
+                                        ),
                                     },
                                     "add_feedback_buttons": {
                                         "type": "boolean",

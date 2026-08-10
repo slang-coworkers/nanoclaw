@@ -276,15 +276,24 @@ class SearchMessagesArgs(BaseModel):
     )
     channel: Optional[str] = Field(
         None,
-        description="Filter messages in this channel name or ID (e.g. 'general' or 'C0EXAMPLE'). Appended as in:<channel>.",
+        description=(
+            "Filter messages in this channel name or ID (e.g. 'general' or 'C0EXAMPLE'). "
+            "Appended as in:<channel>."
+        ),
     )
     since: Optional[str] = Field(
         None,
-        description="Return messages after this ISO 8601 date (e.g. '2026-02-01T00:00:00Z'). Appended as after:YYYY-MM-DD.",
+        description=(
+            "Return messages after this ISO 8601 date (e.g. '2026-02-01T00:00:00Z'). "
+            "Appended as after:YYYY-MM-DD."
+        ),
     )
     before: Optional[str] = Field(
         None,
-        description="Return messages before this ISO 8601 date (e.g. '2026-02-18T00:00:00Z'). Appended as before:YYYY-MM-DD.",
+        description=(
+            "Return messages before this ISO 8601 date (e.g. '2026-02-18T00:00:00Z'). "
+            "Appended as before:YYYY-MM-DD."
+        ),
     )
     count: Optional[int] = Field(
         20,

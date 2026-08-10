@@ -6,14 +6,20 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+import aiohttp
 
 # Add dotenv import
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
-import aiohttp
 import discord
+
+if TYPE_CHECKING:
+    # Runtime import stays inside _get_discord_http_client(); this only makes
+    # the "httpx.AsyncClient" annotation below resolvable.
+    import httpx
 
 # Load environment variables from .env file
 load_dotenv()
@@ -230,6 +236,7 @@ async def _get_discord_http_client():
     global _discord_http_client
     if _discord_http_client is None:
         import httpx
+
         from ..config import get_ssl_verify_config
 
         _discord_http_client = httpx.AsyncClient(
@@ -419,8 +426,17 @@ class SendMessageArgs(BaseModel):
 
     channel_id: str = Field(..., description="Discord channel ID (text channel, thread, or forum channel)")
     content: str = Field(..., description="Message content")
-    thread_name: Optional[str] = Field(None, description="For forum channels: creates a new thread/post with this title. Ignored for text channels and threads.")
-    add_feedback_buttons: bool = Field(False, description="If true, attach Resolved/Helpful/Not Helpful feedback buttons to the message")
+    thread_name: Optional[str] = Field(
+        None,
+        description=(
+            "For forum channels: creates a new thread/post with this title. "
+            "Ignored for text channels and threads."
+        ),
+    )
+    add_feedback_buttons: bool = Field(
+        False,
+        description="If true, attach Resolved/Helpful/Not Helpful feedback buttons to the message",
+    )
 
 
 class ReadMessagesArgs(BaseModel):
@@ -985,9 +1001,14 @@ def filter_message_data(message) -> dict:
     # Core message data that's always included
     guild_id = message.guild.id if message.guild else None
     channel_id = message.channel.id if message.channel else None
+    message_url = (
+        f"https://discord.com/channels/{guild_id}/{channel_id}/{message.id}"
+        if guild_id and channel_id
+        else None
+    )
     filtered = {
         "id": str(message.id),
-        "url": f"https://discord.com/channels/{guild_id}/{channel_id}/{message.id}" if guild_id and channel_id else None,
+        "url": message_url,
         "content": message.content,
         "timestamp": message.created_at.isoformat(),
         "author": {
