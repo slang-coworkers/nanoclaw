@@ -57,19 +57,37 @@ const PROJECT_ROOT = process.cwd();
 const DATA_DIR = path.resolve(PROJECT_ROOT, 'data');
 const REPO_SRC = path.join(PROJECT_ROOT, 'container', 'agent-runner', 'src');
 
+/**
+ * Exit codes, kept distinct because the CALLER acts differently on each.
+ *
+ * merge-train reports a non-zero exit as "some groups still run stale
+ * agent-runner code" — a statement about the GROUPS. But an argument error or a
+ * missing source tree means the checker never looked at a single group, and
+ * reporting that as a finding about groups is a false statement dressed as a
+ * result. On lego's first real run this said exactly that after crashing on a
+ * bare `--`.
+ */
+export const EXIT_STALE_FOUND = 1;
+export const EXIT_CANNOT_RUN = 2;
+
 function main(argv: string[]): number {
-  const refresh = argv.includes('--refresh');
-  const asJson = argv.includes('--json');
-  const unknown = argv.filter((a) => !['--refresh', '--json'].includes(a));
+  // A bare `--` is a SEPARATOR, not an argument. `pnpm run <script> -- --refresh`
+  // forwards the separator along with the flag, so a strict unknown-arg check
+  // rejects the very invocation the deploy path uses — which is how this exited
+  // 2 on lego's first real run, from merge-train.sh's own call site.
+  const args = argv.filter((a) => a !== '--');
+  const refresh = args.includes('--refresh');
+  const asJson = args.includes('--json');
+  const unknown = args.filter((a) => !['--refresh', '--json'].includes(a));
   if (unknown.length > 0) {
     console.error(`unknown argument(s): ${unknown.join(' ')}`);
-    return 2;
+    return EXIT_CANNOT_RUN;
   }
 
   if (!fs.existsSync(REPO_SRC)) {
     console.error(`::error::no agent-runner source at ${REPO_SRC} — cannot judge staleness.`);
     console.error('Without it every group would trivially look current.');
-    return 2;
+    return EXIT_CANNOT_RUN;
   }
 
   const groups = findGroupCopies(DATA_DIR);
@@ -137,7 +155,7 @@ function main(argv: string[]): number {
     }
   }
 
-  return behind.length > 0 ? 1 : 0;
+  return behind.length > 0 ? EXIT_STALE_FOUND : 0;
 }
 
 process.exit(main(process.argv.slice(2)));
