@@ -245,3 +245,66 @@ jobs:
       # build, it just starts saying everything is fine.
       - name: KB observability tests (Python)
         run: python3 scripts/test_kb_observability.py
+
+  # ── Python: slang-mcp ──────────────────────────────────────────────────────
+  #
+  # THIS is the copy that survives. #1163 added an identical job to nv-slang's
+  # ci.yml, where slang-mcp actually lives, and that copy works today only
+  # because GitHub takes a PR's workflow from its own merge ref. `.github/**` is
+  # nv-main's per .github/nv-path-guard/nv-main.txt, so setup.sh and
+  # merge-train.sh canonicalize nv-main's ci.yml over the leaf's on every
+  # deploy — and the day that happens, a ~90-test suite and its lint gate stop
+  # running with nothing going red to say so. An owned file that only exists on
+  # the leaf is a check with a deploy-shaped expiry date.
+  #
+  # slang-mcp is NOT on nv-main. This job checks out a single branch with no
+  # compose step, so here the directory is simply absent and every step no-ops.
+  # The guard keys on the directory, not on the branch name: the same file is
+  # then correct on nv-main and on nv-slang, stays correct if slang-mcp moves or
+  # is deleted, and needs no edit when a new leaf picks this workflow up.
+  #
+  # Kept byte-identical to nv-slang's copy on purpose. Canonicalization is then
+  # a no-op rather than a behaviour change, which is the only way the ownership
+  # caveat #1163 recorded actually closes — two copies that agree cannot drift.
+  #
+  # Non-integration only: test/conftest.py skips anything marked `integration`
+  # unless RUN_INTEGRATION_TESTS=true, so the default run needs no Discord or
+  # GitHub credentials and no network.
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Is slang-mcp on this branch?
+        id: probe
+        run: |
+          if [ -f container/mcp-servers/slang-mcp/pyproject.toml ]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::slang-mcp is not on this branch — nothing to run'
+          fi
+
+      - uses: astral-sh/setup-uv@v5
+        if: steps.probe.outputs.present == 'true'
+        with:
+          version: '0.5.11'
+
+      - name: Install (locked)
+        if: steps.probe.outputs.present == 'true'
+        working-directory: container/mcp-servers/slang-mcp
+        run: uv sync --frozen
+
+      - name: pytest (non-integration)
+        if: steps.probe.outputs.present == 'true'
+        working-directory: container/mcp-servers/slang-mcp
+        run: uv run pytest -q
+
+      # Wired now that the 15 pre-existing errors are fixed (see the nv-slang
+      # PR). Config (E/F/I, line-length 120) lives in slang-mcp's pyproject.toml
+      # and ruff's version comes from its uv.lock, so this cannot drift with a
+      # new ruff release.
+      - name: ruff
+        if: steps.probe.outputs.present == 'true'
+        working-directory: container/mcp-servers/slang-mcp
+        run: uv run ruff check src/
