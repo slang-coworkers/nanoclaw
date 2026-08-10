@@ -32,7 +32,17 @@ Exit codes: 0 = clean (every check ran, no drift), 1 = drift found, 2 = a check 
 not run (indeterminate). DRIFT outranks UNKNOWN, because drift is actionable now; the
 artifact reports both regardless.
 """
-import argparse, datetime, glob, hashlib, importlib.util, json, os, re, subprocess, sys, tempfile
+import argparse
+import datetime
+import glob
+import hashlib
+import importlib.util
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
 
 SCHEMA = 1
 OK, DRIFT, UNKNOWN = "OK", "DRIFT", "UNKNOWN"
@@ -84,7 +94,7 @@ def embedded_builder(skill_path):
     s, err = read_text(skill_path)
     if s is None:
         return None, err
-    blocks = re.findall(r"```python\n(.*?)```", s, re.S)
+    blocks = re.findall(r"```python\n(.*?)```", s, re.DOTALL)
     if not blocks:
         return None, "SKILL.md contains no ```python block"
     return max(blocks, key=len), None
@@ -166,14 +176,16 @@ def volatile_fields():
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return set(mod.VOLATILE), None
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — exec_module runs arbitrary module-level
+        # code, so the raise set is whatever dump-scheduled-tasks.py can raise. A
+        # doubt about the volatile set must degrade to the fallback, never crash.
         return set(VOLATILE_FALLBACK), f"{type(e).__name__}: {e}"
 
 
 # `ncl` exits nonzero for BOTH "no such task" and "the socket is down / you are not
 # allowed / pnpm is missing". Treating every nonzero as "task missing" reported a
 # transport outage as committed-task-deleted drift.
-NOT_FOUND = re.compile(r"not found|no such|does not exist", re.I)
+NOT_FOUND = re.compile(r"not found|no such|does not exist", re.IGNORECASE)
 
 
 def ncl_task(repo, sid):
@@ -189,12 +201,13 @@ def ncl_task(repo, sid):
     ncl = os.path.join(repo, "bin", "ncl")
     try:
         r = subprocess.run([ncl, "tasks", "get", "--id", sid, "--json"],
-                           cwd=repo, capture_output=True, text=True, timeout=60)
-    except Exception as e:
+                           cwd=repo, capture_output=True, text=True, timeout=60,
+                           check=False)
+    except (OSError, subprocess.SubprocessError) as e:
         return None, "unknown", f"{type(e).__name__}: {e}"
     try:
         payload = json.loads(r.stdout)
-    except Exception:
+    except json.JSONDecodeError:
         payload = None
     if isinstance(payload, dict) and payload.get("ok") is False:
         err = payload.get("error") or {}
@@ -220,7 +233,7 @@ def check_tasks(repo, rep):
     try:
         with open(snap, encoding="utf-8") as fh:
             committed = {t["series_id"]: t for t in json.load(fh)["tasks"]}
-    except Exception as e:
+    except (OSError, ValueError, KeyError, TypeError) as e:
         rep.unknown("tasks", f"unreadable snapshot {snap}: {type(e).__name__}: {e}", "unreadable")
         return
     ncl = os.path.join(repo, "bin", "ncl")
@@ -298,8 +311,9 @@ def check_tasks(repo, rep):
 def check_branch(repo, rep):
     def git(*a):
         try:
-            r = subprocess.run(["git", *a], cwd=repo, capture_output=True, text=True, timeout=60)
-        except Exception as e:
+            r = subprocess.run(["git", *a], cwd=repo, capture_output=True, text=True,
+                               timeout=60, check=False)
+        except (OSError, subprocess.SubprocessError) as e:
             return None, f"{type(e).__name__}: {e}"
         if r.returncode != 0:
             return None, (r.stderr or r.stdout or f"exit {r.returncode}").strip().splitlines()[0]
@@ -360,7 +374,9 @@ def main():
                      ("tasks", check_tasks), ("branch", check_branch)):
         try:
             fn(args.repo, rep)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — the fail-closed net (F09). Every
+            # crash in any check must become UNKNOWN; a check that dies must never
+            # be able to leave the report claiming everything was verified.
             rep.unknown(name, f"check raised {type(e).__name__}: {e}", "check-errored")
 
     drift, unknown = rep.of(DRIFT), rep.of(UNKNOWN)
@@ -386,7 +402,7 @@ def main():
     if not args.no_artifact:
         try:
             write_artifact(artifact, doc)
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # The artifact IS the dashboard's only view. Failing to write it must not be
             # silent, and must not let an otherwise-clean run report success.
             print(f"ERROR: could not write {artifact}: {type(e).__name__}: {e}", file=sys.stderr)

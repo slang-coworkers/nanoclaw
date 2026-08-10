@@ -65,7 +65,13 @@ Exit codes:
   3  staged output failed validation or could not be committed — previous snapshot restored
   4  --check found the published pair torn or inconsistent
 """
-import argparse, hashlib, json, os, sys, tempfile, subprocess
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
 
 # Runtime state, not definition. Excluded so the dump is stable across runs.
 VOLATILE = {"row_id", "process_after", "tries", "completed_runs", "failed_runs",
@@ -77,14 +83,14 @@ def ncl(repo, *args):
     failed — callers must not confuse that with a successful empty result."""
     try:
         r = subprocess.run([os.path.join(repo, "bin", "ncl"), *args],
-                           cwd=repo, capture_output=True, text=True)
+                           cwd=repo, capture_output=True, text=True, check=False)
     except OSError as e:
         return False, str(e)
     if r.returncode != 0:
         return False, (r.stderr or r.stdout or "").strip()
     try:
         return True, json.loads(r.stdout)
-    except Exception:
+    except json.JSONDecodeError:
         return True, r.stdout
 
 
@@ -393,7 +399,8 @@ def main():
         # Validate what actually landed on disk, not what we meant to write — a short
         # write or a full disk shows up here, before anything replaces the good copy.
         for tmp, dest in staged:
-            text = open(tmp).read()
+            with open(tmp) as fh:
+                text = fh.read()
             if dest == out:
                 reread = json.loads(text)
                 if reread.get("task_count") != len(tasks) or len(reread.get("tasks", [])) != len(tasks):
@@ -417,7 +424,9 @@ def main():
             print(f"COULD NOT ROLL BACK: {', '.join(e.orphaned)} — these are now INCONSISTENT with "
                   "the rest of the snapshot. Re-run this script, or restore from git.", file=sys.stderr)
         return 3
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — last-resort rollback. Any escape here
+        # leaves a half-replaced snapshot on disk, which is the torn-publish failure
+        # this script was written to make impossible. Breadth is the guarantee.
         discard(staged)
         print(f"ERROR: could not stage the snapshot: {e}", file=sys.stderr)
         print("Nothing was replaced; the previous snapshot is untouched.", file=sys.stderr)

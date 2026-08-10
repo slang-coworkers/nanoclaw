@@ -31,7 +31,11 @@ because that means traffic now exceeds the budget and the numbers need revisitin
   python3 scripts/claude-trace-gc.py [--repo <path>] [--days 7] [--max-gb 5]
                                      [--min-age-min 60] [--dry-run]
 """
-import argparse, glob, os, sys, time
+import argparse
+import glob
+import os
+import sys
+import time
 
 # On prod the checkout (groups/ included) lives on / — 61 GB free — while the
 # 427 GB /ephemeral/prod-groups tree is separate. 5 GB here is comfortably

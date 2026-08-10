@@ -359,11 +359,11 @@ def classify(now, chain, sessions_by_id, bot_logins):
             return ("dispatched", ball, last_by_us, False, "")
         if dispatch_age < ESCALATE_S:
             return ("silent", ball, last_by_us, True,
-                    "dispatched ≥ working window, zero activity/artifact by us "
-                    "— handoff likely bounced; wake owning tier")
+                    ("dispatched ≥ working window, zero activity/artifact by us "
+                     "— handoff likely bounced; wake owning tier"))
         return ("silent", ball, last_by_us, True,
-                "dispatched ≥ 4h, zero activity/artifact by us — handoff "
-                "bounced; escalate to operator")
+                ("dispatched ≥ 4h, zero activity/artifact by us — handoff "
+                 "bounced; escalate to operator"))
     if silent_age < FRESH_DISPATCH_S:
         return ("dispatched", ball, last_by_us, False, "")
     if silent_age < WORKING_S:
@@ -408,8 +408,8 @@ def run(payload):
     # `--thread-prefix` is silently ignored by ncl — see SKILL.md note).
     live_keys = set(chains.keys())
     archived = prior_state.get("_archived", {}) if isinstance(prior_state, dict) else {}
-    journaled_keys = {k for k in prior_state.keys() if k.startswith("gh-issue-")}
-    archived_keys = {k for k in archived.keys() if k.startswith("gh-issue-")}
+    journaled_keys = {k for k in prior_state if k.startswith("gh-issue-")}
+    archived_keys = {k for k in archived if k.startswith("gh-issue-")}
     new_keys = live_keys - journaled_keys - archived_keys
 
     rows = []

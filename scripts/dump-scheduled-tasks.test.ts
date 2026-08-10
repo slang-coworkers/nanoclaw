@@ -326,6 +326,32 @@ describe('dump-scheduled-tasks.py — publication is all-or-nothing', () => {
     expect(r.stderr).toContain('does not match its own contents');
   });
 
+  it('--check fails a snapshot whose id was tampered with, contents untouched', () => {
+    // The other direction from the case above, and the one CI actually guards: the
+    // contents stay valid and the ID is rewritten. Recomputing the hash is the only
+    // thing that catches it — a check that merely confirmed an id was PRESENT, or that
+    // the two files carried the SAME id, would pass this happily.
+    const repo = makeRepo({ ids: ['task-a'] });
+    expect(dump(repo).status).toBe(0);
+    expect(dump(repo, ['--check']).status).toBe(0);
+
+    const snapPath = path.join(repo, 'docs', 'snap.json');
+    const snap = JSON.parse(fs.readFileSync(snapPath, 'utf-8'));
+    const real = snap.snapshot_id;
+    snap.snapshot_id = 'd'.repeat(64);
+    fs.writeFileSync(snapPath, JSON.stringify(snap, null, 2) + '\n');
+
+    const r = dump(repo, ['--check']);
+    expect(r.status).toBe(4);
+    expect(r.stderr).toContain('does not match its own contents');
+    // Every task definition is still byte-exact — nothing but the id moved, which is
+    // precisely why an id that is merely well-formed proves nothing.
+    expect(JSON.parse(fs.readFileSync(snapPath, 'utf-8')).tasks).toEqual(
+      JSON.parse(JSON.stringify(snap.tasks)),
+    );
+    expect(real).toMatch(/^[0-9a-f]{64}$/);
+  });
+
   it('never emits trailing whitespace, even when a prompt carries it', () => {
     // The committed snapshot picked this up from prompt bodies; it fails whitespace
     // lint and produces diff noise unrelated to any definition change.

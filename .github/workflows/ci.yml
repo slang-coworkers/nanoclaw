@@ -179,6 +179,57 @@ jobs:
         with:
           python-version: '3.11'
 
+      # The Python tail of this repo — the path-guard matcher, the KB
+      # observability producers, the task dumper, regression-quality, and the
+      # supervise-issues / learnings-wiki skill scripts — had no linter at all,
+      # while the TypeScript side has had `tsc` plus the ratcheted gate below
+      # for months. Several of these run on a production cron and decide whether
+      # the KB is reported healthy, so a silent break there does not fail a
+      # build; it just starts publishing a wrong number.
+      #
+      # The version is pinned EXACTLY, and config lives in ruff.toml, which does
+      # not override the rule selection. That combination is what makes the gate
+      # deterministic: a new ruff release cannot turn an unrelated PR red, and
+      # bumping the pin surfaces the new findings as a reviewed diff. Do not
+      # relax this to a range.
+      #
+      # Scoped to THIS branch's Python, not the composed tree's. The merge step
+      # at the top pulls every nv-* sibling in, and the siblings carry Python
+      # this branch does not have and may not touch: nv-slang's
+      # container/mcp-servers/** (deleted on nv-main) and the slang*-pr-approver
+      # skills (overlay-owned) are 75 findings that no nv-main PR can fix — the
+      # files are not even in its tree. A bare `ruff check .` fails every nv-main
+      # PR on a neighbour's code, which is the "a nv-main change breaks sibling
+      # CI" class from #1134 pointed the other way. Each branch answers for its
+      # own Python; a sibling that wants this gate gets it by picking up this
+      # ci.yml, already linting exactly its own files.
+      #
+      # HEAD_SHA is the PR's own tip, so the list cannot be widened by the merge.
+      # A branch behind nv-main simply will not lint files added since it forked
+      # — under-inclusive, never wrong-blaming. The -f test drops anything a
+      # sibling's deletion carried off, so the only way this step fails is a real
+      # lint error.
+      - name: Lint Python (ruff)
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check ruff==0.16.2
+          ruff --version
+
+          files=()
+          while IFS= read -r -d '' f; do
+            case "$f" in
+              *.py) if [ -f "$f" ]; then files+=("$f"); fi ;;
+            esac
+          done < <(git ls-tree -r --name-only -z "$HEAD_SHA")
+
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::notice::no Python on this branch — nothing to lint"
+            exit 0
+          fi
+          echo "linting ${#files[@]} file(s) from $HEAD_SHA"
+          ruff check --output-format=github -- "${files[@]}"
+
       - name: Build (needed for fetch-skills + tests)
         run: pnpm run build
 
@@ -245,3 +296,19 @@ jobs:
       # build, it just starts saying everything is fine.
       - name: KB observability tests (Python)
         run: python3 scripts/test_kb_observability.py
+
+      # The committed scheduled-task snapshot is the only record of what the live
+      # agents are standing-instructed to do, and its whole value is that `git diff`
+      # is a drift alarm. It is a PAIR — JSON plus Markdown mirror, stamped with a
+      # shared content hash — and the two can come apart with nothing to show for it:
+      # a crash between the sequential renames, which no in-process rollback can
+      # cover, or a hand-edit of a committed file. Either leaves a snapshot that
+      # still reads as authoritative.
+      #
+      # `--check` recomputes the hash and compares the pair. It returns before `ncl`
+      # is invoked, so it needs no live host, no DB and no network — which is what
+      # makes it runnable here rather than only on the box that dumps it. What it
+      # does NOT do is compare the snapshot against the live host; that is
+      # scripts/kb-doctor.py's job and it needs the host to do it.
+      - name: Scheduled-task snapshots agree with themselves
+        run: bash scripts/check-task-snapshots.sh

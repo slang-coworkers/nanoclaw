@@ -33,7 +33,10 @@ def load_gh_graphql():
     import json as _json
     mod.json = _json
     mod.sys = sys
-    exec(compile(m.group(0), "gh_graphql", "exec"), mod.__dict__)
+    # The function under test lives inside pull-universe.sh and has no importable
+    # form. Executing the extracted source is the only way to test the real thing
+    # rather than a copy that can drift from it.
+    exec(compile(m.group(0), "gh_graphql", "exec"), mod.__dict__)  # noqa: S102
     return mod
 
 
@@ -44,7 +47,7 @@ def load_classify_error_text():
     start = src.index("_PERMANENT_SIGNATURES")
     end = src.index("def ncl_last_outbound")
     mod = types.ModuleType("pu_classify")
-    exec(compile(src[start:end], "classify_error_text", "exec"), mod.__dict__)
+    exec(compile(src[start:end], "classify_error_text", "exec"), mod.__dict__)  # noqa: S102
     return mod.classify_error_text
 
 

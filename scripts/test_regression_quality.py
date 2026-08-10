@@ -9,16 +9,17 @@ entirely to the bot. None of those show up as an error anywhere; they show up as
 a plausible number. Run: python3 test_regression_quality.py
 """
 
+import contextlib
 import importlib.util
 import io
 import json
-import contextlib
 import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from typing import ClassVar
 
 SCRIPT = Path(__file__).resolve().parent / "regression-quality.py"
 _spec = importlib.util.spec_from_file_location("regression_quality", SCRIPT)
@@ -61,7 +62,7 @@ class FakeGh:
         self.routes = routes
         self.calls = []
 
-    def __call__(self, cmd, capture_output=True, text=True, timeout=None):
+    def __call__(self, cmd, capture_output=True, text=True, timeout=None, check=False):
         path = cmd[2]
         self.calls.append(path)
         if path not in self.routes:
@@ -102,7 +103,7 @@ class Harness(unittest.TestCase):
 class TestCohort(Harness):
     """The numerator and the denominator must describe the same PRs."""
 
-    ROUTES = {
+    ROUTES: ClassVar[dict] = {
         LABELS: [{"name": "regression"}],
         ISSUES: [issue(1, "2026-07-20T00:00:00Z", body="Since #500 this crashes.")],
         f"repos/{REPO}/pulls/500": pr(500, "nv-slang-bot[bot]", "2026-04-02T00:00:00Z"),
@@ -168,7 +169,7 @@ class TestMixedAuthorship(Harness):
 class TestFailClosed(Harness):
     """An outage must never be publishable as a clean number."""
 
-    GOOD = {
+    GOOD: ClassVar[dict] = {
         LABELS: [{"name": "regression"}],
         ISSUES: [issue(1, "2026-07-20T00:00:00Z", body="Since #500 this crashes.")],
         f"repos/{REPO}/pulls/500": pr(500, "nv-slang-bot[bot]", "2026-04-02T00:00:00Z"),

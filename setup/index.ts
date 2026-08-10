@@ -5,6 +5,14 @@
 import { log } from '../src/log.js';
 import { emitStatus } from './status.js';
 
+/**
+ * Every entry here must name a module that exists ON TRUNK. The import is
+ * lazy, so a dangling entry does not fail at load — it fails only when an
+ * operator picks that step, with an ERR_MODULE_NOT_FOUND nobody can act on.
+ * A step whose file ships from a branch (`channels`, `providers`) registers
+ * itself inside the `nanoclaw:setup-steps` marker below, as part of the
+ * install skill that copies the file in — never as a hardcoded line up here.
+ */
 const STEPS: Record<
   string,
   () => Promise<{ run: (args: string[]) => Promise<void> }>
@@ -15,7 +23,6 @@ const STEPS: Record<
   container: () => import('./container.js'),
   register: () => import('./register.js'),
   'pair-telegram': () => import('./pair-telegram.js'),
-  groups: () => import('./groups.js'),
   'whatsapp-auth': () => import('./whatsapp-auth.js'),
   'signal-auth': () => import('./signal-auth.js'),
   mounts: () => import('./mounts.js'),
