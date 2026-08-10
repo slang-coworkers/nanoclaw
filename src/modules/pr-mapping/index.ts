@@ -16,9 +16,10 @@ import { getDb } from '../../db/connection.js';
 import { registerDeliveryAction } from '../../delivery.js';
 import { unguarded } from '../../guard/index.js';
 import { log } from '../../log.js';
+import { notifyAgent } from '../approvals/index.js';
 import type { Session } from '../../types.js';
 import { postRegisterPr } from './register-client.js';
-import { upsertPrMapping } from './store.js';
+import { claimPrMapping } from './store.js';
 
 registerDeliveryAction(
   'map_pr_session',
@@ -46,13 +47,27 @@ registerDeliveryAction(
     };
 
     if (PR_MAPPINGS_LOCAL) {
-      upsertPrMapping(getDb(), write);
+      const claim = claimPrMapping(getDb(), write);
+      if (claim.outcome === 'rejected') {
+        // Tell the agent, and stop. Silence here would leave it believing its
+        // PR is wired for webhooks when the traffic goes somewhere else, and
+        // it would keep waiting for review comments that never arrive.
+        notifyAgent(
+          session,
+          `report_pr_created denied: ${repo}#${prNumber} is already registered to another agent group ` +
+            `(${claim.prior.owner_instance}/${claim.prior.agent_group_id}). Webhooks for this PR will NOT ` +
+            `route to you. If this PR really is yours, ask an admin to run ` +
+            `\`ncl pr-mappings remap --repo ${repo} --pr ${prNumber} --session <your-session-id>\`.`,
+        );
+        return;
+      }
       log.info('PR→session mapping recorded (local)', {
         repo,
         pr: prNumber,
         session: session.id,
         threadId: session.thread_id,
         owner: INSTANCE_SLUG,
+        outcome: claim.outcome,
       });
     }
 

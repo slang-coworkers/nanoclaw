@@ -35,7 +35,7 @@ Every webhook lands at exactly one canonical entry. Routing decisions are determ
 - **Canonical instance** — the install that owns the `pr_session_mappings` table and is the sole receiver of GitHub App webhooks. Today: `prod`. Identified by `INSTANCE_SLUG=prod` and `PR_MAPPINGS_LOCAL=1`.
 - **Peer instance / leaf** — a non-canonical install (e.g. a dev install). Doesn't receive GitHub webhooks directly; receives forwarded webhooks from the canonical router. Today: `lego`. Identified by `INSTANCE_SLUG=lego` and (typically) `PR_MAPPINGS_LOCAL=1` for cache lookups.
 - **Mapping** — a row in `pr_session_mappings` of the form `(repo, pr_number) → (owner_instance, agent_group_id, session_id, thread_id)`. Says which session on which instance owns a given PR.
-- **Marker** — a structured token in the orchestrator's coworker-dispatch text that authorizes the receiving coworker to post back to GitHub. Today: `<github-post-authorized />` plus `REPO=`, `PR=`, `COMMENT_ID=`, `COMMENTER=` lines.
+- **Marker** — a structured token in the orchestrator's coworker-dispatch text that authorizes the receiving coworker to post back to GitHub. Today: `<github-post-authorized />` plus `REPO=`, `PR=`, `COMMENT_ID=`, `COMMENTER=` lines. It lives in the orchestrator's skill text; the host does not parse it, so it is not a host-side grant and cannot be used to authorize a PR claim.
 
 ## Routing decision tree
 
@@ -119,10 +119,18 @@ Both sides verify with the same secret. The endpoint distinguishes the two flows
 
 ## What happens to the table
 
+Writes are **first-claim-wins**, not last-writer-wins. Both writers take
+`repo`/`pr_number` from an agent-composed message, so an unconditional upsert
+let any agent group capture any PR's webhook traffic. A claim binds on first
+write; the holding group may refresh its own row (its session id changes on
+every container restart); anyone else is refused, loudly. Deliberate
+reassignment goes through `ncl pr-mappings remap`. Details and the reasoning:
+`src/modules/pr-mapping/store.ts`.
+
 | Action | Canonical (prod) | Peer (lego) |
 |---|---|---|
-| Local agent calls `report_pr_created()` (this instance owns the PR) | INSERT/REPLACE locally; no remote call | Local insert (cache); POST to canonical `/internal/register-pr` |
-| Peer agent's `report_pr_created()` arrives at `/internal/register-pr` | INSERT/REPLACE in local table with `owner_instance=<peer-slug>` | n/a (peer doesn't host this endpoint with write semantics) |
+| Local agent calls `report_pr_created()` (this instance owns the PR) | claim locally; no remote call | local claim (cache); POST to canonical `/internal/register-pr` |
+| Peer agent's `report_pr_created()` arrives at `/internal/register-pr` | claim in local table with `owner_instance=<peer-slug>`; **409** if another claimant holds it | n/a (peer doesn't host this endpoint with write semantics) |
 | Webhook delivery, lookup hit local owner | Read row, deliver locally | Read cache row, deliver locally |
 | Webhook delivery, lookup hit foreign owner | Forward to peer | Should not happen on a peer (canonical did the lookup) |
 | Webhook delivery, lookup miss | Orchestrator dispatch (local) | Orchestrator dispatch (local) — usually means the canonical router didn't have the mapping either |

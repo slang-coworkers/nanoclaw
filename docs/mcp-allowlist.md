@@ -69,31 +69,46 @@ delivery registry, so it cannot quietly go stale.
 | `record_decision` | `approval_decisions` row | **guard-held** — plus the `APPROVAL_LEDGER_WRITERS` capability, fail-closed when unset |
 | `wire_agents` | mutates destination ACLs | unguarded at the delivery seam, but the handler refuses a non-`is_admin` caller |
 | `request_restart` | restarts the caller's own container | unguarded, deliberately — not a privilege |
-| `append_learning` | file in the shared learnings dir | ⚠️ **unguarded** — see below |
-| `report_pr_created` | `pr_session_mappings` row (action `map_pr_session`) | ⚠️ **unguarded** — see below |
+| `append_learning` | file in the shared learnings dir | unguarded, but every write is attributed to its author group + session |
+| `report_pr_created` | `pr_session_mappings` row (action `map_pr_session`) | unguarded at the seam; the handler is **first-claim-wins** — see below |
 
 `ncl` is not in this table and not covered by the allow-list: it is a CLI
 reached over Bash, and every command it carries is gated separately by
 `cli_scope` and the guard in `src/cli/dispatch.ts`. `record_human_verdict`
 likewise — it arrives from the GitHub webhook, not from a tool call.
 
-### ⚠️ Two built-ins whose own gate is weaker than it looks
+### The two that used to have no gate at all
 
-Both predate this change and neither was ever mitigated by the allow-list —
-`base-nanoclaw` grants both to every typed coworker, so the allow-list handed
-them out by default. Removing them from allow-list scope loses no protection
-that existed. They need argument-level authorization, which an allow-list
-cannot express, and they are tracked as follow-ups rather than fixed here.
+Both are fixed. Recorded here because the shape of the fix matters: neither
+could be expressed as an allow-list entry, which is why removing them from
+allow-list scope lost nothing — the allow-list was never mitigating them.
+`base-nanoclaw` grants both to every typed coworker, so it handed them out by
+default.
 
-- **`report_pr_created`** writes `pr_session_mappings` with `INSERT OR REPLACE`
-  — the routing source of truth for GitHub webhooks. Any agent group can claim
-  any `(repo, pr_number)` and redirect that PR's future webhook deliveries to
-  its own session; a takeover within the same instance does not even warn (only
-  an `owner_instance` flip logs). Needs a check that the calling session has a
-  legitimate claim to the PR.
-- **`append_learning`** writes into `data/shared/learnings/`, which every agent
-  group reads. One group can therefore place text into another's context.
-  Append-only and non-destructive, but unauthenticated.
+- **`report_pr_created`** wrote `pr_session_mappings` with `INSERT OR REPLACE`.
+  `pr_session_mappings` decides where a PR's GitHub webhooks are delivered, and
+  both writers take `repo`/`pr_number` from an agent-composed message, so any
+  group could name any PR and capture its traffic — silently, when the takeover
+  was same-instance. Now **first-claim-wins**: the holder may refresh its own
+  row (its session id changes on every container restart), anyone else is
+  refused, the refusal is logged at ERROR naming both claimants, and the agent
+  is told so it does not sit waiting for review comments that will never
+  arrive. Corrections go through `ncl pr-mappings remap`, which is
+  approval-gated and refuses an agent pointing a PR at its own group. See
+  `src/modules/pr-mapping/store.ts` for why the claim is ordered rather than
+  proved.
+
+- **`append_learning`** writes into `data/shared/learnings/`, which is mounted
+  into every container — so one group's write lands in every other group's
+  context. The write stays open (restricting it would break the feature) but it
+  is no longer anonymous: each learning carries front-matter naming the author
+  group and session, files live under a per-group subdirectory, and the index
+  shows the author beside every entry. Files written before this are still
+  listed and still readable at their old paths, marked `unattributed`.
+
+`src/builtin-mcp-gates.test.ts` asserts the classification above against the
+delivery registry, and asserts that the known-weak list is **empty** — adding a
+knowingly-weak built-in is now the thing that has to be deliberate.
 
 ## Where it is enforced
 

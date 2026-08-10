@@ -56,23 +56,37 @@ const BUILTIN_TOOL_ACTIONS: Record<string, string> = {
 const GUARD_HELD = ['install_packages', 'add_mcp_server', 'create_agent', 'record_decision'];
 
 /**
- * Built-ins that run unguarded by declaration AND whose own handler enforces
- * nothing an untrusted agent could not satisfy. Recorded, not excused.
+ * Built-ins that run unguarded at the delivery seam AND whose own handler
+ * enforces nothing an untrusted agent could not satisfy.
  *
- * - `report_pr_created` writes `pr_session_mappings` with INSERT OR REPLACE,
- *   the routing source of truth for GitHub webhooks. Any group can claim any
- *   `(repo, pr_number)` and redirect that PR's webhooks to its own session; a
- *   same-instance takeover does not even warn. Needs an argument-level check
- *   (does this session have a claim to this PR?), which the allow-list could
- *   never have provided.
- * - `append_learning` writes into the shared learnings dir that every agent
- *   group reads, so one group can put text into another's context. Append-only
- *   and non-destructive, but unauthenticated.
+ * **Empty.** Both former entries were fixed rather than left recorded:
+ *
+ * - `report_pr_created` used to write `pr_session_mappings` with
+ *   `INSERT OR REPLACE`, so any group could claim any `(repo, pr_number)` and
+ *   redirect that PR's GitHub webhooks to its own session — silently, when the
+ *   takeover was same-instance. It is now first-claim-wins with a refusal
+ *   logged at ERROR (`modules/pr-mapping/store.ts`), and corrections go
+ *   through the approval-gated `ncl pr-mappings remap`.
+ * - `append_learning` still writes into the shared directory every group
+ *   reads — restricting that would break the feature — but the write is no
+ *   longer anonymous: each learning records its author group and session, and
+ *   the index shows the author beside every entry.
+ *
+ * Neither is guard-HELD, which is why they are classified below as
+ * `HANDLER_ENFORCED` rather than moved to `GUARD_HELD`: the authorization is
+ * in the handler, in a form the guard seam cannot express (it is a check on
+ * the arguments against existing state, not a hold for approval).
  */
-const KNOWN_WEAK = ['report_pr_created', 'append_learning'];
+const KNOWN_WEAK: string[] = [];
 
-/** Unguarded by declaration, but the handler itself enforces authority. */
-const HANDLER_ENFORCED = ['wire_agents'];
+/**
+ * Unguarded at the delivery seam, but the handler itself enforces authority.
+ *
+ * - `wire_agents` refuses a non-`is_admin` caller.
+ * - `report_pr_created` refuses a claim on a PR another group holds.
+ * - `append_learning` attributes every write to its author.
+ */
+const HANDLER_ENFORCED = ['wire_agents', 'report_pr_created', 'append_learning'];
 
 /** Unguarded and deliberately so — no privilege is being exercised. */
 const NOT_PRIVILEGED = ['request_restart'];
@@ -109,14 +123,14 @@ describe('the gate inventory matches the registry', () => {
   });
 });
 
-describe('the two known-weak built-ins are still weak — remove them here when fixed', () => {
-  // A canary, deliberately inverted: if someone guards these, this test fails
-  // and the failure message is "go update the docs and the weak list".
-  it.each(KNOWN_WEAK)('%s is unguarded (documented in docs/mcp-allowlist.md)', (tool) => {
-    expect(describeDeliveryActionGuard(BUILTIN_TOOL_ACTIONS[tool])).toMatchObject({
-      registered: true,
-      guarded: false,
-    });
+describe('nothing is left in the known-weak list', () => {
+  // The canary moved with the code rather than being deleted. It used to
+  // assert that `report_pr_created` and `append_learning` were still weak, so
+  // that fixing one would go red and force the docs to be updated in the same
+  // change — which is exactly what happened. It now asserts the list is empty,
+  // so ADDING a knowingly-weak built-in is the thing that has to be deliberate.
+  it('is empty — a new entry here needs an entry in docs/mcp-allowlist.md too', () => {
+    expect(KNOWN_WEAK).toEqual([]);
   });
 });
 
