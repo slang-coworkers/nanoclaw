@@ -53,8 +53,22 @@ def mock_init_discord_client(mock_discord_client):
         yield mock_init
 
 
+@pytest.fixture
+def allow_send_channel(monkeypatch):
+    """Permit sending to the channel these tests mock.
+
+    `send_message` grew a DISCORD_ALLOWED_SEND_CHANNELS allow-list after these
+    tests were written, and nothing ran them, so they sat red: every send
+    returned "No allowed send channels or forums configured". Granting the
+    permission HERE rather than in conftest keeps the guard on by default for
+    every other test — a blanket default would quietly disable a safety
+    allow-list across the suite.
+    """
+    monkeypatch.setenv("DISCORD_ALLOWED_SEND_CHANNELS", "67890")
+
+
 @pytest.mark.asyncio
-async def test_send_message(mock_discord_client, mock_init_discord_client):
+async def test_send_message(mock_discord_client, mock_init_discord_client, allow_send_channel):
     """Test send_message function."""
     # Setup mock channel and message
     mock_channel = AsyncMock()
@@ -86,7 +100,9 @@ async def test_send_message(mock_discord_client, mock_init_discord_client):
 
     # Verify client was used correctly
     mock_discord_client.get_channel.assert_called_once_with(67890)
-    mock_channel.send.assert_called_once_with("Test message")
+    # `view=` arrived with SummonView after this assertion was written, and
+    # nothing ran the suite, so the drift went unnoticed.
+    mock_channel.send.assert_called_once_with("Test message", view=None)
 
 
 @pytest.mark.asyncio
@@ -192,7 +208,7 @@ async def test_get_user_info(mock_discord_client, mock_init_discord_client):
 
 @pytest.mark.asyncio
 async def test_send_message_channel_not_found(
-    mock_discord_client, mock_init_discord_client
+    mock_discord_client, mock_init_discord_client, allow_send_channel
 ):
     """Test send_message function when channel is not found."""
     # Setup mocks

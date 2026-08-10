@@ -141,7 +141,12 @@ def _read_thread_state(thread_id: str) -> dict:
     POST failed is refunded and does not count. Shape is unchanged, so the
     admission gates below read it exactly as before.
     """
-    state = {"resolved": False, "bot_reply_count": 0, "failed_reply_count": 0}
+    state = {
+        "resolved": False,
+        "bot_reply_count": 0,
+        "failed_reply_count": 0,
+        "unresolved_reply_count": 0,
+    }
     path = _feedback_path("thread_state.jsonl")
     if not os.path.exists(path):
         return state
@@ -171,6 +176,9 @@ def _read_thread_state(thread_id: str) -> dict:
     if cap is not None:
         state["bot_reply_count"] = cap.charged()
         state["failed_reply_count"] = cap.failed
+        # Charges held by reservations that never settled. They keep consuming
+        # quota — see reply_capacity.py — so they are reported, not reclaimed.
+        state["unresolved_reply_count"] = len(cap.unresolved_ids())
     return state
 
 
@@ -273,7 +281,9 @@ async def discord_rest_read_messages(channel_id: str, limit: int = 20) -> Dict[s
         return {"error": f"Discord REST request failed: {str(e)}"}
 
 
-async def _post_to_dashboard(content: str, thread_id: str | None = None) -> bool:
+async def _post_to_dashboard(
+    content: str, thread_id: str | None = None, reservation_id: str | None = None
+) -> bool:
     """Forward an event to the dashboard ingress to wake the target agent."""
     if not DASHBOARD_INGRESS_URL:
         return False
@@ -286,6 +296,12 @@ async def _post_to_dashboard(content: str, thread_id: str | None = None) -> bool
     # into the group's single thread_id=null catch-all session.
     if thread_id:
         body["thread_id"] = thread_id
+    # Sent so ingress CAN become idempotent and reconcilable later: with this id
+    # echoed back, a crash between "HTTP 200" and "reply_accepted" would be
+    # resolvable instead of merely visible. Ingress ignores it today; it costs
+    # nothing to send and it is the half of the fix that lives on this side.
+    if reservation_id:
+        body["reservation_id"] = reservation_id
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -377,7 +393,7 @@ class SummonView(discord.ui.View):
             f"\n"
             f"Use this exact phrasing — users see it on every first reply."
         )
-        posted = await _post_to_dashboard(prompt, thread_id=thread_id)
+        posted = await _post_to_dashboard(prompt, thread_id=thread_id, reservation_id=reservation)
         _settle_reply(thread_id, reservation, posted)
 
         if posted:
@@ -656,7 +672,7 @@ async def init_discord_client():
             f"{final_clause}"
         )
 
-        posted = await _post_to_dashboard(prompt, thread_id=thread_id)
+        posted = await _post_to_dashboard(prompt, thread_id=thread_id, reservation_id=reservation)
         _settle_reply(thread_id, reservation, posted)
         if posted:
             logger.info(
