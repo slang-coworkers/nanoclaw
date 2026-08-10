@@ -232,8 +232,13 @@ jobs:
         run: uv sync --frozen
       - name: pytest (non-integration)
         run: uv run pytest -q
-      # `uv run ruff check src/` is deliberately NOT wired here yet: it reports
-      # 15 pre-existing errors on a clean checkout of this branch, so adding it
-      # now would either fail every PR or force an unrelated lint sweep into this
-      # one. Wiring a gate you know is red is how a check becomes decoration.
-      # Tracked as a follow-up; the files this PR adds are already ruff-clean.
+      # Now wired: the 15 pre-existing errors #1163 refused to paper over are
+      # fixed in this PR, so this gate starts green instead of starting as
+      # decoration. Two of the 15 were real: `httpx` was never imported at
+      # module scope despite an annotation referring to it (F821), and a second
+      # `get_file_contents` shadowed the first (F811), which had silently broken
+      # file updates in create_or_update_file. Config (E/F/I, line-length 120)
+      # lives in pyproject.toml, and ruff's version comes from uv.lock, so this
+      # cannot drift with a new ruff release.
+      - name: ruff
+        run: uv run ruff check src/
