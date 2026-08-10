@@ -6,15 +6,44 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 423 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 185 |
-| `nv-slang` | slang project spine, skills, workflows | 132 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 444 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 190 |
+| `nv-slang` | slang project spine, skills, workflows | 135 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 67 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 46 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 47 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-10
+
+### nv-main (21 PRs)
+- **#1179** `ci: pin every third-party action to a SHA (15 refs across 6 workflows)`
+- **#1178** `fix(ci-gate): drop --jq, which gh refuses alongside --slurp (4,964 silent probe failures)`
+- **#1176** `chore: finish F15 follow-ups — slang-mcp's python job on nv-main, plus a lint gate for nv-main's own python`
+- **#1175** `chore: typecheck tranche 4 — clear remaining src errors`
+- **#1174** `docs: refresh the slang-coworkers-prod scheduled-task snapshot (13 -> 27 series)`
+- **#1173** `ci: run dump-scheduled-tasks --check on committed snapshots`
+- **#1171** `pr-mapping: first-claim-wins, so a PR's webhooks cannot be captured`
+- **#1170** ``staleness: accept pnpm's `--`, and stop reporting a crash as a finding``
+- **#1168** ``mcp allow-list: only an explicit `ncl` list may change a group's scope``
+- _+12 more: #1167, #1166, #1165, #1164, #1162, #1161, #1160, #1159, #1158, #1157, #1154, #1151_
+
+### nv-dashboard (5 PRs)
+- **#1169** `dashboard: a drift report we cannot fully understand is unavailable, never zero (F05)`
+- **#1172** `dashboard: render the KB doctor report, which nothing has ever displayed`
+- **#1180** `dashboard: unit cost — triager+fixer+reviewer spend per PR opened, by week`
+- **#1181** `dashboard: open the DB lazily in /api/unit-cost`
+- **#1182** `dashboard: match unit-cost groups by folder + stop duplicating funnel panels`
+
+### nv-slang (3 PRs)
+- **#1163** `discord: settle reply capacity by reservation id, and stop refunding on age (F15)`
+- **#1177** `fix(slang-mcp): clear the 15 pre-existing ruff errors and wire the gate (F15 follow-up)`
+- **#1183** `test(slang-mcp): cover the blob-sha lookup that create_or_update_file silently lost`
+
+### nv-nanoclaw (1 PRs)
+- **#1145** `fix(nanoclaw-pr-review-runner): don't accept a partial CI rail as a Devin verdict`
 
 ## 📅 2026-08-09
 
