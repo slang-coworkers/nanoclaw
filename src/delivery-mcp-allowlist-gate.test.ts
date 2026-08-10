@@ -36,6 +36,8 @@ const { __testHooks, registerDeliveryAction } = await import('./delivery.js');
 const { handleSystemAction } = __testHooks;
 const { unguarded } = await import('./guard/index.js');
 const { NANOCLAW_ACTION_TOOLS } = await import('./mcp-allowlist.js');
+type Session = import('./types.js').Session;
+type SessionDb = import('better-sqlite3').Database;
 
 const GID = 'ag-gated';
 const SID = 'sess-gated';
@@ -66,8 +68,9 @@ function now(): string {
   return new Date().toISOString();
 }
 
-const session = { id: SID, agent_group_id: GID, messaging_group_id: null } as never;
-const inDb = null as never;
+const session = { id: SID, agent_group_id: GID, messaging_group_id: null } as unknown as Session;
+// The handlers under test are doubles that never touch the DB handle.
+const inDb = null as unknown as SessionDb;
 
 beforeEach(() => {
   if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
