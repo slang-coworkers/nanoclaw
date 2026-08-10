@@ -196,3 +196,44 @@ jobs:
       - name: Container tests
         working-directory: container/agent-runner
         run: bun test
+
+  # ── Python: slang-mcp ──────────────────────────────────────────────────────
+  #
+  # The 292-line reply-capacity suite (and the ~90 tests around it) executed in
+  # NO workflow. It could stay red for months without anything noticing — and it
+  # was: two tests in test_discord.py had drifted past a send allow-list and a
+  # `view=` kwarg added after they were written, so `uv run pytest` was failing
+  # on a clean checkout of this branch. A suite nothing runs is not coverage; it
+  # is a file that looks like coverage.
+  #
+  # Non-integration only. test/conftest.py skips anything marked `integration`
+  # unless RUN_INTEGRATION_TESTS=true, so the default run needs no Discord or
+  # GitHub credentials and no network.
+  #
+  # OWNERSHIP CAVEAT: `.github/**` belongs to nv-main, not nv-slang. This copy
+  # runs for pull requests targeting nv-slang (GitHub takes the workflow from
+  # the PR's merge ref), which is what makes it effective today. It will be
+  # canonicalized back to nv-main's copy by setup.sh / merge-train.sh, so the
+  # identical job has to land on nv-main to survive a deploy. Tracked in the PR
+  # description; it is the same "a step added on nv-main does not reach a leaf's
+  # already-running workflow" shape that broke #1122/#1123, seen from the other
+  # end.
+  python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: container/mcp-servers/slang-mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.5.11'
+      - name: Install (locked)
+        run: uv sync --frozen
+      - name: pytest (non-integration)
+        run: uv run pytest -q
+      # `uv run ruff check src/` is deliberately NOT wired here yet: it reports
+      # 15 pre-existing errors on a clean checkout of this branch, so adding it
+      # now would either fail every PR or force an unrelated lint sweep into this
+      # one. Wiring a gate you know is red is how a check becomes decoration.
+      # Tracked as a follow-up; the files this PR adds are already ruff-clean.

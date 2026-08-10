@@ -38,11 +38,45 @@ real lifecycle.
 `charged()` = accepted + live pending. Only delivered replies (plus the
 handful currently in flight) consume quota.
 
-A process that dies between reserving and settling would otherwise leak its
-reservation forever — the same bug with a smaller window — so a pending older
-than REPLY_PENDING_TTL_SECS is treated as abandoned and stops counting. The
-POST itself has a 5s timeout, so the default 300s is far outside any healthy
-round-trip.
+AGE IS NOT EVIDENCE OF FAILURE
+-----------------------------
+An earlier version treated a reservation older than REPLY_PENDING_TTL_SECS as
+abandoned and stopped counting it. That is unsound. The failure it was aimed at
+— a process that appends `reply_pending`, gets HTTP 200 from ingress, and dies
+before appending `reply_accepted` — produces a reservation that is old AND
+delivered. Refunding it forgets a reply the user can see, and the next
+admission takes the thread past the cap.
+
+The log cannot infer an outcome from elapsed time. So an unsettled reservation
+stays CHARGED, however old it gets. The TTL survives only as a diagnostic
+threshold: past it, a reservation is reported as `unresolved` — an explicit
+state that callers surface and an operator can settle deliberately
+(`reply_capacity_admin.py`). It is never silently reclaimed.
+
+That is a deliberate trade. A crash permanently consumes one reply of a
+thread's quota until someone settles it, which is its own availability bug —
+so it is loud rather than silent, and there is a command to clear it. The
+durable fix is for dashboard ingress to accept the reservation id as an
+idempotency key and expose whether it was accepted, at which point these become
+reconcilable instead of merely visible. The forwarders already send the id
+(`reservation_id` in the POST body) so that reconciliation can be built without
+another change here.
+
+SETTLEMENT IS A STATE MACHINE, NOT A COUNTER
+--------------------------------------------
+Every terminal row used to increment unconditionally, so a duplicate audit row,
+a retry, or an out-of-order pair double-counted or refunded something already
+charged. Reservation ids are now single-settlement keys:
+
+  * a reservation is recorded once; a replayed `reply_pending` is a duplicate
+  * the FIRST terminal row for an id settles it; an identical replay is ignored
+  * a CONTRADICTING second terminal is counted in `conflicts` and resolved
+    toward charging — a delivered reply must consume quota, and a delivered
+    reply must never be refunded. `failed` then `accepted` restores the charge;
+    `accepted` then `failed` keeps it.
+  * a terminal for an id with no reservation (`orphan_terminals`) settles that
+    id but refunds nothing: there is no charge to release. An orphan `accepted`
+    still charges, because it means a reply was delivered.
 
 BACKWARD COMPATIBILITY
 ----------------------
@@ -62,10 +96,14 @@ EVENT_ACCEPTED = "reply_accepted"
 EVENT_FAILED = "reply_failed"
 EVENT_LEGACY_ACCEPTED = "bot_reply"
 
-#: A reservation older than this never settled — its process died mid-POST.
-#: Generous next to the 5s ingress POST timeout, short enough that a crash
-#: cannot wedge a thread's quota for long.
+#: Past this age an unsettled reservation is REPORTED as unresolved. It keeps
+#: its charge — see "age is not evidence of failure" above. Generous next to the
+#: 5s ingress POST timeout, so anything older is genuinely anomalous.
 REPLY_PENDING_TTL_SECS = int(os.environ.get("REPLY_PENDING_TTL_SECS", "300"))
+
+#: Terminal states a reservation id can settle into.
+TERMINAL_ACCEPTED = "accepted"
+TERMINAL_FAILED = "failed"
 
 
 def now_iso() -> str:
@@ -91,45 +129,121 @@ class ReplyCapacity:
 
     accepted: int = 0
     failed: int = 0
-    #: reservation id -> epoch seconds it was taken (None when unparseable,
-    #: which counts as live: fail toward charging rather than toward a leak).
+    #: reservation id -> epoch seconds it was taken (None when unparseable).
+    #: UNSETTLED reservations only; settling removes the entry.
     pending: dict[str, float | None] = field(default_factory=dict)
+    #: reservation id -> TERMINAL_*. The single-settlement key set: an id in
+    #: here has already been decided and cannot be settled again.
+    settled: dict[str, str] = field(default_factory=dict)
+    #: rows that repeated a decision already recorded — ignored, but counted so
+    #: a replay storm is visible rather than invisible.
+    duplicates: int = 0
+    #: terminal rows that contradicted an earlier terminal for the same id.
+    #: Should be zero; a non-zero value means a forwarder settled twice.
+    conflicts: int = 0
+    #: terminal rows whose reservation was never seen (log truncated, or a
+    #: settle from a process whose pending row was lost).
+    orphan_terminals: int = 0
 
     def live_pending(self, now: float | None = None, ttl: int | None = None) -> int:
-        """Reservations still plausibly in flight."""
+        """Unsettled reservations young enough to still be plausibly in flight."""
         now = now if now is not None else datetime.now(timezone.utc).timestamp()
         ttl = REPLY_PENDING_TTL_SECS if ttl is None else ttl
-        live = 0
-        for taken_at in self.pending.values():
-            if taken_at is None or (now - taken_at) <= ttl:
-                live += 1
-        return live
+        return sum(
+            1
+            for taken_at in self.pending.values()
+            if taken_at is None or (now - taken_at) <= ttl
+        )
+
+    def unresolved_ids(self, now: float | None = None, ttl: int | None = None) -> list[str]:
+        """Reservations too old to be in flight and never settled.
+
+        These are STILL CHARGED. They are surfaced so the charge is explicit and
+        an operator can settle them, not so it can be reclaimed automatically —
+        their true outcome is unknown, and age does not reveal it.
+        """
+        now = now if now is not None else datetime.now(timezone.utc).timestamp()
+        ttl = REPLY_PENDING_TTL_SECS if ttl is None else ttl
+        return sorted(
+            rid
+            for rid, taken_at in self.pending.items()
+            if taken_at is not None and (now - taken_at) > ttl
+        )
 
     def charged(self, now: float | None = None, ttl: int | None = None) -> int:
-        """Quota consumed: delivered replies plus reservations in flight."""
-        return self.accepted + self.live_pending(now, ttl)
+        """Quota consumed: delivered replies plus EVERY unsettled reservation.
+
+        `now`/`ttl` are accepted for signature compatibility and deliberately
+        unused in the total: an unsettled reservation is charged whatever its
+        age, because the log cannot tell a crash-before-settle from a
+        crash-after-delivery.
+        """
+        return self.accepted + len(self.pending)
 
 
 def apply_event(cap: ReplyCapacity, event: str, reservation_id: str | None, ts: str | None = None) -> None:
-    """Fold one audit-log row into `cap`. Unknown events are ignored."""
+    """Fold one audit-log row into `cap`. Unknown events are ignored.
+
+    Idempotent per reservation id: folding a log that contains replayed rows —
+    or folding the same log twice — yields the same capacity.
+    """
     if event == EVENT_LEGACY_ACCEPTED:
         # Pre-lifecycle rows: an admitted reply, with no settlement to wait for.
         cap.accepted += 1
-    elif event == EVENT_PENDING:
-        if reservation_id:
-            cap.pending[reservation_id] = _parse_ts(ts)
-        else:
-            # A reservation we cannot settle later must still be charged, or a
+        return
+
+    if event == EVENT_PENDING:
+        if not reservation_id:
+            # A reservation we could never settle must still be charged, or a
             # malformed row would silently hand back quota.
             cap.accepted += 1
-    elif event == EVENT_ACCEPTED:
-        cap.pending.pop(reservation_id, None) if reservation_id else None
+        elif reservation_id in cap.settled or reservation_id in cap.pending:
+            cap.duplicates += 1  # replayed reservation row
+        else:
+            cap.pending[reservation_id] = _parse_ts(ts)
+        return
+
+    if event not in (EVENT_ACCEPTED, EVENT_FAILED):
+        return
+
+    terminal = TERMINAL_ACCEPTED if event == EVENT_ACCEPTED else TERMINAL_FAILED
+
+    if not reservation_id:
+        # Unkeyed terminal — it cannot be tied to a reservation, so it releases
+        # nothing. An accepted one still charges: it means a reply went out.
+        cap.orphan_terminals += 1
+        if terminal == TERMINAL_ACCEPTED:
+            cap.accepted += 1
+        else:
+            cap.failed += 1
+        return
+
+    prior = cap.settled.get(reservation_id)
+    if prior is not None:
+        if prior == terminal:
+            cap.duplicates += 1  # exact replay of a decision already made
+            return
+        # Contradiction. Resolve toward CHARGING in both directions: a delivered
+        # reply must consume quota, and a delivered reply must never be refunded
+        # by a late failure row.
+        cap.conflicts += 1
+        if terminal == TERMINAL_ACCEPTED:  # failed → accepted: restore the charge
+            cap.settled[reservation_id] = TERMINAL_ACCEPTED
+            cap.failed -= 1
+            cap.accepted += 1
+        # accepted → failed: keep the charge; record only the conflict.
+        return
+
+    # First terminal for this id — the one that settles it.
+    if reservation_id in cap.pending:
+        del cap.pending[reservation_id]
+    else:
+        # Settling something we never saw reserved releases no charge.
+        cap.orphan_terminals += 1
+    cap.settled[reservation_id] = terminal
+    if terminal == TERMINAL_ACCEPTED:
         cap.accepted += 1
-    elif event == EVENT_FAILED:
-        # Compensation: release the reservation and record the failure. This is
-        # the event whose absence made a transient outage look like normal use.
-        if reservation_id:
-            cap.pending.pop(reservation_id, None)
+    else:
         cap.failed += 1
 
 
