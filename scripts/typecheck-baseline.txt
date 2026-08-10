@@ -14,4 +14,3 @@
 # paid: the gate now demands zero errors across src/, setup/ and scripts/. Do
 # not add a line to get a red build green — the ratchet only turns one way, and
 # an empty baseline is the whole point of having had one.
-
