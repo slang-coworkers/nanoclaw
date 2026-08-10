@@ -7742,6 +7742,11 @@ export async function handleRequest(
         // render as null cost-per-PR across the board with no explanation.
         funnelKeys = null;
       }
+      // `db` is opened lazily (see the `if (!db) db = openDb()` further down);
+      // a route that only reads it can therefore run while it is still null and
+      // report "central DB unavailable" on a perfectly healthy box. Observed on
+      // prod the first time this route was hit.
+      if (!db) db = openDb();
       if (!funnelKeys || !db) {
         payload = {
           weeks: [],
