@@ -71,7 +71,8 @@ For ad-hoc queries from skills or scripts, use the in-tree wrapper rather than t
 | `src/providers/` | Host-side provider container-config (`claude` baked in; `opencode` etc. installed from the `providers` branch) |
 | `container/agent-runner/src/` | Agent-runner: poll loop, formatter, provider abstraction, MCP tools, destinations |
 | `container/skills/` | Container skills loaded inside agent containers: spine fragments + SKILL.md bodies + coworker-types.yaml |
-| `groups/<folder>/` | Per-agent-group filesystem (CLAUDE.md, skills, container config) — agent-runner source is a shared read-only mount, not copied per group |
+| `groups/<folder>/` | Per-agent-group filesystem (CLAUDE.md, skills, container config) |
+| `data/v2-sessions/<group-id>/agent-runner-src/` | **Per-group WRITABLE copy** of `container/agent-runner/src/`, bind-mounted at `/app/src`. Made once at group creation and never auto-refreshed, so a merged agent-runner fix is inert on existing groups until refreshed — see [Agent-runner staleness](#agent-runner-staleness) |
 | `scripts/init-first-agent.ts` | Bootstrap the first DM-wired agent (used by `/init-first-agent` skill) |
 | `scripts/skill-apply.ts` | Deterministic SKILL.md applier — executes `nc:` directive fences; declare/emit core, journaled + idempotent |
 | `scripts/skill-directives.ts` + `scripts/skill-policy.ts` | `nc:` grammar parser + lint; UI-free driver policy derived from document structure (gate confirm, URL offer) |
@@ -321,6 +322,22 @@ This project uses pnpm with `minimumReleaseAge: 4320` (3 days) in `pnpm-workspac
 
 The container buildkit caches the build context aggressively. `--no-cache` alone does NOT invalidate COPY steps — the builder's volume retains stale files. To force a truly clean rebuild, prune the builder then re-run `./container/build.sh`.
 
+
+## Agent-runner staleness
+
+**Merging a fix under `container/agent-runner/src/**` does not deploy it to existing groups.**
+
+`src/group-init.ts` copies that tree to `data/v2-sessions/<group-id>/agent-runner-src/` behind an `if (!fs.existsSync(...))` — once, when the group is created — and `src/container-runner.ts` bind-mounts the **copy** at `/app/src`, writable. Nothing refreshes it. A new group gets the current source; every pre-existing group keeps running whatever was current on the day it was created, and no check goes red.
+
+The copy is writable on purpose: `container/skills/self-customize/SKILL.md` routes source edits through a builder agent that writes to `/app/src`, and `/add-opencode` writes provider files straight into the overlay. So it cannot simply be re-copied — that would destroy both.
+
+```bash
+pnpm run check:runner-staleness              # which groups run stale code, and which files
+pnpm run check:runner-staleness -- --refresh # copy across only the provably-safe files
+ncl groups restart --id <group-id>           # required: bun already loaded the old modules
+```
+
+The refresh writes only files that carry no local work — an older version git still has (`stale`), or a file the copy lacks entirely (`missing`). A file whose content git has never seen is somebody's edit (`modified`) and is reported, never overwritten. `setup/merge-train.sh` runs the refresh on every deploy. Implementation: `src/agent-runner-staleness.ts`.
 
 ## Container Runtime (Bun)
 

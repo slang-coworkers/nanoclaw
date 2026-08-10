@@ -223,7 +223,33 @@ if [ "$merged_any" = "1" ]; then
     rollback_and_fail
   fi
 
-  echo "merge-train: done — merged, installed, verified, built, rebuilt CLAUDE.md, and validated"
+  # A merge that lands new container/agent-runner/src/** does NOT reach the
+  # groups. src/group-init.ts copies that tree to
+  # data/v2-sessions/<id>/agent-runner-src/ behind an `if (!existsSync)` — once,
+  # at group creation — and container-runner.ts mounts the COPY at /app/src. So
+  # without this step the merge succeeds, the build succeeds, and every existing
+  # group keeps running the pre-merge code with nothing going red. That is how
+  # #1105 and the agent-runner half of #1110 were counted as closed while still
+  # broken in production.
+  #
+  # --refresh writes only the files that provably carry no local work (an older
+  # version git still has, or a file missing entirely). Files a builder agent or
+  # an install skill wrote are reported and left alone — see
+  # scripts/check-agent-runner-staleness.ts.
+  #
+  # Everything above decides whether THIS TREE is deployable, and rolls back if
+  # not. This step is different in kind: the tree is already good, and the
+  # question is whether the GROUPS got it. A group that cannot be refreshed is a
+  # reason to look at that group, never a reason to undo a good merge — so it
+  # sits outside the rollback chain and exits non-zero on its own.
+  if ! pnpm run check:runner-staleness -- --refresh; then
+    echo "merge-train: merged and built, but some groups still run stale agent-runner code." >&2
+    echo "The merge is KEPT — rolling it back would not un-stale them. Resolve the groups" >&2
+    echo "listed above, then restart them: ncl groups restart --id <group-id>" >&2
+    exit 1
+  fi
+
+  echo "merge-train: done — merged, installed, verified, built, rebuilt CLAUDE.md, validated, refreshed runners"
 else
   echo "merge-train: nothing to merge (all branches already present)"
 fi

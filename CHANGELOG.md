@@ -117,6 +117,7 @@ Major version. NanoClaw v2 is a substantial architectural rewrite. Existing fork
 - [BREAKING] **Three-level channel isolation.** Wire channels to their own agent (separate agent groups), share an agent with independent conversations (`session_mode: 'shared'`), or merge channels into one shared session (`session_mode: 'agent-shared'`). Chosen per channel via `/manage-channels`.
 - [BREAKING] **Apple Container removed from default setup.** Still available as an opt-in via `/convert-to-apple-container`.
 - **Shared-source agent-runner.** Per-group `agent-runner-src/` overlays are gone; all groups mount the same agent-runner read-only. Per-group customization flows through composed `CLAUDE.md` (shared base + per-group fragments).
+  > **Correction (2026-08-10): this did not ship.** `src/group-init.ts` still creates a per-group copy at `data/v2-sessions/<group-id>/agent-runner-src/` and `src/container-runner.ts` still bind-mounts it **writable** at `/app/src`. The entry is left in place rather than deleted because it is what the release claimed; treat the code as authoritative. See [Agent-runner staleness](CLAUDE.md#agent-runner-staleness).
 - **Agent-runner runtime moved from Node to Bun.** Container image is self-contained; no host-side impact. Host remains on Node + pnpm.
 - **OneCLI Agent Vault is the sole credential path.** Containers never receive raw API keys; credentials are injected at request time.
 
