@@ -46,6 +46,7 @@ import { CONTAINER_RUNTIME_BIN } from '../src/container-runtime.js';
 import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/write-destinations.js';
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
+import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
 
 /**
  * Check if `target` is inside (or equal to) `baseDir`.
@@ -2147,7 +2148,9 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
             if (entry.isDirectory()) walk(full, extractDirDate(entry.name) || dirDate);
             else if (entry.name.endsWith('.jsonl')) files.push({ path: full, dirDate });
           }
-        } catch { /* skip */ }
+        } catch {
+          /* skip */
+        }
       };
       walk(txDir, '');
     }
@@ -2156,14 +2159,25 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
   }
   if (files.length === 0) return [];
 
-  const byDate: Record<string, Record<string, { input: number; output: number; cacheCreate: number; cacheRead: number }>> = {};
+  const byDate: Record<
+    string,
+    Record<string, { input: number; output: number; cacheCreate: number; cacheRead: number }>
+  > = {};
   for (const { path: filePath, dirDate } of files) {
     let content: string;
-    try { content = readFileSync(filePath, 'utf-8'); } catch { continue; }
+    try {
+      content = readFileSync(filePath, 'utf-8');
+    } catch {
+      continue;
+    }
     // Fall back to file mtime if no dir-based date available
     let fallbackDate = dirDate;
     if (!fallbackDate) {
-      try { fallbackDate = new Date(statSync(filePath).mtimeMs).toISOString().slice(0, 10); } catch { /* skip */ }
+      try {
+        fallbackDate = new Date(statSync(filePath).mtimeMs).toISOString().slice(0, 10);
+      } catch {
+        /* skip */
+      }
     }
     for (const line of content.split('\n')) {
       if (!line.trim()) continue;
@@ -2186,7 +2200,9 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
         byDate[date][model].output += u.output_tokens || 0;
         byDate[date][model].cacheCreate += u.cache_creation_input_tokens || 0;
         byDate[date][model].cacheRead += u.cache_read_input_tokens || 0;
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
   }
 
@@ -2194,11 +2210,17 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
   for (const [date, models] of Object.entries(byDate)) {
     const modelBreakdowns: CcusageDayEntry['modelBreakdowns'] = [];
     let totalCost = 0;
-    let totalInput = 0, totalOutput = 0, totalCC = 0, totalCR = 0;
+    let totalInput = 0,
+      totalOutput = 0,
+      totalCC = 0,
+      totalCR = 0;
     for (const [modelName, tokens] of Object.entries(models)) {
       const p = FALLBACK_PRICING[modelName];
-      const cost = tokens.input * p.input + tokens.output * p.output
-        + tokens.cacheCreate * p.cacheCreate + tokens.cacheRead * p.cacheRead;
+      const cost =
+        tokens.input * p.input +
+        tokens.output * p.output +
+        tokens.cacheCreate * p.cacheCreate +
+        tokens.cacheRead * p.cacheRead;
       modelBreakdowns.push({
         modelName,
         inputTokens: tokens.input,
@@ -5358,7 +5380,12 @@ export async function handleRequest(
     const funnelPath = join(getProjectRoot(), 'reports', 'funnel.json');
     if (!existsSync(funnelPath)) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'no funnel snapshot', hint: 'run: pnpm exec tsx scripts/funnel.ts --out reports/funnel.json' }));
+      res.end(
+        JSON.stringify({
+          error: 'no funnel snapshot',
+          hint: 'run: pnpm exec tsx scripts/funnel.ts --out reports/funnel.json',
+        }),
+      );
       return;
     }
     try {
@@ -7683,6 +7710,99 @@ export async function handleRequest(
     return;
   }
 
+  // API: unit cost — what one opened PR costs in triager+fixer+reviewer spend.
+  //
+  // The cost side is NOT recomputed here; it reads the same ccusageCache the
+  // rest of the cost UI reads, so the two can never disagree. Only the six
+  // coworker groups count, and only prod PRs form the denominator.
+  if (url.pathname === '/api/unit-cost') {
+    if (!requireAuth(req, res)) return;
+    const weeksWanted = Math.min(Math.max(Number(url.searchParams.get('weeks')) || 4, 1), 26);
+    const unavailable = ccusageUnavailable();
+    let payload: Record<string, unknown>;
+    if (unavailable) {
+      // Say why, and emit NO weeks — a caller must not be able to read this as
+      // "four weeks that each cost nothing".
+      payload = { weeks: [], groupsMatched: [], groupsMissing: UNIT_COST_GROUPS, unavailable, prSource: null };
+    } else {
+      // Denominator: prod PR→session mappings, intersected with the funnel's
+      // own row set so we count the same PRs the rest of the board counts.
+      const prWeeks = new Map<string, number>();
+      let mapped = 0;
+      let unparseableSessionIds = 0;
+      let notInFunnel = 0;
+      let funnelKeys: Set<string> | null = null;
+      try {
+        const raw = readFileSync(join(getProjectRoot(), 'reports', 'funnel.json'), 'utf8');
+        const rows = (JSON.parse(raw)?.rows ?? []) as Array<{ repo?: string; pr?: number; instance?: string }>;
+        funnelKeys = new Set(rows.filter((r) => r.instance === 'prod' && r.pr).map((r) => `${r.repo}#${r.pr}`));
+      } catch {
+        // Leave null — see the guard below. An unreadable funnel must not
+        // silently degrade to "no PRs", which would zero every denominator and
+        // render as null cost-per-PR across the board with no explanation.
+        funnelKeys = null;
+      }
+      if (!funnelKeys || !db) {
+        payload = {
+          weeks: [],
+          groupsMatched: [],
+          groupsMissing: UNIT_COST_GROUPS,
+          unavailable: !db
+            ? 'central DB unavailable'
+            : 'reports/funnel.json unreadable — cannot resolve the PR denominator',
+          prSource: null,
+        };
+      } else {
+        const maps = db
+          .prepare(
+            `SELECT repo, pr_number, session_id, created_at FROM pr_session_mappings WHERE owner_instance = 'prod'`,
+          )
+          .all() as Array<{ repo: string; pr_number: number; session_id: string; created_at: string }>;
+        const seen = new Set<string>();
+        for (const m of maps) {
+          const key = `${m.repo}#${m.pr_number}`;
+          if (!funnelKeys.has(key)) {
+            notInFunnel++;
+            continue;
+          }
+          if (seen.has(key)) continue; // one PR counts once, however many sessions touched it
+          // Prefer the epoch-ms in the session id: it is unambiguously UTC.
+          // created_at is stored naive ("YYYY-MM-DD HH:MM:SS") and new Date()
+          // reads that as LOCAL time, which can shift a row across a week
+          // boundary. Fall back to it only when the id shape is unrecognised.
+          const ms = sessionIdMs(m.session_id);
+          let week: string;
+          if (ms !== null) {
+            week = isoWeekStartFromMs(ms);
+          } else if (m.created_at) {
+            unparseableSessionIds++;
+            week = isoWeekStart(m.created_at.slice(0, 10));
+          } else {
+            unparseableSessionIds++;
+            continue;
+          }
+          seen.add(key);
+          mapped++;
+          prWeeks.set(week, (prWeeks.get(week) ?? 0) + 1);
+        }
+        const result = unitCostByWeek(ccusageCache.all?.byGroup ?? [], prWeeks, weeksWanted);
+        payload = {
+          ...result,
+          prSource: {
+            prodMappings: maps.length,
+            countedPrs: mapped,
+            droppedNotInFunnel: notInFunnel,
+            fellBackToCreatedAt: unparseableSessionIds,
+          },
+          lastRefresh: ccusageCache.lastRefresh,
+        };
+      }
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(payload));
+    return;
+  }
+
   // API: users with privilege hierarchy
   if (url.pathname === '/api/users') {
     if (!requireAuth(req, res)) return;
@@ -8130,7 +8250,9 @@ export async function handleRequest(
           g.sessionCountA2a =
             (
               db
-                .prepare("SELECT COUNT(*) as c FROM sessions WHERE agent_group_id = ? AND messaging_group_id LIKE 'mg-a2a-%'")
+                .prepare(
+                  "SELECT COUNT(*) as c FROM sessions WHERE agent_group_id = ? AND messaging_group_id LIKE 'mg-a2a-%'",
+                )
                 .get(g.id) as any
             )?.c || 0;
           g.sessionCountReal = g.sessionCount - g.sessionCountA2a;

@@ -482,7 +482,134 @@ async function loadFunnel() {
       kbBox.innerHTML =
         '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">KB doctor: failed to load.</div>';
     }
+
+    // Unit cost. Own container + own try/catch, same reasoning as the two above.
+    const ucBox = document.createElement('div');
+    detail.appendChild(ucBox);
+    try {
+      const uc = await fetch('/api/unit-cost?weeks=4');
+      if (uc.ok) {
+        ucBox.innerHTML = unitCostHtml(await uc.json());
+      } else {
+        ucBox.innerHTML =
+          '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Unit cost: route unavailable.</div>';
+      }
+    } catch (e) {
+      ucBox.innerHTML =
+        '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Unit cost: failed to load.</div>';
+    }
   }
+}
+
+// Unit cost — triager+fixer+reviewer spend per PR opened, by ISO week.
+//
+// THE RULE THIS PANEL KEEPS: a number is only ever shown when it is a real
+// quotient. Three distinct states have to stay distinguishable, and collapsing
+// any of them into "$0" would invent a saving that did not happen:
+//
+//   no data for that week   -> "no data"     (outside coverage / group absent)
+//   spend but no PR opened  -> "no PR"       (real state; NOT free, NOT infinite)
+//   a genuine quotient      -> "$N"
+//
+// The denominator is shown next to every bar for the same reason the other
+// funnel panels show theirs: a cost-per-PR of $153 means something different
+// over 40 PRs than over 2.
+function unitCostHtml(uc) {
+  if (!uc) return '';
+  const money = (n) => '$' + Math.round(n).toLocaleString();
+  const head =
+    '<div style="margin-top:22px;font-size:12px;font-weight:600">Unit cost</div>' +
+    '<div style="color:var(--text-muted);font-size:11px;margin-bottom:8px">' +
+    'cost per PR opened, by week &middot; triager + fixer + reviewer &middot; prod</div>';
+
+  if (uc.unavailable) {
+    // Words, never a number. An unavailable metric that renders "$0" is worse
+    // than one that renders nothing.
+    return head + '<div style="color:var(--text-muted);font-size:11px">Unavailable — ' + esc(uc.unavailable) + '</div>';
+  }
+  const weeks = Array.isArray(uc.weeks) ? uc.weeks : [];
+  if (weeks.length === 0) {
+    return head + '<div style="color:var(--text-muted);font-size:11px">No weeks to show.</div>';
+  }
+
+  const priced = weeks.filter((w) => w.costPerPr != null);
+  const max = priced.length ? Math.max(...priced.map((w) => w.costPerPr)) : 0;
+  const bars = weeks
+    .map((w) => {
+      let label, width, dim;
+      if (!w.hasCost) {
+        label = 'no data';
+        width = 0;
+        dim = true;
+      } else if (w.costPerPr == null) {
+        label = 'no PR opened';
+        width = 0;
+        dim = true;
+      } else {
+        label = money(w.costPerPr);
+        width = max > 0 ? Math.round((w.costPerPr / max) * 100) : 0;
+        dim = false;
+      }
+      const denom = w.hasCost ? esc(String(w.prs)) + ' PR' + (w.prs === 1 ? '' : 's') : '&mdash;';
+      return (
+        '<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:11px">' +
+        '<div style="width:82px;color:var(--text-muted)">' +
+        esc(w.week) +
+        '</div>' +
+        '<div style="flex:1;background:var(--bg-alt,#22252a);height:14px;border-radius:3px;overflow:hidden">' +
+        '<div style="width:' +
+        width +
+        '%;height:100%;background:' +
+        (dim ? 'transparent' : 'var(--accent,#76b900)') +
+        '"></div></div>' +
+        '<div style="width:66px;text-align:right;' +
+        (dim ? 'color:var(--text-muted)' : 'font-weight:600') +
+        '">' +
+        esc(label) +
+        '</div>' +
+        '<div style="width:56px;text-align:right;color:var(--text-muted)">' +
+        denom +
+        '</div>' +
+        '</div>'
+      );
+    })
+    .join('');
+
+  // Trend only across weeks that actually have a quotient — comparing against a
+  // "no data" week would manufacture a delta out of missing coverage.
+  let trend = '';
+  if (priced.length >= 2) {
+    const first = priced[0].costPerPr;
+    const last = priced[priced.length - 1].costPerPr;
+    if (first > 0) {
+      const pct = Math.round(((last - first) / first) * 100);
+      trend =
+        '<div style="font-size:11px;margin-top:6px;color:var(--text-muted)">' +
+        (pct <= 0 ? '&minus;' : '+') +
+        Math.abs(pct) +
+        '% over ' +
+        priced.length +
+        ' priced week' +
+        (priced.length === 1 ? '' : 's') +
+        ' &middot; ' +
+        money(first) +
+        ' &rarr; ' +
+        money(last) +
+        '</div>';
+    }
+  }
+
+  let gaps = '';
+  if (Array.isArray(uc.groupsMissing) && uc.groupsMissing.length) {
+    // Named, not silently omitted: a missing group means the numerator is
+    // understated and the cost-per-PR reads better than it is.
+    gaps =
+      '<div style="font-size:11px;margin-top:4px;color:var(--warn,#d29922)">No cost data for: ' +
+      esc(uc.groupsMissing.join(', ')) +
+      ' — numerator is understated.</div>';
+  }
+
+  return head + bars + trend + gaps;
 }
 
 // KB doctor — the `doctor` block of /api/kb-health (scripts/kb-doctor.py writes
