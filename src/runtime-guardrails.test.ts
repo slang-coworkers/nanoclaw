@@ -4,9 +4,30 @@ import path from 'path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { resetCoworkerTypesCacheForTests, resolveAllowedMcpTools } from './container-runner.js';
+import { readCoworkerTypes, readSkillCatalog, resolveCoworkerManifest } from './claude-composer.js';
+import { resetCoworkerTypesCacheForTests } from './container-runner.js';
 import { shouldRetainOutboxFiles } from './delivery.js';
-import type { AgentGroup } from './types.js';
+
+/**
+ * The MCP tools a coworker type derives from its skill/workflow frontmatter.
+ *
+ * This used to be read through `resolveAllowedMcpTools`, because the manifest
+ * fed the MCP allow-list. It no longer does — a manifest is a composition
+ * input, not a permission grant, and deriving a restriction from it silently
+ * narrowed every group whose type happened not to enumerate a tool. The
+ * derivation itself is still real (it drives what the composer renders), so
+ * the invariant is still worth pinning; it is just read at its actual source.
+ */
+function manifestMcpTools(coworkerType: string): string[] {
+  const projectRoot = process.cwd();
+  const manifest = resolveCoworkerManifest(
+    readCoworkerTypes(projectRoot),
+    coworkerType,
+    readSkillCatalog(projectRoot),
+    projectRoot,
+  );
+  return manifest.tools.filter((t) => t.startsWith('mcp__'));
+}
 
 const originalCwd = process.cwd();
 const tempDirs: string[] = [];
@@ -75,23 +96,6 @@ function makeTempProject(types: Record<string, unknown>, skills: SkillFrontmatte
   return dir;
 }
 
-function makeAgentGroup(coworkerType: string | null): AgentGroup {
-  return {
-    id: 'ag-test',
-    name: 'Test',
-    folder: 'test',
-    is_admin: 0,
-    agent_provider: null,
-    container_config: null,
-    coworker_type: coworkerType,
-    allowed_mcp_tools: null,
-    overlays: null,
-    routing: 'direct',
-    disable_overlays: 0,
-    created_at: new Date().toISOString(),
-  };
-}
-
 afterEach(() => {
   process.chdir(originalCwd);
   resetCoworkerTypesCacheForTests();
@@ -101,7 +105,7 @@ afterEach(() => {
 });
 
 describe('runtime guardrails', () => {
-  it('derives MCP allowlists from skill frontmatter across an extends chain', () => {
+  it('derives coworker tool manifests from skill frontmatter across an extends chain', () => {
     const projectRoot = makeTempProject(
       {
         'slang-build': {
@@ -122,7 +126,7 @@ describe('runtime guardrails', () => {
     process.chdir(projectRoot);
     resetCoworkerTypesCacheForTests();
 
-    const tools = resolveAllowedMcpTools(makeAgentGroup('slang-compiler'));
+    const tools = manifestMcpTools('slang-compiler');
     expect(tools).toEqual([
       'mcp__deepwiki__ask_question',
       'mcp__slang-mcp__github_get_issue',
@@ -170,11 +174,8 @@ describe('runtime guardrails', () => {
     process.chdir(projectRoot);
     resetCoworkerTypesCacheForTests();
 
-    expect(resolveAllowedMcpTools(makeAgentGroup('slang-fix'))).toEqual([
-      'mcp__deepwiki__ask_question',
-      'mcp__nanoclaw__send_message',
-    ]);
-    expect(resolveAllowedMcpTools(makeAgentGroup('slang-reader'))).toEqual([
+    expect(manifestMcpTools('slang-fix')).toEqual(['mcp__deepwiki__ask_question', 'mcp__nanoclaw__send_message']);
+    expect(manifestMcpTools('slang-reader')).toEqual([
       'mcp__deepwiki__ask_question',
       'mcp__nanoclaw__schedule_task',
       'mcp__nanoclaw__send_message',

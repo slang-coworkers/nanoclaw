@@ -24,28 +24,46 @@
  * `explicit` always wins — for admin groups too. `is_admin` only decides what
  * `inherited` means.
  *
- * ## Policy state is NOT list length
+ * ## Only an explicit list restricts
  *
- * A fourth state, `unresolved`, exists because "the list is empty" and "we
- * could not work out what the list is" are different facts with opposite safe
- * behaviours. Before this distinction existed, both arrived at the enforcement
- * layer as `tools.length === 0`, and every layer read that as "no restrictions
- * to install" — so `--tools '[]'` ("allow no MCP tools") and a broken coworker
- * registry both produced a container with EVERY direct MCP namespace
- * wildcard-allowed, including the built-in `nanoclaw` server and `codex`.
+ * A scope change must be something a person did on purpose. `ncl groups
+ * mcp-tools set` is the only thing that narrows or widens a group; nothing
+ * implicit — not a coworker-type manifest, not a registry that failed to
+ * load — may change what a group can reach.
  *
- * The states now drive enforcement directly (see `buildMcpPolicy`):
+ * | stored          | state          | enforcement                              |
+ * |-----------------|----------------|------------------------------------------|
+ * | `["mcp__a__b"]` | `explicit`     | exactly that list; everything else denied |
+ * | `[]`            | `explicit`     | **every external MCP tool denied**        |
+ * | `*`             | `unrestricted` | nothing denied                            |
+ * | `NULL`          | `inherited`    | nothing denied — the default is today's behaviour |
  *
- * | state          | meaning                        | enforcement                    |
- * |----------------|--------------------------------|--------------------------------|
- * | `unrestricted` | every discovered tool          | no MCP restrictions installed  |
- * | `explicit`     | exactly the stored list        | deny everything not listed     |
- * | `inherited`    | the resolved manifest          | deny everything not listed     |
- * | `unresolved`   | the list could NOT be computed | deny ALL configurable MCP      |
+ * `[]` is the F03 fix and it stays: an empty list used to arrive at every
+ * enforcement layer as `tools.length === 0`, which each of them read as "no
+ * restrictions to install", so the strictest setting available installed
+ * nothing. An empty list is an ANSWER, and it denies.
  *
- * `explicit` and `inherited` with an empty set are perfectly valid and mean
- * "deny every configurable MCP tool" — they are NOT the same as `unresolved`,
- * which additionally signals an operator-visible configuration fault.
+ * `inherited` deliberately does NOT restrict to the coworker-type manifest.
+ * A manifest is a composition input, not a permission grant: deriving a
+ * restriction from it would silently narrow every group whose type happened
+ * not to enumerate a tool, which is exactly the implicit scope change this
+ * policy refuses. The manifest still drives what gets composed into
+ * CLAUDE.md — it just no longer decides what may be called.
+ *
+ * ## A registry that will not load is a bug report, not a policy
+ *
+ * There is no `unresolved` state. When the coworker registry or the MCP tool
+ * inventory cannot be read, the resolution carries a `configurationError` and
+ * otherwise resolves exactly as it would have. That is safe by construction,
+ * not by assumption: `explicit` is the only restrictive state, and the
+ * `explicit` branch returns before any manifest lookup and never consults the
+ * inventory for enforcement. So a group carrying a restriction cannot be
+ * pushed into the error path, and the error path can only be reached by groups
+ * whose non-error answer is already unrestricted — it cannot lift anything.
+ *
+ * Failing closed there would mean a transient registry fault silently
+ * degrading a live coworker, which is a worse failure than the one it would be
+ * defending against.
  *
  * ## Scope: EXTERNAL servers only
  *
@@ -72,7 +90,6 @@
  * See `docs/mcp-allowlist.md` for the tool-by-tool gate inventory, including
  * the two built-ins whose own gates are weaker than they look.
  */
-import { readCoworkerTypes, readSkillCatalog, resolveCoworkerManifest } from './claude-composer.js';
 import { log } from './log.js';
 import { getDiscoveredToolInventory } from './mcp-auth-proxy.js';
 import type { AgentGroup } from './types.js';
@@ -80,7 +97,7 @@ import type { AgentGroup } from './types.js';
 /** Stored form of "unrestricted". Also accepted: `"*"` and `["*"]`. */
 export const UNRESTRICTED = '*';
 
-export type McpAllowlistState = 'explicit' | 'inherited' | 'unrestricted' | 'unresolved';
+export type McpAllowlistState = 'explicit' | 'inherited' | 'unrestricted';
 
 /**
  * The MCP server name NanoClaw's own built-in tools are served under.
@@ -108,9 +125,8 @@ export function isBuiltinMcpTool(tool: string): boolean {
 export interface McpAllowlistResolution {
   /**
    * Where the effective list came from. `inherited` and `unrestricted` are
-   * deliberately separate: both used to be stored as NULL, which is what let
-   * the read path and the spawn path disagree. `unresolved` means the question
-   * could not be answered at all — never treat it as an empty list.
+   * deliberately separate — both resolve to "nothing denied", but an operator
+   * needs to see whether that is a default or a decision.
    */
   state: McpAllowlistState;
   /**
@@ -128,8 +144,25 @@ export interface McpAllowlistResolution {
   externalTools: string[];
   /** Discovered external tools NOT permitted — what the group cannot call. */
   blocked: string[];
+  /**
+   * Does this policy deny anything at all?
+   *
+   * Separate from `state` on purpose. `state` answers "where did this come
+   * from" for an operator; this answers "do I filter" for enforcement. They
+   * are nearly always the same question, and the one case where they differ —
+   * the `ADMIN_MCP_TOOLS` operator override, which restricts without anyone
+   * having stored a list — is exactly the case where conflating them would
+   * make one of the two lie.
+   */
+  restricts: boolean;
   /** One-line origin, for `get` output, approval cards and logs. */
   origin: string;
+  /**
+   * Set when something this resolution wanted to read could not be read. The
+   * policy is still valid — see the header — but an operator needs to know,
+   * loudly, that a registry or the tool inventory is broken.
+   */
+  configurationError: string | null;
 }
 
 /** The fields of an agent group this policy reads. */
@@ -148,34 +181,6 @@ function discoveredTools(): string[] | null {
     return Object.values(getDiscoveredToolInventory()).flat();
   } catch (err) {
     log.warn('MCP tool inventory unreadable', { err });
-    return null;
-  }
-}
-
-/**
- * Tools a group inherits from its coworker type. The spawn path already
- * resolves this manifest (behind a fingerprint cache) and passes it in;
- * operator commands let this resolve it directly, which is the same
- * computation off the same registry.
- *
- * Returns `null` when the registry cannot be resolved. It used to return `[]`,
- * which downstream read as "this coworker type grants no MCP tools" — a
- * broken registry silently became a policy, and because an empty policy was
- * itself treated as "install no restrictions", it became NO policy.
- */
-function manifestTools(group: AllowlistGroup): string[] | null {
-  const effectiveType = group.coworker_type || 'default';
-  try {
-    const projectRoot = process.cwd();
-    const manifest = resolveCoworkerManifest(
-      readCoworkerTypes(projectRoot),
-      effectiveType,
-      readSkillCatalog(projectRoot),
-      projectRoot,
-    );
-    return manifest.tools.filter((t) => t.startsWith('mcp__'));
-  } catch (err) {
-    log.warn('Failed to resolve coworker manifest for MCP allow-list', { coworkerType: effectiveType, err });
     return null;
   }
 }
@@ -207,17 +212,19 @@ export function parseStoredAllowlist(stored: string | null | undefined): string[
     .filter(Boolean);
 }
 
-/**
- * Resolve a group's effective MCP tool allow-list.
- *
- * @param inheritedTools Pre-resolved coworker-type manifest tools, when the
- * caller already has them (spawn resolves the manifest anyway, behind a cache).
- * Omit and they are resolved here.
- */
-export function resolveMcpAllowlist(group: AllowlistGroup, inheritedTools?: string[]): McpAllowlistResolution {
+/** Resolve a group's effective MCP tool allow-list. */
+export function resolveMcpAllowlist(group: AllowlistGroup): McpAllowlistResolution {
   const inventory = discoveredTools();
+  const inventoryError =
+    inventory === null ? 'the MCP tool inventory could not be read — the proxy may not be running' : null;
 
-  const resolution = (state: McpAllowlistState, tools: string[], origin: string): McpAllowlistResolution => {
+  const resolution = (
+    state: McpAllowlistState,
+    restricts: boolean,
+    tools: string[],
+    origin: string,
+    configurationError: string | null = null,
+  ): McpAllowlistResolution => {
     // Built-ins are dropped rather than kept-and-ignored so that every
     // downstream consumer — proxy token scope, the container policy, the
     // operator display — sees one list that means exactly one thing.
@@ -225,72 +232,82 @@ export function resolveMcpAllowlist(group: AllowlistGroup, inheritedTools?: stri
     const permitted = new Set(externalTools);
     return {
       state,
+      restricts,
       tools,
       externalTools,
       // An unreadable inventory can't produce a complete blocked list; say so
       // by returning nothing rather than an authoritative-looking short one.
-      blocked:
-        state === 'unrestricted' ? [] : (inventory ?? []).filter((t) => !isBuiltinMcpTool(t) && !permitted.has(t)),
+      blocked: restricts ? (inventory ?? []).filter((t) => !isBuiltinMcpTool(t) && !permitted.has(t)) : [],
       origin,
+      configurationError,
     };
   };
 
   const stored = parseStoredAllowlist(group.allowed_mcp_tools);
 
-  // An explicit list wins for EVERY group, admin included. Admin used to skip
-  // this branch entirely, so an admin group's restriction survived until the
-  // container respawned and then silently vanished.
+  // The ONE restrictive branch, and the only one a person can reach: someone
+  // ran `ncl groups mcp-tools set`. It returns before any manifest lookup and
+  // never depends on the inventory for enforcement, which is what makes the
+  // error handling below safe — a restriction cannot be reached by the error
+  // path, so the error path cannot lift one.
   //
   // An empty array is an ANSWER, not an absence: "this group may call no
-  // configurable MCP tool". It resolves to `explicit`, and enforcement denies
-  // every direct and proxied surface.
+  // external MCP tool". This is the F03 fix.
   if (Array.isArray(stored)) {
-    return resolution('explicit', stored, 'explicit allow-list on the agent group');
-  }
-  if (stored === 'unrestricted') {
-    if (inventory === null) {
-      return resolution('unresolved', [], 'unrestricted requested, but the MCP tool inventory is unreadable');
-    }
-    return resolution('unrestricted', inventory, 'explicitly unrestricted');
+    return resolution('explicit', true, stored, 'explicit allow-list on the agent group', inventoryError);
   }
 
-  // Nothing stored → inherited. What that inherits from depends on the group.
+  if (stored === 'unrestricted') {
+    return resolution('unrestricted', false, inventory ?? [], 'explicitly unrestricted', inventoryError);
+  }
+
+  // Admin groups keep the ADMIN_MCP_TOOLS operator override. It is an
+  // instance-wide env var a human sets deliberately, not something a group or
+  // an agent can reach, so it is not the implicit narrowing this policy
+  // refuses — and removing it would itself be a behaviour change.
   if (group.is_admin) {
     const adminOverride = (process.env.ADMIN_MCP_TOOLS || '')
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
     if (adminOverride.length > 0) {
-      return resolution('inherited', adminOverride, 'admin default: ADMIN_MCP_TOOLS');
+      return resolution('inherited', true, adminOverride, 'admin default: ADMIN_MCP_TOOLS', inventoryError);
     }
-    if (inventory === null) {
-      return resolution('unresolved', [], 'admin default requested, but the MCP tool inventory is unreadable');
-    }
-    return resolution('unrestricted', inventory, 'admin default: every discovered tool');
   }
 
-  const inherited = inheritedTools ?? manifestTools(group);
-  if (inherited === null) {
-    return resolution(
-      'unresolved',
-      [],
-      `coworker type "${group.coworker_type || 'default'}" manifest could not be resolved`,
-    );
-  }
-  return resolution('inherited', inherited, `coworker type "${group.coworker_type || 'default'}" manifest`);
+  // Nothing stored → the default, and the default restricts nothing. The
+  // coworker-type manifest is deliberately NOT consulted: it is a composition
+  // input, and deriving a restriction from it would narrow every group whose
+  // type happened not to enumerate a tool — an implicit scope change nobody
+  // asked for. `resolveTypeManifest(...).tools` still drives what is composed
+  // into CLAUDE.md; it just no longer decides what may be called.
+  return resolution(
+    'inherited',
+    false,
+    inventory ?? [],
+    'no explicit allow-list — unrestricted by default',
+    inventoryError,
+  );
 }
 
 /**
  * The policy handed to a container at spawn, as the container reads it.
  *
  * This is the whole wire contract for `NANOCLAW_MCP_POLICY`. The container
- * mirrors this shape in `container/agent-runner/src/mcp-policy.ts`; a missing
- * or unparseable value is read there as `unresolved`, so a host that fails to
- * set it fails CLOSED rather than reverting to the old wildcard-everything
- * behaviour.
+ * mirrors this shape in `container/agent-runner/src/mcp-policy.ts`.
+ *
+ * The container copy is defence in depth, not the enforcement point: for an
+ * explicit restriction the host has already scoped the proxy token and
+ * withheld the external servers from `NANOCLAW_MCP_SERVERS` before the
+ * container starts. See that file for the one gap this leaves.
  */
 export interface McpPolicyWire {
-  state: McpAllowlistState;
+  /**
+   * Whether to filter at all. A boolean, not a state name: the container does
+   * not need to know where a policy came from, only whether it restricts, and
+   * a boolean cannot be misread the way an unrecognised state name can.
+   */
+  restrict: boolean;
   /** The permitted EXTERNAL tools. Built-ins are out of scope and never listed. */
   tools: string[];
   origin: string;
@@ -298,19 +315,20 @@ export interface McpPolicyWire {
 
 /** Serialize a resolution into the container-facing policy. */
 export function toMcpPolicyWire(resolution: McpAllowlistResolution): McpPolicyWire {
-  return { state: resolution.state, tools: resolution.externalTools, origin: resolution.origin };
+  return { restrict: resolution.restricts, tools: resolution.externalTools, origin: resolution.origin };
 }
 
 /**
  * Is this tool permitted under the resolved policy?
  *
  * The single predicate every host-side enforcement point calls, so "allowed"
- * means one thing. Default-deny for external tools; NanoClaw's own built-ins
- * are outside this policy's scope and answer to their own gates.
+ * means one thing. `explicit` is the only state that denies; NanoClaw's own
+ * built-ins are outside this policy's scope entirely and answer to their own
+ * gates.
  */
 export function isMcpToolPermitted(resolution: McpAllowlistResolution, tool: string): boolean {
   if (isBuiltinMcpTool(tool)) return true;
-  if (resolution.state === 'unrestricted') return true;
+  if (!resolution.restricts) return true;
   return resolution.externalTools.includes(tool);
 }
 
@@ -327,7 +345,7 @@ export function isMcpToolPermitted(resolution: McpAllowlistResolution, tool: str
  */
 export function serverHasAllowedTools(resolution: McpAllowlistResolution, serverName: string): boolean {
   if (serverName === BUILTIN_MCP_SERVER) return true;
-  if (resolution.state === 'unrestricted') return true;
+  if (!resolution.restricts) return true;
   const prefix = `mcp__${serverName.replace(/[^a-zA-Z0-9_-]/g, '_')}__`;
   return resolution.externalTools.some((t) => t.startsWith(prefix));
 }

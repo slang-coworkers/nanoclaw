@@ -8,8 +8,6 @@
  * produced a container with every direct MCP namespace wildcard-allowed.
  */
 import fs from 'fs';
-import os from 'os';
-import path from 'path';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 let inventory: Record<string, string[]> = {};
@@ -44,7 +42,7 @@ afterEach(() => {
 });
 
 describe('an explicit empty list is a policy, not an absence', () => {
-  const resolved = () => resolveMcpAllowlist(group({ allowed_mcp_tools: '[]' }), []);
+  const resolved = () => resolveMcpAllowlist(group({ allowed_mcp_tools: '[]' }));
 
   it('resolves to explicit with an empty configured list', () => {
     const r = resolved();
@@ -62,57 +60,42 @@ describe('an explicit empty list is a policy, not an absence', () => {
   });
 });
 
-describe('an inherited manifest that resolves to zero tools behaves identically', () => {
-  it('denies the same external surfaces as an explicit empty list', () => {
-    const r = resolveMcpAllowlist(group({ coworker_type: 'thin' }), []);
+describe('a group with no explicit list restricts nothing', () => {
+  it('is the default, and the default is unchanged behaviour', () => {
+    const r = resolveMcpAllowlist(group({ coworker_type: 'thin' }));
     expect(r.state).toBe('inherited');
-    expect(r.externalTools).toEqual([]);
-    expect(serverHasAllowedTools(r, 'codex')).toBe(false);
-    expect(isMcpToolPermitted(r, 'mcp__deepwiki__ask_question')).toBe(false);
+    expect(serverHasAllowedTools(r, 'codex')).toBe(true);
+    expect(isMcpToolPermitted(r, 'mcp__deepwiki__ask_question')).toBe(true);
+    expect(r.blocked).toEqual([]);
   });
 });
 
-describe('resolution failure is unresolved, never an empty policy', () => {
-  it('marks a coworker registry that cannot be read as unresolved', () => {
-    // An empty directory has no coworker-types.yaml, so resolveCoworkerManifest
-    // throws. Pre-fix that was swallowed into `tools: []` — a broken registry
-    // silently became a policy, and an empty policy was no policy at all.
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-allowlist-unresolved-'));
-    tempDirs.push(dir);
-    process.chdir(dir);
-
-    const r = resolveMcpAllowlist(group({ coworker_type: 'slang-fix' }));
-    expect(r.state).toBe('unresolved');
-    expect(r.origin).toMatch(/could not be resolved/);
-    expect(r.externalTools).toEqual([]);
-    expect(isMcpToolPermitted(r, 'mcp__deepwiki__ask_question')).toBe(false);
-  });
-
-  it('marks an unreadable tool inventory as unresolved rather than "unrestricted over nothing"', () => {
+describe('a configuration fault is reported, never enforced', () => {
+  it('reports an unreadable inventory without narrowing anybody', () => {
     inventoryThrows = true;
-    // `unrestricted` means "every discovered tool". If discovery cannot be
-    // read, the honest answer is that the set is unknown — not that it is
-    // empty, and not that everything is fine.
-    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: UNRESTRICTED }));
-    expect(r.state).toBe('unresolved');
-    expect(isMcpToolPermitted(r, 'mcp__deepwiki__ask_question')).toBe(false);
-
-    const admin = resolveMcpAllowlist(group({ is_admin: 1 }));
-    expect(admin.state).toBe('unresolved');
-  });
-
-  it('does not let an unreadable inventory weaken an explicit list', () => {
-    inventoryThrows = true;
-    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: JSON.stringify(['mcp__deepwiki__ask_question']) }), []);
-    expect(r.state).toBe('explicit');
+    const r = resolveMcpAllowlist(group());
+    expect(r.state).toBe('inherited');
+    expect(r.configurationError).toMatch(/could not be read/);
+    // Still restricts nothing: a broken proxy is a bug report, not a policy.
     expect(isMcpToolPermitted(r, 'mcp__deepwiki__ask_question')).toBe(true);
-    // Every other EXTERNAL tool is still denied — enforcement never needed the
-    // inventory. Built-ins are a different question, answered in
-    // mcp-allowlist-scope.test.ts.
+    expect(serverHasAllowedTools(r, 'codex')).toBe(true);
+  });
+
+  it('cannot lift an explicit restriction — the restrictive branch never reads the inventory', () => {
+    inventoryThrows = true;
+    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: JSON.stringify(['mcp__deepwiki__ask_question']) }));
+    expect(r.state).toBe('explicit');
+    expect(r.configurationError).toMatch(/could not be read/);
+    expect(isMcpToolPermitted(r, 'mcp__deepwiki__ask_question')).toBe(true);
     expect(isMcpToolPermitted(r, 'mcp__deepwiki__read_wiki_contents')).toBe(false);
     expect(isMcpToolPermitted(r, 'mcp__codex__codex')).toBe(false);
     // …but we do not claim to know the complete blocked set.
     expect(r.blocked).toEqual([]);
+  });
+
+  it('reports no fault when everything reads cleanly', () => {
+    expect(resolveMcpAllowlist(group()).configurationError).toBeNull();
+    expect(resolveMcpAllowlist(group({ allowed_mcp_tools: '[]' })).configurationError).toBeNull();
   });
 });
 
@@ -126,11 +109,31 @@ describe('unrestricted is untouched', () => {
   });
 });
 
-describe('the container wire format carries the state', () => {
-  it('sends the external list and the state, so an empty list is distinguishable from silence', () => {
-    const wire = toMcpPolicyWire(resolveMcpAllowlist(group({ allowed_mcp_tools: '[]' }), []));
-    expect(wire.state).toBe('explicit');
+describe('explicit is the ONLY state that denies anything', () => {
+  it.each([
+    ['inherited (nothing stored)', null],
+    ['unrestricted', UNRESTRICTED],
+  ])('%s permits an arbitrary external tool', (_label, stored) => {
+    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: stored }));
+    expect(isMcpToolPermitted(r, 'mcp__whatever__tool')).toBe(true);
+    expect(serverHasAllowedTools(r, 'whatever')).toBe(true);
+  });
+
+  it('only an explicit list denies', () => {
+    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: '[]' }));
+    expect(isMcpToolPermitted(r, 'mcp__whatever__tool')).toBe(false);
+  });
+});
+
+describe('the container wire format says whether to filter, not where the policy came from', () => {
+  it('an empty explicit list is distinguishable from silence', () => {
+    const wire = toMcpPolicyWire(resolveMcpAllowlist(group({ allowed_mcp_tools: '[]' })));
+    expect(wire.restrict).toBe(true);
     expect(wire.tools).toEqual([]);
     expect(JSON.parse(JSON.stringify(wire))).toEqual(wire);
+  });
+
+  it('no stored list tells the container to filter nothing', () => {
+    expect(toMcpPolicyWire(resolveMcpAllowlist(group())).restrict).toBe(false);
   });
 });

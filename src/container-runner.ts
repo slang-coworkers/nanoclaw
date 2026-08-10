@@ -278,13 +278,6 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
 /** Resolve the coworker manifest once; returns tools, mcpServers, overlay names, and workflow summaries. */
 function resolveTypeManifest(agentGroup: AgentGroup): {
   tools: string[];
-  /**
-   * False when the registry could not be read. `tools: []` is then a
-   * placeholder, NOT a policy — the MCP allow-list resolver must see the
-   * difference or a broken registry silently becomes "no tools declared",
-   * which the enforcement layers used to read as "no tools restricted".
-   */
-  toolsResolved: boolean;
   mcpServers: Record<string, unknown>;
   overlayNames: string[];
   workflows: { name: string; description: string }[];
@@ -303,14 +296,13 @@ function resolveTypeManifest(agentGroup: AgentGroup): {
     ];
     return {
       tools: manifest.tools.filter((t) => t.startsWith('mcp__')),
-      toolsResolved: true,
       mcpServers: manifest.mcpServers ?? {},
       overlayNames,
       workflows: manifest.workflows.map((w) => ({ name: w.name, description: w.description })),
     };
   } catch (err) {
     log.warn('Failed to resolve coworker manifest', { coworkerType: effectiveType, err });
-    return { tools: [], toolsResolved: false, mcpServers: {}, overlayNames: [], workflows: [] };
+    return { tools: [], mcpServers: {}, overlayNames: [], workflows: [] };
   }
 }
 
@@ -355,13 +347,12 @@ export function resolveAllowedMcpTools(agentGroup: AgentGroup): string[] {
 
 /**
  * The full allow-list resolution for a group — state included, not just the
- * list. Enforcement needs the state: an empty `explicit` list and an
- * `unresolved` registry both have zero tools and require opposite reporting,
- * and neither may be read as "no restrictions".
+ * list. Enforcement needs the state: an empty `explicit` list has zero tools
+ * and denies everything, while an `inherited` group has whatever the inventory
+ * happens to hold and denies nothing. Length cannot tell those apart.
  */
 export function resolveMcpPolicy(agentGroup: AgentGroup): McpAllowlistResolution {
-  const manifest = resolveTypeManifest(agentGroup);
-  return resolveMcpAllowlist(agentGroup, manifest.toolsResolved ? manifest.tools : undefined);
+  return resolveMcpAllowlist(agentGroup);
 }
 
 export function getActiveContainerCount(): number {
@@ -502,16 +493,16 @@ async function spawnContainer(session: Session): Promise<void> {
   const mcpPolicy = resolveMcpPolicy(agentGroup);
   const proxyToken = registerContainerToken(agentGroup.folder, mcpPolicy.externalTools);
 
-  // Operator-visible, not a debug line: `unresolved` means we could not prove
-  // what this group may call, so the container is about to boot with every
-  // configurable MCP capability switched off. Silence here is what let a
-  // broken registry look like a working restriction.
-  if (mcpPolicy.state === 'unresolved') {
-    log.error('MCP allow-list UNRESOLVED — spawning with every EXTERNAL MCP tool denied', {
+  // Operator-visible, not a debug line. The policy is still correct — a
+  // configuration fault never narrows a group, by design — but something the
+  // resolver wanted to read was unreadable and somebody has to fix it.
+  if (mcpPolicy.configurationError) {
+    log.error('MCP allow-list resolved with a configuration fault — policy unchanged, fix the fault', {
       sessionId: session.id,
       agentGroup: agentGroup.name,
       coworkerType: agentGroup.coworker_type,
-      origin: mcpPolicy.origin,
+      state: mcpPolicy.state,
+      configurationError: mcpPolicy.configurationError,
     });
   }
 
@@ -1735,7 +1726,7 @@ async function buildContainerArgs(
     log.info('Withholding MCP servers with no allowed tools', {
       containerName,
       withheld,
-      policyState: mcpProxy?.policy.state,
+      restricts: mcpProxy?.policy.restricts,
     });
   }
   if (Object.keys(wiredMcpServers).length > 0) {

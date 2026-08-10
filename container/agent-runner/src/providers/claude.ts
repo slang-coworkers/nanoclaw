@@ -159,7 +159,7 @@ function computeBlockedTools(
   env: Record<string, string | undefined> | undefined,
   policy: McpPolicy,
 ): string[] | undefined {
-  if (policy.state === 'unrestricted' || !env?.NANOCLAW_MCP_TOOL_INVENTORY) return undefined;
+  if (!policy.restrict || !env?.NANOCLAW_MCP_TOOL_INVENTORY) return undefined;
   try {
     const inventory = JSON.parse(env.NANOCLAW_MCP_TOOL_INVENTORY) as Record<string, string[]>;
     const blocked: string[] = [];
@@ -203,7 +203,7 @@ function mcpAllowPattern(serverName: string): string {
  * keeps its wildcard — the allow-list does not govern it.
  */
 export function mcpAllowedToolEntries(policy: McpPolicy, serverNames: string[]): string[] {
-  if (policy.state === 'unrestricted') return serverNames.map(mcpAllowPattern);
+  if (!policy.restrict) return serverNames.map(mcpAllowPattern);
   // The built-in namespace keeps its wildcard under every state: it is out of
   // this policy's scope, and enumerating it here would mean this file has to
   // know every tool `registerTools` ever adds — a list that would silently
@@ -232,7 +232,7 @@ export function mcpPolicyPreToolUseDecision(policy: McpPolicy, toolName: string)
   if (isMcpToolAllowed(policy, toolName)) return null;
   return (
     `Tool '${toolName}' is not in this agent group's external MCP tool allow-list ` +
-    `(policy: ${policy.state} — ${policy.origin}). This is a configuration boundary, not a transient ` +
+    `(${policy.origin}). This is a configuration boundary, not a transient ` +
     `failure: retrying or reaching the same capability another way is not appropriate. ` +
     `An admin can widen it with \`ncl groups mcp-tools set\`; an agent may never widen its own.`
   );
@@ -389,7 +389,7 @@ function createPreToolUseHook(policy: McpPolicy): HookCallback {
   // allowedTools/disallowedTools it was handed.
   const mcpDenial = mcpPolicyPreToolUseDecision(policy, toolName);
   if (mcpDenial) {
-    log(`PreToolUse: denied ${toolName} (policy ${policy.state})`);
+    log(`PreToolUse: denied ${toolName} — not in the explicit external allow-list`);
     return { decision: 'block', stopReason: mcpDenial } as unknown as ReturnType<HookCallback>;
   }
   // Backstop: no coworker closes GitHub issues. Block the close at the tool
@@ -693,8 +693,8 @@ export class ClaudeProvider implements AgentProvider {
     for (const name of Object.keys(this.mcpServers)) {
       if (isBuiltinMcpServer(name)) continue;
       const prefix = `mcp__${name.replace(/[^a-zA-Z0-9_-]/g, '_')}__`;
-      if (this.mcpPolicy.state !== 'unrestricted' && !this.mcpPolicy.tools.some((t) => t.startsWith(prefix))) {
-        log(`Not wiring MCP server "${name}" — no allowed tools under the ${this.mcpPolicy.state} policy`);
+      if (this.mcpPolicy.restrict && !this.mcpPolicy.tools.some((t) => t.startsWith(prefix))) {
+        log(`Not wiring MCP server "${name}" — the explicit allow-list names no tool on it`);
         delete this.mcpServers[name];
       }
     }

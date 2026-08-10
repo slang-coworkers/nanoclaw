@@ -8,20 +8,26 @@
  * server lists and answers (`mcp-tools/server.ts`) — reads it through here, so
  * there is exactly one definition of "allowed".
  *
- * ## Why an absent policy is a DENIAL
+ * ## Why an absent policy is PERMISSIVE here
  *
- * The old contract was `NANOCLAW_ALLOWED_MCP_TOOLS`, and the host only set it
- * when the list was non-empty. So "allow no MCP tools" and "the host said
- * nothing" were the same input, and the container read both as "install no
- * restrictions" — while simultaneously wildcard-allowing `mcp__nanoclaw__*`
- * and `mcp__codex__*` because those servers were in its own `mcpServers` map
- * and never traversed the host proxy. An empty allow-list therefore granted
- * the full built-in tool surface.
+ * Reading a missing variable as a denial would be an implicit scope reduction:
+ * a host that is simply older than this file, or one carrying a bug, would
+ * silently narrow a live coworker. Nothing may narrow a group except an
+ * explicit `ncl groups mcp-tools set`.
  *
- * Here, a missing or unparseable policy is `unresolved`, which permits only
- * the mandatory transport floor. The host now always sets the variable, so an
- * absent one means a version skew or a tampered spawn — neither is a reason to
- * hand over `install_packages`.
+ * That is safe because this file is not where an explicit restriction is
+ * enforced. By the time the container starts, the host has already scoped the
+ * MCP proxy token to the allowed list and withheld every disallowed server
+ * from `NANOCLAW_MCP_SERVERS`. The checks here narrow the blast radius; they
+ * are not load-bearing.
+ *
+ * ONE GAP, stated plainly: the `codex` stdio child is constructed in
+ * `index.ts`, not passed in `NANOCLAW_MCP_SERVERS`, so the host cannot
+ * withhold it. Under an absent policy, `codex` is wired even for a group whose
+ * explicit list excludes it. Reaching that state requires a host that failed
+ * to set the variable — it is not reachable through configuration — and a
+ * group running an agent-runner old enough to ignore the variable would wire
+ * codex regardless. Tracked in docs/mcp-allowlist.md.
  *
  * ## Scope: EXTERNAL servers only
  *
@@ -40,12 +46,14 @@
  * and each built-in tool's own delivery guard for the `nanoclaw` surface.
  */
 
-/** Matches `McpAllowlistState` in src/mcp-allowlist.ts. */
-export type McpPolicyState = 'explicit' | 'inherited' | 'unrestricted' | 'unresolved';
-
 export interface McpPolicy {
-  state: McpPolicyState;
-  /** Everything callable. Mandatory transport is already unioned in by the host. */
+  /**
+   * Whether to filter at all. A boolean, not a state name — the container does
+   * not need to know where a policy came from, only whether it restricts, and
+   * a boolean cannot be misread the way an unrecognised state name can.
+   */
+  restrict: boolean;
+  /** The permitted EXTERNAL tools. Meaningful only when `restrict` is true. */
   tools: string[];
   origin: string;
 }
@@ -77,53 +85,58 @@ export function isBuiltinMcpTool(tool: string): boolean {
   return tool.startsWith(BUILTIN_TOOL_PREFIX);
 }
 
-/** The policy used when the host said nothing intelligible. Denies every EXTERNAL tool. */
-export const UNRESOLVED_POLICY: McpPolicy = {
-  state: 'unresolved',
+/**
+ * The policy used when the host said nothing intelligible.
+ *
+ * `inherited` — the same state a group with no explicit list gets — because
+ * "nobody told me to restrict anything" and "nobody has restricted anything"
+ * must produce the same behaviour. Denying here would be an implicit scope
+ * reduction triggered by a host bug.
+ */
+export const NO_POLICY_STATED: McpPolicy = {
+  restrict: false,
   tools: [],
-  origin: 'NANOCLAW_MCP_POLICY missing or unparseable — denying all external MCP tools',
+  origin: 'NANOCLAW_MCP_POLICY missing or unparseable — applying no external restrictions',
 };
-
-function isState(value: unknown): value is McpPolicyState {
-  return value === 'explicit' || value === 'inherited' || value === 'unrestricted' || value === 'unresolved';
-}
 
 /**
  * Read the spawn-time policy out of the environment.
  *
- * Never throws and never returns a permissive fallback: any shape we don't
- * recognise resolves to `UNRESOLVED_POLICY`.
+ * Never throws. Any shape we don't recognise resolves to `NO_POLICY_STATED`,
+ * which restricts nothing — see the header for why that is the safe default
+ * here and where the real enforcement lives.
  */
 export function parseMcpPolicy(env: Record<string, string | undefined> = process.env): McpPolicy {
   const raw = env.NANOCLAW_MCP_POLICY;
-  if (!raw) return UNRESOLVED_POLICY;
+  if (!raw) return NO_POLICY_STATED;
   try {
     const parsed = JSON.parse(raw) as Partial<McpPolicy>;
-    if (!isState(parsed.state)) return UNRESOLVED_POLICY;
+    if (typeof parsed.restrict !== 'boolean') return NO_POLICY_STATED;
+    if (!parsed.restrict) {
+      return { restrict: false, tools: [], origin: typeof parsed.origin === 'string' ? parsed.origin : 'unknown' };
+    }
     // Built-ins are dropped rather than honoured: they are out of scope, so a
     // host that lists one is not granting anything and a host that omits one
     // is not denying anything. Keeping them out means one list, one meaning.
     const tools = Array.isArray(parsed.tools)
       ? parsed.tools.map(String).filter((t) => t.startsWith('mcp__') && !isBuiltinMcpTool(t))
       : [];
-    return {
-      state: parsed.state,
-      tools,
-      origin: typeof parsed.origin === 'string' ? parsed.origin : 'unknown',
-    };
+    return { restrict: true, tools, origin: typeof parsed.origin === 'string' ? parsed.origin : 'unknown' };
   } catch {
-    return UNRESOLVED_POLICY;
+    return NO_POLICY_STATED;
   }
 }
 
 /**
- * Default-deny predicate for EXTERNAL tools. `unrestricted` is the only state
- * that permits by omission; NanoClaw's own built-ins are never this policy's
+ * Is this tool allowed?
+ *
+ * Only a restricting policy — one someone created with `ncl groups mcp-tools
+ * set` — denies anything. NanoClaw's own built-ins are never this policy's
  * business and always pass.
  */
 export function isMcpToolAllowed(policy: McpPolicy, tool: string): boolean {
   if (isBuiltinMcpTool(tool)) return true;
-  if (policy.state === 'unrestricted') return true;
+  if (!policy.restrict) return true;
   return policy.tools.includes(tool);
 }
 
@@ -139,7 +152,7 @@ export function serverHasAllowedTools(policy: McpPolicy, serverName: string): bo
   // The built-in server is always wired: out of scope, and it carries the only
   // path an agent has to say anything at all.
   if (serverName === BUILTIN_MCP_SERVER) return true;
-  if (policy.state === 'unrestricted') return true;
+  if (!policy.restrict) return true;
   // SDK sanitizes server names into tool prefixes; compare on the sanitized
   // form so `slang-mcp` and `slang_mcp` don't disagree with the SDK.
   const prefix = `mcp__${sanitizeServerName(serverName)}__`;

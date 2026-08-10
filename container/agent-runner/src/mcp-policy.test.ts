@@ -15,26 +15,28 @@ import {
   parseMcpPolicy,
   sanitizeServerName,
   serverHasAllowedTools,
-  UNRESOLVED_POLICY,
+  NO_POLICY_STATED,
 } from './mcp-policy.js';
 
 describe('parseMcpPolicy', () => {
-  it('reads an absent policy as unresolved, not as unrestricted', () => {
-    expect(parseMcpPolicy({}).state).toBe('unresolved');
-    expect(parseMcpPolicy({ NANOCLAW_MCP_POLICY: '' }).state).toBe('unresolved');
+  // A host that says nothing must not narrow anybody: only an explicit
+  // `ncl groups mcp-tools set` may change a group's scope, and the host has
+  // already scoped the proxy token and withheld servers for a real restriction.
+  it('reads an absent policy as "nothing stated", which restricts nothing', () => {
+    expect(parseMcpPolicy({})).toEqual(NO_POLICY_STATED);
+    expect(parseMcpPolicy({ NANOCLAW_MCP_POLICY: '' }).restrict).toBe(false);
+    expect(isMcpToolAllowed(parseMcpPolicy({}), 'mcp__deepwiki__ask_question')).toBe(true);
   });
 
-  it('reads a corrupt or unknown-state policy as unresolved', () => {
-    expect(parseMcpPolicy({ NANOCLAW_MCP_POLICY: 'not json' })).toEqual(UNRESOLVED_POLICY);
-    expect(parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"state":"open","tools":["mcp__a__b"]}' }).state).toBe(
-      'unresolved',
-    );
-    expect(parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"tools":["mcp__a__b"]}' }).state).toBe('unresolved');
+  it('reads a corrupt or shapeless policy the same way', () => {
+    expect(parseMcpPolicy({ NANOCLAW_MCP_POLICY: 'not json' })).toEqual(NO_POLICY_STATED);
+    expect(parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"tools":["mcp__a__b"]}' }).restrict).toBe(false);
+    expect(parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"restrict":"yes"}' }).restrict).toBe(false);
   });
 
-  it('keeps an explicit empty list as explicit — an answer, not an absence', () => {
-    const p = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"state":"explicit","tools":[],"origin":"x"}' });
-    expect(p.state).toBe('explicit');
+  it('keeps an explicit empty list as restricting — an answer, not an absence', () => {
+    const p = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"restrict":true,"tools":[],"origin":"x"}' });
+    expect(p.restrict).toBe(true);
     expect(p.tools).toEqual([]);
     // No EXTERNAL tool survives...
     expect(isMcpToolAllowed(p, 'mcp__deepwiki__ask_question')).toBe(false);
@@ -47,35 +49,38 @@ describe('parseMcpPolicy', () => {
 
   it('drops built-in entries from the wire rather than treating them as grants', () => {
     const p = parseMcpPolicy({
-      NANOCLAW_MCP_POLICY: '{"state":"inherited","tools":["mcp__nanoclaw__send_message","mcp__x__y"],"origin":"x"}',
+      NANOCLAW_MCP_POLICY: '{"restrict":true,"tools":["mcp__nanoclaw__send_message","mcp__x__y"],"origin":"x"}',
     });
     expect(p.tools).toEqual(['mcp__x__y']);
     expect(isMcpToolAllowed(p, 'mcp__nanoclaw__send_message')).toBe(true);
     expect(isMcpToolAllowed(p, 'mcp__x__y')).toBe(true);
   });
 
-  it('permits every built-in under an unresolved policy so the agent can report the fault', () => {
-    const p = UNRESOLVED_POLICY;
+  it('restricts nothing under a non-restricting policy — the default is today\'s behaviour', () => {
+    const p = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"restrict":false,"tools":[],"origin":"default"}' });
     expect(isMcpToolAllowed(p, 'mcp__nanoclaw__send_message')).toBe(true);
-    expect(isMcpToolAllowed(p, 'mcp__nanoclaw__ask_user_question')).toBe(true);
-    expect(isMcpToolAllowed(p, 'mcp__deepwiki__ask_question')).toBe(false);
+    expect(isMcpToolAllowed(p, 'mcp__deepwiki__ask_question')).toBe(true);
+    expect(isMcpToolAllowed(p, 'mcp__codex__codex')).toBe(true);
+    expect(serverHasAllowedTools(p, 'codex')).toBe(true);
   });
 
   it('drops non-MCP entries rather than trusting the wire', () => {
-    const p = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"state":"explicit","tools":["Bash","mcp__x__y"]}' });
+    const p = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"restrict":true,"tools":["Bash","mcp__x__y"]}' });
     expect(p.tools).not.toContain('Bash');
     expect(isMcpToolAllowed(p, 'Bash')).toBe(false);
   });
 
-  it('permits by omission only under unrestricted', () => {
-    const p = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"state":"unrestricted","tools":[]}' });
-    expect(isMcpToolAllowed(p, 'mcp__anything__at_all')).toBe(true);
+  it('denies by omission only when the policy restricts', () => {
+    const restricting = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"restrict":true,"tools":[]}' });
+    expect(isMcpToolAllowed(restricting, 'mcp__anything__at_all')).toBe(false);
+    const open = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"restrict":false,"tools":[]}' });
+    expect(isMcpToolAllowed(open, 'mcp__anything__at_all')).toBe(true);
   });
 });
 
 describe('server-level decisions', () => {
   const p = parseMcpPolicy({
-    NANOCLAW_MCP_POLICY: JSON.stringify({ state: 'explicit', tools: ['mcp__slang-mcp__github_get_issue'] }),
+    NANOCLAW_MCP_POLICY: JSON.stringify({ restrict: true, tools: ['mcp__slang-mcp__github_get_issue'] }),
   });
 
   it('wires a server only when the policy names a tool on it', () => {
@@ -87,7 +92,7 @@ describe('server-level decisions', () => {
   it('compares on the SDK-sanitized server name', () => {
     expect(sanitizeServerName('slang.mcp/v1')).toBe('slang_mcp_v1');
     const q = parseMcpPolicy({
-      NANOCLAW_MCP_POLICY: JSON.stringify({ state: 'explicit', tools: ['mcp__slang_mcp_v1__x'] }),
+      NANOCLAW_MCP_POLICY: JSON.stringify({ restrict: true, tools: ['mcp__slang_mcp_v1__x'] }),
     });
     expect(serverHasAllowedTools(q, 'slang.mcp/v1')).toBe(true);
   });
@@ -98,7 +103,7 @@ describe('server-level decisions', () => {
   });
 
   it('always wires the built-in server — it is out of scope', () => {
-    const empty = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"state":"explicit","tools":[]}' });
+    const empty = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"restrict":true,"tools":[]}' });
     expect(serverHasAllowedTools(empty, BUILTIN_MCP_SERVER)).toBe(true);
     expect(serverHasAllowedTools(empty, 'codex')).toBe(false);
   });
