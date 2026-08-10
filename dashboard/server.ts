@@ -7790,7 +7790,29 @@ export async function handleRequest(
           mapped++;
           prWeeks.set(week, (prWeeks.get(week) ?? 0) + 1);
         }
-        const result = unitCostByWeek(ccusageCache.all?.byGroup ?? [], prWeeks, weeksWanted);
+        // The ccusage cache keys byGroup on the agent-group DIRECTORY id, and
+        // its `groupName` falls back to that id when no display name resolves —
+        // on prod every entry is literally `ag-1776713211742-1w6l4e`. Matching
+        // the six coworkers by name against that never hits, which is how this
+        // route first shipped reporting "no cost data" on a box with 5194
+        // transcripts.
+        //
+        // Resolve id -> folder and match on FOLDER. For the six that count,
+        // folder equals name exactly; every decoy differs (`Slang Fixer` is
+        // folder `dashboard_slang-fixer`, `Slang-Reviewer` is
+        // `legacy_slang-reviewer`), so folder is the unambiguous key.
+        const folderById = new Map<string, string>();
+        for (const g of db.prepare('SELECT id, folder FROM agent_groups').all() as Array<{
+          id: string;
+          folder: string;
+        }>) {
+          folderById.set(g.id, g.folder);
+        }
+        const byGroupFoldered = (ccusageCache.all?.byGroup ?? []).map((g) => ({
+          groupName: folderById.get(g.groupId) ?? g.groupName,
+          daily: g.daily,
+        }));
+        const result = unitCostByWeek(byGroupFoldered, prWeeks, weeksWanted);
         payload = {
           ...result,
           prSource: {
