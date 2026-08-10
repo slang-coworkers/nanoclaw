@@ -3564,3 +3564,77 @@ describe('/api/messages session scoping + swim-lane', () => {
     expect('lanes' in data).toBe(false);
   });
 });
+
+describe('/api/kb-health — a malformed drift report never renders as zero', () => {
+  const sharedDir = path.join(DATA_DIR, 'shared');
+  const doctorPath = path.join(sharedDir, '.kb-doctor.json');
+
+  const writeDoctor = (body: string) => {
+    mkdirSync(sharedDir, { recursive: true });
+    writeFileSync(doctorPath, body);
+  };
+  const clearDoctor = () => rmSync(doctorPath, { force: true });
+
+  afterEach(() => clearDoctor());
+
+  it('missing report is unavailable with a reason, and driftCount is null not 0', async () => {
+    clearDoctor();
+    const data = await (await fetch(`${baseUrl}/api/kb-health`)).json();
+    expect(data.doctor.available).toBe(false);
+    expect(data.doctor.reason).toBe('no drift report');
+    // The distinction the whole panel turns on: unknown is not zero.
+    expect(data.driftCount).toBeNull();
+  });
+
+  it('a CORRUPT report is distinguished from an absent one', async () => {
+    // Both were reported as "no drift report", which conflates "the checker has not
+    // run" with "the checker's output is damaged" — different problems with different
+    // fixes, and the operator was told the milder one.
+    writeDoctor('{ this is not json');
+    const data = await (await fetch(`${baseUrl}/api/kb-health`)).json();
+    expect(data.doctor.available).toBe(false);
+    expect(data.doctor.reason).toMatch(/unreadable/);
+    expect(data.doctor.reason).not.toBe('no drift report');
+    expect(data.driftCount).toBeNull();
+  });
+
+  it('counts.drift:0 beside a non-empty drift array does NOT report zero drift', async () => {
+    // The end-to-end shape of the finding: schema 1, so the old route accepted it,
+    // took driftCount straight from the tally, and rendered a healthy panel over a
+    // report that had found something.
+    writeDoctor(
+      JSON.stringify({
+        schema: 1,
+        generatedAt: new Date().toISOString(),
+        status: 'drift',
+        complete: true,
+        counts: { ok: 0, drift: 0, unknown: 0 },
+        drift: ['tasks: a live definition differs from the snapshot'],
+        unknown: [],
+      }),
+    );
+    const data = await (await fetch(`${baseUrl}/api/kb-health`)).json();
+    expect(data.doctor.available).toBe(false);
+    expect(data.doctor.reason).toMatch(/counts disagree with their arrays/);
+    expect(data.driftCount).toBeNull();
+    expect(data.driftCount).not.toBe(0);
+  });
+
+  it('a well-formed report is still reported normally', async () => {
+    writeDoctor(
+      JSON.stringify({
+        schema: 1,
+        generatedAt: new Date().toISOString(),
+        status: 'drift',
+        complete: true,
+        counts: { ok: 1, drift: 1, unknown: 0 },
+        drift: ['tasks: one difference'],
+        unknown: [],
+      }),
+    );
+    const data = await (await fetch(`${baseUrl}/api/kb-health`)).json();
+    expect(data.doctor.available).toBe(true);
+    expect(data.driftCount).toBe(1);
+    expect(data.doctor.stale).toBe(false);
+  });
+});

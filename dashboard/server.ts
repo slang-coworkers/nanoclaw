@@ -45,6 +45,7 @@ import { initDb as initSrcDb } from '../src/db/connection.js';
 import { CONTAINER_RUNTIME_BIN } from '../src/container-runtime.js';
 import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/write-destinations.js';
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
+import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
 
 /**
  * Check if `target` is inside (or equal to) `baseDir`.
@@ -5495,57 +5496,20 @@ export async function handleRequest(
     // Note `complete: false` can coexist with `status: "drift"` — drift was found
     // AND something else could not run. `status` alone is worst-of and would hide
     // the second half, so both are surfaced.
-    const DOCTOR_STALE_HOURS = 36; // daily 05:45 cron; >36h means a run was missed
-    let doctor: {
-      available: boolean;
-      status: string | null;
-      complete: boolean | null;
-      generatedAt: string | null;
-      ageHours: number | null;
-      stale: boolean;
-      driftCount: number | null;
-      unknownCount: number | null;
-      drift: string[];
-      unknown: string[];
-      reason: string | null;
-    } = {
-      available: false,
-      status: null,
-      complete: null,
-      generatedAt: null,
-      ageHours: null,
-      stale: false,
-      driftCount: null,
-      unknownCount: null,
-      drift: [],
-      unknown: [],
-      reason: 'no drift report',
-    };
+    // Validated in full by dashboard/kb-doctor-artifact.ts. Checking only `schema`
+    // and trusting the rest let a malformed or self-contradictory report render as
+    // available, fresh and zero-drift — including `counts.drift: 0` beside a
+    // non-empty drift array, which is the precise false zero the structured artifact
+    // replaced. Anything we cannot fully understand is UNAVAILABLE with a reason.
+    let doctor: KbDoctorView;
     try {
-      const raw = JSON.parse(readFileSync(doctorPath, 'utf-8'));
-      if (raw?.schema !== 1) {
-        // An unrecognised schema is unavailable, never assumed clean.
-        doctor.reason = `unsupported kb-doctor schema: ${String(raw?.schema)}`;
-      } else {
-        const ageH = raw.generatedAt ? (Date.now() - new Date(raw.generatedAt).getTime()) / 3600000 : null;
-        doctor = {
-          available: true,
-          status: raw.status ?? null,
-          complete: raw.complete ?? null,
-          generatedAt: raw.generatedAt ?? null,
-          ageHours: ageH === null ? null : Math.round(ageH * 10) / 10,
-          stale: ageH !== null && ageH > DOCTOR_STALE_HOURS,
-          // Count comes from the producer's own tally. Deriving it by filtering
-          // report strings is what produced the original defect.
-          driftCount: raw.counts?.drift ?? null,
-          unknownCount: raw.counts?.unknown ?? null,
-          drift: Array.isArray(raw.drift) ? raw.drift : [],
-          unknown: Array.isArray(raw.unknown) ? raw.unknown : [],
-          reason: null,
-        };
-      }
-    } catch {
-      doctor.reason = 'no drift report';
+      doctor = readKbDoctorArtifact(JSON.parse(readFileSync(doctorPath, 'utf-8')));
+    } catch (err) {
+      doctor = kbDoctorUnavailable(
+        (err as NodeJS.ErrnoException)?.code === 'ENOENT'
+          ? 'no drift report'
+          : `kb-doctor report unreadable: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
     const drift = doctor.drift;
     res.writeHead(200, { 'Content-Type': 'application/json' });
