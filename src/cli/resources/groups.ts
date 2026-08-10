@@ -1,14 +1,14 @@
 import { randomUUID } from 'crypto';
 
 import type { AdditionalMountConfig, McpServerConfig } from '../../container-config.js';
-import { buildAgentGroupImage, killContainer, wakeContainer } from '../../container-runner.js';
+import { buildAgentGroupImage, isContainerRunning, killContainer, wakeContainer } from '../../container-runner.js';
 import { restartAgentGroupContainers } from '../../container-restart.js';
 import { createAgentGroup, getAgentGroupByFolder } from '../../db/agent-groups.js';
 import { getDb, hasTable } from '../../db/connection.js';
 import { getAgentGroup, updateAgentGroup } from '../../db/agent-groups.js';
-import { parseAllowlistFlag, resolveMcpAllowlist } from '../../mcp-allowlist.js';
+import { MANDATORY_MCP_TOOLS, parseAllowlistFlag, resolveMcpAllowlist } from '../../mcp-allowlist.js';
 import { getDiscoveredToolInventory, updateContainerTokenScope } from '../../mcp-auth-proxy.js';
-import { getSession } from '../../db/sessions.js';
+import { getSession, getSessionsByAgentGroup } from '../../db/sessions.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import {
   getContainerConfig,
@@ -20,6 +20,7 @@ import { createAgentFromTemplate } from '../../templates/create-agent.js';
 import { isValidTimezone } from '../../timezone.js';
 import type { AgentGroup, ContainerConfigRow } from '../../types.js';
 import { registerResource } from '../crud.js';
+import { enqueuePostResponseEffect } from '../post-response.js';
 
 /**
  * Parse a --timezone flag: undefined = not passed, null = explicit clear
@@ -105,7 +106,9 @@ registerResource({
         "Show a group's EFFECTIVE MCP tool allow-list — what the next spawn will actually enforce — " +
         'alongside the tools each wired MCP server exposes. `state` is one of `explicit` (a list stored ' +
         'on the group), `inherited` (no list; the coworker-type manifest governs, or every discovered ' +
-        'tool for an admin group) or `unrestricted`. Use --id <agent-group-id>.',
+        'tool for an admin group), `unrestricted`, or `unresolved` (the list could NOT be computed — ' +
+        'every configurable MCP tool is denied and this is a configuration fault to fix). ' +
+        'Use --id <agent-group-id>.',
       handler: async (args) => {
         const id = String(args.id ?? '');
         if (!id) throw new Error('--id is required');
@@ -127,10 +130,23 @@ registerResource({
           restricted: resolved.state !== 'unrestricted',
           stored_allow_list: group.allowed_mcp_tools ?? null,
           effective_tools: resolved.tools,
-          // nanoclaw's own tools are never proxy-scoped, so they are never
-          // restrictable here — surfacing them would imply otherwise.
+          // What the runtime permits: the configured list plus the mandatory
+          // message-transport floor, which is deliberately not configurable
+          // (see MANDATORY_MCP_TOOLS in src/mcp-allowlist.ts). Surfaced
+          // separately from `effective_tools` so the boundary is visible
+          // rather than looking like the policy quietly ignored the list.
+          enforced_tools: resolved.enforcedTools,
+          mandatory_tools: [...MANDATORY_MCP_TOOLS],
           discovered_by_server: inventory,
           blocked: resolved.blocked,
+          ...(resolved.state === 'unresolved'
+            ? {
+                configuration_error:
+                  `MCP allow-list could not be resolved (${resolved.origin}). Containers for this group spawn ` +
+                  `with every configurable MCP tool DENIED — only the mandatory message transport works. ` +
+                  `Fix the coworker registry or MCP proxy, then restart the group.`,
+              }
+            : {}),
         };
       },
     },
@@ -143,8 +159,10 @@ registerResource({
       // only rejected AFTER they say yes.
       denySelfTarget: true,
       description:
-        "Replace a group's MCP tool allow-list and re-scope its RUNNING container immediately (no restart). " +
+        "Replace a group's MCP tool allow-list and RESTART every running container in the group so the " +
+        'change is enforced on direct MCP servers too. ' +
         '--id <agent-group-id> --tools \'["mcp__server__tool", …]\' for an explicit list, ' +
+        "--tools '[]' to allow no configurable MCP tool at all, " +
         '--tools inherit to fall back to the coworker-type manifest (the default), ' +
         '--tools unrestricted to allow every discovered tool. ' +
         "NOTE: 'inherit' is NOT 'unrestricted' — it restricts to the type manifest. " +
@@ -184,7 +202,44 @@ registerResource({
         // container on its previous scope while the operator was told the
         // restriction had been removed.
         const resolved = resolveMcpAllowlist({ ...group, allowed_mcp_tools: stored });
-        const rescoped = updateContainerTokenScope(group.folder, resolved.tools);
+
+        // Layer 1 — immediate, and only half the job. The proxy token governs
+        // PROXIED servers; it deliberately excludes `mcp__nanoclaw__*` and it
+        // has no reach at all over direct stdio servers like `codex`, which
+        // never traverse the proxy.
+        const rescoped = updateContainerTokenScope(group.folder, resolved.enforcedTools);
+
+        // Layer 2 — the part that was missing. A running container snapshots
+        // its MCP policy at boot: the SDK is handed `allowedTools` /
+        // `disallowedTools` / `mcpServers` once per query, and a wired stdio
+        // server is a live child process. Nothing the host can say to a
+        // running container revokes a direct tool, so the container has to go.
+        //
+        // Restart, not a dynamic revocation seam, because a restart is honest
+        // about its own bounds: after it returns the container is provably
+        // running the new policy, whereas a mid-session seam would have to
+        // reach into SDK state we do not own and would silently no-op the day
+        // that state changes shape. It also matches the existing self-mod flow,
+        // which already restarts on a container-config change.
+        //
+        // Group-WIDE, not caller-wide: `allowed_mcp_tools` is a column on the
+        // agent group, and a group routinely has several live sessions (root
+        // plus per-thread). Restarting only the session that happened to make
+        // the request would leave every sibling container holding exactly the
+        // privileges the operator just revoked — and reporting success.
+        const affected = getSessionsByAgentGroup(id).filter((s) => s.status === 'active' && isContainerRunning(s.id));
+        const wakeMessage =
+          `[system] Your MCP tool allow-list changed (${resolved.state}: ${resolved.origin}) and your ` +
+          `container was restarted so the new policy applies to direct MCP servers too. ` +
+          `Allowed MCP tools: ${resolved.enforcedTools.length > 0 ? resolved.enforcedTools.join(', ') : 'none'}.`;
+
+        // Deferred so the response frame is durable first. If the caller is a
+        // container in this group, the kill would otherwise destroy the answer
+        // to the command that ordered it. See src/cli/post-response.ts.
+        enqueuePostResponseEffect(`mcp-tools-set:restart:${id}`, () => {
+          restartAgentGroupContainers(id, 'mcp allow-list changed', wakeMessage);
+        });
+
         return {
           agent_group_id: id,
           folder: group.folder,
@@ -192,9 +247,24 @@ registerResource({
           origin: resolved.origin,
           stored_allow_list: stored,
           effective_tools: resolved.tools,
+          enforced_tools: resolved.enforcedTools,
           blocked: resolved.blocked,
           live_containers_rescoped: rescoped,
-          note: `Effective policy: ${resolved.state} (${resolved.origin}). Applied to ${rescoped} running container(s); also persisted for future spawns.`,
+          // Named for what it is. The proxy scope is already narrowed; the
+          // direct-tool half lands when these containers come back, which is
+          // seconds away but is NOT "applied" at the moment this returns.
+          containers_pending_restart: affected.map((s) => s.id),
+          enforcement: {
+            proxied_mcp_servers: 'applied',
+            direct_mcp_servers: affected.length > 0 ? 'pending-restart' : 'applied',
+          },
+          note:
+            `Effective policy: ${resolved.state} (${resolved.origin}). ` +
+            `Proxy scope narrowed on ${rescoped} live token(s) immediately. ` +
+            (affected.length > 0
+              ? `${affected.length} container(s) in this group are being restarted so direct MCP servers ` +
+                `(built-in nanoclaw tools, codex) pick it up — direct-tool enforcement is PENDING-RESTART until they return.`
+              : 'No containers are running, so the policy applies in full at the next spawn.'),
         };
       },
     },

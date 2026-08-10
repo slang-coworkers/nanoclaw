@@ -31,8 +31,9 @@ import {
 import { runGuarded, type DeliveryGuardSpec, type GuardedDeliveryHandler } from './delivery-guard.js';
 import { isUnguarded, type Unguarded } from './guard/index.js';
 import { log } from './log.js';
+import { isMcpToolPermitted, NANOCLAW_ACTION_TOOLS, resolveMcpAllowlist } from './mcp-allowlist.js';
 import { normalizeOptions } from './channels/ask-question.js';
-import { clearOutbox, openInboundDb, openOutboundDb, readOutboxFiles } from './session-manager.js';
+import { clearOutbox, openInboundDb, openOutboundDb, readOutboxFiles, writeSessionMessage } from './session-manager.js';
 import { pauseTypingRefreshAfterDelivery, setTypingAdapter } from './modules/typing/index.js';
 import type { OutboundFile } from './channels/adapter.js';
 import type { PendingApproval, Session } from './types.js';
@@ -642,6 +643,9 @@ export function getDeliveryAction(action: string): DeliveryActionHandler | undef
  * Handle system actions from the container agent.
  * These are written to messages_out because the container can't write to inbound.db.
  * The host applies them to inbound.db here.
+ *
+ * Reachable from tests via `__testHooks` — the MCP allow-list gate below has to
+ * be exercised at the boundary it defends, not only as a predicate.
  */
 async function handleSystemAction(
   content: Record<string, unknown>,
@@ -651,6 +655,8 @@ async function handleSystemAction(
   const action = content.action as string;
   log.info('System action from agent', { sessionId: session.id, action });
 
+  if (!isNanoclawActionPermitted(action, session)) return;
+
   const registered = getDeliveryAction(action);
   if (registered) {
     await registered(content, session, inDb);
@@ -658,6 +664,76 @@ async function handleSystemAction(
   }
 
   log.warn('Unknown system action', { action });
+}
+
+/**
+ * Allow-list gate for the built-in `nanoclaw` MCP surface.
+ *
+ * Those tools are direct stdio — they never reach the host MCP proxy, so the
+ * proxy's per-token ACL (the only enforcement the allow-list used to have)
+ * could never restrict them. Every check inside the container can be edited by
+ * the agent it restrains: a group's `/app/src` is a WRITABLE mount. This
+ * function is the one place a built-in tool's privileged effect has to pass
+ * through host code, so it is where the allow-list has to be decided.
+ *
+ * Tools whose only effect is a message (`send_message`, `send_file`,
+ * `add_reaction`) are not actions and are not gated here — they are the
+ * mandatory transport floor (see MANDATORY_MCP_TOOLS).
+ *
+ * Fail-closed in both directions: an unknown group denies, and an action with
+ * no allow-list identity (`cli_request`, `record_human_verdict`) is not gated
+ * here at all because it is not an agent MCP tool — those carry their own
+ * guards.
+ */
+function isNanoclawActionPermitted(action: string, session: Session): boolean {
+  const tool = NANOCLAW_ACTION_TOOLS[action];
+  if (!tool) return true;
+
+  const group = getAgentGroup(session.agent_group_id);
+  if (!group) {
+    log.error('Denying system action — agent group not found', { action, sessionId: session.id });
+    return false;
+  }
+
+  const resolved = resolveMcpAllowlist(group);
+  if (isMcpToolPermitted(resolved, tool)) return true;
+
+  // error, not warn: a running container attempting a tool its policy denies
+  // is either a stale container that predates a narrowing (expected once, then
+  // the restart lands) or an agent-runner that is no longer honouring policy.
+  log.error('Denying system action — MCP tool not permitted for this agent group', {
+    action,
+    tool,
+    sessionId: session.id,
+    agentGroup: group.folder,
+    policyState: resolved.state,
+    origin: resolved.origin,
+  });
+  // Tell the agent. A container-side tool call returns as soon as the row is
+  // written, so a silent host-side drop reads to the agent as success and it
+  // proceeds on a false premise — the exact failure mode every other denial in
+  // this codebase avoids by writing back (`wire_agents denied: …`).
+  try {
+    writeSessionMessage(session.agent_group_id, session.id, {
+      id: `sys-mcp-deny-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'chat',
+      timestamp: new Date().toISOString(),
+      platformId: null,
+      channelType: 'system',
+      threadId: null,
+      content: JSON.stringify({
+        text:
+          `${action} denied: "${tool}" is not in this agent group's MCP tool allow-list ` +
+          `(policy: ${resolved.state} — ${resolved.origin}). Do not retry; ask an admin to widen it with ` +
+          `\`ncl groups mcp-tools set\`. You may never widen your own.`,
+        sender: 'system',
+        senderId: 'system',
+      }),
+    });
+  } catch (err) {
+    log.warn('Failed to notify agent of MCP allow-list denial', { action, sessionId: session.id, err });
+  }
+  return false;
 }
 
 export function stopDeliveryPolls(): void {

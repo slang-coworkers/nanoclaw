@@ -16,7 +16,7 @@ vi.mock('./config.js', async () => {
   return { ...actual, DATA_DIR: '/tmp/nanoclaw-test-wire-agents' };
 });
 
-import { createAgentGroup } from './db/agent-groups.js';
+import { createAgentGroup, updateAgentGroup } from './db/agent-groups.js';
 import {
   createDestination,
   getDestinationByTarget,
@@ -214,6 +214,13 @@ describe('wire_agents host action', () => {
   it('rejects non-admin callers', async () => {
     seedGroups(false);
     seedAdminDestinations();
+    // The MCP allow-list is now an EARLIER gate on this action (delivery.ts,
+    // isNanoclawActionPermitted). A non-admin group inherits the `default`
+    // coworker manifest, which does not grant `wire_agents` — so without this
+    // the request is refused before the admin check ever runs and the test
+    // would be asserting the wrong denial. Grant the tool so the admin check
+    // is what fires.
+    updateAgentGroup('ag-main', { allowed_mcp_tools: '*' });
     const { session: mainSession } = resolveSession('ag-main', null, null, 'agent-shared');
 
     const inDb = openInboundDb(mainSession.agent_group_id, mainSession.id);
