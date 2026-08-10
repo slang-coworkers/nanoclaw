@@ -245,3 +245,19 @@ jobs:
       # build, it just starts saying everything is fine.
       - name: KB observability tests (Python)
         run: python3 scripts/test_kb_observability.py
+
+      # The committed scheduled-task snapshot is the only record of what the live
+      # agents are standing-instructed to do, and its whole value is that `git diff`
+      # is a drift alarm. It is a PAIR — JSON plus Markdown mirror, stamped with a
+      # shared content hash — and the two can come apart with nothing to show for it:
+      # a crash between the sequential renames, which no in-process rollback can
+      # cover, or a hand-edit of a committed file. Either leaves a snapshot that
+      # still reads as authoritative.
+      #
+      # `--check` recomputes the hash and compares the pair. It returns before `ncl`
+      # is invoked, so it needs no live host, no DB and no network — which is what
+      # makes it runnable here rather than only on the box that dumps it. What it
+      # does NOT do is compare the snapshot against the live host; that is
+      # scripts/kb-doctor.py's job and it needs the host to do it.
+      - name: Scheduled-task snapshots agree with themselves
+        run: bash scripts/check-task-snapshots.sh
