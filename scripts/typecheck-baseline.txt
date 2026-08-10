@@ -10,19 +10,8 @@
 # do not churn it. container/** is out of scope: it has its own tsconfig and CI
 # step (see OUT_OF_SCOPE in the gate script).
 #
-# Every line below is pre-existing debt, uncovered the first time the gate
-# widened past src/. NONE is a new regression. Four are real breakage rather
-# than type nits — marked BROKEN — which is the evidence that this hole was
-# hiding things rather than lying dormant.
-scripts/photon-setup.ts                   TS2345  x1  # string|undefined passed where string is required — unchecked narrowing
-scripts/release.test.ts                   TS7016  x1  # ./release.mjs is untyped JS; wants allowJs or a .d.ts, not a code change
-scripts/test-v2-agent.ts                  TS2353  x1  # BROKEN: harness sets mcpServers, absent from PollLoopConfig — cannot run
-scripts/test-v2-channel-e2e.ts            TS2322  x2  # BROKEN: two handler signatures drifted from ChannelSetup — cannot run
-scripts/test-v2-channel-e2e.ts            TS2339  x1  # BROKEN: reads .conversations, not a member of ChannelSetup — cannot run
-scripts/test-v2-channel-e2e.ts            TS2739  x1  # BROKEN: setup literal missing onInboundEvent/onAction — cannot run
-setup/auto.ts                             TS2454  x1  # 'result' read on a path where it may still be unassigned
-setup/channels/run-channel-skill.test.ts  TS2345  x2  # WireArgs has no index signature, so it is not a Record<string, unknown>
-setup/index.ts                            TS2307  x1  # BROKEN: lazy-imports ./groups.js but setup/groups.ts does not exist. Create-or-delete needs intent we do not have; the dynamic import only throws if that step is selected, which is why nobody hit it
-setup/lib/skill-driver.ts                 TS2322  x2  # validator typed (value: string) where (value: string|undefined) is required
-setup/migrate-v2/tasks.ts                 TS2724  x1  # BROKEN: imports insertTask, renamed to insertTaskRow — throws on import, in the v1->v2 migration path a user hits once, under stress
-setup/whatsapp-auth.ts                    TS7006  x1  # implicit any on a baileys callback param, downstream of the ambient any stub in setup/types/optional-modules.d.ts
+# NO ENTRIES BELOW THIS LINE IS THE GOAL STATE, NOT A BROKEN FILE. The debt is
+# paid: the gate now demands zero errors across src/, setup/ and scripts/. Do
+# not add a line to get a red build green — the ratchet only turns one way, and
+# an empty baseline is the whole point of having had one.
+

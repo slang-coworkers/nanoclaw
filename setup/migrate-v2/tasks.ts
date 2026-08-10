@@ -20,8 +20,8 @@ import { initDb, closeDb } from '../../src/db/connection.js';
 import { getAgentGroupByFolder } from '../../src/db/agent-groups.js';
 import { getMessagingGroupByPlatform } from '../../src/db/messaging-groups.js';
 import { runMigrations } from '../../src/db/migrations/index.js';
-import { insertTask } from '../../src/modules/scheduling/db.js';
-import { openInboundDb, resolveSession } from '../../src/session-manager.js';
+import { insertTaskRow } from '../../src/modules/scheduling/db.js';
+import { openInboundDb, resolveTaskSession } from '../../src/session-manager.js';
 import { readEnvFile } from '../../src/env.js';
 import { buildDiscordResolver, type DiscordResolver } from './discord-resolver.js';
 import { parseJid, v2PlatformId } from './shared.js';
@@ -136,7 +136,14 @@ async function main(): Promise<void> {
       const scheduling = toCron(t);
       if (!scheduling) { skipped++; continue; }
 
-      const { session } = resolveSession(ag.id, mg.id, null, 'shared');
+      // v1 fired tasks into the chat's own shared session. v2 gives every task
+      // SERIES its own isolated system session (`resolveTaskSession`), and the
+      // sweep only looks for due `kind='task'` rows there — a row written into a
+      // chat session would simply never fire. The `mg` lookup above stays as the
+      // migration FILTER (skip tasks whose chat did not migrate); it no longer
+      // picks the session. Series id = the v1 task id, so the idempotence check
+      // below still recognises an already-migrated task on a re-run.
+      const { session } = resolveTaskSession(ag.id, t.id);
       const inboxDb = openInboundDb(ag.id, session.id);
       try {
         // Idempotence check
@@ -145,13 +152,14 @@ async function main(): Promise<void> {
           .get(t.id) as { id: string } | undefined;
         if (existing) { skipped++; continue; }
 
-        insertTask(inboxDb, {
+        // platform_id / channel_type / thread_id are deliberately absent: v2
+        // task rows always carry NULL there (insertTaskRow hardcodes it), because
+        // the task fires into its own system session rather than into a chat.
+        insertTaskRow(inboxDb, {
           id: t.id,
+          seriesId: t.id,
           processAfter: scheduling.processAfter,
           recurrence: scheduling.recurrence,
-          platformId,
-          channelType: parsed.channel_type,
-          threadId: null,
           content: JSON.stringify({
             prompt: t.prompt,
             script: t.script ?? null,

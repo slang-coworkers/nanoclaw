@@ -654,7 +654,10 @@ async function main(): Promise<void> {
       if (channelChoice !== 'skip' && channelChoice !== 'other') {
         await resolveDisplayName();
       }
-      let result: void | typeof BACK_TO_CHANNEL_SELECTION;
+      // Initialized, not just declared: the `skip` branch below assigns nothing,
+      // so the `result === BACK_TO_CHANNEL_SELECTION` read at the bottom of the
+      // loop is reached with `result` unassigned on that path.
+      let result: void | typeof BACK_TO_CHANNEL_SELECTION = undefined;
       // Every channel now runs through the SKILL.md-driven flow — the whole
       // connect+wire procedure lives in each add-<channel>/SKILL.md.
       if (channelChoice === 'telegram') {

@@ -12,6 +12,18 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
+    // scripts/ mixes .ts and hand-written .mjs (release.mjs, typecheck-gate.mjs,
+    // mirror-skills.mjs, check-runtime-resolvable.mjs, and setup/registry's
+    // credential-helper.mjs). scripts/release.test.ts imports release.mjs, so
+    // without allowJs it is an implicit any (TS7016). The alternative — a
+    // hand-written release.d.mts — duplicates six signatures with nothing
+    // checking that the copy stays true, which is how a declaration file starts
+    // lying. Inferring from the .mjs source cannot drift.
+    //
+    // `checkJs` stays OFF (its default): these files are typechecked as
+    // dependencies, never judged as sources. Turning it on would open a second
+    // debt front in files the build never compiles.
+    "allowJs": true,
     // Files live outside ./src now, so the build's rootDir cannot apply.
     "rootDir": ".",
     "declaration": false,
