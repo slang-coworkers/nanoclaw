@@ -87,13 +87,13 @@ function makeRepo(fx: Fixture): string {
   return repo;
 }
 
-function dump(repo: string, extraArgs: string[] = []) {
+function dump(repo: string, extraArgs: string[] = [], env: Record<string, string> = {}) {
   const out = path.join(repo, 'docs', 'snap.json');
   const md = path.join(repo, 'docs', 'snap.md');
   const r = spawnSync('python3', [SCRIPT, '--repo', repo, '--out', out, '--md', md, ...extraArgs], {
     cwd: repo,
     encoding: 'utf-8',
-    env: { ...process.env, INSTANCE_SLUG: 'testinst' },
+    env: { ...process.env, INSTANCE_SLUG: 'testinst', ...env },
   });
   return { ...r, out, md };
 }
@@ -170,15 +170,160 @@ describe('scripts/dump-scheduled-tasks.py', () => {
     expect(fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8')).toBe(good);
   });
 
-  it('an empty task list exits 2 rather than emptying the snapshot', () => {
+  it('a SUCCESSFUL empty list is recorded, not treated as a host failure', () => {
+    // This replaces a test that asserted the opposite. Deleting every scheduled task
+    // is something an operator can legitimately do; exiting 2 on it — the same code
+    // as "the host is down" — left the committed snapshot claiming the deleted tasks
+    // still existed. That is the stale-authority problem the tool exists to prevent,
+    // pointed the other way.
     const repo = makeRepo({ ids: ['task-a'] });
     expect(dump(repo).status).toBe(0);
-    const good = fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8');
 
     fs.writeFileSync(path.join(repo, 'fixtures', 'list.json'), JSON.stringify({ ok: true, data: [] }));
     const r = dump(repo);
+
+    expect(r.status).toBe(0);
+    const snap = JSON.parse(fs.readFileSync(r.out, 'utf-8'));
+    expect(snap.complete).toBe(true);
+    expect(snap.listed_count).toBe(0);
+    expect(snap.task_count).toBe(0);
+    expect(snap.tasks).toEqual([]);
+    // Emptying the snapshot is worth a human glance — but as a warning, not as a lie
+    // about the exit code.
+    expect(r.stderr).toContain('the previous snapshot had 1');
+    expect(r.stderr).toContain('Check that this was intended');
+  });
+
+  it('an empty FIRST run says nothing alarming — there is nothing being emptied', () => {
+    const repo = makeRepo({ ids: [] });
+    const r = dump(repo);
+    expect(r.status).toBe(0);
+    expect(r.stderr).not.toContain('WARNING');
+    expect(JSON.parse(fs.readFileSync(r.out, 'utf-8')).task_count).toBe(0);
+  });
+
+  it('a FAILED list still exits 2 — the distinction the empty case turns on', () => {
+    const repo = makeRepo({ ids: ['task-a'], listFails: true });
+    const r = dump(repo);
     expect(r.status).toBe(2);
-    expect(fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8')).toBe(good);
+    expect(r.stderr).toContain('Refusing to touch the existing snapshot');
+    expect(fs.existsSync(r.out)).toBe(false);
+  });
+});
+
+describe('dump-scheduled-tasks.py — publication is all-or-nothing', () => {
+  /** Both artifacts carry the same content hash, which is what makes a torn pair visible. */
+  function ids(repo: string): { json: string | undefined; md: string | undefined } {
+    const snap = JSON.parse(fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8'));
+    const md = fs.readFileSync(path.join(repo, 'docs', 'snap.md'), 'utf-8');
+    return { json: snap.snapshot_id, md: /^Snapshot id: `([0-9a-f]{64})`/m.exec(md)?.[1] };
+  }
+
+  it('publishes both files under one snapshot id', () => {
+    const repo = makeRepo({ ids: ['task-a'] });
+    expect(dump(repo).status).toBe(0);
+    const { json, md } = ids(repo);
+    expect(json).toMatch(/^[0-9a-f]{64}$/);
+    expect(md).toBe(json);
+    // …and the id is a hash of the content, so it is stable across identical runs.
+    expect(dump(repo).status).toBe(0);
+    expect(ids(repo).json).toBe(json);
+  });
+
+  it('rolls BOTH targets back when the second rename fails', () => {
+    // The finding's exact scenario. `commit()` renames sequentially, so a failure
+    // after the JSON landed used to leave JSON new and Markdown old — while the error
+    // path printed "Nothing was replaced", which was false.
+    const repo = makeRepo({ ids: ['task-a'] });
+    expect(dump(repo).status).toBe(0);
+    const goodJson = fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8');
+    const goodMd = fs.readFileSync(path.join(repo, 'docs', 'snap.md'), 'utf-8');
+
+    // A different snapshot, so a leaked partial publish would be plainly visible.
+    fs.writeFileSync(
+      path.join(repo, 'fixtures', 'get-task-a.json'),
+      JSON.stringify({ ok: true, data: { series_id: 'task-a', prompt: 'CHANGED', agent_group_id: 'grp' } }),
+    );
+    const r = dump(repo, [], { DUMP_TASKS_FAULT: 'replace:2' });
+
+    expect(r.status).toBe(3);
+    expect(fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8')).toBe(goodJson);
+    expect(fs.readFileSync(path.join(repo, 'docs', 'snap.md'), 'utf-8')).toBe(goodMd);
+    // The message has to describe what actually happened on disk.
+    expect(r.stderr).toContain('Replaced before failing');
+    expect(r.stderr).toContain('Rolled back');
+    expect(r.stderr).not.toContain('Nothing was replaced');
+    // No temp or rollback litter survives to be committed by mistake.
+    expect(docsListing(repo)).toEqual(['snap.json', 'snap.md']);
+  });
+
+  it('the JSON survives a second-target failure that owes nothing to fault injection', () => {
+    // The same defect provoked WITHOUT the DUMP_TASKS_FAULT seam, so it is
+    // demonstrable on the pre-fix tree too: a directory where the Markdown target
+    // should be makes the second publication step fail for an ordinary OS reason.
+    // Pre-fix that left snap.json replaced and snap.md untouched while the error
+    // path printed "Nothing was replaced" — a torn pair, reported as a clean refusal.
+    const repo = makeRepo({ ids: ['task-a'] });
+    expect(dump(repo).status).toBe(0);
+    const goodJson = fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8');
+
+    fs.rmSync(path.join(repo, 'docs', 'snap.md'));
+    fs.mkdirSync(path.join(repo, 'docs', 'snap.md'));
+    fs.writeFileSync(path.join(repo, 'docs', 'snap.md', 'occupied'), 'x');
+    fs.writeFileSync(
+      path.join(repo, 'fixtures', 'get-task-a.json'),
+      JSON.stringify({ ok: true, data: { series_id: 'task-a', prompt: 'CHANGED', agent_group_id: 'grp' } }),
+    );
+
+    const r = dump(repo);
+    expect(r.status).toBe(3);
+    // The claim that matters: the JSON a consumer reads is still the old, whole one.
+    expect(fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8')).toBe(goodJson);
+  });
+
+  it('a failure while STAGING replaces nothing, and says so accurately', () => {
+    const repo = makeRepo({ ids: ['task-a'] });
+    expect(dump(repo).status).toBe(0);
+    const goodJson = fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8');
+
+    const r = dump(repo, [], { DUMP_TASKS_FAULT: 'stage:2' });
+    expect(r.status).toBe(3);
+    expect(r.stderr).toContain('Nothing was replaced');
+    expect(fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8')).toBe(goodJson);
+    expect(docsListing(repo)).toEqual(['snap.json', 'snap.md']);
+  });
+
+  it('--check DETECTS a pair torn by a hard crash between the two renames', () => {
+    // The case no in-process rollback can cover: SIGKILL after the first rename. The
+    // shared snapshot id is the only thing that makes it visible afterwards.
+    const repo = makeRepo({ ids: ['task-a'] });
+    expect(dump(repo).status).toBe(0);
+    expect(dump(repo, ['--check']).status).toBe(0);
+
+    fs.writeFileSync(
+      path.join(repo, 'fixtures', 'get-task-a.json'),
+      JSON.stringify({ ok: true, data: { series_id: 'task-a', prompt: 'CHANGED', agent_group_id: 'grp' } }),
+    );
+    dump(repo, [], { DUMP_TASKS_FAULT: 'crash:1' }); // dies with JSON new, Markdown old
+
+    const { json, md } = ids(repo);
+    expect(json).not.toBe(md); // genuinely torn
+
+    const checked = dump(repo, ['--check']);
+    expect(checked.status).toBe(4);
+    expect(checked.stderr).toContain('TORN PUBLISH');
+  });
+
+  it('--check fails a JSON whose contents no longer match its own id', () => {
+    const repo = makeRepo({ ids: ['task-a'] });
+    expect(dump(repo).status).toBe(0);
+    const snap = JSON.parse(fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8'));
+    snap.tasks[0].prompt = 'hand-edited after publication';
+    fs.writeFileSync(path.join(repo, 'docs', 'snap.json'), JSON.stringify(snap, null, 2));
+
+    const r = dump(repo, ['--check']);
+    expect(r.status).toBe(4);
+    expect(r.stderr).toContain('does not match its own contents');
   });
 
   it('never emits trailing whitespace, even when a prompt carries it', () => {
