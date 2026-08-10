@@ -17,6 +17,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 
@@ -211,6 +212,67 @@ class TestHealthWritesAtomically(HealthRepo):
         self.assertEqual(sorted(os.listdir(os.path.dirname(p))), ["x.json"])
 
 
+class TestHealthPublishesBothDocumentsOrNeither(HealthRepo):
+    """The history and the digest describe the same generation and have to agree.
+
+    The history was replaced BEFORE the digest was rendered, so a failure in between
+    left a recorded sample with no digest describing it — and the append was
+    unconditional, so a retry recorded the same day twice."""
+
+    def run_ok(self, repo):
+        return run_main(health, ["kb-health.py", "--repo", repo, "--json-only"])
+
+    def test_a_second_run_the_same_day_replaces_rather_than_appends(self):
+        repo, shared = self.make_repo()
+        self.assertEqual(self.run_ok(repo)[0], 0)
+        self.assertEqual(self.run_ok(repo)[0], 0)
+        hist = self.hist(shared)
+        self.assertEqual(len(hist), 1)
+        self.assertEqual(len({h["date"] for h in hist}), 1)
+
+    def test_a_retry_does_not_make_the_digest_diff_a_sample_against_itself(self):
+        # With an unconditional append, `prev` became this morning's run of the same
+        # script, so the second run's digest compared today against today and reported
+        # a day of flat zeros.
+        repo, shared = self.make_repo()
+        self.run_ok(repo)
+        yesterday = dict(self.hist(shared)[0])
+        yesterday["date"] = "1999-01-01"
+        Path(shared, ".kb-health.json").write_text(json.dumps([yesterday]))
+        self.run_ok(repo)
+        self.run_ok(repo)
+        hist = self.hist(shared)
+        self.assertEqual([h["date"] for h in hist][0], "1999-01-01")
+        self.assertEqual(len(hist), 2)
+
+    def test_a_digest_failure_leaves_BOTH_targets_untouched(self):
+        repo, shared = self.make_repo()
+        self.assertEqual(self.run_ok(repo)[0], 0)
+        before_hist = Path(shared, ".kb-health.json").read_text()
+        before_md = Path(shared, "KB-HEALTH.md").read_text()
+
+        with mock.patch.object(health, "digest", side_effect=RuntimeError("render blew up")):
+            with self.assertRaises(RuntimeError):
+                self.run_ok(repo)
+
+        # Pre-fix the history had already been replaced by the time digest ran, so the
+        # sample was recorded with no digest describing it and nothing said so.
+        self.assertEqual(Path(shared, ".kb-health.json").read_text(), before_hist)
+        self.assertEqual(Path(shared, "KB-HEALTH.md").read_text(), before_md)
+
+    def test_an_empty_digest_refuses_rather_than_recording_a_sample_without_one(self):
+        repo, shared = self.make_repo()
+        self.assertEqual(self.run_ok(repo)[0], 0)
+        before_hist = Path(shared, ".kb-health.json").read_text()
+
+        with mock.patch.object(health, "digest", return_value="   \n  "):
+            code, _, err = self.run_ok(repo)
+
+        self.assertEqual(code, 1)
+        self.assertIn("REFUSING", err)
+        self.assertEqual(Path(shared, ".kb-health.json").read_text(), before_hist)
+
+
 # ── kb-doctor ────────────────────────────────────────────────────────────────
 
 
@@ -348,8 +410,76 @@ class TestDoctorComparesFullDefinition(DoctorRepo):
         self.assertEqual(self.checks(doc)["tasks"], "OK")
 
     def test_volatile_set_is_imported_not_copied(self):
-        self.assertIn("tries", doctor.volatile_fields())
-        self.assertIn("process_after", doctor.volatile_fields())
+        fields, err = doctor.volatile_fields()
+        self.assertIsNone(err)
+        self.assertIn("tries", fields)
+        self.assertIn("process_after", fields)
+
+
+class TestDoctorVolatileSetIsNeverSilentlyStale(DoctorRepo):
+    """The exclusion set decides what "identical" MEANS, so a doubt about it is a doubt
+    about every comparison built on it.
+
+    `volatile_fields()` caught every import error and returned the in-file copy with no
+    signal. A field the dumper had stopped excluding would then be ignored by the stale
+    copy, no difference would be found, and the doctor would certify a clean result it
+    had no basis for — the exact "unknown is treated as clean" failure it exists to
+    refuse."""
+
+    def live(self, **over):
+        return ncl_emitting(json.dumps({"ok": True, "data": dict(TASK, **over)}))
+
+    def broken_import(self):
+        return mock.patch.object(doctor.importlib.util, "spec_from_file_location",
+                                 side_effect=ImportError("dumper moved"))
+
+    def test_volatile_fields_returns_the_error_instead_of_swallowing_it(self):
+        with self.broken_import():
+            fields, err = doctor.volatile_fields()
+        self.assertIn("dumper moved", err)
+        self.assertEqual(fields, set(doctor.VOLATILE_FALLBACK))
+
+    def test_a_broken_import_is_UNKNOWN_not_a_clean_pass(self):
+        # Pre-fix: tasks=OK, exit 0 — a bill of health from a comparison whose own
+        # ruleset could not be verified.
+        repo = self.make_repo(ncl_script=self.live(tries=7, completed_runs=99), tasks=[TASK])
+        with self.broken_import():
+            code, doc, _, _ = self.run_doctor(repo)
+        checks = self.checks(doc)
+        # Asserted FIRST and on a key that exists on both trees, so the pre-fix run
+        # fails with 'OK' != 'UNKNOWN' — the false clean itself — rather than dying on
+        # a KeyError for a check the old code never emitted. Absence of a new key is a
+        # weaker claim than the wrong verdict.
+        self.assertEqual(checks["tasks"], "UNKNOWN")
+        self.assertEqual(checks["tasks-volatile-set"], "UNKNOWN")
+        # The exit code is NOT load-bearing here: other checks in this minimal fixture
+        # are already UNKNOWN, so `code == 2` would hold either way and prove nothing.
+
+    def test_a_broken_import_still_surfaces_real_drift(self):
+        # Degraded is not useless. A difference found under the fallback is still a
+        # difference, and DRIFT outranks UNKNOWN because it is actionable now.
+        repo = self.make_repo(ncl_script=self.live(prompt="quietly rewritten"), tasks=[TASK])
+        with self.broken_import():
+            code, doc, _, _ = self.run_doctor(repo)
+        self.assertEqual(self.checks(doc)["tasks"], "DRIFT")
+        self.assertEqual(code, 1)
+
+    def test_a_fallback_that_has_drifted_from_the_dumper_is_reported(self):
+        # The fallback claims to be "kept in sync by IMPORTING it". Nothing enforced
+        # that, so it could rot unnoticed until the day an import failed and it became
+        # load-bearing. Divergence between two copies of one list in one repo is drift.
+        repo = self.make_repo(ncl_script=self.live(tries=7), tasks=[TASK])
+        with mock.patch.object(doctor, "VOLATILE_FALLBACK", {"row_id"}):
+            code, doc, _, _ = self.run_doctor(repo)
+        self.assertEqual(self.checks(doc)["tasks-volatile-set"], "DRIFT")
+        self.assertEqual(code, 1)
+
+    def test_an_in_sync_fallback_says_nothing(self):
+        # The check must be silent on the happy path or it trains people to ignore it.
+        repo = self.make_repo(ncl_script=self.live(tries=7), tasks=[TASK])
+        _, doc, _, _ = self.run_doctor(repo)
+        self.assertNotIn("tasks-volatile-set", self.checks(doc))
+        self.assertEqual(self.checks(doc)["tasks"], "OK")
 
 
 class TestDoctorBuilderDrift(DoctorRepo):
