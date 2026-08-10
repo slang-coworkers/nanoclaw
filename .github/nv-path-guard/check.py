@@ -12,6 +12,11 @@ If the config file doesn't exist, emits a warning and exits 0 (not a failure).
 
 Pattern loading and matching live in `ownership.py` so this and
 `scripts/check-nv-owned-drift.sh` cannot drift apart about what a branch owns.
+
+Exit codes:
+    0  every changed file is inside the allowlist (or no guard is configured)
+    1  the PR touches files outside the allowlist
+    2  ownership could not be evaluated — never treated as "allowed"
 """
 from __future__ import annotations
 
@@ -19,7 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ownership import build_spec, load_patterns
+from ownership import OwnershipError, build_spec, load_patterns
 
 
 def main() -> int:
@@ -30,16 +35,30 @@ def main() -> int:
     base, head = sys.argv[1], sys.argv[2]
     config_path = Path(f".github/nv-path-guard/{base}.txt")
 
+    # RESIDUAL, deliberate: a branch with no allowlist has no guard configured,
+    # and this workflow only runs on the five branches that all carry one. An
+    # allowlist that EXISTS but cannot be used is a different thing entirely —
+    # that is a broken guard, and it fails closed below.
     if not config_path.exists():
         print(f"::warning::no path-guard config at {config_path}; skipping")
         return 0
 
-    patterns = load_patterns(config_path)
-    if not patterns:
-        print(f"::warning::{config_path} has no patterns; skipping")
-        return 0
+    try:
+        patterns = load_patterns(config_path)
+    except OwnershipError as e:
+        print(f"::error::{e}")
+        return 2
 
-    spec = build_spec(patterns)
+    # An allowlist that is present but carries no patterns owns nothing, so every
+    # changed file is outside it. Reporting "ok, skipping" there is the exact
+    # greenwash this guard exists to prevent: an emptied allowlist would wave
+    # through the PR that emptied it.
+    if not patterns:
+        print(
+            f"::error::{config_path} exists but carries no patterns, so ownership "
+            f"cannot be evaluated. Restore it rather than bypassing this check."
+        )
+        return 2
 
     # Use merge-base to match what GitHub shows as the PR diff.
     merge_base = subprocess.check_output(
@@ -50,7 +69,15 @@ def main() -> int:
     ).splitlines()
     changed = [c for c in changed if c]
 
-    violations = [f for f in changed if not spec.match_file(f)]
+    # One batched call for the whole diff, not one subprocess per file.
+    try:
+        with build_spec(patterns) as spec:
+            owned = spec.match_files(changed)
+    except OwnershipError as e:
+        print(f"::error::{e}")
+        return 2
+
+    violations = [f for f in changed if f not in owned]
 
     if violations:
         print(

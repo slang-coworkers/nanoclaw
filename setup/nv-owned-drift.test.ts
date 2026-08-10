@@ -16,8 +16,10 @@ import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(HERE, '..', 'scripts', 'check-nv-owned-drift.sh');
-/** The shared pathspec matcher the script (and CI's path-guard) resolve ownership with. */
+/** The shared matcher the script (and CI's path-guard) resolve ownership with. */
 const MATCHER = path.join(HERE, '..', '.github', 'nv-path-guard', 'ownership.py');
+/** A matcher that answers "nothing is owned" — what a tampered tree would supply. */
+const NEUTERED_MATCHER = '#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n';
 
 const ENV = {
   ...process.env,
@@ -47,6 +49,13 @@ function buildOrigin(root: string): string {
   fs.mkdirSync(path.join(seed, 'groups', 'main'), { recursive: true });
   fs.writeFileSync(path.join(seed, 'src', 'owned.ts'), 'base\n');
   fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'base\n');
+  // The matcher is TRACKED, and identical on every branch to start with. The
+  // script extracts it from the trusted ref rather than the worktree, so the
+  // fixture has to give the ref something to extract — and having it on `base`
+  // means it is not itself a diff between nv-main and the overlay until a test
+  // deliberately tampers with it.
+  fs.mkdirSync(path.join(seed, '.github', 'nv-path-guard'), { recursive: true });
+  fs.copyFileSync(MATCHER, path.join(seed, '.github', 'nv-path-guard', 'ownership.py'));
   git(seed, 'add', '-A');
   git(seed, 'commit', '-qm', 'base');
   git(seed, 'branch', 'nv-main');
@@ -55,7 +64,6 @@ function buildOrigin(root: string): string {
   // nv-main owns src/** + .github/** per its own path-guard allowlist, which is
   // the single source of truth the script reads (from the ref, not the worktree).
   git(seed, 'checkout', '-q', 'nv-main');
-  fs.mkdirSync(path.join(seed, '.github', 'nv-path-guard'), { recursive: true });
   fs.writeFileSync(
     path.join(seed, '.github', 'nv-path-guard', 'nv-main.txt'),
     '# owned by nv-main\n.github/**\nsrc/**\n',
@@ -89,11 +97,11 @@ function cloneOn(root: string, origin: string, name: string, branch: string): st
   // already has it, but be explicit so the fixture doesn't depend on that.
   git(dir, 'fetch', '-q', 'origin', 'nv-main:refs/remotes/origin/nv-main');
   fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
+  // Left untracked on purpose: it survives the branch switches below and never
+  // shows up in `git diff <ref> HEAD` as a candidate path. The MATCHER is not
+  // copied here — it is tracked in the fixture, because the script now takes it
+  // from the ref and a test needs to be able to tamper with the worktree copy.
   fs.copyFileSync(SCRIPT, path.join(dir, 'scripts', 'check-nv-owned-drift.sh'));
-  // Left untracked on purpose: both survive the branch switches below, and
-  // neither shows up in `git diff <ref> HEAD` as a candidate path.
-  fs.mkdirSync(path.join(dir, '.github', 'nv-path-guard'), { recursive: true });
-  fs.copyFileSync(MATCHER, path.join(dir, '.github', 'nv-path-guard', 'ownership.py'));
   return dir;
 }
 
@@ -152,6 +160,15 @@ describe('scripts/check-nv-owned-drift.sh', () => {
     withRepo('overlay', (dir) => {
       const r = run(dir);
       expect(r.stdout + r.stderr).not.toContain('nv-path-guard/nv-main.txt');
+    });
+  });
+
+  it('names the exact commit it compared against', () => {
+    // `origin/nv-main` moves. Printing only the ref name leaves the reader
+    // unable to tell which tree produced the verdict.
+    withRepo('nv-main', (dir) => {
+      const sha = git(dir, 'rev-parse', 'origin/nv-main').trim();
+      expect(run(dir).stdout).toContain(sha);
     });
   });
 
@@ -246,15 +263,92 @@ describe('scripts/check-nv-owned-drift.sh — fails closed on missing inputs', (
   });
 });
 
+/**
+ * The verifier must not be able to greenwash itself.
+ *
+ * It used to load `.github/nv-path-guard/ownership.py` from the CURRENT
+ * worktree — the tree it is judging — while excluding all of
+ * `.github/nv-path-guard/*` from the candidate list. So a stale or tampered
+ * matcher could answer "nothing is owned", the check would print `ok`, and the
+ * edit that caused it was never reported either. Both halves are fixed here:
+ * the matcher comes from the pinned trusted commit, and only `*.txt` ownership
+ * DATA is exempt from drift reporting.
+ */
+describe('scripts/check-nv-owned-drift.sh — the matcher comes from the trusted ref', () => {
+  /** Commit a matcher that reports nothing as owned, onto the branch under test. */
+  function neuterWorktreeMatcher(dir: string): void {
+    fs.writeFileSync(path.join(dir, '.github', 'nv-path-guard', 'ownership.py'), NEUTERED_MATCHER);
+    git(dir, 'add', '--', '.github/nv-path-guard/ownership.py');
+    git(dir, 'commit', '-qm', 'neuter the matcher');
+  }
+
+  it('still finds real drift when the worktree matcher is neutered', () => {
+    withRepo('overlay', (dir) => {
+      neuterWorktreeMatcher(dir);
+      const r = run(dir);
+      const out = r.stdout + r.stderr;
+      // Before the fix this printed "ok: no nv-main-owned file differs" and
+      // exited 0 — a green produced by the tree being checked.
+      expect(r.status).toBe(1);
+      expect(out).toContain('src/owned.ts');
+    });
+  });
+
+  it('reports the tampered matcher as drift in its own right', () => {
+    withRepo('overlay', (dir) => {
+      neuterWorktreeMatcher(dir);
+      expect(run(dir).stdout + run(dir).stderr).toContain('.github/nv-path-guard/ownership.py');
+    });
+  });
+
+  it('exits 2 when the ref carries no matcher, rather than falling back to the worktree', () => {
+    withRepo('overlay', (dir) => {
+      git(dir, 'checkout', '-q', '-B', 'tmp-nv-main', 'origin/nv-main');
+      git(dir, 'rm', '-q', '-f', '.github/nv-path-guard/ownership.py');
+      git(dir, 'commit', '-qm', 'drop matcher');
+      git(dir, 'update-ref', 'refs/remotes/origin/nv-main', 'HEAD');
+      git(dir, 'checkout', '-q', 'overlay');
+
+      const r = run(dir);
+      expect(r.status).toBe(2);
+      expect(r.stdout + r.stderr).toContain('no trusted matcher');
+    });
+  });
+
+  it('exempts only *.txt ownership data, not the executables beside it', () => {
+    withRepo('overlay', (dir) => {
+      // A check.py that differs from the ref is a stale copy of the CI guard —
+      // exactly the silent-revert class this tool exists to surface.
+      fs.writeFileSync(path.join(dir, '.github', 'nv-path-guard', 'check.py'), '# stale\n');
+      git(dir, 'add', '--', '.github/nv-path-guard/check.py');
+      git(dir, 'commit', '-qm', 'stale check.py');
+      // Give the ref a copy so the "exists on the ref" test can classify it.
+      git(dir, 'checkout', '-q', '-B', 'tmp-nv-main', 'origin/nv-main');
+      fs.writeFileSync(path.join(dir, '.github', 'nv-path-guard', 'check.py'), '# canonical\n');
+      git(dir, 'add', '--', '.github/nv-path-guard/check.py');
+      git(dir, 'commit', '-qm', 'canonical check.py');
+      git(dir, 'update-ref', 'refs/remotes/origin/nv-main', 'HEAD');
+      git(dir, 'checkout', '-q', 'overlay');
+
+      const out = run(dir).stdout + run(dir).stderr;
+      expect(out).toContain('.github/nv-path-guard/check.py');
+      // …while the branch-specific allowlist DATA is still exempt.
+      expect(out).not.toContain('nv-path-guard/nv-main.txt');
+    });
+  });
+});
+
 describe('scripts/check-nv-owned-drift.sh — ownership comes only from the allowlist', () => {
   it('does not call a path owned because an ambient .gitignore matches it', () => {
     withRepo('overlay', (dir) => {
       // groups/** is absent from nv-main.txt, so nv-main does not own it, and
-      // CI's path-guard (pathspec over the allowlist alone) agrees. The old
-      // matcher ran `git -c core.excludesFile=<allowlist> check-ignore`, which
-      // ALSO consults the repo's .gitignore — so this one line was enough to
-      // classify an unowned overlay file as nv-main-owned drift, giving the
-      // verifier a broader owned set than CI's from the same source of truth.
+      // CI's path-guard (the same matcher over the allowlist alone) agrees. The
+      // original matcher ran `git -c core.excludesFile=<allowlist> check-ignore`
+      // IN THIS REPO, which ALSO consults its .gitignore — so this one line was
+      // enough to classify an unowned overlay file as nv-main-owned drift,
+      // giving the verifier a broader owned set than CI's from the same source
+      // of truth. Running git in an empty isolated repo removes the leak without
+      // removing git.
       fs.writeFileSync(path.join(dir, '.gitignore'), 'groups/\n');
 
       const r = run(dir);
@@ -276,6 +370,30 @@ describe('scripts/check-nv-owned-drift.sh — ownership comes only from the allo
       const r = run(dir);
       expect(r.stdout + r.stderr).not.toContain('groups/main/notes.txt');
       expect(r.status).toBe(1);
+    });
+  });
+
+  it('ignores the user’s global core.excludesFile', () => {
+    withRepo('overlay', (dir) => {
+      // The third ambient source, and the least visible: per-user config that
+      // never appears in review and differs on every machine.
+      const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nv-drift-home-'));
+      try {
+        fs.writeFileSync(path.join(home, 'global-excludes'), 'groups/**\n');
+        fs.writeFileSync(
+          path.join(home, '.gitconfig'),
+          `[core]\n\texcludesFile = ${path.join(home, 'global-excludes')}\n`,
+        );
+        const r = spawnSync('bash', [path.join(dir, 'scripts', 'check-nv-owned-drift.sh')], {
+          cwd: dir,
+          encoding: 'utf-8',
+          env: { ...ENV, HOME: home, XDG_CONFIG_HOME: home },
+        });
+        expect(r.stdout + r.stderr).not.toContain('groups/main/notes.txt');
+        expect(r.status).toBe(1);
+      } finally {
+        fs.rmSync(home, { recursive: true, force: true });
+      }
     });
   });
 });

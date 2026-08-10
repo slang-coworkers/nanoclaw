@@ -190,3 +190,11 @@ AGENTS.md
 README_ko.md
 .agents/**
 .claude/skills/learn/**
+
+# Upstream sync (1ff1fd6bc, upstream PR #428 "add official Qodo skills"): the two
+# Qodo skills arrived from upstream with no overlay-specific content, and
+# nv-main's own CLAUDE.md already documents both — same shape as the absorbed
+# upstream skills above (claw, migrate-from-openclaw, migrate-memory, learn).
+# This RECORDS ownership that is already factually true; it does not widen it.
+.claude/skills/get-qodo-rules/**
+.claude/skills/qodo-pr-resolver/**
