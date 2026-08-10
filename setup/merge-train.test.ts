@@ -201,3 +201,54 @@ describe('merge-train.sh resolver', () => {
     }
   });
 });
+
+/**
+ * The validation tail cannot be exercised by the tests above: they all set
+ * MERGE_TRAIN_NO_INSTALL=1, which returns before it, and running it for real
+ * needs the full Node toolchain plus a GitHub token. So pin its SHAPE — that is
+ * honestly less than executing it, and it is what caught the gap in the first
+ * place. CI ran fetch-skills + validate:templates; this path ran neither, and
+ * the two silently disagreed about what a deployable tree is.
+ */
+describe('merge-train.sh validation tail', () => {
+  const raw = fs.readFileSync(MERGE_TRAIN, 'utf-8');
+  // COMMENTS STRIPPED FIRST. The first version of these tests sliced the raw
+  // file between `fetch-skills.sh` and `validate:templates` — and both strings
+  // appear in the comment block ABOVE the code explaining the design, so the
+  // slice covered prose and nothing else. It passed happily while the fetch was
+  // made fatal. A structural test that reads its own documentation instead of
+  // its subject is worse than no test.
+  const sh = raw
+    .split('\n')
+    .filter((l) => !/^\s*#/.test(l))
+    .join('\n');
+
+  it('validates templates, so a tree with unresolvable coworkers cannot pass', () => {
+    expect(sh).toContain('pnpm run validate:templates');
+  });
+
+  it('fetches external skills before validating them', () => {
+    expect(sh.indexOf('fetch-skills.sh')).toBeGreaterThan(-1);
+    expect(sh.indexOf('fetch-skills.sh')).toBeLessThan(sh.indexOf('pnpm run validate:templates'));
+  });
+
+  it('treats a failed FETCH as soft and a failed VALIDATION as fatal', () => {
+    // The split is the point. `gh` throttling is transient and common; rolling
+    // back a five-branch merge over a rate limit would be a self-inflicted
+    // outage. But the cached skills are only good enough if every coworker type
+    // still resolves — which is the question validate:templates answers. If
+    // this inverts, a throttled deploy either dies needlessly or ships blind.
+    const fetchBlock = sh.slice(sh.indexOf('scripts/fetch-skills.sh'), sh.indexOf('validate:templates'));
+    expect(fetchBlock, 'a throttled fetch must not roll back').not.toContain('rollback_and_fail');
+
+    const validateBlock = sh.slice(sh.indexOf('if ! pnpm run validate:templates'));
+    expect(validateBlock.slice(0, 400), 'unresolvable templates must roll back').toContain('rollback_and_fail');
+  });
+
+  it('runs the runtime-deps gate before the build', () => {
+    const chain = sh.match(/if ! \(pnpm install --frozen-lockfile[\s\S]*?\); then/)?.[0] ?? '';
+    expect(chain).not.toBe('');
+    expect(chain).toContain('check:runtime-deps');
+    expect(chain.indexOf('check:runtime-deps')).toBeLessThan(chain.indexOf('pnpm run build'));
+  });
+});

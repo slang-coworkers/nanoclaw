@@ -145,7 +145,41 @@ if [ "$merged_any" = "1" ]; then
         && npm run rebuild:claude); then
     rollback_and_fail
   fi
-  echo "merge-train: done — merged, installed, verified, built, and rebuilt CLAUDE.md"
+
+  # External skills, then template validation. CI has always done both
+  # (ci.yml and compose-check.yml: build → fetch-skills → validate:templates);
+  # this path did neither, so the two disagreed about what a deployable tree is.
+  # A composed tree missing its external skills installs, passes the runtime-dep
+  # gate and BUILDS — then prints "merged, installed, built" and hands
+  # production coworkers whose manifests cannot resolve. The failure surfaces
+  # hours later at spawn time, which is precisely the case fetch-skills.sh's own
+  # header describes.
+  #
+  # THE FETCH IS SOFT AND THE VALIDATION IS HARD, and that split is the whole
+  # point. `gh` throttling is common and transient; letting it roll back an
+  # entire five-branch merge would be an outage caused by a rate limit. But a
+  # throttled fetch is only harmless if the CACHED skills still satisfy every
+  # coworker type — and validate:templates is exactly that question. So:
+  #
+  #   throttled fetch + usable cache  -> warn, validate passes, deploy proceeds
+  #   throttled fetch + no cache      -> validate FAILS, rollback (correct)
+  #   clean fetch                     -> validate passes
+  #
+  # The decision is made by the invariant, never by the weather.
+  if [ -f scripts/fetch-skills.sh ]; then
+    if ! bash scripts/fetch-skills.sh; then
+      echo "merge-train: ⚠ external skill fetch failed (often gh throttling)." >&2
+      echo "merge-train:   Continuing on cached skills — validate:templates below decides." >&2
+    fi
+  fi
+  if ! pnpm run validate:templates; then
+    echo "merge-train: composed tree has coworker types whose skills do not resolve." >&2
+    echo "merge-train:   If the fetch above was throttled, re-run; otherwise the" >&2
+    echo "merge-train:   referenced skill is genuinely missing upstream." >&2
+    rollback_and_fail
+  fi
+
+  echo "merge-train: done — merged, installed, verified, built, rebuilt CLAUDE.md, and validated"
 else
   echo "merge-train: nothing to merge (all branches already present)"
 fi
