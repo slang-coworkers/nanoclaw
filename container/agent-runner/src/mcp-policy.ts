@@ -23,14 +23,21 @@
  * absent one means a version skew or a tampered spawn — neither is a reason to
  * hand over `install_packages`.
  *
+ * ## Scope: EXTERNAL servers only
+ *
+ * This policy governs external MCP servers — the `codex` stdio child,
+ * `slang-mcp`, `deepwiki`, anything wired through `container.json` or a
+ * coworker type. NanoClaw's own `mcp__nanoclaw__*` tools are NOT in scope:
+ * each already answers to its own host-side gate, and the built-in server is
+ * always wired.
+ *
  * ## What this is and is not
  *
  * This is a blast-radius control, not a trust boundary. A group's
  * `/app/src` is a writable mount the agent may edit, so an agent that sets out
  * to defeat these checks can. The enforcement that holds regardless lives on
  * the host: the MCP auth proxy (`src/mcp-auth-proxy.ts`) for proxied servers,
- * and the delivery-action gate in `src/delivery.ts` for the built-in
- * `nanoclaw` surface.
+ * and each built-in tool's own delivery guard for the `nanoclaw` surface.
  */
 
 /** Matches `McpAllowlistState` in src/mcp-allowlist.ts. */
@@ -44,28 +51,37 @@ export interface McpPolicy {
 }
 
 /**
- * Built-in MCP tools that sit OUTSIDE the user-configurable allow-list.
+ * The MCP server name NanoClaw's own built-in tools are served under.
  *
- * MUST stay identical to `MANDATORY_MCP_TOOLS` in `src/mcp-allowlist.ts`
+ * MUST stay identical to `BUILTIN_MCP_SERVER` in `src/mcp-allowlist.ts`
  * (separate runtimes, no shared modules — the host is Node, this is Bun).
- * `src/mcp-policy-parity.test.ts` on the host side fails if they drift.
- *
- * The rationale lives with the host copy: a task session's only delivery path
- * is `send_message`, so denying the outbound transport does not restrict an
- * agent, it silences one — including its ability to report that it was
- * silenced.
+ * `src/mcp-allowlist-scope.test.ts` on the host side fails if they drift.
  */
-export const MANDATORY_MCP_TOOLS: readonly string[] = [
-  'mcp__nanoclaw__send_message',
-  'mcp__nanoclaw__send_file',
-  'mcp__nanoclaw__add_reaction',
-];
+export const BUILTIN_MCP_SERVER = 'nanoclaw';
 
-/** The policy used when the host said nothing intelligible. Denies everything configurable. */
+const BUILTIN_TOOL_PREFIX = `mcp__${BUILTIN_MCP_SERVER}__`;
+
+/**
+ * Is this one of NanoClaw's own tools rather than an external server's?
+ *
+ * The allow-list governs EXTERNAL servers only. NanoClaw's built-ins are
+ * outside it: each already answers to its own host-side gate (guard-held
+ * approval, an `is_admin` check, or the destination ACL), and gating them a
+ * second time here bought no authority while making an unrelated policy knob
+ * able to mute an agent.
+ *
+ * A prefix test, not a list — a built-in added tomorrow is out of scope
+ * automatically, which is the direction that cannot break anything.
+ */
+export function isBuiltinMcpTool(tool: string): boolean {
+  return tool.startsWith(BUILTIN_TOOL_PREFIX);
+}
+
+/** The policy used when the host said nothing intelligible. Denies every EXTERNAL tool. */
 export const UNRESOLVED_POLICY: McpPolicy = {
   state: 'unresolved',
-  tools: [...MANDATORY_MCP_TOOLS],
-  origin: 'NANOCLAW_MCP_POLICY missing or unparseable — denying all configurable MCP tools',
+  tools: [],
+  origin: 'NANOCLAW_MCP_POLICY missing or unparseable — denying all external MCP tools',
 };
 
 function isState(value: unknown): value is McpPolicyState {
@@ -84,13 +100,15 @@ export function parseMcpPolicy(env: Record<string, string | undefined> = process
   try {
     const parsed = JSON.parse(raw) as Partial<McpPolicy>;
     if (!isState(parsed.state)) return UNRESOLVED_POLICY;
-    const tools = Array.isArray(parsed.tools) ? parsed.tools.map(String).filter((t) => t.startsWith('mcp__')) : [];
+    // Built-ins are dropped rather than honoured: they are out of scope, so a
+    // host that lists one is not granting anything and a host that omits one
+    // is not denying anything. Keeping them out means one list, one meaning.
+    const tools = Array.isArray(parsed.tools)
+      ? parsed.tools.map(String).filter((t) => t.startsWith('mcp__') && !isBuiltinMcpTool(t))
+      : [];
     return {
       state: parsed.state,
-      // Belt and braces: union the floor in on this side too, so a host that
-      // forgets it cannot mute the agent.
-      tools:
-        parsed.state === 'unrestricted' ? tools : [...new Set([...tools, ...MANDATORY_MCP_TOOLS])],
+      tools,
       origin: typeof parsed.origin === 'string' ? parsed.origin : 'unknown',
     };
   } catch {
@@ -98,8 +116,13 @@ export function parseMcpPolicy(env: Record<string, string | undefined> = process
   }
 }
 
-/** Default-deny predicate. `unrestricted` is the only state that permits by omission. */
+/**
+ * Default-deny predicate for EXTERNAL tools. `unrestricted` is the only state
+ * that permits by omission; NanoClaw's own built-ins are never this policy's
+ * business and always pass.
+ */
 export function isMcpToolAllowed(policy: McpPolicy, tool: string): boolean {
+  if (isBuiltinMcpTool(tool)) return true;
   if (policy.state === 'unrestricted') return true;
   return policy.tools.includes(tool);
 }
@@ -113,6 +136,9 @@ export function isMcpToolAllowed(policy: McpPolicy, tool: string): boolean {
  * wildcard-matching semantics have to be trusted.
  */
 export function serverHasAllowedTools(policy: McpPolicy, serverName: string): boolean {
+  // The built-in server is always wired: out of scope, and it carries the only
+  // path an agent has to say anything at all.
+  if (serverName === BUILTIN_MCP_SERVER) return true;
   if (policy.state === 'unrestricted') return true;
   // SDK sanitizes server names into tool prefixes; compare on the sanitized
   // form so `slang-mcp` and `slang_mcp` don't disagree with the SDK.

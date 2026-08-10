@@ -46,6 +46,31 @@
  * `explicit` and `inherited` with an empty set are perfectly valid and mean
  * "deny every configurable MCP tool" — they are NOT the same as `unresolved`,
  * which additionally signals an operator-visible configuration fault.
+ *
+ * ## Scope: EXTERNAL servers only
+ *
+ * "Configurable" means external MCP servers — `slang-mcp`, `deepwiki`, the
+ * `codex` stdio child, anything wired through `container.json` or a coworker
+ * type. NanoClaw's OWN built-in tools (`mcp__nanoclaw__*`) are **not** in
+ * scope and this allow-list never restricts them.
+ *
+ * They are excluded because they are already governed, individually and by
+ * something stronger. Every built-in with a host-side effect writes a delivery
+ * action, and those carry a guard declaration that is required at registration
+ * time: `install_packages`, `add_mcp_server`, `create_agent` and
+ * `record_decision` are guard-held behind admin approval or a capability;
+ * `wire_agents` enforces `is_admin` in its handler; the pure messaging tools
+ * pass the destination ACL in `deliverMessage`. Gating them a SECOND time
+ * through a per-group tool list added no authority — a coworker type that
+ * grants the tool still grants it — while making an unrelated policy knob able
+ * to break a group's ability to ask a question or record a decision.
+ *
+ * The boundary is `isBuiltinMcpTool`, not a hand-maintained floor list, so a
+ * built-in added tomorrow is out of scope automatically and cannot be
+ * forgotten into it.
+ *
+ * See `docs/mcp-allowlist.md` for the tool-by-tool gate inventory, including
+ * the two built-ins whose own gates are weaker than they look.
  */
 import { readCoworkerTypes, readSkillCatalog, resolveCoworkerManifest } from './claude-composer.js';
 import { log } from './log.js';
@@ -58,59 +83,27 @@ export const UNRESTRICTED = '*';
 export type McpAllowlistState = 'explicit' | 'inherited' | 'unrestricted' | 'unresolved';
 
 /**
- * The message-transport floor: built-in MCP tools that sit OUTSIDE the
- * user-configurable allow-list and are always callable.
+ * The MCP server name NanoClaw's own built-in tools are served under.
  *
- * This boundary is drawn in code, not prose, because a mute agent is not a
- * safe agent — it is an agent that cannot report that it has been muted. In
- * task sessions the runner delivers NOTHING on its own: `poll-loop.ts` routes
- * a task's output only through `send_message`, so denying it does not restrict
- * a capability, it deletes the session's only exit. The same is true for a
- * restart triggered by a policy narrowing: the respawned container has to be
- * able to say what happened.
- *
- * Scope is deliberately minimal — the OUTBOUND transport surface, nothing
- * else. `ask_user_question`, `send_card`, `install_packages`, `create_agent`,
- * `record_decision` and friends are all configurable and are denied by an
- * empty list. `ncl` is not on this list because it is not an MCP tool at all:
- * it is a CLI reached over Bash whose every command is separately gated by
- * `cli_scope` and the guard at `src/cli/dispatch.ts`.
- *
- * MUST stay identical to `MANDATORY_MCP_TOOLS` in
- * `container/agent-runner/src/mcp-policy.ts` (separate runtime, no shared
- * modules). `src/mcp-policy-parity.test.ts` fails the build if they drift.
+ * Mirrored as `BUILTIN_MCP_SERVER` in
+ * `container/agent-runner/src/mcp-policy.ts` (separate runtimes, no shared
+ * modules). `src/mcp-allowlist-scope.test.ts` fails the build if they drift.
  */
-export const MANDATORY_MCP_TOOLS: readonly string[] = [
-  'mcp__nanoclaw__send_message',
-  'mcp__nanoclaw__send_file',
-  'mcp__nanoclaw__add_reaction',
-];
+export const BUILTIN_MCP_SERVER = 'nanoclaw';
+
+const BUILTIN_TOOL_PREFIX = `mcp__${BUILTIN_MCP_SERVER}__`;
 
 /**
- * Host-side delivery actions that ARE built-in `nanoclaw` MCP tools, mapped to
- * the tool name the allow-list speaks in. The names differ in one case
- * (`report_pr_created` writes action `map_pr_session`), so the mapping is
- * explicit rather than derived — a silent mismatch here would be a hole.
+ * Is this one of NanoClaw's own tools, rather than an external server's?
  *
- * This is what makes the built-in surface enforceable on the HOST. Every other
- * container-side check can be edited by the agent (per-group `/app/src` is a
- * writable mount); `handleSystemAction` cannot be.
- *
- * Actions deliberately absent:
- *   - `cli_request` — the `ncl` bridge, not an MCP tool (see above).
- *   - `record_human_verdict` — arrives from the GitHub webhook path, not from
- *     an agent tool call, so it has no allow-list identity.
+ * A prefix test, deliberately — not a list of tool names. The set of built-ins
+ * changes whenever a module calls `registerTools`, and a list would silently
+ * fall out of date in the direction that RESTRICTS a new built-in, which is
+ * the failure this whole boundary exists to prevent.
  */
-export const NANOCLAW_ACTION_TOOLS: Readonly<Record<string, string>> = {
-  create_agent: 'mcp__nanoclaw__create_agent',
-  wire_agents: 'mcp__nanoclaw__wire_agents',
-  map_pr_session: 'mcp__nanoclaw__report_pr_created',
-  record_decision: 'mcp__nanoclaw__record_decision',
-  append_learning: 'mcp__nanoclaw__append_learning',
-  install_packages: 'mcp__nanoclaw__install_packages',
-  add_mcp_server: 'mcp__nanoclaw__add_mcp_server',
-  request_restart: 'mcp__nanoclaw__request_restart',
-};
+export function isBuiltinMcpTool(tool: string): boolean {
+  return tool.startsWith(BUILTIN_TOOL_PREFIX);
+}
 
 export interface McpAllowlistResolution {
   /**
@@ -120,14 +113,20 @@ export interface McpAllowlistResolution {
    * could not be answered at all — never treat it as an empty list.
    */
   state: McpAllowlistState;
-  /** The effective, configurable tool list. Empty is a real answer. */
+  /**
+   * The effective allow-list as stored/inherited, verbatim. Empty is a real
+   * answer. May contain `mcp__nanoclaw__*` entries carried by a coworker
+   * manifest; those are inert — see `externalTools`.
+   */
   tools: string[];
   /**
-   * What the runtime actually permits: `tools` plus the mandatory transport
-   * floor. Enforcement reads THIS; `tools` is the operator-facing policy.
+   * What this policy actually governs: `tools` minus NanoClaw's own built-ins.
+   * Enforcement reads THIS. Built-ins are out of scope entirely and are never
+   * restricted, so listing one changes nothing and omitting one denies
+   * nothing.
    */
-  enforcedTools: string[];
-  /** Discovered tools NOT permitted — what the group actually cannot call. */
+  externalTools: string[];
+  /** Discovered external tools NOT permitted — what the group cannot call. */
   blocked: string[];
   /** One-line origin, for `get` output, approval cards and logs. */
   origin: string;
@@ -219,15 +218,19 @@ export function resolveMcpAllowlist(group: AllowlistGroup, inheritedTools?: stri
   const inventory = discoveredTools();
 
   const resolution = (state: McpAllowlistState, tools: string[], origin: string): McpAllowlistResolution => {
-    const enforcedTools = state === 'unrestricted' ? tools : [...new Set([...tools, ...MANDATORY_MCP_TOOLS])].sort();
-    const permitted = new Set(enforcedTools);
+    // Built-ins are dropped rather than kept-and-ignored so that every
+    // downstream consumer — proxy token scope, the container policy, the
+    // operator display — sees one list that means exactly one thing.
+    const externalTools = tools.filter((t) => !isBuiltinMcpTool(t));
+    const permitted = new Set(externalTools);
     return {
       state,
       tools,
-      enforcedTools,
+      externalTools,
       // An unreadable inventory can't produce a complete blocked list; say so
       // by returning nothing rather than an authoritative-looking short one.
-      blocked: state === 'unrestricted' ? [] : (inventory ?? []).filter((t) => !permitted.has(t)),
+      blocked:
+        state === 'unrestricted' ? [] : (inventory ?? []).filter((t) => !isBuiltinMcpTool(t) && !permitted.has(t)),
       origin,
     };
   };
@@ -288,26 +291,27 @@ export function resolveMcpAllowlist(group: AllowlistGroup, inheritedTools?: stri
  */
 export interface McpPolicyWire {
   state: McpAllowlistState;
-  /** Everything the container may call, mandatory floor already unioned in. */
+  /** The permitted EXTERNAL tools. Built-ins are out of scope and never listed. */
   tools: string[];
   origin: string;
 }
 
 /** Serialize a resolution into the container-facing policy. */
 export function toMcpPolicyWire(resolution: McpAllowlistResolution): McpPolicyWire {
-  return { state: resolution.state, tools: resolution.enforcedTools, origin: resolution.origin };
+  return { state: resolution.state, tools: resolution.externalTools, origin: resolution.origin };
 }
 
 /**
  * Is this tool permitted under the resolved policy?
  *
  * The single predicate every host-side enforcement point calls, so "allowed"
- * means one thing. Default-deny: anything not `unrestricted` must name the
- * tool explicitly or be part of the mandatory transport floor.
+ * means one thing. Default-deny for external tools; NanoClaw's own built-ins
+ * are outside this policy's scope and answer to their own gates.
  */
 export function isMcpToolPermitted(resolution: McpAllowlistResolution, tool: string): boolean {
+  if (isBuiltinMcpTool(tool)) return true;
   if (resolution.state === 'unrestricted') return true;
-  return resolution.enforcedTools.includes(tool);
+  return resolution.externalTools.includes(tool);
 }
 
 /**
@@ -317,11 +321,15 @@ export function isMcpToolPermitted(resolution: McpAllowlistResolution, tool: str
  * all. Server names are compared on the SDK's sanitized form — any character
  * outside [A-Za-z0-9_-] becomes '_' when the SDK builds a tool prefix — so
  * `slang-mcp` in container.json and `mcp__slang-mcp__x` in an allow-list agree.
+ *
+ * The built-in server is always wired: it is out of scope, and it carries the
+ * only path an agent has to say anything at all.
  */
 export function serverHasAllowedTools(resolution: McpAllowlistResolution, serverName: string): boolean {
+  if (serverName === BUILTIN_MCP_SERVER) return true;
   if (resolution.state === 'unrestricted') return true;
   const prefix = `mcp__${serverName.replace(/[^a-zA-Z0-9_-]/g, '_')}__`;
-  return resolution.enforcedTools.some((t) => t.startsWith(prefix));
+  return resolution.externalTools.some((t) => t.startsWith(prefix));
 }
 
 /**

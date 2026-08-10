@@ -3,7 +3,7 @@ name: base-nanoclaw
 license: MIT
 description: NanoClaw host tools — send messages, schedule tasks, ask the user questions, append durable learnings. Trigger whenever you need to communicate mid-work, schedule recurring checks, or record something for other coworkers.
 provides: []
-allowed-tools: mcp__nanoclaw__send_message, mcp__nanoclaw__send_file, mcp__nanoclaw__add_reaction, mcp__nanoclaw__schedule_task, mcp__nanoclaw__list_tasks, mcp__nanoclaw__pause_task, mcp__nanoclaw__resume_task, mcp__nanoclaw__cancel_task, mcp__nanoclaw__ask_user_question, mcp__nanoclaw__send_card, mcp__nanoclaw__append_learning, mcp__nanoclaw__install_packages, mcp__nanoclaw__add_mcp_server, mcp__nanoclaw__request_restart, mcp__nanoclaw__report_pr_created, mcp__nanoclaw__record_decision
+allowed-tools: mcp__nanoclaw__send_message, mcp__nanoclaw__send_file, mcp__nanoclaw__add_reaction, mcp__nanoclaw__schedule_task, mcp__nanoclaw__list_tasks, mcp__nanoclaw__pause_task, mcp__nanoclaw__resume_task, mcp__nanoclaw__cancel_task, mcp__nanoclaw__ask_user_question, mcp__nanoclaw__send_card, mcp__nanoclaw__append_learning, mcp__nanoclaw__install_packages, mcp__nanoclaw__add_mcp_server, mcp__nanoclaw__request_restart, mcp__nanoclaw__report_pr_created
 ---
 
 # NanoClaw Host Tools
