@@ -104,6 +104,7 @@ ncl help
 | user-dms | list | Cold-DM cache (read-only) |
 | dropped-messages | list | Messages from unregistered senders (read-only) |
 | approvals | list, get | Pending approval requests (read-only) |
+| pr-mappings | list, remap | PR→session routing rows. Agents claim these via `report_pr_created` (first-claim-wins); `remap` is the approval-gated way to reassign one. |
 
 Key files: `src/cli/dispatch.ts` (dispatcher + approval handler), `src/cli/crud.ts` (generic CRUD registration), `src/cli/resources/` (per-resource definitions).
 
