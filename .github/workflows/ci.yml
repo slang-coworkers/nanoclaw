@@ -226,15 +226,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Both outcomes announce themselves, in the annotations AND in the run
+      # summary. "Skipped everything" and "ran everything and it was clean" are
+      # both a green tick on the job, and if the log does not separate them then
+      # the day this stops covering slang-mcp looks exactly like the day it
+      # covered it fine. That is how a gate quietly becomes decoration.
       - name: Is slang-mcp on this branch?
         id: probe
         run: |
           if [ -f container/mcp-servers/slang-mcp/pyproject.toml ]; then
             echo 'present=true' >> "$GITHUB_OUTPUT"
+            MSG='slang-mcp **present** — running `uv run pytest -q` and `uv run ruff check src/`'
           else
             echo 'present=false' >> "$GITHUB_OUTPUT"
-            echo '::notice::slang-mcp is not on this branch — nothing to run'
+            MSG='slang-mcp **absent** on this branch — pytest and ruff **SKIPPED**, which is not the same as passed'
           fi
+          echo "::notice title=slang-mcp gate::${MSG}"
+          echo "- ${MSG}" >> "$GITHUB_STEP_SUMMARY"
 
       - uses: astral-sh/setup-uv@v5
         if: steps.probe.outputs.present == 'true'
