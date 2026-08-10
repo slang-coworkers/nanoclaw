@@ -459,7 +459,110 @@ async function loadFunnel() {
       rqBox.innerHTML =
         '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Regression quality: failed to load.</div>';
     }
+
+    // KB health + doctor. Own container and own try/catch for the same reason
+    // regression quality has them: an unrelated panel's network error must not
+    // blank this one.
+    //
+    // This panel exists because the route did not. /api/kb-health has been
+    // serving a validated `doctor` block since #1121/#1169 — fail-closed, no
+    // false zeroes — and nothing rendered it, so the only way to read a drift
+    // report was curl. A check nobody can see is a check nobody acts on.
+    const kbBox = document.createElement('div');
+    detail.appendChild(kbBox);
+    try {
+      const kb = await fetch('/api/kb-health');
+      if (kb.ok) {
+        kbBox.innerHTML = kbDoctorHtml(await kb.json());
+      } else {
+        kbBox.innerHTML =
+          '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">KB doctor: route unavailable.</div>';
+      }
+    } catch (e) {
+      kbBox.innerHTML =
+        '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">KB doctor: failed to load.</div>';
+    }
   }
+}
+
+// KB doctor — the `doctor` block of /api/kb-health (scripts/kb-doctor.py writes
+// data/shared/.kb-doctor.json; the route validates it, see dashboard/
+// kb-doctor-artifact.ts).
+//
+// THE ONE RULE THIS PANEL EXISTS TO KEEP: unavailable is not zero, and unknown
+// is not clean. The whole point of #1121/#1169 was that a missing or malformed
+// artifact used to render as "0 drift" — indistinguishable from a healthy KB.
+// So an absent report says so in words, and a run that could not evaluate some
+// checks shows the unknown count next to the drift count rather than folding
+// them together.
+function kbDoctorHtml(kbh) {
+  const d = kbh && kbh.doctor;
+  if (!d) return '';
+
+  if (!d.available) {
+    // The route supplies a specific reason (missing file, bad schema, counts
+    // that disagree with their arrays). Show it: "no report" and "a report we
+    // could not trust" are different problems with different fixes.
+    return (
+      '<div style="margin-top:20px"><div style="font-weight:600;margin-bottom:4px">KB doctor</div>' +
+      '<div style="color:var(--text-muted);font-size:11px">No usable drift report' +
+      (d.reason ? ' — ' + esc(d.reason) : '') +
+      '. Runs daily at 05:50; <code>python3 scripts/kb-doctor.py</code> to produce one now.</div></div>'
+    );
+  }
+
+  const drift = Number(d.driftCount) || 0;
+  const unknown = Number(d.unknownCount) || 0;
+  const okColor = '#3fb950';
+  const warn = 'var(--warn,#c90)';
+  const bad = '#e5534b';
+
+  // Age. `stale` is decided by the route (it knows the cadence); we render it.
+  let freshness = '';
+  if (d.stale) {
+    freshness = ' · <b style="color:' + warn + '">stale</b>';
+  } else if (typeof d.ageHours === 'number') {
+    freshness = ' · ' + (d.ageHours < 1 ? 'just now' : Math.round(d.ageHours) + 'h ago');
+  } else {
+    freshness = ' · <span style="color:' + warn + '">age unknown</span>';
+  }
+
+  // An incomplete run cannot be read as a clean one.
+  const incomplete = d.complete === false
+    ? ' · <b style="color:' + warn + '">incomplete run</b>'
+    : '';
+
+  const pill = (label, n, color) =>
+    '<span style="display:inline-block;padding:1px 7px;margin-right:6px;border-radius:9px;' +
+    'background:var(--bg-alt,#2226);font-size:11px;color:' + color + '">' +
+    esc(label) + ' ' + n + '</span>';
+
+  const pills =
+    pill('drift', drift, drift ? bad : okColor) +
+    // Unknown gets its own pill on purpose — it is neither pass nor fail, and
+    // hiding it inside "drift 0" is exactly the false clean this replaced.
+    pill('unknown', unknown, unknown ? warn : 'var(--text-muted)');
+
+  const items = Array.isArray(d.drift) && d.drift.length
+    ? '<ul style="margin:6px 0 0 16px;padding:0;font-size:11px;color:var(--text-muted)">' +
+      d.drift.map((x) => '<li style="margin-bottom:3px">' + esc(String(x)) + '</li>').join('') +
+      '</ul>'
+    : '';
+
+  const unknowns = Array.isArray(d.unknown) && d.unknown.length
+    ? '<ul style="margin:6px 0 0 16px;padding:0;font-size:11px;color:' + warn + '">' +
+      d.unknown.map((x) => '<li style="margin-bottom:3px">' + esc(String(x)) + '</li>').join('') +
+      '</ul>'
+    : '';
+
+  return (
+    '<div style="margin-top:20px">' +
+    '<div style="font-weight:600;margin-bottom:4px">KB doctor ' +
+    '<span style="font-weight:400;color:var(--text-muted)">— ' +
+    esc(d.status || 'unknown') + freshness + incomplete + '</span></div>' +
+    pills + items + unknowns +
+    '</div>'
+  );
 }
 
 // PR-approver (Verity) shadow-mode decision ledger. Unlike the funnel row table
