@@ -1,6 +1,6 @@
 ---
 name: a-sentinel-pinned-to-an-instance-fires-forever-once-that-instance-dies
-description: "A watcher whose clear-condition is 'run X left status=waiting' becomes PERMANENTLY true the moment X reaches any terminal state — so it fires 'cleared' on every fire, and it fired while a DIFFERENT run had re-formed the identical block 24 min earlier. Watch the PROPERTY (zero ci.yml runs waiting), never an instance of it. Also: cancelled-by-concurrency is not approved."
+description: "Two opposite sentinel defects on one watcher. v1 pinned to run X: 'X left waiting' is an absorbing state, so it fired 'cleared' forever — and fired while a DIFFERENT run had re-formed the block. v2 woke on any waiting-set change: the set is SHARED, so one unrelated PR joining and being cancelled out produced two false wakes and a published count that was false 41 min later. Key the wake on the transition you would ACT on: set empty, or every previously-reported id gone. Also: cancelled-by-concurrency is not approved."
 metadata: 
   node_type: memory
   type: feedback
@@ -43,9 +43,34 @@ and would have authorized a dispatch into a still-blocked repo. ⭐⭐ **`cancel
 ✅ **THE FIX IS A CHANGE OF SUBJECT, not a better probe.** The thing being waited on was never a run;
 it was *"no `ci.yml` run is parked on a human approval"*. `.ci_falcor_gate.sh` watches
 `/actions/workflows/ci.yml/runs?status=waiting` (server-side predicate — see
-[[project_slang_ci_zombie_runs_inert_not_gate_blockers]] for why client-side windowing lies) and
-emits `REPO_QUIET` on count 0, `BLOCKER_CHANGED` when the waiting-id **set** changes, silence
-otherwise. State is the sorted id set, not a status.
+[[project_slang_ci_zombie_runs_inert_not_gate_blockers]] for why client-side windowing lies).
+State is the sorted id set, not a status.
+
+⛔ **v2 WAS ALSO WRONG, IN THE OPPOSITE DIRECTION — and this section asserted its fix as settled for
+~10 h before I measured it.** v2 woke on `ids != prev` (`BLOCKER_CHANGED`). But **the waiting set is
+a SHARED resource**: every human PR whose run reaches `test-falcor` joins it, and the author's next
+push concurrency-cancels that run straight back out. So one unrelated PR generates **two** wakes,
+neither actionable. Measured 2026-08-09: **#30171** (`31307271324`, fknfilewalker,
+`fix-assoc-default-init-and-matrix-layout`) joined the set 10:30:47Z → wake *"count 1→2"*, and was
+cancelled out 11:22:07Z → wake *"2→1"* — **while the real blocker #30154 never moved.** I published
+*"repo-wide waiting count went 1 → 2"* to the operator at 10:41Z; the figure was false 41 min later
+and had never described a second **blocker**, only a second **occupant**.
+
+⇒ ⭐⭐⭐ **Key a wake on the transition you would ACT on, never on "the state differs".** Here exactly
+two transitions license anything: the set is **empty** (`REPO_QUIET`), or **every id I last reported
+is gone** (`BLOCKER_ROTATED` — new ∩ prev = ∅, since escalated reruns re-park on `falcor-ci` and the
+block migrates). Overlap of even one id ⇒ the blocker I already reported is still parked ⇒ silent.
+⭐⭐ **A count over a shared resource is not a fact about my blocker** — quote the blocker's identity
+(run id + deployment id + deployment status chain), not the occupancy of the set it sits in.
+
+⭐⭐ **And note which control class was missing again.** v1's controls tested the instrument; v2's
+tested the instrument *and* the condition — but only for transitions I had imagined. What caught v2
+was **live traffic**, not a control. v3 carries 13, including the two I would otherwise have skipped:
+additions and overlapping removals must be **silent** (a negative requirement is a control), and two
+substring-collision traps with real 11-digit ids, because `case ",$ids," in *",$p,"*` on
+comma-joined numbers is where a naive `[[ $ids == *$p* ]]` would silently manufacture overlap. A
+`FALCOR_TEST_JSON` / `FALCOR_TEST_STATE` seam makes all 13 runnable without touching GitHub or live
+state.
 
 ⇒ ⭐⭐⭐ **Before arming any watcher, ask: is my condition a PROPERTY of the world, or a PROPERTY OF
 ONE OBJECT that happens to hold it today?** If the object can die while the world stays unchanged,

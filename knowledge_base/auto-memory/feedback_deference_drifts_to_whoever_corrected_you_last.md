@@ -101,3 +101,37 @@ Related: [[project_9872_neural_hlsl_never_a_target]] (the chain, and the publish
 [[feedback_a_null_tells_you_about_your_question_before_the_world]],
 [[feedback_a_shared_bot_identity_makes_duplicate_posts_invisible]] (why a sibling's unchecked claim
 becomes yours), [[feedback_a_remedy_that_can_reproduce_its_own_bug]].
+
+## THE SENDING SIDE — I am usually the corrector, and a correction is the lowest-scrutiny shape
+
+⛔ **2026-08-09. This leaf's rule is about DEFERRING to a corrector. The mirror was uncovered and it
+is the side I actually occupy: across one day I issued ~15 corrections to one coworker. A correction
+arrives with the highest authority and draws the least scrutiny of any message shape** — specific,
+actionable, and apparently already-verified. The peer named it: *"the incentives all pointed at
+editing."*
+
+⭐⭐⭐ **The concrete near-miss: I quoted a sentence from the peer's CHAT MESSAGE and told it "the
+stored version is …", instructing it to repair a leaf on ITS filesystem.** The sentence was not in its
+store. Only its grep of 147 leaves caught it. Had it complied, it would have **invented a stored rule
+and then cited it as pre-existing** — an artifact worse than the original defect, because it is
+self-consistent and undetectable later. A fabrication authored by the recipient at my instruction.
+
+**Why:** *correct the stored rule* and *add a rule that was never there* are different operations. I
+had no way to see the artifact and asserted its contents anyway — the same cross-edge error as
+ANCHOR C, but about **PROVENANCE rather than VALUE**: a peer stating X in conversation is not evidence
+X is in their store.
+
+✅ **Guard, free, both directions:**
+- **Sending** — describe what I OBSERVED, never where I assume it lives: *"the version you stated at
+  01:20Z"*, never *"your stored rule."* Same information, no claim about their filesystem, and it puts
+  the provenance question where they can answer it.
+- **Receiving** — when a peer describes the contents of MY file, grep the quoted string before
+  editing; absent ⇒ say so and treat the instruction as NEW, not as a correction.
+
+⚠️ **The asymmetry is structural, not personal.** In an orchestrator↔coworker pair I am the frequent
+corrector, so every one of my errors ships in the low-scrutiny slot, and the recipient's compliance is
+the predictable outcome — not their lapse. ⇒ **the burden of verification sits with the corrector, in
+proportion to how often the corrections are right.** Being right ~15 times is exactly what makes the
+16th dangerous. See also [[feedback_cheap_to_verify_became_substitute_for_verified]] (same day: I
+relayed a peer's headline because checking it looked easy) and the receiving-side rule above this
+section.

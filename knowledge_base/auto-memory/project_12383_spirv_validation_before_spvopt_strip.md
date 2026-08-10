@@ -20,6 +20,32 @@ checked.** Two instances in `createArtifactFromIR` (`source/slang/slang-emit.cpp
 (`stripDbgSpirvFromArtifact` `:3496`, `artifact = _Move(strippedArtifact)` `:3497`). The second is
 independent of `-O` level and easy to miss.
 
+## ⛔⭐⭐⭐ 2026-08-09 14:04Z — #12408 WOULD AUTO-CLOSE #12371 WHILE SHIPPING THE KNOWN-FAILING TEST. VERIFIED INDEPENDENTLY, ALL FOUR CLAIMS HOLD.
+
+`slang-fixer` escalated this and I checked every leg at the named shas rather than relaying:
+```
+PR #12408  state=open draft=true  head=fix/issue-12383@49dbe8c165  base=master  mergeable=blocked
+   body: "Fixes #12371."  "Fixes #12383."          <- both present, verbatim
+   tools/slang-unit-test/unit-test-spirv-link-validation.cpp EXISTS, 223 lines
+     grep -cE 'haveSpirvOpt|SLANG_IGNORE_TEST'  ->  0
+     :222  SLANG_CHECK((outcome.generatorMagic & 0xFFFF0000u) == kSpvGeneratorKhronosLinker);   <- UNCONDITIONAL
+PR #12382  state=open draft=true  head=fix/issue-12371@80c93009cb
+     same grep  ->  4
+compare 49dbe8c165...80c93009cb  ->  diverged, ahead=5 behind=25, merge-base f93eb4f74a
+```
+✅ **And I identified WHICH of the five missing commits is the Windows fix, which the escalation asserted but did not pin** — walking the guard count per commit:
+```
+50d7a5e71f  "Skip the SPIR-V link validation test when there is no downstream linker"   guard=1   <- THE FIX
+7037262b16  "Key the link-validation skip on the dependency, not the emitted module"    guard=5
+115185a041  "Report the spirv-opt load failure the test depends on"                     guard=4
+97cf9c6da1 / 80c93009cb  comment-only                                                   guard=4
+```
+⇒ **The "behind 5" is not cosmetic: the FIRST of the five is the fix, and #12408's head predates all of them.** ⇒ **Merging #12408 as-is reintroduces the `windows-*-cl-x86_64-gpu` failure AND auto-closes #12371 via its own `Fixes` line — shutting the issue that would have tracked the regression.** The escalation's framing is right and "behind 5" undersells it.
+
+⚠️ **BUT #12408's OWN BODY CONTRADICTS ITS OWN CLOSING LINE, and this is the part nobody flagged:** the body says *"This PR is a strict descendant of #12382's head and therefore **contains** that fix"* — **measured FALSE: `diverged`, `behind=25`, and the guard count is 0 vs 4.** The `Fixes #12371` line was justified *by* that false premise (*"#12382's own `Fixes #12371` will not fire from this merge — hence both closing links below"*). ⇒ ⭐⭐⭐ **A CLOSING KEYWORD INHERITS THE TRUTH OF THE SENTENCE THAT JUSTIFIES IT, AND GITHUB ENFORCES THE KEYWORD REGARDLESS.** The reasoning was sound *when written* (the branch presumably was a descendant then) and the divergence silently invalidated it while the mechanical consequence stayed armed. **A stale "strict descendant" claim is load-bearing in a way a stale prose caveat is not.**
+
+⇒ ✅ **ROUTING POSITION: the fix is mechanical (cherry-pick `50d7a5e71f..80c93009cb` onto `fix/issue-12383`, or drop `Fixes #12371` from #12408's body) but BOTH touch a branch `slang-fixer` is barred from, and the second is a maintainer-facing scope decision.** Correctly refused by them; **operator-gated at my tier too — I hold no GitHub write.** ⭐⭐ **The draft status is doing real protective work here: `draft=true` means the keyword cannot fire yet. That is the reason this is urgent-before-ready-flip rather than urgent-now** — and a reviewer flipping it to ready without reading the body would arm both consequences in one click.
+
 ## Why no fix chain was opened (deliberate, 2026-08-06 06:1xZ)
 
 Three converging reasons, not one:

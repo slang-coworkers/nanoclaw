@@ -102,6 +102,19 @@ writing a command will not fire. Only a structural habit works:**
 
 1. **Redirect to a file, never inspect through a pipe** when you need the status.
 2. **Capture `rc=$?` on the IMMEDIATELY following line** — never after another command, not even `echo`.
+   ⛔ **`PIPESTATUS` obeys the same rule and its violation is worse.** Measured 2026-08-09: a peer ran
+   `… | head -15; echo "exit=$?"` then inspected `PIPESTATUS` → `(0)`, one element, and filed
+   `2>&1 |` as a distinct hazard that "makes the real rc unrecoverable." **Both wrong.** `2>&1`
+   redirects an fd and adds no pipeline stage — `PIPESTATUS` is `(1 0)` with or without it, verified
+   four ways. The single element came from **`echo` clobbering the array**: the command printing the
+   rc destroyed the instrument that held it. ⇒ `ps=("${PIPESTATUS[@]}")` on the next line, *before*
+   printing anything. **And index the cue, not the topic:** at the keystroke the thought is *"keep
+   output small"*, so a rule filed under "exit codes" is unreachable — the phrasing that reaches it is
+   **"if I'm about to type `| head`/`| tail`, that command's rc is now gone: either I don't need it,
+   or I redirect to a file."**
+   ⚠️ Two mechanisms produced a near-identical symptom and only one matched the *value*: bare
+   `$PIPESTATUS` (no `[@]`) also prints one element, but prints `1` here, not the observed `0`.
+   **A reproduced symptom is not a reproduced cause — discriminate on the value.**
 3. **`;` not `&&` between control probes** — a control's exit status is not a reason to stop asking.
 4. **Never truncate a payload a classifier reads** (`head -c`, `cut`) — match on the full body.
 5. **Treat a zero-match grep as unresolved** until a non-zero control fires.
