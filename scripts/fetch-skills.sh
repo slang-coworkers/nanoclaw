@@ -157,11 +157,29 @@ for skill in $(jq -r 'keys[]' "$MANIFEST"); do
     # the next command of any kind — including a `$(...)` inside an echo, which
     # is why scripts/funnel-cron.sh has always logged "FAILED (rc=0)".
     upstream_repo_owner_name=$(echo "$repo" | sed 's|^https://github.com/||')
-    set +e
-    api_out=$(gh api "repos/$upstream_repo_owner_name/contents/skills?ref=$ref" \
-      --jq ".[] | select(.name == \"$skill\") | .sha" 2>&1)
-    api_rc=$?
-    set -e
+
+    # Retried on the same terms as the install below. This query used to be a
+    # SINGLE attempt while the install got three, so a run could survive a
+    # throttled download and still be killed by a throttled tree-sha lookup
+    # moments earlier — the asymmetry made "too many requests" failures look
+    # random. GitHub's SECONDARY rate limit clears in seconds, which is exactly
+    # what a backoff is for; the primary one resets on the hour and will still
+    # fail, loudly and correctly.
+    api_attempt=1
+    api_max=3
+    while :; do
+      set +e
+      api_out=$(gh api "repos/$upstream_repo_owner_name/contents/skills?ref=$ref" \
+        --jq ".[] | select(.name == \"$skill\") | .sha" 2>&1)
+      api_rc=$?
+      set -e
+      [ $api_rc -eq 0 ] && break
+      [ $api_attempt -ge $api_max ] && break
+      gh_output_is_throttled "$api_out" || break   # only throttling is worth retrying
+      echo "  ⚠ $skill tree-sha query throttled (attempt $api_attempt) — backing off $((api_attempt * 10))s"
+      sleep $((api_attempt * 10))
+      api_attempt=$((api_attempt + 1))
+    done
 
     # THIS is where rate-limit damage used to become invisible. The old code was
     # `2>/dev/null || echo ""`, so a 403 (throttled) and a 4 (no token at all)
