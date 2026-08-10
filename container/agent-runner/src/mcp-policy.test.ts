@@ -9,8 +9,9 @@ import { describe, it, expect } from 'bun:test';
 
 import {
   allowedToolsForServer,
+  BUILTIN_MCP_SERVER,
+  isBuiltinMcpTool,
   isMcpToolAllowed,
-  MANDATORY_MCP_TOOLS,
   parseMcpPolicy,
   sanitizeServerName,
   serverHasAllowedTools,
@@ -34,15 +35,30 @@ describe('parseMcpPolicy', () => {
   it('keeps an explicit empty list as explicit — an answer, not an absence', () => {
     const p = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"state":"explicit","tools":[],"origin":"x"}' });
     expect(p.state).toBe('explicit');
-    // Only the transport floor survives; nothing configurable does.
-    expect(p.tools.sort()).toEqual([...MANDATORY_MCP_TOOLS].sort());
-    expect(isMcpToolAllowed(p, 'mcp__nanoclaw__install_packages')).toBe(false);
+    expect(p.tools).toEqual([]);
+    // No EXTERNAL tool survives...
+    expect(isMcpToolAllowed(p, 'mcp__deepwiki__ask_question')).toBe(false);
+    expect(isMcpToolAllowed(p, 'mcp__codex__codex')).toBe(false);
+    // ...and every built-in still does: they are outside this policy.
+    expect(isMcpToolAllowed(p, 'mcp__nanoclaw__install_packages')).toBe(true);
+    expect(isMcpToolAllowed(p, 'mcp__nanoclaw__send_message')).toBe(true);
+    expect(isMcpToolAllowed(p, 'mcp__nanoclaw__anything_added_later')).toBe(true);
   });
 
-  it('unions the mandatory floor in even when the host omits it', () => {
-    const p = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"state":"inherited","tools":["mcp__x__y"],"origin":"x"}' });
-    for (const tool of MANDATORY_MCP_TOOLS) expect(isMcpToolAllowed(p, tool)).toBe(true);
+  it('drops built-in entries from the wire rather than treating them as grants', () => {
+    const p = parseMcpPolicy({
+      NANOCLAW_MCP_POLICY: '{"state":"inherited","tools":["mcp__nanoclaw__send_message","mcp__x__y"],"origin":"x"}',
+    });
+    expect(p.tools).toEqual(['mcp__x__y']);
+    expect(isMcpToolAllowed(p, 'mcp__nanoclaw__send_message')).toBe(true);
     expect(isMcpToolAllowed(p, 'mcp__x__y')).toBe(true);
+  });
+
+  it('permits every built-in under an unresolved policy so the agent can report the fault', () => {
+    const p = UNRESOLVED_POLICY;
+    expect(isMcpToolAllowed(p, 'mcp__nanoclaw__send_message')).toBe(true);
+    expect(isMcpToolAllowed(p, 'mcp__nanoclaw__ask_user_question')).toBe(true);
+    expect(isMcpToolAllowed(p, 'mcp__deepwiki__ask_question')).toBe(false);
   });
 
   it('drops non-MCP entries rather than trusting the wire', () => {
@@ -81,8 +97,15 @@ describe('server-level decisions', () => {
     expect(allowedToolsForServer(p, 'codex')).toEqual([]);
   });
 
-  it('always considers the built-in server usable — it carries the transport floor', () => {
+  it('always wires the built-in server — it is out of scope', () => {
     const empty = parseMcpPolicy({ NANOCLAW_MCP_POLICY: '{"state":"explicit","tools":[]}' });
-    expect(serverHasAllowedTools(empty, 'nanoclaw')).toBe(true);
+    expect(serverHasAllowedTools(empty, BUILTIN_MCP_SERVER)).toBe(true);
+    expect(serverHasAllowedTools(empty, 'codex')).toBe(false);
+  });
+
+  it('identifies built-ins by prefix, not by a list that can fall behind', () => {
+    expect(isBuiltinMcpTool('mcp__nanoclaw__whatever')).toBe(true);
+    expect(isBuiltinMcpTool('mcp__nanoclaw-evil__x')).toBe(false);
+    expect(isBuiltinMcpTool('mcp__deepwiki__ask_question')).toBe(false);
   });
 });

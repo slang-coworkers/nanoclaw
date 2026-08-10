@@ -5,7 +5,7 @@ import path from 'path';
 import { query as sdkQuery, type HookCallback, type PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 
 import { clearContainerToolInFlight, setContainerToolInFlight } from '../db/connection.js';
-import { isMcpToolAllowed, parseMcpPolicy, type McpPolicy } from '../mcp-policy.js';
+import { BUILTIN_MCP_SERVER, isMcpToolAllowed, parseMcpPolicy, type McpPolicy } from '../mcp-policy.js';
 import type { MemorySessionHookRegistration } from '../memory/session-hook.js';
 import { resolveEnvInherit } from './codex-app-server.js';
 import { TIMEZONE, formatLocalStamp } from '../timezone.js';
@@ -178,6 +178,11 @@ function computeBlockedTools(
   return undefined;
 }
 
+/** NanoClaw's own server, which the allow-list never governs. */
+function isBuiltinMcpServer(serverName: string): boolean {
+  return serverName === BUILTIN_MCP_SERVER;
+}
+
 // MCP server names are sanitized by the SDK when forming tool prefixes:
 // any character outside [A-Za-z0-9_-] becomes '_'. Mirror that here so our
 // allowlist patterns match what the SDK actually exposes.
@@ -191,14 +196,20 @@ function mcpAllowPattern(serverName: string): string {
  * Under `unrestricted` this stays what it always was: one wildcard per wired
  * server, so a server added at runtime is reachable without a code change.
  *
- * Under any restrictive state the wildcards are dropped and the exact
- * permitted names are listed instead. Emitting `mcp__nanoclaw__*` alongside a
+ * Under a restrictive state the EXTERNAL wildcards are dropped and the exact
+ * permitted names are listed instead. Emitting `mcp__<external>__*` alongside a
  * narrow allow-list was the shape of the original bug: the wildcard re-admitted
- * the whole namespace the policy had just excluded.
+ * the whole namespace the policy had just excluded. The built-in namespace
+ * keeps its wildcard — the allow-list does not govern it.
  */
 export function mcpAllowedToolEntries(policy: McpPolicy, serverNames: string[]): string[] {
   if (policy.state === 'unrestricted') return serverNames.map(mcpAllowPattern);
-  return [...policy.tools];
+  // The built-in namespace keeps its wildcard under every state: it is out of
+  // this policy's scope, and enumerating it here would mean this file has to
+  // know every tool `registerTools` ever adds — a list that would silently
+  // fall behind and quietly drop new built-ins.
+  const builtinWildcards = serverNames.filter(isBuiltinMcpServer).map(mcpAllowPattern);
+  return [...builtinWildcards, ...policy.tools];
 }
 
 /**
@@ -217,9 +228,10 @@ export function mcpAllowedToolEntries(policy: McpPolicy, serverNames: string[]):
  */
 export function mcpPolicyPreToolUseDecision(policy: McpPolicy, toolName: string): string | null {
   if (!toolName.startsWith('mcp__')) return null;
+  // `isMcpToolAllowed` passes every built-in: they are outside this policy.
   if (isMcpToolAllowed(policy, toolName)) return null;
   return (
-    `Tool '${toolName}' is not in this agent group's MCP tool allow-list ` +
+    `Tool '${toolName}' is not in this agent group's external MCP tool allow-list ` +
     `(policy: ${policy.state} — ${policy.origin}). This is a configuration boundary, not a transient ` +
     `failure: retrying or reaching the same capability another way is not appropriate. ` +
     `An admin can widen it with \`ncl groups mcp-tools set\`; an agent may never widen its own.`
@@ -679,7 +691,7 @@ export class ClaudeProvider implements AgentProvider {
     // wiring a server is what creates its tools, so this is the cheapest
     // complete revocation available and it costs one filter.
     for (const name of Object.keys(this.mcpServers)) {
-      if (name === 'nanoclaw') continue;
+      if (isBuiltinMcpServer(name)) continue;
       const prefix = `mcp__${name.replace(/[^a-zA-Z0-9_-]/g, '_')}__`;
       if (this.mcpPolicy.state !== 'unrestricted' && !this.mcpPolicy.tools.some((t) => t.startsWith(prefix))) {
         log(`Not wiring MCP server "${name}" — no allowed tools under the ${this.mcpPolicy.state} policy`);

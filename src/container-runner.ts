@@ -500,14 +500,14 @@ async function spawnContainer(session: Session): Promise<void> {
   // The token carries the resolved list; an empty one authorises nothing,
   // which is what an explicit `[]` (or an unresolvable policy) must mean.
   const mcpPolicy = resolveMcpPolicy(agentGroup);
-  const proxyToken = registerContainerToken(agentGroup.folder, mcpPolicy.enforcedTools);
+  const proxyToken = registerContainerToken(agentGroup.folder, mcpPolicy.externalTools);
 
   // Operator-visible, not a debug line: `unresolved` means we could not prove
   // what this group may call, so the container is about to boot with every
   // configurable MCP capability switched off. Silence here is what let a
   // broken registry look like a working restriction.
   if (mcpPolicy.state === 'unresolved') {
-    log.error('MCP allow-list UNRESOLVED — spawning with all configurable MCP tools denied', {
+    log.error('MCP allow-list UNRESOLVED — spawning with every EXTERNAL MCP tool denied', {
       sessionId: session.id,
       agentGroup: agentGroup.name,
       coworkerType: agentGroup.coworker_type,
@@ -534,7 +534,7 @@ async function spawnContainer(session: Session): Promise<void> {
     agentGroup: agentGroup.name,
     containerName,
     mcpPolicyState: mcpPolicy.state,
-    mcpToolCount: mcpPolicy.enforcedTools.length,
+    mcpExternalToolCount: mcpPolicy.externalTools.length,
     hasProxyToken: !!proxyToken,
   });
 
@@ -1760,7 +1760,7 @@ async function buildContainerArgs(
     // Legacy variables, still emitted for the SDK disallowedTools backstop and
     // for the proxy-server auto-discovery path in the agent-runner. They are
     // no longer the policy — `NANOCLAW_MCP_POLICY` is.
-    args.push('-e', `NANOCLAW_ALLOWED_MCP_TOOLS=${JSON.stringify(mcpProxy.policy.enforcedTools)}`);
+    args.push('-e', `NANOCLAW_ALLOWED_MCP_TOOLS=${JSON.stringify(mcpProxy.policy.externalTools)}`);
     // claude.ts::computeBlockedTools builds the disallowedTools list as
     // (inventory − allowed). Pass the discovered inventory so the SDK-level
     // block covers proxied servers by name as well as by policy.

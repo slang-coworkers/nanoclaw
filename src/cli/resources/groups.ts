@@ -6,7 +6,7 @@ import { restartAgentGroupContainers } from '../../container-restart.js';
 import { createAgentGroup, getAgentGroupByFolder } from '../../db/agent-groups.js';
 import { getDb, hasTable } from '../../db/connection.js';
 import { getAgentGroup, updateAgentGroup } from '../../db/agent-groups.js';
-import { MANDATORY_MCP_TOOLS, parseAllowlistFlag, resolveMcpAllowlist } from '../../mcp-allowlist.js';
+import { BUILTIN_MCP_SERVER, parseAllowlistFlag, resolveMcpAllowlist } from '../../mcp-allowlist.js';
 import { getDiscoveredToolInventory, updateContainerTokenScope } from '../../mcp-auth-proxy.js';
 import { getSession, getSessionsByAgentGroup } from '../../db/sessions.js';
 import { writeSessionMessage } from '../../session-manager.js';
@@ -130,20 +130,19 @@ registerResource({
           restricted: resolved.state !== 'unrestricted',
           stored_allow_list: group.allowed_mcp_tools ?? null,
           effective_tools: resolved.tools,
-          // What the runtime permits: the configured list plus the mandatory
-          // message-transport floor, which is deliberately not configurable
-          // (see MANDATORY_MCP_TOOLS in src/mcp-allowlist.ts). Surfaced
-          // separately from `effective_tools` so the boundary is visible
-          // rather than looking like the policy quietly ignored the list.
-          enforced_tools: resolved.enforcedTools,
-          mandatory_tools: [...MANDATORY_MCP_TOOLS],
+          // What this policy actually governs: external servers only. Any
+          // `mcp__nanoclaw__*` entry a coworker manifest carries is inert —
+          // surfaced separately so the boundary is visible rather than looking
+          // like the policy quietly ignored part of the list.
+          external_tools: resolved.externalTools,
+          builtin_tools_scope: `out of scope — mcp__${BUILTIN_MCP_SERVER}__* is never restricted by this allow-list`,
           discovered_by_server: inventory,
           blocked: resolved.blocked,
           ...(resolved.state === 'unresolved'
             ? {
                 configuration_error:
                   `MCP allow-list could not be resolved (${resolved.origin}). Containers for this group spawn ` +
-                  `with every configurable MCP tool DENIED — only the mandatory message transport works. ` +
+                  `with every EXTERNAL MCP tool DENIED. NanoClaw's own built-in tools are unaffected. ` +
                   `Fix the coworker registry or MCP proxy, then restart the group.`,
               }
             : {}),
@@ -207,7 +206,7 @@ registerResource({
         // PROXIED servers; it deliberately excludes `mcp__nanoclaw__*` and it
         // has no reach at all over direct stdio servers like `codex`, which
         // never traverse the proxy.
-        const rescoped = updateContainerTokenScope(group.folder, resolved.enforcedTools);
+        const rescoped = updateContainerTokenScope(group.folder, resolved.externalTools);
 
         // Layer 2 — the part that was missing. A running container snapshots
         // its MCP policy at boot: the SDK is handed `allowedTools` /
@@ -231,7 +230,8 @@ registerResource({
         const wakeMessage =
           `[system] Your MCP tool allow-list changed (${resolved.state}: ${resolved.origin}) and your ` +
           `container was restarted so the new policy applies to direct MCP servers too. ` +
-          `Allowed MCP tools: ${resolved.enforcedTools.length > 0 ? resolved.enforcedTools.join(', ') : 'none'}.`;
+          `Allowed external MCP tools: ${resolved.externalTools.length > 0 ? resolved.externalTools.join(', ') : 'none'}. ` +
+          `NanoClaw's own tools are unaffected.`;
 
         // Deferred so the response frame is durable first. If the caller is a
         // container in this group, the kill would otherwise destroy the answer
@@ -247,7 +247,7 @@ registerResource({
           origin: resolved.origin,
           stored_allow_list: stored,
           effective_tools: resolved.tools,
-          enforced_tools: resolved.enforcedTools,
+          external_tools: resolved.externalTools,
           blocked: resolved.blocked,
           live_containers_rescoped: rescoped,
           // Named for what it is. The proxy scope is already narrowed; the
