@@ -27,9 +27,20 @@
 # explain whatever the new version finds IN THAT SAME PR — so the new findings
 # land as a reviewed diff instead of as a surprise on someone else's branch.
 #
-# Nothing is excluded here. Ruff already skips .git/node_modules/dist by default
-# and honours .gitignore, which covers data/ and groups/ — the runtime trees that
-# do not exist in CI anyway.
+# SCOPE IS SET BY THE CALLER, NOT BY AN EXCLUDE LIST HERE
+#
+# No `exclude` on purpose. CI does not run `ruff check .` — it passes the exact
+# files on the PR branch's own tip (see the step in ci.yml). It has to: CI lints
+# the COMPOSED tree, with every nv-* sibling merged in, and the siblings carry
+# Python that nv-main does not have and may not edit. Encoding those trees as an
+# exclude here would work until the next sibling adds a .py file, and then it
+# would fail on whoever's PR happened to be next. Naming the files instead means
+# the scope cannot drift.
+#
+# A bare `ruff check .` run by hand on a plain nv-main checkout matches what CI
+# does, because a plain checkout has only nv-main's files. Ruff skips
+# .git/node_modules/dist by default and honours .gitignore, which covers data/
+# and groups/.
 #
 # Suppressions live at their call sites as `# noqa: <CODE>` with the reason next
 # to them, never as a rule turned off repo-wide. RUF100 (unused-noqa) is in the
