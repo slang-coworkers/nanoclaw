@@ -105,9 +105,8 @@ registerResource({
       description:
         "Show a group's EFFECTIVE MCP tool allow-list — what the next spawn will actually enforce — " +
         'alongside the tools each wired MCP server exposes. `state` is one of `explicit` (a list stored ' +
-        'on the group), `inherited` (no list; the coworker-type manifest governs, or every discovered ' +
-        'tool for an admin group), `unrestricted`, or `unresolved` (the list could NOT be computed — ' +
-        'every configurable MCP tool is denied and this is a configuration fault to fix). ' +
+        'on the group — the only state that denies anything), `inherited` (no list set: the default, ' +
+        'which restricts nothing) or `unrestricted` (explicitly `*`). ' +
         'Use --id <agent-group-id>.',
       handler: async (args) => {
         const id = String(args.id ?? '');
@@ -127,7 +126,7 @@ registerResource({
           folder: group.folder,
           state: resolved.state,
           origin: resolved.origin,
-          restricted: resolved.state !== 'unrestricted',
+          restricted: resolved.state === 'explicit',
           stored_allow_list: group.allowed_mcp_tools ?? null,
           effective_tools: resolved.tools,
           // What this policy actually governs: external servers only. Any
@@ -138,12 +137,14 @@ registerResource({
           builtin_tools_scope: `out of scope — mcp__${BUILTIN_MCP_SERVER}__* is never restricted by this allow-list`,
           discovered_by_server: inventory,
           blocked: resolved.blocked,
-          ...(resolved.state === 'unresolved'
+          // Present only when something was unreadable. The policy above is
+          // still the policy — a configuration fault never narrows a group —
+          // but it needs fixing and an operator has to be able to see it.
+          ...(resolved.configurationError
             ? {
                 configuration_error:
-                  `MCP allow-list could not be resolved (${resolved.origin}). Containers for this group spawn ` +
-                  `with every EXTERNAL MCP tool DENIED. NanoClaw's own built-in tools are unaffected. ` +
-                  `Fix the coworker registry or MCP proxy, then restart the group.`,
+                  `${resolved.configurationError}. The allow-list above is unaffected (a fault never narrows a ` +
+                  `group), but discovered-tool listings may be incomplete until it is fixed.`,
               }
             : {}),
         };

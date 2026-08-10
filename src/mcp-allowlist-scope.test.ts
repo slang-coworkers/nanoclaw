@@ -58,7 +58,7 @@ beforeEach(() => {
 });
 
 describe('an explicit empty list denies external tools and touches no built-in', () => {
-  const resolved = () => resolveMcpAllowlist(group({ allowed_mcp_tools: '[]' }), []);
+  const resolved = () => resolveMcpAllowlist(group({ allowed_mcp_tools: '[]' }));
 
   // REGRESSION GUARD, not failing-first: this already passed on #1157 and must
   // keep passing. Narrowing the scope to external servers must not reopen F03.
@@ -93,26 +93,29 @@ describe('an explicit empty list denies external tools and touches no built-in',
   });
 });
 
-describe('the same holds for an inherited manifest that resolves to zero tools', () => {
-  it('denies external, permits built-in', () => {
-    const r = resolveMcpAllowlist(group({ coworker_type: 'thin' }), []);
+describe('a group with no explicit list is untouched on both sides of the boundary', () => {
+  it('permits every external tool and every built-in', () => {
+    const r = resolveMcpAllowlist(group({ coworker_type: 'thin' }));
     expect(r.state).toBe('inherited');
-    expect(isMcpToolPermitted(r, 'mcp__deepwiki__ask_question')).toBe(false);
-    expect(isMcpToolPermitted(r, 'mcp__nanoclaw__install_packages')).toBe(true);
-    expect(isMcpToolPermitted(r, 'mcp__nanoclaw__ask_user_question')).toBe(true);
+    expect(isMcpToolPermitted(r, 'mcp__deepwiki__ask_question')).toBe(true);
+    for (const tool of BUILTIN_TOOLS) expect(isMcpToolPermitted(r, tool), tool).toBe(true);
   });
 });
 
-describe('unresolved fails closed on external tools only', () => {
-  it('denies external, still permits built-in, so the agent can report the fault', () => {
-    const dir = fs.mkdtempSync(path.join('/tmp', 'mcp-scope-unresolved-'));
+describe('a missing coworker registry changes nothing', () => {
+  it('does not consult the registry at all — the manifest is not a permission grant', () => {
+    // Running from a directory with no container/spines: pre-amendment this
+    // was `unresolved` and denied everything external. Now the registry is
+    // simply never asked, so a broken one cannot narrow a group.
+    const dir = fs.mkdtempSync(path.join('/tmp', 'mcp-scope-no-registry-'));
     const cwd = process.cwd();
     try {
       process.chdir(dir);
       const r = resolveMcpAllowlist(group({ coworker_type: 'slang-fix' }));
-      expect(r.state).toBe('unresolved');
-      expect(isMcpToolPermitted(r, 'mcp__deepwiki__ask_question')).toBe(false);
-      expect(isMcpToolPermitted(r, 'mcp__codex__codex')).toBe(false);
+      expect(r.state).toBe('inherited');
+      expect(r.configurationError).toBeNull();
+      expect(isMcpToolPermitted(r, 'mcp__deepwiki__ask_question')).toBe(true);
+      expect(isMcpToolPermitted(r, 'mcp__codex__codex')).toBe(true);
       for (const tool of BUILTIN_TOOLS) expect(isMcpToolPermitted(r, tool), tool).toBe(true);
     } finally {
       process.chdir(cwd);
@@ -122,19 +125,16 @@ describe('unresolved fails closed on external tools only', () => {
 });
 
 describe('a manifest that names a built-in is neither honoured nor punished', () => {
-  // Touches new API (`externalTools`). On the #1157 tree it fails as undefined
-  // rather than as a wrong value — the behavioural half of this claim is the
-  // `isMcpToolPermitted` assertions at the end of the test.
+  // Touches `externalTools`, which this change introduces. The behavioural half
+  // of the claim is the `isMcpToolPermitted` assertions at the end.
   it('drops built-in entries from the enforced list without changing the answer', () => {
     // Coworker manifests DO carry `mcp__nanoclaw__*` entries (base-nanoclaw's
     // allowed-tools). They are inert: the tool was already permitted.
     const withBuiltin = resolveMcpAllowlist(
       group({ allowed_mcp_tools: JSON.stringify(['mcp__nanoclaw__send_message', 'mcp__deepwiki__ask_question']) }),
-      [],
     );
     const withoutBuiltin = resolveMcpAllowlist(
       group({ allowed_mcp_tools: JSON.stringify(['mcp__deepwiki__ask_question']) }),
-      [],
     );
     expect(withBuiltin.externalTools).toEqual(withoutBuiltin.externalTools);
     expect(withBuiltin.externalTools).toEqual(['mcp__deepwiki__ask_question']);
@@ -153,7 +153,6 @@ describe('the container never receives a built-in on the wire', () => {
     const wire = toMcpPolicyWire(
       resolveMcpAllowlist(
         group({ allowed_mcp_tools: JSON.stringify(['mcp__nanoclaw__send_message', 'mcp__deepwiki__ask_question']) }),
-        [],
       ),
     );
     expect(wire.tools).toEqual(['mcp__deepwiki__ask_question']);

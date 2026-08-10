@@ -28,26 +28,52 @@ whose type simply had not enumerated them.
 The boundary is a prefix test (`isBuiltinMcpTool`), not a list of tool names, so
 a built-in registered tomorrow is out of scope automatically.
 
-## The four states
+## Only an explicit list restricts anything
 
-The stored column is `agent_groups.allowed_mcp_tools`.
+The stored column is `agent_groups.allowed_mcp_tools`. **Nothing implicit may
+change a group's scope — only an explicit `ncl groups mcp-tools set` may reduce
+or add it.**
 
-| stored          | state          | effective tools                                     |
-| --------------- | -------------- | --------------------------------------------------- |
-| `["mcp__a__b"]` | `explicit`     | exactly that list                                     |
-| `[]`            | `explicit`     | **nothing configurable** — the mandatory floor only   |
-| `NULL`          | `inherited`    | the coworker-type manifest (every discovered tool for an admin group) |
-| `*`             | `unrestricted` | every discovered tool                                 |
-| —               | `unresolved`   | the list could not be computed → **deny everything configurable** |
+| stored          | state          | restricts? | effect                                  |
+| --------------- | -------------- | ---------- | --------------------------------------- |
+| `["mcp__a__b"]` | `explicit`     | yes        | exactly that list; all other external tools denied |
+| `[]`            | `explicit`     | yes        | **every external MCP tool denied**      |
+| `*`             | `unrestricted` | no         | nothing denied                          |
+| `NULL`          | `inherited`    | no         | nothing denied — **the default**        |
 
-`unresolved` is not a stored value. It is what the resolver returns when it
-cannot answer: the coworker registry failed to load, or the MCP tool inventory
-could not be read. It is reported by `mcp-tools get` with a
-`configuration_error` field and logged at ERROR on every spawn.
+`inherited` deliberately does **not** restrict to the coworker-type manifest.
+A manifest is a composition input, not a permission grant: deriving a
+restriction from it would narrow every group whose type happened not to
+enumerate a tool, which is exactly the implicit scope change this policy
+refuses. `manifest.tools` still drives what the composer renders into
+CLAUDE.md — it just no longer decides what may be called.
 
-**An empty list is an answer; an unresolvable list is a fault.** Both deny
-everything configurable — the difference is that one is a policy you chose and
-the other is a bug you should fix. Neither is ever read as "no restrictions".
+The one exception is `ADMIN_MCP_TOOLS`, an instance-wide operator env var that
+narrows admin groups. It predates this policy, a human sets it deliberately,
+and no group or agent can reach it. That is why the resolution carries
+`restricts` separately from `state`: `state` says where a policy came from,
+`restricts` says whether it filters, and this is the one case where they differ.
+
+**An empty list is an answer.** `[]` used to arrive at every enforcement layer
+as `tools.length === 0`, which each of them read as "no restrictions to
+install" — so the strictest setting available installed nothing. That is F03,
+and it stays fixed.
+
+### A registry that will not load is a bug report, not a policy
+
+There is no `unresolved` state. When the coworker registry or the MCP tool
+inventory cannot be read, the resolution carries a `configurationError` — an
+ERROR line at spawn and a `configuration_error` field in `mcp-tools get` — and
+otherwise resolves exactly as it would have.
+
+That is safe by construction, not by assumption. `explicit` is the only
+restrictive state; its branch returns before any registry lookup and never
+consults the inventory for enforcement. So a group carrying a restriction
+cannot be pushed onto the error path, and the error path can only be reached by
+groups whose non-error answer is already "nothing denied" — it cannot lift
+anything. Failing closed there would let a transient registry fault silently
+degrade a live coworker, which is a worse failure than the one it would defend
+against.
 
 ## The built-in tools and what actually governs each one
 
@@ -118,8 +144,23 @@ Container — reduces blast radius, but see the caveat below:
    interprets allow/deny patterns and of whether the host inventory is complete.
 
 The spawn-time policy travels as `NANOCLAW_MCP_POLICY` (JSON:
-`{state, tools, origin}`). A missing or unparseable value is read as
-`unresolved`, so a host that fails to set it fails closed.
+`{restrict, tools, origin}` — a boolean rather than a state name, because the
+container needs to know only whether it filters). A missing or unparseable
+value restricts nothing: reading silence as a denial would let a host bug, or a
+host simply older than the container's copy of the runner, narrow a live
+coworker.
+
+That is safe because the container is not where a restriction is enforced. By
+the time it starts, the host has already scoped the MCP proxy token to the
+allowed list and withheld every disallowed server from `NANOCLAW_MCP_SERVERS`.
+
+> **One gap, stated plainly.** The `codex` stdio child is constructed inside
+> the container, not passed in `NANOCLAW_MCP_SERVERS`, so the host cannot
+> withhold it. Under a missing policy variable `codex` is wired even for a
+> group whose explicit list excludes it. That state is not reachable through
+> configuration — it needs a host that failed to set the variable — and a group
+> running an agent-runner old enough to ignore the variable would wire codex
+> anyway.
 
 > **Container-side enforcement is not a trust boundary.** A group's
 > agent-runner source (`data/v2-sessions/<ag-id>/agent-runner-src`, mounted at
@@ -154,6 +195,13 @@ Ordering: the restart is deferred until the response frame is durable (see
 receives its answer before its container is killed.
 
 ## Deploying this to an existing install
+
+Deploying this is a **no-op for every existing group**. Every group has
+`allowed_mcp_tools: null`, which restricts nothing on every surface —
+regardless of coworker type, whether the registry loads, or whether the MCP
+proxy is up. `src/mcp-allowlist-no-op.test.ts` asserts exactly that. Nothing
+changes for anyone until an operator runs `ncl groups mcp-tools set`.
+
 
 `agent-runner-src` is copied per group at creation and **never auto-updated**.
 Groups created before this landed keep an `/app/src` that ignores
