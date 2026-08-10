@@ -36,7 +36,7 @@ went green / self-healed / no longer reproduces*, run
 `gh api repos/<o>/<r>/actions/jobs/<id> --jq '{status,conclusion,completed_at}'` **at that moment**,
 plus one control on a job you already know is terminal. `status != "completed"` ⇒ write **"in flight,
 outcome unknown"**. ⭐⭐ **A CI state you measured minutes ago is not the state you are publishing now** —
-this is the same expiry trap as [[feedback_ci_checks_at_a_sha_expire_and_need_remeasure]], but the
+this is the same expiry trap as [[feedback_ci_checks_at_a_sha_expire_source_at_a_sha_does_not]], but the
 failure mode here is worse because the stale reading was never terminal *to begin with*.
 
 Sibling lesson from the same artifact — the row it marked "unverified" was recoverable from my own

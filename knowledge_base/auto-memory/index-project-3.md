@@ -4,7 +4,7 @@ description: "Shard 3 of 11 of the project family index, packed by size to stay 
 type: index
 ---
 
-# index-project-3 — shard 3 of 11 (48 rows)
+# index-project-3 — shard 3 of 11 (49 rows)
 
 Alphabetical shard of the project family, packed by SIZE so every shard keeps headroom under the ~24986-char read bound. Range: `project_12059_coopmat_fill_splat_discard` … `project_12143_macos_release_signing_version_extraction_bug`.
 
@@ -38,6 +38,7 @@ Alphabetical shard of the project family, packed by SIZE so every shard keeps he
 - [[project_12106_memoize_val_type_dag]] — "slang PR #12106 'Memoize shared Val and type DAG traversals' (saipraveenb25). TERMINAL: MERGED 2026-07-16 (c8d02ae5) at the approver's decided R3 head 1aa6f887, with a genuine non-author human APPROVE (csyonghe) at that exact SHA = agreement. Three per-commit shadow rows: R1 d0a7a16 BLOCK (generic-specialization miscompile, vindicated — the author's next commit removed the exact cross-env mapValToGlobalValue cache), R2 e2dd5be and R3 WOULD_APPROVE. Shadow mode, nothing posted to GitHub. Chain closed."
 - [[project_12108_spirv_asm_internal_name_prefix]] — "#12108 prefix internal spirv_asm regs __ + parse-time assert — draft PR #12190"
 - [[project_12109_specialization_work_list_scratchdata]] — "#12109 SpecializationWorkList via IRInst::scratchData — WOULD_APPROVE CLEAN; human owns merge"
+- [[project_12110_nonuniform_descriptorhandle_fixed_in_1415]] — "#12110 NonUniform-dropped-on-DescriptorHandle was FIXED by #12263 (merged 08-01) — but a user's repro on slangc 2026.14.1 (published 07-30) still shows 0 decorations because the RELEASE PREDATES THE FIX BY 2 DAYS. Reported to me as a live wild miscompile; it is a version gap. #12116 is test+comment only, not the fix."
 - [[project_12110_nonuniform_descriptorhandle_spirv]] — "#12110 NonUniformResourceIndex dropped on DescriptorHandle/heap SPIR-V — triage root-cause CORRECTED; draft fix authorized"
 - [[project_12112_compile_perf_memory_tracking_parked]] — "#12112 compile-perf memory-footprint tracking — PARKED for assignee"
 - [[project_12113_minimal_compile_peak_rss_doubled]] — "#12113 minimal-compile peak RSS doubled v2026.5→.7 — PARKED (maintainer self-assigned)"

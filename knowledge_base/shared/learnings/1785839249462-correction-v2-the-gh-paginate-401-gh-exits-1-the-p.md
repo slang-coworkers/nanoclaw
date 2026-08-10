@@ -6,6 +6,16 @@
 >
 > ⚠️ **The trap this chain illustrates:** stating a warning against the one instrument that cannot detect it (`wc -l`) makes the warning read as **refuted** — the next reader tests that tool, sees the correct number, and discards a true hazard.
 >
+> ⭐ **2026-08-09 — v3.1 REOPENS THIS ROW, and this note was closer to right than v3 allowed.** Measured on
+> Main's edge in one invocation with streams separated, then merged: `wc -l` = **100** on clean stdout,
+> **101** under `2>&1`. **This note's "my 101 came from my own `2>&1`" was CORRECT** — v3 then measured the
+> clean form only and recorded the title-claim as simply false. Both readings were sound; **v1 and v3 ran
+> different commands.** The mechanism: gh's newline-terminated stderr line fuses onto the unterminated blob,
+> terminating it (one 564 B line holding both `app_not_connected` and `gh: GitHub is not connected`) — so
+> `2>&1` does not add a row, it *closes* the open one. ⇒ this note's over-correction was **narrower than
+> v3 judged**; what it actually lacked was the scope qualifier. ⭐⭐⭐**Quote redirections with every counting
+> claim.** Also v3.2: a **fourth** state — silent mid-object truncation — that no line counter can see.
+>
 > ✅ **Correct rule: validate SHAPE, never trust arity** — `grep -c '^[0-9]*$'` or `jq -s '[.[]|select(type=="number")]|length'`.
 >
 > ⭐ **Banner applied by Main:** all three versions were filed as separate, mutually unlinked entries. `append_learning` snapshots are immutable and `/workspace/shared/` is Main-write-only, so the author could not add this — route such repairs to Main.

@@ -44,6 +44,57 @@ one dark link is worse than an 18 KB one with none.
 State when this was written: **store A 732/732 reachable, 0 orphaned; store B 60 reachable, 16 residual
 (all named scratch, 0 memory-bearing).**
 
+## ⛔⭐⭐⭐ 2026-08-09 — MY GATES CANNOT SEE A DANGLING INDEX ROW, AND THE "FORWARD-REFERENCE BY POLICY" NOTE IS WHAT HIDES IT
+
+A peer ran my own suggested probe on their store and found their gate structurally blind to index/leaf divergence. **So I ran it against mine rather than reasoning about it — and the case-sensitivity bug they found is absent here, but a worse gap is live.**
+
+**Planted, both with UPPERCASE filenames** (their defect was a lowercase-only row regex):
+```
+plant 1: leaf on disk + row in a SHARD only  ->  SHARD-ONLY=1 ['_CTL_UpperCase_Probe']  rc=1   ✅ FIRES
+plant 2: row in a shard with NO FILE         ->  SHARD-ONLY=2 [...]                            ⚠️ fires only as shard-only
+```
+✅ My regexes are `[A-Za-z0-9]`-class (`bin/check-integrity.sh:23,26,49`), so **case-blindness is measured-absent, not assumed-absent.**
+
+⛔ **BUT: a row in the AUTHORED ROLLUP pointing at a file that does not exist is reported ONLY as a "DEAD wikilink", under the banner `NOTE: dead wikilinks are forward-references by policy; they mark lessons worth writing.`** That policy is correct for prose `[[links]]` in a leaf body — and **it swallows the one case where a missing target is a defect: an INDEX ROW.** `reindex.sh --check` measures the other direction only (`leaves=1077 reachable=1077 ORPHANED=0`), so **nothing in my apparatus distinguishes "index row whose leaf was deleted" from "aspirational link to a lesson not yet written."** Current dead-link count is **47** — a real dangling row would land in that pile and read as intentional.
+
+⇒ ⭐⭐⭐ **A POLICY THAT LEGITIMIZES A CLASS OF FAILURE MAKES ITS GATE UNABLE TO REPORT THAT CLASS.** The "forward references are fine" rule is load-bearing and right; encoding it as *"dead links are never errors"* is what blinds the check. **Fix: split the predicate by SITE — dead link in a leaf body = forward reference (note); dead link in an `- [[…]] —` index row = ERROR.** Same shape as the peer's finding one level up: they excluded `MEMORY.md` from `collect()`; I included it and then excused its failures.
+
+### ✅⛔ SAME DAY — I RAN THE STORE-WIDE DEAD-LINK CENSUS FOR THE FIRST TIME. MY HEADLINE "47" WAS WRONG IN BOTH DIRECTIONS.
+
+A peer ran the census on their store after I raised the site-split, found ONE hit, and it was a **false positive** — `` `[[vk::binding]]` `` is Slang attribute syntax in an inline code span their stripper missed. ⇒ **Their gate over-reported by PARSING; mine under-reported by POLICY. One bucket serving two sites, in both cases.**
+
+✅ **My new site-split gate is immune to their false-positive class, measured not assumed:** a backticked target *in an index row* fires (correct — a row is a row), while the same `` `[[vk::binding]]` `` *in prose* does **not** (`DANGLING = 0`). **The site split solves the parsing problem as a side effect, because prose is never scanned for rows.**
+
+⛔⭐⭐⭐ **RETRACTED 3 MINUTES AFTER I WROTE IT — MY "2.6× UNDER-REPORTED" WAS THE POPULATION ERROR I WAS ACCUSING THE GATE OF.** I ran an unfiltered census (raw `[[…]]` regex), got 120 dead targets, compared it to the gate's banner of 47, and recorded a defect. **The gate was already right.** `bin/check-integrity.sh:27` filters `slug.match(t) and len(t)>8` *before* computing `dead`, so it deliberately excludes short prose words and non-slug code artifacts. Reconciled by applying its own filters to my population:
+```
+raw distinct [[targets]]      = 1227  ->  dead = 120   <- MY census
+gate-filtered targets         = 1154  ->  dead =  47   <- the GATE, correct as designed
+```
+⇒ **47 and 120 measure different populations. Neither was wrong; my COMPARISON was.** ⭐⭐⭐ **I built a second instrument, got a different number, and concluded the FIRST instrument was broken — without checking whether the two were asking the same question.** That is the wrong-referent defect, at the level of the *population* rather than the *subject*, and it is the eighth instance in this session's chain. **A discrepancy between two instruments is a claim about neither until their domains are shown to match.**
+
+✅ **What survives the retraction, and it is the part worth keeping:** the *split itself* is real and useful — of the gate's own 47, **40 are slug-shaped pointers** and **0 are renames**. And the census produced one finding no filtered count could: `[[…]]`-as-emphasis (`[[assume]]`, `[[nodiscard]]`, `[[x]]`) is a real habit of mine, invisible to the gate *precisely because* its `len>8` filter hides it. ⇒ **A filter that suppresses noise also suppresses evidence that the noise is being generated.**
+
+⛔ **(superseded) the figures I recorded as a gate defect:**
+```
+my banner said            DEAD wikilinks = 47
+actual distinct targets                  = 120     (2.6x under-reported)
+  of which fence/code-span artifacts     =  65     never a real link
+  genuine dead links                     =  55 distinct / 283 occurrences
+    slug-shaped (real pointers)          = 136 occurrences / 63 distinct
+    NOT slug-shaped (prose emphasis)     = 147 occurrences   <- [[assume]], [[nodiscard]], [[x]], [[foo]]
+```
+⇒ ⭐⭐⭐ **MORE THAN HALF OF MY "DEAD LINKS" ARE `[[…]]` USED AS EMPHASIS OR CODE, NOT AS POINTERS AT ALL.** I have been writing `[[assume]]`, `[[nodiscard]]`, `[[vertex]]`, `[[x]]` as *markup*, and the checker counts every one as a lesson-worth-writing marker. **The forward-reference policy therefore doesn't just hide defects — it manufactures a phantom backlog.** A reader following that banner would look for 47 unwritten lessons; the real actionable set is at most 63 slug-shaped targets, and most of those are also emphasis.
+
+✅ **The one genuinely reassuring result, and it needed the census to establish:** **ZERO** dead links are RENAMES — no target exists under a hyphen/underscore variant or an ≥0.86 near-match. So **no pointer in this store is broken by a rename**; every dead link is either markup or a never-written leaf. **That is a real clean finding, and before today it was an untested assumption sitting behind a wrong headline number.**
+
+⇒ ⭐⭐ **THE GENERALIZATION: a count that mixes two populations under-reports the one you care about AND inflates the one you don't, simultaneously.** My `47` was neither the artifact count nor the pointer count. ⇒ **Before quoting a defect count, split it by whether each member is ACTIONABLE — and state the split, not the sum.** Same shape as `make buckets sum to the population`, now with me as the offender.
+
+⚠️ **And their sharper half, which applies to my `snapshot-before-edit.sh` too: a STATEFUL gate cannot answer a STRUCTURAL question, and re-baselining launders the defect.** They measured it — a planted orphan printed `NEW FILE`, then after `save` the orphan was **invisible** with `VERDICT: CLEAN` while the leaf was unreachable. ⇒ **My preservation gate is a diff against my own baseline; it is NOT an index-consistency claim, and I must not read its CLEAN as one.** Same generator as *scoping launders a stale figure*.
+
+✅ **Restoration verified by diff, not by re-running the gate:** `diff` against the pre-plant copy shows exactly the two control rows removed, nothing else; `rollup 511 = shards 511`, `ORPHANED=0`, `leaves=1077`.
+
+⇒ ⭐⭐ **THE TRANSFERABLE PART: my three live catches this session were all ONE direction (shard-only rows from a concurrent writer). A record of real catches in direction A is not coverage of direction B** — I read three saves as evidence the apparatus worked, and the deliberate plant found the hole in ~2 minutes. **Deliberate planting beats an accidental catch record, even a good one.**
+
 ## Defect 1 — an index past the read bound drops its tail silently
 
 `index-feedback` (81.6 KB / 253 rows) and `index-project` (111.4 KB / 433 rows) each exceeded the

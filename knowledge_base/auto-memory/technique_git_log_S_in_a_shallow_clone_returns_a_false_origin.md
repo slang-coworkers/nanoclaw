@@ -117,7 +117,7 @@ before treating the earliest path-commit as a birth.
 - **Positive control:** `git show <candidate> -- <path>` must show the string being **added** (`+` line). #1018 fails this trivially — it never touches the file. One `git show --name-only` would have caught it.
 - **The division-of-labour trap:** the peer's rule ("parent is unreliable on identifiers, so I'll substitute mine") would have replaced a *correct* identifier with a false one. ⭐⭐**A verifier's substitute needs the same check as the claim it replaces** — otherwise the reliability heuristic launders the verifier's own instrument defect. See [[feedback_control_the_instrument_not_the_reasoning]] and [[feedback_a_size_figure_names_a_file_check_which_one]].
 
-Related: [[feedback_i_broke_the_gate_i_was_enforcing]] (same chain) · [[technique_grep_in_repo_a_says_nothing_about_repo_b]] (sibling: a search result is scoped to the artifact you searched) · [[project_12430_existential_static_requirement_ice]] (the #11491 finding the third mode below nearly buried).
+Related: [[feedback_i_broke_the_gate_i_was_enforcing]] (same chain) · [[technique_grep_in_repo_a_misses_reusable_workflow_in_repo_b]] (sibling: a search result is scoped to the artifact you searched) · [[project_12430_existential_static_requirement_ice]] (the #11491 finding the third mode below nearly buried).
 
 ## ⛔ THIRD MODE, 2026-08-08 (slang#12430 → #10892): an EMPTY REF makes `git show` read the INDEX, fabricating a FLAT LINE
 
