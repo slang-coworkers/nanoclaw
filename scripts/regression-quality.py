@@ -42,7 +42,14 @@ Needs network + `gh` auth (unlike kb-health/kb-doctor, which are offline).
 
 Exit codes: 0 = complete, 1 = incomplete collection, 2 = nothing to measure.
 """
-import argparse, collections, json, os, re, subprocess, sys, tempfile
+import argparse
+import collections
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
 from datetime import datetime, timezone
 
 SCHEMA = 2
@@ -57,7 +64,7 @@ BOT_LOGINS = {"nv-slang-bot", "github-actions", "devin-ai-integration"}
 
 
 def normalise_login(login):
-    return re.sub(r"\[bot\]$", "", (login or "").strip(), flags=re.I).lower()
+    return re.sub(r"\[bot\]$", "", (login or "").strip(), flags=re.IGNORECASE).lower()
 
 
 def is_bot(login):
@@ -74,7 +81,7 @@ def is_bot(login):
 # included.
 CAUSAL_MARKER = re.compile(
     r"(?:since|caused\s+by|introduced\s+(?:in|by)|regressed\s+(?:in|by)|bisect(?:ed)?\s*(?:to|on)?|"
-    r"culprit|blame[sd]?\s+(?:on|to)|#{1,4}\s*cause|root\s+cause)\b", re.I)
+    r"culprit|blame[sd]?\s+(?:on|to)|#{1,4}\s*cause|root\s+cause)\b", re.IGNORECASE)
 REF = re.compile(r"#(\d{3,6})\b")
 # The window now ends at the end of the causal BLOCK — a blank line or the next
 # heading — instead of at a fixed character count. A flat 240-char window erred
@@ -122,15 +129,16 @@ class Collection:
 
 
 MISSING = object()  # a 404: a real ANSWER ("no such PR"), not a collection failure
-NOT_FOUND = re.compile(r"HTTP 404|Not Found", re.I)
+NOT_FOUND = re.compile(r"HTTP 404|Not Found", re.IGNORECASE)
 
 
 def gh(col, path, paginate=False, what=None, allow_missing=False, timeout=900):
     what = what or path
     cmd = ["gh", "api", path] + (["--paginate"] if paginate else [])
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    except Exception as e:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
+                           check=False)
+    except (OSError, subprocess.SubprocessError) as e:
         col.fail(what, f"{type(e).__name__}: {e}")
         return None
     if r.returncode != 0:

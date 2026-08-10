@@ -1,0 +1,65 @@
+# Python lint config for the whole repo.
+#
+# WHY THIS FILE EXISTS
+#
+# This is a Node/pnpm project with a Python tail that nothing checked: the
+# nv-path-guard matcher, the KB observability producers (kb-health, kb-doctor),
+# the scheduled-task dumper, regression-quality, claude-trace-gc, and the
+# supervise-issues / learnings-wiki skill scripts. Several of those run on a
+# production cron and decide whether the KB is reported healthy. TypeScript had
+# `tsc` plus the ratcheted gate in scripts/typecheck-gate.mjs; Python had
+# nothing, so the only thing between a typo and a silently wrong daily metric
+# was review.
+#
+# `ruff.toml` rather than `pyproject.toml` on purpose: there is no Python
+# package here, and a root pyproject.toml makes assorted tooling believe there
+# is one.
+#
+# THE VERSION PIN IS LOAD-BEARING
+#
+# The rule selection is deliberately NOT overridden, so the gate runs ruff's own
+# default rule set — the widest net, and one that grows as ruff learns new
+# checks. That is only safe because .github/workflows/ci.yml installs an EXACT
+# ruff version (`ruff==0.16.2`). An unpinned linter would turn CI red on an
+# unrelated PR the day ruff ships a new rule.
+#
+# To bump: change the pin in ci.yml, run `ruff check .` locally, and fix or
+# explain whatever the new version finds IN THAT SAME PR — so the new findings
+# land as a reviewed diff instead of as a surprise on someone else's branch.
+#
+# SCOPE IS SET BY THE CALLER, NOT BY AN EXCLUDE LIST HERE
+#
+# No `exclude` on purpose. CI does not run `ruff check .` — it passes the exact
+# files on the PR branch's own tip (see the step in ci.yml). It has to: CI lints
+# the COMPOSED tree, with every nv-* sibling merged in, and the siblings carry
+# Python that nv-main does not have and may not edit. Encoding those trees as an
+# exclude here would work until the next sibling adds a .py file, and then it
+# would fail on whoever's PR happened to be next. Naming the files instead means
+# the scope cannot drift.
+#
+# A bare `ruff check .` run by hand on a plain nv-main checkout matches what CI
+# does, because a plain checkout has only nv-main's files. Ruff skips
+# .git/node_modules/dist by default and honours .gitignore, which covers data/
+# and groups/.
+#
+# Suppressions live at their call sites as `# noqa: <CODE>` with the reason next
+# to them, never as a rule turned off repo-wide. RUF100 (unused-noqa) is in the
+# default set and keeps them honest: a `# noqa` that stops being necessary
+# becomes an error rather than quietly outliving its reason.
+
+# THE FLOOR IS PROD, NOT THE CI RUNNER
+#
+# Both workflows pin actions/setup-python to 3.11, but that is not what this
+# setting means. scripts/kb-health.py and scripts/kb-doctor.py are invoked as
+# `python3 <script>` by the production cron, against whatever interpreter that
+# box ships — and the supervise-issues / learnings-wiki scripts run inside the
+# agent container against Debian's `python3`. Declaring py311 here makes ruff
+# demand 3.11-only idioms: it asks for `datetime.UTC` (UP017, nine sites in
+# kb-health/kb-doctor/regression-quality), an alias that does not exist before
+# 3.11. Taking that advice would lint the daily KB metrics into an
+# AttributeError on any box still on 3.10.
+#
+# So the floor stays where it can be justified without a guess. Raise it only
+# after verifying the interpreter on the prod box and in the container image —
+# and in that PR, not as a side effect of one that happens to touch Python.
+target-version = "py39"
