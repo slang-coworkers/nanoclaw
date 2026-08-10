@@ -214,6 +214,8 @@ describe('stale reclamation under REAL concurrency', () => {
   const ROUNDS = 120;
   /** Gap between round barriers. Generous next to the microseconds of work. */
   const SLOT_MS = 15;
+  /** Staleness the contenders judge by. See the note on arrival skew below. */
+  const CONTENDER_STALE_MS = 1000;
 
   /**
    * A child process that contends for one stale lease per round.
@@ -232,13 +234,20 @@ describe('stale reclamation under REAL concurrency', () => {
       file,
       `import fs from 'fs';
 import path from 'path';
-const [, , mod, rounds, count, startAt, slot, winners] = process.argv;
+const [, , mod, rounds, count, startAt, slot, winners, staleMs] = process.argv;
 const { acquireLock } = await import(mod);
 for (let k = 0; k < Number(count); k++) {
   const at = Number(startAt) + k * Number(slot);
   while (Date.now() < at) { /* spin to this round's barrier */ }
-  const got = acquireLock(path.join(rounds, String(k)), Date.now(), 1000);
-  if (got) fs.appendFileSync(path.join(winners, String(k)), String(got) + '\\n');
+  const clone = path.join(rounds, String(k));
+  // Age of the lease we are ABOUT to contend for, and how far past this
+  // round's barrier we are acting. Both are recorded with every win so a
+  // failure says WHICH lease the winner took, not just that there were two.
+  let age = -1;
+  try { age = Date.now() - fs.statSync(path.join(clone, '.git', 'nanoclaw-refresh.lock')).mtimeMs; } catch {}
+  const late = Date.now() - at;
+  const got = acquireLock(clone, Date.now(), Number(staleMs));
+  if (got) fs.appendFileSync(path.join(winners, String(k)), got + ' age=' + Math.round(age) + ' late=' + Math.round(late) + '\\n');
 }
 `,
     );
@@ -282,6 +291,7 @@ for (let k = 0; k < Number(count); k++) {
             String(startAt),
             String(SLOT_MS),
             winnersDir,
+            String(CONTENDER_STALE_MS),
           ],
           stdout: 'ignore',
           stderr: 'inherit',
@@ -297,7 +307,7 @@ for (let k = 0; k < Number(count); k++) {
           .split('\n')
           .filter((l) => l.trim());
         if (won.length !== 1) multiWinner.push({ round: k, winners: won });
-        else if (ownerOnDisk(path.join(roundsDir, String(k))) !== won[0]) wrongOwner.push(k);
+        else if (ownerOnDisk(path.join(roundsDir, String(k))) !== won[0].split(' ')[0]) wrongOwner.push(k);
       }
 
       // The defect, stated: pre-fix several contenders each removed the stale
