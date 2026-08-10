@@ -101,7 +101,7 @@ async function hookBlocks(options: SdkOptions, toolName: string): Promise<string
 
 describe('an explicit empty allow-list denies every EXTERNAL surface', () => {
   const env = {
-    NANOCLAW_MCP_POLICY: JSON.stringify({ state: 'explicit', tools: [], origin: 'explicit allow-list' }),
+    NANOCLAW_MCP_POLICY: JSON.stringify({ restrict: true, tools: [], origin: 'explicit allow-list' }),
     // The legacy variable the pre-#1157 tree read. Present and empty, exactly
     // as an operator running `--tools '[]'` would produce.
     NANOCLAW_ALLOWED_MCP_TOOLS: '[]',
@@ -147,57 +147,56 @@ describe('an explicit empty allow-list denies every EXTERNAL surface', () => {
   });
 });
 
-describe('an inherited manifest that resolves to zero tools denies the same surfaces', () => {
-  // A flat coworker type with no `skills:` produces exactly this: a legitimate,
-  // successful resolution whose answer is "no MCP tools". It must behave like
-  // the explicit empty list, not like an absence of policy.
+describe('a group with no explicit list is not restricted at all', () => {
+  // This is the whole "no behaviour change" requirement. A group nobody has
+  // run `mcp-tools set` against keeps every tool it has today, whatever its
+  // coworker type happens to enumerate.
   const env = {
     NANOCLAW_MCP_POLICY: JSON.stringify({
-      state: 'inherited',
+      restrict: false,
       tools: [],
-      origin: 'coworker type "thin" manifest',
+      origin: 'no explicit allow-list — unrestricted by default',
     }),
-    NANOCLAW_ALLOWED_MCP_TOOLS: '[]',
   };
 
-  it('blocks Codex and proxy tools, and no built-in', async () => {
+  it('wires every server and blocks no MCP tool', async () => {
     const options = await optionsUnder(env);
-    expect(Object.keys(options.mcpServers).sort()).toEqual(['nanoclaw']);
-    expect(await hookBlocks(options, 'mcp__codex__codex-reply')).toBeTruthy();
-    expect(await hookBlocks(options, 'mcp__deepwiki__ask_question')).toBeTruthy();
+    expect(Object.keys(options.mcpServers).sort()).toEqual(['codex', 'deepwiki', 'nanoclaw']);
+    expect(options.allowedTools).toContain('mcp__codex__*');
+    expect(options.allowedTools).toContain('mcp__deepwiki__*');
+    expect(await hookBlocks(options, 'mcp__codex__codex-reply')).toBeNull();
+    expect(await hookBlocks(options, 'mcp__deepwiki__ask_question')).toBeNull();
     expect(await hookBlocks(options, 'mcp__nanoclaw__add_mcp_server')).toBeNull();
-    expect(await hookBlocks(options, 'mcp__nanoclaw__send_message')).toBeNull();
   });
 });
 
-describe('an unresolved policy fails closed', () => {
-  it('denies everything configurable when the host sent no policy at all', async () => {
-    // The old contract, with a NON-empty allow-list, and no policy variable.
-    // Pre-fix this granted deepwiki plus every wildcard namespace. A container
-    // that cannot be told what it may call must not guess generously.
+describe('a policy the container cannot read restricts nothing', () => {
+  // Reading silence as a denial would let a host bug — or a host simply older
+  // than this file — narrow a live coworker. Only `mcp-tools set` narrows.
+  // This is safe because the host already scoped the proxy token and withheld
+  // the disallowed servers before the container started; these checks are
+  // blast-radius control, not the enforcement point.
+  it('restricts nothing when the host sent no policy at all', async () => {
     const options = await optionsUnder({
       NANOCLAW_ALLOWED_MCP_TOOLS: JSON.stringify(['mcp__deepwiki__ask_question']),
     });
-    expect(Object.keys(options.mcpServers).sort()).toEqual(['nanoclaw']);
-    expect(await hookBlocks(options, 'mcp__deepwiki__ask_question')).toContain('unresolved');
-    expect(await hookBlocks(options, 'mcp__codex__codex')).toContain('unresolved');
-    // The built-in surface is untouched — the agent can still work and report.
+    expect(Object.keys(options.mcpServers).sort()).toEqual(['codex', 'deepwiki', 'nanoclaw']);
+    expect(await hookBlocks(options, 'mcp__deepwiki__ask_question')).toBeNull();
+    expect(await hookBlocks(options, 'mcp__codex__codex')).toBeNull();
     expect(await hookBlocks(options, 'mcp__nanoclaw__install_packages')).toBeNull();
-    expect(await hookBlocks(options, 'mcp__nanoclaw__send_message')).toBeNull();
   });
 
-  it('denies everything configurable when the policy is corrupt', async () => {
+  it('restricts nothing when the policy is corrupt', async () => {
     const options = await optionsUnder({ NANOCLAW_MCP_POLICY: '{not json' });
-    expect(await hookBlocks(options, 'mcp__deepwiki__ask_question')).toContain('unresolved');
+    expect(await hookBlocks(options, 'mcp__deepwiki__ask_question')).toBeNull();
     expect(await hookBlocks(options, 'mcp__nanoclaw__send_message')).toBeNull();
-    expect(await hookBlocks(options, 'mcp__nanoclaw__create_agent')).toBeNull();
   });
 
-  it('denies everything configurable when the policy names an unknown state', async () => {
+  it('restricts nothing when the policy has no `restrict` field', async () => {
     const options = await optionsUnder({
       NANOCLAW_MCP_POLICY: JSON.stringify({ state: 'whatever', tools: ['mcp__deepwiki__ask_question'] }),
     });
-    expect(await hookBlocks(options, 'mcp__deepwiki__ask_question')).toContain('unresolved');
+    expect(await hookBlocks(options, 'mcp__deepwiki__ask_question')).toBeNull();
   });
 });
 
@@ -205,7 +204,7 @@ describe('a partial allow-list keeps exactly what it names', () => {
   it('wires only the servers it can use and blocks the rest of their namespaces', async () => {
     const options = await optionsUnder({
       NANOCLAW_MCP_POLICY: JSON.stringify({
-        state: 'explicit',
+        restrict: true,
         tools: ['mcp__deepwiki__ask_question'],
         origin: 'explicit allow-list',
       }),
@@ -222,7 +221,7 @@ describe('unrestricted stays unrestricted', () => {
   it('keeps the per-server wildcards and blocks nothing', async () => {
     const options = await optionsUnder({
       NANOCLAW_MCP_POLICY: JSON.stringify({
-        state: 'unrestricted',
+        restrict: false,
         tools: ['mcp__deepwiki__ask_question'],
         origin: 'admin default',
       }),

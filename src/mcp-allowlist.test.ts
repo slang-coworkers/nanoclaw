@@ -25,7 +25,6 @@ const { parseAllowlistFlag, parseStoredAllowlist, resolveMcpAllowlist, UNRESTRIC
 type Group = Parameters<typeof resolveMcpAllowlist>[0];
 
 const ALL = ['mcp__srv__read', 'mcp__srv__write', 'mcp__other__deploy'];
-const MANIFEST = ['mcp__srv__read'];
 
 function group(overrides: Partial<Group> = {}): Group {
   return { allowed_mcp_tools: null, is_admin: 0, coworker_type: 'slang-fix', ...overrides } as Group;
@@ -48,7 +47,7 @@ afterEach(() => {
 
 describe('resolveMcpAllowlist', () => {
   it('an explicit list is explicit, and blocks everything else discovered', () => {
-    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: JSON.stringify(['mcp__srv__read']) }), MANIFEST);
+    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: JSON.stringify(['mcp__srv__read']) }));
     expect(r.state).toBe('explicit');
     expect(r.tools).toEqual(['mcp__srv__read']);
     expect(r.blocked).toEqual(['mcp__srv__write', 'mcp__other__deploy']);
@@ -58,57 +57,57 @@ describe('resolveMcpAllowlist', () => {
     // The security-relevant regression: the admin branch returned every
     // discovered tool and never looked at the stored column, so an admin
     // restriction survived only until the container respawned.
-    const r = resolveMcpAllowlist(
-      group({ is_admin: 1, allowed_mcp_tools: JSON.stringify(['mcp__srv__read']) }),
-      MANIFEST,
-    );
+    const r = resolveMcpAllowlist(group({ is_admin: 1, allowed_mcp_tools: JSON.stringify(['mcp__srv__read']) }));
     expect(r.state).toBe('explicit');
     expect(r.tools).toEqual(['mcp__srv__read']);
     expect(r.tools).not.toEqual(expect.arrayContaining(['mcp__other__deploy']));
   });
 
-  it('nothing stored on a normal group INHERITS the coworker-type manifest (not unrestricted)', () => {
-    const r = resolveMcpAllowlist(group(), MANIFEST);
+  it('nothing stored restricts NOTHING — the coworker-type manifest is not a permission grant', () => {
+    // Superseded #1116 semantics: this used to resolve to the type manifest,
+    // which meant adopting a coworker type silently narrowed the group. Scope
+    // now changes only when someone runs `ncl groups mcp-tools set`.
+    const r = resolveMcpAllowlist(group());
     expect(r.state).toBe('inherited');
-    expect(r.tools).toEqual(MANIFEST);
-    // The old `get` reported this row as unrestricted with nothing blocked.
-    expect(r.blocked).toEqual(['mcp__srv__write', 'mcp__other__deploy']);
-    expect(r.origin).toContain('slang-fix');
+    expect(r.restricts).toBe(false);
+    expect(r.blocked).toEqual([]);
+    expect(r.tools).toEqual(ALL);
   });
 
-  it('nothing stored on an ADMIN group is unrestricted', () => {
-    const r = resolveMcpAllowlist(group({ is_admin: 1 }), MANIFEST);
-    expect(r.state).toBe('unrestricted');
+  it('nothing stored on an ADMIN group also restricts nothing', () => {
+    const r = resolveMcpAllowlist(group({ is_admin: 1 }));
+    expect(r.restricts).toBe(false);
     expect(r.tools).toEqual(ALL);
     expect(r.blocked).toEqual([]);
   });
 
-  it('ADMIN_MCP_TOOLS supplies the admin default when no list is stored', () => {
+  it('ADMIN_MCP_TOOLS still narrows an admin group — an operator env var, set on purpose', () => {
     process.env.ADMIN_MCP_TOOLS = 'mcp__srv__read, mcp__other__deploy';
-    const r = resolveMcpAllowlist(group({ is_admin: 1 }), MANIFEST);
+    const r = resolveMcpAllowlist(group({ is_admin: 1 }));
+    // `state` says where it came from; `restricts` says whether it filters.
+    // This is the one case where they differ, which is why they are separate.
     expect(r.state).toBe('inherited');
+    expect(r.restricts).toBe(true);
     expect(r.tools).toEqual(['mcp__srv__read', 'mcp__other__deploy']);
     expect(r.origin).toContain('ADMIN_MCP_TOOLS');
   });
 
   it('an explicit list still beats ADMIN_MCP_TOOLS', () => {
     process.env.ADMIN_MCP_TOOLS = 'mcp__other__deploy';
-    const r = resolveMcpAllowlist(
-      group({ is_admin: 1, allowed_mcp_tools: JSON.stringify(['mcp__srv__read']) }),
-      MANIFEST,
-    );
+    const r = resolveMcpAllowlist(group({ is_admin: 1, allowed_mcp_tools: JSON.stringify(['mcp__srv__read']) }));
     expect(r.tools).toEqual(['mcp__srv__read']);
   });
 
   it('the unrestricted sentinel is a state of its own', () => {
-    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: UNRESTRICTED }), MANIFEST);
+    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: UNRESTRICTED }));
     expect(r.state).toBe('unrestricted');
+    expect(r.restricts).toBe(false);
     expect(r.tools).toEqual(ALL);
     expect(r.blocked).toEqual([]);
   });
 
   it('reads the legacy comma-separated column as an explicit list', () => {
-    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: 'mcp__srv__read,mcp__srv__write' }), MANIFEST);
+    const r = resolveMcpAllowlist(group({ allowed_mcp_tools: 'mcp__srv__read,mcp__srv__write' }));
     expect(r.state).toBe('explicit');
     expect(r.tools).toEqual(['mcp__srv__read', 'mcp__srv__write']);
   });

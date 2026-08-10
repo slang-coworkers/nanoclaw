@@ -179,10 +179,11 @@ async function main(): Promise<void> {
   // the host MCP proxy — which used to be the ONLY thing the allow-list
   // actually configured — could never see, let alone block, a call to it.
   const mcpPolicy = parseMcpPolicy(process.env as Record<string, string | undefined>);
-  log(`MCP policy: ${mcpPolicy.state} (${mcpPolicy.origin}) — ${mcpPolicy.tools.length} tool(s) allowed`);
-  if (mcpPolicy.state === 'unresolved') {
-    log('MCP policy UNRESOLVED — every configurable MCP tool is denied for this session');
-  }
+  log(
+    mcpPolicy.restrict
+      ? `MCP policy: explicit external allow-list (${mcpPolicy.origin}) — ${mcpPolicy.tools.length} tool(s); servers outside it will not be wired`
+      : `MCP policy: no external restrictions (${mcpPolicy.origin})`,
+  );
 
   // Merge additional MCP servers from host configuration
   if (process.env.NANOCLAW_MCP_SERVERS) {
@@ -205,7 +206,7 @@ async function main(): Promise<void> {
     if (name === 'nanoclaw') continue;
     if (!serverHasAllowedTools(mcpPolicy, name)) {
       delete mcpServers[name];
-      log(`MCP server "${name}" withheld — no tool on it is allowed by the ${mcpPolicy.state} policy`);
+      log(`MCP server "${name}" withheld — the explicit allow-list names no tool on it`);
     }
   }
 
