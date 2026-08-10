@@ -60,13 +60,19 @@ function buildOrigin(root: string): string {
   git(seed, 'branch', 'work-deps');
 
   git(seed, 'checkout', '-q', 'nv-main');
-  // is_owned() derives the owned set from nv-main's path-guard allowlist (the
-  // same file .github/nv-path-guard/check.py enforces), matched with git's own
-  // gitignore engine. src/** + the shared config are owned; groups/** is not.
+  // Ownership comes from nv-main's path-guard allowlist (the same file
+  // .github/nv-path-guard/check.py enforces), evaluated by nv-main's own matcher
+  // — BOTH taken from origin/nv-main. src/** + the shared config are owned;
+  // groups/** is not. The matcher has to be committed here because the script
+  // extracts it from the ref rather than reading the worktree.
   fs.mkdirSync(path.join(seed, '.github', 'nv-path-guard'), { recursive: true });
   fs.writeFileSync(
     path.join(seed, '.github', 'nv-path-guard', 'nv-main.txt'),
     '.github/**\nsrc/**\npackage.json\npnpm-lock.yaml\n',
+  );
+  fs.copyFileSync(
+    path.join(HERE, '..', '.github', 'nv-path-guard', 'ownership.py'),
+    path.join(seed, '.github', 'nv-path-guard', 'ownership.py'),
   );
   fs.writeFileSync(path.join(seed, 'src', 'foo.ts'), 'MAIN\n');
   fs.writeFileSync(path.join(seed, 'groups', 'main', 'notes.txt'), 'MAIN\n');
@@ -160,6 +166,29 @@ describe('merge-train.sh resolver', () => {
       expect(res.status).toBe(1);
       expect(git(repo, 'status', '--porcelain').trim()).toBe('');
       expect(res.stderr).toMatch(/owned set/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('an ambient .gitignore cannot widen what nv-main owns', () => {
+    // is_owned() used to be `git check-ignore` run IN THIS REPO, which also reads
+    // the repo's .gitignore. The real nanoclaw .gitignore lists `groups/*`,
+    // `data/`, `logs/`, `dist/`, `repos/` and `coworkers/*.yaml` — none of them
+    // in nv-main.txt — so a conflict in any of those was silently auto-resolved
+    // toward nv-main, dropping the sibling's content. That is the exact class of
+    // regression this abort exists to catch, so the leak disabled the guard.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-ignore-'));
+    try {
+      const origin = buildOrigin(root);
+      const repo = cloneOn(root, origin, 'c', 'work-unowned');
+      fs.writeFileSync(path.join(repo, '.gitignore'), 'groups/\n');
+
+      const res = runMergeTrain(repo, 'nv-main');
+      expect(res.status).toBe(1);
+      expect(res.stderr).toMatch(/owned set/);
+      // The sibling's content survived; nothing was resolved toward nv-main.
+      expect(fs.readFileSync(path.join(repo, 'groups', 'main', 'notes.txt'), 'utf-8')).toBe('WORK\n');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
