@@ -145,18 +145,29 @@ def check_group_skills(repo, rep):
 def volatile_fields():
     """The snapshot's own exclusion list, IMPORTED from dump-scheduled-tasks.py.
 
-    Copying it would let the doctor's comparison drift from what the dumper actually
-    writes — a reconciliation tool disagreeing with its own source of truth. That module
-    guards main() behind __name__, so importing it runs only constants and defs.
+    Returns `(fields, error)`. **The error is the point.** Copying this list would let
+    the doctor's comparison drift from what the dumper actually writes — a
+    reconciliation tool disagreeing with its own source of truth — so when the import
+    fails the caller has to say so rather than quietly compare under a different schema.
+
+    This used to swallow every exception and return the in-file fallback with no
+    signal at all. A field the dumper had *stopped* excluding would then be ignored by
+    the stale copy, the comparison would find no difference, and the doctor would
+    report a clean result it had no basis for — the precise "unknown is treated as
+    clean" failure this tool exists to refuse. See check_tasks for what the caller now
+    does with the error.
+
+    That module guards main() behind __name__, so importing it runs only constants
+    and defs.
     """
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dump-scheduled-tasks.py")
     try:
         spec = importlib.util.spec_from_file_location("dump_scheduled_tasks", path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        return set(mod.VOLATILE)
-    except Exception:
-        return set(VOLATILE_FALLBACK)
+        return set(mod.VOLATILE), None
+    except Exception as e:
+        return set(VOLATILE_FALLBACK), f"{type(e).__name__}: {e}"
 
 
 # `ncl` exits nonzero for BOTH "no such task" and "the socket is down / you are not
@@ -217,7 +228,32 @@ def check_tasks(repo, rep):
         rep.unknown("tasks", f"{ncl} not present — cannot read live task definitions", "missing-input")
         return
 
-    volatile = volatile_fields()
+    # The exclusion set decides what "identical" means, so a doubt about IT is a doubt
+    # about every comparison below. Two distinct problems, reported separately:
+    #
+    #   import failed  -> we are comparing under a copy that nothing keeps in sync.
+    #                     Real differences are still worth surfacing, but a CLEAN
+    #                     result from this run certifies nothing, so it is degraded to
+    #                     UNKNOWN at the bottom rather than reported as OK.
+    #   import worked   -> then the in-file fallback is dead weight that only matters
+    #     but differs   the next time an import fails. If it has drifted from the
+    #                     authoritative set it is a false-clean waiting to happen, and
+    #                     that is drift between two copies in one repo: actionable now.
+    volatile, volatile_err = volatile_fields()
+    degraded = volatile_err is not None
+    if degraded:
+        rep.unknown("tasks-volatile-set",
+                    f"could not import the dumper's exclusion set ({volatile_err}) — comparing "
+                    f"under the in-file fallback, which nothing keeps in sync",
+                    "volatile-import")
+    elif volatile != set(VOLATILE_FALLBACK):
+        only_live = ", ".join(sorted(volatile - set(VOLATILE_FALLBACK))) or "-"
+        only_copy = ", ".join(sorted(set(VOLATILE_FALLBACK) - volatile)) or "-"
+        rep.drift("tasks-volatile-set",
+                  f"VOLATILE_FALLBACK in {os.path.basename(__file__)} has drifted from the "
+                  f"dumper's VOLATILE (only in dumper: {only_live}; only in fallback: {only_copy}). "
+                  "The fallback is what a failed import compares under, so update it.")
+
     drift, missing, unknown = [], [], []
     for sid, want in sorted(committed.items()):
         live, kind, detail = ncl_task(repo, sid)
@@ -246,7 +282,17 @@ def check_tasks(repo, rep):
                            f"{', '.join(drift[:4])}. "
                            "Re-run scripts/dump-scheduled-tasks.py if the live value is intended.")
     if not missing and not drift and not unknown:
-        rep.ok("tasks", f"all {len(committed)} live definitions match the snapshot")
+        if degraded:
+            # Everything matched — under an exclusion set we could not verify. Saying OK
+            # here is the false clean: the run genuinely cannot distinguish "no drift"
+            # from "the field that drifted is one the stale copy still excludes".
+            rep.unknown("tasks",
+                        f"{len(committed)} definition(s) compared equal, but under the fallback "
+                        "exclusion set — a clean result cannot be trusted until the dumper "
+                        "imports again",
+                        "volatile-import")
+        else:
+            rep.ok("tasks", f"all {len(committed)} live definitions match the snapshot")
 
 
 def check_branch(repo, rep):

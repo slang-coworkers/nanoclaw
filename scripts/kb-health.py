@@ -394,12 +394,34 @@ def main():
                   "original, then re-run.", file=sys.stderr)
             return 1
 
+    # IDEMPOTENT PER DAY. Appending unconditionally made a re-run record the same date
+    # twice, and — worse — made `prev` this morning's run of *itself*, so the digest
+    # diffed a sample against its own near-identical predecessor and reported a day of
+    # flat zeros. Replacing today's entry keeps a retry harmless and keeps `prev` the
+    # previous DISTINCT day.
+    hist = [h for h in hist if not (isinstance(h, dict) and h.get("date") == cur["date"])]
     prev = hist[-1] if hist else None
     hist.append(cur)
     hist = hist[-90:]  # ~3 months of daily runs
-    write_atomic(hist_path, json.dumps(hist, indent=1))
 
+    # BUILD AND VALIDATE BOTH DOCUMENTS BEFORE EITHER REPLACE. These are two files that
+    # have to agree: the history is the only record of the trend and cannot be
+    # recomputed, and the digest is what a human reads. Replacing the history first and
+    # then failing to build the digest left a recorded sample with no digest describing
+    # it, and nothing said so. Anything that can raise happens here, while both targets
+    # still hold their previous contents.
+    hist_json = json.dumps(hist, indent=1)
+    json.loads(hist_json)  # round-trip: refuse to replace the trend with something unreadable
     text = digest(cur, prev)
+    if not text.strip():
+        print("REFUSING to record: the digest rendered empty; history left untouched.", file=sys.stderr)
+        return 1
+
+    # Two replaces remain two syscalls — POSIX offers nothing better — but both inputs
+    # are now known-good, so the only surviving window is a crash between them. The
+    # sample carries `generated_at` and the digest carries the same date, so a torn pair
+    # is detectable rather than silent.
+    write_atomic(hist_path, hist_json)
     write_atomic(os.path.join(shared, "KB-HEALTH.md"), text + "\n")
     if not args.json_only:
         print(text)

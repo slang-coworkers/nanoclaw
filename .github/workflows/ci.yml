@@ -237,3 +237,11 @@ jobs:
       # where a silent regression deletes knowledge rather than breaking a build.
       - name: Container skill tests (Python)
         run: python3 container/skills/learnings-wiki/test_learnings_wiki.py
+
+      # The KB observability producers are Python too, and their suite ran NOWHERE:
+      # #1124 added 32 tests and CI never executed one of them, so the review's
+      # "32/32 passed" was a hand-run that nothing repeats. These two tools decide
+      # whether the KB is reported healthy; a silent regression here does not break a
+      # build, it just starts saying everything is fine.
+      - name: KB observability tests (Python)
+        run: python3 scripts/test_kb_observability.py
