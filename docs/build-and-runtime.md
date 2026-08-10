@@ -44,7 +44,7 @@ Both are committed. CI and the Dockerfile run `--frozen-lockfile` variants — a
 - **BuildKit cache mounts** — `/var/cache/apt`, `/var/lib/apt`, `/root/.bun/install/cache`, `/root/.cache/pnpm`. Rebuilds where `package.json`/`bun.lock` haven't changed are fast. Requires BuildKit (default on Docker 23+, Apple Container-compat).
 - **`tini` as init** — reaps Chromium zombies, forwards signals so in-flight `outbound.db` writes finalize on SIGTERM.
 - **`entrypoint.sh`** (extracted) — `exec bun run /app/src/index.ts` under tini. Readable and diffable.
-- **No compiled `/app/dist`** — Bun runs TS directly. The host also mounts fresh source over `/app/src` at session start, so host edits take effect without rebuilding the image.
+- **No compiled `/app/dist`** — Bun runs TS directly. The host mounts source over `/app/src` at session start, so source edits take effect without rebuilding the image — but the mount is the group's OWN copy (`data/v2-sessions/<group>/agent-runner-src/`), created once at group creation and never auto-refreshed. An edit in `container/agent-runner/src/` therefore reaches a NEW group immediately and an EXISTING one not at all, until `pnpm run check:runner-staleness -- --refresh` copies it across and the group restarts.
 
 ## Session wake (two paths)
 

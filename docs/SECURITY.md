@@ -46,7 +46,7 @@ spawn. For the default (Claude) provider these are:
 | `/workspace/agent/.claude-fragments` | group `.claude-fragments/` | RO | Composer skill/MCP fragments |
 | `/app/CLAUDE.md` | `container/CLAUDE.md` | RO | Shared base doc imported by the composed entry point |
 | `/home/node/.claude` | `data/v2-sessions/<group>/.claude-shared/` | RW | Claude state, settings, skill symlinks |
-| `/app/src` | `container/agent-runner/src/` | RO | Shared agent-runner source (same for all groups) |
+| `/app/src` | `data/v2-sessions/<group>/agent-runner-src/` | **RW** | Per-group COPY of `container/agent-runner/src/`, taken once at group creation. Writable on purpose (`self-customize` routes source edits here), so it is agent-reachable state, not shared read-only source |
 | `/app/skills` | `container/skills/` | RO | Shared container skills |
 | `/workspace/extra/<name>` | allowlisted host dir | RO (RW only if allowed) | Operator-configured additional mounts |
 

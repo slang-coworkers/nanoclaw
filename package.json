@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "typecheck:all": "node scripts/typecheck-gate.mjs",
     "check:runtime-deps": "node scripts/check-runtime-resolvable.mjs",
+    "check:runner-staleness": "tsx scripts/check-agent-runner-staleness.ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:fix": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
