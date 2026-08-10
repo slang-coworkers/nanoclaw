@@ -12,20 +12,43 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
+    // scripts/ mixes .ts and hand-written .mjs (release.mjs, typecheck-gate.mjs,
+    // mirror-skills.mjs, check-runtime-resolvable.mjs, and setup/registry's
+    // credential-helper.mjs). scripts/release.test.ts imports release.mjs, so
+    // without allowJs it is an implicit any (TS7016). The alternative — a
+    // hand-written release.d.mts — duplicates six signatures with nothing
+    // checking that the copy stays true, which is how a declaration file starts
+    // lying. Inferring from the .mjs source cannot drift.
+    //
+    // `checkJs` stays OFF (its default): these files are typechecked as
+    // dependencies, never judged as sources. Turning it on would open a second
+    // debt front in files the build never compiles.
+    "allowJs": true,
     // Files live outside ./src now, so the build's rootDir cannot apply.
     "rootDir": ".",
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false
   },
-  // src/ was already covered by the build config; setup/ (98 files) and
-  // scripts/ (38) never were. container/agent-runner has its own tsconfig and
-  // its own CI step — it is not listed here, but several scripts/ and setup/
-  // files import it, so tsc loads it transitively anyway.
+  // `src`, NOT `src*` — the wildcard form does not do what it looks like it
+  // does. A no-wildcard entry naming a directory gets an implicit `/**/*` and
+  // recurses; `src*` is a glob, matches the directory without recursing, and so
+  // pulled in only the ~90 src files that setup/ and scripts/ happened to import
+  // transitively. 255 of src's 345 files were invisible to this config. They
+  // were never unchecked — tsconfig.json (`src/**/*`) covers all 345 in CI's
+  // "Typecheck host" step — but the ratchet did not see them, so a src-only
+  // regression could not be caught HERE, and the header this file's baseline
+  // prints would have been claiming a reach it did not have. Spelling it `src`
+  // costs nothing (still zero errors) and makes the claim true.
+  //
+  // setup/ (101 files) and scripts/ (40) are covered by nothing else.
+  // container/agent-runner has its own tsconfig and its own CI step — it is not
+  // listed here, but several scripts/ and setup/ files import it, so tsc loads
+  // it transitively anyway.
   //
   // setup/types/optional-modules.d.ts comes in under `setup`; it lives there
   // rather than at a new top-level types/ because nv-main already owns setup/**
   // (.github/nv-path-guard/nv-main.txt) and the stubs exist for setup's files.
-  "include": ["src*", "setup", "scripts"],
+  "include": ["src", "setup", "scripts"],
   "exclude": ["node_modules", "dist"]
 }
