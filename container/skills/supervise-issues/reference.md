@@ -318,6 +318,13 @@ before that, say so and escalate rather than reporting the target met. Trusting 
 projection is exactly how a run stopped deleting while the volume was still near ENOSPC.
 `summary.unmeasured_builds` > 0 means `reclaim_gb` understates the total further still.
 
+`summary.projected_sufficient_count` is how far down `reclaim` the projection *expects* to
+get. It is a hint, **not a limit** — dispatch past it whenever measured free is still short.
+`select()` used to enforce that number by truncating the list, which contradicted the rule
+above: the executor stops on measured `df`, so any estimate that ran optimistic left it out
+of list with eligible builds it was never handed, escalating for disk it already had the
+answer to.
+
 The four tiers it returns (semantics, not numbers — the numbers live in the script):
 
 - **REAP** = PR `MERGED`/`CLOSED`, OR issue `CLOSED` (work done or abandoned, even if a draft PR

@@ -92,17 +92,53 @@ class TestSelect(unittest.TestCase):
         # are selected, ordered most-idle first.
         self.assertEqual(dirs, ["oldest", "middle", "young"])
 
-    def test_reclaim_stops_once_target_met(self):
+    def test_projection_reports_a_cutoff_without_truncating_the_list(self):
         payload = {
             "free_gb": 20, "running_dirs": [],
             "worktrees": [wt(f"w{i}", idle=30 + i, size=10, build_size=6) for i in range(5)],
         }
         out = wg.select(payload)
         # free 20, target 40 → need +20G. Each reclaim frees the 6G build/, NOT
-        # the 10G worktree, so it takes four — not the two the old whole-worktree
-        # math projected, which would have stopped 8G short of the target.
-        self.assertEqual(out["summary"]["reclaim_count"], 4)
-        self.assertEqual(out["summary"]["reclaim_gb"], 24.0)
+        # the 10G worktree, so the PROJECTION expects four to be enough.
+        self.assertEqual(out["summary"]["projected_sufficient_count"], 4)
+        # …but every eligible candidate is still handed over. select() used to
+        # `break` here and return only those four, which is the F17 defect: the
+        # executor stops on MEASURED df, so if those four free less than their
+        # `du` claimed it runs out of list with a fifth eligible build it was
+        # never told about, and escalates for disk it was holding the answer to.
+        self.assertEqual(out["summary"]["reclaim_count"], 5)
+        self.assertEqual([w["dir"] for w in out["reclaim"]],
+                         ["w4", "w3", "w2", "w1", "w0"])
+        # reclaim_gb is the whole list's build/ total, so it can exceed the need.
+        self.assertEqual(out["summary"]["reclaim_gb"], 30.0)
+
+    def test_headroom_survives_an_over_optimistic_estimate(self):
+        """The failure F17 describes, end to end.
+
+        Four builds claim 6G each; the executor deletes them and `df` moves less
+        than promised (open handles, hard links, a build still growing). It must
+        still have somewhere to go."""
+        payload = {
+            "free_gb": 20, "running_dirs": [],
+            "worktrees": [wt(f"w{i}", idle=30 + i, size=10, build_size=6) for i in range(5)],
+        }
+        reclaim = wg.select(payload)["reclaim"]
+        cutoff = wg.select(payload)["summary"]["projected_sufficient_count"]
+        # There is list left AFTER the point the projection thought sufficient.
+        self.assertGreater(len(reclaim), cutoff)
+
+    def test_a_measured_empty_build_is_not_reported_unmeasured(self):
+        # 0.0 as a real measurement and 0.0 as "never measured" are different
+        # facts. `unmeasured_builds` exists to say "the projection understates";
+        # counting a genuine 0.0 there reports missing data that is not missing.
+        payload = {
+            "free_gb": 2, "running_dirs": [],
+            "worktrees": [wt("measured-empty", idle=40, size=1, build_size=0.0),
+                          wt("never-measured", idle=41, size=1, build_size=OMIT)],
+        }
+        out = wg.select(payload)
+        self.assertEqual(out["summary"]["reclaim_count"], 2)
+        self.assertEqual(out["summary"]["unmeasured_builds"], 1)
 
     def test_reclaim_skips_worktrees_without_build(self):
         out = wg.select({"free_gb": 2, "running_dirs": [],
