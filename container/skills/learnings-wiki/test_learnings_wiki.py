@@ -12,10 +12,10 @@ one rebuild. A retirement that silently un-retires invites the fold to resurrect
 that was deliberately superseded. Run: python3 test_learnings_wiki.py
 """
 
+import contextlib
 import importlib.util
 import io
 import json
-import contextlib
 import os
 import re
 import shutil
@@ -34,7 +34,7 @@ THIRD = "1754300000003-third-rule"
 
 def load_builder(kb_root):
     """Extract the embedded python from SKILL.md and import it against a KB root."""
-    blocks = re.findall(r"```python\n(.*?)```", SKILL.read_text(encoding="utf-8"), re.S)
+    blocks = re.findall(r"```python\n(.*?)```", SKILL.read_text(encoding="utf-8"), re.DOTALL)
     assert blocks, "SKILL.md has no ```python block"
     src = max(blocks, key=len)
     path = os.path.join(kb_root, ".learnings_wiki.py")
@@ -109,7 +109,8 @@ class Fold(unittest.TestCase):
         """
         return subprocess.run(
             [sys.executable, os.path.join(self.kb, ".learnings_wiki.py"), *args],
-            capture_output=True, text=True, env=dict(os.environ, WIKI_KB_ROOT=self.kb))
+            capture_output=True, text=True, check=False,
+            env=dict(os.environ, WIKI_KB_ROOT=self.kb))
 
 
 class TestSupersessionSurvivesRebuild(Fold):
@@ -229,7 +230,9 @@ class TestCorruptLineageIsNotAnEmptyLineage(Fold):
         refused = False
         try:
             self.build()
-        except Exception:
+        except Exception:  # noqa: BLE001 — "refused" means refused for ANY reason;
+            # naming types here would let a NEW failure mode read as a clean build,
+            # which is the exact regression this test exists to catch.
             refused = True
         # THE assertion. Everything else is diagnosis.
         self.assertEqual(self.lineage_file().read_text(encoding="utf-8"), bad,

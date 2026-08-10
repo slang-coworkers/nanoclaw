@@ -61,6 +61,12 @@ tsconfig.json
 # cannot reach setup/ or scripts/ without breaking the build. Same owner as the
 # tsconfig it extends — nowhere else can be canonical for it.
 tsconfig.typecheck.json
+# The Python equivalent of tsconfig.typecheck.json: config for the ruff gate in
+# ci.yml, which lints the path-guard matcher, the KB observability producers and
+# the skill scripts. Same owner as the workflow that runs it — .github/** is
+# already nv-main's, and a lint config that could diverge from the job invoking
+# it is worse than no config.
+ruff.toml
 vitest.config.ts
 vitest.setup.ts
 .github/**

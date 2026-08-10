@@ -179,6 +179,25 @@ jobs:
         with:
           python-version: '3.11'
 
+      # The Python tail of this repo — the path-guard matcher, the KB
+      # observability producers, the task dumper, regression-quality, and the
+      # supervise-issues / learnings-wiki skill scripts — had no linter at all,
+      # while the TypeScript side has had `tsc` plus the ratcheted gate below
+      # for months. Several of these run on a production cron and decide whether
+      # the KB is reported healthy, so a silent break there does not fail a
+      # build; it just starts publishing a wrong number.
+      #
+      # The version is pinned EXACTLY, and config lives in ruff.toml, which does
+      # not override the rule selection. That combination is what makes the gate
+      # deterministic: a new ruff release cannot turn an unrelated PR red, and
+      # bumping the pin surfaces the new findings as a reviewed diff. Do not
+      # relax this to a range.
+      - name: Lint Python (ruff)
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check ruff==0.16.2
+          ruff --version
+          ruff check --output-format=github .
+
       - name: Build (needed for fetch-skills + tests)
         run: pnpm run build
 

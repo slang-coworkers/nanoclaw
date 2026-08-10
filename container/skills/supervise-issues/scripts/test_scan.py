@@ -23,6 +23,7 @@ def run_scan(payload):
         input=json.dumps(payload),
         capture_output=True,
         text=True,
+        check=False,  # the assert below is the exit-code check
     )
     assert p.returncode == 0, f"scan.py exited {p.returncode}: {p.stderr}"
     return json.loads(p.stdout)

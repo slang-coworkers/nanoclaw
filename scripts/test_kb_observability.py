@@ -6,11 +6,11 @@ that matters: a monitor that breaks loudly gets fixed, a monitor that breaks qui
 believed. Run: python3 test_kb_observability.py
 """
 
+import contextlib
 import datetime
 import importlib.util
 import io
 import json
-import contextlib
 import os
 import stat
 import sys
@@ -242,7 +242,7 @@ class TestHealthPublishesBothDocumentsOrNeither(HealthRepo):
         self.run_ok(repo)
         self.run_ok(repo)
         hist = self.hist(shared)
-        self.assertEqual([h["date"] for h in hist][0], "1999-01-01")
+        self.assertEqual(next(h["date"] for h in hist), "1999-01-01")
         self.assertEqual(len(hist), 2)
 
     def test_a_digest_failure_leaves_BOTH_targets_untouched(self):
@@ -251,9 +251,9 @@ class TestHealthPublishesBothDocumentsOrNeither(HealthRepo):
         before_hist = Path(shared, ".kb-health.json").read_text()
         before_md = Path(shared, "KB-HEALTH.md").read_text()
 
-        with mock.patch.object(health, "digest", side_effect=RuntimeError("render blew up")):
-            with self.assertRaises(RuntimeError):
-                self.run_ok(repo)
+        with mock.patch.object(health, "digest", side_effect=RuntimeError("render blew up")), \
+                self.assertRaises(RuntimeError):
+            self.run_ok(repo)
 
         # Pre-fix the history had already been replaced by the time digest ran, so the
         # sample was recorded with no digest describing it and nothing said so.
@@ -332,7 +332,7 @@ class TestDoctorUnknownIsNotClean(DoctorRepo):
 
     def test_unknown_findings_retain_the_underlying_error(self):
         _, doc, _, _ = self.run_doctor(tempfile.mkdtemp())
-        builder = [f for f in doc["findings"] if f["check"] == "builder"][0]
+        builder = next(f for f in doc["findings"] if f["check"] == "builder")
         self.assertEqual(builder["reason"], "missing-input")
         self.assertIn("SKILL.md", builder["message"])
 
@@ -384,7 +384,7 @@ class TestDoctorComparesFullDefinition(DoctorRepo):
 
     def test_matching_definitions_are_ok(self):
         repo = self.make_repo(ncl_script=self.live(), tasks=[TASK])
-        code, doc, _, _ = self.run_doctor(repo)
+        _, doc, _, _ = self.run_doctor(repo)
         self.assertEqual(self.checks(doc)["tasks"], "OK")
 
     def test_a_changed_schedule_is_drift_even_when_the_prompt_matches(self):
@@ -444,7 +444,7 @@ class TestDoctorVolatileSetIsNeverSilentlyStale(DoctorRepo):
         # ruleset could not be verified.
         repo = self.make_repo(ncl_script=self.live(tries=7, completed_runs=99), tasks=[TASK])
         with self.broken_import():
-            code, doc, _, _ = self.run_doctor(repo)
+            _, doc, _, _ = self.run_doctor(repo)
         checks = self.checks(doc)
         # Asserted FIRST and on a key that exists on both trees, so the pre-fix run
         # fails with 'OK' != 'UNKNOWN' — the false clean itself — rather than dying on

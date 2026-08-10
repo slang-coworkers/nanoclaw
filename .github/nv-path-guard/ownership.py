@@ -92,8 +92,12 @@ import subprocess
 import sys
 import tempfile
 import weakref
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Self
 
 __all__ = ["OwnershipError", "OwnershipSpec", "build_spec", "load_patterns"]
 
@@ -165,7 +169,7 @@ class OwnershipSpec:
     def close(self) -> None:
         self._cleanup()
 
-    def __enter__(self) -> "OwnershipSpec":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc: object) -> None:
@@ -211,7 +215,7 @@ class OwnershipSpec:
         stdin: bytes | None = None,
         cwd: Path | None = None,
         ok: tuple[int, ...] = (0,),
-    ) -> "subprocess.CompletedProcess[bytes]":
+    ) -> subprocess.CompletedProcess[bytes]:
         try:
             proc = subprocess.run(
                 ["git", *args],
@@ -219,6 +223,7 @@ class OwnershipSpec:
                 capture_output=True,
                 cwd=str(cwd) if cwd else None,
                 env=self._env,
+                check=False,  # `ok` below decides which exit codes are acceptable
             )
         except OSError as e:
             raise OwnershipError(

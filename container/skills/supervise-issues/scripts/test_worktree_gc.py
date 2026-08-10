@@ -196,8 +196,8 @@ class TestCriticalTier(unittest.TestCase):
         out = wg.select({"free_gb": 1, "running_dirs": [],
                          "worktrees": [wt("keep5", idle=5, size=7),
                                        wt("stale40", idle=40, size=7)]})
-        self.assertEqual([w["dir"] for w in out["reclaim"]][0], "stale40")
-        self.assertEqual(set(w["dir"] for w in out["reclaim"]), {"stale40", "keep5"})
+        self.assertEqual(next(w["dir"] for w in out["reclaim"]), "stale40")
+        self.assertEqual({w["dir"] for w in out["reclaim"]}, {"stale40", "keep5"})
 
 
 class TestBuildSizeAccounting(unittest.TestCase):

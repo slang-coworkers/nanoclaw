@@ -30,7 +30,17 @@ and both outputs are written temp+fsync+rename so a crash mid-write cannot trunc
 Exit codes: 0 = a sample was recorded, 1 = refused to record (degraded input or
 unparseable history), 2 = misconfigured (no such directory).
 """
-import argparse, collections, datetime, glob, json, os, re, shutil, sys, tempfile, time
+import argparse
+import collections
+import datetime
+import glob
+import json
+import os
+import re
+import shutil
+import sys
+import tempfile
+import time
 
 CHARS_PER_TOKEN = 4  # rough; consistent across runs is what matters for trends
 ATOM_WINDOW_DAYS = 14
@@ -91,7 +101,7 @@ def scan_reads(files):
     for f in files:
         pend = {}
         try:
-            fh = open(f, errors="replace")
+            fh = open(f, errors="replace")  # noqa: SIM115 — closed by `with fh:` below
         except OSError:
             continue
         with fh:
@@ -100,7 +110,9 @@ def scan_reads(files):
                     continue
                 try:
                     rec = json.loads(line)
-                except Exception:
+                except json.JSONDecodeError:
+                    # One malformed line in a multi-GB transcript is normal and
+                    # uninteresting; logging each would drown the run.
                     continue
                 msg = rec.get("message") or {}
                 content = msg.get("content")
@@ -146,7 +158,7 @@ def atom_stats(learn_dir, recent_n=400, threshold=0.6):
     def slug(p):
         return re.sub(r"^\d{13}-", "", os.path.basename(p))[:-3]
     def toks(s):
-        return set(w for w in re.split(r"[^a-z0-9]+", s.lower()) if len(w) > 3)
+        return {w for w in re.split(r"[^a-z0-9]+", s.lower()) if len(w) > 3}
     slugs = [(p, slug(p), toks(slug(p))) for p in files]
     exact = collections.Counter(s for _, s, _ in slugs)
     dup_exact = sum(v - 1 for v in exact.values() if v > 1)
@@ -187,6 +199,11 @@ def atom_stats(learn_dir, recent_n=400, threshold=0.6):
     }
 
 
+def _read_lossy(path):
+    with open(path, errors="replace") as fh:
+        return fh.read()
+
+
 def shape_stats(shared, per_page):
     wiki = os.path.join(shared, "wiki")
     cdir = os.path.join(wiki, "concepts")
@@ -194,7 +211,7 @@ def shape_stats(shared, per_page):
     sizes = sorted(os.path.getsize(p) for p in pages) or [0]
     over = [os.path.basename(p) for p in pages if os.path.getsize(p) > 40_000]
     notldr = [os.path.basename(p) for p in pages
-              if "## TL;DR" not in open(p, errors="replace").read()]
+              if "## TL;DR" not in _read_lossy(p)]
     dead = [os.path.basename(p) for p in pages if per_page.get(os.path.basename(p), 0) == 0]
     idx = os.path.join(wiki, "index.md")
     mirrors = {}
@@ -375,8 +392,12 @@ def main():
             with open(hist_path, encoding="utf-8") as fh:
                 hist = json.load(fh)
             if not isinstance(hist, list):
-                raise ValueError(f"history is {type(hist).__name__}, expected a list")
-        except Exception as e:
+                # TRY004 wants TypeError. This is not argument validation — it is
+                # "the file on disk is corrupt", and it must be caught below with
+                # the JSONDecodeError that means the same thing.
+                raise ValueError(  # noqa: TRY004
+                    f"history is {type(hist).__name__}, expected a list")
+        except (OSError, ValueError) as e:
             # PRESERVE, do not reset. `hist = []` silently threw away the entire trend and
             # the very next write replaced the file with a single fresh sample — one bad
             # read and the history was gone with nothing to inspect. Move it aside and
