@@ -101,6 +101,17 @@ def classify(wt, running_dirs):
     return "KEEP"
 
 
+def build_measured(wt):
+    """Was this worktree's `build/` actually measured?
+
+    Separate from `build_gb() == 0.0` because a genuinely-measured empty build
+    and an unmeasured one are different facts that happened to share a number.
+    `unmeasured_builds` exists to tell an operator "the projection understates";
+    counting a real 0.0 there reports missing data that is not missing."""
+    v = wt.get("build_size_gb")
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0
+
+
 def build_gb(wt):
     """GB a reclaim of this worktree actually frees: its `build/` directory ONLY.
 
@@ -129,6 +140,7 @@ def select(payload):
         tiers[classify(wt, running)].append(wt)
 
     reclaim = []
+    projected_cutoff = 0
     projected = free
     under_pressure = free < PRESSURE_GATE_GB
     critical = free < CRITICAL_GATE_GB
@@ -152,10 +164,28 @@ def select(payload):
             ]
             cands += idle_keep
         cands.sort(key=lambda w: w.get("pr_idle_days") or 0, reverse=True)
-        for w in cands:
+
+        # EVERY eligible candidate is returned, in priority order. The projected
+        # cutoff is recorded as an INDEX, not enforced by truncating the list.
+        #
+        # This used to `break` once `projected >= TARGET_FREE_GB`, which made the
+        # projection decide the list while the execution instructions
+        # (reference.md) correctly tell the executor to stop on the MEASURED `df`.
+        # Those two rules only agree while every estimate is exact. When a
+        # deletion frees less than its `du` said — open file handles, hard links,
+        # a build still growing — measured free stays under target and the
+        # executor runs out of list, with eligible builds it was never given.
+        # It then escalates to a human for disk it was holding the answer to.
+        #
+        # Returning the full list cannot over-delete: the executor re-measures
+        # after each deletion and stops at the target. The projection's only job
+        # is to say "this many should be enough", and it says so below.
+        reclaim.extend(cands)
+        projected_cutoff = len(cands)
+        for i, w in enumerate(cands):
             if projected >= TARGET_FREE_GB:
+                projected_cutoff = i
                 break
-            reclaim.append(w)
             # build/ only — the reclaim deletes nothing else.
             projected += build_gb(w)
 
@@ -170,7 +200,12 @@ def select(payload):
         # Reclaims whose build/ was never measured. They are still dispatched
         # (deleting them can only help); they simply contribute 0 to the
         # projection, so a non-zero count here means reclaim_gb understates.
-        "unmeasured_builds": sum(1 for w in reclaim if build_gb(w) == 0.0),
+        "unmeasured_builds": sum(1 for w in reclaim if not build_measured(w)),
+        # How far down `reclaim` the PROJECTION expects to get. Advisory only:
+        # the executor walks the list until MEASURED `df` reaches target, which
+        # may be sooner (estimates were conservative) or later (they were not).
+        # Everything past this index is eligible headroom, not padding.
+        "projected_sufficient_count": projected_cutoff,
         # A LOWER BOUND on where free space lands, never a result: re-measure
         # with `df` after each deletion and stop on the MEASURED number. Trusting
         # this figure is how a run stopped while still under ENOSPC pressure.
