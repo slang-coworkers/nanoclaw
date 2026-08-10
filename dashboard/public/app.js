@@ -376,7 +376,21 @@ async function triggerFunnelRefresh(btn) {
   setTimeout(poll, 4000);
 }
 
+// Guards against CONCURRENT loadFunnel() runs duplicating the detail panels.
+//
+// loadFunnel clears #funnel-detail once, then appends a container per panel with
+// an `await` before each one. Two overlapping calls therefore interleave: the
+// second clears the pane the first is still filling, and both keep appending
+// after their awaits resolve. Observed on prod as "KB doctor" twice and "Unit
+// cost" three times in one view.
+//
+// Each run takes a ticket; after every await it checks whether a newer run has
+// started and, if so, stops touching the DOM.
+let funnelRenderSeq = 0;
+
 async function loadFunnel() {
+  const myGen = ++funnelRenderSeq;
+  const stale = () => myGen !== funnelRenderSeq;
   const board = document.getElementById('funnel-board');
   const detail = document.getElementById('funnel-detail');
   const stamp = document.getElementById('funnel-stamp');
@@ -386,11 +400,13 @@ async function loadFunnel() {
     const res = await fetch('/api/funnel');
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      if (board) board.innerHTML = `<span style="color:var(--text-muted)">No funnel snapshot yet. ${esc(j.hint || '')}</span>`;
+      if (board)
+        board.innerHTML = `<span style="color:var(--text-muted)">No funnel snapshot yet. ${esc(j.hint || '')}</span>`;
       if (detail) detail.innerHTML = '';
       return;
     }
     snap = await res.json();
+    if (stale()) return;
   } catch (e) {
     if (board) board.innerHTML = 'Failed to load funnel.';
     return;
@@ -398,7 +414,8 @@ async function loadFunnel() {
   if (stamp) stamp.textContent = snap.generatedAt ? `snapshot: ${formatTime(snap.generatedAt)}` : '';
   const b = snap.board || {};
   // Shared cell padding so columns don't collapse into "prodlegototalconv".
-  const TH = (label, left) => `<th style="text-align:${left ? 'left' : 'right'};padding:2px 12px;border-bottom:1px solid var(--border)">${label}</th>`;
+  const TH = (label, left) =>
+    `<th style="text-align:${left ? 'left' : 'right'};padding:2px 12px;border-bottom:1px solid var(--border)">${label}</th>`;
   const TD = (html, left, bold) =>
     `<td style="text-align:${left ? 'left' : 'right'};padding:2px 12px">${bold ? '<b>' + html + '</b>' : html}</td>`;
   const row = (label, cell, base) => {
@@ -422,7 +439,8 @@ async function loadFunnel() {
 
   // nv-slang-bot contribution table (separate snapshot: /api/bot-contributions).
   if (detail) {
-    detail.innerHTML = '<div style="color:var(--text-muted);font-size:11px;margin-top:16px">Loading bot contributions…</div>';
+    detail.innerHTML =
+      '<div style="color:var(--text-muted);font-size:11px;margin-top:16px">Loading bot contributions…</div>';
     try {
       const r = await fetch('/api/bot-contributions');
       if (r.ok) {
@@ -442,10 +460,12 @@ async function loadFunnel() {
     // the block above meant a bot-contributions network error or malformed body
     // jumped to that catch, skipped this fetch entirely and cleared the pane —
     // the two panels have no reason to fail together.
+    if (stale()) return;
     const rqBox = document.createElement('div');
     detail.appendChild(rqBox);
     try {
       const rq = await fetch('/api/regression-quality');
+      if (stale()) return;
       if (rq.ok) {
         rqBox.innerHTML = regressionQualityHtml(await rq.json());
       } else {
@@ -468,10 +488,12 @@ async function loadFunnel() {
     // serving a validated `doctor` block since #1121/#1169 — fail-closed, no
     // false zeroes — and nothing rendered it, so the only way to read a drift
     // report was curl. A check nobody can see is a check nobody acts on.
+    if (stale()) return;
     const kbBox = document.createElement('div');
     detail.appendChild(kbBox);
     try {
       const kb = await fetch('/api/kb-health');
+      if (stale()) return;
       if (kb.ok) {
         kbBox.innerHTML = kbDoctorHtml(await kb.json());
       } else {
@@ -484,10 +506,12 @@ async function loadFunnel() {
     }
 
     // Unit cost. Own container + own try/catch, same reasoning as the two above.
+    if (stale()) return;
     const ucBox = document.createElement('div');
     detail.appendChild(ucBox);
     try {
       const uc = await fetch('/api/unit-cost?weeks=4');
+      if (stale()) return;
       if (uc.ok) {
         ucBox.innerHTML = unitCostHtml(await uc.json());
       } else {
@@ -655,14 +679,17 @@ function kbDoctorHtml(kbh) {
   }
 
   // An incomplete run cannot be read as a clean one.
-  const incomplete = d.complete === false
-    ? ' · <b style="color:' + warn + '">incomplete run</b>'
-    : '';
+  const incomplete = d.complete === false ? ' · <b style="color:' + warn + '">incomplete run</b>' : '';
 
   const pill = (label, n, color) =>
     '<span style="display:inline-block;padding:1px 7px;margin-right:6px;border-radius:9px;' +
-    'background:var(--bg-alt,#2226);font-size:11px;color:' + color + '">' +
-    esc(label) + ' ' + n + '</span>';
+    'background:var(--bg-alt,#2226);font-size:11px;color:' +
+    color +
+    '">' +
+    esc(label) +
+    ' ' +
+    n +
+    '</span>';
 
   const pills =
     pill('drift', drift, drift ? bad : okColor) +
@@ -670,24 +697,33 @@ function kbDoctorHtml(kbh) {
     // hiding it inside "drift 0" is exactly the false clean this replaced.
     pill('unknown', unknown, unknown ? warn : 'var(--text-muted)');
 
-  const items = Array.isArray(d.drift) && d.drift.length
-    ? '<ul style="margin:6px 0 0 16px;padding:0;font-size:11px;color:var(--text-muted)">' +
-      d.drift.map((x) => '<li style="margin-bottom:3px">' + esc(String(x)) + '</li>').join('') +
-      '</ul>'
-    : '';
+  const items =
+    Array.isArray(d.drift) && d.drift.length
+      ? '<ul style="margin:6px 0 0 16px;padding:0;font-size:11px;color:var(--text-muted)">' +
+        d.drift.map((x) => '<li style="margin-bottom:3px">' + esc(String(x)) + '</li>').join('') +
+        '</ul>'
+      : '';
 
-  const unknowns = Array.isArray(d.unknown) && d.unknown.length
-    ? '<ul style="margin:6px 0 0 16px;padding:0;font-size:11px;color:' + warn + '">' +
-      d.unknown.map((x) => '<li style="margin-bottom:3px">' + esc(String(x)) + '</li>').join('') +
-      '</ul>'
-    : '';
+  const unknowns =
+    Array.isArray(d.unknown) && d.unknown.length
+      ? '<ul style="margin:6px 0 0 16px;padding:0;font-size:11px;color:' +
+        warn +
+        '">' +
+        d.unknown.map((x) => '<li style="margin-bottom:3px">' + esc(String(x)) + '</li>').join('') +
+        '</ul>'
+      : '';
 
   return (
     '<div style="margin-top:20px">' +
     '<div style="font-weight:600;margin-bottom:4px">KB doctor ' +
     '<span style="font-weight:400;color:var(--text-muted)">— ' +
-    esc(d.status || 'unknown') + freshness + incomplete + '</span></div>' +
-    pills + items + unknowns +
+    esc(d.status || 'unknown') +
+    freshness +
+    incomplete +
+    '</span></div>' +
+    pills +
+    items +
+    unknowns +
     '</div>'
   );
 }
@@ -772,9 +808,10 @@ function funnelApproverPanel(decisions, ledger) {
   // expands on click. Native <details> (no `open`) = collapsed by default, no
   // JS wiring — matches the existing collapsible pattern used elsewhere in the
   // funnel (e.g. the "All N actionable issues" details).
-  const empty = decisions.length === 0
-    ? '<div style="font-size:11px;color:var(--text-muted);margin:4px 0 0 18px">No approver decisions recorded yet.</div>'
-    : `<table style="border-collapse:collapse;font-size:12px;width:100%;max-width:820px;margin-top:6px">
+  const empty =
+    decisions.length === 0
+      ? '<div style="font-size:11px;color:var(--text-muted);margin:4px 0 0 18px">No approver decisions recorded yet.</div>'
+      : `<table style="border-collapse:collapse;font-size:12px;width:100%;max-width:820px;margin-top:6px">
         <thead><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase">
           <th style="text-align:left;padding:3px 10px 3px 0">PR</th>
           <th style="text-align:left;padding:3px 10px">Decision → Human</th>
@@ -820,26 +857,43 @@ function reviewCyclesHtml(rc) {
     // sit near zero — in the census that was 5 CHANGES_REQUESTED against 1,178
     // COMMENTED, which is exactly why it cannot be the headline on its own.
     const mean =
-      c.meanFeedbackRounds === null || c.meanFeedbackRounds === undefined
-        ? nd
-        : '<b>' + c.meanFeedbackRounds + '</b>';
+      c.meanFeedbackRounds === null || c.meanFeedbackRounds === undefined ? nd : '<b>' + c.meanFeedbackRounds + '</b>';
     const meanCr =
       c.meanChangesRequested === null || c.meanChangesRequested === undefined ? nd : String(c.meanChangesRequested);
     const hasCov = c.coveragePct !== null && c.coveragePct !== undefined;
     const cov = hasCov ? c.coveragePct + '%' : '—';
     const warn = hasCov && c.coveragePct < 50 ? ';color:var(--warn,#c90)' : '';
     return (
-      '<td style="text-align:right;padding:2px 12px">' + mean + '</td>' +
-      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' + meanCr + '</td>' +
-      '<td style="text-align:right;padding:2px 12px">' + (c.reviewedPrs || 0) + '</td>' +
-      '<td style="text-align:right;padding:2px 12px' + warn + '">' + cov + '</td>' +
-      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' + (c.unreviewedPrs || 0) + '</td>' +
-      '<td style="text-align:right;padding:2px 12px' + (c.unknownPrs ? ';color:var(--warn,#c90)' : ';color:var(--text-muted)') + '">' +
-        (c.unknownPrs || 0) + '</td>'
+      '<td style="text-align:right;padding:2px 12px">' +
+      mean +
+      '</td>' +
+      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' +
+      meanCr +
+      '</td>' +
+      '<td style="text-align:right;padding:2px 12px">' +
+      (c.reviewedPrs || 0) +
+      '</td>' +
+      '<td style="text-align:right;padding:2px 12px' +
+      warn +
+      '">' +
+      cov +
+      '</td>' +
+      '<td style="text-align:right;padding:2px 12px;color:var(--text-muted)">' +
+      (c.unreviewedPrs || 0) +
+      '</td>' +
+      '<td style="text-align:right;padding:2px 12px' +
+      (c.unknownPrs ? ';color:var(--warn,#c90)' : ';color:var(--text-muted)') +
+      '">' +
+      (c.unknownPrs || 0) +
+      '</td>'
     );
   };
   const th = (l, r) =>
-    '<th style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 12px;border-bottom:1px solid var(--border)">' + l + '</th>';
+    '<th style="text-align:' +
+    (r ? 'right' : 'left') +
+    ';padding:2px 12px;border-bottom:1px solid var(--border)">' +
+    l +
+    '</th>';
   // The producer publishes its own definition; render it rather than hardcoding
   // a description that can drift away from the metric.
   const roundRule =
@@ -856,9 +910,21 @@ function reviewCyclesHtml(rc) {
     '<div style="font-weight:600;margin-bottom:4px">Human review cost ' +
     '<span style="font-weight:400;color:var(--text-muted)">— Verity-decided merged PRs</span></div>' +
     '<table style="border-collapse:collapse;font-size:10px">' +
-    '<tr>' + th('author') + th('mean rounds', 1) + th('of which CR', 1) + th('reviewed', 1) + th('coverage', 1) + th('unreviewed', 1) + th('unknown', 1) + '</tr>' +
-    '<tr><td style="padding:2px 12px">bot</td>' + cell(rc.bot) + '</tr>' +
-    '<tr><td style="padding:2px 12px">human</td>' + cell(rc.human) + '</tr>' +
+    '<tr>' +
+    th('author') +
+    th('mean rounds', 1) +
+    th('of which CR', 1) +
+    th('reviewed', 1) +
+    th('coverage', 1) +
+    th('unreviewed', 1) +
+    th('unknown', 1) +
+    '</tr>' +
+    '<tr><td style="padding:2px 12px">bot</td>' +
+    cell(rc.bot) +
+    '</tr>' +
+    '<tr><td style="padding:2px 12px">human</td>' +
+    cell(rc.human) +
+    '</tr>' +
     '</table>' +
     '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
     roundRule +
@@ -896,19 +962,28 @@ function regressionQualityHtml(rq) {
     '<div style="font-weight:600;margin-bottom:4px">Regression quality ' +
     '<span style="font-weight:400;color:var(--text-muted)">— ' +
     esc(rq.repo || '') +
-    ' · label "' + esc(rq.label || 'regression') + '"' + freshness + '</span></div>';
+    ' · label "' +
+    esc(rq.label || 'regression') +
+    '"' +
+    freshness +
+    '</span></div>';
 
   // COLLECTION FAILURE IS NOT A ZERO. Schema 2 fails closed: an incomplete run
   // emits NO metric keys at all and sets complete:false with a populated errors[].
   // Render the breakage — a number here would read as "quality improved" when in
   // fact nothing was measured, which is the defect this schema exists to stop.
   if (rq.complete === false) {
-    const errs = (rq.errors || []).slice(0, 4).map((e) => esc(String(e))).join('<br>');
+    const errs = (rq.errors || [])
+      .slice(0, 4)
+      .map((e) => esc(String(e)))
+      .join('<br>');
     return (
-      '<div style="margin-top:20px">' + title +
+      '<div style="margin-top:20px">' +
+      title +
       '<div style="padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
       '<b>Collection incomplete — no metric published.</b> This is NOT zero regressions; the run failed and ' +
-      'deliberately emitted no numbers.' + (errs ? '<br>' + errs : '') +
+      'deliberately emitted no numbers.' +
+      (errs ? '<br>' + errs : '') +
       '</div></div>'
     );
   }
@@ -932,32 +1007,56 @@ function regressionQualityHtml(rq) {
     .slice(-6);
 
   const th = (l, r) =>
-    '<th style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 10px;border-bottom:1px solid var(--border)">' + l + '</th>';
+    '<th style="text-align:' +
+    (r ? 'right' : 'left') +
+    ';padding:2px 10px;border-bottom:1px solid var(--border)">' +
+    l +
+    '</th>';
   const td = (v, r) => '<td style="text-align:' + (r ? 'right' : 'left') + ';padding:2px 10px">' + v + '</td>';
   const num = (v) => (v === null || v === undefined ? '—' : v);
 
   const rows = months
-    .map((m) =>
-      '<tr>' + td(esc(m)) +
-      td(num(cohortBot[m]), 1) + td(num(rateBot[m]), 1) +
-      td(num(cohortHuman[m]), 1) + td(num(rateHuman[m]), 1) +
-      td('<span style="color:var(--text-muted)">' + num(cohortMixed[m]) + '</span>', 1) + '</tr>',
+    .map(
+      (m) =>
+        '<tr>' +
+        td(esc(m)) +
+        td(num(cohortBot[m]), 1) +
+        td(num(rateBot[m]), 1) +
+        td(num(cohortHuman[m]), 1) +
+        td(num(rateHuman[m]), 1) +
+        td('<span style="color:var(--text-muted)">' + num(cohortMixed[m]) + '</span>', 1) +
+        '</tr>',
     )
     .join('');
 
   const mixedTotal = Object.values(cohortMixed).reduce((a, b) => a + (b || 0), 0);
 
   return (
-    '<div style="margin-top:20px">' + title +
+    '<div style="margin-top:20px">' +
+    title +
     '<div style="margin-bottom:6px;padding:4px 8px;border-left:3px solid var(--warn,#c90);color:var(--text-muted);max-width:640px;line-height:1.45">' +
-    '<b>Attribution coverage ' + cov + '%</b> (' + attributed + '/' + rq.issues + '). ' +
+    '<b>Attribution coverage ' +
+    cov +
+    '%</b> (' +
+    attributed +
+    '/' +
+    rq.issues +
+    '). ' +
     'The rest cite no causal reference, so the split below is a <b>floor, not a total</b>.' +
     '</div>' +
     '<table style="border-collapse:collapse;font-size:10px">' +
-    '<tr>' + th('culprit merge month') + th('bot-caused', 1) + th('per 100 bot PRs', 1) +
-    th('human-caused', 1) + th('per 100 human PRs', 1) + th('mixed', 1) + '</tr>' + rows + '</table>' +
+    '<tr>' +
+    th('culprit merge month') +
+    th('bot-caused', 1) +
+    th('per 100 bot PRs', 1) +
+    th('human-caused', 1) +
+    th('per 100 human PRs', 1) +
+    th('mixed', 1) +
+    '</tr>' +
+    rows +
+    '</table>' +
     '<div style="color:var(--text-muted);margin-top:4px;max-width:640px;line-height:1.45">' +
-    'Cohorted by the <b>culprit PR\'s merge month</b>, so numerator and denominator describe the same ' +
+    "Cohorted by the <b>culprit PR's merge month</b>, so numerator and denominator describe the same " +
     'population. Rate, not count: bot merge volume rose sharply, so a raw count climbs even when quality ' +
     'is flat.' +
     (mixedTotal
@@ -1144,21 +1243,36 @@ function funnelFlowHtml(ip, funnelRows) {
 // Unified issue table: all actionable issues in one table with inst, issue, PR, state, CI, stage.
 function funnelIssueTableHtml(issues, rows, statusColors) {
   if (!issues || issues.length === 0) return '';
-  const actionable = issues.filter(i => i.bucket !== 'not_our_problem');
+  const actionable = issues.filter((i) => i.bucket !== 'not_our_problem');
   if (actionable.length === 0) return '';
   const rowByIssue = {};
   const rowByPr = {};
-  for (const r of (rows || [])) {
+  for (const r of rows || []) {
     if (r.issue) rowByIssue[`${r.repo}#${r.issue}`] = r;
     if (r.pr) rowByPr[`${r.repo}#${r.pr}`] = r;
   }
-  const bucketLabel = { bot_pr: '', triage_only: 'triage-only', never_engaged: 'never-engaged', resolved_elsewhere: 'resolved-elsewhere' };
-  const bucketColor = { bot_pr: null, triage_only: statusColors.triage, never_engaged: statusColors.never, resolved_elsewhere: statusColors.resolved };
+  const bucketLabel = {
+    bot_pr: '',
+    triage_only: 'triage-only',
+    never_engaged: 'never-engaged',
+    resolved_elsewhere: 'resolved-elsewhere',
+  };
+  const bucketColor = {
+    bot_pr: null,
+    triage_only: statusColors.triage,
+    never_engaged: statusColors.never,
+    resolved_elsewhere: statusColors.resolved,
+  };
   let html = `<details style="margin-top:14px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--text)">All ${actionable.length} actionable issues</summary>`;
   // Verity (PR-approver) shadow-mode decision colors. Approve = green,
   // block = red, abstain = muted. Falls through to '' (blank cell) when no
   // approver ran for the PR.
-  const approverColor = { WOULD_APPROVE: statusColors.merged, BLOCK: '#e5534b', ABSTAIN_POLICY: 'var(--text-muted)', ABSTAIN_INFRA: 'var(--text-muted)' };
+  const approverColor = {
+    WOULD_APPROVE: statusColors.merged,
+    BLOCK: '#e5534b',
+    ABSTAIN_POLICY: 'var(--text-muted)',
+    ABSTAIN_INFRA: 'var(--text-muted)',
+  };
   html += `<table class="admin-table" style="margin-top:4px;font-size:11px"><thead><tr><th>Inst</th><th>Issue</th><th>PR</th><th>State</th><th>CI</th><th>Stage</th><th>Note</th><th>Approver</th></tr></thead><tbody>`;
   for (const i of actionable) {
     const repo = (i.repo || '').split('/').pop();
@@ -1168,17 +1282,40 @@ function funnelIssueTableHtml(issues, rows, statusColors) {
     const stageVal = i.stage || (r ? r.stage : '') || bucketLabel[i.bucket] || i.bucket;
     const prNum = r ? r.pr : i.prNumber;
     const prUrl = r ? r.prUrl : i.prUrl;
-    const prCell = prNum ? (prUrl ? `<a href="${esc(prUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">#${prNum}</a>` : `#${prNum}`) : '';
-    const stateCell = r ? (r.prState || '') : (i.bucket === 'bot_pr' && i.stage ? (i.stage === 'merged' ? 'merged' : i.stage === 'pr-closed' || i.stage === 'superseded' ? 'closed' : 'open') : '');
-    const ciCell = r ? (r.ciBucket || '') : '';
-    const noteCell = r ? (r.note || '') : (i.note || '');
-    const color = bucketColor[i.bucket] || (stageVal === 'merged' ? statusColors.merged : stageVal === 'shipped-draft' ? statusColors.shipped : stageVal === 'pr-ready' ? statusColors.ready : '');
+    const prCell = prNum
+      ? prUrl
+        ? `<a href="${esc(prUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">#${prNum}</a>`
+        : `#${prNum}`
+      : '';
+    const stateCell = r
+      ? r.prState || ''
+      : i.bucket === 'bot_pr' && i.stage
+        ? i.stage === 'merged'
+          ? 'merged'
+          : i.stage === 'pr-closed' || i.stage === 'superseded'
+            ? 'closed'
+            : 'open'
+        : '';
+    const ciCell = r ? r.ciBucket || '' : '';
+    const noteCell = r ? r.note || '' : i.note || '';
+    const color =
+      bucketColor[i.bucket] ||
+      (stageVal === 'merged'
+        ? statusColors.merged
+        : stageVal === 'shipped-draft'
+          ? statusColors.shipped
+          : stageVal === 'pr-ready'
+            ? statusColors.ready
+            : '');
     const style = color ? ` style="color:${color}"` : '';
     // Approver cell: Verity's decision, with the joined human outcome shown as
     // "DECISION → HUMAN" once the human review lands (accuracy at a glance).
     const appr = r ? r.approver : null;
     const apprText = appr ? (appr.human ? `${appr.decision} → ${appr.human}` : appr.decision) : '';
-    const apprStyle = appr && approverColor[appr.decision] ? ` style="color:${approverColor[appr.decision]}"` : ' style="color:var(--text-muted)"';
+    const apprStyle =
+      appr && approverColor[appr.decision]
+        ? ` style="color:${approverColor[appr.decision]}"`
+        : ' style="color:var(--text-muted)"';
     html += `<tr><td>${esc(inst)}</td><td>${esc(repo)} ${issueLink}</td><td>${prCell}</td><td>${esc(stateCell)}</td><td>${esc(ciCell)}</td><td${style}>${esc(stageVal)}</td><td style="color:var(--text-muted)">${esc(noteCell)}</td><td${apprStyle}>${esc(apprText)}</td></tr>`;
   }
   html += '</tbody></table></details>';
@@ -1214,10 +1351,16 @@ function funnelWeeklyTrendSvg(weekly) {
     .join('');
   const rollPts = weekly.map((w, i) => `${x(i).toFixed(1)},${y(w.rollingWinRate || 0).toFixed(1)}`).join(' ');
   const rawDots = weekly
-    .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${w.merged}/${w.actionable})</title></circle>`)
+    .map(
+      (w, i) =>
+        `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${w.merged}/${w.actionable})</title></circle>`,
+    )
     .join('');
   const rollDots = weekly
-    .map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(w.rollingWinRate || 0).toFixed(1)}" r="3" fill="#3fb950"><title>${esc(w.week)} rolling: ${Math.round((w.rollingWinRate || 0) * 100)}%</title></circle>`)
+    .map(
+      (w, i) =>
+        `<circle cx="${x(i).toFixed(1)}" cy="${y(w.rollingWinRate || 0).toFixed(1)}" r="3" fill="#3fb950"><title>${esc(w.week)} rolling: ${Math.round((w.rollingWinRate || 0) * 100)}%</title></circle>`,
+    )
     .join('');
   // Value labels on each rolling point (the win-rates are small, so the line
   // hugs the axis — the number must be spelled out). Placed just above each dot.
@@ -1229,7 +1372,11 @@ function funnelWeeklyTrendSvg(weekly) {
     })
     .join('');
   const xlabels = weekly
-    .map((w, i) => (i % Math.ceil(n / 6 || 1) === 0 ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(w.week.slice(5))}</text>` : ''))
+    .map((w, i) =>
+      i % Math.ceil(n / 6 || 1) === 0
+        ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(w.week.slice(5))}</text>`
+        : '',
+    )
     .join('');
   // Direction hint: last rolling vs first rolling.
   const first = weekly[0].rollingWinRate || 0,
@@ -1335,7 +1482,11 @@ function funnelWeeklyConversionSvg(weekly) {
     })
     .join('');
   const xlabels = weekly
-    .map((w, i) => (i % Math.ceil(n / 6 || 1) === 0 ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(w.week.slice(5))}</text>` : ''))
+    .map((w, i) =>
+      i % Math.ceil(n / 6 || 1) === 0
+        ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(w.week.slice(5))}</text>`
+        : '',
+    )
     .join('');
   // Direction hint: last rolling conversion vs first.
   const first = roll[0] || 0,
@@ -2924,7 +3075,6 @@ document.getElementById('legend-toggle')?.addEventListener('click', () => {
   if (legend) legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
 });
 
-
 document.getElementById('office-show-all')?.addEventListener('click', () => {
   officeShowAll = !officeShowAll;
   const btn = document.getElementById('office-show-all');
@@ -3769,7 +3919,11 @@ function tryRenderWebhookEnvelope(s) {
   const t = s.trimStart();
   if (!t.startsWith('{') || !t.includes('"event":"github.')) return null;
   let p;
-  try { p = JSON.parse(t); } catch { return null; }
+  try {
+    p = JSON.parse(t);
+  } catch {
+    return null;
+  }
   if (!p || typeof p !== 'object') return null;
   if (p.event === 'github.issue_opened') {
     const repo = p.repo || '';
@@ -4513,7 +4667,8 @@ document.addEventListener('click', async (e) => {
         const targets = data?.targets || [];
         if (!targets.length) {
           dispatchBadge.textContent = `→ ${dispatchBadge.dataset.dispatchTo} [pending]`;
-          dispatchBadge.title = 'Recipient session has not been minted yet — try again after the dispatch is processed.';
+          dispatchBadge.title =
+            'Recipient session has not been minted yet — try again after the dispatch is processed.';
           return;
         }
         const t = targets[0]; // v1 takes first; v2 will render a chooser if multiple
@@ -5510,16 +5665,17 @@ function renderCwSidebar() {
         ? ''
         : groupItems
             .map((cw) => {
-      const selected = cwState.selected === cw.folder ? ' selected' : '';
-      const label = cw.isMain ? `${cw.name} (main)` : cw.name;
-      const meta = cw.lastActivity ? timeAgo(cw.lastActivity) : '';
-      const updateDot = updateDotHtml(cw.isAutoUpdate);
-      const unread = hasUnread(cw.folder);
-      const approvalCount = cwState.approvalCountByFolder[cw.folder] || 0;
-      const statusTitle =
-        { idle: 'Idle', active: 'Active', working: 'Working', thinking: 'Thinking', error: 'Error' }[cw.status] ||
-        cw.status;
-      return `<div class="cw-item${selected}" data-folder="${esc(cw.folder)}">
+              const selected = cwState.selected === cw.folder ? ' selected' : '';
+              const label = cw.isMain ? `${cw.name} (main)` : cw.name;
+              const meta = cw.lastActivity ? timeAgo(cw.lastActivity) : '';
+              const updateDot = updateDotHtml(cw.isAutoUpdate);
+              const unread = hasUnread(cw.folder);
+              const approvalCount = cwState.approvalCountByFolder[cw.folder] || 0;
+              const statusTitle =
+                { idle: 'Idle', active: 'Active', working: 'Working', thinking: 'Thinking', error: 'Error' }[
+                  cw.status
+                ] || cw.status;
+              return `<div class="cw-item${selected}" data-folder="${esc(cw.folder)}">
       <div class="cw-dot ${cw.status}" title="${statusTitle}"></div>
       <div class="cw-item-info">
         <div class="cw-item-name">${esc(label)}${updateDot}</div>
@@ -6169,8 +6325,7 @@ function renderCwMessages() {
       // an action envelope is `{"action":"…"}` (or `{"type":"cli_response"…}`)
       // with no text. Hide those; keep everything with real text.
       const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
-      const isActionEnvelope =
-        isOutgoing && /^\s*\{\s*"action"\s*:\s*"[a-z_]+"/.test(text) && !/"text"\s*:/.test(text);
+      const isActionEnvelope = isOutgoing && /^\s*\{\s*"action"\s*:\s*"[a-z_]+"/.test(text) && !/"text"\s*:/.test(text);
       if (isActionEnvelope || isCliResponse) return '';
       if (m.isRelay) {
         const relayLabel = m.recipientCoworkerName
@@ -6287,8 +6442,7 @@ function renderCwMessages() {
       ? `<div style="text-align:center;padding:4px"><button id="cw-system-toggle" class="admin-load-more" style="font-size:9px;opacity:0.7">${cwState.showSystem ? `⚙ hide system (${systemHidden})` : `⚙ show system (${systemHidden})`}</button></div>`
       : '';
   if (!approvalHtml && !messageHtml) {
-    el.innerHTML =
-      systemToggleHtml || '<div class="cw-empty">No messages yet. Send a message to start.</div>';
+    el.innerHTML = systemToggleHtml || '<div class="cw-empty">No messages yet. Send a message to start.</div>';
     return;
   }
   const approvalCount = (cwState.pendingApprovals || []).length;
@@ -7029,7 +7183,9 @@ function renderCwThread() {
   const isA2aThread = !t.lane && (!!matchingNano?.a2a_peer || (t.sessionDirect && !t.threadId));
   // The thread_id this view is anchored to: in lane mode it's parentId; for a
   // session-direct open the carried-through tile thread; else parentId.
-  const anchorThreadId = t.lane ? t.parentId : t.threadId || (t.sessionDirect ? matchingNano?.thread_id || null : t.parentId);
+  const anchorThreadId = t.lane
+    ? t.parentId
+    : t.threadId || (t.sessionDirect ? matchingNano?.thread_id || null : t.parentId);
   // Offer the swim-lane on any thread spanning ≥2 coworkers (not just gh-*).
   // The server's lane=1 union is thread-agnostic; the only gate is presentational.
   // Count distinct coworkers (group_folder) with an active session on this exact
@@ -7040,9 +7196,7 @@ function renderCwThread() {
     typeof anchorThreadId === 'string' &&
     anchorThreadId.length > 0 &&
     new Set(
-      (cachedSessions || [])
-        .filter((s) => s.thread_id === anchorThreadId && s.group_folder)
-        .map((s) => s.group_folder),
+      (cachedSessions || []).filter((s) => s.thread_id === anchorThreadId && s.group_folder).map((s) => s.group_folder),
     ).size > 1;
   if (parentLabel) {
     const labelText = t.lane ? anchorThreadId : sessionLabelWithTitle(sessionIdForSlug, anchorThreadId || t.parentId);
@@ -7109,134 +7263,133 @@ function renderCwThread() {
   if (!msgsEl) return;
   const wasAtBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 60;
   const renderThreadMsg = (m) => {
-      // Seed rows (written by router.ts into inbound.db when a new per-thread
-      // session is minted) carry a `direction` inside their parsed content to
-      // override the table-based default. Without this override, an agent's
-      // own prior reply — stored in inbound.db for context — would render as
-      // "You" in the thread panel. See src/router.ts seed block.
-      const seededDirection =
-        m.parsedContent && (m.parsedContent.direction === 'outgoing' || m.parsedContent.direction === 'incoming')
-          ? m.parsedContent.direction
-          : null;
-      const effectiveDirection = seededDirection || m.direction;
-      const isOutgoing = effectiveDirection === 'outgoing';
-      const isFromCoworker = !isOutgoing && m.senderKind === 'coworker';
-      const cls = isFromCoworker ? 'coworker' : isOutgoing ? 'assistant' : 'user';
-      const time = m.timestamp ? formatTime(m.timestamp) : '';
-      const text = m.displayContent || m.content || '';
-      const renderAsMd = isOutgoing || isFromCoworker;
-      const webhookRendered = !renderAsMd ? tryRenderWebhookEnvelope(text) : null;
-      const body = text
-        ? webhookRendered || (renderAsMd ? md(text) : esc(text))
-        : '<span style="color:#9ca3af">(empty message)</span>';
-      // direction='outgoing' = agent reply; !outgoing = user or a2a sender.
-      const authorName = isOutgoing
-        ? esc(cwState.selected || 'agent')
-        : m.senderCoworkerName
-          ? `@${esc(m.senderCoworkerName)}`
-          : 'You';
-      const monogramSource = isOutgoing ? cwState.selected || 'A' : m.senderCoworkerName || 'You';
-      const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
-      // Hard-hide host↔container machine traffic in threads too: cli_request
-      // and any other bare system-action envelope (update_task, append_learning,
-      // create_agent, …) plus the cli_response reply. Action envelopes are
-      // `{"action":"…"}` with no "text" field; chat carries "text". See the
-      // main-feed path for rationale.
-      const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
-      const isActionEnvelope =
-        isOutgoing && /^\s*\{\s*"action"\s*:\s*"[a-z_]+"/.test(text) && !/"text"\s*:/.test(text);
-      if (isActionEnvelope || isCliResponse) return '';
-      if (m.isRelay) {
-        const relayLabel = m.recipientCoworkerName
-          ? `${authorName} → @${esc(m.recipientCoworkerName)}`
-          : `${authorName} · system action`;
-        const preview = (text || '').replace(/\s+/g, ' ').trim();
-        const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
-        const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
-        return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
+    // Seed rows (written by router.ts into inbound.db when a new per-thread
+    // session is minted) carry a `direction` inside their parsed content to
+    // override the table-based default. Without this override, an agent's
+    // own prior reply — stored in inbound.db for context — would render as
+    // "You" in the thread panel. See src/router.ts seed block.
+    const seededDirection =
+      m.parsedContent && (m.parsedContent.direction === 'outgoing' || m.parsedContent.direction === 'incoming')
+        ? m.parsedContent.direction
+        : null;
+    const effectiveDirection = seededDirection || m.direction;
+    const isOutgoing = effectiveDirection === 'outgoing';
+    const isFromCoworker = !isOutgoing && m.senderKind === 'coworker';
+    const cls = isFromCoworker ? 'coworker' : isOutgoing ? 'assistant' : 'user';
+    const time = m.timestamp ? formatTime(m.timestamp) : '';
+    const text = m.displayContent || m.content || '';
+    const renderAsMd = isOutgoing || isFromCoworker;
+    const webhookRendered = !renderAsMd ? tryRenderWebhookEnvelope(text) : null;
+    const body = text
+      ? webhookRendered || (renderAsMd ? md(text) : esc(text))
+      : '<span style="color:#9ca3af">(empty message)</span>';
+    // direction='outgoing' = agent reply; !outgoing = user or a2a sender.
+    const authorName = isOutgoing
+      ? esc(cwState.selected || 'agent')
+      : m.senderCoworkerName
+        ? `@${esc(m.senderCoworkerName)}`
+        : 'You';
+    const monogramSource = isOutgoing ? cwState.selected || 'A' : m.senderCoworkerName || 'You';
+    const monogram = esc((monogramSource || 'A').trim().charAt(0).toUpperCase() || 'A');
+    // Hard-hide host↔container machine traffic in threads too: cli_request
+    // and any other bare system-action envelope (update_task, append_learning,
+    // create_agent, …) plus the cli_response reply. Action envelopes are
+    // `{"action":"…"}` with no "text" field; chat carries "text". See the
+    // main-feed path for rationale.
+    const isCliResponse = !isOutgoing && /^\s*\{\s*"type"\s*:\s*"cli_response"/.test(text);
+    const isActionEnvelope = isOutgoing && /^\s*\{\s*"action"\s*:\s*"[a-z_]+"/.test(text) && !/"text"\s*:/.test(text);
+    if (isActionEnvelope || isCliResponse) return '';
+    if (m.isRelay) {
+      const relayLabel = m.recipientCoworkerName
+        ? `${authorName} → @${esc(m.recipientCoworkerName)}`
+        : `${authorName} · system action`;
+      const preview = (text || '').replace(/\s+/g, ' ').trim();
+      const short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
+      const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
+      return `<div class="cw-msg relay${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}"><div class="cw-msg-avatar" style="opacity:0.4">${monogram}</div>
         <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author" style="opacity:0.5">${relayLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(short)}</div>
         <div class="cw-msg-bubble relay-full" style="display:none;opacity:0.7">${body}</div></div>`;
-      }
-      // Overlay event: critique-gate REFUSED. Mirrors the main-view path
-      // above so threads also render with yellow border + collapsed by
-      // default. See the main-view block for the full rationale.
-      const isOverlayEvent = isOutgoing && /^\[critique-gate\] REFUSED/.test(text);
-      if (isOverlayEvent) {
-        const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
-        const headerLabel = `⚠ critique-gate refused ${m.recipientCoworkerName ? '→ @' + esc(m.recipientCoworkerName) : ''}`;
-        return `<div class="cw-msg overlay-event${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}">
+    }
+    // Overlay event: critique-gate REFUSED. Mirrors the main-view path
+    // above so threads also render with yellow border + collapsed by
+    // default. See the main-view block for the full rationale.
+    const isOverlayEvent = isOutgoing && /^\[critique-gate\] REFUSED/.test(text);
+    if (isOverlayEvent) {
+      const expanded = cwState._expandedRelays && cwState._expandedRelays.has(m.id);
+      const headerLabel = `⚠ critique-gate refused ${m.recipientCoworkerName ? '→ @' + esc(m.recipientCoworkerName) : ''}`;
+      return `<div class="cw-msg overlay-event${expanded ? '' : ' collapsed'}" data-relay-id="${esc(m.id)}">
         <div class="cw-msg-avatar" style="background:rgba(250,204,21,0.15);color:#ca8a04">⚠</div>
         <div class="cw-msg-header" onclick="var el=this.parentElement;el.classList.toggle('collapsed');var ev=new CustomEvent('relay-toggle',{detail:{id:el.dataset.relayId,open:!el.classList.contains('collapsed')}});document.dispatchEvent(ev)" style="cursor:pointer"><span class="cw-msg-author">${headerLabel}</span><span class="cw-msg-time">${time}</span><span style="font-size:8px;color:var(--text-dim);margin-left:6px">▸ toggle</span></div>
         <div class="cw-msg-bubble relay-preview" style="font-size:10px;color:var(--text-dim);font-style:italic">delivery marker without /codex-critique — click to expand</div>
         <div class="cw-msg-bubble relay-full" style="display:none">${body}</div></div>`;
-      }
-      if (m.cardType === 'card') {
-        return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
-      }
-      // Ask question card — render with option buttons if still pending.
-      // Mirrors the main-feed branch in renderCwMessages; the thread view
-      // fetches from the same /api/messages endpoint, so cardType/questionId/
-      // options/isPending are already populated. Without this branch the card
-      // fell through to plain text and the operator saw no buttons — leaving a
-      // timeout:0 ask_user_question wedged forever.
-      if (m.cardType === 'ask_question' && m.questionId && m.options && m.options.length > 0) {
-        const questionText = m.displayContent || m.content || '';
-        if (m.isPending) {
-          const btns = m.options
-            .map((opt) => {
-              const label = typeof opt === 'string' ? opt : opt.label || opt.value || String(opt);
-              const value = typeof opt === 'string' ? opt : opt.value || opt.label || String(opt);
-              return `<button class="question-btn" data-qid="${esc(m.questionId)}" data-option="${esc(value)}" style="background:#3B82F6;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(label)}</button>`;
-            })
-            .join('');
-          return `<div class="cw-msg assistant">
+    }
+    if (m.cardType === 'card') {
+      return renderCardBubble(m, { cls, monogram, authorName, time, isOutgoing });
+    }
+    // Ask question card — render with option buttons if still pending.
+    // Mirrors the main-feed branch in renderCwMessages; the thread view
+    // fetches from the same /api/messages endpoint, so cardType/questionId/
+    // options/isPending are already populated. Without this branch the card
+    // fell through to plain text and the operator saw no buttons — leaving a
+    // timeout:0 ask_user_question wedged forever.
+    if (m.cardType === 'ask_question' && m.questionId && m.options && m.options.length > 0) {
+      const questionText = m.displayContent || m.content || '';
+      if (m.isPending) {
+        const btns = m.options
+          .map((opt) => {
+            const label = typeof opt === 'string' ? opt : opt.label || opt.value || String(opt);
+            const value = typeof opt === 'string' ? opt : opt.value || opt.label || String(opt);
+            return `<button class="question-btn" data-qid="${esc(m.questionId)}" data-option="${esc(value)}" style="background:#3B82F6;color:#fff;border:none;border-radius:3px;padding:4px 14px;margin-right:6px;margin-top:4px;cursor:pointer;font-size:10px">${esc(label)}</button>`;
+          })
+          .join('');
+        return `<div class="cw-msg assistant">
           <div class="cw-msg-bubble" style="border-left:3px solid #3B82F6;padding-left:8px">
             ${md(questionText)}
             <div style="margin-top:8px">${btns}</div>
           </div>
           <div class="cw-msg-time">${time} <span style="font-size:7px;color:#3B82F6;font-style:italic">question</span></div>
         </div>`;
-        }
-        return `<div class="cw-msg assistant">
+      }
+      return `<div class="cw-msg assistant">
         <div class="cw-msg-bubble" style="border-left:3px solid #555;padding-left:8px;opacity:0.7">
           ${md(questionText)}
           <div style="margin-top:4px;font-size:9px;color:#666">(answered)</div>
         </div>
         <div class="cw-msg-time">${time} <span style="font-size:7px;color:#555;font-style:italic">question</span></div>
       </div>`;
+    }
+    const attachHtml = renderMessageAttachmentsHtml(m.attachments);
+    // Dispatch badge: when an outbound message contains <message to="X"
+    // thread_id="Y">, render a clickable "→ X" link that resolves the
+    // recipient session via /api/dispatch-targets and opens it. The badge
+    // stays inert (gray, no click) when the recipient session hasn't been
+    // minted yet — the host writes the inbound row only after the next
+    // wake of the recipient's group, so a fresh dispatch may show pending
+    // for a few seconds before becoming clickable.
+    let dispatchBadgeHtml = '';
+    if (isOutgoing && text) {
+      const m2 = /<message\s+to="([^"]+)"(?:\s+thread_id="([^"]+)")?[^>]*>/i.exec(text);
+      if (m2 && m2[2]) {
+        const fromSess = sessionIdForSlug || (matchingNano && matchingNano.nanoclaw_session_id) || '';
+        dispatchBadgeHtml = ` <button class="cw-dispatch-badge" data-dispatch-to="${escAttr(m2[1])}" data-dispatch-thread="${escAttr(m2[2])}" data-dispatch-from-session="${escAttr(fromSess)}" title="Open recipient session for thread ${escAttr(m2[2])}">→ ${esc(m2[1])} <span style="opacity:.6">[open]</span></button>`;
       }
-      const attachHtml = renderMessageAttachmentsHtml(m.attachments);
-      // Dispatch badge: when an outbound message contains <message to="X"
-      // thread_id="Y">, render a clickable "→ X" link that resolves the
-      // recipient session via /api/dispatch-targets and opens it. The badge
-      // stays inert (gray, no click) when the recipient session hasn't been
-      // minted yet — the host writes the inbound row only after the next
-      // wake of the recipient's group, so a fresh dispatch may show pending
-      // for a few seconds before becoming clickable.
-      let dispatchBadgeHtml = '';
-      if (isOutgoing && text) {
-        const m2 = /<message\s+to="([^"]+)"(?:\s+thread_id="([^"]+)")?[^>]*>/i.exec(text);
-        if (m2 && m2[2]) {
-          const fromSess = sessionIdForSlug || (matchingNano && matchingNano.nanoclaw_session_id) || '';
-          dispatchBadgeHtml = ` <button class="cw-dispatch-badge" data-dispatch-to="${escAttr(m2[1])}" data-dispatch-thread="${escAttr(m2[2])}" data-dispatch-from-session="${escAttr(fromSess)}" title="Open recipient session for thread ${escAttr(m2[2])}">→ ${esc(m2[1])} <span style="opacity:.6">[open]</span></button>`;
-        }
-      }
-      // Hover action toolbar — Copy + Link, mirroring the main feed
-      // (renderCwMessages). Reply is intentionally omitted: rows here are
-      // already inside the thread. Link reuses the same builder, which appends
-      // /m/<id> onto the current /t/ or /s/ thread base. The shared cw-copy-btn
-      // / cw-link-btn click handlers live on the main feed's delegate, so we
-      // attach a parallel delegate on msgsEl below.
-      const copyBtnHtml = text
-        ? `<button class="cw-msg-action-btn cw-copy-btn" data-copy-text="${escAttr(text)}" title="Copy message">⧉ Copy</button>`
-        : '';
-      const linkBtnHtml = m.id
-        ? `<button class="cw-msg-action-btn cw-link-btn" data-msg-id="${esc(m.id)}" title="Copy link to this message">🔗 Link</button>`
-        : '';
-      const actionsHtml =
-        copyBtnHtml || linkBtnHtml ? `<div class="cw-msg-actions">${copyBtnHtml}${linkBtnHtml}</div>` : '';
-      return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"><div class="cw-msg-avatar">${monogram}</div>
+    }
+    // Hover action toolbar — Copy + Link, mirroring the main feed
+    // (renderCwMessages). Reply is intentionally omitted: rows here are
+    // already inside the thread. Link reuses the same builder, which appends
+    // /m/<id> onto the current /t/ or /s/ thread base. The shared cw-copy-btn
+    // / cw-link-btn click handlers live on the main feed's delegate, so we
+    // attach a parallel delegate on msgsEl below.
+    const copyBtnHtml = text
+      ? `<button class="cw-msg-action-btn cw-copy-btn" data-copy-text="${escAttr(text)}" title="Copy message">⧉ Copy</button>`
+      : '';
+    const linkBtnHtml = m.id
+      ? `<button class="cw-msg-action-btn cw-link-btn" data-msg-id="${esc(m.id)}" title="Copy link to this message">🔗 Link</button>`
+      : '';
+    const actionsHtml =
+      copyBtnHtml || linkBtnHtml ? `<div class="cw-msg-actions">${copyBtnHtml}${linkBtnHtml}</div>` : '';
+    return `<div class="cw-msg ${cls}" data-msg-id="${esc(m.id || '')}"><div class="cw-msg-avatar">${monogram}</div>
       ${actionsHtml}
       <div class="cw-msg-header"><span class="cw-msg-author">${authorName}</span><span class="cw-msg-time">${time}</span>${dispatchBadgeHtml}</div>
       <div class="cw-msg-bubble">${body}${attachHtml}</div></div>`;
@@ -7544,7 +7697,7 @@ async function ensureCwMessageLoaded(msgId, opts = {}) {
   // the same wait is cheap and harmless there.)
   for (let s = 0; s < 30; s++) {
     if (cwState.selected !== selectedAtStart) return;
-    const loaded = threadParent ? (cwState.thread?.messages || []) : cwState.messages;
+    const loaded = threadParent ? cwState.thread?.messages || [] : cwState.messages;
     const hasMore = threadParent ? cwState.thread?.hasMore : cwState.messagesHasMore;
     if ((loaded && loaded.length > 0) || hasMore) break;
     await sleep(100);
@@ -7640,7 +7793,9 @@ async function updateCwDetail() {
   document.getElementById('cw-detail-name').textContent = cw.name;
   document.getElementById('cw-detail-type').innerHTML = esc(cw.type) + ' ' + updateDotHtml(cw.isAutoUpdate, true);
   document.getElementById('cw-detail-trigger').textContent = cw.trigger?.replace(/\\b$/, '') || '-';
-  document.getElementById('cw-detail-jid').textContent = messagingGroupLabel({ platform_id: cw.jid || `dashboard:${cw.folder}` });
+  document.getElementById('cw-detail-jid').textContent = messagingGroupLabel({
+    platform_id: cw.jid || `dashboard:${cw.folder}`,
+  });
   document.getElementById('cw-detail-status').textContent = cw.status;
   document.getElementById('cw-detail-tasks').textContent = String(cw.taskCount);
 
@@ -7920,9 +8075,7 @@ async function showCreateModal() {
   }
   const groupOptions =
     '<option value="prod">prod (shared)</option>' +
-    groupUsers
-      .map((u) => `<option value="${esc(u.id)}">${esc(u.display_name || u.id)}</option>`)
-      .join('');
+    groupUsers.map((u) => `<option value="${esc(u.id)}">${esc(u.display_name || u.id)}</option>`).join('');
 
   const overlay = document.createElement('div');
   overlay.className = 'cw-modal-overlay';
@@ -8130,11 +8283,15 @@ function normalizePathRouteToHash() {
 
 // Hash-routing: restore state on load, reconcile on history navigation.
 normalizePathRouteToHash();
-window.addEventListener('hashchange', () => { if (!applyTabHash()) applyCwUrl(); });
+window.addEventListener('hashchange', () => {
+  if (!applyTabHash()) applyCwUrl();
+});
 // Apply initial URL after the coworker list has been populated. The first
 // applyState() call fills state.registeredGroups; this listener fires after
 // that the first time via a short deferral.
-setTimeout(() => { if (!applyTabHash()) applyCwUrl(); }, 500);
+setTimeout(() => {
+  if (!applyTabHash()) applyCwUrl();
+}, 500);
 
 // Memory editor is read-only (CLAUDE.md re-composed at container startup from coworkerType)
 
@@ -9449,7 +9606,9 @@ function contextCellHtml(cs) {
   const svgW = hist.length * (BW + GAP);
   const compTitle =
     `${cs.compactions} compaction${cs.compactions === 1 ? '' : 's'}` +
-    (cs.compactions ? ` (${cs.autoCompactions} auto / ${cs.manualCompactions} manual; avg ${fmtNum(cs.avgPreTokens)} tok at compaction)` : '') +
+    (cs.compactions
+      ? ` (${cs.autoCompactions} auto / ${cs.manualCompactions} manual; avg ${fmtNum(cs.avgPreTokens)} tok at compaction)`
+      : '') +
     ` across ${cs.sessions} session${cs.sessions === 1 ? '' : 's'}${cs.capped ? ' (capped)' : ''}`;
   const comp = cs.compactions
     ? `<span title="${esc(compTitle)}" style="color:${cs.compactions >= 5 ? '#f85149' : cs.compactions >= 1 ? '#d29922' : 'var(--text-muted)'}">⟳${cs.compactions}</span>`
@@ -9467,10 +9626,7 @@ function renderMetricsTokens(el, data) {
   // usual grid here would print a confident $0.00 that looks like a quiet week
   // rather than a metric that never ran.
   if (data.unavailable) {
-    el.innerHTML =
-      '<div class="admin-empty">Token metrics unavailable — ' +
-      esc(String(data.unavailable)) +
-      '</div>';
+    el.innerHTML = '<div class="admin-empty">Token metrics unavailable — ' + esc(String(data.unavailable)) + '</div>';
     return;
   }
   const days = data.daily || [];
@@ -9579,7 +9735,17 @@ function renderMetricsTokens(el, data) {
           cacheCreate += d.cacheCreationTokens || 0;
         }
         const models = [...new Set(cw.daily.flatMap((d) => d.modelsUsed || []))];
-        return { name: cw.groupName, cost, tokens, input, output, cacheRead, cacheCreate, models, contextStats: cw.contextStats || null };
+        return {
+          name: cw.groupName,
+          cost,
+          tokens,
+          input,
+          output,
+          cacheRead,
+          cacheCreate,
+          models,
+          contextStats: cw.contextStats || null,
+        };
       })
       .sort((a, b) => b.cost - a.cost);
 
