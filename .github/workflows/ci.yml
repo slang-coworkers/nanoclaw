@@ -230,3 +230,10 @@ jobs:
       - name: Container tests
         working-directory: container/agent-runner
         run: bun test
+
+      # The learnings-wiki builder is Python embedded in a Markdown document, so no
+      # compiler or typechecker ever sees it and its suite ran nowhere. It guards the
+      # supersession lineage — the record that says a learning was deliberately retired —
+      # where a silent regression deletes knowledge rather than breaking a build.
+      - name: Container skill tests (Python)
+        run: python3 container/skills/learnings-wiki/test_learnings_wiki.py
