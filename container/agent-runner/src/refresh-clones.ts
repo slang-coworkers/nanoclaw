@@ -222,7 +222,10 @@ function claimKey(lockPath: string, observed: PresentLease): string {
     observed.kind === 'lease'
       ? observed.token
       : // No token to key on; the mtime the reclaimer observed is the next best
-        // identity, and it is stable for as long as that lock exists.
+        // identity, and it is stable for as long as that lock exists. Two
+        // successive tokenless locks sharing an mtime millisecond would collide,
+        // which costs the second one a reclaim until the sweep expires the
+        // tombstone — bounded, and only reachable through the legacy shapes.
         `${observed.kind}-${Math.floor(observed.mtimeMs)}`;
   return `${lockPath}.claim-${id}`;
 }
@@ -245,9 +248,20 @@ function claimKey(lockPath: string, observed: PresentLease): string {
  *    processes end up each convinced they hold the clone. Measured on the
  *    multi-process test below, that happened in 1 round out of 120.
  *
- *    With the claim held this cannot happen: the only process permitted to
- *    empty the slot is the one holding the claim for the lease currently in it,
- *    so the lease cannot change under a reclaimer's feet.
+ *    THE CLAIM IS A TOMBSTONE — it is never deleted, only expired by the litter
+ *    sweep after `staleMs`. An earlier version released it as soon as the slot
+ *    was emptied, which reopened the very window it existed to close: the claim
+ *    names the OLD lease, so once released, a straggler still holding a stale
+ *    observation of that lease could re-take it and rename away the REPLACEMENT
+ *    lease the winner had just published. Restoring that lease leaves a gap, and
+ *    a third contender publishes into it — two owners.
+ *
+ *    That is not theory. It survived 1680 rounds on macOS and failed on the
+ *    first Linux CI run; the winners' own diagnostics showed both of them
+ *    reading a 62-second-old lease exactly on the round barrier, i.e. both
+ *    racing the ABANDONED lease rather than one arriving late. Keeping the
+ *    tombstone means no straggler can ever act on a superseded observation, so
+ *    the lease genuinely cannot change under a reclaimer's feet.
  *
  * 2. EMPTY THE SLOT — `rename` to a private path. The caller then publishes
  *    into the empty slot with `link`, which fails if another contender got
@@ -274,7 +288,6 @@ function reclaimStaleLease(
   } catch {
     // The owner released it while we were claiming. The slot is free, which is
     // all we wanted; the caller's publish decides who gets it.
-    rmQuiet(claim);
     return true;
   }
 
@@ -286,9 +299,9 @@ function reclaimStaleLease(
     (observed.kind !== 'lease' && moved.kind === observed.kind);
 
   if (!sameLease) {
-    // Unreachable given the claim — kept as a restore rather than a deletion,
-    // and said out loud, because silently discarding a live owner's lease is
-    // exactly the failure this function exists to remove.
+    // Should be unreachable now that the claim is a tombstone — kept as a
+    // restore rather than a deletion, and said out loud, because silently
+    // discarding a live owner's lease is the failure this function removes.
     log(`Clone refresh lock: reclaimed an unexpected lease at ${lockPath} — restoring it and standing down`);
     try {
       fs.linkSync(parked, lockPath);
@@ -296,15 +309,10 @@ function reclaimStaleLease(
       /* a third party already published; theirs wins */
     }
     rmQuiet(parked);
-    rmQuiet(claim);
     return false;
   }
 
   rmQuiet(parked);
-  // Safe to drop: the claim guards the transition away from ONE lease, and that
-  // lease is now gone. Left behind by a killed container it would block that
-  // lease from ever being reclaimed — which is what the litter sweep bounds.
-  rmQuiet(claim);
   return true;
 }
 
