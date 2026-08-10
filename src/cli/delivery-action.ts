@@ -12,6 +12,7 @@ import { unguarded } from '../guard/index.js';
 import { insertMessage } from '../db/session-db.js';
 import { log } from '../log.js';
 import { dispatch } from './dispatch.js';
+import { drainPostResponseEffects } from './post-response.js';
 import type { RequestFrame } from './frame.js';
 import type { Session } from '../types.js';
 
@@ -59,6 +60,12 @@ registerDeliveryAction(
     });
 
     log.info('CLI response written', { requestId, ok: response.ok, sessionId: session.id });
+
+    // ONLY NOW may a handler's deferred effects run. `insertMessage` above is
+    // synchronous, so by this line the response frame is durable in the
+    // caller's inbound.db — a restart triggered from here can no longer take
+    // the answer down with the container.
+    drainPostResponseEffects();
   },
   unguarded('transport envelope — every inner command is guarded at dispatch'),
 );

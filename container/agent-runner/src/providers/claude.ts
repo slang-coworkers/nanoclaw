@@ -5,6 +5,7 @@ import path from 'path';
 import { query as sdkQuery, type HookCallback, type PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 
 import { clearContainerToolInFlight, setContainerToolInFlight } from '../db/connection.js';
+import { isMcpToolAllowed, parseMcpPolicy, type McpPolicy } from '../mcp-policy.js';
 import type { MemorySessionHookRegistration } from '../memory/session-hook.js';
 import { resolveEnvInherit } from './codex-app-server.js';
 import { TIMEZONE, formatLocalStamp } from '../timezone.js';
@@ -140,18 +141,31 @@ export function parseAllowedMcpTools(env?: Record<string, string | undefined>): 
   }
 }
 
+/**
+ * Extra names for the SDK's `disallowedTools`, derived from the host's
+ * discovered inventory.
+ *
+ * Kept as a backstop only. It is inventory-derived, so it can never be proven
+ * complete — which is exactly why it must not be the mechanism the policy
+ * relies on. The mechanisms that are complete: a server the policy allows
+ * nothing on is never wired (index.ts), the built-in server filters itself
+ * (mcp-tools/server.ts), and `mcpPolicyPreToolUseDecision` below default-denies
+ * every `mcp__` call the policy does not name.
+ *
+ * No longer bails out on an empty allowed list: that early return is precisely
+ * what made `--tools '[]'` install zero blocks.
+ */
 function computeBlockedTools(
   env: Record<string, string | undefined> | undefined,
-  allowed: string[],
+  policy: McpPolicy,
 ): string[] | undefined {
-  if (allowed.length === 0 || !env?.NANOCLAW_MCP_TOOL_INVENTORY) return undefined;
+  if (policy.state === 'unrestricted' || !env?.NANOCLAW_MCP_TOOL_INVENTORY) return undefined;
   try {
     const inventory = JSON.parse(env.NANOCLAW_MCP_TOOL_INVENTORY) as Record<string, string[]>;
-    const allowSet = new Set(allowed);
     const blocked: string[] = [];
     for (const tools of Object.values(inventory)) {
       for (const tool of tools) {
-        if (!allowSet.has(tool)) blocked.push(tool);
+        if (!isMcpToolAllowed(policy, tool)) blocked.push(tool);
       }
     }
     if (blocked.length > 0) {
@@ -169,6 +183,47 @@ function computeBlockedTools(
 // allowlist patterns match what the SDK actually exposes.
 function mcpAllowPattern(serverName: string): string {
   return `mcp__${serverName.replace(/[^a-zA-Z0-9_-]/g, '_')}__*`;
+}
+
+/**
+ * What to put in the SDK's `allowedTools` for MCP.
+ *
+ * Under `unrestricted` this stays what it always was: one wildcard per wired
+ * server, so a server added at runtime is reachable without a code change.
+ *
+ * Under any restrictive state the wildcards are dropped and the exact
+ * permitted names are listed instead. Emitting `mcp__nanoclaw__*` alongside a
+ * narrow allow-list was the shape of the original bug: the wildcard re-admitted
+ * the whole namespace the policy had just excluded.
+ */
+export function mcpAllowedToolEntries(policy: McpPolicy, serverNames: string[]): string[] {
+  if (policy.state === 'unrestricted') return serverNames.map(mcpAllowPattern);
+  return [...policy.tools];
+}
+
+/**
+ * Default-deny check for every `mcp__*` tool call, evaluated at the call.
+ *
+ * This is the one enforcement point in the provider that does not depend on
+ * how the SDK interprets an allow/deny pattern, on the host inventory being
+ * complete, or on which servers happened to be wired. It answers the only
+ * question that matters — "may this agent group call THIS tool?" — from the
+ * policy the host resolved at spawn.
+ *
+ * Non-MCP tools are none of its business; `SDK_DISALLOWED_TOOLS` and the
+ * issue-close backstop handle those.
+ *
+ * Returns null to allow. Exported for tests.
+ */
+export function mcpPolicyPreToolUseDecision(policy: McpPolicy, toolName: string): string | null {
+  if (!toolName.startsWith('mcp__')) return null;
+  if (isMcpToolAllowed(policy, toolName)) return null;
+  return (
+    `Tool '${toolName}' is not in this agent group's MCP tool allow-list ` +
+    `(policy: ${policy.state} — ${policy.origin}). This is a configuration boundary, not a transient ` +
+    `failure: retrying or reaching the same capability another way is not appropriate. ` +
+    `An admin can widen it with \`ncl groups mcp-tools set\`; an agent may never widen its own.`
+  );
 }
 
 interface SDKUserMessage {
@@ -305,7 +360,8 @@ export function detectIssueClose(command: string | undefined): string | null {
  * script. Defense-in-depth: if SDK_DISALLOWED_TOOLS slips through somehow,
  * block the call here instead of letting the agent hang.
  */
-const preToolUseHook: HookCallback = async (input) => {
+function createPreToolUseHook(policy: McpPolicy): HookCallback {
+  return async (input) => {
   const i = input as { tool_name?: string; tool_input?: Record<string, unknown> };
   const toolName = i.tool_name ?? '';
   if (SDK_DISALLOWED_TOOLS.includes(toolName)) {
@@ -313,6 +369,16 @@ const preToolUseHook: HookCallback = async (input) => {
       decision: 'block',
       stopReason: `Tool '${toolName}' is not available in this environment — use the nanoclaw equivalent.`,
     } as unknown as ReturnType<HookCallback>;
+  }
+  // MCP allow-list, default-deny. Placed first among the policy checks because
+  // it is the broadest: it covers direct servers the host proxy never sees
+  // (the built-in `nanoclaw` server, the `codex` stdio child) as well as
+  // proxied ones, and it does not care whether the SDK honoured the
+  // allowedTools/disallowedTools it was handed.
+  const mcpDenial = mcpPolicyPreToolUseDecision(policy, toolName);
+  if (mcpDenial) {
+    log(`PreToolUse: denied ${toolName} (policy ${policy.state})`);
+    return { decision: 'block', stopReason: mcpDenial } as unknown as ReturnType<HookCallback>;
   }
   // Backstop: no coworker closes GitHub issues. Block the close at the tool
   // boundary regardless of what the model was told or authorized. Opt-out is a
@@ -339,7 +405,8 @@ const preToolUseHook: HookCallback = async (input) => {
     log(`PreToolUse: failed to record container_state: ${err instanceof Error ? err.message : String(err)}`);
   }
   return { continue: true };
-};
+  };
+}
 
 /** Clear in-flight tool on PostToolUse / PostToolUseFailure. */
 const postToolUseHook: HookCallback = async () => {
@@ -564,7 +631,7 @@ export class ClaudeProvider implements AgentProvider {
   private mcpServers: Record<string, McpServerConfig>;
   private env: Record<string, string | undefined>;
   private additionalDirectories?: string[];
-  private extraAllowedTools: string[];
+  private mcpPolicy: McpPolicy;
   private blockedTools?: string[];
   private model?: string;
   private effort?: string;
@@ -598,8 +665,27 @@ export class ClaudeProvider implements AgentProvider {
       resolved[name] = { command: cfg.command, args: cfg.args, env: mergedEnv };
     }
     this.mcpServers = resolved;
-    this.extraAllowedTools = parseAllowedMcpTools(this.env);
-    this.blockedTools = computeBlockedTools(this.env, this.extraAllowedTools);
+    // Policy is snapshotted at construction — deliberately. It changes only
+    // when the container is respawned, which is exactly what `ncl groups
+    // mcp-tools set` now forces for every session in the group. A live-mutable
+    // seam here would be a second, weaker source of truth: the SDK caches the
+    // allowedTools/mcpServers it was handed at query start, and a wired stdio
+    // server is a running child process, so "narrow the snapshot" could not
+    // actually revoke a direct tool mid-session. Restart can, and does.
+    this.mcpPolicy = parseMcpPolicy(this.env);
+    this.blockedTools = computeBlockedTools(this.env, this.mcpPolicy);
+    // A server the policy allows nothing on should already have been dropped
+    // by index.ts before it got here. Drop it again rather than trusting that:
+    // wiring a server is what creates its tools, so this is the cheapest
+    // complete revocation available and it costs one filter.
+    for (const name of Object.keys(this.mcpServers)) {
+      if (name === 'nanoclaw') continue;
+      const prefix = `mcp__${name.replace(/[^a-zA-Z0-9_-]/g, '_')}__`;
+      if (this.mcpPolicy.state !== 'unrestricted' && !this.mcpPolicy.tools.some((t) => t.startsWith(prefix))) {
+        log(`Not wiring MCP server "${name}" — no allowed tools under the ${this.mcpPolicy.state} policy`);
+        delete this.mcpServers[name];
+      }
+    }
   }
 
   registerMemorySessionHook(hook: MemorySessionHookRegistration): void {
@@ -671,11 +757,7 @@ export class ClaudeProvider implements AgentProvider {
         systemPrompt: instructions
           ? { type: 'preset' as const, preset: 'claude_code' as const, append: instructions }
           : undefined,
-        allowedTools: [
-          ...TOOL_ALLOWLIST,
-          ...Object.keys(this.mcpServers).map(mcpAllowPattern),
-          ...this.extraAllowedTools,
-        ],
+        allowedTools: [...TOOL_ALLOWLIST, ...mcpAllowedToolEntries(this.mcpPolicy, Object.keys(this.mcpServers))],
         disallowedTools: [...SDK_DISALLOWED_TOOLS, ...(this.blockedTools ?? [])],
         env: this.env,
         model: this.model,
@@ -687,7 +769,7 @@ export class ClaudeProvider implements AgentProvider {
         settingSources: ['project', 'user', 'local'],
         mcpServers: this.mcpServers,
         hooks: {
-          PreToolUse: [{ hooks: [preToolUseHook] }],
+          PreToolUse: [{ hooks: [createPreToolUseHook(this.mcpPolicy)] }],
           PostToolUse: [{ hooks: [postToolUseHook] }],
           PostToolUseFailure: [{ hooks: [postToolUseHook] }],
           PreCompact: [{ hooks: [createPreCompactHook(this.assistantName)] }],

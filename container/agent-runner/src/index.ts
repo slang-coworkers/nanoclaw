@@ -33,6 +33,7 @@ import { buildSystemPromptAddendum } from './destinations.js';
 import { getTaskSeriesId } from './db/session-routing.js';
 import { ensureMemoryScaffold } from './memory/scaffold.js';
 import { MEMORY_SESSION_HOOK } from './memory/session-hook.js';
+import { parseMcpPolicy, serverHasAllowedTools } from './mcp-policy.js';
 // Providers barrel — each enabled provider self-registers on import.
 // Provider skills append imports to providers/index.ts.
 import './providers/index.js';
@@ -109,6 +110,11 @@ async function main(): Promise<void> {
         SESSION_INBOUND_DB_PATH: process.env.SESSION_INBOUND_DB_PATH || '/workspace/inbound.db',
         SESSION_OUTBOUND_DB_PATH: process.env.SESSION_OUTBOUND_DB_PATH || '/workspace/outbound.db',
         SESSION_HEARTBEAT_PATH: process.env.SESSION_HEARTBEAT_PATH || '/workspace/.heartbeat',
+        // The SDK spawns MCP children with a LITERAL env map — nothing is
+        // inherited — so the policy has to be forwarded by name here or the
+        // built-in server boots with no policy and (correctly, but uselessly)
+        // denies everything but the transport floor.
+        NANOCLAW_MCP_POLICY: process.env.NANOCLAW_MCP_POLICY || '',
       },
     },
     codex: {
@@ -164,6 +170,20 @@ async function main(): Promise<void> {
     },
   };
 
+  // The spawn-time MCP policy. Read BEFORE any server is wired, because the
+  // first line of enforcement is not wiring a server the policy allows nothing
+  // on: a direct stdio server that was never started has no tools to deny, and
+  // no wildcard-matching semantics have to be trusted to keep it that way.
+  //
+  // `codex` is the case that motivated this. It is a direct child process, so
+  // the host MCP proxy — which used to be the ONLY thing the allow-list
+  // actually configured — could never see, let alone block, a call to it.
+  const mcpPolicy = parseMcpPolicy(process.env as Record<string, string | undefined>);
+  log(`MCP policy: ${mcpPolicy.state} (${mcpPolicy.origin}) — ${mcpPolicy.tools.length} tool(s) allowed`);
+  if (mcpPolicy.state === 'unresolved') {
+    log('MCP policy UNRESOLVED — every configurable MCP tool is denied for this session');
+  }
+
   // Merge additional MCP servers from host configuration
   if (process.env.NANOCLAW_MCP_SERVERS) {
     try {
@@ -174,6 +194,18 @@ async function main(): Promise<void> {
       }
     } catch (e) {
       log(`Failed to parse NANOCLAW_MCP_SERVERS: ${e}`);
+    }
+  }
+
+  // Drop every server the policy allows no tool on. `nanoclaw` is exempt: it
+  // carries the mandatory message transport, so it is always wired and instead
+  // filters itself per-tool (see mcp-tools/server.ts). Everything else — the
+  // codex stdio child included — simply does not exist for this session.
+  for (const name of Object.keys(mcpServers)) {
+    if (name === 'nanoclaw') continue;
+    if (!serverHasAllowedTools(mcpPolicy, name)) {
+      delete mcpServers[name];
+      log(`MCP server "${name}" withheld — no tool on it is allowed by the ${mcpPolicy.state} policy`);
     }
   }
 

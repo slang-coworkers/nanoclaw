@@ -56,7 +56,12 @@ import {
   getDiscoveredToolInventory,
   getDiscoveredToolAnnotations,
 } from './mcp-auth-proxy.js';
-import { resolveMcpAllowlist } from './mcp-allowlist.js';
+import {
+  resolveMcpAllowlist,
+  serverHasAllowedTools,
+  toMcpPolicyWire,
+  type McpAllowlistResolution,
+} from './mcp-allowlist.js';
 import { validateAdditionalMounts } from './modules/mount-security/index.js';
 // Provider host-side config barrel — each provider that needs host-side
 // container setup self-registers on import.
@@ -273,6 +278,13 @@ function composeCoworkerClaudeMd(agentGroup: AgentGroup): void {
 /** Resolve the coworker manifest once; returns tools, mcpServers, overlay names, and workflow summaries. */
 function resolveTypeManifest(agentGroup: AgentGroup): {
   tools: string[];
+  /**
+   * False when the registry could not be read. `tools: []` is then a
+   * placeholder, NOT a policy — the MCP allow-list resolver must see the
+   * difference or a broken registry silently becomes "no tools declared",
+   * which the enforcement layers used to read as "no tools restricted".
+   */
+  toolsResolved: boolean;
   mcpServers: Record<string, unknown>;
   overlayNames: string[];
   workflows: { name: string; description: string }[];
@@ -291,13 +303,14 @@ function resolveTypeManifest(agentGroup: AgentGroup): {
     ];
     return {
       tools: manifest.tools.filter((t) => t.startsWith('mcp__')),
+      toolsResolved: true,
       mcpServers: manifest.mcpServers ?? {},
       overlayNames,
       workflows: manifest.workflows.map((w) => ({ name: w.name, description: w.description })),
     };
   } catch (err) {
     log.warn('Failed to resolve coworker manifest', { coworkerType: effectiveType, err });
-    return { tools: [], mcpServers: {}, overlayNames: [], workflows: [] };
+    return { tools: [], toolsResolved: false, mcpServers: {}, overlayNames: [], workflows: [] };
   }
 }
 
@@ -337,7 +350,18 @@ export function resolveOverlayHookFlags(agentGroup: AgentGroup): { hasPlan: bool
  * registry on every spawn.
  */
 export function resolveAllowedMcpTools(agentGroup: AgentGroup): string[] {
-  return resolveMcpAllowlist(agentGroup, resolveTypeManifest(agentGroup).tools).tools;
+  return resolveMcpPolicy(agentGroup).tools;
+}
+
+/**
+ * The full allow-list resolution for a group — state included, not just the
+ * list. Enforcement needs the state: an empty `explicit` list and an
+ * `unresolved` registry both have zero tools and require opposite reporting,
+ * and neither may be read as "no restrictions".
+ */
+export function resolveMcpPolicy(agentGroup: AgentGroup): McpAllowlistResolution {
+  const manifest = resolveTypeManifest(agentGroup);
+  return resolveMcpAllowlist(agentGroup, manifest.toolsResolved ? manifest.tools : undefined);
 }
 
 export function getActiveContainerCount(): number {
@@ -473,8 +497,23 @@ async function spawnContainer(session: Session): Promise<void> {
   const agentIdentifier = agentGroup.id;
 
   // Register an MCP proxy token so the container can access host MCP servers.
-  const allowedTools = resolveAllowedMcpTools(agentGroup);
-  const proxyToken = registerContainerToken(agentGroup.folder, allowedTools);
+  // The token carries the resolved list; an empty one authorises nothing,
+  // which is what an explicit `[]` (or an unresolvable policy) must mean.
+  const mcpPolicy = resolveMcpPolicy(agentGroup);
+  const proxyToken = registerContainerToken(agentGroup.folder, mcpPolicy.enforcedTools);
+
+  // Operator-visible, not a debug line: `unresolved` means we could not prove
+  // what this group may call, so the container is about to boot with every
+  // configurable MCP capability switched off. Silence here is what let a
+  // broken registry look like a working restriction.
+  if (mcpPolicy.state === 'unresolved') {
+    log.error('MCP allow-list UNRESOLVED — spawning with all configurable MCP tools denied', {
+      sessionId: session.id,
+      agentGroup: agentGroup.name,
+      coworkerType: agentGroup.coworker_type,
+      origin: mcpPolicy.origin,
+    });
+  }
 
   const args = await buildContainerArgs(
     mounts,
@@ -486,7 +525,7 @@ async function spawnContainer(session: Session): Promise<void> {
     agentIdentifier,
     {
       proxyToken,
-      allowedTools,
+      policy: mcpPolicy,
     },
   );
 
@@ -494,7 +533,8 @@ async function spawnContainer(session: Session): Promise<void> {
     sessionId: session.id,
     agentGroup: agentGroup.name,
     containerName,
-    mcpToolCount: allowedTools.length,
+    mcpPolicyState: mcpPolicy.state,
+    mcpToolCount: mcpPolicy.enforcedTools.length,
     hasProxyToken: !!proxyToken,
   });
 
@@ -1352,7 +1392,7 @@ async function buildContainerArgs(
   provider: string,
   providerContribution: ProviderContainerContribution,
   agentIdentifier?: string,
-  mcpProxy?: { proxyToken: string; allowedTools: string[] },
+  mcpProxy?: { proxyToken: string; policy: McpAllowlistResolution },
 ): Promise<string[]> {
   // --init injects docker's own tini as PID 1 so orphaned children (curl/gh
   // fired by the agent and hooks) get reaped. Without it, the host overrides
@@ -1679,25 +1719,54 @@ async function buildContainerArgs(
   const typeMcpServers = resolveTypeManifest(agentGroup).mcpServers;
   const containerConfig = materializeContainerJson(agentGroup.id);
   const mergedMcpServers = { ...typeMcpServers, ...containerConfig.mcpServers };
-  if (Object.keys(mergedMcpServers).length > 0) {
-    args.push('-e', `NANOCLAW_MCP_SERVERS=${JSON.stringify(mergedMcpServers)}`);
+  // Withhold the wiring for any server the policy allows no tool on. These
+  // entries are direct (stdio/http) servers that never traverse the host MCP
+  // proxy, so the proxy's ACL cannot restrict them — the only host-side
+  // control is not handing them over. It is also the strongest one: a server
+  // that was never wired needs no deny list to be complete, and its `env`
+  // block (which can carry credentials) never enters the container at all.
+  const wiredMcpServers = mcpProxy
+    ? Object.fromEntries(
+        Object.entries(mergedMcpServers).filter(([name]) => serverHasAllowedTools(mcpProxy.policy, name)),
+      )
+    : mergedMcpServers;
+  const withheld = Object.keys(mergedMcpServers).filter((n) => !(n in wiredMcpServers));
+  if (withheld.length > 0) {
+    log.info('Withholding MCP servers with no allowed tools', {
+      containerName,
+      withheld,
+      policyState: mcpProxy?.policy.state,
+    });
+  }
+  if (Object.keys(wiredMcpServers).length > 0) {
+    args.push('-e', `NANOCLAW_MCP_SERVERS=${JSON.stringify(wiredMcpServers)}`);
   }
 
   // MCP proxy token + URL + allowed tools — enables containers to reach host MCP servers
   if (mcpProxy) {
     args.push('-e', `MCP_PROXY_TOKEN=${mcpProxy.proxyToken}`);
     args.push('-e', `MCP_PROXY_URL=http://host.docker.internal:${MCP_PROXY_PORT}`);
-    if (mcpProxy.allowedTools.length > 0) {
-      args.push('-e', `NANOCLAW_ALLOWED_MCP_TOOLS=${JSON.stringify(mcpProxy.allowedTools)}`);
-      // claude.ts::computeBlockedTools builds the disallowedTools list as
-      // (inventory − allowed). Without the inventory env var it returns
-      // undefined and NO tools are blocked — `allowed_mcp_tools` becomes
-      // advisory. Pass the discovered inventory so restrictions actually
-      // land at the SDK's disallowedTools option.
-      const inventory = getDiscoveredToolInventory();
-      if (Object.keys(inventory).length > 0) {
-        args.push('-e', `NANOCLAW_MCP_TOOL_INVENTORY=${JSON.stringify(inventory)}`);
-      }
+
+    // ALWAYS passed, whatever the list length. This is the whole fix for the
+    // empty-list hole: the container decides what to wire and what to allow
+    // from the policy STATE, and it reads a missing variable as `unresolved`
+    // (deny all configurable MCP). Previously both variables below were
+    // omitted when the list was empty, which the container read as "no
+    // restrictions requested" — so `--tools '[]'` handed over the full direct
+    // tool surface (`mcp__nanoclaw__*`, `mcp__codex__*`), none of which
+    // traverses the proxy that was doing the actual restricting.
+    args.push('-e', `NANOCLAW_MCP_POLICY=${JSON.stringify(toMcpPolicyWire(mcpProxy.policy))}`);
+
+    // Legacy variables, still emitted for the SDK disallowedTools backstop and
+    // for the proxy-server auto-discovery path in the agent-runner. They are
+    // no longer the policy — `NANOCLAW_MCP_POLICY` is.
+    args.push('-e', `NANOCLAW_ALLOWED_MCP_TOOLS=${JSON.stringify(mcpProxy.policy.enforcedTools)}`);
+    // claude.ts::computeBlockedTools builds the disallowedTools list as
+    // (inventory − allowed). Pass the discovered inventory so the SDK-level
+    // block covers proxied servers by name as well as by policy.
+    const inventory = getDiscoveredToolInventory();
+    if (Object.keys(inventory).length > 0) {
+      args.push('-e', `NANOCLAW_MCP_TOOL_INVENTORY=${JSON.stringify(inventory)}`);
     }
   }
 

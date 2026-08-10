@@ -22,6 +22,7 @@ import type { PendingApproval } from '../types.js';
 import type { CallerContext, ErrorCode, RequestFrame, ResponseFrame } from './frame.js';
 import { localizeIsoTimestamps } from './format.js';
 import { getResource } from './crud.js';
+import { drainPostResponseEffects } from './post-response.js';
 import { listVerbs, renderVerbHelp } from './help-render.js';
 import { commandGuard, listCommands, lookup } from './registry.js';
 
@@ -246,6 +247,11 @@ registerApprovalHandler('cli_command', async ({ payload, approval, notify }) => 
   } else {
     notify(`Your \`ncl ${frame.command}\` request was approved but failed: ${response.error.message}`);
   }
+  // Approved replays reach handlers the same way a direct call does, so they
+  // can queue the same deferred effects. Drain after `notify`, for the same
+  // reason the other transports drain after their write: a container restart
+  // must not pre-empt the answer that explains it.
+  drainPostResponseEffects();
 });
 
 function parseCallerContext(value: unknown): CallerContext | undefined {
