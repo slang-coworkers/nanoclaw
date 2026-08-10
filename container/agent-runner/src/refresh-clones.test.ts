@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 import {
   FETCH_TTL_MS,
@@ -28,6 +29,25 @@ function stampPath(clone: string): string {
 
 function lockMtime(clone: string): number {
   return fs.statSync(path.join(clone, '.git', REFRESH_LOCK)).mtimeMs;
+}
+
+/**
+ * Who owns the lease according to the bytes on disk.
+ *
+ * Read here rather than imported from the module on purpose: these assertions
+ * have to be runnable against the PRE-FIX tree, where the lock is a directory
+ * with no owner at all. Importing a helper that only exists post-fix would turn
+ * a behavioural failure into a module-load error, which proves nothing.
+ */
+function ownerOnDisk(clone: string): string | null {
+  try {
+    const p = path.join(clone, '.git', REFRESH_LOCK);
+    if (fs.statSync(p).isDirectory()) return null;
+    const doc = JSON.parse(fs.readFileSync(p, 'utf-8')) as { token?: string };
+    return typeof doc.token === 'string' ? doc.token : null;
+  } catch {
+    return null;
+  }
 }
 
 describe('shouldRefresh (recency guard)', () => {
@@ -77,15 +97,25 @@ describe('isPrimaryClone', () => {
 
 describe('acquireLock (mutual exclusion)', () => {
   // Real-clock base on purpose: staleness compares the injected `nowMs` against
-  // the lock directory's REAL mtime, so a fabricated epoch (e.g. 2001) makes the
+  // the lock file's REAL mtime, so a fabricated epoch (e.g. 2001) makes the
   // age negative and the arithmetic meaningless. In production `nowMs` is
   // `Date.now()`, so the test has to sit on the same clock the filesystem uses.
   const now = Date.now();
   it('first caller wins, second is refused', () => {
     const clone = makeClone();
     try {
-      expect(acquireLock(clone, now)).toBe(true);
-      expect(acquireLock(clone, now)).toBe(false);
+      expect(acquireLock(clone, now)).toBeTruthy();
+      expect(acquireLock(clone, now)).toBeNull();
+    } finally {
+      fs.rmSync(clone, { recursive: true, force: true });
+    }
+  });
+  it('the acquired token is what is actually written into the lease', () => {
+    const clone = makeClone();
+    try {
+      const token = acquireLock(clone, now)!;
+      expect(token).toBeTruthy();
+      expect(ownerOnDisk(clone)).toBe(token);
     } finally {
       fs.rmSync(clone, { recursive: true, force: true });
     }
@@ -93,9 +123,9 @@ describe('acquireLock (mutual exclusion)', () => {
   it('releasing lets the next caller in', () => {
     const clone = makeClone();
     try {
-      expect(acquireLock(clone, now)).toBe(true);
-      releaseLock(clone);
-      expect(acquireLock(clone, now)).toBe(true);
+      const token = acquireLock(clone, now)!;
+      releaseLock(clone, token);
+      expect(acquireLock(clone, now)).toBeTruthy();
     } finally {
       fs.rmSync(clone, { recursive: true, force: true });
     }
@@ -103,11 +133,11 @@ describe('acquireLock (mutual exclusion)', () => {
   it('breaks a lock left behind by a container killed mid-refresh', () => {
     const clone = makeClone();
     try {
-      expect(acquireLock(clone, now)).toBe(true);
+      expect(acquireLock(clone, now)).toBeTruthy();
       // Derive from the lock's OWN mtime, not from a captured `now`: the
-      // directory is created some milliseconds after `now` is read, and that
+      // file is created some milliseconds after `now` is read, and that
       // drift is exactly the width of the staleness boundary being tested.
-      expect(acquireLock(clone, lockMtime(clone) + LOCK_STALE_MS + 1)).toBe(true);
+      expect(acquireLock(clone, lockMtime(clone) + LOCK_STALE_MS + 1)).toBeTruthy();
     } finally {
       fs.rmSync(clone, { recursive: true, force: true });
     }
@@ -115,12 +145,171 @@ describe('acquireLock (mutual exclusion)', () => {
   it('does NOT break a lock merely held by a slow-but-live refresh', () => {
     const clone = makeClone();
     try {
-      expect(acquireLock(clone, now)).toBe(true);
-      expect(acquireLock(clone, lockMtime(clone) + LOCK_STALE_MS - 1)).toBe(false);
+      expect(acquireLock(clone, now)).toBeTruthy();
+      expect(acquireLock(clone, lockMtime(clone) + LOCK_STALE_MS - 1)).toBeNull();
     } finally {
       fs.rmSync(clone, { recursive: true, force: true });
     }
   });
+  it('reclaims a pre-lease DIRECTORY lock once it is stale, and not before', () => {
+    // Compatibility with a container still running the old image, which took
+    // the lock by `mkdir`. It carries no token, so age is the only thing it can
+    // be judged by — exactly the old rule, and only after LOCK_STALE_MS.
+    const clone = makeClone();
+    try {
+      const lock = path.join(clone, '.git', REFRESH_LOCK);
+      fs.mkdirSync(lock);
+      expect(acquireLock(clone, lockMtime(clone) + LOCK_STALE_MS - 1)).toBeNull();
+      const token = acquireLock(clone, lockMtime(clone) + LOCK_STALE_MS + 1);
+      expect(token).toBeTruthy();
+      expect(fs.statSync(lock).isDirectory()).toBe(false);
+      expect(ownerOnDisk(clone)).toBe(token!);
+    } finally {
+      fs.rmSync(clone, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('releaseLock (ownership is the token, not the path)', () => {
+  const now = Date.now();
+
+  it('a slow holder whose lease was reclaimed does NOT delete the new owner’s lease', () => {
+    // Step 5 of the F16 interleaving. A ran long, B judged it dead and took
+    // over; A then finished and released. Unconditional deletion here strips a
+    // live owner's lease and hands the clone to a third contender while B is
+    // still pulling.
+    const clone = makeClone();
+    try {
+      const slow = acquireLock(clone, now)!;
+      const reclaimer = acquireLock(clone, lockMtime(clone) + LOCK_STALE_MS + 1)!;
+      expect(reclaimer).not.toBe(slow);
+
+      releaseLock(clone, slow); // the straggler finally finishes
+
+      expect(ownerOnDisk(clone)).toBe(reclaimer);
+      expect(acquireLock(clone, now)).toBeNull(); // still excluded, as it must be
+    } finally {
+      fs.rmSync(clone, { recursive: true, force: true });
+    }
+  });
+
+  it('releasing with the right token frees the clone', () => {
+    const clone = makeClone();
+    try {
+      const token = acquireLock(clone, now)!;
+      releaseLock(clone, token);
+      expect(fs.existsSync(path.join(clone, '.git', REFRESH_LOCK))).toBe(false);
+    } finally {
+      fs.rmSync(clone, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('stale reclamation under REAL concurrency', () => {
+  // The existing coverage breaks stale locks SEQUENTIALLY, which cannot see the
+  // defect: the whole point is that two breakers both pass the staleness check
+  // before either acts. This spawns real OS processes that block on a shared
+  // start deadline and then contend for the same stale lease.
+  const CONTENDERS = 6;
+  const ROUNDS = 120;
+  /** Gap between round barriers. Generous next to the microseconds of work. */
+  const SLOT_MS = 15;
+
+  /**
+   * A child process that contends for one stale lease per round.
+   *
+   * The module is imported BEFORE the first barrier so interpreter startup —
+   * tens of milliseconds, far wider than the window being tested — is spent
+   * before any round begins. Each round then releases on a shared wall-clock
+   * deadline, so all six processes enter the reclaim path within microseconds
+   * of one another. Rounds are batched into one spawn because the contention
+   * window is only a few syscalls wide: catching it needs many attempts, and
+   * paying process startup per attempt would make that unaffordable.
+   */
+  function writeContender(dir: string): string {
+    const file = path.join(dir, 'contend.ts');
+    fs.writeFileSync(
+      file,
+      `import fs from 'fs';
+import path from 'path';
+const [, , mod, rounds, count, startAt, slot, winners] = process.argv;
+const { acquireLock } = await import(mod);
+for (let k = 0; k < Number(count); k++) {
+  const at = Number(startAt) + k * Number(slot);
+  while (Date.now() < at) { /* spin to this round's barrier */ }
+  const got = acquireLock(path.join(rounds, String(k)), Date.now(), 1000);
+  if (got) fs.appendFileSync(path.join(winners, String(k)), String(got) + '\\n');
+}
+`,
+    );
+    return file;
+  }
+
+  it('exactly ONE of several simultaneous breakers takes a stale lease', async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'nc-race-'));
+    const roundsDir = path.join(scratch, 'rounds');
+    const winnersDir = path.join(scratch, 'winners');
+    fs.mkdirSync(roundsDir);
+    fs.mkdirSync(winnersDir);
+    const contender = writeContender(scratch);
+    const mod = path.join(path.dirname(fileURLToPath(import.meta.url)), 'refresh-clones.ts');
+
+    try {
+      // One clone per round, each already holding an ABANDONED lease: present,
+      // and old enough that every contender independently judges it stale
+      // before any of them acts. That shared judgement is the precondition of
+      // the defect — the old break path was `rmSync` + `mkdir`, which every
+      // contender could complete "successfully".
+      for (let k = 0; k < ROUNDS; k++) {
+        const clone = path.join(roundsDir, String(k));
+        fs.mkdirSync(path.join(clone, '.git'), { recursive: true });
+        const lock = path.join(clone, '.git', REFRESH_LOCK);
+        fs.writeFileSync(lock, JSON.stringify({ token: `abandoned-by-a-killed-container-${k}` }));
+        const old = Date.now() / 1000 - 60;
+        fs.utimesSync(lock, old, old);
+        fs.writeFileSync(path.join(winnersDir, String(k)), '');
+      }
+
+      const startAt = Date.now() + 1500; // every child is spinning well before this
+      const kids = Array.from({ length: CONTENDERS }, () =>
+        Bun.spawn({
+          cmd: [
+            process.execPath,
+            contender,
+            mod,
+            roundsDir,
+            String(ROUNDS),
+            String(startAt),
+            String(SLOT_MS),
+            winnersDir,
+          ],
+          stdout: 'ignore',
+          stderr: 'inherit',
+        }),
+      );
+      await Promise.all(kids.map((k) => k.exited));
+
+      const multiWinner: Array<{ round: number; winners: string[] }> = [];
+      const wrongOwner: number[] = [];
+      for (let k = 0; k < ROUNDS; k++) {
+        const won = fs
+          .readFileSync(path.join(winnersDir, String(k)), 'utf-8')
+          .split('\n')
+          .filter((l) => l.trim());
+        if (won.length !== 1) multiWinner.push({ round: k, winners: won });
+        else if (ownerOnDisk(path.join(roundsDir, String(k))) !== won[0]) wrongOwner.push(k);
+      }
+
+      // The defect, stated: pre-fix several contenders each removed the stale
+      // lock and created their own, so more than one believed it held the
+      // clone and only the last writer's lock was left standing.
+      expect(multiWinner).toEqual([]);
+      // …and in every round the lease on disk belongs to that single winner.
+      expect(wrongOwner).toEqual([]);
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  }, 120_000);
 });
 
 describe('refreshPrimaryClones', () => {
