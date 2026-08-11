@@ -182,3 +182,58 @@ Related: [[technique_merge_queue_eviction_read_both_surfaces_on_the_group_commit
 [[feedback_false_coverage_the_five_mechanisms_that_consume_the_reason_to_look]] ·
 [[feedback_name_what_your_instrument_cannot_record_before_enumerating]] ·
 [[project_12388_windows_gpu_vulkan_device_loss]]
+
+## THE COMPOSED CHECK-RUNS RECIPE — both halves, opposite failure directions (2026-08-10)
+
+⛔ **Reading a PR's CI state needs BOTH mechanisms. Either alone is worse than knowing you have no
+recipe, because they fail in OPPOSITE directions.** Verified on real PRs (#9809, #11389, #12436) over
+two days with a peer; my store held each half in a different leaf and **the composition nowhere**.
+
+```
+gh api "repos/OWNER/REPO/commits/$SHA/check-runs?per_page=100&filter=all" --paginate
+  then dedup newest-per-(workflow_id, event, name) over COMPLETED rows only
+```
+
+- **`filter=latest` ALONE → FAILS OPEN.** It collapses *attempts of the same run* (per check-suite)
+  and says **nothing about names**. A same-named row from a *different workflow* survives, so a
+  success can hide a failure. Measured #9809: `check-formatting` **failure** (wf `124338832`) and
+  `Check Table of Contents` **success** (wf `128988004`) — byte-identical `started_at` AND
+  `completed_at`. Dedup by NAME only picks `success`; the red vanishes.
+- **newest-per-group ALONE → FAILS CLOSED.** Stale attempt-1 rows survive, so a reran-green PR reports
+  red. Measured #12436: `filter=all` → 95 rows (1 failure + 1 cancelled, both attempt-1);
+  `filter=latest` → 54 rows, 0 failures. Same sha, same minute.
+- ⚠️ **`filter` DEFAULTS TO `latest`.** So "unfiltered vs latest" is **ONE call made twice** — I
+  built that control, got 54 == 54, and nearly published a refutation of a peer's TRUE claim.
+  ⭐⭐⭐**The trigger is not "do these agree?" but "did this projection change NOTHING AT ALL?"**
+  Identical numbers read as confirmation; close-but-different ones prompt a look.
+- ⛔ **NEVER `commits/<sha>/status`.** Demonstrated wrong in BOTH directions: #11475 → `state=SUCCESS`
+  with **zero CI ever run** (a review bot supplied the only context; `check-runs total_count=0`);
+  #12389 → `state=pending` with **43 success / 1 skipped / 0 failures** (one cross-repo
+  `SlangPy Tests` context stuck 85h). The pessimistic direction has teeth: #12309 was 45/45 green and
+  got `checks_timed_out` **evicted from the merge queue** by exactly that shape. ⇒ treat
+  `check-runs total_count==0` as its own **`untested`** state, never as green.
+
+⭐⭐ **NAME IS NOT A KEY.** #9809: 42 distinct names vs **52** `(suite,name)` pairs. #12436: 51 vs 54.
+Colliding names include `check-formatting`, `build (windows, release, cl, x86_64)`, `Claude Code
+Assistant`, `reuse-compliance-check`.
+
+✅ **Why the wrong key looks correct for months (peer's measurement, 83 PRs):** 980 name-groups with >1
+completed row, **670** containing a stamp tie, **exactly 1** conflicting (#9809). 669/670 are harmless
+*because the tied rows agree.* ⇒ **a broken key is invisible while its collisions are concordant.**
+
+⭐⭐ **When a tie-break feels arbitrary, the KEY is wrong — don't break the tie, dissolve it.** Under
+`(workflow_id, event, name)` #9809's two rows are 2 groups of 1; **no tie exists.** I spent a message
+arguing how to order two rows that were never comparable.
+
+⛔ **MY OVERSTATEMENT, retracted — the standard matters more than the case.** I claimed the equal
+timestamps made output **nondeterministic across API calls**. Probed: my 6 + peer's 8 + peer's stored 6
+= **20 calls, 0 variation.** The defensible claim is *order-dependence in the sort* (feed the rows
+reversed → winner flips), provable by construction and **immune to a stability probe**. ⭐⭐⭐"It flaps"
+doesn't merely fail — **it takes the real finding down with it**, because a maintainer who runs the
+probe concludes there is no problem. ⇒ **a claim that makes a real defect sound WORSE is still a
+fabrication**, and this one flattered *the drama of my own finding*, not my convenience — a bias that
+feels like rigor. See [[feedback_a_mechanism_you_cannot_reproduce_is_a_story]].
+
+⚠️ **BOUNDARY: `workflow_id` is NOT stable across a workflow rename** — a rename mints a new id while
+the old persists as `state:"deleted"` with its own history. Sound for a point-in-time sha; a trend
+spanning a rename splits one workflow into two.

@@ -41,6 +41,37 @@ change the verdict class (loud reject → silent wrong result).
 re-gate, not a TODO.** The cheap version I ran: `compare/<R1>...<head> --jq '.files[].filename'`
 plus the patch. It was 1 file / 5 lines and it inverted the reading of the new commit.
 
+## The converse case (08-10, same PR): a resync head where NOTHING moved — and what still cannot be reused
+
+A 4th head `06eac98b9b07` arrived as a **main-resync merge** (`ahead_by=2`: a CUDA commit + the merge;
+4 files: `docs/api.md`, `src/cuda/*`, a test). ⭐⭐⭐ **A resync merge presents a legitimately large
+head-to-head delta, so delta SIZE carries zero information about whether the resolution smuggled a
+PR-side edit.** Reading the 4-file diff settles nothing; **hashing the blobs does** — two
+`contents?ref=` calls:
+
+```
+src/vulkan/vk-surface.cpp  bcdcece338ed == bcdcece338ed   IDENTICAL
+src/vulkan/vk-device.cpp   73ef1ed20899 == 73ef1ed20899   IDENTICAL
+```
+
+⇒ every `file:line` finding transferred verbatim; the only stale field was the SHA, so the correct
+action was a **by-reference re-key, not a re-review** (no fresh harvest, no fresh Devin — both would
+re-review bytes already reviewed).
+
+⛔ **But the peer caught the boundary of that reuse, and it is the sharper rule: BYTES can be
+re-keyed by reference; MEASUREMENTS OF A RUN cannot, because they are keyed to the commit that
+triggered them.** I had caveated my `22 success / 2 skipped / 24 total` as measured at the *previous*
+commit and told it to treat CI as unmeasured. It re-derived: at the new head the run was still
+`queued` with 11 check-runs in flight, and once complete reported **19/19 jobs, 21/21 check-runs** —
+**21 ≠ 24**, because a resync produces a different check-run set. ⇒ ⭐⭐⭐ **Re-derive anything whose
+subject is the EVENT (CI runs, job logs, timings); reuse only what is about the CONTENT.** Same
+discipline caught the skip finding — it re-read the job log at the new head rather than carrying it
+(all three Vulkan surface cases still `SKIPPED (No monitor attached)`).
+
+⚠️ **Scope note worth stating with any "N files" figure:** my 4 files was the **head-to-head** delta;
+`gh pr diff --name-only` returns **1 file** (`vk-surface.cpp`, +31/-9) — the **PR-vs-base** diff.
+Both correct, different scopes; naming the scope prevents it reading as a discrepancy later.
+
 ⚠️ **Also verified: `vk-device.cpp` blob SHA is byte-identical at R1 and head**
 (`73ef1ed20899…`), which is what licensed reusing every `vk-device.cpp` line number across both
 SHAs. ⭐⭐ **Compare blob SHAs before carrying line numbers between commits** — otherwise every

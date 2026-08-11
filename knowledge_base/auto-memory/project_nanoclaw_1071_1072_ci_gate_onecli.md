@@ -1,6 +1,6 @@
 ---
 name: project_nanoclaw_1071_1072_ci_gate_onecli
-description: "nanoclaw #1071 (MERGED WITH A LIVE REGRESSION: slurp+jq re-breaks the probe) and #1072 (route ci-check.ts via OneCLI main vault — PARKED by szihs 08-05). Reuse getOneCLIProxyEnv, don't add config keys."
+description: "nanoclaw #1071 (merged w/ slurp+jq regression) — REGRESSION NOW FIXED by #1178, merged 2026-08-10 (blob 4bc85ecca93 on nv-main), which chose the OPPOSITE fix to the one I recorded here: drop --jq, keep --slurp. #1072 still PARKED by szihs."
 metadata:
   node_type: memory
   type: project
@@ -16,6 +16,41 @@ metadata:
 - **#1072 PARKED** — szihs: *"not fixing it right now"* (`5188442155`). Findings posted
   (`5188465563`); no branch, no PR. RESUME = szihs's word.
 
+## ⛔ RESOLVED 2026-08-10 by #1178 — AND MY RECOMMENDED FIX WAS THE WRONG HALF
+
+**#1178 (szihs) merged the opposite choice and it is the better one.** I recorded *"FIX: drop
+`--slurp`, keep per-page `--jq`"* below. #1178 instead **dropped `--jq`, kept `--paginate --slurp`**,
+and moved selection into TS (`selectCheckRun`). ⭐⭐⭐**My version would have re-broken the
+multi-page case the `--slurp` half was added to fix** — measured on a live slang head 2026-08-10:
+**2 pages, 100 check-runs**, so per-page `--jq` genuinely emits one line per page. My "the
+multi-line-tolerant parser makes that safe" reasoning leaned on a parser that takes the FIRST
+non-`null/null` line — which silently picks whichever page happens to list a matching run first,
+i.e. it *tolerates* the shape instead of reading it. #1178's TS selection reads all pages properly.
+⇒ **"the two halves were designed for each other" was a real observation used to justify the weaker
+of the two fixes** — tolerating a malformed shape is not the same as not producing it.
+
+**Verified on my edge before commenting** (comment `5240602373`; merged mid-verification AGAIN — 4th
+szihs/`nv-main` instance, exactly as the method note below predicts, so blob-hash-verified
+`4bc85ecca93` rather than the branch, which 404s post-merge):
+- bogus-repo argv control ⇒ `rc=1`, flag rejection, stdout EMPTY; positive control (no `--jq`) ⇒
+  network reached (`Bad credentials` 401, non-empty body) ⇒ the PAIR is the fault, not the path.
+- **`--slurp` without `--paginate` is ALSO refused** (`` `--paginate` required when passing `--slurp` ``)
+  ⇒ only one legal combination survives. My store's leaf did not have this half.
+- gh **2.97.0** on my edge vs 2.96.0 in the PR body ⇒ same behavior, not a version artifact.
+- 12/12 tests pass, `tsc` clean; both claimed tampers each kill EXACTLY one test.
+- ⚠️Could NOT verify the 4,964 / 81-of-100 prod figures — no host error log reachable from my
+  container (mount is `groups/main` only). Not disputed; unverifiable by me.
+
+**Open gap I reported (not a blocker, and NOT a claim the PR is wrong):** #1178 replaced the whole
+test file and deleted the only test of `ci-check.ts:99`'s
+`const { GH_TOKEN: _gh, GITHUB_TOKEN: _gt, ...ghEnv } = process.env` — the fix for the EARLIER 401
+incident. On `nv-main` **no** test exercises `ci-check` (new file: 0 `GH_TOKEN` refs; the two
+`github-webhook-*` test files' `GH_TOKEN` handling is `postEyesReaction`, and neither imports
+ci-check). ⭐⭐**Both incidents on this function share ONE log line** (`probe failed — not releasing`
+via `try/catch → false`), which is exactly why 4,964 failures went unread ⇒ a refactor dropping the
+destructure reopens the 401 incident with nothing failing. Suggested `checkRunEnv(process.env)`
+asserted the way `checkRunArgs` now is.
+
 ## The live defect on `nv-main`
 `ci-check.ts:59-62` passes `--paginate --slurp --jq` together. **`gh` rejects that
 client-side** ⇒ exit 1, **stdout empty** ⇒ `execFile` rejects ⇒ `try/catch → false` ⇒
@@ -23,7 +58,7 @@ client-side** ⇒ exit 1, **stdout empty** ⇒ `execFile` rejects ⇒ `try/catch
 fix** — the PR's own diagnostic log line is what it still emits, so it reads as fixed while
 failing 100% (was 98.3%). Instrument fact: [[command_gh_api_slurp_excludes_jq]].
 
-**FIX:** drop `--slurp`, keep per-page `--jq` with `.check_runs[]`. The multi-line-tolerant
+**FIX (SUPERSEDED — see RESOLVED section above; this was the weaker half):** drop `--slurp`, keep per-page `--jq` with `.check_runs[]`. The multi-line-tolerant
 parser #1071 already shipped (`.split('\n').find(l => l && l !== 'null/null')`) is what makes
 that safe — *the two halves were designed for each other; only the flag reverts.*
 

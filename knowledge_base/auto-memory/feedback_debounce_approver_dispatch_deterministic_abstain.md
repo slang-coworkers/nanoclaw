@@ -46,3 +46,43 @@ Recipe step 1 above already says: *"If unchanged ⇒ duplicate webhook, drop. If
 ⭐⭐⭐**A dispatcher's guess arrives at the downstream tier as a directive.** My "likely a duplicate" cost the approver a defensive re-probe it had to spend budget on to overcome, and had it deferred to me it would have recorded a ledger row keyed to a superseded sha. ⇒ **when relaying a hunch downstream, mark it as a hunch and name the check that would settle it** — cf. [[feedback_a_correct_action_does_not_validate_its_rationale]] (the no-op is identical whether the rationale is sound; here the *harm* was that the rationale travelled). The approver's independent re-probe is what made this recoverable — **it correctly treated my framing as a claim, not a fact.**
 
 ⚠️**Second-order trap found the same turn: a `docs/`-prefix scope read is NOT a docs-only finding.** #12344's diff is 124 files entirely under `docs/generated/**`, which invites a `no_protected_paths` short-circuit — but two of them are `_meta/regenerate.py` (**+73/-3** design tree, **+244/-4** tests tree = **+317/-7 of executable Python**, incl. a new markdown-table linter and a rewritten `_split_md_row` escape handler). ⇒ **Filter the file list by EXTENSION, not by top-level directory, before calling a diff non-operative** — a plausible mechanism is not a containment check.
+
+## 08-10, slangpy#1098 — **a `+1-1` one-file diff that was OPERATIVE.** Expand submodule pointers before judging a delta
+
+Third synchronize on #1098. Decided head `15f687920306` → current `f51ef4fa1589`. The compare API
+reports the *entire* delta as **one commit, one file, `modified +1-1 external/slang-rhi`** — the
+exact shape my debounce rule has always read as "non-operative, hold". **It was not.**
+
+```
+gh api repos/shader-slang/slangpy/compare/15f687920306...f51ef4fa1589 --jq '.files[].patch'
+  -Subproject commit f8460cca0ef5e85e034520f9598eeb0af8d84d2b
+  +Subproject commit 46a66b47123336aed8d040d5a6b19810432d5dd5
+gh api repos/shader-slang/slang-rhi/compare/f8460cca0ef5...46a66b471233
+  → ahead_by 1: "Enable parallel CUDA ray-tracing pipeline creation (#826)"
+    src/cuda/cuda-device.h +2-6 · src/vulkan/vk-backend.cpp +43-14 · vk-backend.h +7-0
+    tests/test-parallel-pipeline-creation.cpp +82-0   (new: initTaskPool(1) + TaskPoolReset)
+```
+
+⇒ ⭐⭐⭐**A submodule bump renders as `+1-1` in ONE file and can carry unbounded change. Line-count
+and file-count are structurally blind to it** — the two cheap signals my debounce leans on both say
+"cosmetic". The additions/deletions field is measuring the *pointer*, not the *content*.
+⇒ **Rule: if a delta's file list contains a gitlink (`external/**`, or any path whose patch body is
+`Subproject commit …`), the delta is UNKNOWN until you compare the sub-repo range. Never hold on it.**
+
+**Why it was operative here specifically** (the test my methodology demands): #1098's abstain was
+`OPEN_GAP` — the nanothread adapter is installed **process-wide** and its callback-side
+`waitAndReleaseTaskGroup` is unverified against the `ITaskPool` contract, *blast radius = all of
+slang-rhi*. The bump **adds a new task-pool client inside that blast radius**
+(`canCreatePipelineOnTaskPool`, parallel pipeline creation) and a new test that drives
+`initTaskPool`. So the delta moves the very surface the abstain was about — and it also **moves the
+contract commit the prior decision cited** (`f8460cca`, quoted in the decision as the source of the
+"safe when called from a task callback" blessing). ⇒ re-dispatch, not hold.
+
+⚠️**Second finding from the same check — the new head has ZERO bot coverage.** CodeRabbit's only
+review (`COMMENTED`) carries `commit_id=15f687920306`, i.e. the **old** head; the `CodeRabbit` check
+showing `pass / Review completed` is the *stale* run. `pulls/1098/reviews` → 1 row, bot, old sha; no
+human review, no `CHANGES_REQUESTED`. The sole human-authored comment (`jhelferty-nv`) is an
+automated board-sync assignment notice marked *"do not reply"* — **not** a routing inbound.
+⇒ ⭐⭐**A green "review completed" check is not a statement about the current head** — same class as
+the standing rule that a passing suite may never have run the thing you care about. Read
+`reviews[].commit_id`, never the check name.

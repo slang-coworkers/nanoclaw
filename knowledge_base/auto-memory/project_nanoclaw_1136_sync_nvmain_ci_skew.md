@@ -92,6 +92,61 @@ not touch. ⚠️ [[project_nanoclaw_1086_sync_sendmessage]] warns that my earli
 `read_pin`/`pipefail` root cause for a past `verify` red was **INFERRED, never confirmed,
 and is now moot** — do not restate it.
 
+## ⛔ 2026-08-10 RE-MEASURE at head `ddaffe8e` — BOTH BLOCKERS GONE, ALL CHECKS GREEN
+
+A `synchronize` (one push, `ddaffe8e`, 2026-08-10T12:52Z; two webhook deliveries, one head
+change) invalidated **every figure above**. Re-measured: 11 commits / 30 files / **+666
+−1653** — no longer a pure deletion sync; it now carries upstream source+tests+docs
+(`src/host-lifecycle.ts`, `question-render-registry.ts`, `docs/host-lifecycle-migration.md`).
+`mergeable_state` **"unstable" → "clean"**, `rebaseable` **true → false** (merge commits
+present — irrelevant, required method is "Create a merge commit"). 3 check-runs, **all
+success**; `label` is absent because `label-pr.yml` triggers only on `[opened, edited]`,
+not synchronize — ⭐ a check-run **disappearing** between heads is a trigger artifact, not
+a regression.
+
+The sensitive-path filter is **no longer empty**: `["src/index.ts"]` (+16 −15). Inspected —
+upstream's host-lifecycle-registry refactor (#3214), pure code motion, **zero version
+pins**. ⭐ The filter is a *pointer*, not a verdict: it fires on any match and still
+required reading the hunks.
+
+⭐⭐ **Both fixes landed on `nv-main`, not in this PR** — the checks evaluate
+`refs/pull/1136/merge`, which incorporates the nv-main tip, so **the green is a property of
+the MERGE RESULT, not of the branch in isolation.** `nv-main.txt` grew 192 → 206 lines
+(qodo entries added at 200–206, comment: *"This RECORDS ownership that is already factually
+true"*); `pnpm-lock.yaml` fixed by `320a9e33` *"deps: own ccusage on nv-main …"* (#1150,
+2026-08-09). Base sha `8d108b2f` is now **24 commits behind** the tip (`4e1e9329`,
+`compare` → `diverged, ahead_by 11, behind_by 24`) yet `mergeable: true` — ⭐ a stale
+`base.sha` on the PR object does **not** imply unmergeable; GitHub recomputes against the
+tip.
+
+## ⛔⛔ CORRECTION TO MY OWN PUBLISHED PRESCRIPTION — right mechanism, WRONG TREE
+
+I wrote above: *"Fix belongs in nv-dashboard's tree (or in the merge policy), not in any
+sync PR"* and *"reds EVERY PR into `nv-main` until nv-dashboard's two files agree."* The
+**mechanism was correct and confirmed**; the **prescription named the wrong tree.**
+Measured: nv-dashboard was **already internally consistent all along** (`package.json`
+`20.0.19` + 21 lockfile refs, importer specifier matches) — I had that measurement in hand
+and still pointed the fix there. The skew lived in **nv-main's** lockfile *lacking* a dep
+its auto-merged manifest acquired, so the fix was nv-main **owning** `ccusage`. Two valid
+resolutions existed (nv-dashboard drops it, or nv-main owns it); I asserted one as *the*
+location.
+
+⇒ ⭐⭐⭐ **A correctly-derived mechanism does not carry a correct prescription — "who must
+change" is a SEPARATE claim needing its own evidence.** The take-HEAD-lockfile /
+clean-automerge-manifest asymmetry says a skew *will* occur; it is silent on which side
+should absorb it. ⭐⭐ **My own measurement (nv-dashboard self-consistent) already
+contradicted my prescription in the same report** — the refuting datum was present and
+unread, which is the [[feedback_a_supporting_example_list_is_not_a_check]] shape: I
+collected the figure to support the mechanism and never turned it against the conclusion.
+⇒ **before naming who must fix a composed-state defect, ask which branch's state is
+ANOMALOUS, not which branch introduced the symptom.**
+
+⭐ Also corrected: *"no test signal at all"* was true at `1e498ed2` (steps 9–25 skipped) and
+is now false — **25 of 25 steps + 6 post steps green**, incl. Format, Typecheck ×3, Host /
+Container / Python-skill / KB-observability tests, and two new gates (step 9 "Assert
+runtime specifiers resolve in the composed tree", step 12 "Lint Python (ruff)"). Step 9 is
+plausibly the guard added *because* of this skew class — unverified, flagged as inference.
+
 ## Position
 
 Reported inline to the operator: not conflicted, correct topology, zero build-file risk;

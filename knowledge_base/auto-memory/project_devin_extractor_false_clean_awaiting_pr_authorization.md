@@ -64,3 +64,26 @@ An escaped `devin-page.txt` on disk **proves the decode never ran**, so it attri
 A Devin zero is **presumed uninformative** unless its page dump carries an explicit `N Flags` or `No flags` header — only 46 of my 128 do. Reconcile against `devin-page.txt` (on disk, free) before letting any zero contribute a clean signal.
 
 Related: [[feedback_a_size_or_presence_guard_cannot_validate_a_transformation]] (shared: `1786114676965-a-size-or-presence-guard-cannot-validate-a-transfo`), [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]]
+
+## ⛔⭐⭐⭐ 2026-08-10 — THE APPROVER'S DURABLE ASK IS CONFIRMED, AND IT IS MINE TO ROUTE (they hold only a per-container lease)
+
+They reported: *"the slang runner's `devin-fetch.sh` is absent from all 402 refs of the nanoclaw repo, so no PR can ever protect it and every rebuild reverts it."* **Verified on my edge, and the precise form matters:**
+```
+git ls-files | grep -E 'devin-fetch\.sh$'   in pr1175       -> 0 tracked files
+                                             in nanoclaw-kb -> 0 tracked files
+  (a naive grep 'devin-fetch' returns 72 in nanoclaw-kb — those are MENTIONS INSIDE
+   knowledge-base learnings/memos, not the script. A count is not a file.)
+
+live copies, BOTH unversioned, and DIVERGENT:
+  /home/node/.claude/skills/nanoclaw-pr-review-runner/scripts/devin-fetch.sh  10540 B  Aug 10 09:26
+  /home/node/.claude/skills/slang-pr-review-runner/scripts/devin-fetch.sh     16196 B  Aug 10 09:26
+```
+⇒ ⭐⭐⭐ **TWO COPIES OF ONE SCRAPER, 5.6 KB APART, NEITHER IN VERSION CONTROL, BOTH STAMPED AT THE SAME REBUILD (09:26).** ⇒ **The rebuild that DELIVERED the #1145 fix to the versioned sibling is the same rebuild that DISCARDED their hand-patch on the unversioned one** — exactly their finding, and it explains why the fix and the regression arrived together.
+
+⇒ ⭐⭐ **A HAND-PATCH TO AN UNVERSIONED FILE IS A LEASE, NOT A FIX — its expiry is the next rebuild, which nobody schedules or announces.** Their framing (*"I only hold a per-container lease"*) is exactly right, and it is why this escalates rather than being re-patched again: **re-patching is guaranteed to be reverted, and the revert is silent.**
+
+⚠️ **Instrument note worth keeping: `grep -c <name>` over `ls-files` conflated 72 doc mentions with 0 tracked files** — the count was non-zero and the answer was zero. **Anchor the pattern to a path terminus (`/devin-fetch\.sh$`) when asking "does this FILE exist", never a substring.** Same shape as the `{{`-vs-unterminated-`{{` predicate error earlier today: **the naive pattern over-matched and the over-match pointed the wrong way.**
+
+✅ **Their own near-miss is the reusable half and it is one my store already carries: the restored guard test first printed NOTHING and they almost logged it as a pass — it was `MODULE_NOT_FOUND`.** ⇒ **A test that prints nothing is not a test that passed.** Same "empty output ≠ clean" generator as the Devin false-clean, now one layer up inside their own verification harness. **Their control was the right one: replay the exact page that caused the original false-clean, with the reverted backup as a positive (`done=true`) and both live copies as negatives (`done=false`).**
+
+⇒ ✅ **ROUTED TO OPERATOR as a two-option decision, not a bug report:** (a) vendor `devin-fetch.sh` into the repo so a PR can protect it, or (b) delete the slang copy and point the slang skill at the nanoclaw one. **Both end the recurrence; leaving two copies where only one is versioned guarantees it repeats.** No GitHub write at my tier.

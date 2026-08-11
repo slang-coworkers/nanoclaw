@@ -365,10 +365,58 @@ read when it hurts you, and don't inherit their unverified ABSOLUTION when it he
 ⇒ **Keying on the rate-limit marker's presence/absence is the only probe that got BOTH right.** Marker
 count 2→0 across the window.
 
+## 5th webhook (`synchronize`) 08-10 07:04:57Z — head `b4ca3c8c`. ✅EVIDENCED HOLD, NO re-dispatch.
+
+Head-resolve first, **5 for 5** (head has moved on every single webhook this chain). `compare/2a3524d8...
+b4ca3c8c` → **ahead_by 6**, 13 files — but the composition is what decides it:
+
+| commits | what |
+| --- | --- |
+| `3ef27be1` @08-06 18:14Z, author `jvepsalainen-nv` | **the ONLY PR-owned commit**: `+1/-0` on the test — `REQUIRE(secondShaderObject != nullptr)`. **This closes CodeRabbit's last open 🟡 verbatim.** |
+| `5f00bdc5` `8ffe21c5` `2b32772b` `5175fbbf` | upstream main (#813 #814 #815 #819) — CUDA/Vulkan/D3D12/Metal native-handle work by `fknfilewalker`, `tdavidovicNV`, `skallweitNV`. Not this PR's. |
+| `b4ca3c8c` @07:04:55Z | `skallweitNV` (id `64953474`) *"Merge branch 'main'"*, committer `web-flow` ⇒ **browser "Update branch" click.** |
+
+⛔**The core fix is BYTE-IDENTICAL: `src/device.cpp` / `src/device.h` are not in the delta at all**
+(`map(select(test("src/device"))) | length` → **0**). Every non-test file in the delta is upstream code.
+
+### The three tripwire conditions — all THREE still negative, checked individually
+
+1. **Author declares ready — NO.** ⭐**The WIP comment `5192349256` is still standing VERBATIM and was
+   never edited: `created_at == updated_at == 13:28:53Z`.** (Cf. this chain's own trap where CR's summary
+   comment *was* edited in place — so equality here is a real check, not a formality.)
+2. **AUTHOR re-requests reviewers — NO.** GraphQL `timelineItems.actor.__typename`: the last
+   `ReviewRequestedEvent` is still `coderabbitai`/**`Bot`** @14:07:36Z 08-05. **Zero User-actored
+   review-requests since the author's own 13:28:08Z removals.** `pending: [bmillsNV]` is that bot artifact.
+3. **Human maintainer engages on the head — NO, and this is the one that needed discriminating.**
+   `skallweitNV` merging main into someone else's PR *looks* like maintainer engagement. ⛔**It is a BATCH
+   SWEEP: they ran the identical `Merge branch 'main'` on their OWN PR #598 at 07:02:37Z — 2 min 18 s
+   earlier.** ⇒ ⭐⭐⭐**a maintainer action is only engagement-with-THIS-PR if it isn't also happening to
+   their other PRs in the same minute — check the neighbours before reading intent.** Same family as the
+   actor-`__typename` rule: **an action that changed state is not evidence of intent until you check its
+   context.** (Contrast rhi#802, where a skallweitNV branch-update WAS a genuine engagement signal — the
+   discriminator is the sweep, not the operation.) No review, no comment, no approval.
+
+⇒ **The verdict's premises are untouched, so a re-run would return ABSTAIN_POLICY with the SAME reason code
+— accurate and zero-value, which is exactly the churn the debounce rule forbids.** Inbound scan (the
+load-bearing half) run in full: **0 comments of any kind since 08-05 13:41Z**, reviews still the single
+`coderabbitai COMMENTED @5d00ad51` — now **five shas stale**.
+
+⏱️CI at hold: run `31364419295` (`ci`) **`status=queued`, `conclusion=null`** — 23 check-runs, 11 success /
+2 skipped / **10 pending**. ⛔Read the RUN, not the count (`total_count` grew 20→21 mid-chain last time).
+
 ## RESUME
 
-🔵**CHAIN STATE: approver TERMINAL on `2a3524d8` (ABSTAIN_POLICY). Ball is with the AUTHOR — he declared
-WIP. Our approver step is DONE unless a readiness signal appears. Nothing posted to GitHub by anyone.**
+🔵**CHAIN STATE: approver TERMINAL on `2a3524d8` (ABSTAIN_POLICY). 5th webhook HELD 08-10 without
+re-dispatch — premises intact, core fix byte-identical, all 3 readiness tripwires negative. Nothing posted
+to GitHub by anyone.**
+
+⚠️**PIN `b4ca3c8c6c1bf357755ddd04f72c4d48921a1169` as the current head** — but the last **decided** head is
+`2a3524d8`, and the fix is unchanged between them.
+🔴**AUTHOR-SILENCE ESCALATION NOW DUE: the WIP note is 4d 17h old** (13:28:53Z 08-05 → 07:04:57Z 08-10,
+computed not carried) **and the author's last activity is `3ef27be1` @08-06 18:14Z ⇒ ~3d 13h of author
+silence.** My own RESUME set *">~2 days ⇒ worth an upstream note"*; that fired. **A finished-looking PR —
+green fix, last nit closed, zero red findings — parked under a 5-day-old self-declared WIP label is the
+cheap thing to lose track of.** Reported upstream 08-10; **not** a nudge to the author from us.
 
 - ⛔**PIN `2a3524d8ad685a359e522a511e5efe9172f28022`. Reject any verdict keyed to `5d00ad51`, `e062d03f`,
   or `4c020aeb`.** Head moved on **every** webhook, 4 for 4 ⇒ **on webhook #5, resolve `head.sha` FIRST;
@@ -415,3 +463,90 @@ WIP. Our approver step is DONE unless a readiness signal appears. Nothing posted
   ([[feedback_inbound_scan_must_cover_issue_comments_not_just_reviews]]).
 - Builds finish ⇒ if any fail, that is new information for the approver, not a re-dispatch reflex.
 - Another `synchronize` ⇒ resolve `head.sha` first; if it moved, it is **not** a duplicate.
+
+## ✅⛔⭐⭐⭐ 2026-08-10 07:32Z — MERGED. BOTH APPROVER ABSTAINS REFUTED, EVERY CLAIM VERIFIED, AND A REAL POLICY QUESTION LANDS ON ME.
+
+`slang-pr-approver` reported this as its cleanest recorded loss and escalated rather than self-corrected. **I verified every load-bearing leg before treating the escalation as sound:**
+```
+merged_at 2026-08-10T07:25:17Z   merge_commit 8b27c96c9a   head b4ca3c8c6c
+reviews:  skallweitNV (User) APPROVED @b4ca3c8c 07:08:56Z   <- independent; author is jvepsalainen-nv
+compare 2a3524d8(decided) -> b4ca3c8c(merged): status=ahead, ahead_by=6, behind_by=0
+  changed files DO NOT INCLUDE src/device.cpp OR src/device.h        <- byte-identity CONFIRMED by absence
+  only PR-owned change:  tests/...cpp  +1/-0
+     + REQUIRE(secondShaderObject != nullptr);
+  commits: 3ef27be15 (the nit) + #813 + #814 + #815 + #819 + the main merge   <- 5 of 6 are other PRs
+```
+⇒ **The production fix shipped byte-identical to what they declined to approve, and the single PR-owned commit is the advisory nit they had examined and correctly cleared.** ⭐⭐ **Their instrument choice is the reason this is scoreable at all: they joined on the DECIDED sha, not the webhook's `head_sha` — which matched neither reviewed revision because main had been merged in twice. Joining on the merged head would have scored their rows against code they never saw.**
+
+⇒ ⭐⭐⭐ **THE ROOT CAUSE IS THE SCOPE ERROR I HAVE HIT REPEATEDLY TODAY, IN A NEW COSTUME: "the AUTHOR isn't ready for review" is not "the ARTIFACT isn't ready to merge."** A WIP note tells you *who wants to look and when*; it carries almost nothing about *what they would find*. **The maintainer had the same facts and shipped it.** Same family as my *"forfeits nothing"* (true of one subsystem, published as a claim about the world) and my *"upgrade"* advice (true of the tree, published as available to a user). **A claim about PROCESS silently promoted to a claim about SUBSTANCE.**
+
+⇒ ⭐⭐⭐ **AND THEIR SCORING DISCIPLINE IS THE PART WORTH PRESERVING ABOVE THE VERDICT: they refused the self-sealing reading.** *"A human must look; a human looked"* scores every abstain correct no matter the outcome — unfalsifiable. They scored against *"not material enough to merge as-is"*, which byte-identical approval **refutes**. **A calibration metric that cannot lose is not a metric.**
+
+### The policy question is legitimately mine, and their reason for escalating is correct
+
+**6 consecutive losses on `slang-rhi`, zero wins, 4 merged past by the same maintainer (`skallweitNV`).** Their own #815 ruling forbids acting on a losing streak in the moment — *losses never authorise a permissive derivation*, because a quietly lowered internal bar is indistinguishable from sloppiness. ⇒ ⭐⭐ **So they routed it as a falsifiable `APPROVAL_POLICY.json` carve-out rather than a behaviour change. That is exactly right: a policy edit is auditable and reversible; "I'll decide differently tomorrow" is neither.**
+
+**My position (operator-gated, not self-authorized):** the carve-out should be **narrow and evidence-shaped** — `WOULD_APPROVE` with the WIP recorded as a caveat **only when every artifact gate is clean** — because that is the state the data covers: 6/6 cases had clean artifacts. ⚠️ **What the streak does NOT license: a general presumption toward approval.** n=6 on **one repo** with **one merging maintainer** is a claim about `slang-rhi` + `skallweitNV`, not about approval judgment generally — the per-event/per-environment scoping error I made twice yesterday. **Any carve-out must name its repo scope, or it generalizes an untested claim.**
+
+## ⛔⭐⭐⭐ 07:36Z — THEIR PARTITION REFUTES MY CARVE-OUT SHAPE AND THEIR OWN ESCALATION. BUT ONE OF THEIR TWO CORRECTIONS IS WRONG IN THEIR OWN DISFAVOUR.
+
+They audited my *"one merging maintainer"* caveat and returned two corrections. **Verified both:**
+```
+#811 author=jvepsalainen-nv  merged_by=skallweitNV     #813 author=fknfilewalker  merged_by=skallweitNV
+#815 author=fknfilewalker    merged_by=skallweitNV     #814 author=tdavidovicNV   merged_by=tdavidovicNV  <- SELF-MERGE
+```
+✅ **Correction 1 CONFIRMED and my framing was wrong: 3 authors, not 1** — my *"one merging maintainer"* was true of the merger and I published it as the scope of the whole set. **The author axis is where the independence lives, and I collapsed it.**
+
+⛔ **BUT their downgrade of #814 is wrong, and wrong AGAINST THEMSELVES. The self-merge was preceded by an INDEPENDENT approval:**
+```
+skallweitNV   APPROVED  2026-08-07T15:05:14Z
+tdavidovicNV  merged    2026-08-07T15:27:24Z   <- 22 minutes later
+```
+⇒ ⭐⭐⭐ **A SELF-MERGE FOLLOWING AN INDEPENDENT APPROVAL IS NOT AN UNREVIEWED MERGE — the review happened; the author merely pressed the button.** They discounted #814's two rows as *"the weakest evidence in the set"* on the strength of `mergedBy == author`, which is the **action**, not the **judgment** — the exact distinction they articulated correctly in the #1145 join one message later. ⇒ ⭐⭐ **They applied the right rule in one chain and its inverse in another within the same hour, both times to their own cost.** #814 is a genuine independent-review loss; effective losses are **6, not 5**.
+
+✅ **Correction 2 CONFIRMED and it is the important one — my carve-out would have covered ONE row of six:**
+```
+#813 R1 OPEN_GAP    #814 R1 ABSTAIN_INFRA   #814 R2 CHALLENGER_CONCERN
+#815 R1 OPEN_GAP    #815 R2 OPEN_GAP        #811 R1 NO_REVIEW_SIGNAL   #811 R2 CHALLENGER_CONCERN
+```
+⇒ **Three distinct failure modes: n=1 WIP-scope · n=3 untested-validation-branch OPEN_GAP · n=2 harness.** ✅ **And #815's gap verifiably shipped uncovered — measured: `src/cuda/cuda-buffer.cpp +17/-0` of new rejection logic against `tests/test-buffer-from-handle.cpp +1/-1`.** A one-line test delta cannot cover 17 new lines of validation branch. **That is the strongest signal in the set and it is NOT the WIP question.**
+
+⇒ ⭐⭐⭐ **THE GENERAL FORM, now hit 4× across two tiers in two days — a claim true of one scope, published at another:** mine *"forfeits nothing"* (subsystem→world), *"upgrade"* (tree→user), *"one merging maintainer"* (merger→set); theirs *"author not ready"* (process→artifact), *"6 losses"* (three modes→one bar). ✅ **Their guard is the operational form and better than mine: BEFORE PUBLISHING A COUNT AS EVIDENCE FOR A FIX, PARTITION IT BY THE MECHANISM THE FIX ADDRESSES — if the partition is uneven, the count is not the evidence.**
+
+## ✅ nanoclaw#1145 — the `MERGED_BY_HUMAN_NO_REVIEW` join is correct, and its self-critique is the valuable half
+
+Verified live: `merged 08-10T08:40:45Z`, **at their exact decided sha `e42ab3737c1d`**, squash `429a56cb45ab`, author `nv-slang-bot`, `merged_by=szihs` (≠ author), **`reviews: []` — zero review rows.** ⚠️ *I could not independently confirm `is_bot: false` — my `users/szihs` probe returned a OneCLI GitHub-auth error (401), unrelated to the claim. Their check stands unchallenged, not corroborated.*
+
+⇒ ⭐⭐⭐ **Scoring it NEITHER is right, and for the reason they give: `merged_by` is an ACTION, not a JUDGMENT.** Scoring agreement would be the unfalsifiable *"a human acted as I said one must"*; scoring a loss would assume he reviewed, which zero review rows cannot support. **A pre-registration that enumerates "human review lands" vs "bot self-merge" has an unenumerated cell, and naming it beats forcing it into either bin.**
+
+⇒ ⭐⭐⭐ **THEIR SELF-CRITIQUE IS THE FINDING AND IT GENERALIZES PAST APPROVALS: a recusal that routes to a rubber stamp achieves nothing but a slower merge.** Three author-disclosed defects — including a measured **27-of-73 token-less false-clean** and a poll-predicate-vs-exit-gate defect they had re-verified BY EXECUTION — reached a human who left no review row, so **nobody is on record as having adjudicated them.** ⇒ **The defect is in the abstain's OUTPUT, not its verdict: an abstain that declines to judge must still ENUMERATE what it found for whoever does.** Abstaining silently transfers a decision without transferring the evidence.
+
+## ✅⛔⭐⭐⭐ 08:53Z — THEIR `__typename` ROUTE WORKS AND I TESTED IT; BUT AS A BOT PREDICATE IT HAS A FALSE-NEGATIVE MODE THEY DIDN'T MEASURE
+
+They closed my `is_bot` gap with `gh api graphql {user(login:"szihs"){__typename}}` → `"User"`. **Verified on my edge, with the REST control in the same session:**
+```
+graphql  user(login:"szihs"){__typename}          -> {"__typename":"User","login":"szihs"}   ✅
+REST     users/szihs                              -> 401 OneCLI app_not_connected            ✗
+```
+⇒ ✅ **`__typename` genuinely survives where REST is down — the transferable half is real, and their `is_bot: false` is now independently corroborated rather than merely unchallenged.**
+
+⛔ **BUT THE DISCRIMINATING CONTROL FAILS, AND THEY PROPOSED THIS AS THE PREDICATE FOR A BOT-ALLOWLIST FIX:**
+```
+graphql user(login:"coderabbitai")       -> data.user = null, errors[NOT_FOUND]
+graphql user(login:"coderabbitai[bot]")  -> data.user = null, errors[NOT_FOUND]
+```
+⇒ ⭐⭐⭐ **`user(login:)` CANNOT RETURN `Bot` — it resolves only the `User` type, so every bot comes back `NOT_FOUND`, indistinguishable from a typo'd or deleted login.** A predicate built on it reads *"not a User"* as *"bot"* **and** as *"nonexistent"* — **and its only tested case was a human, so it returned the right answer for the one input that cannot expose the flaw.** Same shape as the whole day: a positive control on a real member, no negative control.
+
+✅ **THE CORRECT PREDICATE — query the ACTOR field, not the user root. It types both in one call, measured:**
+```
+repository(...){pullRequest(number:811){reviews(first:5){nodes{author{__typename login} state}}}}
+  -> {"__typename":"Bot",  "login":"coderabbitai"},  state COMMENTED
+     {"__typename":"User", "login":"skallweitNV"},   state APPROVED
+```
+⇒ ⭐⭐ **`author`/`actor` is a UNION (`User | Bot | Organization | Mannequin`), so `__typename` there is a real discriminator; `user(login:)` is a typed root that silently narrows the domain.** ⇒ **Ask the object that has the union, not the root that has one type.**
+
+## ⭐⭐⭐ AND THEIR ROOT CAUSE ON #814 IS THE SHARPEST ITEM IN THE EXCHANGE: THE EVIDENCE WAS IN THEIR OWN CHILD FILE, ALREADY CORRECT
+
+`pr-814-slang-rhi-decided.md` records verbatim *"`skallweitNV` (requested CODE OWNER, `user.type=User`, **NOT the author**) submitted `APPROVED`"* and *"SCORED AS A LOSS."* ⇒ **They did not misread the evidence — they never opened it.** One `grep` on their own artifact would have prevented the downgrade.
+
+⇒ ⭐⭐⭐ **THEIR GENERALIZATION IS THE ONE TO KEEP, AND IT IS BROADER THAN COUNTS: `my own artifact needs ENUMERATION, not RECALL` governs every claim about a past decision of mine — before scoring, discounting, or citing a prior decision, grep its row FIRST.** ⚠️ **And their detection note is the load-bearing half: DIRECTION COULD NOT FLAG IT, because discounting one's OWN losses never feels like a shortcut.** A self-serving error has a felt signature; a self-harming one has none. ⇒ **"Does this favour me?" is not a usable trigger. "Am I citing a prior decision from memory?" is.**

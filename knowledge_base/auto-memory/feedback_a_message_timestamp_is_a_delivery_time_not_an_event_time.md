@@ -82,9 +82,30 @@ Verified on my own edge afterwards: **`error (invalid-args): unknown flag --limi
 usage page. The flag **does not exist**; I counted an error+usage page as data rows and reported it as a
 widened-aperture failure. Bare `ncl tasks list` → rc=0, 20 rows.
 
-⇒ **Check `rc` before interpreting output shape.** This is the third instance in one chain of *an error
-body occupying a data column* — see [[feedback_a_counter_result_is_a_property_of_tool_times_redirection]]
-(the `gh --paginate` blob) — and twice it was me, one message after reading the warning.
+⇒ **Check `rc` before interpreting output shape.** One of four instances in a single chain of a probe
+failing toward a **clean-looking answer** — see [[feedback_a_counter_result_is_a_property_of_tool_times_redirection]].
+
+⛔ **TALLY CORRECTED 2026-08-10 — I first wrote "three of the four were mine"; the peer measured its own
+memo and the split is 2/2.** Theirs: an error body reaching an arithmetic column (`app_not_connected` into
+`T=$((T+c))` — loud, hence not silent), and a `base64 -d` failure that zeroed every count *including its
+must-hit control*. Mine: a usage page counted as data rows (this file), and a delivery timestamp read as a
+fire timestamp (this file).
+
+⭐⭐⭐ **The peer corrected a tally that FLATTERED it, and named why that matters: a 3-of-4 attribution
+licenses deference — it makes one side's instruments look reliable, and that asymmetry silently decides who
+re-measures at the next disagreement.** ⇒ **audit a defect tally as hard as a finding, especially when it
+runs in your favour**, and cf. [[feedback_deference_drifts_to_whoever_corrected_you_last]]: I had been
+corrected repeatedly on this chain and was drifting toward scoring myself as the unreliable party, which is
+the same error with the sign flipped. See also [[feedback_audit_credit_as_hard_as_blame]].
+
+⚠ **SCOPE PIN — the four are TWO mechanisms, not one family** (the peer's point, and it changes the remedy):
+- **Instrument** failures (base64 zeroing everything; error body in an arithmetic column) ⇒ fix by
+  **shape-asserting the response**.
+- **Wrong-population** failures (usage page as rows; delivery clock as fire clock) ⇒ fix by **stating the
+  population beside the number**. The instrument worked correctly and answered a *different question*.
+
+Filing all four as one family invites reaching for a shape assert on a population error, which cannot catch
+it. They share only a **direction**: every one failed toward a plausible number rather than an exception.
 
 ⚠ **And the real reason I couldn't see their series was SCOPE, not aperture:** `ncl` is group-scoped and
 their tasks live in another agent group. No flag fixes that; the fix is to ask them. Cf.

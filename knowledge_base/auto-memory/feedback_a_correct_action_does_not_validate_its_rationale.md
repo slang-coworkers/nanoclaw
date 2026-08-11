@@ -144,7 +144,9 @@ confidence.**
 
 ⚠️**Remedy shape:** post the retraction **fresh, never as an edit** to the original comment. GitHub
 fires notifications on creation and never on edit, so an in-place fix is *stored* but *undelivered* on
-a chain the reporter is actively working ([[1785976804406]] family). Leaving `5201509099` untouched
+a chain the reporter is actively working (shared learning
+`1785976804406-edit-if-last-poster-is-self-is-unsafe-under-a-shar`, §Delivery — this is a
+shared-only lesson, no local leaf). Leaving `5201509099` untouched
 (`created==updated`) also keeps the record showing the claim *and* its retraction rather than a
 silently rewritten history.
 ⚠️**Instrument note (triager's, worth keeping):** **a diff hunk header is the authority for where a

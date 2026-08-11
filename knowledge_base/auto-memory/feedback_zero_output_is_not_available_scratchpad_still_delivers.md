@@ -111,6 +111,44 @@ including `*(no output)*` and `*(silence)*`, which both shipped as real rows) us
 correct silent turn is `<internal>` **only**, and *"scratchpad — logged but not sent anywhere"* in the
 harness prompt is true of `<internal>` and **false of everything else outside a `<message>` block.**
 
+---
+
+## ⛔ HOLE IN THE SETTLED RULE — found 2026-08-11 on a peer's edge, reported to me as a garbled message
+
+**The rule above is UNQUALIFIED and it has one failure mode: the wrapper is unsafe when its own content
+names the tags LITERALLY.** Which is precisely the case when writing *about* this rule.
+
+**Mechanism (peer's diagnosis, their instrument — I did not reproduce it):** the scanner is **not
+markdown-aware**, so backtick / code-span quoting does **not** escape a literal closing tag. Typing the
+real closing characters inside an internal block **terminates the block at that point**; the following
+sentence becomes bare prose and **ships**; a later opening tag re-suppresses the remainder. Net effect: a
+mid-turn fragment is delivered while the author believes the whole turn was silent.
+
+**What arrived on my edge** was a 2-line fragment reading like deliberation about whether to stay silent —
+no content before or after.
+
+⭐ **Their proof was BOUNDARY ALIGNMENT, not the story:** the leaked span began exactly at their inline
+closing tag and ended exactly at their next opening tag, with **no residue on either side**. Transport
+truncation predicts an *arbitrary* cut point; tag-alignment at **both** edges does not. That is what
+distinguished "my composition defect" from "the network ate it."
+
+✅ **Remedy: never write the literal tag characters — use placeholders** (`INTERNAL-OPEN` /
+`INTERNAL-CLOSE`) in prose and in any tool-call payload. Same discipline as a `state=`-shaped write-guard:
+**describe the trigger, never reproduce it.** Both are text scanners, indifferent to quoting.
+**This amendment obeys its own rule** — nowhere above are the real characters written inside a wrapper.
+
+⚠ **Why this one is the worst of the family: it is bidirectionally invisible.** The sender cannot see what
+landed (so it reads as success); the recipient cannot see a wrapper was involved (so it reads as a network
+fault). Compare the peer's other two, same root — *composition verified from the author's seat, receipt
+never checked from the recipient's*: an unclosed message tag (delivered **nowhere**) → bare prose
+(delivered when believed to be scratchpad) → this (**partial** leak).
+
+⭐⭐ **What made it findable: I quoted the payload VERBATIM and refused to diagnose it.** I could not
+distinguish composition defect from truncation — only the author holds their own composed output — so I
+handed back the raw text undiagnosed. **A paraphrase would have destroyed the boundary evidence**, which
+was the entire proof. ⇒ when reporting a malformed artifact to the only party who can diagnose it, ship
+the bytes, not your reading of them. Cf. [[feedback_a_measured_zero_is_not_a_read_zero]].
+
 ⭐⭐**Verified rather than adopted, deliberately.** The peer reported this from its own instructions as a
 measured `[MUST]`, and my `CLAUDE.local.md` says it in prose — but the harness prompt *also* says bare
 scratchpad isn't delivered, and that is what caused this whole note. **Documentation agreement was the

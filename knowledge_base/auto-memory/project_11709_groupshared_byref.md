@@ -71,3 +71,25 @@ Diagnostic stays E30707 (collision-resolved below).
 - ⚠️ **DIAGNOSTIC-NUMBER WATCH (collision-prone chain):** this PR's err progressed 30705→30706→**30707** (main-error, collision-resolved w/ #11885 which holds 30706) and separately shipped E30708/E30709/E30710 (the target-aware policy). **New E30711** (groupshared-arg restriction) — verify at HEAD it doesn't collide with any other concurrent open PR's reserved diagnostic before merge (this chain has a documented concurrent-PR number-collision history; #6319/#11885 the prior hazard). Merge OPERATOR-gated; fixer owns, webhook-driven.
 
 **COLLISION RESOLVED 2026-07-07 ~19:12Z (Main verified at HEAD).** Fixer took the recommendation and moved #11709 to **30707** (`+ 30707, -- 30706 reserved for #11885 (duplicate-system-value-semantic)`, matching #11885's reservation-comment convention), rebuilt green (diag 1/1 err 30707, diagnostics 540/540), pushed `1b2d573707`, dispatched draft CI. Verified: #11709 diff = 30707, #11885 diff = 30706, master tops at 30705 → all three distinct, no double-define at any merge order. Watch closed. The intermediate `54a98c09a2` (30706) is superseded. Chain back to webhook-driven, awaiting jhelferty-nv review. NET: the cross-chain flag prevented a real merge-time collision neither fixer session could see — good catch to remember when two open PRs both add diagnostics off a shared master baseline (concurrent-PR number-collision hazard).
+## ⛔⭐⭐⭐ 2026-08-10 — I INFERRED A TEST DIVERGENCE THAT DOES NOT EXIST, FROM A PEER'S OWN FLAG, AND MY CLONE COULD NOT HAVE SHOWN ME OTHERWISE
+
+The fixer flagged a possible worktree collision: their test *"now asserts `RefParam` where I committed `BorrowInOutParam`"*, plus a commit they didn't recognize (`cf4dd01810`). ✅ **I correctly resolved the collision half** — `cf4dd01810` is bot-authored on `fix/issue-10641` = **their own PR #11709**, and they had reported shipping that exact sha to me 2h earlier; the other two sessions on that thread (triager, me) were 7 weeks idle. ⛔ **But I then told them the divergence "is therefore your own later edit," which invented a defect.** Their correction, verified line-for-line at `2875a54e7a`:
+```
+tests/bugs/gh-10641-const-groupshared-param.slang  (54 lines)
+  :9   PROSE       "...fell through to the read-write groupshared default and lowered to the same
+                    `BorrowInOutParam` as..."           <- describes PRE-FIX behavior
+  :50  prose       "...the bare spelling is the strict read-write reference `RefParam`..."
+  :54  ASSERTION   //CHECK-DAG: func %readWrite{{.*}}RefParam        <- the live claim
+  :47-48 ASSERTION //CHECK-DAG: func %readOnlyConst{{.*}}BorrowInParam  (x2)
+cf4dd01810's full patch (12,585 chars): RefParam 0 · BorrowInOutParam 0 · BorrowInParam 0
+                                        never touches that file at all
+```
+⇒ **One file, prose describing the old behavior beside an assertion pinning the new one. No stale half, no second version.**
+
+⇒ ⭐⭐⭐ **AND THE INSTRUMENT FAILURE IS THE ANCHOR-C SHAPE, EARNED AGAIN: I `grep`ed the path in MY clone, which is on `master` (`d7f3c47fcc`) — the file lives on THEIR BRANCH, so my read returned `No such file or directory`.** Had I run the grep *before* replying instead of after, a bare absence would have "confirmed" a phantom just as easily. ✅ **The fix is edge-independent reads: `gh api contents/<path>?ref=<sha>`, which resolved it in one call.** ⇒ **A path is not a claim about content until you name the ref — and my own store's ANCHOR C says exactly this about `/workspace/**` per-container paths. Same rule, git-ref axis.**
+
+⇒ ⭐⭐ **THEIR DIAGNOSIS OF MY ERROR IS SHARPER THAN MY OWN: "your inference was sound and only the premise was off — the reason it LOOKED like a later edit is that the strings coexist in the tree; the check that settled it was asking WHICH COMMIT EACH CAME FROM rather than whether both were present."** ⇒ **Co-presence of two spellings is not conflict. Attribute each occurrence to a commit AND to a role (prose vs assertion) before calling it a contradiction.** A `grep -l` that finds both strings answers "are both here", never "do both make the same claim".
+
+✅ **Their collateral checks, worth keeping:** the neighbouring `.slang.actual` is a gitignored slang-test artifact whose content **agrees** with expectations (37 `RefParam`-on-`readWrite`, 78 `BorrowInParam`-on-`readOnlyConst`) ⇒ leftover, not failure evidence; and `git status tests/` empty ⇒ no stray probe file can be swept into a commit.
+
+⚠️ **What I got right and should keep doing: flagging beat proceeding.** They stopped on the observation rather than the outcome, which is correct even though the outcome was benign — **a collision rule that only fires when a collision is real is untestable.**

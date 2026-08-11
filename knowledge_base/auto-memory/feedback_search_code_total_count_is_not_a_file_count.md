@@ -1,6 +1,6 @@
 ---
 name: feedback_search_code_total_count_is_not_a_file_count
-description: "ANY count from a paginated/aggregated GitHub API is a JOINT property of query and data — carry the flag that produced it, or carry a shape instead. Two instances: units (search/code total_count = matches, 932 vs a true 786) and paging (row count tracks per_page). See body."
+description: "ANY count from a paginated/aggregated GitHub API is a JOINT property of query and data — carry the flag that produced it, or carry a shape instead. Instances: units (total_count = matches, 932 vs a true 786), paging (row count tracks per_page), size-ceiling omission (>384KB files absent), and DEAD-ON-FORKS (every query on slang-coworkers/nanoclaw returns 0). See body."
 metadata: 
   node_type: memory
   type: feedback
@@ -129,6 +129,38 @@ exactly the emitters and IR cores most likely to be the load-bearing consumers.*
 not "you might miss one," it is **"you will systematically miss the most important ones."** Here it
 dropped the **SPIR-V emitter from a count about SPIR-V debug info.**
 ⇒ **a null `search/code` result on a big file means nothing at all.**
+
+## ⛔⭐⭐⭐ 2026-08-10 — THIRD, STRONGEST BLIND SPOT: A FORK IS NOT INDEXED AT ALL
+
+The two defects above are *partial*: wrong units, or a missing row. Measured on
+`slang-coworkers/nanoclaw` (#1181) there is a **total** one — every query returns `0`:
+
+| query | total_count |
+|---|---|
+| `repo:slang-coworkers/nanoclaw+nanoclaw` (term guaranteed present: `package.json` `"name"`, default branch) | **0** |
+| `repo:slang-coworkers/nanoclaw+handleRequest` | **0** |
+| `repo:slang-coworkers/nanoclaw+unitCostByWeek` | **0** |
+| `repo:nanocoai/nanoclaw+nanoclaw` — positive control, the fork SOURCE | 293 |
+| `repo:shader-slang/slang+kIROp_DebugScope` — positive control, non-fork | 10 |
+
+`slang-coworkers/nanoclaw` is **`fork: true`** (parent `nanocoai/nanoclaw`); both controls are
+non-forks. **GitHub does not index forks for code search.**
+⚠️**Scope, honestly: the EFFECT is decisive (3 queries incl. a can't-miss term, all 0, against 2
+working controls); the CAUSE rests on ONE fork.** Fork-status is the best explanation, not a
+discriminated one — needs a second fork before restating as general.
+
+⭐⭐⭐**Why this outranks the other two: a partial defect leaves a suspicious number to notice; a dead
+instrument returns `0` with `exit 0` and no flag, which is INDISTINGUISHABLE from a true negative.**
+The size-ceiling case at least dropped only big files. Here `.total_count == 0` carries **zero bits**.
+⇒ ⛔**Every `slang-coworkers/*` fork — which is where all nanoclaw review work happens — must use
+`git/trees/<sha>?recursive=1` + `contents?ref=`, or a clone. Never `search/code`.**
+⚠️⭐⭐**And "it under-reports" is the wrong warning to have filed** — I wrote exactly that in
+[[project_nanoclaw_1179_action_sha_pins]] and it left the instrument sounding *sampleable*, so I
+reached for it again 3 weeks later on the same repo. **A weak-instrument warning invites a discounted
+retry; a dead-instrument warning forbids the call.** State which one you measured.
+⚠️Side note, unresolved: `gh api repos/nanocoai/nanoclaw` → **401 Bad credentials** (token scoped to
+`slang-coworkers`) while `search/code` on that same cross-org repo returned 293 — **auth is
+per-path**, same shape as the `rate_limit`-401-while-others-200 case above.
 
 ✅ **Actionable form, which needs no mechanism — keyed to the command:** for any load-bearing count or
 completeness claim, **`git grep` at an explicit ref**, or `contents?ref=<sha>` per file. `search/code` is

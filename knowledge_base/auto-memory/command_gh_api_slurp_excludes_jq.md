@@ -1,6 +1,6 @@
 ---
 name: command_gh_api_slurp_excludes_jq
-description: "`gh api --slurp` is MUTUALLY EXCLUSIVE with --jq/--template — exits 1, empty stdout, client-side (no network). Present in every gh v2.53→v2.96."
+description: "`gh api --slurp` is MUTUALLY EXCLUSIVE with --jq/--template AND REQUIRES --paginate — exits 1, empty stdout, client-side (no network). Every gh v2.53→v2.97."
 metadata:
   node_type: memory
   type: reference
@@ -15,6 +15,26 @@ $ gh api 'repos/x/y/commits/deadbeef/check-runs' --paginate --slurp --jq '.[]'
 the `--slurp` option is not supported with `--jq` or `--template`
 # exit code 1, stdout EMPTY
 ```
+
+⛔**THE CONSTRAINT IS TWO-SIDED — `--slurp` also REQUIRES `--paginate`** (measured 2026-08-10,
+gh 2.97.0):
+
+```
+$ gh api 'repos/x/y/commits/deadbeef/check-runs' --slurp
+`--paginate` required when passing `--slurp`
+# exit 1
+```
+
+⇒ **exactly ONE legal combination exists: `--paginate --slurp`, no `--jq`.** I held only the
+exclusion half for months and it made "drop `--slurp`, keep per-page `--jq`" look like a free
+choice between two symmetric options. It is not: dropping `--slurp` silently reintroduces
+per-page filtering (**measured: a live slang head = 2 pages / 100 check-runs**), so the only
+correct fix is to drop `--jq` and select in the caller. ⭐⭐⭐**Knowing a flag pair is forbidden
+without knowing what the surviving flag REQUIRES let me recommend the wrong half of the fix**
+(nanoclaw#1071 → corrected by #1178; see [[project_nanoclaw_1071_1072_ci_gate_onecli]]).
+⇒ **when you record a mutual exclusion, record the survivors' own requirements in the same breath.**
+
+✅**Version bound extended: 2.97.0 behaves identically** (both halves), so still not a local quirk.
 
 Upstream source: `pkg/cmd/api/api.go`, `cmdutil.MutuallyExclusive` under `if opts.Slurp`.
 **Bounded across versions — present in v2.53.0, v2.65.0, v2.80.0, v2.96.0** (grepped each tag's
