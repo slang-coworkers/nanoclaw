@@ -2120,10 +2120,34 @@ function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
   };
 }
 
-// Per-token pricing for models ccusage doesn't know about yet.
-// Used by scanSkillTranscriptCosts to compute cost from raw JSONL entries.
-const FALLBACK_PRICING: Record<string, { input: number; output: number; cacheCreate: number; cacheRead: number }> = {
-  'claude-sonnet-5': { input: 3e-6, output: 15e-6, cacheCreate: 3.75e-6, cacheRead: 3e-7 },
+// Per-token USD/token pricing for the skill-transcript scanner, which parses
+// raw JSONL and so cannot go through ccusage at all.
+//
+// THIS TABLE IS A DENYLIST IN DISGUISE. `scanSkillTranscriptCosts` does
+// `if (!FALLBACK_PRICING[model]) continue;` — a model missing here is not
+// merely unpriced, it is DROPPED, tokens and all. On slang-coworkers prod
+// 2026-08-11 the skill transcripts held 2,002 `claude-opus-5` entries against
+// 205 `claude-sonnet-5` ones, so the single-entry table was discarding ~90% of
+// the sampled records while reporting the remainder as if it were the total.
+//
+// Rates below are LiteLLM's (`model_prices_and_context_window.json`), the same
+// source ccusage prices against, so the two paths agree. Keeping them in sync
+// matters: the previous `claude-sonnet-5` row carried 3e-6/15e-6/3.75e-6/3e-7,
+// which is `claude-sonnet-4-6`'s price list verbatim — sonnet-5 actually bills
+// at 2e-6/1e-5/2.5e-6/2e-7, so every sonnet-5 skill transcript was marked up
+// 50%. A wrong rate is worse than a missing one: it renders with full
+// confidence and nothing about the output suggests it should be checked.
+//
+// When a new model ships, ADD IT HERE — otherwise its cost silently reads zero.
+export const FALLBACK_PRICING: Record<
+  string,
+  { input: number; output: number; cacheCreate: number; cacheRead: number }
+> = {
+  'claude-opus-5': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
+  'aws/anthropic/bedrock-claude-opus-5': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
+  'claude-opus-4-8': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
+  'claude-sonnet-5': { input: 2e-6, output: 10e-6, cacheCreate: 2.5e-6, cacheRead: 2e-7 },
+  'claude-sonnet-4-6': { input: 3e-6, output: 15e-6, cacheCreate: 3.75e-6, cacheRead: 3e-7 },
 };
 
 function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): CcusageDayEntry[] {
@@ -2324,12 +2348,54 @@ function ccusageUnavailable(): string | null {
   return ccusageUnavailableReason;
 }
 
+/**
+ * The exact `ccusage` argv for the Claude cost query.
+ *
+ * Extracted so it can be asserted on. The defect this replaced lived ENTIRELY
+ * in the argument list — a single `--offline` — and no test of the response
+ * parser could have caught it, because ccusage's output was well-formed and
+ * self-consistent the whole time. It just priced the busiest model at zero.
+ */
+export function ccusageDailyArgs(since?: string): string[] {
+  const args = ['daily', '--json'];
+  if (since) args.push('--since', since);
+  return args;
+}
+
 function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDayEntry[]> {
   return new Promise((resolve) => {
     // --breakdown and other legacy flags were removed in ccusage 19. Keep
     // the call to the lowest-common-denominator flags that still work.
-    const ccusageArgs = ['daily', '--json', '--offline'];
-    if (since) ccusageArgs.push('--since', since);
+    //
+    // NO --offline HERE, DELIBERATELY. `--offline` prices from the pricing
+    // snapshot bundled inside the pinned ccusage (20.0.19 — already the latest
+    // release, so there is no version bump that fixes this). That snapshot has
+    // no entry for `claude-opus-5` or `aws/anthropic/bedrock-claude-opus-5`,
+    // and ccusage's response to an unknown model is to emit cost 0 with the
+    // TOKENS INTACT rather than to error. Measured on slang-coworkers prod
+    // 2026-08-11, all 23 agent groups, since 2026-08-01:
+    //
+    //   claude-opus-5   in 41.0M  out 129.4M  cacheR 38.0B  ->  $0.00 offline
+    //                                                           $30,884.70 online
+    //
+    // opus-5 carries ~98% of the tokens on this box, so every cost number the
+    // dashboard rendered — the cost tiles, the daily chart, and cost-per-PR in
+    // the funnel — was the 2% tail: ~$603 shown against ~$31,511 actual, a 52x
+    // understatement. Nothing went red; an unpriced model and a genuinely free
+    // one are indistinguishable in ccusage's output.
+    //
+    // Online pricing resolves against LiteLLM's live DB, which has had opus-5
+    // all along, and leaves every already-correct model byte-identical (haiku
+    // 4-5, opus-4-8, sonnet-5 all unchanged) — the signature of a pure
+    // pricing-data gap rather than a computation bug. Cost measured at 0.476s
+    // vs 0.385s offline, so this is not a latency trade.
+    //
+    // If the network is unavailable ccusage falls back to the bundled snapshot
+    // silently (verified by blackholing the proxy: same $165.58 the offline run
+    // produced, no error, full 11 days of data). So this is fail-soft, never
+    // fail-blank — but a sustained outage would quietly reinstate the $0. This
+    // box has network.
+    const ccusageArgs = ccusageDailyArgs(since);
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
@@ -2344,9 +2410,21 @@ function runCcusage(claudeConfigDir: string, since?: string): Promise<CcusageDay
     const env: Record<string, string | undefined> = { ...process.env };
     if (claudeConfigDir) env.CLAUDE_CONFIG_DIR = claudeConfigDir;
     else delete env.CLAUDE_CONFIG_DIR;
-    if (!env.CCUSAGE_MODEL_ALIASES) env.CCUSAGE_MODEL_ALIASES = 'claude-sonnet-5=claude-sonnet-4-6';
-    else if (!env.CCUSAGE_MODEL_ALIASES.includes('claude-sonnet-5'))
-      env.CCUSAGE_MODEL_ALIASES += ',claude-sonnet-5=claude-sonnet-4-6';
+    // NO sonnet-5 ALIAS. This used to force `claude-sonnet-5=claude-sonnet-4-6`
+    // — the workaround for the same offline-snapshot gap that hid opus-5, added
+    // when sonnet-5 shipped and the bundled price list didn't know it yet.
+    //
+    // Against live LiteLLM pricing it is now both redundant and WRONG in two
+    // ways. Redundant: `claude-sonnet-5` resolves natively (verified on prod
+    // 2026-08-11 — the same $5.83 with the env var unset). Wrong: sonnet-4-6
+    // bills at 3e-6/1.5e-5 against sonnet-5's 2e-6/1e-5, so the alias marked
+    // sonnet-5 up 50%; and aliasing MERGES THE LABELS, folding sonnet-5's rows
+    // into sonnet-4-6 so the per-model breakdown could no longer tell the two
+    // apart. That is a bad trade for a panel whose whole job is attribution.
+    //
+    // Deliberately not replaced with an opus-5 alias for the same reason: an
+    // alias buys a plausible total at the cost of a truthful breakdown. Live
+    // pricing gives both.
     const cb = (err: any, stdout: string) => {
       clearTimeout(timer);
       if (timedOut || err) {
