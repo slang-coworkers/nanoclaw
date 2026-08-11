@@ -6,8 +6,8 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 444 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 190 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 446 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 191 |
 | `nv-slang` | slang project spine, skills, workflows | 135 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 67 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 47 |
@@ -15,6 +15,15 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-08-11
+
+### nv-main (2 PRs)
+- **#1187** `ops: put the Grafana stack in git; stop it reporting stale numbers as current`
+- **#1188** `nv-path-guard: nv-main owns ops/`
+
+### nv-dashboard (1 PRs)
+- **#1189** `dashboard: price opus-5 — cost was understated 52x`
 
 ## 📅 2026-08-10
 
