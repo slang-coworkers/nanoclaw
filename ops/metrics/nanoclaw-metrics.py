@@ -50,19 +50,20 @@ def emit(measurement, fields, tags=None):
     for k, v in sorted((tags or {}).items()):
         if v is None or v == "":
             continue
-        line += ",%s=%s" % (_esc_tag(k), _esc_tag(v))
+        line += f",{_esc_tag(k)}={_esc_tag(v)}"
     parts = []
     for k, v in sorted(fields.items()):
         if v is None:
             continue
         if isinstance(v, bool):
-            parts.append("%s=%s" % (_esc_tag(k), "true" if v else "false"))
+            parts.append(f"{_esc_tag(k)}={'true' if v else 'false'}")
         elif isinstance(v, int):
-            parts.append("%s=%di" % (_esc_tag(k), v))
+            parts.append(f"{_esc_tag(k)}={v:d}i")  # trailing i = influx integer type
         elif isinstance(v, float):
-            parts.append("%s=%g" % (_esc_tag(k), v))
+            parts.append(f"{_esc_tag(k)}={v:g}")
         else:
-            parts.append('%s="%s"' % (_esc_tag(k), str(v).replace('"', '\\"')))
+            _sv = str(v).replace('"', '\\"')
+            parts.append(f'{_esc_tag(k)}="{_sv}"')
     if parts:
         _out.append(line + " " + ",".join(parts))
 
@@ -80,7 +81,7 @@ def load_state():
     try:
         with open(_state_path()) as fh:
             return json.load(fh)
-    except Exception:
+    except Exception:  # noqa: BLE001 - a collector must never crash the metrics pipeline
         return {}
 
 
@@ -91,8 +92,8 @@ def save_state(st):
         with open(tmp, "w") as fh:
             json.dump(st, fh)
         os.replace(tmp, p)
-    except Exception as exc:
-        _errors.append("state:%s" % exc)
+    except Exception as exc:  # noqa: BLE001 - a collector must never crash the metrics pipeline
+        _errors.append(f"state:{exc}")
 
 
 def read_new_bytes(path, state, key):
@@ -125,7 +126,7 @@ def parse_iso(s):
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.timestamp()
-    except Exception:
+    except Exception:  # noqa: BLE001 - a collector must never crash the metrics pipeline
         return None
 
 
@@ -133,12 +134,12 @@ def port_open(port):
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=2):
             return 1
-    except Exception:
+    except Exception:  # noqa: BLE001 - a collector must never crash the metrics pipeline
         return 0
 
 
 def connect_ro():
-    con = sqlite3.connect("file:%s?mode=ro" % DB, uri=True, timeout=5.0)
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=5.0)
     con.execute("PRAGMA query_only = 1")
     return con
 
@@ -273,8 +274,8 @@ def collect_db(now_ms):
         # --- queues / backlog ---
         def count(tbl):
             try:
-                return cur.execute("SELECT COUNT(*) FROM [%s]" % tbl).fetchone()[0]
-            except Exception:
+                return cur.execute(f"SELECT COUNT(*) FROM [{tbl}]").fetchone()[0]
+            except Exception:  # noqa: BLE001 - a collector must never crash the metrics pipeline
                 return None
         emit("nanoclaw_queue", {
             "pending_reviewable_prs": count("pending_reviewable_prs"),
@@ -349,7 +350,7 @@ def collect_funnel():
             for k2, v2 in v.items():
                 n2 = _num(v2)
                 if n2 is not None:
-                    fields["%s_%s" % (k, k2)] = n2
+                    fields[f"{k}_{k2}"] = n2
         elif isinstance(v, list):
             fields[k + "_count"] = len(v)
     emit("nanoclaw_funnel", fields)
@@ -375,8 +376,8 @@ def main():
                      ("health", collect_health)):
         try:
             fn()
-        except Exception as exc:
-            _errors.append("%s:%s" % (name, exc))
+        except Exception as exc:  # noqa: BLE001 - a collector must never crash the metrics pipeline
+            _errors.append(f"{name}:{exc}")
 
     save_state(state)
     emit("nanoclaw_collector", {
