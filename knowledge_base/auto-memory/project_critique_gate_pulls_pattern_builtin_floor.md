@@ -694,3 +694,39 @@ an operator gate, never routed through a coworker), [[project_slang_rhi_803_cpu_
 The `rate_limit` false capability-negative, the LOUD-vs-QUIET rule, the retire-a-probe rule, and the
 enumerated 4 apparatus instances now live in **[[project_apparatus_probe_failures_rate_limit]]** — this file
 crossed the 24,985-byte Read limit, which truncates the NEWEST content first.
+
+## 08-10 — still unpatched, and I re-derived the DOMAIN of the over-match (approver hit on slangpy#1098)
+
+slangpy-pr-approver reported the gate denying **read-only** `gh api …/pulls/…` GETs and framed it
+as *"its `gh api [^|]*pulls\b` pattern is method-blind, so PR reads trip the PR-creation gate."*
+**That framing is TRUE but NARROWER than the defect this file already recorded** (08-04: it matches
+any command whose *text* contains the substring — a purely local `.md` write was denied). ⇒ relaying
+the approver's wording alone would have re-narrowed a defect I had already measured wider.
+
+**MINE-VERIFIED on my own edge, 08-10, with the regex extracted from the file and run against
+probe strings** (not inferred from reading it):
+
+| probe | verdict |
+|---|---|
+| `gh api repos/…/pulls/1098 --jq .head.sha` (read) | **MATCH — denied** |
+| `gh api repos/…/pulls/1098/files --paginate` (read) | **MATCH — denied** |
+| `gh api --method POST repos/o/r/pulls -f title=x` (create) | MATCH — correct |
+| `gh pr view 1098 --json headRefOid` | no-match ✅ |
+| `gh pr diff 1098` | no-match ✅ |
+
+⇒ the approver's **workaround is the right one and is forced**: `gh pr view` / `gh pr diff` /
+graphql are the only read paths that clear the floor. `grep -nE '(--method|GET)'` on the hook →
+**zero hits**: there is no method awareness to fix, only the anchor to add.
+⭐**`BASH_PATTERNS=` is byte-identical at `:52` across all 6 nanoclaw clones on my edge** (pr1175,
+wt-1176, wt-1176c, rev-1179-head, wt-1171, rev-1164/repo) — so this is trunk state, not one
+worktree's drift. Per ANCHOR C the authoritative statement about the *live* container is still the
+approver's denial; my clone read corroborates the **shape**, and the cross-clone identity is what
+makes "trunk is unpatched" defensible rather than a one-tree guess.
+
+**Second, smaller finding from the same report (NEW here):** the hook writes
+`$(dirname "$STATE")/…` with `STATE=${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}`
+and **never `mkdir -p`** it (`grep -n mkdir` → no hits). On my edge `/workspace/.claude` does not
+exist. Every state/denial-counter write is `2>/dev/null … || true`, so it fails **silently** —
+which means the denial counter feeding the 3-strike soft cap can be permanently 0 on any container
+whose `.claude` dir is absent. Not a bypass (the deny still happens); it makes the *escalation*
+path dark. Companion to [[project_critique_gate_session_blind_counter_defect.md]].

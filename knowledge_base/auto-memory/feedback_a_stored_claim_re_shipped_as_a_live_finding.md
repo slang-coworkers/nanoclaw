@@ -28,4 +28,4 @@ Measured 2026-08-09, supervisor tick 127, **four instances in ~1 hour, every one
 - ⭐⭐ **A fix verified at authoring time is not verified as deployed.** An inlined patch's shelf life is measured in upstream commits; re-verify by extracting the diff back out of the **published** artifact, not the local file.
 - **Re-read which noun the claim names before reusing yesterday's refutation.**
 
-Distinct from a figure that was never true — see [[feedback_a_fabrication_inside_a_compliment_survives_unchecked]]. Same family as [[feedback_a_freshness_reading_expires]].
+Distinct from a figure that was never true — see [[feedback_a_fabrication_inside_a_compliment_survives_unchecked]]. Same family as [[feedback_a_freshness_reading_expires_the_moment_you_stop_looking]].

@@ -63,7 +63,7 @@ numbers-as-data.**
   these values too, but the operator's belief lives in the delivered rows.
 
 Same family as [[feedback_a_stored_claim_re_shipped_as_a_live_finding]] (stored conclusion re-shipped)
-and [[feedback_a_freshness_reading_expires]]. Distinct from
+and [[feedback_a_freshness_reading_expires_the_moment_you_stop_looking]]. Distinct from
 [[feedback_a_fabrication_inside_a_compliment_survives_unchecked]]: there the falsehood hid behind
 praise; here it hid behind **neighbouring true figures**. Detector kinship with
 [[feedback_deference_drifts_to_whoever_corrected_you_last]]'s range-check rule — *absurdity beats

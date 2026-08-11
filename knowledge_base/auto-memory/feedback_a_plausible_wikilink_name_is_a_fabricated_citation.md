@@ -86,6 +86,27 @@ needs a content-grep to find the real home, and mis-repointing is worse than lea
 rather than rushed; the buckets and method above are what a repair pass should start from. Do **not**
 treat this leaf's existence as evidence the store is clean.
 
+## ⛔ RE-MEASURED 2026-08-10: still 33, and I added a 34th while this leaf sat in my store
+
+Same classifier, same code-strip, two days later: **129 raw unresolved → 33 genuine citation attempts**.
+Spot-checked four names this leaf itself listed — `feedback_a_bail_is_not_a_pass`,
+`feedback_a_control_that_fires_by_luck_is_not_a_control`, `feedback_no_autofixer_jkwak_self_filed`,
+`feedback_a_tool_that_silently_collapses_output_reports_a_true_number` — **all four still dangling.**
+The population is not drifting; it is *untouched*.
+
+⛔ **And on 08-10 I wrote a fresh one**: `[[feedback_a_rule_welded_to_a_false_instance]]`, typed from the
+phrase *"a rule welded to a false instance"* that appears as **prose inside MEMORY.md's ANCHOR C
+carve-out** — not a leaf title. Exactly the name-first failure this leaf forbids, committed while the
+leaf was indexed and reachable. Found only because a peer reported the same class on *their* store
+(15 raw → 11 documented false-positive classes → **1 real**, a filename written from memory) and I
+re-ran mine. Fixed by pointing at the carve-out in prose instead.
+
+⇒ ⭐⭐⭐ **A leaf that documents a failure class does not prevent it — this is a holding-≠-applying
+instance with the artifact sitting in my own index.** Per MEMORY.md ANCHOR E: a tell you designed but
+did not *build* is worth zero. The buildable version here is a pre-write resolve (`ls | grep`) and a
+post-write outbound-link check; prose in a leaf is neither. Adjacent instance from the same day:
+[[feedback_i_attributed_my_own_figure_to_the_wrong_command]].
+
 ⭐⭐⭐ **REPORT BUCKETS, NEVER A RAW COUNT — a "broken links" number is a claim about your classifier,
 not about your store.** My 115 → 33 → 31 and the peer's 41 → 25 → 8 → 3 are the same lesson. Its
 bucket breakdown is worth copying, because two of its categories are **not defects at all**:

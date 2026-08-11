@@ -1,6 +1,6 @@
 ---
 name: project_nanoclaw_1154_ownership_one_matcher
-description: "nanoclaw#1154 (szihs) folds ci.yml/setup.sh/merge-train.sh onto ownership.py. Reviewed inline at 02dcb609 (comment 5231698700): LGTM + 4 yellow. Headline: `|| : > $f` re-opens fail-open AFTER the probe passes (constructed: stale compose, exit 0); and the rewritten ci.yml block ran NO ci job because base != nv-main."
+description: "nanoclaw#1154 (szihs) folds ci.yml/setup.sh/merge-train.sh onto ownership.py. R1 02dcb609 (5231698700): LGTM + 4 yellow. R2 28eb62f5 after #1151 merged + retarget to nv-main (5236038386): pure retarget, all 4 yellow LIVE; 🟡2 CLOSED by the ci job finally selecting — 14 real conflicts resolved across 4 branches, 2345 host tests green. 🟡1 open: `|| : > $f` re-opens fail-open AFTER the probe passes (constructed: stale compose, exit 0)."
 metadata:
   node_type: memory
   type: project
@@ -113,10 +113,51 @@ behind `git ls-remote --heads origin nv-main` fork detection; those clones alrea
 `check.py`) left to the maintainer. CI at review time: `guard` pass (only job selected).
 #1151 base: `ci` pending, `check`+`guard` pass.
 
-**RESUME:** (a) szihs replies to 🟡1 ⇒ re-check the `|| { … exit 1; }` change; (b) #1151 lands and
-#1154 retargets to `nv-main` ⇒ **the `ci` job finally selects and exercises the rewritten compose
-block — read that run, it is the coverage 🟡2 is about**; (c) if it merges with 🟡1 open, the
-fail-open is LIVE on nv-main and wants a follow-up PR.
+## R2 — head `28eb62f5`, 2026-08-10: #1151 MERGED, retargeted to `nv-main`. Comment `5236038386`
+
+✅**The pre-registered RESUME trigger (b) fired exactly as written, and turned a re-review into a
+read of someone else's measurement.** #1151 merged as `c8fcfd51`; #1154 retargeted `nv-main`.
+**Pure retarget** — PR diff vs new base byte-identical to R1's (393 lines both) ⇒ **no yellow
+addressed**, all 4 re-grepped LIVE at the new head. No re-review of the code; R1 carries.
+
+### 🟡2 CLOSED by real CI — and this is the payoff of predicting it
+
+`ci` **selected for the first time** and went green in 2m57s (run `31356752725`):
+
+| | |
+|---|---|
+| branches composed through the rewritten block | `nv-dashboard`, `nv-slang`, `nv-slangpy`, `nv-nanoclaw` |
+| conflicts classified by `ownership.py` + resolved | **14** |
+| `UNEXPECTED` aborts | **0** |
+| delete/modify branch taken | 1 |
+| host tests on the composed tree | **164 files, 2345 passed** |
+| container | 371 pass, 0 fail · `check:runtime-deps` ok |
+
+⭐⭐**A workflow's `on.pull_request.branches` filter silently de-selects it for a stacked PR whose
+base isn't listed — and "CI green" then means "the jobs that ran are green".** Retargeting is what
+bought the coverage; my hand-rolled synthetic was a stopgap, and real CI beat it 14 conflicts to 1.
+
+✅**Version-skew hazard now GONE, not merely handled:** nv-main's `ownership.py` carries `-0`
+(line 275) and `printf 'probe\0' | python3 <nv-main copy> -0 <list>` → **rc=0** on the live tree,
+where the identical probe returned **rc=2 + `usage:`** before #1151 landed. Both measurements taken;
+the merge-order trap is unreachable.
+
+### ⛔ My own false zero, caught before publishing
+
+I counted the resolutions with `grep '::notice::'` → **0**, and "0 unexpected notices" *agrees* with
+"nothing went wrong", so it read as a clean result. **The downloaded Actions log renders workflow
+commands as `##[notice]` / `##[error]`; the `::`-prefixed lines present in the file are the ECHOED
+SCRIPT SOURCE, not output.** Correct form → **14** notices, 0 errors. ⇒ ⭐⭐⭐**A zero that
+CONFIRMS the story you already believe is the one to re-derive** — same family as
+[[feedback_a_control_built_from_the_matchers_own_assumption_is_blind]] (matcher blind to the
+target's actual vocabulary; here the vocabulary was the log's render form). ✅Cheap detector that
+would have caught it in one step: grep the **bare sigil** (`notice`) and read the distinct contexts
+before committing to a delimiter. Published the correction in the R2 comment rather than quietly
+fixing the number.
+
+**RESUME:** (a) szihs replies to 🟡1 ⇒ re-check the `|| { … exit 1; }` change; (b) ~~#1151 lands +
+retarget~~ **DONE 08-10, 🟡2 closed**; (c) if it merges with 🟡1 open, the fail-open is LIVE on
+nv-main and wants a follow-up PR — **this is now the only open thread on this chain.**
 
 Related: [[feedback_a_control_built_from_the_matchers_own_assumption_is_blind]] (#1151's adversarial
 corpus is what made this bug findable — a 993-vs-993 tracked-file corpus structurally cannot see a

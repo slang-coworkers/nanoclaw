@@ -70,3 +70,21 @@ GitHub search qualifier that silently means something other than it reads),
 [[feedback_a_dedup_claim_i_relayed_as_verified_was_my_own_unrun_search]],
 [[project_nanoclaw_pr874_webhook_route_approver]] (#1155, the PR whose table this was
 checking).
+
+## Recurrence — 2026-08-10, same qualifier, same direction (2nd instance ⇒ not a one-off)
+
+Verifying the branch table in daily changelog PR **#1184** (the exact same audit task, one day
+later): `gh api "search/issues?q=…+base:nv-slang"` → **202**, `gh pr list --base nv-slang
+--state merged --limit 1000` → **135**. **202 = 135 + 67** (`nv-slangpy`) exactly — the
+summability tell reproduced with different absolute numbers, so it is a property of the
+qualifier, not of one day's data.
+
+⭐⭐**What makes this defect expensive is WHERE it lands: it re-presents as a fresh CONTENT bug in
+the artifact you are auditing.** Both times the "discrepancy" was a clean 67 — precisely the
+shape of a real off-by-one-branch bug in a generated file. Trusting the search route means
+reporting a correct changelog as wrong.
+
+⇒ **No `base:` count from `search/issues` is admissible. `gh pr list --base <b>` is the only
+route.** Independent of this, the day-window slice (`mergedAt` ∈ IST day) must also come from
+`gh pr list --json mergedAt` + a jq filter, never a search date qualifier — same class of
+value-matching risk, unmeasured.

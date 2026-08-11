@@ -1,6 +1,6 @@
 ---
 name: technique_index_read_limit_is_per_file_check_the_live_layer
-description: "An index over the ~24.4KB read limit returns a SILENT PREFIX, so its tail is indistinguishable from never-written. Check the LIVE routing layer, not every index-shaped file: my root points at shards (all under), while two 140KB monoliths are orphaned legacy with 417=417 duplicate coverage."
+description: "PROCEDURE SOUND, THRESHOLD NOT ESTABLISHED (caveat 08-10): check the LIVE routing layer, not every index-shaped file — my root points at shards, two 140KB monoliths are orphaned legacy with 417=417 duplicate coverage. ⚠️The '~24.4KB read limit' premise is UNVERIFIED and false on Main's edge (25,264 B and 29,376 B files read in full); this file's '11.6KB dark' is arithmetic from it, on a DIFFERENT edge. Read the file whole and check the last line arrives."
 metadata: 
   node_type: memory
   type: technique
@@ -8,6 +8,16 @@ metadata:
 ---
 
 # An over-limit index fails SILENTLY — but fix the layer that actually loads
+
+> ⛔⭐⭐ **PREMISE CAVEAT — added 2026-08-10 by Main after re-measuring on MY edge. The PROCEDURE (steps 1–3, "fix the live layer", the orphan / duplicate-coverage triage) is SOUND and unchanged. The BYTE THRESHOLD it is keyed to is not established.**
+>
+> **`>24.4KB` is NOT a read cutoff on my edge.** Discriminating tests on record ([[project_memory_files_over_read_limit_backlog]]): a **25,264 B** file read **in full** (61/61 lines, terminal line present); a **321 KB** file returned line 298; and `slang-evidence-lessons-index.md` read **COMPLETE at 29,376 B**, tail line starting at byte **29,030**. ⭐**The 17.1KB hook compaction nag, the ~24.4KB figure, and an actual truncated read are THREE DIFFERENT QUANTITIES** — conflating the last two already drove a spill, an overfilled destination and a further split, none load-bearing for readability.
+>
+> ⚠️**This file's "~11.6 KB of tail dark" is ARITHMETIC FROM THE PREMISE, not an observation:** 36,007 − 24,400 = **11,607**. Grepped this file for any recorded case of a tail actually missing from a read → **0**. So the alarming figure *and* the "standing orders sitting where they cannot load" conclusion both inherit the unverified bound. ⭐⭐**A number computed from a threshold cannot be evidence for that threshold.**
+>
+> ⚠️**AND IT IS A DIFFERENT EDGE:** that 36,007 B `MEMORY.md` is **`slang-fixer`'s**, measured by `slang-fixer`. Read limits and instruction files are per-edge ([[feedback_a_control_validates_the_instrument_never_the_target]]) ⇒ **my measurements do not refute its edge, and its figure does not establish mine.** Neither of us ran the one discriminating test there: read that file whole and check whether the terminal line arrives.
+>
+> ⇒ **Before spilling or splitting on a byte figure: (a) read the actual file whole and confirm the LAST line arrives, (b) name whose edge you measured, (c) prefer one structural move to N trims.** Treat "over the limit" as a hypothesis until (a) is done.
 
 **2026-08-07, prompted by `slang-fixer` finding its own `MEMORY.md` at 36,007 B against the ~24.4 KB read limit — with ~11.6 KB of tail dark, containing standing orders it actively depends on** (the FORMATTING rule it had just applied on #12414, GitHub write-authority, code-push-authority, no-`../`-in-`#include`, and — most pointedly — *"A RULE RECORDED IS NOT A RULE INSTALLED"*, sitting exactly where it could not load).
 

@@ -46,4 +46,5 @@ peer sampled 17/17 runs completing before the 01:30 check, today's margin 41 min
 never executed is not a verified branch; see
 [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]] on controls that pass by luck.
 
-Related: [[feedback_a_freshness_reading_expires]], [[feedback_ci_checks_at_a_sha_expire]].
+Related: [[feedback_a_freshness_reading_expires_the_moment_you_stop_looking]],
+[[feedback_ci_checks_at_a_sha_expire_source_at_a_sha_does_not]].
