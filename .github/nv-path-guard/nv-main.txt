@@ -204,3 +204,17 @@ README_ko.md
 # This RECORDS ownership that is already factually true; it does not widen it.
 .claude/skills/get-qodo-rules/**
 .claude/skills/qodo-pr-resolver/**
+
+# ops/ — the prod observability stack, added 2026-08-11 (#1187).
+#
+# The metrics collector and the Grafana dashboard JSON previously existed ONLY
+# on the prod box, at /usr/local/bin/ and /var/lib/grafana/dashboards/. Nothing
+# in git described them, which is how a collector defect that silently stopped
+# recording issuePartition.winRate went unnoticed from 2026-08-03 to 2026-08-11
+# while the dashboard kept rendering the stale final value as current.
+#
+# This is infra that configures the box, which is the same class as .github/**
+# and setup/** — nv-main owns it. It is deliberately NOT owned by nv-dashboard:
+# that branch owns the in-repo NanoClaw dashboard (dashboard/**, port 3737),
+# a different artifact from the Grafana board on 13000.
+ops/**
