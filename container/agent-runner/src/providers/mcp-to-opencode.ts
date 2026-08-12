@@ -55,7 +55,7 @@ export function mcpServersToOpenCodeConfig(
       const mergedEnv = resolveEnvInherit(cfg, process.env, name);
       out[name] = {
         type: 'local',
-        command: [cfg.command, ...cfg.args],
+        command: [cfg.command, ...(cfg.args ?? [])],
         ...(Object.keys(mergedEnv).length > 0 ? { environment: mergedEnv } : {}),
         enabled: true,
       };

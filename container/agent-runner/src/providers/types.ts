@@ -113,13 +113,18 @@ export interface QueryInput {
  * record can be passed to either provider. Each provider picks the fields
  * it understands; codex's serializer prefers env-var indirection over
  * plaintext headers when both are present.
+ *
+ * `args`/`env` are optional to match what the host actually emits — its own
+ * McpServerConfig (src/container-config.ts) declares both optional, so
+ * container.json may legitimately omit them.
  */
 export type McpServerConfig =
   | {
       /** stdio transport */
+      type?: 'stdio';
       command: string;
-      args: string[];
-      env: Record<string, string>;
+      args?: string[];
+      env?: Record<string, string>;
       /**
        * Env-var names to forward by NAME (not value) to the subprocess.
        * Codex's TOML writer emits `env_vars = [...]`; codex-cli resolves

@@ -39,6 +39,7 @@ import './providers/index.js';
 import { createCodexConfigOverrides } from './providers/codex-app-server.js';
 import { createProvider, type ProviderName } from './providers/factory.js';
 import { parseAllowedMcpTools } from './providers/claude.js';
+import type { McpServerConfig } from './providers/types.js';
 import { runPollLoop } from './poll-loop.js';
 
 function log(msg: string): void {
@@ -101,7 +102,7 @@ async function main(): Promise<void> {
     codexArgs.push('-c', override);
   }
   codexArgs.push('mcp-server');
-  const mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string>; envInherit?: string[] }> = {
+  const mcpServers: Record<string, McpServerConfig> = {
     nanoclaw: {
       command: 'bun',
       args: ['run', mcpServerPath],
@@ -164,17 +165,32 @@ async function main(): Promise<void> {
     },
   };
 
-  // Merge additional MCP servers from host configuration
+  // Merge additional MCP servers from host configuration. This env var is the
+  // ONLY transport for type-level servers (coworker registry); container.json's
+  // mcpServers below carries the per-instance subset only.
   if (process.env.NANOCLAW_MCP_SERVERS) {
     try {
-      const additional = JSON.parse(process.env.NANOCLAW_MCP_SERVERS) as Record<string, { command: string; args: string[]; env: Record<string, string> }>;
-      for (const [name, config] of Object.entries(additional)) {
-        mcpServers[name] = config;
-        log(`Additional MCP server: ${name} (${config.command})`);
+      const additional = JSON.parse(process.env.NANOCLAW_MCP_SERVERS) as Record<string, McpServerConfig>;
+      for (const [name, serverConfig] of Object.entries(additional)) {
+        mcpServers[name] = serverConfig;
+        log(
+          serverConfig.type === 'http'
+            ? `Additional MCP server: ${name} (HTTP)`
+            : `Additional MCP server: ${name} (${serverConfig.command})`,
+        );
       }
     } catch (e) {
       log(`Failed to parse NANOCLAW_MCP_SERVERS: ${e}`);
     }
+  }
+
+  for (const [name, serverConfig] of Object.entries(config.mcpServers)) {
+    mcpServers[name] = serverConfig;
+    log(
+      serverConfig.type === 'http'
+        ? `Additional MCP server: ${name} (HTTP)`
+        : `Additional MCP server: ${name} (${serverConfig.command})`,
+    );
   }
 
   // MCP proxy integration: add proxy-connected servers for allowed MCP tools
